@@ -128,7 +128,7 @@ describe("IncomeReportsService", () => {
       expect(result.totalIncome).toBe(0);
     });
 
-    it("aggregates income by parent category with rollup", async () => {
+    it("keeps subcategories separate with 'Parent: Child' name format", async () => {
       transactionsRepository.query.mockResolvedValue([
         { category_id: "cat-child", currency_code: "USD", total: "1000.00" },
         { category_id: "cat-parent", currency_code: "USD", total: "4000.00" },
@@ -144,14 +144,19 @@ describe("IncomeReportsService", () => {
         "2025-12-31",
       );
 
-      expect(result.data).toHaveLength(1);
-      expect(result.data[0].categoryId).toBe("cat-parent");
-      expect(result.data[0].categoryName).toBe("Employment");
-      expect(result.data[0].total).toBe(5000);
+      expect(result.data).toHaveLength(2);
+      const child = result.data.find((d) => d.categoryId === "cat-child");
+      const parent = result.data.find((d) => d.categoryId === "cat-parent");
+      expect(child).toBeDefined();
+      expect(child!.categoryName).toBe("Employment: Bonuses");
+      expect(child!.total).toBe(1000);
+      expect(parent).toBeDefined();
+      expect(parent!.categoryName).toBe("Employment");
+      expect(parent!.total).toBe(4000);
       expect(result.totalIncome).toBe(5000);
     });
 
-    it("handles uncategorized income", async () => {
+    it("skips uncategorized rows in JS (SQL already filters them out)", async () => {
       transactionsRepository.query.mockResolvedValue([
         { category_id: null, currency_code: "USD", total: "200.00" },
       ]);
@@ -163,12 +168,11 @@ describe("IncomeReportsService", () => {
         "2025-12-31",
       );
 
-      expect(result.data).toHaveLength(1);
-      expect(result.data[0].categoryId).toBeNull();
-      expect(result.data[0].categoryName).toBe("Uncategorized");
+      expect(result.data).toEqual([]);
+      expect(result.totalIncome).toBe(0);
     });
 
-    it("treats unknown category_id as uncategorized", async () => {
+    it("skips rows whose category_id is unknown", async () => {
       transactionsRepository.query.mockResolvedValue([
         {
           category_id: "nonexistent-id",
@@ -184,8 +188,8 @@ describe("IncomeReportsService", () => {
         "2025-12-31",
       );
 
-      expect(result.data[0].categoryId).toBeNull();
-      expect(result.data[0].categoryName).toBe("Uncategorized");
+      expect(result.data).toEqual([]);
+      expect(result.totalIncome).toBe(0);
     });
 
     it("converts income amounts from foreign currencies", async () => {
@@ -257,7 +261,7 @@ describe("IncomeReportsService", () => {
       expect(queryCall[0]).not.toContain("$3");
     });
 
-    it("returns color from parent category", async () => {
+    it("uses the subcategory's own color (does not roll up to parent)", async () => {
       transactionsRepository.query.mockResolvedValue([
         { category_id: "cat-child", currency_code: "USD", total: "500.00" },
       ]);
@@ -272,15 +276,16 @@ describe("IncomeReportsService", () => {
         "2025-12-31",
       );
 
-      expect(result.data[0].color).toBe("#FF5733");
+      expect(result.data[0].categoryId).toBe("cat-child");
+      expect(result.data[0].color).toBe("#33FF57");
     });
 
-    it("merges multiple uncategorized rows", async () => {
+    it("merges multi-currency rows for the same subcategory", async () => {
       transactionsRepository.query.mockResolvedValue([
-        { category_id: null, currency_code: "USD", total: "100.00" },
-        { category_id: null, currency_code: "EUR", total: "200.00" },
+        { category_id: "cat-income", currency_code: "USD", total: "100.00" },
+        { category_id: "cat-income", currency_code: "EUR", total: "200.00" },
       ]);
-      categoriesRepository.find.mockResolvedValue([]);
+      categoriesRepository.find.mockResolvedValue([mockIncomeCategory]);
 
       const result = await service.getIncomeBySource(
         mockUserId,
@@ -289,8 +294,20 @@ describe("IncomeReportsService", () => {
       );
 
       expect(result.data).toHaveLength(1);
+      expect(result.data[0].categoryId).toBe("cat-income");
       // 100 USD + 200 EUR * 1.1 = 320
       expect(result.data[0].total).toBe(320);
+    });
+
+    it("filters by is_income = true in the SQL query (income categories only)", async () => {
+      transactionsRepository.query.mockResolvedValue([]);
+      categoriesRepository.find.mockResolvedValue([]);
+
+      await service.getIncomeBySource(mockUserId, "2025-01-01", "2025-12-31");
+
+      const sql = transactionsRepository.query.mock.calls[0][0];
+      expect(sql).toContain("INNER JOIN categories c");
+      expect(sql).toContain("c.is_income = true");
     });
 
     it("rounds totals to 2 decimal places", async () => {
