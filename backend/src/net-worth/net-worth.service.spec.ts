@@ -299,6 +299,22 @@ describe("NetWorthService", () => {
         expect(insertCalls[2][1][3]).toBe(250500);
       });
 
+      it("uses dateAcquired as start date for ASSET with no transactions", async () => {
+        const assetAccount = {
+          ...mockAssetAccount,
+          dateAcquired: new Date("2023-06-15"),
+        };
+        accountRepository.findOne.mockResolvedValue(assetAccount);
+        dataSource.query
+          .mockResolvedValueOnce([{ earliest: null }])
+          .mockResolvedValueOnce([]);
+
+        await service.recalculateAccount("user-1", "asset-1");
+
+        const costQuery = dataSource.query.mock.calls[1];
+        expect(costQuery[1][2]).toBe("2023-06-15");
+      });
+
       it("uses dateAcquired as start date for ASSET when it is earlier than first tx", async () => {
         const assetAccount = {
           ...mockAssetAccount,
@@ -773,6 +789,146 @@ describe("NetWorthService", () => {
     });
   });
 
+  describe("triggerDebouncedRecalc", () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("schedules a recalc after the debounce window", () => {
+      const spy = jest
+        .spyOn(service, "recalculateAccount")
+        .mockResolvedValue(undefined);
+
+      service.triggerDebouncedRecalc("acc-1", "user-1");
+
+      expect(spy).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(2000);
+      expect(spy).toHaveBeenCalledWith("user-1", "acc-1");
+      spy.mockRestore();
+    });
+
+    it("debounces repeated triggers and only fires once", () => {
+      const spy = jest
+        .spyOn(service, "recalculateAccount")
+        .mockResolvedValue(undefined);
+
+      service.triggerDebouncedRecalc("acc-1", "user-1");
+      jest.advanceTimersByTime(1000);
+      service.triggerDebouncedRecalc("acc-1", "user-1");
+      jest.advanceTimersByTime(1000);
+      // Still within debounce window relative to the second call
+      expect(spy).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(1000);
+      expect(spy).toHaveBeenCalledTimes(1);
+      spy.mockRestore();
+    });
+
+    it("logs a warning when the scheduled recalc rejects", async () => {
+      const spy = jest
+        .spyOn(service, "recalculateAccount")
+        .mockRejectedValue(new Error("boom"));
+      const warnSpy = jest
+        .spyOn((service as any).logger, "warn")
+        .mockImplementation(() => undefined);
+
+      service.triggerDebouncedRecalc("acc-1", "user-1");
+      jest.advanceTimersByTime(2000);
+      // Allow the rejected promise's catch handler to run.
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("acc-1"));
+      spy.mockRestore();
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe("getLlmHistory", () => {
+    it("delegates to getMonthlyNetWorth with the provided range", async () => {
+      const spy = jest
+        .spyOn(service, "getMonthlyNetWorth")
+        .mockResolvedValue([]);
+
+      await service.getLlmHistory("user-1", "2024-01-01", "2024-12-31");
+
+      expect(spy).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-12-31",
+      );
+      spy.mockRestore();
+    });
+
+    it("falls back to a 12-month default range when none is provided", async () => {
+      const spy = jest
+        .spyOn(service, "getMonthlyNetWorth")
+        .mockResolvedValue([]);
+
+      await service.getLlmHistory("user-1");
+
+      const [, start, end] = spy.mock.calls[0];
+      // Default range is roughly the last year through today.
+      expect(start).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(end).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(start! < end!).toBe(true);
+      spy.mockRestore();
+    });
+  });
+
+  describe("recalculateAllInvestmentSnapshots", () => {
+    it("recalculates each brokerage / standalone investment account", async () => {
+      const qb: any = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getMany: jest
+          .fn()
+          .mockResolvedValue([{ ...mockBrokerageAccount, userId: "user-1" }]),
+      };
+      accountRepository.createQueryBuilder = jest.fn().mockReturnValue(qb);
+
+      dataSource.query
+        .mockResolvedValueOnce([{ earliest: null }])
+        .mockResolvedValueOnce([{ inv_earliest: null }])
+        .mockResolvedValueOnce([{ month: "2024-01-01", balance: 0 }]);
+      invTxRepository.find.mockResolvedValue([]);
+
+      await service.recalculateAllInvestmentSnapshots();
+
+      expect(qb.getMany).toHaveBeenCalled();
+      expect(dataSource.createQueryRunner).toHaveBeenCalledTimes(1);
+    });
+
+    it("continues when one account fails", async () => {
+      const qb: any = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([
+          { ...mockBrokerageAccount, id: "b-1", userId: "user-1" },
+          { ...mockBrokerageAccount, id: "b-2", userId: "user-1" },
+        ]),
+      };
+      accountRepository.createQueryBuilder = jest.fn().mockReturnValue(qb);
+
+      dataSource.query
+        // First account: earliest call rejects
+        .mockRejectedValueOnce(new Error("db down"))
+        // Second account: succeeds
+        .mockResolvedValueOnce([{ earliest: null }])
+        .mockResolvedValueOnce([{ inv_earliest: null }])
+        .mockResolvedValueOnce([{ month: "2024-01-01", balance: 0 }]);
+      invTxRepository.find.mockResolvedValue([]);
+
+      await expect(
+        service.recalculateAllInvestmentSnapshots(),
+      ).resolves.toBeUndefined();
+      expect(dataSource.createQueryRunner).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("ensurePopulated", () => {
     it("recalculates all accounts when mab count is zero", async () => {
       mabRepository.count.mockResolvedValue(0);
@@ -830,6 +986,39 @@ describe("NetWorthService", () => {
       await service.ensurePopulated("user-1");
 
       expect(mabRepository.find).not.toHaveBeenCalled();
+    });
+
+    it("returns early without querying MAB when the user has no accounts", async () => {
+      mabRepository.count.mockResolvedValue(10);
+      accountRepository.find.mockResolvedValue([]);
+
+      await service.ensurePopulated("user-1");
+
+      expect(mabRepository.find).not.toHaveBeenCalled();
+      expect(accountRepository.findOne).not.toHaveBeenCalled();
+    });
+
+    it("logs a warning and continues when a stale-account refresh fails", async () => {
+      mabRepository.count.mockResolvedValue(10);
+      accountRepository.find.mockResolvedValue([
+        { id: "account-1" },
+        { id: "account-2" },
+      ]);
+      mabRepository.find.mockResolvedValue([]);
+      // First lookup throws, second returns null so its recalc no-ops.
+      accountRepository.findOne
+        .mockRejectedValueOnce(new Error("db down"))
+        .mockResolvedValueOnce(null);
+      const warnSpy = jest
+        .spyOn((service as any).logger, "warn")
+        .mockImplementation(() => undefined);
+
+      await expect(service.ensurePopulated("user-1")).resolves.toBeUndefined();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("account-1"),
+      );
+      warnSpy.mockRestore();
     });
   });
 
@@ -1289,6 +1478,27 @@ describe("NetWorthService", () => {
       expect(result[0].assets).toBe(55000);
       expect(result[0].netWorth).toBe(55000);
     });
+
+    it("includes both market value and cash balance for standalone INVESTMENT accounts", async () => {
+      mabRepository.count.mockResolvedValue(5);
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+
+      dataSource.query.mockResolvedValueOnce([
+        {
+          month: "2024-01-01",
+          balance: 2500,
+          market_value: 30000,
+          account_id: "standalone-1",
+          account_type: AccountType.INVESTMENT,
+          account_sub_type: null,
+          currency_code: "USD",
+        },
+      ]);
+
+      const result = await service.getMonthlyNetWorth("user-1");
+
+      expect(result[0].assets).toBe(32500);
+    });
   });
 
   describe("getMonthlyInvestments", () => {
@@ -1541,6 +1751,43 @@ describe("NetWorthService", () => {
       expect(mabRepository.count).toHaveBeenCalledWith({
         where: { userId: "user-1" },
       });
+    });
+
+    it("returns empty array when accountIds resolve to no accounts", async () => {
+      mabRepository.count.mockResolvedValue(5);
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+      // Linked account resolution returns empty
+      dataSource.query.mockResolvedValueOnce([]);
+
+      const result = await service.getMonthlyInvestments(
+        "user-1",
+        undefined,
+        undefined,
+        ["unknown-id"],
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it("includes both market value and cash balance for standalone INVESTMENT accounts", async () => {
+      mabRepository.count.mockResolvedValue(5);
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+
+      dataSource.query.mockResolvedValueOnce([
+        {
+          month: "2024-01-01",
+          balance: 1500,
+          market_value: 20000,
+          account_id: "standalone-1",
+          account_type: AccountType.INVESTMENT,
+          account_sub_type: null,
+          currency_code: "USD",
+        },
+      ]);
+
+      const result = await service.getMonthlyInvestments("user-1");
+
+      expect(result[0].value).toBe(21500);
     });
   });
 
