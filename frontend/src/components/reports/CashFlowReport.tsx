@@ -80,12 +80,15 @@ export function CashFlowReport() {
           builtInReportsApi.getSpendingByCategory(params),
         ]);
 
-      // Map monthly data
+      // Map monthly data. `name` must be unique across the dataset (used as
+      // the XAxis category key); a non-unique value like "May" causes
+      // Recharts to resolve the tooltip's payload to the first matching row,
+      // showing data from the wrong year on multi-year ranges.
       const data: ChartDataItem[] = cashFlowResponse.data.map(
         (item: MonthlyIncomeExpenseItem) => {
           const monthDate = parseISO(item.month + "-01");
           return {
-            name: format(monthDate, "MMM"),
+            name: item.month,
             fullName: format(monthDate, "MMM yyyy"),
             Income: Math.round(item.income),
             Expenses: Math.round(item.expenses),
@@ -199,11 +202,30 @@ export function CashFlowReport() {
   };
 
   if (isLoading) {
+    // Render the controls block too so focus inside DateInput survives
+    // reloads triggered by typing in the custom date range.
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+      <div className="space-y-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            <DateRangeSelector
+              ranges={["3m", "6m", "1y"]}
+              value={dateRange}
+              onChange={setDateRange}
+              showCustom
+              customStartDate={startDate}
+              onCustomStartDateChange={setStartDate}
+              customEndDate={endDate}
+              onCustomEndDateChange={setEndDate}
+            />
+            <ExportDropdown onExportPdf={handleExportPdf} />
+          </div>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+            <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+          </div>
         </div>
       </div>
     );
@@ -289,7 +311,13 @@ export function CashFlowReport() {
               style={{ cursor: "pointer" }}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 12 }}
+                tickFormatter={(value: string) =>
+                  format(parseISO(value + "-01"), "MMM")
+                }
+              />
               <YAxis
                 tickFormatter={formatCurrencyAxis}
                 tick={{ fontSize: 12 }}

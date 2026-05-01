@@ -68,7 +68,10 @@ export function IncomeVsExpensesReport() {
         endDate: end,
       });
 
-      // Map response to chart data
+      // Map response to chart data. `name` must be unique across the dataset
+      // (used as the XAxis category key); a non-unique value like "May" causes
+      // Recharts to resolve the tooltip's payload to the first matching row,
+      // showing data from the wrong year on multi-year ranges.
       const data: ChartDataItem[] = response.data.map(
         (item: MonthlyIncomeExpenseItem) => {
           const monthDate = parseISO(item.month + "-01");
@@ -76,7 +79,7 @@ export function IncomeVsExpensesReport() {
           const savingsRate =
             item.income > 0 ? Math.round((savings / item.income) * 100) : 0;
           return {
-            name: format(monthDate, "MMM"),
+            name: item.month,
             fullName: format(monthDate, "MMM yyyy"),
             Income: Math.round(item.income),
             Expenses: Math.round(item.expenses),
@@ -185,20 +188,9 @@ export function IncomeVsExpensesReport() {
     return null;
   };
 
-  if (isLoading) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-          <div className="h-96 bg-gray-200 dark:bg-gray-700 rounded" />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      {/* Controls */}
+      {/* Controls -- always rendered so focus inside DateInput survives reloads */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-4 items-center justify-between">
           <DateRangeSelector
@@ -217,7 +209,12 @@ export function IncomeVsExpensesReport() {
 
       {/* Chart */}
       <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
-        {chartData.length === 0 ? (
+        {isLoading ? (
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+            <div className="h-96 bg-gray-200 dark:bg-gray-700 rounded" />
+          </div>
+        ) : chartData.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
             No data for this period.
           </p>
@@ -232,7 +229,13 @@ export function IncomeVsExpensesReport() {
                   style={{ cursor: "pointer" }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value: string) =>
+                      format(parseISO(value + "-01"), "MMM")
+                    }
+                  />
                   <YAxis
                     tickFormatter={formatCurrencyAxis}
                     tick={{ fontSize: 12 }}

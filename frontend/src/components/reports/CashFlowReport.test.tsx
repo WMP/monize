@@ -40,7 +40,7 @@ vi.mock("recharts", () => ({
   BarChart: ({ children, onClick }: any) => (
     <div
       data-testid="bar-chart"
-      onClick={() => onClick?.({ activeLabel: "Jul" })}
+      onClick={() => onClick?.({ activeLabel: "2024-07" })}
     >
       {children}
     </div>

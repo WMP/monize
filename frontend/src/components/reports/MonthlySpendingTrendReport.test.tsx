@@ -40,7 +40,7 @@ vi.mock("recharts", () => ({
   LineChart: ({ children, onClick }: any) => (
     <div
       data-testid="line-chart"
-      onClick={() => onClick?.({ activeLabel: "Jan" })}
+      onClick={() => onClick?.({ activeLabel: "2024-01" })}
     >
       {children}
     </div>
