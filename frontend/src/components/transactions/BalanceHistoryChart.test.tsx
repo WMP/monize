@@ -126,6 +126,8 @@ describe('BalanceHistoryChart', () => {
           { date: '2026-03-19', balance: 800 },
           { date: '2026-04-15', balance: 650 },
           { date: '2026-05-01', balance: 500 },
+          { date: '2026-06-01', balance: 400 },
+          { date: '2026-07-01', balance: 300 },
         ]}
         isLoading={false}
       />
