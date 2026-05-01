@@ -481,5 +481,258 @@ describe("McpHttpController", () => {
       controller.onModuleDestroy();
       // Should not throw
     });
+
+    it("closes all open transports on destroy", () => {
+      const close1 = jest.fn().mockResolvedValue(undefined);
+      const close2 = jest.fn().mockResolvedValue(undefined);
+      (controller as any).transports.set("a", { close: close1 });
+      (controller as any).transports.set("b", { close: close2 });
+      (controller as any).servers.set("a", {});
+      (controller as any).sessionUsers.set("a", { userId: "u", scopes: "" });
+      (controller as any).sessionCreatedAt.set("a", Date.now());
+
+      controller.onModuleDestroy();
+
+      expect(close1).toHaveBeenCalled();
+      expect(close2).toHaveBeenCalled();
+      expect((controller as any).transports.size).toBe(0);
+      expect((controller as any).servers.size).toBe(0);
+      expect((controller as any).sessionUsers.size).toBe(0);
+      expect((controller as any).sessionCreatedAt.size).toBe(0);
+    });
+  });
+
+  describe("handlePost session lookup branches", () => {
+    it("returns 404 when supplied mcp-session-id has no transport", async () => {
+      patService.validateToken.mockResolvedValue({
+        userId: "user-1",
+        scopes: "read",
+      });
+
+      const req = {
+        headers: {
+          authorization: "Bearer pat_test",
+          "mcp-session-id": "no-such-session",
+        },
+        body: {},
+      } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.handlePost(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.objectContaining({ message: "Session not found" }),
+        }),
+      );
+    });
+
+    it("returns 403 when authenticated user does not own the session", async () => {
+      patService.validateToken.mockResolvedValue({
+        userId: "user-other",
+        scopes: "read",
+      });
+
+      const sessionId = "post-mismatch";
+      const mockTransport = {
+        sessionId,
+        onclose: null as any,
+        handleRequest: jest.fn(),
+        close: jest.fn().mockResolvedValue(undefined),
+      };
+      (controller as any).transports.set(sessionId, mockTransport);
+      (controller as any).servers.set(sessionId, {});
+      (controller as any).sessionUsers.set(sessionId, {
+        userId: "user-1",
+        scopes: "read",
+      });
+      (controller as any).sessionCreatedAt.set(sessionId, Date.now());
+
+      const req = {
+        headers: {
+          authorization: "Bearer pat_test",
+          "mcp-session-id": sessionId,
+        },
+        body: {},
+      } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.handlePost(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(mockTransport.handleRequest).not.toHaveBeenCalled();
+    });
+
+    it("delegates to transport.handleRequest for an existing valid session", async () => {
+      patService.validateToken.mockResolvedValue({
+        userId: "user-1",
+        scopes: "read",
+      });
+
+      const sessionId = "post-valid";
+      const handleRequest = jest.fn().mockResolvedValue(undefined);
+      (controller as any).transports.set(sessionId, {
+        sessionId,
+        handleRequest,
+        close: jest.fn().mockResolvedValue(undefined),
+      });
+      (controller as any).servers.set(sessionId, {});
+      (controller as any).sessionUsers.set(sessionId, {
+        userId: "user-1",
+        scopes: "read",
+      });
+      (controller as any).sessionCreatedAt.set(sessionId, Date.now());
+
+      const req = {
+        headers: {
+          authorization: "Bearer pat_test",
+          "mcp-session-id": sessionId,
+        },
+        body: { hello: "rpc" },
+      } as any;
+      const res = {} as any;
+
+      await controller.handlePost(req, res);
+
+      expect(handleRequest).toHaveBeenCalledWith(req, res, req.body);
+    });
+  });
+
+  describe("handleGet success branch", () => {
+    it("delegates to transport.handleRequest when session is valid", async () => {
+      patService.validateToken.mockResolvedValue({
+        userId: "user-1",
+        scopes: "read",
+      });
+
+      const sessionId = "get-valid";
+      const handleRequest = jest.fn().mockResolvedValue(undefined);
+      (controller as any).transports.set(sessionId, {
+        sessionId,
+        handleRequest,
+        close: jest.fn().mockResolvedValue(undefined),
+      });
+      (controller as any).servers.set(sessionId, {});
+      (controller as any).sessionUsers.set(sessionId, {
+        userId: "user-1",
+        scopes: "read",
+      });
+      (controller as any).sessionCreatedAt.set(sessionId, Date.now());
+
+      const req = {
+        headers: {
+          authorization: "Bearer pat_test",
+          "mcp-session-id": sessionId,
+        },
+      } as any;
+      const res = {} as any;
+
+      await controller.handleGet(req, res);
+
+      expect(handleRequest).toHaveBeenCalledWith(req, res);
+    });
+  });
+
+  describe("handleDelete additional branches", () => {
+    it("returns 404 when delete targets an unknown session", async () => {
+      patService.validateToken.mockResolvedValue({
+        userId: "user-1",
+        scopes: "read",
+      });
+
+      const req = {
+        headers: {
+          authorization: "Bearer pat_test",
+          "mcp-session-id": "missing",
+        },
+      } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as any;
+
+      await controller.handleDelete(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.objectContaining({ message: "Session not found" }),
+        }),
+      );
+    });
+
+    it("calls transport.handleRequest then destroys the session on success", async () => {
+      patService.validateToken.mockResolvedValue({
+        userId: "user-1",
+        scopes: "read",
+      });
+
+      const sessionId = "delete-valid";
+      const handleRequest = jest.fn().mockResolvedValue(undefined);
+      const close = jest.fn().mockResolvedValue(undefined);
+      (controller as any).transports.set(sessionId, {
+        sessionId,
+        handleRequest,
+        close,
+      });
+      (controller as any).servers.set(sessionId, {});
+      (controller as any).sessionUsers.set(sessionId, {
+        userId: "user-1",
+        scopes: "read",
+      });
+      (controller as any).sessionCreatedAt.set(sessionId, Date.now());
+
+      const req = {
+        headers: {
+          authorization: "Bearer pat_test",
+          "mcp-session-id": sessionId,
+        },
+      } as any;
+      const res = {} as any;
+
+      await controller.handleDelete(req, res);
+
+      expect(handleRequest).toHaveBeenCalledWith(req, res);
+      expect((controller as any).transports.has(sessionId)).toBe(false);
+      expect((controller as any).sessionUsers.has(sessionId)).toBe(false);
+    });
+  });
+
+  describe("cleanupExpiredSessions()", () => {
+    it("removes sessions older than the TTL and keeps fresh ones", () => {
+      const fresh = "fresh-session";
+      const stale = "stale-session";
+      const freshClose = jest.fn().mockResolvedValue(undefined);
+      const staleClose = jest.fn().mockResolvedValue(undefined);
+
+      (controller as any).transports.set(fresh, { close: freshClose });
+      (controller as any).transports.set(stale, { close: staleClose });
+      (controller as any).servers.set(fresh, {});
+      (controller as any).servers.set(stale, {});
+      (controller as any).sessionUsers.set(fresh, {
+        userId: "u",
+        scopes: "",
+      });
+      (controller as any).sessionUsers.set(stale, {
+        userId: "u",
+        scopes: "",
+      });
+      (controller as any).sessionCreatedAt.set(fresh, Date.now());
+      (controller as any).sessionCreatedAt.set(stale, Date.now() - 3_700_000);
+
+      (controller as any).cleanupExpiredSessions();
+
+      expect(staleClose).toHaveBeenCalled();
+      expect((controller as any).transports.has(stale)).toBe(false);
+      expect((controller as any).transports.has(fresh)).toBe(true);
+      expect(freshClose).not.toHaveBeenCalled();
+    });
   });
 });

@@ -1219,9 +1219,7 @@ export class InvestmentTransactionsService {
         new Set([accountId, saved.accountId].filter(Boolean) as string[]),
       );
       const affectedSecurityIds = Array.from(
-        new Set(
-          [oldSecurityId, saved.securityId].filter(Boolean) as string[],
-        ),
+        new Set([oldSecurityId, saved.securityId].filter(Boolean) as string[]),
       );
       await this.holdingsService.validateNoNegativeHoldingsHistory(
         userId,

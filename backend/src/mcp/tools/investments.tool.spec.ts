@@ -96,6 +96,16 @@ describe("McpInvestmentsTools", () => {
         "00000000-0000-0000-0000-000000000001",
       ]);
     });
+
+    it("returns error when getLlmSummary throws", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      portfolioService.getLlmSummary.mockRejectedValue(new Error("fail"));
+      const result = await handlers["get_portfolio_summary"](
+        {},
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
   });
 
   describe("query_investment_transactions", () => {

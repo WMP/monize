@@ -285,6 +285,37 @@ describe("UsersService", () => {
 
       expect(result.hasPassword).toBe(false);
     });
+
+    it("rejects email change for accounts without a local password", async () => {
+      usersRepository.findOne.mockResolvedValueOnce({
+        ...mockUser,
+        passwordHash: null,
+      });
+
+      await expect(
+        service.updateProfile("user-1", {
+          email: "new@example.com",
+          currentPassword: "anything",
+        }),
+      ).rejects.toThrow(
+        "Cannot change email for accounts without a local password",
+      );
+    });
+
+    it("does not require password when email is unchanged", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        email: "same@example.com",
+      });
+      usersRepository.save.mockImplementation((user) => user);
+
+      const result = await service.updateProfile("user-1", {
+        email: "same@example.com",
+        firstName: "Bob",
+      });
+
+      expect(result.firstName).toBe("Bob");
+    });
   });
 
   describe("getPreferences", () => {
@@ -389,6 +420,30 @@ describe("UsersService", () => {
       const savedData = preferencesRepository.save.mock.calls[0][0];
       expect(savedData.preferredExchanges).toEqual([]);
     });
+
+    it.each([
+      ["dateFormat", "MM/DD/YYYY"],
+      ["numberFormat", "en-CA"],
+      ["timezone", "Europe/London"],
+      ["notificationBrowser", false],
+      ["weekStartsOn", 1],
+      ["budgetDigestEnabled", true],
+      ["budgetDigestDay", 5],
+      ["showCreatedAt", true],
+      ["timeFormat", "24h"],
+      ["defaultQuoteProvider", "yahoo"],
+      ["recentTransactionsLimit", 25],
+    ])(
+      "updates the %s field when provided",
+      async (field: string, value: any) => {
+        preferencesRepository.findOne.mockResolvedValue({ ...mockPreferences });
+
+        await service.updatePreferences("user-1", { [field]: value } as any);
+
+        const savedData = preferencesRepository.save.mock.calls[0][0];
+        expect(savedData[field]).toEqual(value);
+      },
+    );
   });
 
   describe("changePassword", () => {

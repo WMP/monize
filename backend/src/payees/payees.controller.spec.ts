@@ -443,5 +443,108 @@ describe("PayeesController", () => {
         "A".repeat(255),
       );
     });
+
+    it("substitutes empty string when name is undefined", async () => {
+      mockPayeesService.findInactiveByName.mockResolvedValue(null);
+
+      await controller.findInactiveByName(mockReq, undefined as any);
+
+      expect(mockPayeesService.findInactiveByName).toHaveBeenCalledWith(
+        "user-1",
+        "",
+      );
+    });
+  });
+
+  describe("search() input handling", () => {
+    it("substitutes empty string when query is undefined", async () => {
+      mockPayeesService.search.mockResolvedValue([]);
+
+      await controller.search(mockReq, undefined as any, 10);
+
+      expect(mockPayeesService.search).toHaveBeenCalledWith("user-1", "", 10);
+    });
+
+    it("truncates query to 200 characters", async () => {
+      mockPayeesService.search.mockResolvedValue([]);
+      const longQuery = "x".repeat(500);
+
+      await controller.search(mockReq, longQuery, 10);
+
+      expect(mockPayeesService.search).toHaveBeenCalledWith(
+        "user-1",
+        "x".repeat(200),
+        10,
+      );
+    });
+
+    it("clamps limit below 1 to 1", async () => {
+      mockPayeesService.search.mockResolvedValue([]);
+
+      await controller.search(mockReq, "q", 0);
+
+      expect(mockPayeesService.search).toHaveBeenCalledWith("user-1", "q", 1);
+    });
+
+    it("clamps limit above 200 to 200", async () => {
+      mockPayeesService.search.mockResolvedValue([]);
+
+      await controller.search(mockReq, "q", 500);
+
+      expect(mockPayeesService.search).toHaveBeenCalledWith("user-1", "q", 200);
+    });
+  });
+
+  describe("autocomplete() input handling", () => {
+    it("substitutes empty string when query is undefined", async () => {
+      mockPayeesService.autocomplete.mockResolvedValue([]);
+
+      await controller.autocomplete(mockReq, undefined as any);
+
+      expect(mockPayeesService.autocomplete).toHaveBeenCalledWith("user-1", "");
+    });
+
+    it("truncates long autocomplete queries", async () => {
+      mockPayeesService.autocomplete.mockResolvedValue([]);
+
+      await controller.autocomplete(mockReq, "a".repeat(500));
+
+      expect(mockPayeesService.autocomplete).toHaveBeenCalledWith(
+        "user-1",
+        "a".repeat(200),
+      );
+    });
+  });
+
+  describe("getMostUsed() / getRecentlyUsed() limit clamping", () => {
+    it("clamps getMostUsed limit below 1 to 1", async () => {
+      mockPayeesService.getMostUsed.mockResolvedValue([]);
+      await controller.getMostUsed(mockReq, -5);
+      expect(mockPayeesService.getMostUsed).toHaveBeenCalledWith("user-1", 1);
+    });
+
+    it("clamps getMostUsed limit above 200 to 200", async () => {
+      mockPayeesService.getMostUsed.mockResolvedValue([]);
+      await controller.getMostUsed(mockReq, 999);
+      expect(mockPayeesService.getMostUsed).toHaveBeenCalledWith("user-1", 200);
+    });
+
+    it("clamps getRecentlyUsed limit below 1 to 1", async () => {
+      mockPayeesService.getRecentlyUsed.mockResolvedValue([]);
+      await controller.getRecentlyUsed(mockReq, 0);
+      expect(mockPayeesService.getRecentlyUsed).toHaveBeenCalledWith(
+        "user-1",
+        1,
+      );
+    });
+
+    it("clamps getRecentlyUsed limit above 200 to 200", async () => {
+      mockPayeesService.getRecentlyUsed.mockResolvedValue([]);
+      await controller.getRecentlyUsed(mockReq, 9999);
+      expect(mockPayeesService.getRecentlyUsed).toHaveBeenCalledWith(
+        "user-1",
+        200,
+      );
+    });
   });
 });

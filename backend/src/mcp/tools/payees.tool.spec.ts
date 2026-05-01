@@ -72,5 +72,40 @@ describe("McpPayeesTools", () => {
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.message).toContain("created");
     });
+
+    it("returns error when no user context for create_payee", async () => {
+      resolve.mockReturnValue(undefined);
+      const result = await handlers["create_payee"](
+        { name: "X" },
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error when create_payee service throws", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
+      payeesService.create.mockRejectedValue(new Error("dup"));
+
+      const result = await handlers["create_payee"](
+        { name: "X" },
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("get_payees error paths", () => {
+    it("returns error when no user context", async () => {
+      resolve.mockReturnValue(undefined);
+      const result = await handlers["get_payees"]({}, { sessionId: "s1" });
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error when service throws", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      payeesService.findAll.mockRejectedValue(new Error("db"));
+      const result = await handlers["get_payees"]({}, { sessionId: "s1" });
+      expect(result.isError).toBe(true);
+    });
   });
 });

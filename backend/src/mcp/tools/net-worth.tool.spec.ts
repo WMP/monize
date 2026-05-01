@@ -91,5 +91,31 @@ describe("McpNetWorthTools", () => {
         expect.any(String),
       );
     });
+
+    it("returns error when no user context", async () => {
+      resolve.mockReturnValue(undefined);
+      const result = await handlers["get_net_worth_history"](
+        {},
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error when service throws", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      netWorthService.getLlmHistory.mockRejectedValue(new Error("boom"));
+      const result = await handlers["get_net_worth_history"](
+        {},
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error when get_net_worth service throws", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      accountsService.getSummary.mockRejectedValue(new Error("DB"));
+      const result = await handlers["get_net_worth"]({}, { sessionId: "s1" });
+      expect(result.isError).toBe(true);
+    });
   });
 });

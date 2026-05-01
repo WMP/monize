@@ -2443,4 +2443,99 @@ describe("PortfolioService", () => {
       expect(result.cagr).toBeCloseTo(expectedCagr, 1);
     });
   });
+
+  describe("getAccountMarketValues", () => {
+    it("returns an empty map when there are no investment accounts", async () => {
+      accountsRepository.find.mockResolvedValue([]);
+      const result = await service.getAccountMarketValues(userId);
+      expect(result.size).toBe(0);
+    });
+
+    it("returns an empty map when there are no holdings accounts", async () => {
+      // Cash-only account does not have brokerage subtype, so categoriseAccounts
+      // returns no holdingsAccountIds.
+      accountsRepository.find.mockResolvedValue([mockCashAccount]);
+      const result = await service.getAccountMarketValues(userId);
+      expect(result.size).toBe(0);
+    });
+
+    it("returns an empty map when there are no holdings rows", async () => {
+      accountsRepository.find.mockResolvedValue([
+        mockBrokerageAccount,
+        mockCashAccount,
+      ]);
+      holdingsRepository.find.mockResolvedValue([]);
+      const result = await service.getAccountMarketValues(userId);
+      expect(result.size).toBe(0);
+    });
+
+    it("computes market value summed per account (CAD/USD same)", async () => {
+      accountsRepository.find.mockResolvedValue([
+        mockBrokerageAccount, // CAD
+      ]);
+      holdingsRepository.find.mockResolvedValue([
+        { ...mockHoldingVFV, quantity: "10" } as any, // 10 * price -> in CAD, same currency
+      ]);
+      securityPriceRepository.query.mockResolvedValue([
+        {
+          security_id: "sec-2",
+          close_price: "100",
+          price_date: "2026-02-01",
+        },
+      ]);
+
+      const result = await service.getAccountMarketValues(userId);
+      expect(result.get("acct-brokerage-1")).toBe(1000);
+    });
+
+    it("skips holdings with effectively zero quantity", async () => {
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+      holdingsRepository.find.mockResolvedValue([
+        { ...mockHoldingVFV, quantity: "0" } as any,
+      ]);
+      securityPriceRepository.query.mockResolvedValue([
+        {
+          security_id: "sec-2",
+          close_price: "100",
+          price_date: "2026-02-01",
+        },
+      ]);
+
+      const result = await service.getAccountMarketValues(userId);
+      expect(result.size).toBe(0);
+    });
+
+    it("skips holdings without a current price", async () => {
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+      holdingsRepository.find.mockResolvedValue([
+        { ...mockHoldingVFV, quantity: "5" } as any,
+      ]);
+      // No price for sec-2
+      securityPriceRepository.query.mockResolvedValue([]);
+
+      const result = await service.getAccountMarketValues(userId);
+      expect(result.size).toBe(0);
+    });
+
+    it("aggregates multiple holdings in the same account", async () => {
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+      holdingsRepository.find.mockResolvedValue([
+        { ...mockHoldingVFV, quantity: "10" } as any, // 10 * 100 = 1000
+        {
+          ...mockHoldingVFV,
+          id: "hold-other",
+          securityId: "sec-3",
+          security: mockSecurityXIC,
+          quantity: "20",
+        } as any, // 20 * 50 = 1000
+      ]);
+      securityPriceRepository.query.mockResolvedValue([
+        { security_id: "sec-2", close_price: "100", price_date: "2026-02-01" },
+        { security_id: "sec-3", close_price: "50", price_date: "2026-02-01" },
+      ]);
+
+      const result = await service.getAccountMarketValues(userId);
+      expect(result.get("acct-brokerage-1")).toBe(2000);
+    });
+  });
 });

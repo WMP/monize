@@ -86,4 +86,11 @@ describe("RolesGuard", () => {
       expect.any(Function),
     ]);
   });
+
+  it("returns false when no user is attached to the request", () => {
+    (reflector.getAllAndOverride as jest.Mock).mockReturnValue(["admin"]);
+
+    const context = createMockContext(undefined);
+    expect(guard.canActivate(context)).toBe(false);
+  });
 });

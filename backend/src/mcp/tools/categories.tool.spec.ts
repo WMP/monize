@@ -88,5 +88,11 @@ describe("McpCategoriesTools", () => {
       const result = await handlers["get_categories"]({}, { sessionId: "s1" });
       expect(result.isError).toBe(true);
     });
+
+    it("returns error when scope is insufficient", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "write_only" } as any);
+      const result = await handlers["get_categories"]({}, { sessionId: "s1" });
+      expect(result.isError).toBe(true);
+    });
   });
 });

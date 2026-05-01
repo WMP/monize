@@ -477,9 +477,8 @@ export class HoldingsService {
     });
 
     const balances = new Map<string, number>();
-    const securityFilter = securityIds && securityIds.length > 0
-      ? new Set(securityIds)
-      : null;
+    const securityFilter =
+      securityIds && securityIds.length > 0 ? new Set(securityIds) : null;
 
     for (const tx of transactions) {
       if (!tx.securityId) continue;

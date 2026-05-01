@@ -90,5 +90,26 @@ describe("McpScheduledTools", () => {
       );
       expect(result.isError).toBe(true);
     });
+
+    it("returns error when no user context", async () => {
+      resolve.mockReturnValue(undefined);
+      const result = await handlers["get_scheduled_transactions"](
+        {},
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("get_upcoming_bills error paths", () => {
+    it("returns error when service throws", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      scheduledService.findUpcoming.mockRejectedValue(new Error("oh no"));
+      const result = await handlers["get_upcoming_bills"](
+        {},
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
   });
 });

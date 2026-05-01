@@ -180,5 +180,65 @@ describe("McpAccountsTools", () => {
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.netWorth).toBe(4000);
     });
+
+    it("returns an error result when the service throws", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      accountsService.getSummary.mockRejectedValue(new Error("DB fail"));
+
+      const result = await handlers["get_account_summary"](
+        {},
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns an error result when no user context is present", async () => {
+      resolve.mockReturnValue(undefined);
+      const result = await handlers["get_account_summary"](
+        {},
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns an error result when scope is insufficient", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "write_only" } as any);
+      const result = await handlers["get_account_summary"](
+        {},
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("get_account_balances error paths", () => {
+    it("returns error when no user context", async () => {
+      resolve.mockReturnValue(undefined);
+      const result = await handlers["get_account_balances"](
+        {},
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error on insufficient scope", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "write_only" } as any);
+      const result = await handlers["get_account_balances"](
+        {},
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error when service throws", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      accountsService.getLlmBalances.mockRejectedValue(new Error("DB fail"));
+
+      const result = await handlers["get_account_balances"](
+        {},
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
   });
 });

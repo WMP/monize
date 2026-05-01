@@ -1,6 +1,11 @@
 import "reflect-metadata";
 import { validate } from "class-validator";
-import { IsSafeUrl } from "./safe-url.validator";
+import {
+  IsSafeUrl,
+  IsSafeProviderBaseUrlConstraint,
+  validateUrlBasicSafety,
+  validateUrlIsSafe,
+} from "./safe-url.validator";
 
 // Mock dns module before importing the validator class
 jest.mock("dns", () => ({
@@ -264,5 +269,121 @@ describe("IsSafeUrl validator", () => {
       const message = Object.values(errors[0].constraints!)[0];
       expect(message).toContain("valid HTTP/HTTPS URL");
     });
+  });
+});
+
+describe("validateUrlIsSafe()", () => {
+  beforeEach(() => {
+    mockResolve4.mockImplementation((_h, cb) => cb(null, ["93.184.216.34"]));
+    mockResolve6.mockImplementation((_h, cb) => cb(null, []));
+  });
+
+  it("returns true for a safe public URL", async () => {
+    expect(await validateUrlIsSafe("https://api.example.com/v1")).toBe(true);
+  });
+
+  it("returns false for a localhost URL", async () => {
+    expect(await validateUrlIsSafe("http://localhost/foo")).toBe(false);
+  });
+
+  it("returns false for invalid URL strings", async () => {
+    expect(await validateUrlIsSafe("not-a-url")).toBe(false);
+  });
+});
+
+describe("validateUrlBasicSafety()", () => {
+  it("returns true for an http URL", () => {
+    expect(validateUrlBasicSafety("http://localhost:11434")).toBe(true);
+  });
+
+  it("returns true for an https URL", () => {
+    expect(validateUrlBasicSafety("https://internal.lan/foo")).toBe(true);
+  });
+
+  it("returns false for a non-http(s) protocol", () => {
+    expect(validateUrlBasicSafety("ftp://server/foo")).toBe(false);
+  });
+
+  it("returns false for malformed URLs", () => {
+    expect(validateUrlBasicSafety("not-a-url")).toBe(false);
+  });
+
+  it("returns false when credentials are embedded", () => {
+    expect(validateUrlBasicSafety("http://user:pw@server/foo")).toBe(false);
+  });
+});
+
+describe("IsSafeProviderBaseUrlConstraint", () => {
+  beforeEach(() => {
+    mockResolve4.mockImplementation((_h, cb) => cb(null, ["93.184.216.34"]));
+    mockResolve6.mockImplementation((_h, cb) => cb(null, []));
+  });
+
+  it("rejects non-string values", async () => {
+    const c = new IsSafeProviderBaseUrlConstraint();
+    expect(
+      await c.validate(123, { object: { provider: "anthropic" } } as any),
+    ).toBe(false);
+  });
+
+  it("rejects empty string", async () => {
+    const c = new IsSafeProviderBaseUrlConstraint();
+    expect(
+      await c.validate("", { object: { provider: "anthropic" } } as any),
+    ).toBe(false);
+  });
+
+  it("falls back to basic safety when provider is undefined", async () => {
+    const c = new IsSafeProviderBaseUrlConstraint();
+    // Basic safety allows localhost URLs
+    expect(
+      await c.validate("http://localhost:11434", {
+        object: {},
+      } as any),
+    ).toBe(true);
+  });
+
+  it("returns false (and updates message) for missing provider with bad URL", async () => {
+    const c = new IsSafeProviderBaseUrlConstraint();
+    expect(await c.validate("ftp://evil.com", { object: {} } as any)).toBe(
+      false,
+    );
+    expect(c.defaultMessage()).toContain("without embedded credentials");
+  });
+
+  it("uses basic safety for self-hosted providers (ollama)", async () => {
+    const c = new IsSafeProviderBaseUrlConstraint();
+    expect(
+      await c.validate("http://localhost:11434", {
+        object: { provider: "ollama" },
+      } as any),
+    ).toBe(true);
+  });
+
+  it("rejects bad URL for self-hosted providers", async () => {
+    const c = new IsSafeProviderBaseUrlConstraint();
+    expect(
+      await c.validate("ftp://server", {
+        object: { provider: "ollama" },
+      } as any),
+    ).toBe(false);
+  });
+
+  it("uses strict safety for cloud providers", async () => {
+    const c = new IsSafeProviderBaseUrlConstraint();
+    expect(
+      await c.validate("https://api.openai.com/v1", {
+        object: { provider: "openai" },
+      } as any),
+    ).toBe(true);
+  });
+
+  it("rejects localhost for cloud providers", async () => {
+    const c = new IsSafeProviderBaseUrlConstraint();
+    const ok = await c.validate("http://localhost:8080", {
+      object: { provider: "openai" },
+    } as any);
+    expect(ok).toBe(false);
+    expect(c.defaultMessage()).toContain("external host");
   });
 });

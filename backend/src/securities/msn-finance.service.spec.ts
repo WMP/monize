@@ -270,9 +270,7 @@ describe("MsnFinanceService", () => {
         )
         // 2. Quotes call with the SecId returns price.
         .mockReturnValueOnce(
-          createResponse([
-            { SecId: "abc12y", price: 12.34, currency: "CAD" },
-          ]),
+          createResponse([{ SecId: "abc12y", price: 12.34, currency: "CAD" }]),
         );
 
       const quote = await service.fetchQuote("ATL8021", null, {
@@ -300,15 +298,25 @@ describe("MsnFinanceService", () => {
       global.fetch = jest
         .fn()
         // direct quote endpoint: no usable price
-        .mockReturnValueOnce(
-          createResponse({ value: [{ Symbol: "AAPL" }] }),
-        )
+        .mockReturnValueOnce(createResponse({ value: [{ Symbol: "AAPL" }] }))
         // chart-timeseries endpoint: returns a recent OHLCV point
         .mockReturnValueOnce(
           createResponse({
             series: [
-              { Time: "2024-06-15", Close: 178, Open: 176, High: 179, Low: 175.5 },
-              { Time: "2024-06-17", Close: 181, Open: 180, High: 182, Low: 179.5 },
+              {
+                Time: "2024-06-15",
+                Close: 178,
+                Open: 176,
+                High: 179,
+                Low: 175.5,
+              },
+              {
+                Time: "2024-06-17",
+                Close: 181,
+                Open: 180,
+                High: 182,
+                Low: 179.5,
+              },
             ],
             Currency: "USD",
           }),
@@ -350,9 +358,7 @@ describe("MsnFinanceService", () => {
         )
         // Market/Get quote
         .mockReturnValueOnce(
-          createResponse([
-            { SecId: "a1u3p2", price: 180, currency: "USD" },
-          ]),
+          createResponse([{ SecId: "a1u3p2", price: 180, currency: "USD" }]),
         );
 
       const quote = await service.fetchQuote("AAPL", "NASDAQ");
@@ -479,9 +485,9 @@ describe("MsnFinanceService", () => {
         FullInstrument: "F18068765888",
         Currency: "CAD",
       });
-      global.fetch = jest.fn().mockReturnValueOnce(
-        createResponse({ data: { stocks: [stockBlob] } }),
-      );
+      global.fetch = jest
+        .fn()
+        .mockReturnValueOnce(createResponse({ data: { stocks: [stockBlob] } }));
 
       const result = await service.lookupSecurity("BMO Dividend Fund");
       expect(result).not.toBeNull();
@@ -512,9 +518,9 @@ describe("MsnFinanceService", () => {
         FullInstrument: "F18068004373",
         SecId: "bb36yc",
       });
-      global.fetch = jest.fn().mockReturnValueOnce(
-        createResponse({ data: { stocks: [stockBlob] } }),
-      );
+      global.fetch = jest
+        .fn()
+        .mockReturnValueOnce(createResponse({ data: { stocks: [stockBlob] } }));
 
       const result = await service.lookupSecurity("TD Canadian Money Market");
       expect(result).not.toBeNull();

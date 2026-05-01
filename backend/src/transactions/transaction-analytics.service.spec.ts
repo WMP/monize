@@ -1631,4 +1631,443 @@ describe("TransactionAnalyticsService", () => {
       expect(result.unresolved).toEqual(["Bogus", "AlsoBogus"]);
     });
   });
+
+  describe("getLlmQueryTransactions", () => {
+    it("returns summary fields without breakdown when groupBy is not set", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        {
+          currencyCode: "USD",
+          totalIncome: "1000",
+          totalExpenses: "200",
+          transactionCount: "5",
+        },
+      ]);
+
+      const result = await service.getLlmQueryTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+      });
+
+      expect(result.totalIncome).toBe(1000);
+      expect(result.totalExpenses).toBe(200);
+      expect(result.netCashFlow).toBe(800);
+      expect(result.transactionCount).toBe(5);
+      expect(result.byCurrency).toBeUndefined();
+      expect(result.breakdown).toBeUndefined();
+    });
+
+    it("includes byCurrency breakdown when multiple currencies are present", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        {
+          currencyCode: "USD",
+          totalIncome: "1000",
+          totalExpenses: "200",
+          transactionCount: "5",
+        },
+        {
+          currencyCode: "EUR",
+          totalIncome: "500",
+          totalExpenses: "100",
+          transactionCount: "3",
+        },
+      ]);
+
+      const result = await service.getLlmQueryTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+      });
+
+      expect(result.byCurrency).toBeDefined();
+      expect(Object.keys(result.byCurrency || {})).toEqual(
+        expect.arrayContaining(["USD", "EUR"]),
+      );
+    });
+
+    it("includes breakdown when groupBy is provided", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([
+          {
+            currencyCode: "USD",
+            totalIncome: "1000",
+            totalExpenses: "200",
+            transactionCount: "5",
+          },
+        ])
+        .mockResolvedValueOnce([{ label: "Food", total: "150", count: "10" }]);
+
+      const result = await service.getLlmQueryTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        groupBy: "category",
+      });
+
+      expect(result.breakdown).toBeDefined();
+    });
+
+    it("forwards filters and search to the breakdown query", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      await service.getLlmQueryTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        groupBy: "month",
+        direction: "expenses",
+        accountIds: ["acc-1"],
+        categoryIds: ["cat-1"],
+        searchText: "starbucks",
+      });
+
+      const allWhereCalls = (mockQueryBuilder.andWhere.mock.calls as any[][])
+        .map((c) => c[0])
+        .join(" | ");
+      expect(allWhereCalls).toContain("ILIKE");
+    });
+  });
+
+  describe("getLlmGroupedBreakdown (via getLlmQueryTransactions)", () => {
+    async function runWithGroupBy(groupBy: string, rows: any[]) {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([]) // summary
+        .mockResolvedValueOnce(rows); // breakdown
+      const result = await service.getLlmQueryTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        groupBy: groupBy as any,
+      });
+      return result.breakdown as any[];
+    }
+
+    it("groups by category and sorts by total descending", async () => {
+      const rows = await runWithGroupBy("category", [
+        { label: "Food", total: "100", count: "5" },
+        { label: "Travel", total: "300", count: "2" },
+      ]);
+
+      expect(rows[0].category).toBe("Travel");
+      expect(rows[1].category).toBe("Food");
+    });
+
+    it("groups by payee and aggregates small payees into Other (aggregated)", async () => {
+      const rows = await runWithGroupBy("payee", [
+        { label: "Costco", total: "500", count: "10" },
+        { label: "Tiny", total: "5", count: "1" },
+      ]);
+
+      const labels = rows.map((r) => r.payee);
+      expect(labels).toContain("Costco");
+      expect(labels).toContain("Other (aggregated)");
+    });
+
+    it("groups by year and returns one row per year", async () => {
+      const rows = await runWithGroupBy("year", [
+        { year: "2024", total: "100", count: "5" },
+        { year: "2025", total: "200", count: "10" },
+      ]);
+
+      expect(rows).toHaveLength(2);
+      expect(rows[0].year).toBe("2024");
+    });
+
+    it("groups by month and returns one row per month", async () => {
+      const rows = await runWithGroupBy("month", [
+        { month: "2026-01", total: "100", count: "5" },
+      ]);
+
+      expect(rows[0].month).toBe("2026-01");
+    });
+
+    it("groups by week", async () => {
+      const rows = await runWithGroupBy("week", [
+        { week: "2026-01-05", total: "50", count: "2" },
+      ]);
+
+      expect(rows[0].week).toBe("2026-01-05");
+    });
+
+    it("applies expenses direction filter", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      await service.getLlmQueryTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        groupBy: "category",
+        direction: "expenses",
+      });
+
+      const calls = (mockQueryBuilder.andWhere.mock.calls as any[][])
+        .map((c) => c[0])
+        .join(" | ");
+      expect(calls).toMatch(/< 0/);
+    });
+
+    it("applies income direction filter", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      await service.getLlmQueryTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        groupBy: "category",
+        direction: "income",
+      });
+
+      const calls = (mockQueryBuilder.andWhere.mock.calls as any[][])
+        .map((c) => c[0])
+        .join(" | ");
+      expect(calls).toMatch(/> 0/);
+    });
+  });
+
+  describe("getLlmSpendingByCategory", () => {
+    it("returns empty result when there are no rows", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([]);
+
+      const result = await service.getLlmSpendingByCategory(
+        userId,
+        "2026-01-01",
+        "2026-01-31",
+      );
+
+      expect(result.categories).toEqual([]);
+      expect(result.totalSpending).toBe(0);
+    });
+
+    it("computes percentages for each category and total spending", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        { category: "Food", total: "300", count: "15" },
+        { category: "Travel", total: "100", count: "2" },
+      ]);
+
+      const result = await service.getLlmSpendingByCategory(
+        userId,
+        "2026-01-01",
+        "2026-01-31",
+      );
+
+      expect(result.totalSpending).toBe(400);
+      expect(result.categories[0].percentage).toBe(75);
+      expect(result.categories[1].percentage).toBe(25);
+    });
+
+    it("limits to topN when provided", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        { category: "Food", total: "200", count: "5" },
+        { category: "Travel", total: "100", count: "2" },
+        { category: "Other", total: "50", count: "1" },
+      ]);
+
+      const result = await service.getLlmSpendingByCategory(
+        userId,
+        "2026-01-01",
+        "2026-01-31",
+        2,
+      );
+
+      expect(result.categories).toHaveLength(2);
+    });
+
+    it("ignores topN when not greater than zero", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        { category: "Food", total: "100", count: "5" },
+      ]);
+
+      const result = await service.getLlmSpendingByCategory(
+        userId,
+        "2026-01-01",
+        "2026-01-31",
+        0,
+      );
+
+      expect(result.categories).toHaveLength(1);
+    });
+
+    it("returns 0% percentages when total spending is 0", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        { category: "Food", total: "0", count: "1" },
+      ]);
+
+      const result = await service.getLlmSpendingByCategory(
+        userId,
+        "2026-01-01",
+        "2026-01-31",
+      );
+
+      expect(result.categories[0].percentage).toBe(0);
+    });
+  });
+
+  describe("getLlmIncomeSummary", () => {
+    it("groups by category by default", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        { label: "Salary", total: "5000", count: "1" },
+      ]);
+
+      const result = await service.getLlmIncomeSummary(
+        userId,
+        "2026-01-01",
+        "2026-01-31",
+      );
+
+      expect(result.groupedBy).toBe("category");
+      expect(result.items[0].label).toBe("Salary");
+      expect(result.totalIncome).toBe(5000);
+    });
+
+    it("groups by month when requested", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        { label: "2026-01", total: "5000", count: "1" },
+      ]);
+
+      const result = await service.getLlmIncomeSummary(
+        userId,
+        "2026-01-01",
+        "2026-01-31",
+        "month",
+      );
+
+      expect(result.groupedBy).toBe("month");
+    });
+
+    it("groups by payee with aggregation threshold applied", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        { label: "Employer", total: "5000", count: "5" },
+        { label: "Side gig", total: "200", count: "1" },
+      ]);
+
+      const result = await service.getLlmIncomeSummary(
+        userId,
+        "2026-01-01",
+        "2026-01-31",
+        "payee",
+      );
+
+      const labels = result.items.map((i) => i.label);
+      expect(labels).toContain("Employer");
+      expect(labels).toContain("Other (aggregated)");
+    });
+  });
+
+  describe("getLlmPeriodComparison", () => {
+    it("compares two periods grouped by category by default", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([{ label: "Food", total: "100", count: "5" }])
+        .mockResolvedValueOnce([{ label: "Food", total: "150", count: "8" }]);
+
+      const result = await service.getLlmPeriodComparison(userId, {
+        period1Start: "2026-01-01",
+        period1End: "2026-01-31",
+        period2Start: "2026-02-01",
+        period2End: "2026-02-28",
+      });
+
+      expect(result.period1.total).toBe(100);
+      expect(result.period2.total).toBe(150);
+      expect(result.totalChange).toBe(50);
+      expect(result.totalChangePercent).toBe(50);
+      expect(result.comparison[0].label).toBe("Food");
+      expect(result.comparison[0].change).toBe(50);
+    });
+
+    it("returns 100% change when period1 is zero but period2 is non-zero", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ label: "New", total: "50", count: "3" }]);
+
+      const result = await service.getLlmPeriodComparison(userId, {
+        period1Start: "2026-01-01",
+        period1End: "2026-01-31",
+        period2Start: "2026-02-01",
+        period2End: "2026-02-28",
+      });
+
+      const newRow = result.comparison.find((c) => c.label === "New");
+      expect(newRow?.changePercent).toBe(100);
+    });
+
+    it("returns 0% change when both periods are zero", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.getLlmPeriodComparison(userId, {
+        period1Start: "2026-01-01",
+        period1End: "2026-01-31",
+        period2Start: "2026-02-01",
+        period2End: "2026-02-28",
+      });
+
+      expect(result.totalChange).toBe(0);
+      expect(result.totalChangePercent).toBe(0);
+    });
+
+    it("supports payee groupBy with aggregation threshold", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([
+          { label: "Costco", total: "500", count: "10" },
+          { label: "Small", total: "10", count: "1" },
+        ])
+        .mockResolvedValueOnce([
+          { label: "Costco", total: "600", count: "12" },
+        ]);
+
+      const result = await service.getLlmPeriodComparison(userId, {
+        period1Start: "2026-01-01",
+        period1End: "2026-01-31",
+        period2Start: "2026-02-01",
+        period2End: "2026-02-28",
+        groupBy: "payee",
+        direction: "expenses",
+      });
+
+      const labels = result.comparison.map((c) => c.label);
+      expect(labels).toContain("Costco");
+      expect(labels).toContain("Other (aggregated)");
+    });
+
+    it("supports income direction", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([{ label: "Salary", total: "1000", count: "1" }])
+        .mockResolvedValueOnce([
+          { label: "Salary", total: "1100", count: "1" },
+        ]);
+
+      const result = await service.getLlmPeriodComparison(userId, {
+        period1Start: "2026-01-01",
+        period1End: "2026-01-31",
+        period2Start: "2026-02-01",
+        period2End: "2026-02-28",
+        direction: "income",
+      });
+
+      expect(result.totalChange).toBe(100);
+    });
+
+    it("supports 'both' direction (no direction filter applied)", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      await service.getLlmPeriodComparison(userId, {
+        period1Start: "2026-01-01",
+        period1End: "2026-01-31",
+        period2Start: "2026-02-01",
+        period2End: "2026-02-28",
+        direction: "both",
+      });
+
+      // direction "both" means no extra direction filter clause
+      const calls = (mockQueryBuilder.andWhere.mock.calls as any[][]).map(
+        (c) => c[0],
+      );
+      const directionCalls = calls.filter(
+        (c) => typeof c === "string" && /[<>] 0/.test(c),
+      );
+      expect(directionCalls).toHaveLength(0);
+    });
+  });
 });

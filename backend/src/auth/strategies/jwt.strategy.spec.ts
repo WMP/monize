@@ -118,4 +118,50 @@ describe("JwtStrategy", () => {
       expect(result).toEqual(mockUser);
     });
   });
+
+  describe("JWT extraction (jwtFromRequest)", () => {
+    function getExtractor(): (req: any) => string | null {
+      const fn = (strategy as any)._jwtFromRequest;
+      expect(typeof fn).toBe("function");
+      return fn;
+    }
+
+    it("extracts a Bearer token from the Authorization header", () => {
+      const extractor = getExtractor();
+      const token = extractor({
+        headers: { authorization: "Bearer header-token" },
+      });
+      expect(token).toBe("header-token");
+    });
+
+    it("falls back to the auth_token cookie when no Authorization header is present", () => {
+      const extractor = getExtractor();
+      const token = extractor({
+        headers: {},
+        cookies: { auth_token: "cookie-token" },
+      });
+      expect(token).toBe("cookie-token");
+    });
+
+    it("returns null when neither header nor cookie is present", () => {
+      const extractor = getExtractor();
+      const token = extractor({ headers: {} });
+      expect(token).toBeNull();
+    });
+
+    it("returns null when cookies object exists but has no auth_token", () => {
+      const extractor = getExtractor();
+      const token = extractor({ headers: {}, cookies: {} });
+      expect(token).toBeNull();
+    });
+
+    it("prefers the Authorization header over the cookie", () => {
+      const extractor = getExtractor();
+      const token = extractor({
+        headers: { authorization: "Bearer header-wins" },
+        cookies: { auth_token: "ignored-cookie" },
+      });
+      expect(token).toBe("header-wins");
+    });
+  });
 });

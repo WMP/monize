@@ -374,8 +374,6 @@ export class SecurityPriceService {
         continue;
       }
 
-
-
       // Cache the MSN instrument id on securities that had none resolved yet,
       // and persist any FullInstrument → SecId upgrade.
       if (quote.provider === "msn") {
@@ -389,7 +387,10 @@ export class SecurityPriceService {
             },
           );
           if (quote.msnResolvedInstrumentId) {
-            await this.persistMsnIdUpgrade(security, quote.msnResolvedInstrumentId);
+            await this.persistMsnIdUpgrade(
+              security,
+              quote.msnResolvedInstrumentId,
+            );
           }
         }
       }
@@ -504,7 +505,10 @@ export class SecurityPriceService {
           },
         );
         if (quote.msnResolvedInstrumentId) {
-          await this.persistMsnIdUpgrade(security, quote.msnResolvedInstrumentId);
+          await this.persistMsnIdUpgrade(
+            security,
+            quote.msnResolvedInstrumentId,
+          );
         }
       }
 
