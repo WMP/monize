@@ -42,14 +42,22 @@ export class IncomeReportsService {
       FROM transactions t
       LEFT JOIN transaction_splits ts ON ts.transaction_id = t.id
       LEFT JOIN accounts a ON a.id = t.account_id
+      INNER JOIN categories c ON c.id = COALESCE(ts.category_id, t.category_id)
       WHERE t.user_id = $1
         AND t.transaction_date <= $2
+        AND c.is_income = true
         AND COALESCE(ts.amount, t.amount) > 0
         AND t.is_transfer = false
         AND (t.status IS NULL OR t.status != 'VOID')
         AND t.parent_transaction_id IS NULL
         AND a.account_type != 'INVESTMENT'
         AND (ts.transfer_account_id IS NULL OR ts.id IS NULL)
+        AND NOT EXISTS (
+          SELECT 1 FROM accounts ax
+          WHERE ax.user_id = t.user_id
+            AND ax.asset_category_id IS NOT NULL
+            AND ax.asset_category_id = COALESCE(ts.category_id, t.category_id)
+        )
     `;
 
     const params: (string | undefined)[] = [userId, endDate];
@@ -69,9 +77,9 @@ export class IncomeReportsService {
     });
     const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-    const parentTotals = new Map<
+    const categoryTotals = new Map<
       string,
-      { total: number; category: Category | null }
+      { total: number; category: Category }
     >();
 
     for (const row of rawResults) {
@@ -82,47 +90,34 @@ export class IncomeReportsService {
         rateMap,
       );
       const categoryId = row.category_id;
-
-      if (!categoryId) {
-        const existing = parentTotals.get("uncategorized");
-        if (existing) {
-          existing.total += total;
-        } else {
-          parentTotals.set("uncategorized", { total, category: null });
-        }
-        continue;
-      }
+      if (!categoryId) continue;
 
       const category = categoryMap.get(categoryId);
-      if (!category) {
-        const existing = parentTotals.get("uncategorized");
-        if (existing) {
-          existing.total += total;
-        } else {
-          parentTotals.set("uncategorized", { total, category: null });
-        }
-        continue;
-      }
+      if (!category) continue;
 
       const parentCategory = category.parentId
         ? categoryMap.get(category.parentId)
         : null;
-      const displayCategory = parentCategory || category;
-      const displayId = displayCategory.id;
+      const displayName = parentCategory
+        ? `${parentCategory.name}: ${category.name}`
+        : category.name;
 
-      const existing = parentTotals.get(displayId);
+      const existing = categoryTotals.get(category.id);
       if (existing) {
         existing.total += total;
       } else {
-        parentTotals.set(displayId, { total, category: displayCategory });
+        categoryTotals.set(category.id, {
+          total,
+          category: { ...category, name: displayName } as Category,
+        });
       }
     }
 
-    const data: IncomeSourceItem[] = Array.from(parentTotals.entries())
+    const data: IncomeSourceItem[] = Array.from(categoryTotals.entries())
       .map(([id, { total, category }]) => ({
-        categoryId: id === "uncategorized" ? null : id,
-        categoryName: category?.name || "Uncategorized",
-        color: category?.color || null,
+        categoryId: id,
+        categoryName: category.name,
+        color: category.color || null,
         total: Math.round(total * 100) / 100,
       }))
       .sort((a, b) => b.total - a.total)
@@ -172,6 +167,12 @@ export class IncomeReportsService {
         AND t.parent_transaction_id IS NULL
         AND a.account_type != 'INVESTMENT'
         AND (ts.transfer_account_id IS NULL OR ts.id IS NULL)
+        AND NOT EXISTS (
+          SELECT 1 FROM accounts ax
+          WHERE ax.user_id = t.user_id
+            AND ax.asset_category_id IS NOT NULL
+            AND ax.asset_category_id = COALESCE(ts.category_id, t.category_id)
+        )
     `;
 
     const params: (string | undefined)[] = [userId, endDate];

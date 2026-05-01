@@ -323,6 +323,24 @@ describe("SpendingReportsService", () => {
       expect(result.data[0].total).toBe(100);
     });
 
+    it("filters out the asset value change category in the SQL query", async () => {
+      transactionsRepository.query.mockResolvedValue([]);
+      categoriesRepository.find.mockResolvedValue([]);
+
+      await service.getSpendingByCategory(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      const sql = transactionsRepository.query.mock.calls[0][0];
+      expect(sql).toContain("NOT EXISTS");
+      expect(sql).toContain("asset_category_id");
+      expect(sql).toMatch(
+        /ax\.asset_category_id\s*=\s*COALESCE\(ts\.category_id,\s*t\.category_id\)/,
+      );
+    });
+
     describe("rollupToParent = false", () => {
       it("keeps subcategories separate with 'Parent: Child' name format", async () => {
         transactionsRepository.query.mockResolvedValue([
@@ -589,6 +607,17 @@ describe("SpendingReportsService", () => {
 
       expect(result.totalSpending).toBe(300);
     });
+
+    it("filters out the asset value change category in the SQL query", async () => {
+      transactionsRepository.query.mockResolvedValue([]);
+
+      await service.getSpendingByPayee(mockUserId, "2025-01-01", "2025-12-31");
+
+      const sql = transactionsRepository.query.mock.calls[0][0];
+      expect(sql).toContain("NOT EXISTS");
+      expect(sql).toContain("asset_category_id");
+      expect(sql).toMatch(/ax\.asset_category_id\s*=\s*t\.category_id/);
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -785,6 +814,24 @@ describe("SpendingReportsService", () => {
       );
       expect(febParent).toBeDefined();
       expect(febParent!.total).toBe(0);
+    });
+
+    it("filters out the asset value change category in the SQL query", async () => {
+      transactionsRepository.query.mockResolvedValue([]);
+      categoriesRepository.find.mockResolvedValue([]);
+
+      await service.getMonthlySpendingTrend(
+        mockUserId,
+        "2025-01-01",
+        "2025-12-31",
+      );
+
+      const sql = transactionsRepository.query.mock.calls[0][0];
+      expect(sql).toContain("NOT EXISTS");
+      expect(sql).toContain("asset_category_id");
+      expect(sql).toMatch(
+        /ax\.asset_category_id\s*=\s*COALESCE\(ts\.category_id,\s*t\.category_id\)/,
+      );
     });
   });
 });

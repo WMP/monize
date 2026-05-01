@@ -491,7 +491,7 @@ describe("BuiltInReportsService", () => {
       expect(result.totalIncome).toBe(5000);
     });
 
-    it("handles uncategorized income", async () => {
+    it("skips uncategorized income (SQL is_income filter excludes them)", async () => {
       transactionsRepository.query.mockResolvedValue([
         { category_id: null, currency_code: "USD", total: "200.00" },
       ]);
@@ -503,9 +503,8 @@ describe("BuiltInReportsService", () => {
         "2025-12-31",
       );
 
-      expect(result.data).toHaveLength(1);
-      expect(result.data[0].categoryId).toBeNull();
-      expect(result.data[0].categoryName).toBe("Uncategorized");
+      expect(result.data).toEqual([]);
+      expect(result.totalIncome).toBe(0);
     });
 
     it("converts income amounts from foreign currencies", async () => {
