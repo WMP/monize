@@ -70,8 +70,14 @@ export class OAuthProviderService implements OnModuleInit {
       adapter: adapterFactory,
       cookies: {
         keys: [cookieKey],
-        long: { sameSite: "lax", signed: true },
-        short: { sameSite: "lax", signed: true },
+        // Pin path: '/' so the interaction/session cookies follow the
+        // browser across the issuer mount (/oauth/) and the interaction
+        // routes (/api/v1/oauth-consent/...). Without this, cookies set
+        // during /oauth/auth default to path=/oauth/ and the browser
+        // drops them on the redirect to /api/v1/oauth-consent/<uid>,
+        // causing interactionDetails() to throw SessionNotFound.
+        long: { sameSite: "lax", signed: true, path: "/" },
+        short: { sameSite: "lax", signed: true, path: "/" },
       },
       scopes: [...MCP_RESOURCE_SCOPES],
       claims: {
