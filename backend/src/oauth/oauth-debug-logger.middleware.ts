@@ -5,6 +5,24 @@ import type { NextFunction, Request, Response } from "express";
 const logger = new Logger("OAuthDebug");
 
 /**
+ * Off by default. Set OAUTH_DEBUG_LOG=true (or =1, =yes) to enable
+ * per-request tracing of the MCP / OAuth surface. Useful when
+ * diagnosing connector handshake failures with Claude Desktop,
+ * mcp-remote, or similar clients.
+ */
+function isEnabled(): boolean {
+  const v = process.env.OAUTH_DEBUG_LOG;
+  if (!v) return false;
+  return ["true", "1", "yes", "on"].includes(v.toLowerCase());
+}
+
+const DEBUG_ENABLED = isEnabled();
+
+const NOOP = (_req: Request, _res: Response, next: NextFunction): void => {
+  next();
+};
+
+/**
  * Express middleware that logs every request hitting an OAuth-related path
  * along with its outcome (status code, latency). Designed to make
  * misbehaving MCP clients (Claude Desktop, mcp-remote, etc.) easy to
@@ -16,6 +34,7 @@ const logger = new Logger("OAuthDebug");
  * being logged in full so PATs and access tokens never end up in logs.
  */
 export function oauthDebugLogger(scope: string) {
+  if (!DEBUG_ENABLED) return NOOP;
   return (req: Request, res: Response, next: NextFunction): void => {
     const start = Date.now();
     const reqId = randomBytes(3).toString("hex");
