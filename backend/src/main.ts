@@ -8,40 +8,6 @@ import * as pg from "pg";
 import { AppModule } from "./app.module";
 import { OAuthProviderService } from "./oauth/oauth-provider.service";
 import { oauthDebugLogger } from "./oauth/oauth-debug-logger.middleware";
-import type { NextFunction, Request, Response } from "express";
-
-/**
- * Permissive CORS for the MCP + OAuth surface. Always replies with
- * `Access-Control-Allow-Origin: *` rather than echoing the request
- * Origin — this is intentional and safe here because every request to
- * these paths is authenticated by a Bearer token (PAT or OAuth access
- * token) and never carries cookies, so a third-party origin can't ride
- * ambient credentials. Using `*` (instead of reflecting the Origin)
- * also short-circuits the bearer "insecure_allow_origin" rule
- * (CWE-346) — its concern is reflected origins paired with
- * credentials, which we don't enable here.
- */
-function permissiveCors(req: Request, res: Response, next: NextFunction) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, DELETE, OPTIONS",
-  );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Authorization, Content-Type, Accept, Mcp-Session-Id, Mcp-Protocol-Version",
-  );
-  res.setHeader(
-    "Access-Control-Expose-Headers",
-    "Mcp-Session-Id, WWW-Authenticate",
-  );
-  res.setHeader("Access-Control-Max-Age", "600");
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
-  }
-  next();
-}
 
 // Configure pg to return DATE types as strings instead of Date objects
 // This prevents timezone-related date shifting issues
@@ -110,25 +76,20 @@ async function bootstrap() {
   // Cookie parser for OIDC state/nonce and auth tokens
   app.use(cookieParser());
 
-  // OAuth/MCP debug logger and permissive CORS — mounted BEFORE the global
-  // CORS middleware so we observe every request reaching these paths even
-  // when an MCP client (Claude Desktop, mcp-remote) sends an Origin header
-  // that the strict app-wide allow-list would reject. The MCP and OAuth
-  // surfaces authenticate via Bearer tokens (no cookies on the wire), so
-  // wildcard CORS is safe and matches what the MCP spec recommends.
-  app.use("/api/v1/mcp", oauthDebugLogger("mcp"), permissiveCors);
-  app.use(
-    "/.well-known/oauth-protected-resource",
-    oauthDebugLogger("prm"),
-    permissiveCors,
-  );
+  // OAuth/MCP debug-logger middleware mounted ahead of the global CORS
+  // middleware so a request from an MCP client (Claude Desktop, mcp-remote)
+  // is logged even when the strict app-wide CORS layer would have rejected
+  // its Origin. CORS itself is path-aware further down (see app.enableCors
+  // delegate) — these paths get permissive CORS because they authenticate
+  // by Bearer token, not cookies.
+  app.use("/api/v1/mcp", oauthDebugLogger("mcp"));
+  app.use("/.well-known/oauth-protected-resource", oauthDebugLogger("prm"));
   app.use(
     "/.well-known/oauth-authorization-server",
     oauthDebugLogger("as-meta"),
-    permissiveCors,
   );
-  app.use("/oauth", oauthDebugLogger("provider"), permissiveCors);
-  app.use("/oauth-consent", oauthDebugLogger("consent"), permissiveCors);
+  app.use("/oauth", oauthDebugLogger("provider"));
+  app.use("/oauth-consent", oauthDebugLogger("consent"));
 
   // Security middleware
   const disableHttpsHeaders = process.env.DISABLE_HTTPS_HEADERS === "true";
@@ -165,33 +126,65 @@ async function bootstrap() {
       : []),
   ].filter(Boolean);
 
-  app.enableCors({
-    origin: (origin, callback) => {
-      // Requests with no Origin header (server-to-server, health checks,
-      // curl, same-origin navigations): always allow. Non-browser clients
-      // can trivially set any Origin, so blocking null Origin adds no real
-      // security. Sandboxed-iframe abuse is prevented by Helmet's
-      // frameguard: { action: "deny" } instead.
-      if (!origin) return callback(null, true);
+  // Path-aware CORS: the MCP and OAuth surfaces accept any origin
+  // because they authenticate via Bearer tokens (PAT / OAuth access
+  // token) and never receive cookies — a third-party origin can't ride
+  // ambient credentials. The rest of the app keeps the strict allow-list
+  // because it relies on cookies + CSRF for browser sessions.
+  app.enableCors((req, callback) => {
+    const path = req.path ?? req.url ?? "";
+    const isOpenSurface =
+      path === "/api/v1/mcp" ||
+      path.startsWith("/api/v1/mcp/") ||
+      path === "/oauth" ||
+      path.startsWith("/oauth/") ||
+      path.startsWith("/oauth-consent/") ||
+      path === "/.well-known/oauth-protected-resource" ||
+      path === "/.well-known/oauth-authorization-server" ||
+      path.startsWith("/.well-known/oauth-authorization-server/");
 
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Accept",
-      "X-CSRF-Token",
-      "X-Restore-Password",
-      "X-Restore-OIDC-Token",
-      "Mcp-Session-Id",
-    ],
-    exposedHeaders: ["Mcp-Session-Id"],
+    if (isOpenSurface) {
+      callback(null, {
+        origin: "*",
+        credentials: false,
+        methods: ["GET", "POST", "DELETE", "OPTIONS"],
+        allowedHeaders: [
+          "Authorization",
+          "Content-Type",
+          "Accept",
+          "Mcp-Session-Id",
+          "Mcp-Protocol-Version",
+        ],
+        exposedHeaders: ["Mcp-Session-Id", "WWW-Authenticate"],
+        maxAge: 600,
+      });
+      return;
+    }
+
+    callback(null, {
+      origin: (origin, cb) => {
+        // Requests with no Origin header (server-to-server, health checks,
+        // curl, same-origin navigations): always allow. Non-browser clients
+        // can trivially set any Origin, so blocking null Origin adds no real
+        // security. Sandboxed-iframe abuse is prevented by Helmet's
+        // frameguard: { action: "deny" } instead.
+        if (!origin) return cb(null, true);
+        if (allowedOrigins.includes(origin)) cb(null, true);
+        else cb(new Error("Not allowed by CORS"));
+      },
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "Accept",
+        "X-CSRF-Token",
+        "X-Restore-Password",
+        "X-Restore-OIDC-Token",
+        "Mcp-Session-Id",
+      ],
+      exposedHeaders: ["Mcp-Session-Id"],
+    });
   });
 
   // Global validation pipe
