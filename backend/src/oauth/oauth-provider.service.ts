@@ -18,6 +18,7 @@ export type McpScope = (typeof MCP_RESOURCE_SCOPES)[number];
 export class OAuthProviderService implements OnModuleInit {
   private readonly logger = new Logger(OAuthProviderService.name);
   private provider: ProviderType | null = null;
+  private initPromise: Promise<ProviderType> | null = null;
 
   constructor(
     private readonly configService: ConfigService,
@@ -25,6 +26,30 @@ export class OAuthProviderService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    await this.ensureInitialized();
+  }
+
+  /**
+   * Lazily initializes the OIDC provider. Idempotent and safe to call from
+   * either the NestJS lifecycle hook or main.ts before app.listen() — the
+   * provider must exist before we mount its callback as Express middleware,
+   * but Nest's onModuleInit doesn't necessarily run before main.ts touches
+   * the service via `app.get(...)`. Returns the live provider so callers
+   * never have to deal with `null`.
+   */
+  async ensureInitialized(): Promise<ProviderType> {
+    if (this.provider) return this.provider;
+    if (this.initPromise) return this.initPromise;
+    this.initPromise = this.initialize();
+    try {
+      this.provider = await this.initPromise;
+      return this.provider;
+    } finally {
+      this.initPromise = null;
+    }
+  }
+
+  private async initialize(): Promise<ProviderType> {
     const publicUrl = this.requirePublicUrl();
     const issuer = `${publicUrl}/oauth`;
     const mcpResource = `${publicUrl}/api/v1/mcp`;
@@ -41,7 +66,7 @@ export class OAuthProviderService implements OnModuleInit {
 
     const adapterFactory = makeAdapterFactory(this.dataSource);
 
-    this.provider = new Provider(issuer, {
+    const provider = new Provider(issuer, {
       adapter: adapterFactory,
       cookies: {
         keys: [cookieKey],
@@ -123,20 +148,21 @@ export class OAuthProviderService implements OnModuleInit {
     } as ConstructorParameters<typeof Provider>[1]);
 
     // Trust the same proxy level as the rest of the app (Docker/nginx).
-    this.provider.proxy = true;
+    provider.proxy = true;
 
-    this.provider.on("server_error", (_ctx, err) => {
+    provider.on("server_error", (_ctx, err) => {
       this.logger.error("OAuth provider server error", err.stack ?? err);
     });
-    this.provider.on("authorization.error", (_ctx, err) => {
+    provider.on("authorization.error", (_ctx, err) => {
       this.logger.warn(`OAuth authorization error: ${err.message}`);
     });
-    this.provider.on("grant.error", (_ctx, err) => {
+    provider.on("grant.error", (_ctx, err) => {
       this.logger.warn(`OAuth grant error: ${err.message}`);
     });
 
     this.logger.log(`OAuth provider initialized — issuer ${issuer}`);
     this.logger.log(`MCP protected resource: ${mcpResource}`);
+    return provider;
   }
 
   getProvider(): ProviderType {

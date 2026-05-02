@@ -167,8 +167,12 @@ async function bootstrap() {
   // endpoints. Helmet's restrictive CSP doesn't apply here because the
   // provider sets its own headers and renders no HTML of its own (we render
   // the consent page in the interaction controller).
+  //
+  // ensureInitialized() is awaited because Nest's onModuleInit hook may not
+  // have run yet at this point (it fires inside app.listen() / app.init()).
   const oauthProviderService = app.get(OAuthProviderService);
-  app.use("/oauth", oauthProviderService.getProvider().callback());
+  const oauthProvider = await oauthProviderService.ensureInitialized();
+  app.use("/oauth", oauthProvider.callback());
 
   // Swagger documentation (disabled in production)
   if (process.env.NODE_ENV !== "production") {
