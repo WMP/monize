@@ -11,18 +11,18 @@ import { oauthDebugLogger } from "./oauth/oauth-debug-logger.middleware";
 import type { NextFunction, Request, Response } from "express";
 
 /**
- * Permissive CORS for the MCP + OAuth surface. Allowed because every
- * request to these paths is authenticated by a Bearer token (PAT or OAuth
- * access token), not a cookie, so a third-party origin can't ride
- * ambient credentials. Echoes the request Origin (with credentials: false
- * implied — we never set Access-Control-Allow-Credentials) and short-
- * circuits OPTIONS preflights so they never reach the strict app-wide
- * CORS layer.
+ * Permissive CORS for the MCP + OAuth surface. Always replies with
+ * `Access-Control-Allow-Origin: *` rather than echoing the request
+ * Origin — this is intentional and safe here because every request to
+ * these paths is authenticated by a Bearer token (PAT or OAuth access
+ * token) and never carries cookies, so a third-party origin can't ride
+ * ambient credentials. Using `*` (instead of reflecting the Origin)
+ * also short-circuits the bearer "insecure_allow_origin" rule
+ * (CWE-346) — its concern is reflected origins paired with
+ * credentials, which we don't enable here.
  */
 function permissiveCors(req: Request, res: Response, next: NextFunction) {
-  const origin = req.headers.origin;
-  res.setHeader("Access-Control-Allow-Origin", origin ?? "*");
-  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader(
     "Access-Control-Allow-Methods",
     "GET, POST, DELETE, OPTIONS",
