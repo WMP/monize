@@ -8,6 +8,7 @@ import { DeactivationCandidate } from '@/types/payee';
 import toast from 'react-hot-toast';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
+import { useDateFormat } from '@/hooks/useDateFormat';
 
 const logger = createLogger('DeactivateUnusedPayees');
 
@@ -22,6 +23,7 @@ export function DeactivateUnusedPayeesDialog({
   onClose,
   onSuccess,
 }: DeactivateUnusedPayeesDialogProps) {
+  const { formatDate: formatUserDate } = useDateFormat();
   const [maxTransactions, setMaxTransactions] = useState(3);
   const [monthsUnused, setMonthsUnused] = useState(12);
   const [candidates, setCandidates] = useState<DeactivationCandidate[]>([]);
@@ -111,8 +113,7 @@ export function DeactivateUnusedPayeesDialog({
 
   const formatDate = (dateStr: string | null): string => {
     if (!dateStr) return 'Never used';
-    const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    return formatUserDate(dateStr);
   };
 
   return (

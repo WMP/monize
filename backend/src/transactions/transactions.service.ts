@@ -35,6 +35,7 @@ import { BulkUpdateDto, BulkDeleteDto } from "./dto/bulk-update.dto";
 import { isTransactionInFuture } from "../common/date-utils";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { getAllCategoryIdsWithChildren } from "../common/category-tree.util";
+import { formatCurrency } from "../common/format-currency.util";
 
 export interface TransactionWithInvestmentLink extends Transaction {
   linkedInvestmentTransactionId?: string | null;
@@ -1461,7 +1462,7 @@ export class TransactionsService {
       action: "update",
       beforeData: beforeSnapshot,
       afterData: this.snapshotTransaction(finalTransaction),
-      description: `Updated transaction ${finalTransaction.payeeName || ""} $${Number(finalTransaction.amount).toFixed(2)}`,
+      description: `Updated transaction ${finalTransaction.payeeName || ""} ${formatCurrency(Number(finalTransaction.amount), finalTransaction.currencyCode)}`,
     });
     return finalTransaction;
   }
@@ -1911,7 +1912,7 @@ export class TransactionsService {
       action,
       beforeData: action === "create" ? undefined : beforeData,
       afterData: action === "delete" ? undefined : snapshot,
-      description: `${action === "create" ? "Created" : action === "update" ? "Updated" : "Deleted"} transaction ${tx.payeeName || ""} $${Number(tx.amount).toFixed(2)}`,
+      description: `${action === "create" ? "Created" : action === "update" ? "Updated" : "Deleted"} transaction ${tx.payeeName || ""} ${formatCurrency(Number(tx.amount), tx.currencyCode)}`,
     });
   }
 }

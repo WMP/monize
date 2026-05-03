@@ -14,6 +14,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { authApi } from '@/lib/auth';
 import { PersonalAccessToken } from '@/types/auth';
 import { getErrorMessage } from '@/lib/errors';
+import { useDateFormat } from '@/hooks/useDateFormat';
 
 const MCP_PATH = '/api/v1/mcp';
 
@@ -37,7 +38,10 @@ const createTokenSchema = z.object({
 
 type CreateTokenFormData = z.infer<typeof createTokenSchema>;
 
-function formatRelativeDate(dateStr: string | null): string {
+function relativeOrFormatted(
+  dateStr: string | null,
+  formatDate: (date: Date | string) => string,
+): string {
   if (!dateStr) return 'Never';
   const date = new Date(dateStr);
   const now = new Date();
@@ -48,10 +52,11 @@ function formatRelativeDate(dateStr: string | null): string {
   if (diffDays === 1) return 'Yesterday';
   if (diffDays < 30) return `${diffDays} days ago`;
   if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-  return date.toLocaleDateString();
+  return formatDate(date);
 }
 
 export function ApiAccessSection() {
+  const { formatDate } = useDateFormat();
   const [tokens, setTokens] = useState<PersonalAccessToken[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -275,13 +280,13 @@ export function ApiAccessSection() {
                   ))}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Created {new Date(token.createdAt).toLocaleDateString()}
+                  Created {formatDate(new Date(token.createdAt))}
                   {' \u00B7 '}
-                  Last used {formatRelativeDate(token.lastUsedAt)}
+                  Last used {relativeOrFormatted(token.lastUsedAt, formatDate)}
                   {token.expiresAt && (
                     <>
                       {' \u00B7 '}
-                      Expires {new Date(token.expiresAt).toLocaleDateString()}
+                      Expires {formatDate(new Date(token.expiresAt))}
                     </>
                   )}
                 </div>

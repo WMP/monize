@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { backupApi } from '@/lib/backupApi';
 import { getErrorMessage } from '@/lib/errors';
-import { resolveTimezone } from '@/lib/utils';
+import { resolveTimezone, isoToDatetimeLocal, formatDatetimeLocal } from '@/lib/utils';
 import { AutoBackupSettings, UpdateAutoBackupSettingsData } from '@/types/auth';
 import { usePreferencesStore } from '@/store/preferencesStore';
 
@@ -18,18 +18,22 @@ const FREQUENCY_OPTIONS = [
   { value: 'weekly', label: 'Weekly' },
 ];
 
-function formatDateTime(dateStr: string | null, timezone: string): string {
+function formatDateTime(
+  dateStr: string | null,
+  timezone: string,
+  dateFormat: string,
+  timeFormat: '24h' | '12h',
+): string {
   if (!dateStr) return 'Never';
-  // Backend stores timestamps as UTC but PostgreSQL 'timestamp' (without tz)
-  // omits the Z suffix, so append it to ensure correct UTC parsing
-  const normalized = /[Z+-]/.test(dateStr.slice(-6)) ? dateStr : dateStr + 'Z';
-  const date = new Date(normalized);
-  return date.toLocaleString(undefined, { timeZone: timezone });
+  const datetimeLocal = isoToDatetimeLocal(dateStr, timezone);
+  return formatDatetimeLocal(datetimeLocal, dateFormat, timeFormat);
 }
 
 export function AutoBackupSection() {
   const preferences = usePreferencesStore((s) => s.preferences);
   const userTimezone = resolveTimezone(preferences?.timezone);
+  const dateFormat = preferences?.dateFormat || 'browser';
+  const timeFormat = preferences?.timeFormat || '24h';
 
   const [settings, setSettings] = useState<AutoBackupSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -461,7 +465,7 @@ export function AutoBackupSection() {
               <div className="flex justify-between">
                 <dt className="text-gray-600 dark:text-gray-400">Last backup</dt>
                 <dd className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                  {formatDateTime(settings.lastBackupAt, userTimezone)}
+                  {formatDateTime(settings.lastBackupAt, userTimezone, dateFormat, timeFormat)}
                   {settings.lastBackupStatus === 'success' && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
                       Success
@@ -487,7 +491,7 @@ export function AutoBackupSection() {
               <div className="flex justify-between">
                 <dt className="text-gray-600 dark:text-gray-400">Next backup</dt>
                 <dd className="font-medium text-gray-900 dark:text-white">
-                  {formatDateTime(settings.nextBackupAt, userTimezone)}
+                  {formatDateTime(settings.nextBackupAt, userTimezone, dateFormat, timeFormat)}
                 </dd>
               </div>
             )}

@@ -4,6 +4,8 @@ import { useMemo } from 'react';
 import { AdminUser } from '@/types/auth';
 import { Button } from '@/components/ui/Button';
 import { useDateFormat } from '@/hooks/useDateFormat';
+import { usePreferencesStore } from '@/store/preferencesStore';
+import { formatTime } from '@/lib/utils';
 
 interface UserManagementTableProps {
   users: AdminUser[];
@@ -23,6 +25,13 @@ export function UserManagementTable({
   onDeleteUser,
 }: UserManagementTableProps) {
   const { formatDate } = useDateFormat();
+  const timeFormat = usePreferencesStore((s) => s.preferences?.timeFormat) || '24h';
+
+  const formatLastLogin = (iso: string): string => {
+    const d = new Date(iso);
+    const time24 = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return `${formatDate(d)} ${formatTime(time24, timeFormat)}`;
+  };
 
   const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) =>
@@ -124,9 +133,7 @@ export function UserManagementTable({
 
                 {/* Last Login */}
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {user.lastLogin
-                    ? `${formatDate(new Date(user.lastLogin))} ${new Date(user.lastLogin).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
-                    : 'Never'}
+                  {user.lastLogin ? formatLastLogin(user.lastLogin) : 'Never'}
                 </td>
 
                 {/* Actions */}

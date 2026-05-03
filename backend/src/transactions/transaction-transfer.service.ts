@@ -14,6 +14,7 @@ import { AccountsService } from "../accounts/accounts.service";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { isTransactionInFuture } from "../common/date-utils";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import { formatCurrency } from "../common/format-currency.util";
 
 export interface TransferResult {
   fromTransaction: Transaction;
@@ -187,7 +188,7 @@ export class TransactionTransferService {
         fromAccountId,
         toAccountId,
       },
-      description: `Created transfer $${amount.toFixed(2)} from ${fromAccount.name} to ${toAccount.name}`,
+      description: `Created transfer ${formatCurrency(amount, fromCurrencyCode)} from ${fromAccount.name} to ${toAccount.name}`,
     });
 
     return result;

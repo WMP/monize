@@ -10,6 +10,7 @@ import type {
 import { AI_PROVIDER_LABELS } from '@/types/ai';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { useDateFormat } from '@/hooks/useDateFormat';
 
 interface UsageDashboardProps {
   usage: AiUsageSummary;
@@ -88,6 +89,7 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
   const { convert } = useExchangeRates();
   const homeCurrency =
     usePreferencesStore((state) => state.preferences?.defaultCurrency) || 'USD';
+  const { formatDate } = useDateFormat();
 
   const handlePeriodChange = (days: number | undefined) => {
     setSelectedPeriod(days);
@@ -284,7 +286,7 @@ export function UsageDashboard({ usage, configs, onPeriodChange }: UsageDashboar
                 {usage.recentLogs.map((log) => (
                   <tr key={log.id} className="border-b border-gray-100 dark:border-gray-700/50">
                     <td className="py-2 text-gray-600 dark:text-gray-300">
-                      {new Date(log.createdAt).toLocaleDateString()}
+                      {formatDate(new Date(log.createdAt))}
                     </td>
                     <td className="py-2 text-gray-900 dark:text-white">{resolveLogName(log.provider, log.model, configs)}</td>
                     <td className="py-2 text-gray-600 dark:text-gray-300">{log.feature}</td>
