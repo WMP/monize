@@ -15,6 +15,7 @@ import { TrustedDevice } from "./entities/trusted-device.entity";
 import { RefreshToken } from "../auth/entities/refresh-token.entity";
 import { PersonalAccessToken } from "../auth/entities/personal-access-token.entity";
 import { PasswordBreachService } from "../auth/password-breach.service";
+import { ModuleRef } from "@nestjs/core";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 
 describe("UsersService", () => {
@@ -26,6 +27,7 @@ describe("UsersService", () => {
   let trustedDevicesRepository: Record<string, jest.Mock>;
   let passwordBreachService: { isBreached: jest.Mock };
   let exchangeRateService: { refreshAllRates: jest.Mock };
+  let moduleRef: { get: jest.Mock };
   let mockQueryRunner: Record<string, jest.Mock>;
 
   const mockUser = {
@@ -101,6 +103,13 @@ describe("UsersService", () => {
       }),
     };
 
+    moduleRef = {
+      get: jest.fn((token) => {
+        if (token === ExchangeRateService) return exchangeRateService;
+        return undefined;
+      }),
+    };
+
     mockQueryRunner = {
       connect: jest.fn(),
       startTransaction: jest.fn(),
@@ -136,7 +145,7 @@ describe("UsersService", () => {
         },
         { provide: DataSource, useValue: mockDataSource },
         { provide: PasswordBreachService, useValue: passwordBreachService },
-        { provide: ExchangeRateService, useValue: exchangeRateService },
+        { provide: ModuleRef, useValue: moduleRef },
       ],
     }).compile();
 

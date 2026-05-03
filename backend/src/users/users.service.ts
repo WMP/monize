@@ -20,6 +20,7 @@ import { UpdatePreferencesDto } from "./dto/update-preferences.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { DeleteDataDto } from "./dto/delete-data.dto";
 import { PasswordBreachService } from "../auth/password-breach.service";
+import { ModuleRef } from "@nestjs/core";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 
 @Injectable()
@@ -39,7 +40,7 @@ export class UsersService {
     private trustedDevicesRepository: Repository<TrustedDevice>,
     private dataSource: DataSource,
     private passwordBreachService: PasswordBreachService,
-    private exchangeRateService: ExchangeRateService,
+    private moduleRef: ModuleRef,
   ) {}
 
   async findById(id: string): Promise<User | null> {
@@ -207,15 +208,26 @@ export class UsersService {
     // Fetch fresh exchange rates whenever the user picks a new default
     // currency so multi-currency totals (Net Worth card, account group totals)
     // can convert immediately instead of waiting for the next daily cron.
+    // Resolved lazily via ModuleRef to avoid a UsersModule -> CurrenciesModule
+    // import that would create a circular dependency through Notifications.
     if (
       dto.defaultCurrency !== undefined &&
       dto.defaultCurrency !== previousDefaultCurrency
     ) {
-      this.exchangeRateService.refreshAllRates().catch((err) => {
+      try {
+        const exchangeRateService = this.moduleRef.get(ExchangeRateService, {
+          strict: false,
+        });
+        exchangeRateService.refreshAllRates().catch((err) => {
+          this.logger.warn(
+            `Background exchange rate refresh after default-currency change failed: ${err.message}`,
+          );
+        });
+      } catch (err) {
         this.logger.warn(
-          `Background exchange rate refresh after default-currency change failed: ${err.message}`,
+          `Could not resolve ExchangeRateService for background refresh: ${err.message}`,
         );
-      });
+      }
     }
 
     return saved;
