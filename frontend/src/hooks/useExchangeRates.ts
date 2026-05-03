@@ -48,10 +48,17 @@ export function useExchangeRates() {
       const inverseRate = rateMap.get(`${target}->${fromCurrency}`);
       if (inverseRate && inverseRate !== 0) return amount / inverseRate;
 
-      // No rate available, return amount unconverted
+      // No rate available -- log so missing pairs are visible instead of
+      // silently rendering an unconverted figure under the wrong currency.
+      // Skip the warning while the rates request is still in flight.
+      if (!isLoading) {
+        logger.warn(
+          `No exchange rate for ${fromCurrency}->${target}; returning amount unconverted`,
+        );
+      }
       return amount;
     },
-    [rateMap, defaultCurrency],
+    [rateMap, defaultCurrency, isLoading],
   );
 
   const convertToDefault = useCallback(

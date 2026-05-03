@@ -15,6 +15,7 @@ import { TrustedDevice } from "./entities/trusted-device.entity";
 import { RefreshToken } from "../auth/entities/refresh-token.entity";
 import { PersonalAccessToken } from "../auth/entities/personal-access-token.entity";
 import { PasswordBreachService } from "../auth/password-breach.service";
+import { ExchangeRateService } from "../currencies/exchange-rate.service";
 
 describe("UsersService", () => {
   let service: UsersService;
@@ -24,6 +25,7 @@ describe("UsersService", () => {
   let patRepository: Record<string, jest.Mock>;
   let trustedDevicesRepository: Record<string, jest.Mock>;
   let passwordBreachService: { isBreached: jest.Mock };
+  let exchangeRateService: { refreshAllRates: jest.Mock };
   let mockQueryRunner: Record<string, jest.Mock>;
 
   const mockUser = {
@@ -89,6 +91,16 @@ describe("UsersService", () => {
       isBreached: jest.fn().mockResolvedValue(false),
     };
 
+    exchangeRateService = {
+      refreshAllRates: jest.fn().mockResolvedValue({
+        totalPairs: 0,
+        updated: 0,
+        failed: 0,
+        results: [],
+        lastUpdated: new Date(),
+      }),
+    };
+
     mockQueryRunner = {
       connect: jest.fn(),
       startTransaction: jest.fn(),
@@ -124,6 +136,7 @@ describe("UsersService", () => {
         },
         { provide: DataSource, useValue: mockDataSource },
         { provide: PasswordBreachService, useValue: passwordBreachService },
+        { provide: ExchangeRateService, useValue: exchangeRateService },
       ],
     }).compile();
 

@@ -8,6 +8,7 @@ import { PersonalAccessToken } from "../auth/entities/personal-access-token.enti
 import { UsersService } from "./users.service";
 import { UsersController } from "./users.controller";
 import { PasswordBreachService } from "../auth/password-breach.service";
+import { CurrenciesModule } from "../currencies/currencies.module";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { PasswordBreachService } from "../auth/password-breach.service";
       RefreshToken,
       PersonalAccessToken,
     ]),
+    CurrenciesModule,
   ],
   providers: [UsersService, PasswordBreachService],
   controllers: [UsersController],
