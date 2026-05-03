@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, MutableRefObject } from 'react';
+import { useState, useEffect, useMemo, useRef, MutableRefObject } from 'react';
 import { useForm, Resolver } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -58,6 +58,7 @@ interface TransactionFormProps {
   transaction?: Transaction;
   duplicateFrom?: Transaction;
   defaultAccountId?: string;
+  defaultCategoryId?: string;
   onSuccess?: () => void;
   onCancel?: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
@@ -67,7 +68,7 @@ interface TransactionFormProps {
 // Transaction mode type
 type TransactionMode = 'normal' | 'split' | 'transfer';
 
-export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, onSuccess, onCancel, onDirtyChange, submitRef }: TransactionFormProps) {
+export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, onSuccess, onCancel, onDirtyChange, submitRef }: TransactionFormProps) {
   const { defaultCurrency } = useNumberFormat();
   const showCreatedAt = usePreferencesStore((s) => s.preferences?.showCreatedAt ?? false);
   const timeFormat = usePreferencesStore((s) => s.preferences?.timeFormat ?? '24h');
@@ -84,8 +85,13 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
     initSource?.tags?.map(t => t.id) || []
   );
   const [selectedPayeeId, setSelectedPayeeId] = useState<string>(initSource?.payeeId || '');
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(initSource?.categoryId || '');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
+    initSource?.categoryId || (initSource ? '' : defaultCategoryId || '')
+  );
   const [, setCategoryName] = useState<string>('');
+  // Tracks whether the current categoryId was set by the asset-account auto-fill
+  // (so we can clear it when switching away to a non-asset account).
+  const categoryWasAutoSetRef = useRef<boolean>(!initSource && !!defaultCategoryId);
 
   // Reactivation modal state
   const [inactivePayeeMatch, setInactivePayeeMatch] = useState<Payee | null>(null);
@@ -191,6 +197,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
         }
       : {
           accountId: defaultAccountId || '',
+          categoryId: defaultCategoryId || '',
           transactionDate: (() => {
             const stored = sessionStorage.getItem('monize-last-transaction-date');
             if (stored) {
@@ -218,15 +225,31 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
   const watchedCurrencyCode = watch('currencyCode');
   const watchedPayeeName = watch('payeeName');
 
-  // Auto-set currencyCode from the selected account
+  // Auto-set currencyCode from the selected account, and pre-fill the
+  // asset value change category when an ASSET account is selected.
+  // The ref tracks whether the current categoryId was set by us, so a manual
+  // user choice is preserved when switching accounts (in either direction).
   useEffect(() => {
     if (watchedAccountId && accounts.length > 0) {
       const account = accounts.find(a => a.id === watchedAccountId);
       if (account) {
         setValue('currencyCode', account.currencyCode, { shouldDirty: true });
+        if (!initSource) {
+          if (account.accountType === 'ASSET' && account.assetCategoryId) {
+            if (!selectedCategoryId || categoryWasAutoSetRef.current) {
+              setSelectedCategoryId(account.assetCategoryId);
+              setValue('categoryId', account.assetCategoryId, { shouldDirty: true });
+              categoryWasAutoSetRef.current = true;
+            }
+          } else if (categoryWasAutoSetRef.current) {
+            setSelectedCategoryId('');
+            setValue('categoryId', '', { shouldDirty: true });
+            categoryWasAutoSetRef.current = false;
+          }
+        }
       }
     }
-  }, [watchedAccountId, accounts, setValue]);
+  }, [watchedAccountId, accounts, initSource, selectedCategoryId, setValue]);
 
   // Determine if this is a cross-currency transfer
   const crossCurrencyInfo = useMemo(() => {
@@ -304,6 +327,15 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
     }
   }, [defaultAccountId, transaction, setValue]);
 
+  // Set defaultCategoryId when it changes (and we're not editing/duplicating)
+  useEffect(() => {
+    if (!initSource && defaultCategoryId) {
+      setValue('categoryId', defaultCategoryId);
+      setSelectedCategoryId(defaultCategoryId);
+      categoryWasAutoSetRef.current = true;
+    }
+  }, [defaultCategoryId, initSource, setValue]);
+
   // Load accounts, categories, active payees on mount
   // When editing, also fetch the transaction's payee if it's inactive so it appears in the dropdown
   useEffect(() => {
@@ -368,6 +400,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
 
     setSelectedPayeeId(source.payeeId || '');
     setSelectedCategoryId(source.categoryId || '');
+    categoryWasAutoSetRef.current = false;
     setSelectedTagIds(source.tags?.map((t) => t.id) || []);
 
     if (source.isSplit && source.splits && source.splits.length > 0) {
@@ -394,6 +427,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
       if (payee?.defaultCategoryId && !selectedCategoryId) {
         setSelectedCategoryId(payee.defaultCategoryId);
         setValue('categoryId', payee.defaultCategoryId, { shouldDirty: true });
+        categoryWasAutoSetRef.current = false;
 
         // Adjust amount sign based on default category type
         const category = categories.find(c => c.id === payee.defaultCategoryId);
@@ -458,6 +492,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
       if (reactivated.defaultCategoryId && !selectedCategoryId) {
         setSelectedCategoryId(reactivated.defaultCategoryId);
         setValue('categoryId', reactivated.defaultCategoryId, { shouldDirty: true });
+        categoryWasAutoSetRef.current = false;
       }
 
       toast.success(`Payee "${reactivated.name}" reactivated`);
@@ -485,6 +520,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
   // Handle category selection - only create when explicitly selected from dropdown
   const handleCategoryChange = (categoryId: string, name: string) => {
     setCategoryName(name);
+    categoryWasAutoSetRef.current = false;
 
     if (categoryId) {
       // Existing category selected
@@ -627,6 +663,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
       setCategories(prev => [...prev, newCategory]);
       setSelectedCategoryId(newCategory.id);
       setValue('categoryId', newCategory.id, { shouldDirty: true, shouldValidate: true });
+      categoryWasAutoSetRef.current = false;
 
       if (parentId && parentName) {
         toast.success(`Category "${parentName}: ${categoryName}" created`);

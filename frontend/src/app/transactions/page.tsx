@@ -709,6 +709,11 @@ function TransactionsContent() {
             transaction={editingTransaction}
             duplicateFrom={duplicatingFrom}
             defaultAccountId={filters.filterAccountIds.length === 1 ? filters.filterAccountIds[0] : undefined}
+            defaultCategoryId={(() => {
+              if (filters.filterAccountIds.length !== 1) return undefined;
+              const account = accounts.find(a => a.id === filters.filterAccountIds[0]);
+              return account?.accountType === 'ASSET' ? (account.assetCategoryId || undefined) : undefined;
+            })()}
             onSuccess={handleFormSuccess}
             onCancel={handleClose}
             onDirtyChange={setFormDirty}
