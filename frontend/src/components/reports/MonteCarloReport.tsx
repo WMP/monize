@@ -1493,42 +1493,49 @@ function HoldingStatsTable({
               No active holdings.
             </div>
           ) : (
-            <table className="min-w-full text-xs">
-              <thead className="bg-gray-50 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400">
-                <tr>
-                  <th className="px-3 py-1.5 text-left font-medium">Symbol</th>
-                  <th className="px-3 py-1.5 text-left font-medium">Name</th>
-                  <th className="px-3 py-1.5 text-right font-medium">Value</th>
-                  <th className="px-3 py-1.5 text-right font-medium">
-                    Mean return
-                  </th>
-                  <th className="px-3 py-1.5 text-right font-medium">
-                    Volatility
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {acct.holdings.map((h) => (
-                  <tr key={`${acct.accountId}-${h.symbol}`}>
-                    <td className="px-3 py-1.5 font-mono text-gray-900 dark:text-gray-100">
-                      {h.symbol}
-                    </td>
-                    <td className="px-3 py-1.5 text-gray-700 dark:text-gray-300 truncate max-w-[200px]">
-                      {h.name}
-                    </td>
-                    <td className="px-3 py-1.5 text-right text-gray-700 dark:text-gray-300">
-                      {formatCurrency(h.marketValue)}
-                    </td>
-                    <td className="px-3 py-1.5 text-right text-gray-900 dark:text-gray-100">
-                      {fmtPct(h.meanReturn)}
-                    </td>
-                    <td className="px-3 py-1.5 text-right text-gray-900 dark:text-gray-100">
-                      {fmtPct(h.volatility)}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-xs">
+                <thead className="bg-gray-50 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400">
+                  <tr>
+                    <th className="px-3 py-1.5 text-left font-medium">Symbol</th>
+                    {/* Name is decorative; hide on small screens so the
+                        numeric columns fit on a phone without horizontal
+                        scroll. */}
+                    <th className="px-3 py-1.5 text-left font-medium hidden sm:table-cell">
+                      Name
+                    </th>
+                    <th className="px-3 py-1.5 text-right font-medium">Value</th>
+                    <th className="px-3 py-1.5 text-right font-medium whitespace-nowrap">
+                      Mean
+                    </th>
+                    <th className="px-3 py-1.5 text-right font-medium">
+                      Volatility
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {acct.holdings.map((h) => (
+                    <tr key={`${acct.accountId}-${h.symbol}`}>
+                      <td className="px-3 py-1.5 font-mono text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                        {h.symbol}
+                      </td>
+                      <td className="px-3 py-1.5 text-gray-700 dark:text-gray-300 truncate max-w-[200px] hidden sm:table-cell">
+                        {h.name}
+                      </td>
+                      <td className="px-3 py-1.5 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                        {formatCurrency(h.marketValue)}
+                      </td>
+                      <td className="px-3 py-1.5 text-right text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                        {fmtPct(h.meanReturn)}
+                      </td>
+                      <td className="px-3 py-1.5 text-right text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                        {fmtPct(h.volatility)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       ))}
