@@ -455,12 +455,11 @@ export class MonteCarloService {
 
     let yearlyReturns = await this.queryYearlyReturns(securityIds);
 
-    // For securities with fewer than 2 yearly returns we can't compute
-    // volatility — usually because they were added recently and only have a
-    // few months of local price history. Fall back to Yahoo/MSN: pull 5
-    // years of daily prices on demand, then re-query.
+    // For securities with fewer than 5 yearly returns we backfill from the
+    // provider — typically newer holdings whose local price history doesn't
+    // yet span the full window we want for stable mean/volatility estimates.
     const sparseIds = securityIds.filter(
-      (id) => (yearlyReturns.get(id)?.size ?? 0) < 2,
+      (id) => (yearlyReturns.get(id)?.size ?? 0) < 5,
     );
     if (sparseIds.length > 0) {
       const securities = await this.securitiesRepository.find({
