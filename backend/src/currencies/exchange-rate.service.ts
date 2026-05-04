@@ -219,7 +219,11 @@ export class ExchangeRateService implements OnModuleInit {
     const startTime = Date.now();
     this.logger.log("Starting exchange rate refresh");
 
-    // Fetch all currencies used in accounts/securities
+    // Fetch all currencies in use: account currencies, security currencies for
+    // active holdings, and every user's preferred default currency. Including
+    // defaults ensures we fetch (CAD, GBP) even when the user has no GBP-
+    // denominated accounts -- otherwise their GBP totals would silently fall
+    // back to unconverted CAD values.
     const usedCurrencies: { code: string }[] = await this.dataSource.query(
       `SELECT DISTINCT code FROM (
          SELECT currency_code AS code FROM accounts WHERE is_closed = false
@@ -229,6 +233,9 @@ export class ExchangeRateService implements OnModuleInit {
          INNER JOIN holdings h ON h.security_id = s.id
          INNER JOIN accounts a ON a.id = h.account_id AND a.is_closed = false
          WHERE s.is_active = true AND h.quantity > 0
+         UNION
+         SELECT default_currency AS code FROM user_preferences
+         WHERE default_currency IS NOT NULL
        ) sub`,
     );
 

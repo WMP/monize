@@ -18,6 +18,7 @@ import { usePreferencesStore } from '@/store/preferencesStore';
 import { User, UserPreferences, TrustedDevice } from '@/types/auth';
 import { getErrorMessage } from '@/lib/errors';
 import { passwordSchema, PASSWORD_REQUIREMENTS_TEXT } from '@/lib/zod-helpers';
+import { useDateFormat } from '@/hooks/useDateFormat';
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required').max(128, 'Password must be 128 characters or less'),
@@ -39,6 +40,7 @@ interface SecuritySectionProps {
 
 export function SecuritySection({ user, preferences, force2fa, onPreferencesUpdated }: SecuritySectionProps) {
   const updatePreferencesStore = usePreferencesStore((state) => state.updatePreferences);
+  const { formatDate } = useDateFormat();
 
   const {
     register,
@@ -434,11 +436,11 @@ export function SecuritySection({ user, preferences, force2fa, onPreferencesUpda
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 space-y-0.5">
                       {device.ipAddress && <p>IP: {device.ipAddress}</p>}
                       <p>
-                        Added {new Date(device.createdAt).toLocaleDateString()}
+                        Added {formatDate(new Date(device.createdAt))}
                         {' \u00B7 '}
-                        Last used {new Date(device.lastUsedAt).toLocaleDateString()}
+                        Last used {formatDate(new Date(device.lastUsedAt))}
                         {' \u00B7 '}
-                        Expires {new Date(device.expiresAt).toLocaleDateString()}
+                        Expires {formatDate(new Date(device.expiresAt))}
                       </p>
                     </div>
                   </div>

@@ -6,6 +6,9 @@ import { AiInsight, AiStatus, InsightType, InsightSeverity, INSIGHT_TYPE_LABELS,
 import { InsightCard } from './InsightCard';
 import { createLogger } from '@/lib/logger';
 import Link from 'next/link';
+import { useDateFormat } from '@/hooks/useDateFormat';
+import { usePreferencesStore } from '@/store/preferencesStore';
+import { formatTime } from '@/lib/utils';
 
 const logger = createLogger('InsightsList');
 
@@ -13,6 +16,8 @@ const POLL_INTERVAL = 5000;
 const MAX_POLL_ATTEMPTS = 150; // 150 * 5s = 12.5 minutes max for CPU inference
 
 export function InsightsList() {
+  const { formatDate } = useDateFormat();
+  const timeFormat = usePreferencesStore((s) => s.preferences?.timeFormat) || '24h';
   const [insights, setInsights] = useState<AiInsight[]>([]);
   const [total, setTotal] = useState(0);
   const [lastGeneratedAt, setLastGeneratedAt] = useState<string | null>(null);
@@ -186,11 +191,15 @@ export function InsightsList() {
               {warningCount} warning{warningCount !== 1 ? 's' : ''}
             </span>
           )}
-          {lastGeneratedAt && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              Last updated: {new Date(lastGeneratedAt).toLocaleString()}
-            </span>
-          )}
+          {lastGeneratedAt && (() => {
+            const d = new Date(lastGeneratedAt);
+            const time24 = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            return (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Last updated: {formatDate(d)} {formatTime(time24, timeFormat)}
+              </span>
+            );
+          })()}
         </div>
         <button
           onClick={handleGenerate}

@@ -17,6 +17,7 @@ import {
   Area,
 } from 'recharts';
 import { captureSvgAsImage } from '@/lib/pdf-export-charts';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 
 const COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
@@ -34,11 +35,6 @@ interface ResultChartProps {
   data: ChartData[];
 }
 
-function formatCurrency(value: number | undefined): string {
-  if (value === undefined) return '';
-  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-}
-
 function ChartTooltip({
   active,
   payload,
@@ -48,6 +44,7 @@ function ChartTooltip({
   payload?: Array<{ name?: string; value?: number; payload?: { label?: string } }>;
   label?: string;
 }) {
+  const { formatCurrency } = useNumberFormat();
   if (!active || !payload || payload.length === 0) return null;
   const heading = label ?? payload[0]?.payload?.label ?? payload[0]?.name;
   return (
@@ -60,7 +57,7 @@ function ChartTooltip({
           key={`tooltip-${index}`}
           className="text-sm text-blue-600 dark:text-blue-400"
         >
-          {formatCurrency(entry.value)}
+          {entry.value !== undefined ? formatCurrency(entry.value) : ''}
         </p>
       ))}
     </div>

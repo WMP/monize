@@ -20,6 +20,8 @@ import { UpdatePreferencesDto } from "./dto/update-preferences.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { DeleteDataDto } from "./dto/delete-data.dto";
 import { PasswordBreachService } from "../auth/password-breach.service";
+import { ModuleRef } from "@nestjs/core";
+import { ExchangeRateService } from "../currencies/exchange-rate.service";
 
 @Injectable()
 export class UsersService {
@@ -38,6 +40,7 @@ export class UsersService {
     private trustedDevicesRepository: Repository<TrustedDevice>,
     private dataSource: DataSource,
     private passwordBreachService: PasswordBreachService,
+    private moduleRef: ModuleRef,
   ) {}
 
   async findById(id: string): Promise<User | null> {
@@ -145,6 +148,8 @@ export class UsersService {
       preferences = await this.getPreferences(userId);
     }
 
+    const previousDefaultCurrency = preferences.defaultCurrency;
+
     // Update only provided fields
     if (dto.defaultCurrency !== undefined) {
       preferences.defaultCurrency = dto.defaultCurrency;
@@ -198,7 +203,34 @@ export class UsersService {
       preferences.recentTransactionsLimit = dto.recentTransactionsLimit;
     }
 
-    return this.preferencesRepository.save(preferences);
+    const saved = await this.preferencesRepository.save(preferences);
+
+    // Fetch fresh exchange rates whenever the user picks a new default
+    // currency so multi-currency totals (Net Worth card, account group totals)
+    // can convert immediately instead of waiting for the next daily cron.
+    // Resolved lazily via ModuleRef to avoid a UsersModule -> CurrenciesModule
+    // import that would create a circular dependency through Notifications.
+    if (
+      dto.defaultCurrency !== undefined &&
+      dto.defaultCurrency !== previousDefaultCurrency
+    ) {
+      try {
+        const exchangeRateService = this.moduleRef.get(ExchangeRateService, {
+          strict: false,
+        });
+        exchangeRateService.refreshAllRates().catch((err) => {
+          this.logger.warn(
+            `Background exchange rate refresh after default-currency change failed: ${err.message}`,
+          );
+        });
+      } catch (err) {
+        this.logger.warn(
+          `Could not resolve ExchangeRateService for background refresh: ${err.message}`,
+        );
+      }
+    }
+
+    return saved;
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {

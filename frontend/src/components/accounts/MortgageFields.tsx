@@ -12,6 +12,7 @@ import { buildCategoryTree } from '@/lib/categoryUtils';
 import { accountsApi } from '@/lib/accounts';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { createLogger } from '@/lib/logger';
+import { useDateFormat } from '@/hooks/useDateFormat';
 
 const logger = createLogger('MortgageFields');
 
@@ -65,6 +66,7 @@ export function MortgageFields({
   selectedInterestCategoryId,
   handleInterestCategoryChange,
 }: MortgageFieldsProps) {
+  const { formatDate } = useDateFormat();
   const [mortgagePreview, setMortgagePreview] = useState<MortgageAmortizationPreview | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
@@ -386,7 +388,7 @@ export function MortgageFields({
                   <span className="text-gray-500 dark:text-gray-400">Est. Payoff Date:</span>{' '}
                   <span className="font-medium">
                     {mortgagePreview.totalPayments > 0
-                      ? new Date(mortgagePreview.endDate).toLocaleDateString()
+                      ? formatDate(new Date(mortgagePreview.endDate))
                       : 'N/A'}
                   </span>
                 </div>

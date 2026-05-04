@@ -1,6 +1,7 @@
 'use client';
 
 import { AiInsight, INSIGHT_TYPE_LABELS } from '@/types/ai';
+import { useDateFormat } from '@/hooks/useDateFormat';
 
 interface InsightCardProps {
   insight: AiInsight;
@@ -39,6 +40,7 @@ const typeStyles: Record<string, string> = {
 };
 
 export function InsightCard({ insight, onDismiss, isDismissing }: InsightCardProps) {
+  const { formatDate } = useDateFormat();
   const style = severityStyles[insight.severity] || severityStyles.info;
   const typeStyle = typeStyles[insight.type] || typeStyles.anomaly;
 
@@ -70,7 +72,7 @@ export function InsightCard({ insight, onDismiss, isDismissing }: InsightCardPro
           </p>
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              {new Date(insight.generatedAt).toLocaleDateString()}
+              {formatDate(new Date(insight.generatedAt))}
             </span>
             {!insight.isDismissed && (
               <button
