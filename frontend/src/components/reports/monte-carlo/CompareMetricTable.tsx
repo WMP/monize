@@ -41,9 +41,9 @@ export function CompareMetricTable({
     <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
       <table className="min-w-full text-sm">
         <thead>
-          <tr className="bg-gray-50 dark:bg-gray-900/40">
+          <tr className="bg-gray-50 dark:bg-gray-900">
             <th
-              className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900/40 px-3 py-3 text-left font-medium text-gray-500 dark:text-gray-400 min-w-[220px]"
+              className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900 px-3 py-3 text-left font-medium text-gray-500 dark:text-gray-400 min-w-[220px]"
               scope="col"
             >
               Metric
