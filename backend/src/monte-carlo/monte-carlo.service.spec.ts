@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { DataSource } from "typeorm";
 import { MonteCarloService } from "./monte-carlo.service";
 import { MonteCarloSimulationService } from "./monte-carlo-simulation.service";
 import { MonteCarloScenario } from "./entities/monte-carlo-scenario.entity";
@@ -26,6 +27,15 @@ describe("MonteCarloService", () => {
     getPortfolioSummary: jest.Mock;
     getLatestPrices: jest.Mock;
   };
+  let queryRunner: {
+    connect: jest.Mock;
+    startTransaction: jest.Mock;
+    commitTransaction: jest.Mock;
+    rollbackTransaction: jest.Mock;
+    release: jest.Mock;
+    manager: { update: jest.Mock };
+  };
+  let dataSource: { createQueryRunner: jest.Mock };
 
   const userId = "user-1";
   const otherUserId = "user-2";
@@ -55,6 +65,7 @@ describe("MonteCarloService", () => {
       randomSeed: "1",
       useHistoricalReturns: false,
       isFavourite: false,
+      sortOrder: 0,
       lastRunAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -120,6 +131,17 @@ describe("MonteCarloService", () => {
       getPortfolioSummary: jest.Mock;
       getLatestPrices: jest.Mock;
     };
+    queryRunner = {
+      connect: jest.fn().mockResolvedValue(undefined),
+      startTransaction: jest.fn().mockResolvedValue(undefined),
+      commitTransaction: jest.fn().mockResolvedValue(undefined),
+      rollbackTransaction: jest.fn().mockResolvedValue(undefined),
+      release: jest.fn().mockResolvedValue(undefined),
+      manager: { update: jest.fn().mockResolvedValue({ affected: 1 }) },
+    };
+    dataSource = {
+      createQueryRunner: jest.fn(() => queryRunner),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -156,6 +178,10 @@ describe("MonteCarloService", () => {
         {
           provide: PortfolioService,
           useValue: portfolioService,
+        },
+        {
+          provide: DataSource,
+          useValue: dataSource,
         },
       ],
     }).compile();
@@ -456,6 +482,44 @@ describe("MonteCarloService", () => {
       scenariosRepository.findOne.mockResolvedValueOnce(existing);
       await service.remove(userId, "scn-1");
       expect(scenariosRepository.remove).toHaveBeenCalledWith(existing);
+    });
+  });
+
+  describe("reorder", () => {
+    it("writes sortOrder to each scenario inside a transaction", async () => {
+      await service.reorder(userId, ["scn-2", "scn-1", "scn-3"]);
+      expect(queryRunner.connect).toHaveBeenCalled();
+      expect(queryRunner.startTransaction).toHaveBeenCalled();
+      expect(queryRunner.manager.update).toHaveBeenNthCalledWith(
+        1,
+        MonteCarloScenario,
+        { id: "scn-2", userId },
+        { sortOrder: 0 },
+      );
+      expect(queryRunner.manager.update).toHaveBeenNthCalledWith(
+        2,
+        MonteCarloScenario,
+        { id: "scn-1", userId },
+        { sortOrder: 1 },
+      );
+      expect(queryRunner.manager.update).toHaveBeenNthCalledWith(
+        3,
+        MonteCarloScenario,
+        { id: "scn-3", userId },
+        { sortOrder: 2 },
+      );
+      expect(queryRunner.commitTransaction).toHaveBeenCalled();
+      expect(queryRunner.release).toHaveBeenCalled();
+    });
+
+    it("rolls the transaction back when an update fails", async () => {
+      queryRunner.manager.update.mockRejectedValueOnce(new Error("boom"));
+      await expect(
+        service.reorder(userId, ["scn-1", "scn-2"]),
+      ).rejects.toThrow("boom");
+      expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(queryRunner.commitTransaction).not.toHaveBeenCalled();
+      expect(queryRunner.release).toHaveBeenCalled();
     });
   });
 });

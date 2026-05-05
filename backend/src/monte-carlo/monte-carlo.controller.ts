@@ -18,6 +18,7 @@ import { MonteCarloService } from "./monte-carlo.service";
 import { CreateScenarioDto } from "./dto/create-scenario.dto";
 import { UpdateScenarioDto } from "./dto/update-scenario.dto";
 import { RunScenarioDto } from "./dto/run-scenario.dto";
+import { ReorderScenariosDto } from "./dto/reorder-scenarios.dto";
 import { parseUuids } from "../common/query-param-utils";
 
 interface AuthRequest extends Request {
@@ -37,6 +38,14 @@ export class MonteCarloController {
   @Post("scenarios")
   create(@Request() req: AuthRequest, @Body() dto: CreateScenarioDto) {
     return this.monteCarloService.create(req.user.id, dto);
+  }
+
+  // Registered before `scenarios/:id` so the literal "reorder" segment isn't
+  // captured as a UUID by ParseUUIDPipe.
+  @Patch("scenarios/reorder")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  reorder(@Request() req: AuthRequest, @Body() dto: ReorderScenariosDto) {
+    return this.monteCarloService.reorder(req.user.id, dto.scenarioIds);
   }
 
   @Get("scenarios/:id")

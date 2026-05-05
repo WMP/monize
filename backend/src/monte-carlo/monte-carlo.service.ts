@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import { DataSource, In, Repository } from "typeorm";
 import { MonteCarloScenario } from "./entities/monte-carlo-scenario.entity";
 import { MonteCarloCashFlow } from "./entities/monte-carlo-cash-flow.entity";
 import { CreateScenarioDto } from "./dto/create-scenario.dto";
@@ -73,6 +73,7 @@ export class MonteCarloService {
     private simulationService: MonteCarloSimulationService,
     private portfolioService: PortfolioService,
     private securityPriceService: SecurityPriceService,
+    private dataSource: DataSource,
   ) {}
 
   async create(
@@ -109,7 +110,7 @@ export class MonteCarloService {
     const scenarios = await this.scenariosRepository.find({
       where: { userId },
       relations: ["cashFlows"],
-      order: { isFavourite: "DESC", updatedAt: "DESC" },
+      order: { isFavourite: "DESC", sortOrder: "ASC", updatedAt: "DESC" },
     });
     for (const s of scenarios) {
       if (s.cashFlows) {
@@ -211,6 +212,33 @@ export class MonteCarloService {
   async remove(userId: string, id: string): Promise<void> {
     const scenario = await this.findOne(userId, id);
     await this.scenariosRepository.remove(scenario);
+  }
+
+  async reorder(userId: string, scenarioIds: string[]): Promise<void> {
+    // Defensive: reject anything that isn't a proper array. The DTO validates
+    // this via @IsArray, but we re-check here so the invariant is visible to
+    // static analysis (mirrors AccountsService.reorderFavourites).
+    if (!Array.isArray(scenarioIds)) {
+      throw new BadRequestException("scenarioIds must be an array");
+    }
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      for (let i = 0; i < scenarioIds.length; i++) {
+        await queryRunner.manager.update(
+          MonteCarloScenario,
+          { id: scenarioIds[i], userId },
+          { sortOrder: i },
+        );
+      }
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async runSaved(userId: string, id: string): Promise<SimulationResult> {

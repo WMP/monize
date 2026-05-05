@@ -141,6 +141,9 @@ export class MonteCarloScenario {
   @Column({ name: "is_favourite", default: false })
   isFavourite: boolean;
 
+  @Column({ type: "integer", name: "sort_order", default: 0 })
+  sortOrder: number;
+
   @Column({ type: "timestamp", name: "last_run_at", nullable: true })
   lastRunAt: Date | null;
 
