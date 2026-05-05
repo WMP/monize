@@ -1363,7 +1363,17 @@ export function MonteCarloReport() {
                           strokeDasharray="8 4"
                           strokeWidth={2.5}
                           label={{
-                            value: 'Withdrawal phase →',
+                            // Arrow always points back to the divider line.
+                            // Right-half divider -> label on left side ->
+                            // arrow points right toward the line. Left-half
+                            // divider -> label on right side -> arrow points
+                            // left toward the line.
+                            value:
+                              form.yearsToRetirement /
+                                result.yearLabels.length >
+                              0.5
+                                ? 'Withdrawal phase →'
+                                : '← Withdrawal phase',
                             // Recharts anchors the label text at the named
                             // position and the text flows away from that
                             // anchor, so 'insideTopRight' anchors on the
