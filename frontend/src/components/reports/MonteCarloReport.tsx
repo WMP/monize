@@ -1775,7 +1775,9 @@ function PerformanceSummaryTable({
             </th>
             <th className="px-3 py-2 text-right font-medium">10th Percentile</th>
             <th className="px-3 py-2 text-right font-medium">25th Percentile</th>
-            <th className="px-3 py-2 text-right font-medium">50th Percentile</th>
+            <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-200 bg-blue-50 dark:bg-blue-900/30">
+              50th Percentile
+            </th>
             <th className="px-3 py-2 text-right font-medium">75th Percentile</th>
             <th className="px-3 py-2 text-right font-medium">90th Percentile</th>
           </tr>
@@ -1793,7 +1795,7 @@ function PerformanceSummaryTable({
               <td className="px-3 py-1.5 text-right tabular-nums">
                 {formatValue(row.band.p25, row.format)}
               </td>
-              <td className="px-3 py-1.5 text-right tabular-nums font-medium text-gray-900 dark:text-gray-100">
+              <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-gray-900 dark:text-gray-100 bg-blue-50 dark:bg-blue-900/30">
                 {formatValue(row.band.p50, row.format)}
               </td>
               <td className="px-3 py-1.5 text-right tabular-nums">
