@@ -1683,7 +1683,16 @@ describe('MonteCarloReport', () => {
       ).toHaveValue('');
     });
 
-    it('Select mode shows checkboxes and a disabled Compare button when N<2', async () => {
+    it('Compare button is hidden when fewer than 2 scenarios exist', async () => {
+      mockApi.list.mockResolvedValueOnce([scenario({ id: 'a', name: 'Plan A' })]);
+      await renderReport();
+      await screen.findByText('Contribution phase');
+      expect(
+        screen.queryByRole('button', { name: /^Compare$/ }),
+      ).toBeNull();
+    });
+
+    it('Compare opens select mode with checkboxes and a disabled action button', async () => {
       mockApi.list.mockResolvedValueOnce([
         scenario({ id: 'a', name: 'Plan A' }),
         scenario({ id: 'b', name: 'Plan B' }),
@@ -1691,7 +1700,7 @@ describe('MonteCarloReport', () => {
       await renderReport();
       await act(async () => {
         fireEvent.click(
-          await screen.findByRole('button', { name: /^Select$/ }),
+          await screen.findByRole('button', { name: /^Compare$/ }),
         );
       });
       // Both scenarios now expose checkboxes.
@@ -1699,7 +1708,7 @@ describe('MonteCarloReport', () => {
         name: /Select Plan [AB] for comparison/,
       });
       expect(checkboxes.length).toBe(2);
-      // Compare button starts disabled.
+      // Action button starts disabled.
       const compareBtn = screen.getByRole('button', {
         name: /Compare selected \(0\/4\)/,
       });
@@ -1733,7 +1742,7 @@ describe('MonteCarloReport', () => {
       await renderReport();
       await act(async () => {
         fireEvent.click(
-          await screen.findByRole('button', { name: /^Select$/ }),
+          await screen.findByRole('button', { name: /^Compare$/ }),
         );
       });
       const checkboxes = screen.getAllByRole('checkbox', {
@@ -1767,7 +1776,7 @@ describe('MonteCarloReport', () => {
       await renderReport();
       await act(async () => {
         fireEvent.click(
-          await screen.findByRole('button', { name: /^Select$/ }),
+          await screen.findByRole('button', { name: /^Compare$/ }),
         );
       });
       const boxes = screen.getAllByRole('checkbox', {
@@ -1796,7 +1805,7 @@ describe('MonteCarloReport', () => {
       await renderReport();
       await act(async () => {
         fireEvent.click(
-          await screen.findByRole('button', { name: /^Select$/ }),
+          await screen.findByRole('button', { name: /^Compare$/ }),
         );
       });
       const checkboxes = screen.getAllByRole('checkbox', {
@@ -1812,7 +1821,7 @@ describe('MonteCarloReport', () => {
       // Re-entering select mode shows unchecked boxes (selection cleared).
       await act(async () => {
         fireEvent.click(
-          screen.getByRole('button', { name: /^Select$/ }),
+          screen.getByRole('button', { name: /^Compare$/ }),
         );
       });
       const fresh = screen.getAllByRole('checkbox', {

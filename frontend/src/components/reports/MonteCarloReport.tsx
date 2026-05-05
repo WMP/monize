@@ -471,20 +471,6 @@ export function MonteCarloReport() {
                 {reordering ? 'Done' : 'Reorder'}
               </button>
             )}
-            {scenarios.length > 1 && !reordering && (
-              <button
-                type="button"
-                onClick={toggleSelectMode}
-                className={`text-xs px-2 py-1 rounded transition-colors ${
-                  selectMode
-                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-                title={selectMode ? 'Cancel selection' : 'Select scenarios to compare'}
-              >
-                {selectMode ? 'Cancel' : 'Select'}
-              </button>
-            )}
             {!selectMode && (
               <Button size="sm" variant="outline" onClick={newScenario}>
                 New
@@ -575,27 +561,49 @@ export function MonteCarloReport() {
             ))}
           </ul>
         )}
-        {selectMode && scenarios.length > 1 && (
-          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-            <Button
-              size="sm"
-              variant="primary"
-              className="w-full"
-              disabled={selectedForCompare.size < 2}
-              onClick={() => {
-                const ids = Array.from(selectedForCompare);
-                router.push(
-                  `/reports/monte-carlo-simulation/compare?ids=${ids.join(',')}`,
-                );
-              }}
-              title={
-                selectedForCompare.size < 2
-                  ? 'Select at least 2 scenarios'
-                  : 'Compare selected scenarios'
-              }
-            >
-              Compare selected ({selectedForCompare.size}/{MAX_COMPARE_SCENARIOS})
-            </Button>
+        {scenarios.length >= 2 && !reordering && (
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
+            {selectMode ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  className="w-full"
+                  disabled={selectedForCompare.size < 2}
+                  onClick={() => {
+                    const ids = Array.from(selectedForCompare);
+                    router.push(
+                      `/reports/monte-carlo-simulation/compare?ids=${ids.join(',')}`,
+                    );
+                  }}
+                  title={
+                    selectedForCompare.size < 2
+                      ? 'Select at least 2 scenarios'
+                      : 'Compare selected scenarios'
+                  }
+                >
+                  Compare selected ({selectedForCompare.size}/
+                  {MAX_COMPARE_SCENARIOS})
+                </Button>
+                <button
+                  type="button"
+                  onClick={toggleSelectMode}
+                  className="w-full text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                variant="primary"
+                className="w-full"
+                onClick={toggleSelectMode}
+                title="Select scenarios to compare"
+              >
+                Compare
+              </Button>
+            )}
           </div>
         )}
       </aside>
