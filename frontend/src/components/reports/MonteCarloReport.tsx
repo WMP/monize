@@ -758,7 +758,7 @@ export function MonteCarloReport() {
             <div className="min-w-0 flex-1">
               {inputsCollapsed ? (
                 <div className="flex flex-col min-w-0">
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                  <div className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
                     {form.name || 'Untitled scenario'}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
