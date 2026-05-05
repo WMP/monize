@@ -53,6 +53,8 @@ This is Next.js middleware (NOT the deprecated middleware pattern from this proj
 - All interactive components use `'use client'`. Server components are the default for pages/layouts.
 - Use dynamic imports for heavy components: `dynamic(() => import('./Chart'), { ssr: false })`.
 - `ProtectedRoute` (`components/auth/ProtectedRoute.tsx`) wraps authenticated pages.
+- **No `setState` in `useEffect`** — ESLint rule `react-hooks/set-state-in-effect` is enforced. To reset child state when a prop changes (e.g. on a dialog open transition), use the "info from previous render" pattern (track the prop in `useState` and update during render).
+- **Dialogs use `Modal`** (`components/ui/Modal.tsx`) — handles Escape, focus trap, body scroll lock, focus restore, and stacked-modal popstate. Opt into `pushHistory` so the browser back button also closes. `ConfirmDialog` forwards `pushHistory` for stacked confirm flows.
 
 ## Form Patterns
 
