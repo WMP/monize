@@ -465,6 +465,35 @@ export function useMonteCarloScenarios() {
     setShowDeleteConfirm(false);
   }, []);
 
+  const reorderScenarios = useCallback(
+    async (orderedIds: string[]) => {
+      // Optimistically apply the new order so the sidebar doesn't flicker
+      // while the request is in flight; revert on failure.
+      let snapshot: MonteCarloScenario[] = [];
+      setScenarios((prev) => {
+        snapshot = prev;
+        const byId = new Map(prev.map((s) => [s.id, s]));
+        const reordered = orderedIds
+          .map((id) => byId.get(id))
+          .filter((s): s is MonteCarloScenario => Boolean(s));
+        // Append any scenarios not in the ordered list (shouldn't happen, but
+        // safer than dropping rows if the caller passed a stale id list).
+        for (const s of prev) {
+          if (!orderedIds.includes(s.id)) reordered.push(s);
+        }
+        return reordered;
+      });
+      try {
+        await monteCarloApi.reorder(orderedIds);
+      } catch (err) {
+        logger.error('Reorder failed:', err);
+        showErrorToast(err, 'Could not reorder scenarios.');
+        setScenarios(snapshot);
+      }
+    },
+    [],
+  );
+
   return {
     // data
     accounts,
@@ -498,5 +527,6 @@ export function useMonteCarloScenarios() {
     requestDelete,
     confirmDelete,
     cancelDelete,
+    reorderScenarios,
   };
 }

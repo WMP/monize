@@ -959,6 +959,7 @@ CREATE TABLE monte_carlo_scenarios (
     random_seed BIGINT,
 
     is_favourite BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
     last_run_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -974,6 +975,7 @@ CREATE TABLE monte_carlo_scenarios (
 );
 
 CREATE INDEX idx_monte_carlo_scenarios_user ON monte_carlo_scenarios(user_id);
+CREATE INDEX idx_monte_carlo_scenarios_user_sort ON monte_carlo_scenarios(user_id, sort_order);
 
 CREATE TRIGGER update_monte_carlo_scenarios_updated_at
   BEFORE UPDATE ON monte_carlo_scenarios

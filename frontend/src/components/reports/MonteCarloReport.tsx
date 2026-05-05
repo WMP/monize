@@ -82,7 +82,21 @@ export function MonteCarloReport() {
     requestDelete,
     confirmDelete,
     cancelDelete,
+    reorderScenarios,
   } = useMonteCarloScenarios();
+  const [reordering, setReordering] = useState(false);
+
+  const moveScenario = useCallback(
+    (index: number, direction: -1 | 1) => {
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= scenarios.length) return;
+      const reordered = [...scenarios];
+      const [moved] = reordered.splice(index, 1);
+      reordered.splice(newIndex, 0, moved);
+      void reorderScenarios(reordered.map((s) => s.id));
+    },
+    [scenarios, reorderScenarios],
+  );
 
   // The inputs panel collapses automatically after a fresh simulation run
   // (so the output is visible without scrolling) and after that respects the
@@ -434,11 +448,27 @@ export function MonteCarloReport() {
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
       {/* Left: scenarios */}
       <aside className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 h-fit">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 gap-2">
           <h3 className="font-semibold text-gray-900 dark:text-gray-100">Scenarios</h3>
-          <Button size="sm" variant="outline" onClick={newScenario}>
-            New
-          </Button>
+          <div className="flex items-center gap-1">
+            {scenarios.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setReordering((v) => !v)}
+                className={`text-xs px-2 py-1 rounded transition-colors ${
+                  reordering
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                title={reordering ? 'Done reordering' : 'Reorder scenarios'}
+              >
+                {reordering ? 'Done' : 'Reorder'}
+              </button>
+            )}
+            <Button size="sm" variant="outline" onClick={newScenario}>
+              New
+            </Button>
+          </div>
         </div>
         {scenarios.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -446,14 +476,44 @@ export function MonteCarloReport() {
           </p>
         ) : (
           <ul className="space-y-1">
-            {scenarios.map((s) => (
-              <li key={s.id}>
+            {scenarios.map((s, index) => (
+              <li key={s.id} className="flex items-center gap-1">
+                {reordering && (
+                  <div className="flex flex-col gap-0.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => moveScenario(index, -1)}
+                      disabled={index === 0}
+                      className="p-0.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      title="Move up"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveScenario(index, 1)}
+                      disabled={index === scenarios.length - 1}
+                      className="p-0.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      title="Move down"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
                 <button
-                  onClick={() => loadScenario(s)}
-                  className={`w-full text-left px-2 py-1.5 rounded text-sm ${
+                  onClick={() => !reordering && loadScenario(s)}
+                  className={`flex-1 text-left px-2 py-1.5 rounded text-sm ${
+                    reordering ? 'cursor-default' : ''
+                  } ${
                     activeId === s.id
                       ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-200'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                      : reordering
+                        ? 'text-gray-700 dark:text-gray-300'
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
                   }`}
                 >
                   <div className="font-medium truncate">{s.name}</div>

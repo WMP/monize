@@ -37,6 +37,7 @@ export interface MonteCarloScenario {
   targetValue: number | null;
   randomSeed: string | null;
   isFavourite: boolean;
+  sortOrder: number;
   lastRunAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -169,6 +170,10 @@ export const monteCarloApi = {
 
   remove: async (id: string): Promise<void> => {
     await apiClient.delete(`/monte-carlo/scenarios/${id}`);
+  },
+
+  reorder: async (scenarioIds: string[]): Promise<void> => {
+    await apiClient.patch('/monte-carlo/scenarios/reorder', { scenarioIds });
   },
 
   runSaved: async (id: string): Promise<SimulationResult> => {
