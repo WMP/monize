@@ -122,6 +122,17 @@ export function MonteCarloReport() {
   useEffect(() => {
     if (activeId && result) setCachedResult(activeId, result);
   }, [activeId, result]);
+
+  useEffect(() => {
+    if (!saveMenuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (saveMenuRef.current && !saveMenuRef.current.contains(e.target as Node)) {
+        setSaveMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [saveMenuOpen]);
   // Collapse the input form whenever a result exists so the simulation
   // output is visible without scrolling. Re-expands when result is cleared
   // (e.g. New scenario, or loading a scenario without a cached result).
@@ -135,6 +146,8 @@ export function MonteCarloReport() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const saveMenuRef = useRef<HTMLDivElement>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
   const chartRef = useRef<HTMLDivElement>(null);
@@ -453,16 +466,23 @@ export function MonteCarloReport() {
     }
   };
 
-  const duplicateScenario = async () => {
-    if (!activeId) return;
+  const saveAs = async () => {
+    const baseName = form.name.trim() || 'Untitled scenario';
+    const copyName = `Copy of ${baseName}`.slice(0, 255);
     try {
-      const created = await monteCarloApi.duplicate(activeId);
+      const inputs = inputsFromForm(form);
+      const created = await monteCarloApi.create({
+        ...inputs,
+        name: copyName,
+        description: form.description || undefined,
+      });
       setScenarios((prev) => [created, ...prev]);
-      loadScenario(created);
-      toast.success('Scenario duplicated.');
+      setActiveId(created.id);
+      setForm((prev) => ({ ...prev, name: copyName }));
+      toast.success('Saved as new scenario.');
     } catch (err) {
-      logger.error('Duplicate failed:', err);
-      showErrorToast(err, 'Could not duplicate scenario.');
+      logger.error('Save as failed:', err);
+      showErrorToast(err, 'Could not save as new scenario.');
     }
   };
 
@@ -1218,30 +1238,77 @@ export function MonteCarloReport() {
             <Button onClick={run} disabled={isRunning}>
               {isRunning ? 'Running…' : 'Run simulation'}
             </Button>
-            <Button
-              variant={savedFlash ? 'primary' : 'outline'}
-              onClick={save}
-              disabled={savedFlash}
-              className={[
-                // "Save changes" is the longest label; keep that width fixed
-                // so the button doesn't reflow when it shows "Saved!".
-                'min-w-[8.25rem] justify-center',
-                savedFlash
-                  ? '!bg-green-600 hover:!bg-green-600 !border-green-600 !text-white !opacity-100'
-                  : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-            >
-              {savedFlash
-                ? 'Saved!'
-                : activeId
-                  ? 'Save changes'
-                  : 'Save scenario'}
-            </Button>
-            {activeId && (
-              <Button variant="outline" onClick={duplicateScenario}>
-                Duplicate
+            {activeId ? (
+              <div ref={saveMenuRef} className="relative inline-flex">
+                <Button
+                  variant={savedFlash ? 'primary' : 'outline'}
+                  onClick={save}
+                  disabled={savedFlash}
+                  className={[
+                    // "Save changes" is the longest label; keep that width fixed
+                    // so the button doesn't reflow when it shows "Saved!".
+                    'min-w-[8.25rem] justify-center rounded-r-none',
+                    savedFlash
+                      ? '!bg-green-600 hover:!bg-green-600 !border-green-600 !text-white !opacity-100'
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  {savedFlash ? 'Saved!' : 'Save changes'}
+                </Button>
+                <Button
+                  variant={savedFlash ? 'primary' : 'outline'}
+                  onClick={() => setSaveMenuOpen((v) => !v)}
+                  disabled={savedFlash}
+                  aria-haspopup="menu"
+                  aria-expanded={saveMenuOpen}
+                  aria-label="More save options"
+                  className={[
+                    'rounded-l-none border-l-0 px-2',
+                    savedFlash
+                      ? '!bg-green-600 hover:!bg-green-600 !border-green-600 !text-white !opacity-100'
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <ChevronDownIcon className="h-4 w-4" />
+                </Button>
+                {saveMenuOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-50"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setSaveMenuOpen(false);
+                        void saveAs();
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md"
+                    >
+                      Save as new...
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Button
+                variant={savedFlash ? 'primary' : 'outline'}
+                onClick={save}
+                disabled={savedFlash}
+                className={[
+                  'min-w-[8.25rem] justify-center',
+                  savedFlash
+                    ? '!bg-green-600 hover:!bg-green-600 !border-green-600 !text-white !opacity-100'
+                    : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                {savedFlash ? 'Saved!' : 'Save scenario'}
               </Button>
             )}
             {activeId && (

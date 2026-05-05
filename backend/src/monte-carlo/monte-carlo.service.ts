@@ -213,52 +213,6 @@ export class MonteCarloService {
     await this.scenariosRepository.remove(scenario);
   }
 
-  async duplicate(userId: string, id: string): Promise<MonteCarloScenario> {
-    const source = await this.findOne(userId, id);
-    const copyName = `Copy of ${source.name}`.slice(0, 255);
-    const scenario = this.scenariosRepository.create({
-      userId,
-      name: copyName,
-      description: source.description,
-      accountIds: [...source.accountIds],
-      startingValue: source.startingValue,
-      useCurrentBalance: source.useCurrentBalance,
-      yearsToRetirement: source.yearsToRetirement,
-      annualContribution: source.annualContribution,
-      contributionGrowthRate: source.contributionGrowthRate,
-      yearsInRetirement: source.yearsInRetirement,
-      annualWithdrawal: source.annualWithdrawal,
-      expectedReturn: source.expectedReturn,
-      volatility: source.volatility,
-      inflationRate: source.inflationRate,
-      showRealValues: source.showRealValues,
-      useHistoricalReturns: source.useHistoricalReturns,
-      simulationCount: source.simulationCount,
-      targetValue: source.targetValue,
-      randomSeed: source.randomSeed,
-      isFavourite: false,
-      lastRunAt: null,
-    });
-    const saved = await this.scenariosRepository.save(scenario);
-    const sourceFlows = source.cashFlows ?? [];
-    if (sourceFlows.length > 0) {
-      const rows = sourceFlows.map((cf, idx) =>
-        this.cashFlowsRepository.create({
-          scenarioId: saved.id,
-          name: cf.name,
-          amount: cf.amount,
-          flowType: cf.flowType,
-          startYear: cf.startYear,
-          endYear: cf.endYear ?? null,
-          inflationAdjust: cf.inflationAdjust,
-          sortOrder: idx,
-        }),
-      );
-      await this.cashFlowsRepository.save(rows);
-    }
-    return this.findOne(userId, saved.id);
-  }
-
   async runSaved(userId: string, id: string): Promise<SimulationResult> {
     const scenario = await this.findOne(userId, id);
 

@@ -171,13 +171,6 @@ export const monteCarloApi = {
     await apiClient.delete(`/monte-carlo/scenarios/${id}`);
   },
 
-  duplicate: async (id: string): Promise<MonteCarloScenario> => {
-    const r = await apiClient.post<MonteCarloScenario>(
-      `/monte-carlo/scenarios/${id}/duplicate`,
-    );
-    return r.data;
-  },
-
   runSaved: async (id: string): Promise<SimulationResult> => {
     const r = await apiClient.post<SimulationResult>(
       `/monte-carlo/scenarios/${id}/run`,
