@@ -596,6 +596,7 @@ export function MonteCarloReport() {
     };
     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
     const lines = [
+      escape('Portfolio Value Percentiles by Year'),
       header.map(escape).join(','),
       ...tableRows.map((row) =>
         [
@@ -609,6 +610,24 @@ export function MonteCarloReport() {
         ].join(','),
       ),
     ];
+    if (result.performanceSummary) {
+      const summaryRows = buildPerformanceSummaryRows(result.performanceSummary);
+      lines.push('');
+      lines.push(escape('Performance Summary'));
+      lines.push(PERFORMANCE_SUMMARY_HEADERS.map(escape).join(','));
+      for (const row of summaryRows) {
+        lines.push(
+          [
+            escape(row.label),
+            escape(formatSummaryValue(row.band.p10, row.format, formatCurrency)),
+            escape(formatSummaryValue(row.band.p25, row.format, formatCurrency)),
+            escape(formatSummaryValue(row.band.p50, row.format, formatCurrency)),
+            escape(formatSummaryValue(row.band.p75, row.format, formatCurrency)),
+            escape(formatSummaryValue(row.band.p90, row.format, formatCurrency)),
+          ].join(','),
+        );
+      }
+    }
     const blob = new Blob(['﻿' + lines.join('\n')], {
       type: 'text/csv;charset=utf-8;',
     });
@@ -620,7 +639,7 @@ export function MonteCarloReport() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [result, tableRows, form.name]);
+  }, [result, tableRows, form.name, formatCurrency]);
 
   const handleExportPdf = useCallback(async () => {
     if (!result) return;
@@ -670,30 +689,51 @@ export function MonteCarloReport() {
       // the table — the chart container stays mounted offscreen so the
       // ResponsiveContainer has real dimensions for html2canvas to capture.
       chartContainer: chartRef.current,
-      tableData: {
-        headers: ['Year', '10%', '25%', 'Median', '75%', '90%', 'Events'],
-        rows: tableRows.map((r) => [
-          r.year,
-          formatCurrency(r.p10),
-          formatCurrency(r.p25),
-          formatCurrency(r.p50),
-          formatCurrency(r.p75),
-          formatCurrency(r.p90),
-          r.events
-            .map((e) => {
-              const prefix =
-                e.flowType === 'ONE_TIME'
-                  ? ''
-                  : e.role === 'start'
-                    ? 'Starts: '
-                    : 'Ends: ';
-              return `${prefix}${e.name} (${e.income ? '+' : ''}${formatCurrency(
-                e.amount,
-              )}${e.flowType === 'RECURRING' ? '/yr' : ''})`;
-            })
-            .join('; '),
-        ]),
-      },
+      additionalTables: [
+        ...(result.performanceSummary
+          ? [
+              {
+                title: 'Performance Summary',
+                headers: PERFORMANCE_SUMMARY_HEADERS,
+                rows: buildPerformanceSummaryRows(result.performanceSummary).map(
+                  (row) => [
+                    row.label,
+                    formatSummaryValue(row.band.p10, row.format, formatCurrency),
+                    formatSummaryValue(row.band.p25, row.format, formatCurrency),
+                    formatSummaryValue(row.band.p50, row.format, formatCurrency),
+                    formatSummaryValue(row.band.p75, row.format, formatCurrency),
+                    formatSummaryValue(row.band.p90, row.format, formatCurrency),
+                  ],
+                ),
+              },
+            ]
+          : []),
+        {
+          title: 'Portfolio Value Percentiles by Year',
+          headers: ['Year', '10%', '25%', 'Median', '75%', '90%', 'Events'],
+          rows: tableRows.map((r) => [
+            r.year,
+            formatCurrency(r.p10),
+            formatCurrency(r.p25),
+            formatCurrency(r.p50),
+            formatCurrency(r.p75),
+            formatCurrency(r.p90),
+            r.events
+              .map((e) => {
+                const prefix =
+                  e.flowType === 'ONE_TIME'
+                    ? ''
+                    : e.role === 'start'
+                      ? 'Starts: '
+                      : 'Ends: ';
+                return `${prefix}${e.name} (${e.income ? '+' : ''}${formatCurrency(
+                  e.amount,
+                )}${e.flowType === 'RECURRING' ? '/yr' : ''})`;
+              })
+              .join('; '),
+          ]),
+        },
+      ],
       filename: `monte-carlo-${(form.name || 'scenario').toLowerCase().replace(/\s+/g, '-')}`,
     });
   }, [
@@ -1678,14 +1718,8 @@ type SummaryRow = {
   format: 'currency' | 'percent' | 'ratio';
 };
 
-function PerformanceSummaryTable({
-  summary,
-  formatCurrency,
-}: {
-  summary: PerformanceSummary;
-  formatCurrency: (v: number) => string;
-}) {
-  const rows: SummaryRow[] = [
+function buildPerformanceSummaryRows(summary: PerformanceSummary): SummaryRow[] {
+  return [
     {
       label: 'Time Weighted Rate of Return (nominal)',
       description:
@@ -1757,13 +1791,38 @@ function PerformanceSummaryTable({
       format: 'percent',
     },
   ];
+}
 
-  const formatValue = (v: number, kind: SummaryRow['format']): string => {
-    if (!Number.isFinite(v)) return '—';
-    if (kind === 'currency') return formatCurrency(v);
-    if (kind === 'percent') return `${(v * 100).toFixed(2)}%`;
-    return v.toFixed(2);
-  };
+function formatSummaryValue(
+  v: number,
+  kind: SummaryRow['format'],
+  formatCurrency: (v: number) => string,
+): string {
+  if (!Number.isFinite(v)) return '—';
+  if (kind === 'currency') return formatCurrency(v);
+  if (kind === 'percent') return `${(v * 100).toFixed(2)}%`;
+  return v.toFixed(2);
+}
+
+const PERFORMANCE_SUMMARY_HEADERS = [
+  'Summary Statistics',
+  '10th Percentile',
+  '25th Percentile',
+  '50th Percentile',
+  '75th Percentile',
+  '90th Percentile',
+];
+
+function PerformanceSummaryTable({
+  summary,
+  formatCurrency,
+}: {
+  summary: PerformanceSummary;
+  formatCurrency: (v: number) => string;
+}) {
+  const rows = buildPerformanceSummaryRows(summary);
+  const formatValue = (v: number, kind: SummaryRow['format']): string =>
+    formatSummaryValue(v, kind, formatCurrency);
 
   return (
     <div className="overflow-x-auto">

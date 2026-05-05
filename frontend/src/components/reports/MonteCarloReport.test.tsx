@@ -525,7 +525,14 @@ describe('MonteCarloReport', () => {
       });
       expect(exportToPdf).toHaveBeenCalled();
       const args = (exportToPdf as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(args.tableData.headers).toContain('Events');
+      // Both tables are passed as additional sections, with the
+      // Performance Summary preceding the year-by-year percentile table.
+      expect(args.additionalTables).toHaveLength(2);
+      expect(args.additionalTables[0].title).toBe('Performance Summary');
+      expect(args.additionalTables[1].title).toBe(
+        'Portfolio Value Percentiles by Year',
+      );
+      expect(args.additionalTables[1].headers).toContain('Events');
       expect(args.summaryCards.length).toBe(4);
     });
   });
@@ -1272,7 +1279,11 @@ describe('MonteCarloReport', () => {
         fireEvent.click(pdfOption);
       });
       const args = (exportToPdf as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      const events = args.tableData.rows
+      const yearlyTable = args.additionalTables.find(
+        (t: { title?: string }) =>
+          t.title === 'Portfolio Value Percentiles by Year',
+      );
+      const events = yearlyTable.rows
         .map((r: string[]) => r[r.length - 1])
         .join('\n');
       expect(events).toMatch(/Starts: Pension/);
