@@ -70,6 +70,27 @@ export type MonteCarloScenarioUpdateInput = Partial<MonteCarloScenarioCreateInpu
   isFavourite?: boolean;
 };
 
+export interface PercentileBand {
+  p10: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  p90: number;
+}
+
+export interface PerformanceSummary {
+  twrNominal: PercentileBand;
+  twrReal: PercentileBand;
+  endBalanceNominal: PercentileBand;
+  endBalanceReal: PercentileBand;
+  meanReturnNominal: PercentileBand;
+  annualizedVolatility: PercentileBand;
+  maxDrawdown: PercentileBand;
+  maxDrawdownExcludingCashflows: PercentileBand;
+  safeWithdrawalRate: PercentileBand;
+  perpetualWithdrawalRate: PercentileBand;
+}
+
 export interface SimulationResult {
   yearLabels: string[];
   percentiles: {
@@ -87,6 +108,7 @@ export interface SimulationResult {
     stdev: number;
     depletionRate: number;
   };
+  performanceSummary: PerformanceSummary;
   successRate: number | null;
   inputsSnapshot: Record<string, unknown>;
   realValues: boolean;

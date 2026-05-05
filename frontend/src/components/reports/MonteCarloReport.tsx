@@ -18,6 +18,7 @@ import {
   monteCarloApi,
   MonteCarloScenario,
   MonteCarloScenarioInputs,
+  PerformanceSummary,
   SimulationResult,
   AccountHoldingStats,
   CashFlow,
@@ -40,6 +41,8 @@ import { NumericInput } from '@/components/ui/NumericInput';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { ChevronDownIcon } from '@heroicons/react/20/solid';
 import { createLogger } from '@/lib/logger';
 
 interface BrokerageAccount {
@@ -119,6 +122,13 @@ export function MonteCarloReport() {
   useEffect(() => {
     if (activeId && result) setCachedResult(activeId, result);
   }, [activeId, result]);
+  // Collapse the input form whenever a result exists so the simulation
+  // output is visible without scrolling. Re-expands when result is cleared
+  // (e.g. New scenario, or loading a scenario without a cached result).
+  const [inputsCollapsed, setInputsCollapsed] = useState(false);
+  useEffect(() => {
+    setInputsCollapsed(Boolean(result));
+  }, [result]);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [holdingStats, setHoldingStats] = useState<AccountHoldingStats[] | null>(null);
   const [holdingStatsLoading, setHoldingStatsLoading] = useState(false);
@@ -744,7 +754,58 @@ export function MonteCarloReport() {
 
       {/* Right: form + results */}
       <section className="space-y-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+          <div className="flex items-center justify-between gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="min-w-0 flex-1">
+              {inputsCollapsed ? (
+                <div className="flex flex-col min-w-0">
+                  <div className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+                    {form.name || 'Untitled scenario'}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                    <span>Start: {formatCurrency(form.startingValue)}</span>
+                    <span>
+                      {form.yearsToRetirement}y contrib /{' '}
+                      {form.yearsInRetirement}y withdrawal
+                    </span>
+                    <span>
+                      {form.useHistoricalReturns
+                        ? 'Historical returns'
+                        : `${(form.expectedReturn * 100).toFixed(1)}% return, ${(form.volatility * 100).toFixed(1)}% vol`}
+                    </span>
+                    <span>{form.simulationCount.toLocaleString()} runs</span>
+                  </div>
+                </div>
+              ) : (
+                <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Scenario inputs
+                </h2>
+              )}
+            </div>
+            {inputsCollapsed && (
+              <Button
+                onClick={run}
+                disabled={isRunning || form.accountIds.length === 0}
+                variant="primary"
+              >
+                {isRunning ? 'Running…' : 'Run again'}
+              </Button>
+            )}
+            <button
+              type="button"
+              onClick={() => setInputsCollapsed((v) => !v)}
+              aria-expanded={!inputsCollapsed}
+              aria-controls="mc-inputs-body"
+              className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {inputsCollapsed ? 'Edit inputs' : 'Hide inputs'}
+              <ChevronDownIcon
+                className={`h-4 w-4 transition-transform ${inputsCollapsed ? '' : 'rotate-180'}`}
+              />
+            </button>
+          </div>
+          {!inputsCollapsed && (
+            <div id="mc-inputs-body" className="p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1131,6 +1192,8 @@ export function MonteCarloReport() {
               </Button>
             )}
           </div>
+            </div>
+          )}
         </div>
 
         {result && (
@@ -1296,14 +1359,38 @@ export function MonteCarloReport() {
                         undefined && (
                         <ReferenceLine
                           x={result.yearLabels[form.yearsToRetirement - 1]}
-                          stroke="#6b7280"
-                          strokeDasharray="4 4"
-                          strokeWidth={1.5}
+                          stroke="#d97706"
+                          strokeDasharray="8 4"
+                          strokeWidth={2.5}
                           label={{
-                            value: 'Withdrawal phase →',
-                            position: 'insideTopRight',
-                            fill: '#6b7280',
-                            fontSize: 11,
+                            // Arrow always points back to the divider line.
+                            // Right-half divider -> label on left side ->
+                            // arrow points right toward the line. Left-half
+                            // divider -> label on right side -> arrow points
+                            // left toward the line.
+                            value:
+                              form.yearsToRetirement /
+                                result.yearLabels.length >
+                              0.5
+                                ? 'Withdrawal phase →'
+                                : '← Withdrawal phase',
+                            // Recharts anchors the label text at the named
+                            // position and the text flows away from that
+                            // anchor, so 'insideTopRight' anchors on the
+                            // right of the line and the text extends LEFT,
+                            // and vice versa. When the divider sits in the
+                            // right half of the chart we want the text on
+                            // the left of the line (so it doesn't overflow
+                            // the right edge), which means insideTopRight.
+                            position:
+                              form.yearsToRetirement /
+                                result.yearLabels.length >
+                              0.5
+                                ? 'insideTopRight'
+                                : 'insideTopLeft',
+                            fill: '#d97706',
+                            fontSize: 12,
+                            fontWeight: 600,
                           }}
                         />
                       )}
@@ -1355,6 +1442,18 @@ export function MonteCarloReport() {
                 </div>
               )}
             </div>
+
+            {result.performanceSummary && (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                  Performance Summary
+                </h3>
+                <PerformanceSummaryTable
+                  summary={result.performanceSummary}
+                  formatCurrency={formatCurrency}
+                />
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -1563,6 +1662,147 @@ function ResultsTable({
                     ))}
                   </div>
                 )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+type SummaryRow = {
+  label: string;
+  description: string;
+  band: PerformanceSummary[keyof PerformanceSummary];
+  format: 'currency' | 'percent' | 'ratio';
+};
+
+function PerformanceSummaryTable({
+  summary,
+  formatCurrency,
+}: {
+  summary: PerformanceSummary;
+  formatCurrency: (v: number) => string;
+}) {
+  const rows: SummaryRow[] = [
+    {
+      label: 'Time Weighted Rate of Return (nominal)',
+      description:
+        'Geometric mean of the simulated annual returns. Ignores cash flows and is reported in nominal terms (not adjusted for inflation).',
+      band: summary.twrNominal,
+      format: 'percent',
+    },
+    {
+      label: 'Time Weighted Rate of Return (real)',
+      description:
+        'Geometric mean of the simulated annual returns, adjusted for inflation so the result is in today’s purchasing power.',
+      band: summary.twrReal,
+      format: 'percent',
+    },
+    {
+      label: 'Portfolio End Balance (nominal)',
+      description:
+        'Final portfolio value at the end of the simulation horizon, in future-dollar (nominal) terms.',
+      band: summary.endBalanceNominal,
+      format: 'currency',
+    },
+    {
+      label: 'Portfolio End Balance (real)',
+      description:
+        'Final portfolio value discounted back to today’s purchasing power using the inflation rate.',
+      band: summary.endBalanceReal,
+      format: 'currency',
+    },
+    {
+      label: 'Annual Mean Return (nominal)',
+      description:
+        'Arithmetic average of the simulated annual returns. Always greater than or equal to the time-weighted return when volatility is non-zero.',
+      band: summary.meanReturnNominal,
+      format: 'percent',
+    },
+    {
+      label: 'Annualized Volatility',
+      description:
+        'Standard deviation of the simulated annual returns — a measure of how much returns vary year-to-year.',
+      band: summary.annualizedVolatility,
+      format: 'percent',
+    },
+    {
+      label: 'Maximum Drawdown',
+      description:
+        'Largest peak-to-trough drop in portfolio value during the simulation, including the effect of contributions and withdrawals.',
+      band: summary.maxDrawdown,
+      format: 'percent',
+    },
+    {
+      label: 'Maximum Drawdown Excluding Cashflows',
+      description:
+        'Largest peak-to-trough drop driven purely by investment returns, ignoring contributions and withdrawals.',
+      band: summary.maxDrawdownExcludingCashflows,
+      format: 'percent',
+    },
+    {
+      label: 'Safe Withdrawal Rate',
+      description:
+        'Largest constant inflation-adjusted withdrawal, expressed as a percentage of the starting balance, that exactly depletes the portfolio at the end of the horizon.',
+      band: summary.safeWithdrawalRate,
+      format: 'percent',
+    },
+    {
+      label: 'Perpetual Withdrawal Rate',
+      description:
+        'Largest constant inflation-adjusted withdrawal, as a percentage of the starting balance, that preserves the real value of the portfolio at the end of the horizon.',
+      band: summary.perpetualWithdrawalRate,
+      format: 'percent',
+    },
+  ];
+
+  const formatValue = (v: number, kind: SummaryRow['format']): string => {
+    if (!Number.isFinite(v)) return '—';
+    if (kind === 'currency') return formatCurrency(v);
+    if (kind === 'percent') return `${(v * 100).toFixed(2)}%`;
+    return v.toFixed(2);
+  };
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-xs">
+        <thead className="bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400">
+          <tr>
+            <th className="px-3 py-2 text-left font-medium">
+              Summary Statistics
+            </th>
+            <th className="px-3 py-2 text-right font-medium">10th Percentile</th>
+            <th className="px-3 py-2 text-right font-medium">25th Percentile</th>
+            <th className="px-3 py-2 text-right font-semibold text-gray-700 dark:text-gray-200 bg-blue-50 dark:bg-blue-900/30">
+              50th Percentile
+            </th>
+            <th className="px-3 py-2 text-right font-medium">75th Percentile</th>
+            <th className="px-3 py-2 text-right font-medium">90th Percentile</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          {rows.map((row) => (
+            <tr key={row.label}>
+              <td className="px-3 py-1.5 text-gray-900 dark:text-gray-100">
+                {row.label}
+                <InfoTooltip text={row.description} />
+              </td>
+              <td className="px-3 py-1.5 text-right tabular-nums">
+                {formatValue(row.band.p10, row.format)}
+              </td>
+              <td className="px-3 py-1.5 text-right tabular-nums">
+                {formatValue(row.band.p25, row.format)}
+              </td>
+              <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-gray-900 dark:text-gray-100 bg-blue-50 dark:bg-blue-900/30">
+                {formatValue(row.band.p50, row.format)}
+              </td>
+              <td className="px-3 py-1.5 text-right tabular-nums">
+                {formatValue(row.band.p75, row.format)}
+              </td>
+              <td className="px-3 py-1.5 text-right tabular-nums">
+                {formatValue(row.band.p90, row.format)}
               </td>
             </tr>
           ))}

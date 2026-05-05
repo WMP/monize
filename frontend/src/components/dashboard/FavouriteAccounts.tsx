@@ -6,6 +6,7 @@ import { Account } from '@/types/account';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { accountsApi } from '@/lib/accounts';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 
 function getOrdinal(day: number): string {
   const suffix =
@@ -188,25 +189,15 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
                     (account.statementDueDay || account.statementSettlementDay) && (
                     <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {account.statementDueDay && (
-                        <span className="flex items-center gap-0.5">
+                        <span className="flex items-center">
                           Due: {getOrdinal(account.statementDueDay)}
-                          <span
-                            className="hidden sm:inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 text-[10px] cursor-help"
-                            title="The day of each month when your credit card payment is due"
-                          >
-                            ?
-                          </span>
+                          <InfoTooltip text="The day of each month when your credit card payment is due" />
                         </span>
                       )}
                       {account.statementSettlementDay && (
-                        <span className="flex items-center gap-0.5">
+                        <span className="flex items-center">
                           Settlement: {getOrdinal(account.statementSettlementDay)}
-                          <span
-                            className="hidden sm:inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 text-[10px] cursor-help"
-                            title="The last day of the billing cycle. Transactions posted on or before this day appear on the current statement."
-                          >
-                            ?
-                          </span>
+                          <InfoTooltip text="The last day of the billing cycle. Transactions posted on or before this day appear on the current statement." />
                         </span>
                       )}
                     </div>

@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import {
   FinalDistributionStats,
+  PercentileBand,
+  PerformanceSummary,
   SimulationPercentiles,
   SimulationResult,
 } from "./dto/simulation-result.dto";
@@ -71,8 +73,43 @@ export class MonteCarloSimulationService {
     let aboveTarget = 0;
     const finalBalances = new Float64Array(sims);
 
+    // Per-simulation performance metrics. We sort each of these arrays at the
+    // end and pull p10/p25/p50/p75/p90 to form the PerformanceSummary.
+    const twrNomArr = new Float64Array(sims);
+    const twrRealArr = new Float64Array(sims);
+    const endBalNomArr = new Float64Array(sims);
+    const endBalRealArr = new Float64Array(sims);
+    const meanRetArr = new Float64Array(sims);
+    const volArr = new Float64Array(sims);
+    const mddArr = new Float64Array(sims);
+    const mddNoCFArr = new Float64Array(sims);
+    const swrArr = new Float64Array(sims);
+    const pwrArr = new Float64Array(sims);
+
+    const inflation = params.inflationRate;
+    const inflationFactorN = Math.pow(1 + inflation, totalYears);
+    // Floor for cumulative-return divisions so a single catastrophic year
+    // can't blow up SWR/PWR/TWR with infinities; the simulated portfolio
+    // value already saturates at 0 so this only affects derived statistics.
+    const EPS = 1e-12;
+
     for (let s = 0; s < sims; s++) {
       let value = params.startingValue;
+      let valueExclCF = params.startingValue;
+      let peakWithCF = params.startingValue;
+      let peakExclCF = params.startingValue;
+      let mddWithCF = 0;
+      let mddExclCF = 0;
+      let sumR = 0;
+      let sumR2 = 0;
+      let sumLog1R = 0;
+      // P_t = prod_{s=1..t}(1+r_s); used for SWR / PWR closed forms.
+      let cumProd = 1;
+      // S = sum_{t=1..N} (1+i)^{t-1} / P_{t-1}
+      // Withdrawals are taken at the start of each year (before that year's
+      // return), so the relevant product is P_{t-1} — the cumulative product
+      // BEFORE applying that year's return.
+      let invSum = 0;
       let pathDepleted = false;
 
       for (let t = 1; t <= totalYears; t++) {
@@ -87,13 +124,13 @@ export class MonteCarloSimulationService {
           ? params.annualContribution *
             Math.pow(1 + params.contributionGrowthRate, t - 1)
           : -params.annualWithdrawal *
-            Math.pow(1 + params.inflationRate, yearsSinceDrawdownStart);
+            Math.pow(1 + inflation, yearsSinceDrawdownStart);
 
         // Layer in any user-defined one-time / recurring cash flows.
         const extraCashFlow = sumExtraCashFlows(
           t,
           totalYears,
-          params.inflationRate,
+          inflation,
           params.cashFlows,
         );
         const desiredCashFlow = baseCashFlow + extraCashFlow;
@@ -109,13 +146,38 @@ export class MonteCarloSimulationService {
         // for a withdrawal, the path couldn't fund the full withdrawal.
         if (cashFlow > desiredCashFlow) pathDepleted = true;
 
+        // Accumulate inverse-product sum BEFORE updating cumProd so we use
+        // P_{t-1} (1 for t=1).
+        invSum += Math.pow(1 + inflation, t - 1) / Math.max(cumProd, EPS);
+
         const r = params.expectedReturn + params.volatility * normal();
-        value = (value + cashFlow) * (1 + r);
+        const oneR = 1 + r;
+        cumProd *= Math.max(oneR, EPS);
+
+        sumR += r;
+        sumR2 += r * r;
+        sumLog1R += Math.log(Math.max(oneR, EPS));
+
+        value = (value + cashFlow) * oneR;
         if (value < 0) value = 0;
+
+        valueExclCF = valueExclCF * oneR;
+        if (valueExclCF < 0) valueExclCF = 0;
+
+        if (value > peakWithCF) peakWithCF = value;
+        if (peakWithCF > 0) {
+          const dd = value / peakWithCF - 1;
+          if (dd < mddWithCF) mddWithCF = dd;
+        }
+        if (valueExclCF > peakExclCF) peakExclCF = valueExclCF;
+        if (peakExclCF > 0) {
+          const dd = valueExclCF / peakExclCF - 1;
+          if (dd < mddExclCF) mddExclCF = dd;
+        }
 
         let reported = value;
         if (params.showRealValues) {
-          reported = value / Math.pow(1 + params.inflationRate, t);
+          reported = value / Math.pow(1 + inflation, t);
         }
         columns[t - 1][s] = reported;
       }
@@ -126,25 +188,82 @@ export class MonteCarloSimulationService {
       // against the deflated final balance regardless of the showRealValues
       // display toggle. Otherwise nominal runs over a long horizon would
       // always beat any reasonable target and report 100% success.
-      const realFinal = value / Math.pow(1 + params.inflationRate, totalYears);
+      const realFinal = value / inflationFactorN;
       if (params.targetValue != null && realFinal >= params.targetValue) {
         aboveTarget++;
+      }
+
+      const N = totalYears;
+      const meanR = sumR / N;
+      const variance =
+        N > 1 ? Math.max(0, (sumR2 - N * meanR * meanR) / (N - 1)) : 0;
+      const vol = Math.sqrt(variance);
+      const twrNom = Math.exp(sumLog1R / N) - 1;
+
+      endBalNomArr[s] = value;
+      endBalRealArr[s] = realFinal;
+      meanRetArr[s] = meanR;
+      volArr[s] = vol;
+      twrNomArr[s] = twrNom;
+      twrRealArr[s] = (1 + twrNom) / (1 + inflation) - 1;
+      mddArr[s] = mddWithCF;
+      mddNoCFArr[s] = mddExclCF;
+      // Closed-form SWR/PWR: max constant inflation-adjusted withdrawal as a
+      // fraction of the starting balance, given this path's return sequence.
+      // SWR depletes the portfolio exactly at year N; PWR keeps the real
+      // ending balance equal to the starting balance.
+      if (invSum > 0) {
+        const swr = 1 / invSum;
+        swrArr[s] = swr > 0 ? swr : 0;
+        const pwr = swr - inflationFactorN / (Math.max(cumProd, EPS) * invSum);
+        pwrArr[s] = pwr > 0 ? pwr : 0;
+      } else {
+        swrArr[s] = 0;
+        pwrArr[s] = 0;
       }
     }
 
     const percentiles = this.computePercentiles(columns);
     const finalDistribution = this.computeFinalStats(finalBalances, depleted);
     const successRate = params.targetValue == null ? null : aboveTarget / sims;
+    const performanceSummary: PerformanceSummary = {
+      twrNominal: this.toBand(twrNomArr),
+      twrReal: this.toBand(twrRealArr),
+      endBalanceNominal: this.toBand(endBalNomArr),
+      endBalanceReal: this.toBand(endBalRealArr),
+      meanReturnNominal: this.toBand(meanRetArr),
+      annualizedVolatility: this.toBand(volArr),
+      maxDrawdown: this.toBand(mddArr),
+      maxDrawdownExcludingCashflows: this.toBand(mddNoCFArr),
+      safeWithdrawalRate: this.toBand(swrArr),
+      perpetualWithdrawalRate: this.toBand(pwrArr),
+    };
 
     return {
       yearLabels: this.makeYearLabels(totalYears),
       percentiles,
       finalDistribution,
+      performanceSummary,
       successRate,
       realValues: params.showRealValues,
       inputsSnapshot: { ...params },
       ranAt: new Date().toISOString(),
     };
+  }
+
+  private toBand(values: Float64Array): PercentileBand {
+    const sorted = Float64Array.from(values).sort();
+    return {
+      p10: this.quantile(sorted, 0.1),
+      p25: this.quantile(sorted, 0.25),
+      p50: this.quantile(sorted, 0.5),
+      p75: this.quantile(sorted, 0.75),
+      p90: this.quantile(sorted, 0.9),
+    };
+  }
+
+  private emptyBand(): PercentileBand {
+    return { p10: 0, p25: 0, p50: 0, p75: 0, p90: 0 };
   }
 
   private emptyResult(params: SimulationParams): SimulationResult {
@@ -158,6 +277,32 @@ export class MonteCarloSimulationService {
         median: params.startingValue,
         stdev: 0,
         depletionRate: 0,
+      },
+      performanceSummary: {
+        twrNominal: this.emptyBand(),
+        twrReal: this.emptyBand(),
+        endBalanceNominal: {
+          ...this.emptyBand(),
+          p10: params.startingValue,
+          p25: params.startingValue,
+          p50: params.startingValue,
+          p75: params.startingValue,
+          p90: params.startingValue,
+        },
+        endBalanceReal: {
+          ...this.emptyBand(),
+          p10: params.startingValue,
+          p25: params.startingValue,
+          p50: params.startingValue,
+          p75: params.startingValue,
+          p90: params.startingValue,
+        },
+        meanReturnNominal: this.emptyBand(),
+        annualizedVolatility: this.emptyBand(),
+        maxDrawdown: this.emptyBand(),
+        maxDrawdownExcludingCashflows: this.emptyBand(),
+        safeWithdrawalRate: this.emptyBand(),
+        perpetualWithdrawalRate: this.emptyBand(),
       },
       successRate:
         params.targetValue == null
