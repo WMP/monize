@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
 import {
   MonteCarloScenario,
@@ -37,13 +38,41 @@ export function CompareMetricTable({
   onRemove,
   onRerun,
 }: CompareMetricTableProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // CSS `position: sticky` on table cells is unreliable on some mobile
+  // browsers (Chrome/Firefox on Android) — column headers visibly bleed
+  // through the sticky Metric column on horizontal scroll regardless of
+  // z-index, border-collapse, or stacking-context tweaks. Emulate it by
+  // tracking scrollLeft and translating every element marked with
+  // data-pin-left directly.
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    const apply = () => {
+      const x = wrapper.scrollLeft;
+      const transform = x === 0 ? '' : `translateX(${x}px)`;
+      const pinned = wrapper.querySelectorAll<HTMLElement>('[data-pin-left]');
+      pinned.forEach((el) => {
+        el.style.transform = transform;
+      });
+    };
+    apply();
+    wrapper.addEventListener('scroll', apply, { passive: true });
+    return () => wrapper.removeEventListener('scroll', apply);
+  }, [columns.length]);
+
   return (
-    <div className="overflow-x-auto isolate bg-white dark:bg-gray-800 rounded-lg shadow">
+    <div
+      ref={wrapperRef}
+      className="overflow-x-auto isolate bg-white dark:bg-gray-800 rounded-lg shadow"
+    >
       <table className="min-w-full text-sm border-separate border-spacing-0">
         <thead>
           <tr>
             <th
-              className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-900/40 px-3 py-3 text-left font-medium text-gray-500 dark:text-gray-400 min-w-[220px]"
+              data-pin-left=""
+              className="relative z-30 bg-gray-50 dark:bg-gray-900/40 px-3 py-3 text-left font-medium text-gray-500 dark:text-gray-400 min-w-[220px] will-change-transform"
               scope="col"
             >
               Metric
@@ -159,7 +188,10 @@ function GroupBlock({
           colSpan={columns.length + 1}
           className="bg-gray-100 dark:bg-gray-900/60 px-0 py-0 text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300"
         >
-          <span className="sticky left-0 inline-block px-3 py-2">
+          <span
+            data-pin-left=""
+            className="inline-block px-3 py-2 will-change-transform"
+          >
             {group.label}
           </span>
         </td>
@@ -174,8 +206,9 @@ function GroupBlock({
           }
         >
           <th
+            data-pin-left=""
             scope="row"
-            className="sticky left-0 z-10 bg-white dark:bg-gray-800 px-3 py-1.5 text-left font-normal text-gray-700 dark:text-gray-300"
+            className="relative z-10 bg-white dark:bg-gray-800 px-3 py-1.5 text-left font-normal text-gray-700 dark:text-gray-300 will-change-transform"
           >
             {row.label}
           </th>
