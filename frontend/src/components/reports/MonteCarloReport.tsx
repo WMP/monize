@@ -1774,10 +1774,19 @@ function PerformanceSummaryTable({
             <tr key={row.label}>
               <td className="px-3 py-1.5 text-gray-900 dark:text-gray-100">
                 <span
+                  // Native title is the fallback / accessibility hook; the
+                  // styled popover below renders on desktop only via the
+                  // md: breakpoint and the group-hover named scope.
                   title={row.description}
-                  className="md:cursor-help md:underline md:decoration-dotted md:decoration-gray-400 md:underline-offset-4"
+                  className="relative inline-block group/tip md:cursor-help md:underline md:decoration-dotted md:decoration-gray-400 md:underline-offset-4"
                 >
                   {row.label}
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none hidden md:group-hover/tip:block absolute z-20 left-0 top-full mt-1 w-64 whitespace-normal rounded-md bg-gray-900 dark:bg-gray-700 px-2.5 py-2 text-xs font-normal leading-snug text-white shadow-lg"
+                  >
+                    {row.description}
+                  </span>
                 </span>
               </td>
               <td className="px-3 py-1.5 text-right tabular-nums">
