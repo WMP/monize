@@ -632,7 +632,7 @@ export function MonteCarloReport() {
       // ResponsiveContainer has real dimensions for html2canvas to capture.
       chartContainer: chartRef.current,
       tableData: {
-        headers: ['Year', '10%', '25%', 'Median', '75%', '90%'],
+        headers: ['Year', '10%', '25%', 'Median', '75%', '90%', 'Events'],
         rows: tableRows.map((r) => [
           r.year,
           formatCurrency(r.p10),
@@ -640,6 +640,16 @@ export function MonteCarloReport() {
           formatCurrency(r.p50),
           formatCurrency(r.p75),
           formatCurrency(r.p90),
+          r.events
+            .map(
+              (e) =>
+                `${e.role === 'start' ? 'Starts' : 'Ends'}: ${e.name} (${
+                  e.income ? '+' : ''
+                }${formatCurrency(e.amount)}${
+                  e.flowType === 'RECURRING' ? '/yr' : ''
+                })`,
+            )
+            .join('; '),
         ]),
       },
       filename: `monte-carlo-${(form.name || 'scenario').toLowerCase().replace(/\s+/g, '-')}`,
