@@ -41,8 +41,8 @@ import { NumericInput } from '@/components/ui/NumericInput';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { ChevronDownIcon } from '@heroicons/react/20/solid';
-import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import { createLogger } from '@/lib/logger';
 
 interface BrokerageAccount {
@@ -1784,26 +1784,8 @@ function PerformanceSummaryTable({
           {rows.map((row) => (
             <tr key={row.label}>
               <td className="px-3 py-1.5 text-gray-900 dark:text-gray-100">
-                <span className="inline-flex items-center gap-1.5">
-                  {row.label}
-                  <span
-                    // Native title is the accessibility fallback. The
-                    // styled popover below only renders on desktop -- the
-                    // icon itself is hidden on mobile since touch can't
-                    // trigger hover tooltips reliably.
-                    title={row.description}
-                    className="relative hidden md:inline-flex group/tip text-gray-400 hover:text-blue-500 transition-colors cursor-help"
-                    aria-label={row.description}
-                  >
-                    <QuestionMarkCircleIcon className="h-4 w-4" />
-                    <span
-                      role="tooltip"
-                      className="pointer-events-none hidden md:group-hover/tip:block absolute z-20 left-0 top-full mt-1 w-64 whitespace-normal rounded-md bg-gray-900 dark:bg-gray-700 px-2.5 py-2 text-xs font-normal leading-snug text-white shadow-lg"
-                    >
-                      {row.description}
-                    </span>
-                  </span>
-                </span>
+                {row.label}
+                <InfoTooltip text={row.description} />
               </td>
               <td className="px-3 py-1.5 text-right tabular-nums">
                 {formatValue(row.band.p10, row.format)}

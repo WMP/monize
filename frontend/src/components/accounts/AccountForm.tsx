@@ -9,6 +9,7 @@ import { useState, useEffect, useMemo, MutableRefObject } from 'react';
 import { Input } from '@/components/ui/Input';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Select } from '@/components/ui/Select';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import toast from 'react-hot-toast';
 import { Account, PaymentFrequency } from '@/types/account';
 import { Category } from '@/types/category';
@@ -523,16 +524,11 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
             />
 
             <div>
-              <div className="flex items-center gap-1 mb-1">
+              <div className="flex items-center mb-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Settlement Date (day of month)
                 </label>
-                <span
-                  className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs cursor-help"
-                  title="The settlement date (also called the closing date) is the last day of the billing cycle. Transactions posted on or before this day will appear on the current statement."
-                >
-                  ?
-                </span>
+                <InfoTooltip text="The settlement date (also called the closing date) is the last day of the billing cycle. Transactions posted on or before this day will appear on the current statement." />
               </div>
               <input
                 type="number"

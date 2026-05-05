@@ -89,7 +89,8 @@ describe('PortfolioSummaryCard', () => {
 
   it('renders info tooltip icons for all metrics', () => {
     const { container } = render(<PortfolioSummaryCard summary={makeSummary()} isLoading={false} />);
-    const tooltipIcons = container.querySelectorAll('svg.cursor-help');
+    // Each InfoTooltip renders its question-mark icon inside a span.cursor-help.
+    const tooltipIcons = container.querySelectorAll('span.cursor-help svg');
     // Holdings Value, Cash Balance, Total Gain, Net Invested, Cost Basis, Gain/Loss, Simple Return, TWR, CAGR
     expect(tooltipIcons.length).toBe(9);
   });
