@@ -123,13 +123,26 @@ export function MonteCarloReport() {
   useEffect(() => {
     if (activeId && result) setCachedResult(activeId, result);
   }, [activeId, result]);
-  // Collapse the input form whenever a result exists so the simulation
-  // output is visible without scrolling. Re-expands when result is cleared
-  // (e.g. New scenario, or loading a scenario without a cached result).
-  const [inputsCollapsed, setInputsCollapsed] = useState(false);
+  // The inputs panel collapses automatically after a fresh simulation run
+  // (so the output is visible without scrolling) and after that respects the
+  // user's manual toggle, persisted across scenario switches and reloads.
+  const INPUTS_COLLAPSED_KEY = 'monize-monte-carlo-inputs-collapsed';
+  const [inputsCollapsed, setInputsCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(INPUTS_COLLAPSED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
   useEffect(() => {
-    setInputsCollapsed(Boolean(result));
-  }, [result]);
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(INPUTS_COLLAPSED_KEY, inputsCollapsed ? '1' : '0');
+    } catch {
+      /* ignore quota / privacy errors */
+    }
+  }, [inputsCollapsed]);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [holdingStats, setHoldingStats] = useState<AccountHoldingStats[] | null>(null);
   const [holdingStatsLoading, setHoldingStatsLoading] = useState(false);
@@ -429,6 +442,10 @@ export function MonteCarloReport() {
       // re-simulate the saved (stale) values.
       const r = await monteCarloApi.run(inputsFromForm(form));
       setResult(r);
+      // After a fresh run, surface the results without scrolling. Subsequent
+      // toggles by the user are persisted, so this only fires when they
+      // actively click Run.
+      setInputsCollapsed(true);
     } catch (err) {
       logger.error('Simulation failed:', err);
       showErrorToast(err, 'Simulation failed. Check inputs and try again.');
