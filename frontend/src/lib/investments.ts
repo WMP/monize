@@ -333,7 +333,12 @@ export const investmentsApi = {
     }>;
     lastUpdated: string;
   }> => {
-    const response = await apiClient.post('/securities/prices/refresh');
+    // The default 10s axios timeout is too short for this endpoint -- it
+    // hits Yahoo Finance once per active security and can easily exceed
+    // 10s for larger catalogs. Give it 2 minutes.
+    const response = await apiClient.post('/securities/prices/refresh', undefined, {
+      timeout: 120_000,
+    });
     invalidateCache('investments:');
     return response.data;
   },
@@ -352,7 +357,11 @@ export const investmentsApi = {
     }>;
     lastUpdated: string;
   }> => {
-    const response = await apiClient.post('/securities/prices/refresh/selected', { securityIds });
+    const response = await apiClient.post(
+      '/securities/prices/refresh/selected',
+      { securityIds },
+      { timeout: 120_000 },
+    );
     invalidateCache('investments:');
     return response.data;
   },
