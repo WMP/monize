@@ -62,10 +62,6 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
   const [intradayFallbackNotice, setIntradayFallbackNotice] = useState<{
     skipped: string[];
   } | null>(null);
-  // Set when the intraday request itself fails (network/server error). We fall
-  // back to the daily endpoint and surface a banner so the user knows why the
-  // chart resolution is coarser than the button label suggests.
-  const [intradayError, setIntradayError] = useState<string | null>(null);
   const [persistedRange, setPersistedRange] = useLocalStorage<string>(
     RANGE_STORAGE_KEY,
     '1y',
@@ -155,7 +151,6 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
       setIsLoading(true);
       setIntradayUnavailable(null);
       setIntradayFallbackNotice(null);
-      setIntradayError(null);
       try {
         if (isIntraday) {
           const cacheKey = buildIntradayCacheKey(
@@ -187,12 +182,8 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
           } catch (error) {
             logger.error('Failed to load intraday data:', error);
             if (loadSeqRef.current !== seq) return;
-            // Intraday fetch failed -- fall back to the daily-snapshot endpoint
-            // so the user still sees a chart, and surface the error so they
-            // understand why the resolution is coarser than requested.
-            setIntradayError(
-              "Couldn't load intraday data. Showing daily snapshots instead.",
-            );
+            // Intraday fetch failed -- silently fall back to the
+            // daily-snapshot endpoint so the user still sees a chart.
             await loadDailyOrMonthly(seq);
             return;
           }
@@ -208,19 +199,6 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
             skippedSymbols: response.skippedSymbols,
             failedSymbols: response.failedSymbols ?? [],
           });
-
-          // Provider-level fetch failures: rendering the partial intraday
-          // series would understate the portfolio value (the failed holdings
-          // would silently contribute 0). Fall back to daily snapshots and
-          // surface the error -- same path as a request-level failure.
-          if (response.failedSymbols && response.failedSymbols.length > 0) {
-            const list = response.failedSymbols.join(', ');
-            setIntradayError(
-              `Couldn't load intraday prices for ${list}. Showing daily snapshots instead.`,
-            );
-            await loadDailyOrMonthly(seq);
-            return;
-          }
 
           if (response.fallbackToDaily) {
             // Some holdings (typically MSN-tracked) lack intraday support.
@@ -291,12 +269,17 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
   }, [isIntraday, loadData]);
 
   const summary = useMemo(() => {
-    if (chartPoints.length === 0) return { current: 0, change: 0, changePercent: 0 };
+    if (chartPoints.length === 0) {
+      return { highest: 0, lowest: 0, change: 0, changePercent: 0 };
+    }
+    const values = chartPoints.map((p) => p.Value);
+    const highest = Math.max(...values);
+    const lowest = Math.min(...values);
     const current = chartPoints[chartPoints.length - 1]?.Value || 0;
     const initial = chartPoints[0]?.Value || 0;
     const change = current - initial;
     const changePercent = initial !== 0 ? (change / Math.abs(initial)) * 100 : 0;
-    return { current, change, changePercent };
+    return { highest, lowest, change, changePercent };
   }, [chartPoints]);
 
   const xAxisTicks = useMemo(() => {
@@ -409,11 +392,17 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
         <div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Current Value</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">Highest Value</div>
           <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
-            {fmtVal(summary.current)}
+            {fmtVal(summary.highest)}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">Lowest Value</div>
+          <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
+            {fmtVal(summary.lowest)}
           </div>
         </div>
         <div>
@@ -433,18 +422,6 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
           </div>
         </div>
       </div>
-
-      {/* Intraday error banner: shown when the intraday request failed and we
-          fell back to the daily-snapshot endpoint. */}
-      {intradayError && (
-        <div
-          role="alert"
-          data-testid="intraday-error-banner"
-          className="mb-4 rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300"
-        >
-          {intradayError}
-        </div>
-      )}
 
       {/* Chart */}
       {intradayUnavailable ? (

@@ -157,6 +157,21 @@ const RANGE_TO_YAHOO: Record<
   "1m": { interval: "15m", range: "1mo" },
 };
 
+// Per-range fallback chain attempted (per holding, in order) when the
+// primary interval fails. Yahoo's 1m endpoint for 1D is noticeably less
+// reliable than 5m -- when a holding fails at 1m, the same security at
+// 5m typically works fine. Coarser bars are still a much better chart
+// than no chart at all, and we use them silently rather than surfacing
+// a banner.
+const RANGE_FALLBACKS: Record<
+  IntradayRangeKey,
+  Array<{ interval: IntradayInterval; range: IntradayRange }>
+> = {
+  "1d": [{ interval: "5m", range: "1d" }],
+  "1w": [],
+  "1m": [],
+};
+
 const INTRADAY_CACHE_TTL_MS = 60_000;
 
 @Injectable()
@@ -843,25 +858,33 @@ export class PortfolioService {
     const intradayHoldings = activeHoldings.filter((h) => h.hasIntraday);
     const seriesBySecurity = new Map<string, IntradayPoint[]>();
     const failedSymbols: string[] = [];
+    const intervalCandidates = [yahooParams, ...RANGE_FALLBACKS[range]];
     await Promise.all(
       intradayHoldings.map(async (h) => {
-        try {
-          const points = await this.yahooFinanceService.fetchIntradaySeries(
-            h.symbol,
-            h.exchange,
-            yahooParams,
-          );
-          if (points && points.length > 0) {
-            seriesBySecurity.set(h.securityId, points);
-          } else {
-            failedSymbols.push(h.symbol);
+        // Try the primary interval first, then any range-specific
+        // fallbacks (e.g. 1m -> 5m for 1D). The first non-empty series
+        // wins; silently degrade to coarser bars rather than treating it
+        // as a failure when the primary interval is spotty.
+        let points: IntradayPoint[] | null = null;
+        for (const params of intervalCandidates) {
+          try {
+            points = await this.yahooFinanceService.fetchIntradaySeries(
+              h.symbol,
+              h.exchange,
+              params,
+            );
+            if (points && points.length > 0) break;
+          } catch (error) {
+            this.logger.warn(
+              `Failed to fetch intraday series for ${h.symbol} at ${params.interval}: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
           }
-        } catch (error) {
-          this.logger.warn(
-            `Failed to fetch intraday series for ${h.symbol}: ${
-              error instanceof Error ? error.message : String(error)
-            }`,
-          );
+        }
+        if (points && points.length > 0) {
+          seriesBySecurity.set(h.securityId, points);
+        } else {
           failedSymbols.push(h.symbol);
         }
       }),
