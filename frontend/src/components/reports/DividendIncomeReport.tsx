@@ -50,6 +50,15 @@ interface SecurityIncome {
   total: number;
 }
 
+interface DailyIncome {
+  date: string;
+  label: string;
+  dividends: number;
+  interest: number;
+  capitalGains: number;
+  total: number;
+}
+
 const SERIES_COLORS: Record<SeriesKey, { positive: string; negative: string; label: string }> = {
   dividends: { positive: '#22c55e', negative: '#22c55e', label: 'Dividends' },
   interest: { positive: '#3b82f6', negative: '#3b82f6', label: 'Interest' },
@@ -67,7 +76,7 @@ export function DividendIncomeReport() {
   const [selectedSecurityId, setSelectedSecurityId] = useState<string>('');
   const { dateRange, setDateRange, resolvedRange, isValid } = useDateRange({ defaultRange: '1y', alignment: 'month' });
   const [isLoading, setIsLoading] = useState(true);
-  const [viewType, setViewType] = useState<'monthly' | 'bySecurity'>('monthly');
+  const [viewType, setViewType] = useState<'monthly' | 'daily' | 'bySecurity'>('monthly');
   const [monthlyDisplay, setMonthlyDisplay] = useState<'chart' | 'table'>('chart');
   const [visibleSeries, setVisibleSeries] = useState<Record<SeriesKey, boolean>>({
     dividends: true,
@@ -321,6 +330,49 @@ export function DividendIncomeReport() {
     return Array.from(monthMap.values()).sort((a, b) => a.month.localeCompare(b.month));
   }, [filteredTransactions, filteredCapitalGains, dateRange, resolvedRange, getTxAmount, convertCapitalGain, convertFromAccountCurrency]);
 
+  // Daily view: groups transaction-level income (DIVIDEND, INTEREST, CAPITAL_GAIN)
+  // by calendar day. Monthly capital-gain entries are not available at daily
+  // granularity and are intentionally excluded here.
+  const dailyData = useMemo((): DailyIncome[] => {
+    const dayMap = new Map<string, DailyIncome>();
+
+    const getOrCreateBucket = (txDate: Date): DailyIncome => {
+      const key = format(txDate, 'yyyy-MM-dd');
+      let bucket = dayMap.get(key);
+      if (!bucket) {
+        bucket = {
+          date: key,
+          label: format(txDate, 'MMM d, yyyy'),
+          dividends: 0,
+          interest: 0,
+          capitalGains: 0,
+          total: 0,
+        };
+        dayMap.set(key, bucket);
+      }
+      return bucket;
+    };
+
+    filteredTransactions.forEach((tx) => {
+      const bucket = getOrCreateBucket(parseLocalDate(tx.transactionDate));
+      const contribution = getTxAmount(tx);
+      switch (tx.action) {
+        case 'DIVIDEND':
+          bucket.dividends += contribution;
+          break;
+        case 'INTEREST':
+          bucket.interest += contribution;
+          break;
+        case 'CAPITAL_GAIN':
+          bucket.capitalGains += contribution;
+          break;
+      }
+      bucket.total += contribution;
+    });
+
+    return Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [filteredTransactions, getTxAmount]);
+
   const securityData = useMemo((): SecurityIncome[] => {
     const securityMap = new Map<string, SecurityIncome>();
 
@@ -392,7 +444,8 @@ export function DividendIncomeReport() {
   // filter them; the currency code goes into a dedicated column.
   const isTableView =
     viewType === 'bySecurity' ||
-    (viewType === 'monthly' && monthlyDisplay === 'table');
+    (viewType === 'monthly' && monthlyDisplay === 'table') ||
+    (viewType === 'daily' && monthlyDisplay === 'table');
 
   const round4 = (n: number) => Math.round(n * 10000) / 10000;
 
@@ -424,6 +477,34 @@ export function DividendIncomeReport() {
         currencyCode,
       ]);
       exportToCsv(`${filenameBase}-by-security-${scope}`, headers, rows);
+      return;
+    }
+
+    if (viewType === 'daily') {
+      const headers: string[] = ['Date'];
+      if (visibleSeries.dividends) headers.push('Dividends');
+      if (visibleSeries.interest) headers.push('Interest');
+      if (visibleSeries.capitalGains) headers.push('Capital Gains');
+      headers.push('Total', 'Currency');
+      const rows = dailyData.map((row) => {
+        const out: (string | number)[] = [row.date];
+        let total = 0;
+        if (visibleSeries.dividends) {
+          out.push(round4(row.dividends));
+          total += row.dividends;
+        }
+        if (visibleSeries.interest) {
+          out.push(round4(row.interest));
+          total += row.interest;
+        }
+        if (visibleSeries.capitalGains) {
+          out.push(round4(row.capitalGains));
+          total += row.capitalGains;
+        }
+        out.push(round4(total), currencyCode);
+        return out;
+      });
+      exportToCsv(`${filenameBase}-daily-${scope}`, headers, rows);
       return;
     }
 
@@ -494,6 +575,54 @@ export function DividendIncomeReport() {
           fmtValue(totals.total),
         ],
       };
+    } else if (viewType === 'daily' && monthlyDisplay === 'table') {
+      const headers: string[] = ['Date'];
+      if (visibleSeries.dividends) headers.push('Dividends');
+      if (visibleSeries.interest) headers.push('Interest');
+      if (visibleSeries.capitalGains) headers.push('Capital Gains');
+      headers.push('Total');
+      const rows = dailyData.map((row) => {
+        const out: (string | number)[] = [row.label];
+        let rowTotal = 0;
+        if (visibleSeries.dividends) {
+          out.push(fmtValue(row.dividends));
+          rowTotal += row.dividends;
+        }
+        if (visibleSeries.interest) {
+          out.push(fmtValue(row.interest));
+          rowTotal += row.interest;
+        }
+        if (visibleSeries.capitalGains) {
+          out.push(fmtValue(row.capitalGains));
+          rowTotal += row.capitalGains;
+        }
+        out.push(fmtValue(rowTotal));
+        return out;
+      });
+      const dailyTotals = dailyData.reduce(
+        (acc, row) => ({
+          dividends: acc.dividends + row.dividends,
+          interest: acc.interest + row.interest,
+          capitalGains: acc.capitalGains + row.capitalGains,
+        }),
+        { dividends: 0, interest: 0, capitalGains: 0 },
+      );
+      const totalRow: (string | number)[] = ['Total'];
+      let grandTotal = 0;
+      if (visibleSeries.dividends) {
+        totalRow.push(fmtValue(dailyTotals.dividends));
+        grandTotal += dailyTotals.dividends;
+      }
+      if (visibleSeries.interest) {
+        totalRow.push(fmtValue(dailyTotals.interest));
+        grandTotal += dailyTotals.interest;
+      }
+      if (visibleSeries.capitalGains) {
+        totalRow.push(fmtValue(dailyTotals.capitalGains));
+        grandTotal += dailyTotals.capitalGains;
+      }
+      totalRow.push(fmtValue(grandTotal));
+      tableData = { headers, rows, totalRow };
     } else if (viewType === 'monthly' && monthlyDisplay === 'table') {
       const headers: string[] = ['Month', 'Start Value', 'End Value'];
       if (visibleSeries.dividends) headers.push('Dividends');
@@ -604,6 +733,8 @@ export function DividendIncomeReport() {
   // instead of being hidden inside a stack.
   const hasNegativeCapitalGains = monthlyData.some((m) => m.capitalGains < 0);
   const stackId = hasNegativeCapitalGains ? undefined : 'a';
+  const dailyHasNegativeCapitalGains = dailyData.some((d) => d.capitalGains < 0);
+  const dailyStackId = dailyHasNegativeCapitalGains ? undefined : 'a';
 
   return (
     <div className="space-y-6">
@@ -691,6 +822,16 @@ export function DividendIncomeReport() {
               Monthly
             </button>
             <button
+              onClick={() => setViewType('daily')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                viewType === 'daily'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              }`}
+            >
+              Daily
+            </button>
+            <button
               onClick={() => setViewType('bySecurity')}
               className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                 viewType === 'bySecurity'
@@ -706,8 +847,8 @@ export function DividendIncomeReport() {
             />
           </div>
         </div>
-        {/* Monthly view sub-controls: chart/table switch + series toggles */}
-        {viewType === 'monthly' && (
+        {/* Monthly/Daily view sub-controls: chart/table switch + series toggles */}
+        {(viewType === 'monthly' || viewType === 'daily') && (
           <div className="flex flex-wrap gap-4 mt-3 items-center">
             <div
               className="inline-flex rounded-md border border-gray-200 dark:border-gray-600 overflow-hidden text-sm"
@@ -921,6 +1062,155 @@ export function DividendIncomeReport() {
               </tbody>
             </table>
           </div>
+        </div>
+      ) : viewType === 'daily' && monthlyDisplay === 'chart' ? (
+        /* Daily Chart */
+        <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            Daily Gains, Dividends & Interest
+          </h3>
+          {dailyData.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+              No daily transaction data for this period.
+            </p>
+          ) : (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <BarChart data={dailyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={formatCurrencyAxis} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  <ReferenceLine y={0} stroke="#9ca3af" />
+                  {visibleSeries.dividends && (
+                    <Bar
+                      dataKey="dividends"
+                      stackId={dailyStackId}
+                      fill={SERIES_COLORS.dividends.positive}
+                      name="Dividends"
+                    />
+                  )}
+                  {visibleSeries.interest && (
+                    <Bar
+                      dataKey="interest"
+                      stackId={dailyStackId}
+                      fill={SERIES_COLORS.interest.positive}
+                      name="Interest"
+                    />
+                  )}
+                  {visibleSeries.capitalGains && (
+                    <Bar
+                      dataKey="capitalGains"
+                      stackId={dailyStackId}
+                      fill={SERIES_COLORS.capitalGains.positive}
+                      name="Capital Gains"
+                    >
+                      {dailyData.map((entry) => (
+                        <Cell
+                          key={entry.date}
+                          fill={
+                            entry.capitalGains < 0
+                              ? SERIES_COLORS.capitalGains.negative
+                              : SERIES_COLORS.capitalGains.positive
+                          }
+                        />
+                      ))}
+                    </Bar>
+                  )}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      ) : viewType === 'daily' ? (
+        /* Daily Table */
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Daily Gains, Dividends & Interest
+            </h3>
+          </div>
+          {dailyData.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+              No daily transaction data for this period.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-900/50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                      Date
+                    </th>
+                    {visibleSeries.dividends && (
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                        Dividends
+                      </th>
+                    )}
+                    {visibleSeries.interest && (
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                        Interest
+                      </th>
+                    )}
+                    {visibleSeries.capitalGains && (
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                        Capital Gains
+                      </th>
+                    )}
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {dailyData.map((row) => {
+                    const rowTotal =
+                      (visibleSeries.dividends ? row.dividends : 0) +
+                      (visibleSeries.interest ? row.interest : 0) +
+                      (visibleSeries.capitalGains ? row.capitalGains : 0);
+                    return (
+                      <tr key={row.date} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {row.label}
+                        </td>
+                        {visibleSeries.dividends && (
+                          <td className="px-4 py-3 text-right text-sm text-green-600 dark:text-green-400">
+                            {row.dividends !== 0 ? fmtValue(row.dividends) : '-'}
+                          </td>
+                        )}
+                        {visibleSeries.interest && (
+                          <td className="px-4 py-3 text-right text-sm text-blue-600 dark:text-blue-400">
+                            {row.interest !== 0 ? fmtValue(row.interest) : '-'}
+                          </td>
+                        )}
+                        {visibleSeries.capitalGains && (
+                          <td
+                            className={`px-4 py-3 text-right text-sm ${
+                              row.capitalGains < 0
+                                ? 'text-red-600 dark:text-red-400'
+                                : 'text-purple-600 dark:text-purple-400'
+                            }`}
+                          >
+                            {row.capitalGains !== 0 ? fmtValue(row.capitalGains) : '-'}
+                          </td>
+                        )}
+                        <td
+                          className={`px-4 py-3 text-right text-sm font-medium ${
+                            rowTotal < 0
+                              ? 'text-red-600 dark:text-red-400'
+                              : 'text-gray-900 dark:text-gray-100'
+                          }`}
+                        >
+                          {rowTotal !== 0 ? fmtValue(rowTotal) : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       ) : (
         /* By Security Table */
