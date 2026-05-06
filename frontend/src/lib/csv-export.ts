@@ -4,7 +4,10 @@
 
 function escapeCsvValue(value: string | number | boolean | null | undefined): string {
   if (value === null || value === undefined) return '';
-  let str = String(value);
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  let str = value;
   // Prevent CSV formula injection: prefix dangerous leading characters with a tab
   if (str.length > 0 && /^[=+\-@\t\r]/.test(str)) {
     str = `\t${str}`;
