@@ -76,9 +76,11 @@ export function useDateRange(options: UseDateRangeOptions): UseDateRangeReturn {
           start = format(subYears(now, 1), 'yyyy-MM-dd');
           break;
         case '2y':
-          start = isMonth
-            ? format(startOfMonth(subMonths(now, 23)), 'yyyy-MM-dd')
-            : format(subYears(now, 2), 'yyyy-MM-dd');
+          // Rolling 2 years = last 730 days. Same shape regardless of
+          // alignment: month alignment on the start was producing partial
+          // history at the leading edge (e.g. mid-month -> chart only
+          // showed 23.5 months back).
+          start = format(subDays(now, 730), 'yyyy-MM-dd');
           break;
         case '5y':
           start = isMonth

@@ -109,15 +109,12 @@ describe('useDateRange', () => {
     expect(result.current.resolvedRange.end).toBe('2025-01-15');
   });
 
-  it('resolves 2y range with month alignment: start snaps to month start, end stays at today', () => {
+  it('resolves 2y range as a rolling 730 days regardless of alignment', () => {
     const { result } = renderHook(() =>
       useDateRange({ defaultRange: '2y', alignment: 'month' })
     );
-    // Month alignment snaps the START to a month boundary so monthly
-    // aggregation lines up cleanly. The END is always today, even on
-    // long-range presets, because data only exists up to today and we
-    // don't want a flat-line tail through the rest of the month.
-    expect(result.current.resolvedRange.start).toBe('2023-02-01');
+    // 2025-01-15 minus 730 days = 2023-01-16 (2024 is a leap year).
+    expect(result.current.resolvedRange.start).toBe('2023-01-16');
     expect(result.current.resolvedRange.end).toBe('2025-01-15');
   });
 
