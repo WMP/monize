@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactElement } from 'react';
 import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('PortfolioValueChart');
@@ -136,4 +137,98 @@ export function computeTightYAxisDomain(
     return [Math.max(0, niceMin), niceMax];
   }
   return [niceMin, Math.min(0, niceMax)];
+}
+
+/**
+ * Bubble-style "flag" callout pinned to a chart datapoint. Mirrors the
+ * Cash Flow Forecast min-balance bubble: a colored dot with a dashed
+ * connector up/down to a rounded label showing the value. Used to mark
+ * the highest and lowest points on portfolio-value charts.
+ *
+ * Uses an SVG <filter> with id "chartFlagShadow"; callers must include
+ * <ChartFlagShadowFilter /> (or the equivalent <defs>) inside the chart's
+ * SVG once per render. Recharts dot renderers must return an SVGElement,
+ * so this is a plain function rather than a React component.
+ */
+export interface FlagDotOptions {
+  cx: number;
+  cy: number;
+  index: number;
+  /** Color of dot/bubble (e.g. '#10b981' for highest, '#ef4444' for lowest). */
+  color: string;
+  /** Pre-formatted label text (caller chooses compact vs full). */
+  label: string;
+  /** True = bubble above the dot, false = below. */
+  above: boolean;
+}
+
+export function renderChartFlagDot({
+  cx,
+  cy,
+  index,
+  color,
+  label,
+  above,
+}: FlagDotOptions): ReactElement {
+  const labelWidth = label.length * 7 + 14;
+  const labelHeight = 22;
+  const arrowSize = 5;
+  const gap = 24;
+  const bubbleEdgeY = above ? cy - gap : cy + gap;
+  const bubbleTop = above
+    ? bubbleEdgeY - arrowSize - labelHeight
+    : bubbleEdgeY + arrowSize;
+  const arrowTipY = bubbleEdgeY;
+  const arrowBaseY = above
+    ? bubbleEdgeY - arrowSize
+    : bubbleEdgeY + arrowSize;
+  return (
+    <g key={`flag-${index}-${above ? 'hi' : 'lo'}`}>
+      <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={2} />
+      <line
+        x1={cx}
+        y1={above ? cy - 5 : cy + 5}
+        x2={cx}
+        y2={arrowTipY}
+        stroke={color}
+        strokeWidth={1.5}
+        strokeDasharray="3 2"
+      />
+      <rect
+        x={cx - labelWidth / 2}
+        y={bubbleTop}
+        width={labelWidth}
+        height={labelHeight}
+        rx={5}
+        fill={color}
+        filter="url(#chartFlagShadow)"
+      />
+      <polygon
+        points={`${cx - arrowSize},${arrowBaseY} ${cx + arrowSize},${arrowBaseY} ${cx},${arrowTipY}`}
+        fill={color}
+      />
+      <text
+        x={cx}
+        y={bubbleTop + labelHeight / 2}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill="#fff"
+        fontSize={11}
+        fontWeight={600}
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
+/** SVG <defs> block providing the drop-shadow filter the flag dots reference. */
+export function ChartFlagShadowFilter(): ReactElement {
+  return (
+    <defs>
+      <filter id="chartFlagShadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.3" />
+      </filter>
+    </defs>
+  );
 }

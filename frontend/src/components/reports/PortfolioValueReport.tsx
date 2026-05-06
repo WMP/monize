@@ -29,6 +29,8 @@ import {
   readIntradayCache,
   writeIntradayCache,
   computeTightYAxisDomain,
+  renderChartFlagDot,
+  ChartFlagShadowFilter,
 } from '@/components/investments/portfolio-chart-utils';
 
 const logger = createLogger('PortfolioValueReport');
@@ -307,6 +309,24 @@ export function PortfolioValueReport() {
     [chartPoints],
   );
 
+  // Index of the first point at the highest / lowest value, for the
+  // bubble callouts. Suppress when the series is flat.
+  const highestIndex = useMemo(
+    () =>
+      chartPoints.length === 0
+        ? -1
+        : chartPoints.findIndex((p) => p.Value === summary.highest),
+    [chartPoints, summary.highest],
+  );
+  const lowestIndex = useMemo(
+    () =>
+      chartPoints.length === 0
+        ? -1
+        : chartPoints.findIndex((p) => p.Value === summary.lowest),
+    [chartPoints, summary.lowest],
+  );
+  const showFlags = summary.highest !== summary.lowest;
+
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
     const accountLabel = selectedAccount
@@ -487,13 +507,14 @@ export function PortfolioValueReport() {
             }`}
           >
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <AreaChart data={chartPoints} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <AreaChart data={chartPoints} margin={{ top: 30, right: 30, left: 0, bottom: 30 }}>
                 <defs>
                   <linearGradient id="colorPortfolioValue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
+                <ChartFlagShadowFilter />
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
                   dataKey="name"
@@ -530,6 +551,27 @@ export function PortfolioValueReport() {
                   fillOpacity={1}
                   fill="url(#colorPortfolioValue)"
                   name="Portfolio Value"
+                  isAnimationActive={false}
+                  dot={(props: { cx?: number; cy?: number; index?: number }) => {
+                    const { cx, cy, index } = props;
+                    if (cx == null || cy == null || index == null) {
+                      return <circle cx={0} cy={0} r={0} fill="none" />;
+                    }
+                    const isHighest = showFlags && index === highestIndex;
+                    const isLowest = showFlags && index === lowestIndex;
+                    if (!isHighest && !isLowest) {
+                      return <circle key={`dot-${index}`} cx={cx} cy={cy} r={0} fill="none" />;
+                    }
+                    const value = isHighest ? summary.highest : summary.lowest;
+                    return renderChartFlagDot({
+                      cx,
+                      cy,
+                      index,
+                      color: isHighest ? '#10b981' : '#ef4444',
+                      label: Math.abs(value) >= 1000 ? fmtAxis(value) : fmtVal(value),
+                      above: isHighest,
+                    });
+                  }}
                 />
               </AreaChart>
             </ResponsiveContainer>
