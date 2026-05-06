@@ -1,6 +1,6 @@
 # Monize
 
-Personal finance management app (Microsoft Money replacement). NestJS backend, Next.js frontend, PostgreSQL database, all running in Docker.
+Personal finance management app (Microsoft Money replacement). NestJS backend, Next.js frontend, PostgreSQL database, all running in Docker/Kubernetes
 
 See `backend/CLAUDE.md`, `frontend/CLAUDE.md`, and `database/CLAUDE.md` for layer-specific details (commands, structure, conventions).
 
@@ -26,6 +26,7 @@ Everything runs in Docker: `docker compose -f docker-compose.dev.yml up`.
 - Many small files over few large files (200-400 lines typical, 800 max)
 - Organize by feature/domain, not by type
 - Always update `database/schema.sql` alongside any migration
+- Always create tests for any new functionality added
 
 ### Shared AI tools (AI Assistant + MCP server)
 - Every AI tool that reads or aggregates data must share its implementation between the AI Assistant (`backend/src/ai/query/tool-executor.service.ts`) and the MCP server (`backend/src/mcp/tools/*.tool.ts`).
