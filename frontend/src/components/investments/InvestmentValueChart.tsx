@@ -21,7 +21,7 @@ import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('InvestmentChart');
 
-const DAILY_RANGES = new Set(['1w', '1m', '3m', 'ytd', '1y']);
+const DAILY_RANGES = new Set(['1w', '1m', '3m', 'ytd', '1y', '2y']);
 
 interface InvestmentValueChartProps {
   accountIds?: string[];

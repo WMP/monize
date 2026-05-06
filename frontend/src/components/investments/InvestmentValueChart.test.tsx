@@ -3,6 +3,8 @@ import { render, screen, waitFor } from '@/test/render';
 import { InvestmentValueChart } from './InvestmentValueChart';
 import { netWorthApi } from '@/lib/net-worth';
 
+const dateRangeState = { dateRange: '1y', resolvedRange: { start: '2023-01-01', end: '2024-01-01' } };
+
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: any) => <div data-testid="responsive-container">{children}</div>,
   AreaChart: ({ children }: any) => <div data-testid="area-chart">{children}</div>,
@@ -30,9 +32,9 @@ vi.mock('@/hooks/useExchangeRates', () => ({
 
 vi.mock('@/hooks/useDateRange', () => ({
   useDateRange: () => ({
-    dateRange: '1y',
+    dateRange: dateRangeState.dateRange,
     setDateRange: vi.fn(),
-    resolvedRange: { start: '2023-01-01', end: '2024-01-01' },
+    resolvedRange: dateRangeState.resolvedRange,
     isValid: true,
   }),
 }));
@@ -67,6 +69,8 @@ vi.mock('@/components/ui/DateRangeSelector', () => ({
 describe('InvestmentValueChart', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    dateRangeState.dateRange = '1y';
+    dateRangeState.resolvedRange = { start: '2023-01-01', end: '2024-01-01' };
     // 1y is a daily range, so mock getInvestmentsDaily
     vi.mocked(netWorthApi.getInvestmentsDaily).mockResolvedValue([
       { date: '2023-06-01', value: 10000 },
@@ -167,5 +171,27 @@ describe('InvestmentValueChart', () => {
     await screen.findByText('Portfolio Value Over Time');
     expect(netWorthApi.getInvestmentsDaily).toHaveBeenCalled();
     expect(netWorthApi.getInvestmentsMonthly).not.toHaveBeenCalled();
+  });
+
+  it('uses daily API for 2y range (DAILY_RANGES)', async () => {
+    dateRangeState.dateRange = '2y';
+    dateRangeState.resolvedRange = { start: '2022-01-01', end: '2024-01-01' };
+    render(<InvestmentValueChart />);
+    await screen.findByText('Portfolio Value Over Time');
+    expect(netWorthApi.getInvestmentsDaily).toHaveBeenCalled();
+    expect(netWorthApi.getInvestmentsMonthly).not.toHaveBeenCalled();
+  });
+
+  it('uses monthly API for 5y range (not in DAILY_RANGES)', async () => {
+    dateRangeState.dateRange = '5y';
+    dateRangeState.resolvedRange = { start: '2019-01-01', end: '2024-01-01' };
+    vi.mocked(netWorthApi.getInvestmentsMonthly).mockResolvedValue([
+      { month: '2019-01-01', value: 1000 },
+      { month: '2024-01-01', value: 2000 },
+    ]);
+    render(<InvestmentValueChart />);
+    await screen.findByText('Portfolio Value Over Time');
+    expect(netWorthApi.getInvestmentsMonthly).toHaveBeenCalled();
+    expect(netWorthApi.getInvestmentsDaily).not.toHaveBeenCalled();
   });
 });
