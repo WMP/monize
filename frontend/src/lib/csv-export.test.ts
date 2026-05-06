@@ -97,4 +97,22 @@ describe('exportToCsv', () => {
       expect(text).toContain('true,42');
     });
   });
+
+  it('writes negative numbers as plain numeric values without tab or quotes', () => {
+    exportToCsv('out', ['A', 'B'], [[-100, -1.5]]);
+    const blobArg = (createObjectURL.mock.calls[0][0] as Blob);
+    return blobArg.text().then((text) => {
+      expect(text).toContain('-100,-1.5');
+      expect(text).not.toContain('"\t-100"');
+      expect(text).not.toContain('"-100"');
+    });
+  });
+
+  it('still applies formula-injection guard to string values starting with -', () => {
+    exportToCsv('out', ['F'], [['-1+cmd|run']]);
+    const blobArg = (createObjectURL.mock.calls[0][0] as Blob);
+    return blobArg.text().then((text) => {
+      expect(text).toContain('\t-1+cmd|run');
+    });
+  });
 });
