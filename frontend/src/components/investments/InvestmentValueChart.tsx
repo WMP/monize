@@ -206,7 +206,21 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
             currency: response.currency,
             fallbackToDaily: response.fallbackToDaily,
             skippedSymbols: response.skippedSymbols,
+            failedSymbols: response.failedSymbols ?? [],
           });
+
+          // Provider-level fetch failures: rendering the partial intraday
+          // series would understate the portfolio value (the failed holdings
+          // would silently contribute 0). Fall back to daily snapshots and
+          // surface the error -- same path as a request-level failure.
+          if (response.failedSymbols && response.failedSymbols.length > 0) {
+            const list = response.failedSymbols.join(', ');
+            setIntradayError(
+              `Couldn't load intraday prices for ${list}. Showing daily snapshots instead.`,
+            );
+            await loadDailyOrMonthly(seq);
+            return;
+          }
 
           if (response.fallbackToDaily) {
             // Some holdings (typically MSN-tracked) lack intraday support.

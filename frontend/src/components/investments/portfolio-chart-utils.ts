@@ -25,6 +25,7 @@ export interface IntradayCachePayload {
   currency: string;
   fallbackToDaily: boolean;
   skippedSymbols: string[];
+  failedSymbols: string[];
 }
 
 export function buildIntradayCacheKey(

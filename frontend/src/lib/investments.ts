@@ -67,6 +67,7 @@ export const investmentsApi = {
     range: '1d' | '1w' | '1m';
     fetchedAt: string;
     skippedSymbols: string[];
+    failedSymbols: string[];
     fallbackToDaily: boolean;
   }> => {
     const response = await apiClient.get('/portfolio/intraday-value', { params });

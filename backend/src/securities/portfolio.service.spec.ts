@@ -2791,5 +2791,64 @@ describe("PortfolioService", () => {
       expect(result.points).toHaveLength(2);
       expect(result.points[1].value).toBeCloseTo(10 * 100 * 1.4 + 50 * 90, 4);
     });
+
+    it("returns fallbackToDaily=true with failedSymbols when any intraday fetch fails", async () => {
+      // Repro: when one holding's intraday fetch threw and another's
+      // succeeded, the aggregate quietly omitted the failing holding's
+      // contribution -- producing a 1D total much lower than the 1W total
+      // that uses daily snapshots. Now we bail out and let the frontend
+      // fall back to daily for the whole series.
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+      holdingsRepository.find.mockResolvedValue([
+        mockHoldingAAPL,
+        mockHoldingVFV,
+      ]);
+
+      yahooFinanceService.fetchIntradaySeries.mockImplementation(
+        async (symbol: string) => {
+          if (symbol === "AAPL") {
+            return [
+              { timestamp: new Date("2026-05-06T13:30:00.000Z"), close: 100 },
+            ];
+          }
+          throw new Error("yahoo 500");
+        },
+      );
+
+      const result = await service.getIntradayValueSeries(userId, {
+        range: "1d",
+      });
+
+      expect(result.fallbackToDaily).toBe(true);
+      expect(result.failedSymbols).toEqual(["VFV.TO"]);
+      expect(result.points).toEqual([]);
+    });
+
+    it("returns fallbackToDaily=true with failedSymbols when a fetch returns no bars", async () => {
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+      holdingsRepository.find.mockResolvedValue([
+        mockHoldingAAPL,
+        mockHoldingVFV,
+      ]);
+
+      yahooFinanceService.fetchIntradaySeries.mockImplementation(
+        async (symbol: string) => {
+          if (symbol === "AAPL") {
+            return [
+              { timestamp: new Date("2026-05-06T13:30:00.000Z"), close: 100 },
+            ];
+          }
+          return null;
+        },
+      );
+
+      const result = await service.getIntradayValueSeries(userId, {
+        range: "1d",
+      });
+
+      expect(result.fallbackToDaily).toBe(true);
+      expect(result.failedSymbols).toEqual(["VFV.TO"]);
+      expect(result.points).toEqual([]);
+    });
   });
 });

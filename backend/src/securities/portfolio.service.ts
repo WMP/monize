@@ -830,6 +830,7 @@ export class PortfolioService {
         range,
         fetchedAt,
         skippedSymbols,
+        failedSymbols: [],
         fallbackToDaily,
       };
       this.intradayCache.set(cacheKey, {
@@ -841,6 +842,7 @@ export class PortfolioService {
 
     const intradayHoldings = activeHoldings.filter((h) => h.hasIntraday);
     const seriesBySecurity = new Map<string, IntradayPoint[]>();
+    const failedSymbols: string[] = [];
     await Promise.all(
       intradayHoldings.map(async (h) => {
         try {
@@ -851,6 +853,8 @@ export class PortfolioService {
           );
           if (points && points.length > 0) {
             seriesBySecurity.set(h.securityId, points);
+          } else {
+            failedSymbols.push(h.symbol);
           }
         } catch (error) {
           this.logger.warn(
@@ -858,11 +862,17 @@ export class PortfolioService {
               error instanceof Error ? error.message : String(error)
             }`,
           );
+          failedSymbols.push(h.symbol);
         }
       }),
     );
 
-    if (seriesBySecurity.size === 0) {
+    // If any holding's intraday fetch failed we cannot render an accurate
+    // aggregate -- the failed holdings would silently contribute 0 and the
+    // total would be materially lower than the actual portfolio value (the
+    // 1D-vs-1W discrepancy users have reported). Bail out and let the
+    // frontend use the daily-snapshot endpoint instead.
+    if (failedSymbols.length > 0) {
       const payload: IntradayValueResponse = {
         points: [],
         interval: yahooParams.interval,
@@ -870,7 +880,8 @@ export class PortfolioService {
         range,
         fetchedAt,
         skippedSymbols,
-        fallbackToDaily: false,
+        failedSymbols,
+        fallbackToDaily: true,
       };
       this.intradayCache.set(cacheKey, {
         expiresAt: now + INTRADAY_CACHE_TTL_MS,
@@ -939,8 +950,7 @@ export class PortfolioService {
         // unstarted series contributes 0 and the aggregate jumps up the
         // moment each one's first bar arrives — which is exactly the
         // "significant jump" the chart used to show on multi-account views.
-        const close =
-          cursors[i] < 0 ? src.closes[0] : src.closes[cursors[i]];
+        const close = cursors[i] < 0 ? src.closes[0] : src.closes[cursors[i]];
         const valueInDisplay = src.quantity * close * src.fxRate;
         totalCents += Math.round(valueInDisplay * 10000);
       }
@@ -957,6 +967,7 @@ export class PortfolioService {
       range,
       fetchedAt,
       skippedSymbols,
+      failedSymbols: [],
       fallbackToDaily: false,
     };
     this.intradayCache.set(cacheKey, {
