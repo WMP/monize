@@ -1516,24 +1516,30 @@ describe("NetWorthService", () => {
         defaultCurrency: "USD",
       });
 
-      dataSource.query.mockResolvedValueOnce([
-        {
-          month: "2024-01-01",
-          balance: 5000,
-          market_value: 8000,
-          account_id: "inv-1",
-          account_sub_type: "INVESTMENT_BROKERAGE",
-          currency_code: "USD",
-        },
-        {
-          month: "2024-01-01",
-          balance: 2000,
-          market_value: null,
-          account_id: "inv-cash",
-          account_sub_type: "INVESTMENT_CASH",
-          currency_code: "USD",
-        },
-      ]);
+      dataSource.query
+        .mockResolvedValueOnce([
+          {
+            month: "2024-01-01",
+            balance: 5000,
+            market_value: 8000,
+            account_id: "inv-1",
+            account_sub_type: "INVESTMENT_BROKERAGE",
+            currency_code: "USD",
+          },
+          {
+            month: "2024-01-01",
+            balance: 2000,
+            market_value: null,
+            account_id: "inv-cash",
+            account_sub_type: "INVESTMENT_CASH",
+            currency_code: "USD",
+          },
+        ])
+        // firstMonthRows lookup: account's first ever month is earlier than
+        // the snapshot, so no cost-basis adjustment kicks in.
+        .mockResolvedValueOnce([
+          { account_id: "inv-1", first_month: "2023-01-01" },
+        ]);
 
       const result = await service.getMonthlyInvestments("user-1");
 
@@ -1564,6 +1570,10 @@ describe("NetWorthService", () => {
             account_sub_type: "INVESTMENT_BROKERAGE",
             currency_code: "USD",
           },
+        ])
+        // firstMonthRows lookup: snapshot is not the account's first month
+        .mockResolvedValueOnce([
+          { account_id: "inv-1", first_month: "2023-01-01" },
         ]);
 
       const result = await service.getMonthlyInvestments(
@@ -1607,6 +1617,10 @@ describe("NetWorthService", () => {
             account_sub_type: "INVESTMENT_BROKERAGE",
             currency_code: "CAD",
           },
+        ])
+        // firstMonthRows lookup: snapshot is not the account's first month
+        .mockResolvedValueOnce([
+          { account_id: "cad-inv", first_month: "2023-01-01" },
         ])
         // exchange rates
         .mockResolvedValueOnce([
@@ -1724,6 +1738,10 @@ describe("NetWorthService", () => {
             account_sub_type: "INVESTMENT_CASH",
             currency_code: "USD",
           },
+        ])
+        // firstMonthRows lookup: snapshot is not the account's first month
+        .mockResolvedValueOnce([
+          { account_id: "inv-1", first_month: "2023-01-01" },
         ]);
 
       await service.getMonthlyInvestments("user-1", undefined, undefined, [
@@ -1769,21 +1787,220 @@ describe("NetWorthService", () => {
       mabRepository.count.mockResolvedValue(5);
       prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
 
-      dataSource.query.mockResolvedValueOnce([
-        {
-          month: "2024-01-01",
-          balance: 1500,
-          market_value: 20000,
-          account_id: "standalone-1",
-          account_type: AccountType.INVESTMENT,
-          account_sub_type: null,
-          currency_code: "USD",
-        },
-      ]);
+      dataSource.query
+        .mockResolvedValueOnce([
+          {
+            month: "2024-01-01",
+            balance: 1500,
+            market_value: 20000,
+            account_id: "standalone-1",
+            account_type: AccountType.INVESTMENT,
+            account_sub_type: null,
+            currency_code: "USD",
+          },
+        ])
+        // firstMonthRows lookup: snapshot is not the account's first month
+        .mockResolvedValueOnce([
+          { account_id: "standalone-1", first_month: "2023-01-01" },
+        ]);
 
       const result = await service.getMonthlyInvestments("user-1");
 
       expect(result[0].value).toBe(21500);
+    });
+
+    it("uses cost basis for first active month brokerage snapshot", async () => {
+      mabRepository.count.mockResolvedValue(5);
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+
+      dataSource.query
+        // snapshots
+        .mockResolvedValueOnce([
+          {
+            month: "2024-03-01",
+            balance: 0,
+            market_value: 11000,
+            account_id: "brokerage-new",
+            account_type: AccountType.INVESTMENT,
+            account_sub_type: "INVESTMENT_BROKERAGE",
+            currency_code: "USD",
+          },
+          {
+            month: "2024-04-01",
+            balance: 0,
+            market_value: 12000,
+            account_id: "brokerage-new",
+            account_type: AccountType.INVESTMENT,
+            account_sub_type: "INVESTMENT_BROKERAGE",
+            currency_code: "USD",
+          },
+        ])
+        // firstMonthRows: 2024-03-01 IS this account's first active month
+        .mockResolvedValueOnce([
+          { account_id: "brokerage-new", first_month: "2024-03-01" },
+        ])
+        // txRows: a buy and a sell in March
+        .mockResolvedValueOnce([
+          {
+            account_id: "brokerage-new",
+            action: "BUY",
+            quantity: 100,
+            price: 100,
+            transaction_date: "2024-03-05",
+            security_currency: "USD",
+          },
+          {
+            account_id: "brokerage-new",
+            action: "SELL",
+            quantity: 10,
+            price: 105,
+            transaction_date: "2024-03-20",
+            security_currency: "USD",
+          },
+        ]);
+
+      const result = await service.getMonthlyInvestments(
+        "user-1",
+        "2024-03-01",
+        "2024-04-30",
+      );
+
+      expect(result).toHaveLength(2);
+      // Cost basis for first month: 100*100 (BUY) - 10*105 (SELL) = 10000 - 1050 = 8950
+      // (replaces market_value of 11000)
+      expect(result[0]).toEqual({ month: "2024-03-01", value: 8950 });
+      // Second month uses market_value as before
+      expect(result[1]).toEqual({ month: "2024-04-01", value: 12000 });
+    });
+
+    it("does not adjust when snapshot month is after the account's first active month", async () => {
+      mabRepository.count.mockResolvedValue(5);
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+
+      dataSource.query
+        .mockResolvedValueOnce([
+          {
+            month: "2024-03-01",
+            balance: 0,
+            market_value: 11000,
+            account_id: "brokerage-existing",
+            account_type: AccountType.INVESTMENT,
+            account_sub_type: "INVESTMENT_BROKERAGE",
+            currency_code: "USD",
+          },
+        ])
+        // firstMonthRows: account opened earlier than the requested period
+        .mockResolvedValueOnce([
+          { account_id: "brokerage-existing", first_month: "2020-01-01" },
+        ]);
+
+      const result = await service.getMonthlyInvestments(
+        "user-1",
+        "2024-03-01",
+        "2024-03-31",
+      );
+
+      expect(result).toHaveLength(1);
+      // No adjustment: market_value used as-is
+      expect(result[0].value).toBe(11000);
+    });
+
+    it("includes cash balance alongside cost basis for standalone accounts in first active month", async () => {
+      mabRepository.count.mockResolvedValue(5);
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+
+      dataSource.query
+        .mockResolvedValueOnce([
+          {
+            month: "2024-03-01",
+            balance: 1500,
+            market_value: 20000,
+            account_id: "standalone-new",
+            account_type: AccountType.INVESTMENT,
+            account_sub_type: null,
+            currency_code: "USD",
+          },
+        ])
+        .mockResolvedValueOnce([
+          { account_id: "standalone-new", first_month: "2024-03-01" },
+        ])
+        .mockResolvedValueOnce([
+          {
+            account_id: "standalone-new",
+            action: "BUY",
+            quantity: 50,
+            price: 200,
+            transaction_date: "2024-03-10",
+            security_currency: "USD",
+          },
+        ]);
+
+      const result = await service.getMonthlyInvestments(
+        "user-1",
+        "2024-03-01",
+        "2024-03-31",
+      );
+
+      // Cost basis 50*200 = 10000, plus standalone cash balance 1500 = 11500
+      expect(result[0].value).toBe(11500);
+    });
+
+    it("converts first-month cost basis through security currency", async () => {
+      mabRepository.count.mockResolvedValue(5);
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+
+      dataSource.query
+        .mockResolvedValueOnce([
+          {
+            month: "2024-03-01",
+            balance: 0,
+            market_value: 9000,
+            account_id: "brokerage-cad",
+            account_type: AccountType.INVESTMENT,
+            account_sub_type: "INVESTMENT_BROKERAGE",
+            currency_code: "CAD",
+          },
+        ])
+        .mockResolvedValueOnce([
+          { account_id: "brokerage-cad", first_month: "2024-03-01" },
+        ])
+        .mockResolvedValueOnce([
+          {
+            account_id: "brokerage-cad",
+            action: "BUY",
+            quantity: 40,
+            price: 250,
+            transaction_date: "2024-03-15",
+            security_currency: "CAD",
+          },
+        ])
+        // exchange rates for cost-basis conversion (CAD -> USD)
+        .mockResolvedValueOnce([
+          {
+            from_currency: "CAD",
+            to_currency: "USD",
+            rate: 0.75,
+            rate_date: "2024-03-20",
+          },
+        ])
+        // exchange rates for main snapshot conversion
+        .mockResolvedValueOnce([
+          {
+            from_currency: "CAD",
+            to_currency: "USD",
+            rate: 0.75,
+            rate_date: "2024-03-20",
+          },
+        ]);
+
+      const result = await service.getMonthlyInvestments(
+        "user-1",
+        "2024-03-01",
+        "2024-03-31",
+      );
+
+      // 40 * 250 = 10000 CAD * 0.75 = 7500 USD
+      expect(result[0].value).toBe(7500);
     });
   });
 

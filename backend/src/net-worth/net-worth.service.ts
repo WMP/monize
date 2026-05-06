@@ -381,6 +381,21 @@ export class NetWorthService {
 
     if (snapshots.length === 0) return [];
 
+    // For the first active month of an account, the stored market_value is the
+    // month-end snapshot which silently absorbs any gains/losses on positions
+    // that were established earlier the same month -- skewing the chart's
+    // change column. Replace that first-month market_value with a cost-basis
+    // computed from the in-month brokerage transactions so the starting point
+    // reflects the actual net invested.
+    const firstMonthCostBasisInDefault =
+      await this.computeFirstActiveMonthCostBasis(
+        userId,
+        snapshots,
+        defaultCurrency,
+        start,
+        end,
+      );
+
     const currencies = new Set<string>();
     for (const s of snapshots) {
       if (s.currency_code !== defaultCurrency) {
@@ -404,32 +419,51 @@ export class NetWorthService {
         monthMap.set(monthKey, 0);
       }
 
-      let rawValue: number;
-      if (
-        s.account_sub_type === "INVESTMENT_BROKERAGE" &&
-        s.market_value != null
-      ) {
-        rawValue = Number(s.market_value);
-      } else if (
-        s.account_type === "INVESTMENT" &&
-        s.account_sub_type === null &&
-        s.market_value != null
-      ) {
-        rawValue = Number(s.market_value) + Number(s.balance);
+      const monthEnd = this.monthEndDate(monthKey);
+      const adjKey = `${s.account_id}:${monthKey}`;
+      const costBasisInDefault = firstMonthCostBasisInDefault.get(adjKey);
+
+      let convertedValue: number;
+      if (costBasisInDefault !== undefined) {
+        convertedValue = costBasisInDefault;
+        // Standalone investment accounts hold cash inside the same account, so
+        // include the month-end cash balance alongside the cost basis.
+        if (s.account_type === "INVESTMENT" && s.account_sub_type === null) {
+          convertedValue += this.convertCurrency(
+            Number(s.balance),
+            s.currency_code,
+            defaultCurrency,
+            monthEnd,
+            rateIndex,
+          );
+        }
       } else {
-        rawValue = Number(s.balance);
+        let rawValue: number;
+        if (
+          s.account_sub_type === "INVESTMENT_BROKERAGE" &&
+          s.market_value != null
+        ) {
+          rawValue = Number(s.market_value);
+        } else if (
+          s.account_type === "INVESTMENT" &&
+          s.account_sub_type === null &&
+          s.market_value != null
+        ) {
+          rawValue = Number(s.market_value) + Number(s.balance);
+        } else {
+          rawValue = Number(s.balance);
+        }
+
+        convertedValue = this.convertCurrency(
+          rawValue,
+          s.currency_code,
+          defaultCurrency,
+          monthEnd,
+          rateIndex,
+        );
       }
 
-      const monthEnd = this.monthEndDate(monthKey);
-      const converted = this.convertCurrency(
-        rawValue,
-        s.currency_code,
-        defaultCurrency,
-        monthEnd,
-        rateIndex,
-      );
-
-      monthMap.set(monthKey, monthMap.get(monthKey)! + converted);
+      monthMap.set(monthKey, monthMap.get(monthKey)! + convertedValue);
     }
 
     return Array.from(monthMap.entries())
@@ -438,6 +472,118 @@ export class NetWorthService {
         month,
         value: Math.round(value),
       }));
+  }
+
+  /**
+   * For each brokerage / standalone-investment account in `snapshots` whose
+   * snapshot row coincides with that account's first-ever active month,
+   * compute the net cost basis of all in-month investment transactions
+   * converted to `defaultCurrency`. Returns a map keyed by
+   * `${accountId}:${monthKey}` -> value in `defaultCurrency`.
+   */
+  private async computeFirstActiveMonthCostBasis(
+    userId: string,
+    snapshots: any[],
+    defaultCurrency: string,
+    start: string,
+    end: string,
+  ): Promise<Map<string, number>> {
+    const result = new Map<string, number>();
+
+    const eligibleSnapshots = snapshots.filter((s) => {
+      const isBrokerage = s.account_sub_type === "INVESTMENT_BROKERAGE";
+      const isStandalone =
+        s.account_type === "INVESTMENT" && s.account_sub_type === null;
+      return isBrokerage || isStandalone;
+    });
+    if (eligibleSnapshots.length === 0) return result;
+
+    const accountIds = [...new Set(eligibleSnapshots.map((s) => s.account_id))];
+
+    const firstMonthRows: any[] = await this.dataSource.query(
+      `SELECT account_id, MIN(month)::DATE as first_month
+       FROM monthly_account_balances
+       WHERE account_id = ANY($1::UUID[]) AND user_id = $2
+       GROUP BY account_id`,
+      [accountIds, userId],
+    );
+    const firstActiveMonth = new Map<string, string>();
+    for (const r of firstMonthRows) {
+      firstActiveMonth.set(r.account_id, this.toDateString(r.first_month));
+    }
+
+    const targetMonthByAccount = new Map<string, string>();
+    for (const s of eligibleSnapshots) {
+      const monthKey = this.toDateString(s.month);
+      if (firstActiveMonth.get(s.account_id) === monthKey) {
+        targetMonthByAccount.set(s.account_id, monthKey);
+      }
+    }
+    if (targetMonthByAccount.size === 0) return result;
+
+    const targetAccountIds = [...targetMonthByAccount.keys()];
+    const txRows: any[] = await this.dataSource.query(
+      `SELECT it.account_id, it.action, it.quantity, it.price, it.transaction_date,
+              s.currency_code AS security_currency
+       FROM investment_transactions it
+       LEFT JOIN securities s ON s.id = it.security_id
+       WHERE it.account_id = ANY($1::UUID[])
+         AND it.price IS NOT NULL AND it.price > 0
+         AND it.action IN ('BUY', 'SELL', 'REINVEST', 'TRANSFER_IN', 'TRANSFER_OUT')`,
+      [targetAccountIds],
+    );
+
+    const adjCurrencies = new Set<string>();
+    for (const r of txRows) {
+      if (r.security_currency && r.security_currency !== defaultCurrency) {
+        adjCurrencies.add(r.security_currency);
+      }
+    }
+    const rateIndex =
+      adjCurrencies.size > 0
+        ? await this.buildRateIndex(adjCurrencies, defaultCurrency, start, end)
+        : new Map();
+
+    for (const r of txRows) {
+      const targetMonth = targetMonthByAccount.get(r.account_id);
+      if (!targetMonth) continue;
+      const txDate = this.toDateString(r.transaction_date);
+      if (txDate.substring(0, 7) !== targetMonth.substring(0, 7)) continue;
+
+      const qty = Number(r.quantity) || 0;
+      const price = Number(r.price) || 0;
+      if (qty === 0 || price <= 0) continue;
+
+      let signed: number;
+      switch (r.action) {
+        case "BUY":
+        case "REINVEST":
+        case "TRANSFER_IN":
+          signed = qty * price;
+          break;
+        case "SELL":
+        case "TRANSFER_OUT":
+          signed = -qty * price;
+          break;
+        default:
+          continue;
+      }
+
+      const secCurrency = r.security_currency || defaultCurrency;
+      const monthEnd = this.monthEndDate(targetMonth);
+      const inDefault = this.convertCurrency(
+        signed,
+        secCurrency,
+        defaultCurrency,
+        monthEnd,
+        rateIndex,
+      );
+
+      const key = `${r.account_id}:${targetMonth}`;
+      result.set(key, (result.get(key) || 0) + inDefault);
+    }
+
+    return result;
   }
 
   async getDailyInvestments(
