@@ -2713,6 +2713,53 @@ describe("PortfolioService", () => {
       expect(yahooFinanceService.fetchIntradaySeries).not.toHaveBeenCalled();
     });
 
+    it("back-fills securities whose first bar is later than the grid start", async () => {
+      // Repro for the multi-account intraday jump: when one holding's first
+      // bar arrives later than another's, the aggregate used to undercount
+      // before that bar and jump up the moment it arrived.
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+      holdingsRepository.find.mockResolvedValue([
+        mockHoldingAAPL,
+        mockHoldingVFV,
+      ]);
+
+      const ts0 = new Date("2026-05-06T13:30:00.000Z");
+      const ts1 = new Date("2026-05-06T13:31:00.000Z");
+      const ts2 = new Date("2026-05-06T13:32:00.000Z");
+
+      yahooFinanceService.fetchIntradaySeries.mockImplementation(
+        async (symbol: string) => {
+          if (symbol === "AAPL") {
+            return [
+              { timestamp: ts0, close: 100 },
+              { timestamp: ts1, close: 100 },
+              { timestamp: ts2, close: 100 },
+            ];
+          }
+          // VFV's first available bar is at ts1, not ts0.
+          return [
+            { timestamp: ts1, close: 80 },
+            { timestamp: ts2, close: 80 },
+          ];
+        },
+      );
+      exchangeRateService.getLatestRate.mockResolvedValue(1.4);
+
+      const result = await service.getIntradayValueSeries(userId, {
+        range: "1d",
+      });
+
+      expect(result.points).toHaveLength(3);
+      // Without the back-fill, ts0 would only contain AAPL (1400) and ts1
+      // would jump to 1400 + 4000 = 5400. With the back-fill, ts0 already
+      // includes VFV at its earliest known close (80), so all three points
+      // share the same value and there is no jump.
+      const ts0Value = result.points[0].value;
+      const ts1Value = result.points[1].value;
+      expect(ts0Value).toBeCloseTo(10 * 100 * 1.4 + 50 * 80, 4);
+      expect(ts1Value).toBeCloseTo(ts0Value, 4);
+    });
+
     it("forward-fills when one security misses a timestamp the other has", async () => {
       accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
       holdingsRepository.find.mockResolvedValue([

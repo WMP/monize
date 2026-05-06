@@ -932,8 +932,15 @@ export class PortfolioService {
         ) {
           cursors[i]++;
         }
-        if (cursors[i] < 0) continue;
-        const close = src.closes[cursors[i]];
+        // Backfill: when this security's first bar is later than the current
+        // grid timestamp (e.g. one holding is on an exchange with thinner
+        // intraday coverage, or just has a slightly later first-bar than its
+        // peers), value it at its earliest known close. Without this, every
+        // unstarted series contributes 0 and the aggregate jumps up the
+        // moment each one's first bar arrives — which is exactly the
+        // "significant jump" the chart used to show on multi-account views.
+        const close =
+          cursors[i] < 0 ? src.closes[0] : src.closes[cursors[i]];
         const valueInDisplay = src.quantity * close * src.fxRate;
         totalCents += Math.round(valueInDisplay * 10000);
       }
