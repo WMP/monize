@@ -160,6 +160,13 @@ export interface FlagDotOptions {
   label: string;
   /** True = bubble above the dot, false = below. */
   above: boolean;
+  /**
+   * Distance in pixels from the dot center to the bubble's near edge.
+   * Default: 24. Use a smaller value for callouts near the chart's top
+   * edge, where the full-size connector would push the bubble out of
+   * the plot area and get it clipped.
+   */
+  gap?: number;
 }
 
 export function renderChartFlagDot({
@@ -169,11 +176,11 @@ export function renderChartFlagDot({
   color,
   label,
   above,
+  gap = 24,
 }: FlagDotOptions): ReactElement {
   const labelWidth = label.length * 7 + 14;
   const labelHeight = 22;
   const arrowSize = 5;
-  const gap = 24;
   const bubbleEdgeY = above ? cy - gap : cy + gap;
   const bubbleTop = above
     ? bubbleEdgeY - arrowSize - labelHeight

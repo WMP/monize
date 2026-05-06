@@ -573,6 +573,10 @@ export function PortfolioValueReport() {
                       // the bottom of the plot area where the x-axis labels
                       // live, so a downward bubble would always overlap them.
                       above: true,
+                      // Tighter gap for the highest flag: it sits near the top
+                      // of the plot area where a full-size connector would push
+                      // the bubble out of the chart and get it clipped.
+                      gap: isHighest ? 10 : undefined,
                     });
                   }}
                 />
