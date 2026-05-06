@@ -18,6 +18,7 @@ vi.mock('recharts', () => ({
   YAxis: () => null,
   CartesianGrid: () => null,
   Tooltip: () => null,
+  Customized: () => null,
 }));
 
 vi.mock('@/hooks/useNumberFormat', () => ({

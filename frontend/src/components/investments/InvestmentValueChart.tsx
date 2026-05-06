@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Customized,
 } from 'recharts';
 import { format } from 'date-fns';
 import { netWorthApi } from '@/lib/net-worth';
@@ -515,27 +516,39 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
                 fill="url(#colorInvestments)"
                 name="Portfolio Value"
                 isAnimationActive={false}
-                dot={(props: { cx?: number; cy?: number; index?: number; key?: string }) => {
-                  const { cx, cy, index } = props;
-                  if (cx == null || cy == null || index == null) {
-                    return <circle cx={0} cy={0} r={0} fill="none" />;
-                  }
-                  const isHighest = showFlags && index === highestIndex;
-                  const isLowest = showFlags && index === lowestIndex;
-                  if (!isHighest && !isLowest) {
-                    return <circle key={`dot-${index}`} cx={cx} cy={cy} r={0} fill="none" />;
-                  }
-                  const value = isHighest ? summary.highest : summary.lowest;
-                  return renderChartFlagDot({
-                    cx,
-                    cy,
-                    index,
-                    color: isHighest ? '#10b981' : '#ef4444',
-                    label: Math.abs(value) >= 1000 ? fmtAxis(value) : fmtVal(value),
-                    above: isHighest,
-                  });
-                }}
               />
+              {/* Highest/lowest flag callouts. Rendered as a Customized layer
+                  rather than via Area's `dot` prop so the bubbles paint on
+                  top of axis labels and the area fill, not underneath. */}
+              {showFlags && (
+                <Customized
+                  component={(props: { formattedGraphicalItems?: Array<{ props?: { points?: Array<{ x: number; y: number }> } }> }) => {
+                    const points = props.formattedGraphicalItems?.[0]?.props?.points;
+                    if (!points || points.length === 0) return null;
+                    const flags: Array<{ index: number; color: string; value: number; above: boolean }> = [];
+                    if (highestIndex >= 0 && points[highestIndex]) {
+                      flags.push({ index: highestIndex, color: '#10b981', value: summary.highest, above: true });
+                    }
+                    if (lowestIndex >= 0 && points[lowestIndex]) {
+                      flags.push({ index: lowestIndex, color: '#ef4444', value: summary.lowest, above: false });
+                    }
+                    return (
+                      <g>
+                        {flags.map((f) =>
+                          renderChartFlagDot({
+                            cx: points[f.index].x,
+                            cy: points[f.index].y,
+                            index: f.index,
+                            color: f.color,
+                            label: Math.abs(f.value) >= 1000 ? fmtAxis(f.value) : fmtVal(f.value),
+                            above: f.above,
+                          }),
+                        )}
+                      </g>
+                    );
+                  }}
+                />
+              )}
             </AreaChart>
           </ResponsiveContainer>
         </div>

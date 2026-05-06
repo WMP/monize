@@ -182,9 +182,27 @@ export function renderChartFlagDot({
   const arrowBaseY = above
     ? bubbleEdgeY - arrowSize
     : bubbleEdgeY + arrowSize;
+  // Explicit fillOpacity / strokeOpacity / opacity on every shape:
+  // recharts' <Area fillOpacity={...}> propagates a fillOpacity attribute
+  // down to dot children via SVG inheritance, which would render the
+  // bubble at the area's translucent fill instead of solid color.
   return (
-    <g key={`flag-${index}-${above ? 'hi' : 'lo'}`}>
-      <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={2} />
+    <g
+      key={`flag-${index}-${above ? 'hi' : 'lo'}`}
+      fillOpacity={1}
+      strokeOpacity={1}
+      opacity={1}
+    >
+      <circle
+        cx={cx}
+        cy={cy}
+        r={5}
+        fill={color}
+        fillOpacity={1}
+        stroke="#fff"
+        strokeWidth={2}
+        strokeOpacity={1}
+      />
       <line
         x1={cx}
         y1={above ? cy - 5 : cy + 5}
@@ -193,6 +211,7 @@ export function renderChartFlagDot({
         stroke={color}
         strokeWidth={1.5}
         strokeDasharray="3 2"
+        strokeOpacity={1}
       />
       <rect
         x={cx - labelWidth / 2}
@@ -201,11 +220,13 @@ export function renderChartFlagDot({
         height={labelHeight}
         rx={5}
         fill={color}
+        fillOpacity={1}
         filter="url(#chartFlagShadow)"
       />
       <polygon
         points={`${cx - arrowSize},${arrowBaseY} ${cx + arrowSize},${arrowBaseY} ${cx},${arrowTipY}`}
         fill={color}
+        fillOpacity={1}
       />
       <text
         x={cx}
@@ -213,6 +234,7 @@ export function renderChartFlagDot({
         textAnchor="middle"
         dominantBaseline="central"
         fill="#fff"
+        fillOpacity={1}
         fontSize={11}
         fontWeight={600}
       >
