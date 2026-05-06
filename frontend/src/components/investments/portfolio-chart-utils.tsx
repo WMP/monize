@@ -158,13 +158,15 @@ export interface FlagDotOptions {
   color: string;
   /** Pre-formatted label text (caller chooses compact vs full). */
   label: string;
-  /** True = bubble above the dot, false = below. */
-  above: boolean;
+  /**
+   * Which side of the dot the bubble sits on. 'left' / 'right' produce a
+   * horizontal connector; 'above' / 'below' produce a vertical one.
+   */
+  side: 'above' | 'below' | 'left' | 'right';
   /**
    * Distance in pixels from the dot center to the bubble's near edge.
-   * Default: 24. Use a smaller value for callouts near the chart's top
-   * edge, where the full-size connector would push the bubble out of
-   * the plot area and get it clipped.
+   * Default: 24. Use a smaller value when the bubble is near a chart
+   * edge that would clip it.
    */
   gap?: number;
 }
@@ -175,27 +177,66 @@ export function renderChartFlagDot({
   index,
   color,
   label,
-  above,
+  side,
   gap = 24,
 }: FlagDotOptions): ReactElement {
   const labelWidth = label.length * 7 + 14;
   const labelHeight = 22;
   const arrowSize = 5;
-  const bubbleEdgeY = above ? cy - gap : cy + gap;
-  const bubbleTop = above
-    ? bubbleEdgeY - arrowSize - labelHeight
-    : bubbleEdgeY + arrowSize;
-  const arrowTipY = bubbleEdgeY;
-  const arrowBaseY = above
-    ? bubbleEdgeY - arrowSize
-    : bubbleEdgeY + arrowSize;
+
+  // Bubble centroid + arrow tip geometry. Vertical sides ('above'/'below')
+  // anchor the arrow on the top/bottom edge of the bubble; horizontal sides
+  // anchor it on the left/right edge.
+  let bubbleX: number;
+  let bubbleY: number;
+  let arrowTipX: number;
+  let arrowTipY: number;
+  let connectorX1: number;
+  let connectorY1: number;
+  let arrowPoints: string;
+
+  if (side === 'above') {
+    bubbleX = cx - labelWidth / 2;
+    bubbleY = cy - gap - arrowSize - labelHeight;
+    arrowTipX = cx;
+    arrowTipY = cy - gap;
+    connectorX1 = cx;
+    connectorY1 = cy - 5;
+    arrowPoints = `${cx - arrowSize},${arrowTipY - arrowSize} ${cx + arrowSize},${arrowTipY - arrowSize} ${cx},${arrowTipY}`;
+  } else if (side === 'below') {
+    bubbleX = cx - labelWidth / 2;
+    bubbleY = cy + gap + arrowSize;
+    arrowTipX = cx;
+    arrowTipY = cy + gap;
+    connectorX1 = cx;
+    connectorY1 = cy + 5;
+    arrowPoints = `${cx - arrowSize},${arrowTipY + arrowSize} ${cx + arrowSize},${arrowTipY + arrowSize} ${cx},${arrowTipY}`;
+  } else if (side === 'right') {
+    bubbleX = cx + gap + arrowSize;
+    bubbleY = cy - labelHeight / 2;
+    arrowTipX = cx + gap;
+    arrowTipY = cy;
+    connectorX1 = cx + 5;
+    connectorY1 = cy;
+    arrowPoints = `${arrowTipX + arrowSize},${cy - arrowSize} ${arrowTipX + arrowSize},${cy + arrowSize} ${arrowTipX},${cy}`;
+  } else {
+    // 'left'
+    bubbleX = cx - gap - arrowSize - labelWidth;
+    bubbleY = cy - labelHeight / 2;
+    arrowTipX = cx - gap;
+    arrowTipY = cy;
+    connectorX1 = cx - 5;
+    connectorY1 = cy;
+    arrowPoints = `${arrowTipX - arrowSize},${cy - arrowSize} ${arrowTipX - arrowSize},${cy + arrowSize} ${arrowTipX},${cy}`;
+  }
+
   // Explicit fillOpacity / strokeOpacity / opacity on every shape:
   // recharts' <Area fillOpacity={...}> propagates a fillOpacity attribute
   // down to dot children via SVG inheritance, which would render the
   // bubble at the area's translucent fill instead of solid color.
   return (
     <g
-      key={`flag-${index}-${above ? 'hi' : 'lo'}`}
+      key={`flag-${index}-${side}`}
       fillOpacity={1}
       strokeOpacity={1}
       opacity={1}
@@ -211,9 +252,9 @@ export function renderChartFlagDot({
         strokeOpacity={1}
       />
       <line
-        x1={cx}
-        y1={above ? cy - 5 : cy + 5}
-        x2={cx}
+        x1={connectorX1}
+        y1={connectorY1}
+        x2={arrowTipX}
         y2={arrowTipY}
         stroke={color}
         strokeWidth={1.5}
@@ -221,8 +262,8 @@ export function renderChartFlagDot({
         strokeOpacity={1}
       />
       <rect
-        x={cx - labelWidth / 2}
-        y={bubbleTop}
+        x={bubbleX}
+        y={bubbleY}
         width={labelWidth}
         height={labelHeight}
         rx={5}
@@ -230,14 +271,10 @@ export function renderChartFlagDot({
         fillOpacity={1}
         filter="url(#chartFlagShadow)"
       />
-      <polygon
-        points={`${cx - arrowSize},${arrowBaseY} ${cx + arrowSize},${arrowBaseY} ${cx},${arrowTipY}`}
-        fill={color}
-        fillOpacity={1}
-      />
+      <polygon points={arrowPoints} fill={color} fillOpacity={1} />
       <text
-        x={cx}
-        y={bubbleTop + labelHeight / 2}
+        x={bubbleX + labelWidth / 2}
+        y={bubbleY + labelHeight / 2}
         textAnchor="middle"
         dominantBaseline="central"
         fill="#fff"

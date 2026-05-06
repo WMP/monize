@@ -526,20 +526,22 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
                     return <circle key={`dot-${index}`} cx={cx} cy={cy} r={0} fill="none" />;
                   }
                   const value = isHighest ? summary.highest : summary.lowest;
+                  // Place the bubble to the side of its dot (with a horizontal
+                  // connector) instead of above/below. This puts the bubble
+                  // in the chart's middle vertical band -- well clear of the
+                  // x-axis labels at the bottom and the top edge of the plot,
+                  // regardless of whether the dot itself is at the top or
+                  // bottom of the data range. Side is auto-picked based on
+                  // the dot's position within the series so the bubble
+                  // doesn't get pushed off the chart's left or right edge.
+                  const isLeftHalf = index < chartPoints.length / 2;
                   return renderChartFlagDot({
                     cx,
                     cy,
                     index,
                     color: isHighest ? '#10b981' : '#ef4444',
                     label: Math.abs(value) >= 1000 ? fmtAxis(value) : fmtVal(value),
-                    // Both flags point upward -- the lowest point sits near
-                    // the bottom of the plot area where the x-axis labels
-                    // live, so a downward bubble would always overlap them.
-                    above: true,
-                    // Tighter gap for the highest flag: it sits near the top
-                    // of the plot area where a full-size connector would push
-                    // the bubble out of the chart and get it clipped.
-                    gap: isHighest ? 10 : undefined,
+                    side: isLeftHalf ? 'right' : 'left',
                   });
                 }}
               />
