@@ -62,6 +62,10 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
   const [intradayFallbackNotice, setIntradayFallbackNotice] = useState<{
     skipped: string[];
   } | null>(null);
+  // Set when the intraday request itself fails (network/server error). We fall
+  // back to the daily endpoint and surface a banner so the user knows why the
+  // chart resolution is coarser than the button label suggests.
+  const [intradayError, setIntradayError] = useState<string | null>(null);
   const [persistedRange, setPersistedRange] = useLocalStorage<string>(
     RANGE_STORAGE_KEY,
     '1y',
@@ -151,6 +155,7 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
       setIsLoading(true);
       setIntradayUnavailable(null);
       setIntradayFallbackNotice(null);
+      setIntradayError(null);
       try {
         if (isIntraday) {
           const cacheKey = buildIntradayCacheKey(
@@ -182,8 +187,13 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
           } catch (error) {
             logger.error('Failed to load intraday data:', error);
             if (loadSeqRef.current !== seq) return;
-            setChartPoints([]);
-            setIsLoading(false);
+            // Intraday fetch failed -- fall back to the daily-snapshot endpoint
+            // so the user still sees a chart, and surface the error so they
+            // understand why the resolution is coarser than requested.
+            setIntradayError(
+              "Couldn't load intraday data. Showing daily snapshots instead.",
+            );
+            await loadDailyOrMonthly(seq);
             return;
           }
 
@@ -409,6 +419,18 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
           </div>
         </div>
       </div>
+
+      {/* Intraday error banner: shown when the intraday request failed and we
+          fell back to the daily-snapshot endpoint. */}
+      {intradayError && (
+        <div
+          role="alert"
+          data-testid="intraday-error-banner"
+          className="mb-4 rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300"
+        >
+          {intradayError}
+        </div>
+      )}
 
       {/* Chart */}
       {intradayUnavailable ? (

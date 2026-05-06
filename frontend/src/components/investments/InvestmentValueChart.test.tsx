@@ -291,6 +291,42 @@ describe('InvestmentValueChart', () => {
     });
   });
 
+  it('falls back to daily data and surfaces an error banner when intraday request fails', async () => {
+    dateRangeState.dateRange = '1w';
+    dateRangeState.resolvedRange = { start: '2023-12-25', end: '2024-01-01' };
+    vi.mocked(investmentsApi.getIntradayValue).mockRejectedValue(
+      new Error('Network error'),
+    );
+    vi.mocked(netWorthApi.getInvestmentsDaily).mockResolvedValue([
+      { date: '2023-12-25', value: 8000 },
+      { date: '2024-01-01', value: 9000 },
+    ]);
+    render(<InvestmentValueChart />);
+    const banner = await screen.findByTestId('intraday-error-banner');
+    expect(banner.textContent).toMatch(/intraday/i);
+    await waitFor(() => {
+      expect(netWorthApi.getInvestmentsDaily).toHaveBeenCalled();
+    });
+    expect(screen.getByText('$9000')).toBeInTheDocument();
+  });
+
+  it('shows the error banner and falls back to daily on 1d when intraday request fails', async () => {
+    dateRangeState.dateRange = '1d';
+    dateRangeState.resolvedRange = { start: '2024-01-01', end: '2024-01-02' };
+    vi.mocked(investmentsApi.getIntradayValue).mockRejectedValue(
+      new Error('500 Internal Server Error'),
+    );
+    vi.mocked(netWorthApi.getInvestmentsDaily).mockResolvedValue([
+      { date: '2024-01-01', value: 7777 },
+    ]);
+    render(<InvestmentValueChart />);
+    const banner = await screen.findByTestId('intraday-error-banner');
+    expect(banner).toBeInTheDocument();
+    await waitFor(() => {
+      expect(netWorthApi.getInvestmentsDaily).toHaveBeenCalled();
+    });
+  });
+
   it('shows a warning icon next to the title when 1w falls back to daily', async () => {
     dateRangeState.dateRange = '1w';
     dateRangeState.resolvedRange = { start: '2023-12-25', end: '2024-01-01' };
