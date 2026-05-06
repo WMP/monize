@@ -46,6 +46,13 @@ describe("formatCurrencyAmount", () => {
   });
 });
 
+describe("formatCurrency error path", () => {
+  it("falls back to plain toFixed when Intl throws", () => {
+    // Invalid ISO 4217 code throws; falls into catch-block
+    expect(formatCurrency(123.456, "INVALID-X")).toBe("123.46");
+  });
+});
+
 describe("getDecimalPlacesForCurrency", () => {
   it("returns 2 for USD", () => {
     expect(getDecimalPlacesForCurrency("USD")).toBe(2);

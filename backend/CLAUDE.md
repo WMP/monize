@@ -11,7 +11,7 @@ npm run build              # Production build
 npm run lint               # ESLint --fix
 npm run test               # All tests (unit + E2E)
 npm run test:unit          # Unit tests only (src/**/*.spec.ts)
-npm run test:cov           # Coverage report (80% minimum all metrics)
+npm run test:cov           # Coverage report (94% lines, 93% stmts, 94% funcs, 84% branches)
 npm run test:e2e           # E2E tests (test/**/*.spec.ts, 30s timeout, sequential)
 ```
 
@@ -37,7 +37,7 @@ Controllers are thin and delegate to services. Services always take `userId` as 
 
 - **Path alias:** `@/*` maps to `src/*` (tsconfig + Jest moduleNameMapper)
 - **ESLint:** Flat config (`eslint.config.mjs`) with typescript-eslint + prettier
-- **Jest:** 80% coverage threshold (branches, functions, lines, statements). Excludes `main.ts`, modules, entities, DTOs, seed scripts, and migrations from coverage.
+- **Jest:** Coverage thresholds: 94% lines, 93% statements, 94% functions, 84% branches. Excludes `main.ts`, modules, entities, DTOs, seed scripts, and migrations from coverage.
 - **TypeScript:** ES2021 target, CommonJS modules, `strictNullChecks: true`, `noImplicitAny: false`
 
 ## Global Providers (app.module.ts)

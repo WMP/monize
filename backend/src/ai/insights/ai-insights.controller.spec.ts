@@ -94,6 +94,23 @@ describe("AiInsightsController", () => {
       expect(mockInsightsService.generateInsights).toHaveBeenCalledWith(userId);
       expect(result).toEqual({ status: "generating" });
     });
+
+    it("logs error.message when generation throws Error", async () => {
+      mockInsightsService.generateInsights!.mockRejectedValue(
+        new Error("boom"),
+      );
+      const result = controller.triggerGeneration(req);
+      expect(result).toEqual({ status: "generating" });
+      // Allow microtask to flush
+      await new Promise((r) => setImmediate(r));
+    });
+
+    it("logs Unknown error when generation throws non-Error", async () => {
+      mockInsightsService.generateInsights!.mockRejectedValue("string-err");
+      const result = controller.triggerGeneration(req);
+      expect(result).toEqual({ status: "generating" });
+      await new Promise((r) => setImmediate(r));
+    });
   });
 
   describe("dismissInsight()", () => {

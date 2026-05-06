@@ -184,4 +184,90 @@ describe("NetWorthController", () => {
       );
     });
   });
+
+  // ─── Branch coverage extras ───────────────────────────────────────────
+
+  describe("getMonthlyNetWorth date validation", () => {
+    it("throws on invalid startDate format", () => {
+      expect(() =>
+        controller.getMonthlyNetWorth(mockReq, "not-a-date"),
+      ).toThrow(/startDate/);
+    });
+    it("throws on invalid endDate format", () => {
+      expect(() =>
+        controller.getMonthlyNetWorth(mockReq, "2024-01-01", "bad"),
+      ).toThrow(/endDate/);
+    });
+  });
+
+  describe("getMonthlyInvestments edge cases", () => {
+    it("uppercases and slices currency to 3 chars", () => {
+      mockNetWorthService.getMonthlyInvestments!.mockReturnValue("ok");
+      controller.getMonthlyInvestments(
+        mockReq,
+        undefined,
+        undefined,
+        undefined,
+        "usdextra",
+      );
+      expect(
+        mockNetWorthService.getMonthlyInvestments,
+      ).toHaveBeenCalledWith(
+        "user-1",
+        undefined,
+        undefined,
+        undefined,
+        "USD",
+      );
+    });
+
+    it("throws on invalid endDate", () => {
+      expect(() =>
+        controller.getMonthlyInvestments(mockReq, undefined, "bad-date"),
+      ).toThrow(/endDate/);
+    });
+
+    it("throws on invalid startDate", () => {
+      expect(() =>
+        controller.getMonthlyInvestments(mockReq, "x"),
+      ).toThrow(/startDate/);
+    });
+
+    it("throws when accountIds contains a non-UUID", () => {
+      expect(() =>
+        controller.getMonthlyInvestments(
+          mockReq,
+          undefined,
+          undefined,
+          "not-a-uuid",
+        ),
+      ).toThrow(/UUID/);
+    });
+  });
+
+  describe("getDailyInvestments edge cases", () => {
+    it("uppercases and slices currency to 3 chars", () => {
+      mockNetWorthService.getDailyInvestments!.mockReturnValue("ok");
+      controller.getDailyInvestments(
+        mockReq,
+        undefined,
+        undefined,
+        undefined,
+        "eurmixed",
+      );
+      expect(mockNetWorthService.getDailyInvestments).toHaveBeenCalledWith(
+        "user-1",
+        undefined,
+        undefined,
+        undefined,
+        "EUR",
+      );
+    });
+
+    it("throws on invalid endDate", () => {
+      expect(() =>
+        controller.getDailyInvestments(mockReq, undefined, "bad-date"),
+      ).toThrow(/endDate/);
+    });
+  });
 });

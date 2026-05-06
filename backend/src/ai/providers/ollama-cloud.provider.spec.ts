@@ -284,5 +284,56 @@ describe("OllamaCloudProvider", () => {
         expect(result.reason).toContain("ECONNREFUSED");
       }
     });
+
+    it("treats 403 as authentication failure", async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        statusText: "Forbidden",
+        text: () => Promise.resolve(""),
+      });
+      const r = await provider.verifyModel();
+      expect(r.ok).toBe(false);
+      if (!r.ok) {
+        expect(r.reason).toMatch(/authentication/i);
+      }
+    });
+
+    it("returns generic reason for 500 status with body", async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: "Server Error",
+        text: () => Promise.resolve("server boom"),
+      });
+      const r = await provider.verifyModel();
+      expect(r.ok).toBe(false);
+      if (!r.ok) {
+        expect(r.reason).toContain("500");
+      }
+    });
+
+    it("falls back to statusText when 5xx body empty", async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 502,
+        statusText: "Bad Gateway",
+        text: () => Promise.resolve(""),
+      });
+      const r = await provider.verifyModel();
+      expect(r.ok).toBe(false);
+      if (!r.ok) {
+        expect(r.reason).toContain("Bad Gateway");
+      }
+    });
+
+    it("wraps non-Error exceptions in reason", async () => {
+      global.fetch = jest.fn().mockRejectedValue("string-network-fail");
+      const r = await provider.verifyModel();
+      expect(r.ok).toBe(false);
+      if (!r.ok) {
+        expect(r.reason).toContain("string-network-fail");
+      }
+    });
   });
 });

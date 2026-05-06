@@ -248,6 +248,15 @@ describe("executeCalculation", () => {
 
       expect(result).not.toHaveProperty("label");
     });
+
+    it("omits label when empty string (falsy)", () => {
+      const result = executeCalculation({
+        operation: "sum",
+        values: [1, 2],
+        label: "",
+      });
+      expect(result).not.toHaveProperty("label");
+    });
   });
 
   describe("edge cases", () => {
