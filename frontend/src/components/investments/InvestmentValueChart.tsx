@@ -360,7 +360,12 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
     return null;
   };
 
-  if (isLoading) {
+  // Only show the full-card skeleton on the very first load. Subsequent
+  // range / filter changes keep the previous chart on screen so Recharts can
+  // animate smoothly into the new data instead of unmounting and re-drawing
+  // the whole card. The intraday path already does this via the sessionStorage
+  // cache; this extends the same behaviour to daily/monthly ranges.
+  if (isLoading && chartPoints.length === 0 && !intradayUnavailable) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6">
         <div className="animate-pulse space-y-4">
