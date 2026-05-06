@@ -107,6 +107,13 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
   const [intradayUnavailable, setIntradayUnavailable] = useState<{
     skipped: string[];
   } | null>(null);
+  // Set when 1W/1M silently fall back to daily snapshots because one or more
+  // holdings use a quote provider (MSN Money) without intraday support. We
+  // surface a small warning icon next to the title so the user understands
+  // why the chart resolution is coarser than the button label suggests.
+  const [intradayFallbackNotice, setIntradayFallbackNotice] = useState<{
+    skipped: string[];
+  } | null>(null);
   const [persistedRange, setPersistedRange] = useLocalStorage<string>(
     RANGE_STORAGE_KEY,
     '1y',
@@ -195,6 +202,7 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
       const token = ++loadTokenRef.current;
       setIsLoading(true);
       setIntradayUnavailable(null);
+      setIntradayFallbackNotice(null);
       try {
         if (isIntraday) {
           const cacheKey = buildIntradayCacheKey(
@@ -251,8 +259,12 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
               setIsLoading(false);
               return;
             }
-            // 1W / 1M: silently fall back to the daily-snapshot endpoint.
+            // 1W / 1M: silently fall back to the daily-snapshot endpoint and
+            // flag the title with a small warning icon so the user knows the
+            // chart is at daily resolution rather than the requested intraday
+            // resolution.
             setIntradayUnavailable(null);
+            setIntradayFallbackNotice({ skipped: response.skippedSymbols });
             await loadDailyOrMonthly(token);
             return;
           }
@@ -380,8 +392,25 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6">
       {/* Header with title and date range buttons */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
           Portfolio Value Over Time{titleSuffix ? ` (${titleSuffix})` : ''}
+          {intradayFallbackNotice && (
+            <span
+              role="img"
+              aria-label="Detailed intraday pricing unavailable"
+              title={`Detailed intraday pricing isn't available because ${intradayFallbackNotice.skipped.length > 0 ? intradayFallbackNotice.skipped.join(', ') : 'one or more holdings'} use MSN Money, which doesn't expose intraday quotes. Showing daily snapshots instead.`}
+              className="inline-flex text-amber-500 dark:text-amber-400 cursor-help"
+              data-testid="intraday-fallback-warning"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path
+                  fillRule="evenodd"
+                  d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.515 2.625H3.72c-1.345 0-2.188-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </span>
+          )}
         </h3>
         <DateRangeSelector
           ranges={['1d', '1w', '1m', '3m', 'ytd', '1y', '2y', '5y', 'all']}

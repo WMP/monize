@@ -263,6 +263,42 @@ describe('InvestmentValueChart', () => {
     });
   });
 
+  it('shows a warning icon next to the title when 1w falls back to daily', async () => {
+    dateRangeState.dateRange = '1w';
+    dateRangeState.resolvedRange = { start: '2023-12-25', end: '2024-01-01' };
+    vi.mocked(investmentsApi.getIntradayValue).mockResolvedValue({
+      points: [],
+      interval: '5m',
+      currency: 'CAD',
+      range: '1w',
+      fetchedAt: '2024-01-02T15:00:00.000Z',
+      skippedSymbols: ['VFV.TO'],
+      fallbackToDaily: true,
+    });
+    render(<InvestmentValueChart />);
+    const warning = await screen.findByTestId('intraday-fallback-warning');
+    expect(warning).toBeInTheDocument();
+    expect(warning.getAttribute('title')).toContain('VFV.TO');
+    expect(warning.getAttribute('title')).toContain('MSN Money');
+  });
+
+  it('does not show the warning icon when intraday data is fully available', async () => {
+    dateRangeState.dateRange = '1w';
+    dateRangeState.resolvedRange = { start: '2023-12-25', end: '2024-01-01' };
+    vi.mocked(investmentsApi.getIntradayValue).mockResolvedValue({
+      points: [{ timestamp: '2024-01-02T14:30:00.000Z', value: 9500 }],
+      interval: '5m',
+      currency: 'CAD',
+      range: '1w',
+      fetchedAt: '2024-01-02T15:00:00.000Z',
+      skippedSymbols: [],
+      fallbackToDaily: false,
+    });
+    render(<InvestmentValueChart />);
+    await screen.findByText('Portfolio Value Over Time');
+    expect(screen.queryByTestId('intraday-fallback-warning')).toBeNull();
+  });
+
   it('clears intraday cache and re-fetches when refresh event fires on 1d', async () => {
     dateRangeState.dateRange = '1d';
     vi.mocked(investmentsApi.getIntradayValue).mockResolvedValue({
