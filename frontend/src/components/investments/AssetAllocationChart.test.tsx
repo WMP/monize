@@ -62,4 +62,59 @@ describe('AssetAllocationChart', () => {
     render(<AssetAllocationChart allocation={allocation} isLoading={false} />);
     expect(screen.getByText('75.0%')).toBeInTheDocument();
   });
+
+  it('shows titleSuffix in heading', () => {
+    render(<AssetAllocationChart allocation={null} isLoading={false} titleSuffix="RRSP" />);
+    expect(screen.getByText('Asset Allocation (RRSP)')).toBeInTheDocument();
+  });
+
+  it('shows empty state when allocation has zero items', () => {
+    const emptyAllocation = { totalValue: 0, allocation: [] };
+    render(<AssetAllocationChart allocation={emptyAllocation} isLoading={false} />);
+    expect(screen.getByText('No allocation data available.')).toBeInTheDocument();
+  });
+
+  it('uses name as legend label when symbol is falsy', () => {
+    const allocation = {
+      totalValue: 10000,
+      allocation: [
+        { symbol: '', name: 'Cash', type: 'cash' as any, value: 10000, percentage: 100, color: '#22c55e', currencyCode: 'CAD' },
+      ],
+    };
+    render(<AssetAllocationChart allocation={allocation} isLoading={false} />);
+    expect(screen.getByText('Cash')).toBeInTheDocument();
+  });
+
+  it('uses default color #6b7280 when item.color is falsy', () => {
+    const allocation = {
+      totalValue: 10000,
+      allocation: [
+        { symbol: 'VTI', name: 'Vanguard', type: 'security' as const, value: 10000, percentage: 100, color: null, currencyCode: 'CAD' },
+      ],
+    };
+    const { container } = render(<AssetAllocationChart allocation={allocation} isLoading={false} />);
+    expect(container.querySelector('[style*="background-color"]')).toBeInTheDocument();
+  });
+
+  it('shows currency code badge for USD holding in CAD portfolio', () => {
+    const allocation = {
+      totalValue: 10000,
+      allocation: [
+        { symbol: 'AAPL', name: 'Apple', type: 'security' as const, value: 10000, percentage: 100, color: '#3b82f6', currencyCode: 'USD' },
+      ],
+    };
+    render(<AssetAllocationChart allocation={allocation} isLoading={false} />);
+    expect(screen.getByText('(USD)')).toBeInTheDocument();
+  });
+
+  it('does not show currency badge when singleAccountCurrency matches item currency', () => {
+    const allocation = {
+      totalValue: 10000,
+      allocation: [
+        { symbol: 'AAPL', name: 'Apple', type: 'security' as const, value: 10000, percentage: 100, color: '#3b82f6', currencyCode: 'USD' },
+      ],
+    };
+    render(<AssetAllocationChart allocation={allocation} isLoading={false} singleAccountCurrency="USD" />);
+    expect(screen.queryByText('(USD)')).not.toBeInTheDocument();
+  });
 });

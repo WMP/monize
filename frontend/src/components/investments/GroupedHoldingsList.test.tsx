@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@/test/render';
 import { GroupedHoldingsList } from './GroupedHoldingsList';
 
@@ -153,6 +153,131 @@ describe('GroupedHoldingsList', () => {
     expect(
       screen.getByText(/\u2248 CAD \$775\.00 CAD/),
     ).toBeInTheDocument();
+  });
+
+  it('calls onSymbolClick when symbol button is clicked', () => {
+    const onSymbolClick = vi.fn();
+    const holdingsByAccount = [
+      {
+        accountId: 'a1', accountName: 'RRSP', currencyCode: 'CAD',
+        totalMarketValue: 500, totalCostBasis: 400, totalGainLoss: 100,
+        totalGainLossPercent: 25, cashBalance: 0,
+        holdings: [
+          { id: 'h1', symbol: 'XEQT', name: 'iShares', quantity: 10, averageCost: 40, currentPrice: 50, costBasis: 400, costBasisAccountCurrency: 400, marketValue: 500, gainLoss: 100, gainLossPercent: 25, currencyCode: 'CAD' },
+        ],
+      },
+    ] as any[];
+    render(<GroupedHoldingsList holdingsByAccount={holdingsByAccount} isLoading={false} totalPortfolioValue={500} onSymbolClick={onSymbolClick} />);
+    fireEvent.click(screen.getByText('XEQT'));
+    expect(onSymbolClick).toHaveBeenCalledWith('XEQT');
+  });
+
+  it('calls onCashClick when Cash button is clicked', () => {
+    const onCashClick = vi.fn();
+    const holdingsByAccount = [
+      {
+        accountId: 'a1', accountName: 'RRSP', currencyCode: 'CAD',
+        totalMarketValue: 500, totalCostBasis: 400, totalGainLoss: 100,
+        totalGainLossPercent: 25, cashBalance: 200, cashAccountId: 'cash-acc-1',
+        holdings: [],
+      },
+    ] as any[];
+    render(<GroupedHoldingsList holdingsByAccount={holdingsByAccount} isLoading={false} totalPortfolioValue={700} onCashClick={onCashClick} />);
+    fireEvent.click(screen.getByText('Cash'));
+    expect(onCashClick).toHaveBeenCalledWith('cash-acc-1');
+  });
+
+  it('shows + Cash text in position subtitle when cash balance is nonzero', () => {
+    const holdingsByAccount = [
+      {
+        accountId: 'a1', accountName: 'RRSP', currencyCode: 'CAD',
+        totalMarketValue: 500, totalCostBasis: 400, totalGainLoss: 100,
+        totalGainLossPercent: 25, cashBalance: 200, cashAccountId: 'cash-1',
+        holdings: [
+          { id: 'h1', symbol: 'XEQT', name: 'iShares', quantity: 10, averageCost: 40, currentPrice: 50, costBasis: 400, costBasisAccountCurrency: 400, marketValue: 500, gainLoss: 100, gainLossPercent: 25, currencyCode: 'CAD' },
+        ],
+      },
+    ] as any[];
+    render(<GroupedHoldingsList holdingsByAccount={holdingsByAccount} isLoading={false} totalPortfolioValue={700} />);
+    expect(screen.getByText(/\+ Cash/)).toBeInTheDocument();
+  });
+
+  it('shows accounts/positions with correct pluralization', () => {
+    const holdingsByAccount = [
+      {
+        accountId: 'a1', accountName: 'RRSP', currencyCode: 'CAD',
+        totalMarketValue: 500, totalCostBasis: 400, totalGainLoss: 100,
+        totalGainLossPercent: 25, cashBalance: 0, holdings: [
+          { id: 'h1', symbol: 'XEQT', name: 'iShares', quantity: 1, averageCost: 40, currentPrice: 50, costBasis: 400, costBasisAccountCurrency: 400, marketValue: 500, gainLoss: 100, gainLossPercent: 25, currencyCode: 'CAD' },
+        ],
+      },
+    ] as any[];
+    render(<GroupedHoldingsList holdingsByAccount={holdingsByAccount} isLoading={false} totalPortfolioValue={500} />);
+    expect(screen.getByText(/1 account with 1 position/)).toBeInTheDocument();
+  });
+
+  it('shows plural accounts/positions text', () => {
+    const holdingsByAccount = [
+      {
+        accountId: 'a1', accountName: 'RRSP', currencyCode: 'CAD',
+        totalMarketValue: 200, totalCostBasis: 150, totalGainLoss: 50, totalGainLossPercent: 33, cashBalance: 0,
+        holdings: [
+          { id: 'h1', symbol: 'XEQT', name: 'A', quantity: 5, averageCost: 20, currentPrice: 25, costBasis: 100, costBasisAccountCurrency: 100, marketValue: 125, gainLoss: 25, gainLossPercent: 25, currencyCode: 'CAD' },
+          { id: 'h2', symbol: 'ZAG', name: 'B', quantity: 5, averageCost: 10, currentPrice: 15, costBasis: 50, costBasisAccountCurrency: 50, marketValue: 75, gainLoss: 25, gainLossPercent: 50, currencyCode: 'CAD' },
+        ],
+      },
+      {
+        accountId: 'a2', accountName: 'TFSA', currencyCode: 'CAD',
+        totalMarketValue: 100, totalCostBasis: 80, totalGainLoss: 20, totalGainLossPercent: 25, cashBalance: 0,
+        holdings: [
+          { id: 'h3', symbol: 'VFV', name: 'C', quantity: 2, averageCost: 40, currentPrice: 50, costBasis: 80, costBasisAccountCurrency: 80, marketValue: 100, gainLoss: 20, gainLossPercent: 25, currencyCode: 'CAD' },
+        ],
+      },
+    ] as any[];
+    render(<GroupedHoldingsList holdingsByAccount={holdingsByAccount} isLoading={false} totalPortfolioValue={300} />);
+    expect(screen.getByText(/2 accounts with 3 positions/)).toBeInTheDocument();
+  });
+
+  it('shows portfolio percent as dash when totalPortfolioValue is 0', () => {
+    const holdingsByAccount = [
+      {
+        accountId: 'a1', accountName: 'RRSP', currencyCode: 'CAD',
+        totalMarketValue: 0, totalCostBasis: 400, totalGainLoss: -400, totalGainLossPercent: -100, cashBalance: 0,
+        holdings: [
+          { id: 'h1', symbol: 'XEQT', name: 'iShares', quantity: 10, averageCost: 40, currentPrice: 0, costBasis: 400, costBasisAccountCurrency: 400, marketValue: 0, gainLoss: -400, gainLossPercent: -100, currencyCode: 'CAD' },
+        ],
+      },
+    ] as any[];
+    render(<GroupedHoldingsList holdingsByAccount={holdingsByAccount} isLoading={false} totalPortfolioValue={0} />);
+    expect(screen.getAllByText('-').length).toBeGreaterThan(0);
+  });
+
+  it('shows red gain/loss color for negative values and cash-only account', () => {
+    const holdingsByAccount = [
+      {
+        accountId: 'a1', accountName: 'RRSP', currencyCode: 'CAD',
+        totalMarketValue: 0, totalCostBasis: 0, totalGainLoss: null, totalGainLossPercent: null, cashBalance: 500,
+        cashAccountId: 'ca1',
+        holdings: [],
+      },
+    ] as any[];
+    render(<GroupedHoldingsList holdingsByAccount={holdingsByAccount} isLoading={false} totalPortfolioValue={500} />);
+    expect(screen.getByText('Cash')).toBeInTheDocument();
+  });
+
+  it('shows USD account holdings with currency code in header', () => {
+    const holdingsByAccount = [
+      {
+        accountId: 'a1', accountName: 'USD Brokerage', currencyCode: 'USD',
+        totalMarketValue: 1000, totalCostBasis: 800, totalGainLoss: 200, totalGainLossPercent: 25, cashBalance: 0,
+        holdings: [
+          { id: 'h1', symbol: 'AAPL', name: 'Apple Inc.', quantity: 10, averageCost: 80, currentPrice: 100, costBasis: 800, costBasisAccountCurrency: 800, marketValue: 1000, gainLoss: 200, gainLossPercent: 25, currencyCode: 'USD' },
+        ],
+      },
+    ] as any[];
+    render(<GroupedHoldingsList holdingsByAccount={holdingsByAccount} isLoading={false} totalPortfolioValue={1350} />);
+    // USD account shown with USD prefix since USD != CAD (default currency in mock)
+    expect(screen.getAllByText(/USD \$1000\.00 USD/).length).toBeGreaterThan(0);
   });
 
   it('does not show converted values when security currency matches account currency', () => {

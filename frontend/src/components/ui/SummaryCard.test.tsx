@@ -23,6 +23,34 @@ describe('SummaryCard', () => {
     fireEvent.click(button);
     expect(onClick).toHaveBeenCalled();
   });
+
+  it('applies green valueColor class', () => {
+    const { container } = render(
+      <SummaryCard label="Income" value="$500" icon={<span />} valueColor="green" />
+    );
+    expect(container.querySelector('.text-green-600')).toBeInTheDocument();
+  });
+
+  it('applies red valueColor class', () => {
+    const { container } = render(
+      <SummaryCard label="Expenses" value="$300" icon={<span />} valueColor="red" />
+    );
+    expect(container.querySelector('.text-red-600')).toBeInTheDocument();
+  });
+
+  it('applies blue valueColor class', () => {
+    const { container } = render(
+      <SummaryCard label="Balance" value="$1000" icon={<span />} valueColor="blue" />
+    );
+    expect(container.querySelector('.text-blue-600')).toBeInTheDocument();
+  });
+
+  it('applies yellow valueColor class', () => {
+    const { container } = render(
+      <SummaryCard label="Warning" value="Low" icon={<span />} valueColor="yellow" />
+    );
+    expect(container.querySelector('.text-yellow-600')).toBeInTheDocument();
+  });
 });
 
 describe('SummaryIcons', () => {

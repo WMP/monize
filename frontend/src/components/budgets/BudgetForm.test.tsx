@@ -149,4 +149,30 @@ describe('BudgetForm', () => {
     const checkbox = screen.getByLabelText('Active');
     expect(checkbox).toBeChecked();
   });
+
+  it('handles null description gracefully (defaults to empty string)', () => {
+    const budgetNoDesc = { ...mockBudget, description: null } as any;
+    render(<BudgetForm budget={budgetNoDesc} onSave={vi.fn()} onCancel={vi.fn()} />);
+    const descInput = screen.getByLabelText('Description (optional)');
+    expect(descInput).toHaveValue('');
+  });
+
+  it('handles null baseIncome gracefully', () => {
+    const budgetNoIncome = { ...mockBudget, baseIncome: null } as any;
+    render(<BudgetForm budget={budgetNoIncome} onSave={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByText('Budget Name')).toBeInTheDocument();
+  });
+
+  it('passes undefined description when field is empty on submit', async () => {
+    const handleSave = vi.fn().mockResolvedValue(undefined);
+    const budgetNoDesc = { ...mockBudget, description: '' } as any;
+    render(<BudgetForm budget={budgetNoDesc} onSave={handleSave} onCancel={vi.fn()} />);
+
+    fireEvent.click(screen.getByText('Save Changes'));
+    await waitFor(() => {
+      expect(handleSave).toHaveBeenCalledWith(
+        expect.objectContaining({ description: undefined }),
+      );
+    });
+  });
 });

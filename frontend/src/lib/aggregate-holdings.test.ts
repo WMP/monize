@@ -1,0 +1,99 @@
+import { describe, it, expect } from 'vitest';
+import { aggregateHoldingsBySecurity } from './aggregate-holdings';
+import type { HoldingWithMarketValue } from '@/types/investment';
+
+function holding(overrides: Partial<HoldingWithMarketValue> & { securityId: string }): HoldingWithMarketValue {
+  return {
+    id: `h-${overrides.securityId}`,
+    accountId: 'acc-1',
+    symbol: overrides.securityId,
+    name: overrides.securityId,
+    securityType: 'STOCK',
+    currencyCode: 'CAD',
+    quantity: 10,
+    averageCost: 100,
+    costBasis: 1000,
+    costBasisAccountCurrency: 1000,
+    currentPrice: 110,
+    marketValue: 1100,
+    gainLoss: 100,
+    gainLossPercent: 10,
+    ...overrides,
+  };
+}
+
+describe('aggregateHoldingsBySecurity', () => {
+  it('returns empty array for empty input', () => {
+    expect(aggregateHoldingsBySecurity([])).toEqual([]);
+  });
+
+  it('returns single holding unchanged with empty accountBreakdowns', () => {
+    const h = holding({ securityId: 'AAPL' });
+    const result = aggregateHoldingsBySecurity([h]);
+    expect(result).toHaveLength(1);
+    expect(result[0].securityId).toBe('AAPL');
+    expect(result[0].accountBreakdowns).toHaveLength(1);
+    expect(result[0].accountBreakdowns[0]).toBe(h);
+  });
+
+  it('returns two rows for two different securities', () => {
+    const result = aggregateHoldingsBySecurity([
+      holding({ securityId: 'AAPL', id: 'h1', accountId: 'acc-1' }),
+      holding({ securityId: 'GOOG', id: 'h2', accountId: 'acc-2' }),
+    ]);
+    expect(result).toHaveLength(2);
+  });
+
+  it('aggregates two holdings of the same security', () => {
+    const h1 = holding({ id: 'h1', securityId: 'AAPL', accountId: 'acc-1', quantity: 10, costBasis: 1000, costBasisAccountCurrency: 1000, marketValue: 1100, gainLoss: 100, gainLossPercent: 10 });
+    const h2 = holding({ id: 'h2', securityId: 'AAPL', accountId: 'acc-2', quantity: 5, costBasis: 500, costBasisAccountCurrency: 500, marketValue: 550, gainLoss: 50, gainLossPercent: 10 });
+    const result = aggregateHoldingsBySecurity([h1, h2]);
+    expect(result).toHaveLength(1);
+    expect(result[0].quantity).toBe(15);
+    expect(result[0].costBasis).toBe(1500);
+    expect(result[0].marketValue).toBe(1650);
+    expect(result[0].gainLoss).toBe(150);
+    expect(result[0].gainLossPercent).toBeCloseTo(10);
+    expect(result[0].accountBreakdowns).toHaveLength(2);
+  });
+
+  it('returns null totalMarketValue when both holdings have null market value', () => {
+    const h1 = holding({ id: 'h1', securityId: 'AAPL', accountId: 'acc-1', marketValue: null, gainLoss: null, gainLossPercent: null });
+    const h2 = holding({ id: 'h2', securityId: 'AAPL', accountId: 'acc-2', marketValue: null, gainLoss: null, gainLossPercent: null });
+    const result = aggregateHoldingsBySecurity([h1, h2]);
+    expect(result[0].marketValue).toBeNull();
+    expect(result[0].gainLoss).toBeNull();
+    expect(result[0].gainLossPercent).toBeNull();
+  });
+
+  it('treats null market value as 0 when the other holding has a market value', () => {
+    const h1 = holding({ id: 'h1', securityId: 'AAPL', accountId: 'acc-1', quantity: 10, costBasis: 1000, costBasisAccountCurrency: 1000, marketValue: null, gainLoss: null, gainLossPercent: null });
+    const h2 = holding({ id: 'h2', securityId: 'AAPL', accountId: 'acc-2', quantity: 5, costBasis: 500, costBasisAccountCurrency: 500, marketValue: 550, gainLoss: 50, gainLossPercent: 10 });
+    const result = aggregateHoldingsBySecurity([h1, h2]);
+    expect(result[0].marketValue).toBe(550);
+    expect(result[0].gainLoss).toBe(550 - 1500);
+  });
+
+  it('returns null gainLossPercent when costBasis is 0', () => {
+    const h1 = holding({ id: 'h1', securityId: 'AAPL', accountId: 'acc-1', quantity: 10, costBasis: 0, costBasisAccountCurrency: 0, marketValue: 1100 });
+    const h2 = holding({ id: 'h2', securityId: 'AAPL', accountId: 'acc-2', quantity: 5, costBasis: 0, costBasisAccountCurrency: 0, marketValue: 550 });
+    const result = aggregateHoldingsBySecurity([h1, h2]);
+    expect(result[0].gainLossPercent).toBeNull();
+  });
+
+  it('returns 0 averageCost when total quantity is 0', () => {
+    const h1 = holding({ id: 'h1', securityId: 'AAPL', accountId: 'acc-1', quantity: 0, costBasis: 0, costBasisAccountCurrency: 0, marketValue: null, gainLoss: null, gainLossPercent: null });
+    const h2 = holding({ id: 'h2', securityId: 'AAPL', accountId: 'acc-2', quantity: 0, costBasis: 0, costBasisAccountCurrency: 0, marketValue: null, gainLoss: null, gainLossPercent: null });
+    const result = aggregateHoldingsBySecurity([h1, h2]);
+    expect(result[0].averageCost).toBe(0);
+  });
+
+  it('preserves metadata from the first holding for the aggregated row', () => {
+    const h1 = holding({ id: 'h1', securityId: 'AAPL', symbol: 'AAPL', name: 'Apple Inc.', currencyCode: 'USD' });
+    const h2 = holding({ id: 'h2', securityId: 'AAPL', symbol: 'AAPL', name: 'Apple Inc.', currencyCode: 'USD', accountId: 'acc-2' });
+    const result = aggregateHoldingsBySecurity([h1, h2]);
+    expect(result[0].symbol).toBe('AAPL');
+    expect(result[0].name).toBe('Apple Inc.');
+    expect(result[0].currencyCode).toBe('USD');
+  });
+});

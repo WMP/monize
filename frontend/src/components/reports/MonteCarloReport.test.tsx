@@ -2419,7 +2419,7 @@ describe('MonteCarloReport', () => {
 
       mockApi.list.mockResolvedValueOnce([scenario({ name: 'My Plan 2026' })]);
       await renderReport();
-      const item = await screen.findByRole('button', { name: /Retirement/i });
+      const item = await screen.findByRole('button', { name: /My Plan 2026/i });
       fireEvent.click(item);
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: /Run simulation/i }));

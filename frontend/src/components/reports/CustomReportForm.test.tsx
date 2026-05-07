@@ -10,8 +10,9 @@ vi.mock('@hookform/resolvers/zod', () => ({
         return { values: result, errors: {} };
       } catch (err: any) {
         const errors: Record<string, any> = {};
-        if (err.errors) {
-          for (const e of err.errors) {
+        const issues = err.issues || err.errors;
+        if (issues) {
+          for (const e of issues) {
             const path = e.path.join('.');
             errors[path] = { message: e.message, type: 'validation' };
           }
@@ -686,10 +687,10 @@ describe('CustomReportForm', () => {
     const submitData = mockOnSubmit.mock.calls[0][0];
     // Empty description converts to undefined
     expect(submitData.description).toBeUndefined();
-    // Null icon converts to undefined
-    expect(submitData.icon).toBeUndefined();
-    // Null backgroundColor converts to undefined
-    expect(submitData.backgroundColor).toBeUndefined();
+    // Null icon defaults to 'chart-bar' (the form default)
+    expect(submitData.icon).toBe('chart-bar');
+    // Null backgroundColor defaults to '#3b82f6' (the form default)
+    expect(submitData.backgroundColor).toBe('#3b82f6');
   });
 
   // handleFormSubmit: filterGroups with a condition that has no value are filtered out

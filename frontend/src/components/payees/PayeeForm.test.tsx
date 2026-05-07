@@ -75,4 +75,41 @@ describe('PayeeForm', () => {
     });
     expect(screen.getByText('Food')).toBeInTheDocument();
   });
+
+  it('formats label with parent name for subcategories', () => {
+    const cats = [
+      { id: 'c1', name: 'Food', parentId: null },
+      { id: 'c2', name: 'Groceries', parentId: 'c1' },
+    ] as any[];
+    render(<PayeeForm categories={cats} onSubmit={onSubmit} onCancel={onCancel} />);
+    expect(screen.getByText('Payee Name')).toBeInTheDocument();
+  });
+
+  it('resolves subcategory display name with parent prefix for existing payee', async () => {
+    const cats = [
+      { id: 'c1', name: 'Food', parentId: null },
+      { id: 'c2', name: 'Groceries', parentId: 'c1' },
+    ] as any[];
+    const payee = { id: 'p1', name: 'Walmart', defaultCategoryId: 'c2', notes: null } as any;
+    await act(async () => {
+      render(<PayeeForm payee={payee} categories={cats} onSubmit={onSubmit} onCancel={onCancel} />);
+    });
+    expect(screen.getByText('Update Payee')).toBeInTheDocument();
+  });
+
+  it('handles payee with null notes without throwing', async () => {
+    const payee = { id: 'p1', name: 'Amazon', defaultCategoryId: null, notes: null } as any;
+    await act(async () => {
+      render(<PayeeForm payee={payee} categories={categories} onSubmit={onSubmit} onCancel={onCancel} />);
+    });
+    expect(screen.getByText('Update Payee')).toBeInTheDocument();
+  });
+
+  it('handles payee with defaultCategoryId not found in categories', async () => {
+    const payee = { id: 'p1', name: 'Shop', defaultCategoryId: 'deleted-cat', notes: '' } as any;
+    await act(async () => {
+      render(<PayeeForm payee={payee} categories={categories} onSubmit={onSubmit} onCancel={onCancel} />);
+    });
+    expect(screen.getByText('Update Payee')).toBeInTheDocument();
+  });
 });

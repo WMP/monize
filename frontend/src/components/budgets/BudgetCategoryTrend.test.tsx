@@ -101,4 +101,49 @@ describe('BudgetCategoryTrend', () => {
     expect(screen.getByTestId('line-Groceries')).toBeInTheDocument();
     expect(screen.getByTestId('line-Dining')).toBeInTheDocument();
   });
+
+  it('shows positive variance with + prefix and red class', () => {
+    const overBudgetData: CategoryTrendSeries[] = [
+      {
+        categoryId: 'cat-1',
+        categoryName: 'Dining',
+        data: [
+          { month: 'Jan 2026', budgeted: 200, actual: 350, variance: 150, percentUsed: 175 },
+        ],
+      },
+    ];
+    const { container } = render(<BudgetCategoryTrend data={overBudgetData} formatCurrency={mockFormat} />);
+    expect(screen.getByText('+$150.00')).toBeInTheDocument();
+    expect(container.querySelector('.text-red-600')).toBeInTheDocument();
+  });
+
+  it('shows zero-data series with average 0', () => {
+    const emptySeriesData: CategoryTrendSeries[] = [
+      {
+        categoryId: 'cat-1',
+        categoryName: 'Empty',
+        data: [],
+      },
+    ];
+    render(<BudgetCategoryTrend data={emptySeriesData} formatCurrency={mockFormat} />);
+    expect(screen.getAllByText('$0.00').length).toBeGreaterThan(0);
+  });
+
+  it('deselected toggle button has no background style', () => {
+    render(<BudgetCategoryTrend data={mockData} formatCurrency={mockFormat} />);
+    const toggleBtn = screen.getByTestId('category-toggle-cat-1');
+    // Initially selected (has background style)
+    expect(toggleBtn).toHaveStyle({ backgroundColor: expect.any(String) });
+    fireEvent.click(toggleBtn);
+    // After deselecting, backgroundColor should be unset
+    expect(toggleBtn).not.toHaveStyle({ backgroundColor: '#3b82f6' });
+  });
+
+  it('re-selects category when toggle clicked again', () => {
+    render(<BudgetCategoryTrend data={mockData} formatCurrency={mockFormat} />);
+    const toggleBtn = screen.getByTestId('category-toggle-cat-1');
+    fireEvent.click(toggleBtn); // deselect
+    fireEvent.click(toggleBtn); // re-select
+    expect(screen.getByTestId('line-Groceries')).toBeInTheDocument();
+  });
 });

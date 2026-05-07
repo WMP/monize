@@ -1,13 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import apiClient from './api';
 import { customReportsApi } from './custom-reports';
+import { invalidateCache } from './apiCache';
 
 vi.mock('./api', () => ({
   default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
 describe('customReportsApi', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    invalidateCache('reports:');
+  });
 
   it('create posts to /reports/custom', async () => {
     vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 'r-1' } });
@@ -58,5 +62,15 @@ describe('customReportsApi', () => {
     const result = await customReportsApi.toggleFavourite('r-1', true);
     expect(apiClient.patch).toHaveBeenCalledWith('/reports/custom/r-1', { isFavourite: true });
     expect(result.isFavourite).toBe(true);
+  });
+
+  it('getAll returns cached result on second call without hitting the API', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: [{ id: 'r-1', name: 'My Report' }] });
+    const first = await customReportsApi.getAll();
+    expect(apiClient.get).toHaveBeenCalledTimes(1);
+    vi.clearAllMocks();
+    const second = await customReportsApi.getAll();
+    expect(apiClient.get).not.toHaveBeenCalled();
+    expect(second).toEqual(first);
   });
 });

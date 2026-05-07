@@ -38,6 +38,16 @@ describe('exchangeRatesApi', () => {
       const result = await exchangeRatesApi.getLatestRates();
       expect(result).toEqual([]);
     });
+
+    it('returns cached result on second call without hitting the API', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: [{ rate: 1.36 }] });
+      const first = await exchangeRatesApi.getLatestRates();
+      expect(apiClient.get).toHaveBeenCalledTimes(1);
+      vi.clearAllMocks();
+      const second = await exchangeRatesApi.getLatestRates();
+      expect(apiClient.get).not.toHaveBeenCalled();
+      expect(second).toEqual(first);
+    });
   });
 
   describe('getRateHistory', () => {

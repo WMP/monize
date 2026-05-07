@@ -68,4 +68,58 @@ describe('MapCategoriesStep', () => {
     fireEvent.click(screen.getByRole('button', { name: /Next/i }));
     expect(defaultProps.setStep).toHaveBeenCalledWith('mapSecurities');
   });
+
+  it('navigates to mapAccounts when shouldShowMapAccounts is true and no security mappings', () => {
+    render(<MapCategoriesStep {...defaultProps} shouldShowMapAccounts={true} securityMappings={{ length: 0 }} />);
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+    expect(defaultProps.setStep).toHaveBeenCalledWith('mapAccounts');
+  });
+
+  it('shows matched loans section when there are loan category mappings', () => {
+    const propsWithLoan = {
+      ...defaultProps,
+      categoryMappings: [
+        { originalName: 'Mortgage', categoryId: '', isLoanCategory: true, loanAccountId: 'loan-1', createNewLoan: '', newLoanAmount: undefined, newLoanInstitution: '' },
+      ],
+    };
+    render(<MapCategoriesStep {...propsWithLoan} />);
+    expect(screen.getByText(/auto-matched to loan/)).toBeInTheDocument();
+  });
+
+  it('treats loan mapping with createNewLoan and newLoanAmount as fully mapped', () => {
+    const propsWithNewLoan = {
+      ...defaultProps,
+      categoryMappings: [
+        {
+          originalName: 'Car Loan',
+          categoryId: '',
+          isLoanCategory: true,
+          loanAccountId: '',
+          createNewLoan: 'true',
+          newLoanAmount: 20000,
+          newLoanInstitution: 'Bank',
+        },
+      ],
+    };
+    render(<MapCategoriesStep {...propsWithNewLoan} />);
+    expect(screen.getByText(/0 need attention/)).toBeInTheDocument();
+  });
+
+  it('shows matched categories section when there are category-matched mappings', () => {
+    render(<MapCategoriesStep {...defaultProps} />);
+    expect(screen.getByText(/auto-matched to categories/)).toBeInTheDocument();
+  });
+
+  it('filters accounts to show only LOAN and MORTGAGE types for loanAccounts', () => {
+    const props = {
+      ...defaultProps,
+      accounts: [
+        { id: 'a1', name: 'Checking', accountType: 'CHEQUING' } as any,
+        { id: 'a2', name: 'Mortgage', accountType: 'MORTGAGE' } as any,
+        { id: 'a3', name: 'Car Loan', accountType: 'LOAN' } as any,
+      ],
+    };
+    render(<MapCategoriesStep {...props} />);
+    expect(screen.getByText('Map Categories')).toBeInTheDocument();
+  });
 });

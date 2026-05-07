@@ -1,13 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import apiClient from './api';
 import { investmentsApi } from './investments';
+import { invalidateCache } from './apiCache';
 
 vi.mock('./api', () => ({
   default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
 describe('investmentsApi', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    invalidateCache('investments:');
+  });
 
   it('getPortfolioSummary fetches /portfolio/summary', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: { totalValue: 1000 } });
@@ -282,5 +286,45 @@ describe('investmentsApi', () => {
     vi.mocked(apiClient.delete).mockResolvedValue({});
     await investmentsApi.deleteSecurityPrice('s-1', 1);
     expect(apiClient.delete).toHaveBeenCalledWith('/securities/s-1/prices/1');
+  });
+
+  it('getPortfolioSummary returns cached result on second call', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { totalValue: 1000 } });
+    await investmentsApi.getPortfolioSummary();
+    await investmentsApi.getPortfolioSummary();
+    expect(apiClient.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('getAssetAllocation returns cached result on second call', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
+    await investmentsApi.getAssetAllocation();
+    await investmentsApi.getAssetAllocation();
+    expect(apiClient.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('getInvestmentAccounts returns cached result on second call', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+    await investmentsApi.getInvestmentAccounts();
+    await investmentsApi.getInvestmentAccounts();
+    expect(apiClient.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('getTopMovers returns cached result on second call', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+    await investmentsApi.getTopMovers();
+    await investmentsApi.getTopMovers();
+    expect(apiClient.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('getPortfolioSummary with empty accountIds passes undefined params', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { totalValue: 0 } });
+    await investmentsApi.getPortfolioSummary([]);
+    expect(apiClient.get).toHaveBeenCalledWith('/portfolio/summary', { params: undefined });
+  });
+
+  it('getAssetAllocation with empty accountIds passes undefined params', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: {} });
+    await investmentsApi.getAssetAllocation([]);
+    expect(apiClient.get).toHaveBeenCalledWith('/portfolio/allocation', { params: undefined });
   });
 });

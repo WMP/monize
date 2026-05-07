@@ -1,13 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import apiClient from './api';
 import { categoriesApi } from './categories';
+import { invalidateCache } from './apiCache';
 
 vi.mock('./api', () => ({
   default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
 describe('categoriesApi', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    invalidateCache('categories:');
+  });
 
   it('create posts to /categories', async () => {
     vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 'cat-1' } });
@@ -74,5 +78,15 @@ describe('categoriesApi', () => {
     const result = await categoriesApi.importDefaults();
     expect(apiClient.post).toHaveBeenCalledWith('/categories/import-defaults');
     expect(result.categoriesCreated).toBe(10);
+  });
+
+  it('getAll returns cached result on second call without hitting the API', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: [{ id: 'cat-1', name: 'Food' }] });
+    const first = await categoriesApi.getAll();
+    expect(apiClient.get).toHaveBeenCalledTimes(1);
+    vi.clearAllMocks();
+    const second = await categoriesApi.getAll();
+    expect(apiClient.get).not.toHaveBeenCalled();
+    expect(second).toEqual(first);
   });
 });

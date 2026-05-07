@@ -109,4 +109,60 @@ describe('AssetFields', () => {
     const wrapper = container.querySelector('.bg-green-50');
     expect(wrapper).toBeInTheDocument();
   });
+
+  it('uses assetCategoryName to find initialDisplayValue when non-empty', () => {
+    render(
+      <AssetFields
+        {...defaultProps}
+        assetCategoryName="Home Value Change"
+        selectedAssetCategoryId="cat-1"
+      />
+    );
+    // Combobox renders with cat-1 as value
+    expect(screen.getByTestId('combobox-value').textContent).toBe('cat-1');
+  });
+
+  it('uses accountAssetCategoryId as fallback when selectedAssetCategoryId is empty', () => {
+    render(
+      <AssetFields
+        {...defaultProps}
+        assetCategoryName=""
+        accountAssetCategoryId="cat-1"
+        selectedAssetCategoryId=""
+      />
+    );
+    expect(screen.getByTestId('combobox-value').textContent).toBe('');
+  });
+
+  it('returns empty initialDisplayValue when neither assetCategoryName nor accountAssetCategoryId', () => {
+    render(
+      <AssetFields
+        {...defaultProps}
+        assetCategoryName=""
+        accountAssetCategoryId={null}
+        selectedAssetCategoryId=""
+      />
+    );
+    expect(screen.getByTestId('combobox-value').textContent).toBe('');
+  });
+
+  it('formats subcategory label with parent name', () => {
+    render(<AssetFields {...defaultProps} />);
+    const optionsCount = screen.getByTestId('combobox-options-count');
+    // Both categories (1 top-level, 1 subcategory) are shown
+    expect(optionsCount.textContent).toBe('2');
+  });
+
+  it('renders with unknown parent category gracefully', () => {
+    const catsWithOrphan: Category[] = [
+      ...mockCategories,
+      {
+        id: 'cat-3', userId: 'user-1', parentId: 'unknown-parent', parent: null, children: [],
+        name: 'Orphan', description: null, icon: null, color: null, effectiveColor: null,
+        isIncome: false, isSystem: false, createdAt: '2024-01-01T00:00:00Z',
+      },
+    ];
+    render(<AssetFields {...defaultProps} categories={catsWithOrphan} />);
+    expect(screen.getByTestId('combobox-options-count').textContent).toBe('3');
+  });
 });

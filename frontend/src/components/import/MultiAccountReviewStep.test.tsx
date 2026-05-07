@@ -117,4 +117,79 @@ describe('MultiAccountReviewStep', () => {
     render(<MultiAccountReviewStep {...defaultProps} multiAccountData={noTagsData} />);
     expect(screen.queryByText(/Tags \(/)).not.toBeInTheDocument();
   });
+
+  it('shows securities notice and Next: Map Securities when hasSecuritiesToMap is true', () => {
+    const dataWithSecurities = {
+      ...defaultMultiAccountData,
+      securities: [{ symbol: 'AAPL' }, { symbol: 'GOOG' }],
+    } as any;
+    render(<MultiAccountReviewStep {...defaultProps} multiAccountData={dataWithSecurities} hasSecuritiesToMap={true} />);
+    expect(screen.getByText(/2 securities/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Next: Map Securities'));
+    expect(defaultProps.setStep).toHaveBeenCalledWith('mapSecurities');
+  });
+
+  it('hides sample dates section when sampleDates is empty', () => {
+    const noSampleDates = { ...defaultMultiAccountData, sampleDates: [] };
+    render(<MultiAccountReviewStep {...defaultProps} multiAccountData={noSampleDates} />);
+    expect(screen.queryByText(/Sample dates/)).not.toBeInTheDocument();
+  });
+
+  it('hides categories section when no categories', () => {
+    const noCategories = { ...defaultMultiAccountData, categoryDefs: [] };
+    render(<MultiAccountReviewStep {...defaultProps} multiAccountData={noCategories} />);
+    expect(screen.queryByText(/Categories \(/)).not.toBeInTheDocument();
+  });
+
+  it('hides expense section when no expense categories', () => {
+    const incomeOnly = {
+      ...defaultMultiAccountData,
+      categoryDefs: [{ name: 'Salary', description: '', isIncome: true }],
+    };
+    render(<MultiAccountReviewStep {...defaultProps} multiAccountData={incomeOnly} />);
+    expect(screen.queryByText(/Expense \(/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Income \(/)).toBeInTheDocument();
+  });
+
+  it('hides income section when no income categories', () => {
+    const expenseOnly = {
+      ...defaultMultiAccountData,
+      categoryDefs: [{ name: 'Food', description: '', isIncome: false }],
+    };
+    render(<MultiAccountReviewStep {...defaultProps} multiAccountData={expenseOnly} />);
+    expect(screen.queryByText(/Income \(/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Expense \(/)).toBeInTheDocument();
+  });
+
+  it('does not show date range when dateRange.start is falsy', () => {
+    const dataWithoutDates = {
+      ...defaultMultiAccountData,
+      accounts: [
+        { accountName: 'Checking', accountType: 'Bank', transactionCount: 5, dateRange: { start: '', end: '' } },
+      ],
+    };
+    render(<MultiAccountReviewStep {...defaultProps} multiAccountData={dataWithoutDates} />);
+    expect(screen.queryByText(/\d+ to \d+/)).not.toBeInTheDocument();
+  });
+
+  it('shows singular security notice when hasSecuritiesToMap and 1 security', () => {
+    const dataWithOneSecurity = {
+      ...defaultMultiAccountData,
+      securities: [{ symbol: 'AAPL' }],
+    } as any;
+    render(<MultiAccountReviewStep {...defaultProps} multiAccountData={dataWithOneSecurity} hasSecuritiesToMap={true} />);
+    expect(screen.getByText(/1 security that need/)).toBeInTheDocument();
+  });
+
+  it('shows singular transaction count in account row', () => {
+    const dataWithOneTransaction = {
+      ...defaultMultiAccountData,
+      accounts: [
+        { accountName: 'Checking', accountType: 'Bank', transactionCount: 1, dateRange: { start: '', end: '' } },
+      ],
+      totalTransactionCount: 1,
+    };
+    render(<MultiAccountReviewStep {...defaultProps} multiAccountData={dataWithOneTransaction} />);
+    expect(screen.getByText('1 transaction')).toBeInTheDocument();
+  });
 });

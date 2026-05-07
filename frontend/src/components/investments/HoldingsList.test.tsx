@@ -49,4 +49,52 @@ describe('HoldingsList', () => {
     expect(screen.getByText('Market Value')).toBeInTheDocument();
     expect(screen.getByText('Gain/Loss')).toBeInTheDocument();
   });
+
+  it('renders dash for null values (averageCost, currentPrice, marketValue, gainLoss)', () => {
+    const holdings = [
+      { id: 'h1', symbol: 'XEQT', name: 'iShares', quantity: 10, averageCost: null, currentPrice: null, marketValue: null, gainLoss: null, gainLossPercent: null, currencyCode: 'CAD' },
+    ] as any[];
+    render(<HoldingsList holdings={holdings} isLoading={false} />);
+    expect(screen.getAllByText('-').length).toBeGreaterThan(2);
+  });
+
+  it('shows positive gain/loss with green color class', () => {
+    const holdings = [
+      { id: 'h1', symbol: 'XEQT', name: 'iShares', quantity: 10, averageCost: 40, currentPrice: 50, marketValue: 500, gainLoss: 100, gainLossPercent: 25, currencyCode: 'CAD' },
+    ] as any[];
+    const { container } = render(<HoldingsList holdings={holdings} isLoading={false} />);
+    expect(container.querySelector('.text-green-600')).toBeInTheDocument();
+  });
+
+  it('shows negative gain/loss with red color class', () => {
+    const holdings = [
+      { id: 'h1', symbol: 'XEQT', name: 'iShares', quantity: 10, averageCost: 50, currentPrice: 40, marketValue: 400, gainLoss: -100, gainLossPercent: -20, currencyCode: 'CAD' },
+    ] as any[];
+    const { container } = render(<HoldingsList holdings={holdings} isLoading={false} />);
+    expect(container.querySelector('.text-red-600')).toBeInTheDocument();
+  });
+
+  it('shows null gain/loss (treated as 0) with green color', () => {
+    const holdings = [
+      { id: 'h1', symbol: 'XEQT', name: 'iShares', quantity: 10, averageCost: 40, currentPrice: 50, marketValue: 500, gainLoss: null, gainLossPercent: null, currencyCode: 'CAD' },
+    ] as any[];
+    const { container } = render(<HoldingsList holdings={holdings} isLoading={false} />);
+    expect(container.querySelector('.text-green-600')).toBeInTheDocument();
+  });
+
+  it('shows negative percent without plus sign', () => {
+    const holdings = [
+      { id: 'h1', symbol: 'XEQT', name: 'iShares', quantity: 10, averageCost: 50, currentPrice: 40, marketValue: 400, gainLoss: -100, gainLossPercent: -20, currencyCode: 'CAD' },
+    ] as any[];
+    render(<HoldingsList holdings={holdings} isLoading={false} />);
+    expect(screen.getByText('-20.00%')).toBeInTheDocument();
+  });
+
+  it('shows positive percent with plus sign', () => {
+    const holdings = [
+      { id: 'h1', symbol: 'XEQT', name: 'iShares', quantity: 10, averageCost: 40, currentPrice: 50, marketValue: 500, gainLoss: 100, gainLossPercent: 25, currencyCode: 'CAD' },
+    ] as any[];
+    render(<HoldingsList holdings={holdings} isLoading={false} />);
+    expect(screen.getByText('+25.00%')).toBeInTheDocument();
+  });
 });

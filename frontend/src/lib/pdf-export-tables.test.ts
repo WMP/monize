@@ -68,11 +68,38 @@ describe('addTableToPdf', () => {
 
     const callArgs = mockAutoTable.mock.calls[0][1];
     const headerRow = callArgs.head[0];
-    // 'Name' should be left-aligned
     expect(headerRow[0].styles.halign).toBe('left');
-    // 'Amount' should be right-aligned
     expect(headerRow[1].styles.halign).toBe('right');
-    // 'Count' should be right-aligned
     expect(headerRow[2].styles.halign).toBe('right');
+  });
+
+  it('renders object cells with text content and optional bgColor/textColor', () => {
+    const mockDoc = { lastAutoTable: { finalY: 100 } };
+    const rows = [[
+      { text: 'Red Cell', bgColor: [255, 0, 0] as [number, number, number], textColor: [255, 255, 255] as [number, number, number] },
+      { text: 'Plain Object' },
+      null,
+      undefined,
+    ]];
+
+    addTableToPdf(mockDoc as any, ['A', 'B', 'C', 'D'], rows);
+
+    const callArgs = mockAutoTable.mock.calls[0][1];
+    const bodyRow = callArgs.body[0];
+    expect(bodyRow[0].content).toBe('Red Cell');
+    expect(bodyRow[0].styles.fillColor).toEqual([255, 0, 0]);
+    expect(bodyRow[0].styles.textColor).toEqual([255, 255, 255]);
+    expect(bodyRow[1].content).toBe('Plain Object');
+    expect(bodyRow[1].styles.fillColor).toBeUndefined();
+    expect(bodyRow[1].styles.textColor).toBeUndefined();
+    expect(bodyRow[2].content).toBe('');
+    expect(bodyRow[3].content).toBe('');
+  });
+
+  it('does not add total row when showTotalRow is true but totalRow is absent', () => {
+    const mockDoc = { lastAutoTable: { finalY: 100 } };
+    addTableToPdf(mockDoc as any, ['Name', 'Amount'], [['A', 10]], { showTotalRow: true });
+    const callArgs = mockAutoTable.mock.calls[0][1];
+    expect(callArgs.body).toHaveLength(1);
   });
 });

@@ -1600,9 +1600,10 @@ describe('ScheduledTransactionForm', () => {
       expect(screen.getByLabelText('From Account')).toBeInTheDocument();
     });
 
-    // Select same account for source and destination
-    fireEvent.change(screen.getByLabelText('From Account'), { target: { value: 'acc-1' } });
+    // Set To Account first (before From Account changes the available options),
+    // then set From Account to the same value to trigger same-account validation.
     fireEvent.change(screen.getByLabelText('To Account'), { target: { value: 'acc-1' } });
+    fireEvent.change(screen.getByLabelText('From Account'), { target: { value: 'acc-1' } });
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Self Transfer' } });
 
     const submitBtn = container.querySelector('button[type="submit"]')!;
