@@ -49,6 +49,11 @@ CREATE TABLE IF NOT EXISTS monte_carlo_scenarios (
 CREATE INDEX IF NOT EXISTS idx_monte_carlo_scenarios_user
   ON monte_carlo_scenarios(user_id);
 
-CREATE TRIGGER update_monte_carlo_scenarios_updated_at
-  BEFORE UPDATE ON monte_carlo_scenarios
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_monte_carlo_scenarios_updated_at') THEN
+        CREATE TRIGGER update_monte_carlo_scenarios_updated_at
+            BEFORE UPDATE ON monte_carlo_scenarios
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
