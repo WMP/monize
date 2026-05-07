@@ -1012,8 +1012,9 @@ describe('DividendIncomeReport', () => {
       mockGetInvestmentAccounts.mockResolvedValue([
         { id: 'acc-1', name: 'TFSA', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
       ]);
-      // Day capital gains: Jun 15 has portfolio data, Jun 16 is an empty day
-      // (would be a weekend), Jun 17 has a dividend transaction.
+      // Day capital gains: Jun 15 has a price movement, Jun 16 is a weekend
+      // where the portfolio still holds value but no market activity occurred
+      // (start == end, zero gain), Jun 17 has a dividend transaction.
       mockGetCapitalGains.mockImplementation((params: { granularity?: string }) => {
         if (params.granularity === 'day') {
           return Promise.resolve([
@@ -1036,7 +1037,8 @@ describe('DividendIncomeReport', () => {
               unrealizedGain: 20,
               totalCapitalGain: 20,
             },
-            // Jun 16: zero everything — simulates a weekend / holiday
+            // Jun 16: weekend — portfolio still holds 10 shares at the Friday
+            // close, but no market activity so start == end and gain is zero.
             {
               month: '2024-06-16',
               accountId: 'acc-1',
@@ -1046,10 +1048,10 @@ describe('DividendIncomeReport', () => {
               symbol: 'ABC',
               securityName: 'ABC Corp',
               securityCurrencyCode: 'CAD',
-              startQuantity: 0,
-              endQuantity: 0,
-              startValue: 0,
-              endValue: 0,
+              startQuantity: 10,
+              endQuantity: 10,
+              startValue: 1020,
+              endValue: 1020,
               buys: 0,
               sells: 0,
               realizedGain: 0,

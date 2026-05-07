@@ -419,16 +419,16 @@ export function DividendIncomeReport() {
     return Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [filteredTransactions, filteredDailyCapitalGains, getTxAmount, convertCapitalGain, convertFromAccountCurrency]);
 
-  // When hideInactiveDays is enabled, drop rows with no portfolio value and no
-  // income (dividends, interest, or capital gains). These are typically weekends
-  // and holidays where the market was closed and no transactions occurred.
+  // When hideInactiveDays is enabled, drop rows with no income and no price
+  // movement. On weekends/holidays the market is closed, so capital gains are
+  // zero (start and end values are identical) and there are no dividend or
+  // interest transactions. Start/End value alone is not a useful signal — the
+  // portfolio still has a value sitting on those non-trading days.
   const displayedDailyData = useMemo(
     () =>
       hideInactiveDays
         ? dailyData.filter(
             (row) =>
-              row.startValue !== 0 ||
-              row.endValue !== 0 ||
               row.dividends !== 0 ||
               row.interest !== 0 ||
               row.capitalGains !== 0,
@@ -974,7 +974,7 @@ export function DividendIncomeReport() {
                 role="switch"
                 aria-checked={hideInactiveDays}
                 onClick={() => setHideInactiveDays((v) => !v)}
-                className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 ml-2"
+                className="ml-auto flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
               >
                 <span
                   className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${
