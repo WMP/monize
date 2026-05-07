@@ -755,28 +755,32 @@ describe('DividendIncomeReport', () => {
       mockGetInvestmentAccounts.mockResolvedValue([
         { id: 'acc-1', name: 'TFSA', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
       ]);
-      // Capital gains exist but have no corresponding daily transactions.
-      mockGetCapitalGains.mockResolvedValue([
-        {
-          month: '2024-06',
-          accountId: 'acc-1',
-          accountName: 'TFSA',
-          accountCurrencyCode: 'CAD',
-          securityId: 'sec-1',
-          symbol: 'ABC',
-          securityName: 'ABC Corp',
-          securityCurrencyCode: 'CAD',
-          startQuantity: 10,
-          endQuantity: 0,
-          startValue: 800,
-          endValue: 0,
-          buys: 0,
-          sells: 800,
-          realizedGain: 300,
-          unrealizedGain: 0,
-          totalCapitalGain: 300,
-        },
-      ]);
+      // Monthly capital gains (YYYY-MM key) go to the monthly/security views.
+      // The daily lazy-load uses granularity=day and returns nothing here.
+      mockGetCapitalGains.mockImplementation((params: { granularity?: string }) => {
+        if (params.granularity === 'day') return Promise.resolve([]);
+        return Promise.resolve([
+          {
+            month: '2024-06',
+            accountId: 'acc-1',
+            accountName: 'TFSA',
+            accountCurrencyCode: 'CAD',
+            securityId: 'sec-1',
+            symbol: 'ABC',
+            securityName: 'ABC Corp',
+            securityCurrencyCode: 'CAD',
+            startQuantity: 10,
+            endQuantity: 0,
+            startValue: 800,
+            endValue: 0,
+            buys: 0,
+            sells: 800,
+            realizedGain: 300,
+            unrealizedGain: 0,
+            totalCapitalGain: 300,
+          },
+        ]);
+      });
 
       render(<DividendIncomeReport />);
 
@@ -789,7 +793,7 @@ describe('DividendIncomeReport', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('bar-chart')).not.toBeInTheDocument();
       });
-      // The daily table shows the empty-data message, not a row for June.
+      // Monthly CG entries are not folded into the daily table.
       expect(screen.getByText(/No daily transaction data/)).toBeInTheDocument();
     });
 
@@ -836,22 +840,33 @@ describe('DividendIncomeReport', () => {
       expect(mockExportToCsv).toHaveBeenCalledTimes(1);
       const [filename, headers, rows] = mockExportToCsv.mock.calls[0];
       expect(filename).toMatch(/gains-dividends-interest-daily-all-accounts/);
-      expect(headers).toEqual(['Date', 'Dividends', 'Interest', 'Capital Gains', 'Total', 'Currency']);
+      expect(headers).toEqual([
+        'Date',
+        'Start Value',
+        'End Value',
+        'Dividends',
+        'Interest',
+        'Capital Gains',
+        'Total',
+        'Currency',
+      ]);
 
       const juneRow = rows.find((r: any[]) => r[0] === '2024-06-15');
       expect(juneRow).toBeDefined();
-      expect(juneRow[1]).toBe(50);  // Dividends
-      expect(juneRow[2]).toBe(0);   // Interest
-      expect(juneRow[3]).toBe(0);   // Capital Gains
-      expect(juneRow[4]).toBe(50);  // Total
-      expect(juneRow[5]).toBe('CAD');
+      expect(juneRow[1]).toBe(0);   // Start Value
+      expect(juneRow[2]).toBe(0);   // End Value
+      expect(juneRow[3]).toBe(50);  // Dividends
+      expect(juneRow[4]).toBe(0);   // Interest
+      expect(juneRow[5]).toBe(0);   // Capital Gains
+      expect(juneRow[6]).toBe(50);  // Total
+      expect(juneRow[7]).toBe('CAD');
 
       const julyRow = rows.find((r: any[]) => r[0] === '2024-07-10');
       expect(julyRow).toBeDefined();
-      expect(julyRow[1]).toBe(0);   // Dividends
-      expect(julyRow[2]).toBe(20);  // Interest
-      expect(julyRow[3]).toBe(0);   // Capital Gains
-      expect(julyRow[4]).toBe(20);  // Total
+      expect(julyRow[3]).toBe(0);   // Dividends
+      expect(julyRow[4]).toBe(20);  // Interest
+      expect(julyRow[5]).toBe(0);   // Capital Gains
+      expect(julyRow[6]).toBe(20);  // Total
     });
 
     it('hands daily table data to the PDF exporter', async () => {
@@ -891,9 +906,68 @@ describe('DividendIncomeReport', () => {
       const args = mockExportToPdf.mock.calls[0][0];
       expect(args.chartContainer).toBeUndefined();
       expect(args.tableData).toBeDefined();
-      expect(args.tableData.headers).toEqual(['Date', 'Dividends', 'Interest', 'Capital Gains', 'Total']);
+      expect(args.tableData.headers).toEqual([
+        'Date',
+        'Start Value',
+        'End Value',
+        'Dividends',
+        'Interest',
+        'Capital Gains',
+        'Total',
+      ]);
       expect(args.tableData.rows.length).toBeGreaterThan(0);
       expect(args.tableData.totalRow?.[0]).toBe('Total');
+      // Start/End Value in the footer are intentionally blank (same as monthly table).
+      expect(args.tableData.totalRow?.[1]).toBe('');
+      expect(args.tableData.totalRow?.[2]).toBe('');
+    });
+
+    it('renders Start Value and End Value columns in the daily table from lazy-loaded capital gains', async () => {
+      mockGetTransactions.mockResolvedValue({ data: [], pagination: { hasMore: false } });
+      mockGetInvestmentAccounts.mockResolvedValue([
+        { id: 'acc-1', name: 'TFSA', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
+      ]);
+      mockGetCapitalGains.mockImplementation((params: { granularity?: string }) => {
+        if (params.granularity === 'day') {
+          return Promise.resolve([
+            {
+              month: '2024-06-15',
+              accountId: 'acc-1',
+              accountName: 'TFSA',
+              accountCurrencyCode: 'CAD',
+              securityId: 'sec-1',
+              symbol: 'ABC',
+              securityName: 'ABC Corp',
+              securityCurrencyCode: 'CAD',
+              startQuantity: 10,
+              endQuantity: 10,
+              startValue: 1000,
+              endValue: 1050,
+              buys: 0,
+              sells: 0,
+              realizedGain: 0,
+              unrealizedGain: 50,
+              totalCapitalGain: 50,
+            },
+          ]);
+        }
+        return Promise.resolve([]);
+      });
+
+      render(<DividendIncomeReport />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Daily' })).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Daily' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+      // Start/End Value headers appear in the daily table.
+      expect(await screen.findByText('Start Value')).toBeInTheDocument();
+      expect(screen.getByText('End Value')).toBeInTheDocument();
+      // The Jun 15 row carries the start ($1000) and end ($1050) values.
+      expect(await screen.findByText('$1000.00')).toBeInTheDocument();
+      expect(screen.getByText('$1050.00')).toBeInTheDocument();
     });
 
     it('shows chart container (not table data) to PDF exporter in daily chart view', async () => {

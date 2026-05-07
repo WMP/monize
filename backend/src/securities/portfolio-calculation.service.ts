@@ -96,12 +96,11 @@ function addDaysIso(iso: string, days: number): string {
   return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
 }
 
-interface MonthBucket {
-  month: string; // YYYY-MM
-  monthStart: string; // YYYY-MM-DD (first day of month, clamped to startDate)
-  monthEnd: string; // YYYY-MM-DD (last day of month, clamped to endDate)
-  priceLookupStart: string; // day before monthStart, used to value the
-  // position at the start of the month
+interface PeriodBucket {
+  key: string; // YYYY-MM for months, YYYY-MM-DD for days
+  periodStart: string; // YYYY-MM-DD first day of period
+  periodEnd: string; // YYYY-MM-DD last day of period
+  priceLookupStart: string; // day before periodStart, used to value the position at period start
 }
 
 /**
@@ -109,29 +108,49 @@ interface MonthBucket {
  * carries the YYYY-MM key, the (clamped) start/end day-of-month, and the
  * day-before-start date used to look up the starting price for the month.
  */
-function enumerateMonths(startDate: string, endDate: string): MonthBucket[] {
+function enumerateMonths(startDate: string, endDate: string): PeriodBucket[] {
   const [sy, sm] = startDate.split("-").map(Number);
   const [ey, em] = endDate.split("-").map(Number);
-  const buckets: MonthBucket[] = [];
+  const buckets: PeriodBucket[] = [];
   let y = sy;
   let m = sm;
   while (y < ey || (y === ey && m <= em)) {
     const firstOfMonth = `${y}-${String(m).padStart(2, "0")}-01`;
     const lastDayNum = new Date(Date.UTC(y, m, 0)).getUTCDate();
     const lastOfMonth = `${y}-${String(m).padStart(2, "0")}-${String(lastDayNum).padStart(2, "0")}`;
-    const monthStart = firstOfMonth < startDate ? startDate : firstOfMonth;
-    const monthEnd = lastOfMonth > endDate ? endDate : lastOfMonth;
+    const periodStart = firstOfMonth < startDate ? startDate : firstOfMonth;
+    const periodEnd = lastOfMonth > endDate ? endDate : lastOfMonth;
     buckets.push({
-      month: `${y}-${String(m).padStart(2, "0")}`,
-      monthStart,
-      monthEnd,
-      priceLookupStart: addDaysIso(monthStart, -1),
+      key: `${y}-${String(m).padStart(2, "0")}`,
+      periodStart,
+      periodEnd,
+      priceLookupStart: addDaysIso(periodStart, -1),
     });
     m++;
     if (m > 12) {
       m = 1;
       y++;
     }
+  }
+  return buckets;
+}
+
+/**
+ * Enumerate calendar days covered by [startDate, endDate]. Each entry
+ * carries the YYYY-MM-DD key and the day-before date for the start-of-day
+ * price lookup.
+ */
+function enumerateDays(startDate: string, endDate: string): PeriodBucket[] {
+  const buckets: PeriodBucket[] = [];
+  let current = startDate;
+  while (current <= endDate) {
+    buckets.push({
+      key: current,
+      periodStart: current,
+      periodEnd: current,
+      priceLookupStart: addDaysIso(current, -1),
+    });
+    current = addDaysIso(current, 1);
   }
   return buckets;
 }
@@ -625,8 +644,53 @@ export class PortfolioCalculationService {
       defaultCurrency?: string;
     },
   ): Promise<CapitalGainEntry[]> {
-    const { accountIds, startDate, endDate } = opts;
+    const { startDate, endDate } = opts;
     if (!startDate || !endDate || startDate > endDate) return [];
+    const periods = enumerateMonths(startDate, endDate);
+    if (periods.length === 0) return [];
+    return this.calculateCapitalGainsForPeriods(userId, opts, periods);
+  }
+
+  /**
+   * Compute realized + unrealized capital gains per (account, security, day)
+   * across the requested window. Identical to calculateCapitalGainsByMonth but
+   * snapshotted at daily rather than monthly boundaries. The `month` field on
+   * each returned CapitalGainEntry holds a YYYY-MM-DD key for the day.
+   */
+  async calculateCapitalGainsByDay(
+    userId: string,
+    opts: {
+      accountIds?: string[];
+      startDate: string;
+      endDate: string;
+      defaultCurrency?: string;
+    },
+  ): Promise<CapitalGainEntry[]> {
+    const { startDate, endDate } = opts;
+    if (!startDate || !endDate || startDate > endDate) return [];
+    const periods = enumerateDays(startDate, endDate);
+    if (periods.length === 0) return [];
+    return this.calculateCapitalGainsForPeriods(userId, opts, periods);
+  }
+
+  /**
+   * Core capital-gains replay loop shared by calculateCapitalGainsByMonth and
+   * calculateCapitalGainsByDay. Replays transaction history and snapshots the
+   * position at the boundary of each PeriodBucket. The `month` field on each
+   * returned entry is set to the bucket's `key` (YYYY-MM for months, YYYY-MM-DD
+   * for days).
+   */
+  private async calculateCapitalGainsForPeriods(
+    userId: string,
+    opts: {
+      accountIds?: string[];
+      startDate: string;
+      endDate: string;
+      defaultCurrency?: string;
+    },
+    periods: PeriodBucket[],
+  ): Promise<CapitalGainEntry[]> {
+    const { accountIds, endDate } = opts;
 
     const where: FindOptionsWhere<InvestmentTransaction> = { userId };
     if (accountIds && accountIds.length > 0) {
@@ -649,10 +713,6 @@ export class PortfolioCalculationService {
     ];
     const allPrices = await this.getAllPricesForSecurities(securityIds);
 
-    // Build the ordered list of month buckets to snapshot
-    const months = enumerateMonths(startDate, endDate);
-    if (months.length === 0) return [];
-
     // Group transactions by (account, security)
     type GroupKey = string;
     const groups = new Map<
@@ -670,8 +730,8 @@ export class PortfolioCalculationService {
     >();
     for (const tx of transactions) {
       if (!tx.securityId) continue;
-      const key = `${tx.accountId}:${tx.securityId}`;
-      let group = groups.get(key);
+      const groupKey = `${tx.accountId}:${tx.securityId}`;
+      let group = groups.get(groupKey);
       if (!group) {
         group = {
           accountId: tx.accountId,
@@ -683,7 +743,7 @@ export class PortfolioCalculationService {
           securityCurrencyCode: tx.security?.currencyCode ?? null,
           txs: [],
         };
-        groups.set(key, group);
+        groups.set(groupKey, group);
       }
       group.txs.push(tx);
     }
@@ -718,16 +778,16 @@ export class PortfolioCalculationService {
         group.accountCurrencyCode,
       );
 
-      // Replay any transactions strictly before startDate to seed state.
+      // Replay any transactions strictly before the first period to seed state.
       while (
         txIdx < txs.length &&
-        txs[txIdx].transactionDate < months[0].monthStart
+        txs[txIdx].transactionDate < periods[0].periodStart
       ) {
         applyTxToState(txs[txIdx], state);
         txIdx++;
       }
 
-      for (const { month, monthEnd, priceLookupStart } of months) {
+      for (const { key: periodKey, periodEnd, priceLookupStart } of periods) {
         const startQuantity = state.quantity;
         const startPrice =
           this.lookupPrice(group.securityId, priceLookupStart, allPrices) ?? 0;
@@ -737,7 +797,7 @@ export class PortfolioCalculationService {
         let sells = 0;
         let realizedGain = 0;
 
-        while (txIdx < txs.length && txs[txIdx].transactionDate <= monthEnd) {
+        while (txIdx < txs.length && txs[txIdx].transactionDate <= periodEnd) {
           const tx = txs[txIdx];
           const quantity = Number(tx.quantity) || 0;
           const price = Number(tx.price) || 0;
@@ -789,7 +849,7 @@ export class PortfolioCalculationService {
 
         const endQuantity = state.quantity;
         const endPrice =
-          this.lookupPrice(group.securityId, monthEnd, allPrices) ?? 0;
+          this.lookupPrice(group.securityId, periodEnd, allPrices) ?? 0;
         const endValue = endQuantity * endPrice * securityToAccountFx;
 
         const totalCapitalGain = endValue - startValue + sells - buys;
@@ -807,7 +867,7 @@ export class PortfolioCalculationService {
         const round = (n: number) => (Math.abs(n) < 0.005 ? 0 : roundMoney(n));
 
         results.push({
-          month,
+          month: periodKey,
           accountId: group.accountId,
           accountName: group.accountName,
           accountCurrencyCode: group.accountCurrencyCode,

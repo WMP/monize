@@ -53,6 +53,8 @@ interface SecurityIncome {
 interface DailyIncome {
   date: string;
   label: string;
+  startValue: number;
+  endValue: number;
   dividends: number;
   interest: number;
   capitalGains: number;
@@ -71,6 +73,7 @@ export function DividendIncomeReport() {
   const chartRef = useRef<HTMLDivElement>(null);
   const [transactions, setTransactions] = useState<InvestmentTransaction[]>([]);
   const [capitalGains, setCapitalGains] = useState<CapitalGainEntry[]>([]);
+  const [dailyCapitalGains, setDailyCapitalGains] = useState<CapitalGainEntry[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [selectedSecurityId, setSelectedSecurityId] = useState<string>('');
@@ -107,7 +110,7 @@ export function DividendIncomeReport() {
         });
       }
     }
-    for (const entry of capitalGains) {
+    for (const entry of [...capitalGains, ...dailyCapitalGains]) {
       if (!map.has(entry.securityId)) {
         map.set(entry.securityId, {
           id: entry.securityId,
@@ -117,7 +120,7 @@ export function DividendIncomeReport() {
       }
     }
     return Array.from(map.values()).sort((a, b) => a.symbol.localeCompare(b.symbol));
-  }, [transactions, capitalGains]);
+  }, [transactions, capitalGains, dailyCapitalGains]);
 
   // Clear the security filter when the account changes or when the selected
   // security drops out of the available set (e.g. switching to an account
@@ -140,6 +143,11 @@ export function DividendIncomeReport() {
     if (!selectedSecurityId) return capitalGains;
     return capitalGains.filter((e) => e.securityId === selectedSecurityId);
   }, [capitalGains, selectedSecurityId]);
+
+  const filteredDailyCapitalGains = useMemo(() => {
+    if (!selectedSecurityId) return dailyCapitalGains;
+    return dailyCapitalGains.filter((e) => e.securityId === selectedSecurityId);
+  }, [dailyCapitalGains, selectedSecurityId]);
 
   // When a single account is selected, show in native currency; otherwise convert to default
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
@@ -243,6 +251,27 @@ export function DividendIncomeReport() {
     loadData();
   }, [selectedAccountId, resolvedRange, isValid]);
 
+  // Lazy-load daily capital gains only when the user switches to the daily view.
+  useEffect(() => {
+    if (viewType !== 'daily' || !isValid) return;
+    const load = async () => {
+      try {
+        const { start, end } = resolvedRange;
+        const cgStart = start || '1970-01-01';
+        const data = await investmentsApi.getCapitalGains({
+          accountIds: selectedAccountId || undefined,
+          startDate: cgStart,
+          endDate: end,
+          granularity: 'day',
+        });
+        setDailyCapitalGains(data);
+      } catch (error) {
+        logger.error('Failed to load daily capital gains:', error);
+      }
+    };
+    load();
+  }, [viewType, selectedAccountId, resolvedRange, isValid]);
+
   const monthlyData = useMemo((): MonthlyIncome[] => {
     const { start, end } = resolvedRange;
     if (!start && dateRange !== 'all') return [];
@@ -330,31 +359,33 @@ export function DividendIncomeReport() {
     return Array.from(monthMap.values()).sort((a, b) => a.month.localeCompare(b.month));
   }, [filteredTransactions, filteredCapitalGains, dateRange, resolvedRange, getTxAmount, convertCapitalGain, convertFromAccountCurrency]);
 
-  // Daily view: groups transaction-level income (DIVIDEND, INTEREST, CAPITAL_GAIN)
-  // by calendar day. Monthly capital-gain entries are not available at daily
-  // granularity and are intentionally excluded here.
+  // Daily view: mirrors monthlyData but at daily granularity, combining
+  // transaction-level income (DIVIDEND, INTEREST, CAPITAL_GAIN) with the
+  // daily capital gains from the backend (realized + unrealized per day).
   const dailyData = useMemo((): DailyIncome[] => {
     const dayMap = new Map<string, DailyIncome>();
 
-    const getOrCreateBucket = (txDate: Date): DailyIncome => {
-      const key = format(txDate, 'yyyy-MM-dd');
-      let bucket = dayMap.get(key);
+    const getOrCreateBucket = (dateKey: string, txDate: Date): DailyIncome => {
+      let bucket = dayMap.get(dateKey);
       if (!bucket) {
         bucket = {
-          date: key,
+          date: dateKey,
           label: format(txDate, 'MMM d, yyyy'),
+          startValue: 0,
+          endValue: 0,
           dividends: 0,
           interest: 0,
           capitalGains: 0,
           total: 0,
         };
-        dayMap.set(key, bucket);
+        dayMap.set(dateKey, bucket);
       }
       return bucket;
     };
 
     filteredTransactions.forEach((tx) => {
-      const bucket = getOrCreateBucket(parseLocalDate(tx.transactionDate));
+      const txDate = parseLocalDate(tx.transactionDate);
+      const bucket = getOrCreateBucket(tx.transactionDate, txDate);
       const contribution = getTxAmount(tx);
       switch (tx.action) {
         case 'DIVIDEND':
@@ -370,8 +401,19 @@ export function DividendIncomeReport() {
       bucket.total += contribution;
     });
 
+    filteredDailyCapitalGains.forEach((entry) => {
+      // entry.month holds YYYY-MM-DD for daily entries
+      const txDate = parseLocalDate(entry.month);
+      const bucket = getOrCreateBucket(entry.month, txDate);
+      const gain = convertCapitalGain(entry);
+      bucket.capitalGains += gain;
+      bucket.total += gain;
+      bucket.startValue += convertFromAccountCurrency(entry.startValue, entry.accountCurrencyCode);
+      bucket.endValue += convertFromAccountCurrency(entry.endValue, entry.accountCurrencyCode);
+    });
+
     return Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date));
-  }, [filteredTransactions, getTxAmount]);
+  }, [filteredTransactions, filteredDailyCapitalGains, getTxAmount, convertCapitalGain, convertFromAccountCurrency]);
 
   const securityData = useMemo((): SecurityIncome[] => {
     const securityMap = new Map<string, SecurityIncome>();
@@ -481,13 +523,13 @@ export function DividendIncomeReport() {
     }
 
     if (viewType === 'daily') {
-      const headers: string[] = ['Date'];
+      const headers: string[] = ['Date', 'Start Value', 'End Value'];
       if (visibleSeries.dividends) headers.push('Dividends');
       if (visibleSeries.interest) headers.push('Interest');
       if (visibleSeries.capitalGains) headers.push('Capital Gains');
       headers.push('Total', 'Currency');
       const rows = dailyData.map((row) => {
-        const out: (string | number)[] = [row.date];
+        const out: (string | number)[] = [row.date, round4(row.startValue), round4(row.endValue)];
         let total = 0;
         if (visibleSeries.dividends) {
           out.push(round4(row.dividends));
@@ -576,13 +618,13 @@ export function DividendIncomeReport() {
         ],
       };
     } else if (viewType === 'daily' && monthlyDisplay === 'table') {
-      const headers: string[] = ['Date'];
+      const headers: string[] = ['Date', 'Start Value', 'End Value'];
       if (visibleSeries.dividends) headers.push('Dividends');
       if (visibleSeries.interest) headers.push('Interest');
       if (visibleSeries.capitalGains) headers.push('Capital Gains');
       headers.push('Total');
       const rows = dailyData.map((row) => {
-        const out: (string | number)[] = [row.label];
+        const out: (string | number)[] = [row.label, fmtValue(row.startValue), fmtValue(row.endValue)];
         let rowTotal = 0;
         if (visibleSeries.dividends) {
           out.push(fmtValue(row.dividends));
@@ -607,7 +649,7 @@ export function DividendIncomeReport() {
         }),
         { dividends: 0, interest: 0, capitalGains: 0 },
       );
-      const totalRow: (string | number)[] = ['Total'];
+      const totalRow: (string | number)[] = ['Total', '', ''];
       let grandTotal = 0;
       if (visibleSeries.dividends) {
         totalRow.push(fmtValue(dailyTotals.dividends));
@@ -908,7 +950,7 @@ export function DividendIncomeReport() {
         )}
       </div>
 
-      {filteredTransactions.length === 0 && filteredCapitalGains.length === 0 ? (
+      {filteredTransactions.length === 0 && filteredCapitalGains.length === 0 && filteredDailyCapitalGains.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
             No dividends, interest, or capital gain activity found for this period.
@@ -1143,6 +1185,12 @@ export function DividendIncomeReport() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                       Date
                     </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                      Start Value
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                      End Value
+                    </th>
                     {visibleSeries.dividends && (
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Dividends
@@ -1173,6 +1221,12 @@ export function DividendIncomeReport() {
                       <tr key={row.date} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                         <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
                           {row.label}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm text-gray-700 dark:text-gray-300">
+                          {row.startValue !== 0 ? fmtValue(row.startValue) : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm text-gray-700 dark:text-gray-300">
+                          {row.endValue !== 0 ? fmtValue(row.endValue) : '-'}
                         </td>
                         {visibleSeries.dividends && (
                           <td className="px-4 py-3 text-right text-sm text-green-600 dark:text-green-400">

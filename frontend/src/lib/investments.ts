@@ -155,11 +155,12 @@ export const investmentsApi = {
     return response.data;
   },
 
-  // Per-month capital gain breakdown (realized + unrealized) by security.
+  // Per-period capital gain breakdown (realized + unrealized) by security.
   getCapitalGains: async (params: {
     accountIds?: string;
     startDate: string;
     endDate: string;
+    granularity?: 'month' | 'day';
   }): Promise<CapitalGainEntry[]> => {
     const response = await apiClient.get<CapitalGainEntry[]>(
       '/investment-transactions/capital-gains',
