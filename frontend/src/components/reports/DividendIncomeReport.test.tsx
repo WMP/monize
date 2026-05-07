@@ -646,6 +646,492 @@ describe('DividendIncomeReport', () => {
     expect(rows).toEqual([['AAA', 'Alpha', 100, 0, 0, 100, 'CAD']]);
   });
 
+  describe('Daily view', () => {
+    it('renders a Daily button alongside Monthly and By Security', async () => {
+      mockGetTransactions.mockResolvedValue({ data: [], pagination: { hasMore: false } });
+      mockGetInvestmentAccounts.mockResolvedValue([]);
+      mockGetCapitalGains.mockResolvedValue([]);
+      render(<DividendIncomeReport />);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Daily' })).toBeInTheDocument();
+      });
+      expect(screen.getByRole('button', { name: 'Monthly' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'By Security' })).toBeInTheDocument();
+    });
+
+    it('switches to a daily chart when Daily is clicked', async () => {
+      mockGetTransactions.mockResolvedValue({
+        data: [
+          {
+            id: 'tx-1',
+            transactionDate: '2024-06-15',
+            action: 'DIVIDEND',
+            totalAmount: 50,
+            accountId: 'acc-1',
+            securityId: 'sec-a',
+            security: { symbol: 'AAA', name: 'Alpha' },
+          },
+        ],
+        pagination: { hasMore: false },
+      });
+      mockGetInvestmentAccounts.mockResolvedValue([
+        { id: 'acc-1', name: 'TFSA', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
+      ]);
+      mockGetCapitalGains.mockResolvedValue([]);
+
+      render(<DividendIncomeReport />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Daily' }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Daily Gains, Dividends & Interest')).toBeInTheDocument();
+    });
+
+    it('shows the daily table with a Date column when Table is clicked in Daily view', async () => {
+      mockGetTransactions.mockResolvedValue({
+        data: [
+          {
+            id: 'tx-1',
+            transactionDate: '2024-06-15',
+            action: 'DIVIDEND',
+            totalAmount: 75,
+            accountId: 'acc-1',
+            securityId: 'sec-a',
+            security: { symbol: 'AAA', name: 'Alpha' },
+          },
+          {
+            id: 'tx-2',
+            transactionDate: '2024-06-15',
+            action: 'INTEREST',
+            totalAmount: 10,
+            accountId: 'acc-1',
+            securityId: null,
+            security: null,
+          },
+          {
+            id: 'tx-3',
+            transactionDate: '2024-07-01',
+            action: 'DIVIDEND',
+            totalAmount: 25,
+            accountId: 'acc-1',
+            securityId: 'sec-a',
+            security: { symbol: 'AAA', name: 'Alpha' },
+          },
+        ],
+        pagination: { hasMore: false },
+      });
+      mockGetInvestmentAccounts.mockResolvedValue([
+        { id: 'acc-1', name: 'TFSA', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
+      ]);
+      mockGetCapitalGains.mockResolvedValue([]);
+
+      render(<DividendIncomeReport />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Daily' })).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Daily' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('bar-chart')).not.toBeInTheDocument();
+      });
+      expect(screen.getByText('Date')).toBeInTheDocument();
+      // Two distinct days have data.
+      expect(screen.getByText('Jun 15, 2024')).toBeInTheDocument();
+      expect(screen.getByText('Jul 1, 2024')).toBeInTheDocument();
+      // Transactions on the same day should be aggregated ($75 + $10).
+      expect(screen.getByText('$85.00')).toBeInTheDocument();
+    });
+
+    it('does not include monthly capital gains entries in the daily table', async () => {
+      mockGetTransactions.mockResolvedValue({ data: [], pagination: { hasMore: false } });
+      mockGetInvestmentAccounts.mockResolvedValue([
+        { id: 'acc-1', name: 'TFSA', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
+      ]);
+      // Monthly capital gains (YYYY-MM key) go to the monthly/security views.
+      // The daily lazy-load uses granularity=day and returns nothing here.
+      mockGetCapitalGains.mockImplementation((params: { granularity?: string }) => {
+        if (params.granularity === 'day') return Promise.resolve([]);
+        return Promise.resolve([
+          {
+            month: '2024-06',
+            accountId: 'acc-1',
+            accountName: 'TFSA',
+            accountCurrencyCode: 'CAD',
+            securityId: 'sec-1',
+            symbol: 'ABC',
+            securityName: 'ABC Corp',
+            securityCurrencyCode: 'CAD',
+            startQuantity: 10,
+            endQuantity: 0,
+            startValue: 800,
+            endValue: 0,
+            buys: 0,
+            sells: 800,
+            realizedGain: 300,
+            unrealizedGain: 0,
+            totalCapitalGain: 300,
+          },
+        ]);
+      });
+
+      render(<DividendIncomeReport />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Daily' })).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Daily' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('bar-chart')).not.toBeInTheDocument();
+      });
+      // Monthly CG entries are not folded into the daily table.
+      expect(screen.getByText(/No daily transaction data/)).toBeInTheDocument();
+    });
+
+    it('writes a daily CSV with one row per day', async () => {
+      mockGetTransactions.mockResolvedValue({
+        data: [
+          {
+            id: 'tx-1',
+            transactionDate: '2024-06-15',
+            action: 'DIVIDEND',
+            totalAmount: 50,
+            accountId: 'acc-1',
+            securityId: 'sec-a',
+            security: { symbol: 'AAA', name: 'Alpha' },
+          },
+          {
+            id: 'tx-2',
+            transactionDate: '2024-07-10',
+            action: 'INTEREST',
+            totalAmount: 20,
+            accountId: 'acc-1',
+            securityId: null,
+            security: null,
+          },
+        ],
+        pagination: { hasMore: false },
+      });
+      mockGetInvestmentAccounts.mockResolvedValue([
+        { id: 'acc-1', name: 'TFSA', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
+      ]);
+      mockGetCapitalGains.mockResolvedValue([]);
+
+      render(<DividendIncomeReport />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Daily' })).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Daily' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+      fireEvent.click(await screen.findByRole('button', { name: /^export$/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'CSV' }));
+
+      expect(mockExportToCsv).toHaveBeenCalledTimes(1);
+      const [filename, headers, rows] = mockExportToCsv.mock.calls[0];
+      expect(filename).toMatch(/gains-dividends-interest-daily-all-accounts/);
+      expect(headers).toEqual([
+        'Date',
+        'Start Value',
+        'End Value',
+        'Dividends',
+        'Interest',
+        'Capital Gains',
+        'Total',
+        'Currency',
+      ]);
+
+      const juneRow = rows.find((r: any[]) => r[0] === '2024-06-15');
+      expect(juneRow).toBeDefined();
+      expect(juneRow[1]).toBe(0);   // Start Value
+      expect(juneRow[2]).toBe(0);   // End Value
+      expect(juneRow[3]).toBe(50);  // Dividends
+      expect(juneRow[4]).toBe(0);   // Interest
+      expect(juneRow[5]).toBe(0);   // Capital Gains
+      expect(juneRow[6]).toBe(50);  // Total
+      expect(juneRow[7]).toBe('CAD');
+
+      const julyRow = rows.find((r: any[]) => r[0] === '2024-07-10');
+      expect(julyRow).toBeDefined();
+      expect(julyRow[3]).toBe(0);   // Dividends
+      expect(julyRow[4]).toBe(20);  // Interest
+      expect(julyRow[5]).toBe(0);   // Capital Gains
+      expect(julyRow[6]).toBe(20);  // Total
+    });
+
+    it('hands daily table data to the PDF exporter', async () => {
+      mockGetTransactions.mockResolvedValue({
+        data: [
+          {
+            id: 'tx-1',
+            transactionDate: '2024-06-15',
+            action: 'DIVIDEND',
+            totalAmount: 50,
+            accountId: 'acc-1',
+            securityId: 'sec-a',
+            security: { symbol: 'AAA', name: 'Alpha' },
+          },
+        ],
+        pagination: { hasMore: false },
+      });
+      mockGetInvestmentAccounts.mockResolvedValue([
+        { id: 'acc-1', name: 'TFSA', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
+      ]);
+      mockGetCapitalGains.mockResolvedValue([]);
+
+      render(<DividendIncomeReport />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Daily' })).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Daily' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+      fireEvent.click(await screen.findByRole('button', { name: /^export$/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'PDF' }));
+
+      await waitFor(() => {
+        expect(mockExportToPdf).toHaveBeenCalledTimes(1);
+      });
+      const args = mockExportToPdf.mock.calls[0][0];
+      expect(args.chartContainer).toBeUndefined();
+      expect(args.tableData).toBeDefined();
+      expect(args.tableData.headers).toEqual([
+        'Date',
+        'Start Value',
+        'End Value',
+        'Dividends',
+        'Interest',
+        'Capital Gains',
+        'Total',
+      ]);
+      expect(args.tableData.rows.length).toBeGreaterThan(0);
+      expect(args.tableData.totalRow?.[0]).toBe('Total');
+      // Start/End Value in the footer are intentionally blank (same as monthly table).
+      expect(args.tableData.totalRow?.[1]).toBe('');
+      expect(args.tableData.totalRow?.[2]).toBe('');
+    });
+
+    it('renders Start Value and End Value columns in the daily table from lazy-loaded capital gains', async () => {
+      mockGetTransactions.mockResolvedValue({ data: [], pagination: { hasMore: false } });
+      mockGetInvestmentAccounts.mockResolvedValue([
+        { id: 'acc-1', name: 'TFSA', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
+      ]);
+      mockGetCapitalGains.mockImplementation((params: { granularity?: string }) => {
+        if (params.granularity === 'day') {
+          return Promise.resolve([
+            {
+              month: '2024-06-15',
+              accountId: 'acc-1',
+              accountName: 'TFSA',
+              accountCurrencyCode: 'CAD',
+              securityId: 'sec-1',
+              symbol: 'ABC',
+              securityName: 'ABC Corp',
+              securityCurrencyCode: 'CAD',
+              startQuantity: 10,
+              endQuantity: 10,
+              startValue: 1000,
+              endValue: 1050,
+              buys: 0,
+              sells: 0,
+              realizedGain: 0,
+              unrealizedGain: 50,
+              totalCapitalGain: 50,
+            },
+          ]);
+        }
+        return Promise.resolve([]);
+      });
+
+      render(<DividendIncomeReport />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Daily' })).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Daily' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+      // Start/End Value headers appear in the daily table.
+      expect(await screen.findByText('Start Value')).toBeInTheDocument();
+      expect(screen.getByText('End Value')).toBeInTheDocument();
+      // The Jun 15 row carries the start ($1000) and end ($1050) values.
+      expect(await screen.findByText('$1000.00')).toBeInTheDocument();
+      expect(screen.getByText('$1050.00')).toBeInTheDocument();
+    });
+
+    it('shows a Hide inactive days toggle only in daily view', async () => {
+      mockGetTransactions.mockResolvedValue({ data: [], pagination: { hasMore: false } });
+      mockGetInvestmentAccounts.mockResolvedValue([]);
+      mockGetCapitalGains.mockResolvedValue([]);
+
+      render(<DividendIncomeReport />);
+
+      // Toggle should not be visible in monthly view (default).
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Monthly' })).toBeInTheDocument();
+      });
+      expect(screen.queryByRole('switch', { name: /hide inactive days/i })).not.toBeInTheDocument();
+
+      // Switch to daily view — toggle should appear.
+      fireEvent.click(screen.getByRole('button', { name: 'Daily' }));
+      expect(await screen.findByRole('switch', { name: /hide inactive days/i })).toBeInTheDocument();
+
+      // Switch back to monthly — toggle disappears again.
+      fireEvent.click(screen.getByRole('button', { name: 'Monthly' }));
+      await waitFor(() => {
+        expect(screen.queryByRole('switch', { name: /hide inactive days/i })).not.toBeInTheDocument();
+      });
+    });
+
+    it('hides days with all-zero activity when Hide inactive days is toggled on', async () => {
+      mockGetTransactions.mockResolvedValue({
+        data: [
+          {
+            id: 'tx-1',
+            transactionDate: '2024-06-17',
+            action: 'DIVIDEND',
+            totalAmount: 50,
+            accountId: 'acc-1',
+            securityId: 'sec-a',
+            security: { symbol: 'AAA', name: 'Alpha' },
+          },
+        ],
+        pagination: { hasMore: false },
+      });
+      mockGetInvestmentAccounts.mockResolvedValue([
+        { id: 'acc-1', name: 'TFSA', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
+      ]);
+      // Day capital gains: Jun 15 has a price movement, Jun 16 is a weekend
+      // where the portfolio still holds value but no market activity occurred
+      // (start == end, zero gain), Jun 17 has a dividend transaction.
+      mockGetCapitalGains.mockImplementation((params: { granularity?: string }) => {
+        if (params.granularity === 'day') {
+          return Promise.resolve([
+            {
+              month: '2024-06-15',
+              accountId: 'acc-1',
+              accountName: 'TFSA',
+              accountCurrencyCode: 'CAD',
+              securityId: 'sec-1',
+              symbol: 'ABC',
+              securityName: 'ABC Corp',
+              securityCurrencyCode: 'CAD',
+              startQuantity: 10,
+              endQuantity: 10,
+              startValue: 1000,
+              endValue: 1020,
+              buys: 0,
+              sells: 0,
+              realizedGain: 0,
+              unrealizedGain: 20,
+              totalCapitalGain: 20,
+            },
+            // Jun 16: weekend — portfolio still holds 10 shares at the Friday
+            // close, but no market activity so start == end and gain is zero.
+            {
+              month: '2024-06-16',
+              accountId: 'acc-1',
+              accountName: 'TFSA',
+              accountCurrencyCode: 'CAD',
+              securityId: 'sec-1',
+              symbol: 'ABC',
+              securityName: 'ABC Corp',
+              securityCurrencyCode: 'CAD',
+              startQuantity: 10,
+              endQuantity: 10,
+              startValue: 1020,
+              endValue: 1020,
+              buys: 0,
+              sells: 0,
+              realizedGain: 0,
+              unrealizedGain: 0,
+              totalCapitalGain: 0,
+            },
+          ]);
+        }
+        return Promise.resolve([]);
+      });
+
+      render(<DividendIncomeReport />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Daily' })).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Daily' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Table' }));
+
+      // All three days appear initially (toggle is off).
+      expect(await screen.findByText('Jun 15, 2024')).toBeInTheDocument();
+      expect(screen.getByText('Jun 16, 2024')).toBeInTheDocument();
+      expect(screen.getByText('Jun 17, 2024')).toBeInTheDocument();
+
+      // Enable the toggle — Jun 16 (all zeros) should disappear.
+      const toggle = screen.getByRole('switch', { name: /hide inactive days/i });
+      fireEvent.click(toggle);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Jun 16, 2024')).not.toBeInTheDocument();
+      });
+      // Active days remain visible.
+      expect(screen.getByText('Jun 15, 2024')).toBeInTheDocument();
+      expect(screen.getByText('Jun 17, 2024')).toBeInTheDocument();
+
+      // Disable the toggle — Jun 16 comes back.
+      fireEvent.click(toggle);
+      expect(await screen.findByText('Jun 16, 2024')).toBeInTheDocument();
+    });
+
+    it('shows chart container (not table data) to PDF exporter in daily chart view', async () => {
+      mockGetTransactions.mockResolvedValue({
+        data: [
+          {
+            id: 'tx-1',
+            transactionDate: '2024-06-15',
+            action: 'DIVIDEND',
+            totalAmount: 50,
+            accountId: 'acc-1',
+            securityId: 'sec-a',
+            security: { symbol: 'AAA', name: 'Alpha' },
+          },
+        ],
+        pagination: { hasMore: false },
+      });
+      mockGetInvestmentAccounts.mockResolvedValue([
+        { id: 'acc-1', name: 'TFSA', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
+      ]);
+      mockGetCapitalGains.mockResolvedValue([]);
+
+      render(<DividendIncomeReport />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Daily' })).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Daily' }));
+
+      // Daily chart view: ExportDropdown collapses to PDF-only button.
+      const exportPdfBtn = await screen.findByRole('button', { name: /export pdf/i });
+      fireEvent.click(exportPdfBtn);
+
+      await waitFor(() => {
+        expect(mockExportToPdf).toHaveBeenCalledTimes(1);
+      });
+      const args = mockExportToPdf.mock.calls[0][0];
+      expect(args.chartContainer).not.toBeNull();
+      expect(args.tableData).toBeUndefined();
+    });
+  });
+
   it('renders series toggle pills and hides a series when one is clicked', async () => {
     mockGetTransactions.mockResolvedValue({
       data: [

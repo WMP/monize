@@ -32,6 +32,7 @@ describe("InvestmentTransactionsController", () => {
       getSummary: jest.fn(),
       getRealizedGains: jest.fn(),
       getCapitalGainsByMonth: jest.fn(),
+      getCapitalGainsByDay: jest.fn(),
       findOne: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
@@ -225,7 +226,7 @@ describe("InvestmentTransactionsController", () => {
     });
   });
 
-  describe("getCapitalGainsByMonth", () => {
+  describe("getCapitalGains", () => {
     it("passes startDate, endDate, and account filters through to the service", async () => {
       const rows = [
         {
@@ -237,7 +238,7 @@ describe("InvestmentTransactionsController", () => {
       ];
       service.getCapitalGainsByMonth.mockResolvedValue(rows);
 
-      const result = await controller.getCapitalGainsByMonth(
+      const result = await controller.getCapitalGains(
         req,
         "2024-01-01",
         "2024-12-31",
@@ -252,33 +253,73 @@ describe("InvestmentTransactionsController", () => {
       expect(result).toEqual(rows);
     });
 
+    it("dispatches to getCapitalGainsByDay when granularity=day", async () => {
+      const rows = [
+        {
+          month: "2024-06-15",
+          totalCapitalGain: 50,
+          realizedGain: 0,
+          unrealizedGain: 50,
+        },
+      ];
+      service.getCapitalGainsByDay.mockResolvedValue(rows);
+
+      const result = await controller.getCapitalGains(
+        req,
+        "2024-06-01",
+        "2024-06-30",
+        undefined,
+        "day",
+      );
+
+      expect(service.getCapitalGainsByDay).toHaveBeenCalledWith("user-1", {
+        accountIds: undefined,
+        startDate: "2024-06-01",
+        endDate: "2024-06-30",
+      });
+      expect(service.getCapitalGainsByMonth).not.toHaveBeenCalled();
+      expect(result).toEqual(rows);
+    });
+
+    it("rejects an unknown granularity value", () => {
+      expect(() =>
+        controller.getCapitalGains(
+          req,
+          "2024-01-01",
+          "2024-12-31",
+          undefined,
+          "week",
+        ),
+      ).toThrow(BadRequestException);
+    });
+
     it("requires startDate", () => {
       expect(() =>
-        controller.getCapitalGainsByMonth(req, "", "2024-12-31"),
+        controller.getCapitalGains(req, "", "2024-12-31"),
       ).toThrow(BadRequestException);
     });
 
     it("requires endDate", () => {
       expect(() =>
-        controller.getCapitalGainsByMonth(req, "2024-01-01", ""),
+        controller.getCapitalGains(req, "2024-01-01", ""),
       ).toThrow(BadRequestException);
     });
 
     it("rejects malformed dates", () => {
       expect(() =>
-        controller.getCapitalGainsByMonth(req, "2024/01/01", "2024-12-31"),
+        controller.getCapitalGains(req, "2024/01/01", "2024-12-31"),
       ).toThrow(BadRequestException);
     });
 
     it("rejects when startDate is after endDate", () => {
       expect(() =>
-        controller.getCapitalGainsByMonth(req, "2024-12-31", "2024-01-01"),
+        controller.getCapitalGains(req, "2024-12-31", "2024-01-01"),
       ).toThrow(BadRequestException);
     });
 
     it("rejects invalid account UUIDs", () => {
       expect(() =>
-        controller.getCapitalGainsByMonth(
+        controller.getCapitalGains(
           req,
           "2024-01-01",
           "2024-12-31",

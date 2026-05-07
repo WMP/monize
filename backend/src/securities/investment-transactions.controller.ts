@@ -222,22 +222,24 @@ export class InvestmentTransactionsController {
   @Get("capital-gains")
   @ApiOperation({
     summary:
-      "Per-month capital gains (realized + unrealized) by security across the window",
+      "Per-period capital gains (realized + unrealized) by security across the window",
     description:
-      "Returns per (account, security, month) capital gain entries combining realized SELL gains and the unrealized mark-to-market change on the position. Requires startDate and endDate.",
+      "Returns per (account, security, period) capital gain entries combining realized SELL gains and the unrealized mark-to-market change on the position. Requires startDate and endDate. Use granularity=day for daily breakdown (default: month).",
   })
   @ApiQuery({ name: "accountIds", required: false })
   @ApiQuery({ name: "startDate", required: true })
   @ApiQuery({ name: "endDate", required: true })
+  @ApiQuery({ name: "granularity", required: false, enum: ["month", "day"] })
   @ApiResponse({
     status: 200,
-    description: "List of monthly capital gain entries",
+    description: "List of capital gain entries per period",
   })
-  getCapitalGainsByMonth(
+  getCapitalGains(
     @Request() req,
     @Query("startDate") startDate: string,
     @Query("endDate") endDate: string,
     @Query("accountIds") accountIds?: string,
+    @Query("granularity") granularity?: string,
   ) {
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -256,6 +258,11 @@ export class InvestmentTransactionsController {
     if (startDate > endDate) {
       throw new BadRequestException("startDate must be on or before endDate");
     }
+    if (granularity && granularity !== "month" && granularity !== "day") {
+      throw new BadRequestException(
+        "granularity must be 'month' or 'day' if provided",
+      );
+    }
 
     const ids = accountIds ? accountIds.split(",").filter(Boolean) : undefined;
     if (ids) {
@@ -264,6 +271,13 @@ export class InvestmentTransactionsController {
           throw new BadRequestException(`Invalid account UUID: ${id}`);
         }
       }
+    }
+
+    if (granularity === "day") {
+      return this.investmentTransactionsService.getCapitalGainsByDay(
+        req.user.id,
+        { accountIds: ids, startDate, endDate },
+      );
     }
 
     return this.investmentTransactionsService.getCapitalGainsByMonth(

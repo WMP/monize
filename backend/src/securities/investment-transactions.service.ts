@@ -886,6 +886,38 @@ export class InvestmentTransactionsService {
   }
 
   /**
+   * Per-day capital gain breakdown (realized + unrealized) per security in
+   * the requested window. Same account resolution as getCapitalGainsByMonth.
+   */
+  async getCapitalGainsByDay(
+    userId: string,
+    opts: {
+      accountIds?: string[];
+      startDate: string;
+      endDate: string;
+    },
+  ): Promise<CapitalGainEntry[]> {
+    let accountIds = opts.accountIds;
+    if (accountIds && accountIds.length > 0) {
+      const resolvedIds = new Set<string>(accountIds);
+      const accounts = await this.accountsService.findByIds(userId, accountIds);
+      for (const acct of accounts) {
+        if (acct.linkedAccountId) resolvedIds.add(acct.linkedAccountId);
+      }
+      accountIds = [...resolvedIds];
+    }
+
+    return this.portfolioCalculationService.calculateCapitalGainsByDay(
+      userId,
+      {
+        accountIds,
+        startDate: opts.startDate,
+        endDate: opts.endDate,
+      },
+    );
+  }
+
+  /**
    * LLM-friendly capital-gains roll-up sharing logic with the report endpoint
    * and the MCP server. Replays the user's investment history via
    * PortfolioCalculationService.calculateCapitalGainsByMonth, optionally
