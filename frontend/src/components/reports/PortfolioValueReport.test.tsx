@@ -102,6 +102,8 @@ vi.mock('@/components/investments/portfolio-chart-utils', () => ({
     if (!values.length) return [0, 1];
     return [Math.min(...values), Math.max(...values)];
   }),
+  renderChartFlagDot: vi.fn(() => null),
+  ChartFlagShadowFilter: () => null,
 }));
 
 const mockGetInvestmentsMonthly = vi.fn();
@@ -489,8 +491,8 @@ describe('PortfolioValueReport', () => {
       fireEvent.change(select, { target: { value: 'acc-usd' } });
     });
     await waitFor(() => {
-      // When foreign currency is active, the axis formatter uses that currency
-      expect(screen.getByText('Current Value')).toBeInTheDocument();
+      // When foreign currency is active, values are formatted with the currency code suffix
+      expect(screen.getAllByText('$50000 USD').length).toBeGreaterThan(0);
     });
   });
 
@@ -597,11 +599,12 @@ describe('PortfolioValueReport', () => {
   it('handles intraday fetch error gracefully', async () => {
     mockDateRangeValue = '1d';
     mockGetIntradayValue.mockRejectedValue(new Error('network error'));
+    // Component falls back to daily on intraday error; mock it empty so chart stays empty
+    mockGetInvestmentsDaily.mockResolvedValue([]);
     mockGetPortfolioSummary.mockResolvedValue(emptyPortfolio);
     mockGetInvestmentAccounts.mockResolvedValue([]);
     render(<PortfolioValueReport />);
     await waitFor(() => {
-      // After error, chartPoints is empty so shows "No investment data"
       expect(screen.getByText(/No investment data|Intraday view unavailable/i)).toBeInTheDocument();
     });
   });

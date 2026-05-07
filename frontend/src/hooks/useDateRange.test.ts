@@ -155,15 +155,15 @@ describe('useDateRange', () => {
     const { result } = renderHook(() =>
       useDateRange({ defaultRange: '5y', alignment: 'month' })
     );
-    // 59 months ago from Jan 15, 2025 = start of Feb 2020
+    // 59 months ago from Jan 15, 2025 = start of Feb 2020; end is always today
     expect(result.current.resolvedRange.start).toBe('2020-02-01');
-    expect(result.current.resolvedRange.end).toBe('2025-01-31');
+    expect(result.current.resolvedRange.end).toBe('2025-01-15');
   });
 
   it('resolves 2y range without month alignment', () => {
     const { result } = renderHook(() => useDateRange({ defaultRange: '2y' }));
-    // 2 years ago from Jan 15, 2025 = Jan 15, 2023
-    expect(result.current.resolvedRange.start).toBe('2023-01-15');
+    // subDays(Jan 15 2025, 730) = Jan 16, 2023 (730 days accounting for 2024 leap year)
+    expect(result.current.resolvedRange.start).toBe('2023-01-16');
     expect(result.current.resolvedRange.end).toBe('2025-01-15');
   });
 
@@ -185,8 +185,8 @@ describe('useDateRange', () => {
     const { result } = renderHook(() =>
       useDateRange({ defaultRange: '6m', alignment: 'month' })
     );
-    // Start of 5 months ago from Jan = Aug 1 2024, end = Jan 31, 2025
+    // Start of 5 months ago from Jan = Aug 1 2024; end is always today
     expect(result.current.resolvedRange.start).toBe('2024-08-01');
-    expect(result.current.resolvedRange.end).toBe('2025-01-31');
+    expect(result.current.resolvedRange.end).toBe('2025-01-15');
   });
 });

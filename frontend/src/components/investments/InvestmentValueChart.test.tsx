@@ -567,6 +567,8 @@ describe('InvestmentValueChart', () => {
   it('handles intraday API error gracefully and shows empty chart', async () => {
     dateRangeState.dateRange = '1d';
     vi.mocked(investmentsApi.getIntradayValue).mockRejectedValue(new Error('Network error'));
+    // On intraday error the component falls back to daily; mock daily empty so chart stays empty
+    vi.mocked(netWorthApi.getInvestmentsDaily).mockResolvedValue([]);
     render(<InvestmentValueChart />);
     const msg = await screen.findByText('No investment data for this period.');
     expect(msg).toBeInTheDocument();
