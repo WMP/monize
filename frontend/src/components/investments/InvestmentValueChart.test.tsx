@@ -464,6 +464,7 @@ describe('InvestmentValueChart', () => {
       range: '1d',
       fetchedAt: '2024-01-02T15:00:00.000Z',
       skippedSymbols: ['AAPL', 'MSFT'],
+      failedSymbols: [],
       fallbackToDaily: true,
     });
     render(<InvestmentValueChart />);
@@ -482,6 +483,7 @@ describe('InvestmentValueChart', () => {
       range: '1d',
       fetchedAt: '2024-01-02T15:00:00.000Z',
       skippedSymbols: [],
+      failedSymbols: [],
       fallbackToDaily: true,
     });
     render(<InvestmentValueChart />);
@@ -500,6 +502,7 @@ describe('InvestmentValueChart', () => {
       range: '1w',
       fetchedAt: '2024-01-02T15:00:00.000Z',
       skippedSymbols: [],
+      failedSymbols: [],
       fallbackToDaily: true,
     });
     render(<InvestmentValueChart />);
@@ -591,6 +594,7 @@ describe('InvestmentValueChart', () => {
       range: '1d',
       fetchedAt: '2024-01-02T15:00:00.000Z',
       skippedSymbols: [],
+      failedSymbols: [],
       fallbackToDaily: false,
     });
     render(<InvestmentValueChart displayCurrency="USD" />);
@@ -612,6 +616,7 @@ describe('InvestmentValueChart', () => {
       range: '1d',
       fetchedAt: '2024-01-02T16:00:00.000Z',
       skippedSymbols: [],
+      failedSymbols: [],
       fallbackToDaily: false,
     });
     render(<InvestmentValueChart />);
@@ -633,6 +638,7 @@ describe('InvestmentValueChart', () => {
       range: '1w',
       fetchedAt: '2024-01-02T16:00:00.000Z',
       skippedSymbols: [],
+      failedSymbols: [],
       fallbackToDaily: false,
     });
     render(<InvestmentValueChart />);

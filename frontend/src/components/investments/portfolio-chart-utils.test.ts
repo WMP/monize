@@ -66,6 +66,7 @@ describe('writeIntradayCache', () => {
     currency: 'USD',
     fallbackToDaily: false,
     skippedSymbols: ['AAPL'],
+    failedSymbols: [],
   };
 
   it('writes payload to sessionStorage', () => {
