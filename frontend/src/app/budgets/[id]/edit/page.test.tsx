@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@/test/render';
+import { render, screen, waitFor, fireEvent } from '@/test/render';
+import { act } from '@testing-library/react';
 import BudgetEditPage from './page';
 
 // Mock next/navigation
@@ -259,5 +260,93 @@ describe('BudgetEditPage', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/budgets');
     });
+  });
+
+  it('opens category edit modal when expense category is clicked', async () => {
+    render(<BudgetEditPage />);
+
+    await waitFor(() => expect(screen.getByText('Groceries')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Groceries'));
+    await waitFor(() => {
+      expect(screen.getByTestId('modal')).toBeInTheDocument();
+      expect(screen.getByTestId('category-form')).toBeInTheDocument();
+    });
+  });
+
+  it('shows modal title with category name when editing', async () => {
+    render(<BudgetEditPage />);
+
+    await waitFor(() => expect(screen.getByText('Groceries')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Groceries'));
+    await waitFor(() => {
+      expect(screen.getByText('Edit Groceries')).toBeInTheDocument();
+    });
+  });
+
+  it('shows income categories section when income categories exist', async () => {
+    const budgetWithIncome = {
+      ...mockBudget,
+      categories: [
+        ...mockBudget.categories,
+        {
+          id: 'bc-income-1',
+          budgetId: 'budget-1',
+          categoryId: 'cat-income',
+          category: { id: 'cat-income', name: 'Salary', isIncome: true },
+          amount: 5000,
+          isIncome: true,
+          rolloverType: 'NONE',
+          rolloverCap: null,
+          flexGroup: null,
+          alertWarnPercent: 0,
+          alertCriticalPercent: 0,
+          notes: null,
+          sortOrder: 0,
+        },
+      ],
+    };
+    mockGetById.mockResolvedValue(budgetWithIncome);
+    render(<BudgetEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Salary')).toBeInTheDocument();
+    });
+  });
+
+  it('shows parent category name in getCategoryDisplayName', async () => {
+    const budgetWithParent = {
+      ...mockBudget,
+      categories: [
+        {
+          id: 'bc-sub',
+          budgetId: 'budget-1',
+          categoryId: 'cat-sub',
+          category: {
+            id: 'cat-sub',
+            name: 'Groceries',
+            isIncome: false,
+            parent: { id: 'cat-parent', name: 'Food' },
+          },
+          amount: 400,
+          isIncome: false,
+          rolloverType: 'ROLLOVER',
+          rolloverCap: null,
+          flexGroup: 'flex-group-1',
+          alertWarnPercent: 80,
+          alertCriticalPercent: 95,
+          notes: null,
+          sortOrder: 0,
+        },
+      ],
+    };
+    mockGetById.mockResolvedValue(budgetWithParent);
+    render(<BudgetEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Food: Groceries')).toBeInTheDocument();
+    });
+    // Also check rollover text and flex group badge
+    expect(screen.getByText('Rollover: rollover')).toBeInTheDocument();
+    expect(screen.getByText('flex-group-1')).toBeInTheDocument();
   });
 });

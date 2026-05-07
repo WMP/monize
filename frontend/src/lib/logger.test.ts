@@ -45,3 +45,17 @@ describe('createLogger', () => {
     expect(spy).toHaveBeenCalledWith('[ServiceB]', 'world');
   });
 });
+
+describe('createLogger with debug level', () => {
+  it('debug calls console.debug when NEXT_PUBLIC_LOG_LEVEL is debug', async () => {
+    vi.resetModules();
+    process.env.NEXT_PUBLIC_LOG_LEVEL = 'debug';
+    const { createLogger: createLoggerDebug } = await import('./logger');
+    const spy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const logger = createLoggerDebug('DebugTest');
+    logger.debug('trace message', { data: 1 });
+    expect(spy).toHaveBeenCalledWith('[DebugTest]', 'trace message', { data: 1 });
+    delete process.env.NEXT_PUBLIC_LOG_LEVEL;
+    vi.resetModules();
+  });
+});

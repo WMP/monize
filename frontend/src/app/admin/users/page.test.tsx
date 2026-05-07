@@ -359,5 +359,57 @@ describe('AdminUsersPage', () => {
       fireEvent.click(screen.getByText('Enable'));
       await waitFor(() => expect(toast.default.error).toHaveBeenCalled());
     });
+
+    it('shows error toast and reloads when role change fails', async () => {
+      const toast = await import('react-hot-toast');
+      mockUpdateUserRole.mockRejectedValue(new Error('Server error'));
+      render(<AdminUsersPage />);
+      await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
+      fireEvent.click(screen.getAllByText('Promote')[0]);
+      await waitFor(() => expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Promote to Admin'));
+      await waitFor(() => {
+        expect(toast.default.error).toHaveBeenCalled();
+        expect(mockGetUsers).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('shows error toast when disabling user fails', async () => {
+      const toast = await import('react-hot-toast');
+      mockUpdateUserStatus.mockRejectedValue(new Error('Server error'));
+      render(<AdminUsersPage />);
+      await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
+      fireEvent.click(screen.getAllByText('Disable')[0]);
+      await waitFor(() => expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Disable User'));
+      await waitFor(() => expect(toast.default.error).toHaveBeenCalled());
+    });
+
+    it('shows error toast when password reset fails', async () => {
+      const toast = await import('react-hot-toast');
+      mockResetUserPassword.mockRejectedValue(new Error('Server error'));
+      render(<AdminUsersPage />);
+      await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
+      fireEvent.click(screen.getAllByText('Reset Password')[0]);
+      await waitFor(() => expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Reset Password', { selector: '[data-testid="confirm-dialog"] button' }));
+      await waitFor(() => expect(toast.default.error).toHaveBeenCalled());
+    });
+  });
+
+  describe('Access Control', () => {
+    it('successfully disables user on confirm', async () => {
+      const toast = await import('react-hot-toast');
+      mockUpdateUserStatus.mockResolvedValue({ ...mockUsers[1], isActive: false });
+      render(<AdminUsersPage />);
+      await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
+      fireEvent.click(screen.getAllByText('Disable')[0]);
+      await waitFor(() => expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Disable User'));
+      await waitFor(() => {
+        expect(mockUpdateUserStatus).toHaveBeenCalledWith('user-1', false);
+        expect(toast.default.success).toHaveBeenCalled();
+      });
+    });
   });
 });

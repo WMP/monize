@@ -170,4 +170,52 @@ describe('CallbackPage', () => {
       expect(mockSetLoading).toHaveBeenCalledWith(false);
     });
   });
+
+  it('uses sessionStorage returnTo when present and valid', async () => {
+    const mockUser = {
+      id: 'user-1', email: 'test@example.com', mustChangePassword: false, hasPassword: false,
+    };
+    mockSearchParams = new URLSearchParams('success=true');
+    mockGetProfile.mockResolvedValue(mockUser);
+    sessionStorage.setItem('postLoginReturnTo', '/some/path?foo=bar');
+    const assignSpy = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { href: '', assign: assignSpy },
+      writable: true,
+    });
+    render(<CallbackPage />);
+    await waitFor(() => {
+      expect(window.location.href).toBe('/some/path?foo=bar');
+    });
+    expect(sessionStorage.getItem('postLoginReturnTo')).toBeNull();
+  });
+
+  it('ignores sessionStorage returnTo that starts with //', async () => {
+    const mockUser = {
+      id: 'user-1', email: 'test@example.com', mustChangePassword: false, hasPassword: false,
+    };
+    mockSearchParams = new URLSearchParams('success=true');
+    mockGetProfile.mockResolvedValue(mockUser);
+    sessionStorage.setItem('postLoginReturnTo', '//evil.example.com/attack');
+    render(<CallbackPage />);
+    await waitFor(() => {
+      expect(mockRouterPush).toHaveBeenCalledWith('/dashboard');
+    });
+    expect(sessionStorage.getItem('postLoginReturnTo')).toBeNull();
+  });
+
+  it('falls back to dashboard when sessionStorage throws', async () => {
+    const mockUser = {
+      id: 'user-1', email: 'test@example.com', mustChangePassword: false, hasPassword: false,
+    };
+    mockSearchParams = new URLSearchParams('success=true');
+    mockGetProfile.mockResolvedValue(mockUser);
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('SecurityError');
+    });
+    render(<CallbackPage />);
+    await waitFor(() => {
+      expect(mockRouterPush).toHaveBeenCalledWith('/dashboard');
+    });
+  });
 });

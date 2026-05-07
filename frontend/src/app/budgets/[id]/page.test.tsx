@@ -93,6 +93,7 @@ const mockGetPeriods = vi.fn();
 const mockGetDailySpending = vi.fn();
 const mockGetTrend = vi.fn();
 const mockDeleteBudget = vi.fn();
+const mockGetPeriodDetail = vi.fn();
 
 vi.mock('@/lib/budgets', () => ({
   budgetsApi: {
@@ -102,6 +103,7 @@ vi.mock('@/lib/budgets', () => ({
     getDailySpending: (...args: any[]) => mockGetDailySpending(...args),
     getTrend: (...args: any[]) => mockGetTrend(...args),
     delete: (...args: any[]) => mockDeleteBudget(...args),
+    getPeriodDetail: (...args: any[]) => mockGetPeriodDetail(...args),
   },
 }));
 
@@ -140,8 +142,16 @@ vi.mock('@/components/budgets/BudgetDashboard', () => ({
   },
 }));
 
+let capturedOnPeriodChange: ((periodId: string | null) => void) | undefined;
 vi.mock('@/components/budgets/BudgetPeriodSelector', () => ({
-  BudgetPeriodSelector: () => <div data-testid="period-selector" />,
+  BudgetPeriodSelector: (props: any) => {
+    capturedOnPeriodChange = props.onPeriodChange;
+    return <div data-testid="period-selector" />;
+  },
+}));
+
+vi.mock('@/components/budgets/BudgetPeriodDetail', () => ({
+  BudgetPeriodDetail: () => <div data-testid="period-detail">Period Detail</div>,
 }));
 
 vi.mock('@/components/layout/PageLayout', () => ({
@@ -217,6 +227,7 @@ describe('BudgetDetailPage', () => {
     vi.clearAllMocks();
     localStorage.clear();
     capturedOnCategoryClick = undefined;
+    capturedOnPeriodChange = undefined;
     mockGetSummary.mockResolvedValue(mockSummary);
     mockGetVelocity.mockResolvedValue(mockVelocity);
     mockGetPeriods.mockResolvedValue([]);
@@ -381,5 +392,73 @@ describe('BudgetDetailPage', () => {
     await waitFor(() => expect(screen.getByText('Back to Budgets')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Back to Budgets'));
     expect(mockPush).toHaveBeenCalledWith('/budgets');
+  });
+
+  describe('Period Selection', () => {
+    const mockClosedPeriod = {
+      id: 'period-1',
+      budgetId: 'budget-1',
+      status: 'CLOSED',
+      periodStart: '2026-01-01',
+      periodEnd: '2026-01-31',
+    };
+
+    it('clears selection when null period is selected', async () => {
+      mockGetPeriods.mockResolvedValue([mockClosedPeriod]);
+      render(<BudgetDetailPage />);
+      await waitFor(() => expect(capturedOnPeriodChange).toBeDefined());
+
+      await act(async () => {
+        capturedOnPeriodChange!(null);
+      });
+
+      expect(screen.getByTestId('budget-dashboard')).toBeInTheDocument();
+      expect(screen.queryByTestId('period-detail')).not.toBeInTheDocument();
+    });
+
+    it('shows period detail for closed period', async () => {
+      mockGetPeriods.mockResolvedValue([mockClosedPeriod]);
+      mockGetPeriodDetail.mockResolvedValue({ ...mockClosedPeriod, categories: [] });
+      render(<BudgetDetailPage />);
+      await waitFor(() => expect(capturedOnPeriodChange).toBeDefined());
+
+      await act(async () => {
+        capturedOnPeriodChange!('period-1');
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('period-detail')).toBeInTheDocument();
+      });
+      expect(mockGetPeriodDetail).toHaveBeenCalledWith('budget-1', 'period-1');
+    });
+
+    it('does not fetch period detail for OPEN period', async () => {
+      const openPeriod = { ...mockClosedPeriod, id: 'period-open', status: 'OPEN' };
+      mockGetPeriods.mockResolvedValue([openPeriod]);
+      render(<BudgetDetailPage />);
+      await waitFor(() => expect(capturedOnPeriodChange).toBeDefined());
+
+      await act(async () => {
+        capturedOnPeriodChange!('period-open');
+      });
+
+      expect(mockGetPeriodDetail).not.toHaveBeenCalled();
+      expect(screen.getByTestId('budget-dashboard')).toBeInTheDocument();
+    });
+
+    it('shows error toast when period detail fetch fails', async () => {
+      mockGetPeriods.mockResolvedValue([mockClosedPeriod]);
+      mockGetPeriodDetail.mockRejectedValue(new Error('Not found'));
+      render(<BudgetDetailPage />);
+      await waitFor(() => expect(capturedOnPeriodChange).toBeDefined());
+
+      await act(async () => {
+        capturedOnPeriodChange!('period-1');
+      });
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalled();
+      });
+    });
   });
 });
