@@ -185,7 +185,7 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
           let response;
           try {
             response = await investmentsApi.getIntradayValue({
-              range: dateRange as '1d' | '1w' | '1m',
+              range: (dateRange === 'mtd' ? '1m' : dateRange) as '1d' | '1w' | '1m',
               accountIds: accountIds?.length ? accountIds.join(',') : undefined,
               displayCurrency: foreignCurrency || undefined,
             });
