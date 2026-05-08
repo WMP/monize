@@ -25,6 +25,30 @@ const STORAGE_KEYS = {
   tagIds: 'transactions.filter.tagIds',
 };
 
+/**
+ * Window event dispatched by the global header search to ask the
+ * transactions page (if mounted) to drop existing filters and run a
+ * fresh search. Carries `{ term: string }` in `detail`.
+ */
+export const HEADER_SEARCH_EVENT = 'transactions:applyHeaderSearch';
+
+export interface HeaderSearchEventDetail {
+  term: string;
+}
+
+/**
+ * Wipe every persisted transaction filter from localStorage. Called by
+ * the header search before navigating so the hook initializes from a
+ * clean slate (including `accountStatus`, which is not represented in
+ * the URL).
+ */
+export function clearTransactionFilterStorage(): void {
+  if (typeof window === 'undefined') return;
+  for (const key of Object.values(STORAGE_KEYS)) {
+    localStorage.removeItem(key);
+  }
+}
+
 // Helper to get filter values as array
 // If ANY URL params are present (navigation from reports), ignore localStorage entirely
 function getFilterValues(key: string, urlParam: string | null, hasAnyUrlParams: boolean): string[] {
@@ -387,6 +411,38 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
       if (searchRef.current) clearTimeout(searchRef.current);
       if (filterRef.current) clearTimeout(filterRef.current);
     };
+  }, []);
+
+  // Apply a fresh search dispatched from the global header search box.
+  // Drops every other filter (including the account-status toggle) so
+  // the user lands on a clean Transactions view filtered only by their
+  // typed term, with the filter panel collapsed and the chips visible.
+  useEffect(() => {
+    const handleHeaderSearch = (event: Event) => {
+      const detail = (event as CustomEvent<HeaderSearchEventDetail>).detail;
+      const term = (detail?.term ?? '').trim();
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+        searchDebounceRef.current = null;
+      }
+      isFilterChange.current = true;
+      setFilterAccountIds([]);
+      setFilterAccountStatus('');
+      setFilterCategoryIds([]);
+      setFilterPayeeIds([]);
+      setFilterTagIds([]);
+      setFilterStartDate('');
+      setFilterEndDate('');
+      setFilterTimePeriod('');
+      setFilterAmountFrom('');
+      setFilterAmountTo('');
+      setSearchInput(term);
+      setFilterSearch(term);
+      setCurrentPage(1);
+      setFiltersExpanded(false);
+    };
+    window.addEventListener(HEADER_SEARCH_EVENT, handleHeaderSearch);
+    return () => window.removeEventListener(HEADER_SEARCH_EVENT, handleHeaderSearch);
   }, []);
 
   // Re-sync filter state when browser back/forward is pressed
