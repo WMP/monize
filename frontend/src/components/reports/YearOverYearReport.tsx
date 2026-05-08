@@ -16,11 +16,17 @@ import {
 import { builtInReportsApi } from "@/lib/built-in-reports";
 import { YearData } from "@/types/built-in-reports";
 import { useNumberFormat } from "@/hooks/useNumberFormat";
+import { useSortableTable, compareValues } from "@/hooks/useSortableTable";
 import { CHART_COLOURS } from "@/lib/chart-colours";
+import { ChartViewToggle } from "@/components/ui/ChartViewToggle";
 import { ExportDropdown } from "@/components/ui/ExportDropdown";
+import { SortableHeader } from "@/components/ui/SortableHeader";
+import { exportToCsv } from "@/lib/csv-export";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("YearOverYearReport");
+
+type YearOverYearSortField = string; // 'name' or any year as a string
 
 const MONTH_NAMES = [
   "Jan",
@@ -47,6 +53,11 @@ export function YearOverYearReport() {
   const [yearsToCompare, setYearsToCompare] = useState(2);
   const [metric, setMetric] = useState<"expenses" | "income" | "savings">(
     "expenses",
+  );
+  const [viewType, setViewType] = useState<'bar' | 'table'>('bar');
+  const { sortField, sortDirection, handleSort } = useSortableTable<YearOverYearSortField>(
+    'reports.year-over-year.table.sort',
+    { field: 'name', direction: 'asc' },
   );
 
   const years = useMemo(() => yearData.map((yd) => yd.year), [yearData]);
@@ -85,6 +96,23 @@ export function YearOverYearReport() {
       return data;
     });
   }, [yearData, metric]);
+
+  const sortedTableData = useMemo(() => {
+    const sorted = [...chartData];
+    sorted.sort((a, b) => {
+      let comparison = 0;
+      if (sortField === 'name') {
+        // Default to calendar order for the month column
+        const ai = MONTH_NAMES.indexOf(a.name);
+        const bi = MONTH_NAMES.indexOf(b.name);
+        comparison = compareValues(ai, bi);
+      } else {
+        comparison = compareValues(a[sortField] as number, b[sortField] as number);
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+    return sorted;
+  }, [chartData, sortField, sortDirection]);
 
   const yearTotals = useMemo(() => {
     const totals: Record<
@@ -159,6 +187,15 @@ export function YearOverYearReport() {
       }],
       filename: "year-over-year",
     });
+  };
+
+  const handleExportCsv = () => {
+    const headers = ['Month', ...years.map(String)];
+    const rows = sortedTableData.map((row) => [
+      row.name,
+      ...years.map((year) => Number(row[year]) || 0),
+    ]);
+    exportToCsv(`year-over-year-${metric}`, headers, rows);
   };
 
   const CustomTooltip = ({
@@ -241,8 +278,17 @@ export function YearOverYearReport() {
               </button>
             ))}
           </div>
-          <div className="ml-auto">
-            <ExportDropdown onExportPdf={handleExportPdf} />
+          <div className="ml-auto flex items-center gap-3">
+            <ChartViewToggle
+              value={viewType}
+              onChange={(v) => setViewType(v as 'bar' | 'table')}
+              options={['bar', 'table']}
+            />
+            <ExportDropdown
+              onExportPdf={handleExportPdf}
+              onExportCsv={handleExportCsv}
+              disabled={chartData.length === 0}
+            />
           </div>
         </div>
       </div>
@@ -292,41 +338,105 @@ export function YearOverYearReport() {
         ))}
       </div>
 
-      {/* Monthly Comparison Chart */}
+      {/* Monthly Comparison Chart or Table */}
       <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Monthly {metric.charAt(0).toUpperCase() + metric.slice(1)} Comparison
         </h3>
-        <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <BarChart
-              data={chartData}
-              margin={{ top: 20, right: 10, left: 0, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis
-                tickFormatter={formatCurrencyAxis}
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              {years.map((year, index) => (
-                <Bar
-                  key={year}
-                  dataKey={`${year}`}
-                  fill={CHART_COLOURS[index % CHART_COLOURS.length]}
-                  radius={[4, 4, 0, 0]}
-                  name={`${year}`}
-                  cursor="pointer"
-                  onClick={(data) =>
-                    handleBarClick(year, { name: data.name ?? '' })
-                  }
+        {viewType === 'table' ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900/50">
+                <tr>
+                  <SortableHeader<YearOverYearSortField>
+                    field="name"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                  >
+                    Month
+                  </SortableHeader>
+                  {years.map((year, index) => (
+                    <SortableHeader<YearOverYearSortField>
+                      key={year}
+                      field={`${year}`}
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      align="right"
+                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      <span style={{ color: CHART_COLOURS[index % CHART_COLOURS.length] }}>{year}</span>
+                    </SortableHeader>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {sortedTableData.map((row) => (
+                  <tr key={row.name} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {row.name}
+                    </td>
+                    {years.map((year) => {
+                      const value = Number(row[year]) || 0;
+                      return (
+                        <td
+                          key={year}
+                          className="px-4 py-3 text-right text-sm text-gray-900 dark:text-gray-100 cursor-pointer"
+                          onClick={() => handleBarClick(year, { name: row.name })}
+                        >
+                          {formatCurrency(value)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-gray-50 dark:bg-gray-900/50">
+                <tr>
+                  <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">Total</td>
+                  {years.map((year) => (
+                    <td key={year} className="px-4 py-3 text-right text-sm font-bold text-gray-900 dark:text-gray-100">
+                      {formatCurrency(yearTotals[year]?.[metric] || 0)}
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        ) : (
+          <div className="h-96">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <BarChart
+                data={chartData}
+                margin={{ top: 20, right: 10, left: 0, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis
+                  tickFormatter={formatCurrencyAxis}
+                  tick={{ fontSize: 12 }}
                 />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                {years.map((year, index) => (
+                  <Bar
+                    key={year}
+                    dataKey={`${year}`}
+                    fill={CHART_COLOURS[index % CHART_COLOURS.length]}
+                    radius={[4, 4, 0, 0]}
+                    name={`${year}`}
+                    cursor="pointer"
+                    onClick={(data) =>
+                      handleBarClick(year, { name: data.name ?? '' })
+                    }
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* Year-over-Year Change */}

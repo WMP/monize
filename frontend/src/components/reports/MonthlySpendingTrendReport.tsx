@@ -17,11 +17,17 @@ import { builtInReportsApi } from "@/lib/built-in-reports";
 import { MonthlyIncomeExpenseItem } from "@/types/built-in-reports";
 import { useNumberFormat } from "@/hooks/useNumberFormat";
 import { useDateRange } from "@/hooks/useDateRange";
+import { useSortableTable, compareValues } from "@/hooks/useSortableTable";
 import { DateRangeSelector } from "@/components/ui/DateRangeSelector";
+import { ChartViewToggle } from "@/components/ui/ChartViewToggle";
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+import { exportToCsv } from "@/lib/csv-export";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("MonthlySpendingTrendReport");
+
+type MonthlySpendingSortField = 'name' | 'income' | 'expenses' | 'net';
 
 interface ChartDataItem {
   name: string;
@@ -40,6 +46,7 @@ export function MonthlySpendingTrendReport() {
     useNumberFormat();
   const [chartData, setChartData] = useState<ChartDataItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [viewType, setViewType] = useState<'line' | 'table'>('line');
   const {
     dateRange,
     setDateRange,
@@ -50,6 +57,33 @@ export function MonthlySpendingTrendReport() {
     resolvedRange,
     isValid,
   } = useDateRange({ defaultRange: "1y", alignment: "month" });
+  const { sortField, sortDirection, handleSort } = useSortableTable<MonthlySpendingSortField>(
+    'reports.monthly-spending-trend.table.sort',
+    { field: 'name', direction: 'asc' },
+  );
+
+  const sortedTableData = useMemo(() => {
+    const sorted = [...chartData];
+    sorted.sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'name':
+          comparison = compareValues(a.name, b.name);
+          break;
+        case 'income':
+          comparison = compareValues(a.Income, b.Income);
+          break;
+        case 'expenses':
+          comparison = compareValues(a.Expenses, b.Expenses);
+          break;
+        case 'net':
+          comparison = compareValues(a.Net, b.Net);
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+    return sorted;
+  }, [chartData, sortField, sortDirection]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -119,6 +153,12 @@ export function MonthlySpendingTrendReport() {
     });
   };
 
+  const handleExportCsv = () => {
+    const headers = ['Month', 'Income', 'Expenses', 'Net'];
+    const rows = sortedTableData.map((d) => [d.fullName, d.Income, d.Expenses, d.Net]);
+    exportToCsv('monthly-spending-trend', headers, rows);
+  };
+
   const handleChartClick = (state: any) => {
     const label = state?.activeLabel;
     if (!label) return;
@@ -177,7 +217,18 @@ export function MonthlySpendingTrendReport() {
             customEndDate={endDate}
             onCustomEndDateChange={setEndDate}
           />
-          <ExportDropdown onExportPdf={handleExportPdf} />
+          <div className="flex items-center gap-4">
+            <ChartViewToggle
+              value={viewType}
+              onChange={(v) => setViewType(v as 'line' | 'table')}
+              options={['line', 'table']}
+            />
+            <ExportDropdown
+              onExportPdf={handleExportPdf}
+              onExportCsv={handleExportCsv}
+              disabled={chartData.length === 0}
+            />
+          </div>
         </div>
       </div>
 
@@ -192,6 +243,100 @@ export function MonthlySpendingTrendReport() {
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
             No data for this period.
           </p>
+        ) : viewType === 'table' ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-900/50">
+                  <tr>
+                    <SortableHeader<MonthlySpendingSortField>
+                      field="name"
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      Month
+                    </SortableHeader>
+                    <SortableHeader<MonthlySpendingSortField>
+                      field="income"
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      align="right"
+                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      Income
+                    </SortableHeader>
+                    <SortableHeader<MonthlySpendingSortField>
+                      field="expenses"
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      align="right"
+                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      Expenses
+                    </SortableHeader>
+                    <SortableHeader<MonthlySpendingSortField>
+                      field="net"
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      align="right"
+                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      Net
+                    </SortableHeader>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {sortedTableData.map((row) => (
+                    <tr
+                      key={row.name}
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      onClick={() =>
+                        router.push(
+                          `/transactions?startDate=${row.monthStart}&endDate=${row.monthEnd}`,
+                        )
+                      }
+                    >
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {row.fullName}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm text-green-600 dark:text-green-400">
+                        {formatCurrency(row.Income)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm text-red-600 dark:text-red-400">
+                        {formatCurrency(row.Expenses)}
+                      </td>
+                      <td
+                        className={`px-4 py-3 text-right text-sm font-medium ${row.Net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                      >
+                        {formatCurrency(row.Net)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-gray-50 dark:bg-gray-900/50">
+                  <tr>
+                    <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">Total</td>
+                    <td className="px-4 py-3 text-right text-sm font-bold text-green-600 dark:text-green-400">
+                      {formatCurrency(totals.totalIncome)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-bold text-red-600 dark:text-red-400">
+                      {formatCurrency(totals.totalExpenses)}
+                    </td>
+                    <td
+                      className={`px-4 py-3 text-right text-sm font-bold ${totals.totalIncome - totals.totalExpenses >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                    >
+                      {formatCurrency(totals.totalIncome - totals.totalExpenses)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </>
         ) : (
           <>
             <div className="h-96">

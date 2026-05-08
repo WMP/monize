@@ -29,6 +29,15 @@ describe('ChartViewToggle', () => {
     expect(screen.getByTitle('Area Chart')).toBeInTheDocument();
   });
 
+  it('renders the table option when specified', () => {
+    const onChange = vi.fn();
+    render(<ChartViewToggle value="bar" onChange={onChange} options={['bar', 'table']} />);
+    const tableBtn = screen.getByTitle('Table');
+    expect(tableBtn).toBeInTheDocument();
+    fireEvent.click(tableBtn);
+    expect(onChange).toHaveBeenCalledWith('table');
+  });
+
   it('applies custom activeColour to the active button', () => {
     render(
       <ChartViewToggle value="bar" onChange={vi.fn()} activeColour="bg-green-600" />

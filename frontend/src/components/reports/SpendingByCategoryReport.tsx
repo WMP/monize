@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   PieChart,
@@ -18,13 +18,18 @@ import { builtInReportsApi } from '@/lib/built-in-reports';
 import { CategorySpendingItem } from '@/types/built-in-reports';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateRange } from '@/hooks/useDateRange';
+import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { CHART_COLOURS } from '@/lib/chart-colours';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ChartViewToggle } from '@/components/ui/ChartViewToggle';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+import { exportToCsv } from '@/lib/csv-export';
 import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('SpendingByCategoryReport');
+
+type SpendingCategorySortField = 'name' | 'value' | 'percentage';
 
 interface ChartDataItem {
   id: string;
@@ -40,9 +45,36 @@ export function SpendingByCategoryReport() {
   const [chartData, setChartData] = useState<ChartDataItem[]>([]);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewType, setViewType] = useState<'pie' | 'bar'>('pie');
+  const [viewType, setViewType] = useState<'pie' | 'bar' | 'table'>('pie');
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } =
     useDateRange({ defaultRange: '3m' });
+  const { sortField, sortDirection, handleSort } = useSortableTable<SpendingCategorySortField>(
+    'reports.spending-by-category.table.sort',
+    { field: 'value', direction: 'desc' },
+  );
+
+  const sortedTableData = useMemo(() => {
+    const sorted = [...chartData];
+    sorted.sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'name':
+          comparison = compareValues(a.name, b.name);
+          break;
+        case 'value':
+          comparison = compareValues(a.value, b.value);
+          break;
+        case 'percentage': {
+          const pa = totalExpenses > 0 ? (a.value / totalExpenses) * 100 : 0;
+          const pb = totalExpenses > 0 ? (b.value / totalExpenses) * 100 : 0;
+          comparison = compareValues(pa, pb);
+          break;
+        }
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+    return sorted;
+  }, [chartData, sortField, sortDirection, totalExpenses]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -104,6 +136,15 @@ export function SpendingByCategoryReport() {
     });
   };
 
+  const handleExportCsv = () => {
+    const headers = ['Category', 'Amount', 'Percentage'];
+    const rows = sortedTableData.map((item) => {
+      const percentage = totalExpenses > 0 ? (item.value / totalExpenses) * 100 : 0;
+      return [item.name, item.value, `${percentage.toFixed(2)}%`];
+    });
+    exportToCsv('spending-by-category', headers, rows);
+  };
+
   const handleCategoryClick = (categoryId: string) => {
     if (categoryId) {
       const { start, end } = resolvedRange;
@@ -154,8 +195,16 @@ export function SpendingByCategoryReport() {
             onCustomEndDateChange={setEndDate}
           />
           <div className="flex items-center gap-4">
-            <ChartViewToggle value={viewType} onChange={(v) => setViewType(v as 'pie' | 'bar')} />
-            <ExportDropdown onExportPdf={handleExportPdf} disabled={chartData.length === 0} />
+            <ChartViewToggle
+              value={viewType}
+              onChange={(v) => setViewType(v as 'pie' | 'bar' | 'table')}
+              options={['pie', 'bar', 'table']}
+            />
+            <ExportDropdown
+              onExportPdf={handleExportPdf}
+              onExportCsv={handleExportCsv}
+              disabled={chartData.length === 0}
+            />
           </div>
         </div>
       </div>
@@ -166,6 +215,80 @@ export function SpendingByCategoryReport() {
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
             No expense data for this period.
           </p>
+        ) : viewType === 'table' ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-900/50">
+                  <tr>
+                    <SortableHeader<SpendingCategorySortField>
+                      field="name"
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      Category
+                    </SortableHeader>
+                    <SortableHeader<SpendingCategorySortField>
+                      field="value"
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      align="right"
+                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      Amount
+                    </SortableHeader>
+                    <SortableHeader<SpendingCategorySortField>
+                      field="percentage"
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      align="right"
+                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      % of Total
+                    </SortableHeader>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {sortedTableData.map((item) => {
+                    const percentage = totalExpenses > 0 ? (item.value / totalExpenses) * 100 : 0;
+                    return (
+                      <tr
+                        key={item.id || item.name}
+                        className={`${item.id ? 'cursor-pointer' : ''} hover:bg-gray-50 dark:hover:bg-gray-700/50`}
+                        onClick={() => item.id && handleCategoryClick(item.id)}
+                      >
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.colour }} />
+                            {item.name}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm text-gray-900 dark:text-gray-100">
+                          {formatCurrency(item.value)}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm text-gray-600 dark:text-gray-400">
+                          {percentage.toFixed(1)}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="bg-gray-50 dark:bg-gray-900/50">
+                  <tr>
+                    <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">Total</td>
+                    <td className="px-4 py-3 text-right text-sm font-bold text-gray-900 dark:text-gray-100">
+                      {formatCurrency(totalExpenses)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-bold text-gray-900 dark:text-gray-100">100%</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </>
         ) : (
           <>
             {viewType === 'pie' ? (

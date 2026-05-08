@@ -21,21 +21,30 @@ import { MonthlyNetWorth } from '@/types/net-worth';
 import { parseLocalDate } from '@/lib/utils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateRange } from '@/hooks/useDateRange';
+import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ChartViewToggle } from '@/components/ui/ChartViewToggle';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+import { exportToCsv } from '@/lib/csv-export';
 import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('NetWorthReport');
+
+type NetWorthSortField = 'name' | 'assets' | 'liabilities' | 'netWorth';
 
 export function NetWorthReport() {
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatCurrencyLabel } = useNumberFormat();
   const [monthlyData, setMonthlyData] = useState<MonthlyNetWorth[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
-  const [chartType, setChartType] = useState<'line' | 'bar'>('line');
+  const [chartType, setChartType] = useState<'line' | 'bar' | 'table'>('line');
   const chartRef = useRef<HTMLDivElement>(null);
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } = useDateRange({ defaultRange: '1y', alignment: 'month' });
+  const { sortField, sortDirection, handleSort } = useSortableTable<NetWorthSortField>(
+    'reports.net-worth.table.sort',
+    { field: 'name', direction: 'asc' },
+  );
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -89,6 +98,12 @@ export function NetWorthReport() {
     });
   };
 
+  const handleExportCsv = () => {
+    const headers = ['Month', 'Assets', 'Liabilities', 'Net Worth'];
+    const rows = sortedTableData.map((d) => [d.name, d.Assets, d.Liabilities, d.NetWorth]);
+    exportToCsv('net-worth-report', headers, rows);
+  };
+
   const chartData = useMemo(() =>
     monthlyData.map((d) => ({
       name: format(parseLocalDate(d.month), 'MMM yyyy'),
@@ -106,6 +121,29 @@ export function NetWorthReport() {
     const changePercent = initial !== 0 ? (change / Math.abs(initial)) * 100 : 0;
     return { current, change, changePercent };
   }, [chartData]);
+
+  const sortedTableData = useMemo(() => {
+    const sorted = [...chartData];
+    sorted.sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'name':
+          comparison = compareValues(a.name, b.name);
+          break;
+        case 'assets':
+          comparison = compareValues(a.Assets, b.Assets);
+          break;
+        case 'liabilities':
+          comparison = compareValues(a.Liabilities, b.Liabilities);
+          break;
+        case 'netWorth':
+          comparison = compareValues(a.NetWorth, b.NetWorth);
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+    return sorted;
+  }, [chartData, sortField, sortDirection]);
 
   // For long ranges, explicitly specify which ticks to show so years don't repeat
   const xAxisTicks = useMemo(() => {
@@ -231,8 +269,8 @@ export function NetWorthReport() {
           <div className="flex items-center gap-3">
             <ChartViewToggle
               value={chartType}
-              onChange={(v) => setChartType(v as 'line' | 'bar')}
-              options={['line', 'bar']}
+              onChange={(v) => setChartType(v as 'line' | 'bar' | 'table')}
+              options={['line', 'bar', 'table']}
             />
             <button
               onClick={handleRecalculate}
@@ -241,17 +279,83 @@ export function NetWorthReport() {
             >
               {isRecalculating ? 'Recalculating...' : 'Recalculate'}
             </button>
-            <ExportDropdown onExportPdf={handleExportPdf} disabled={chartData.length === 0} />
+            <ExportDropdown onExportPdf={handleExportPdf} onExportCsv={handleExportCsv} disabled={chartData.length === 0} />
           </div>
         </div>
       </div>
 
-      {/* Chart */}
+      {/* Chart or Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         {chartData.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
             No data for this period.
           </p>
+        ) : chartType === 'table' ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900/50">
+                <tr>
+                  <SortableHeader<NetWorthSortField>
+                    field="name"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                  >
+                    Month
+                  </SortableHeader>
+                  <SortableHeader<NetWorthSortField>
+                    field="assets"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                    className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                  >
+                    Assets
+                  </SortableHeader>
+                  <SortableHeader<NetWorthSortField>
+                    field="liabilities"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                    className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                  >
+                    Liabilities
+                  </SortableHeader>
+                  <SortableHeader<NetWorthSortField>
+                    field="netWorth"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                    className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                  >
+                    Net Worth
+                  </SortableHeader>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {sortedTableData.map((row) => (
+                  <tr key={row.name} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {row.name}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm text-green-600 dark:text-green-400">
+                      {formatCurrency(row.Assets)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm text-red-600 dark:text-red-400">
+                      {formatCurrency(row.Liabilities)}
+                    </td>
+                    <td className={`px-4 py-3 text-right text-sm font-medium ${row.NetWorth >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-600 dark:text-red-400'}`}>
+                      {formatCurrency(row.NetWorth)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <div ref={chartRef} className="h-96">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>

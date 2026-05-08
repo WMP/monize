@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 
-type ChartView = 'pie' | 'bar' | 'line' | 'area';
+type ChartView = 'pie' | 'bar' | 'line' | 'area' | 'table';
 
 interface ChartViewToggleProps {
   value: ChartView;
@@ -28,6 +28,10 @@ const CHART_ICONS: Record<ChartView, { title: string; path: string }> = {
   area: {
     title: 'Area Chart',
     path: 'M3 17l4-4 4 4 4-8 4 4V21H3z',
+  },
+  table: {
+    title: 'Table',
+    path: 'M3 10h18M3 14h18M3 6h18M3 18h18',
   },
 };
 

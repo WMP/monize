@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   PieChart,
@@ -18,13 +18,18 @@ import { builtInReportsApi } from '@/lib/built-in-reports';
 import { IncomeSourceItem } from '@/types/built-in-reports';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateRange } from '@/hooks/useDateRange';
+import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ChartViewToggle } from '@/components/ui/ChartViewToggle';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { SortableHeader } from '@/components/ui/SortableHeader';
 import { CHART_COLOURS_INCOME } from '@/lib/chart-colours';
+import { exportToCsv } from '@/lib/csv-export';
 import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('IncomeBySourceReport');
+
+type IncomeSourceSortField = 'name' | 'value' | 'percentage';
 
 interface ChartDataItem {
   id: string;
@@ -41,7 +46,34 @@ export function IncomeBySourceReport() {
   const [totalIncome, setTotalIncome] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } = useDateRange({ defaultRange: '1y', alignment: 'day' });
-  const [viewType, setViewType] = useState<'pie' | 'bar'>('pie');
+  const [viewType, setViewType] = useState<'pie' | 'bar' | 'table'>('pie');
+  const { sortField, sortDirection, handleSort } = useSortableTable<IncomeSourceSortField>(
+    'reports.income-by-source.table.sort',
+    { field: 'value', direction: 'desc' },
+  );
+
+  const sortedTableData = useMemo(() => {
+    const sorted = [...chartData];
+    sorted.sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'name':
+          comparison = compareValues(a.name, b.name);
+          break;
+        case 'value':
+          comparison = compareValues(a.value, b.value);
+          break;
+        case 'percentage': {
+          const pa = totalIncome > 0 ? (a.value / totalIncome) * 100 : 0;
+          const pb = totalIncome > 0 ? (b.value / totalIncome) * 100 : 0;
+          comparison = compareValues(pa, pb);
+          break;
+        }
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+    return sorted;
+  }, [chartData, sortField, sortDirection, totalIncome]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -105,6 +137,15 @@ export function IncomeBySourceReport() {
     });
   };
 
+  const handleExportCsv = () => {
+    const headers = ['Source', 'Amount', 'Percentage'];
+    const rows = sortedTableData.map((item) => {
+      const percentage = totalIncome > 0 ? (item.value / totalIncome) * 100 : 0;
+      return [item.name, item.value, `${percentage.toFixed(2)}%`];
+    });
+    exportToCsv('income-by-source', headers, rows);
+  };
+
   const handleCategoryClick = (categoryId: string) => {
     if (categoryId) {
       const { start, end } = resolvedRange;
@@ -155,8 +196,16 @@ export function IncomeBySourceReport() {
             onCustomEndDateChange={setEndDate}
           />
           <div className="flex items-center gap-4">
-            <ChartViewToggle value={viewType} onChange={(v) => setViewType(v as 'pie' | 'bar')} />
-            <ExportDropdown onExportPdf={handleExportPdf} />
+            <ChartViewToggle
+              value={viewType}
+              onChange={(v) => setViewType(v as 'pie' | 'bar' | 'table')}
+              options={['pie', 'bar', 'table']}
+            />
+            <ExportDropdown
+              onExportPdf={handleExportPdf}
+              onExportCsv={handleExportCsv}
+              disabled={chartData.length === 0}
+            />
           </div>
         </div>
       </div>
@@ -167,6 +216,80 @@ export function IncomeBySourceReport() {
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
             No income data for this period.
           </p>
+        ) : viewType === 'table' ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-900/50">
+                  <tr>
+                    <SortableHeader<IncomeSourceSortField>
+                      field="name"
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      Source
+                    </SortableHeader>
+                    <SortableHeader<IncomeSourceSortField>
+                      field="value"
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      align="right"
+                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      Amount
+                    </SortableHeader>
+                    <SortableHeader<IncomeSourceSortField>
+                      field="percentage"
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      align="right"
+                      className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      % of Total
+                    </SortableHeader>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {sortedTableData.map((item) => {
+                    const percentage = totalIncome > 0 ? (item.value / totalIncome) * 100 : 0;
+                    return (
+                      <tr
+                        key={item.id || item.name}
+                        className={`${item.id ? 'cursor-pointer' : ''} hover:bg-gray-50 dark:hover:bg-gray-700/50`}
+                        onClick={() => item.id && handleCategoryClick(item.id)}
+                      >
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.colour }} />
+                            {item.name}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm text-green-600 dark:text-green-400">
+                          {formatCurrency(item.value)}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm text-gray-600 dark:text-gray-400">
+                          {percentage.toFixed(1)}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="bg-gray-50 dark:bg-gray-900/50">
+                  <tr>
+                    <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">Total</td>
+                    <td className="px-4 py-3 text-right text-sm font-bold text-green-600 dark:text-green-400">
+                      {formatCurrency(totalIncome)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-bold text-gray-900 dark:text-gray-100">100%</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </>
         ) : (
           <>
             {viewType === 'pie' ? (
