@@ -21,6 +21,10 @@ import {
 } from "./dto/bulk-update.dto";
 import { getAllCategoryIdsWithChildren } from "../common/category-tree.util";
 import { isTransactionInFuture } from "../common/date-utils";
+import {
+  buildTransactionSearchClause,
+  escapeLikePattern,
+} from "./transaction-search.util";
 
 export interface BulkDeleteResult {
   deleted: number;
@@ -572,21 +576,22 @@ export class TransactionBulkUpdateService {
     }
 
     if (filters.search && filters.search.trim()) {
-      const escaped = filters.search
-        .trim()
-        .replace(/\\/g, "\\\\")
-        .replace(/%/g, "\\%")
-        .replace(/_/g, "\\_");
-      const searchPattern = `%${escaped}%`;
+      const searchPattern = `%${escapeLikePattern(filters.search.trim())}%`;
       if (!filters.categoryIds || filters.categoryIds.length === 0) {
         queryBuilder.leftJoin("transaction.splits", "searchSplits");
         queryBuilder.andWhere(
-          "(transaction.description ILIKE :search OR transaction.payeeName ILIKE :search OR transaction.referenceNumber ILIKE :search OR searchSplits.memo ILIKE :search)",
+          buildTransactionSearchClause({
+            transaction: "transaction",
+            splits: "searchSplits",
+          }),
           { search: searchPattern },
         );
       } else {
         queryBuilder.andWhere(
-          "(transaction.description ILIKE :search OR transaction.payeeName ILIKE :search OR transaction.referenceNumber ILIKE :search OR filterSplits.memo ILIKE :search)",
+          buildTransactionSearchClause({
+            transaction: "transaction",
+            splits: "filterSplits",
+          }),
           { search: searchPattern },
         );
       }

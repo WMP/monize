@@ -10,6 +10,10 @@ import {
   SPLIT_AMOUNT,
   SPLIT_CATEGORY_NAME,
 } from "../common/transaction-split-query.util";
+import {
+  buildTransactionSearchClause,
+  escapeLikePattern,
+} from "./transaction-search.util";
 
 export interface TransferAccountSummary {
   accountName: string;
@@ -354,9 +358,12 @@ export class TransactionAnalyticsService {
     }
 
     if (search && search.trim()) {
-      const searchPattern = `%${search.trim()}%`;
+      const searchPattern = `%${escapeLikePattern(search.trim())}%`;
       queryBuilder.andWhere(
-        "(transaction.description ILIKE :search OR transaction.payeeName ILIKE :search OR transaction.referenceNumber ILIKE :search OR splits.memo ILIKE :search)",
+        buildTransactionSearchClause({
+          transaction: "transaction",
+          splits: "splits",
+        }),
         { search: searchPattern },
       );
     }
@@ -543,13 +550,16 @@ export class TransactionAnalyticsService {
     }
 
     if (search && search.trim()) {
-      const searchPattern = `%${search.trim()}%`;
+      const searchPattern = `%${escapeLikePattern(search.trim())}%`;
       if (!splitsJoined) {
         queryBuilder.leftJoin("transaction.splits", "splits");
         splitsJoined = true;
       }
       queryBuilder.andWhere(
-        "(transaction.description ILIKE :search OR transaction.payeeName ILIKE :search OR transaction.referenceNumber ILIKE :search OR splits.memo ILIKE :search)",
+        buildTransactionSearchClause({
+          transaction: "transaction",
+          splits: "splits",
+        }),
         { search: searchPattern },
       );
     }
@@ -794,7 +804,7 @@ export class TransactionAnalyticsService {
 
     if (safeSearchText) {
       qb.andWhere(
-        "(t.description ILIKE :search OR t.payeeName ILIKE :search OR t.referenceNumber ILIKE :search OR ts.memo ILIKE :search)",
+        buildTransactionSearchClause({ transaction: "t", splits: "ts" }),
         { search: `%${safeSearchText}%` },
       );
     }

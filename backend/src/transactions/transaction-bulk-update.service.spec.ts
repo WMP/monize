@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { BadRequestException } from "@nestjs/common";
 import { TransactionBulkUpdateService } from "./transaction-bulk-update.service";
+import { buildTransactionSearchClause } from "./transaction-search.util";
 import { Transaction, TransactionStatus } from "./entities/transaction.entity";
 import { Category } from "../categories/entities/category.entity";
 import { Payee } from "../payees/entities/payee.entity";
@@ -1674,7 +1675,10 @@ describe("TransactionBulkUpdateService", () => {
         "searchSplits",
       );
       expect(resolveQb.andWhere).toHaveBeenCalledWith(
-        "(transaction.description ILIKE :search OR transaction.payeeName ILIKE :search OR transaction.referenceNumber ILIKE :search OR searchSplits.memo ILIKE :search)",
+        buildTransactionSearchClause({
+          transaction: "transaction",
+          splits: "searchSplits",
+        }),
         { search: "%groceries%" },
       );
     });
@@ -1717,7 +1721,10 @@ describe("TransactionBulkUpdateService", () => {
       expect(result.updated).toBe(1);
       // Search should use filterSplits alias (already joined by category filter)
       expect(resolveQb.andWhere).toHaveBeenCalledWith(
-        "(transaction.description ILIKE :search OR transaction.payeeName ILIKE :search OR transaction.referenceNumber ILIKE :search OR filterSplits.memo ILIKE :search)",
+        buildTransactionSearchClause({
+          transaction: "transaction",
+          splits: "filterSplits",
+        }),
         { search: "%food%" },
       );
     });
@@ -1933,7 +1940,10 @@ describe("TransactionBulkUpdateService", () => {
       await service.bulkUpdate(userId, dto);
 
       expect(resolveQb.andWhere).toHaveBeenCalledWith(
-        "(transaction.description ILIKE :search OR transaction.payeeName ILIKE :search OR transaction.referenceNumber ILIKE :search OR searchSplits.memo ILIKE :search)",
+        buildTransactionSearchClause({
+          transaction: "transaction",
+          splits: "searchSplits",
+        }),
         { search: "%100\\% off\\_sale\\\\deal%" },
       );
     });

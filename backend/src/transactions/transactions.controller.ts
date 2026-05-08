@@ -126,7 +126,7 @@ export class TransactionsController {
     name: "search",
     required: false,
     description:
-      "Search text to filter by description, payee name, or split memo",
+      "Search text matched against description, payee, category, subcategory, amount, reference number, split memo, and tag",
   })
   @ApiQuery({
     name: "amountFrom",
@@ -279,7 +279,7 @@ export class TransactionsController {
     name: "search",
     required: false,
     description:
-      "Search text to filter by description, payee name, or split memo",
+      "Search text matched against description, payee, category, subcategory, amount, reference number, split memo, and tag",
   })
   @ApiQuery({
     name: "amountFrom",
@@ -370,7 +370,7 @@ export class TransactionsController {
     name: "search",
     required: false,
     description:
-      "Search text to filter by description, payee name, or split memo",
+      "Search text matched against description, payee, category, subcategory, amount, reference number, split memo, and tag",
   })
   @ApiQuery({
     name: "amountFrom",

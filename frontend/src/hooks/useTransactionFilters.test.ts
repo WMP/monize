@@ -533,3 +533,60 @@ describe('useTransactionFilters - filter persistence', () => {
     expect(localStorage.getItem('transactions.filter.accountStatus')).toBe('"active"');
   });
 });
+
+describe('useTransactionFilters - header search event', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSearchParams = new URLSearchParams();
+    localStorage.clear();
+  });
+
+  it('clears every filter, switches to all-accounts, sets the search term, and collapses the panel', () => {
+    // Pre-populate state to verify it gets cleared.
+    mockSearchParams = new URLSearchParams(
+      'accountIds=acc-1&categoryIds=cat-food&payeeIds=p-1&tagIds=t-1&startDate=2026-01-01&endDate=2026-12-31&amountFrom=10&amountTo=100',
+    );
+    const { result } = renderHook(() => useTransactionFilters(defaultOptions));
+    act(() => {
+      result.current.setFilterAccountStatus('active');
+    });
+
+    expect(result.current.filterAccountIds).toEqual(['acc-1']);
+    expect(result.current.filterCategoryIds).toEqual(['cat-food']);
+    expect(result.current.filterAccountStatus).toBe('active');
+    expect(result.current.filtersExpanded).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('transactions:applyHeaderSearch', { detail: { term: 'walmart' } }),
+      );
+    });
+
+    expect(result.current.filterAccountIds).toEqual([]);
+    expect(result.current.filterCategoryIds).toEqual([]);
+    expect(result.current.filterPayeeIds).toEqual([]);
+    expect(result.current.filterTagIds).toEqual([]);
+    expect(result.current.filterStartDate).toBe('');
+    expect(result.current.filterEndDate).toBe('');
+    expect(result.current.filterTimePeriod).toBe('');
+    expect(result.current.filterAmountFrom).toBe('');
+    expect(result.current.filterAmountTo).toBe('');
+    expect(result.current.filterAccountStatus).toBe('');
+    expect(result.current.filterSearch).toBe('walmart');
+    expect(result.current.searchInput).toBe('walmart');
+    expect(result.current.currentPage).toBe(1);
+    expect(result.current.filtersExpanded).toBe(false);
+    expect(result.current.isFilterChange.current).toBe(true);
+  });
+
+  it('trims whitespace from the dispatched term', () => {
+    const { result } = renderHook(() => useTransactionFilters(defaultOptions));
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('transactions:applyHeaderSearch', { detail: { term: '  rent  ' } }),
+      );
+    });
+    expect(result.current.filterSearch).toBe('rent');
+    expect(result.current.searchInput).toBe('rent');
+  });
+});

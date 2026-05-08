@@ -8,6 +8,11 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { BudgetAlertBadge } from '@/components/budgets/BudgetAlertBadge';
 import { ActionHistoryPanel } from '@/components/layout/ActionHistoryPanel';
+import {
+  HEADER_SEARCH_EVENT,
+  clearTransactionFilterStorage,
+  type HeaderSearchEventDetail,
+} from '@/hooks/useTransactionFilters';
 import toast from 'react-hot-toast';
 
 const navLinks = [
@@ -40,9 +45,13 @@ export function AppHeader() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const toolsRef = useRef<HTMLDivElement>(null);
   const aiRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -56,10 +65,45 @@ export function AppHeader() {
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
         setMobileMenuOpen(false);
       }
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setSearchOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Focus the search input as it slides open.
+  useEffect(() => {
+    if (searchOpen) {
+      searchInputRef.current?.focus();
+    }
+  }, [searchOpen]);
+
+  const submitSearch = () => {
+    const term = searchTerm.trim();
+    if (!term) return;
+    // Wipe persisted filters so the hook initializes clean (including
+    // `accountStatus`, which is not represented in the URL).
+    clearTransactionFilterStorage();
+    // Notify a mounted Transactions page to reset and apply the term.
+    const detail: HeaderSearchEventDetail = { term };
+    window.dispatchEvent(new CustomEvent(HEADER_SEARCH_EVENT, { detail }));
+    router.push(`/transactions?search=${encodeURIComponent(term)}`);
+    setSearchOpen(false);
+    setSearchTerm('');
+  };
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      submitSearch();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      setSearchOpen(false);
+      setSearchTerm('');
+    }
+  };
 
   // Close mobile menu on route change (setState during render pattern)
   const [prevPathname, setPrevPathname] = useState(pathname);
@@ -229,7 +273,7 @@ export function AppHeader() {
 
             <button
               onClick={() => router.push('/dashboard')}
-              className="flex items-center gap-2 text-2xl font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+              className="hidden lg:flex items-center gap-2 text-2xl font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
             >
               <Image src="/icons/monize-logo.svg" alt="Monize" width={32} height={32} className="rounded" priority />
               <span className="hidden lg:inline">Monize</span>
@@ -360,6 +404,54 @@ export function AppHeader() {
             </nav>
           </div>
           <div className="flex items-center space-x-1 sm:space-x-4">
+            <div className="relative" ref={searchRef}>
+              <div className="flex items-center">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder="Search transactions..."
+                  aria-label="Search transactions"
+                  aria-hidden={!searchOpen}
+                  tabIndex={searchOpen ? 0 : -1}
+                  className={`overflow-hidden transition-all duration-200 ease-out rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    searchOpen
+                      ? 'w-44 sm:w-64 px-3 py-1.5 mr-1 opacity-100'
+                      : 'w-0 px-0 py-1.5 border-transparent opacity-0 pointer-events-none'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (searchOpen) {
+                      submitSearch();
+                    } else {
+                      setSearchOpen(true);
+                    }
+                  }}
+                  aria-label={searchOpen ? 'Search' : 'Open search'}
+                  title="Search transactions"
+                  className="p-2 rounded-md text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-5 h-5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
             <ActionHistoryPanel />
             <BudgetAlertBadge />
             <button

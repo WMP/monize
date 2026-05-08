@@ -4,6 +4,7 @@ import { Brackets } from "typeorm";
 import { TransactionAnalyticsService } from "./transaction-analytics.service";
 import { Transaction } from "./entities/transaction.entity";
 import { Category } from "../categories/entities/category.entity";
+import { buildTransactionSearchClause } from "./transaction-search.util";
 
 describe("TransactionAnalyticsService", () => {
   let service: TransactionAnalyticsService;
@@ -692,7 +693,10 @@ describe("TransactionAnalyticsService", () => {
         );
 
         expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-          "(transaction.description ILIKE :search OR transaction.payeeName ILIKE :search OR transaction.referenceNumber ILIKE :search OR splits.memo ILIKE :search)",
+          buildTransactionSearchClause({
+            transaction: "transaction",
+            splits: "splits",
+          }),
           { search: "%grocery%" },
         );
       });
@@ -709,7 +713,10 @@ describe("TransactionAnalyticsService", () => {
         );
 
         expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-          "(transaction.description ILIKE :search OR transaction.payeeName ILIKE :search OR transaction.referenceNumber ILIKE :search OR splits.memo ILIKE :search)",
+          buildTransactionSearchClause({
+            transaction: "transaction",
+            splits: "splits",
+          }),
           { search: "%coffee%" },
         );
       });
@@ -1226,7 +1233,10 @@ describe("TransactionAnalyticsService", () => {
       );
 
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        "(transaction.description ILIKE :search OR transaction.payeeName ILIKE :search OR transaction.referenceNumber ILIKE :search OR splits.memo ILIKE :search)",
+        buildTransactionSearchClause({
+          transaction: "transaction",
+          splits: "splits",
+        }),
         { search: "%grocery%" },
       );
     });

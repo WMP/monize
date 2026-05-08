@@ -19,6 +19,7 @@ import { TransactionBulkUpdateService } from "./transaction-bulk-update.service"
 import { TagsService } from "../tags/tags.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { isTransactionInFuture } from "../common/date-utils";
+import { buildTransactionSearchClause } from "./transaction-search.util";
 
 jest.mock("../common/date-utils", () => ({
   isTransactionInFuture: jest.fn().mockReturnValue(false),
@@ -1600,7 +1601,10 @@ describe("TransactionsService", () => {
       );
 
       expect(mockQb.andWhere).toHaveBeenCalledWith(
-        "(transaction.description ILIKE :search OR transaction.payeeName ILIKE :search OR transaction.referenceNumber ILIKE :search OR splits.memo ILIKE :search)",
+        buildTransactionSearchClause({
+          transaction: "transaction",
+          splits: "splits",
+        }),
         { search: "%groceries%" },
       );
     });
@@ -2409,7 +2413,11 @@ describe("TransactionsService", () => {
         // Should join splits for search
         expect(idsQb.leftJoin).toHaveBeenCalledWith("bf.splits", "bfSplits");
         expect(idsQb.andWhere).toHaveBeenCalledWith(
-          "(bf.description ILIKE :bfSearch OR bf.payeeName ILIKE :bfSearch OR bf.referenceNumber ILIKE :bfSearch OR bfSplits.memo ILIKE :bfSearch)",
+          buildTransactionSearchClause({
+            transaction: "bf",
+            splits: "bfSplits",
+            paramName: "bfSearch",
+          }),
           { bfSearch: "%grocery%" },
         );
       });
@@ -3453,7 +3461,10 @@ describe("TransactionsService", () => {
         "splits",
       );
       expect(mockQb.andWhere).toHaveBeenCalledWith(
-        "(transaction.description ILIKE :search OR transaction.payeeName ILIKE :search OR transaction.referenceNumber ILIKE :search OR splits.memo ILIKE :search)",
+        buildTransactionSearchClause({
+          transaction: "transaction",
+          splits: "splits",
+        }),
         { search: "%test search%" },
       );
     });
