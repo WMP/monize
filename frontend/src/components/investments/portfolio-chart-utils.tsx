@@ -11,7 +11,7 @@ const logger = createLogger('PortfolioValueChart');
  * supports it; otherwise the backend signals fallbackToDaily=true and we
  * switch back to the daily endpoint.
  */
-export const INTRADAY_RANGES = new Set(['1d', '1w', '1m']);
+export const INTRADAY_RANGES = new Set(['1d', '1w', 'mtd', '1m']);
 
 /**
  * sessionStorage prefix for cached intraday responses. Per-tab, so the data

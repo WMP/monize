@@ -50,6 +50,20 @@ describe('useDateRange', () => {
     expect(result.current.resolvedRange.end).toBe('2025-01-15');
   });
 
+  it('resolves mtd range to start of current month', () => {
+    const { result } = renderHook(() => useDateRange({ defaultRange: 'mtd' }));
+    expect(result.current.resolvedRange.start).toBe('2025-01-01');
+    expect(result.current.resolvedRange.end).toBe('2025-01-15');
+  });
+
+  it('resolves mtd range with month alignment uses same start-of-month date', () => {
+    const { result } = renderHook(() =>
+      useDateRange({ defaultRange: 'mtd', alignment: 'month' }),
+    );
+    expect(result.current.resolvedRange.start).toBe('2025-01-01');
+    expect(result.current.resolvedRange.end).toBe('2025-01-15');
+  });
+
   it('resolves 1m range as 30 days ago', () => {
     const { result } = renderHook(() => useDateRange({ defaultRange: '1m' }));
     expect(result.current.resolvedRange.start).toBe('2024-12-16');

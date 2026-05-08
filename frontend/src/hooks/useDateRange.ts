@@ -61,6 +61,9 @@ export function useDateRange(options: UseDateRangeOptions): UseDateRangeReturn {
         case '1w':
           start = format(subWeeks(now, 1), 'yyyy-MM-dd');
           break;
+        case 'mtd':
+          start = format(startOfMonth(now), 'yyyy-MM-dd');
+          break;
         case '1m':
           start = format(subDays(now, 30), 'yyyy-MM-dd');
           break;

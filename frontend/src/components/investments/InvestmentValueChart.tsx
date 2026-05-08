@@ -33,7 +33,7 @@ import {
 
 const logger = createLogger('InvestmentChart');
 
-const DAILY_RANGES = new Set(['1w', '1m', '3m', 'ytd', '1y', '2y']);
+const DAILY_RANGES = new Set(['1w', 'mtd', '1m', '3m', 'ytd', '1y', '2y']);
 
 /**
  * The page-level Refresh button broadcasts this event so the chart can clear
@@ -173,8 +173,11 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
           // Hydrate from cache immediately so the chart appears even before
           // the network round-trip resolves.
           if (cached && !cached.fallbackToDaily) {
+            const cachedPoints = dateRange === 'mtd'
+              ? cached.points.filter((p) => p.timestamp >= resolvedRange.start)
+              : cached.points;
             setChartPoints(
-              cached.points.map((p) => ({
+              cachedPoints.map((p) => ({
                 name: formatIntradayLabel(p.timestamp, dateRange),
                 Value: p.value,
               })),
@@ -185,7 +188,7 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
           let response;
           try {
             response = await investmentsApi.getIntradayValue({
-              range: dateRange as '1d' | '1w' | '1m',
+              range: (dateRange === 'mtd' ? '1m' : dateRange) as '1d' | '1w' | '1m',
               accountIds: accountIds?.length ? accountIds.join(',') : undefined,
               displayCurrency: foreignCurrency || undefined,
             });
@@ -229,8 +232,11 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
             return;
           }
 
+          const responsePoints = dateRange === 'mtd'
+            ? response.points.filter((p) => p.timestamp >= resolvedRange.start)
+            : response.points;
           setChartPoints(
-            response.points.map((p) => ({
+            responsePoints.map((p) => ({
               name: formatIntradayLabel(p.timestamp, dateRange),
               Value: p.value,
             })),
@@ -249,6 +255,7 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
     [
       isIntraday,
       dateRange,
+      resolvedRange,
       accountIds,
       effectiveCurrency,
       foreignCurrency,
@@ -412,7 +419,7 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
           )}
         </h3>
         <DateRangeSelector
-          ranges={['1d', '1w', '1m', '3m', 'ytd', '1y', '2y', '5y', 'all']}
+          ranges={['1d', '1w', 'mtd', '1m', '3m', 'ytd', '1y', '2y', '5y', 'all']}
           value={dateRange}
           onChange={handleRangeChange}
           activeColour="bg-emerald-600"
