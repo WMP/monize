@@ -36,6 +36,10 @@ import { isTransactionInFuture } from "../common/date-utils";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { getAllCategoryIdsWithChildren } from "../common/category-tree.util";
 import { formatCurrency } from "../common/format-currency.util";
+import {
+  buildTransactionSearchClause,
+  escapeLikePattern,
+} from "./transaction-search.util";
 
 export interface TransactionWithInvestmentLink extends Transaction {
   linkedInvestmentTransactionId?: string | null;
@@ -346,14 +350,12 @@ export class TransactionsService {
     }
 
     if (search && search.trim()) {
-      const escaped = search
-        .trim()
-        .replace(/\\/g, "\\\\")
-        .replace(/%/g, "\\%")
-        .replace(/_/g, "\\_");
-      const searchPattern = `%${escaped}%`;
+      const searchPattern = `%${escapeLikePattern(search.trim())}%`;
       queryBuilder.andWhere(
-        "(transaction.description ILIKE :search OR transaction.payeeName ILIKE :search OR transaction.referenceNumber ILIKE :search OR splits.memo ILIKE :search)",
+        buildTransactionSearchClause({
+          transaction: "transaction",
+          splits: "splits",
+        }),
         { search: searchPattern },
       );
     }
@@ -600,14 +602,9 @@ export class TransactionsService {
         countQuery.andWhere("t.payeeId IN (:...payeeIds)", { payeeIds });
       }
       if (search && search.trim()) {
-        const escaped = search
-          .trim()
-          .replace(/\\/g, "\\\\")
-          .replace(/%/g, "\\%")
-          .replace(/_/g, "\\_");
-        const searchPattern = `%${escaped}%`;
+        const searchPattern = `%${escapeLikePattern(search.trim())}%`;
         countQuery.andWhere(
-          "(t.description ILIKE :search OR t.payeeName ILIKE :search OR t.referenceNumber ILIKE :search OR s.memo ILIKE :search)",
+          buildTransactionSearchClause({ transaction: "t", splits: "s" }),
           { search: searchPattern },
         );
       }
@@ -1092,14 +1089,14 @@ export class TransactionsService {
     }
 
     if (filters.search) {
-      const escaped = filters.search
-        .trim()
-        .replace(/\\/g, "\\\\")
-        .replace(/%/g, "\\%")
-        .replace(/_/g, "\\_");
+      const searchPattern = `%${escapeLikePattern(filters.search.trim())}%`;
       qb.andWhere(
-        "(bf.description ILIKE :bfSearch OR bf.payeeName ILIKE :bfSearch OR bf.referenceNumber ILIKE :bfSearch OR bfSplits.memo ILIKE :bfSearch)",
-        { bfSearch: `%${escaped}%` },
+        buildTransactionSearchClause({
+          transaction: "bf",
+          splits: "bfSplits",
+          paramName: "bfSearch",
+        }),
+        { bfSearch: searchPattern },
       );
     }
 
