@@ -33,7 +33,7 @@ import {
 
 const logger = createLogger('InvestmentChart');
 
-const DAILY_RANGES = new Set(['1w', '1m', '3m', 'ytd', '1y', '2y']);
+const DAILY_RANGES = new Set(['1w', 'mtd', '1m', '3m', 'ytd', '1y', '2y']);
 
 /**
  * The page-level Refresh button broadcasts this event so the chart can clear
@@ -412,7 +412,7 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
           )}
         </h3>
         <DateRangeSelector
-          ranges={['1d', '1w', '1m', '3m', 'ytd', '1y', '2y', '5y', 'all']}
+          ranges={['1d', '1w', 'mtd', '1m', '3m', 'ytd', '1y', '2y', '5y', 'all']}
           value={dateRange}
           onChange={handleRangeChange}
           activeColour="bg-emerald-600"
