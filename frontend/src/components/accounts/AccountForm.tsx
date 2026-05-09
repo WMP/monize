@@ -148,7 +148,9 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           accountType: account.accountType,
           currencyCode: account.currencyCode,
           openingBalance: account.openingBalance !== undefined
-            ? Math.round(Math.abs(Number(account.openingBalance)) * 100) / 100
+            ? (account.accountType === 'LOAN' || account.accountType === 'MORTGAGE'
+              ? Math.round(Math.abs(Number(account.openingBalance)) * 100) / 100
+              : Math.round(Number(account.openingBalance) * 100) / 100)
             : undefined,
           creditLimit: account.creditLimit
             ? Math.round(Number(account.creditLimit) * 100) / 100
@@ -464,7 +466,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           value={watchedOpeningBalance}
           onChange={(value) => setValue('openingBalance', value, { shouldValidate: true })}
           error={errors.openingBalance?.message}
-          allowNegative={false}
+          allowNegative={!isLoanAccount && !isMortgageAccount}
         />
       </div>
 

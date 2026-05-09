@@ -458,23 +458,23 @@ describe('AccountsPage', () => {
       expect(callArg).not.toHaveProperty('interestRate');
     });
 
-    it('negates opening balance for CREDIT_CARD when creating', async () => {
+    it('passes opening balance as-is for CREDIT_CARD when creating', async () => {
       mockCreate.mockResolvedValue({ id: 'new-acc' });
       render(<AccountsPage />);
       await waitFor(() => expect(capturedOnSubmit).not.toBeNull());
       await act(async () => {
-        await capturedOnSubmit!({ accountType: 'CREDIT_CARD', openingBalance: 1000 });
+        await capturedOnSubmit!({ accountType: 'CREDIT_CARD', openingBalance: -1000 });
       });
       const callArg = mockCreate.mock.calls[0][0];
       expect(callArg.openingBalance).toBe(-1000);
     });
 
-    it('negates opening balance for LINE_OF_CREDIT when creating', async () => {
+    it('passes opening balance as-is for LINE_OF_CREDIT when creating', async () => {
       mockCreate.mockResolvedValue({ id: 'new-acc' });
       render(<AccountsPage />);
       await waitFor(() => expect(capturedOnSubmit).not.toBeNull());
       await act(async () => {
-        await capturedOnSubmit!({ accountType: 'LINE_OF_CREDIT', openingBalance: 500 });
+        await capturedOnSubmit!({ accountType: 'LINE_OF_CREDIT', openingBalance: -500 });
       });
       const callArg = mockCreate.mock.calls[0][0];
       expect(callArg.openingBalance).toBe(-500);
@@ -491,7 +491,7 @@ describe('AccountsPage', () => {
       expect(callArg.openingBalance).toBe(10000);
     });
 
-    it('does NOT negate zero opening balance', async () => {
+    it('passes zero opening balance as-is for CREDIT_CARD', async () => {
       mockCreate.mockResolvedValue({ id: 'new-acc' });
       render(<AccountsPage />);
       await waitFor(() => expect(capturedOnSubmit).not.toBeNull());
@@ -564,13 +564,13 @@ describe('AccountsPage', () => {
       expect(toast.default.success).toHaveBeenCalledWith('Account updated successfully');
     });
 
-    it('negates positive opening balance for liability types on update', async () => {
+    it('passes opening balance as-is for CREDIT_CARD on update', async () => {
       formModalState.editingItem = { ...mockAccounts[2], id: 'cc-1' };
       mockUpdate.mockResolvedValue({});
       render(<AccountsPage />);
       await waitFor(() => expect(capturedOnSubmit).not.toBeNull());
       await act(async () => {
-        await capturedOnSubmit!({ accountType: 'CREDIT_CARD', openingBalance: 2000 });
+        await capturedOnSubmit!({ accountType: 'CREDIT_CARD', openingBalance: -2000 });
       });
       const callArg = mockUpdate.mock.calls[0][1];
       expect(callArg.openingBalance).toBe(-2000);
