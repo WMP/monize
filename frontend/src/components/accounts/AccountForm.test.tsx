@@ -1047,6 +1047,74 @@ describe('AccountForm', () => {
     });
   });
 
+  it('shows actual (negative) opening balance for CREDIT_CARD when editing', async () => {
+    const ccAccount = createExistingAccount({
+      accountType: 'CREDIT_CARD',
+      openingBalance: -500,
+    });
+    render(<AccountForm account={ccAccount} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Update Account/i })).toBeInTheDocument();
+    });
+    // Opening balance should be -500 (not abs value 500) for credit card
+    const input = screen.getByLabelText('Opening Balance') as HTMLInputElement;
+    expect(input.value).toBe('-500.00');
+  });
+
+  it('shows positive opening balance unchanged for CREDIT_CARD when editing', async () => {
+    const ccAccount = createExistingAccount({
+      accountType: 'CREDIT_CARD',
+      openingBalance: 75,
+    });
+    render(<AccountForm account={ccAccount} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Update Account/i })).toBeInTheDocument();
+    });
+    const input = screen.getByLabelText('Opening Balance') as HTMLInputElement;
+    expect(input.value).toBe('75.00');
+  });
+
+  it('shows actual (negative) opening balance for SAVINGS when editing (overdrawn)', async () => {
+    const account = createExistingAccount({
+      accountType: 'SAVINGS',
+      openingBalance: -42,
+    });
+    render(<AccountForm account={account} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Update Account/i })).toBeInTheDocument();
+    });
+    const input = screen.getByLabelText('Opening Balance') as HTMLInputElement;
+    expect(input.value).toBe('-42.00');
+  });
+
+  it('shows absolute opening balance for LOAN when editing', async () => {
+    const loanAccount = createExistingAccount({
+      accountType: 'LOAN',
+      openingBalance: -10000,
+    });
+    render(<AccountForm account={loanAccount} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Update Account/i })).toBeInTheDocument();
+    });
+    // Loan amount should show as positive (abs value)
+    const input = screen.getByLabelText('Loan Amount') as HTMLInputElement;
+    expect(input.value).toBe('10000.00');
+  });
+
+  it('shows absolute opening balance for MORTGAGE when editing', async () => {
+    const mortgageAccount = createExistingAccount({
+      accountType: 'MORTGAGE',
+      openingBalance: -250000,
+    });
+    render(<AccountForm account={mortgageAccount} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Update Account/i })).toBeInTheDocument();
+    });
+    const input = screen.getByLabelText('Mortgage Amount') as HTMLInputElement;
+    expect(input.value).toBe('250000.00');
+  });
+
+
   it('populates account with openingBalance of 0 correctly', async () => {
     const account = createExistingAccount({ openingBalance: 0 });
     render(<AccountForm account={account} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);

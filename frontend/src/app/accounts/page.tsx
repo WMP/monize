@@ -88,19 +88,17 @@ function AccountsContent() {
         interestRate: data.interestRate || data.interestRate === 0 ? data.interestRate : undefined,
       };
 
-      // Liability accounts store openingBalance as negative.
-      // The form displays the absolute value, so negate it before saving.
-      // For new accounts, the backend handles negation for LOAN/MORTGAGE types
-      // (via loan-mortgage-account.service), so only negate on update, or for
-      // create of CREDIT_CARD/LINE_OF_CREDIT which go through the generic path.
-      const liabilityTypes = ['LOAN', 'MORTGAGE', 'LINE_OF_CREDIT', 'CREDIT_CARD'];
+      // LOAN/MORTGAGE store openingBalance as negative. The form shows the
+      // absolute amount ("Loan Amount" / "Mortgage Amount"), so negate it when
+      // saving an update. Backend handles negation on create for these types.
+      // All other account types (including CREDIT_CARD, LINE_OF_CREDIT) let the
+      // user type the sign directly, so no auto-negation is applied.
       const effectiveType = cleanedData.accountType || editingItem?.accountType;
-      const backendNegatesOnCreate = ['LOAN', 'MORTGAGE'];
       if (
         cleanedData.openingBalance != null &&
         cleanedData.openingBalance > 0 &&
-        liabilityTypes.includes(effectiveType) &&
-        (editingItem || !backendNegatesOnCreate.includes(effectiveType))
+        (effectiveType === 'LOAN' || effectiveType === 'MORTGAGE') &&
+        editingItem
       ) {
         cleanedData.openingBalance = -cleanedData.openingBalance;
       }
