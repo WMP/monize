@@ -426,6 +426,10 @@ export function useInvestmentData() {
     // The portfolio summary drives the Holdings by Account section's cash
     // balances, so refresh it when a cash transaction changes.
     loadPortfolioSummary(selectedAccountIds);
+    // A cash transaction can embed an investment-split action (BUY/SELL/etc),
+    // which writes to the linked brokerage account; refresh the brokerage
+    // transaction list so the new row appears without a manual reload.
+    loadTransactions(selectedAccountIds, currentPage, transactionFilters);
   };
 
   const refreshCashTransactions = useCallback(() => {

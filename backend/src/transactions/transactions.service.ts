@@ -250,6 +250,8 @@ export class TransactionsService {
         "splits.category",
         "splits.transferAccount",
         "splits.tags",
+        "splits.investmentTransaction",
+        "splits.investmentTransaction.security",
       ],
     });
 
@@ -302,6 +304,8 @@ export class TransactionsService {
       .leftJoinAndSelect("splits.category", "splitCategory")
       .leftJoinAndSelect("splits.transferAccount", "splitTransferAccount")
       .leftJoinAndSelect("splits.tags", "splitTags")
+      .leftJoinAndSelect("splits.investmentTransaction", "splitInvestmentTx")
+      .leftJoinAndSelect("splitInvestmentTx.security", "splitInvestmentSecurity")
       .leftJoinAndSelect("transaction.linkedTransaction", "linkedTransaction")
       .leftJoinAndSelect("linkedTransaction.account", "linkedAccount")
       .leftJoinAndSelect("linkedTransaction.splits", "linkedSplits")
@@ -1204,6 +1208,8 @@ export class TransactionsService {
         "splits.category",
         "splits.transferAccount",
         "splits.tags",
+        "splits.investmentTransaction",
+        "splits.investmentTransaction.security",
         "linkedTransaction",
         "linkedTransaction.account",
       ],
