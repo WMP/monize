@@ -1458,5 +1458,309 @@ describe("TransactionSplitService", () => {
         }),
       );
     });
+
+    it("rejects investment split when payload is missing", () => {
+      const splits = [
+        { amount: -100, categoryId: "cat-1" },
+        {
+          amount: 0,
+          splitKind: "investment" as any,
+          // no `investment` payload provided
+        },
+      ];
+      expect(() => service.validateSplits(splits, -100)).toThrow(
+        BadRequestException,
+      );
+      expect(() => service.validateSplits(splits, -100)).toThrow(
+        /requires an investment payload/,
+      );
+    });
+
+    it("rejects investment split combined with transferAccountId", () => {
+      const splits = [
+        { amount: -50, categoryId: "cat-1" },
+        {
+          amount: -50,
+          transferAccountId: "account-2",
+          investment: {
+            action: "BUY" as any,
+            securityId: "sec-1",
+            quantity: 5,
+            price: 10,
+          },
+        },
+      ];
+      expect(() => service.validateSplits(splits, -100)).toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("validates with exchangeRate when security currency differs", () => {
+      // 75 shares @ $10 USD = $750 USD; with rate 1.35 -> $1012.50 in parent currency
+      const splits = [
+        { amount: 1350, categoryId: "cat-1" },
+        { amount: -337.5, categoryId: "cat-2" },
+        {
+          amount: -1012.5,
+          investment: {
+            action: "BUY" as any,
+            securityId: "sec-1",
+            quantity: 75,
+            price: 10,
+            commission: 0,
+            exchangeRate: 1.35,
+          },
+        },
+      ];
+      expect(() => service.validateSplits(splits, 0)).not.toThrow();
+    });
+
+    it("accepts a single investment split as a passthrough", () => {
+      const splits = [
+        {
+          amount: -750,
+          investment: {
+            action: "BUY" as any,
+            securityId: "sec-1",
+            quantity: 75,
+            price: 10,
+            commission: 0,
+          },
+        },
+      ];
+      expect(() => service.validateSplits(splits, -750)).not.toThrow();
+    });
+
+    it("rejects investment splits when userId or sourceAccountId is missing", async () => {
+      const splits = [
+        { amount: 1000, categoryId: "cat-1" },
+        { amount: -250, categoryId: "cat-2" },
+        {
+          amount: -750,
+          investment: {
+            action: "BUY" as any,
+            securityId: "sec-1",
+            quantity: 75,
+            price: 10,
+          },
+        },
+      ];
+
+      await expect(
+        service.createSplits("tx-1", splits, undefined, "account-1"),
+      ).rejects.toThrow(/known source account/);
+    });
+
+    it("rejects when INVESTMENT_CASH parent has no linkedAccountId", async () => {
+      accountsService.findOne.mockResolvedValueOnce({
+        id: "account-1",
+        accountSubType: "INVESTMENT_CASH",
+        linkedAccountId: null,
+      });
+
+      const splits = [
+        { amount: 1000, categoryId: "cat-1" },
+        { amount: -250, categoryId: "cat-2" },
+        {
+          amount: -750,
+          investment: {
+            action: "BUY" as any,
+            securityId: "sec-1",
+            quantity: 75,
+            price: 10,
+          },
+        },
+      ];
+
+      await expect(
+        service.createSplits(
+          "tx-1",
+          splits,
+          "user-1",
+          "account-1",
+          new Date("2026-05-09"),
+        ),
+      ).rejects.toThrow(/not linked to a brokerage account/);
+    });
+
+    it("rejects adding an investment split via addSplit", async () => {
+      const transaction = { ...mockTransaction, isSplit: true } as Transaction;
+      await expect(
+        service.addSplit(
+          transaction,
+          {
+            amount: -750,
+            investment: {
+              action: "BUY" as any,
+              securityId: "sec-1",
+              quantity: 75,
+              price: 10,
+            },
+          } as any,
+          "user-1",
+        ),
+      ).rejects.toThrow(/cannot be added incrementally/);
+    });
+
+    it("removeSplit reverses holdings via reverseAndRemoveEmbedded for an investment split", async () => {
+      const investmentTx = { id: "inv-1", action: "BUY" };
+      splitsRepository.findOne.mockResolvedValue({
+        id: "split-3",
+        transactionId: "tx-1",
+        kind: "investment",
+        investmentTransaction: investmentTx,
+      });
+      const remaining = [
+        { id: "split-1", kind: "category", categoryId: "cat-1" },
+        { id: "split-2", kind: "category", categoryId: "cat-2" },
+      ];
+      mockQueryRunner.manager.find = jest
+        .fn()
+        .mockResolvedValue(remaining);
+
+      const investmentService = (service as any).investmentTransactionsService;
+
+      await service.removeSplit(
+        { ...mockTransaction } as Transaction,
+        "split-3",
+        "user-1",
+      );
+
+      expect(investmentService.reverseAndRemoveEmbedded).toHaveBeenCalledWith(
+        mockQueryRunner,
+        "user-1",
+        investmentTx,
+      );
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+    });
+
+    it("removeSplit keeps isSplit=true when the last remaining split is investment", async () => {
+      splitsRepository.findOne.mockResolvedValue({
+        id: "split-1",
+        transactionId: "tx-1",
+        kind: "category",
+        categoryId: "cat-1",
+      });
+      // After removing the category split, an investment split remains alone
+      mockQueryRunner.manager.find = jest.fn().mockResolvedValue([
+        {
+          id: "split-2",
+          kind: "investment",
+          investmentTransaction: { id: "inv-1" },
+        },
+      ]);
+
+      await service.removeSplit(
+        { ...mockTransaction } as Transaction,
+        "split-1",
+        "user-1",
+      );
+
+      // The collapse path should be skipped: no Transaction update to isSplit=false
+      const updateCalls = (mockQueryRunner.manager.update as jest.Mock).mock
+        .calls;
+      const setIsSplitFalse = updateCalls.find(
+        ([entity, _id, data]: any[]) =>
+          entity === Transaction && data?.isSplit === false,
+      );
+      expect(setIsSplitFalse).toBeUndefined();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+    });
+
+    it("deleteSplitSideEffects reverses each investment split", async () => {
+      const externalQr: any = {
+        ...mockQueryRunner,
+        manager: { ...mockQueryRunner.manager, getRepository: jest.fn() },
+      };
+      const splitsRepo = {
+        find: jest.fn().mockResolvedValue([
+          {
+            id: "split-1",
+            kind: "investment",
+            investmentTransaction: { id: "inv-a" },
+          },
+          {
+            id: "split-2",
+            kind: "investment",
+            investmentTransaction: { id: "inv-b" },
+          },
+          // Without an investmentTransaction relation - skipped
+          {
+            id: "split-3",
+            kind: "investment",
+            investmentTransaction: null,
+          },
+        ]),
+      };
+      const txRepo = { find: jest.fn().mockResolvedValue([]) };
+      externalQr.manager.getRepository = jest.fn().mockImplementation((e) => {
+        if (e === TransactionSplit) return splitsRepo;
+        if (e === Transaction) return txRepo;
+        return {};
+      });
+
+      const investmentService = (service as any).investmentTransactionsService;
+      investmentService.reverseAndRemoveEmbedded.mockClear();
+
+      await service.deleteSplitSideEffects("tx-1", "user-1", externalQr);
+
+      expect(investmentService.reverseAndRemoveEmbedded).toHaveBeenCalledTimes(
+        2,
+      );
+      expect(investmentService.reverseAndRemoveEmbedded).toHaveBeenCalledWith(
+        externalQr,
+        "user-1",
+        { id: "inv-a" },
+      );
+      expect(investmentService.reverseAndRemoveEmbedded).toHaveBeenCalledWith(
+        externalQr,
+        "user-1",
+        { id: "inv-b" },
+      );
+    });
+
+    it("supports multiple investment splits in one createSplits call", async () => {
+      accountsService.findOne.mockResolvedValueOnce({
+        id: "account-1",
+        accountSubType: "INVESTMENT_CASH",
+        linkedAccountId: "brokerage-1",
+      });
+
+      const splits = [
+        { amount: 5000, categoryId: "cat-1" },
+        {
+          amount: -3000,
+          investment: {
+            action: "BUY" as any,
+            securityId: "sec-1",
+            quantity: 30,
+            price: 100,
+            commission: 0,
+          },
+        },
+        {
+          amount: -2000,
+          investment: {
+            action: "BUY" as any,
+            securityId: "sec-2",
+            quantity: 20,
+            price: 100,
+            commission: 0,
+          },
+        },
+      ];
+
+      const result = await service.createSplits(
+        "tx-1",
+        splits,
+        "user-1",
+        "account-1",
+        new Date("2026-05-09"),
+      );
+      expect(result).toHaveLength(3);
+
+      const investmentService = (service as any).investmentTransactionsService;
+      expect(investmentService.createEmbeddedForSplit).toHaveBeenCalledTimes(2);
+    });
   });
 });

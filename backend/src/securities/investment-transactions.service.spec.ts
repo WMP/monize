@@ -4369,6 +4369,94 @@ describe("InvestmentTransactionsService", () => {
         ),
       ).rejects.toThrow(/INVESTMENT_BROKERAGE/);
     });
+
+    it("rejects BUY without a securityId", async () => {
+      accountsService.findOne.mockResolvedValue(mockInvestmentAccount);
+
+      await expect(
+        service.createEmbeddedForSplit(
+          mockQueryRunner as any,
+          userId,
+          "2026-05-09",
+          "split-1",
+          accountId,
+          cashAccountId,
+          {
+            action: InvestmentAction.BUY,
+            // no securityId
+            quantity: 5,
+            price: 10,
+          },
+        ),
+      ).rejects.toThrow(/Security ID is required/);
+    });
+
+    it("creates a DIVIDEND embedded split (no quantity required)", async () => {
+      accountsService.findOne.mockResolvedValue(mockInvestmentAccount);
+      securitiesService.findOne.mockResolvedValue(mockSecurity);
+      exchangeRateService.getLatestRate.mockResolvedValue(1);
+
+      const created = await service.createEmbeddedForSplit(
+        mockQueryRunner as any,
+        userId,
+        "2026-05-09",
+        "split-1",
+        accountId,
+        cashAccountId,
+        {
+          action: InvestmentAction.DIVIDEND,
+          securityId,
+          price: 50, // dividend amount
+        },
+      );
+
+      // No holdings update for DIVIDEND, no cash transaction either
+      expect(holdingsService.updateHolding).not.toHaveBeenCalled();
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      expect(created).toBeDefined();
+      expect(mockQueryRunner.manager.create).toHaveBeenCalledWith(
+        InvestmentTransaction,
+        expect.objectContaining({
+          action: InvestmentAction.DIVIDEND,
+          transactionId: null,
+          transactionSplitId: "split-1",
+        }),
+      );
+    });
+
+    it("creates a SELL embedded split that updates holdings without cash side", async () => {
+      accountsService.findOne.mockResolvedValue(mockInvestmentAccount);
+      securitiesService.findOne.mockResolvedValue(mockSecurity);
+      exchangeRateService.getLatestRate.mockResolvedValue(1);
+
+      await service.createEmbeddedForSplit(
+        mockQueryRunner as any,
+        userId,
+        "2026-05-09",
+        "split-1",
+        accountId,
+        cashAccountId,
+        {
+          action: InvestmentAction.SELL,
+          securityId,
+          quantity: 10,
+          price: 50,
+          commission: 0,
+        },
+      );
+
+      expect(holdingsService.updateHolding).toHaveBeenCalledWith(
+        userId,
+        accountId,
+        securityId,
+        -10,
+        50,
+        mockQueryRunner,
+        false,
+      );
+      // Cash side suppressed
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
   });
 
   describe("reverseAndRemoveEmbedded", () => {
