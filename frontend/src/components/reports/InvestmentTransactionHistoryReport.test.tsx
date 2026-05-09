@@ -289,7 +289,10 @@ describe('InvestmentTransactionHistoryReport', () => {
     mockGetInvestmentAccounts.mockResolvedValue([
       { id: 'acc-1', name: 'Brokerage', accountSubType: 'INVESTMENT_CASH', currencyCode: 'CAD' },
     ]);
-    const { container } = render(<InvestmentTransactionHistoryReport />);
+    let container!: HTMLElement;
+    await act(async () => {
+      ({ container } = render(<InvestmentTransactionHistoryReport />));
+    });
     await waitFor(() => expect(container.querySelector('table')).toBeInTheDocument());
     const headerCount = container.querySelectorAll('table thead th').length;
     expect(headerCount).toBeGreaterThan(0);

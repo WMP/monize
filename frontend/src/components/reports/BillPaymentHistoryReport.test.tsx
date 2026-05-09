@@ -31,11 +31,12 @@ vi.mock('@/hooks/useNumberFormat', () => ({
   }),
 }));
 
+const STABLE_RANGE = { start: '2024-01-01', end: '2025-01-01' };
 vi.mock('@/hooks/useDateRange', () => ({
   useDateRange: () => ({
     dateRange: '1y',
     setDateRange: vi.fn(),
-    resolvedRange: { start: '2024-01-01', end: '2025-01-01' },
+    resolvedRange: STABLE_RANGE,
     isValid: true,
   }),
 }));
