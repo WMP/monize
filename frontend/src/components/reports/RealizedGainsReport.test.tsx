@@ -470,9 +470,9 @@ describe('RealizedGainsReport', () => {
 
   it('exercises sort headers on security and sells tables', async () => {
     mockGetRealizedGains.mockResolvedValue([
-      gainEntry({ symbol: 'BBB', securityName: 'Bravo', transactionDate: '2024-02-15', quantity: 5, price: 100, proceeds: 500, costBasis: 400, realizedGain: 100, accountCurrencyCode: 'CAD' }),
-      gainEntry({ symbol: 'AAA', securityName: 'Alpha', transactionDate: '2024-01-15', quantity: 10, price: 50, proceeds: 500, costBasis: 600, realizedGain: -100, accountCurrencyCode: 'CAD' }),
-      gainEntry({ symbol: 'CCC', securityName: 'Charlie', transactionDate: '2024-03-15', quantity: 2, price: 200, proceeds: 400, costBasis: 300, realizedGain: 100, accountCurrencyCode: 'CAD' }),
+      gainEntry({ transactionId: 'sell-bbb', symbol: 'BBB', securityName: 'Bravo', transactionDate: '2024-02-15', quantity: 5, price: 100, proceeds: 500, costBasis: 400, realizedGain: 100, accountCurrencyCode: 'CAD' }),
+      gainEntry({ transactionId: 'sell-aaa', symbol: 'AAA', securityName: 'Alpha', transactionDate: '2024-01-15', quantity: 10, price: 50, proceeds: 500, costBasis: 600, realizedGain: -100, accountCurrencyCode: 'CAD' }),
+      gainEntry({ transactionId: 'sell-ccc', symbol: 'CCC', securityName: 'Charlie', transactionDate: '2024-03-15', quantity: 2, price: 200, proceeds: 400, costBasis: 300, realizedGain: 100, accountCurrencyCode: 'CAD' }),
     ]);
     const { container } = render(<RealizedGainsReport />);
     await waitFor(() => expect(screen.getByTitle('Table')).toBeInTheDocument());
