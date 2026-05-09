@@ -2,6 +2,8 @@ import { Account } from './account';
 import { Payee } from './payee';
 import { Category } from './category';
 import { Tag } from './tag';
+import { InvestmentAction, Security } from './investment';
+import { SplitKind, InvestmentSplitDetails } from './transaction';
 
 export type FrequencyType =
   | 'ONCE'
@@ -29,6 +31,7 @@ export const FREQUENCY_LABELS: Record<FrequencyType, string> = {
 export interface ScheduledTransactionSplit {
   id: string;
   scheduledTransactionId: string;
+  kind?: SplitKind;
   categoryId: string | null;
   category: Category | null;
   transferAccountId: string | null;
@@ -36,6 +39,14 @@ export interface ScheduledTransactionSplit {
   amount: number;
   memo: string | null;
   tags?: Tag[];
+  // Investment-split fields
+  investmentAction?: InvestmentAction | null;
+  investmentSecurityId?: string | null;
+  investmentSecurity?: Security | null;
+  investmentQuantity?: number | null;
+  investmentPrice?: number | null;
+  investmentCommission?: number | null;
+  investmentExchangeRate?: number | null;
   createdAt: string;
 }
 
@@ -77,8 +88,10 @@ export interface ScheduledTransaction {
 }
 
 export interface CreateScheduledTransactionSplitData {
+  splitKind?: SplitKind;
   categoryId?: string;
   transferAccountId?: string;
+  investment?: InvestmentSplitDetails;
   amount: number;
   memo?: string;
   tagIds?: string[];
@@ -112,8 +125,10 @@ export interface UpdateScheduledTransactionData extends Partial<CreateScheduledT
 // ==================== Override Types ====================
 
 export interface OverrideSplit {
+  splitKind?: SplitKind;
   categoryId: string | null;
   transferAccountId?: string | null;
+  investment?: InvestmentSplitDetails;
   amount: number;
   memo?: string | null;
 }

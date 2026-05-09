@@ -10,12 +10,13 @@ import { MultiSelect } from '@/components/ui/MultiSelect';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
 import { Tag } from '@/types/tag';
-import { CreateSplitData } from '@/types/transaction';
+import { CreateSplitData, InvestmentSplitDetails } from '@/types/transaction';
 import { buildCategoryTree } from '@/lib/categoryUtils';
 import { roundToCents, getCurrencySymbol, formatAmountWithCommas, getDecimalPlacesForCurrency } from '@/lib/format';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
+import { InvestmentSplitFields } from './InvestmentSplitFields';
 
-export type SplitType = 'category' | 'transfer';
+export type SplitType = 'category' | 'transfer' | 'investment';
 
 export interface SplitRow extends CreateSplitData {
   id: string; // Temporary ID for React keys
@@ -29,6 +30,8 @@ interface SplitEditorProps {
   tags?: Tag[];
   accounts?: Account[];
   sourceAccountId?: string;
+  /** When the parent account is INVESTMENT_CASH, the investment split kind is enabled. */
+  parentAccountSubType?: string | null;
   transactionAmount: number;
   disabled?: boolean;
   onTransactionAmountChange?: (amount: number) => void;
@@ -42,11 +45,13 @@ export function SplitEditor({
   tags = [],
   accounts = [],
   sourceAccountId = '',
+  parentAccountSubType,
   transactionAmount,
   disabled = false,
   onTransactionAmountChange,
   currencyCode = 'CAD',
 }: SplitEditorProps) {
+  const investmentSplitsEnabled = parentAccountSubType === 'INVESTMENT_CASH';
   const currencySymbol = getCurrencySymbol(currencyCode);
   const decimals = getDecimalPlacesForCurrency(currencyCode);
   const [localSplits, setLocalSplits] = useState<SplitRow[]>(splits);
@@ -101,13 +106,48 @@ export function SplitEditor({
   const handleSplitChange = (index: number, field: keyof SplitRow, value: any) => {
     const newSplits = [...localSplits];
 
-    // If changing split type, clear the other field
+    // If changing split type, clear the other-kind fields
     if (field === 'splitType') {
       if (value === 'category') {
-        newSplits[index] = { ...newSplits[index], splitType: 'category', transferAccountId: undefined };
+        newSplits[index] = {
+          ...newSplits[index],
+          splitType: 'category',
+          transferAccountId: undefined,
+          investment: undefined,
+        };
+      } else if (value === 'transfer') {
+        newSplits[index] = {
+          ...newSplits[index],
+          splitType: 'transfer',
+          categoryId: undefined,
+          investment: undefined,
+        };
       } else {
-        newSplits[index] = { ...newSplits[index], splitType: 'transfer', categoryId: undefined };
+        newSplits[index] = {
+          ...newSplits[index],
+          splitType: 'investment',
+          categoryId: undefined,
+          transferAccountId: undefined,
+          investment: newSplits[index].investment ?? { action: 'BUY' },
+        };
       }
+      setLocalSplits(newSplits);
+      onChange(newSplits);
+      return;
+    }
+
+    if (field === 'investment') {
+      // Caller updated the investment payload; set both `investment` and the
+      // computed cash impact passed as `_amount` via the value object.
+      const { investment, amount } = value as {
+        investment: InvestmentSplitDetails;
+        amount: number;
+      };
+      newSplits[index] = {
+        ...newSplits[index],
+        investment,
+        amount,
+      };
       setLocalSplits(newSplits);
       onChange(newSplits);
       return;
@@ -349,6 +389,9 @@ export function SplitEditor({
                     options={[
                       { value: 'category', label: 'Category' },
                       { value: 'transfer', label: 'Transfer' },
+                      ...(investmentSplitsEnabled
+                        ? [{ value: 'investment', label: 'Investment' }]
+                        : []),
                     ]}
                     value={split.splitType}
                     onChange={(e) => handleSplitChange(index, 'splitType', e.target.value)}
@@ -356,7 +399,16 @@ export function SplitEditor({
                     className="w-full"
                   />
                 )}
-                {split.splitType === 'category' || !supportsTransfers ? (
+                {split.splitType === 'investment' ? (
+                  <InvestmentSplitFields
+                    value={split.investment}
+                    onChange={(investment, amount) =>
+                      handleSplitChange(index, 'investment', { investment, amount })
+                    }
+                    disabled={disabled}
+                    currencyCode={currencyCode}
+                  />
+                ) : split.splitType === 'category' || !supportsTransfers ? (
                   <Combobox
                     placeholder="Select category..."
                     options={categoryOptions}
@@ -496,6 +548,9 @@ export function SplitEditor({
                       options={[
                         { value: 'category', label: 'Category' },
                         { value: 'transfer', label: 'Transfer' },
+                        ...(investmentSplitsEnabled
+                          ? [{ value: 'investment', label: 'Investment' }]
+                          : []),
                       ]}
                       value={split.splitType}
                       onChange={(e) => handleSplitChange(index, 'splitType', e.target.value)}
@@ -505,7 +560,16 @@ export function SplitEditor({
                   </td>
                 )}
                 <td className="px-1 py-2">
-                  {split.splitType === 'category' || !supportsTransfers ? (
+                  {split.splitType === 'investment' ? (
+                    <InvestmentSplitFields
+                      value={split.investment}
+                      onChange={(investment, amount) =>
+                        handleSplitChange(index, 'investment', { investment, amount })
+                      }
+                      disabled={disabled}
+                      currencyCode={currencyCode}
+                    />
+                  ) : split.splitType === 'category' || !supportsTransfers ? (
                     <Combobox
                       placeholder="Select category..."
                       options={categoryOptions}
@@ -684,24 +748,103 @@ export function createEmptySplits(transactionAmount: number): SplitRow[] {
   ];
 }
 
-// Convert API splits to SplitRow format
-export function toSplitRows(splits: { id?: string; categoryId?: string | null; transferAccountId?: string | null; amount: number; memo?: string | null; tags?: { id: string }[] }[]): SplitRow[] {
-  return splits.map((split, index) => ({
-    id: split.id || `temp-${Date.now()}-${index}`,
-    splitType: split.transferAccountId ? 'transfer' : 'category',
-    categoryId: split.categoryId || undefined,
-    transferAccountId: split.transferAccountId || undefined,
-    amount: Number(split.amount),
-    memo: split.memo || '',
-    tagIds: split.tags?.map(t => t.id) || [],
-  }));
+// Convert API splits to SplitRow format. Accepts both transaction splits (with
+// `investmentTransaction` relation) and scheduled-transaction splits (with the
+// investment payload denormalized as `investment*` columns on the row itself).
+export function toSplitRows(splits: {
+  id?: string;
+  kind?: 'category' | 'transfer' | 'investment';
+  categoryId?: string | null;
+  transferAccountId?: string | null;
+  amount: number;
+  memo?: string | null;
+  tags?: { id: string }[];
+  investmentTransaction?: {
+    action: string;
+    securityId: string | null;
+    quantity: number | null;
+    price: number | null;
+    commission: number;
+    exchangeRate: number;
+  } | null;
+  // Scheduled-transaction-split shape
+  investmentAction?: string | null;
+  investmentSecurityId?: string | null;
+  investmentQuantity?: number | null;
+  investmentPrice?: number | null;
+  investmentCommission?: number | null;
+  investmentExchangeRate?: number | null;
+  // Override JSON shape
+  splitKind?: 'category' | 'transfer' | 'investment';
+  investment?: {
+    action: string;
+    securityId?: string;
+    quantity?: number;
+    price?: number;
+    commission?: number;
+    exchangeRate?: number;
+  };
+}[]): SplitRow[] {
+  return splits.map((split, index) => {
+    const kind: SplitType =
+      split.kind === 'investment' ||
+      split.splitKind === 'investment' ||
+      split.investmentTransaction ||
+      split.investmentAction ||
+      split.investment
+        ? 'investment'
+        : split.transferAccountId
+          ? 'transfer'
+          : 'category';
+    let investment: InvestmentSplitDetails | undefined;
+    if (split.investmentTransaction) {
+      investment = {
+        action: split.investmentTransaction.action as InvestmentSplitDetails['action'],
+        securityId: split.investmentTransaction.securityId ?? undefined,
+        quantity: Number(split.investmentTransaction.quantity ?? 0),
+        price: Number(split.investmentTransaction.price ?? 0),
+        commission: Number(split.investmentTransaction.commission ?? 0),
+        exchangeRate: Number(split.investmentTransaction.exchangeRate ?? 1),
+      };
+    } else if (split.investmentAction) {
+      investment = {
+        action: split.investmentAction as InvestmentSplitDetails['action'],
+        securityId: split.investmentSecurityId ?? undefined,
+        quantity: Number(split.investmentQuantity ?? 0),
+        price: Number(split.investmentPrice ?? 0),
+        commission: Number(split.investmentCommission ?? 0),
+        exchangeRate: Number(split.investmentExchangeRate ?? 1),
+      };
+    } else if (split.investment) {
+      investment = {
+        action: split.investment.action as InvestmentSplitDetails['action'],
+        securityId: split.investment.securityId,
+        quantity: split.investment.quantity,
+        price: split.investment.price,
+        commission: split.investment.commission,
+        exchangeRate: split.investment.exchangeRate,
+      };
+    }
+    return {
+      id: split.id || `temp-${Date.now()}-${index}`,
+      splitType: kind,
+      categoryId: split.categoryId || undefined,
+      transferAccountId: split.transferAccountId || undefined,
+      investment,
+      amount: Number(split.amount),
+      memo: split.memo || '',
+      tagIds: split.tags?.map(t => t.id) || [],
+    };
+  });
 }
 
 // Convert SplitRow to API format (removes temporary id and splitType)
 export function toCreateSplitData(splits: SplitRow[]): CreateSplitData[] {
   return splits.map((split) => ({
+    splitKind: split.splitType,
     categoryId: split.splitType === 'category' ? split.categoryId : undefined,
     transferAccountId: split.splitType === 'transfer' ? split.transferAccountId : undefined,
+    investment: split.splitType === 'investment' ? split.investment : undefined,
     amount: split.amount,
     memo: split.memo || undefined,
     tagIds: split.tagIds && split.tagIds.length > 0 ? split.tagIds : undefined,

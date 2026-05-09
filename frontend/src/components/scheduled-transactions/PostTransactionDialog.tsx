@@ -9,6 +9,7 @@ import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Combobox } from '@/components/ui/Combobox';
 import { Modal } from '@/components/ui/Modal';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows } from '@/components/transactions/SplitEditor';
+import { toOverrideSplits } from './splitSerialization';
 import { ScheduledTransaction, PostScheduledTransactionData } from '@/types/scheduled-transaction';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
@@ -172,12 +173,7 @@ export function PostTransactionDialog({
         description: description || null,
         referenceNumber: referenceNumber || undefined,
         isSplit,
-        splits: isSplit ? splits.map(s => ({
-          categoryId: s.splitType === 'category' ? (s.categoryId ?? null) : null,
-          transferAccountId: s.splitType === 'transfer' ? (s.transferAccountId ?? null) : null,
-          amount: s.amount,
-          memo: s.memo ?? null,
-        })) : undefined,
+        splits: isSplit ? toOverrideSplits(splits) : undefined,
       };
 
       await scheduledTransactionsApi.post(scheduledTransaction.id, postData);
@@ -366,6 +362,10 @@ export function PostTransactionDialog({
                 categories={categories}
                 accounts={accounts}
                 sourceAccountId={scheduledTransaction.accountId}
+                parentAccountSubType={
+                  accounts.find((a) => a.id === scheduledTransaction.accountId)
+                    ?.accountSubType ?? null
+                }
                 transactionAmount={amount}
                 onTransactionAmountChange={handleAmountChange}
                 currencyCode={scheduledTransaction.currencyCode}

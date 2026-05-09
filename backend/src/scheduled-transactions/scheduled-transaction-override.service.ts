@@ -62,7 +62,10 @@ export class ScheduledTransactionOverrideService {
       isSplit: createDto.isSplit ?? null,
       splits:
         createDto.splits?.map((s) => ({
+          splitKind: s.splitKind,
           categoryId: s.categoryId ?? null,
+          transferAccountId: s.transferAccountId ?? null,
+          investment: s.investment,
           amount: s.amount,
           memo: s.memo ?? null,
         })) ?? null,
@@ -158,7 +161,10 @@ export class ScheduledTransactionOverrideService {
     if (updateDto.splits !== undefined) {
       override.splits =
         updateDto.splits?.map((s) => ({
+          splitKind: s.splitKind,
           categoryId: s.categoryId ?? null,
+          transferAccountId: s.transferAccountId ?? null,
+          investment: s.investment,
           amount: s.amount,
           memo: s.memo ?? null,
         })) ?? null;

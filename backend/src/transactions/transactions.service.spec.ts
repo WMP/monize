@@ -211,6 +211,15 @@ describe("TransactionsService", () => {
           provide: ActionHistoryService,
           useValue: { record: jest.fn().mockResolvedValue(null) },
         },
+        {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          provide: require("../securities/investment-transactions.service")
+            .InvestmentTransactionsService,
+          useValue: {
+            createEmbeddedForSplit: jest.fn().mockResolvedValue({}),
+            reverseAndRemoveEmbedded: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         TransactionSplitService,
         TransactionTransferService,
         TransactionReconciliationService,
@@ -3519,7 +3528,7 @@ describe("TransactionsService", () => {
       expect(result).toEqual(mockSplits);
       expect(splitsRepository.find).toHaveBeenCalledWith({
         where: { transactionId: "tx-1" },
-        relations: ["category", "transferAccount"],
+        relations: ["category", "transferAccount", "investmentTransaction"],
         order: { createdAt: "ASC" },
       });
     });

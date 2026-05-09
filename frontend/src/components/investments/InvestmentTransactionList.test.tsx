@@ -52,19 +52,19 @@ describe('InvestmentTransactionList', () => {
   it('shows New Transaction button when callback provided', () => {
     const transactions = [makeTx()] as any[];
     render(<InvestmentTransactionList transactions={transactions} isLoading={false} onNewTransaction={vi.fn()} />);
-    expect(screen.getByText('+ New Transaction')).toBeInTheDocument();
+    expect(screen.getByText('+ New Brokerage Transaction')).toBeInTheDocument();
   });
 
   it('shows New Transaction button in empty state when callback provided', () => {
     render(<InvestmentTransactionList transactions={[]} isLoading={false} onNewTransaction={vi.fn()} />);
-    expect(screen.getByText('+ New Transaction')).toBeInTheDocument();
+    expect(screen.getByText('+ New Brokerage Transaction')).toBeInTheDocument();
   });
 
   it('calls onNewTransaction when button is clicked', () => {
     const onNewTransaction = vi.fn();
     const transactions = [makeTx()] as any[];
     render(<InvestmentTransactionList transactions={transactions} isLoading={false} onNewTransaction={onNewTransaction} />);
-    fireEvent.click(screen.getByText('+ New Transaction'));
+    fireEvent.click(screen.getByText('+ New Brokerage Transaction'));
     expect(onNewTransaction).toHaveBeenCalled();
   });
 

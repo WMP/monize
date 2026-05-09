@@ -1004,6 +1004,9 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
             tags={tags}
             accounts={accounts}
             sourceAccountId={watchedAccountId || ''}
+            parentAccountSubType={
+              accounts.find((a) => a.id === watchedAccountId)?.accountSubType ?? null
+            }
             transactionAmount={watchedAmount || 0}
             disabled={isLoading}
             onTransactionAmountChange={(amount) => setValue('amount', amount, { shouldDirty: true, shouldValidate: true })}

@@ -250,6 +250,8 @@ export class TransactionsService {
         "splits.category",
         "splits.transferAccount",
         "splits.tags",
+        "splits.investmentTransaction",
+        "splits.investmentTransaction.security",
       ],
     });
 
@@ -302,6 +304,8 @@ export class TransactionsService {
       .leftJoinAndSelect("splits.category", "splitCategory")
       .leftJoinAndSelect("splits.transferAccount", "splitTransferAccount")
       .leftJoinAndSelect("splits.tags", "splitTags")
+      .leftJoinAndSelect("splits.investmentTransaction", "splitInvestmentTx")
+      .leftJoinAndSelect("splitInvestmentTx.security", "splitInvestmentSecurity")
       .leftJoinAndSelect("transaction.linkedTransaction", "linkedTransaction")
       .leftJoinAndSelect("linkedTransaction.account", "linkedAccount")
       .leftJoinAndSelect("linkedTransaction.splits", "linkedSplits")
@@ -1204,6 +1208,8 @@ export class TransactionsService {
         "splits.category",
         "splits.transferAccount",
         "splits.tags",
+        "splits.investmentTransaction",
+        "splits.investmentTransaction.security",
         "linkedTransaction",
         "linkedTransaction.account",
       ],
@@ -1261,8 +1267,9 @@ export class TransactionsService {
     try {
       if (splits !== undefined) {
         if (Array.isArray(splits) && splits.length > 0) {
-          await this.splitService.deleteTransferSplitLinkedTransactions(
+          await this.splitService.deleteSplitSideEffects(
             id,
+            userId,
             queryRunner,
           );
           await queryRunner.manager.delete(TransactionSplit, {
@@ -1297,8 +1304,9 @@ export class TransactionsService {
             }
           }
         } else if (Array.isArray(splits) && splits.length === 0) {
-          await this.splitService.deleteTransferSplitLinkedTransactions(
+          await this.splitService.deleteSplitSideEffects(
             id,
+            userId,
             queryRunner,
           );
           await queryRunner.manager.delete(TransactionSplit, {
@@ -1475,8 +1483,9 @@ export class TransactionsService {
 
     try {
       if (transaction.isSplit) {
-        await this.splitService.deleteTransferSplitLinkedTransactions(
+        await this.splitService.deleteSplitSideEffects(
           id,
+          userId,
           queryRunner,
         );
       }

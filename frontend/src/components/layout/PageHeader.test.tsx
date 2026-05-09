@@ -37,13 +37,13 @@ describe('PageHeader', () => {
 
   it('renders help link when helpUrl is provided', () => {
     render(<PageHeader title="My Page" helpUrl="https://example.com/help" />);
-    const helpLink = screen.getByRole('link', { name: 'Help' });
+    const helpLink = screen.getByRole('link', { name: /Open the Monize wiki/i });
     expect(helpLink).toBeInTheDocument();
   });
 
   it('help link has correct href, target, and rel attributes', () => {
     render(<PageHeader title="My Page" helpUrl="https://example.com/help" />);
-    const helpLink = screen.getByRole('link', { name: 'Help' });
+    const helpLink = screen.getByRole('link', { name: /Open the Monize wiki/i });
     expect(helpLink).toHaveAttribute('href', 'https://example.com/help');
     expect(helpLink).toHaveAttribute('target', '_blank');
     expect(helpLink).toHaveAttribute('rel', 'noopener noreferrer');
@@ -51,7 +51,14 @@ describe('PageHeader', () => {
 
   it('does not render help link when helpUrl is omitted', () => {
     render(<PageHeader title="My Page" />);
-    expect(screen.queryByRole('link', { name: 'Help' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Open the Monize wiki/i })).not.toBeInTheDocument();
+  });
+
+  it('shows a tooltip describing the wiki destination', () => {
+    render(<PageHeader title="My Page" helpUrl="https://example.com/help" />);
+    expect(
+      screen.getByRole('tooltip', { name: /Open the Monize wiki/i }),
+    ).toBeInTheDocument();
   });
 
   it('renders help link alongside action buttons when both are provided', () => {
@@ -62,7 +69,7 @@ describe('PageHeader', () => {
         actions={<button>Add New</button>}
       />,
     );
-    expect(screen.getByRole('link', { name: 'Help' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Open the Monize wiki/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add New' })).toBeInTheDocument();
   });
 
@@ -70,7 +77,7 @@ describe('PageHeader', () => {
     const { container } = render(
       <PageHeader title="My Page" helpUrl="https://example.com/help" />,
     );
-    expect(screen.getByRole('link', { name: 'Help' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Open the Monize wiki/i })).toBeInTheDocument();
     // No actions container should exist when only helpUrl is provided
     const actionsContainer = container.querySelector('.flex.flex-wrap');
     expect(actionsContainer).toBeNull();

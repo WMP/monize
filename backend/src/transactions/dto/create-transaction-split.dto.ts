@@ -4,17 +4,76 @@ import {
   IsOptional,
   IsUUID,
   IsArray,
+  IsEnum,
+  ValidateNested,
   MaxLength,
   Min,
   Max,
 } from "class-validator";
+import { Type } from "class-transformer";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
+import { InvestmentAction } from "../../securities/entities/investment-transaction.entity";
+import { SplitKind } from "../entities/transaction-split.entity";
+
+export class InvestmentSplitDto {
+  @ApiProperty({ enum: InvestmentAction, description: "Investment action" })
+  @IsEnum(InvestmentAction)
+  action: InvestmentAction;
+
+  @ApiPropertyOptional({ description: "Security ID for the action" })
+  @IsOptional()
+  @IsUUID()
+  securityId?: string;
+
+  @ApiPropertyOptional({ description: "Number of shares" })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 8 })
+  @Min(0)
+  quantity?: number;
+
+  @ApiPropertyOptional({ description: "Price per share" })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 6 })
+  @Min(0)
+  price?: number;
+
+  @ApiPropertyOptional({ description: "Commission or fee", default: 0 })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  commission?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "Exchange rate from security currency into the parent transaction's cash account currency. Defaults to 1 / market rate when omitted.",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 10 })
+  @Min(0)
+  exchangeRate?: number;
+
+  @ApiPropertyOptional({ description: "Description of the action" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  @SanitizeHtml()
+  description?: string;
+}
 
 export class CreateTransactionSplitDto {
   @ApiPropertyOptional({
+    enum: SplitKind,
     description:
-      "Category ID for this split (mutually exclusive with transferAccountId)",
+      "Discriminator. If omitted, inferred from which of categoryId/transferAccountId/investment is set.",
+  })
+  @IsOptional()
+  @IsEnum(SplitKind)
+  splitKind?: SplitKind;
+
+  @ApiPropertyOptional({
+    description:
+      "Category ID for this split (mutually exclusive with transferAccountId/investment)",
   })
   @IsOptional()
   @IsUUID()
@@ -22,11 +81,21 @@ export class CreateTransactionSplitDto {
 
   @ApiPropertyOptional({
     description:
-      "Target account ID for transfer split (mutually exclusive with categoryId)",
+      "Target account ID for transfer split (mutually exclusive with categoryId/investment)",
   })
   @IsOptional()
   @IsUUID()
   transferAccountId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Embedded investment action (mutually exclusive with categoryId/transferAccountId). The split's amount must equal the cash impact of this action.",
+    type: InvestmentSplitDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => InvestmentSplitDto)
+  investment?: InvestmentSplitDto;
 
   @ApiProperty({
     description:

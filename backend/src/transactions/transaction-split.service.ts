@@ -8,11 +8,28 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource, QueryRunner, In } from "typeorm";
 import { Transaction } from "./entities/transaction.entity";
-import { TransactionSplit } from "./entities/transaction-split.entity";
+import {
+  TransactionSplit,
+  SplitKind,
+} from "./entities/transaction-split.entity";
 import { Category } from "../categories/entities/category.entity";
 import { CreateTransactionSplitDto } from "./dto/create-transaction-split.dto";
 import { AccountsService } from "../accounts/accounts.service";
+import { AccountSubType } from "../accounts/entities/account.entity";
 import { isTransactionInFuture } from "../common/date-utils";
+import { InvestmentTransactionsService } from "../securities/investment-transactions.service";
+import {
+  computeInvestmentCashImpact,
+  isInvestmentActionAllowedInSplit,
+} from "../securities/cash-impact.util";
+import { NetWorthService } from "../net-worth/net-worth.service";
+
+function inferSplitKind(split: CreateTransactionSplitDto): SplitKind {
+  if (split.splitKind) return split.splitKind;
+  if (split.investment) return SplitKind.INVESTMENT;
+  if (split.transferAccountId) return SplitKind.TRANSFER;
+  return SplitKind.CATEGORY;
+}
 
 @Injectable()
 export class TransactionSplitService {
@@ -25,6 +42,10 @@ export class TransactionSplitService {
     private categoriesRepository: Repository<Category>,
     @Inject(forwardRef(() => AccountsService))
     private accountsService: AccountsService,
+    @Inject(forwardRef(() => InvestmentTransactionsService))
+    private investmentTransactionsService: InvestmentTransactionsService,
+    @Inject(forwardRef(() => NetWorthService))
+    private netWorthService: NetWorthService,
     private dataSource: DataSource,
   ) {}
 
@@ -44,15 +65,16 @@ export class TransactionSplitService {
     splits: CreateTransactionSplitDto[],
     transactionAmount: number,
   ): void {
-    const isTransfer = splits.length === 1 && splits[0].transferAccountId;
+    const isSinglePassthrough =
+      splits.length === 1 &&
+      (splits[0].transferAccountId || splits[0].investment);
 
-    if (splits.length < 2 && !isTransfer) {
+    if (splits.length < 2 && !isSinglePassthrough) {
       throw new BadRequestException(
         "Split transactions must have at least 2 splits",
       );
     }
 
-    // Use integer arithmetic in ten-thousandths to avoid floating-point drift
     const splitsSumCents = splits.reduce(
       (sum, split) => sum + Math.round(Number(split.amount) * 10000),
       0,
@@ -63,6 +85,51 @@ export class TransactionSplitService {
       throw new BadRequestException(
         `Split amounts (${splitsSumCents / 10000}) must equal transaction amount (${expectedSumCents / 10000})`,
       );
+    }
+
+    for (const split of splits) {
+      const kind = inferSplitKind(split);
+      if (kind !== SplitKind.INVESTMENT) continue;
+
+      const inv = split.investment;
+      if (!inv) {
+        throw new BadRequestException(
+          "Investment split requires an investment payload",
+        );
+      }
+      if (!isInvestmentActionAllowedInSplit(inv.action)) {
+        throw new BadRequestException(
+          `Investment action ${inv.action} is not allowed inside a split transaction`,
+        );
+      }
+      if (split.categoryId || split.transferAccountId) {
+        throw new BadRequestException(
+          "Investment splits cannot also set categoryId or transferAccountId",
+        );
+      }
+
+      const cashImpactInSecurity = computeInvestmentCashImpact(
+        inv.action,
+        Number(inv.quantity ?? 0),
+        Number(inv.price ?? 0),
+        Number(inv.commission ?? 0),
+      );
+      const exchangeRate =
+        inv.exchangeRate !== undefined && inv.exchangeRate !== null
+          ? Number(inv.exchangeRate)
+          : 1;
+      const expectedAmount = cashImpactInSecurity * exchangeRate;
+
+      const expectedCents = Math.round(expectedAmount * 10000);
+      const actualCents = Math.round(Number(split.amount) * 10000);
+
+      if (expectedCents !== actualCents) {
+        throw new BadRequestException(
+          `Investment split amount (${split.amount}) does not match the cash impact ` +
+            `of ${inv.action} ${inv.quantity ?? 0} @ ${inv.price ?? 0} ` +
+            `(expected ${expectedAmount.toFixed(4)})`,
+        );
+      }
     }
   }
 
@@ -75,7 +142,6 @@ export class TransactionSplitService {
     parentPayeeName?: string | null,
     externalQueryRunner?: QueryRunner,
   ): Promise<TransactionSplit[]> {
-    // Use provided queryRunner or create our own transaction
     const ownTransaction = !externalQueryRunner;
     const queryRunner =
       externalQueryRunner ?? this.dataSource.createQueryRunner();
@@ -122,7 +188,6 @@ export class TransactionSplitService {
     transactionDate?: Date,
     parentPayeeName?: string | null,
   ): Promise<TransactionSplit[]> {
-    // L1: Batch-validate all category IDs in a single query
     if (userId) {
       const categoryIds = [
         ...new Set(
@@ -144,37 +209,83 @@ export class TransactionSplitService {
       }
     }
 
-    // Separate regular splits from transfer splits
-    const regularSplits = splits.filter(
-      (s) => !s.transferAccountId || !userId || !sourceAccountId,
+    const hasInvestment = splits.some(
+      (s) => inferSplitKind(s) === SplitKind.INVESTMENT,
     );
-    const transferSplits = splits.filter(
-      (s) => s.transferAccountId && userId && sourceAccountId,
-    );
+    let brokerageAccountId: string | null = null;
+    let parentDateStr = "";
+
+    if (hasInvestment) {
+      if (!userId || !sourceAccountId) {
+        throw new BadRequestException(
+          "Investment splits require a known source account",
+        );
+      }
+      const sourceAccount = await this.accountsService.findOne(
+        userId,
+        sourceAccountId,
+      );
+      if (sourceAccount.accountSubType !== AccountSubType.INVESTMENT_CASH) {
+        throw new BadRequestException(
+          "Investment splits require the parent transaction to be on an INVESTMENT_CASH account",
+        );
+      }
+      if (!sourceAccount.linkedAccountId) {
+        throw new BadRequestException(
+          "Source INVESTMENT_CASH account is not linked to a brokerage account",
+        );
+      }
+      brokerageAccountId = sourceAccount.linkedAccountId;
+      parentDateStr = transactionDate
+        ? transactionDate.toISOString().substring(0, 10)
+        : "";
+    }
 
     const savedSplits: TransactionSplit[] = [];
 
-    // Batch-save regular (non-transfer) splits
+    // Plain category splits (and transfers without userId/sourceAccountId
+    // context, e.g. import flows) are batch-saved together.
+    const regularSplits = splits.filter((s) => {
+      const k = inferSplitKind(s);
+      if (k === SplitKind.INVESTMENT) return false;
+      if (k === SplitKind.TRANSFER && userId && sourceAccountId) return false;
+      return true;
+    });
+    const transferSplits = splits.filter(
+      (s) =>
+        inferSplitKind(s) === SplitKind.TRANSFER &&
+        s.transferAccountId &&
+        userId &&
+        sourceAccountId,
+    );
+    const investmentSplits = splits.filter(
+      (s) => inferSplitKind(s) === SplitKind.INVESTMENT,
+    );
+
     if (regularSplits.length > 0) {
-      const regularEntities = regularSplits.map((split) =>
-        queryRunner.manager.create(TransactionSplit, {
+      const regularEntities = regularSplits.map((split) => {
+        const kind = split.transferAccountId
+          ? SplitKind.TRANSFER
+          : SplitKind.CATEGORY;
+        return queryRunner.manager.create(TransactionSplit, {
           transactionId,
+          kind,
           categoryId: split.categoryId || null,
           transferAccountId: split.transferAccountId || null,
           amount: split.amount,
           memo: split.memo || null,
-        }),
-      );
+        });
+      });
       const batchSaved = await queryRunner.manager.save(regularEntities);
       savedSplits.push(...batchSaved);
     }
 
-    // Process transfer splits individually (they need linked transactions)
     for (const split of transferSplits) {
       const splitEntity = queryRunner.manager.create(TransactionSplit, {
         transactionId,
-        categoryId: split.categoryId || null,
-        transferAccountId: split.transferAccountId || null,
+        kind: SplitKind.TRANSFER,
+        categoryId: null,
+        transferAccountId: split.transferAccountId,
         amount: split.amount,
         memo: split.memo || null,
       });
@@ -233,9 +344,102 @@ export class TransactionSplitService {
       savedSplits.push(savedSplit);
     }
 
+    for (const split of investmentSplits) {
+      const splitEntity = queryRunner.manager.create(TransactionSplit, {
+        transactionId,
+        kind: SplitKind.INVESTMENT,
+        categoryId: null,
+        transferAccountId: null,
+        amount: split.amount,
+        memo: split.memo || null,
+      });
+      const savedSplit = await queryRunner.manager.save(splitEntity);
+
+      await this.investmentTransactionsService.createEmbeddedForSplit(
+        queryRunner,
+        userId!,
+        parentDateStr,
+        savedSplit.id,
+        brokerageAccountId!,
+        sourceAccountId!,
+        split.investment!,
+      );
+
+      savedSplits.push(savedSplit);
+    }
+
+    if (hasInvestment && userId && brokerageAccountId) {
+      this.netWorthService.triggerDebouncedRecalc(brokerageAccountId, userId);
+    }
+
     return savedSplits;
   }
 
+  async deleteSplitSideEffects(
+    transactionId: string,
+    userId: string,
+    externalQueryRunner?: QueryRunner,
+  ): Promise<void> {
+    const repo = externalQueryRunner
+      ? externalQueryRunner.manager.getRepository(TransactionSplit)
+      : this.splitsRepository;
+    const txRepo = externalQueryRunner
+      ? externalQueryRunner.manager.getRepository(Transaction)
+      : this.transactionsRepository;
+
+    const splits = await repo.find({
+      where: { transactionId },
+      relations: ["linkedTransaction", "investmentTransaction"],
+    });
+
+    // Reverse investment splits' holdings effects before the split rows are deleted.
+    if (externalQueryRunner) {
+      for (const s of splits) {
+        if (s.kind === SplitKind.INVESTMENT && s.investmentTransaction) {
+          await this.investmentTransactionsService.reverseAndRemoveEmbedded(
+            externalQueryRunner,
+            userId,
+            s.investmentTransaction,
+          );
+        }
+      }
+    }
+
+    const linkedTxIds = splits
+      .filter((s) => s.linkedTransactionId && s.transferAccountId)
+      .map((s) => s.linkedTransactionId!);
+
+    if (linkedTxIds.length === 0) return;
+
+    const linkedTransactions = await txRepo.find({
+      where: { id: In(linkedTxIds) },
+    });
+
+    for (const linkedTx of linkedTransactions) {
+      const linkedIsFuture = isTransactionInFuture(linkedTx.transactionDate);
+      const linkedAccId = linkedTx.accountId;
+      if (!linkedIsFuture) {
+        await this.accountsService.updateBalance(
+          linkedAccId,
+          -Number(linkedTx.amount),
+          externalQueryRunner,
+        );
+      }
+      await txRepo.remove(linkedTx);
+      if (linkedIsFuture) {
+        await this.accountsService.recalculateCurrentBalance(
+          linkedAccId,
+          externalQueryRunner,
+        );
+      }
+    }
+  }
+
+  /**
+   * @deprecated use deleteSplitSideEffects
+   * Kept as a thin wrapper for callers that don't have a userId in scope and
+   * only need transfer-side cleanup.
+   */
   async deleteTransferSplitLinkedTransactions(
     transactionId: string,
     externalQueryRunner?: QueryRunner,
@@ -252,19 +456,16 @@ export class TransactionSplitService {
       relations: ["linkedTransaction"],
     });
 
-    // Collect linked transaction IDs for batch fetch
     const linkedTxIds = transferSplits
       .filter((s) => s.linkedTransactionId && s.transferAccountId)
       .map((s) => s.linkedTransactionId!);
 
     if (linkedTxIds.length === 0) return;
 
-    // Batch-fetch all linked transactions in one query
     const linkedTransactions = await txRepo.find({
       where: { id: In(linkedTxIds) },
     });
 
-    // Process balance reversals and removals
     for (const linkedTx of linkedTransactions) {
       const linkedIsFuture = isTransactionInFuture(linkedTx.transactionDate);
       const linkedAccId = linkedTx.accountId;
@@ -288,7 +489,7 @@ export class TransactionSplitService {
   async getSplits(transactionId: string): Promise<TransactionSplit[]> {
     return this.splitsRepository.find({
       where: { transactionId },
-      relations: ["category", "transferAccount"],
+      relations: ["category", "transferAccount", "investmentTransaction"],
       order: { createdAt: "ASC" },
     });
   }
@@ -305,8 +506,9 @@ export class TransactionSplitService {
     await queryRunner.startTransaction();
 
     try {
-      await this.deleteTransferSplitLinkedTransactions(
+      await this.deleteSplitSideEffects(
         transaction.id,
+        userId,
         queryRunner,
       );
 
@@ -344,6 +546,11 @@ export class TransactionSplitService {
     splitDto: CreateTransactionSplitDto,
     userId: string,
   ): Promise<TransactionSplit> {
+    if (splitDto.investment) {
+      throw new BadRequestException(
+        "Investment splits cannot be added incrementally; replace the full split set instead.",
+      );
+    }
     if (splitDto.categoryId) {
       await this.validateCategoryOwnership(userId, splitDto.categoryId);
     }
@@ -374,8 +581,12 @@ export class TransactionSplitService {
     let savedSplitId: string;
 
     try {
+      const splitKind = splitDto.transferAccountId
+        ? SplitKind.TRANSFER
+        : SplitKind.CATEGORY;
       const split = queryRunner.manager.create(TransactionSplit, {
         transactionId: transaction.id,
+        kind: splitKind,
         categoryId: splitDto.categoryId || null,
         transferAccountId: splitDto.transferAccountId || null,
         amount: splitDto.amount,
@@ -460,10 +671,11 @@ export class TransactionSplitService {
   async removeSplit(
     transaction: Transaction,
     splitId: string,
-    _userId: string,
+    userId: string,
   ): Promise<void> {
     const split = await this.splitsRepository.findOne({
       where: { id: splitId, transactionId: transaction.id },
+      relations: ["investmentTransaction"],
     });
 
     if (!split) {
@@ -475,7 +687,13 @@ export class TransactionSplitService {
     await queryRunner.startTransaction();
 
     try {
-      if (split.linkedTransactionId && split.transferAccountId) {
+      if (split.kind === SplitKind.INVESTMENT && split.investmentTransaction) {
+        await this.investmentTransactionsService.reverseAndRemoveEmbedded(
+          queryRunner,
+          userId,
+          split.investmentTransaction,
+        );
+      } else if (split.linkedTransactionId && split.transferAccountId) {
         const linkedTx = await queryRunner.manager.findOne(Transaction, {
           where: { id: split.linkedTransactionId },
         });
@@ -506,13 +724,20 @@ export class TransactionSplitService {
 
       const remainingSplits = await queryRunner.manager.find(TransactionSplit, {
         where: { transactionId: transaction.id },
-        relations: ["category", "transferAccount"],
+        relations: ["category", "transferAccount", "investmentTransaction"],
         order: { createdAt: "ASC" },
       });
 
       if (remainingSplits.length < 2) {
         if (remainingSplits.length === 1) {
           const lastSplit = remainingSplits[0];
+
+          // Don't auto-collapse if the last remaining split is investment-kind
+          // — that representation only makes sense as part of a split parent.
+          if (lastSplit.kind === SplitKind.INVESTMENT) {
+            await queryRunner.commitTransaction();
+            return;
+          }
 
           if (lastSplit.linkedTransactionId && lastSplit.transferAccountId) {
             const linkedTx = await queryRunner.manager.findOne(Transaction, {

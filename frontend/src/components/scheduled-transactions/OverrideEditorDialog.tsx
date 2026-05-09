@@ -9,6 +9,7 @@ import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Combobox } from '@/components/ui/Combobox';
 import { Modal } from '@/components/ui/Modal';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows } from '@/components/transactions/SplitEditor';
+import { toOverrideSplits } from './splitSerialization';
 import { ScheduledTransaction, ScheduledTransactionOverride } from '@/types/scheduled-transaction';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
@@ -113,12 +114,7 @@ export function OverrideEditorDialog({
         categoryId: isSplit ? null : (categoryId || null),
         description: description || null,
         isSplit,
-        splits: isSplit ? splits.map(s => ({
-          categoryId: s.splitType === 'category' ? (s.categoryId ?? null) : null,
-          transferAccountId: s.splitType === 'transfer' ? (s.transferAccountId ?? null) : null,
-          amount: s.amount,
-          memo: s.memo ?? null,
-        })) : null,
+        splits: isSplit ? toOverrideSplits(splits) : null,
       };
 
       // originalDate = the calculated occurrence date from the picker (overrideDate prop)
@@ -263,6 +259,10 @@ export function OverrideEditorDialog({
                 categories={categories}
                 accounts={accounts}
                 sourceAccountId={scheduledTransaction.accountId}
+                parentAccountSubType={
+                  accounts.find((a) => a.id === scheduledTransaction.accountId)
+                    ?.accountSubType ?? null
+                }
                 transactionAmount={amount}
                 onTransactionAmountChange={handleAmountChange}
                 currencyCode={scheduledTransaction.currencyCode}

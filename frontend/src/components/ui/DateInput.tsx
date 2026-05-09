@@ -1,5 +1,6 @@
 import { ChangeEvent, forwardRef, InputHTMLAttributes, KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import { Input } from './Input';
 import { CalendarPopover } from './CalendarPopover';
 import { cn, getLocalDateString, formatDate, parseDateFromFormat, inputBaseClasses, inputErrorClasses } from '@/lib/utils';
@@ -57,16 +58,10 @@ function DateShortcutTooltip() {
       onMouseEnter={showTooltip}
       onMouseLeave={hideTooltip}
     >
-      <svg
+      <QuestionMarkCircleIcon
         className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 cursor-help"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
         strokeWidth={2}
-      >
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 16v-4M12 8h.01" />
-      </svg>
+      />
       {position && createPortal(
         <div
           role="tooltip"

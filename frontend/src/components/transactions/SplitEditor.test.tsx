@@ -1826,3 +1826,140 @@ describe('toCreateSplitData', () => {
     expect(data[1].memo).toBe('Transfer');
   });
 });
+
+describe('SplitEditor — investment kind gating by parent account', () => {
+  const baseAccounts = [
+    { id: 'acc-cash', name: 'Chequing', isClosed: false, accountSubType: null, isFavourite: false, favouriteSortOrder: 0, currencyCode: 'CAD' },
+    { id: 'acc-savings', name: 'Savings', isClosed: false, accountSubType: null, isFavourite: false, favouriteSortOrder: 0, currencyCode: 'CAD' },
+  ] as any[];
+
+  const baseSplits = [
+    { id: 's1', splitType: 'category', categoryId: undefined, transferAccountId: undefined, amount: -50, memo: '' },
+    { id: 's2', splitType: 'category', categoryId: undefined, transferAccountId: undefined, amount: -50, memo: '' },
+  ] as any[];
+
+  it('shows the Investment option when parentAccountSubType is INVESTMENT_CASH', () => {
+    render(
+      <SplitEditor
+        splits={baseSplits}
+        onChange={vi.fn()}
+        categories={[]}
+        accounts={baseAccounts}
+        sourceAccountId="acc-cash"
+        parentAccountSubType="INVESTMENT_CASH"
+        transactionAmount={-100}
+      />,
+    );
+    // Both desktop and mobile renderings include the Investment option
+    expect(screen.getAllByRole('option', { name: 'Investment' }).length).toBeGreaterThan(0);
+  });
+
+  it('omits the Investment option for non-INVESTMENT_CASH parents', () => {
+    render(
+      <SplitEditor
+        splits={baseSplits}
+        onChange={vi.fn()}
+        categories={[]}
+        accounts={baseAccounts}
+        sourceAccountId="acc-cash"
+        parentAccountSubType={null}
+        transactionAmount={-100}
+      />,
+    );
+    expect(screen.queryByRole('option', { name: 'Investment' })).toBeNull();
+  });
+});
+
+describe('toSplitRows — investment shapes', () => {
+  it('hydrates investment fields from a transaction-split investmentTransaction relation', () => {
+    const rows = toSplitRows([
+      {
+        id: 's1',
+        amount: -750,
+        kind: 'investment',
+        categoryId: null,
+        transferAccountId: null,
+        investmentTransaction: {
+          action: 'BUY',
+          securityId: 'sec-1',
+          quantity: 75,
+          price: 10,
+          commission: 0,
+          exchangeRate: 1,
+        },
+      },
+    ]);
+    expect(rows[0].splitType).toBe('investment');
+    expect(rows[0].investment).toMatchObject({
+      action: 'BUY',
+      securityId: 'sec-1',
+      quantity: 75,
+      price: 10,
+      commission: 0,
+      exchangeRate: 1,
+    });
+  });
+
+  it('hydrates investment fields from scheduled-transaction-split denormalized columns', () => {
+    const rows = toSplitRows([
+      {
+        id: 's1',
+        amount: -750,
+        kind: 'investment',
+        categoryId: null,
+        transferAccountId: null,
+        investmentAction: 'BUY',
+        investmentSecurityId: 'sec-1',
+        investmentQuantity: 75,
+        investmentPrice: 10,
+        investmentCommission: 0,
+        investmentExchangeRate: 1,
+      } as any,
+    ]);
+    expect(rows[0].splitType).toBe('investment');
+    expect(rows[0].investment).toMatchObject({
+      action: 'BUY',
+      securityId: 'sec-1',
+      quantity: 75,
+      price: 10,
+      commission: 0,
+      exchangeRate: 1,
+    });
+  });
+
+  it('hydrates investment fields from override JSON shape (splitKind + investment object)', () => {
+    const rows = toSplitRows([
+      {
+        amount: -750,
+        splitKind: 'investment',
+        categoryId: null,
+        investment: {
+          action: 'SELL',
+          securityId: 'sec-1',
+          quantity: 5,
+          price: 100,
+          commission: 1,
+          exchangeRate: 1,
+        },
+      } as any,
+    ]);
+    expect(rows[0].splitType).toBe('investment');
+    expect(rows[0].investment).toMatchObject({
+      action: 'SELL',
+      quantity: 5,
+      price: 100,
+      commission: 1,
+    });
+  });
+
+  it('still classifies plain category and transfer rows correctly', () => {
+    const rows = toSplitRows([
+      { id: 'c', amount: -10, categoryId: 'cat-1' },
+      { id: 't', amount: -20, transferAccountId: 'acc-2' },
+    ]);
+    expect(rows[0].splitType).toBe('category');
+    expect(rows[0].investment).toBeUndefined();
+    expect(rows[1].splitType).toBe('transfer');
+    expect(rows[1].investment).toBeUndefined();
+  });
+});

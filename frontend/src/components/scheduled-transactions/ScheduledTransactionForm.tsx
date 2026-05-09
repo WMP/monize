@@ -905,6 +905,9 @@ export function ScheduledTransactionForm({
               tags={tags}
               accounts={accounts}
               sourceAccountId={watchedAccountId || ''}
+              parentAccountSubType={
+                accounts.find((a) => a.id === watchedAccountId)?.accountSubType ?? null
+              }
               transactionAmount={watchedAmount || 0}
               onTransactionAmountChange={handleTransactionAmountChange}
               currencyCode={watchedCurrencyCode || defaultCurrency}

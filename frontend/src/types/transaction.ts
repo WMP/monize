@@ -2,6 +2,7 @@ import { Payee } from './payee';
 import { Category } from './category';
 import { Account } from './account';
 import { Tag } from './tag';
+import { InvestmentAction } from './investment';
 
 export enum TransactionStatus {
   UNRECONCILED = 'UNRECONCILED',
@@ -10,9 +11,22 @@ export enum TransactionStatus {
   VOID = 'VOID',
 }
 
+export type SplitKind = 'category' | 'transfer' | 'investment';
+
+export interface InvestmentSplitDetails {
+  action: InvestmentAction;
+  securityId?: string;
+  quantity?: number;
+  price?: number;
+  commission?: number;
+  exchangeRate?: number;
+  description?: string;
+}
+
 export interface TransactionSplit {
   id: string;
   transactionId: string;
+  kind?: SplitKind;
   categoryId: string | null;
   category: Category | null;
   transferAccountId: string | null;
@@ -21,6 +35,16 @@ export interface TransactionSplit {
   amount: number;
   memo: string | null;
   tags?: Tag[];
+  /** Present when kind === 'investment' */
+  investmentTransaction?: {
+    id: string;
+    action: InvestmentAction;
+    securityId: string | null;
+    quantity: number | null;
+    price: number | null;
+    commission: number;
+    exchangeRate: number;
+  } | null;
   createdAt: string;
 }
 
@@ -60,8 +84,10 @@ export interface Transaction {
 }
 
 export interface CreateSplitData {
+  splitKind?: SplitKind;
   categoryId?: string;
   transferAccountId?: string;
+  investment?: InvestmentSplitDetails;
   amount: number;
   memo?: string;
   tagIds?: string[];

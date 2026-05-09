@@ -257,8 +257,22 @@ describe("ScheduledTransactionOverrideService", () => {
       expect(overridesRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           splits: [
-            { categoryId: null, amount: -60, memo: null },
-            { categoryId: null, amount: -40, memo: null },
+            {
+              splitKind: undefined,
+              categoryId: null,
+              transferAccountId: null,
+              investment: undefined,
+              amount: -60,
+              memo: null,
+            },
+            {
+              splitKind: undefined,
+              categoryId: null,
+              transferAccountId: null,
+              investment: undefined,
+              amount: -40,
+              memo: null,
+            },
           ],
         }),
       );

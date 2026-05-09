@@ -3,6 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToOne,
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
@@ -10,6 +11,7 @@ import {
 import { ApiProperty } from "@nestjs/swagger";
 import { Account } from "../../accounts/entities/account.entity";
 import { Transaction } from "../../transactions/entities/transaction.entity";
+import { TransactionSplit } from "../../transactions/entities/transaction-split.entity";
 import { Security } from "./security.entity";
 import { User } from "../../users/entities/user.entity";
 
@@ -48,6 +50,14 @@ export class InvestmentTransaction {
   @ApiProperty({ required: false })
   @Column({ type: "uuid", name: "transaction_id", nullable: true })
   transactionId: string | null;
+
+  @ApiProperty({
+    required: false,
+    description:
+      "When set, this investment transaction is embedded inside a split transaction; the split's amount is the cash impact and no separate linked cash transaction is created.",
+  })
+  @Column({ type: "uuid", name: "transaction_split_id", nullable: true })
+  transactionSplitId: string | null;
 
   @ApiProperty({ required: false })
   @Column({ type: "uuid", name: "security_id", nullable: true })
@@ -132,6 +142,10 @@ export class InvestmentTransaction {
   @ManyToOne(() => Transaction, { nullable: true })
   @JoinColumn({ name: "transaction_id" })
   transaction: Transaction;
+
+  @OneToOne(() => TransactionSplit, { nullable: true, onDelete: "CASCADE" })
+  @JoinColumn({ name: "transaction_split_id" })
+  transactionSplit: TransactionSplit | null;
 
   @ManyToOne(() => Security, { nullable: true })
   @JoinColumn({ name: "security_id" })

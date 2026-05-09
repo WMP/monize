@@ -90,11 +90,24 @@ export class ScheduledTransactionOverride {
 }
 
 /**
- * Structure for split overrides stored in the JSON column
+ * Structure for split overrides stored in the JSON column.
+ *
+ * Optional `splitKind` and `investment` fields lets a per-occurrence
+ * override carry an investment action (BUY/SELL/etc) when the parent
+ * scheduled transaction lives on an INVESTMENT_CASH account.
  */
 export interface OverrideSplit {
+  splitKind?: "category" | "transfer" | "investment";
   categoryId: string | null;
   transferAccountId?: string | null;
+  investment?: {
+    action: string;
+    securityId?: string;
+    quantity?: number;
+    price?: number;
+    commission?: number;
+    exchangeRate?: number;
+  };
   amount: number;
   memo?: string | null;
 }

@@ -4,6 +4,7 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   ManyToOne,
+  OneToOne,
   ManyToMany,
   JoinColumn,
   JoinTable,
@@ -13,6 +14,13 @@ import { Transaction } from "./transaction.entity";
 import { Category } from "../../categories/entities/category.entity";
 import { Tag } from "../../tags/entities/tag.entity";
 import { Account } from "../../accounts/entities/account.entity";
+import { InvestmentTransaction } from "../../securities/entities/investment-transaction.entity";
+
+export enum SplitKind {
+  CATEGORY = "category",
+  TRANSFER = "transfer",
+  INVESTMENT = "investment",
+}
 
 @Entity("transaction_splits")
 export class TransactionSplit {
@@ -27,6 +35,14 @@ export class TransactionSplit {
   @ManyToOne(() => Transaction)
   @JoinColumn({ name: "transaction_id" })
   transaction: Transaction;
+
+  @ApiProperty({
+    enum: SplitKind,
+    description:
+      "Discriminator for the split type. 'category' assigns the split to a category, 'transfer' moves cash to another account, 'investment' embeds an investment action (BUY/SELL/etc) whose cash impact is this split's amount.",
+  })
+  @Column({ type: "varchar", length: 20, default: SplitKind.CATEGORY })
+  kind: SplitKind;
 
   @ApiProperty({ example: "category-uuid", required: false })
   @Column({ type: "uuid", name: "category_id", nullable: true })
@@ -75,6 +91,13 @@ export class TransactionSplit {
     inverseJoinColumn: { name: "tag_id", referencedColumnName: "id" },
   })
   tags: Tag[];
+
+  @OneToOne(
+    () => InvestmentTransaction,
+    (investmentTransaction) => investmentTransaction.transactionSplit,
+    { nullable: true },
+  )
+  investmentTransaction: InvestmentTransaction | null;
 
   @ApiProperty()
   @CreateDateColumn({ name: "created_at" })

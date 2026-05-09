@@ -17,6 +17,7 @@ import { PayeesModule } from "../payees/payees.module";
 import { TagsModule } from "../tags/tags.module";
 import { NetWorthModule } from "../net-worth/net-worth.module";
 import { ActionHistoryModule } from "../action-history/action-history.module";
+import { SecuritiesModule } from "../securities/securities.module";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ActionHistoryModule } from "../action-history/action-history.module";
     ]),
     forwardRef(() => AccountsModule),
     forwardRef(() => NetWorthModule),
+    forwardRef(() => SecuritiesModule),
     PayeesModule,
     TagsModule,
     ActionHistoryModule,

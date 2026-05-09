@@ -25,15 +25,23 @@ export function PageHeader({ title, subtitle, actions, helpUrl }: PageHeaderProp
             {title}
           </h1>
           {helpUrl && (
-            <a
-              href={helpUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-blue-500 transition-colors"
-              aria-label="Help"
-            >
-              <QuestionMarkCircleIcon className="h-5 w-5" />
-            </a>
+            <span className="relative inline-flex items-center group/help">
+              <a
+                href={helpUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-blue-500 transition-colors"
+                aria-label="Open the Monize wiki for help with this section"
+              >
+                <QuestionMarkCircleIcon className="h-5 w-5" />
+              </a>
+              <span
+                role="tooltip"
+                className="pointer-events-none hidden md:group-hover/help:block absolute z-20 left-1/2 -translate-x-1/2 top-full mt-1 w-56 whitespace-normal rounded-md bg-gray-900 dark:bg-gray-700 px-2.5 py-2 text-xs font-normal leading-snug text-white shadow-lg"
+              >
+                Open the Monize wiki for help with this section
+              </span>
+            </span>
           )}
         </div>
         {subtitle && (

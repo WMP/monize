@@ -387,9 +387,9 @@ export function InvestmentTransactionList({
           {onNewTransaction && (
             <button
               onClick={onNewTransaction}
-              className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+              className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 sm:min-w-[14rem]"
             >
-              + New Transaction
+              + New Brokerage Transaction
             </button>
           )}
         </div>
@@ -433,10 +433,10 @@ export function InvestmentTransactionList({
         {onNewTransaction && (
           <button
             onClick={onNewTransaction}
-            className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+            className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 sm:min-w-[14rem]"
           >
             <span className="sm:hidden">+ New</span>
-            <span className="hidden sm:inline">+ New Transaction</span>
+            <span className="hidden sm:inline">+ New Brokerage Transaction</span>
           </button>
         )}
         {onFiltersChange && (

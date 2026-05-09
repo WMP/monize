@@ -2069,4 +2069,320 @@ describe("ScheduledTransactionsService", () => {
       expect(splitsRepo.save).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe("scheduled investment splits", () => {
+    const buyInvestment = {
+      action: "BUY" as const,
+      securityId: "sec-1",
+      quantity: 75,
+      price: 10,
+      commission: 0,
+    };
+
+    it("persists kind='investment' and the investment fields on save", async () => {
+      const dto = {
+        accountId: "acc-1",
+        name: "Equity Grant",
+        amount: 0,
+        currencyCode: "USD",
+        frequency: "MONTHLY" as const,
+        nextDueDate: "2026-05-09",
+        startDate: "2026-05-09",
+        splits: [
+          { amount: 1000, categoryId: "cat-income" },
+          { amount: -250, categoryId: "cat-tax" },
+          { amount: -750, investment: buyInvestment },
+        ],
+      };
+      accountsService.findOne.mockResolvedValue({
+        id: "acc-1",
+        accountType: "INVESTMENT",
+        accountSubType: "INVESTMENT_CASH",
+        currencyCode: "USD",
+      });
+      scheduledRepo.create.mockImplementation((d) => ({ id: stId, ...d }));
+      scheduledRepo.save.mockImplementation(async (d) => d);
+      splitsRepo.create.mockImplementation((d) => d);
+      splitsRepo.save.mockImplementation(async (d) => ({ id: "split-x", ...d }));
+
+      // findOne returns the saved scheduled transaction
+      scheduledRepo.findOne.mockResolvedValue(makeScheduled({ amount: 0 }));
+
+      await service.create(userId, dto as any);
+
+      // Verify the investment-kind split was created with all fields populated
+      const investmentCall = splitsRepo.create.mock.calls.find(
+        ([arg]) => arg.kind === "investment",
+      );
+      expect(investmentCall).toBeDefined();
+      expect(investmentCall![0]).toMatchObject({
+        kind: "investment",
+        categoryId: null,
+        transferAccountId: null,
+        amount: -750,
+        investmentAction: "BUY",
+        investmentSecurityId: "sec-1",
+        investmentQuantity: 75,
+        investmentPrice: 10,
+        investmentCommission: 0,
+      });
+    });
+
+    it("rejects single category split when no transfer/investment passthrough", async () => {
+      const dto = {
+        accountId: "acc-1",
+        name: "Bad",
+        amount: -100,
+        currencyCode: "USD",
+        frequency: "MONTHLY" as const,
+        nextDueDate: "2026-05-09",
+        startDate: "2026-05-09",
+        splits: [{ amount: -100, categoryId: "cat-1" }],
+      };
+      accountsService.findOne.mockResolvedValue({
+        id: "acc-1",
+        accountType: "CHEQUING",
+        accountSubType: null,
+        currencyCode: "USD",
+      });
+
+      await expect(service.create(userId, dto as any)).rejects.toThrow(
+        /at least 2 splits/,
+      );
+    });
+
+    it("accepts a single investment split as a passthrough", async () => {
+      const dto = {
+        accountId: "acc-1",
+        name: "Pure equity grant",
+        amount: -750,
+        currencyCode: "USD",
+        frequency: "MONTHLY" as const,
+        nextDueDate: "2026-05-09",
+        startDate: "2026-05-09",
+        splits: [{ amount: -750, investment: buyInvestment }],
+      };
+      accountsService.findOne.mockResolvedValue({
+        id: "acc-1",
+        accountType: "INVESTMENT",
+        accountSubType: "INVESTMENT_CASH",
+        currencyCode: "USD",
+      });
+      scheduledRepo.create.mockImplementation((d) => ({ id: stId, ...d }));
+      scheduledRepo.save.mockImplementation(async (d) => d);
+      splitsRepo.create.mockImplementation((d) => d);
+      splitsRepo.save.mockImplementation(async (d) => ({ id: "split-x", ...d }));
+      scheduledRepo.findOne.mockResolvedValue(makeScheduled({ amount: -750 }));
+
+      await expect(service.create(userId, dto as any)).resolves.toBeDefined();
+    });
+
+    it("post() forwards investment payload from scheduled splits to TransactionsService.create", async () => {
+      const investmentSplit: any = {
+        id: "ss-3",
+        kind: "investment",
+        amount: -750,
+        memo: null,
+        categoryId: null,
+        transferAccountId: null,
+        investmentAction: "BUY",
+        investmentSecurityId: "sec-1",
+        investmentQuantity: 75,
+        investmentPrice: 10,
+        investmentCommission: 0,
+        investmentExchangeRate: 1,
+        tags: [],
+      };
+      const incomeSplit: any = {
+        id: "ss-1",
+        kind: "category",
+        amount: 1000,
+        memo: null,
+        categoryId: "cat-income",
+        transferAccountId: null,
+        tags: [],
+      };
+      const taxSplit: any = {
+        id: "ss-2",
+        kind: "category",
+        amount: -250,
+        memo: null,
+        categoryId: "cat-tax",
+        transferAccountId: null,
+        tags: [],
+      };
+      const scheduled = makeScheduled({
+        amount: 0,
+        isSplit: true,
+        splits: [incomeSplit, taxSplit, investmentSplit],
+        frequency: "ONCE",
+      });
+      scheduledRepo.findOne.mockResolvedValue(scheduled);
+      overridesRepo.createQueryBuilder = jest
+        .fn()
+        .mockReturnValue({
+          where: jest.fn().mockReturnThis(),
+          andWhere: jest.fn().mockReturnThis(),
+          getOne: jest.fn().mockResolvedValue(null),
+        });
+      mockQueryRunner.manager.delete = jest
+        .fn()
+        .mockResolvedValue({ affected: 1 });
+      transactionsService.create.mockResolvedValue({ id: "tx-new" });
+
+      await service.post(userId, stId);
+
+      expect(transactionsService.create).toHaveBeenCalledTimes(1);
+      const callArg = transactionsService.create.mock.calls[0][1];
+      const investmentPayload = callArg.splits.find(
+        (s: any) => s.splitKind === "investment",
+      );
+      expect(investmentPayload).toBeDefined();
+      expect(investmentPayload.investment).toMatchObject({
+        action: "BUY",
+        securityId: "sec-1",
+        quantity: 75,
+        price: 10,
+        commission: 0,
+        exchangeRate: 1,
+      });
+      expect(investmentPayload.amount).toBe(-750);
+
+      // Cash splits passed through with splitKind='category'
+      const incomePayload = callArg.splits.find(
+        (s: any) => s.amount === 1000,
+      );
+      expect(incomePayload.splitKind).toBe("category");
+      expect(incomePayload.investment).toBeUndefined();
+    });
+
+    it("post() forwards investment payload from inline postDto.splits", async () => {
+      const scheduled = makeScheduled({
+        amount: 0,
+        isSplit: true,
+        splits: [],
+        frequency: "ONCE",
+      });
+      scheduledRepo.findOne.mockResolvedValue(scheduled);
+      overridesRepo.createQueryBuilder = jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      });
+      mockQueryRunner.manager.delete = jest
+        .fn()
+        .mockResolvedValue({ affected: 1 });
+      transactionsService.create.mockResolvedValue({ id: "tx-new" });
+
+      await service.post(userId, stId, {
+        amount: 0,
+        isSplit: true,
+        splits: [
+          { categoryId: "cat-income", amount: 1000 } as any,
+          { categoryId: "cat-tax", amount: -250 } as any,
+          {
+            splitKind: "investment",
+            amount: -750,
+            investment: buyInvestment,
+          } as any,
+        ],
+      });
+
+      const callArg = transactionsService.create.mock.calls[0][1];
+      expect(callArg.splits).toHaveLength(3);
+      const inv = callArg.splits.find(
+        (s: any) => s.splitKind === "investment",
+      );
+      expect(inv).toBeDefined();
+      expect(inv.investment).toMatchObject(buyInvestment);
+    });
+
+    it("post() forwards investment payload from stored override splits", async () => {
+      const scheduled = makeScheduled({
+        amount: 0,
+        isSplit: true,
+        splits: [],
+        frequency: "ONCE",
+      });
+      scheduledRepo.findOne.mockResolvedValue(scheduled);
+
+      const storedOverride: any = {
+        amount: 0,
+        isSplit: true,
+        splits: [
+          { categoryId: "cat-income", amount: 1000 },
+          { categoryId: "cat-tax", amount: -250 },
+          {
+            splitKind: "investment",
+            amount: -750,
+            investment: buyInvestment,
+          },
+        ],
+      };
+      overridesRepo.createQueryBuilder = jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(storedOverride),
+      });
+      mockQueryRunner.manager.delete = jest
+        .fn()
+        .mockResolvedValue({ affected: 1 });
+      transactionsService.create.mockResolvedValue({ id: "tx-new" });
+
+      await service.post(userId, stId);
+
+      const callArg = transactionsService.create.mock.calls[0][1];
+      const inv = callArg.splits.find(
+        (s: any) => s.splitKind === "investment",
+      );
+      expect(inv).toBeDefined();
+      expect(inv.investment).toMatchObject(buyInvestment);
+    });
+
+    it("post() preserves null investment fields when scheduled split is non-investment", async () => {
+      const incomeSplit: any = {
+        id: "ss-1",
+        kind: "category",
+        amount: -50,
+        memo: null,
+        categoryId: "cat-1",
+        transferAccountId: null,
+        tags: [],
+        // No investment* fields
+      };
+      const expenseSplit: any = {
+        id: "ss-2",
+        kind: "category",
+        amount: -50,
+        memo: null,
+        categoryId: "cat-2",
+        transferAccountId: null,
+        tags: [],
+      };
+      const scheduled = makeScheduled({
+        amount: -100,
+        isSplit: true,
+        splits: [incomeSplit, expenseSplit],
+        frequency: "ONCE",
+      });
+      scheduledRepo.findOne.mockResolvedValue(scheduled);
+      overridesRepo.createQueryBuilder = jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      });
+      mockQueryRunner.manager.delete = jest
+        .fn()
+        .mockResolvedValue({ affected: 1 });
+      transactionsService.create.mockResolvedValue({ id: "tx-new" });
+
+      await service.post(userId, stId);
+
+      const callArg = transactionsService.create.mock.calls[0][1];
+      callArg.splits.forEach((s: any) => {
+        expect(s.investment).toBeUndefined();
+        expect(s.splitKind).toBe("category");
+      });
+    });
+  });
 });

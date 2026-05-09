@@ -14,6 +14,7 @@ import {
   FrequencyType,
 } from "./entities/scheduled-transaction.entity";
 import { ScheduledTransactionSplit } from "./entities/scheduled-transaction-split.entity";
+import { SplitKind } from "../transactions/entities/transaction-split.entity";
 import { ScheduledTransactionOverride } from "./entities/scheduled-transaction-override.entity";
 import { CreateScheduledTransactionDto } from "./dto/create-scheduled-transaction.dto";
 import { UpdateScheduledTransactionDto } from "./dto/update-scheduled-transaction.dto";
@@ -76,6 +77,7 @@ export class ScheduledTransactionsService {
           "splits.category",
           "splits.transferAccount",
           "splits.tags",
+          "splits.investmentSecurity",
         ],
         order: { nextDueDate: "ASC" },
       });
@@ -240,9 +242,11 @@ export class ScheduledTransactionsService {
     splits: CreateScheduledTransactionSplitDto[],
     transactionAmount: number,
   ): void {
-    const isTransfer = splits.length === 1 && splits[0].transferAccountId;
+    const isPassthrough =
+      splits.length === 1 &&
+      (splits[0].transferAccountId || splits[0].investment);
 
-    if (splits.length < 2 && !isTransfer) {
+    if (splits.length < 2 && !isPassthrough) {
       throw new BadRequestException(
         "Split transactions must have at least 2 splits",
       );
@@ -269,12 +273,51 @@ export class ScheduledTransactionsService {
     const savedSplits: ScheduledTransactionSplit[] = [];
 
     for (const split of splits) {
+      const inferredKind: SplitKind = split.splitKind
+        ? split.splitKind
+        : split.investment
+          ? SplitKind.INVESTMENT
+          : split.transferAccountId
+            ? SplitKind.TRANSFER
+            : SplitKind.CATEGORY;
+
       const entity = this.splitsRepository.create({
         scheduledTransactionId,
-        categoryId: split.categoryId || null,
-        transferAccountId: split.transferAccountId || null,
+        kind: inferredKind,
+        categoryId:
+          inferredKind === SplitKind.CATEGORY
+            ? split.categoryId || null
+            : null,
+        transferAccountId:
+          inferredKind === SplitKind.TRANSFER
+            ? split.transferAccountId || null
+            : null,
         amount: split.amount,
         memo: split.memo || null,
+        investmentAction:
+          inferredKind === SplitKind.INVESTMENT && split.investment
+            ? split.investment.action
+            : null,
+        investmentSecurityId:
+          inferredKind === SplitKind.INVESTMENT && split.investment
+            ? split.investment.securityId || null
+            : null,
+        investmentQuantity:
+          inferredKind === SplitKind.INVESTMENT && split.investment
+            ? (split.investment.quantity ?? null)
+            : null,
+        investmentPrice:
+          inferredKind === SplitKind.INVESTMENT && split.investment
+            ? (split.investment.price ?? null)
+            : null,
+        investmentCommission:
+          inferredKind === SplitKind.INVESTMENT && split.investment
+            ? (split.investment.commission ?? null)
+            : null,
+        investmentExchangeRate:
+          inferredKind === SplitKind.INVESTMENT && split.investment
+            ? (split.investment.exchangeRate ?? null)
+            : null,
       });
 
       const saved = await this.splitsRepository.save(entity);
@@ -310,6 +353,7 @@ export class ScheduledTransactionsService {
       .leftJoinAndSelect("splits.category", "splitCategory")
       .leftJoinAndSelect("splits.transferAccount", "splitTransferAccount")
       .leftJoinAndSelect("splits.tags", "splitTags")
+      .leftJoinAndSelect("splits.investmentSecurity", "splitInvestmentSecurity")
       .where("st.userId = :userId", { userId })
       .orderBy("st.nextDueDate", "ASC")
       .getMany();
@@ -398,6 +442,7 @@ export class ScheduledTransactionsService {
         "splits.category",
         "splits.transferAccount",
         "splits.tags",
+        "splits.investmentSecurity",
       ],
     });
 
@@ -472,6 +517,7 @@ export class ScheduledTransactionsService {
           "splits.category",
           "splits.transferAccount",
           "splits.tags",
+          "splits.investmentSecurity",
         ],
       });
 
@@ -495,6 +541,7 @@ export class ScheduledTransactionsService {
       .leftJoinAndSelect("splits.category", "splitCategory")
       .leftJoinAndSelect("splits.transferAccount", "splitTransferAccount")
       .leftJoinAndSelect("splits.tags", "splitTags")
+      .leftJoinAndSelect("splits.investmentSecurity", "splitInvestmentSecurity")
       .where("st.userId = :userId", { userId })
       .andWhere("st.isActive = :isActive", { isActive: true })
       .andWhere("st.nextDueDate <= :futureDate", { futureDate })
@@ -738,22 +785,54 @@ export class ScheduledTransactionsService {
     if (useSplits) {
       if (hasInlineSplits && postDto?.splits) {
         transactionPayload.splits = postDto.splits.map((split) => ({
+          splitKind: split.splitKind,
           categoryId: split.categoryId || undefined,
           transferAccountId: split.transferAccountId || undefined,
+          investment: split.investment,
           amount: Number(split.amount),
           memo: split.memo || undefined,
         }));
       } else if (storedOverride?.splits && storedOverride.splits.length > 0) {
         transactionPayload.splits = storedOverride.splits.map((split: any) => ({
+          splitKind: split.splitKind,
           categoryId: split.categoryId || undefined,
           transferAccountId: split.transferAccountId || undefined,
+          investment: split.investment,
           amount: Number(split.amount),
           memo: split.memo || undefined,
         }));
       } else if (scheduled.splits && scheduled.splits.length > 0) {
         transactionPayload.splits = scheduled.splits.map((split) => ({
+          splitKind: split.kind,
           categoryId: split.categoryId || undefined,
           transferAccountId: split.transferAccountId || undefined,
+          investment:
+            split.kind === SplitKind.INVESTMENT && split.investmentAction
+              ? {
+                  action: split.investmentAction,
+                  securityId: split.investmentSecurityId || undefined,
+                  quantity:
+                    split.investmentQuantity !== null &&
+                    split.investmentQuantity !== undefined
+                      ? Number(split.investmentQuantity)
+                      : undefined,
+                  price:
+                    split.investmentPrice !== null &&
+                    split.investmentPrice !== undefined
+                      ? Number(split.investmentPrice)
+                      : undefined,
+                  commission:
+                    split.investmentCommission !== null &&
+                    split.investmentCommission !== undefined
+                      ? Number(split.investmentCommission)
+                      : undefined,
+                  exchangeRate:
+                    split.investmentExchangeRate !== null &&
+                    split.investmentExchangeRate !== undefined
+                      ? Number(split.investmentExchangeRate)
+                      : undefined,
+                }
+              : undefined,
           amount: Number(split.amount),
           memo: split.memo || undefined,
           tagIds:

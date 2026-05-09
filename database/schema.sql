@@ -238,12 +238,18 @@ CREATE INDEX idx_transactions_user_cleared ON transactions(user_id, is_cleared);
 CREATE TABLE transaction_splits (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+    kind VARCHAR(20) NOT NULL DEFAULT 'category', -- 'category', 'transfer', or 'investment'
     category_id UUID REFERENCES categories(id),
     transfer_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL, -- target account for transfer splits
     linked_transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL, -- linked transaction in target account
     amount NUMERIC(20, 4) NOT NULL,
     memo TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_split_kind_exclusive CHECK (
+        (kind = 'category'   AND transfer_account_id IS NULL) OR
+        (kind = 'transfer'   AND transfer_account_id IS NOT NULL AND category_id IS NULL) OR
+        (kind = 'investment' AND category_id IS NULL AND transfer_account_id IS NULL)
+    )
 );
 
 CREATE INDEX idx_transaction_splits_transaction ON transaction_splits(transaction_id);
@@ -324,16 +330,30 @@ CREATE INDEX idx_scheduled_transactions_transfer_account ON scheduled_transactio
 CREATE TABLE scheduled_transaction_splits (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     scheduled_transaction_id UUID NOT NULL REFERENCES scheduled_transactions(id) ON DELETE CASCADE,
+    kind VARCHAR(20) NOT NULL DEFAULT 'category', -- 'category', 'transfer', or 'investment'
     category_id UUID REFERENCES categories(id),
     transfer_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL, -- target account for transfer splits
     amount NUMERIC(20, 4) NOT NULL,
     memo TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    -- Investment-split fields (populated when kind='investment'):
+    investment_action VARCHAR(50),
+    investment_security_id UUID REFERENCES securities(id),
+    investment_quantity NUMERIC(20, 8),
+    investment_price NUMERIC(20, 6),
+    investment_commission NUMERIC(20, 4),
+    investment_exchange_rate NUMERIC(20, 10),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_scheduled_split_kind_exclusive CHECK (
+        (kind = 'category'   AND transfer_account_id IS NULL AND investment_action IS NULL) OR
+        (kind = 'transfer'   AND transfer_account_id IS NOT NULL AND category_id IS NULL AND investment_action IS NULL) OR
+        (kind = 'investment' AND category_id IS NULL AND transfer_account_id IS NULL AND investment_action IS NOT NULL)
+    )
 );
 
 CREATE INDEX idx_scheduled_transaction_splits_scheduled ON scheduled_transaction_splits(scheduled_transaction_id);
 CREATE INDEX idx_scheduled_transaction_splits_category ON scheduled_transaction_splits(category_id);
 CREATE INDEX idx_scheduled_transaction_splits_transfer_account ON scheduled_transaction_splits(transfer_account_id);
+CREATE INDEX idx_scheduled_transaction_splits_inv_security ON scheduled_transaction_splits(investment_security_id);
 
 -- Scheduled Transaction Split Tags (many-to-many)
 CREATE TABLE scheduled_transaction_split_tags (
@@ -458,6 +478,7 @@ CREATE TABLE investment_transactions (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    transaction_split_id UUID REFERENCES transaction_splits(id) ON DELETE CASCADE, -- when embedded inside a split transaction
     security_id UUID REFERENCES securities(id),
     funding_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
     action investment_action NOT NULL,
@@ -477,6 +498,7 @@ CREATE INDEX idx_investment_transactions_account ON investment_transactions(acco
 CREATE INDEX idx_investment_transactions_security ON investment_transactions(security_id);
 CREATE INDEX idx_investment_transactions_date ON investment_transactions(transaction_date DESC);
 CREATE INDEX idx_investment_transactions_transaction ON investment_transactions(transaction_id);
+CREATE INDEX idx_investment_transactions_split_id ON investment_transactions(transaction_split_id);
 
 -- User Preferences
 CREATE TABLE user_preferences (

@@ -35,6 +35,10 @@ import {
 import { Account, AccountSubType } from "../accounts/entities/account.entity";
 import { isTransactionInFuture } from "../common/date-utils";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import {
+  computeInvestmentCashImpact,
+  isInvestmentActionAllowedInSplit,
+} from "./cash-impact.util";
 
 export type LlmInvestmentTxGroupBy = "account" | "date" | "security" | "action";
 
@@ -573,6 +577,7 @@ export class InvestmentTransactionsService {
     userId: string,
     transaction: InvestmentTransaction,
     allowNegative: boolean = false,
+    createCashSide: boolean = true,
   ): Promise<void> {
     if (isTransactionInFuture(transaction.transactionDate)) {
       return;
@@ -588,14 +593,19 @@ export class InvestmentTransactionsService {
       fundingAccountId,
     } = transaction;
 
-    let cashAccount: Account;
-    if (fundingAccountId) {
-      cashAccount = await this.accountsService.findOne(
-        userId,
-        fundingAccountId,
-      );
-    } else {
-      cashAccount = await this.findCashAccount(userId, accountId);
+    // Cash account is only needed when we're creating the linked cash transaction.
+    // Embedded-in-split investment transactions skip cash creation because the
+    // parent split's amount IS the cash side.
+    let cashAccount: Account | null = null;
+    if (createCashSide) {
+      if (fundingAccountId) {
+        cashAccount = await this.accountsService.findOne(
+          userId,
+          fundingAccountId,
+        );
+      } else {
+        cashAccount = await this.findCashAccount(userId, accountId);
+      }
     }
     let cashTransactionId: string | null = null;
 
@@ -610,13 +620,15 @@ export class InvestmentTransactionsService {
           queryRunner,
           allowNegative,
         );
-        cashTransactionId = await this.createCashTransactionInTransaction(
-          queryRunner,
-          userId,
-          cashAccount,
-          transaction,
-          -Number(totalAmount),
-        );
+        if (createCashSide && cashAccount) {
+          cashTransactionId = await this.createCashTransactionInTransaction(
+            queryRunner,
+            userId,
+            cashAccount,
+            transaction,
+            -Number(totalAmount),
+          );
+        }
         break;
 
       case InvestmentAction.SELL:
@@ -629,25 +641,29 @@ export class InvestmentTransactionsService {
           queryRunner,
           allowNegative,
         );
-        cashTransactionId = await this.createCashTransactionInTransaction(
-          queryRunner,
-          userId,
-          cashAccount,
-          transaction,
-          Number(totalAmount),
-        );
+        if (createCashSide && cashAccount) {
+          cashTransactionId = await this.createCashTransactionInTransaction(
+            queryRunner,
+            userId,
+            cashAccount,
+            transaction,
+            Number(totalAmount),
+          );
+        }
         break;
 
       case InvestmentAction.DIVIDEND:
       case InvestmentAction.INTEREST:
       case InvestmentAction.CAPITAL_GAIN:
-        cashTransactionId = await this.createCashTransactionInTransaction(
-          queryRunner,
-          userId,
-          cashAccount,
-          transaction,
-          Number(totalAmount),
-        );
+        if (createCashSide && cashAccount) {
+          cashTransactionId = await this.createCashTransactionInTransaction(
+            queryRunner,
+            userId,
+            cashAccount,
+            transaction,
+            Number(totalAmount),
+          );
+        }
         break;
 
       case InvestmentAction.REINVEST:
@@ -738,6 +754,136 @@ export class InvestmentTransactionsService {
         transactionId: cashTransactionId,
       });
     }
+  }
+
+  /**
+   * Create an InvestmentTransaction that is embedded inside a parent split
+   * transaction. The parent split's amount represents the cash side, so this
+   * path skips the auto-generated linked cash Transaction (transactionId stays
+   * null) and only updates Holdings.
+   *
+   * Reuses the same cash-impact computation, exchange-rate resolution, and
+   * holdings logic as `create()` so embedded rows behave identically to
+   * free-standing ones in portfolio reports.
+   */
+  async createEmbeddedForSplit(
+    queryRunner: QueryRunner,
+    userId: string,
+    parentTransactionDate: string,
+    parentSplitId: string,
+    brokerageAccountId: string,
+    cashAccountId: string,
+    dto: {
+      action: InvestmentAction;
+      securityId?: string | null;
+      quantity?: number | null;
+      price?: number | null;
+      commission?: number | null;
+      exchangeRate?: number | null;
+      description?: string | null;
+    },
+  ): Promise<InvestmentTransaction> {
+    if (!isInvestmentActionAllowedInSplit(dto.action)) {
+      throw new BadRequestException(
+        `Investment action ${dto.action} is not allowed inside a split transaction`,
+      );
+    }
+
+    const brokerageAccount = await this.accountsService.findOne(
+      userId,
+      brokerageAccountId,
+    );
+    if (
+      brokerageAccount.accountSubType !== AccountSubType.INVESTMENT_BROKERAGE
+    ) {
+      throw new BadRequestException(
+        "Embedded investment splits require an INVESTMENT_BROKERAGE account",
+      );
+    }
+
+    const securityRequiredActions = [
+      InvestmentAction.BUY,
+      InvestmentAction.SELL,
+      InvestmentAction.REINVEST,
+      InvestmentAction.DIVIDEND,
+      InvestmentAction.CAPITAL_GAIN,
+    ];
+    if (securityRequiredActions.includes(dto.action) && !dto.securityId) {
+      throw new BadRequestException(
+        `Security ID is required for ${dto.action} transactions`,
+      );
+    }
+
+    if (dto.securityId) {
+      await this.securitiesService.findOne(userId, dto.securityId);
+    }
+
+    const totalAmount = Math.abs(
+      computeInvestmentCashImpact(
+        dto.action,
+        Number(dto.quantity ?? 0),
+        Number(dto.price ?? 0),
+        Number(dto.commission ?? 0),
+      ),
+    );
+
+    const exchangeRate = await this.resolveCashExchangeRate(
+      userId,
+      brokerageAccountId,
+      cashAccountId,
+      dto.securityId ?? null,
+      dto.exchangeRate ?? undefined,
+    );
+
+    const investmentTransaction = queryRunner.manager.create(
+      InvestmentTransaction,
+      {
+        userId,
+        accountId: brokerageAccountId,
+        securityId: dto.securityId ?? null,
+        fundingAccountId: null,
+        transactionId: null,
+        transactionSplitId: parentSplitId,
+        action: dto.action,
+        transactionDate: parentTransactionDate,
+        quantity: dto.quantity ?? 0,
+        price: dto.price ?? 0,
+        commission: dto.commission ?? 0,
+        totalAmount,
+        exchangeRate,
+        description: dto.description ?? null,
+      },
+    );
+
+    const saved = await queryRunner.manager.save(investmentTransaction);
+
+    await this.processTransactionEffectsInTransaction(
+      queryRunner,
+      userId,
+      saved,
+      false,
+      false,
+    );
+
+    return saved;
+  }
+
+  /**
+   * Reverse the holdings effects of an embedded investment transaction and
+   * delete the row. The parent split's deletion would cascade-delete this row
+   * via the FK, but we need the holdings reversal to happen first.
+   */
+  async reverseAndRemoveEmbedded(
+    queryRunner: QueryRunner,
+    userId: string,
+    investmentTransaction: InvestmentTransaction,
+  ): Promise<void> {
+    await this.reverseTransactionEffectsInTransaction(
+      queryRunner,
+      userId,
+      investmentTransaction,
+    );
+    await queryRunner.manager.remove(investmentTransaction);
   }
 
   async findAll(

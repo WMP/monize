@@ -6,14 +6,22 @@ import {
   IsUUID,
   IsBoolean,
   IsArray,
+  IsEnum,
   ValidateNested,
   IsDateString,
   MaxLength,
 } from "class-validator";
 import { Type } from "class-transformer";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
+import { InvestmentSplitDto } from "../../transactions/dto/create-transaction-split.dto";
+import { SplitKind } from "../../transactions/entities/transaction-split.entity";
 
 export class OverrideSplitDto {
+  @ApiPropertyOptional({ enum: SplitKind })
+  @IsOptional()
+  @IsEnum(SplitKind)
+  splitKind?: SplitKind;
+
   @ApiPropertyOptional({ description: "Category ID for this split" })
   @IsOptional()
   @IsUUID()
@@ -23,6 +31,15 @@ export class OverrideSplitDto {
   @IsOptional()
   @IsUUID()
   transferAccountId?: string | null;
+
+  @ApiPropertyOptional({
+    description: "Embedded investment payload",
+    type: InvestmentSplitDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => InvestmentSplitDto)
+  investment?: InvestmentSplitDto;
 
   @ApiProperty({ description: "Amount for this split" })
   @IsNumber()
