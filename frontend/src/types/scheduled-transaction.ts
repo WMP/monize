@@ -78,6 +78,17 @@ export interface ScheduledTransaction {
   isTransfer: boolean;
   transferAccountId: string | null;
   transferAccount: Account | null;
+  isInvestment: boolean;
+  investmentAction: InvestmentAction | null;
+  investmentSecurityId: string | null;
+  investmentSecurity: Security | null;
+  investmentFundingAccountId: string | null;
+  investmentFundingAccount: Account | null;
+  investmentQuantity: number | null;
+  investmentPrice: number | null;
+  investmentCommission: number | null;
+  investmentTotalAmount: number | null;
+  investmentExchangeRate: number | null;
   tagIds?: string[];
   splits?: ScheduledTransactionSplit[];
   overrideCount?: number;
@@ -116,6 +127,15 @@ export interface CreateScheduledTransactionData {
   reminderDaysBefore?: number;
   isTransfer?: boolean;
   transferAccountId?: string;
+  isInvestment?: boolean;
+  investmentAction?: InvestmentAction;
+  investmentSecurityId?: string;
+  investmentFundingAccountId?: string;
+  investmentQuantity?: number;
+  investmentPrice?: number;
+  investmentCommission?: number;
+  investmentTotalAmount?: number;
+  investmentExchangeRate?: number;
   splits?: CreateScheduledTransactionSplitData[];
   tagIds?: string[];
 }
@@ -179,4 +199,7 @@ export interface PostScheduledTransactionData {
   referenceNumber?: string;
   isSplit?: boolean;
   splits?: OverrideSplit[];
+  investmentQuantity?: number;
+  investmentPrice?: number;
+  investmentTotalAmount?: number;
 }

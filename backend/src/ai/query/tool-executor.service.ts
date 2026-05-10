@@ -12,7 +12,6 @@ import {
   LlmInvestmentTxGroupBy,
 } from "../../securities/investment-transactions.service";
 import { InvestmentAction } from "../../securities/entities/investment-transaction.entity";
-import { ScheduledInvestmentTransactionsService } from "../../scheduled-investment-transactions/scheduled-investment-transactions.service";
 import { validateToolInput } from "./tool-input-schemas";
 import { executeCalculation, CalculateInput } from "./calculate-tool";
 import { sanitizePromptValue } from "../../common/sanitization.util";
@@ -46,8 +45,6 @@ export class ToolExecutorService {
     private readonly budgetReportsService: BudgetReportsService,
     private readonly portfolioService: PortfolioService,
     private readonly investmentTransactionsService: InvestmentTransactionsService,
-    @Inject(forwardRef(() => ScheduledInvestmentTransactionsService))
-    private readonly scheduledInvestmentService: ScheduledInvestmentTransactionsService,
   ) {}
 
   async execute(
@@ -116,9 +113,6 @@ export class ToolExecutorService {
           break;
         case "get_budget_status":
           result = await this.getBudgetStatus(userId, validatedInput);
-          break;
-        case "get_scheduled_investments":
-          result = await this.getScheduledInvestments(userId, validatedInput);
           break;
         case "calculate":
           result = this.calculate(validatedInput);
@@ -656,30 +650,6 @@ export class ToolExecutorService {
           type: "budget",
           description: `Budget status for "${data.budgetName}"`,
           dateRange: `${data.period.start} to ${data.period.end}`,
-        },
-      ],
-    };
-  }
-
-  private async getScheduledInvestments(
-    userId: string,
-    input: Record<string, unknown>,
-  ): Promise<ToolResult> {
-    const days = (input.days as number) ?? 30;
-    const data = await this.scheduledInvestmentService.getLlmUpcoming(
-      userId,
-      days,
-    );
-    return {
-      data,
-      summary:
-        data.length === 0
-          ? `No scheduled investments due in the next ${days} days.`
-          : `${data.length} scheduled investment(s) due in the next ${days} days.`,
-      sources: [
-        {
-          type: "scheduled_investment_transactions",
-          description: "Recurring investment transactions",
         },
       ],
     };

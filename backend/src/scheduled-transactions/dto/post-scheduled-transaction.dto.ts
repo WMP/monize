@@ -7,6 +7,7 @@ import {
   IsBoolean,
   IsArray,
   IsEnum,
+  Min,
   ValidateNested,
   IsDateString,
   MaxLength,
@@ -103,4 +104,28 @@ export class PostScheduledTransactionDto {
   @ValidateNested({ each: true })
   @Type(() => InlineSplitDto)
   splits?: InlineSplitDto[];
+
+  @ApiPropertyOptional({
+    description: "Override quantity for this posting only (investment kind)",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 8 })
+  @Min(0)
+  investmentQuantity?: number;
+
+  @ApiPropertyOptional({
+    description: "Override price for this posting only (investment kind)",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 6 })
+  @Min(0)
+  investmentPrice?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "Override total amount for this posting only (investment kind, amount-only actions)",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  investmentTotalAmount?: number;
 }

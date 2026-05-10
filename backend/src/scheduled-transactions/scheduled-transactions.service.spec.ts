@@ -10,6 +10,7 @@ import { Account } from "../accounts/entities/account.entity";
 import { Tag } from "../tags/entities/tag.entity";
 import { AccountsService } from "../accounts/accounts.service";
 import { TransactionsService } from "../transactions/transactions.service";
+import { InvestmentTransactionsService } from "../securities/investment-transactions.service";
 import { ScheduledTransactionOverrideService } from "./scheduled-transaction-override.service";
 import { ScheduledTransactionLoanService } from "./scheduled-transaction-loan.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
@@ -23,6 +24,7 @@ describe("ScheduledTransactionsService", () => {
   let tagRepo: Record<string, jest.Mock>;
   let accountsService: Record<string, jest.Mock>;
   let transactionsService: Record<string, jest.Mock>;
+  let investmentTransactionsService: Record<string, jest.Mock>;
   let mockQueryRunner: Record<string, any>;
   let mockDataSource: Record<string, jest.Mock>;
   let mockActionHistoryService: Record<string, jest.Mock>;
@@ -143,6 +145,10 @@ describe("ScheduledTransactionsService", () => {
         .mockResolvedValue([{ id: "tx-1" }, { id: "tx-2" }]),
     };
 
+    investmentTransactionsService = {
+      create: jest.fn().mockResolvedValue({ id: "inv-tx-1" }),
+    };
+
     mockActionHistoryService = {
       record: jest.fn().mockResolvedValue(null),
     };
@@ -195,6 +201,10 @@ describe("ScheduledTransactionsService", () => {
         { provide: getRepositoryToken(Tag), useValue: tagRepo },
         { provide: AccountsService, useValue: accountsService },
         { provide: TransactionsService, useValue: transactionsService },
+        {
+          provide: InvestmentTransactionsService,
+          useValue: investmentTransactionsService,
+        },
         { provide: DataSource, useValue: mockDataSource },
         ScheduledTransactionOverrideService,
         ScheduledTransactionLoanService,
@@ -1533,6 +1543,199 @@ describe("ScheduledTransactionsService", () => {
         userId,
         expect.objectContaining({ referenceNumber: "REF-5678" }),
       );
+    });
+  });
+
+  // ==================== Scheduled Investment (single-table) ====================
+  describe("scheduled investment kind", () => {
+    const investmentBaseDto = {
+      accountId: "acc-inv",
+      name: "Monthly VOO DCA",
+      amount: -500,
+      currencyCode: "USD",
+      frequency: "MONTHLY" as any,
+      nextDueDate: "2026-06-15",
+      isInvestment: true,
+      investmentAction: "BUY" as any,
+      investmentSecurityId: "sec-voo",
+      investmentQuantity: 1,
+      investmentPrice: 500,
+      investmentCommission: 0,
+    };
+
+    it("rejects when account is not an INVESTMENT account", async () => {
+      accountsService.findOne.mockResolvedValue({
+        id: "acc-inv",
+        userId,
+        accountType: "CHECKING",
+      });
+
+      await expect(service.create(userId, investmentBaseDto)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("rejects when both isTransfer and isInvestment are true", async () => {
+      await expect(
+        service.create(userId, {
+          ...investmentBaseDto,
+          isTransfer: true,
+          transferAccountId: "acc-2",
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects BUY without quantity", async () => {
+      accountsService.findOne.mockResolvedValue({
+        id: "acc-inv",
+        userId,
+        accountType: "INVESTMENT",
+      });
+
+      await expect(
+        service.create(userId, {
+          ...investmentBaseDto,
+          investmentQuantity: undefined as any,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("creates a scheduled BUY and persists investment fields", async () => {
+      accountsService.findOne.mockResolvedValue({
+        id: "acc-inv",
+        userId,
+        accountType: "INVESTMENT",
+      });
+      const saved = makeScheduled({
+        isInvestment: true,
+        investmentAction: "BUY" as any,
+        investmentSecurityId: "sec-voo",
+        investmentQuantity: 1,
+        investmentPrice: 500,
+      });
+      scheduledRepo.save.mockResolvedValue(saved);
+      stubFindOne(saved);
+
+      const result = await service.create(userId, investmentBaseDto);
+
+      const created = scheduledRepo.create.mock.calls[0][0];
+      expect(created.isInvestment).toBe(true);
+      expect(created.investmentAction).toBe("BUY");
+      expect(created.investmentSecurityId).toBe("sec-voo");
+      expect(created.investmentQuantity).toBe(1);
+      expect(created.investmentPrice).toBe(500);
+      expect(result).toEqual(saved);
+    });
+
+    it("post() dispatches a BUY through InvestmentTransactionsService.create", async () => {
+      const scheduled = makeScheduled({
+        isInvestment: true,
+        investmentAction: "BUY" as any,
+        investmentSecurityId: "sec-voo",
+        investmentQuantity: 1,
+        investmentPrice: 500,
+        investmentCommission: 0,
+      });
+      stubFindOne(scheduled);
+      const overrideQb = mockQueryBuilder();
+      overrideQb.getOne.mockResolvedValue(null);
+      overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
+
+      await service.post(userId, stId);
+
+      expect(investmentTransactionsService.create).toHaveBeenCalledTimes(1);
+      const dto = investmentTransactionsService.create.mock.calls[0][1];
+      expect(dto.action).toBe("BUY");
+      expect(dto.accountId).toBe("acc-1");
+      expect(dto.securityId).toBe("sec-voo");
+      expect(dto.quantity).toBe(1);
+      expect(dto.price).toBe(500);
+      expect(transactionsService.create).not.toHaveBeenCalled();
+      expect(transactionsService.createTransfer).not.toHaveBeenCalled();
+    });
+
+    it("post() forwards funding account for contribution+buy", async () => {
+      const scheduled = makeScheduled({
+        isInvestment: true,
+        investmentAction: "BUY" as any,
+        investmentSecurityId: "sec-voo",
+        investmentFundingAccountId: "acc-checking",
+        investmentQuantity: 2,
+        investmentPrice: 100,
+      });
+      stubFindOne(scheduled);
+      const overrideQb = mockQueryBuilder();
+      overrideQb.getOne.mockResolvedValue(null);
+      overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
+
+      await service.post(userId, stId);
+
+      const dto = investmentTransactionsService.create.mock.calls[0][1];
+      expect(dto.fundingAccountId).toBe("acc-checking");
+    });
+
+    it("post() honours inline quantity / price overrides", async () => {
+      const scheduled = makeScheduled({
+        isInvestment: true,
+        investmentAction: "BUY" as any,
+        investmentSecurityId: "sec-voo",
+        investmentQuantity: 1,
+        investmentPrice: 500,
+      });
+      stubFindOne(scheduled);
+      const overrideQb = mockQueryBuilder();
+      overrideQb.getOne.mockResolvedValue(null);
+      overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
+
+      await service.post(userId, stId, {
+        investmentQuantity: 3,
+        investmentPrice: 480,
+      } as any);
+
+      const dto = investmentTransactionsService.create.mock.calls[0][1];
+      expect(dto.quantity).toBe(3);
+      expect(dto.price).toBe(480);
+    });
+
+    it("post() routes a DIVIDEND amount through quantity=1, price=totalAmount", async () => {
+      const scheduled = makeScheduled({
+        isInvestment: true,
+        investmentAction: "DIVIDEND" as any,
+        investmentSecurityId: "sec-voo",
+        investmentTotalAmount: 75,
+      });
+      stubFindOne(scheduled);
+      const overrideQb = mockQueryBuilder();
+      overrideQb.getOne.mockResolvedValue(null);
+      overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
+
+      await service.post(userId, stId);
+
+      const dto = investmentTransactionsService.create.mock.calls[0][1];
+      expect(dto.action).toBe("DIVIDEND");
+      expect(dto.quantity).toBe(1);
+      expect(dto.price).toBe(75);
+    });
+
+    it("post() routes a REINVEST/DRIP through investments service", async () => {
+      const scheduled = makeScheduled({
+        isInvestment: true,
+        investmentAction: "REINVEST" as any,
+        investmentSecurityId: "sec-voo",
+        investmentQuantity: 0.5,
+        investmentPrice: 200,
+      });
+      stubFindOne(scheduled);
+      const overrideQb = mockQueryBuilder();
+      overrideQb.getOne.mockResolvedValue(null);
+      overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
+
+      await service.post(userId, stId);
+
+      const dto = investmentTransactionsService.create.mock.calls[0][1];
+      expect(dto.action).toBe("REINVEST");
+      expect(dto.quantity).toBe(0.5);
+      expect(dto.price).toBe(200);
     });
   });
 

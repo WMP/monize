@@ -14,6 +14,8 @@ import { Category } from "../../categories/entities/category.entity";
 import { ScheduledTransactionSplit } from "./scheduled-transaction-split.entity";
 import { ScheduledTransactionOverride } from "./scheduled-transaction-override.entity";
 import { User } from "../../users/entities/user.entity";
+import { Security } from "../../securities/entities/security.entity";
+import { InvestmentAction } from "../../securities/entities/investment-transaction.entity";
 
 export type FrequencyType =
   | "ONCE"
@@ -150,6 +152,80 @@ export class ScheduledTransaction {
   @ManyToOne(() => Account, { nullable: true })
   @JoinColumn({ name: "transfer_account_id" })
   transferAccount: Account | null;
+
+  @Column({ name: "is_investment", default: false })
+  isInvestment: boolean;
+
+  @Column({
+    type: "varchar",
+    length: 50,
+    name: "investment_action",
+    nullable: true,
+  })
+  investmentAction: InvestmentAction | null;
+
+  @Column({ type: "uuid", name: "investment_security_id", nullable: true })
+  investmentSecurityId: string | null;
+
+  @ManyToOne(() => Security, { nullable: true })
+  @JoinColumn({ name: "investment_security_id" })
+  investmentSecurity: Security | null;
+
+  @Column({
+    type: "uuid",
+    name: "investment_funding_account_id",
+    nullable: true,
+  })
+  investmentFundingAccountId: string | null;
+
+  @ManyToOne(() => Account, { nullable: true })
+  @JoinColumn({ name: "investment_funding_account_id" })
+  investmentFundingAccount: Account | null;
+
+  @Column({
+    type: "decimal",
+    precision: 20,
+    scale: 8,
+    name: "investment_quantity",
+    nullable: true,
+  })
+  investmentQuantity: number | null;
+
+  @Column({
+    type: "decimal",
+    precision: 20,
+    scale: 6,
+    name: "investment_price",
+    nullable: true,
+  })
+  investmentPrice: number | null;
+
+  @Column({
+    type: "decimal",
+    precision: 20,
+    scale: 4,
+    name: "investment_commission",
+    nullable: true,
+  })
+  investmentCommission: number | null;
+
+  @Column({
+    type: "decimal",
+    precision: 20,
+    scale: 4,
+    name: "investment_total_amount",
+    nullable: true,
+  })
+  investmentTotalAmount: number | null;
+
+  @Column({
+    type: "decimal",
+    precision: 20,
+    scale: 10,
+    name: "investment_exchange_rate",
+    nullable: true,
+  })
+  investmentExchangeRate: number | null;
 
   @Column({ type: "jsonb", name: "tag_ids", default: [] })
   tagIds: string[];

@@ -30,7 +30,6 @@ const toolsLinks: { href: string; label: string; badge?: string }[] = [
   { href: '/tags', label: 'Tags' },
   { href: '/securities', label: 'Securities' },
   { href: '/currencies', label: 'Currencies' },
-  { href: '/investments/scheduled', label: 'Scheduled Investments' },
   { href: '/import', label: 'Import Transactions' },
 ];
 

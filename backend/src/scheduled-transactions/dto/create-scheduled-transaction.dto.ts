@@ -16,6 +16,7 @@ import {
 import { Type } from "class-transformer";
 import { CreateScheduledTransactionSplitDto } from "./create-scheduled-transaction-split.dto";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
+import { InvestmentAction } from "../../securities/entities/investment-transaction.entity";
 
 export enum FrequencyType {
   ONCE = "ONCE",
@@ -106,6 +107,46 @@ export class CreateScheduledTransactionDto {
   @IsOptional()
   @IsUUID()
   transferAccountId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isInvestment?: boolean;
+
+  @IsOptional()
+  @IsEnum(InvestmentAction)
+  investmentAction?: InvestmentAction;
+
+  @IsOptional()
+  @IsUUID()
+  investmentSecurityId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  investmentFundingAccountId?: string;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 8 })
+  @Min(0)
+  investmentQuantity?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 6 })
+  @Min(0)
+  investmentPrice?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  investmentCommission?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  investmentTotalAmount?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 10 })
+  @Min(0)
+  investmentExchangeRate?: number;
 
   @IsOptional()
   @IsArray()

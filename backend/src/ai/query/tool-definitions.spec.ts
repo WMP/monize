@@ -1,8 +1,8 @@
 import { FINANCIAL_TOOLS } from "./tool-definitions";
 
 describe("FINANCIAL_TOOLS", () => {
-  it("defines exactly 15 tools", () => {
-    expect(FINANCIAL_TOOLS).toHaveLength(15);
+  it("defines exactly 14 tools", () => {
+    expect(FINANCIAL_TOOLS).toHaveLength(14);
   });
 
   it("has unique tool names", () => {
@@ -23,7 +23,6 @@ describe("FINANCIAL_TOOLS", () => {
     "get_capital_gains",
     "get_transfers",
     "get_budget_status",
-    "get_scheduled_investments",
     "calculate",
     "render_chart",
   ];

@@ -375,21 +375,6 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
     },
   },
   {
-    name: "get_scheduled_investments",
-    description:
-      "List recurring (scheduled) investment transactions due in the next N days: DCA buys, recurring dividends, DRIP/REINVEST entries, and bank-funded contribution+buy schedules. Use for questions like 'what investments are scheduled?' or 'when's my next auto-buy?'.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        days: {
-          type: "number",
-          description:
-            "Number of days to look ahead. Default: 30. Range: 1-365.",
-        },
-      },
-    },
-  },
-  {
     name: "calculate",
     description:
       "Perform accurate server-side arithmetic on numbers from previous tool results. Use this instead of doing math yourself. Supports: percentage (part/whole*100), difference (a-b), ratio (a/b), sum, and average. Always use this tool for any calculation rather than computing values yourself.",

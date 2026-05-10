@@ -101,7 +101,20 @@ const ScheduledTransactionRow = memo(function ScheduledTransactionRow({
 
       {/* Category */}
       <td className="px-4 py-3 hidden md:table-cell">
-        {transaction.isTransfer ? (
+        {transaction.isInvestment ? (
+          <span
+            className="inline-flex text-xs font-medium rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"
+            title={
+              transaction.investmentSecurity
+                ? `${transaction.investmentAction || ''} ${transaction.investmentSecurity.symbol || transaction.investmentSecurity.name}`.trim()
+                : transaction.investmentAction || 'Investment'
+            }
+          >
+            {transaction.investmentSecurity?.symbol
+              ? `${transaction.investmentAction || 'Investment'}: ${transaction.investmentSecurity.symbol}`
+              : transaction.investmentAction || 'Investment'}
+          </span>
+        ) : transaction.isTransfer ? (
           <span
             className="inline-flex text-xs font-medium rounded-full px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
             title={`Transfer to ${transaction.transferAccount?.name || 'account'}`}

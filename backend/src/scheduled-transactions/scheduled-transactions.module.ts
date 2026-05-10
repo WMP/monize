@@ -11,6 +11,7 @@ import { ScheduledTransactionLoanService } from "./scheduled-transaction-loan.se
 import { ScheduledTransactionsController } from "./scheduled-transactions.controller";
 import { AccountsModule } from "../accounts/accounts.module";
 import { TransactionsModule } from "../transactions/transactions.module";
+import { SecuritiesModule } from "../securities/securities.module";
 import { ActionHistoryModule } from "../action-history/action-history.module";
 
 @Module({
@@ -24,6 +25,7 @@ import { ActionHistoryModule } from "../action-history/action-history.module";
     ]),
     forwardRef(() => AccountsModule),
     TransactionsModule,
+    forwardRef(() => SecuritiesModule),
     ActionHistoryModule,
   ],
   providers: [

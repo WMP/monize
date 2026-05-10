@@ -43,10 +43,6 @@ export class DemoResetService {
 
       // 2. Delete all user data in FK-safe order
       await queryRunner.query(
-        "DELETE FROM scheduled_investment_transactions WHERE user_id = $1",
-        [userId],
-      );
-      await queryRunner.query(
         "DELETE FROM investment_transactions WHERE user_id = $1",
         [userId],
       );

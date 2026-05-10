@@ -29,7 +29,6 @@ import { CurrenciesModule } from "./currencies/currencies.module";
 import { SecuritiesModule } from "./securities/securities.module";
 import { PayeesModule } from "./payees/payees.module";
 import { ScheduledTransactionsModule } from "./scheduled-transactions/scheduled-transactions.module";
-import { ScheduledInvestmentTransactionsModule } from "./scheduled-investment-transactions/scheduled-investment-transactions.module";
 import { ReportsModule } from "./reports/reports.module";
 import { DatabaseModule } from "./database/database.module";
 import { ImportModule } from "./import/import.module";
@@ -111,7 +110,6 @@ import { MonteCarloModule } from "./monte-carlo/monte-carlo.module";
     CurrenciesModule,
     SecuritiesModule,
     ScheduledTransactionsModule,
-    ScheduledInvestmentTransactionsModule,
     ReportsModule,
     DatabaseModule,
     ImportModule,

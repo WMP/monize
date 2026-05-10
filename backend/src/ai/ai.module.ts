@@ -30,7 +30,6 @@ import { TransactionsModule } from "../transactions/transactions.module";
 import { NetWorthModule } from "../net-worth/net-worth.module";
 import { BudgetsModule } from "../budgets/budgets.module";
 import { SecuritiesModule } from "../securities/securities.module";
-import { ScheduledInvestmentTransactionsModule } from "../scheduled-investment-transactions/scheduled-investment-transactions.module";
 
 @Module({
   imports: [
@@ -50,7 +49,6 @@ import { ScheduledInvestmentTransactionsModule } from "../scheduled-investment-t
     forwardRef(() => NetWorthModule),
     forwardRef(() => BudgetsModule),
     SecuritiesModule,
-    forwardRef(() => ScheduledInvestmentTransactionsModule),
   ],
   providers: [
     AiService,

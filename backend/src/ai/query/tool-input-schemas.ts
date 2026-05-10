@@ -130,10 +130,6 @@ export const getBudgetStatusSchema = z.object({
   budgetName: z.string().max(100).optional(),
 });
 
-export const getScheduledInvestmentsSchema = z.object({
-  days: z.number().int().min(1).max(365).optional(),
-});
-
 export const calculateSchema = z.object({
   operation: z.enum(["percentage", "difference", "ratio", "sum", "average"]),
   values: z.array(z.number()).min(1).max(100),
@@ -173,7 +169,6 @@ export const toolInputSchemas: Record<string, z.ZodSchema> = {
   get_capital_gains: getCapitalGainsSchema,
   get_transfers: getTransfersSchema,
   get_budget_status: getBudgetStatusSchema,
-  get_scheduled_investments: getScheduledInvestmentsSchema,
   calculate: calculateSchema,
   render_chart: renderChartSchema,
 };

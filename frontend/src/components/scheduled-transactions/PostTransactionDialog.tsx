@@ -74,6 +74,20 @@ export function PostTransactionDialog({
   const [transactionDate, setTransactionDate] = useState<string>('');
   const [referenceNumber, setReferenceNumber] = useState<string>('');
 
+  // Investment-mode per-occurrence overrides
+  const [investmentQuantity, setInvestmentQuantity] = useState<number | ''>('');
+  const [investmentPrice, setInvestmentPrice] = useState<number | ''>('');
+  const [investmentTotalAmount, setInvestmentTotalAmount] = useState<number | ''>('');
+
+  const isInvestmentKind = scheduledTransaction.isInvestment;
+  const investmentAction = scheduledTransaction.investmentAction;
+  const isInvestmentQuantityPrice = isInvestmentKind &&
+    (investmentAction === 'BUY' || investmentAction === 'SELL' || investmentAction === 'REINVEST');
+  const isInvestmentQuantityOnly = isInvestmentKind &&
+    (investmentAction === 'ADD_SHARES' || investmentAction === 'REMOVE_SHARES' || investmentAction === 'SPLIT');
+  const isInvestmentAmountOnly = isInvestmentKind &&
+    (investmentAction === 'DIVIDEND' || investmentAction === 'INTEREST' || investmentAction === 'CAPITAL_GAIN');
+
   const todayStr = useMemo(() => getLocalDateString(), []);
 
   const sourceAccount = scheduledTransaction.account
@@ -134,6 +148,23 @@ export function PostTransactionDialog({
       } else {
         setSplits(createEmptySplits(amt));
       }
+
+      // Investment-kind: prefill overrides from the stored values
+      setInvestmentQuantity(
+        scheduledTransaction.investmentQuantity != null
+          ? Number(scheduledTransaction.investmentQuantity)
+          : '',
+      );
+      setInvestmentPrice(
+        scheduledTransaction.investmentPrice != null
+          ? Number(scheduledTransaction.investmentPrice)
+          : '',
+      );
+      setInvestmentTotalAmount(
+        scheduledTransaction.investmentTotalAmount != null
+          ? Number(scheduledTransaction.investmentTotalAmount)
+          : '',
+      );
     }
   }, [isOpen, scheduledTransaction]);
 
@@ -150,8 +181,26 @@ export function PostTransactionDialog({
   }, [categories]);
 
   const handlePost = async () => {
-    // Validate splits if in split mode
-    if (isSplit) {
+    if (isInvestmentKind) {
+      if (isInvestmentQuantityPrice || isInvestmentQuantityOnly) {
+        if (investmentQuantity === '' || Number(investmentQuantity) <= 0) {
+          toast.error('Quantity must be greater than zero');
+          return;
+        }
+      }
+      if (isInvestmentQuantityPrice) {
+        if (investmentPrice === '' || Number(investmentPrice) <= 0) {
+          toast.error('Price must be greater than zero');
+          return;
+        }
+      }
+      if (isInvestmentAmountOnly) {
+        if (investmentTotalAmount === '') {
+          toast.error('Total amount is required');
+          return;
+        }
+      }
+    } else if (isSplit) {
       if (splits.length < 2) {
         toast.error('Split transactions require at least 2 splits');
         return;
@@ -166,15 +215,26 @@ export function PostTransactionDialog({
 
     setIsLoading(true);
     try {
-      const postData: PostScheduledTransactionData = {
-        transactionDate,
-        amount,
-        categoryId: isSplit ? null : (categoryId || null),
-        description: description || null,
-        referenceNumber: referenceNumber || undefined,
-        isSplit,
-        splits: isSplit ? toOverrideSplits(splits) : undefined,
-      };
+      const postData: PostScheduledTransactionData = isInvestmentKind
+        ? {
+            transactionDate,
+            description: description || null,
+            investmentQuantity:
+              investmentQuantity === '' ? undefined : Number(investmentQuantity),
+            investmentPrice:
+              investmentPrice === '' ? undefined : Number(investmentPrice),
+            investmentTotalAmount:
+              investmentTotalAmount === '' ? undefined : Number(investmentTotalAmount),
+          }
+        : {
+            transactionDate,
+            amount,
+            categoryId: isSplit ? null : (categoryId || null),
+            description: description || null,
+            referenceNumber: referenceNumber || undefined,
+            isSplit,
+            splits: isSplit ? toOverrideSplits(splits) : undefined,
+          };
 
       await scheduledTransactionsApi.post(scheduledTransaction.id, postData);
       toast.success('Transaction posted');
@@ -210,16 +270,27 @@ export function PostTransactionDialog({
       </div>
 
       <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        {scheduledTransaction.isTransfer ? (
+        {isInvestmentKind ? (
           <>
-            Post transfer "{scheduledTransaction.name}" from{' '}
+            Post {investmentAction || 'investment'}{' '}
+            {scheduledTransaction.investmentSecurity && (
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                {scheduledTransaction.investmentSecurity.symbol || scheduledTransaction.investmentSecurity.name}
+              </span>
+            )}{' '}
+            on {scheduledTransaction.account?.name}.
+            Adjust quantity / price / total below if this occurrence differs.
+          </>
+        ) : scheduledTransaction.isTransfer ? (
+          <>
+            Post transfer &quot;{scheduledTransaction.name}&quot; from{' '}
             <span className="font-medium text-gray-700 dark:text-gray-300">{scheduledTransaction.account?.name}</span>
             {' '}to{' '}
             <span className="font-medium text-gray-700 dark:text-gray-300">{scheduledTransaction.transferAccount?.name}</span>.
           </>
         ) : (
           <>
-            Post "{scheduledTransaction.name}" to {scheduledTransaction.account?.name}.
+            Post &quot;{scheduledTransaction.name}&quot; to {scheduledTransaction.account?.name}.
             Modify values below if needed for this posting only.
           </>
         )}
@@ -313,16 +384,68 @@ export function PostTransactionDialog({
           </div>
         </div>
 
-        {/* Amount */}
+        {/* Investment-kind: action-specific overrides */}
+        {isInvestmentKind && (
+          <>
+            {(isInvestmentQuantityPrice || isInvestmentQuantityOnly) && (
+              <Input
+                label="Quantity (shares)"
+                type="number"
+                step="0.00000001"
+                min={0}
+                value={investmentQuantity}
+                onChange={(e) =>
+                  setInvestmentQuantity(e.target.value === '' ? '' : Number(e.target.value))
+                }
+              />
+            )}
+            {isInvestmentQuantityPrice && (
+              <Input
+                label="Price per share"
+                type="number"
+                step="0.000001"
+                min={0}
+                value={investmentPrice}
+                onChange={(e) =>
+                  setInvestmentPrice(e.target.value === '' ? '' : Number(e.target.value))
+                }
+              />
+            )}
+            {isInvestmentAmountOnly && (
+              <CurrencyInput
+                label="Total Amount"
+                prefix={getCurrencySymbol(scheduledTransaction.currencyCode)}
+                value={typeof investmentTotalAmount === 'number' ? investmentTotalAmount : undefined}
+                onChange={(value) => setInvestmentTotalAmount(value ?? '')}
+              />
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Description (optional)
+              </label>
+              <Input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Description..."
+              />
+            </div>
+          </>
+        )}
+
+        {/* Amount — non-investment only */}
+        {!isInvestmentKind && (
         <CurrencyInput
           label="Amount"
           prefix={getCurrencySymbol(scheduledTransaction.currencyCode)}
           value={amount}
           onChange={(value) => setAmount(value ?? 0)}
         />
+        )}
 
         {/* Transfer indicator - shown instead of category for transfers */}
-        {scheduledTransaction.isTransfer ? (
+        {!isInvestmentKind && (
+        scheduledTransaction.isTransfer ? (
           <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
             <div className="flex items-center">
               <svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -385,9 +508,11 @@ export function PostTransactionDialog({
               </div>
             )}
           </>
+        )
         )}
 
-        {/* Description and Reference Number */}
+        {/* Description and Reference Number — non-investment only (investment renders description in its own block) */}
+        {!isInvestmentKind && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -412,6 +537,7 @@ export function PostTransactionDialog({
             />
           </div>
         </div>
+        )}
       </div>
 
       {/* Actions */}
