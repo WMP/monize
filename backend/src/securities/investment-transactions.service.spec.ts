@@ -4019,8 +4019,10 @@ describe("InvestmentTransactionsService", () => {
 
       await service.create(userId, createBuyDto);
 
-      expect(transactionRepository.create).not.toHaveBeenCalled();
-      expect(transactionRepository.save).not.toHaveBeenCalled();
+      // Future-dated investments DO create a linked cash transaction so it
+      // shows in the cash account's ledger as a projected entry. Holdings
+      // and the account currentBalance still wait until the date arrives.
+      expect(transactionRepository.create).toHaveBeenCalled();
       expect(accountsService.updateBalance).not.toHaveBeenCalled();
     });
 
@@ -4049,10 +4051,11 @@ describe("InvestmentTransactionsService", () => {
       await service.create(userId, sellDto);
 
       expect(holdingsService.updateHolding).not.toHaveBeenCalled();
-      expect(transactionRepository.create).not.toHaveBeenCalled();
+      // The cash side IS created so the user sees the projected proceeds.
+      expect(transactionRepository.create).toHaveBeenCalled();
     });
 
-    it("does NOT reverse effects when deleting a future-dated transaction", async () => {
+    it("does NOT touch holdings when deleting a future-dated transaction", async () => {
       const futureTx = {
         ...mockBuyTransaction,
         transactionDate: "2027-06-15",
@@ -4068,6 +4071,8 @@ describe("InvestmentTransactionsService", () => {
       expect(holdingsService.updateHolding).not.toHaveBeenCalled();
       expect(holdingsService.adjustQuantity).not.toHaveBeenCalled();
       expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      // The linked cash transaction (which was created with the future date)
+      // is torn down with the investment row.
       expect(investmentTransactionsRepository.remove).toHaveBeenCalledWith(
         futureTx,
       );

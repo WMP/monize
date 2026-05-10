@@ -358,11 +358,17 @@ export class InvestmentTransactionsService {
 
     const saved = await queryRunner.manager.save(cashTransaction);
 
-    await this.accountsService.updateBalance(
-      cashAccount.id,
-      cashAmount,
-      queryRunner,
-    );
+    // Defer the live balance update for future-dated cash entries -- the
+    // hourly applyDueTransactionBalances cron rolls them into currentBalance
+    // when the user's local date catches up. Crediting now would double-count
+    // once the cron runs.
+    if (!isTransactionInFuture(investmentTransaction.transactionDate)) {
+      await this.accountsService.updateBalance(
+        cashAccount.id,
+        cashAmount,
+        queryRunner,
+      );
+    }
 
     return saved.id;
   }
@@ -379,11 +385,16 @@ export class InvestmentTransactionsService {
     });
 
     if (cashTransaction) {
-      await this.accountsService.updateBalance(
-        cashTransaction.accountId,
-        -Number(cashTransaction.amount),
-        queryRunner,
-      );
+      // Only un-apply the balance if the cash transaction had been live --
+      // a future-dated cash entry was never folded into currentBalance, so
+      // there's nothing to reverse.
+      if (!isTransactionInFuture(cashTransaction.transactionDate)) {
+        await this.accountsService.updateBalance(
+          cashTransaction.accountId,
+          -Number(cashTransaction.amount),
+          queryRunner,
+        );
+      }
       await queryRunner.manager.remove(cashTransaction);
     }
   }
@@ -579,9 +590,15 @@ export class InvestmentTransactionsService {
     allowNegative: boolean = false,
     createCashSide: boolean = true,
   ): Promise<void> {
-    if (isTransactionInFuture(transaction.transactionDate)) {
-      return;
-    }
+    // Future-dated investments: still create the linked cash transaction so
+    // it shows in the cash account ledger as a projected entry (matching how
+    // every other future-dated transaction is rendered). Skip the Holdings
+    // update -- holdings are a stateful "as of now" record and shouldn't
+    // anticipate a purchase that hasn't settled yet. The applyDueTransactionBalances
+    // cron rolls the cash balance forward when the date arrives; an explicit
+    // backfill of holdings happens via update()/remove() reverse+reapply paths
+    // when the user later edits the transaction.
+    const isFuture = isTransactionInFuture(transaction.transactionDate);
 
     const {
       action,
@@ -611,15 +628,17 @@ export class InvestmentTransactionsService {
 
     switch (action) {
       case InvestmentAction.BUY:
-        await this.holdingsService.updateHolding(
-          userId,
-          accountId,
-          securityId!,
-          Number(quantity),
-          Number(price),
-          queryRunner,
-          allowNegative,
-        );
+        if (!isFuture) {
+          await this.holdingsService.updateHolding(
+            userId,
+            accountId,
+            securityId!,
+            Number(quantity),
+            Number(price),
+            queryRunner,
+            allowNegative,
+          );
+        }
         if (createCashSide && cashAccount) {
           cashTransactionId = await this.createCashTransactionInTransaction(
             queryRunner,
@@ -632,15 +651,17 @@ export class InvestmentTransactionsService {
         break;
 
       case InvestmentAction.SELL:
-        await this.holdingsService.updateHolding(
-          userId,
-          accountId,
-          securityId!,
-          -Number(quantity),
-          Number(price),
-          queryRunner,
-          allowNegative,
-        );
+        if (!isFuture) {
+          await this.holdingsService.updateHolding(
+            userId,
+            accountId,
+            securityId!,
+            -Number(quantity),
+            Number(price),
+            queryRunner,
+            allowNegative,
+          );
+        }
         if (createCashSide && cashAccount) {
           cashTransactionId = await this.createCashTransactionInTransaction(
             queryRunner,
@@ -667,7 +688,7 @@ export class InvestmentTransactionsService {
         break;
 
       case InvestmentAction.REINVEST:
-        if (securityId && quantity && price) {
+        if (!isFuture && securityId && quantity && price) {
           await this.holdingsService.updateHolding(
             userId,
             accountId,
@@ -686,7 +707,7 @@ export class InvestmentTransactionsService {
         // `price` carries the post-split per-share market price for
         // reporting; the cost basis comes from the existing holding, not
         // from `price`.
-        if (securityId && quantity) {
+        if (!isFuture && securityId && quantity) {
           await this.holdingsService.applySplit(
             accountId,
             securityId,
@@ -697,7 +718,7 @@ export class InvestmentTransactionsService {
         break;
 
       case InvestmentAction.TRANSFER_IN:
-        if (securityId && quantity && price) {
+        if (!isFuture && securityId && quantity && price) {
           await this.holdingsService.updateHolding(
             userId,
             accountId,
@@ -711,7 +732,7 @@ export class InvestmentTransactionsService {
         break;
 
       case InvestmentAction.TRANSFER_OUT:
-        if (securityId && quantity && price) {
+        if (!isFuture && securityId && quantity && price) {
           await this.holdingsService.updateHolding(
             userId,
             accountId,
@@ -725,7 +746,7 @@ export class InvestmentTransactionsService {
         break;
 
       case InvestmentAction.ADD_SHARES:
-        if (securityId && quantity) {
+        if (!isFuture && securityId && quantity) {
           await this.holdingsService.adjustQuantity(
             userId,
             accountId,
@@ -737,7 +758,7 @@ export class InvestmentTransactionsService {
         break;
 
       case InvestmentAction.REMOVE_SHARES:
-        if (securityId && quantity) {
+        if (!isFuture && securityId && quantity) {
           await this.holdingsService.adjustQuantity(
             userId,
             accountId,
@@ -1485,10 +1506,18 @@ export class InvestmentTransactionsService {
     queryRunner: QueryRunner,
     userId: string,
     transaction: InvestmentTransaction,
+    isFutureOverride?: boolean,
   ): Promise<void> {
-    if (isTransactionInFuture(transaction.transactionDate)) {
-      return;
-    }
+    // Cash transactions are now created for future-dated investments too
+    // (they show as projected entries in the cash account ledger), so always
+    // tear down the linked Transaction even when the date is still in the
+    // future. Only the Holdings reversal is skipped for future dates -- the
+    // forward path didn't update Holdings then either, so there's nothing
+    // to undo. The optional isFutureOverride lets update() pin the decision
+    // to the OLD date even when the in-memory `transaction` already reflects
+    // a new (past) date.
+    const isFuture =
+      isFutureOverride ?? isTransactionInFuture(transaction.transactionDate);
 
     const { action, accountId, securityId, quantity, price, transactionId } =
       transaction;
@@ -1504,6 +1533,12 @@ export class InvestmentTransactionsService {
         userId,
         transactionId,
       );
+    }
+
+    if (isFuture) {
+      // Holdings were never updated for this future-dated row, so nothing
+      // to undo on that side.
+      return;
     }
 
     // Reversing a past transaction can make the running Holding balance
