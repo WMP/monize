@@ -90,9 +90,45 @@ export function PostTransactionDialog({
 
   const todayStr = useMemo(() => getLocalDateString(), []);
 
-  const sourceAccount = scheduledTransaction.account
-    ? accounts.find(a => a.id === scheduledTransaction.accountId) ?? scheduledTransaction.account
-    : null;
+  const sourceAccount = useMemo(() => {
+    // For investment-kind rows, the cash side -- not the brokerage -- is what
+    // moves. Pick the funding account if the user explicitly set one
+    // (contribution+buy from a checking account), otherwise the brokerage's
+    // paired INVESTMENT_CASH account. Fall back to the brokerage only if no
+    // pair exists, so we still show *something* useful.
+    if (scheduledTransaction.isInvestment) {
+      if (scheduledTransaction.investmentFundingAccountId) {
+        return (
+          accounts.find(
+            (a) => a.id === scheduledTransaction.investmentFundingAccountId,
+          ) ??
+          scheduledTransaction.investmentFundingAccount ??
+          null
+        );
+      }
+      const brokerage = accounts.find(
+        (a) => a.id === scheduledTransaction.accountId,
+      );
+      if (brokerage?.linkedAccountId) {
+        const cash = accounts.find(
+          (a) => a.id === brokerage.linkedAccountId,
+        );
+        if (cash) return cash;
+      }
+      return brokerage ?? scheduledTransaction.account ?? null;
+    }
+    return scheduledTransaction.account
+      ? accounts.find((a) => a.id === scheduledTransaction.accountId) ??
+          scheduledTransaction.account
+      : null;
+  }, [
+    accounts,
+    scheduledTransaction.account,
+    scheduledTransaction.accountId,
+    scheduledTransaction.isInvestment,
+    scheduledTransaction.investmentFundingAccountId,
+    scheduledTransaction.investmentFundingAccount,
+  ]);
   const transferAccount = scheduledTransaction.isTransfer && scheduledTransaction.transferAccount
     ? accounts.find(a => a.id === scheduledTransaction.transferAccountId) ?? scheduledTransaction.transferAccount
     : null;
