@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef, memo } from 'react';
+import { useState, useMemo, useCallback, useRef, memo, Fragment } from 'react';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { DateInput } from '@/components/ui/DateInput';
 import { InvestmentTransaction } from '@/types/investment';
@@ -9,6 +9,7 @@ import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { DensityLevel, nextDensity } from '@/hooks/useTableDensity';
 import { Account } from '@/types/account';
+import { getLocalDateString } from '@/lib/utils';
 
 export interface TransactionFilters {
   symbol?: string;
@@ -242,6 +243,20 @@ export function InvestmentTransactionList({
   const { formatDate } = useDateFormat();
   const { defaultCurrency } = useExchangeRates();
   const accountMap = useMemo(() => new Map(accounts.map(a => [a.id, a.name])), [accounts]);
+
+  // Find the index where future investments end and today/past begin.
+  // Mirrors TransactionList: rows are sorted DESC by transactionDate so the
+  // future block leads. "Today" is the user's local date so users west of
+  // UTC don't see a tomorrow-local row classified as past.
+  const futureBoundaryIndex = useMemo(() => {
+    const today = getLocalDateString();
+    for (let i = 0; i < transactions.length; i++) {
+      if (transactions[i].transactionDate <= today) {
+        return i;
+      }
+    }
+    return transactions.length;
+  }, [transactions]);
   const [localDensity, setLocalDensity] = useState<DensityLevel>('normal');
   const [showFilters, setShowFilters] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; transaction: InvestmentTransaction | null }>({ isOpen: false, transaction: null });
@@ -591,27 +606,42 @@ export function InvestmentTransactionList({
                   No transactions match your filters.
                 </td>
               </tr>
-            ) : transactions.map((tx, index) => (
-              <InvestmentTransactionRow
-                key={tx.id}
-                tx={tx}
-                accountName={accountMap.get(tx.accountId)}
-                index={index}
-                density={density}
-                cellPadding={cellPadding}
-                defaultCurrency={defaultCurrency}
-                formatDate={formatDate}
-                formatCurrency={formatCurrency}
-                formatQuantity={formatQuantity}
-                onRowClick={handleRowClick}
-                onLongPressStart={handleLongPressStart}
-                onLongPressEnd={handleLongPressEnd}
-                onTouchMove={handleTouchMove}
-                onEdit={onEdit}
-                onDeleteClick={handleDeleteClick}
-                hasActions={!!(onDelete || onEdit)}
-              />
-            ))}
+            ) : transactions.map((tx, index) => {
+              const colCount = 7 + (onDelete || onEdit ? 1 : 0);
+              return (
+                <Fragment key={tx.id}>
+                  {index === futureBoundaryIndex && futureBoundaryIndex > 0 && (
+                    <tr>
+                      <td colSpan={colCount} className="px-0 py-0">
+                        <div className="flex items-center gap-3 px-4 py-1.5">
+                          <div className="flex-1 border-t border-blue-300 dark:border-blue-700" />
+                          <span className="text-xs font-medium text-blue-500 dark:text-blue-400 uppercase tracking-wider whitespace-nowrap">Today</span>
+                          <div className="flex-1 border-t border-blue-300 dark:border-blue-700" />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  <InvestmentTransactionRow
+                    tx={tx}
+                    accountName={accountMap.get(tx.accountId)}
+                    index={index}
+                    density={density}
+                    cellPadding={cellPadding}
+                    defaultCurrency={defaultCurrency}
+                    formatDate={formatDate}
+                    formatCurrency={formatCurrency}
+                    formatQuantity={formatQuantity}
+                    onRowClick={handleRowClick}
+                    onLongPressStart={handleLongPressStart}
+                    onLongPressEnd={handleLongPressEnd}
+                    onTouchMove={handleTouchMove}
+                    onEdit={onEdit}
+                    onDeleteClick={handleDeleteClick}
+                    hasActions={!!(onDelete || onEdit)}
+                  />
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
