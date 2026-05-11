@@ -466,107 +466,92 @@ export function TransactionFilterPanel({
               </div>
 
               {/* Second row: Time period, dates, amount range, reconciliation status, and search.
-                  Uses a 12-column grid so the Reconciliation dropdown can take width
-                  from the four narrow date/amount inputs while Time Period and Search
-                  keep their original size. */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 mt-4">
-                <div className="lg:col-span-2">
-                  <Select
-                    label="Time Period"
-                    options={TIME_PERIOD_OPTIONS}
-                    value={filterTimePeriod}
-                    onChange={(e) => {
-                      const period = e.target.value;
-                      setFilterTimePeriod(period);
-                      if (period && period !== 'custom') {
-                        const { startDate, endDate } = resolveTimePeriod(period as TimePeriod, weekStartsOn);
-                        handleFilterChange(setFilterStartDate, startDate);
-                        handleFilterChange(setFilterEndDate, endDate);
-                      }
-                    }}
-                  />
-                </div>
+                  Uses an explicit fr template so Reconciliation can be a fraction
+                  of the width of the other inputs. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_2fr_2fr_2fr_2fr_1fr_2fr] gap-4 mt-4">
+                <Select
+                  label="Time Period"
+                  options={TIME_PERIOD_OPTIONS}
+                  value={filterTimePeriod}
+                  onChange={(e) => {
+                    const period = e.target.value;
+                    setFilterTimePeriod(period);
+                    if (period && period !== 'custom') {
+                      const { startDate, endDate } = resolveTimePeriod(period as TimePeriod, weekStartsOn);
+                      handleFilterChange(setFilterStartDate, startDate);
+                      handleFilterChange(setFilterEndDate, endDate);
+                    }
+                  }}
+                />
 
-                <div className="lg:col-span-1">
-                  <DateInput
-                    label="Start Date"
-                    value={filterStartDate}
-                    onDateChange={(date) => {
-                      handleFilterChange(setFilterStartDate, date);
-                      if (filterTimePeriod && filterTimePeriod !== 'custom') {
-                        setFilterTimePeriod('custom');
-                      }
-                    }}
-                    onChange={(e) => {
-                      handleFilterChange(setFilterStartDate, e.target.value);
-                      if (filterTimePeriod && filterTimePeriod !== 'custom') {
-                        setFilterTimePeriod('custom');
-                      }
-                    }}
-                  />
-                </div>
+                <DateInput
+                  label="Start Date"
+                  value={filterStartDate}
+                  onDateChange={(date) => {
+                    handleFilterChange(setFilterStartDate, date);
+                    if (filterTimePeriod && filterTimePeriod !== 'custom') {
+                      setFilterTimePeriod('custom');
+                    }
+                  }}
+                  onChange={(e) => {
+                    handleFilterChange(setFilterStartDate, e.target.value);
+                    if (filterTimePeriod && filterTimePeriod !== 'custom') {
+                      setFilterTimePeriod('custom');
+                    }
+                  }}
+                />
 
-                <div className="lg:col-span-1">
-                  <DateInput
-                    label="End Date"
-                    value={filterEndDate}
-                    onDateChange={(date) => {
-                      handleFilterChange(setFilterEndDate, date);
-                      if (filterTimePeriod && filterTimePeriod !== 'custom') {
-                        setFilterTimePeriod('custom');
-                      }
-                    }}
-                    onChange={(e) => {
-                      handleFilterChange(setFilterEndDate, e.target.value);
-                      if (filterTimePeriod && filterTimePeriod !== 'custom') {
-                        setFilterTimePeriod('custom');
-                      }
-                    }}
-                  />
-                </div>
+                <DateInput
+                  label="End Date"
+                  value={filterEndDate}
+                  onDateChange={(date) => {
+                    handleFilterChange(setFilterEndDate, date);
+                    if (filterTimePeriod && filterTimePeriod !== 'custom') {
+                      setFilterTimePeriod('custom');
+                    }
+                  }}
+                  onChange={(e) => {
+                    handleFilterChange(setFilterEndDate, e.target.value);
+                    if (filterTimePeriod && filterTimePeriod !== 'custom') {
+                      setFilterTimePeriod('custom');
+                    }
+                  }}
+                />
 
-                <div className="lg:col-span-1">
-                  <Input
-                    label="Amount From"
-                    type="number"
-                    step="0.01"
-                    value={filterAmountFrom}
-                    onChange={(e) => handleFilterChange(setFilterAmountFrom, e.target.value)}
-                    placeholder="Min"
-                  />
-                </div>
+                <Input
+                  label="Amount From"
+                  type="number"
+                  step="0.01"
+                  value={filterAmountFrom}
+                  onChange={(e) => handleFilterChange(setFilterAmountFrom, e.target.value)}
+                  placeholder="Min"
+                />
 
-                <div className="lg:col-span-1">
-                  <Input
-                    label="Amount To"
-                    type="number"
-                    step="0.01"
-                    value={filterAmountTo}
-                    onChange={(e) => handleFilterChange(setFilterAmountTo, e.target.value)}
-                    placeholder="Max"
-                  />
-                </div>
+                <Input
+                  label="Amount To"
+                  type="number"
+                  step="0.01"
+                  value={filterAmountTo}
+                  onChange={(e) => handleFilterChange(setFilterAmountTo, e.target.value)}
+                  placeholder="Max"
+                />
 
-                <div className="lg:col-span-4">
-                  <MultiSelect
-                    label="Reconciliation"
-                    options={STATUS_FILTER_OPTIONS}
-                    value={filterStatuses}
-                    onChange={(values) => handleArrayFilterChange(setFilterStatuses, values as TransactionStatus[])}
-                    placeholder="All statuses"
-                    showSearch={false}
-                  />
-                </div>
+                <MultiSelect
+                  label="Reconciliation"
+                  options={STATUS_FILTER_OPTIONS}
+                  value={filterStatuses}
+                  onChange={(values) => handleArrayFilterChange(setFilterStatuses, values as TransactionStatus[])}
+                  placeholder="All statuses"
+                  showSearch={false}
+                />
 
-                <div className="lg:col-span-2">
-                  <Input
-                    label="Search"
-                    type="text"
-                    value={searchInput}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    placeholder="Search payee, category, amount, tag, description, reference #..."
-                  />
-                </div>
+                <Input
+                  label="Search"
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Search payee, category, amount, tag, description, reference #..."
+                />
               </div>
 
               {/* Bulk Update button - mobile only (full width at bottom) */}
