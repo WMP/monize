@@ -1224,5 +1224,107 @@ describe('PostTransactionDialog', () => {
       // SELL: 10 * 100 - 9.99 = 990.01
       expect(totalInput.value).toBe('990.01');
     });
+
+    it('prefills Quantity / Price / Total Price from nextOverride when one exists', () => {
+      const txWithOverride = {
+        ...investmentTransaction,
+        nextOverride: {
+          id: 'ov1',
+          scheduledTransactionId: 'inv1',
+          originalDate: '2025-02-15',
+          overrideDate: '2025-02-15',
+          amount: null,
+          categoryId: null,
+          description: null,
+          isSplit: null,
+          splits: null,
+          investmentQuantity: 4,
+          investmentPrice: 250,
+          investmentTotalAmount: null,
+          createdAt: '',
+          updatedAt: '',
+        },
+      };
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={txWithOverride}
+        />,
+      );
+      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
+      expect(Number(qtyInput.value)).toBe(4);
+      expect(Number(priceInput.value)).toBe(250);
+      // 4 * 250 = 1000, commission 0
+      expect(totalInput.value).toBe('1,000');
+    });
+
+    it('prefills investmentTotalAmount from nextOverride for DIVIDEND', () => {
+      const dividendTx = {
+        ...investmentTransaction,
+        investmentAction: 'DIVIDEND',
+        investmentQuantity: null,
+        investmentPrice: null,
+        investmentTotalAmount: 50,
+        nextOverride: {
+          id: 'ov2',
+          scheduledTransactionId: 'inv1',
+          originalDate: '2025-02-15',
+          overrideDate: '2025-02-15',
+          amount: null,
+          categoryId: null,
+          description: null,
+          isSplit: null,
+          splits: null,
+          investmentQuantity: null,
+          investmentPrice: null,
+          investmentTotalAmount: 125,
+          createdAt: '',
+          updatedAt: '',
+        },
+      };
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={dividendTx}
+        />,
+      );
+      const totalInput = screen.getByLabelText('Total Amount') as HTMLInputElement;
+      // Override value 125, not base value 50
+      expect(totalInput.value).toBe('125');
+    });
+
+    it('falls back to base values when override has null investment fields', () => {
+      const txWithSparseOverride = {
+        ...investmentTransaction,
+        nextOverride: {
+          id: 'ov3',
+          scheduledTransactionId: 'inv1',
+          originalDate: '2025-02-15',
+          overrideDate: '2025-02-15',
+          amount: null,
+          categoryId: null,
+          description: null,
+          isSplit: null,
+          splits: null,
+          investmentQuantity: null,
+          investmentPrice: null,
+          investmentTotalAmount: null,
+          createdAt: '',
+          updatedAt: '',
+        },
+      };
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={txWithSparseOverride}
+        />,
+      );
+      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      expect(Number(qtyInput.value)).toBe(10); // base
+      expect(Number(priceInput.value)).toBe(100); // base
+    });
   });
 });

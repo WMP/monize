@@ -193,21 +193,34 @@ export function PostTransactionDialog({
         setSplits(createEmptySplits(amt));
       }
 
-      // Investment-kind: prefill overrides from the stored values
+      // Investment-kind: prefill from the next-occurrence override if one
+      // exists, falling back to the base scheduled transaction's saved values.
+      // Without the override fallback, a user who has tweaked the upcoming
+      // occurrence (e.g. a one-off DRIP buy at a different quantity) sees the
+      // original numbers in the Post dialog.
+      const overrideQty = nextOverride?.investmentQuantity;
+      const overridePrice = nextOverride?.investmentPrice;
+      const overrideTotal = nextOverride?.investmentTotalAmount;
       const initialQty =
-        scheduledTransaction.investmentQuantity != null
-          ? Number(scheduledTransaction.investmentQuantity)
-          : '';
+        overrideQty != null
+          ? Number(overrideQty)
+          : scheduledTransaction.investmentQuantity != null
+            ? Number(scheduledTransaction.investmentQuantity)
+            : '';
       const initialPrice =
-        scheduledTransaction.investmentPrice != null
-          ? Number(scheduledTransaction.investmentPrice)
-          : '';
+        overridePrice != null
+          ? Number(overridePrice)
+          : scheduledTransaction.investmentPrice != null
+            ? Number(scheduledTransaction.investmentPrice)
+            : '';
       setInvestmentQuantity(initialQty);
       setInvestmentPrice(initialPrice);
       setInvestmentTotalAmount(
-        scheduledTransaction.investmentTotalAmount != null
-          ? Number(scheduledTransaction.investmentTotalAmount)
-          : '',
+        overrideTotal != null
+          ? Number(overrideTotal)
+          : scheduledTransaction.investmentTotalAmount != null
+            ? Number(scheduledTransaction.investmentTotalAmount)
+            : '',
       );
       // Seed the UI-only total from qty * price (+ signed commission) so the
       // user sees a meaningful starting value for BUY/SELL/REINVEST.
