@@ -277,7 +277,10 @@ describe('InvestmentPerformanceReport', () => {
       totalGainLossPercent: 61.1,
     });
     mockGetInvestmentAccounts.mockResolvedValue([]);
-    const { container } = render(<InvestmentPerformanceReport />);
+    let container!: HTMLElement;
+    await act(async () => {
+      ({ container } = render(<InvestmentPerformanceReport />));
+    });
     await waitFor(() => expect(container.querySelector('table')).toBeInTheDocument());
     const headerCount = container.querySelectorAll('table thead th').length;
     expect(headerCount).toBeGreaterThan(0);

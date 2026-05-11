@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@/test/render';
+import { render, screen, waitFor, fireEvent, act } from '@/test/render';
 import { BillPaymentHistoryReport } from './BillPaymentHistoryReport';
 
 const mockPush = vi.fn();
@@ -31,11 +31,12 @@ vi.mock('@/hooks/useNumberFormat', () => ({
   }),
 }));
 
+const STABLE_RANGE = { start: '2024-01-01', end: '2025-01-01' };
 vi.mock('@/hooks/useDateRange', () => ({
   useDateRange: () => ({
     dateRange: '1y',
     setDateRange: vi.fn(),
-    resolvedRange: { start: '2024-01-01', end: '2025-01-01' },
+    resolvedRange: STABLE_RANGE,
     isValid: true,
   }),
 }));
@@ -270,21 +271,30 @@ describe('BillPaymentHistoryReport', () => {
         },
       ],
     });
-    const { container } = render(<BillPaymentHistoryReport />);
+    let container!: HTMLElement;
+    await act(async () => {
+      ({ container } = render(<BillPaymentHistoryReport />));
+    });
     // The view is "overview" by default; switch to "By Bill" view to render the table.
     await waitFor(() => expect(screen.getByText('By Bill')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('By Bill'));
+    await act(async () => {
+      fireEvent.click(screen.getByText('By Bill'));
+    });
     await waitFor(() => expect(container.querySelector('table')).toBeInTheDocument());
     const __headerCount = container.querySelectorAll('table thead th').length;
     for (let __i = 0; __i < __headerCount; __i += 1) {
       const __ths = container.querySelectorAll('table thead th');
       if (!__ths[__i]) break;
-      fireEvent.click(__ths[__i]);
+      await act(async () => {
+        fireEvent.click(__ths[__i]);
+      });
     }
     for (let __i = 0; __i < __headerCount; __i += 1) {
       const __ths = container.querySelectorAll('table thead th');
       if (!__ths[__i]) break;
-      fireEvent.click(__ths[__i]);
+      await act(async () => {
+        fireEvent.click(__ths[__i]);
+      });
     }
   });
 });

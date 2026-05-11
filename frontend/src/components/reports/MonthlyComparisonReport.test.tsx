@@ -461,7 +461,10 @@ describe('MonthlyComparisonReport', () => {
 
   it('exercises every sortable column on comparison and top movers tables', async () => {
     mockGetMonthlyComparison.mockResolvedValue(mockResponse);
-    const { container } = render(<MonthlyComparisonReport />);
+    let container!: HTMLElement;
+    await act(async () => {
+      ({ container } = render(<MonthlyComparisonReport />));
+    });
     await waitFor(() => expect(container.querySelectorAll('table').length).toBeGreaterThan(0));
     const tableCount = container.querySelectorAll('table').length;
     for (let t = 0; t < tableCount; t += 1) {
@@ -470,12 +473,12 @@ describe('MonthlyComparisonReport', () => {
       for (let i = 0; i < headerCount; i += 1) {
         const ths = container.querySelectorAll('table')[t].querySelectorAll('thead th');
         if (!ths[i]) break;
-        fireEvent.click(ths[i]);
+        await act(async () => { fireEvent.click(ths[i]); });
       }
       for (let i = 0; i < headerCount; i += 1) {
         const ths = container.querySelectorAll('table')[t].querySelectorAll('thead th');
         if (!ths[i]) break;
-        fireEvent.click(ths[i]);
+        await act(async () => { fireEvent.click(ths[i]); });
       }
     }
   });

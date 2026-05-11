@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@/test/render';
+import { render, screen, waitFor, fireEvent, act } from '@/test/render';
 import { SecurityTypeAllocationReport } from './SecurityTypeAllocationReport';
 
 vi.mock('@/hooks/useNumberFormat', () => ({
@@ -218,18 +218,21 @@ describe('SecurityTypeAllocationReport', () => {
         { securityId: 's3', symbol: 'CCC', name: 'Charlie', currencyCode: 'CAD', securityType: 'BOND', marketValue: 2000, quantity: 20, accountId: 'a1' },
       ],
     });
-    const { container } = render(<SecurityTypeAllocationReport />);
+    let container!: HTMLElement;
+    await act(async () => {
+      ({ container } = render(<SecurityTypeAllocationReport />));
+    });
     await waitFor(() => expect(container.querySelector('table')).toBeInTheDocument());
     const __headerCount = container.querySelectorAll('table thead th').length;
     for (let __i = 0; __i < __headerCount; __i += 1) {
       const __ths = container.querySelectorAll('table thead th');
       if (!__ths[__i]) break;
-      fireEvent.click(__ths[__i]);
+      await act(async () => { fireEvent.click(__ths[__i]); });
     }
     for (let __i = 0; __i < __headerCount; __i += 1) {
       const __ths = container.querySelectorAll('table thead th');
       if (!__ths[__i]) break;
-      fireEvent.click(__ths[__i]);
+      await act(async () => { fireEvent.click(__ths[__i]); });
     }
   });
 });

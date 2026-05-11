@@ -300,19 +300,22 @@ describe('SectorWeightingsReport', () => {
     });
     mockGetInvestmentAccounts.mockResolvedValue([]);
     mockGetSecurities.mockResolvedValue([]);
-    const { container } = render(<SectorWeightingsReport />);
+    let container!: HTMLElement;
+    await act(async () => {
+      ({ container } = render(<SectorWeightingsReport />));
+    });
     await waitFor(() => expect(container.querySelector('table')).toBeInTheDocument());
     const headerCount = container.querySelectorAll('table thead th').length;
     expect(headerCount).toBeGreaterThan(0);
     for (let __i = 0; __i < headerCount; __i += 1) {
       const __ths = container.querySelectorAll('table thead th');
       if (!__ths[__i]) break;
-      fireEvent.click(__ths[__i]);
+      await act(async () => { fireEvent.click(__ths[__i]); });
     }
     for (let __i = 0; __i < headerCount; __i += 1) {
       const __ths = container.querySelectorAll('table thead th');
       if (!__ths[__i]) break;
-      fireEvent.click(__ths[__i]);
+      await act(async () => { fireEvent.click(__ths[__i]); });
     }
   });
 });
