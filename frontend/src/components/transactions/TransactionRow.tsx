@@ -380,6 +380,14 @@ export const TransactionRow = memo(function TransactionRow({
           {transaction.description || '-'}
         </div>
       </td>
+      <td className={`${cellPadding} text-sm text-gray-500 dark:text-gray-400 hidden 2xl:table-cell`}>
+        <div
+          className={`truncate max-w-[160px] ${isVoid ? 'line-through' : ''}`}
+          title={transaction.referenceNumber || undefined}
+        >
+          {transaction.referenceNumber || '-'}
+        </div>
+      </td>
       <td className={`${cellPadding} text-sm hidden xl:table-cell`}>
         {transaction.tags && transaction.tags.length > 0 ? (
           <div className="flex flex-wrap gap-1">
