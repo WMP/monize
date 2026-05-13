@@ -753,4 +753,71 @@ describe('TransactionRow', () => {
     );
     expect(screen.getByText(/Source/)).toBeInTheDocument();
   });
+
+  it('renders investment split with action label and security symbol', () => {
+    renderRow(
+      { density: 'normal' },
+      {
+        isSplit: true,
+        splits: [
+          {
+            id: 's1',
+            amount: 2500,
+            kind: 'category',
+            category: { id: 'cat-salary', name: 'Salary' },
+            transferAccount: null,
+            investmentTransaction: null,
+          } as any,
+          {
+            id: 's2',
+            amount: -1000,
+            kind: 'investment',
+            category: null,
+            transferAccount: null,
+            investmentTransaction: {
+              id: 'inv1',
+              action: 'BUY',
+              securityId: 'sec1',
+              security: { id: 'sec1', symbol: 'AAPL', name: 'Apple Inc.' },
+              quantity: 5,
+              price: 200,
+              commission: 0,
+              exchangeRate: 1,
+            },
+          } as any,
+        ],
+      },
+    );
+    expect(screen.getByText(/Salary:/)).toBeInTheDocument();
+    expect(screen.getByText(/Buy: AAPL:/)).toBeInTheDocument();
+  });
+
+  it('falls back to raw action when investment split lacks a security', () => {
+    renderRow(
+      { density: 'normal' },
+      {
+        isSplit: true,
+        splits: [
+          {
+            id: 's1',
+            amount: -50,
+            kind: 'investment',
+            category: null,
+            transferAccount: null,
+            investmentTransaction: {
+              id: 'inv1',
+              action: 'DIVIDEND',
+              securityId: null,
+              security: null,
+              quantity: null,
+              price: null,
+              commission: 0,
+              exchangeRate: 1,
+            },
+          } as any,
+        ],
+      },
+    );
+    expect(screen.getByText(/Dividend:/)).toBeInTheDocument();
+  });
 });

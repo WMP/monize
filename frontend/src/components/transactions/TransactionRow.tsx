@@ -3,10 +3,32 @@
 import { memo, useState, useRef, useEffect, useCallback, type JSX } from 'react';
 import { createPortal } from 'react-dom';
 import { getIconComponent } from '@/components/ui/IconPicker';
-import { Transaction, TransactionStatus } from '@/types/transaction';
+import { Transaction, TransactionSplit, TransactionStatus } from '@/types/transaction';
 import { CategoryBudgetStatus } from '@/types/budget';
 import { DensityLevel } from '@/hooks/useTableDensity';
 import { formatAmountWithCommas, formatCurrency, getDecimalPlacesForCurrency } from '@/lib/format';
+
+const INVESTMENT_ACTION_LABELS: Record<string, string> = {
+  BUY: 'Buy',
+  SELL: 'Sell',
+  DIVIDEND: 'Dividend',
+  INTEREST: 'Interest',
+  CAPITAL_GAIN: 'Capital Gain',
+  SPLIT: 'Split',
+  TRANSFER_IN: 'Transfer In',
+  TRANSFER_OUT: 'Transfer Out',
+  REINVEST: 'Reinvest',
+  ADD_SHARES: 'Add Shares',
+  REMOVE_SHARES: 'Remove Shares',
+};
+
+function describeInvestmentSplit(split: TransactionSplit): string {
+  const inv = split.investmentTransaction;
+  if (!inv) return 'Uncategorized';
+  const action = INVESTMENT_ACTION_LABELS[inv.action] || inv.action;
+  const symbol = inv.security?.symbol;
+  return symbol ? `${action}: ${symbol}` : action;
+}
 
 function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
   density: DensityLevel;
@@ -295,6 +317,10 @@ export const TransactionRow = memo(function TransactionRow({
                         {Number(split.amount) < 0
                           ? `\u2192 ${split.transferAccount.name}`
                           : `${split.transferAccount.name} \u2192`}: {formatAmountWithCommas(Math.abs(Number(split.amount)), getDecimalPlacesForCurrency(transaction.currencyCode))}
+                      </span>
+                    ) : split.investmentTransaction ? (
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        {describeInvestmentSplit(split)}: {formatAmountWithCommas(Math.abs(Number(split.amount)), getDecimalPlacesForCurrency(transaction.currencyCode))}
                       </span>
                     ) : (
                       <>{split.category?.name || 'Uncategorized'}: {formatAmountWithCommas(Math.abs(Number(split.amount)), getDecimalPlacesForCurrency(transaction.currencyCode))}</>

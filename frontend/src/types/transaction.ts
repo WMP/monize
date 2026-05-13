@@ -2,7 +2,7 @@ import { Payee } from './payee';
 import { Category } from './category';
 import { Account } from './account';
 import { Tag } from './tag';
-import { InvestmentAction } from './investment';
+import { InvestmentAction, Security } from './investment';
 
 export enum TransactionStatus {
   UNRECONCILED = 'UNRECONCILED',
@@ -40,6 +40,7 @@ export interface TransactionSplit {
     id: string;
     action: InvestmentAction;
     securityId: string | null;
+    security: Security | null;
     quantity: number | null;
     price: number | null;
     commission: number;
