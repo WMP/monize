@@ -68,6 +68,13 @@ vi.mock('@/hooks/useDateRange', () => ({
 
 vi.mock('@/lib/utils', () => ({
   parseLocalDate: (d: string) => new Date(d + 'T00:00:00'),
+  // MultiSelect (used for the account filter) imports `cn` for className
+  // composition; a minimal join keeps it from blowing up at render time.
+  cn: (...args: unknown[]) =>
+    args
+      .flat(Infinity)
+      .filter((c) => typeof c === 'string' && c.length > 0)
+      .join(' '),
 }));
 
 vi.mock('@/components/ui/DateRangeSelector', () => ({
