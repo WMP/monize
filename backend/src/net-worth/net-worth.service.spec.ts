@@ -2053,8 +2053,14 @@ describe("NetWorthService", () => {
         { id: "sec-1", skipPriceUpdates: false },
       ]);
 
-      // security prices query
+      // security prices query (includes a price from the prior trading day so
+      // the first chart point can be valued using yesterday's close)
       dataSource.query.mockResolvedValueOnce([
+        {
+          security_id: "sec-1",
+          price_date: "2025-02-28",
+          close_price: "99.00",
+        },
         {
           security_id: "sec-1",
           price_date: "2025-03-01",
@@ -2078,10 +2084,12 @@ describe("NetWorthService", () => {
         "2025-03-03",
       );
 
+      // Each point uses the previous day's close: 03-01 -> 02-28, 03-02 ->
+      // 03-01, 03-03 -> 03-02. Matches the Gain/Dividend report's convention.
       expect(result).toHaveLength(3);
-      expect(result[0]).toEqual({ date: "2025-03-01", value: 1000 });
-      expect(result[1]).toEqual({ date: "2025-03-02", value: 1020 });
-      expect(result[2]).toEqual({ date: "2025-03-03", value: 1010 });
+      expect(result[0]).toEqual({ date: "2025-03-01", value: 990 });
+      expect(result[1]).toEqual({ date: "2025-03-02", value: 1000 });
+      expect(result[2]).toEqual({ date: "2025-03-03", value: 1020 });
     });
 
     it("includes cash balances from INVESTMENT_CASH accounts", async () => {
@@ -2203,11 +2211,11 @@ describe("NetWorthService", () => {
         { id: "sec-1", skipPriceUpdates: false, currencyCode: "CAD" },
       ]);
 
-      // security prices
+      // security prices (previous trading day's close)
       dataSource.query.mockResolvedValueOnce([
         {
           security_id: "sec-1",
-          price_date: "2025-03-01",
+          price_date: "2025-02-28",
           close_price: "100.00",
         },
       ]);
@@ -2272,11 +2280,11 @@ describe("NetWorthService", () => {
         { id: "sec-1", skipPriceUpdates: false, currencyCode: "CAD" },
       ]);
 
-      // security prices
+      // security prices (previous trading day's close)
       dataSource.query.mockResolvedValueOnce([
         {
           security_id: "sec-1",
-          price_date: "2025-03-01",
+          price_date: "2025-02-28",
           close_price: "100.00",
         },
       ]);
@@ -2341,11 +2349,11 @@ describe("NetWorthService", () => {
         { id: "sec-eur", skipPriceUpdates: false, currencyCode: "EUR" },
       ]);
 
-      // security prices
+      // security prices (previous trading day's close)
       dataSource.query.mockResolvedValueOnce([
         {
           security_id: "sec-eur",
-          price_date: "2025-03-01",
+          price_date: "2025-02-28",
           close_price: "50.00",
         },
       ]);
@@ -2425,16 +2433,16 @@ describe("NetWorthService", () => {
         { id: "sec-usd", skipPriceUpdates: false, currencyCode: "USD" },
       ]);
 
-      // security prices
+      // security prices (previous trading day's close)
       dataSource.query.mockResolvedValueOnce([
         {
           security_id: "sec-cad",
-          price_date: "2025-03-01",
+          price_date: "2025-02-28",
           close_price: "50.00",
         },
         {
           security_id: "sec-usd",
-          price_date: "2025-03-01",
+          price_date: "2025-02-28",
           close_price: "100.00",
         },
       ]);
@@ -2515,11 +2523,11 @@ describe("NetWorthService", () => {
         { id: "sec-1", skipPriceUpdates: false },
       ]);
 
-      // security prices
+      // security prices (previous trading day's close)
       dataSource.query.mockResolvedValueOnce([
         {
           security_id: "sec-1",
-          price_date: "2025-03-01",
+          price_date: "2025-02-28",
           close_price: "10.00",
         },
       ]);
@@ -2641,11 +2649,11 @@ describe("NetWorthService", () => {
         { id: "sec-usd", skipPriceUpdates: false, currencyCode: "USD" },
       ]);
 
-      // security prices (in USD)
+      // security prices (previous trading day's close, in USD)
       dataSource.query.mockResolvedValueOnce([
         {
           security_id: "sec-usd",
-          price_date: "2025-03-01",
+          price_date: "2025-02-28",
           close_price: "25.675",
         },
       ]);

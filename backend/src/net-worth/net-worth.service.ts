@@ -876,16 +876,22 @@ export class NetWorthService {
           const security = securityMap.get(secId);
           let price: number | undefined;
 
+          // Use the previous day's close to value each point on the series,
+          // matching the convention used by the Gain/Dividends/Interest report
+          // (which looks up the close on `periodStart - 1` for opening values).
+          // The chart point at date X therefore represents the portfolio's
+          // value as of the start of day X, i.e. the latest close strictly
+          // before X.
           if (security?.skipPriceUpdates) {
             const txPrices = txPricesBySec.get(secId) || [];
             for (const tp of txPrices) {
-              if (tp.date <= dateStr) price = tp.price;
+              if (tp.date < dateStr) price = tp.price;
               else break;
             }
           } else {
             const secPrices = pricesBySec.get(secId) || [];
             for (const sp of secPrices) {
-              if (sp.date <= dateStr) price = sp.price;
+              if (sp.date < dateStr) price = sp.price;
               else break;
             }
           }
