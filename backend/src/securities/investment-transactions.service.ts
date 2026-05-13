@@ -1415,8 +1415,14 @@ export class InvestmentTransactionsService {
       );
 
       // Update entity properties directly
-      if (updateDto.accountId !== undefined)
+      if (updateDto.accountId !== undefined) {
         transaction.accountId = updateDto.accountId;
+        // findOne's leftJoinAndSelect populated `account`; if we mutate only
+        // the FK column, TypeORM's save() will re-derive the column from the
+        // still-stale relation and silently revert the change. Point the
+        // relation stub at the new id to keep them in sync.
+        transaction.account = { id: updateDto.accountId } as any;
+      }
       if (updateDto.action !== undefined) {
         // M18: Re-validate security requirement when action changes
         const securityRequiredActions = [
@@ -1443,10 +1449,20 @@ export class InvestmentTransactionsService {
       }
       if (updateDto.transactionDate !== undefined)
         transaction.transactionDate = updateDto.transactionDate;
-      if (updateDto.securityId !== undefined)
+      if (updateDto.securityId !== undefined) {
         transaction.securityId = updateDto.securityId;
-      if (updateDto.fundingAccountId !== undefined)
+        transaction.security = updateDto.securityId
+          ? ({ id: updateDto.securityId } as any)
+          : (null as any);
+      }
+      if (updateDto.fundingAccountId !== undefined) {
         transaction.fundingAccountId = updateDto.fundingAccountId || null;
+        // Same reason as accountId above: keep the eager-loaded relation in
+        // sync with the new FK so save() doesn't write back the old one.
+        transaction.fundingAccount = transaction.fundingAccountId
+          ? ({ id: transaction.fundingAccountId } as any)
+          : null;
+      }
       if (updateDto.quantity !== undefined)
         transaction.quantity = updateDto.quantity;
       if (updateDto.price !== undefined) transaction.price = updateDto.price;

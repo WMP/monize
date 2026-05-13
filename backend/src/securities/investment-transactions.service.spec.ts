@@ -2041,6 +2041,94 @@ describe("InvestmentTransactionsService", () => {
       );
     });
 
+    it("debits the new funding account and refunds the old one when fundingAccountId changes", async () => {
+      const newFundingAccountId = "funding-account-2";
+      const newCashTxId = "cash-tx-new-funding";
+      const mockNewFundingAccount = {
+        id: newFundingAccountId,
+        userId,
+        accountType: "CHEQUING",
+        accountSubType: null,
+        linkedAccountId: null,
+        currencyCode: "USD",
+        name: "Other Checking",
+      };
+      accountsService.findOne.mockImplementation((uid: string, aid: string) => {
+        if (aid === accountId) return Promise.resolve(mockInvestmentAccount);
+        if (aid === cashAccountId) return Promise.resolve(mockCashAccount);
+        if (aid === fundingAccountId)
+          return Promise.resolve(mockFundingAccount);
+        if (aid === newFundingAccountId)
+          return Promise.resolve(mockNewFundingAccount);
+        return Promise.reject(new NotFoundException("Account not found"));
+      });
+
+      // Existing BUY that was funded from the original fundingAccountId, with
+      // the eager-loaded fundingAccount relation pointing at the OLD account
+      // (this is what `findOne`'s leftJoinAndSelect produces in real usage).
+      const existingTx = {
+        ...mockBuyTransaction,
+        fundingAccountId,
+        fundingAccount: mockFundingAccount as any,
+      };
+      const firstFindQB = createMockQueryBuilder(existingTx);
+      const secondFindQB = createMockQueryBuilder({
+        ...existingTx,
+        fundingAccountId: newFundingAccountId,
+        fundingAccount: mockNewFundingAccount as any,
+      });
+      investmentTransactionsRepository.createQueryBuilder
+        .mockReturnValueOnce(firstFindQB)
+        .mockReturnValueOnce(secondFindQB);
+
+      // Linked cash transaction currently sits in the OLD funding account
+      transactionRepository.findOne.mockResolvedValue({
+        id: cashTransactionId,
+        userId,
+        accountId: fundingAccountId,
+        transactionDate: existingTx.transactionDate,
+        amount: -1509.99,
+      });
+
+      transactionRepository.create.mockImplementationOnce((data: any) => ({
+        ...data,
+        id: newCashTxId,
+      }));
+
+      await service.update(userId, transactionId, {
+        fundingAccountId: newFundingAccountId,
+      });
+
+      // OLD funding account should be refunded by reversing the original cash tx
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        fundingAccountId,
+        1509.99,
+        expect.anything(),
+      );
+
+      // NEW funding account should be debited via a freshly created cash tx
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        newFundingAccountId,
+        -1509.99,
+        expect.anything(),
+      );
+
+      // The new linked cash transaction must be persisted on the NEW account
+      expect(transactionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accountId: newFundingAccountId,
+          amount: -1509.99,
+        }),
+      );
+
+      // And the investment row must be saved with the NEW fundingAccountId
+      expect(investmentTransactionsRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fundingAccountId: newFundingAccountId,
+        }),
+      );
+    });
+
     it("records action history on update", async () => {
       investmentTransactionsRepository.findOne.mockResolvedValue({
         ...mockBuyTransaction,

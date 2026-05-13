@@ -15,6 +15,12 @@ import { TransactionSplit } from "../../transactions/entities/transaction-split.
 import { Security } from "./security.entity";
 import { User } from "../../users/entities/user.entity";
 
+const numericTransformer = {
+  to: (value: number | null): number | null => value,
+  from: (value: string | null): number | null =>
+    value === null ? null : Number(value),
+};
+
 export enum InvestmentAction {
   BUY = "BUY",
   SELL = "SELL",
@@ -93,22 +99,46 @@ export class InvestmentTransaction {
   transactionDate: string;
 
   @ApiProperty({ example: 100, description: "Number of shares" })
-  @Column({ type: "decimal", precision: 20, scale: 8, nullable: true })
+  @Column({
+    type: "decimal",
+    precision: 20,
+    scale: 8,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   quantity: number | null;
 
   @ApiProperty({ example: 150.25, description: "Price per share" })
-  @Column({ type: "decimal", precision: 20, scale: 6, nullable: true })
+  @Column({
+    type: "decimal",
+    precision: 20,
+    scale: 6,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   price: number | null;
 
   @ApiProperty({ example: 9.99, description: "Commission or fee" })
-  @Column({ type: "decimal", precision: 20, scale: 4, default: 0 })
+  @Column({
+    type: "decimal",
+    precision: 20,
+    scale: 4,
+    default: 0,
+    transformer: numericTransformer,
+  })
   commission: number;
 
   @ApiProperty({
     example: 15035.99,
     description: "Total amount of transaction in the security's currency",
   })
-  @Column({ type: "decimal", precision: 20, scale: 4, name: "total_amount" })
+  @Column({
+    type: "decimal",
+    precision: 20,
+    scale: 4,
+    name: "total_amount",
+    transformer: numericTransformer,
+  })
   totalAmount: number;
 
   @ApiProperty({
