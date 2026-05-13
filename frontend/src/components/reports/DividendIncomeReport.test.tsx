@@ -1811,10 +1811,16 @@ describe('DividendIncomeReport', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'By Security' })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'By Security' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'By Security' }));
+    });
 
-    fireEvent.click(await screen.findByRole('button', { name: /^export$/i }));
-    fireEvent.click(screen.getByRole('button', { name: 'CSV' }));
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('button', { name: /^export$/i }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'CSV' }));
+    });
 
     const [filename] = mockExportToCsv.mock.calls[0];
     // Suffix " - Brokerage" should be stripped from the filename
