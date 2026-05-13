@@ -928,6 +928,162 @@ describe("TransactionTransferService", () => {
       expect(fromCall[1]).not.toHaveProperty("description");
     });
 
+    it("regenerates auto-generated payeeName when destination account changes and frontend re-sends the old auto-generated value", async () => {
+      // Simulates the frontend behavior: when editing a transfer, the form
+      // always re-sends payeeName (the previous auto-generated value), so
+      // payeeName !== undefined but should still be regenerated.
+      const newToAccount = {
+        id: "new-to-account",
+        name: "Investment",
+        currencyCode: "USD",
+      };
+      accountsService.findOne.mockImplementation(
+        (_userId: string, accountId: string) => {
+          if (accountId === "new-to-account")
+            return Promise.resolve(newToAccount);
+          if (accountId === "from-account")
+            return Promise.resolve(mockFromAccount);
+          return Promise.resolve(mockToAccount);
+        },
+      );
+
+      const fromWithAutoPayee = {
+        ...fromTransaction,
+        payeeId: null,
+        payeeName: "Transfer to Savings",
+      } as unknown as Transaction;
+      const toWithAutoPayee = {
+        ...toTransaction,
+        payeeId: null,
+        payeeName: "Transfer from Checking",
+      } as unknown as Transaction;
+
+      mockFindOne
+        .mockResolvedValueOnce(fromWithAutoPayee)
+        .mockResolvedValueOnce(toWithAutoPayee)
+        .mockResolvedValueOnce(fromWithAutoPayee)
+        .mockResolvedValueOnce({
+          ...toWithAutoPayee,
+          accountId: "new-to-account",
+        });
+
+      await service.updateTransfer(
+        "user-1",
+        "from-tx",
+        {
+          toAccountId: "new-to-account",
+          payeeId: null,
+          payeeName: "Transfer to Savings",
+        },
+        mockFindOne,
+      );
+
+      expect(transactionsRepository.update).toHaveBeenCalledWith(
+        "from-tx",
+        expect.objectContaining({ payeeName: "Transfer to Investment" }),
+      );
+    });
+
+    it("regenerates auto-generated payeeName on the to-side when source account changes", async () => {
+      const newFromAccount = {
+        id: "new-from-account",
+        name: "Brokerage",
+        currencyCode: "USD",
+      };
+      accountsService.findOne.mockImplementation(
+        (_userId: string, accountId: string) => {
+          if (accountId === "new-from-account")
+            return Promise.resolve(newFromAccount);
+          if (accountId === "to-account") return Promise.resolve(mockToAccount);
+          return Promise.resolve(mockFromAccount);
+        },
+      );
+
+      const fromWithAutoPayee = {
+        ...fromTransaction,
+        payeeId: null,
+        payeeName: "Transfer to Savings",
+      } as unknown as Transaction;
+      const toWithAutoPayee = {
+        ...toTransaction,
+        payeeId: null,
+        payeeName: "Transfer from Checking",
+      } as unknown as Transaction;
+
+      mockFindOne
+        .mockResolvedValueOnce(fromWithAutoPayee)
+        .mockResolvedValueOnce(toWithAutoPayee)
+        .mockResolvedValueOnce({
+          ...fromWithAutoPayee,
+          accountId: "new-from-account",
+        })
+        .mockResolvedValueOnce(toWithAutoPayee);
+
+      await service.updateTransfer(
+        "user-1",
+        "from-tx",
+        {
+          fromAccountId: "new-from-account",
+          payeeId: null,
+          payeeName: "Transfer from Checking",
+        },
+        mockFindOne,
+      );
+
+      expect(transactionsRepository.update).toHaveBeenCalledWith(
+        "to-tx",
+        expect.objectContaining({ payeeName: "Transfer from Brokerage" }),
+      );
+    });
+
+    it("does not regenerate payeeName when destination account changes but payee was user-set (payeeId present)", async () => {
+      const newToAccount = {
+        id: "new-to-account",
+        name: "Investment",
+        currencyCode: "USD",
+      };
+      accountsService.findOne.mockImplementation(
+        (_userId: string, accountId: string) => {
+          if (accountId === "new-to-account")
+            return Promise.resolve(newToAccount);
+          if (accountId === "from-account")
+            return Promise.resolve(mockFromAccount);
+          return Promise.resolve(mockToAccount);
+        },
+      );
+
+      const fromWithLinkedPayee = {
+        ...fromTransaction,
+        payeeId: "payee-1",
+        payeeName: "Transfer to Savings",
+      } as unknown as Transaction;
+
+      mockFindOne
+        .mockResolvedValueOnce(fromWithLinkedPayee)
+        .mockResolvedValueOnce(toTransaction)
+        .mockResolvedValueOnce(fromWithLinkedPayee)
+        .mockResolvedValueOnce({
+          ...toTransaction,
+          accountId: "new-to-account",
+        });
+
+      await service.updateTransfer(
+        "user-1",
+        "from-tx",
+        {
+          toAccountId: "new-to-account",
+          payeeId: "payee-1",
+          payeeName: "Transfer to Savings",
+        },
+        mockFindOne,
+      );
+
+      const fromCall = transactionsRepository.update.mock.calls.find(
+        (c: any[]) => c[0] === "from-tx",
+      );
+      expect(fromCall[1].payeeName).toBe("Transfer to Savings");
+    });
+
     it("does not update payeeName when custom payeeName is set", async () => {
       accountsService.findOne.mockImplementation(
         (_userId: string, accountId: string) => {
