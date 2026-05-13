@@ -161,6 +161,10 @@ describe("PortfolioService", () => {
 
     yahooFinanceService = {
       fetchIntradaySeries: jest.fn(),
+      // Default: no intraday FX series available. Tests that exercise the
+      // FX-per-timestamp path mock this explicitly. When this returns null
+      // the chart falls back to the latest spot from ExchangeRateService.
+      fetchIntradayFxSeries: jest.fn().mockResolvedValue(null),
     };
 
     // Default: every security resolves to a Yahoo-like provider that exposes
@@ -3037,6 +3041,116 @@ describe("PortfolioService", () => {
       expect(second.points).toHaveLength(1);
       // The retry actually hit Yahoo again (cache wasn't serving the failure).
       expect(yahooFinanceService.fetchIntradaySeries).toHaveBeenCalled();
+    });
+
+    it("values foreign-currency holdings at the FX rate prevailing at each bar", async () => {
+      // Each bar of a foreign-currency holding should be converted using
+      // the FX rate at that bar, not a single latest spot applied flat.
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+      holdingsRepository.find.mockResolvedValue([mockHoldingAAPL]);
+
+      const ts1 = new Date("2026-05-06T13:30:00.000Z");
+      const ts2 = new Date("2026-05-06T13:31:00.000Z");
+
+      yahooFinanceService.fetchIntradaySeries.mockResolvedValue([
+        { timestamp: ts1, close: 100 },
+        { timestamp: ts2, close: 100 },
+      ]);
+      yahooFinanceService.fetchIntradayFxSeries.mockImplementation(
+        async (from: string, to: string) => {
+          if (from === "USD" && to === "CAD") {
+            return [
+              { timestamp: ts1, close: 1.4 },
+              { timestamp: ts2, close: 1.5 },
+            ];
+          }
+          return null;
+        },
+      );
+      exchangeRateService.getLatestRate.mockResolvedValue(1.4);
+
+      const result = await service.getIntradayValueSeries(userId, {
+        range: "1d",
+      });
+
+      // ts1: 10 * 100 * 1.4 = 1400; ts2 keeps the same price but FX moved.
+      expect(result.points[0].value).toBeCloseTo(1400, 4);
+      expect(result.points[1].value).toBeCloseTo(10 * 100 * 1.5, 4);
+    });
+
+    it("applies per-bar FX to cash held in a foreign currency", async () => {
+      // Cash amounts don't move intraday, but their value in the display
+      // currency does when FX moves. Confirms the chart no longer treats
+      // foreign-currency cash as a flat additive offset.
+      const usdCashAccount: Partial<Account> = {
+        ...mockCashAccount,
+        currencyCode: "USD",
+        currentBalance: 1000 as any,
+      };
+      accountsRepository.find.mockResolvedValue([
+        mockBrokerageAccount,
+        usdCashAccount,
+      ]);
+      holdingsRepository.find.mockResolvedValue([mockHoldingVFV]); // CAD-native, no FX
+
+      const ts1 = new Date("2026-05-06T13:30:00.000Z");
+      const ts2 = new Date("2026-05-06T13:31:00.000Z");
+
+      yahooFinanceService.fetchIntradaySeries.mockResolvedValue([
+        { timestamp: ts1, close: 80 },
+        { timestamp: ts2, close: 80 },
+      ]);
+      yahooFinanceService.fetchIntradayFxSeries.mockImplementation(
+        async (from: string, to: string) => {
+          if (from === "USD" && to === "CAD") {
+            return [
+              { timestamp: ts1, close: 1.4 },
+              { timestamp: ts2, close: 1.5 },
+            ];
+          }
+          return null;
+        },
+      );
+      exchangeRateService.getLatestRate.mockResolvedValue(1.4);
+
+      const result = await service.getIntradayValueSeries(userId, {
+        range: "1d",
+      });
+
+      // VFV is CAD-native: 50 * 80 = 4000 at both bars.
+      // USD cash 1000 valued at 1.4 then 1.5 -> 1400 then 1500.
+      expect(result.points[0].value).toBeCloseTo(4000 + 1400, 4);
+      expect(result.points[1].value).toBeCloseTo(4000 + 1500, 4);
+    });
+
+    it("falls back to the latest spot when the intraday FX fetch fails", async () => {
+      // When Yahoo can't serve an FX series (rate limit, unsupported pair),
+      // we still need a sensible value per bar. Fall back to the latest spot
+      // rate from ExchangeRateService so the chart degrades gracefully rather
+      // than dropping the foreign-currency contribution.
+      accountsRepository.find.mockResolvedValue([mockBrokerageAccount]);
+      holdingsRepository.find.mockResolvedValue([mockHoldingAAPL]);
+
+      const ts = new Date("2026-05-06T13:30:00.000Z");
+      yahooFinanceService.fetchIntradaySeries.mockResolvedValue([
+        { timestamp: ts, close: 100 },
+      ]);
+      yahooFinanceService.fetchIntradayFxSeries.mockRejectedValue(
+        new Error("yahoo FX 429"),
+      );
+      exchangeRateService.getLatestRate.mockImplementation(
+        async (from: string, to: string) => {
+          if (from === "USD" && to === "CAD") return 1.4;
+          return null;
+        },
+      );
+
+      const result = await service.getIntradayValueSeries(userId, {
+        range: "1d",
+      });
+
+      expect(result.points).toHaveLength(1);
+      expect(result.points[0].value).toBeCloseTo(10 * 100 * 1.4, 4);
     });
 
     it("does not surface failedSymbols on partial failures (fallback price covers it)", async () => {

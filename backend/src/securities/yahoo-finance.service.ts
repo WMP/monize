@@ -502,6 +502,21 @@ export class YahooFinanceService implements QuoteProvider {
     return null;
   }
 
+  // Intraday FX series. Yahoo exposes currency pairs under the
+  // "{FROM}{TO}=X" symbol convention (e.g. USDCAD=X for USD->CAD) on the
+  // same chart endpoint as equities, so we reuse fetchIntradayRaw. Used
+  // by the Portfolio Value Over Time chart so foreign-currency holdings
+  // and cash are valued at each bar's FX rate, not the latest spot.
+  async fetchIntradayFxSeries(
+    fromCurrency: string,
+    toCurrency: string,
+    opts: { interval: IntradayInterval; range: IntradayRange },
+  ): Promise<IntradayPoint[] | null> {
+    if (fromCurrency === toCurrency) return null;
+    const pairSymbol = `${fromCurrency.toUpperCase()}${toCurrency.toUpperCase()}=X`;
+    return this.fetchIntradayRaw(pairSymbol, opts);
+  }
+
   private async fetchIntradayRaw(
     yahooSymbol: string,
     { interval, range }: { interval: IntradayInterval; range: IntradayRange },

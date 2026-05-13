@@ -936,44 +936,35 @@ export class PortfolioService {
     }
     const timestamps = [...timestampSet].sort((a, b) => a - b);
 
-    // Pre-compute FX rates from each security currency to the display
-    // currency. Intraday FX moves are tiny relative to chart resolution and
-    // we already pay this latency once for the price fetches; reusing the
-    // latest spot rate is the same simplification used elsewhere.
-    const rateCache = new Map<string, number>();
-    const currencies = new Set(intradayHoldings.map((h) => h.currencyCode));
-    for (const c of currencies) {
-      await this.calculationService.convertToDefault(
-        1,
-        c,
-        displayCurrency,
-        rateCache,
-      );
-    }
-
     // Cash held in the user's investment cash and standalone accounts is
     // part of the portfolio value just like holdings -- the daily-snapshot
     // endpoint already includes it (see net-worth.service.getDailyInvestments)
     // and we mirror that here so the 1D/1W/1M intraday chart agrees with
-    // longer-range views. Cash doesn't move intraday from price changes, so
-    // it's a constant additive offset across every grid point.
+    // longer-range views.
     const cashAccountList = [...cashAccounts, ...standaloneAccounts];
     const cashIds = cashAccountList.map((a) => a.id);
     const effectiveBalances =
       await this.calculationService.computeEffectiveBalances(cashIds);
-    const totalCashValue = await this.calculationService.computeTotalCashValue(
-      cashAccountList,
-      effectiveBalances,
-      displayCurrency,
-      rateCache,
-    );
-    const cashCents = Math.round(totalCashValue * 10000);
+
+    // Group cash by native currency so FX can be applied at each timestamp.
+    // Cash amounts don't move intraday, but their display-currency value does
+    // when FX moves -- so foreign-currency cash can't be a flat additive
+    // offset across the chart.
+    const cashByCurrency = new Map<string, number>();
+    for (const account of cashAccountList) {
+      const balance =
+        effectiveBalances.get(account.id) ?? Number(account.currentBalance);
+      cashByCurrency.set(
+        account.currencyCode,
+        (cashByCurrency.get(account.currencyCode) ?? 0) + balance,
+      );
+    }
 
     // For holdings whose intraday fetch failed (Yahoo errored, was
     // rate-limited past the retry budget, or simply has no minute-resolution
     // data for this security -- common for mutual funds and illiquid names),
-    // fall back to the security's latest known daily close. Treat that
-    // value as a constant additive offset, the same way cash is handled.
+    // fall back to the security's latest known daily close. Group by native
+    // currency so per-timestamp FX still applies to these "stale" amounts.
     // Without this, a single mutual fund in the user's portfolio would
     // either undercount the chart (if we ignored it) or pin the
     // "Couldn't load intraday prices" banner permanently (if we treated
@@ -981,7 +972,7 @@ export class PortfolioService {
     const failedHoldings = intradayHoldings.filter(
       (h) => !seriesBySecurity.has(h.securityId),
     );
-    let staleHoldingsCents = 0;
+    const staleByCurrency = new Map<string, number>();
     if (failedHoldings.length > 0) {
       const latestPrices = await this.getLatestPrices(
         failedHoldings.map((h) => h.securityId),
@@ -989,14 +980,77 @@ export class PortfolioService {
       for (const h of failedHoldings) {
         const lastClose = latestPrices.get(h.securityId);
         if (lastClose == null) continue;
-        const fxRate =
-          rateCache.get(`${h.currencyCode}->${displayCurrency}`) ?? 1;
-        staleHoldingsCents += Math.round(
-          h.quantity * lastClose * fxRate * 10000,
+        staleByCurrency.set(
+          h.currencyCode,
+          (staleByCurrency.get(h.currencyCode) ?? 0) + h.quantity * lastClose,
         );
       }
     }
-    const constantCents = cashCents + staleHoldingsCents;
+
+    // Fetch intraday FX series for every non-display currency in the
+    // portfolio (holding currencies + cash currencies). Each bar of the
+    // chart is then valued at the FX rate that prevailed at that moment,
+    // not the latest spot. Latest-spot is kept as a per-currency fallback
+    // for when the FX series fetch fails (rate limited, unsupported pair).
+    const rateCache = new Map<string, number>();
+    const fxCurrencies = new Set<string>([
+      ...intradayHoldings.map((h) => h.currencyCode),
+      ...cashByCurrency.keys(),
+    ]);
+    fxCurrencies.delete(displayCurrency);
+
+    type FxCursor = {
+      times: number[];
+      rates: number[];
+      cursor: number;
+      latest: number;
+    };
+    const fxByCurrency = new Map<string, FxCursor>();
+    await Promise.all(
+      [...fxCurrencies].map(async (currency) => {
+        const latest = await this.calculationService.convertToDefault(
+          1,
+          currency,
+          displayCurrency,
+          rateCache,
+        );
+        let series: IntradayPoint[] | null = null;
+        try {
+          series = await this.yahooFinanceService.fetchIntradayFxSeries(
+            currency,
+            displayCurrency,
+            yahooParams,
+          );
+        } catch (error) {
+          this.logger.warn(
+            `Failed to fetch intraday FX ${currency}->${displayCurrency}: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }
+        fxByCurrency.set(currency, {
+          times: series?.map((p) => p.timestamp.getTime()) ?? [],
+          rates: series?.map((p) => p.close) ?? [],
+          cursor: -1,
+          latest,
+        });
+      }),
+    );
+
+    // Walk each FX cursor monotonically as the grid advances; if no
+    // intraday FX series is available (failed fetch or same-currency),
+    // use the latest spot. Backfill the earliest known rate when the
+    // first FX bar arrives after the current grid timestamp.
+    const fxAt = (currency: string, ts: number): number => {
+      if (currency === displayCurrency) return 1;
+      const fx = fxByCurrency.get(currency);
+      if (!fx) return rateCache.get(`${currency}->${displayCurrency}`) ?? 1;
+      if (fx.times.length === 0) return fx.latest;
+      while (fx.cursor + 1 < fx.times.length && fx.times[fx.cursor + 1] <= ts) {
+        fx.cursor++;
+      }
+      return fx.cursor < 0 ? fx.rates[0] : fx.rates[fx.cursor];
+    };
 
     // Build per-security ordered timestamp/close arrays and a cursor-based
     // forward-fill so each grid point uses the latest known close.
@@ -1006,9 +1060,7 @@ export class PortfolioService {
         if (!points || points.length === 0) return null;
         return {
           quantity: h.quantity,
-          fxRate:
-            rateCache.get(`${h.currencyCode}->${displayCurrency}`) ??
-            (h.currencyCode === displayCurrency ? 1 : 1),
+          currencyCode: h.currencyCode,
           times: points.map((p) => p.timestamp.getTime()),
           closes: points.map((p) => p.close),
         };
@@ -1019,7 +1071,16 @@ export class PortfolioService {
     const points: IntradayValuePoint[] = [];
 
     for (const ts of timestamps) {
-      let totalCents = constantCents; // integer arithmetic to avoid float drift
+      let totalCents = 0; // integer arithmetic to avoid float drift
+      // Cash contributions, valued at the FX rate prevailing at this bar.
+      for (const [ccy, amount] of cashByCurrency) {
+        totalCents += Math.round(amount * fxAt(ccy, ts) * 10000);
+      }
+      // Stale-holding contributions (last daily close * quantity), same
+      // per-timestamp FX treatment as live holdings.
+      for (const [ccy, amount] of staleByCurrency) {
+        totalCents += Math.round(amount * fxAt(ccy, ts) * 10000);
+      }
       for (let i = 0; i < sources.length; i++) {
         const src = sources[i];
         // Advance cursor to the latest sample at-or-before ts.
@@ -1037,7 +1098,8 @@ export class PortfolioService {
         // moment each one's first bar arrives — which is exactly the
         // "significant jump" the chart used to show on multi-account views.
         const close = cursors[i] < 0 ? src.closes[0] : src.closes[cursors[i]];
-        const valueInDisplay = src.quantity * close * src.fxRate;
+        const valueInDisplay =
+          src.quantity * close * fxAt(src.currencyCode, ts);
         totalCents += Math.round(valueInDisplay * 10000);
       }
       points.push({
