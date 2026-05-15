@@ -1082,6 +1082,22 @@ describe('PostTransactionDialog', () => {
       expect(totalInput.value).toBe('1,000');
     });
 
+    it('seeds Total Price from the scheduled total amount when set', () => {
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={{
+            ...investmentTransaction,
+            // qty * price would be 1000, but the scheduled total wins so it
+            // can be preserved when the latest market price is applied.
+            investmentTotalAmount: 750,
+          } as any}
+        />,
+      );
+      const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
+      expect(totalInput.value).toBe('750');
+    });
+
     it('updates Total Price when Quantity is changed', () => {
       render(
         <PostTransactionDialog
@@ -1131,7 +1147,7 @@ describe('PostTransactionDialog', () => {
       expect(Number(qtyInput.value)).toBeCloseTo(5, 6);
     });
 
-    it('auto-fills Price from latest market price on open', async () => {
+    it('auto-fills Price from latest market price on open, preserving total and adjusting quantity', async () => {
       mockGetSecurityPrices.mockResolvedValue([{ closePrice: '123.45' }]);
       render(
         <PostTransactionDialog
@@ -1143,11 +1159,14 @@ describe('PostTransactionDialog', () => {
       await waitFor(() => {
         expect(Number(priceInput.value)).toBeCloseTo(123.45, 6);
       });
-      // Total recomputed from saved qty (10) * 123.45 = 1234.5
+      // Scheduled total (10 * 100 = 1000) is preserved -- the new price
+      // recomputes the quantity (1000 / 123.45 ~= 8.10044553), not the total.
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
+      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
       await waitFor(() => {
-        expect(totalInput.value).toBe('1,234.5');
+        expect(Number(qtyInput.value)).toBeCloseTo(1000 / 123.45, 4);
       });
+      expect(totalInput.value).toBe('1,000');
     });
 
     it('fetches latest price for the security', async () => {
@@ -1258,6 +1277,58 @@ describe('PostTransactionDialog', () => {
       expect(Number(priceInput.value)).toBe(250);
       // 4 * 250 = 1000, commission 0
       expect(totalInput.value).toBe('1,000');
+    });
+
+    it('shows the projected balance as a number, never NaN, for a non-finite investment amount', () => {
+      const badDividend = {
+        ...investmentTransaction,
+        investmentAction: 'DIVIDEND',
+        investmentQuantity: null,
+        investmentPrice: null,
+        // A corrupt/blank stored total previously made the projected
+        // "final balance" render as NaN.
+        investmentTotalAmount: NaN as unknown as number,
+      } as any;
+      const { container } = render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={badDividend}
+        />,
+      );
+      expect(container.textContent).not.toContain('NaN');
+    });
+
+    it('shows the cash account going to zero (not NaN) for a BUY whose market price changes the quantity', async () => {
+      // Reproduces the reported screenshot: BUY XCNS, scheduled total $2,000,
+      // latest market price 26.15 -> quantity recomputed, total preserved.
+      // The "CA RRSP - Cash" account ($2,000) should project to $0.00.
+      mockGetSecurityPrices.mockResolvedValue([{ closePrice: '26.15' }]);
+      const buyTx = {
+        ...investmentTransaction,
+        accountId: 'rrsp-cash',
+        account: { name: 'CA RRSP - Cash', currentBalance: 2000 },
+        investmentAction: 'BUY',
+        investmentSecurity: { id: 'sec1', symbol: 'XCNS', name: 'XCNS' },
+        investmentQuantity: 80,
+        investmentPrice: 25,
+        investmentTotalAmount: 2000,
+        investmentCommission: 0,
+      } as any;
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={buyTx}
+        />,
+      );
+      const row = (await screen.findByText('CA RRSP - Cash')).closest('div')!;
+      await waitFor(() => {
+        const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+        expect(Number(priceInput.value)).toBeCloseTo(26.15, 6);
+      });
+      await waitFor(() => {
+        expect(row.textContent).toContain('0.00');
+      });
+      expect(row.textContent).not.toContain('NaN');
     });
 
     it('prefills investmentTotalAmount from nextOverride for DIVIDEND', () => {
