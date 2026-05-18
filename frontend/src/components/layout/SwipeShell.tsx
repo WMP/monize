@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { AppHeader } from './AppHeader';
+import { DelegationBanner } from './DelegationBanner';
 import { BackendDownBanner } from './BackendDownBanner';
 import { DemoModeBanner } from './DemoModeBanner';
 import { HttpWarningBanner } from './HttpWarningBanner';
@@ -36,6 +37,7 @@ export function SwipeShell({ children, httpsHeadersActive = false }: SwipeShellP
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-clip">
       <AppHeader />
+      <DelegationBanner />
       <HttpWarningBanner httpsHeadersActive={httpsHeadersActive} />
       <BackendDownBanner httpsHeadersActive={httpsHeadersActive} />
       <DemoModeBanner />

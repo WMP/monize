@@ -5,11 +5,13 @@ import { AccountsService } from "./accounts.service";
 import { AccountExportService } from "./account-export.service";
 import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
 import { LoanPaymentSetupService } from "./loan-payment-setup.service";
+import { DelegationService } from "../delegation/delegation.service";
 
 describe("AccountsController", () => {
   let controller: AccountsController;
   let mockAccountsService: Partial<Record<keyof AccountsService, jest.Mock>>;
   let mockExportService: Partial<Record<keyof AccountExportService, jest.Mock>>;
+  let mockDelegationService: Record<string, jest.Mock>;
   const mockReq = { user: { id: "user-1" } };
 
   beforeEach(async () => {
@@ -37,6 +39,11 @@ describe("AccountsController", () => {
       exportQif: jest.fn(),
     };
 
+    mockDelegationService = {
+      readableAccountIds: jest.fn().mockResolvedValue([]),
+      hasReadAccess: jest.fn().mockResolvedValue(true),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AccountsController],
       providers: [
@@ -55,6 +62,10 @@ describe("AccountsController", () => {
         {
           provide: LoanPaymentSetupService,
           useValue: { setupLoanPayments: jest.fn() },
+        },
+        {
+          provide: DelegationService,
+          useValue: mockDelegationService,
         },
       ],
     }).compile();
@@ -75,21 +86,36 @@ describe("AccountsController", () => {
   });
 
   describe("findAll()", () => {
-    it("delegates to accountsService.findAll with userId and includeInactive", () => {
-      mockAccountsService.findAll!.mockReturnValue("accounts");
+    it("delegates to accountsService.findAll with userId and includeInactive", async () => {
+      mockAccountsService.findAll!.mockResolvedValue("accounts");
 
-      const result = controller.findAll(mockReq, true);
+      const result = await controller.findAll(mockReq, true);
 
       expect(result).toBe("accounts");
       expect(mockAccountsService.findAll).toHaveBeenCalledWith("user-1", true);
     });
 
-    it("defaults includeInactive to false when undefined", () => {
-      mockAccountsService.findAll!.mockReturnValue("accounts");
+    it("defaults includeInactive to false when undefined", async () => {
+      mockAccountsService.findAll!.mockResolvedValue("accounts");
 
-      controller.findAll(mockReq, undefined);
+      await controller.findAll(mockReq, undefined);
 
       expect(mockAccountsService.findAll).toHaveBeenCalledWith("user-1", false);
+    });
+
+    it("filters to READ-granted accounts when acting as a delegate", async () => {
+      mockAccountsService.findAll!.mockResolvedValue([
+        { id: "a1" },
+        { id: "a2" },
+      ]);
+      mockDelegationService.readableAccountIds.mockResolvedValue(["a1"]);
+      const actingReq = {
+        user: { id: "owner-1", isActing: true, delegationId: "g1" },
+      };
+
+      const result = await controller.findAll(actingReq as never, false);
+
+      expect(result).toEqual([{ id: "a1" }]);
     });
   });
 

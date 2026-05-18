@@ -22,6 +22,7 @@ import { AuthEmailService } from "./auth-email.service";
 import { PatController } from "./pat.controller";
 import { UsersModule } from "../users/users.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { DelegationModule } from "../delegation/delegation.module";
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
     PassportModule,
     UsersModule,
     NotificationsModule,
+    DelegationModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

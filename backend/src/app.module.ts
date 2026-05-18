@@ -46,6 +46,7 @@ import { BackupModule } from "./backup/backup.module";
 import { ActionHistoryModule } from "./action-history/action-history.module";
 import { UpdatesModule } from "./updates/updates.module";
 import { MonteCarloModule } from "./monte-carlo/monte-carlo.module";
+import { DelegationModule } from "./delegation/delegation.module";
 
 @Module({
   imports: [
@@ -126,6 +127,7 @@ import { MonteCarloModule } from "./monte-carlo/monte-carlo.module";
     ActionHistoryModule,
     UpdatesModule,
     MonteCarloModule,
+    DelegationModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

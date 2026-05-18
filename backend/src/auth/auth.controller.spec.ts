@@ -11,6 +11,7 @@ import { OidcService } from "./oidc/oidc.service";
 import { EmailService } from "../notifications/email.service";
 import { DemoModeService } from "../common/demo-mode.service";
 import { TokenService } from "./token.service";
+import { DelegationService } from "../delegation/delegation.service";
 import { encrypt, derivePurposeKey } from "./crypto.util";
 
 // Matches the JWT_SECRET used in the configService mock below; kept in one
@@ -149,6 +150,14 @@ describe("AuthController", () => {
               .mockReturnValue(7 * 24 * 60 * 60 * 1000),
           },
         },
+        {
+          provide: DelegationService,
+          useValue: {
+            getAvailableContexts: jest.fn().mockResolvedValue([]),
+            resolveSwitchTarget: jest.fn(),
+            validateActingContext: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -189,6 +198,14 @@ describe("AuthController", () => {
               getRefreshExpiryMs: jest
                 .fn()
                 .mockReturnValue(7 * 24 * 60 * 60 * 1000),
+            },
+          },
+          {
+            provide: DelegationService,
+            useValue: {
+              getAvailableContexts: jest.fn().mockResolvedValue([]),
+              resolveSwitchTarget: jest.fn(),
+              validateActingContext: jest.fn(),
             },
           },
         ],
@@ -235,6 +252,14 @@ describe("AuthController", () => {
               getRefreshExpiryMs: jest
                 .fn()
                 .mockReturnValue(7 * 24 * 60 * 60 * 1000),
+            },
+          },
+          {
+            provide: DelegationService,
+            useValue: {
+              getAvailableContexts: jest.fn().mockResolvedValue([]),
+              resolveSwitchTarget: jest.fn(),
+              validateActingContext: jest.fn(),
             },
           },
         ],
@@ -313,6 +338,14 @@ describe("AuthController", () => {
               getRefreshExpiryMs: jest
                 .fn()
                 .mockReturnValue(7 * 24 * 60 * 60 * 1000),
+            },
+          },
+          {
+            provide: DelegationService,
+            useValue: {
+              getAvailableContexts: jest.fn().mockResolvedValue([]),
+              resolveSwitchTarget: jest.fn(),
+              validateActingContext: jest.fn(),
             },
           },
         ],
@@ -545,6 +578,14 @@ describe("AuthController", () => {
               getRefreshExpiryMs: jest
                 .fn()
                 .mockReturnValue(7 * 24 * 60 * 60 * 1000),
+            },
+          },
+          {
+            provide: DelegationService,
+            useValue: {
+              getAvailableContexts: jest.fn().mockResolvedValue([]),
+              resolveSwitchTarget: jest.fn(),
+              validateActingContext: jest.fn(),
             },
           },
         ],
@@ -1392,6 +1433,14 @@ describe("AuthController", () => {
                 .mockReturnValue(7 * 24 * 60 * 60 * 1000),
             },
           },
+          {
+            provide: DelegationService,
+            useValue: {
+              getAvailableContexts: jest.fn().mockResolvedValue([]),
+              resolveSwitchTarget: jest.fn(),
+              validateActingContext: jest.fn(),
+            },
+          },
         ],
       }).compile();
 
@@ -1446,6 +1495,14 @@ describe("AuthController", () => {
               getRefreshExpiryMs: jest
                 .fn()
                 .mockReturnValue(7 * 24 * 60 * 60 * 1000),
+            },
+          },
+          {
+            provide: DelegationService,
+            useValue: {
+              getAvailableContexts: jest.fn().mockResolvedValue([]),
+              resolveSwitchTarget: jest.fn(),
+              validateActingContext: jest.fn(),
             },
           },
         ],
@@ -1527,6 +1584,14 @@ describe("AuthController", () => {
                 .mockReturnValue(7 * 24 * 60 * 60 * 1000),
             },
           },
+          {
+            provide: DelegationService,
+            useValue: {
+              getAvailableContexts: jest.fn().mockResolvedValue([]),
+              resolveSwitchTarget: jest.fn(),
+              validateActingContext: jest.fn(),
+            },
+          },
         ],
       }).compile();
       const c = force2faModule.get<AuthController>(AuthController);
@@ -1592,6 +1657,14 @@ describe("AuthController", () => {
               getRefreshExpiryMs: jest
                 .fn()
                 .mockReturnValue(7 * 24 * 60 * 60 * 1000),
+            },
+          },
+          {
+            provide: DelegationService,
+            useValue: {
+              getAvailableContexts: jest.fn().mockResolvedValue([]),
+              resolveSwitchTarget: jest.fn(),
+              validateActingContext: jest.fn(),
             },
           },
         ],
@@ -1663,6 +1736,14 @@ describe("AuthController", () => {
                   .mockReturnValue(7 * 24 * 60 * 60 * 1000),
               },
             },
+            {
+              provide: DelegationService,
+              useValue: {
+                getAvailableContexts: jest.fn().mockResolvedValue([]),
+                resolveSwitchTarget: jest.fn(),
+                validateActingContext: jest.fn(),
+              },
+            },
           ],
         }).compile();
         const c = m.get<AuthController>(AuthController);
@@ -1704,12 +1785,24 @@ describe("AuthController", () => {
                 .mockReturnValue(7 * 24 * 60 * 60 * 1000),
             },
           },
+          {
+            provide: DelegationService,
+            useValue: {
+              getAvailableContexts: jest.fn().mockResolvedValue([]),
+              resolveSwitchTarget: jest.fn(),
+              validateActingContext: jest.fn(),
+            },
+          },
         ],
       }).compile();
       const c = m.get<AuthController>(AuthController);
       const res = mockRes();
       const req = { cookies: { oidc_state: "s", oidc_nonce: "n" } };
-      await c.oidcCallback({ error: "access_denied" }, req as never, res as never);
+      await c.oidcCallback(
+        { error: "access_denied" },
+        req as never,
+        res as never,
+      );
       expect(res.redirect).toHaveBeenCalledWith(
         "http://localhost:3000/auth/callback?error=authentication_failed",
       );
@@ -1740,6 +1833,14 @@ describe("AuthController", () => {
               getRefreshExpiryMs: jest
                 .fn()
                 .mockReturnValue(7 * 24 * 60 * 60 * 1000),
+            },
+          },
+          {
+            provide: DelegationService,
+            useValue: {
+              getAvailableContexts: jest.fn().mockResolvedValue([]),
+              resolveSwitchTarget: jest.fn(),
+              validateActingContext: jest.fn(),
             },
           },
         ],
@@ -1794,6 +1895,14 @@ describe("AuthController", () => {
                 .mockReturnValue(7 * 24 * 60 * 60 * 1000),
             },
           },
+          {
+            provide: DelegationService,
+            useValue: {
+              getAvailableContexts: jest.fn().mockResolvedValue([]),
+              resolveSwitchTarget: jest.fn(),
+              validateActingContext: jest.fn(),
+            },
+          },
         ],
       }).compile();
       const c = m.get<AuthController>(AuthController);
@@ -1830,6 +1939,14 @@ describe("AuthController", () => {
               getRefreshExpiryMs: jest
                 .fn()
                 .mockReturnValue(7 * 24 * 60 * 60 * 1000),
+            },
+          },
+          {
+            provide: DelegationService,
+            useValue: {
+              getAvailableContexts: jest.fn().mockResolvedValue([]),
+              resolveSwitchTarget: jest.fn(),
+              validateActingContext: jest.fn(),
             },
           },
         ],

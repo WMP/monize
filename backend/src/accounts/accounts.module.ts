@@ -19,6 +19,7 @@ import { NetWorthModule } from "../net-worth/net-worth.module";
 import { SecuritiesModule } from "../securities/securities.module";
 import { ActionHistoryModule } from "../action-history/action-history.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { DelegationModule } from "../delegation/delegation.module";
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
     forwardRef(() => SecuritiesModule),
     ActionHistoryModule,
     NotificationsModule,
+    DelegationModule,
   ],
   providers: [
     AccountsService,

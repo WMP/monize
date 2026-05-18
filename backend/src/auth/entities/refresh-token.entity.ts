@@ -42,6 +42,16 @@ export class RefreshToken {
   @Column({ name: "remember_me", type: "boolean", default: false })
   rememberMe: boolean;
 
+  // Delegate "acting as owner" context. Carried across rotation so a 15-minute
+  // access-token expiry does not silently drop the context. NULL for normal
+  // (acting-as-self) sessions. `userId` above always stays the real
+  // authenticated (delegate) user.
+  @Column({ name: "acting_as_user_id", type: "uuid", nullable: true })
+  actingAsUserId: string | null;
+
+  @Column({ name: "delegation_id", type: "uuid", nullable: true })
+  delegationId: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

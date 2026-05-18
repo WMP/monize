@@ -3,11 +3,13 @@ import { UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtStrategy } from "./jwt.strategy";
 import { AuthService } from "../auth.service";
+import { DelegationService } from "../../delegation/delegation.service";
 
 describe("JwtStrategy", () => {
   let strategy: JwtStrategy;
   let authService: Record<string, jest.Mock>;
   let configService: Record<string, jest.Mock>;
+  let delegationService: Record<string, jest.Mock>;
 
   const mockUser = {
     id: "user-1",
@@ -19,6 +21,10 @@ describe("JwtStrategy", () => {
   beforeEach(async () => {
     authService = {
       getUserStateById: jest.fn(),
+    };
+
+    delegationService = {
+      validateActingContext: jest.fn(),
     };
 
     configService = {
@@ -34,6 +40,7 @@ describe("JwtStrategy", () => {
         JwtStrategy,
         { provide: AuthService, useValue: authService },
         { provide: ConfigService, useValue: configService },
+        { provide: DelegationService, useValue: delegationService },
       ],
     }).compile();
 
@@ -51,7 +58,11 @@ describe("JwtStrategy", () => {
       };
 
       expect(() => {
-        new JwtStrategy(noSecretConfig as any, authService as any);
+        new JwtStrategy(
+          noSecretConfig as any,
+          authService as any,
+          delegationService as any,
+        );
       }).toThrow(
         "JWT_SECRET environment variable must be at least 32 characters",
       );
@@ -63,7 +74,11 @@ describe("JwtStrategy", () => {
       };
 
       expect(() => {
-        new JwtStrategy(shortSecretConfig as any, authService as any);
+        new JwtStrategy(
+          shortSecretConfig as any,
+          authService as any,
+          delegationService as any,
+        );
       }).toThrow(
         "JWT_SECRET environment variable must be at least 32 characters",
       );
@@ -106,14 +121,85 @@ describe("JwtStrategy", () => {
       );
     });
 
-    it("returns user for valid payload", async () => {
+    it("returns enriched self user for a non-delegate payload", async () => {
       const payload = { sub: "user-1" };
       authService.getUserStateById.mockResolvedValue(mockUser);
 
       const result = await strategy.validate(payload);
 
       expect(authService.getUserStateById).toHaveBeenCalledWith("user-1");
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual({
+        ...mockUser,
+        realUserId: "user-1",
+        isActing: false,
+        delegationId: null,
+      });
+      expect(delegationService.validateActingContext).not.toHaveBeenCalled();
+    });
+
+    it("maps the effective id to the owner when acting as a delegate", async () => {
+      const payload = {
+        sub: "delegate-1",
+        actingAsUserId: "owner-1",
+        delegationId: "deleg-1",
+      };
+      authService.getUserStateById.mockResolvedValue({
+        id: "delegate-1",
+        isActive: true,
+        mustChangePassword: false,
+        role: "user",
+      });
+      delegationService.validateActingContext.mockResolvedValue({});
+
+      const result = await strategy.validate(payload);
+
+      expect(delegationService.validateActingContext).toHaveBeenCalledWith({
+        delegateUserId: "delegate-1",
+        actingAsUserId: "owner-1",
+        delegationId: "deleg-1",
+      });
+      expect(result).toEqual({
+        id: "owner-1",
+        realUserId: "delegate-1",
+        isActing: true,
+        delegationId: "deleg-1",
+        isActive: true,
+        mustChangePassword: false,
+        role: "user",
+      });
+    });
+
+    it("fails closed when the delegation is no longer valid", async () => {
+      const payload = {
+        sub: "delegate-1",
+        actingAsUserId: "owner-1",
+        delegationId: "deleg-1",
+      };
+      authService.getUserStateById.mockResolvedValue(mockUser);
+      delegationService.validateActingContext.mockRejectedValue(
+        new UnauthorizedException("Delegated access is no longer valid"),
+      );
+
+      await expect(strategy.validate(payload)).rejects.toThrow(
+        "Delegated access is no longer valid",
+      );
+    });
+
+    it("rejects the inactive real user before resolving delegation", async () => {
+      const payload = {
+        sub: "delegate-1",
+        actingAsUserId: "owner-1",
+        delegationId: "deleg-1",
+      };
+      authService.getUserStateById.mockResolvedValue({
+        ...mockUser,
+        isActive: false,
+      });
+
+      await expect(strategy.validate(payload)).rejects.toThrow(
+        "User not found or inactive",
+      );
+      expect(delegationService.validateActingContext).not.toHaveBeenCalled();
     });
   });
 

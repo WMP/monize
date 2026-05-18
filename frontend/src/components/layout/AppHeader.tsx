@@ -41,7 +41,10 @@ const aiLinks: { href: string; label: string }[] = [
 export function AppHeader() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const { user, logout, actingAsUserId } = useAuthStore();
+  // Phase 1: a delegate acting as an owner only sees the Dashboard.
+  const isDelegateView = !!actingAsUserId;
+  const visibleNavLinks = isDelegateView ? [] : navLinks;
   const [toolsOpen, setToolsOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -167,7 +170,7 @@ export function AppHeader() {
                     </button>
 
                     {/* Main nav links */}
-                    {navLinks.map((link) => (
+                    {visibleNavLinks.map((link) => (
                       <button
                         key={link.href}
                         onClick={() => router.push(link.href)}
@@ -181,6 +184,8 @@ export function AppHeader() {
                       </button>
                     ))}
 
+                    {!isDelegateView && (
+                    <>
                     {/* Divider */}
                     <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
 
@@ -251,6 +256,8 @@ export function AppHeader() {
                         </button>
                       </>
                     )}
+                    </>
+                    )}
 
                     {/* Divider */}
                     <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
@@ -278,8 +285,9 @@ export function AppHeader() {
               <Image src="/icons/monize-logo.svg" alt="Monize" width={32} height={32} className="rounded" priority />
               <span className="hidden lg:inline">Monize</span>
             </button>
+            {!isDelegateView && (
             <nav className="hidden lg:ml-8 lg:flex lg:items-center lg:space-x-4">
-              {navLinks.map((link) => (
+              {visibleNavLinks.map((link) => (
                 <button
                   key={link.href}
                   onClick={() => router.push(link.href)}
@@ -402,6 +410,7 @@ export function AppHeader() {
                 </button>
               )}
             </nav>
+            )}
           </div>
           <div className="flex items-center space-x-1 sm:space-x-4">
             <div className="relative" ref={searchRef}>

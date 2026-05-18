@@ -25,6 +25,11 @@ import {
 import { Response } from "express";
 import { AuthGuard } from "@nestjs/passport";
 import { AccountsService } from "./accounts.service";
+import { DelegationService } from "../delegation/delegation.service";
+import {
+  AllowDelegate,
+  DelegatedAccountParam,
+} from "../delegation/decorators/delegate-access.decorator";
 import { AccountExportService } from "./account-export.service";
 import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
 import { LoanPaymentSetupService } from "./loan-payment-setup.service";
@@ -98,6 +103,7 @@ export class AccountsController {
     private readonly accountExportService: AccountExportService,
     private readonly loanPaymentDetectorService: LoanPaymentDetectorService,
     private readonly loanPaymentSetupService: LoanPaymentSetupService,
+    private readonly delegationService: DelegationService,
   ) {}
 
   @Post()
@@ -125,12 +131,22 @@ export class AccountsController {
     description: "List of accounts retrieved successfully",
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
-  findAll(
+  @AllowDelegate()
+  async findAll(
     @Request() req,
     @Query("includeInactive", new ParseBoolPipe({ optional: true }))
     includeInactive?: boolean,
   ) {
-    return this.accountsService.findAll(req.user.id, includeInactive || false);
+    const accounts = await this.accountsService.findAll(
+      req.user.id,
+      includeInactive || false,
+    );
+    if (!req.user.isActing) return accounts;
+    // Delegate: restrict to READ-granted accounts only (Phase 1).
+    const readable = new Set(
+      await this.delegationService.readableAccountIds(req.user.delegationId),
+    );
+    return accounts.filter((a) => readable.has(a.id));
   }
 
   @Patch("reorder-favourites")
@@ -359,6 +375,8 @@ export class AccountsController {
     description: "Forbidden - account does not belong to user",
   })
   @ApiResponse({ status: 404, description: "Account not found" })
+  @AllowDelegate()
+  @DelegatedAccountParam("id")
   findOne(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
     return this.accountsService.findOne(req.user.id, id);
   }
@@ -379,6 +397,8 @@ export class AccountsController {
     description: "Forbidden - account does not belong to user",
   })
   @ApiResponse({ status: 404, description: "Account not found" })
+  @AllowDelegate()
+  @DelegatedAccountParam("id")
   getBalance(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
     return this.accountsService.getBalance(req.user.id, id);
   }

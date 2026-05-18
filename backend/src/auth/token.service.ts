@@ -10,6 +10,11 @@ import { User } from "../users/entities/user.entity";
 import { RefreshToken } from "./entities/refresh-token.entity";
 import { hashToken } from "./crypto.util";
 
+export interface DelegationTokenContext {
+  actingAsUserId: string;
+  delegationId: string;
+}
+
 @Injectable()
 export class TokenService {
   private readonly logger = new Logger(TokenService.name);
@@ -41,13 +46,22 @@ export class TokenService {
   async generateTokenPair(
     user: User,
     rememberMe?: boolean,
+    context?: DelegationTokenContext,
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    const payload = {
+    // SECURITY: `sub` is ALWAYS the real authenticated user. When acting as a
+    // delegate the data-scoping id is carried separately in actingAsUserId so
+    // refresh rotation / family revocation / replay detection keep keying off
+    // the real user.
+    const payload: Record<string, unknown> = {
       sub: user.id,
       email: user.email,
       authProvider: user.authProvider,
       role: user.role,
     };
+    if (context?.actingAsUserId && context?.delegationId) {
+      payload.actingAsUserId = context.actingAsUserId;
+      payload.delegationId = context.delegationId;
+    }
     const accessToken = this.jwtService.sign(payload, {
       expiresIn: this.ACCESS_TOKEN_EXPIRY,
     });
@@ -65,6 +79,8 @@ export class TokenService {
       expiresAt: new Date(Date.now() + expiryMs),
       replacedByHash: null,
       rememberMe: !!rememberMe,
+      actingAsUserId: context?.actingAsUserId ?? null,
+      delegationId: context?.delegationId ?? null,
     });
     await this.refreshTokensRepository.save(refreshTokenEntity);
 
@@ -134,15 +150,23 @@ export class TokenService {
         expiresAt: new Date(Date.now() + rotatedExpiryMs),
         replacedByHash: null,
         rememberMe: existingToken.rememberMe,
+        // Carry the delegate "acting as owner" context forward through
+        // rotation so the context survives access-token expiry.
+        actingAsUserId: existingToken.actingAsUserId ?? null,
+        delegationId: existingToken.delegationId ?? null,
       });
       await manager.save(newRefreshTokenEntity);
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         sub: user.id,
         email: user.email,
         authProvider: user.authProvider,
         role: user.role,
       };
+      if (existingToken.actingAsUserId && existingToken.delegationId) {
+        payload.actingAsUserId = existingToken.actingAsUserId;
+        payload.delegationId = existingToken.delegationId;
+      }
       const accessToken = this.jwtService.sign(payload, {
         expiresIn: this.ACCESS_TOKEN_EXPIRY,
       });

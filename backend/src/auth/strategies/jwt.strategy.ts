@@ -4,6 +4,7 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Request } from "express";
 import { AuthService } from "../auth.service";
+import { DelegationService } from "../../delegation/delegation.service";
 
 /**
  * Extract JWT from request - tries Authorization header first, then auth_token cookie
@@ -28,6 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private configService: ConfigService,
     private authService: AuthService,
+    private delegationService: DelegationService,
   ) {
     const jwtSecret = configService.get<string>("JWT_SECRET");
 
@@ -60,6 +62,37 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user || !user.isActive) {
       throw new UnauthorizedException("User not found or inactive");
     }
-    return user;
+
+    // Acting-as-self / normal user: unchanged shape plus passthrough fields.
+    if (!payload.actingAsUserId || !payload.delegationId) {
+      return {
+        ...user,
+        realUserId: user.id,
+        isActing: false,
+        delegationId: null,
+      };
+    }
+
+    // Delegate acting as an owner. Re-validate every request (fail closed):
+    // revoked/inactive delegation, inactive owner, or an unmet 2FA
+    // requirement all reject the token here.
+    await this.delegationService.validateActingContext({
+      delegateUserId: payload.sub,
+      actingAsUserId: payload.actingAsUserId,
+      delegationId: payload.delegationId,
+    });
+
+    // SECURITY: `id` becomes the OWNER's id so every existing
+    // `where: { userId }` query is correctly scoped to the owner's data.
+    // `realUserId` keeps the delegate's id for audit/auth decisions.
+    return {
+      id: payload.actingAsUserId,
+      realUserId: payload.sub,
+      isActing: true,
+      delegationId: payload.delegationId,
+      isActive: true,
+      mustChangePassword: user.mustChangePassword,
+      role: user.role,
+    };
   }
 }

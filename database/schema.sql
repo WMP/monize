@@ -594,6 +594,8 @@ CREATE TABLE refresh_tokens (
     remember_me BOOLEAN NOT NULL DEFAULT false,
     expires_at TIMESTAMP NOT NULL,
     replaced_by_hash VARCHAR(64),
+    acting_as_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    delegation_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -601,6 +603,39 @@ CREATE TABLE refresh_tokens (
 CREATE UNIQUE INDEX idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
 CREATE INDEX idx_refresh_tokens_family ON refresh_tokens(family_id);
 CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at);
+
+-- Delegate account access (Phase 1). A user (owner) can grant another user
+-- (delegate) scoped access to their data. Delegates are normal `users` rows;
+-- this defines the relationship and per-account permissions. Only can_read is
+-- enforced in Phase 1; the other grant columns exist for Phase 2.
+CREATE TABLE account_delegates (
+    id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    owner_user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    delegate_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status           VARCHAR(20) NOT NULL DEFAULT 'active', -- 'pending' | 'active' | 'revoked'
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    revoked_at       TIMESTAMP,
+    CONSTRAINT account_delegates_owner_delegate_unique UNIQUE (owner_user_id, delegate_user_id),
+    CONSTRAINT account_delegates_no_self CHECK (owner_user_id <> delegate_user_id)
+);
+
+CREATE INDEX idx_account_delegates_delegate ON account_delegates(delegate_user_id) WHERE status = 'active';
+CREATE INDEX idx_account_delegates_owner ON account_delegates(owner_user_id);
+
+CREATE TABLE account_delegate_grants (
+    id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    delegation_id UUID NOT NULL REFERENCES account_delegates(id) ON DELETE CASCADE,
+    account_id    UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    can_read   BOOLEAN NOT NULL DEFAULT true,
+    can_create BOOLEAN NOT NULL DEFAULT false,
+    can_edit   BOOLEAN NOT NULL DEFAULT false,
+    can_delete BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT account_delegate_grants_unique UNIQUE (delegation_id, account_id)
+);
+
+CREATE INDEX idx_adg_delegation ON account_delegate_grants(delegation_id);
 
 -- Custom Reports (user-defined configurable reports)
 -- view_type: TABLE, LINE_CHART, BAR_CHART, PIE_CHART

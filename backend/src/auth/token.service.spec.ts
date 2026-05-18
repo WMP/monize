@@ -133,6 +133,8 @@ describe("TokenService", () => {
         expiresAt: expect.any(Date),
         replacedByHash: null,
         rememberMe: false,
+        actingAsUserId: null,
+        delegationId: null,
       });
       expect(refreshTokensRepository.save).toHaveBeenCalledWith(
         mockRefreshToken,
@@ -167,6 +169,28 @@ describe("TokenService", () => {
       expect(createCall.expiresAt).toEqual(expectedExpiry);
 
       jest.restoreAllMocks();
+    });
+
+    it("embeds delegate context in the payload and refresh row when acting", async () => {
+      await service.generateTokenPair(mockUser as any, false, {
+        actingAsUserId: "owner-9",
+        delegationId: "deleg-9",
+      });
+
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        {
+          sub: "user-1",
+          email: "test@example.com",
+          authProvider: "local",
+          role: "user",
+          actingAsUserId: "owner-9",
+          delegationId: "deleg-9",
+        },
+        { expiresIn: "15m" },
+      );
+      const createCall = refreshTokensRepository.create.mock.calls[0][0];
+      expect(createCall.actingAsUserId).toBe("owner-9");
+      expect(createCall.delegationId).toBe("deleg-9");
     });
   });
 
@@ -216,6 +240,8 @@ describe("TokenService", () => {
         expiresAt: expect.any(Date),
         replacedByHash: null,
         rememberMe: false,
+        actingAsUserId: null,
+        delegationId: null,
       });
 
       expect(jwtService.sign).toHaveBeenCalledWith(
@@ -233,6 +259,32 @@ describe("TokenService", () => {
         refreshToken: "mock-random-token-hex",
         userId: "user-1",
       });
+    });
+
+    it("carries the delegate context forward through rotation", async () => {
+      const existingToken = {
+        ...mockRefreshToken,
+        isRevoked: false,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+        actingAsUserId: "owner-9",
+        delegationId: "deleg-9",
+      };
+      mockManager.findOne
+        .mockResolvedValueOnce(existingToken)
+        .mockResolvedValueOnce(mockUser);
+
+      await service.refreshTokens("raw-refresh-token");
+
+      const createCall = mockManager.create.mock.calls[0][1];
+      expect(createCall.actingAsUserId).toBe("owner-9");
+      expect(createCall.delegationId).toBe("deleg-9");
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actingAsUserId: "owner-9",
+          delegationId: "deleg-9",
+        }),
+        { expiresIn: "15m" },
+      );
     });
 
     it("should throw UnauthorizedException when token is not found", async () => {
@@ -491,10 +543,16 @@ describe("TokenService with zero REMEMBER_ME_DAYS", () => {
     const module = await Test.createTestingModule({
       providers: [
         TokenService,
-        { provide: getRepositoryToken(RefreshToken), useValue: refreshTokensRepository },
+        {
+          provide: getRepositoryToken(RefreshToken),
+          useValue: refreshTokensRepository,
+        },
         { provide: JwtService, useValue: { sign: jest.fn() } },
         { provide: DataSource, useValue: { createQueryRunner: jest.fn() } },
-        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue("0") } },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue("0") },
+        },
       ],
     }).compile();
 

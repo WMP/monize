@@ -38,6 +38,9 @@ import { VerifyTotpDto } from "./dto/verify-totp.dto";
 import { Setup2faDto } from "./dto/setup-2fa.dto";
 import { Setup2faInitDto } from "./dto/setup-2fa-init.dto";
 import { passwordResetTemplate } from "../notifications/email-templates";
+import { SwitchContextDto } from "./dto/switch-context.dto";
+import { DelegationService } from "../delegation/delegation.service";
+import { AllowDelegate } from "../delegation/decorators/delegate-access.decorator";
 import { SkipCsrf } from "../common/decorators/skip-csrf.decorator";
 import { SkipPasswordCheck } from "./decorators/skip-password-check.decorator";
 import { DemoRestricted } from "../common/decorators/demo-restricted.decorator";
@@ -63,6 +66,7 @@ export class AuthController {
     private emailService: EmailService,
     private demoModeService: DemoModeService,
     private tokenService: TokenService,
+    private delegationService: DelegationService,
   ) {
     // Default to true if not explicitly set to 'false'
     const localAuthSetting = this.configService.get<string>(
@@ -441,6 +445,7 @@ export class AuthController {
 
   @Get("csrf-refresh")
   @UseGuards(AuthGuard("jwt"))
+  @AllowDelegate()
   @ApiBearerAuth()
   @ApiOperation({ summary: "Refresh CSRF token cookie" })
   async csrfRefresh(@Request() req, @Res() res: Response) {
@@ -454,10 +459,68 @@ export class AuthController {
 
   @Get("profile")
   @UseGuards(AuthGuard("jwt"))
+  @AllowDelegate()
   @ApiBearerAuth()
   @ApiOperation({ summary: "Get current user profile" })
   async getProfile(@Request() req) {
     return this.authService.sanitizeUser(req.user);
+  }
+
+  @Get("contexts")
+  @UseGuards(AuthGuard("jwt"))
+  @AllowDelegate()
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "List delegate contexts and the current acting context",
+  })
+  async getContexts(@Request() req) {
+    return {
+      actingAsUserId: req.user.isActing ? req.user.id : null,
+      contexts: await this.delegationService.getAvailableContexts(
+        req.user.realUserId,
+      ),
+    };
+  }
+
+  @Post("switch-context")
+  @UseGuards(AuthGuard("jwt"))
+  @AllowDelegate()
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Switch the acting account without re-login (delegate)",
+  })
+  async switchContext(
+    @Request() req: ExpressRequest & { user: any },
+    @Body() dto: SwitchContextDto,
+    @Res() res: Response,
+  ) {
+    const realUserId = req.user.realUserId;
+    const target = await this.delegationService.resolveSwitchTarget(
+      realUserId,
+      dto.targetUserId,
+    );
+
+    const realUser = await this.authService.getUserById(realUserId);
+    if (!realUser || !realUser.isActive) {
+      throw new UnauthorizedException("User not found or inactive");
+    }
+
+    // SECURITY: revoke the current refresh family so a stale refresh token
+    // cannot silently restore the previous context.
+    const currentRefresh = req.cookies?.["refresh_token"];
+    if (currentRefresh) {
+      await this.authService.revokeRefreshToken(currentRefresh);
+    }
+
+    const context = target
+      ? { actingAsUserId: target.ownerUserId, delegationId: target.id }
+      : undefined;
+
+    const { accessToken, refreshToken } =
+      await this.tokenService.generateTokenPair(realUser, false, context);
+
+    this.setAuthCookies(res, accessToken, refreshToken, realUser.id);
+    res.json({ actingAsUserId: target ? target.ownerUserId : null });
   }
 
   @Post("forgot-password")
@@ -731,6 +794,7 @@ export class AuthController {
 
   @Post("logout")
   @SkipCsrf()
+  @AllowDelegate()
   @ApiOperation({ summary: "Logout current user" })
   async logout(@Request() req: ExpressRequest, @Res() res: Response) {
     // Revoke the refresh token family in the database
