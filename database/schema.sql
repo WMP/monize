@@ -616,6 +616,9 @@ CREATE TABLE account_delegates (
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     revoked_at       TIMESTAMP,
+    can_manage_payees     BOOLEAN NOT NULL DEFAULT false,
+    can_manage_categories BOOLEAN NOT NULL DEFAULT false,
+    can_manage_tags       BOOLEAN NOT NULL DEFAULT false,
     CONSTRAINT account_delegates_owner_delegate_unique UNIQUE (owner_user_id, delegate_user_id),
     CONSTRAINT account_delegates_no_self CHECK (owner_user_id <> delegate_user_id)
 );

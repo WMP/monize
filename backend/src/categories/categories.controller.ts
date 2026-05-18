@@ -25,7 +25,10 @@ import { CategoriesService } from "./categories.service";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { ReassignTransactionsDto } from "./dto/reassign-transactions.dto";
-import { AllowDelegate } from "../delegation/decorators/delegate-access.decorator";
+import {
+  AllowDelegate,
+  DelegateRequiresCapability,
+} from "../delegation/decorators/delegate-access.decorator";
 
 @ApiTags("Categories")
 @Controller("categories")
@@ -39,6 +42,8 @@ export class CategoriesController {
   @ApiResponse({ status: 201, description: "Category created successfully" })
   @ApiResponse({ status: 400, description: "Bad request" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
+  @AllowDelegate()
+  @DelegateRequiresCapability("categories")
   create(@Request() req, @Body() createCategoryDto: CreateCategoryDto) {
     return this.categoriesService.create(req.user.id, createCategoryDto);
   }
@@ -155,6 +160,8 @@ export class CategoriesController {
     description: "Forbidden - category does not belong to user",
   })
   @ApiResponse({ status: 404, description: "Category not found" })
+  @AllowDelegate()
+  @DelegateRequiresCapability("categories")
   update(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
@@ -177,6 +184,8 @@ export class CategoriesController {
     description: "Forbidden - category does not belong to user",
   })
   @ApiResponse({ status: 404, description: "Category not found" })
+  @AllowDelegate()
+  @DelegateRequiresCapability("categories")
   remove(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
     return this.categoriesService.remove(req.user.id, id);
   }

@@ -136,6 +136,33 @@ export function SharedAccessSection() {
     }
   };
 
+  const updateCapability = async (
+    delegate: DelegateSummary,
+    key: 'payees' | 'categories' | 'tags',
+    value: boolean,
+  ) => {
+    const fieldMap = {
+      payees: 'canManagePayees',
+      categories: 'canManageCategories',
+      tags: 'canManageTags',
+    } as const;
+    try {
+      await delegationApi.setCapabilities(delegate.id, {
+        [fieldMap[key]]: value,
+      });
+      setDelegates((prev) =>
+        prev.map((d) =>
+          d.id === delegate.id
+            ? { ...d, capabilities: { ...d.capabilities, [key]: value } }
+            : d,
+        ),
+      );
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to update access'));
+      logger.error(err);
+    }
+  };
+
   const handleRevoke = async (id: string) => {
     if (
       !window.confirm(
@@ -265,6 +292,31 @@ export function SharedAccessSection() {
                     Remove
                   </button>
                 </div>
+              </div>
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Can create/edit/delete:
+              </p>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mb-4">
+                {(
+                  [
+                    { key: 'payees' as const, label: 'Payees' },
+                    { key: 'categories' as const, label: 'Categories' },
+                    { key: 'tags' as const, label: 'Tags' },
+                  ]
+                ).map((cap) => (
+                  <label
+                    key={cap.key}
+                    className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    <ToggleSwitch
+                      size="sm"
+                      checked={!!d.capabilities?.[cap.key]}
+                      onChange={(v) => updateCapability(d, cap.key, v)}
+                      label={`Manage ${cap.label}`}
+                    />
+                    <span className="text-xs">{cap.label}</span>
+                  </label>
+                ))}
               </div>
               <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Per-account access (READ is required for the others):

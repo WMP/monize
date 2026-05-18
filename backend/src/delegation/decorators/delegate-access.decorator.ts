@@ -54,3 +54,13 @@ export const DelegatedTransferBody = (
 export const DELEGATED_TRANSFER_PARAM_KEY = "delegatedTransferParam";
 export const DelegatedTransferParam = (key = "id") =>
   SetMetadata(DELEGATED_TRANSFER_PARAM_KEY, key);
+
+/**
+ * 2C: a route that creates/edits/deletes shared reference data (payees,
+ * categories, tags). A delegate may reach it only if the owner granted the
+ * matching per-delegation manage capability.
+ */
+export type DelegateCapability = "payees" | "categories" | "tags";
+export const DELEGATE_CAPABILITY_KEY = "delegateCapability";
+export const DelegateRequiresCapability = (capability: DelegateCapability) =>
+  SetMetadata(DELEGATE_CAPABILITY_KEY, capability);

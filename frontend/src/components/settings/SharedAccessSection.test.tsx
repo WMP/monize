@@ -7,6 +7,7 @@ vi.mock('@/lib/delegation', () => ({
     listDelegates: vi.fn(),
     createDelegate: vi.fn(),
     setGrants: vi.fn(),
+    setCapabilities: vi.fn(),
     revokeDelegate: vi.fn(),
     resetPassword: vi.fn(),
   },
@@ -42,6 +43,7 @@ const delegate = {
     canEdit?: boolean;
     canDelete?: boolean;
   }>,
+  capabilities: { payees: false, categories: false, tags: false },
 };
 
 async function renderSection() {
@@ -159,5 +161,21 @@ describe('SharedAccessSection', () => {
         canCreate: true,
       }),
     ]);
+  });
+
+  it('toggles a manage capability', async () => {
+    vi.mocked(delegationApi.setCapabilities).mockResolvedValue();
+    await renderSection();
+    await screen.findByText('d@e.f');
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: /Manage Payees/i }),
+      );
+    });
+
+    expect(delegationApi.setCapabilities).toHaveBeenCalledWith('g1', {
+      canManagePayees: true,
+    });
   });
 });

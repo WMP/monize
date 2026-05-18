@@ -20,7 +20,10 @@ import { AuthGuard } from "@nestjs/passport";
 import { TagsService } from "./tags.service";
 import { CreateTagDto } from "./dto/create-tag.dto";
 import { UpdateTagDto } from "./dto/update-tag.dto";
-import { AllowDelegate } from "../delegation/decorators/delegate-access.decorator";
+import {
+  AllowDelegate,
+  DelegateRequiresCapability,
+} from "../delegation/decorators/delegate-access.decorator";
 
 @ApiTags("Tags")
 @Controller("tags")
@@ -66,6 +69,8 @@ export class TagsController {
   @ApiOperation({ summary: "Create a new tag" })
   @ApiResponse({ status: 201, description: "Tag created successfully" })
   @ApiResponse({ status: 409, description: "Tag name already exists" })
+  @AllowDelegate()
+  @DelegateRequiresCapability("tags")
   create(@Request() req, @Body() createTagDto: CreateTagDto) {
     return this.tagsService.create(req.user.id, createTagDto);
   }
@@ -74,6 +79,8 @@ export class TagsController {
   @ApiOperation({ summary: "Update a tag" })
   @ApiResponse({ status: 200, description: "Tag updated successfully" })
   @ApiResponse({ status: 404, description: "Tag not found" })
+  @AllowDelegate()
+  @DelegateRequiresCapability("tags")
   update(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
@@ -86,6 +93,8 @@ export class TagsController {
   @ApiOperation({ summary: "Delete a tag" })
   @ApiResponse({ status: 200, description: "Tag deleted successfully" })
   @ApiResponse({ status: 404, description: "Tag not found" })
+  @AllowDelegate()
+  @DelegateRequiresCapability("tags")
   remove(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
     return this.tagsService.remove(req.user.id, id);
   }

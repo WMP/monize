@@ -36,6 +36,16 @@ export class AccountDelegate {
   @Column({ name: "revoked_at", type: "timestamp", nullable: true })
   revokedAt: Date | null;
 
+  // 2C: per-delegation "manage" capabilities for shared reference data.
+  @Column({ name: "can_manage_payees", type: "boolean", default: false })
+  canManagePayees: boolean;
+
+  @Column({ name: "can_manage_categories", type: "boolean", default: false })
+  canManageCategories: boolean;
+
+  @Column({ name: "can_manage_tags", type: "boolean", default: false })
+  canManageTags: boolean;
+
   @ManyToOne(() => User)
   @JoinColumn({ name: "owner_user_id" })
   owner: User;

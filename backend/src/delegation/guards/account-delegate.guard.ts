@@ -14,7 +14,9 @@ import {
   DELEGATED_TRANSFER_BODY_KEY,
   DELEGATED_TRANSFER_PARAM_KEY,
   DELEGATE_OPERATION_KEY,
+  DELEGATE_CAPABILITY_KEY,
   DelegateOperation,
+  DelegateCapability,
 } from "../decorators/delegate-access.decorator";
 import { DelegationService } from "../delegation.service";
 
@@ -144,6 +146,22 @@ export class AccountDelegateGuard implements CanActivate {
             operation,
           );
         }
+      }
+    }
+
+    const capability = this.reflector.getAllAndOverride<DelegateCapability>(
+      DELEGATE_CAPABILITY_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    if (capability) {
+      const ok = await this.delegationService.hasCapability(
+        payload.delegationId,
+        capability,
+      );
+      if (!ok) {
+        throw new ForbiddenException(
+          `You are not permitted to manage ${capability}`,
+        );
       }
     }
 

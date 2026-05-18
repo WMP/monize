@@ -7,6 +7,7 @@ import {
   DELEGATED_TRANSFER_BODY_KEY,
   DELEGATED_TRANSFER_PARAM_KEY,
   DELEGATE_OPERATION_KEY,
+  DELEGATE_CAPABILITY_KEY,
 } from "../decorators/delegate-access.decorator";
 
 describe("AccountDelegateGuard", () => {
@@ -30,6 +31,7 @@ describe("AccountDelegateGuard", () => {
       hasAccountPermission: jest.fn(),
       accountIdForTransaction: jest.fn(),
       accountIdsForTransfer: jest.fn(),
+      hasCapability: jest.fn(),
     };
     guard = new AccountDelegateGuard(
       reflector as any,
@@ -279,6 +281,44 @@ describe("AccountDelegateGuard", () => {
     });
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
     expect(delegationService.hasAccountPermission).not.toHaveBeenCalled();
+  });
+
+  it("blocks a delegate lacking the required manage capability", async () => {
+    jwtService.verify.mockReturnValue({
+      sub: "d1",
+      actingAsUserId: "o1",
+      delegationId: "g1",
+    });
+    reflector.getAllAndOverride.mockImplementation((key: string) => {
+      if (key === ALLOW_DELEGATE_KEY) return true;
+      if (key === DELEGATE_CAPABILITY_KEY) return "payees";
+      return undefined;
+    });
+    delegationService.hasCapability.mockResolvedValue(false);
+    const ctx = makeContext({ headers: { authorization: "Bearer x" } });
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(delegationService.hasCapability).toHaveBeenCalledWith(
+      "g1",
+      "payees",
+    );
+  });
+
+  it("allows a delegate with the required manage capability", async () => {
+    jwtService.verify.mockReturnValue({
+      sub: "d1",
+      actingAsUserId: "o1",
+      delegationId: "g1",
+    });
+    reflector.getAllAndOverride.mockImplementation((key: string) => {
+      if (key === ALLOW_DELEGATE_KEY) return true;
+      if (key === DELEGATE_CAPABILITY_KEY) return "tags";
+      return undefined;
+    });
+    delegationService.hasCapability.mockResolvedValue(true);
+    const ctx = makeContext({ headers: { authorization: "Bearer x" } });
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
   });
 
   it("ignores 2fa_pending tokens", async () => {

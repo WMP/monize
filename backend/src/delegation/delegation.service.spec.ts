@@ -434,6 +434,9 @@ describe("DelegationService", () => {
             lastName: null,
             passwordHash: "h",
           },
+          canManagePayees: true,
+          canManageCategories: false,
+          canManageTags: true,
           grants: [
             {
               accountId: "a1",
@@ -467,7 +470,56 @@ describe("DelegationService", () => {
             canDelete: false,
           },
         ],
+        capabilities: { payees: true, categories: false, tags: true },
       });
+    });
+  });
+
+  describe("hasCapability", () => {
+    it("is false when there is no active delegation", async () => {
+      delegatesRepo.findOne.mockResolvedValue(null);
+      await expect(service.hasCapability("g1", "payees")).resolves.toBe(false);
+    });
+
+    it("maps each capability to the matching flag", async () => {
+      delegatesRepo.findOne.mockResolvedValue({
+        canManagePayees: true,
+        canManageCategories: false,
+        canManageTags: true,
+      });
+      await expect(service.hasCapability("g1", "payees")).resolves.toBe(true);
+      await expect(service.hasCapability("g1", "categories")).resolves.toBe(
+        false,
+      );
+      await expect(service.hasCapability("g1", "tags")).resolves.toBe(true);
+    });
+  });
+
+  describe("setCapabilities", () => {
+    it("throws when the delegation is not owned by the caller", async () => {
+      delegatesRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.setCapabilities("o1", "g1", { canManagePayees: true }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("updates only the provided flags", async () => {
+      const delegation = {
+        id: "g1",
+        ownerUserId: "o1",
+        canManagePayees: false,
+        canManageCategories: true,
+        canManageTags: false,
+      };
+      delegatesRepo.findOne.mockResolvedValue(delegation);
+      delegatesRepo.save.mockResolvedValue(delegation);
+
+      await service.setCapabilities("o1", "g1", { canManagePayees: true });
+
+      expect(delegation.canManagePayees).toBe(true);
+      expect(delegation.canManageCategories).toBe(true); // unchanged
+      expect(delegation.canManageTags).toBe(false); // unchanged
+      expect(delegatesRepo.save).toHaveBeenCalledWith(delegation);
     });
   });
 

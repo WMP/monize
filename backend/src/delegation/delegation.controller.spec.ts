@@ -13,6 +13,7 @@ describe("DelegationController", () => {
       createDelegate: jest.fn().mockResolvedValue({ id: "g1" }),
       revokeDelegate: jest.fn().mockResolvedValue(undefined),
       setGrants: jest.fn().mockResolvedValue(undefined),
+      setCapabilities: jest.fn().mockResolvedValue(undefined),
       resetDelegatePassword: jest
         .fn()
         .mockResolvedValue({ temporaryPassword: "x" }),
@@ -46,6 +47,12 @@ describe("DelegationController", () => {
     const grants = [{ accountId: "a1", canRead: true, canCreate: true }];
     await controller.setGrants(req, "g1", { grants } as never);
     expect(service.setGrants).toHaveBeenCalledWith("owner-1", "g1", grants);
+  });
+
+  it("sets capabilities", async () => {
+    const dto = { canManagePayees: true };
+    await controller.setCapabilities(req, "g1", dto as never);
+    expect(service.setCapabilities).toHaveBeenCalledWith("owner-1", "g1", dto);
   });
 
   it("resets a delegate password", async () => {

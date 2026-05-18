@@ -32,6 +32,17 @@ export interface DelegateSummary {
     hasPassword: boolean;
   };
   grants: AccountGrant[];
+  capabilities: {
+    payees: boolean;
+    categories: boolean;
+    tags: boolean;
+  };
+}
+
+export interface DelegateCapabilities {
+  canManagePayees?: boolean;
+  canManageCategories?: boolean;
+  canManageTags?: boolean;
 }
 
 export interface CreateDelegatePayload {
@@ -83,6 +94,16 @@ export const delegationApi = {
 
   setGrants: async (id: string, grants: AccountGrant[]): Promise<void> => {
     await apiClient.put(`/delegation/delegates/${id}/grants`, { grants });
+  },
+
+  setCapabilities: async (
+    id: string,
+    capabilities: DelegateCapabilities,
+  ): Promise<void> => {
+    await apiClient.put(
+      `/delegation/delegates/${id}/capabilities`,
+      capabilities,
+    );
   },
 
   resetPassword: async (

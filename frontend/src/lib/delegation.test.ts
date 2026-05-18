@@ -75,4 +75,13 @@ describe('delegationApi', () => {
     );
     expect(res.temporaryPassword).toBe('Tiger!River42');
   });
+
+  it('setCapabilities PUTs the capability flags', async () => {
+    vi.mocked(apiClient.put).mockResolvedValue({ data: {} });
+    await delegationApi.setCapabilities('d-1', { canManagePayees: true });
+    expect(apiClient.put).toHaveBeenCalledWith(
+      '/delegation/delegates/d-1/capabilities',
+      { canManagePayees: true },
+    );
+  });
 });

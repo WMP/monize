@@ -6,12 +6,14 @@ import {
   DelegatedTransferBody,
   DelegatedTransferParam,
   DelegateRequires,
+  DelegateRequiresCapability,
   ALLOW_DELEGATE_KEY,
   DELEGATED_ACCOUNT_PARAM_KEY,
   DELEGATED_TRANSACTION_PARAM_KEY,
   DELEGATED_TRANSFER_BODY_KEY,
   DELEGATED_TRANSFER_PARAM_KEY,
   DELEGATE_OPERATION_KEY,
+  DELEGATE_CAPABILITY_KEY,
 } from "./delegate-access.decorator";
 
 describe("delegate-access decorators", () => {
@@ -83,5 +85,15 @@ describe("delegate-access decorators", () => {
     expect(
       reflector.get(DELEGATED_TRANSFER_PARAM_KEY, C.prototype.handler),
     ).toBe("id");
+  });
+
+  it("DelegateRequiresCapability sets the capability", () => {
+    class C {
+      @DelegateRequiresCapability("payees")
+      handler() {}
+    }
+    expect(reflector.get(DELEGATE_CAPABILITY_KEY, C.prototype.handler)).toBe(
+      "payees",
+    );
   });
 });

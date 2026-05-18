@@ -32,7 +32,10 @@ import { ApplyCategorySuggestionsDto } from "./dto/apply-category-suggestions.dt
 import { DeactivatePayeesDto } from "./dto/deactivate-payees.dto";
 import { Payee } from "./entities/payee.entity";
 import { PayeeAlias } from "./entities/payee-alias.entity";
-import { AllowDelegate } from "../delegation/decorators/delegate-access.decorator";
+import {
+  AllowDelegate,
+  DelegateRequiresCapability,
+} from "../delegation/decorators/delegate-access.decorator";
 
 @ApiTags("Payees")
 @ApiBearerAuth()
@@ -49,6 +52,8 @@ export class PayeesController {
     type: Payee,
   })
   @ApiResponse({ status: 409, description: "Payee with name already exists" })
+  @AllowDelegate()
+  @DelegateRequiresCapability("payees")
   create(
     @Request() req,
     @Body() createPayeeDto: CreatePayeeDto,
@@ -380,6 +385,8 @@ export class PayeesController {
   })
   @ApiResponse({ status: 404, description: "Payee not found" })
   @ApiResponse({ status: 409, description: "Payee with name already exists" })
+  @AllowDelegate()
+  @DelegateRequiresCapability("payees")
   update(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
@@ -392,6 +399,8 @@ export class PayeesController {
   @ApiOperation({ summary: "Delete a payee" })
   @ApiResponse({ status: 200, description: "Payee deleted successfully" })
   @ApiResponse({ status: 404, description: "Payee not found" })
+  @AllowDelegate()
+  @DelegateRequiresCapability("payees")
   remove(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
