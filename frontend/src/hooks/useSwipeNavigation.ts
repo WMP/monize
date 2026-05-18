@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
 
 const SWIPE_PAGES = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -60,7 +61,13 @@ export function useSwipeNavigation(): UseSwipeNavigationReturn {
   const pathname = usePathname();
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const currentIndex = SWIPE_PAGES.findIndex((p) => pathname === p.href);
+  // A delegate acting as an owner only has the Dashboard (Phase 1); disable
+  // swipe navigation entirely so they can't swipe into a section they have
+  // no access to.
+  const isDelegateView = useAuthStore((s) => !!s.actingAsUserId);
+  const currentIndex = isDelegateView
+    ? -1
+    : SWIPE_PAGES.findIndex((p) => pathname === p.href);
   const isSwipePage = currentIndex !== -1;
   const currentIndexRef = useRef(currentIndex);
 

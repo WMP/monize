@@ -18,6 +18,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 import { useSwipeNavigation } from './useSwipeNavigation';
+import { useAuthStore } from '@/store/authStore';
 
 // Helper to create touch events
 function createTouchEvent(
@@ -486,6 +487,30 @@ describe('useSwipeNavigation', () => {
       // Even if we tried to dispatch events, the hook would not attach listeners
       expect(result.current.isSwipePage).toBe(false);
       expect(mockPush).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('delegate (acting-as) view', () => {
+    afterEach(() => {
+      useAuthStore.getState().setDelegation(null, []);
+    });
+
+    it('disables swipe navigation on the dashboard for a delegate', () => {
+      mockPathname = '/dashboard';
+      act(() => {
+        useAuthStore.getState().setDelegation('owner-1', []);
+      });
+
+      const { result } = renderHook(() => useSwipeNavigation());
+
+      expect(result.current.isSwipePage).toBe(false);
+      expect(result.current.currentIndex).toBe(-1);
+    });
+
+    it('keeps swipe navigation enabled for a normal (non-delegate) user', () => {
+      mockPathname = '/dashboard';
+      const { result } = renderHook(() => useSwipeNavigation());
+      expect(result.current.isSwipePage).toBe(true);
     });
   });
 });
