@@ -93,8 +93,12 @@ export class AccountDelegateGuard implements CanActivate {
     if (header && header.startsWith("Bearer ")) {
       return header.slice(7);
     }
-    const cookieToken = (req as any).cookies?.["auth_token"];
-    return typeof cookieToken === "string" ? cookieToken : null;
+    const cookies = (req as Request & { cookies?: Record<string, string> })
+      .cookies;
+    if (cookies && cookies["auth_token"]) {
+      return cookies["auth_token"];
+    }
+    return null;
   }
 
   private resolveAccountId(req: Request, key: string): string | undefined {

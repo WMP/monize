@@ -126,4 +126,83 @@ describe("AccountDelegateGuard", () => {
     const ctx = makeContext({ headers: { authorization: "Bearer x" } });
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
   });
+
+  it("allows non-http execution contexts", async () => {
+    const ctx = {
+      getType: () => "ws",
+      switchToHttp: () => ({ getRequest: () => ({}) }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    } as any;
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+  });
+
+  it("treats a token with actingAsUserId but no delegationId as non-delegate", async () => {
+    jwtService.verify.mockReturnValue({ sub: "d1", actingAsUserId: "o1" });
+    const ctx = makeContext({ headers: { authorization: "Bearer x" } });
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(reflector.getAllAndOverride).not.toHaveBeenCalled();
+  });
+
+  it("resolves the account id from the request body", async () => {
+    jwtService.verify.mockReturnValue({
+      sub: "d1",
+      actingAsUserId: "o1",
+      delegationId: "g1",
+    });
+    reflector.getAllAndOverride.mockImplementation((key: string) => {
+      if (key === ALLOW_DELEGATE_KEY) return true;
+      if (key === DELEGATED_ACCOUNT_PARAM_KEY) return "accountId";
+      return undefined;
+    });
+    delegationService.hasReadAccess.mockResolvedValue(true);
+    const ctx = makeContext({
+      headers: { authorization: "Bearer x" },
+      body: { accountId: "acc-body" },
+    });
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(delegationService.hasReadAccess).toHaveBeenCalledWith(
+      "g1",
+      "acc-body",
+    );
+  });
+
+  it("resolves the account id from the query string", async () => {
+    jwtService.verify.mockReturnValue({
+      sub: "d1",
+      actingAsUserId: "o1",
+      delegationId: "g1",
+    });
+    reflector.getAllAndOverride.mockImplementation((key: string) => {
+      if (key === ALLOW_DELEGATE_KEY) return true;
+      if (key === DELEGATED_ACCOUNT_PARAM_KEY) return "accountId";
+      return undefined;
+    });
+    delegationService.hasReadAccess.mockResolvedValue(true);
+    const ctx = makeContext({
+      headers: { authorization: "Bearer x" },
+      query: { accountId: "acc-query" },
+    });
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(delegationService.hasReadAccess).toHaveBeenCalledWith(
+      "g1",
+      "acc-query",
+    );
+  });
+
+  it("skips the grant check when the account id is absent", async () => {
+    jwtService.verify.mockReturnValue({
+      sub: "d1",
+      actingAsUserId: "o1",
+      delegationId: "g1",
+    });
+    reflector.getAllAndOverride.mockImplementation((key: string) => {
+      if (key === ALLOW_DELEGATE_KEY) return true;
+      if (key === DELEGATED_ACCOUNT_PARAM_KEY) return "id";
+      return undefined;
+    });
+    const ctx = makeContext({ headers: { authorization: "Bearer x" } });
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(delegationService.hasReadAccess).not.toHaveBeenCalled();
+  });
 });
