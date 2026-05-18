@@ -33,6 +33,24 @@ export interface AccountGrant {
   canDelete?: boolean;
 }
 
+/** Owner-grantable READ sections (gate tab visibility + section endpoints). */
+export interface DelegateSectionGrants {
+  bills: boolean;
+  investments: boolean;
+  budgets: boolean;
+  reports: boolean;
+  ai: boolean;
+}
+
+/** Column-shaped partial used by the PUT /sections endpoint. */
+export interface DelegateSectionFlags {
+  billsCanRead?: boolean;
+  investmentsCanRead?: boolean;
+  budgetsCanRead?: boolean;
+  reportsCanRead?: boolean;
+  aiCanRead?: boolean;
+}
+
 export interface DelegateSummary {
   id: string;
   status: string;
@@ -46,6 +64,7 @@ export interface DelegateSummary {
   };
   grants: AccountGrant[];
   capabilities: DelegateCapabilityFlags;
+  sections?: DelegateSectionGrants;
 }
 
 export interface DelegateCapabilities {
@@ -119,6 +138,13 @@ export const delegationApi = {
       `/delegation/delegates/${id}/capabilities`,
       capabilities,
     );
+  },
+
+  setSectionGrants: async (
+    id: string,
+    sections: DelegateSectionFlags,
+  ): Promise<void> => {
+    await apiClient.put(`/delegation/delegates/${id}/sections`, sections);
   },
 
   resetPassword: async (

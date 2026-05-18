@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@/test/render';
 import { SharedAccessSection } from './SharedAccessSection';
+import { __resetModalStateForTesting } from '@/components/ui/Modal';
 
 vi.mock('@/lib/delegation', () => ({
   delegationApi: {
@@ -8,6 +9,7 @@ vi.mock('@/lib/delegation', () => ({
     createDelegate: vi.fn(),
     setGrants: vi.fn(),
     setCapabilities: vi.fn(),
+    setSectionGrants: vi.fn(),
     revokeDelegate: vi.fn(),
     resetPassword: vi.fn(),
   },
@@ -36,17 +38,18 @@ const delegate = {
     lastName: null,
     hasPassword: true,
   },
-  grants: [] as Array<{
-    accountId: string;
-    canRead: boolean;
-    canCreate?: boolean;
-    canEdit?: boolean;
-    canDelete?: boolean;
-  }>,
+  grants: [{ accountId: 'a1', canRead: true }],
   capabilities: {
-    payees: { create: false, edit: false, delete: false },
+    payees: { create: false, edit: true, delete: false },
     categories: { create: false, edit: false, delete: false },
     tags: { create: false, edit: false, delete: false },
+  },
+  sections: {
+    bills: true,
+    investments: false,
+    budgets: false,
+    reports: false,
+    ai: false,
   },
 };
 
@@ -59,16 +62,36 @@ async function renderSection() {
 describe('SharedAccessSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(delegationApi.listDelegates).mockResolvedValue([{ ...delegate }]);
+    __resetModalStateForTesting();
+    vi.mocked(delegationApi.listDelegates).mockResolvedValue([
+      { ...delegate },
+    ]);
     vi.mocked(accountsApi.getAll).mockResolvedValue([
-      { id: 'a1', name: 'Chequing' },
+      { id: 'a1', name: 'Chequing', accountType: 'CHEQUING' },
     ] as never);
   });
 
-  it('lists delegates and their grantable accounts', async () => {
+  it('lists delegates with a summary of granted access', async () => {
     await renderSection();
     expect(await screen.findByText('d@e.f')).toBeInTheDocument();
-    expect(screen.getByText('Chequing')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Sections: 1.*Accounts: 1.*Shared data: 1/),
+    ).toBeInTheDocument();
+  });
+
+  it('opens the edit-access modal for a delegate', async () => {
+    await renderSection();
+    await screen.findByText('d@e.f');
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Edit access'));
+    });
+
+    expect(
+      await screen.findByRole('switch', {
+        name: /Read access to Chequing/i,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('rejects a password that fails the complexity policy', async () => {
@@ -122,80 +145,18 @@ describe('SharedAccessSection', () => {
     );
   });
 
-  it('grants per-account READ', async () => {
-    vi.mocked(delegationApi.setGrants).mockResolvedValue();
+  it('revokes a delegate after confirmation', async () => {
+    vi.mocked(delegationApi.revokeDelegate).mockResolvedValue();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     await renderSection();
     await screen.findByText('d@e.f');
 
     await act(async () => {
-      fireEvent.click(
-        screen.getByRole('switch', { name: /Read access to Chequing/i }),
-      );
+      fireEvent.click(screen.getByText('Remove'));
     });
 
-    expect(delegationApi.setGrants).toHaveBeenCalledWith('g1', [
-      {
-        accountId: 'a1',
-        canRead: true,
-        canCreate: false,
-        canEdit: false,
-        canDelete: false,
-      },
-    ]);
-  });
-
-  it('enabling CREATE implies READ', async () => {
-    vi.mocked(delegationApi.listDelegates).mockResolvedValue([
-      { ...delegate, grants: [{ accountId: 'a1', canRead: true }] },
-    ]);
-    vi.mocked(delegationApi.setGrants).mockResolvedValue();
-    await renderSection();
-    await screen.findByText('d@e.f');
-
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('switch', { name: /Create access to Chequing/i }),
-      );
-    });
-
-    expect(delegationApi.setGrants).toHaveBeenCalledWith('g1', [
-      expect.objectContaining({
-        accountId: 'a1',
-        canRead: true,
-        canCreate: true,
-      }),
-    ]);
-  });
-
-  it('toggles a granular manage capability (Edit Payees)', async () => {
-    vi.mocked(delegationApi.setCapabilities).mockResolvedValue();
-    await renderSection();
-    await screen.findByText('d@e.f');
-
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('switch', { name: /^Edit Payees$/i }),
-      );
-    });
-
-    expect(delegationApi.setCapabilities).toHaveBeenCalledWith('g1', {
-      payeesCanEdit: true,
-    });
-  });
-
-  it('toggles Delete Tags independently', async () => {
-    vi.mocked(delegationApi.setCapabilities).mockResolvedValue();
-    await renderSection();
-    await screen.findByText('d@e.f');
-
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole('switch', { name: /^Delete Tags$/i }),
-      );
-    });
-
-    expect(delegationApi.setCapabilities).toHaveBeenCalledWith('g1', {
-      tagsCanDelete: true,
-    });
+    await waitFor(() =>
+      expect(delegationApi.revokeDelegate).toHaveBeenCalledWith('g1'),
+    );
   });
 });

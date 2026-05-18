@@ -2,19 +2,40 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import {
-  delegationApi,
-  DelegateSummary,
-  AccountGrant,
-} from '@/lib/delegation';
+import { delegationApi, DelegateSummary } from '@/lib/delegation';
 import { accountsApi } from '@/lib/accounts';
 import { Account } from '@/types/account';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
+import { useFormModal } from '@/hooks/useFormModal';
 import { passwordSchema, PASSWORD_REQUIREMENTS_TEXT } from '@/lib/zod-helpers';
+import { DelegateAccessModal } from './DelegateAccessModal';
 
 const logger = createLogger('SharedAccess');
+
+function sectionCount(d: DelegateSummary): number {
+  const s = d.sections;
+  if (!s) return 0;
+  return [s.bills, s.investments, s.budgets, s.reports, s.ai].filter(Boolean)
+    .length;
+}
+
+function accountCount(d: DelegateSummary): number {
+  return d.grants.filter((g) => g.canRead).length;
+}
+
+function sharedDataCount(d: DelegateSummary): number {
+  const c = d.capabilities;
+  return [c.payees, c.categories, c.tags].reduce(
+    (n, r) =>
+      n + (r.create ? 1 : 0) + (r.edit ? 1 : 0) + (r.delete ? 1 : 0),
+    0,
+  );
+}
 
 export function SharedAccessSection() {
   const [delegates, setDelegates] = useState<DelegateSummary[]>([]);
@@ -25,6 +46,17 @@ export function SharedAccessSection() {
   const [password, setPassword] = useState('');
   const [sendInvite, setSendInvite] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const {
+    showForm,
+    editingItem,
+    openEdit,
+    close,
+    modalProps,
+    setFormDirty,
+    unsavedChangesDialog,
+    formSubmitRef,
+  } = useFormModal<DelegateSummary>();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,92 +121,6 @@ export function SharedAccessSection() {
     }
   };
 
-  const grantFor = (
-    delegate: DelegateSummary,
-    accountId: string,
-  ): AccountGrant =>
-    delegate.grants.find((g) => g.accountId === accountId) ?? {
-      accountId,
-      canRead: false,
-      canCreate: false,
-      canEdit: false,
-      canDelete: false,
-    };
-
-  const updateGrant = async (
-    delegate: DelegateSummary,
-    accountId: string,
-    op: 'canRead' | 'canCreate' | 'canEdit' | 'canDelete',
-    value: boolean,
-  ) => {
-    const updated: AccountGrant = { ...grantFor(delegate, accountId), [op]: value };
-    if (op === 'canRead' && !value) {
-      updated.canCreate = false;
-      updated.canEdit = false;
-      updated.canDelete = false;
-    }
-    if (op !== 'canRead' && value) {
-      // CREATE/EDIT/DELETE require READ.
-      updated.canRead = true;
-    }
-    // Authoritative set: every still-readable account for this delegate.
-    const nextGrants = accounts
-      .map((a) =>
-        a.id === accountId ? updated : grantFor(delegate, a.id),
-      )
-      .filter((g) => g.canRead);
-    try {
-      await delegationApi.setGrants(delegate.id, nextGrants);
-      setDelegates((prev) =>
-        prev.map((d) =>
-          d.id === delegate.id ? { ...d, grants: nextGrants } : d,
-        ),
-      );
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to update access'));
-      logger.error(err);
-    }
-  };
-
-  const updateCapability = async (
-    delegate: DelegateSummary,
-    resource: 'payees' | 'categories' | 'tags',
-    op: 'create' | 'edit' | 'delete',
-    value: boolean,
-  ) => {
-    const opPart =
-      op === 'create' ? 'Create' : op === 'edit' ? 'Edit' : 'Delete';
-    const field = `${resource}Can${opPart}` as
-      | 'payeesCanCreate'
-      | 'payeesCanEdit'
-      | 'payeesCanDelete'
-      | 'categoriesCanCreate'
-      | 'categoriesCanEdit'
-      | 'categoriesCanDelete'
-      | 'tagsCanCreate'
-      | 'tagsCanEdit'
-      | 'tagsCanDelete';
-    try {
-      await delegationApi.setCapabilities(delegate.id, { [field]: value });
-      setDelegates((prev) =>
-        prev.map((d) =>
-          d.id === delegate.id
-            ? {
-                ...d,
-                capabilities: {
-                  ...d.capabilities,
-                  [resource]: { ...d.capabilities[resource], [op]: value },
-                },
-              }
-            : d,
-        ),
-      );
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to update access'));
-      logger.error(err);
-    }
-  };
-
   const handleRevoke = async (id: string) => {
     if (
       !window.confirm(
@@ -211,7 +157,7 @@ export function SharedAccessSection() {
     <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6">
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
         Delegates sign in with their own credentials and never see your
-        password. They only see the accounts you grant them.
+        password. They only see the accounts and sections you grant them.
       </p>
 
       <form
@@ -277,122 +223,68 @@ export function SharedAccessSection() {
       ) : delegates.length === 0 ? (
         <p className="text-sm text-gray-500">No delegates yet.</p>
       ) : (
-        <ul className="space-y-6">
+        <ul className="space-y-3">
           {delegates.map((d) => (
             <li
               key={d.id}
-              className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+              className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-wrap items-center justify-between gap-3"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {d.delegate.email}
-                  </p>
-                  <p className="text-xs text-gray-500">Status: {d.status}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleResetPassword(d.id)}
-                    className="rounded border border-gray-300 dark:border-gray-600 px-3 py-1 text-xs"
-                  >
-                    Reset password
-                  </button>
-                  <button
-                    onClick={() => handleRevoke(d.id)}
-                    className="rounded border border-red-300 text-red-600 px-3 py-1 text-xs"
-                  >
-                    Remove
-                  </button>
-                </div>
+              <div className="min-w-0">
+                <p className="font-medium text-gray-900 dark:text-white truncate">
+                  {d.delegate.email}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Status: {d.status} &middot; Sections: {sectionCount(d)}{' '}
+                  &middot; Accounts: {accountCount(d)} &middot; Shared data:{' '}
+                  {sharedDataCount(d)}
+                </p>
               </div>
-              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Shared data (READ is always allowed):
-              </p>
-              <div className="space-y-2 mb-4">
-                {(
-                  [
-                    { key: 'payees' as const, label: 'Payees' },
-                    { key: 'categories' as const, label: 'Categories' },
-                    { key: 'tags' as const, label: 'Tags' },
-                  ]
-                ).map((res) => (
-                  <div
-                    key={res.key}
-                    className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700/50 pb-2"
-                  >
-                    <span className="w-40 truncate font-medium">
-                      {res.label}
-                    </span>
-                    {(
-                      [
-                        { op: 'create' as const, label: 'Create' },
-                        { op: 'edit' as const, label: 'Edit' },
-                        { op: 'delete' as const, label: 'Delete' },
-                      ]
-                    ).map((o) => (
-                      <label
-                        key={o.op}
-                        className="flex items-center gap-1.5"
-                      >
-                        <ToggleSwitch
-                          size="sm"
-                          checked={!!d.capabilities?.[res.key]?.[o.op]}
-                          onChange={(v) =>
-                            updateCapability(d, res.key, o.op, v)
-                          }
-                          label={`${o.label} ${res.label}`}
-                        />
-                        <span className="text-xs">{o.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Per-account access (READ is required for the others):
-              </p>
-              <div className="space-y-2">
-                {accounts.map((a) => {
-                  const g = grantFor(d, a.id);
-                  const ops = [
-                    { key: 'canRead' as const, label: 'Read' },
-                    { key: 'canCreate' as const, label: 'Create' },
-                    { key: 'canEdit' as const, label: 'Edit' },
-                    { key: 'canDelete' as const, label: 'Delete' },
-                  ];
-                  return (
-                    <div
-                      key={a.id}
-                      className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700/50 pb-2"
-                    >
-                      <span className="w-40 truncate font-medium">
-                        {a.name}
-                      </span>
-                      {ops.map((op) => (
-                        <label
-                          key={op.key}
-                          className="flex items-center gap-1.5"
-                        >
-                          <ToggleSwitch
-                            size="sm"
-                            checked={!!g[op.key]}
-                            disabled={op.key !== 'canRead' && !g.canRead}
-                            onChange={(v) =>
-                              updateGrant(d, a.id, op.key, v)
-                            }
-                            label={`${op.label} access to ${a.name}`}
-                          />
-                          <span className="text-xs">{op.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  );
-                })}
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => openEdit(d)}>
+                  Edit access
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleResetPassword(d.id)}
+                >
+                  Reset password
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => handleRevoke(d.id)}
+                >
+                  Remove
+                </Button>
               </div>
             </li>
           ))}
         </ul>
       )}
+
+      <Modal
+        isOpen={showForm}
+        onClose={close}
+        maxWidth="4xl"
+        {...modalProps}
+      >
+        {editingItem && (
+          <DelegateAccessModal
+            delegate={editingItem}
+            accounts={accounts}
+            onCancel={close}
+            onSaved={() => {
+              close();
+              void load();
+            }}
+            setFormDirty={setFormDirty}
+            submitRef={formSubmitRef}
+          />
+        )}
+      </Modal>
+
+      <UnsavedChangesDialog {...unsavedChangesDialog} />
     </div>
   );
 }
