@@ -46,12 +46,16 @@ describe('delegationApi', () => {
     });
   });
 
-  it('setGrants PUTs the account ids', async () => {
+  it('setGrants PUTs the per-account grants', async () => {
     vi.mocked(apiClient.put).mockResolvedValue({ data: {} });
-    await delegationApi.setGrants('d-1', ['a-1', 'a-2']);
+    const grants = [
+      { accountId: 'a-1', canRead: true, canCreate: true },
+      { accountId: 'a-2', canRead: true },
+    ];
+    await delegationApi.setGrants('d-1', grants);
     expect(apiClient.put).toHaveBeenCalledWith(
       '/delegation/delegates/d-1/grants',
-      { accountIds: ['a-1', 'a-2'] },
+      { grants },
     );
   });
 

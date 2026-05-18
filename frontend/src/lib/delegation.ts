@@ -12,6 +12,14 @@ export interface ContextsResponse {
   contexts: DelegateContext[];
 }
 
+export interface AccountGrant {
+  accountId: string;
+  canRead: boolean;
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}
+
 export interface DelegateSummary {
   id: string;
   status: string;
@@ -23,7 +31,7 @@ export interface DelegateSummary {
     lastName: string | null;
     hasPassword: boolean;
   };
-  accountIds: string[];
+  grants: AccountGrant[];
 }
 
 export interface CreateDelegatePayload {
@@ -73,8 +81,8 @@ export const delegationApi = {
     await apiClient.delete(`/delegation/delegates/${id}`);
   },
 
-  setGrants: async (id: string, accountIds: string[]): Promise<void> => {
-    await apiClient.put(`/delegation/delegates/${id}/grants`, { accountIds });
+  setGrants: async (id: string, grants: AccountGrant[]): Promise<void> => {
+    await apiClient.put(`/delegation/delegates/${id}/grants`, { grants });
   },
 
   resetPassword: async (

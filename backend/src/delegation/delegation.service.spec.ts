@@ -164,7 +164,10 @@ describe("DelegationService", () => {
       delegatesRepo.findOne.mockResolvedValue({ id: "g1", ownerUserId: "o1" });
       accountsRepo.find.mockResolvedValue([{ id: "a1" }]); // only 1 of 2 owned
       await expect(
-        service.setGrants("o1", "g1", ["a1", "a2"]),
+        service.setGrants("o1", "g1", [
+          { accountId: "a1", canRead: true },
+          { accountId: "a2", canRead: true },
+        ]),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
@@ -175,20 +178,78 @@ describe("DelegationService", () => {
       );
     });
 
-    it("replaces grants atomically for owned accounts", async () => {
+    it("rejects CREATE/EDIT/DELETE without READ", async () => {
+      delegatesRepo.findOne.mockResolvedValue({ id: "g1", ownerUserId: "o1" });
+      await expect(
+        service.setGrants("o1", "g1", [
+          { accountId: "a1", canRead: false, canCreate: true },
+        ]),
+      ).rejects.toThrow(/READ access is required/);
+    });
+
+    it("persists per-account CRUD flags for readable accounts", async () => {
       delegatesRepo.findOne.mockResolvedValue({ id: "g1", ownerUserId: "o1" });
       accountsRepo.find.mockResolvedValue([{ id: "a1" }]);
+      const saved: any[] = [];
       const manager = {
         delete: jest.fn(),
         create: jest.fn((_e, v) => v),
-        save: jest.fn(),
+        save: jest.fn((rows) => saved.push(...rows)),
       };
       dataSource.transaction.mockImplementation(async (cb: any) => cb(manager));
 
-      await service.setGrants("o1", "g1", ["a1"]);
+      await service.setGrants("o1", "g1", [
+        {
+          accountId: "a1",
+          canRead: true,
+          canCreate: true,
+          canEdit: false,
+          canDelete: true,
+        },
+        // canRead=false -> dropped entirely (no access)
+        { accountId: "a2", canRead: false },
+      ]);
 
       expect(manager.delete).toHaveBeenCalled();
-      expect(manager.save).toHaveBeenCalled();
+      expect(saved).toHaveLength(1);
+      expect(saved[0]).toEqual({
+        delegationId: "g1",
+        accountId: "a1",
+        canRead: true,
+        canCreate: true,
+        canEdit: false,
+        canDelete: true,
+      });
+    });
+  });
+
+  describe("hasAccountPermission", () => {
+    it("is false when there is no readable grant", async () => {
+      grantsRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.hasAccountPermission("g1", "a1", "read"),
+      ).resolves.toBe(false);
+    });
+
+    it("maps each operation to the matching flag", async () => {
+      grantsRepo.findOne.mockResolvedValue({
+        canRead: true,
+        canCreate: true,
+        canEdit: false,
+        canDelete: true,
+      });
+      await expect(
+        service.hasAccountPermission("g1", "a1", "read"),
+      ).resolves.toBe(true);
+      await expect(
+        service.hasAccountPermission("g1", "a1", "create"),
+      ).resolves.toBe(true);
+      await expect(
+        service.hasAccountPermission("g1", "a1", "edit"),
+      ).resolves.toBe(false);
+      await expect(
+        service.hasAccountPermission("g1", "a1", "delete"),
+      ).resolves.toBe(true);
     });
   });
 
@@ -331,7 +392,13 @@ describe("DelegationService", () => {
             passwordHash: "h",
           },
           grants: [
-            { accountId: "a1", canRead: true },
+            {
+              accountId: "a1",
+              canRead: true,
+              canCreate: true,
+              canEdit: false,
+              canDelete: false,
+            },
             { accountId: "a2", canRead: false },
           ],
         },
@@ -348,7 +415,15 @@ describe("DelegationService", () => {
           lastName: null,
           hasPassword: true,
         },
-        accountIds: ["a1"],
+        grants: [
+          {
+            accountId: "a1",
+            canRead: true,
+            canCreate: true,
+            canEdit: false,
+            canDelete: false,
+          },
+        ],
       });
     });
   });

@@ -43,8 +43,9 @@ describe("DelegationController", () => {
   });
 
   it("sets grants", async () => {
-    await controller.setGrants(req, "g1", { accountIds: ["a1"] } as never);
-    expect(service.setGrants).toHaveBeenCalledWith("owner-1", "g1", ["a1"]);
+    const grants = [{ accountId: "a1", canRead: true, canCreate: true }];
+    await controller.setGrants(req, "g1", { grants } as never);
+    expect(service.setGrants).toHaveBeenCalledWith("owner-1", "g1", grants);
   });
 
   it("resets a delegate password", async () => {

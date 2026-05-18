@@ -27,6 +27,9 @@ import { EmailService } from "../notifications/email.service";
 import { delegateInviteTemplate } from "../notifications/email-templates";
 import { ConfigService } from "@nestjs/config";
 import { CreateDelegateDto } from "./dto/create-delegate.dto";
+import { AccountGrantDto } from "./dto/set-grants.dto";
+
+export type DelegateOperation = "read" | "create" | "edit" | "delete";
 
 /**
  * Distinct message so the frontend can route a delegate to 2FA enrollment
@@ -257,10 +260,41 @@ export class DelegationService {
         lastName: d.delegate?.lastName ?? null,
         hasPassword: !!d.delegate?.passwordHash,
       },
-      accountIds: (d.grants ?? [])
+      grants: (d.grants ?? [])
         .filter((g) => g.canRead)
-        .map((g) => g.accountId),
+        .map((g) => ({
+          accountId: g.accountId,
+          canRead: g.canRead,
+          canCreate: g.canCreate,
+          canEdit: g.canEdit,
+          canDelete: g.canDelete,
+        })),
     }));
+  }
+
+  /**
+   * Whether the delegation grants `operation` on `accountId`. READ is implied
+   * by any stored grant (rows are only written when canRead is true).
+   */
+  async hasAccountPermission(
+    delegationId: string,
+    accountId: string,
+    operation: DelegateOperation,
+  ): Promise<boolean> {
+    const grant = await this.grantsRepository.findOne({
+      where: { delegationId, accountId, canRead: true },
+    });
+    if (!grant) return false;
+    switch (operation) {
+      case "read":
+        return true;
+      case "create":
+        return grant.canCreate;
+      case "edit":
+        return grant.canEdit;
+      case "delete":
+        return grant.canDelete;
+    }
   }
 
   async createDelegate(ownerUserId: string, dto: CreateDelegateDto) {
@@ -427,7 +461,7 @@ export class DelegationService {
   async setGrants(
     ownerUserId: string,
     delegationId: string,
-    accountIds: string[],
+    grants: AccountGrantDto[],
   ): Promise<void> {
     const delegation = await this.delegatesRepository.findOne({
       where: { id: delegationId, ownerUserId },
@@ -435,6 +469,19 @@ export class DelegationService {
     if (!delegation) {
       throw new NotFoundException("Delegate not found");
     }
+
+    // READ is the minimum and a prerequisite for CREATE/EDIT/DELETE.
+    for (const g of grants) {
+      if (!g.canRead && (g.canCreate || g.canEdit || g.canDelete)) {
+        throw new BadRequestException(
+          "READ access is required for CREATE, EDIT or DELETE",
+        );
+      }
+    }
+
+    // Only grants that include READ represent actual access.
+    const readable = grants.filter((g) => g.canRead);
+    const accountIds = readable.map((g) => g.accountId);
 
     if (accountIds.length > 0) {
       const owned = await this.accountsRepository.find({
@@ -450,15 +497,18 @@ export class DelegationService {
 
     await this.dataSource.transaction(async (manager) => {
       await manager.delete(AccountDelegateGrant, { delegationId });
-      if (accountIds.length > 0) {
-        const grants = accountIds.map((accountId) =>
+      if (readable.length > 0) {
+        const rows = readable.map((g) =>
           manager.create(AccountDelegateGrant, {
             delegationId,
-            accountId,
+            accountId: g.accountId,
             canRead: true,
+            canCreate: !!g.canCreate,
+            canEdit: !!g.canEdit,
+            canDelete: !!g.canDelete,
           }),
         );
-        await manager.save(grants);
+        await manager.save(rows);
       }
     });
   }

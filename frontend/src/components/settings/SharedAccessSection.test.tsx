@@ -35,7 +35,13 @@ const delegate = {
     lastName: null,
     hasPassword: true,
   },
-  accountIds: [] as string[],
+  grants: [] as Array<{
+    accountId: string;
+    canRead: boolean;
+    canCreate?: boolean;
+    canEdit?: boolean;
+    canDelete?: boolean;
+  }>,
 };
 
 async function renderSection() {
@@ -110,15 +116,48 @@ describe('SharedAccessSection', () => {
     );
   });
 
-  it('toggles a per-account READ grant', async () => {
+  it('grants per-account READ', async () => {
     vi.mocked(delegationApi.setGrants).mockResolvedValue();
     await renderSection();
     await screen.findByText('d@e.f');
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('switch', { name: /Read access to Chequing/i }));
+      fireEvent.click(
+        screen.getByRole('switch', { name: /Read access to Chequing/i }),
+      );
     });
 
-    expect(delegationApi.setGrants).toHaveBeenCalledWith('g1', ['a1']);
+    expect(delegationApi.setGrants).toHaveBeenCalledWith('g1', [
+      {
+        accountId: 'a1',
+        canRead: true,
+        canCreate: false,
+        canEdit: false,
+        canDelete: false,
+      },
+    ]);
+  });
+
+  it('enabling CREATE implies READ', async () => {
+    vi.mocked(delegationApi.listDelegates).mockResolvedValue([
+      { ...delegate, grants: [{ accountId: 'a1', canRead: true }] },
+    ]);
+    vi.mocked(delegationApi.setGrants).mockResolvedValue();
+    await renderSection();
+    await screen.findByText('d@e.f');
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: /Create access to Chequing/i }),
+      );
+    });
+
+    expect(delegationApi.setGrants).toHaveBeenCalledWith('g1', [
+      expect.objectContaining({
+        accountId: 'a1',
+        canRead: true,
+        canCreate: true,
+      }),
+    ]);
   });
 });

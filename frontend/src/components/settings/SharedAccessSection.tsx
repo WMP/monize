@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { delegationApi, DelegateSummary } from '@/lib/delegation';
+import {
+  delegationApi,
+  DelegateSummary,
+  AccountGrant,
+} from '@/lib/delegation';
 import { accountsApi } from '@/lib/accounts';
 import { Account } from '@/types/account';
 import { createLogger } from '@/lib/logger';
@@ -85,16 +89,45 @@ export function SharedAccessSection() {
     }
   };
 
-  const toggleGrant = async (delegate: DelegateSummary, accountId: string) => {
-    const has = delegate.accountIds.includes(accountId);
-    const next = has
-      ? delegate.accountIds.filter((id) => id !== accountId)
-      : [...delegate.accountIds, accountId];
+  const grantFor = (
+    delegate: DelegateSummary,
+    accountId: string,
+  ): AccountGrant =>
+    delegate.grants.find((g) => g.accountId === accountId) ?? {
+      accountId,
+      canRead: false,
+      canCreate: false,
+      canEdit: false,
+      canDelete: false,
+    };
+
+  const updateGrant = async (
+    delegate: DelegateSummary,
+    accountId: string,
+    op: 'canRead' | 'canCreate' | 'canEdit' | 'canDelete',
+    value: boolean,
+  ) => {
+    const updated: AccountGrant = { ...grantFor(delegate, accountId), [op]: value };
+    if (op === 'canRead' && !value) {
+      updated.canCreate = false;
+      updated.canEdit = false;
+      updated.canDelete = false;
+    }
+    if (op !== 'canRead' && value) {
+      // CREATE/EDIT/DELETE require READ.
+      updated.canRead = true;
+    }
+    // Authoritative set: every still-readable account for this delegate.
+    const nextGrants = accounts
+      .map((a) =>
+        a.id === accountId ? updated : grantFor(delegate, a.id),
+      )
+      .filter((g) => g.canRead);
     try {
-      await delegationApi.setGrants(delegate.id, next);
+      await delegationApi.setGrants(delegate.id, nextGrants);
       setDelegates((prev) =>
         prev.map((d) =>
-          d.id === delegate.id ? { ...d, accountIds: next } : d,
+          d.id === delegate.id ? { ...d, grants: nextGrants } : d,
         ),
       );
     } catch (err) {
@@ -234,23 +267,45 @@ export function SharedAccessSection() {
                 </div>
               </div>
               <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Accounts this delegate can read:
+                Per-account access (READ is required for the others):
               </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {accounts.map((a) => (
-                  <div
-                    key={a.id}
-                    className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
-                  >
-                    <ToggleSwitch
-                      size="sm"
-                      checked={d.accountIds.includes(a.id)}
-                      onChange={() => toggleGrant(d, a.id)}
-                      label={`Read access to ${a.name}`}
-                    />
-                    <span>{a.name}</span>
-                  </div>
-                ))}
+              <div className="space-y-2">
+                {accounts.map((a) => {
+                  const g = grantFor(d, a.id);
+                  const ops = [
+                    { key: 'canRead' as const, label: 'Read' },
+                    { key: 'canCreate' as const, label: 'Create' },
+                    { key: 'canEdit' as const, label: 'Edit' },
+                    { key: 'canDelete' as const, label: 'Delete' },
+                  ];
+                  return (
+                    <div
+                      key={a.id}
+                      className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700/50 pb-2"
+                    >
+                      <span className="w-40 truncate font-medium">
+                        {a.name}
+                      </span>
+                      {ops.map((op) => (
+                        <label
+                          key={op.key}
+                          className="flex items-center gap-1.5"
+                        >
+                          <ToggleSwitch
+                            size="sm"
+                            checked={!!g[op.key]}
+                            disabled={op.key !== 'canRead' && !g.canRead}
+                            onChange={(v) =>
+                              updateGrant(d, a.id, op.key, v)
+                            }
+                            label={`${op.label} access to ${a.name}`}
+                          />
+                          <span className="text-xs">{op.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             </li>
           ))}

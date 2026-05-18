@@ -65,7 +65,7 @@ export class DelegationController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: SetGrantsDto,
   ) {
-    return this.delegationService.setGrants(req.user.id, id, dto.accountIds);
+    return this.delegationService.setGrants(req.user.id, id, dto.grants);
   }
 
   @Post("delegates/:id/reset-password")
