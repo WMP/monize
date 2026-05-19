@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  UseInterceptors,
   Request,
   Query,
   ParseUUIDPipe,
@@ -31,15 +32,41 @@ import {
   CreateScheduledTransactionOverrideDto,
   UpdateScheduledTransactionOverrideDto,
 } from "./dto/scheduled-transaction-override.dto";
+import {
+  AllowDelegate,
+  DelegatedTransferBody,
+  DelegatedScheduledParam,
+  DelegateRequires,
+  DelegateRequiresSection,
+} from "../delegation/decorators/delegate-access.decorator";
+import { DelegateScheduledTransferMaskInterceptor } from "../delegation/interceptors/delegate-scheduled-transfer-mask.interceptor";
+import { DelegationService } from "../delegation/delegation.service";
 
 @ApiTags("Scheduled Transactions")
 @Controller("scheduled-transactions")
 @UseGuards(AuthGuard("jwt"))
+@UseInterceptors(DelegateScheduledTransferMaskInterceptor)
 @ApiBearerAuth()
 export class ScheduledTransactionsController {
   constructor(
     private readonly scheduledTransactionsService: ScheduledTransactionsService,
+    private readonly delegationService: DelegationService,
   ) {}
+
+  /**
+   * Restrict a result set to scheduled rows on accounts the delegate was
+   * granted READ on. Non-delegate requests pass through unchanged.
+   */
+  private async filterForDelegate<T extends { accountId: string }>(
+    req: { user: { isActing?: boolean; delegationId?: string } },
+    rows: T[],
+  ): Promise<T[]> {
+    if (!req.user.isActing || !req.user.delegationId) return rows;
+    const readable = new Set(
+      await this.delegationService.readableAccountIds(req.user.delegationId),
+    );
+    return rows.filter((r) => readable.has(r.accountId));
+  }
 
   @Post()
   @ApiOperation({ summary: "Create a new scheduled transaction" })
@@ -49,6 +76,10 @@ export class ScheduledTransactionsController {
   })
   @ApiResponse({ status: 400, description: "Bad request" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedTransferBody("accountId", "transferAccountId")
+  @DelegateRequires("create")
   create(@Request() req, @Body() createDto: CreateScheduledTransactionDto) {
     return this.scheduledTransactionsService.create(req.user.id, createDto);
   }
@@ -62,8 +93,11 @@ export class ScheduledTransactionsController {
     description: "List of scheduled transactions retrieved successfully",
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
-  findAll(@Request() req) {
-    return this.scheduledTransactionsService.findAll(req.user.id);
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  async findAll(@Request() req) {
+    const rows = await this.scheduledTransactionsService.findAll(req.user.id);
+    return this.filterForDelegate(req, rows);
   }
 
   @Get("due")
@@ -73,8 +107,11 @@ export class ScheduledTransactionsController {
     description: "List of due scheduled transactions retrieved successfully",
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
-  findDue(@Request() req) {
-    return this.scheduledTransactionsService.findDue(req.user.id);
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  async findDue(@Request() req) {
+    const rows = await this.scheduledTransactionsService.findDue(req.user.id);
+    return this.filterForDelegate(req, rows);
   }
 
   @Get("upcoming")
@@ -90,11 +127,17 @@ export class ScheduledTransactionsController {
       "List of upcoming scheduled transactions retrieved successfully",
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
-  findUpcoming(
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  async findUpcoming(
     @Request() req,
     @Query("days", new DefaultValuePipe(30), ParseIntPipe) days: number,
   ) {
-    return this.scheduledTransactionsService.findUpcoming(req.user.id, days);
+    const rows = await this.scheduledTransactionsService.findUpcoming(
+      req.user.id,
+      days,
+    );
+    return this.filterForDelegate(req, rows);
   }
 
   @Get(":id")
@@ -110,6 +153,9 @@ export class ScheduledTransactionsController {
     description: "Forbidden - scheduled transaction does not belong to user",
   })
   @ApiResponse({ status: 404, description: "Scheduled transaction not found" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
   findOne(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
     return this.scheduledTransactionsService.findOne(req.user.id, id);
   }
@@ -128,6 +174,10 @@ export class ScheduledTransactionsController {
     description: "Forbidden - scheduled transaction does not belong to user",
   })
   @ApiResponse({ status: 404, description: "Scheduled transaction not found" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
+  @DelegateRequires("edit")
   update(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
@@ -149,6 +199,10 @@ export class ScheduledTransactionsController {
     description: "Forbidden - scheduled transaction does not belong to user",
   })
   @ApiResponse({ status: 404, description: "Scheduled transaction not found" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
+  @DelegateRequires("delete")
   remove(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
     return this.scheduledTransactionsService.remove(req.user.id, id);
   }
@@ -161,6 +215,10 @@ export class ScheduledTransactionsController {
   @ApiResponse({ status: 200, description: "Transaction posted successfully" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Scheduled transaction not found" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
+  @DelegateRequires("edit")
   post(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
@@ -177,6 +235,10 @@ export class ScheduledTransactionsController {
   @ApiResponse({ status: 200, description: "Occurrence skipped successfully" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Scheduled transaction not found" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
+  @DelegateRequires("edit")
   skip(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
     return this.scheduledTransactionsService.skip(req.user.id, id);
   }
@@ -192,6 +254,9 @@ export class ScheduledTransactionsController {
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Scheduled transaction not found" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
   findOverrides(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
     return this.scheduledTransactionsService.findOverrides(req.user.id, id);
   }
@@ -204,6 +269,9 @@ export class ScheduledTransactionsController {
   @ApiResponse({ status: 200, description: "Override check completed" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Scheduled transaction not found" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
   hasOverrides(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
     return this.scheduledTransactionsService.hasOverrides(req.user.id, id);
   }
@@ -218,6 +286,9 @@ export class ScheduledTransactionsController {
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Scheduled transaction not found" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
   findOverrideByDate(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
@@ -243,6 +314,10 @@ export class ScheduledTransactionsController {
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Scheduled transaction not found" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
+  @DelegateRequires("edit")
   createOverride(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
@@ -262,6 +337,9 @@ export class ScheduledTransactionsController {
   @ApiResponse({ status: 200, description: "Override retrieved successfully" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Override not found" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
   findOverride(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
@@ -281,6 +359,10 @@ export class ScheduledTransactionsController {
   @ApiResponse({ status: 200, description: "Override updated successfully" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Override not found" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
+  @DelegateRequires("edit")
   updateOverride(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
@@ -302,6 +384,10 @@ export class ScheduledTransactionsController {
   @ApiResponse({ status: 200, description: "Override deleted successfully" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Override not found" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
+  @DelegateRequires("delete")
   removeOverride(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
@@ -323,6 +409,10 @@ export class ScheduledTransactionsController {
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Scheduled transaction not found" })
+  @AllowDelegate()
+  @DelegateRequiresSection("bills")
+  @DelegatedScheduledParam("id")
+  @DelegateRequires("delete")
   removeAllOverrides(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
     return this.scheduledTransactionsService.removeAllOverrides(
       req.user.id,

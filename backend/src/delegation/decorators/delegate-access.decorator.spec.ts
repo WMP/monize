@@ -7,13 +7,17 @@ import {
   DelegatedTransferParam,
   DelegateRequires,
   DelegateRequiresCapability,
+  DelegatedScheduledParam,
+  DelegateRequiresSection,
   ALLOW_DELEGATE_KEY,
   DELEGATED_ACCOUNT_PARAM_KEY,
   DELEGATED_TRANSACTION_PARAM_KEY,
   DELEGATED_TRANSFER_BODY_KEY,
   DELEGATED_TRANSFER_PARAM_KEY,
+  DELEGATED_SCHEDULED_PARAM_KEY,
   DELEGATE_OPERATION_KEY,
   DELEGATE_CAPABILITY_KEY,
+  DELEGATE_SECTION_KEY,
 } from "./delegate-access.decorator";
 
 describe("delegate-access decorators", () => {
@@ -94,6 +98,31 @@ describe("delegate-access decorators", () => {
     }
     expect(reflector.get(DELEGATE_CAPABILITY_KEY, C.prototype.handler)).toEqual(
       { resource: "payees", operation: "edit" },
+    );
+  });
+
+  it("DelegatedScheduledParam defaults to 'id' and accepts a custom key", () => {
+    class C {
+      @DelegatedScheduledParam()
+      a() {}
+      @DelegatedScheduledParam("scheduledId")
+      b() {}
+    }
+    expect(reflector.get(DELEGATED_SCHEDULED_PARAM_KEY, C.prototype.a)).toBe(
+      "id",
+    );
+    expect(reflector.get(DELEGATED_SCHEDULED_PARAM_KEY, C.prototype.b)).toBe(
+      "scheduledId",
+    );
+  });
+
+  it("DelegateRequiresSection sets the section", () => {
+    class C {
+      @DelegateRequiresSection("bills")
+      handler() {}
+    }
+    expect(reflector.get(DELEGATE_SECTION_KEY, C.prototype.handler)).toBe(
+      "bills",
     );
   });
 });

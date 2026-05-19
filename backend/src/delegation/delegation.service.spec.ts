@@ -15,6 +15,7 @@ describe("DelegationService", () => {
   let refreshRepo: Record<string, jest.Mock>;
   let accountsRepo: Record<string, jest.Mock>;
   let transactionsRepo: Record<string, jest.Mock>;
+  let scheduledTxRepo: Record<string, jest.Mock>;
   let emailService: Record<string, jest.Mock>;
   let configService: Record<string, jest.Mock>;
   let dataSource: Record<string, jest.Mock>;
@@ -27,6 +28,7 @@ describe("DelegationService", () => {
     refreshRepo = { update: jest.fn() };
     accountsRepo = { find: jest.fn(), exists: jest.fn() };
     transactionsRepo = { findOne: jest.fn() };
+    scheduledTxRepo = { findOne: jest.fn() };
     emailService = { getStatus: jest.fn(), sendMail: jest.fn() };
     configService = { get: jest.fn() };
     dataSource = { transaction: jest.fn() };
@@ -39,6 +41,7 @@ describe("DelegationService", () => {
       refreshRepo as any,
       accountsRepo as any,
       transactionsRepo as any,
+      scheduledTxRepo as any,
       emailService as any,
       configService as any,
       dataSource as any,
@@ -177,6 +180,36 @@ describe("DelegationService", () => {
     it("returns [] when the transaction does not exist", async () => {
       transactionsRepo.findOne.mockResolvedValueOnce(null);
       await expect(service.accountIdsForTransfer("t1")).resolves.toEqual([]);
+    });
+  });
+
+  describe("accountIdsForScheduled", () => {
+    it("returns [] when the scheduled row does not exist", async () => {
+      scheduledTxRepo.findOne.mockResolvedValue(null);
+      await expect(service.accountIdsForScheduled("s1")).resolves.toEqual([]);
+    });
+
+    it("returns just the account for a non-transfer", async () => {
+      scheduledTxRepo.findOne.mockResolvedValue({
+        accountId: "a1",
+        isTransfer: false,
+        transferAccountId: null,
+      });
+      await expect(service.accountIdsForScheduled("s1")).resolves.toEqual([
+        "a1",
+      ]);
+    });
+
+    it("returns both accounts for a transfer", async () => {
+      scheduledTxRepo.findOne.mockResolvedValue({
+        accountId: "a1",
+        isTransfer: true,
+        transferAccountId: "a2",
+      });
+      await expect(service.accountIdsForScheduled("s1")).resolves.toEqual([
+        "a1",
+        "a2",
+      ]);
     });
   });
 

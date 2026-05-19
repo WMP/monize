@@ -22,6 +22,7 @@ import { UserPreference } from "../users/entities/user-preference.entity";
 import { RefreshToken } from "../auth/entities/refresh-token.entity";
 import { Account } from "../accounts/entities/account.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
+import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { hashToken } from "../auth/crypto.util";
 import { generateReadablePassword } from "../admin/utils/password-generator";
 import { EmailService } from "../notifications/email.service";
@@ -97,6 +98,8 @@ export class DelegationService {
     private accountsRepository: Repository<Account>,
     @InjectRepository(Transaction)
     private transactionsRepository: Repository<Transaction>,
+    @InjectRepository(ScheduledTransaction)
+    private scheduledTransactionsRepository: Repository<ScheduledTransaction>,
     private emailService: EmailService,
     private configService: ConfigService,
     private dataSource: DataSource,
@@ -215,6 +218,24 @@ export class DelegationService {
         select: ["accountId"],
       });
       if (linked) ids.add(linked.accountId);
+    }
+    return [...ids];
+  }
+
+  /**
+   * Every account a scheduled transaction touches: its own account plus the
+   * transfer counterpart when it is a transfer. Empty if the row does not
+   * exist (the owner-scoped service then returns 404).
+   */
+  async accountIdsForScheduled(scheduledId: string): Promise<string[]> {
+    const st = await this.scheduledTransactionsRepository.findOne({
+      where: { id: scheduledId },
+      select: ["accountId", "transferAccountId", "isTransfer"],
+    });
+    if (!st) return [];
+    const ids = new Set<string>([st.accountId]);
+    if (st.isTransfer && st.transferAccountId) {
+      ids.add(st.transferAccountId);
     }
     return [...ids];
   }

@@ -1,10 +1,12 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ScheduledTransactionsController } from "./scheduled-transactions.controller";
 import { ScheduledTransactionsService } from "./scheduled-transactions.service";
+import { DelegationService } from "../delegation/delegation.service";
 
 describe("ScheduledTransactionsController", () => {
   let controller: ScheduledTransactionsController;
   let mockService: Record<string, jest.Mock>;
+  let delegationMock: Record<string, jest.Mock>;
   const mockReq = { user: { id: "user-1" } };
 
   beforeEach(async () => {
@@ -34,6 +36,13 @@ describe("ScheduledTransactionsController", () => {
         {
           provide: ScheduledTransactionsService,
           useValue: mockService,
+        },
+        {
+          provide: DelegationService,
+          useValue: (delegationMock = {
+            readableAccountIds: jest.fn().mockResolvedValue([]),
+            accountIdsForScheduled: jest.fn().mockResolvedValue([]),
+          }),
         },
       ],
     }).compile();
@@ -65,6 +74,22 @@ describe("ScheduledTransactionsController", () => {
 
       expect(result).toEqual(expected);
       expect(mockService.findAll).toHaveBeenCalledWith("user-1");
+    });
+
+    it("filters to readable accounts for an acting delegate", async () => {
+      const actingReq = {
+        user: { id: "owner-1", isActing: true, delegationId: "g1" },
+      };
+      mockService.findAll.mockResolvedValue([
+        { id: "st-1", accountId: "a1" },
+        { id: "st-2", accountId: "a2" },
+      ]);
+      delegationMock.readableAccountIds.mockResolvedValue(["a2"]);
+
+      const result = await controller.findAll(actingReq);
+
+      expect(result).toEqual([{ id: "st-2", accountId: "a2" }]);
+      expect(delegationMock.readableAccountIds).toHaveBeenCalledWith("g1");
     });
   });
 

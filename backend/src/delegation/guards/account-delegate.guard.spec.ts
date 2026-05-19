@@ -6,6 +6,7 @@ import {
   DELEGATED_TRANSACTION_PARAM_KEY,
   DELEGATED_TRANSFER_BODY_KEY,
   DELEGATED_TRANSFER_PARAM_KEY,
+  DELEGATED_SCHEDULED_PARAM_KEY,
   DELEGATE_OPERATION_KEY,
   DELEGATE_CAPABILITY_KEY,
   DELEGATE_SECTION_KEY,
@@ -32,6 +33,7 @@ describe("AccountDelegateGuard", () => {
       hasAccountPermission: jest.fn(),
       accountIdForTransaction: jest.fn(),
       accountIdsForTransfer: jest.fn(),
+      accountIdsForScheduled: jest.fn(),
       hasCapability: jest.fn(),
       hasSection: jest.fn(),
     };
@@ -324,6 +326,80 @@ describe("AccountDelegateGuard", () => {
     delegationService.hasCapability.mockResolvedValue(true);
     const ctx = makeContext({ headers: { authorization: "Bearer x" } });
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
+  });
+
+  it("requires the operation on every account of a scheduled-by-id", async () => {
+    jwtService.verify.mockReturnValue({
+      sub: "d1",
+      actingAsUserId: "o1",
+      delegationId: "g1",
+    });
+    reflector.getAllAndOverride.mockImplementation((key: string) => {
+      if (key === ALLOW_DELEGATE_KEY) return true;
+      if (key === DELEGATED_SCHEDULED_PARAM_KEY) return "id";
+      if (key === DELEGATE_OPERATION_KEY) return "edit";
+      return undefined;
+    });
+    delegationService.accountIdsForScheduled.mockResolvedValue(["a1", "a2"]);
+    delegationService.hasAccountPermission.mockImplementation(
+      async (_g: string, accId: string) => accId === "a1",
+    );
+    const ctx = makeContext({
+      headers: { authorization: "Bearer x" },
+      params: { id: "s-1" },
+    });
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it("lets an unknown scheduled txn fall through (404)", async () => {
+    jwtService.verify.mockReturnValue({
+      sub: "d1",
+      actingAsUserId: "o1",
+      delegationId: "g1",
+    });
+    reflector.getAllAndOverride.mockImplementation((key: string) => {
+      if (key === ALLOW_DELEGATE_KEY) return true;
+      if (key === DELEGATED_SCHEDULED_PARAM_KEY) return "id";
+      return undefined;
+    });
+    delegationService.accountIdsForScheduled.mockResolvedValue([]);
+    const ctx = makeContext({
+      headers: { authorization: "Bearer x" },
+      params: { id: "s-missing" },
+    });
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(delegationService.hasAccountPermission).not.toHaveBeenCalled();
+  });
+
+  it("READ of a scheduled transfer only gates the primary account", async () => {
+    jwtService.verify.mockReturnValue({
+      sub: "d1",
+      actingAsUserId: "o1",
+      delegationId: "g1",
+    });
+    reflector.getAllAndOverride.mockImplementation((key: string) => {
+      if (key === ALLOW_DELEGATE_KEY) return true;
+      if (key === DELEGATED_SCHEDULED_PARAM_KEY) return "id";
+      // no DELEGATE_OPERATION_KEY -> defaults to "read"
+      return undefined;
+    });
+    delegationService.accountIdsForScheduled.mockResolvedValue(["a1", "a2"]);
+    delegationService.hasAccountPermission.mockImplementation(
+      async (_g: string, accId: string) => accId === "a1",
+    );
+    const ctx = makeContext({
+      headers: { authorization: "Bearer x" },
+      params: { id: "s-1" },
+    });
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(delegationService.hasAccountPermission).toHaveBeenCalledTimes(1);
+    expect(delegationService.hasAccountPermission).toHaveBeenCalledWith(
+      "g1",
+      "a1",
+      "read",
+    );
   });
 
   it("blocks a delegate lacking the required section grant", async () => {

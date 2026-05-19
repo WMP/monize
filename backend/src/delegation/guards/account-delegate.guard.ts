@@ -13,6 +13,7 @@ import {
   DELEGATED_TRANSACTION_PARAM_KEY,
   DELEGATED_TRANSFER_BODY_KEY,
   DELEGATED_TRANSFER_PARAM_KEY,
+  DELEGATED_SCHEDULED_PARAM_KEY,
   DELEGATE_OPERATION_KEY,
   DELEGATE_CAPABILITY_KEY,
   DELEGATE_SECTION_KEY,
@@ -142,6 +143,31 @@ export class AccountDelegateGuard implements CanActivate {
           await this.delegationService.accountIdsForTransfer(txId);
         // Unknown transfer: let the owner-scoped service return 404.
         for (const accountId of accountIds) {
+          await this.assertPermission(
+            payload.delegationId,
+            accountId,
+            operation,
+          );
+        }
+      }
+    }
+
+    const scheduledParamKey = this.reflector.getAllAndOverride<string>(
+      DELEGATED_SCHEDULED_PARAM_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    if (scheduledParamKey) {
+      const scheduledId = this.resolveAccountId(req, scheduledParamKey);
+      if (scheduledId) {
+        const accountIds =
+          await this.delegationService.accountIdsForScheduled(scheduledId);
+        // Unknown scheduled txn: let the owner-scoped service return 404.
+        // READ only needs the primary account (accountIds[0]); the transfer
+        // counterpart is masked by the interceptor, not blocked. WRITES must
+        // hold the op on BOTH legs (no moving money via a hidden account).
+        const gated =
+          operation === "read" ? accountIds.slice(0, 1) : accountIds;
+        for (const accountId of gated) {
           await this.assertPermission(
             payload.delegationId,
             accountId,

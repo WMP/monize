@@ -56,6 +56,16 @@ export const DelegatedTransferParam = (key = "id") =>
   SetMetadata(DELEGATED_TRANSFER_PARAM_KEY, key);
 
 /**
+ * Like @DelegatedTransferParam but the request key holds a SCHEDULED
+ * transaction id; the guard resolves every account it touches (its own
+ * account plus the transfer counterpart) and requires the operation on each.
+ * Used for scheduled read/edit/delete/post/skip + override routes.
+ */
+export const DELEGATED_SCHEDULED_PARAM_KEY = "delegatedScheduledParam";
+export const DelegatedScheduledParam = (key = "id") =>
+  SetMetadata(DELEGATED_SCHEDULED_PARAM_KEY, key);
+
+/**
  * 2C: a route that creates/edits/deletes shared reference data (payees,
  * categories, tags). A delegate may reach it only if the owner granted the
  * matching per-delegation manage capability.
