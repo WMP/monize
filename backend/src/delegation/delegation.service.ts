@@ -603,6 +603,8 @@ export class DelegationService {
           delegateUser.mustChangePassword = false;
           delegateUser.resetToken = null;
           delegateUser.resetTokenExpiry = null;
+          delegateUser.failedLoginAttempts = 0;
+          delegateUser.lockedUntil = null;
         } else if (isNew || !delegateUser.passwordHash) {
           // Guarantee the delegate can actually sign in.
           temporaryPassword = generateReadablePassword();
@@ -613,6 +615,8 @@ export class DelegationService {
           delegateUser.mustChangePassword = true;
           delegateUser.resetToken = null;
           delegateUser.resetTokenExpiry = null;
+          delegateUser.failedLoginAttempts = 0;
+          delegateUser.lockedUntil = null;
         }
       }
 
@@ -804,6 +808,10 @@ export class DelegationService {
     delegate.mustChangePassword = true;
     delegate.resetToken = null;
     delegate.resetTokenExpiry = null;
+    // Owner-driven reset is an explicit recovery action: clear any lockout
+    // so a locked-out delegate can sign in with the new password.
+    delegate.failedLoginAttempts = 0;
+    delegate.lockedUntil = null;
     await this.usersRepository.save(delegate);
 
     await this.refreshTokensRepository.update(

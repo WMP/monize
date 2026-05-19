@@ -870,12 +870,20 @@ describe("DelegationService", () => {
         id: "g1",
         delegateUserId: "d1",
       });
-      const delegate = { id: "d1", oidcSubject: null };
+      const delegate = {
+        id: "d1",
+        oidcSubject: null,
+        failedLoginAttempts: 5,
+        lockedUntil: new Date(Date.now() + 60000),
+      };
       usersRepo.findOne.mockResolvedValue(delegate);
       usersRepo.save.mockResolvedValue(delegate);
       const res = await service.resetDelegatePassword("o1", "g1");
       expect(res.temporaryPassword).toBeTruthy();
       expect((delegate as any).mustChangePassword).toBe(true);
+      // Owner reset must clear any lockout so the delegate can sign in.
+      expect((delegate as any).failedLoginAttempts).toBe(0);
+      expect((delegate as any).lockedUntil).toBeNull();
       expect(refreshRepo.update).toHaveBeenCalledWith(
         { userId: "d1", isRevoked: false },
         { isRevoked: true },
@@ -918,6 +926,31 @@ describe("DelegationService", () => {
       } as any);
       expect(res.temporaryPassword).toBeTruthy();
       expect(res.invited).toBe(false);
+    });
+
+    it("clears lockout when the owner sets a password for a locked delegate", async () => {
+      usersRepo.findOne.mockResolvedValue({ id: "o1", email: "own@x.y" });
+      const lockedUser = {
+        id: "d1",
+        email: "new@x.y",
+        oidcSubject: null,
+        role: "user",
+        passwordHash: "old-hash",
+        failedLoginAttempts: 5,
+        lockedUntil: new Date(Date.now() + 60000),
+      };
+      const manager = makeManager();
+      manager.findOne
+        .mockResolvedValueOnce(lockedUser) // User by email
+        .mockResolvedValueOnce(null); // no existing delegation
+      dataSource.transaction.mockImplementation(async (cb: any) => cb(manager));
+      await service.createDelegate("o1", {
+        email: "new@x.y",
+        password: "StrongPass1!xyz",
+      } as any);
+      expect(lockedUser.failedLoginAttempts).toBe(0);
+      expect(lockedUser.lockedUntil).toBeNull();
+      expect(lockedUser.passwordHash).not.toBe("old-hash");
     });
 
     it("sends an invite when sendInvite is set and SMTP is configured", async () => {
