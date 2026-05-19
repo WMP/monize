@@ -56,7 +56,11 @@ export const usePreferencesStore = create<PreferencesState>()(
     {
       name: 'monize-preferences',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ preferences: state.preferences, isLoaded: state.isLoaded }),
+      // Persist only the cached preferences, never `isLoaded`: it must
+      // start false on every load so PreferencesLoader refetches for the
+      // current effective user (e.g. the owner a delegate is acting as),
+      // otherwise a delegate keeps their own stale cached preferences.
+      partialize: (state) => ({ preferences: state.preferences }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },

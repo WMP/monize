@@ -87,4 +87,19 @@ describe('preferencesStore', () => {
     usePreferencesStore.getState().setHasHydrated(true);
     expect(usePreferencesStore.getState()._hasHydrated).toBe(true);
   });
+
+  it('does not persist isLoaded so prefs refetch for the effective user', () => {
+    const partialize = usePreferencesStore.persist.getOptions().partialize!;
+    const persisted = partialize({
+      preferences: { theme: 'dark', defaultCurrency: 'CAD' } as any,
+      isLoaded: true,
+      _hasHydrated: true,
+    } as any) as Record<string, unknown>;
+
+    expect(persisted).toHaveProperty('preferences');
+    // isLoaded must NOT be persisted: a delegate switching into an owner
+    // does a full reload, and a persisted isLoaded=true would skip the
+    // refetch, leaving the delegate on their own stale currency.
+    expect(persisted).not.toHaveProperty('isLoaded');
+  });
 });
