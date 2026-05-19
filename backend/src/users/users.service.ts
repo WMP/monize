@@ -8,7 +8,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, DataSource } from "typeorm";
+import { Repository, DataSource, QueryRunner } from "typeorm";
 import * as bcrypt from "bcryptjs";
 import { User } from "./entities/user.entity";
 import { UserPreference } from "./entities/user-preference.entity";
@@ -326,10 +326,7 @@ export class UsersService {
       }
     }
 
-    // Delete preferences first (due to FK constraint)
-    await this.preferencesRepository.delete({ userId });
-
-    // Revoke all refresh tokens and PATs before deletion
+    // Revoke all refresh tokens and PATs (forces re-login either way).
     await this.refreshTokensRepository.update(
       { userId, isRevoked: false },
       { isRevoked: true },
@@ -339,7 +336,17 @@ export class UsersService {
       { isRevoked: true },
     );
 
-    // Delete the user
+    // A full account that is also a delegate of someone else is demoted to
+    // a pure delegate instead of being removed: their own data goes, but
+    // their login and the delegate access others granted them stay, so
+    // they can keep acting as a delegate.
+    if (await this.isActingDelegate(userId)) {
+      await this.purgeForDowngrade(userId);
+      return;
+    }
+
+    // Delete preferences first (due to FK constraint), then the user.
+    await this.preferencesRepository.delete({ userId });
     await this.usersRepository.remove(user);
   }
 
@@ -376,236 +383,294 @@ export class UsersService {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
-
-    const deleted: Record<string, number> = {};
-
     try {
-      // Always deleted: financial transaction data, investments, summaries, budgets
-
-      // Investment data (FK-safe order)
-      let result = await queryRunner.query(
-        "DELETE FROM investment_transactions WHERE user_id = $1",
-        [userId],
-      );
-      deleted.investmentTransactions = result[1] ?? 0;
-
-      result = await queryRunner.query(
-        `DELETE FROM holdings WHERE account_id IN
-         (SELECT id FROM accounts WHERE user_id = $1)`,
-        [userId],
-      );
-      deleted.holdings = result[1] ?? 0;
-
-      result = await queryRunner.query(
-        `DELETE FROM security_prices WHERE security_id IN
-         (SELECT id FROM securities WHERE user_id = $1)`,
-        [userId],
-      );
-      deleted.securityPrices = result[1] ?? 0;
-
-      result = await queryRunner.query(
-        "DELETE FROM securities WHERE user_id = $1",
-        [userId],
-      );
-      deleted.securities = result[1] ?? 0;
-
-      // Budget data
-      result = await queryRunner.query(
-        `DELETE FROM budget_alerts WHERE user_id = $1`,
-        [userId],
-      );
-      deleted.budgetAlerts = result[1] ?? 0;
-
-      result = await queryRunner.query(
-        `DELETE FROM budget_period_categories WHERE budget_period_id IN
-         (SELECT bp.id FROM budget_periods bp
-          JOIN budgets b ON bp.budget_id = b.id
-          WHERE b.user_id = $1)`,
-        [userId],
-      );
-      deleted.budgetPeriodCategories = result[1] ?? 0;
-
-      result = await queryRunner.query(
-        `DELETE FROM budget_periods WHERE budget_id IN
-         (SELECT id FROM budgets WHERE user_id = $1)`,
-        [userId],
-      );
-      deleted.budgetPeriods = result[1] ?? 0;
-
-      result = await queryRunner.query(
-        `DELETE FROM budget_categories WHERE budget_id IN
-         (SELECT id FROM budgets WHERE user_id = $1)`,
-        [userId],
-      );
-      deleted.budgetCategories = result[1] ?? 0;
-
-      result = await queryRunner.query(
-        "DELETE FROM budgets WHERE user_id = $1",
-        [userId],
-      );
-      deleted.budgets = result[1] ?? 0;
-
-      // Transaction tags
-      result = await queryRunner.query(
-        `DELETE FROM transaction_split_tags WHERE transaction_split_id IN
-         (SELECT ts.id FROM transaction_splits ts
-          JOIN transactions t ON ts.transaction_id = t.id
-          WHERE t.user_id = $1)`,
-        [userId],
-      );
-
-      result = await queryRunner.query(
-        `DELETE FROM transaction_tags WHERE transaction_id IN
-         (SELECT id FROM transactions WHERE user_id = $1)`,
-        [userId],
-      );
-
-      // Transaction splits
-      result = await queryRunner.query(
-        `DELETE FROM transaction_splits WHERE transaction_id IN
-         (SELECT id FROM transactions WHERE user_id = $1)`,
-        [userId],
-      );
-      deleted.transactionSplits = result[1] ?? 0;
-
-      // Transactions
-      result = await queryRunner.query(
-        "DELETE FROM transactions WHERE user_id = $1",
-        [userId],
-      );
-      deleted.transactions = result[1] ?? 0;
-
-      // Tags (now that transaction_tags are gone)
-      result = await queryRunner.query("DELETE FROM tags WHERE user_id = $1", [
-        userId,
-      ]);
-      deleted.tags = result[1] ?? 0;
-
-      // Scheduled transactions
-      result = await queryRunner.query(
-        `DELETE FROM scheduled_transaction_overrides WHERE scheduled_transaction_id IN
-         (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
-        [userId],
-      );
-
-      result = await queryRunner.query(
-        `DELETE FROM scheduled_transaction_splits WHERE scheduled_transaction_id IN
-         (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
-        [userId],
-      );
-
-      result = await queryRunner.query(
-        "DELETE FROM scheduled_transactions WHERE user_id = $1",
-        [userId],
-      );
-      deleted.scheduledTransactions = result[1] ?? 0;
-
-      // Monthly account balances
-      result = await queryRunner.query(
-        "DELETE FROM monthly_account_balances WHERE user_id = $1",
-        [userId],
-      );
-      deleted.monthlyBalances = result[1] ?? 0;
-
-      // Custom reports
-      result = await queryRunner.query(
-        "DELETE FROM custom_reports WHERE user_id = $1",
-        [userId],
-      );
-      deleted.customReports = result[1] ?? 0;
-
-      // Import column mappings
-      result = await queryRunner.query(
-        "DELETE FROM import_column_mappings WHERE user_id = $1",
-        [userId],
-      );
-      deleted.importMappings = result[1] ?? 0;
-
-      // AI data
-      result = await queryRunner.query(
-        "DELETE FROM ai_insights WHERE user_id = $1",
-        [userId],
-      );
-      deleted.aiInsights = result[1] ?? 0;
-
-      result = await queryRunner.query(
-        "DELETE FROM ai_usage_logs WHERE user_id = $1",
-        [userId],
-      );
-
-      // Optional: delete payees (before accounts, since payee default_category_id
-      // references categories, and accounts may reference payee-related data)
-      if (dto.deletePayees) {
-        result = await queryRunner.query(
-          "DELETE FROM payee_aliases WHERE user_id = $1",
-          [userId],
-        );
-        result = await queryRunner.query(
-          "DELETE FROM payees WHERE user_id = $1",
-          [userId],
-        );
-        deleted.payees = result[1] ?? 0;
-      }
-
-      // Optional: delete accounts (must come after transactions)
-      if (dto.deleteAccounts) {
-        result = await queryRunner.query(
-          "DELETE FROM accounts WHERE user_id = $1",
-          [userId],
-        );
-        deleted.accounts = result[1] ?? 0;
-      } else {
-        // Reset account balances to opening balance when transactions are deleted
-        await queryRunner.query(
-          "UPDATE accounts SET current_balance = opening_balance WHERE user_id = $1",
-          [userId],
-        );
-      }
-
-      // Optional: delete categories (must come after transactions and budgets)
-      if (dto.deleteCategories) {
-        // Clear payee default_category_id references first
-        await queryRunner.query(
-          `UPDATE payees SET default_category_id = NULL WHERE user_id = $1`,
-          [userId],
-        );
-        // Clear account category references
-        await queryRunner.query(
-          `UPDATE accounts SET principal_category_id = NULL,
-           interest_category_id = NULL, asset_category_id = NULL
-           WHERE user_id = $1`,
-          [userId],
-        );
-        result = await queryRunner.query(
-          "DELETE FROM categories WHERE user_id = $1",
-          [userId],
-        );
-        deleted.categories = result[1] ?? 0;
-      }
-
-      // Optional: delete exchange rates
-      if (dto.deleteExchangeRates) {
-        result = await queryRunner.query(
-          "DELETE FROM user_currency_preferences WHERE user_id = $1",
-          [userId],
-        );
-        deleted.exchangeRates = result[1] ?? 0;
-      }
-
-      // Clear action history (undo/redo) -- references deleted entities
-      result = await queryRunner.query(
-        "DELETE FROM action_history WHERE user_id = $1",
-        [userId],
-      );
-      deleted.actionHistory = result[1] ?? 0;
-
+      const deleted = await this.runOwnedDataDeletes(userId, dto, queryRunner);
       await queryRunner.commitTransaction();
-
       this.logger.log(
         `User ${userId} deleted data: ${JSON.stringify(deleted)}`,
       );
-
       return { deleted };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  /**
+   * Deletes all data owned by a user -- the same set the self-service
+   * "delete my data" flow removes. Runs inside the caller's transaction.
+   * `opts` mirror DeleteDataDto's optional toggles.
+   */
+  private async runOwnedDataDeletes(
+    userId: string,
+    opts: {
+      deletePayees?: boolean;
+      deleteAccounts?: boolean;
+      deleteCategories?: boolean;
+      deleteExchangeRates?: boolean;
+    },
+    queryRunner: QueryRunner,
+  ): Promise<Record<string, number>> {
+    const deleted: Record<string, number> = {};
+
+    // Always deleted: financial transaction data, investments, summaries, budgets
+
+    // Investment data (FK-safe order)
+    let result = await queryRunner.query(
+      "DELETE FROM investment_transactions WHERE user_id = $1",
+      [userId],
+    );
+    deleted.investmentTransactions = result[1] ?? 0;
+
+    result = await queryRunner.query(
+      `DELETE FROM holdings WHERE account_id IN
+         (SELECT id FROM accounts WHERE user_id = $1)`,
+      [userId],
+    );
+    deleted.holdings = result[1] ?? 0;
+
+    result = await queryRunner.query(
+      `DELETE FROM security_prices WHERE security_id IN
+         (SELECT id FROM securities WHERE user_id = $1)`,
+      [userId],
+    );
+    deleted.securityPrices = result[1] ?? 0;
+
+    result = await queryRunner.query(
+      "DELETE FROM securities WHERE user_id = $1",
+      [userId],
+    );
+    deleted.securities = result[1] ?? 0;
+
+    // Budget data
+    result = await queryRunner.query(
+      `DELETE FROM budget_alerts WHERE user_id = $1`,
+      [userId],
+    );
+    deleted.budgetAlerts = result[1] ?? 0;
+
+    result = await queryRunner.query(
+      `DELETE FROM budget_period_categories WHERE budget_period_id IN
+         (SELECT bp.id FROM budget_periods bp
+          JOIN budgets b ON bp.budget_id = b.id
+          WHERE b.user_id = $1)`,
+      [userId],
+    );
+    deleted.budgetPeriodCategories = result[1] ?? 0;
+
+    result = await queryRunner.query(
+      `DELETE FROM budget_periods WHERE budget_id IN
+         (SELECT id FROM budgets WHERE user_id = $1)`,
+      [userId],
+    );
+    deleted.budgetPeriods = result[1] ?? 0;
+
+    result = await queryRunner.query(
+      `DELETE FROM budget_categories WHERE budget_id IN
+         (SELECT id FROM budgets WHERE user_id = $1)`,
+      [userId],
+    );
+    deleted.budgetCategories = result[1] ?? 0;
+
+    result = await queryRunner.query("DELETE FROM budgets WHERE user_id = $1", [
+      userId,
+    ]);
+    deleted.budgets = result[1] ?? 0;
+
+    // Transaction tags
+    result = await queryRunner.query(
+      `DELETE FROM transaction_split_tags WHERE transaction_split_id IN
+         (SELECT ts.id FROM transaction_splits ts
+          JOIN transactions t ON ts.transaction_id = t.id
+          WHERE t.user_id = $1)`,
+      [userId],
+    );
+
+    result = await queryRunner.query(
+      `DELETE FROM transaction_tags WHERE transaction_id IN
+         (SELECT id FROM transactions WHERE user_id = $1)`,
+      [userId],
+    );
+
+    // Transaction splits
+    result = await queryRunner.query(
+      `DELETE FROM transaction_splits WHERE transaction_id IN
+         (SELECT id FROM transactions WHERE user_id = $1)`,
+      [userId],
+    );
+    deleted.transactionSplits = result[1] ?? 0;
+
+    // Transactions
+    result = await queryRunner.query(
+      "DELETE FROM transactions WHERE user_id = $1",
+      [userId],
+    );
+    deleted.transactions = result[1] ?? 0;
+
+    // Tags (now that transaction_tags are gone)
+    result = await queryRunner.query("DELETE FROM tags WHERE user_id = $1", [
+      userId,
+    ]);
+    deleted.tags = result[1] ?? 0;
+
+    // Scheduled transactions
+    result = await queryRunner.query(
+      `DELETE FROM scheduled_transaction_overrides WHERE scheduled_transaction_id IN
+         (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
+      [userId],
+    );
+
+    result = await queryRunner.query(
+      `DELETE FROM scheduled_transaction_splits WHERE scheduled_transaction_id IN
+         (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
+      [userId],
+    );
+
+    result = await queryRunner.query(
+      "DELETE FROM scheduled_transactions WHERE user_id = $1",
+      [userId],
+    );
+    deleted.scheduledTransactions = result[1] ?? 0;
+
+    // Monthly account balances
+    result = await queryRunner.query(
+      "DELETE FROM monthly_account_balances WHERE user_id = $1",
+      [userId],
+    );
+    deleted.monthlyBalances = result[1] ?? 0;
+
+    // Custom reports
+    result = await queryRunner.query(
+      "DELETE FROM custom_reports WHERE user_id = $1",
+      [userId],
+    );
+    deleted.customReports = result[1] ?? 0;
+
+    // Import column mappings
+    result = await queryRunner.query(
+      "DELETE FROM import_column_mappings WHERE user_id = $1",
+      [userId],
+    );
+    deleted.importMappings = result[1] ?? 0;
+
+    // AI data
+    result = await queryRunner.query(
+      "DELETE FROM ai_insights WHERE user_id = $1",
+      [userId],
+    );
+    deleted.aiInsights = result[1] ?? 0;
+
+    result = await queryRunner.query(
+      "DELETE FROM ai_usage_logs WHERE user_id = $1",
+      [userId],
+    );
+
+    // Optional: delete payees (before accounts, since payee default_category_id
+    // references categories, and accounts may reference payee-related data)
+    if (opts.deletePayees) {
+      result = await queryRunner.query(
+        "DELETE FROM payee_aliases WHERE user_id = $1",
+        [userId],
+      );
+      result = await queryRunner.query(
+        "DELETE FROM payees WHERE user_id = $1",
+        [userId],
+      );
+      deleted.payees = result[1] ?? 0;
+    }
+
+    // Optional: delete accounts (must come after transactions)
+    if (opts.deleteAccounts) {
+      result = await queryRunner.query(
+        "DELETE FROM accounts WHERE user_id = $1",
+        [userId],
+      );
+      deleted.accounts = result[1] ?? 0;
+    } else {
+      // Reset account balances to opening balance when transactions are deleted
+      await queryRunner.query(
+        "UPDATE accounts SET current_balance = opening_balance WHERE user_id = $1",
+        [userId],
+      );
+    }
+
+    // Optional: delete categories (must come after transactions and budgets)
+    if (opts.deleteCategories) {
+      // Clear payee default_category_id references first
+      await queryRunner.query(
+        `UPDATE payees SET default_category_id = NULL WHERE user_id = $1`,
+        [userId],
+      );
+      // Clear account category references
+      await queryRunner.query(
+        `UPDATE accounts SET principal_category_id = NULL,
+           interest_category_id = NULL, asset_category_id = NULL
+           WHERE user_id = $1`,
+        [userId],
+      );
+      result = await queryRunner.query(
+        "DELETE FROM categories WHERE user_id = $1",
+        [userId],
+      );
+      deleted.categories = result[1] ?? 0;
+    }
+
+    // Optional: delete exchange rates
+    if (opts.deleteExchangeRates) {
+      result = await queryRunner.query(
+        "DELETE FROM user_currency_preferences WHERE user_id = $1",
+        [userId],
+      );
+      deleted.exchangeRates = result[1] ?? 0;
+    }
+
+    // Clear action history (undo/redo) -- references deleted entities
+    result = await queryRunner.query(
+      "DELETE FROM action_history WHERE user_id = $1",
+      [userId],
+    );
+    deleted.actionHistory = result[1] ?? 0;
+
+    return deleted;
+  }
+
+  /** True if the user is a delegate of someone else (has incoming access). */
+  async isActingDelegate(userId: string): Promise<boolean> {
+    const rows = await this.dataSource.query(
+      "SELECT 1 FROM account_delegates WHERE delegate_user_id = $1 LIMIT 1",
+      [userId],
+    );
+    return rows.length > 0;
+  }
+
+  /**
+   * Wipes everything the user owns but keeps their login and the delegate
+   * access others granted them -- demoting a full account to a pure
+   * delegate. Delegations the user owned are removed (their accounts are
+   * gone); the rows where they are the delegate are left untouched.
+   */
+  async purgeForDowngrade(userId: string): Promise<void> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      await this.runOwnedDataDeletes(
+        userId,
+        {
+          deletePayees: true,
+          deleteAccounts: true,
+          deleteCategories: true,
+          deleteExchangeRates: true,
+        },
+        queryRunner,
+      );
+      await queryRunner.query(
+        "DELETE FROM account_delegates WHERE owner_user_id = $1",
+        [userId],
+      );
+      await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;

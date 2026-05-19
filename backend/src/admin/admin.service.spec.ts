@@ -11,6 +11,7 @@ import { UserPreference } from "../users/entities/user-preference.entity";
 import { RefreshToken } from "../auth/entities/refresh-token.entity";
 import { PersonalAccessToken } from "../auth/entities/personal-access-token.entity";
 import { OAuthProviderService } from "../oauth/oauth-provider.service";
+import { UsersService } from "../users/users.service";
 
 describe("AdminService", () => {
   let service: AdminService;
@@ -19,6 +20,7 @@ describe("AdminService", () => {
   let refreshTokensRepository: Record<string, jest.Mock>;
   let patRepository: Record<string, jest.Mock>;
   let oauthProviderService: Record<string, jest.Mock>;
+  let usersService: Record<string, jest.Mock>;
 
   const mockAdmin = {
     id: "admin-1",
@@ -78,6 +80,11 @@ describe("AdminService", () => {
       revokeAllForUser: jest.fn().mockResolvedValue(0),
     };
 
+    usersService = {
+      isActingDelegate: jest.fn().mockResolvedValue(false),
+      purgeForDowngrade: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminService,
@@ -97,6 +104,10 @@ describe("AdminService", () => {
         {
           provide: OAuthProviderService,
           useValue: oauthProviderService,
+        },
+        {
+          provide: UsersService,
+          useValue: usersService,
         },
       ],
     }).compile();
@@ -329,6 +340,36 @@ describe("AdminService", () => {
 
       await service.deleteUser("admin-1", "user-2");
 
+      expect(oauthProviderService.revokeAllForUser).toHaveBeenCalledWith(
+        "user-2",
+      );
+    });
+
+    it("revokes refresh tokens and PATs on delete", async () => {
+      usersRepository.findOne.mockResolvedValue({ ...mockTargetUser });
+
+      await service.deleteUser("admin-1", "user-2");
+
+      expect(refreshTokensRepository.update).toHaveBeenCalledWith(
+        { userId: "user-2", isRevoked: false },
+        { isRevoked: true },
+      );
+      expect(patRepository.update).toHaveBeenCalledWith(
+        { userId: "user-2", isRevoked: false },
+        { isRevoked: true },
+      );
+    });
+
+    it("demotes a delegate to a pure delegate instead of deleting", async () => {
+      usersRepository.findOne.mockResolvedValue({ ...mockTargetUser });
+      usersService.isActingDelegate.mockResolvedValue(true);
+
+      await service.deleteUser("admin-1", "user-2");
+
+      expect(usersService.purgeForDowngrade).toHaveBeenCalledWith("user-2");
+      expect(preferencesRepository.delete).not.toHaveBeenCalled();
+      expect(usersRepository.remove).not.toHaveBeenCalled();
+      // Sessions are still revoked so the demotion takes effect immediately.
       expect(oauthProviderService.revokeAllForUser).toHaveBeenCalledWith(
         "user-2",
       );

@@ -7,6 +7,7 @@ import { PersonalAccessToken } from "../auth/entities/personal-access-token.enti
 import { AdminService } from "./admin.service";
 import { AdminController } from "./admin.controller";
 import { OAuthModule } from "../oauth/oauth.module";
+import { UsersModule } from "../users/users.module";
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { OAuthModule } from "../oauth/oauth.module";
       PersonalAccessToken,
     ]),
     OAuthModule,
+    UsersModule,
   ],
   providers: [AdminService],
   controllers: [AdminController],

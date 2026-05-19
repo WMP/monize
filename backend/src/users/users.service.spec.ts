@@ -29,6 +29,7 @@ describe("UsersService", () => {
   let exchangeRateService: { refreshAllRates: jest.Mock };
   let moduleRef: { get: jest.Mock };
   let mockQueryRunner: Record<string, jest.Mock>;
+  let mockDataSource: Record<string, jest.Mock>;
 
   const mockUser = {
     id: "user-1",
@@ -119,8 +120,9 @@ describe("UsersService", () => {
       query: jest.fn().mockResolvedValue([null, 0]),
     };
 
-    const mockDataSource = {
+    mockDataSource = {
       createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+      query: jest.fn().mockResolvedValue([]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -645,6 +647,32 @@ describe("UsersService", () => {
       await expect(
         service.deleteAccount("nonexistent", { password: "pass" }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it("demotes a delegate to a pure delegate instead of deleting", async () => {
+      const hashedPassword = await bcrypt.hash("CorrectPass123!", 10);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        passwordHash: hashedPassword,
+      });
+      // isActingDelegate -> account_delegates lookup returns a row.
+      mockDataSource.query.mockResolvedValue([{ "?column?": 1 }]);
+
+      await service.deleteAccount("user-1", { password: "CorrectPass123!" });
+
+      // Sessions revoked, but the login and incoming delegations stay.
+      expect(refreshTokensRepository.update).toHaveBeenCalled();
+      expect(patRepository.update).toHaveBeenCalled();
+      expect(preferencesRepository.delete).not.toHaveBeenCalled();
+      expect(usersRepository.remove).not.toHaveBeenCalled();
+      // Owned data + owner-side delegations are purged in a transaction.
+      expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
+      const queries = mockQueryRunner.query.mock.calls.map((c) => c[0]);
+      expect(
+        queries.some((q: string) =>
+          q.includes("DELETE FROM account_delegates WHERE owner_user_id"),
+        ),
+      ).toBe(true);
     });
 
     it("prevents the last admin from self-deleting", async () => {

@@ -265,8 +265,13 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
       {/* Delete Account Section */}
       <div>
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Delete Account</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
           Permanently delete your account and all associated data. This cannot be undone.
+        </p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          If you have been granted delegate access to someone else&apos;s
+          accounts, that access and your login are kept: only your own data
+          is removed and your account becomes a delegate-only account.
         </p>
 
         {!showDeleteConfirm ? (
