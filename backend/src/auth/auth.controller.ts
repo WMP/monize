@@ -491,7 +491,17 @@ export class AuthController {
           : null,
       sections:
         req.user.isActing && req.user.delegationId
-          ? await this.delegationService.getSections(req.user.delegationId)
+          ? {
+              ...(await this.delegationService.getSections(
+                req.user.delegationId,
+              )),
+              // Not a stored section: derived from per-account grants so the
+              // delegate's Transactions nav appears when they can read any
+              // non-investment account.
+              transactions: await this.delegationService.hasTransactionalAccess(
+                req.user.delegationId,
+              ),
+            }
           : null,
     };
   }

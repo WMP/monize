@@ -528,6 +528,27 @@ describe('useSwipeNavigation', () => {
       expect(result.current.currentIndex).toBe(0);
     });
 
+    it('includes Transactions when the delegate has transactional access', () => {
+      mockPathname = '/transactions';
+      act(() => {
+        useAuthStore.getState().setDelegation('owner-1', [], null, {
+          bills: true,
+          investments: false,
+          budgets: false,
+          reports: false,
+          ai: false,
+          transactions: true,
+        });
+      });
+
+      const { result } = renderHook(() => useSwipeNavigation());
+
+      // Dashboard + Transactions + Bills.
+      expect(result.current.totalPages).toBe(3);
+      expect(result.current.isSwipePage).toBe(true);
+      expect(result.current.currentIndex).toBeGreaterThanOrEqual(0);
+    });
+
     it('does not treat a non-granted section as a swipe page', () => {
       mockPathname = '/investments';
       act(() => {

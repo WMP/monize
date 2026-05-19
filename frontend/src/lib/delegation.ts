@@ -41,6 +41,12 @@ export interface DelegateSectionGrants {
   budgets: boolean;
   reports: boolean;
   ai: boolean;
+  /**
+   * Derived (not a stored section): true when the delegate can read any
+   * non-investment account, so the Transactions section/nav is reachable.
+   * Optional because the owner-facing delegate summary omits it.
+   */
+  transactions?: boolean;
 }
 
 /** Column-shaped partial used by the PUT /sections endpoint. */

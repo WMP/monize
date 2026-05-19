@@ -16,10 +16,12 @@ const SWIPE_PAGES = [
 ] as const;
 
 // Section-gated swipe pages for a delegate. The Dashboard is always
-// reachable; the rest require the matching owner section grant. Accounts &
-// Transactions are scoped per-account (not section-gated) and stay out of
-// the delegate swipe set, mirroring the delegate top-nav behaviour.
+// reachable; the rest require the matching owner grant. Transactions is
+// reachable when the delegate can read any non-investment account
+// (delegateSections.transactions, derived server-side). Accounts stays
+// per-account scoped and out of the swipe set, mirroring the delegate nav.
 const DELEGATE_SECTION_BY_HREF: Record<string, keyof DelegateSectionGrants> = {
+  '/transactions': 'transactions',
   '/bills': 'bills',
   '/investments': 'investments',
   '/budgets': 'budgets',

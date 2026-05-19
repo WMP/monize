@@ -26,7 +26,7 @@ describe("DelegationService", () => {
     usersRepo = { findOne: jest.fn(), save: jest.fn() };
     prefsRepo = { findOne: jest.fn() };
     refreshRepo = { update: jest.fn() };
-    accountsRepo = { find: jest.fn(), exists: jest.fn() };
+    accountsRepo = { find: jest.fn(), exists: jest.fn(), count: jest.fn() };
     transactionsRepo = { findOne: jest.fn() };
     scheduledTxRepo = { findOne: jest.fn() };
     emailService = { getStatus: jest.fn(), sendMail: jest.fn() };
@@ -1110,6 +1110,29 @@ describe("DelegationService", () => {
         where: { delegationId: "g1", canRead: true },
         select: ["accountId"],
       });
+    });
+  });
+
+  describe("hasTransactionalAccess", () => {
+    it("is false when there are no readable accounts", async () => {
+      grantsRepo.find.mockResolvedValue([]);
+      await expect(service.hasTransactionalAccess("g1")).resolves.toBe(false);
+      expect(accountsRepo.count).not.toHaveBeenCalled();
+    });
+
+    it("is false when every readable account is an investment account", async () => {
+      grantsRepo.find.mockResolvedValue([{ accountId: "a1" }]);
+      accountsRepo.count.mockResolvedValue(0);
+      await expect(service.hasTransactionalAccess("g1")).resolves.toBe(false);
+    });
+
+    it("is true when at least one readable account is non-investment", async () => {
+      grantsRepo.find.mockResolvedValue([
+        { accountId: "a1" },
+        { accountId: "a2" },
+      ]);
+      accountsRepo.count.mockResolvedValue(1);
+      await expect(service.hasTransactionalAccess("g1")).resolves.toBe(true);
     });
   });
 

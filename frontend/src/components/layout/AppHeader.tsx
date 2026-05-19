@@ -49,14 +49,16 @@ export function AppHeader() {
     delegateSections,
   } = useAuthStore();
   const isDelegateView = !!actingAsUserId;
-  // A delegate sees a top-nav section only if the owner granted it.
-  // Accounts & Transactions are scoped via per-account grants, not section
-  // grants, so they stay hidden from the section-gated nav (current
-  // behaviour); the dashboard remains the delegate's landing page.
+  // A delegate sees a top-nav entry only if it is reachable: granted
+  // sections (bills/investments/budgets/reports) plus Transactions when
+  // they can read any non-investment account (delegateSections.transactions,
+  // derived server-side). Accounts stays per-account scoped and hidden from
+  // the section nav; the dashboard remains the delegate's landing page.
   const navSectionByHref: Record<
     string,
-    'bills' | 'investments' | 'budgets' | 'reports'
+    'bills' | 'investments' | 'budgets' | 'reports' | 'transactions'
   > = {
+    '/transactions': 'transactions',
     '/bills': 'bills',
     '/investments': 'investments',
     '/budgets': 'budgets',

@@ -8,7 +8,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, In, DataSource } from "typeorm";
+import { Repository, In, Not, DataSource } from "typeorm";
 import * as bcrypt from "bcryptjs";
 import * as crypto from "crypto";
 
@@ -20,7 +20,7 @@ import { AccountDelegateGrant } from "./entities/account-delegate-grant.entity";
 import { User } from "../users/entities/user.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { RefreshToken } from "../auth/entities/refresh-token.entity";
-import { Account } from "../accounts/entities/account.entity";
+import { Account, AccountType } from "../accounts/entities/account.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { hashToken } from "../auth/crypto.util";
@@ -246,6 +246,20 @@ export class DelegationService {
       select: ["accountId"],
     });
     return grants.map((g) => g.accountId);
+  }
+
+  /**
+   * Whether the delegate can READ at least one account whose activity shows
+   * in the Transactions section (i.e. any non-investment account they were
+   * granted). Drives the delegate Transactions nav/route visibility.
+   */
+  async hasTransactionalAccess(delegationId: string): Promise<boolean> {
+    const readable = await this.readableAccountIds(delegationId);
+    if (readable.length === 0) return false;
+    const count = await this.accountsRepository.count({
+      where: { id: In(readable), accountType: Not(AccountType.INVESTMENT) },
+    });
+    return count > 0;
   }
 
   // --- Login / switch context ---
