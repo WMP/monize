@@ -651,6 +651,20 @@ CREATE TABLE account_delegate_grants (
 
 CREATE INDEX idx_adg_delegation ON account_delegate_grants(delegation_id);
 
+-- A delegate's account favourites, independent of the owner's
+-- accounts.is_favourite (which stays owner-scoped).
+CREATE TABLE delegate_account_favourites (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    delegate_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (delegate_user_id, account_id)
+);
+
+CREATE INDEX idx_delegate_account_favourites_user
+    ON delegate_account_favourites(delegate_user_id);
+
 -- Custom Reports (user-defined configurable reports)
 -- view_type: TABLE, LINE_CHART, BAR_CHART, PIE_CHART
 -- timeframe_type: LAST_7_DAYS, LAST_30_DAYS, LAST_MONTH, LAST_3_MONTHS, LAST_6_MONTHS, LAST_12_MONTHS, LAST_YEAR, YEAR_TO_DATE, CUSTOM

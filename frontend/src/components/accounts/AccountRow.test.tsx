@@ -199,6 +199,32 @@ describe('AccountRow', () => {
 
       expect(screen.queryByLabelText('Favourite')).not.toBeInTheDocument();
     });
+
+    it('renders an interactive favourite toggle when onToggleFavourite is given', () => {
+      const onToggleFavourite = vi.fn();
+      const account = createAccount({ isFavourite: false });
+      renderAccountRow(
+        createDefaultProps({ account, onToggleFavourite }),
+      );
+
+      const btn = screen.getByLabelText('Add to favourites');
+      fireEvent.click(btn);
+
+      expect(onToggleFavourite).toHaveBeenCalledWith(account);
+    });
+
+    it('shows the toggle as pressed for a delegate favourite', () => {
+      renderAccountRow(
+        createDefaultProps({
+          account: createAccount({ isFavourite: true }),
+          onToggleFavourite: vi.fn(),
+        }),
+      );
+
+      expect(
+        screen.getByLabelText('Remove from favourites'),
+      ).toHaveAttribute('aria-pressed', 'true');
+    });
   });
 
   describe('account types', () => {

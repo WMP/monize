@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
 import { DelegationService, DELEGATE_2FA_REQUIRED } from "./delegation.service";
+import { DelegateAccountFavourite } from "./entities/delegate-account-favourite.entity";
 
 describe("DelegationService", () => {
   let service: DelegationService;
@@ -16,6 +17,7 @@ describe("DelegationService", () => {
   let accountsRepo: Record<string, jest.Mock>;
   let transactionsRepo: Record<string, jest.Mock>;
   let scheduledTxRepo: Record<string, jest.Mock>;
+  let delegateFavouritesRepo: Record<string, jest.Mock>;
   let emailService: Record<string, jest.Mock>;
   let configService: Record<string, jest.Mock>;
   let dataSource: Record<string, jest.Mock>;
@@ -29,6 +31,13 @@ describe("DelegationService", () => {
     accountsRepo = { find: jest.fn(), exists: jest.fn(), count: jest.fn() };
     transactionsRepo = { findOne: jest.fn() };
     scheduledTxRepo = { findOne: jest.fn() };
+    delegateFavouritesRepo = {
+      find: jest.fn(),
+      findOne: jest.fn(),
+      delete: jest.fn(),
+      save: jest.fn(),
+      create: jest.fn((v) => v),
+    };
     emailService = { getStatus: jest.fn(), sendMail: jest.fn() };
     configService = { get: jest.fn() };
     dataSource = { transaction: jest.fn() };
@@ -42,6 +51,7 @@ describe("DelegationService", () => {
       accountsRepo as any,
       transactionsRepo as any,
       scheduledTxRepo as any,
+      delegateFavouritesRepo as any,
       emailService as any,
       configService as any,
       dataSource as any,
@@ -1165,6 +1175,62 @@ describe("DelegationService", () => {
     it("is true when the delegate can read at least one account", async () => {
       grantsRepo.count.mockResolvedValue(2);
       await expect(service.hasAnyAccountAccess("g1")).resolves.toBe(true);
+    });
+  });
+
+  describe("delegate favourites overlay", () => {
+    it("getDelegateFavourites maps accountId -> sortOrder", async () => {
+      delegateFavouritesRepo.find.mockResolvedValue([
+        { accountId: "a1", sortOrder: 0 },
+        { accountId: "a2", sortOrder: 3 },
+      ]);
+      const map = await service.getDelegateFavourites("d1");
+      expect(map.get("a1")).toBe(0);
+      expect(map.get("a2")).toBe(3);
+      expect(map.size).toBe(2);
+    });
+
+    it("setDelegateFavourite removes the row when unfavouriting", async () => {
+      await service.setDelegateFavourite("d1", "a1", false);
+      expect(delegateFavouritesRepo.delete).toHaveBeenCalledWith({
+        delegateUserId: "d1",
+        accountId: "a1",
+      });
+      expect(delegateFavouritesRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("setDelegateFavourite is idempotent when already a favourite", async () => {
+      delegateFavouritesRepo.findOne.mockResolvedValue({ id: "f1" });
+      await service.setDelegateFavourite("d1", "a1", true);
+      expect(delegateFavouritesRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("setDelegateFavourite inserts a new favourite", async () => {
+      delegateFavouritesRepo.findOne.mockResolvedValue(null);
+      await service.setDelegateFavourite("d1", "a1", true);
+      expect(delegateFavouritesRepo.save).toHaveBeenCalledWith({
+        delegateUserId: "d1",
+        accountId: "a1",
+        sortOrder: 0,
+      });
+    });
+
+    it("reorderDelegateFavourites sets sortOrder by position", async () => {
+      const manager = { update: jest.fn() };
+      dataSource.transaction.mockImplementation(async (cb: any) => cb(manager));
+      await service.reorderDelegateFavourites("d1", ["a2", "a1"]);
+      expect(manager.update).toHaveBeenNthCalledWith(
+        1,
+        DelegateAccountFavourite,
+        { delegateUserId: "d1", accountId: "a2" },
+        { sortOrder: 0 },
+      );
+      expect(manager.update).toHaveBeenNthCalledWith(
+        2,
+        DelegateAccountFavourite,
+        { delegateUserId: "d1", accountId: "a1" },
+        { sortOrder: 1 },
+      );
     });
   });
 

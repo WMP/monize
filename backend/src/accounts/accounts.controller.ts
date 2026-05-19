@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Patch,
   Param,
@@ -36,6 +37,7 @@ import { LoanPaymentSetupService } from "./loan-payment-setup.service";
 import { CreateAccountDto } from "./dto/create-account.dto";
 import { UpdateAccountDto } from "./dto/update-account.dto";
 import { ReorderFavouriteAccountsDto } from "./dto/reorder-favourite-accounts.dto";
+import { SetDelegateFavouriteDto } from "./dto/set-delegate-favourite.dto";
 import { LoanPreviewDto } from "./dto/loan-preview.dto";
 import {
   MortgagePreviewDto,
@@ -146,10 +148,29 @@ export class AccountsController {
     const readable = new Set(
       await this.delegationService.readableAccountIds(req.user.delegationId),
     );
-    return accounts.filter((a) => readable.has(a.id));
+    const visible = accounts.filter((a) => readable.has(a.id));
+    return this.applyDelegateFavourites(req.user.realUserId, visible);
+  }
+
+  /**
+   * Account favourites are owner-scoped on the accounts row. A delegate
+   * keeps their own, so when acting we replace isFavourite /
+   * favouriteSortOrder with the delegate's overlay (never the owner's).
+   */
+  private async applyDelegateFavourites<
+    T extends { id: string; isFavourite: boolean; favouriteSortOrder: number },
+  >(delegateUserId: string, accounts: T[]): Promise<T[]> {
+    const overlay =
+      await this.delegationService.getDelegateFavourites(delegateUserId);
+    return accounts.map((a) => ({
+      ...a,
+      isFavourite: overlay.has(a.id),
+      favouriteSortOrder: overlay.get(a.id) ?? 0,
+    }));
   }
 
   @Patch("reorder-favourites")
+  @AllowDelegate()
   @ApiOperation({
     summary: "Reorder favourite accounts",
     description:
@@ -161,7 +182,42 @@ export class AccountsController {
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   reorderFavourites(@Request() req, @Body() dto: ReorderFavouriteAccountsDto) {
+    // A delegate reorders their own favourites overlay, never the owner's.
+    if (req.user.isActing) {
+      return this.delegationService.reorderDelegateFavourites(
+        req.user.realUserId,
+        dto.accountIds,
+      );
+    }
     return this.accountsService.reorderFavourites(req.user.id, dto.accountIds);
+  }
+
+  @Put(":id/favourite")
+  @AllowDelegate()
+  @DelegatedAccountParam("id")
+  @ApiOperation({
+    summary: "Set the acting delegate's own favourite flag for an account",
+  })
+  @ApiResponse({ status: 200, description: "Favourite updated" })
+  @ApiResponse({ status: 400, description: "Bad request" })
+  async setDelegateFavourite(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SetDelegateFavouriteDto,
+  ): Promise<{ isFavourite: boolean }> {
+    // Owners manage favourites through the normal account update; this
+    // endpoint exists only for the delegate's independent overlay.
+    if (!req.user.isActing) {
+      throw new BadRequestException(
+        "Use the account update endpoint to change favourites",
+      );
+    }
+    await this.delegationService.setDelegateFavourite(
+      req.user.realUserId,
+      id,
+      dto.isFavourite,
+    );
+    return { isFavourite: dto.isFavourite };
   }
 
   @Get("daily-balances")
@@ -391,8 +447,13 @@ export class AccountsController {
   @ApiResponse({ status: 404, description: "Account not found" })
   @AllowDelegate()
   @DelegatedAccountParam("id")
-  findOne(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
-    return this.accountsService.findOne(req.user.id, id);
+  async findOne(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
+    const account = await this.accountsService.findOne(req.user.id, id);
+    if (!req.user.isActing) return account;
+    const [overlaid] = await this.applyDelegateFavourites(req.user.realUserId, [
+      account,
+    ]);
+    return overlaid;
   }
 
   @Get(":id/balance")

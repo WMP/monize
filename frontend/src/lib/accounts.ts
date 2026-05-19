@@ -83,6 +83,16 @@ export const accountsApi = {
     invalidateCache('accounts:');
   },
 
+  // Set the acting delegate's own favourite flag for an account. The
+  // owner's accounts.is_favourite is never touched by this.
+  setDelegateFavourite: async (
+    id: string,
+    isFavourite: boolean,
+  ): Promise<void> => {
+    await apiClient.put(`/accounts/${id}/favourite`, { isFavourite });
+    invalidateCache('accounts:');
+  },
+
   // Get account balance
   getBalance: async (id: string): Promise<{ balance: number }> => {
     const response = await apiClient.get<{ balance: number }>(`/accounts/${id}/balance`);

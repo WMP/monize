@@ -6,6 +6,7 @@ import { Account, AccountType } from '@/types/account';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
 import { accountsApi } from '@/lib/accounts';
+import { useAuthStore } from '@/store/authStore';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/lib/errors';
@@ -90,6 +91,7 @@ interface AccountListProps {
 
 export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, convertToDefault, onEdit, onRefresh }: AccountListProps) {
   const router = useRouter();
+  const isDelegateView = useAuthStore((s) => !!s.actingAsUserId);
   const { formatCurrency: formatCurrencyBase } = useNumberFormat();
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -492,6 +494,21 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
     }
   }, [onRefresh]);
 
+  const handleToggleFavourite = useCallback(
+    async (account: Account) => {
+      try {
+        await accountsApi.setDelegateFavourite(
+          account.id,
+          !account.isFavourite,
+        );
+        onRefresh();
+      } catch (error) {
+        toast.error(getErrorMessage(error, 'Failed to update favourite'));
+      }
+    },
+    [onRefresh],
+  );
+
   const formatCurrency = useCallback((amount: number | string | null | undefined, currency: string) => {
     const numericAmount = Number(amount) || 0;
     const formatted = formatCurrencyBase(numericAmount, currency);
@@ -715,6 +732,9 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                   onLongPressStartTouch={handleLongPressStart}
                   onLongPressEnd={handleLongPressEnd}
                   onTouchMove={handleTouchMove}
+                  onToggleFavourite={
+                    isDelegateView ? handleToggleFavourite : undefined
+                  }
                 />
               ),
             )}

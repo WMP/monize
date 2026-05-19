@@ -17,6 +17,7 @@ import {
   DelegationStatus,
 } from "./entities/account-delegate.entity";
 import { AccountDelegateGrant } from "./entities/account-delegate-grant.entity";
+import { DelegateAccountFavourite } from "./entities/delegate-account-favourite.entity";
 import { User } from "../users/entities/user.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { RefreshToken } from "../auth/entities/refresh-token.entity";
@@ -100,6 +101,8 @@ export class DelegationService {
     private transactionsRepository: Repository<Transaction>,
     @InjectRepository(ScheduledTransaction)
     private scheduledTransactionsRepository: Repository<ScheduledTransaction>,
+    @InjectRepository(DelegateAccountFavourite)
+    private delegateFavouritesRepository: Repository<DelegateAccountFavourite>,
     private emailService: EmailService,
     private configService: ConfigService,
     private dataSource: DataSource,
@@ -272,6 +275,65 @@ export class DelegationService {
       where: { delegationId, canRead: true },
     });
     return count > 0;
+  }
+
+  // --- Delegate's own (non-shared) account favourites ---
+
+  /** Map of accountId -> sortOrder for the delegate's own favourites. */
+  async getDelegateFavourites(
+    delegateUserId: string,
+  ): Promise<Map<string, number>> {
+    const rows = await this.delegateFavouritesRepository.find({
+      where: { delegateUserId },
+      select: ["accountId", "sortOrder"],
+    });
+    return new Map(rows.map((r) => [r.accountId, r.sortOrder]));
+  }
+
+  /** Add or remove an account from the delegate's own favourites. */
+  async setDelegateFavourite(
+    delegateUserId: string,
+    accountId: string,
+    isFavourite: boolean,
+  ): Promise<void> {
+    if (!isFavourite) {
+      await this.delegateFavouritesRepository.delete({
+        delegateUserId,
+        accountId,
+      });
+      return;
+    }
+    const existing = await this.delegateFavouritesRepository.findOne({
+      where: { delegateUserId, accountId },
+    });
+    if (existing) return;
+    await this.delegateFavouritesRepository.save(
+      this.delegateFavouritesRepository.create({
+        delegateUserId,
+        accountId,
+        sortOrder: 0,
+      }),
+    );
+  }
+
+  /**
+   * Set the delegate's favourite display order. The position of each id in
+   * `accountIds` becomes its sort order; ids that are not favourites are
+   * ignored.
+   */
+  async reorderDelegateFavourites(
+    delegateUserId: string,
+    accountIds: string[],
+  ): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      for (let i = 0; i < accountIds.length; i++) {
+        await manager.update(
+          DelegateAccountFavourite,
+          { delegateUserId, accountId: accountIds[i] },
+          { sortOrder: i },
+        );
+      }
+    });
   }
 
   // --- Login / switch context ---

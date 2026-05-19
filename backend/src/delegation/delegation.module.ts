@@ -6,6 +6,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 
 import { AccountDelegate } from "./entities/account-delegate.entity";
 import { AccountDelegateGrant } from "./entities/account-delegate-grant.entity";
+import { DelegateAccountFavourite } from "./entities/delegate-account-favourite.entity";
 import { User } from "../users/entities/user.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { RefreshToken } from "../auth/entities/refresh-token.entity";
@@ -29,6 +30,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
     TypeOrmModule.forFeature([
       AccountDelegate,
       AccountDelegateGrant,
+      DelegateAccountFavourite,
       User,
       UserPreference,
       RefreshToken,
