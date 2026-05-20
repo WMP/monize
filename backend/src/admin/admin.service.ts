@@ -31,21 +31,17 @@ export class AdminService {
   ) {}
 
   async findAllUsers() {
-    // Pure delegates (users that exist only because an account owner granted
-    // them Shared Access) must not appear here -- they are managed solely from
-    // the owner's Shared Access page. A user is still listed if they own data,
-    // own a delegation, are an admin, or simply are not a delegate at all.
-    const users = await this.usersRepository
-      .createQueryBuilder("u")
-      .where(
-        `(NOT EXISTS (SELECT 1 FROM account_delegates ad WHERE ad.delegate_user_id = u.id)
-          OR EXISTS (SELECT 1 FROM accounts a WHERE a.user_id = u.id)
-          OR EXISTS (SELECT 1 FROM account_delegates o WHERE o.owner_user_id = u.id)
-          OR u.role = :adminRole)`,
-        { adminRole: "admin" },
-      )
-      .orderBy("u.created_at", "ASC")
-      .getMany();
+    // List every user. An earlier version hid "pure delegate" rows (users
+    // that are in account_delegates as a delegate, own no accounts, and
+    // aren't admin) on the theory that owners manage them via Shared
+    // Access. That filter caught self-registered users who happened to be
+    // added as a delegate before creating any accounts -- their row
+    // disappeared from User Management even though the user still
+    // existed, which looked exactly like account deletion. The few extra
+    // rows are a much smaller cost than the perceived data loss.
+    const users = await this.usersRepository.find({
+      order: { createdAt: "ASC" },
+    });
     return users.map((user) => {
       const {
         passwordHash,
