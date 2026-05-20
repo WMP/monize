@@ -783,6 +783,7 @@ describe("DelegationService", () => {
       ownsAccounts: number;
       ownsDelegations: number;
       role?: string;
+      isDelegateOnly?: boolean;
     }) {
       const manager: any = {
         delete: jest.fn(),
@@ -791,9 +792,11 @@ describe("DelegationService", () => {
           .mockResolvedValueOnce(counts.otherDelegations)
           .mockResolvedValueOnce(counts.ownsAccounts)
           .mockResolvedValueOnce(counts.ownsDelegations),
-        findOne: jest
-          .fn()
-          .mockResolvedValue({ id: "d1", role: counts.role ?? "user" }),
+        findOne: jest.fn().mockResolvedValue({
+          id: "d1",
+          role: counts.role ?? "user",
+          isDelegateOnly: counts.isDelegateOnly ?? true,
+        }),
       };
       return manager;
     }
@@ -808,6 +811,7 @@ describe("DelegationService", () => {
         otherDelegations: 0,
         ownsAccounts: 0,
         ownsDelegations: 0,
+        isDelegateOnly: true,
       });
       dataSource.transaction.mockImplementation(async (cb: any) => cb(manager));
 
@@ -818,6 +822,32 @@ describe("DelegationService", () => {
       });
       expect(manager.delete).toHaveBeenCalledWith(expect.anything(), {
         id: "d1",
+      });
+    });
+
+    it("keeps a self-registered / claimed user even with no accounts of their own", async () => {
+      // A user that has gone through /register (either as a fresh
+      // sign-up or by claiming a delegate row) is a full account, even
+      // if they haven't created any accounts yet. Revoking the
+      // delegation must not delete their login.
+      delegatesRepo.findOne.mockResolvedValue({
+        id: "g1",
+        ownerUserId: "o1",
+        delegateUserId: "d1",
+      });
+      const manager = managerFor({
+        otherDelegations: 0,
+        ownsAccounts: 0,
+        ownsDelegations: 0,
+        isDelegateOnly: false,
+      });
+      dataSource.transaction.mockImplementation(async (cb: any) => cb(manager));
+
+      await service.revokeDelegate("o1", "g1");
+
+      expect(manager.delete).toHaveBeenCalledTimes(1);
+      expect(manager.delete).toHaveBeenCalledWith(expect.anything(), {
+        id: "g1",
       });
     });
 

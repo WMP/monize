@@ -888,8 +888,11 @@ export class DelegationService {
       await manager.delete(AccountDelegate, { id: delegationId });
 
       // Entirely remove the delegate's login unless it has another reason to
-      // exist: a delegation elsewhere, its own data, it owns a delegation, or
-      // it is an admin (i.e. it is a full user in its own right).
+      // exist: a delegation elsewhere, its own data, it owns a delegation,
+      // it is an admin, or it has been claimed as a full account in its
+      // own right (isDelegateOnly=false). Without the isDelegateOnly
+      // check a self-registered user who hasn't created any accounts yet
+      // would be silently deleted on revoke.
       const [otherDelegations, ownsAccounts, ownsDelegations] =
         await Promise.all([
           manager.count(AccountDelegate, { where: { delegateUserId } }),
@@ -906,7 +909,8 @@ export class DelegationService {
         otherDelegations === 0 &&
         ownsAccounts === 0 &&
         ownsDelegations === 0 &&
-        delegateUser?.role !== "admin"
+        delegateUser?.role !== "admin" &&
+        delegateUser?.isDelegateOnly !== false
       ) {
         // FK ON DELETE CASCADE cleans preferences, tokens, trusted devices.
         await manager.delete(User, { id: delegateUserId });
