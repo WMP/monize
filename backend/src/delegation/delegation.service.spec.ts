@@ -1015,7 +1015,7 @@ describe("DelegationService", () => {
       expect(res.invited).toBe(false);
     });
 
-    it("clears lockout when the owner sets a password for a locked delegate", async () => {
+    it("clears lockout when the owner sets a password for a locked pure-delegate", async () => {
       usersRepo.findOne.mockResolvedValue({ id: "o1", email: "own@x.y" });
       const lockedUser = {
         id: "d1",
@@ -1030,6 +1030,13 @@ describe("DelegationService", () => {
       manager.findOne
         .mockResolvedValueOnce(lockedUser) // User by email
         .mockResolvedValueOnce(null); // no existing delegation
+      // Mark as a pure delegate (already someone else's delegate row,
+      // owns no data) so credential management is allowed -- a fresh
+      // self-registered user with no delegate role would not be.
+      manager.count.mockImplementation((entity: any, opts: any) => {
+        if (opts?.where?.delegateUserId === "d1") return Promise.resolve(1);
+        return Promise.resolve(0);
+      });
       dataSource.transaction.mockImplementation(async (cb: any) => cb(manager));
       await service.createDelegate("o1", {
         email: "new@x.y",
@@ -1159,6 +1166,36 @@ describe("DelegationService", () => {
       } as any);
 
       expect(existing.passwordHash).toBe("ORIGINAL");
+      expect(res.temporaryPassword).toBeUndefined();
+    });
+
+    it("never touches credentials of a self-registered user with no data yet", async () => {
+      // Reproduces the race where the front-end clicks Add before the
+      // email-lookup debounce returns: dto.password is sent but the
+      // target email belongs to a real user that just hasn't created
+      // any accounts yet. mayManageCredentials must still be false.
+      usersRepo.findOne.mockResolvedValue({ id: "o1", email: "own@x.y" });
+      const existing = {
+        id: "d2",
+        passwordHash: "USER-CHOSEN",
+        oidcSubject: null,
+        role: "user",
+      };
+      const manager = makeManager();
+      manager.findOne
+        .mockResolvedValueOnce(existing)
+        .mockResolvedValueOnce(null);
+      // ownsAccounts=0, ownsDelegations=0, alreadyDelegate=0 -- a fresh
+      // self-registered user who is not yet anybody's delegate row.
+      manager.count.mockResolvedValue(0);
+      dataSource.transaction.mockImplementation(async (cb: any) => cb(manager));
+
+      const res = await service.createDelegate("o1", {
+        email: "fresh@x.y",
+        password: "OwnerWouldOverwrite1!",
+      } as any);
+
+      expect(existing.passwordHash).toBe("USER-CHOSEN");
       expect(res.temporaryPassword).toBeUndefined();
     });
 

@@ -713,20 +713,38 @@ export class DelegationService {
       // in with their own credentials; the owner only links the delegation.
       // New users and pure-delegate identities are owner-managed, so the
       // owner may set their password / send an invite.
+      //
+      // "Pure delegate" means the row already exists solely as some other
+      // owner's delegate (a record in account_delegates.delegate_user_id).
+      // A user that self-registered (passwordHash exists, not in any
+      // delegate row) is a full account even if they have not created any
+      // accounts yet -- their login is theirs, not ours to rotate. Without
+      // this check the front end's email-lookup race (Add clicked before
+      // the 400ms debounced lookup finishes) lets a stray dto.password
+      // overwrite a real user's password.
       let mayManageCredentials = true;
       if (delegateUser) {
         if (delegateUser.oidcSubject || delegateUser.role === "admin") {
           mayManageCredentials = false;
         } else {
-          const [ownsAccounts, ownsDelegations] = await Promise.all([
-            manager.count(Account, {
-              where: { userId: delegateUser.id },
-            }),
-            manager.count(AccountDelegate, {
-              where: { ownerUserId: delegateUser.id },
-            }),
-          ]);
-          if (ownsAccounts > 0 || ownsDelegations > 0) {
+          const [ownsAccounts, ownsDelegations, alreadyDelegate] =
+            await Promise.all([
+              manager.count(Account, {
+                where: { userId: delegateUser.id },
+              }),
+              manager.count(AccountDelegate, {
+                where: { ownerUserId: delegateUser.id },
+              }),
+              manager.count(AccountDelegate, {
+                where: { delegateUserId: delegateUser.id },
+              }),
+            ]);
+          const isPureDelegateRow = alreadyDelegate > 0;
+          if (
+            ownsAccounts > 0 ||
+            ownsDelegations > 0 ||
+            (!isPureDelegateRow && !!delegateUser.passwordHash)
+          ) {
             mayManageCredentials = false;
           }
         }
