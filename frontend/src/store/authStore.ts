@@ -130,10 +130,33 @@ export const useAuthStore = create<AuthState>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (state?.isAuthenticated) {
-          // Fetch user profile from API to restore user object without persisting PII
-          import('@/lib/auth').then(({ authApi }) => {
-            authApi.getProfile().then((user: User) => {
-              state.setUser(user);
+          // Restore the user profile AND the delegation context together
+          // before flipping _hasHydrated. Anything that gates rendering on
+          // `isDelegateView` (DelegateSectionGuard, dashboard view split,
+          // nav visibility) would otherwise see actingAsUserId=null for one
+          // render and flash the wrong page before the contexts request
+          // settles.
+          Promise.all([
+            import('@/lib/auth'),
+            import('@/lib/delegation'),
+          ]).then(([{ authApi }, { delegationApi }]) => {
+            Promise.all([
+              authApi.getProfile(),
+              // Contexts is best-effort: a normal user with no delegations
+              // still gets a successful empty payload. Treat any failure
+              // here as "no delegation context" rather than blocking login
+              // restoration.
+              delegationApi.getContexts().catch(() => null),
+            ]).then(([user, contexts]) => {
+              state.setUser(user as User);
+              if (contexts) {
+                state.setDelegation(
+                  contexts.actingAsUserId,
+                  contexts.contexts,
+                  contexts.capabilities,
+                  contexts.sections,
+                );
+              }
               state.setHasHydrated(true);
             }).catch((error: unknown) => {
               const status = error instanceof AxiosError ? error.response?.status : undefined;
