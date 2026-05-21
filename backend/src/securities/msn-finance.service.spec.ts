@@ -782,9 +782,11 @@ describe("MsnFinanceService", () => {
           FullInstrument: "F1",
           RT0EC: country,
         });
-        global.fetch = jest.fn().mockReturnValueOnce(
-          createResponse({ data: { stocks: [stockBlob] } }),
-        );
+        global.fetch = jest
+          .fn()
+          .mockReturnValueOnce(
+            createResponse({ data: { stocks: [stockBlob] } }),
+          );
         const r = await service.lookupSecurity("X");
         expect(r!.currencyCode).toBe(expected);
       }
@@ -927,9 +929,7 @@ describe("MsnFinanceService", () => {
       }).compile();
       const svc = module.get(MsnFinanceService);
       // Chart endpoint also returns empty, so overall null.
-      global.fetch = jest
-        .fn()
-        .mockReturnValue(createResponse({ series: [] }));
+      global.fetch = jest.fn().mockReturnValue(createResponse({ series: [] }));
       const q = await svc.fetchQuote("AAPL", "NASDAQ", {
         instrumentId: "a1u3p2",
       });
@@ -1065,9 +1065,7 @@ describe("MsnFinanceService", () => {
 
   describe("httpGetJson error path", () => {
     it("returns null when fetch throws (used by lookupSecurity)", async () => {
-      global.fetch = jest
-        .fn()
-        .mockRejectedValue(new Error("network failure"));
+      global.fetch = jest.fn().mockRejectedValue(new Error("network failure"));
       const r = await service.lookupSecurity("X");
       expect(r).toBeNull();
     });

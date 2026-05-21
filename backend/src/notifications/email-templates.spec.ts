@@ -851,11 +851,7 @@ describe("Email Templates", () => {
     });
 
     it("falls back to 'there' when firstName is empty", () => {
-      const html = budgetAlertImmediateTemplate(
-        "",
-        [],
-        "https://app",
-      );
+      const html = budgetAlertImmediateTemplate("", [], "https://app");
       expect(html).toContain("Hi there");
     });
   });
@@ -892,12 +888,7 @@ describe("Email Templates", () => {
     });
 
     it("renders 'No alerts' fallback when summary is empty", () => {
-      const html = budgetWeeklyDigestTemplate(
-        "Alex",
-        [],
-        ["B"],
-        "https://app",
-      );
+      const html = budgetWeeklyDigestTemplate("Alex", [], ["B"], "https://app");
       expect(html).toContain("No alerts");
     });
 
@@ -918,12 +909,7 @@ describe("Email Templates", () => {
     });
 
     it("falls back to 'there' when firstName empty", () => {
-      const html = budgetWeeklyDigestTemplate(
-        "",
-        [],
-        ["B"],
-        "https://app",
-      );
+      const html = budgetWeeklyDigestTemplate("", [], ["B"], "https://app");
       expect(html).toContain("Hi there");
     });
   });

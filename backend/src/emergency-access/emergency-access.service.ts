@@ -22,12 +22,18 @@ export interface ContactView {
   createdAt: Date;
 }
 
+export interface MessageMetadata {
+  hasMessage: boolean;
+  charCount: number;
+  updatedAt: Date | null;
+}
+
 export interface SettingsView {
   emailConfigured: boolean;
   enabled: boolean;
   grantAfterDays: number;
   reminderAfterDays: number;
-  message: string | null;
+  messageMetadata: MessageMetadata;
   lastReminderSentAt: Date | null;
   grantedAt: Date | null;
   lastActivityAt: Date | null;
@@ -78,6 +84,17 @@ export class EmergencyAccessService {
     }
   }
 
+  private buildMessageMetadata(
+    settings: EmergencyAccessSettings | null,
+  ): MessageMetadata {
+    const decrypted = this.decryptMessage(settings?.messageCiphertext ?? null);
+    return {
+      hasMessage: !!decrypted,
+      charCount: decrypted?.length ?? 0,
+      updatedAt: decrypted ? (settings?.updatedAt ?? null) : null,
+    };
+  }
+
   async getView(userId: string): Promise<SettingsView> {
     const [settings, contacts, user] = await Promise.all([
       this.settingsRepo.findOne({ where: { ownerUserId: userId } }),
@@ -95,11 +112,25 @@ export class EmergencyAccessService {
       enabled: settings?.enabled ?? false,
       grantAfterDays: settings?.grantAfterDays ?? 14,
       reminderAfterDays: settings?.reminderAfterDays ?? 7,
-      message: this.decryptMessage(settings?.messageCiphertext ?? null),
+      messageMetadata: this.buildMessageMetadata(settings ?? null),
       lastReminderSentAt: settings?.lastReminderSentAt ?? null,
       grantedAt: settings?.grantedAt ?? null,
       lastActivityAt: user?.lastActivityAt ?? user?.lastLogin ?? null,
       contacts: contacts.map((c) => this.toContactView(c)),
+    };
+  }
+
+  /**
+   * Read the decrypted emergency-access message. Guarded by step-up auth at
+   * the controller layer -- callers must have already proven possession of
+   * their strongest factor in the last few minutes.
+   */
+  async getMessage(userId: string): Promise<{ message: string | null }> {
+    const settings = await this.settingsRepo.findOne({
+      where: { ownerUserId: userId },
+    });
+    return {
+      message: this.decryptMessage(settings?.messageCiphertext ?? null),
     };
   }
 
@@ -110,11 +141,6 @@ export class EmergencyAccessService {
     if (!this.emailService.getStatus().configured) {
       throw new ServiceUnavailableException(
         "Email is not configured. Emergency access cannot be enabled until SMTP is set up.",
-      );
-    }
-    if (dto.enabled && dto.message && !this.encryption.isConfigured()) {
-      throw new ServiceUnavailableException(
-        "Encryption key is not configured. The free-form message cannot be stored securely until AI_ENCRYPTION_KEY is set.",
       );
     }
 
@@ -135,13 +161,6 @@ export class EmergencyAccessService {
       row.enabled = dto.enabled;
       row.grantAfterDays = dto.grantAfterDays;
       row.reminderAfterDays = dto.reminderAfterDays;
-
-      const trimmed = dto.message?.trim();
-      if (!trimmed) {
-        row.messageCiphertext = null;
-      } else {
-        row.messageCiphertext = this.encryption.encrypt(trimmed);
-      }
 
       // If the owner is (re-)enabling, reset the grant marker and the
       // last-reminder gate so the cron starts fresh.
@@ -180,6 +199,45 @@ export class EmergencyAccessService {
     }
 
     return this.getView(userId);
+  }
+
+  /**
+   * Persist a new encrypted emergency-access message. Guarded by step-up
+   * auth at the controller layer.
+   */
+  async updateMessage(
+    userId: string,
+    message: string | null | undefined,
+  ): Promise<MessageMetadata> {
+    const trimmed = message?.trim() ?? null;
+    if (trimmed && !this.encryption.isConfigured()) {
+      throw new ServiceUnavailableException(
+        "Encryption key is not configured. The free-form message cannot be stored securely until AI_ENCRYPTION_KEY is set.",
+      );
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      let row = await queryRunner.manager.findOne(EmergencyAccessSettings, {
+        where: { ownerUserId: userId },
+      });
+      if (!row) {
+        row = queryRunner.manager.create(EmergencyAccessSettings, {
+          ownerUserId: userId,
+        });
+      }
+      row.messageCiphertext = trimmed ? this.encryption.encrypt(trimmed) : null;
+      const saved = await queryRunner.manager.save(row);
+      await queryRunner.commitTransaction();
+      return this.buildMessageMetadata(saved);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async addContact(

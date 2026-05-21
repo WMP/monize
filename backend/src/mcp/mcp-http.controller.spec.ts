@@ -120,9 +120,7 @@ describe("McpHttpController", () => {
 
       expect(res.setHeader).toHaveBeenCalledWith(
         "WWW-Authenticate",
-        expect.stringContaining(
-          "/.well-known/oauth-protected-resource",
-        ),
+        expect.stringContaining("/.well-known/oauth-protected-resource"),
       );
     });
 

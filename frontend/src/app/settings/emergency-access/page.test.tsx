@@ -30,13 +30,71 @@ vi.mock('@/hooks/useDemoMode', () => ({
 
 const mockActingAs = vi.fn();
 vi.mock('@/store/authStore', () => ({
-  useAuthStore: (selector: (s: { actingAsUserId: string | null }) => unknown) =>
-    selector({ actingAsUserId: mockActingAs() }),
+  useAuthStore: (
+    selector: (s: { actingAsUserId: string | null }) => unknown,
+  ) => selector({ actingAsUserId: mockActingAs() }),
+}));
+
+vi.mock('@/store/preferencesStore', () => ({
+  usePreferencesStore: (
+    selector: (s: {
+      preferences: {
+        timezone: string;
+        dateFormat: string;
+        timeFormat: '24h' | '12h';
+      };
+    }) => unknown,
+  ) =>
+    selector({
+      preferences: {
+        timezone: 'browser',
+        dateFormat: 'browser',
+        timeFormat: '24h',
+      },
+    }),
+}));
+
+// Stub the step-up modal -- exercised separately in its own test file. The
+// stub exposes a synthetic "Verify" button that simulates a successful
+// re-auth by stamping a token into the store and calling onVerified.
+vi.mock('@/components/auth/StepUpAuthModal', () => ({
+  StepUpAuthModal: ({
+    isOpen,
+    onClose,
+    onVerified,
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    onVerified?: () => void;
+  }) =>
+    isOpen ? (
+      <div data-testid="step-up-modal">
+        <button
+          onClick={async () => {
+            const { useStepUpTokenStore } = await import('@/lib/stepUpToken');
+            useStepUpTokenStore
+              .getState()
+              .set(
+                'emergency-access',
+                'mock-token',
+                new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+              );
+            onVerified?.();
+            onClose();
+          }}
+        >
+          Mock Verify
+        </button>
+        <button onClick={onClose}>Mock Close</button>
+      </div>
+    ) : null,
 }));
 
 vi.mock('@/lib/emergency-access', () => ({
   emergencyAccessApi: {
     get: vi.fn(),
+    getMessage: vi.fn(),
+    updateMessage: vi.fn(),
     updateSettings: vi.fn(),
     addContact: vi.fn(),
     updateContact: vi.fn(),
@@ -48,15 +106,21 @@ vi.mock('@/lib/emergency-access', () => ({
 }));
 
 import { emergencyAccessApi } from '@/lib/emergency-access';
-const api = emergencyAccessApi as unknown as Record<string, ReturnType<typeof vi.fn>>;
+import { useStepUpTokenStore, StepUpRequiredError } from '@/lib/stepUpToken';
+const api = emergencyAccessApi as unknown as Record<
+  string,
+  ReturnType<typeof vi.fn>
+>;
 
-function makeView(overrides: Partial<EmergencyAccessView> = {}): EmergencyAccessView {
+function makeView(
+  overrides: Partial<EmergencyAccessView> = {},
+): EmergencyAccessView {
   return {
     emailConfigured: true,
     enabled: false,
     grantAfterDays: 14,
     reminderAfterDays: 7,
-    message: null,
+    messageMetadata: { hasMessage: false, charCount: 0, updatedAt: null },
     lastReminderSentAt: null,
     grantedAt: null,
     lastActivityAt: new Date().toISOString(),
@@ -78,6 +142,7 @@ describe('EmergencyAccessPage', () => {
     vi.clearAllMocks();
     mockUseDemoMode.mockReturnValue(false);
     mockActingAs.mockReturnValue(null);
+    useStepUpTokenStore.getState().clearAll();
   });
 
   it('blocks access for delegate sessions', async () => {
@@ -85,7 +150,9 @@ describe('EmergencyAccessPage', () => {
     api.get.mockResolvedValue(makeView());
     await renderPage();
     expect(
-      screen.getByText(/Emergency access can only be configured by the account owner/),
+      screen.getByText(
+        /Emergency access can only be configured by the account owner/,
+      ),
     ).toBeInTheDocument();
     expect(api.get).not.toHaveBeenCalled();
   });
@@ -104,100 +171,438 @@ describe('EmergencyAccessPage', () => {
     await waitFor(() =>
       expect(screen.getByText(/Email is not configured/)).toBeInTheDocument(),
     );
-    // Submit button is disabled in this branch
     expect(
-      (screen.getByRole('button', { name: /Save settings/i }) as HTMLButtonElement)
-        .disabled,
+      (screen.getByRole('button', {
+        name: /Save settings/i,
+      }) as HTMLButtonElement).disabled,
     ).toBe(true);
   });
 
-  it('loads settings + contacts and renders them', async () => {
+  it('renders metadata for a configured message without the plaintext', async () => {
     api.get.mockResolvedValue(
       makeView({
-        enabled: true,
-        message: 'top-secret',
-        contacts: [
-          {
-            id: 'c1',
-            firstName: 'Carol',
-            email: 'carol@example.com',
-            createdAt: new Date().toISOString(),
-          },
-        ],
+        messageMetadata: {
+          hasMessage: true,
+          charCount: 12,
+          updatedAt: '2026-05-01T00:00:00Z',
+        },
       }),
     );
     await renderPage();
     await waitFor(() =>
-      expect(screen.getByText('Carol')).toBeInTheDocument(),
+      expect(screen.getByText(/Message set/)).toBeInTheDocument(),
     );
-    expect(screen.getByText('carol@example.com')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('top-secret')).toBeInTheDocument();
+    expect(screen.getByText(/12 chars/)).toBeInTheDocument();
+    // The plaintext is never on screen until the user verifies.
+    expect(screen.queryByText('top-secret')).not.toBeInTheDocument();
   });
 
-  it('saves settings via the API', async () => {
+  it('renders "No message set" when nothing has been stored yet', async () => {
+    api.get.mockResolvedValue(makeView());
+    await renderPage();
+    await waitFor(() =>
+      expect(screen.getByText(/No message set/)).toBeInTheDocument(),
+    );
+    // Reveal is disabled when there's no message; Add message is enabled.
+    const reveal = screen.getByRole('button', { name: /Reveal message/i });
+    expect((reveal as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      screen.getByRole('button', { name: /Add message/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('clicking Reveal opens the step-up modal when no token is present', async () => {
+    api.get.mockResolvedValue(
+      makeView({
+        messageMetadata: { hasMessage: true, charCount: 4, updatedAt: null },
+      }),
+    );
+    await renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Reveal message/i }),
+      ).toBeInTheDocument(),
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Reveal message/i }),
+      );
+    });
+    expect(screen.getByTestId('step-up-modal')).toBeInTheDocument();
+    expect(api.getMessage).not.toHaveBeenCalled();
+  });
+
+  it('after verifying via the modal, the message is fetched and shown', async () => {
+    api.get.mockResolvedValue(
+      makeView({
+        messageMetadata: { hasMessage: true, charCount: 10, updatedAt: null },
+      }),
+    );
+    api.getMessage.mockResolvedValue({ message: 'top-secret' });
+    await renderPage();
+    await waitFor(() =>
+      screen.getByRole('button', { name: /Reveal message/i }),
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Reveal message/i }),
+      );
+    });
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Mock Verify/i }),
+      );
+    });
+    await act(async () => {});
+    await waitFor(() => expect(api.getMessage).toHaveBeenCalled());
+    expect(screen.getByText('top-secret')).toBeInTheDocument();
+    // After unlock the countdown card should appear.
+    expect(screen.getByText(/Unlocked for/)).toBeInTheDocument();
+  });
+
+  it('skips the modal when a valid token is already cached', async () => {
+    useStepUpTokenStore
+      .getState()
+      .set(
+        'emergency-access',
+        'cached',
+        new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      );
+    api.get.mockResolvedValue(
+      makeView({
+        messageMetadata: { hasMessage: true, charCount: 5, updatedAt: null },
+      }),
+    );
+    api.getMessage.mockResolvedValue({ message: 'cached msg' });
+    await renderPage();
+    await waitFor(() =>
+      screen.getByRole('button', { name: /Reveal message/i }),
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Reveal message/i }),
+      );
+    });
+    await act(async () => {});
+    await waitFor(() => expect(api.getMessage).toHaveBeenCalled());
+    expect(screen.queryByTestId('step-up-modal')).not.toBeInTheDocument();
+    expect(screen.getByText('cached msg')).toBeInTheDocument();
+  });
+
+  it('Edit message with a cached token skips the modal and opens the editor', async () => {
+    useStepUpTokenStore
+      .getState()
+      .set(
+        'emergency-access',
+        'cached',
+        new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      );
+    api.get.mockResolvedValue(
+      makeView({
+        messageMetadata: { hasMessage: true, charCount: 4, updatedAt: null },
+      }),
+    );
+    api.getMessage.mockResolvedValue({ message: 'old' });
+    await renderPage();
+    await waitFor(() =>
+      screen.getByRole('button', { name: /Edit message/i }),
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Edit message/i }),
+      );
+    });
+    await act(async () => {});
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText(/Notes, instructions/i)).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('step-up-modal')).not.toBeInTheDocument();
+  });
+
+  it('Cancel inside the editor returns to view mode without clearing the token', async () => {
+    useStepUpTokenStore
+      .getState()
+      .set(
+        'emergency-access',
+        'cached',
+        new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      );
+    api.get.mockResolvedValue(
+      makeView({
+        messageMetadata: { hasMessage: true, charCount: 4, updatedAt: null },
+      }),
+    );
+    api.getMessage.mockResolvedValue({ message: 'msg' });
+    await renderPage();
+    await waitFor(() =>
+      screen.getByRole('button', { name: /Edit message/i }),
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Edit message/i }),
+      );
+    });
+    await act(async () => {});
+    await waitFor(() =>
+      screen.getByPlaceholderText(/Notes, instructions/i),
+    );
+    // Cancel inside the edit form
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Cancel$/i }));
+    });
+    await waitFor(() => expect(screen.getByText('msg')).toBeInTheDocument());
+    // Token is still active.
+    expect(
+      useStepUpTokenStore.getState().getValid('emergency-access'),
+    ).toBe('cached');
+  });
+
+  it('updateMessage failure (non step-up) leaves the editor open and toasts', async () => {
+    useStepUpTokenStore
+      .getState()
+      .set(
+        'emergency-access',
+        'cached',
+        new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      );
+    api.get.mockResolvedValue(
+      makeView({
+        messageMetadata: { hasMessage: true, charCount: 4, updatedAt: null },
+      }),
+    );
+    api.getMessage.mockResolvedValue({ message: 'old' });
+    api.updateMessage.mockRejectedValue(new Error('database boom'));
+    await renderPage();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Edit message/i }),
+      );
+    });
+    await act(async () => {});
+    await waitFor(() =>
+      screen.getByPlaceholderText(/Notes, instructions/i),
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Save message/i }),
+      );
+    });
+    await act(async () => {});
+    await waitFor(() => expect(api.updateMessage).toHaveBeenCalled());
+    // Editor stays open because the save failed.
+    expect(
+      screen.getByPlaceholderText(/Notes, instructions/i),
+    ).toBeInTheDocument();
+  });
+
+  it('Lock now clears the token and hides the plaintext', async () => {
+    useStepUpTokenStore
+      .getState()
+      .set(
+        'emergency-access',
+        'cached',
+        new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      );
+    api.get.mockResolvedValue(
+      makeView({
+        messageMetadata: { hasMessage: true, charCount: 5, updatedAt: null },
+      }),
+    );
+    api.getMessage.mockResolvedValue({ message: 'sensitive' });
+    await renderPage();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Reveal message/i }),
+      );
+    });
+    await act(async () => {});
+    await waitFor(() => expect(screen.getByText('sensitive')).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Lock now/i }));
+    });
+    expect(screen.queryByText('sensitive')).not.toBeInTheDocument();
+    expect(
+      useStepUpTokenStore.getState().getValid('emergency-access'),
+    ).toBeNull();
+  });
+
+  it('STEP_UP_REQUIRED from getMessage opens the modal', async () => {
+    api.get.mockResolvedValue(
+      makeView({
+        messageMetadata: { hasMessage: true, charCount: 5, updatedAt: null },
+      }),
+    );
+    useStepUpTokenStore
+      .getState()
+      .set(
+        'emergency-access',
+        'expired-on-server',
+        new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      );
+    api.getMessage.mockRejectedValue(
+      new StepUpRequiredError('emergency-access', 'expired'),
+    );
+    await renderPage();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Reveal message/i }),
+      );
+    });
+    await act(async () => {});
+    await waitFor(() =>
+      expect(screen.getByTestId('step-up-modal')).toBeInTheDocument(),
+    );
+  });
+
+  it('shows a toast and stays on the metadata card when getMessage fails for another reason', async () => {
+    useStepUpTokenStore
+      .getState()
+      .set(
+        'emergency-access',
+        'cached',
+        new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      );
+    api.get.mockResolvedValue(
+      makeView({
+        messageMetadata: { hasMessage: true, charCount: 5, updatedAt: null },
+      }),
+    );
+    api.getMessage.mockRejectedValue(new Error('network'));
+    await renderPage();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Reveal message/i }),
+      );
+    });
+    await act(async () => {});
+    // The card stayed in its hidden mode (no plaintext, no countdown).
+    expect(screen.queryByText(/Unlocked for/)).not.toBeInTheDocument();
+  });
+
+  it('opens the editor after verifying and saves a new message', async () => {
+    api.get.mockResolvedValue(makeView());
+    api.getMessage.mockResolvedValue({ message: '' });
+    api.updateMessage.mockResolvedValue({
+      hasMessage: true,
+      charCount: 5,
+      updatedAt: null,
+    });
+    await renderPage();
+    await waitFor(() =>
+      screen.getByRole('button', { name: /Add message/i }),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Add message/i }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Mock Verify/i }));
+    });
+    await act(async () => {});
+    await waitFor(() =>
+      screen.getByPlaceholderText(/Notes, instructions/i),
+    );
+    await act(async () => {
+      fireEvent.change(screen.getByPlaceholderText(/Notes, instructions/i), {
+        target: { value: 'hello' },
+      });
+    });
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Save message/i }),
+      );
+    });
+    await act(async () => {});
+    await waitFor(() => expect(api.updateMessage).toHaveBeenCalledWith('hello'));
+  });
+
+  it('updateMessage rejection with STEP_UP_EXPIRED reopens the modal', async () => {
+    useStepUpTokenStore
+      .getState()
+      .set(
+        'emergency-access',
+        'cached',
+        new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      );
+    api.get.mockResolvedValue(
+      makeView({
+        messageMetadata: { hasMessage: true, charCount: 4, updatedAt: null },
+      }),
+    );
+    api.getMessage.mockResolvedValue({ message: 'old' });
+    api.updateMessage.mockRejectedValue(
+      new StepUpRequiredError('emergency-access', 'expired'),
+    );
+    await renderPage();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Reveal message/i }),
+      );
+    });
+    await act(async () => {});
+    await waitFor(() =>
+      screen.getByRole('button', { name: /^Edit$/i }),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Edit$/i }));
+    });
+    await waitFor(() =>
+      screen.getByPlaceholderText(/Notes, instructions/i),
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Save message/i }),
+      );
+    });
+    await act(async () => {});
+    await waitFor(() =>
+      expect(screen.getByTestId('step-up-modal')).toBeInTheDocument(),
+    );
+  });
+
+  it('saves the (non-message) settings via the API', async () => {
     const initial = makeView();
-    const updated = makeView({ enabled: true, message: 'note' });
+    const updated = makeView({ enabled: true });
     api.get.mockResolvedValue(initial);
     api.updateSettings.mockResolvedValue(updated);
     await renderPage();
-
-    await waitFor(() => screen.getByRole('button', { name: /Save settings/i }));
-    const textarea = screen.getByPlaceholderText(/Notes, instructions/i);
+    await waitFor(() =>
+      screen.getByRole('button', { name: /Save settings/i }),
+    );
     await act(async () => {
-      fireEvent.change(textarea, { target: { value: 'note' } });
+      fireEvent.click(
+        screen.getByRole('button', { name: /Save settings/i }),
+      );
     });
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Save settings/i }));
-    });
-
     await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
-    expect(api.updateSettings.mock.calls[0][0]).toMatchObject({
+    const payload = api.updateSettings.mock.calls[0][0];
+    expect(payload).toEqual({
       enabled: false,
       grantAfterDays: 14,
       reminderAfterDays: 7,
-      message: 'note',
     });
+    expect(payload).not.toHaveProperty('message');
   });
 
-  it('adds a contact via the API', async () => {
+  it('toggles the enable switch via setValue', async () => {
     api.get.mockResolvedValue(makeView());
-    api.addContact.mockResolvedValue({
-      id: 'new',
-      firstName: 'Carol',
-      email: 'carol@example.com',
-      createdAt: new Date().toISOString(),
-    });
+    api.updateSettings.mockResolvedValue(makeView({ enabled: true }));
     await renderPage();
-
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /Add contact/i })).toBeInTheDocument(),
+      screen.getByRole('button', { name: /Save settings/i }),
     );
+    const toggle = screen.getByRole('switch', {
+      name: /Enable emergency access/i,
+    });
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Add contact/i }));
+      fireEvent.click(toggle);
     });
-
-    const firstName = screen.getByLabelText(/First name/i);
-    const email = screen.getByLabelText(/^Email$/i);
     await act(async () => {
-      fireEvent.input(firstName, { target: { value: 'Carol' } });
-      fireEvent.input(email, { target: { value: 'carol@example.com' } });
+      fireEvent.click(
+        screen.getByRole('button', { name: /Save settings/i }),
+      );
     });
-    // Submit the contact form by dispatching a submit event on the form node
-    // (react-hook-form's async validation pipeline is more reliable than
-    // clicking a button in jsdom).
-    const form = firstName.closest('form');
-    expect(form).not.toBeNull();
-    await act(async () => {
-      fireEvent.submit(form!);
-    });
-    // Drain any pending promise microtasks
-    await act(async () => {});
-
-    await waitFor(() => expect(api.addContact).toHaveBeenCalled());
-    expect(api.addContact.mock.calls[0][0]).toEqual({
-      firstName: 'Carol',
-      email: 'carol@example.com',
-    });
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings.mock.calls[0][0].enabled).toBe(true);
   });
 
   it('renders a warning when access has already been granted', async () => {
@@ -222,6 +627,42 @@ describe('EmergencyAccessPage', () => {
     );
   });
 
+  it('adds a contact via the API', async () => {
+    api.get.mockResolvedValue(makeView());
+    api.addContact.mockResolvedValue({
+      id: 'new',
+      firstName: 'Carol',
+      email: 'carol@example.com',
+      createdAt: new Date().toISOString(),
+    });
+    await renderPage();
+    await waitFor(() =>
+      screen.getByRole('button', { name: /Add contact/i }),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Add contact/i }));
+    });
+
+    const firstName = screen.getByLabelText(/First name/i);
+    const email = screen.getByLabelText(/^Email$/i);
+    await act(async () => {
+      fireEvent.input(firstName, { target: { value: 'Carol' } });
+      fireEvent.input(email, { target: { value: 'carol@example.com' } });
+    });
+    const form = firstName.closest('form');
+    expect(form).not.toBeNull();
+    await act(async () => {
+      fireEvent.submit(form!);
+    });
+    await act(async () => {});
+
+    await waitFor(() => expect(api.addContact).toHaveBeenCalled());
+    expect(api.addContact.mock.calls[0][0]).toEqual({
+      firstName: 'Carol',
+      email: 'carol@example.com',
+    });
+  });
+
   it('opens the contact form pre-populated when editing an existing contact', async () => {
     api.get.mockResolvedValue(
       makeView({
@@ -242,9 +683,7 @@ describe('EmergencyAccessPage', () => {
       createdAt: new Date().toISOString(),
     });
     await renderPage();
-    await waitFor(() =>
-      expect(screen.getByText('Carol')).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText('Carol')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /^Edit$/i }));
     });
@@ -259,7 +698,6 @@ describe('EmergencyAccessPage', () => {
       });
     });
     const form = firstName.closest('form');
-    expect(form).not.toBeNull();
     await act(async () => {
       fireEvent.submit(form!);
     });
@@ -288,79 +726,36 @@ describe('EmergencyAccessPage', () => {
     );
     api.removeContact.mockResolvedValue(undefined);
     await renderPage();
-    await waitFor(() =>
-      expect(screen.getByText('Carol')).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText('Carol')).toBeInTheDocument());
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /^Remove$/i }));
     });
     await waitFor(() =>
       expect(screen.getByText('Remove contact')).toBeInTheDocument(),
     );
-    // After the dialog opens there are two "Remove" buttons (the list row
-    // button and the confirm button). Click the last one, which is the
-    // freshly-rendered confirm button.
-    const removeButtons = screen.getAllByRole('button', { name: /^Remove$/i });
+    const removeButtons = screen.getAllByRole('button', {
+      name: /^Remove$/i,
+    });
     await act(async () => {
       fireEvent.click(removeButtons[removeButtons.length - 1]);
     });
-    await waitFor(() =>
-      expect(api.removeContact).toHaveBeenCalledWith('c1'),
-    );
+    await waitFor(() => expect(api.removeContact).toHaveBeenCalledWith('c1'));
   });
 
-  it('toggles the enable switch via setValue', async () => {
+  it('shows a toast when settings save fails', async () => {
     api.get.mockResolvedValue(makeView());
-    api.updateSettings.mockResolvedValue(makeView({ enabled: true }));
+    api.updateSettings.mockRejectedValue(new Error('validation failed'));
     await renderPage();
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: /Save settings/i }),
-      ).toBeInTheDocument(),
-    );
-    const toggle = screen.getByRole('switch', {
-      name: /Enable emergency access/i,
-    });
-    await act(async () => {
-      fireEvent.click(toggle);
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Save settings/i }));
-    });
-    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
-    expect(api.updateSettings.mock.calls[0][0].enabled).toBe(true);
-  });
-
-  it('shows a toast and stays on the page when reset() fails', async () => {
-    api.get.mockResolvedValue(
-      makeView({ grantedAt: new Date().toISOString() }),
-    );
-    api.reset.mockRejectedValue(new Error('server down'));
-    await renderPage();
-    await waitFor(() =>
-      expect(
-        screen.getByText('Emergency access already granted'),
-      ).toBeInTheDocument(),
+      screen.getByRole('button', { name: /Save settings/i }),
     );
     await act(async () => {
       fireEvent.click(
-        screen.getByRole('button', { name: /Clear granted state/i }),
+        screen.getByRole('button', { name: /Save settings/i }),
       );
     });
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Clear' }),
-      ).toBeInTheDocument(),
-    );
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
-    });
     await act(async () => {});
-    await waitFor(() => expect(api.reset).toHaveBeenCalled());
-    // The warning banner is still on screen because reset() rejected.
-    expect(
-      screen.getByText('Emergency access already granted'),
-    ).toBeInTheDocument();
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
   });
 
   it('shows a toast and keeps the contact when removeContact() fails', async () => {
@@ -383,7 +778,9 @@ describe('EmergencyAccessPage', () => {
       fireEvent.click(screen.getByRole('button', { name: /^Remove$/i }));
     });
     await waitFor(() => screen.getByText('Remove contact'));
-    const removeButtons = screen.getAllByRole('button', { name: /^Remove$/i });
+    const removeButtons = screen.getAllByRole('button', {
+      name: /^Remove$/i,
+    });
     await act(async () => {
       fireEvent.click(removeButtons[removeButtons.length - 1]);
     });
@@ -392,52 +789,12 @@ describe('EmergencyAccessPage', () => {
     expect(screen.getByText('Carol')).toBeInTheDocument();
   });
 
-  it('closes the contact modal via Cancel', async () => {
-    api.get.mockResolvedValue(makeView());
-    await renderPage();
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: /Add contact/i }),
-      ).toBeInTheDocument(),
-    );
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Add contact/i }));
-    });
-    await waitFor(() => screen.getByText('Add emergency contact'));
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
-    });
-    await waitFor(() =>
-      expect(
-        screen.queryByText('Add emergency contact'),
-      ).not.toBeInTheDocument(),
-    );
-  });
-
-  it('shows a toast when settings save fails', async () => {
-    api.get.mockResolvedValue(makeView());
-    api.updateSettings.mockRejectedValue(new Error('validation failed'));
-    await renderPage();
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: /Save settings/i }),
-      ).toBeInTheDocument(),
-    );
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /Save settings/i }));
-    });
-    await act(async () => {});
-    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
-  });
-
   it('shows a toast when adding a contact fails', async () => {
     api.get.mockResolvedValue(makeView());
     api.addContact.mockRejectedValue(new Error('duplicate'));
     await renderPage();
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: /Add contact/i }),
-      ).toBeInTheDocument(),
+      screen.getByRole('button', { name: /Add contact/i }),
     );
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Add contact/i }));
@@ -450,7 +807,6 @@ describe('EmergencyAccessPage', () => {
       });
     });
     const form = firstName.closest('form');
-    expect(form).not.toBeNull();
     await act(async () => {
       fireEvent.submit(form!);
     });
@@ -530,8 +886,6 @@ describe('EmergencyAccessPage', () => {
         screen.getByRole('button', { name: /Clear granted state/i }),
       );
     });
-    // The dialog confirm button is labelled "Clear" (singular) -- look for
-    // it by exact name match.
     await waitFor(() =>
       expect(
         screen.getByRole('button', { name: 'Clear' }),
@@ -541,5 +895,56 @@ describe('EmergencyAccessPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
     });
     await waitFor(() => expect(api.reset).toHaveBeenCalled());
+  });
+
+  it('shows a toast and stays on the page when reset() fails', async () => {
+    api.get.mockResolvedValue(
+      makeView({ grantedAt: new Date().toISOString() }),
+    );
+    api.reset.mockRejectedValue(new Error('server down'));
+    await renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getByText('Emergency access already granted'),
+      ).toBeInTheDocument(),
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Clear granted state/i }),
+      );
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Clear' }),
+      ).toBeInTheDocument(),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    });
+    await act(async () => {});
+    await waitFor(() => expect(api.reset).toHaveBeenCalled());
+    expect(
+      screen.getByText('Emergency access already granted'),
+    ).toBeInTheDocument();
+  });
+
+  it('closes the contact modal via Cancel', async () => {
+    api.get.mockResolvedValue(makeView());
+    await renderPage();
+    await waitFor(() =>
+      screen.getByRole('button', { name: /Add contact/i }),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Add contact/i }));
+    });
+    await waitFor(() => screen.getByText('Add emergency contact'));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
+    });
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Add emergency contact'),
+      ).not.toBeInTheDocument(),
+    );
   });
 });

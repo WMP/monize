@@ -176,13 +176,11 @@ describe("OAuthInteractionController", () => {
 
     it("renders a friendly completed page when the interaction is stale (consumed/expired)", async () => {
       const { controller } = makeController({
-        interactionDetails: jest
-          .fn()
-          .mockRejectedValue(
-            Object.assign(new Error("invalid_request"), {
-              name: "SessionNotFound",
-            }),
-          ),
+        interactionDetails: jest.fn().mockRejectedValue(
+          Object.assign(new Error("invalid_request"), {
+            name: "SessionNotFound",
+          }),
+        ),
       });
       const req = { cookies: {} } as any;
       const res = makeRes();
@@ -215,13 +213,11 @@ describe("OAuthInteractionController", () => {
   describe("POST /oauth-consent/:uid/confirm", () => {
     it("renders a friendly completed page when the interaction is already consumed", async () => {
       const { controller } = makeController({
-        interactionDetails: jest
-          .fn()
-          .mockRejectedValue(
-            Object.assign(new Error("invalid_request"), {
-              name: "SessionNotFound",
-            }),
-          ),
+        interactionDetails: jest.fn().mockRejectedValue(
+          Object.assign(new Error("invalid_request"), {
+            name: "SessionNotFound",
+          }),
+        ),
       });
       const req = { cookies: { auth_token: "v" }, body: {} } as any;
       const res = makeRes();
@@ -346,13 +342,11 @@ describe("OAuthInteractionController", () => {
     });
 
     it("renders completed page when abort fails (stale interaction)", async () => {
-      const finishedFn = jest
-        .fn()
-        .mockRejectedValueOnce(
-          Object.assign(new Error("session not found"), {
-            name: "SessionNotFound",
-          }),
-        );
+      const finishedFn = jest.fn().mockRejectedValueOnce(
+        Object.assign(new Error("session not found"), {
+          name: "SessionNotFound",
+        }),
+      );
       const { controller } = makeController({
         interactionDetails: jest.fn(),
         interactionFinished: finishedFn,
@@ -435,7 +429,9 @@ describe("OAuthInteractionController", () => {
           prompt: { name: "login" },
           params: { client_id: "claude-desktop", scope: "monize:read" },
         }),
-        jwtVerify: jest.fn().mockResolvedValue({ sub: "x", type: "2fa_pending" }),
+        jwtVerify: jest
+          .fn()
+          .mockResolvedValue({ sub: "x", type: "2fa_pending" }),
       });
       const req = { cookies: { auth_token: "tok" }, originalUrl: "/x" } as any;
       const res = makeRes();

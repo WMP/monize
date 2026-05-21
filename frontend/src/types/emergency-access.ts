@@ -5,12 +5,18 @@ export interface EmergencyAccessContact {
   createdAt: string;
 }
 
+export interface EmergencyAccessMessageMetadata {
+  hasMessage: boolean;
+  charCount: number;
+  updatedAt: string | null;
+}
+
 export interface EmergencyAccessView {
   emailConfigured: boolean;
   enabled: boolean;
   grantAfterDays: number;
   reminderAfterDays: number;
-  message: string | null;
+  messageMetadata: EmergencyAccessMessageMetadata;
   lastReminderSentAt: string | null;
   grantedAt: string | null;
   lastActivityAt: string | null;
@@ -21,7 +27,6 @@ export interface UpsertEmergencyAccessSettings {
   enabled: boolean;
   grantAfterDays: number;
   reminderAfterDays: number;
-  message?: string | null;
 }
 
 export interface UpsertEmergencyAccessContact {

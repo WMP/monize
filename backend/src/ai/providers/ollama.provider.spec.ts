@@ -832,9 +832,7 @@ describe("OllamaProvider", () => {
     });
 
     it("complete throws and logs when fetch rejects (Error)", async () => {
-      global.fetch = jest
-        .fn()
-        .mockRejectedValue(new Error("connect refused"));
+      global.fetch = jest.fn().mockRejectedValue(new Error("connect refused"));
       await expect(
         provider.complete({
           systemPrompt: "sys",
@@ -879,9 +877,7 @@ describe("OllamaProvider", () => {
           {
             role: "assistant",
             content: "a1",
-            toolCalls: [
-              { id: "tc1", name: "do_thing", input: { x: 1 } },
-            ],
+            toolCalls: [{ id: "tc1", name: "do_thing", input: { x: 1 } }],
           },
           {
             role: "tool",
@@ -895,7 +891,9 @@ describe("OllamaProvider", () => {
       const msgs = body.messages as Array<{ role: string }>;
       expect(msgs.find((m) => m.role === "tool")).toBeTruthy();
       const assistant = msgs.find(
-        (m) => m.role === "assistant" && (m as { tool_calls?: unknown[] }).tool_calls,
+        (m) =>
+          m.role === "assistant" &&
+          (m as { tool_calls?: unknown[] }).tool_calls,
       );
       expect(assistant).toBeTruthy();
     });

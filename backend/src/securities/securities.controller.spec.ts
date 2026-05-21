@@ -714,9 +714,7 @@ describe("SecuritiesController", () => {
 
       const result = await controller.backfillTransactionPrices();
 
-      expect(
-        securityPriceService.backfillTransactionPrices,
-      ).toHaveBeenCalled();
+      expect(securityPriceService.backfillTransactionPrices).toHaveBeenCalled();
       expect(result).toEqual(summary);
     });
   });

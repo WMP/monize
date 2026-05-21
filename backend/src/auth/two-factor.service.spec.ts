@@ -1087,4 +1087,70 @@ describe("TwoFactorService", () => {
       expect(result.accessToken).toBe("mock-access-token");
     });
   });
+
+  describe("verifyTotpForUser", () => {
+    let encryptedSecret: string;
+
+    beforeEach(() => {
+      encryptedSecret = encrypt("TOTP_SECRET", TEST_TOTP_KEY);
+    });
+
+    it("returns false for non-6-digit codes", async () => {
+      const result = await service.verifyTotpForUser("user-1", "abc");
+      expect(result).toBe(false);
+      expect(usersRepository.findOne).not.toHaveBeenCalled();
+    });
+
+    it("returns false when the user has no 2FA secret", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        twoFactorSecret: null,
+      });
+      const result = await service.verifyTotpForUser("user-1", "123456");
+      expect(result).toBe(false);
+    });
+
+    it("returns false when the user is missing", async () => {
+      usersRepository.findOne.mockResolvedValue(null);
+      const result = await service.verifyTotpForUser("user-1", "123456");
+      expect(result).toBe(false);
+    });
+
+    it("returns true for a valid code", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        twoFactorSecret: encryptedSecret,
+      });
+      (otplib.verifySync as jest.Mock).mockReturnValue({ valid: true });
+
+      const result = await service.verifyTotpForUser("user-1", "123456");
+      expect(result).toBe(true);
+    });
+
+    it("returns false for an invalid code without stamping the replay map", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        twoFactorSecret: encryptedSecret,
+      });
+      (otplib.verifySync as jest.Mock).mockReturnValue({ valid: false });
+
+      const result = await service.verifyTotpForUser("user-1", "999999");
+      expect(result).toBe(false);
+      expect((service as any).usedTotpCodes.has("user-1:999999")).toBe(false);
+    });
+
+    it("rejects a code that was already used in this window (replay)", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        twoFactorSecret: encryptedSecret,
+      });
+      (otplib.verifySync as jest.Mock).mockReturnValue({ valid: true });
+
+      const first = await service.verifyTotpForUser("user-1", "123456");
+      expect(first).toBe(true);
+
+      const replay = await service.verifyTotpForUser("user-1", "123456");
+      expect(replay).toBe(false);
+    });
+  });
 });

@@ -750,8 +750,9 @@ describe("OpenAiProvider", () => {
         ],
       );
       const args = mockCreate.mock.calls[0][0];
-      expect(args.messages.find((m: { role: string }) => m.role === "tool"))
-        .toBeTruthy();
+      expect(
+        args.messages.find((m: { role: string }) => m.role === "tool"),
+      ).toBeTruthy();
     });
 
     it("uses simple assistant content path when no toolCalls", async () => {
@@ -768,9 +769,7 @@ describe("OpenAiProvider", () => {
       await provider.completeWithTools(
         {
           systemPrompt: "s",
-          messages: [
-            { role: "assistant", content: "I'm ready" },
-          ],
+          messages: [{ role: "assistant", content: "I'm ready" }],
         },
         [
           {

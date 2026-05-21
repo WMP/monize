@@ -1,16 +1,55 @@
 import apiClient from './api';
+import {
+  rethrowStepUpError,
+  useStepUpTokenStore,
+} from '@/lib/stepUpToken';
 import type {
   EmergencyAccessView,
   EmergencyAccessContact,
+  EmergencyAccessMessageMetadata,
   UpsertEmergencyAccessSettings,
   UpsertEmergencyAccessContact,
   EmergencyAccessClaimPreview,
 } from '@/types/emergency-access';
 
+const STEP_UP_PURPOSE = 'emergency-access';
+
+function stepUpHeader(): Record<string, string> {
+  const token = useStepUpTokenStore.getState().getValid(STEP_UP_PURPOSE);
+  return token ? { 'X-Step-Up-Token': token } : {};
+}
+
 export const emergencyAccessApi = {
   get: async (): Promise<EmergencyAccessView> => {
     const res = await apiClient.get<EmergencyAccessView>('/emergency-access');
     return res.data;
+  },
+
+  getMessage: async (): Promise<{ message: string | null }> => {
+    try {
+      const res = await apiClient.get<{ message: string | null }>(
+        '/emergency-access/message',
+        { headers: stepUpHeader() },
+      );
+      return res.data;
+    } catch (error) {
+      rethrowStepUpError(error);
+    }
+  },
+
+  updateMessage: async (
+    message: string | null,
+  ): Promise<EmergencyAccessMessageMetadata> => {
+    try {
+      const res = await apiClient.put<EmergencyAccessMessageMetadata>(
+        '/emergency-access/message',
+        { message },
+        { headers: stepUpHeader() },
+      );
+      return res.data;
+    } catch (error) {
+      rethrowStepUpError(error);
+    }
   },
 
   updateSettings: async (

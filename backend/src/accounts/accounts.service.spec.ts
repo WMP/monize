@@ -2714,7 +2714,9 @@ describe("AccountsService", () => {
         .fn()
         .mockResolvedValue([{ assets: 800, liabilities: 0, netWorth: 800 }]);
       (
-        service["portfolioService"] as unknown as { getAccountMarketValues: jest.Mock }
+        service["portfolioService"] as unknown as {
+          getAccountMarketValues: jest.Mock;
+        }
       ).getAccountMarketValues = jest
         .fn()
         .mockResolvedValue(new Map([["a3", 750]]));
@@ -2784,12 +2786,9 @@ describe("AccountsService", () => {
     it("uses provided endDate without extending", async () => {
       const ds = service["dataSource"] as unknown as { query: jest.Mock };
       ds.query = jest.fn().mockResolvedValue([]);
-      await service.getDailyBalances(
-        "user-1",
-        "2024-01-01",
-        "2024-12-31",
-        ["a1"],
-      );
+      await service.getDailyBalances("user-1", "2024-01-01", "2024-12-31", [
+        "a1",
+      ]);
       // Only the main rows query runs; no max-date probing
       expect(ds.query).toHaveBeenCalledTimes(1);
     });

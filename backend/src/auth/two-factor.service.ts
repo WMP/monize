@@ -271,6 +271,47 @@ export class TwoFactorService {
     }
   }
 
+  /**
+   * Verify a 6-digit TOTP code for a user who is already authenticated
+   * (e.g. for step-up re-auth on a sensitive surface). Reuses the same
+   * replay-protection window as `verify2FA` so a code presented at login
+   * cannot be replayed against a step-up endpoint.
+   */
+  async verifyTotpForUser(userId: string, code: string): Promise<boolean> {
+    if (!/^\d{6}$/.test(code)) {
+      return false;
+    }
+
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user || !user.twoFactorSecret) {
+      return false;
+    }
+
+    const codeKey = `${user.id}:${code}`;
+    this.cleanupExpiredTotpCodes();
+    if (this.usedTotpCodes.has(codeKey)) {
+      return false;
+    }
+
+    const { secret, needsReEncrypt } = this.decryptTotpSecret(
+      user.twoFactorSecret,
+    );
+    const isValid = otplib.verifySync({ token: code, secret }).valid;
+    if (!isValid) return false;
+
+    this.usedTotpCodes.set(
+      codeKey,
+      Date.now() + this.TOTP_CODE_REUSE_WINDOW_MS,
+    );
+
+    if (needsReEncrypt) {
+      user.twoFactorSecret = this.reEncryptTotpSecret(secret);
+      await this.usersRepository.save(user);
+    }
+
+    return true;
+  }
+
   async setup2FA(userId: string, currentPassword: string) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },

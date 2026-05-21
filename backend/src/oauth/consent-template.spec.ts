@@ -17,18 +17,14 @@ describe("renderConsentPage", () => {
     expect(html).toContain("user@example.com");
     expect(html).toContain('value="monize:read"');
     expect(html).toContain('value="monize:write"');
-    expect(html).toContain(
-      'action="/api/v1/oauth-consent/abc-123/confirm"',
-    );
-    expect(html).toContain(
-      'formaction="/api/v1/oauth-consent/abc-123/abort"',
-    );
+    expect(html).toContain('action="/api/v1/oauth-consent/abc-123/confirm"');
+    expect(html).toContain('formaction="/api/v1/oauth-consent/abc-123/abort"');
   });
 
   it("escapes user-controlled inputs to prevent stored XSS", () => {
     const html = renderConsentPage({
       uid: "uid",
-      clientName: '<script>alert(1)</script>',
+      clientName: "<script>alert(1)</script>",
       clientUri: 'javascript:alert(1)" autofocus="',
       userEmail: '"><img src=x onerror=alert(1)>',
       scopes: [],

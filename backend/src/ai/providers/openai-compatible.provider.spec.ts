@@ -606,15 +606,11 @@ describe("OpenAiCompatibleProvider", () => {
       const r = parseInlineToolCalls(
         '{"type":"function","function":{"name":"x","arguments":null}}',
       );
-      expect(r).toEqual([
-        expect.objectContaining({ name: "x", input: {} }),
-      ]);
+      expect(r).toEqual([expect.objectContaining({ name: "x", input: {} })]);
     });
 
     it("returns null if function is non-object", () => {
-      const r = parseInlineToolCalls(
-        '{"type":"function","function":"hello"}',
-      );
+      const r = parseInlineToolCalls('{"type":"function","function":"hello"}');
       expect(r).toBeNull();
     });
 
@@ -649,7 +645,7 @@ describe("OpenAiCompatibleProvider", () => {
         },
       ];
       const r = flattenToolMessages(m);
-      expect(r[0].content).toContain("\"name\":\"n\"");
+      expect(r[0].content).toContain('"name":"n"');
       // No leading content+\n
       expect(r[0].content.startsWith("\n")).toBe(false);
     });

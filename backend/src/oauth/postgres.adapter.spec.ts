@@ -36,7 +36,11 @@ describe("PostgresAdapter", () => {
   it("does not store grant_id for non-grantable models", async () => {
     const { adapter, repo } = makeAdapter("Client");
 
-    await adapter.upsert("client-1", { grantId: "should-be-ignored" } as any, 0);
+    await adapter.upsert(
+      "client-1",
+      { grantId: "should-be-ignored" } as any,
+      0,
+    );
 
     const [entity] = repo.upsert.mock.calls[0];
     expect(entity.grantId).toBeNull();

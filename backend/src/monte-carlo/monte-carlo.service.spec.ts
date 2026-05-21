@@ -387,7 +387,11 @@ describe("MonteCarloService", () => {
         accountId: "acct-1",
         securityId: "sec-new",
         quantity: 1,
-        security: { symbol: "NEWCO", name: "Newly Listed", currencyCode: "USD" },
+        security: {
+          symbol: "NEWCO",
+          name: "Newly Listed",
+          currencyCode: "USD",
+        },
       };
       holdingsRepository.find.mockResolvedValueOnce([holding]);
       // Sparse: only 1 yearly return → triggers backfill check.
@@ -514,9 +518,9 @@ describe("MonteCarloService", () => {
 
     it("rolls the transaction back when an update fails", async () => {
       queryRunner.manager.update.mockRejectedValueOnce(new Error("boom"));
-      await expect(
-        service.reorder(userId, ["scn-1", "scn-2"]),
-      ).rejects.toThrow("boom");
+      await expect(service.reorder(userId, ["scn-1", "scn-2"])).rejects.toThrow(
+        "boom",
+      );
       expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
       expect(queryRunner.commitTransaction).not.toHaveBeenCalled();
       expect(queryRunner.release).toHaveBeenCalled();
@@ -524,7 +528,6 @@ describe("MonteCarloService", () => {
 
     it("rejects a non-array argument", async () => {
       await expect(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         service.reorder(userId, "not an array" as any),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
@@ -721,9 +724,7 @@ describe("MonteCarloService", () => {
       };
       holdingsRepository.find.mockResolvedValueOnce([holding]);
       securityPriceRepository.query.mockResolvedValue([]);
-      portfolioService.getLatestPrices = jest
-        .fn()
-        .mockResolvedValue(new Map());
+      portfolioService.getLatestPrices = jest.fn().mockResolvedValue(new Map());
 
       const result = await service.getHoldingStats(userId, ["acct-1"]);
       expect(result[0].holdings[0].marketValue).toBe(0);
@@ -763,9 +764,8 @@ describe("MonteCarloService", () => {
 
   describe("getBrokerageAccounts", () => {
     it("delegates to portfolioService", async () => {
-      (portfolioService as Record<string, jest.Mock>).getBrokerageAccounts = jest
-        .fn()
-        .mockResolvedValue([{ id: "a1" }]);
+      (portfolioService as Record<string, jest.Mock>).getBrokerageAccounts =
+        jest.fn().mockResolvedValue([{ id: "a1" }]);
       const result = await service.getBrokerageAccounts(userId);
       expect(result).toEqual([{ id: "a1" }]);
     });
@@ -918,9 +918,7 @@ describe("MonteCarloService", () => {
         .mockResolvedValue(new Map([["sec-x", 110]]));
 
       await service.getHistoricalStats(userId, ["acct-1"]);
-      expect(
-        securityPriceService.backfillSecurityRange,
-      ).toHaveBeenCalled();
+      expect(securityPriceService.backfillSecurityRange).toHaveBeenCalled();
     });
   });
 });

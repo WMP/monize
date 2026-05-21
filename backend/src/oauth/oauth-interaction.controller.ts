@@ -104,9 +104,7 @@ export class OAuthInteractionController {
       // name (e.g. "Claude") instead of the opaque DCR-generated client_id.
       // The auth request params only carry client_id; client_name lives on
       // the persisted client record from the Dynamic Client Registration.
-      const clientInfo = await this.lookupClient(
-        params.client_id as string,
-      );
+      const clientInfo = await this.lookupClient(params.client_id as string);
 
       const html = renderConsentPage({
         uid,

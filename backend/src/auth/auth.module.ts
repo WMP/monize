@@ -20,6 +20,9 @@ import { TokenService } from "./token.service";
 import { TwoFactorService } from "./two-factor.service";
 import { AuthEmailService } from "./auth-email.service";
 import { PatController } from "./pat.controller";
+import { StepUpAuthService } from "./step-up/step-up.service";
+import { StepUpAuthController } from "./step-up/step-up.controller";
+import { StepUpGuard } from "./step-up/step-up.guard";
 import { UsersModule } from "../users/users.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { DelegationModule } from "../delegation/delegation.module";
@@ -62,8 +65,10 @@ import { DelegationModule } from "../delegation/delegation.module";
     OidcService,
     PatService,
     PasswordBreachService,
+    StepUpAuthService,
+    StepUpGuard,
   ],
-  controllers: [AuthController, PatController],
+  controllers: [AuthController, PatController, StepUpAuthController],
   exports: [
     AuthService,
     TokenService,
@@ -72,6 +77,8 @@ import { DelegationModule } from "../delegation/delegation.module";
     OidcService,
     PatService,
     PasswordBreachService,
+    StepUpAuthService,
+    StepUpGuard,
     JwtModule,
   ],
 })

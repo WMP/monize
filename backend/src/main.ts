@@ -74,7 +74,8 @@ async function bootstrap() {
   // itself — otherwise it logs "already parsed request body detected" on
   // every DCR/token POST. The interaction routes under /api/v1/oauth-consent/*
   // need parsed bodies for @Body(), so they go through normal parsing.
-  const skipForProvider = (parser: express.RequestHandler): express.RequestHandler =>
+  const skipForProvider =
+    (parser: express.RequestHandler): express.RequestHandler =>
     (req, res, next) => {
       if (req.path === "/oauth" || req.path.startsWith("/oauth/")) {
         return next();
@@ -82,7 +83,9 @@ async function bootstrap() {
       return parser(req, res, next);
     };
   app.use(skipForProvider(express.json({ limit: "10mb" })));
-  app.use(skipForProvider(express.urlencoded({ limit: "10mb", extended: true })));
+  app.use(
+    skipForProvider(express.urlencoded({ limit: "10mb", extended: true })),
+  );
 
   // Cookie parser for OIDC state/nonce and auth tokens
   app.use(cookieParser());

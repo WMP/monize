@@ -62,8 +62,7 @@ export function oauthDebugLogger(scope: string) {
     // Log JSON request bodies for non-token endpoints. Skip token endpoint to
     // avoid logging refresh tokens or client secrets in the body.
     const path = req.path ?? req.url ?? "";
-    const isTokenEndpoint =
-      path.includes("/token") || path.endsWith("/token");
+    const isTokenEndpoint = path.includes("/token") || path.endsWith("/token");
     if (
       !isTokenEndpoint &&
       req.body &&

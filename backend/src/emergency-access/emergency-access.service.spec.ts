@@ -107,26 +107,38 @@ describe("EmergencyAccessService", () => {
       expect(view.enabled).toBe(false);
       expect(view.grantAfterDays).toBe(14);
       expect(view.reminderAfterDays).toBe(7);
-      expect(view.message).toBeNull();
+      expect(view.messageMetadata).toEqual({
+        hasMessage: false,
+        charCount: 0,
+        updatedAt: null,
+      });
       expect(view.contacts).toEqual([]);
     });
 
-    it("decrypts the stored ciphertext when present", async () => {
+    it("never exposes the plaintext message via the view", async () => {
+      const updatedAt = new Date("2026-05-01T00:00:00Z");
       settingsRepo.findOne.mockResolvedValue({
         ownerUserId: userId,
         enabled: true,
         grantAfterDays: 14,
         reminderAfterDays: 7,
-        messageCiphertext: "enc(hello)",
+        messageCiphertext: "enc(hello world)",
         lastReminderSentAt: null,
         grantedAt: null,
+        updatedAt,
       });
       contactsRepo.find.mockResolvedValue([]);
       usersRepo.findOne.mockResolvedValue({ id: userId, lastActivityAt: null });
 
       const view = await service.getView(userId);
-      expect(view.message).toBe("hello");
-      expect(encryption.decrypt).toHaveBeenCalledWith("enc(hello)");
+      expect(
+        (view as unknown as Record<string, unknown>).message,
+      ).toBeUndefined();
+      expect(view.messageMetadata).toEqual({
+        hasMessage: true,
+        charCount: "hello world".length,
+        updatedAt,
+      });
     });
 
     it("returns emailConfigured=false when SMTP is not configured", async () => {
@@ -137,6 +149,105 @@ describe("EmergencyAccessService", () => {
 
       const view = await service.getView(userId);
       expect(view.emailConfigured).toBe(false);
+    });
+  });
+
+  describe("getMessage", () => {
+    it("returns the decrypted message", async () => {
+      settingsRepo.findOne.mockResolvedValue({
+        ownerUserId: userId,
+        messageCiphertext: "enc(hello)",
+      });
+      await expect(service.getMessage(userId)).resolves.toEqual({
+        message: "hello",
+      });
+      expect(encryption.decrypt).toHaveBeenCalledWith("enc(hello)");
+    });
+
+    it("returns null when no message is set", async () => {
+      settingsRepo.findOne.mockResolvedValue({
+        ownerUserId: userId,
+        messageCiphertext: null,
+      });
+      await expect(service.getMessage(userId)).resolves.toEqual({
+        message: null,
+      });
+    });
+
+    it("returns null when the row is missing entirely", async () => {
+      settingsRepo.findOne.mockResolvedValue(null);
+      await expect(service.getMessage(userId)).resolves.toEqual({
+        message: null,
+      });
+    });
+
+    it("returns null when decrypt throws", async () => {
+      encryption.decrypt.mockImplementation(() => {
+        throw new Error("bad key");
+      });
+      settingsRepo.findOne.mockResolvedValue({
+        ownerUserId: userId,
+        messageCiphertext: "enc(corrupt)",
+      });
+      await expect(service.getMessage(userId)).resolves.toEqual({
+        message: null,
+      });
+    });
+  });
+
+  describe("updateMessage", () => {
+    it("encrypts and stores a non-empty message", async () => {
+      queryRunner.manager.findOne.mockResolvedValue({
+        ownerUserId: userId,
+        messageCiphertext: null,
+        updatedAt: new Date("2026-05-01T00:00:00Z"),
+      });
+
+      const meta = await service.updateMessage(userId, "hello");
+
+      expect(encryption.encrypt).toHaveBeenCalledWith("hello");
+      const saved = queryRunner.manager.save.mock.calls[0][0];
+      expect(saved.messageCiphertext).toBe("enc(hello)");
+      expect(queryRunner.commitTransaction).toHaveBeenCalled();
+      expect(meta.hasMessage).toBe(true);
+      expect(meta.charCount).toBe("hello".length);
+    });
+
+    it("clears the ciphertext when message is empty or whitespace", async () => {
+      queryRunner.manager.findOne.mockResolvedValue({
+        ownerUserId: userId,
+        messageCiphertext: "enc(stale)",
+      });
+
+      const meta = await service.updateMessage(userId, "   ");
+
+      const saved = queryRunner.manager.save.mock.calls[0][0];
+      expect(saved.messageCiphertext).toBeNull();
+      expect(meta.hasMessage).toBe(false);
+    });
+
+    it("creates a new row when none exists", async () => {
+      queryRunner.manager.findOne.mockResolvedValue(null);
+
+      await service.updateMessage(userId, "hi");
+
+      expect(queryRunner.manager.create).toHaveBeenCalled();
+      expect(queryRunner.commitTransaction).toHaveBeenCalled();
+    });
+
+    it("refuses to save a non-empty message when AI_ENCRYPTION_KEY is missing", async () => {
+      encryption.isConfigured.mockReturnValue(false);
+      await expect(
+        service.updateMessage(userId, "secret"),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    });
+
+    it("rolls back on error", async () => {
+      queryRunner.manager.findOne.mockRejectedValueOnce(new Error("boom"));
+      await expect(service.updateMessage(userId, "hello")).rejects.toThrow(
+        "boom",
+      );
+      expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
     });
   });
 
@@ -152,48 +263,28 @@ describe("EmergencyAccessService", () => {
       ).rejects.toBeInstanceOf(ServiceUnavailableException);
     });
 
-    it("encrypts a non-empty message before storing", async () => {
-      queryRunner.manager.findOne.mockResolvedValue(null);
-      settingsRepo.findOne.mockResolvedValue({
+    it("does not touch the existing ciphertext when saving settings", async () => {
+      const stored = {
         ownerUserId: userId,
-        enabled: true,
+        enabled: false,
         grantAfterDays: 14,
         reminderAfterDays: 7,
-        messageCiphertext: "enc(hello)",
-      });
+        messageCiphertext: "enc(unchanged)",
+      };
+      queryRunner.manager.findOne.mockResolvedValue(stored);
+      settingsRepo.findOne.mockResolvedValue(stored);
       usersRepo.findOne.mockResolvedValue({ id: userId, lastActivityAt: null });
 
       await service.upsertSettings(userId, {
         enabled: true,
-        grantAfterDays: 14,
+        grantAfterDays: 30,
         reminderAfterDays: 7,
-        message: "hello",
       });
 
-      expect(encryption.encrypt).toHaveBeenCalledWith("hello");
-      expect(queryRunner.commitTransaction).toHaveBeenCalled();
-    });
-
-    it("clears the ciphertext when message is empty", async () => {
-      queryRunner.manager.findOne.mockResolvedValue({
-        ownerUserId: userId,
-        enabled: true,
-        grantAfterDays: 14,
-        reminderAfterDays: 7,
-        messageCiphertext: "enc(stale)",
-      });
-      settingsRepo.findOne.mockResolvedValue(null);
-      usersRepo.findOne.mockResolvedValue({ id: userId, lastActivityAt: null });
-
-      await service.upsertSettings(userId, {
-        enabled: true,
-        grantAfterDays: 14,
-        reminderAfterDays: 7,
-        message: "   ",
-      });
-
-      const saved = queryRunner.manager.save.mock.calls[0][0];
-      expect(saved.messageCiphertext).toBeNull();
+      expect(encryption.encrypt).not.toHaveBeenCalled();
+      expect(stored.messageCiphertext).toBe("enc(unchanged)");
+      expect(stored.enabled).toBe(true);
+      expect(stored.grantAfterDays).toBe(30);
     });
 
     it("rolls back on error", async () => {
@@ -284,7 +375,6 @@ describe("EmergencyAccessService", () => {
       };
       contactsRepo.findOne.mockResolvedValue(existing);
       contactsRepo.save.mockImplementation(async (row) => row);
-      // The email changes, so the service runs the dup-check query.
       contactsRepo.createQueryBuilder.mockReturnValue({
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
@@ -345,8 +435,8 @@ describe("EmergencyAccessService", () => {
     });
   });
 
-  describe("decryptMessage edge cases", () => {
-    it("returns null and warns when the encryption key is not configured", async () => {
+  describe("messageMetadata edge cases", () => {
+    it("reports no message and updatedAt=null when the encryption key is unavailable", async () => {
       encryption.isConfigured.mockReturnValue(false);
       settingsRepo.findOne.mockResolvedValue({
         ownerUserId: userId,
@@ -354,16 +444,21 @@ describe("EmergencyAccessService", () => {
         grantAfterDays: 14,
         reminderAfterDays: 7,
         messageCiphertext: "enc(hello)",
+        updatedAt: new Date("2026-05-01T00:00:00Z"),
       });
       contactsRepo.find.mockResolvedValue([]);
       usersRepo.findOne.mockResolvedValue({ id: userId, lastActivityAt: null });
 
       const view = await service.getView(userId);
-      expect(view.message).toBeNull();
+      expect(view.messageMetadata).toEqual({
+        hasMessage: false,
+        charCount: 0,
+        updatedAt: null,
+      });
       expect(encryption.decrypt).not.toHaveBeenCalled();
     });
 
-    it("returns null when decrypt throws", async () => {
+    it("reports no message when decrypt throws", async () => {
       encryption.decrypt.mockImplementation(() => {
         throw new Error("bad key");
       });
@@ -378,10 +473,10 @@ describe("EmergencyAccessService", () => {
       usersRepo.findOne.mockResolvedValue({ id: userId, lastActivityAt: null });
 
       const view = await service.getView(userId);
-      expect(view.message).toBeNull();
+      expect(view.messageMetadata.hasMessage).toBe(false);
     });
 
-    it("returns null when decrypt throws a non-Error value", async () => {
+    it("returns no message when decrypt throws a non-Error value", async () => {
       encryption.decrypt.mockImplementation(() => {
         throw "raw-string-not-an-Error";
       });
@@ -396,7 +491,7 @@ describe("EmergencyAccessService", () => {
       usersRepo.findOne.mockResolvedValue({ id: userId, lastActivityAt: null });
 
       const view = await service.getView(userId);
-      expect(view.message).toBeNull();
+      expect(view.messageMetadata.hasMessage).toBe(false);
     });
   });
 
@@ -462,19 +557,7 @@ describe("EmergencyAccessService", () => {
     });
   });
 
-  describe("upsertSettings: encryption configuration", () => {
-    it("refuses to save a non-empty message when AI_ENCRYPTION_KEY is missing", async () => {
-      encryption.isConfigured.mockReturnValue(false);
-      await expect(
-        service.upsertSettings(userId, {
-          enabled: true,
-          grantAfterDays: 14,
-          reminderAfterDays: 7,
-          message: "secret",
-        }),
-      ).rejects.toBeInstanceOf(ServiceUnavailableException);
-    });
-
+  describe("upsertSettings: side effects", () => {
     it("voids outstanding magic links and clears markers when owner disables", async () => {
       const stored = {
         ownerUserId: userId,
@@ -498,8 +581,6 @@ describe("EmergencyAccessService", () => {
       });
 
       expect(builder.update).toHaveBeenCalledWith(EmergencyAccessContact);
-      // The contact row's claimTokenUsedAt is set via a TypeORM function-valued
-      // setter; invoking the closure should yield the SQL fragment we expect.
       const setArgs = builder.set.mock.calls[0][0];
       expect(typeof setArgs.claimTokenUsedAt).toBe("function");
       expect(setArgs.claimTokenUsedAt()).toBe("CURRENT_TIMESTAMP");
@@ -552,8 +633,6 @@ describe("EmergencyAccessService", () => {
         grantedAt: new Date(),
         lastReminderSentAt: new Date(),
       };
-      // First findOne call: resetGrantedState's own lookup.
-      // Second findOne call: getView at the end re-reads the row.
       settingsRepo.findOne
         .mockResolvedValueOnce(stored)
         .mockResolvedValueOnce({ ...stored, grantedAt: null });

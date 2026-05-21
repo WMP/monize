@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import '@/lib/zodConfig';
@@ -16,6 +16,11 @@ import { Input } from '@/components/ui/Input';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { StepUpAuthModal } from '@/components/auth/StepUpAuthModal';
+import {
+  StepUpRequiredError,
+  useStepUpTokenStore,
+} from '@/lib/stepUpToken';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { useAuthStore } from '@/store/authStore';
 import { usePreferencesStore } from '@/store/preferencesStore';
@@ -33,6 +38,7 @@ import type {
 } from '@/types/emergency-access';
 
 const logger = createLogger('EmergencyAccess');
+const STEP_UP_PURPOSE = 'emergency-access';
 
 const settingsSchema = z
   .object({
@@ -47,10 +53,6 @@ const settingsSchema = z
       .int('Whole days only')
       .min(1, 'Must be at least 1 day')
       .max(364, 'Must be 364 days or fewer'),
-    message: z
-      .string()
-      .max(4000, 'Message must be 4000 characters or less')
-      .optional(),
   })
   .refine((data) => data.reminderAfterDays < data.grantAfterDays, {
     message: 'Reminder days must be less than grant days',
@@ -58,6 +60,15 @@ const settingsSchema = z
   });
 
 type SettingsFormData = z.infer<typeof settingsSchema>;
+
+const messageSchema = z.object({
+  message: z
+    .string()
+    .max(4000, 'Message must be 4000 characters or less')
+    .optional(),
+});
+
+type MessageFormData = z.infer<typeof messageSchema>;
 
 const contactSchema = z.object({
   firstName: z
@@ -132,15 +143,63 @@ function EmergencyAccessContent() {
   return <EmergencyAccessSection />;
 }
 
+// Subscribe to the current wall-clock time so the countdown re-renders once
+// per second. useSyncExternalStore is the React-blessed primitive for "live
+// data from outside React" -- it avoids the setState-in-effect anti-pattern
+// while still keeping the value fresh.
+function useNowEverySecond(enabled: boolean): number | null {
+  return useSyncExternalStore(
+    (cb) => {
+      if (!enabled) return () => {};
+      const id = window.setInterval(cb, 1000);
+      return () => window.clearInterval(id);
+    },
+    () => (enabled ? Date.now() : null),
+    () => null,
+  );
+}
+
+function MessageCountdown() {
+  const expiresAt = useStepUpTokenStore((s) =>
+    s.getExpiresAt(STEP_UP_PURPOSE),
+  );
+  const now = useNowEverySecond(!!expiresAt);
+
+  if (!expiresAt || now === null) return null;
+  const remainingMs = Math.max(0, expiresAt - now);
+  const mins = Math.floor(remainingMs / 60_000);
+  const secs = Math.floor((remainingMs % 60_000) / 1000);
+  return (
+    <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+      Unlocked for {mins}:{secs.toString().padStart(2, '0')}
+    </span>
+  );
+}
+
 function EmergencyAccessSection() {
   const preferences = usePreferencesStore((s) => s.preferences);
   const userTimezone = resolveTimezone(preferences?.timezone);
   const dateFormat = preferences?.dateFormat || 'browser';
   const timeFormat: '24h' | '12h' = preferences?.timeFormat ?? '24h';
 
+  const hasStepUpToken = useStepUpTokenStore(
+    (s) => !!s.getValid(STEP_UP_PURPOSE),
+  );
+  const clearStepUp = useStepUpTokenStore((s) => s.clear);
+
   const [view, setView] = useState<EmergencyAccessView | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
+
+  // Message reveal/edit state
+  const [messageMode, setMessageMode] = useState<'hidden' | 'view' | 'edit'>(
+    'hidden',
+  );
+  const [messageLoading, setMessageLoading] = useState(false);
+  const [savingMessage, setSavingMessage] = useState(false);
+  const [stepUpOpen, setStepUpOpen] = useState(false);
+  // Captures which mode the user wanted -- we resume it after verification.
+  const [pendingMode, setPendingMode] = useState<'view' | 'edit' | null>(null);
 
   const [showContactForm, setShowContactForm] = useState(false);
   const [editingContact, setEditingContact] =
@@ -160,8 +219,12 @@ function EmergencyAccessSection() {
       enabled: false,
       grantAfterDays: 14,
       reminderAfterDays: 7,
-      message: '',
     },
+  });
+
+  const messageForm = useForm<MessageFormData>({
+    resolver: zodResolver(messageSchema),
+    defaultValues: { message: '' },
   });
 
   const contactForm = useForm<ContactFormData>({
@@ -178,7 +241,6 @@ function EmergencyAccessSection() {
         enabled: data.enabled,
         grantAfterDays: data.grantAfterDays,
         reminderAfterDays: data.reminderAfterDays,
-        message: data.message ?? '',
       });
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to load emergency access'));
@@ -192,15 +254,94 @@ function EmergencyAccessSection() {
     void load();
   }, [load]);
 
+  // Lock the message view whenever the step-up token disappears (expiry, "Lock now",
+  // logout). This prevents stale plaintext from staying on-screen after the
+  // unlock window ends.
+  useEffect(() => {
+    if (!hasStepUpToken && messageMode !== 'hidden') {
+      setMessageMode('hidden');
+      messageForm.reset({ message: '' });
+    }
+  }, [hasStepUpToken, messageMode, messageForm]);
+
+  const fetchMessageInto = useCallback(
+    async (nextMode: 'view' | 'edit') => {
+      setMessageLoading(true);
+      try {
+        const { message } = await emergencyAccessApi.getMessage();
+        messageForm.reset({ message: message ?? '' });
+        setMessageMode(nextMode);
+      } catch (err) {
+        if (err instanceof StepUpRequiredError) {
+          clearStepUp(STEP_UP_PURPOSE);
+          setPendingMode(nextMode);
+          setStepUpOpen(true);
+          return;
+        }
+        toast.error(getErrorMessage(err, 'Failed to load message'));
+        logger.error(err);
+      } finally {
+        setMessageLoading(false);
+      }
+    },
+    [messageForm, clearStepUp],
+  );
+
+  const handleReveal = () => {
+    if (!hasStepUpToken) {
+      setPendingMode('view');
+      setStepUpOpen(true);
+      return;
+    }
+    void fetchMessageInto('view');
+  };
+
+  const handleEdit = () => {
+    if (!hasStepUpToken) {
+      setPendingMode('edit');
+      setStepUpOpen(true);
+      return;
+    }
+    void fetchMessageInto('edit');
+  };
+
+  const handleLockNow = () => {
+    clearStepUp(STEP_UP_PURPOSE);
+    setMessageMode('hidden');
+    messageForm.reset({ message: '' });
+  };
+
+  const onMessageSubmit = async (data: MessageFormData) => {
+    setSavingMessage(true);
+    try {
+      const meta = await emergencyAccessApi.updateMessage(
+        data.message?.trim() ? data.message.trim() : null,
+      );
+      setView((prev) =>
+        prev ? { ...prev, messageMetadata: { ...meta, updatedAt: meta.updatedAt ? String(meta.updatedAt) : null } } : prev,
+      );
+      toast.success('Message saved');
+      setMessageMode('view');
+    } catch (err) {
+      if (err instanceof StepUpRequiredError) {
+        // Token expired between fetch and save -- re-prompt and ask the user
+        // to click Save again.
+        clearStepUp(STEP_UP_PURPOSE);
+        setStepUpOpen(true);
+        toast.error('Verification expired -- please verify again to save');
+        return;
+      }
+      toast.error(getErrorMessage(err, 'Failed to save message'));
+      logger.error(err);
+    } finally {
+      setSavingMessage(false);
+    }
+  };
+
   const onSettingsSubmit = async (data: SettingsFormData) => {
     setSavingSettings(true);
     try {
-      const next = await emergencyAccessApi.updateSettings({
-        enabled: data.enabled,
-        grantAfterDays: data.grantAfterDays,
-        reminderAfterDays: data.reminderAfterDays,
-        message: data.message?.trim() ? data.message.trim() : null,
-      });
+      const next = await emergencyAccessApi.updateSettings(data);
       setView(next);
       toast.success('Emergency access settings saved');
     } catch (err) {
@@ -314,6 +455,7 @@ function EmergencyAccessSection() {
 
   const inactiveDays = daysSince(view.lastActivityAt);
   const enabledNow = settingsForm.watch('enabled');
+  const { messageMetadata } = view;
 
   return (
     <PageLayout>
@@ -420,27 +562,6 @@ function EmergencyAccessSection() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Message to your contacts (encrypted)
-              </label>
-              <textarea
-                rows={8}
-                placeholder="Notes, instructions, locations of important documents..."
-                disabled={!view.emailConfigured}
-                className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-mono disabled:opacity-50"
-                {...settingsForm.register('message')}
-              />
-              {settingsForm.formState.errors.message && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                  {settingsForm.formState.errors.message.message}
-                </p>
-              )}
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Encrypted at rest. Plain text only. Maximum 4000 characters.
-              </p>
-            </div>
-
             <div className="flex justify-end">
               <Button
                 type="submit"
@@ -452,6 +573,129 @@ function EmergencyAccessSection() {
             </div>
           </div>
         </form>
+
+        <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Message to your contacts
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+                Encrypted at rest. Viewing or editing requires re-verifying
+                your identity.
+              </p>
+            </div>
+            {messageMode !== 'hidden' && <MessageCountdown />}
+          </div>
+
+          {messageMode === 'hidden' && (
+            <div className="border border-dashed border-gray-300 dark:border-gray-600 rounded-md p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm text-gray-700 dark:text-gray-300">
+                {messageMetadata.hasMessage ? (
+                  <>
+                    Message set
+                    <span className="text-gray-500 dark:text-gray-400">
+                      {' '}
+                      ({messageMetadata.charCount} chars
+                      {messageMetadata.updatedAt
+                        ? `, updated ${formatTimestamp(messageMetadata.updatedAt, userTimezone, dateFormat, timeFormat)}`
+                        : ''}
+                      )
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-gray-500 dark:text-gray-400">
+                    No message set
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleReveal}
+                  disabled={
+                    !view.emailConfigured ||
+                    messageLoading ||
+                    !messageMetadata.hasMessage
+                  }
+                >
+                  Reveal message
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleEdit}
+                  disabled={!view.emailConfigured || messageLoading}
+                >
+                  {messageMetadata.hasMessage
+                    ? 'Edit message'
+                    : 'Add message'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {messageMode === 'view' && (
+            <div className="space-y-3">
+              <pre className="whitespace-pre-wrap break-words rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 text-sm font-mono text-gray-900 dark:text-gray-100">
+                {messageForm.getValues('message') || '(empty)'}
+              </pre>
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={handleLockNow}>
+                  Lock now
+                </Button>
+                <Button size="sm" onClick={() => setMessageMode('edit')}>
+                  Edit
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {messageMode === 'edit' && (
+            <form
+              onSubmit={messageForm.handleSubmit(onMessageSubmit)}
+              className="space-y-3"
+            >
+              <textarea
+                rows={8}
+                placeholder="Notes, instructions, locations of important documents..."
+                className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-mono"
+                {...messageForm.register('message')}
+              />
+              {messageForm.formState.errors.message && (
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  {messageForm.formState.errors.message.message}
+                </p>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Maximum 4000 characters. Stored encrypted at rest.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleLockNow}
+                  disabled={savingMessage}
+                >
+                  Lock now
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setMessageMode('view')}
+                  disabled={savingMessage}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" isLoading={savingMessage}>
+                  Save message
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
 
         <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6">
           <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
@@ -615,6 +859,22 @@ function EmergencyAccessSection() {
           pushHistory
           onConfirm={handleReset}
           onCancel={() => setShowResetConfirm(false)}
+        />
+
+        <StepUpAuthModal
+          isOpen={stepUpOpen}
+          purpose={STEP_UP_PURPOSE}
+          reason="Re-verify your identity to view or edit your emergency-access message."
+          onClose={() => {
+            setStepUpOpen(false);
+            setPendingMode(null);
+          }}
+          onVerified={() => {
+            setStepUpOpen(false);
+            const mode = pendingMode;
+            setPendingMode(null);
+            if (mode) void fetchMessageInto(mode);
+          }}
         />
       </main>
     </PageLayout>

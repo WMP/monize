@@ -16,10 +16,13 @@ import { ApiTags, ApiOperation } from "@nestjs/swagger";
 import { EmergencyAccessService } from "./emergency-access.service";
 import { UpsertSettingsDto } from "./dto/upsert-settings.dto";
 import { UpsertContactDto } from "./dto/upsert-contact.dto";
+import { UpdateMessageDto } from "./dto/update-message.dto";
+import { StepUpGuard } from "../auth/step-up/step-up.guard";
+import { RequireStepUp } from "../auth/step-up/require-step-up.decorator";
 
 @ApiTags("Emergency Access")
 @Controller("emergency-access")
-@UseGuards(AuthGuard("jwt"))
+@UseGuards(AuthGuard("jwt"), StepUpGuard)
 export class EmergencyAccessController {
   constructor(private readonly service: EmergencyAccessService) {}
 
@@ -27,6 +30,29 @@ export class EmergencyAccessController {
   @ApiOperation({ summary: "Get the caller's emergency-access configuration" })
   async get(@Request() req: { user: { id: string } }) {
     return this.service.getView(req.user.id);
+  }
+
+  @Get("message")
+  @RequireStepUp("emergency-access")
+  @ApiOperation({
+    summary:
+      "Read the decrypted emergency-access message (requires step-up auth)",
+  })
+  async getMessage(@Request() req: { user: { id: string } }) {
+    return this.service.getMessage(req.user.id);
+  }
+
+  @Put("message")
+  @RequireStepUp("emergency-access")
+  @ApiOperation({
+    summary:
+      "Replace the encrypted emergency-access message (requires step-up auth)",
+  })
+  async putMessage(
+    @Request() req: { user: { id: string } },
+    @Body() dto: UpdateMessageDto,
+  ) {
+    return this.service.updateMessage(req.user.id, dto.message);
   }
 
   @Put("settings")

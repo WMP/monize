@@ -27,10 +27,13 @@ describe("computeInvestmentCashImpact", () => {
     InvestmentAction.DIVIDEND,
     InvestmentAction.INTEREST,
     InvestmentAction.CAPITAL_GAIN,
-  ])("treats %s with default qty=1 and uses price as the cash amount", (action) => {
-    expect(computeInvestmentCashImpact(action, 0, 25.5, 0)).toBe(25.5);
-    expect(computeInvestmentCashImpact(action, 1, 25.5, 0)).toBe(25.5);
-  });
+  ])(
+    "treats %s with default qty=1 and uses price as the cash amount",
+    (action) => {
+      expect(computeInvestmentCashImpact(action, 0, 25.5, 0)).toBe(25.5);
+      expect(computeInvestmentCashImpact(action, 1, 25.5, 0)).toBe(25.5);
+    },
+  );
 
   it("returns 0 for REINVEST (net-zero cash, holdings still update)", () => {
     expect(

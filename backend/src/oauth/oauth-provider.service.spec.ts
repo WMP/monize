@@ -18,8 +18,10 @@ interface MockProvider {
   AccessToken: { find: jest.Mock };
 }
 
-const eventListeners: Record<string, Array<(...args: unknown[]) => unknown>> =
-  {};
+const eventListeners: Record<
+  string,
+  Array<(...args: unknown[]) => unknown>
+> = {};
 
 function createMockProvider(): MockProvider {
   return {
@@ -40,11 +42,13 @@ jest.mock(
       __esModule: true,
       default: jest
         .fn()
-        .mockImplementation((issuer: string, config: Record<string, unknown>) => {
-          providerConstructorCalls.push({ issuer, config });
-          lastMockProvider = createMockProvider();
-          return lastMockProvider;
-        }),
+        .mockImplementation(
+          (issuer: string, config: Record<string, unknown>) => {
+            providerConstructorCalls.push({ issuer, config });
+            lastMockProvider = createMockProvider();
+            return lastMockProvider;
+          },
+        ),
     };
   },
   { virtual: true },
@@ -162,9 +166,7 @@ describe("OAuthProviderService", () => {
 
       expect(p1).toBe(p2);
       expect(providerConstructorCalls).toHaveLength(1);
-      expect(providerConstructorCalls[0].issuer).toBe(
-        "https://app.test/oauth",
-      );
+      expect(providerConstructorCalls[0].issuer).toBe("https://app.test/oauth");
       expect(providerConstructorCalls[0].config.scopes).toEqual([
         ...MCP_RESOURCE_SCOPES,
       ]);
@@ -253,9 +255,9 @@ describe("OAuthProviderService", () => {
         mustChangePassword: false,
       });
       const client = { grantTypeAllowed: jest.fn().mockReturnValue(true) };
-      await expect(
-        config.issueRefreshToken({}, client, {}),
-      ).resolves.toBe(true);
+      await expect(config.issueRefreshToken({}, client, {})).resolves.toBe(
+        true,
+      );
       expect(client.grantTypeAllowed).toHaveBeenCalledWith("refresh_token");
     });
 
@@ -458,11 +460,13 @@ describe("OAuthProviderService", () => {
   });
 
   describe("validateAccessToken", () => {
-    async function setup(authUser: {
-      id: string;
-      isActive: boolean;
-      mustChangePassword: boolean;
-    } | null) {
+    async function setup(
+      authUser: {
+        id: string;
+        isActive: boolean;
+        mustChangePassword: boolean;
+      } | null,
+    ) {
       const svc = new OAuthProviderService(
         makeConfigService({
           PUBLIC_APP_URL: "https://app.test",

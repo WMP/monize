@@ -225,9 +225,7 @@ export class OAuthProviderService implements OnModuleInit {
       this.logger.warn(`OAuth revocation.error: ${errorDetail(err)}`);
     });
     provider.on("registration_create.error", (ctx, err) => {
-      this.logger.warn(
-        `OAuth DCR registration error: ${errorDetail(err)}`,
-      );
+      this.logger.warn(`OAuth DCR registration error: ${errorDetail(err)}`);
     });
     provider.on("registration_update.error", (ctx, err) => {
       this.logger.warn(`OAuth DCR update error: ${errorDetail(err)}`);
@@ -358,9 +356,7 @@ export class OAuthProviderService implements OnModuleInit {
       .execute();
     const affected = result.affected ?? 0;
     if (affected > 0) {
-      this.logger.log(
-        `Revoked ${affected} OIDC payload(s) for user=${userId}`,
-      );
+      this.logger.log(`Revoked ${affected} OIDC payload(s) for user=${userId}`);
     }
     return affected;
   }
