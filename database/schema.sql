@@ -38,7 +38,9 @@ CREATE TABLE users (
     oidc_link_token VARCHAR(255),
     oidc_link_expires_at TIMESTAMP,
     pending_oidc_subject VARCHAR(255),
-    is_delegate_only BOOLEAN NOT NULL DEFAULT false -- true when the row exists solely as an owner-managed delegate identity (created via Shared Access, never claimed via /register)
+    is_delegate_only BOOLEAN NOT NULL DEFAULT false, -- true when the row exists solely as an owner-managed delegate identity (created via Shared Access, never claimed via /register)
+    backup_encryption_enabled BOOLEAN NOT NULL DEFAULT false,
+    backup_password_enc TEXT -- backup password (login password for local, dedicated password for OIDC) encrypted with AI_ENCRYPTION_KEY for auto-backup use
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL;

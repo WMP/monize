@@ -128,6 +128,17 @@ export class User {
   @Column({ name: "is_delegate_only", type: "boolean", default: false })
   isDelegateOnly: boolean;
 
+  @Column({
+    name: "backup_encryption_enabled",
+    type: "boolean",
+    default: false,
+  })
+  backupEncryptionEnabled: boolean;
+
+  @Column({ name: "backup_password_enc", type: "text", nullable: true })
+  @Exclude()
+  backupPasswordEnc: string | null;
+
   @OneToOne(() => UserPreference, (preference) => preference.user)
   preferences: UserPreference;
 }

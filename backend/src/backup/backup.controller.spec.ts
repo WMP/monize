@@ -3,12 +3,14 @@ import { BadRequestException } from "@nestjs/common";
 import { BackupController } from "./backup.controller";
 import { BackupService } from "./backup.service";
 import { AutoBackupService } from "./auto-backup.service";
+import { BackupEncryptionService } from "./backup-encryption.service";
 import { AutoBackupSettings } from "./entities/auto-backup-settings.entity";
 
 describe("BackupController", () => {
   let controller: BackupController;
   let mockBackupService: Record<string, jest.Mock>;
   let mockAutoBackupService: Record<string, jest.Mock>;
+  let mockBackupEncryption: Record<string, jest.Mock>;
 
   const userId = "test-user-id";
   const mockReq = {
@@ -31,6 +33,13 @@ describe("BackupController", () => {
       runManualBackup: jest.fn(),
     };
 
+    mockBackupEncryption = {
+      getStatus: jest.fn(),
+      enableForLocalUser: jest.fn(),
+      setBackupPasswordForOidcUser: jest.fn(),
+      disable: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [BackupController],
       providers: [
@@ -41,6 +50,10 @@ describe("BackupController", () => {
         {
           provide: AutoBackupService,
           useValue: mockAutoBackupService,
+        },
+        {
+          provide: BackupEncryptionService,
+          useValue: mockBackupEncryption,
         },
       ],
     }).compile();
@@ -67,6 +80,29 @@ describe("BackupController", () => {
       expect(mockBackupService.streamExport).toHaveBeenCalledWith(
         userId,
         mockRes,
+        undefined,
+      );
+    });
+
+    it("uses .mzbe filename and octet-stream content-type when encrypted", async () => {
+      const mockRes = { setHeader: jest.fn() };
+      const encryptedReq = {
+        ...mockReq,
+        headers: { "x-export-password": "pw" },
+      };
+      await controller.exportBackup(encryptedReq, mockRes as any);
+      expect(mockRes.setHeader).toHaveBeenCalledWith(
+        "Content-Type",
+        "application/octet-stream",
+      );
+      expect(mockRes.setHeader).toHaveBeenCalledWith(
+        "Content-Disposition",
+        expect.stringContaining(".mzbe"),
+      );
+      expect(mockBackupService.streamExport).toHaveBeenCalledWith(
+        userId,
+        mockRes,
+        "pw",
       );
     });
   });
@@ -93,6 +129,7 @@ describe("BackupController", () => {
         compressedData: req.body,
         password: "mypassword",
         oidcIdToken: undefined,
+        backupPassword: undefined,
       });
       expect(result).toEqual(mockResult);
     });
@@ -117,6 +154,7 @@ describe("BackupController", () => {
         compressedData: req.body,
         password: undefined,
         oidcIdToken: "oidc-token-value",
+        backupPassword: undefined,
       });
     });
 
@@ -142,6 +180,63 @@ describe("BackupController", () => {
       await expect(controller.restoreBackup(req)).rejects.toThrow(
         BadRequestException,
       );
+    });
+
+    it("passes through the backup password header", async () => {
+      mockBackupService.restoreData.mockResolvedValue({
+        message: "ok",
+        restored: {},
+      });
+      const req = {
+        user: { id: userId },
+        body: Buffer.from("data"),
+        headers: { "x-backup-password": "old-password" },
+      };
+      await controller.restoreBackup(req);
+      expect(mockBackupService.restoreData).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({ backupPassword: "old-password" }),
+      );
+    });
+  });
+
+  describe("encryption endpoints", () => {
+    it("getEncryptionStatus delegates to the encryption service", async () => {
+      mockBackupEncryption.getStatus.mockResolvedValue({
+        enabled: true,
+        needsBackupPassword: false,
+      });
+      const result = await controller.getEncryptionStatus({
+        user: { id: userId },
+      });
+      expect(mockBackupEncryption.getStatus).toHaveBeenCalledWith(userId);
+      expect(result).toEqual({ enabled: true, needsBackupPassword: false });
+    });
+
+    it("enableLocalEncryption delegates with the password", async () => {
+      await controller.enableLocalEncryption(
+        { user: { id: userId } },
+        { password: "pw" },
+      );
+      expect(mockBackupEncryption.enableForLocalUser).toHaveBeenCalledWith(
+        userId,
+        "pw",
+      );
+    });
+
+    it("setBackupPassword delegates with the new password", async () => {
+      await controller.setBackupPassword(
+        { user: { id: userId } },
+        { backupPassword: "long-good-password" },
+      );
+      expect(
+        mockBackupEncryption.setBackupPasswordForOidcUser,
+      ).toHaveBeenCalledWith(userId, "long-good-password");
+    });
+
+    it("disableEncryption delegates", async () => {
+      await controller.disableEncryption({ user: { id: userId } });
+      expect(mockBackupEncryption.disable).toHaveBeenCalledWith(userId);
     });
   });
 

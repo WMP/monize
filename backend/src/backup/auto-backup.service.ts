@@ -1,38 +1,28 @@
 import { Injectable, Logger, BadRequestException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, DataSource, LessThanOrEqual } from "typeorm";
+import { Repository, LessThanOrEqual } from "typeorm";
 import { Cron } from "@nestjs/schedule";
-import {
-  createWriteStream,
-  promises as fs,
-  readdirSync,
-  unlinkSync,
-  copyFileSync,
-} from "fs";
+import { promises as fs, readdirSync, unlinkSync, copyFileSync } from "fs";
 import { resolve } from "path";
-import { createGzip } from "zlib";
-import { pipeline } from "stream/promises";
-import { Readable } from "stream";
 import { AutoBackupSettings } from "./entities/auto-backup-settings.entity";
+import { BackupService } from "./backup.service";
+import { User } from "../users/entities/user.entity";
 import {
   UpdateAutoBackupSettingsDto,
   AutoBackupFrequency,
 } from "./dto/update-auto-backup-settings.dto";
 
-const BACKUP_VERSION = 1;
-
 const BACKUP_FILE_PREFIX = "monize-backup-";
 
-// Matches daily backups: monize-backup-daily-YYYY-MM-DD.json.gz
+// File extensions: .json.gz for unencrypted, .mzbe for encrypted Monize backups.
+// Retention enforcement matches both so we can clean up legacy and encrypted
+// files uniformly.
 const DAILY_FILE_PATTERN =
-  /^monize-backup-daily-(\d{4}-\d{2}-\d{2})\.json\.gz$/;
-
-// Matches weekly backups: monize-backup-weekly-YYYY-MM-DD.json.gz
+  /^monize-backup-daily-(\d{4}-\d{2}-\d{2})\.(json\.gz|mzbe)$/;
 const WEEKLY_FILE_PATTERN =
-  /^monize-backup-weekly-(\d{4}-\d{2}-\d{2})\.json\.gz$/;
-
-// Matches monthly backups: monize-backup-monthly-YY-MM.json.gz
-const MONTHLY_FILE_PATTERN = /^monize-backup-monthly-(\d{2}-\d{2})\.json\.gz$/;
+  /^monize-backup-weekly-(\d{4}-\d{2}-\d{2})\.(json\.gz|mzbe)$/;
+const MONTHLY_FILE_PATTERN =
+  /^monize-backup-monthly-(\d{2}-\d{2})\.(json\.gz|mzbe)$/;
 
 const WEEKLY_DAYS = [7, 14, 21, 28];
 
@@ -66,7 +56,9 @@ export class AutoBackupService {
   constructor(
     @InjectRepository(AutoBackupSettings)
     private readonly settingsRepo: Repository<AutoBackupSettings>,
-    private readonly dataSource: DataSource,
+    @InjectRepository(User)
+    private readonly usersRepo: Repository<User>,
+    private readonly backupService: BackupService,
   ) {}
 
   async getSettings(userId: string): Promise<AutoBackupSettings> {
@@ -292,161 +284,36 @@ export class AutoBackupService {
     folderPath: string,
     timezone: string,
   ): Promise<string> {
-    const dateStr = this.getLocalDateString(new Date(), timezone);
-    const filename = `${BACKUP_FILE_PREFIX}daily-${dateStr}.json.gz`;
-    const filepath = this.safePath(folderPath, filename);
-
-    const tableQueries: Array<{ key: string; sql: string }> = [
-      {
-        key: "currencies",
-        sql: "SELECT * FROM currencies WHERE created_by_user_id = $1",
-      },
-      {
-        key: "user_preferences",
-        sql: "SELECT * FROM user_preferences WHERE user_id = $1",
-      },
-      {
-        key: "user_currency_preferences",
-        sql: "SELECT * FROM user_currency_preferences WHERE user_id = $1",
-      },
-      {
-        key: "categories",
-        sql: "SELECT * FROM categories WHERE user_id = $1 ORDER BY parent_id NULLS FIRST, name",
-      },
-      {
-        key: "payees",
-        sql: "SELECT * FROM payees WHERE user_id = $1 ORDER BY name",
-      },
-      {
-        key: "payee_aliases",
-        sql: "SELECT * FROM payee_aliases WHERE user_id = $1",
-      },
-      {
-        key: "accounts",
-        sql: "SELECT * FROM accounts WHERE user_id = $1 ORDER BY name",
-      },
-      {
-        key: "tags",
-        sql: "SELECT * FROM tags WHERE user_id = $1 ORDER BY name",
-      },
-      {
-        key: "transactions",
-        sql: "SELECT * FROM transactions WHERE user_id = $1 ORDER BY transaction_date, created_at",
-      },
-      {
-        key: "transaction_splits",
-        sql: `SELECT ts.* FROM transaction_splits ts
-              JOIN transactions t ON ts.transaction_id = t.id
-              WHERE t.user_id = $1`,
-      },
-      {
-        key: "transaction_tags",
-        sql: `SELECT tt.* FROM transaction_tags tt
-              JOIN transactions t ON tt.transaction_id = t.id
-              WHERE t.user_id = $1`,
-      },
-      {
-        key: "transaction_split_tags",
-        sql: `SELECT tst.* FROM transaction_split_tags tst
-              JOIN transaction_splits ts ON tst.transaction_split_id = ts.id
-              JOIN transactions t ON ts.transaction_id = t.id
-              WHERE t.user_id = $1`,
-      },
-      {
-        key: "scheduled_transactions",
-        sql: "SELECT * FROM scheduled_transactions WHERE user_id = $1",
-      },
-      {
-        key: "scheduled_transaction_splits",
-        sql: `SELECT sts.* FROM scheduled_transaction_splits sts
-              JOIN scheduled_transactions st ON sts.scheduled_transaction_id = st.id
-              WHERE st.user_id = $1`,
-      },
-      {
-        key: "scheduled_transaction_overrides",
-        sql: `SELECT sto.* FROM scheduled_transaction_overrides sto
-              JOIN scheduled_transactions st ON sto.scheduled_transaction_id = st.id
-              WHERE st.user_id = $1`,
-      },
-      {
-        key: "securities",
-        sql: "SELECT * FROM securities WHERE user_id = $1",
-      },
-      {
-        key: "security_prices",
-        sql: `SELECT sp.* FROM security_prices sp
-              JOIN securities s ON sp.security_id = s.id
-              WHERE s.user_id = $1`,
-      },
-      {
-        key: "holdings",
-        sql: `SELECT h.* FROM holdings h
-              JOIN accounts a ON h.account_id = a.id
-              WHERE a.user_id = $1`,
-      },
-      {
-        key: "investment_transactions",
-        sql: "SELECT * FROM investment_transactions WHERE user_id = $1",
-      },
-      { key: "budgets", sql: "SELECT * FROM budgets WHERE user_id = $1" },
-      {
-        key: "budget_categories",
-        sql: `SELECT bc.* FROM budget_categories bc
-              JOIN budgets b ON bc.budget_id = b.id
-              WHERE b.user_id = $1`,
-      },
-      {
-        key: "budget_periods",
-        sql: `SELECT bp.* FROM budget_periods bp
-              JOIN budgets b ON bp.budget_id = b.id
-              WHERE b.user_id = $1`,
-      },
-      {
-        key: "budget_period_categories",
-        sql: `SELECT bpc.* FROM budget_period_categories bpc
-              JOIN budget_periods bp ON bpc.budget_period_id = bp.id
-              JOIN budgets b ON bp.budget_id = b.id
-              WHERE b.user_id = $1`,
-      },
-      {
-        key: "budget_alerts",
-        sql: "SELECT * FROM budget_alerts WHERE user_id = $1",
-      },
-      {
-        key: "custom_reports",
-        sql: "SELECT * FROM custom_reports WHERE user_id = $1",
-      },
-      {
-        key: "import_column_mappings",
-        sql: "SELECT * FROM import_column_mappings WHERE user_id = $1",
-      },
-      {
-        key: "monthly_account_balances",
-        sql: "SELECT * FROM monthly_account_balances WHERE user_id = $1",
-      },
-    ];
-
-    // Build the full JSON in memory for each table, then stream through gzip
-    const chunks: string[] = [];
-    chunks.push(
-      `{"version":${BACKUP_VERSION},"exportedAt":"${new Date().toISOString()}"`,
-    );
-
-    for (const { key, sql } of tableQueries) {
-      const rows = await this.dataSource.query(sql, [userId]);
-      chunks.push(`,"${key}":${JSON.stringify(rows)}`);
+    const user = await this.usersRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException(`User ${userId} not found`);
     }
 
-    chunks.push("}");
+    const encryptionPassword =
+      this.backupService.resolveStoredBackupPassword(user) ?? undefined;
+    if (user.backupEncryptionEnabled && !encryptionPassword) {
+      // User opted into encryption but we can't recover the password
+      // (likely AI_ENCRYPTION_KEY rotated). Fail loud rather than silently
+      // writing an unencrypted backup.
+      throw new BadRequestException(
+        "Encrypted backups are enabled but the stored password could not be decrypted. Re-enable encryption in Security settings.",
+      );
+    }
 
-    const jsonString = chunks.join("");
-    const readable = Readable.from([jsonString]);
-    const gzip = createGzip();
-    const writable = createWriteStream(filepath);
+    const dateStr = this.getLocalDateString(new Date(), timezone);
+    const ext = encryptionPassword ? "mzbe" : "json.gz";
+    const filename = `${BACKUP_FILE_PREFIX}daily-${dateStr}.${ext}`;
+    const filepath = this.safePath(folderPath, filename);
 
-    await pipeline(readable, gzip, writable);
+    const payload = await this.backupService.exportToBuffer(
+      userId,
+      encryptionPassword,
+    );
+    await fs.writeFile(filepath, payload);
 
-    this.logger.log(`Backup written to ${filepath}`);
+    this.logger.log(
+      `Backup written to ${filepath}${encryptionPassword ? " (encrypted)" : ""}`,
+    );
     return filename;
   }
 
@@ -458,8 +325,9 @@ export class AutoBackupService {
     const dayOfMonth = this.getLocalDayOfMonth(new Date(), timezone);
     if (!WEEKLY_DAYS.includes(dayOfMonth)) return;
 
+    const ext = dailyFilename.endsWith(".mzbe") ? "mzbe" : "json.gz";
     const dateStr = this.getLocalDateString(new Date(), timezone);
-    const weeklyFilename = `${BACKUP_FILE_PREFIX}weekly-${dateStr}.json.gz`;
+    const weeklyFilename = `${BACKUP_FILE_PREFIX}weekly-${dateStr}.${ext}`;
     try {
       copyFileSync(
         this.safePath(folderPath, dailyFilename),
@@ -488,7 +356,8 @@ export class AutoBackupService {
     const parts = formatter.formatToParts(now);
     const year = parts.find((p) => p.type === "year")!.value;
     const month = parts.find((p) => p.type === "month")!.value;
-    const monthlyFilename = `${BACKUP_FILE_PREFIX}monthly-${year}-${month}.json.gz`;
+    const ext = dailyFilename.endsWith(".mzbe") ? "mzbe" : "json.gz";
+    const monthlyFilename = `${BACKUP_FILE_PREFIX}monthly-${year}-${month}.${ext}`;
 
     try {
       copyFileSync(

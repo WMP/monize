@@ -1,10 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { DataSource } from "typeorm";
 import { BadRequestException } from "@nestjs/common";
 import * as fs from "fs";
 import { AutoBackupService } from "./auto-backup.service";
+import { BackupService } from "./backup.service";
 import { AutoBackupSettings } from "./entities/auto-backup-settings.entity";
+import { User } from "../users/entities/user.entity";
 
 jest.mock("fs", () => {
   const actual = jest.requireActual("fs");
@@ -33,7 +34,8 @@ jest.mock("stream/promises", () => ({
 describe("AutoBackupService", () => {
   let service: AutoBackupService;
   let mockSettingsRepo: Record<string, jest.Mock>;
-  let mockDataSource: Record<string, jest.Mock>;
+  let mockUsersRepo: Record<string, jest.Mock>;
+  let mockBackupService: Record<string, jest.Mock>;
 
   const userId = "test-user-id";
 
@@ -86,8 +88,19 @@ describe("AutoBackupService", () => {
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
     };
 
-    mockDataSource = {
-      query: jest.fn().mockResolvedValue([]),
+    mockUsersRepo = {
+      findOne: jest.fn().mockResolvedValue({
+        id: userId,
+        backupEncryptionEnabled: false,
+        backupPasswordEnc: null,
+      }),
+    };
+
+    mockBackupService = {
+      exportToBuffer: jest
+        .fn()
+        .mockResolvedValue(Buffer.from("gzipped-export")),
+      resolveStoredBackupPassword: jest.fn().mockReturnValue(null),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -98,8 +111,12 @@ describe("AutoBackupService", () => {
           useValue: mockSettingsRepo,
         },
         {
-          provide: DataSource,
-          useValue: mockDataSource,
+          provide: getRepositoryToken(User),
+          useValue: mockUsersRepo,
+        },
+        {
+          provide: BackupService,
+          useValue: mockBackupService,
         },
       ],
     }).compile();
@@ -401,6 +418,60 @@ describe("AutoBackupService", () => {
         }),
       );
     });
+
+    it("writes an .mzbe file when the user has encryption enabled", async () => {
+      mockSettingsRepo.findOne.mockResolvedValue(
+        createSettings({ enabled: true, folderPath: "/backups" }),
+      );
+      mockUsersRepo.findOne.mockResolvedValue({
+        id: userId,
+        backupEncryptionEnabled: true,
+        backupPasswordEnc: "enc:secret",
+      });
+      mockBackupService.resolveStoredBackupPassword.mockReturnValue("secret");
+      setupExportMocks();
+
+      const result = await service.runManualBackup(userId);
+
+      expect(mockBackupService.exportToBuffer).toHaveBeenCalledWith(
+        userId,
+        "secret",
+      );
+      expect(result.filename).toMatch(
+        /^monize-backup-daily-\d{4}-\d{2}-\d{2}\.mzbe$/,
+      );
+    });
+
+    it("throws when encryption is enabled but the stored password cannot be decrypted", async () => {
+      mockSettingsRepo.findOne.mockResolvedValue(
+        createSettings({ enabled: true, folderPath: "/backups" }),
+      );
+      mockUsersRepo.findOne.mockResolvedValue({
+        id: userId,
+        backupEncryptionEnabled: true,
+        backupPasswordEnc: "enc:bad",
+      });
+      // Cron has no way to recover the password (e.g. master key rotated).
+      mockBackupService.resolveStoredBackupPassword.mockReturnValue(null);
+      setupExportMocks();
+
+      await expect(service.runManualBackup(userId)).rejects.toThrow(
+        /Re-enable encryption in Security/,
+      );
+      expect(mockBackupService.exportToBuffer).not.toHaveBeenCalled();
+    });
+
+    it("throws when the user row vanishes mid-flight", async () => {
+      mockSettingsRepo.findOne.mockResolvedValue(
+        createSettings({ enabled: true, folderPath: "/backups" }),
+      );
+      mockUsersRepo.findOne.mockResolvedValue(null);
+      setupExportMocks();
+
+      await expect(service.runManualBackup(userId)).rejects.toThrow(
+        /not found/,
+      );
+    });
   });
 
   describe("handleAutoBackupCron", () => {
@@ -409,7 +480,7 @@ describe("AutoBackupService", () => {
 
       await service.handleAutoBackupCron();
 
-      expect(mockDataSource.query).not.toHaveBeenCalled();
+      expect(mockBackupService.exportToBuffer).not.toHaveBeenCalled();
     });
 
     it("should process due backups and update status", async () => {

@@ -22,6 +22,7 @@ import { DeleteDataDto } from "./dto/delete-data.dto";
 import { PasswordBreachService } from "../auth/password-breach.service";
 import { ModuleRef } from "@nestjs/core";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
+import { BackupEncryptionService } from "../backup/backup-encryption.service";
 
 @Injectable()
 export class UsersService {
@@ -267,6 +268,20 @@ export class UsersService {
     user.passwordHash = await bcrypt.hash(dto.newPassword, saltRounds);
     user.mustChangePassword = false;
     await this.usersRepository.save(user);
+
+    // Re-sync the encrypted-backup password so the auto-backup cron keeps
+    // working with the new login password. Best-effort; failures here log
+    // but don't fail the password change.
+    try {
+      const backupEncryption = this.moduleRef.get(BackupEncryptionService, {
+        strict: false,
+      });
+      await backupEncryption.syncOnPasswordChange(userId, dto.newPassword);
+    } catch (err) {
+      this.logger.warn(
+        `Could not sync backup password after change: ${err.message}`,
+      );
+    }
 
     // SECURITY: Revoke all refresh tokens to force re-login on all devices
     await this.refreshTokensRepository.update(

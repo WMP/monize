@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Patch,
+  Delete,
   Body,
   UseGuards,
   Request,
@@ -21,10 +22,15 @@ import {
 import { Response } from "express";
 import { BackupService } from "./backup.service";
 import { AutoBackupService } from "./auto-backup.service";
+import { BackupEncryptionService } from "./backup-encryption.service";
 import {
   UpdateAutoBackupSettingsDto,
   ValidateFolderDto,
 } from "./dto/update-auto-backup-settings.dto";
+import {
+  EnableLocalEncryptionDto,
+  SetBackupPasswordDto,
+} from "./dto/backup-encryption.dto";
 import { DemoRestricted } from "../common/decorators/demo-restricted.decorator";
 
 @ApiTags("Backup")
@@ -35,6 +41,7 @@ export class BackupController {
   constructor(
     private readonly backupService: BackupService,
     private readonly autoBackupService: AutoBackupService,
+    private readonly backupEncryption: BackupEncryptionService,
   ) {}
 
   @Post("export")
@@ -42,32 +49,55 @@ export class BackupController {
   @ApiOperation({ summary: "Export all user data as JSON backup" })
   @ApiResponse({ status: 200, description: "Backup file downloaded" })
   async exportBackup(@Request() req, @Res() res: Response) {
-    const filename = `monize-backup-${new Date().toISOString().slice(0, 10)}.json.gz`;
+    // Encryption password (when encryption is enabled) comes via header so the
+    // browser can issue a plain GET-like POST without a body parser dependency
+    // and so it never lands in server access logs as a query string.
+    const encryptionPassword = req.headers["x-export-password"] as
+      | string
+      | undefined;
 
-    res.setHeader("Content-Type", "application/gzip");
+    const today = new Date().toISOString().slice(0, 10);
+    const filename = encryptionPassword
+      ? `monize-backup-${today}.mzbe`
+      : `monize-backup-${today}.json.gz`;
+    const contentType = encryptionPassword
+      ? "application/octet-stream"
+      : "application/gzip";
+
+    res.setHeader("Content-Type", contentType);
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    await this.backupService.streamExport(req.user.id, res);
+    await this.backupService.streamExport(req.user.id, res, encryptionPassword);
   }
 
   @Post("restore")
   @DemoRestricted()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: "Restore user data from gzip-compressed JSON backup",
+    summary:
+      "Restore user data from a backup file (gzipped JSON or encrypted Monize backup)",
   })
   @ApiResponse({ status: 200, description: "Data restored successfully" })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
   @ApiResponse({ status: 400, description: "Invalid backup format" })
   async restoreBackup(@Request() req) {
-    const body = req.body;
-    if (!Buffer.isBuffer(body) || body.length === 0) {
-      throw new BadRequestException(
-        "Request body must be a gzip-compressed backup file",
-      );
+    const body: unknown = req.body;
+    // CodeQL js/type-confusion-through-parameter-tampering doesn't model
+    // Buffer.isBuffer as a type guard. Explicit typeof / Array.isArray
+    // narrowing rejects the string and array forms body-parser can produce.
+    if (
+      typeof body === "string" ||
+      Array.isArray(body) ||
+      !Buffer.isBuffer(body) ||
+      body.length === 0
+    ) {
+      throw new BadRequestException("Request body must be a backup file");
     }
 
     const password = req.headers["x-restore-password"] as string | undefined;
     const oidcIdToken = req.headers["x-restore-oidc-token"] as
+      | string
+      | undefined;
+    const backupPassword = req.headers["x-backup-password"] as
       | string
       | undefined;
 
@@ -75,8 +105,59 @@ export class BackupController {
       compressedData: body,
       password,
       oidcIdToken,
+      backupPassword,
     });
     return result;
+  }
+
+  @Get("encryption")
+  @ApiOperation({ summary: "Get backup encryption status for current user" })
+  @ApiResponse({ status: 200, description: "Encryption status returned" })
+  async getEncryptionStatus(@Request() req) {
+    return this.backupEncryption.getStatus(req.user.id);
+  }
+
+  @Post("encryption/enable-local")
+  @DemoRestricted()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Enable encrypted backups for a local-auth user using their login password",
+  })
+  @ApiResponse({ status: 200, description: "Encryption enabled" })
+  @ApiResponse({ status: 401, description: "Invalid password" })
+  async enableLocalEncryption(
+    @Request() req,
+    @Body() dto: EnableLocalEncryptionDto,
+  ) {
+    await this.backupEncryption.enableForLocalUser(req.user.id, dto.password);
+    return { enabled: true };
+  }
+
+  @Post("encryption/backup-password")
+  @DemoRestricted()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Set or update a dedicated backup password (required for OIDC users to enable encryption)",
+  })
+  @ApiResponse({ status: 200, description: "Backup password set" })
+  async setBackupPassword(@Request() req, @Body() dto: SetBackupPasswordDto) {
+    await this.backupEncryption.setBackupPasswordForOidcUser(
+      req.user.id,
+      dto.backupPassword,
+    );
+    return { enabled: true };
+  }
+
+  @Delete("encryption")
+  @DemoRestricted()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Disable encrypted backups" })
+  @ApiResponse({ status: 200, description: "Encryption disabled" })
+  async disableEncryption(@Request() req) {
+    await this.backupEncryption.disable(req.user.id);
+    return { enabled: false };
   }
 
   @Get("auto-backup-settings")
