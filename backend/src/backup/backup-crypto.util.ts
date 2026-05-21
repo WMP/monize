@@ -45,6 +45,10 @@ function deriveKey(password: string, salt: Buffer): Buffer {
  * here so callers can trust the typed signature.
  */
 export function isEncryptedBackup(buf: Buffer): boolean {
+  // CodeQL js/type-confusion-through-parameter-tampering: it doesn't model
+  // Buffer.isBuffer as a type guard, so narrow with the typeof/Array.isArray
+  // checks the rule recognises before accessing .length.
+  if (typeof buf === "string" || Array.isArray(buf)) return false;
   if (!Buffer.isBuffer(buf)) return false;
   return (
     buf.length >= HEADER_LENGTH &&

@@ -80,8 +80,16 @@ export class BackupController {
   @ApiResponse({ status: 401, description: "Invalid credentials" })
   @ApiResponse({ status: 400, description: "Invalid backup format" })
   async restoreBackup(@Request() req) {
-    const body = req.body;
-    if (!Buffer.isBuffer(body) || body.length === 0) {
+    const body: unknown = req.body;
+    // CodeQL js/type-confusion-through-parameter-tampering doesn't model
+    // Buffer.isBuffer as a type guard. Explicit typeof / Array.isArray
+    // narrowing rejects the string and array forms body-parser can produce.
+    if (
+      typeof body === "string" ||
+      Array.isArray(body) ||
+      !Buffer.isBuffer(body) ||
+      body.length === 0
+    ) {
       throw new BadRequestException("Request body must be a backup file");
     }
 
