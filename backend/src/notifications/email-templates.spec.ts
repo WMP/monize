@@ -8,6 +8,8 @@ import {
   budgetWeeklyDigestTemplate,
   oidcLinkTemplate,
   accountLockedTemplate,
+  emergencyAccessReminderTemplate,
+  emergencyAccessGrantTemplate,
 } from "./email-templates";
 
 describe("Email Templates", () => {
@@ -946,6 +948,114 @@ describe("Email Templates", () => {
     it("renders supplied name", () => {
       const html = accountLockedTemplate("Pat");
       expect(html).toContain("Hi Pat");
+    });
+  });
+
+  describe("emergencyAccessReminderTemplate()", () => {
+    const baseData = {
+      ownerFirstName: "Owner",
+      daysSinceLogin: 9,
+      daysUntilGrant: 5,
+      contacts: [
+        { firstName: "Carol", email: "carol@example.com" },
+        { firstName: "Dave", email: "dave@example.com" },
+      ],
+      appUrl: "https://monize.example",
+    };
+
+    it("greets the owner and surfaces the inactivity window", () => {
+      const html = emergencyAccessReminderTemplate(baseData);
+      expect(html).toContain("Hi Owner");
+      expect(html).toContain("9 days");
+      expect(html).toContain("5 days");
+    });
+
+    it("renders every designated contact", () => {
+      const html = emergencyAccessReminderTemplate(baseData);
+      expect(html).toContain("Carol");
+      expect(html).toContain("carol@example.com");
+      expect(html).toContain("Dave");
+      expect(html).toContain("dave@example.com");
+    });
+
+    it("links to /login on the public app URL", () => {
+      const html = emergencyAccessReminderTemplate(baseData);
+      expect(html).toContain('href="https://monize.example/login"');
+    });
+
+    it("escapes injected HTML in contact data", () => {
+      const html = emergencyAccessReminderTemplate({
+        ...baseData,
+        contacts: [
+          {
+            firstName: "<script>alert(1)</script>",
+            email: "x@y.com",
+          },
+        ],
+      });
+      expect(html).not.toContain("<script>alert(1)</script>");
+      expect(html).toContain("&lt;script&gt;");
+    });
+
+    it('handles 1-day windows with singular phrasing ("today")', () => {
+      const html = emergencyAccessReminderTemplate({
+        ...baseData,
+        daysSinceLogin: 1,
+        daysUntilGrant: 0,
+      });
+      expect(html).toContain("1 day");
+      expect(html).toContain("today");
+    });
+  });
+
+  describe("emergencyAccessGrantTemplate()", () => {
+    const baseData = {
+      contactFirstName: "Carol",
+      ownerFullName: "Owner One",
+      message: "Bank passwords are in the safe.\nCall my lawyer.",
+      claimUrl: "https://monize.example/emergency-access/claim?token=ABC",
+      expiresAt: new Date("2030-01-01T00:00:00Z"),
+    };
+
+    it("addresses the contact and identifies the owner", () => {
+      const html = emergencyAccessGrantTemplate(baseData);
+      expect(html).toContain("Hi Carol");
+      expect(html).toContain("Owner One");
+    });
+
+    it("renders the claim URL", () => {
+      const html = emergencyAccessGrantTemplate(baseData);
+      expect(html).toContain(
+        'href="https://monize.example/emergency-access/claim?token=ABC"',
+      );
+    });
+
+    it("includes the message with newlines preserved as <br>", () => {
+      const html = emergencyAccessGrantTemplate(baseData);
+      expect(html).toContain("Bank passwords are in the safe.");
+      expect(html).toContain("<br>Call my lawyer.");
+    });
+
+    it("omits the message block when no message is provided", () => {
+      const html = emergencyAccessGrantTemplate({
+        ...baseData,
+        message: null,
+      });
+      expect(html).not.toContain("border-left: 4px solid");
+    });
+
+    it("escapes injected HTML in the message", () => {
+      const html = emergencyAccessGrantTemplate({
+        ...baseData,
+        message: "<img src=x onerror=alert(1)>",
+      });
+      expect(html).not.toContain("<img src=x onerror=alert(1)>");
+      expect(html).toContain("&lt;img");
+    });
+
+    it("shows the expiry date in ISO-day form", () => {
+      const html = emergencyAccessGrantTemplate(baseData);
+      expect(html).toContain("2030-01-01");
     });
   });
 });

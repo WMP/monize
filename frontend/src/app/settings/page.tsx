@@ -33,6 +33,7 @@ const ALL_SETTINGS_SECTIONS: readonly (SettingsSection & { demoVisible?: boolean
   { id: 'notifications', label: 'Notifications', demoVisible: true },
   { id: 'security', label: 'Security' },
   { id: 'shared-access', label: 'Shared Access', href: '/settings/shared-access' },
+  { id: 'emergency-access', label: 'Emergency Access', href: '/settings/emergency-access' },
   { id: 'api-access', label: 'API Access' },
   { id: 'ai-settings', label: 'AI Settings', href: '/settings/ai' },
   { id: 'backup-restore', label: 'Backup & Restore' },
@@ -307,6 +308,23 @@ function OwnerSettingsView() {
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Grant another person granular access to specific accounts.
+                  </p>
+                </Link>
+              </div>
+            )}
+
+            {!isDemoMode && (
+              <div id="emergency-access" className="scroll-mt-16 lg:scroll-mt-6">
+                <Link
+                  href="/settings/emergency-access"
+                  className="block bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                    Emergency Access
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Designate contacts who automatically receive full access to
+                    your account if you do not sign in for an extended period.
                   </p>
                 </Link>
               </div>

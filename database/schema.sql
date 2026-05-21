@@ -24,6 +24,7 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP,
+    last_activity_at TIMESTAMP, -- updated fire-and-forget on every authenticated request (throttled in the request interceptor) so emergency access treats "browsing the app" as resetting the dormancy timer
     reset_token VARCHAR(255),
     reset_token_expiry TIMESTAMP,
     role VARCHAR(20) NOT NULL DEFAULT 'user', -- 'admin', 'user'
@@ -42,6 +43,7 @@ CREATE TABLE users (
 
 CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_users_oidc_link_token ON users(oidc_link_token) WHERE oidc_link_token IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_users_last_activity_at ON users(last_activity_at) WHERE last_activity_at IS NOT NULL;
 
 -- Currencies
 CREATE TABLE currencies (
@@ -665,6 +667,45 @@ CREATE TABLE delegate_account_favourites (
 
 CREATE INDEX idx_delegate_account_favourites_user
     ON delegate_account_favourites(delegate_user_id);
+
+-- Emergency Access. Lets the owner pre-designate one or more contacts who
+-- receive a magic link to take over the account after a configurable
+-- period of inactivity. The free-form message body is stored as
+-- AES-256-GCM ciphertext (AiEncryptionService, keyed by AI_ENCRYPTION_KEY)
+-- so a database dump cannot leak it; the running app decrypts on demand.
+CREATE TABLE emergency_access_settings (
+    owner_user_id         UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    enabled               BOOLEAN NOT NULL DEFAULT false,
+    grant_after_days      INTEGER NOT NULL DEFAULT 14 CHECK (grant_after_days > 0),
+    reminder_after_days   INTEGER NOT NULL DEFAULT 7  CHECK (reminder_after_days > 0),
+    message_ciphertext    TEXT,
+    last_reminder_sent_at TIMESTAMP,
+    granted_at            TIMESTAMP,
+    created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT emergency_access_settings_reminder_lt_grant
+        CHECK (reminder_after_days < grant_after_days)
+);
+
+CREATE TABLE emergency_access_contacts (
+    id                     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    owner_user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    first_name             VARCHAR(100) NOT NULL,
+    email                  VARCHAR(255) NOT NULL,
+    claim_token_hash       VARCHAR(128),
+    claim_token_expires_at TIMESTAMP,
+    claim_token_used_at    TIMESTAMP,
+    claim_voided_reason    VARCHAR(20), -- 'claimed_by_other' | 'owner_revoked' | NULL
+    created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX idx_emergency_access_contacts_owner_email
+    ON emergency_access_contacts(owner_user_id, lower(email));
+
+CREATE INDEX idx_emergency_access_contacts_token_hash
+    ON emergency_access_contacts(claim_token_hash)
+    WHERE claim_token_hash IS NOT NULL;
 
 -- Custom Reports (user-defined configurable reports)
 -- view_type: TABLE, LINE_CHART, BAR_CHART, PIE_CHART

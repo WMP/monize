@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('Proxy');
-const publicPaths = ['/login', '/register', '/auth/callback', '/forgot-password', '/reset-password'];
+const publicPaths = ['/login', '/register', '/auth/callback', '/forgot-password', '/reset-password', '/emergency-access/claim'];
 let backendConnected = false;
 
 function buildCspHeader(nonce: string): string {

@@ -478,3 +478,75 @@ export function delegateInviteTemplate(
     </div>
   `;
 }
+
+interface EmergencyAccessReminderData {
+  ownerFirstName: string;
+  daysSinceLogin: number;
+  daysUntilGrant: number;
+  contacts: { firstName: string; email: string }[];
+  appUrl: string;
+}
+
+export function emergencyAccessReminderTemplate(
+  data: EmergencyAccessReminderData,
+): string {
+  const safeName = escapeHtml(data.ownerFirstName || "there");
+  const contactRows = data.contacts
+    .map(
+      (c) =>
+        `<li style="color: #374151; padding: 2px 0;">${escapeHtml(c.firstName)} &lt;${escapeHtml(c.email)}&gt;</li>`,
+    )
+    .join("");
+  const grantPhrase =
+    data.daysUntilGrant <= 0
+      ? "today"
+      : `in ${data.daysUntilGrant} day${data.daysUntilGrant === 1 ? "" : "s"}`;
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #b45309;">Monize Emergency Access Reminder</h2>
+      <p style="color: #374151;">Hi ${safeName},</p>
+      <p style="color: #374151;">You have not signed in to Monize for <strong>${data.daysSinceLogin} day${data.daysSinceLogin === 1 ? "" : "s"}</strong>. If you remain inactive, your designated emergency contacts will be granted full access to your account ${grantPhrase}.</p>
+      <p style="color: #374151;">Designated contacts:</p>
+      <ul style="margin: 8px 0 16px 20px; padding: 0;">${contactRows}</ul>
+      <p style="margin: 24px 0;">
+        <a href="${data.appUrl}/login" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: #ffffff; border-radius: 6px; text-decoration: none; font-weight: 500;">Sign in now</a>
+      </p>
+      <p style="color: #374151;">Signing in resets the timer. If you no longer want this feature enabled, you can disable it from Settings &rarr; Emergency Access.</p>
+      <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">-- Monize</p>
+    </div>
+  `;
+}
+
+interface EmergencyAccessGrantData {
+  contactFirstName: string;
+  ownerFullName: string;
+  message: string | null;
+  claimUrl: string;
+  expiresAt: Date;
+}
+
+export function emergencyAccessGrantTemplate(
+  data: EmergencyAccessGrantData,
+): string {
+  const safeContact = escapeHtml(data.contactFirstName || "there");
+  const safeOwner = escapeHtml(data.ownerFullName || "the account owner");
+  const safeUrl = escapeHtml(data.claimUrl);
+  const expiry = data.expiresAt.toISOString().split("T")[0];
+  const messageBlock = data.message
+    ? `<div style="background: #f9fafb; border-left: 4px solid #2563eb; padding: 12px 16px; margin: 16px 0; color: #374151; white-space: pre-wrap; font-size: 14px;">${escapeHtml(data.message).replace(/\n/g, "<br>")}</div>`
+    : "";
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #1f2937;">Emergency Access Granted</h2>
+      <p style="color: #374151;">Hi ${safeContact},</p>
+      <p style="color: #374151;"><strong>${safeOwner}</strong> previously designated you as an emergency contact on their Monize account. Because they have not signed in for an extended period, you are now being granted full access to take over the account.</p>
+      ${messageBlock}
+      <p style="color: #374151;">To claim access, click the link below and set a new password. You will be signed in as the account holder.</p>
+      <p style="margin: 24px 0;">
+        <a href="${safeUrl}" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: #ffffff; border-radius: 6px; text-decoration: none; font-weight: 500;">Claim Emergency Access</a>
+      </p>
+      <p style="color: #374151; font-size: 14px;">This link is valid until <strong>${expiry}</strong> and can only be used once. If multiple contacts received this email, the first to claim will take over the account.</p>
+      <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">-- Monize</p>
+    </div>
+  `;
+}
