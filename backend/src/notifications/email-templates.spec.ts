@@ -2,6 +2,7 @@ import {
   testEmailTemplate,
   billReminderTemplate,
   passwordResetTemplate,
+  accountInviteTemplate,
   budgetMonthlySummaryTemplate,
   mortgageReminderTemplate,
   budgetAlertImmediateTemplate,
@@ -309,6 +310,47 @@ describe("Email Templates", () => {
       );
 
       expect(html).toContain("Password Reset Request");
+    });
+  });
+
+  describe("accountInviteTemplate()", () => {
+    it("includes the invite url in the set-password button link", () => {
+      const html = accountInviteTemplate(
+        "Alice",
+        "https://monize.app/reset-password?token=abc123",
+      );
+
+      expect(html).toContain(
+        'href="https://monize.app/reset-password?token=abc123"',
+      );
+    });
+
+    it("includes the name in the greeting", () => {
+      const html = accountInviteTemplate("Bob", "https://monize.app/x");
+
+      expect(html).toContain("Hi Bob,");
+    });
+
+    it('falls back to "there" when name is empty', () => {
+      const html = accountInviteTemplate("", "https://monize.app/x");
+
+      expect(html).toContain("Hi there,");
+    });
+
+    it("mentions that an administrator created the account", () => {
+      const html = accountInviteTemplate("Alice", "https://monize.app/x");
+
+      expect(html).toContain("An administrator has created a Monize account");
+      expect(html).toContain("This link will expire in 24 hours");
+    });
+
+    it("escapes HTML in the name to prevent injection", () => {
+      const html = accountInviteTemplate(
+        "<script>alert(1)</script>",
+        "https://monize.app/x",
+      );
+
+      expect(html).not.toContain("<script>alert(1)</script>");
     });
   });
 

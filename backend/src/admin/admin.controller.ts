@@ -23,6 +23,7 @@ import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { DemoRestricted } from "../common/decorators/demo-restricted.decorator";
 import { AdminService } from "./admin.service";
+import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
 
@@ -39,6 +40,14 @@ export class AdminController {
   @ApiOperation({ summary: "List all users (admin only)" })
   findAll() {
     return this.adminService.findAllUsers();
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: "Create a new user account (admin only)" })
+  @ApiResponse({ status: 201, description: "User created" })
+  createUser(@Body() dto: CreateUserDto) {
+    return this.adminService.createUser(dto);
   }
 
   @Patch(":id/role")

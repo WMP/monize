@@ -10,6 +10,7 @@ describe("AdminController", () => {
   beforeEach(async () => {
     mockAdminService = {
       findAllUsers: jest.fn(),
+      createUser: jest.fn(),
       updateUserRole: jest.fn(),
       updateUserStatus: jest.fn(),
       deleteUser: jest.fn(),
@@ -37,6 +38,21 @@ describe("AdminController", () => {
 
       expect(result).toBe("users");
       expect(mockAdminService.findAllUsers).toHaveBeenCalledWith();
+    });
+  });
+
+  describe("createUser()", () => {
+    it("delegates to adminService.createUser with the dto", () => {
+      const dto = {
+        email: "new@example.com",
+        password: "Sup3rStr0ng!Pass",
+      } as any;
+      mockAdminService.createUser!.mockReturnValue("created");
+
+      const result = controller.createUser(dto);
+
+      expect(result).toBe("created");
+      expect(mockAdminService.createUser).toHaveBeenCalledWith(dto);
     });
   });
 

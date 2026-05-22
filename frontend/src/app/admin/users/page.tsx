@@ -7,11 +7,14 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Button } from '@/components/ui/Button';
 import { UserManagementTable } from '@/components/admin/UserManagementTable';
 import { ResetPasswordModal } from '@/components/admin/ResetPasswordModal';
+import { CreateUserModal } from '@/components/admin/CreateUserModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/store/authStore';
-import { adminApi } from '@/lib/admin';
+import { adminApi, CreateUserResponse } from '@/lib/admin';
+import { userSettingsApi } from '@/lib/user-settings';
 import { AdminUser } from '@/types/auth';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
@@ -23,12 +26,17 @@ export default function AdminUsersPage() {
   const { user: currentUser } = useAuthStore();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [smtpConfigured, setSmtpConfigured] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  // Reset password modal state
+  // Reset password modal state. Reused to surface a generated temporary
+  // password both for admin resets and for newly created accounts.
   const [resetPasswordModal, setResetPasswordModal] = useState<{
     isOpen: boolean;
     temporaryPassword: string;
     userName: string;
+    title?: string;
+    description?: string;
   }>({ isOpen: false, temporaryPassword: '', userName: '' });
 
   // Confirm dialog state
@@ -70,6 +78,40 @@ export default function AdminUsersPage() {
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
+
+  useEffect(() => {
+    userSettingsApi
+      .getSmtpStatus()
+      .then((status) => setSmtpConfigured(status.configured))
+      .catch(() => setSmtpConfigured(false));
+  }, []);
+
+  const handleUserCreated = (result: CreateUserResponse) => {
+    loadUsers();
+    const userName =
+      [result.firstName, result.lastName].filter(Boolean).join(' ') ||
+      result.email ||
+      'the new user';
+    if (result.temporaryPassword) {
+      setResetPasswordModal({
+        isOpen: true,
+        temporaryPassword: result.temporaryPassword,
+        userName,
+        title: result.upgraded ? 'Account Upgraded' : 'User Created',
+        description: result.upgraded
+          ? `An existing shared user was upgraded to a full account. Share this temporary password with ${userName}.`
+          : `A temporary password was generated for ${userName}. Share it with them to sign in.`,
+      });
+    } else if (result.invited) {
+      toast.success(`Invite email sent to ${result.email}`);
+    } else {
+      toast.success(
+        result.upgraded
+          ? `${userName} was upgraded to a full account`
+          : `${userName} has been created`,
+      );
+    }
+  };
 
   const handleChangeRole = async (user: AdminUser, role: 'admin' | 'user') => {
     if (role === user.role) return;
@@ -204,6 +246,9 @@ export default function AdminUsersPage() {
           <PageHeader
             title="User Management"
             subtitle={`${users.length} user${users.length !== 1 ? 's' : ''}`}
+            actions={
+              <Button onClick={() => setCreateModalOpen(true)}>Add User</Button>
+            }
           />
 
           <div className="bg-white dark:bg-gray-900 shadow rounded-lg overflow-hidden">
@@ -236,7 +281,16 @@ export default function AdminUsersPage() {
           isOpen={resetPasswordModal.isOpen}
           temporaryPassword={resetPasswordModal.temporaryPassword}
           userName={resetPasswordModal.userName}
+          title={resetPasswordModal.title}
+          description={resetPasswordModal.description}
           onClose={() => setResetPasswordModal((prev) => ({ ...prev, isOpen: false }))}
+        />
+
+        <CreateUserModal
+          isOpen={createModalOpen}
+          smtpConfigured={smtpConfigured}
+          onClose={() => setCreateModalOpen(false)}
+          onCreated={handleUserCreated}
         />
       </PageLayout>
     </ProtectedRoute>

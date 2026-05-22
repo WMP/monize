@@ -1,22 +1,33 @@
 import {
   Injectable,
+  Logger,
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { ConfigService } from "@nestjs/config";
+import { DataSource, Repository } from "typeorm";
 import * as bcrypt from "bcryptjs";
+import * as crypto from "crypto";
 import { User } from "../users/entities/user.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { RefreshToken } from "../auth/entities/refresh-token.entity";
 import { PersonalAccessToken } from "../auth/entities/personal-access-token.entity";
 import { generateReadablePassword } from "./utils/password-generator";
+import { hashToken } from "../auth/crypto.util";
 import { OAuthProviderService } from "../oauth/oauth-provider.service";
 import { UsersService } from "../users/users.service";
+import { EmailService } from "../notifications/email.service";
+import { accountInviteTemplate } from "../notifications/email-templates";
+import { CreateUserDto } from "./dto/create-user.dto";
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+  private readonly BCRYPT_ROUNDS = 12;
+
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
@@ -28,6 +39,9 @@ export class AdminService {
     private patRepository: Repository<PersonalAccessToken>,
     private oauthProviderService: OAuthProviderService,
     private usersService: UsersService,
+    private dataSource: DataSource,
+    private configService: ConfigService,
+    private emailService: EmailService,
   ) {}
 
   async findAllUsers() {
@@ -63,6 +77,135 @@ export class AdminService {
       ...rest
     } = user;
     return { ...rest, hasPassword: !!passwordHash };
+  }
+
+  async createUser(dto: CreateUserDto) {
+    const email = dto.email.toLowerCase().trim();
+    const role = dto.role === "admin" ? "admin" : "user";
+
+    if (dto.password && dto.sendInvite) {
+      throw new BadRequestException(
+        "Provide either a password or an email invite, not both.",
+      );
+    }
+    if (dto.sendInvite && !this.emailService.getStatus().configured) {
+      throw new BadRequestException(
+        "SMTP is not configured. Set a password for the user instead.",
+      );
+    }
+
+    let temporaryPassword: string | undefined;
+    let inviteToken: string | undefined;
+
+    const { saved, upgraded } = await this.dataSource.transaction(
+      async (manager) => {
+        const existing = await manager.findOne(User, { where: { email } });
+
+        let user: User;
+        let upgraded = false;
+
+        if (existing) {
+          // Only an owner-managed "pure delegate" row (created via Shared
+          // Access, owns no data of its own) may be turned into a full
+          // account here. Any other existing row belongs to a real account
+          // and rotating its credentials would be account takeover. The
+          // is_delegate_only flag is the canonical signal for this state --
+          // it is set when a delegate is provisioned and cleared the moment
+          // the user upgrades into a full account.
+          const claimable =
+            existing.isDelegateOnly === true &&
+            existing.authProvider === "local";
+          if (!claimable) {
+            throw new ConflictException(
+              "A user with this email address already exists.",
+            );
+          }
+          user = existing;
+          upgraded = true;
+          if (dto.firstName !== undefined) {
+            user.firstName = dto.firstName ?? null;
+          }
+          if (dto.lastName !== undefined) {
+            user.lastName = dto.lastName ?? null;
+          }
+          user.role = role;
+          // Promote out of the owner-managed delegate state: the row becomes
+          // a standalone account (visible in User Management, gets its own
+          // "self" context) while keeping every delegation others granted it.
+          user.isDelegateOnly = false;
+        } else {
+          user = manager.create(User, {
+            email,
+            firstName: dto.firstName ?? null,
+            lastName: dto.lastName ?? null,
+            authProvider: "local",
+            role,
+            isDelegateOnly: false,
+          });
+        }
+
+        if (dto.sendInvite) {
+          const rawToken = crypto.randomBytes(32).toString("hex");
+          user.resetToken = hashToken(rawToken);
+          user.resetTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+          // The invitee sets their own password via the reset link.
+          user.mustChangePassword = false;
+          inviteToken = rawToken;
+        } else if (dto.password) {
+          user.passwordHash = await bcrypt.hash(
+            dto.password,
+            this.BCRYPT_ROUNDS,
+          );
+          user.mustChangePassword = false;
+          user.resetToken = null;
+          user.resetTokenExpiry = null;
+          user.failedLoginAttempts = 0;
+          user.lockedUntil = null;
+        } else {
+          temporaryPassword = generateReadablePassword();
+          user.passwordHash = await bcrypt.hash(
+            temporaryPassword,
+            this.BCRYPT_ROUNDS,
+          );
+          user.mustChangePassword = true;
+          user.resetToken = null;
+          user.resetTokenExpiry = null;
+          user.failedLoginAttempts = 0;
+          user.lockedUntil = null;
+        }
+
+        const saved = await manager.save(user);
+        return { saved, upgraded };
+      },
+    );
+
+    if (inviteToken) {
+      const frontendUrl = this.configService.get<string>(
+        "PUBLIC_APP_URL",
+        "http://localhost:3000",
+      );
+      const inviteUrl = `${frontendUrl}/reset-password?token=${inviteToken}`;
+      this.emailService
+        .sendMail(
+          email,
+          "Your Monize account is ready",
+          accountInviteTemplate(dto.firstName || "", inviteUrl),
+        )
+        .catch((err) =>
+          this.logger.warn(
+            `Failed to send account invite email: ${
+              err instanceof Error ? err.message : err
+            }`,
+          ),
+        );
+    }
+
+    return {
+      ...this.sanitizeUser(saved),
+      temporaryPassword,
+      invited: !!inviteToken,
+      upgraded,
+    };
   }
 
   async updateUserRole(adminId: string, targetUserId: string, role: string) {

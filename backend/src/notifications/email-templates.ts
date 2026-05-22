@@ -457,6 +457,26 @@ export function passwordResetTemplate(
   `;
 }
 
+export function accountInviteTemplate(
+  firstName: string,
+  inviteUrl: string,
+): string {
+  const safeName = escapeHtml(firstName || "there");
+  const safeUrl = escapeHtml(inviteUrl);
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #1f2937;">Your Monize account is ready</h2>
+      <p style="color: #374151;">Hi ${safeName},</p>
+      <p style="color: #374151;">An administrator has created a Monize account for you. Click the button below to set your password and sign in:</p>
+      <p style="margin: 24px 0;">
+        <a href="${safeUrl}" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: #ffffff; border-radius: 6px; text-decoration: none; font-weight: 500;">Set Your Password</a>
+      </p>
+      <p style="color: #374151;">This link will expire in 24 hours. If you were not expecting this, you can safely ignore this email.</p>
+      <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">-- Monize</p>
+    </div>
+  `;
+}
+
 export function delegateInviteTemplate(
   firstName: string,
   ownerLabel: string,

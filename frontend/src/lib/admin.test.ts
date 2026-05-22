@@ -41,4 +41,14 @@ describe('adminApi', () => {
     expect(apiClient.post).toHaveBeenCalledWith('/admin/users/u-1/reset-password');
     expect(result.temporaryPassword).toBe('abc123');
   });
+
+  it('createUser posts the payload to /admin/users', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { id: 'u-9', email: 'new@example.com', invited: true, upgraded: false },
+    });
+    const payload = { email: 'new@example.com', sendInvite: true, role: 'user' as const };
+    const result = await adminApi.createUser(payload);
+    expect(apiClient.post).toHaveBeenCalledWith('/admin/users', payload);
+    expect(result.invited).toBe(true);
+  });
 });

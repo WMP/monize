@@ -10,6 +10,10 @@ interface ResetPasswordModalProps {
   temporaryPassword: string;
   userName: string;
   onClose: () => void;
+  /** Heading shown at the top of the modal. */
+  title?: string;
+  /** Sentence describing what the password is for. */
+  description?: string;
 }
 
 export function ResetPasswordModal({
@@ -17,6 +21,8 @@ export function ResetPasswordModal({
   temporaryPassword,
   userName,
   onClose,
+  title = 'Password Reset Successful',
+  description,
 }: ResetPasswordModalProps) {
   const [copied, setCopied] = useState(false);
 
@@ -34,11 +40,15 @@ export function ResetPasswordModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="md" className="p-6">
       <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-        Password Reset Successful
+        {title}
       </h3>
 
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-        A temporary password has been set for <strong>{userName}</strong>.
+        {description ?? (
+          <>
+            A temporary password has been set for <strong>{userName}</strong>.
+          </>
+        )}
       </p>
 
       <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4">

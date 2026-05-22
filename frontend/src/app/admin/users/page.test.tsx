@@ -77,6 +77,7 @@ vi.mock('@/lib/errors', () => ({
 }));
 
 const mockGetUsers = vi.fn();
+const mockCreateUser = vi.fn();
 const mockUpdateUserRole = vi.fn();
 const mockUpdateUserStatus = vi.fn();
 const mockResetUserPassword = vi.fn();
@@ -85,6 +86,7 @@ const mockDeleteUser = vi.fn();
 vi.mock('@/lib/admin', () => ({
   adminApi: {
     getUsers: (...args: any[]) => mockGetUsers(...args),
+    createUser: (...args: any[]) => mockCreateUser(...args),
     updateUserRole: (...args: any[]) => mockUpdateUserRole(...args),
     updateUserStatus: (...args: any[]) => mockUpdateUserStatus(...args),
     resetUserPassword: (...args: any[]) => mockResetUserPassword(...args),
@@ -92,13 +94,50 @@ vi.mock('@/lib/admin', () => ({
   },
 }));
 
+const mockGetSmtpStatus = vi.fn();
+vi.mock('@/lib/user-settings', () => ({
+  userSettingsApi: {
+    getSmtpStatus: (...args: any[]) => mockGetSmtpStatus(...args),
+  },
+}));
+
+vi.mock('@/components/admin/CreateUserModal', () => ({
+  CreateUserModal: ({ isOpen, smtpConfigured, onClose, onCreated }: any) =>
+    isOpen ? (
+      <div data-testid="create-user-modal">
+        <span>smtp:{String(smtpConfigured)}</span>
+        <button
+          onClick={() =>
+            onCreated({
+              email: 'made@example.com',
+              firstName: 'Made',
+              temporaryPassword: 'GenPass99!',
+              invited: false,
+              upgraded: false,
+            })
+          }
+        >
+          Created With Temp
+        </button>
+        <button
+          onClick={() =>
+            onCreated({ email: 'invited@example.com', invited: true, upgraded: false })
+          }
+        >
+          Created With Invite
+        </button>
+        <button onClick={onClose}>Close Create</button>
+      </div>
+    ) : null,
+}));
+
 vi.mock('@/components/layout/PageLayout', () => ({
   PageLayout: ({ children }: { children: React.ReactNode }) => <div data-testid="page-layout">{children}</div>,
 }));
 
 vi.mock('@/components/layout/PageHeader', () => ({
-  PageHeader: ({ title, subtitle }: { title: string; subtitle?: string }) => (
-    <div data-testid="page-header"><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>
+  PageHeader: ({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: React.ReactNode }) => (
+    <div data-testid="page-header"><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}{actions}</div>
   ),
 }));
 
@@ -164,6 +203,7 @@ describe('AdminUsersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetUsers.mockResolvedValue(mockUsers);
+    mockGetSmtpStatus.mockResolvedValue({ configured: true });
   });
 
   describe('Rendering', () => {
@@ -394,6 +434,50 @@ describe('AdminUsersPage', () => {
       await waitFor(() => expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument());
       fireEvent.click(screen.getByText('Reset Password', { selector: '[data-testid="confirm-dialog"] button' }));
       await waitFor(() => expect(toast.default.error).toHaveBeenCalled());
+    });
+  });
+
+  describe('Create User', () => {
+    it('opens the create user modal from the Add User button', async () => {
+      render(<AdminUsersPage />);
+      await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Add User'));
+      await waitFor(() => expect(screen.getByTestId('create-user-modal')).toBeInTheDocument());
+    });
+
+    it('passes the SMTP status into the modal', async () => {
+      mockGetSmtpStatus.mockResolvedValue({ configured: false });
+      render(<AdminUsersPage />);
+      await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Add User'));
+      await waitFor(() => expect(screen.getByText('smtp:false')).toBeInTheDocument());
+    });
+
+    it('shows the temporary password modal and reloads after creation', async () => {
+      render(<AdminUsersPage />);
+      await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Add User'));
+      await waitFor(() => expect(screen.getByTestId('create-user-modal')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Created With Temp'));
+      await waitFor(() => {
+        expect(screen.getByTestId('reset-password-modal')).toBeInTheDocument();
+        expect(screen.getByText(/GenPass99!/)).toBeInTheDocument();
+        expect(mockGetUsers).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('shows a success toast when an invite is sent', async () => {
+      const toast = await import('react-hot-toast');
+      render(<AdminUsersPage />);
+      await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Add User'));
+      await waitFor(() => expect(screen.getByTestId('create-user-modal')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Created With Invite'));
+      await waitFor(() =>
+        expect(toast.default.success).toHaveBeenCalledWith(
+          'Invite email sent to invited@example.com',
+        ),
+      );
     });
   });
 

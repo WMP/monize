@@ -1,7 +1,10 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { ConfigService } from "@nestjs/config";
+import { DataSource } from "typeorm";
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
@@ -12,6 +15,7 @@ import { RefreshToken } from "../auth/entities/refresh-token.entity";
 import { PersonalAccessToken } from "../auth/entities/personal-access-token.entity";
 import { OAuthProviderService } from "../oauth/oauth-provider.service";
 import { UsersService } from "../users/users.service";
+import { EmailService } from "../notifications/email.service";
 
 describe("AdminService", () => {
   let service: AdminService;
@@ -21,6 +25,10 @@ describe("AdminService", () => {
   let patRepository: Record<string, jest.Mock>;
   let oauthProviderService: Record<string, jest.Mock>;
   let usersService: Record<string, jest.Mock>;
+  let emailService: Record<string, jest.Mock>;
+  let configService: Record<string, jest.Mock>;
+  let transactionManager: Record<string, jest.Mock>;
+  let dataSource: Record<string, jest.Mock>;
 
   const mockAdmin = {
     id: "admin-1",
@@ -85,6 +93,28 @@ describe("AdminService", () => {
       purgeForDowngrade: jest.fn().mockResolvedValue(undefined),
     };
 
+    emailService = {
+      getStatus: jest.fn().mockReturnValue({ configured: true }),
+      sendMail: jest.fn().mockResolvedValue(undefined),
+    };
+
+    configService = {
+      get: jest.fn().mockReturnValue("http://localhost:3000"),
+    };
+
+    transactionManager = {
+      findOne: jest.fn(),
+      create: jest.fn().mockImplementation((_entity, data) => ({ ...data })),
+      save: jest.fn().mockImplementation((data) => ({
+        id: data.id ?? "new-user-id",
+        ...data,
+      })),
+    };
+
+    dataSource = {
+      transaction: jest.fn().mockImplementation((cb) => cb(transactionManager)),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminService,
@@ -108,6 +138,18 @@ describe("AdminService", () => {
         {
           provide: UsersService,
           useValue: usersService,
+        },
+        {
+          provide: DataSource,
+          useValue: dataSource,
+        },
+        {
+          provide: ConfigService,
+          useValue: configService,
+        },
+        {
+          provide: EmailService,
+          useValue: emailService,
         },
       ],
     }).compile();
@@ -150,6 +192,156 @@ describe("AdminService", () => {
         where: { isDelegateOnly: false },
         order: { createdAt: "ASC" },
       });
+    });
+  });
+
+  describe("createUser", () => {
+    it("creates a new full account with an admin-set password", async () => {
+      transactionManager.findOne.mockResolvedValue(null);
+
+      const result = await service.createUser({
+        email: "New@Example.com",
+        firstName: "New",
+        password: "Sup3rStr0ng!Pass",
+      });
+
+      const savedUser = transactionManager.save.mock.calls[0][0];
+      expect(savedUser.email).toBe("new@example.com");
+      expect(savedUser.isDelegateOnly).toBe(false);
+      expect(savedUser.authProvider).toBe("local");
+      expect(savedUser.role).toBe("user");
+      expect(savedUser.mustChangePassword).toBe(false);
+      expect(savedUser.passwordHash).not.toBe("Sup3rStr0ng!Pass");
+      expect(result.invited).toBe(false);
+      expect(result.upgraded).toBe(false);
+      expect(result.temporaryPassword).toBeUndefined();
+      expect(result).not.toHaveProperty("passwordHash");
+    });
+
+    it("honors the requested admin role", async () => {
+      transactionManager.findOne.mockResolvedValue(null);
+
+      await service.createUser({
+        email: "boss@example.com",
+        password: "Sup3rStr0ng!Pass",
+        role: "admin",
+      });
+
+      const savedUser = transactionManager.save.mock.calls[0][0];
+      expect(savedUser.role).toBe("admin");
+    });
+
+    it("generates a temporary password when neither password nor invite is given", async () => {
+      transactionManager.findOne.mockResolvedValue(null);
+
+      const result = await service.createUser({ email: "temp@example.com" });
+
+      expect(result.temporaryPassword).toBeDefined();
+      expect(typeof result.temporaryPassword).toBe("string");
+      const savedUser = transactionManager.save.mock.calls[0][0];
+      expect(savedUser.mustChangePassword).toBe(true);
+      expect(savedUser.passwordHash).not.toBe(result.temporaryPassword);
+    });
+
+    it("sends an invite email and sets a 24h reset token when sendInvite is true", async () => {
+      transactionManager.findOne.mockResolvedValue(null);
+
+      const result = await service.createUser({
+        email: "invitee@example.com",
+        firstName: "Invitee",
+        sendInvite: true,
+      });
+
+      const savedUser = transactionManager.save.mock.calls[0][0];
+      expect(savedUser.resetToken).toBeTruthy();
+      expect(savedUser.resetTokenExpiry).toBeInstanceOf(Date);
+      expect(savedUser.passwordHash).toBeUndefined();
+      expect(result.invited).toBe(true);
+      expect(result.temporaryPassword).toBeUndefined();
+      expect(emailService.sendMail).toHaveBeenCalledWith(
+        "invitee@example.com",
+        "Your Monize account is ready",
+        expect.stringContaining("reset-password?token="),
+      );
+    });
+
+    it("rejects sendInvite when SMTP is not configured", async () => {
+      emailService.getStatus.mockReturnValue({ configured: false });
+
+      await expect(
+        service.createUser({ email: "x@example.com", sendInvite: true }),
+      ).rejects.toThrow(BadRequestException);
+      expect(dataSource.transaction).not.toHaveBeenCalled();
+    });
+
+    it("rejects when both password and invite are supplied", async () => {
+      await expect(
+        service.createUser({
+          email: "x@example.com",
+          password: "Sup3rStr0ng!Pass",
+          sendInvite: true,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("upgrades a pure delegate row into a full account, preserving the row id", async () => {
+      transactionManager.findOne.mockResolvedValue({
+        id: "delegate-1",
+        email: "delegate@example.com",
+        authProvider: "local",
+        role: "user",
+        isDelegateOnly: true,
+        passwordHash: "$2a$10$existing",
+      });
+
+      const result = await service.createUser({
+        email: "delegate@example.com",
+        firstName: "Deleg",
+        password: "Sup3rStr0ng!Pass",
+      });
+
+      const savedUser = transactionManager.save.mock.calls[0][0];
+      expect(savedUser.id).toBe("delegate-1");
+      expect(savedUser.isDelegateOnly).toBe(false);
+      expect(savedUser.firstName).toBe("Deleg");
+      expect(result.upgraded).toBe(true);
+      // No new row created -- the existing delegate row is reused.
+      expect(transactionManager.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects creating a user whose email is already a full account", async () => {
+      transactionManager.findOne.mockResolvedValue({
+        id: "real-1",
+        email: "real@example.com",
+        authProvider: "local",
+        role: "user",
+        isDelegateOnly: false,
+        passwordHash: "$2a$10$existing",
+      });
+
+      await expect(
+        service.createUser({
+          email: "real@example.com",
+          password: "Sup3rStr0ng!Pass",
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it("never rotates credentials of an OIDC delegate-only row", async () => {
+      transactionManager.findOne.mockResolvedValue({
+        id: "oidc-1",
+        email: "sso@example.com",
+        authProvider: "oidc",
+        role: "user",
+        isDelegateOnly: true,
+      });
+
+      await expect(
+        service.createUser({
+          email: "sso@example.com",
+          password: "Sup3rStr0ng!Pass",
+        }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
