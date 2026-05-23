@@ -75,7 +75,7 @@ export function UserManagementTable({
           {sortedUsers.map((user) => {
             const isSelf = user.id === currentUserId;
             return (
-              <tr key={user.id} className={`group hover:bg-gray-100 dark:hover:bg-gray-800 ${isSelf ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'bg-white dark:bg-gray-900'}`}>
+              <tr key={user.id} className={`group hover:bg-gray-100 dark:hover:bg-gray-800 ${isSelf ? 'bg-blue-50 dark:bg-blue-950' : 'bg-white dark:bg-gray-900'}`}>
                 {/* User info */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -137,7 +137,7 @@ export function UserManagementTable({
                 </td>
 
                 {/* Actions */}
-                <td className={`px-6 py-4 whitespace-nowrap text-right text-sm space-x-2 sticky right-0 ${isSelf ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'bg-white dark:bg-gray-900'} group-hover:bg-gray-100 dark:group-hover:bg-gray-800`}>
+                <td className={`px-6 py-4 whitespace-nowrap text-right text-sm space-x-2 sticky right-0 ${isSelf ? 'bg-blue-50 dark:bg-blue-950' : 'bg-white dark:bg-gray-900'} group-hover:bg-gray-100 dark:group-hover:bg-gray-800`}>
                   {!isSelf && (
                     <>
                       {user.hasPassword && (
