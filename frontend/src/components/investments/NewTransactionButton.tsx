@@ -43,10 +43,10 @@ export function NewTransactionButton({ onNewInvestment, onNewCash }: NewTransact
   };
 
   return (
-    <div ref={dropdownRef} className="relative inline-block">
+    <div ref={dropdownRef} className="relative block w-full sm:inline-block sm:w-auto">
       <Button
         onClick={() => setIsOpen((open) => !open)}
-        className="whitespace-nowrap"
+        className="w-full whitespace-nowrap sm:w-auto"
         aria-haspopup="menu"
         aria-expanded={isOpen}
       >
@@ -59,7 +59,7 @@ export function NewTransactionButton({ onNewInvestment, onNewCash }: NewTransact
       {isOpen && (
         <div
           role="menu"
-          className="absolute right-0 mt-1 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-50"
+          className="absolute right-0 mt-1 w-full sm:w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-50"
         >
           <button
             role="menuitem"
