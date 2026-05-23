@@ -74,6 +74,22 @@ describe('useClickOutside', () => {
     expect(onEscape).not.toHaveBeenCalled();
   });
 
+  it('attaches the keydown listener when onEscape becomes defined after mount', () => {
+    const { ref } = mountRef();
+    const onEscape = vi.fn();
+    const { rerender } = renderHook(
+      ({ esc }: { esc?: () => void }) => useClickOutside(ref, vi.fn(), { onEscape: esc }),
+      { initialProps: { esc: undefined as (() => void) | undefined } }
+    );
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(onEscape).not.toHaveBeenCalled();
+
+    rerender({ esc: onEscape });
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(onEscape).toHaveBeenCalledOnce();
+  });
+
   it('reads the latest handler without re-subscribing', () => {
     const { ref } = mountRef();
     const first = vi.fn();
