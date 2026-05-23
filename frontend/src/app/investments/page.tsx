@@ -15,6 +15,7 @@ import { PortfolioSummaryCard } from '@/components/investments/PortfolioSummaryC
 import { GroupedHoldingsList } from '@/components/investments/GroupedHoldingsList';
 import { AssetAllocationChart } from '@/components/investments/AssetAllocationChart';
 import { InvestmentTransactionList } from '@/components/investments/InvestmentTransactionList';
+import { NewTransactionButton } from '@/components/investments/NewTransactionButton';
 import { DensityLevel, nextDensity } from '@/hooks/useTableDensity';
 import { InvestmentTransactionForm } from '@/components/investments/InvestmentTransactionForm';
 import {
@@ -214,7 +215,10 @@ function InvestmentsContent() {
                     )}
                   </Button>
                 </div>
-                <Button onClick={data.handleNewTransaction} className="whitespace-nowrap">+ New Transaction</Button>
+                <NewTransactionButton
+                  onNewInvestment={data.handleNewTransaction}
+                  onNewCash={data.openCashCreate}
+                />
               </>
             }
           />
