@@ -632,6 +632,7 @@ describe('InvestmentsPage', () => {
       });
 
       fireEvent.click(screen.getByText('+ New Transaction'));
+      fireEvent.click(screen.getByText('Investment Transaction'));
 
       expect(mockOpenCreate).toHaveBeenCalled();
     });
