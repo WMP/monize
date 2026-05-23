@@ -438,10 +438,10 @@ describe('AdminUsersPage', () => {
   });
 
   describe('Create User', () => {
-    it('opens the create user modal from the Add User button', async () => {
+    it('opens the create user modal from the New User button', async () => {
       render(<AdminUsersPage />);
       await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Add User'));
+      fireEvent.click(screen.getByText('+ New User'));
       await waitFor(() => expect(screen.getByTestId('create-user-modal')).toBeInTheDocument());
     });
 
@@ -449,14 +449,14 @@ describe('AdminUsersPage', () => {
       mockGetSmtpStatus.mockResolvedValue({ configured: false });
       render(<AdminUsersPage />);
       await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Add User'));
+      fireEvent.click(screen.getByText('+ New User'));
       await waitFor(() => expect(screen.getByText('smtp:false')).toBeInTheDocument());
     });
 
     it('shows the temporary password modal and reloads after creation', async () => {
       render(<AdminUsersPage />);
       await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Add User'));
+      fireEvent.click(screen.getByText('+ New User'));
       await waitFor(() => expect(screen.getByTestId('create-user-modal')).toBeInTheDocument());
       fireEvent.click(screen.getByText('Created With Temp'));
       await waitFor(() => {
@@ -470,7 +470,7 @@ describe('AdminUsersPage', () => {
       const toast = await import('react-hot-toast');
       render(<AdminUsersPage />);
       await waitFor(() => expect(screen.getByTestId('user-table')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Add User'));
+      fireEvent.click(screen.getByText('+ New User'));
       await waitFor(() => expect(screen.getByTestId('create-user-modal')).toBeInTheDocument());
       fireEvent.click(screen.getByText('Created With Invite'));
       await waitFor(() =>

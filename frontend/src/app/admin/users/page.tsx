@@ -247,7 +247,7 @@ export default function AdminUsersPage() {
             title="User Management"
             subtitle={`${users.length} user${users.length !== 1 ? 's' : ''}`}
             actions={
-              <Button onClick={() => setCreateModalOpen(true)}>Add User</Button>
+              <Button onClick={() => setCreateModalOpen(true)}>+ New User</Button>
             }
           />
 
