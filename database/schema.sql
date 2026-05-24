@@ -746,6 +746,34 @@ CREATE INDEX idx_custom_reports_user_id ON custom_reports(user_id);
 CREATE INDEX idx_custom_reports_user_favourite ON custom_reports(user_id, is_favourite);
 CREATE INDEX idx_custom_reports_user_sort ON custom_reports(user_id, sort_order);
 
+-- Custom investment reports (MS Money-style portfolio column reports).
+-- config JSONB shape:
+-- {
+--   columns: string[]      -- ordered column keys (always starts with "symbol")
+--   accountIds: string[]   -- holdings accounts to include ([] = all)
+--   sortColumn: string|null
+--   sortDirection: ASC | DESC
+--   asOfDate: string|null  -- YYYY-MM-DD, null = latest market day at run time
+-- }
+CREATE TABLE investment_reports (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    icon VARCHAR(50),
+    background_color VARCHAR(7),
+    group_by VARCHAR(20) NOT NULL DEFAULT 'NONE',
+    config JSONB NOT NULL DEFAULT '{}',
+    is_favourite BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_investment_reports_user_id ON investment_reports(user_id);
+CREATE INDEX idx_investment_reports_user_favourite ON investment_reports(user_id, is_favourite);
+CREATE INDEX idx_investment_reports_user_sort ON investment_reports(user_id, sort_order);
+
 -- Triggers for updated_at timestamps
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -767,6 +795,7 @@ CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferen
 CREATE TRIGGER update_trusted_devices_updated_at BEFORE UPDATE ON trusted_devices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_refresh_tokens_updated_at BEFORE UPDATE ON refresh_tokens FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_custom_reports_updated_at BEFORE UPDATE ON custom_reports FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_investment_reports_updated_at BEFORE UPDATE ON investment_reports FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- NOTE: Account balances (current_balance) are managed by application code
 -- (accounts.service.ts, transactions.service.ts, import.service.ts) via updateBalance() calls.

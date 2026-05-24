@@ -31,6 +31,7 @@ import { SecuritiesModule } from "./securities/securities.module";
 import { PayeesModule } from "./payees/payees.module";
 import { ScheduledTransactionsModule } from "./scheduled-transactions/scheduled-transactions.module";
 import { ReportsModule } from "./reports/reports.module";
+import { InvestmentReportsModule } from "./investment-reports/investment-reports.module";
 import { DatabaseModule } from "./database/database.module";
 import { ImportModule } from "./import/import.module";
 import { NetWorthModule } from "./net-worth/net-worth.module";
@@ -115,6 +116,7 @@ import { EmergencyAccessModule } from "./emergency-access/emergency-access.modul
     SecuritiesModule,
     ScheduledTransactionsModule,
     ReportsModule,
+    InvestmentReportsModule,
     DatabaseModule,
     ImportModule,
     NetWorthModule,
