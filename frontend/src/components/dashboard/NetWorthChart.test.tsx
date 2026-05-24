@@ -9,12 +9,14 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: any) => <div data-testid="responsive-container">{children}</div>,
-  AreaChart: ({ children }: any) => <div data-testid="area-chart">{children}</div>,
-  Area: () => null,
+  BarChart: ({ children }: any) => <div data-testid="bar-chart">{children}</div>,
+  Bar: ({ children }: any) => <div data-testid="bar">{children}</div>,
+  LabelList: ({ formatter }: any) => (
+    <div data-testid="label-list">{formatter ? String(formatter(1000)) : ''}</div>
+  ),
   XAxis: () => null,
   YAxis: () => null,
   Tooltip: () => null,
-  ReferenceDot: () => null,
 }));
 
 vi.mock('@/hooks/useNumberFormat', () => ({
@@ -37,13 +39,13 @@ describe('NetWorthChart', () => {
     render(<NetWorthChart data={[]} isLoading={true} />);
     expect(screen.getByText('Net Worth')).toBeInTheDocument();
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
-    expect(screen.queryByTestId('area-chart')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('bar-chart')).not.toBeInTheDocument();
   });
 
   it('renders empty state when no data', () => {
     render(<NetWorthChart data={[]} isLoading={false} />);
     expect(screen.getByText('No net worth data available yet.')).toBeInTheDocument();
-    expect(screen.queryByTestId('area-chart')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('bar-chart')).not.toBeInTheDocument();
   });
 
   it('renders chart with data and shows current net worth', () => {
@@ -53,10 +55,23 @@ describe('NetWorthChart', () => {
     ] as any[];
 
     render(<NetWorthChart data={data} isLoading={false} />);
-    expect(screen.getByTestId('area-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
     expect(screen.getByText('Past 12 months')).toBeInTheDocument();
     expect(screen.getByText('View full report')).toBeInTheDocument();
     expect(screen.getByText('$15000')).toBeInTheDocument();
+  });
+
+  it('renders abbreviated value labels above the bars', () => {
+    const data = [
+      { month: '2024-01-01', netWorth: 10000 },
+      { month: '2024-06-01', netWorth: 15000 },
+    ] as any[];
+
+    render(<NetWorthChart data={data} isLoading={false} />);
+    // The Bar renders a LabelList child that formats each value via
+    // formatCurrencyLabel (mocked here as `$<value>`).
+    expect(screen.getByTestId('label-list')).toBeInTheDocument();
+    expect(screen.getByText('$1000')).toBeInTheDocument();
   });
 
   it('shows positive change with plus sign and green styling', () => {
@@ -130,7 +145,7 @@ describe('NetWorthChart', () => {
     expect(currentEl.className).toContain('text-red');
   });
 
-  it('handles single data point correctly (no min/max dots)', () => {
+  it('handles single data point correctly', () => {
     const data = [
       { month: '2024-01-01', netWorth: 10000 },
     ] as any[];
@@ -138,6 +153,6 @@ describe('NetWorthChart', () => {
     render(<NetWorthChart data={data} isLoading={false} />);
     // Single data point: change = 0, percent = 0
     expect(screen.getByText('$10000')).toBeInTheDocument();
-    expect(screen.getByTestId('area-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
   });
 });

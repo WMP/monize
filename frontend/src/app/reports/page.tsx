@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Button } from '@/components/ui/Button';
+import { NewReportButton } from '@/components/reports/NewReportButton';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { userSettingsApi } from '@/lib/user-settings';
 import { customReportsApi } from '@/lib/custom-reports';
 import { CustomReport, VIEW_TYPE_LABELS, TIMEFRAME_LABELS } from '@/types/custom-report';
+import { investmentReportsApi } from '@/lib/investment-reports';
+import { InvestmentReport } from '@/types/investment-report';
 import { getIconComponent } from '@/components/ui/IconPicker';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { createLogger } from '@/lib/logger';
@@ -27,6 +29,7 @@ interface Report {
   category: ReportCategory;
   color: string;
   isCustom?: boolean;
+  isInvestment?: boolean;
   isFavourite?: boolean;
 }
 
@@ -577,6 +580,7 @@ function ReportsContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [customReports, setCustomReports] = useState<CustomReport[]>([]);
   const [isLoadingCustom, setIsLoadingCustom] = useState(true);
+  const [investmentReports, setInvestmentReports] = useState<InvestmentReport[]>([]);
   const preferences = usePreferencesStore((s) => s.preferences);
   const updateStorePreferences = usePreferencesStore((s) => s.updatePreferences);
   const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
@@ -627,10 +631,37 @@ function ReportsContent() {
     loadCustomReports();
   }, []);
 
+  useEffect(() => {
+    const loadInvestmentReports = async () => {
+      try {
+        const data = await investmentReportsApi.getAll();
+        setInvestmentReports(data);
+      } catch (error) {
+        logger.error('Failed to load investment reports:', error);
+      }
+    };
+    loadInvestmentReports();
+  }, []);
+
   const cycleDensity = () => setDensity(nextDensity(density));
 
-  const isReportFavourite = (report: Report): boolean => {
+  const managedBackgroundColor = (report: Report): string => {
     if (report.isCustom) {
+      return (
+        customReports.find((cr) => `custom/${cr.id}` === report.id)?.backgroundColor || ''
+      );
+    }
+    if (report.isInvestment) {
+      return (
+        investmentReports.find((ir) => `investment/${ir.id}` === report.id)
+          ?.backgroundColor || ''
+      );
+    }
+    return '';
+  };
+
+  const isReportFavourite = (report: Report): boolean => {
+    if (report.isCustom || report.isInvestment) {
       return report.isFavourite ?? false;
     }
     return favouriteReportIds.includes(report.id);
@@ -645,6 +676,16 @@ function ReportsContent() {
       try {
         await customReportsApi.toggleFavourite(cr.id, newValue);
         setCustomReports(prev => prev.map(c => c.id === cr.id ? { ...c, isFavourite: newValue } : c));
+      } catch (error) {
+        logger.error('Failed to toggle favourite:', error);
+      }
+    } else if (report.isInvestment) {
+      const ir = investmentReports.find(c => `investment/${c.id}` === report.id);
+      if (!ir) return;
+      const newValue = !ir.isFavourite;
+      try {
+        await investmentReportsApi.toggleFavourite(ir.id, newValue);
+        setInvestmentReports(prev => prev.map(c => c.id === ir.id ? { ...c, isFavourite: newValue } : c));
       } catch (error) {
         logger.error('Failed to toggle favourite:', error);
       }
@@ -696,7 +737,28 @@ function ReportsContent() {
     };
   });
 
-  const allReports = [...reports, ...customReportsAsReports];
+  // Convert investment reports to the Report interface
+  const investmentReportsAsReports: Report[] = investmentReports.map((ir) => {
+    const iconNode = ir.icon ? getIconComponent(ir.icon) : null;
+    return {
+      id: `investment/${ir.id}`,
+      name: ir.name,
+      description:
+        ir.description ||
+        `Investment report · ${ir.config.columns?.length ?? 0} columns`,
+      category: 'investment' as ReportCategory,
+      color: ir.backgroundColor ? '' : 'bg-lime-500',
+      isInvestment: true,
+      isFavourite: ir.isFavourite,
+      icon: iconNode || (
+        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+        </svg>
+      ),
+    };
+  });
+
+  const allReports = [...reports, ...customReportsAsReports, ...investmentReportsAsReports];
 
   const filteredReports = allReports
     .filter(r => {
@@ -722,15 +784,10 @@ function ReportsContent() {
           subtitle="Generate insights about your financial health"
           helpUrl="https://github.com/kenlasko/monize/wiki/Reports"
           actions={
-            <Button
-              onClick={() => router.push('/reports/custom/new')}
-              className="inline-flex items-center justify-center gap-2"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              New Custom Report
-            </Button>
+            <NewReportButton
+              onNewStandard={() => router.push('/reports/custom/new')}
+              onNewInvestment={() => router.push('/reports/investment/new')}
+            />
           }
         />
         {/* Search */}
@@ -785,8 +842,7 @@ function ReportsContent() {
         {density === 'normal' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredReports.map((report) => {
-              const customReport = report.isCustom ? customReports.find(cr => `custom/${cr.id}` === report.id) : null;
-              const bgColor = customReport?.backgroundColor || '';
+              const bgColor = managedBackgroundColor(report);
               const colorClass = report.color || 'bg-purple-500';
 
               return (
@@ -847,8 +903,7 @@ function ReportsContent() {
         {density === 'compact' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredReports.map((report) => {
-              const customReport = report.isCustom ? customReports.find(cr => `custom/${cr.id}` === report.id) : null;
-              const bgColor = customReport?.backgroundColor || '';
+              const bgColor = managedBackgroundColor(report);
               const colorClass = report.color || 'bg-purple-500';
 
               return (
@@ -920,8 +975,7 @@ function ReportsContent() {
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredReports.map((report) => {
-                  const customReport = report.isCustom ? customReports.find(cr => `custom/${cr.id}` === report.id) : null;
-                  const bgColor = customReport?.backgroundColor || '';
+                  const bgColor = managedBackgroundColor(report);
                   const colorClass = report.color || 'bg-purple-500';
 
                   return (

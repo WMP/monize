@@ -3,6 +3,11 @@ const packageJson = require('./package.json');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Pin the dev (Turbopack) workspace root to this app so it doesn't scan the
+  // whole monorepo (the backend tree) on every compile. The repo has multiple
+  // lockfiles, which otherwise makes Next infer the monorepo root and slows
+  // on-demand route compilation in dev.
+  turbopack: { root: __dirname },
   output: 'standalone', // Optimized for Docker deployment
   serverExternalPackages: ['jspdf', 'jspdf-autotable', 'fflate'],
   poweredByHeader: false, // Remove X-Powered-By: Next.js header

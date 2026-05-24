@@ -27,10 +27,11 @@ vi.mock('@/hooks/useNumberFormat', () => ({
   }),
 }));
 
+const dateRangeMock = vi.hoisted(() => ({ value: '1y' }));
 const STABLE_RANGE = { start: '2024-01-01', end: '2025-01-01' };
 vi.mock('@/hooks/useDateRange', () => ({
   useDateRange: () => ({
-    dateRange: '1y',
+    dateRange: dateRangeMock.value,
     setDateRange: vi.fn(),
     startDate: '',
     setStartDate: vi.fn(),
@@ -55,7 +56,10 @@ vi.mock('recharts', () => ({
   AreaChart: ({ children }: any) => <div data-testid="area-chart">{children}</div>,
   BarChart: ({ children }: any) => <div data-testid="bar-chart">{children}</div>,
   Area: () => null,
-  Bar: () => null,
+  Bar: ({ children }: any) => <div data-testid="bar">{children}</div>,
+  LabelList: ({ formatter }: any) => (
+    <div data-testid="label-list">{formatter ? String(formatter(1000)) : ''}</div>
+  ),
   XAxis: ({ tickFormatter }: any) => {
     if (tickFormatter) {
       try { tickFormatter('Jan 2024'); tickFormatter('Jul 2024'); tickFormatter('NoSpace'); } catch {}
@@ -100,6 +104,7 @@ vi.mock('@/lib/logger', () => ({
 describe('NetWorthReport', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    dateRangeMock.value = '1y';
   });
 
   it('shows loading state initially', () => {
@@ -173,7 +178,7 @@ describe('NetWorthReport', () => {
     await waitFor(() => {
       expect(screen.getByText('Current Net Worth')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('area-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
   });
 
   it('handles recalculate error', async () => {
@@ -206,6 +211,59 @@ describe('NetWorthReport', () => {
       fireEvent.click(screen.getByText('line'));
     });
     expect(screen.getByTestId('area-chart')).toBeInTheDocument();
+  });
+
+  it('defaults to the bar chart view', async () => {
+    mockGetMonthly.mockResolvedValue([
+      { month: '2024-01-01', assets: 50000, liabilities: 10000, netWorth: 40000 },
+      { month: '2024-06-01', assets: 55000, liabilities: 9000, netWorth: 46000 },
+    ]);
+    render(<NetWorthReport />);
+    await waitFor(() => {
+      expect(screen.getByText('Current Net Worth')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
+    expect(screen.queryByTestId('area-chart')).not.toBeInTheDocument();
+  });
+
+  it('shows abbreviated value labels above bars for the 1-year range', async () => {
+    dateRangeMock.value = '1y';
+    mockGetMonthly.mockResolvedValue([
+      { month: '2024-01-01', assets: 50000, liabilities: 10000, netWorth: 40000 },
+      { month: '2024-06-01', assets: 55000, liabilities: 9000, netWorth: 46000 },
+    ]);
+    render(<NetWorthReport />);
+    await waitFor(() => {
+      expect(screen.getByText('Current Net Worth')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('label-list')).toBeInTheDocument();
+  });
+
+  it('shows abbreviated value labels above bars for the 2-year range', async () => {
+    dateRangeMock.value = '2y';
+    mockGetMonthly.mockResolvedValue([
+      { month: '2024-01-01', assets: 50000, liabilities: 10000, netWorth: 40000 },
+      { month: '2024-06-01', assets: 55000, liabilities: 9000, netWorth: 46000 },
+    ]);
+    render(<NetWorthReport />);
+    await waitFor(() => {
+      expect(screen.getByText('Current Net Worth')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('label-list')).toBeInTheDocument();
+  });
+
+  it('hides bar value labels for ranges longer than two years', async () => {
+    dateRangeMock.value = '5y';
+    mockGetMonthly.mockResolvedValue([
+      { month: '2024-01-01', assets: 50000, liabilities: 10000, netWorth: 40000 },
+      { month: '2024-06-01', assets: 55000, liabilities: 9000, netWorth: 46000 },
+    ]);
+    render(<NetWorthReport />);
+    await waitFor(() => {
+      expect(screen.getByText('Current Net Worth')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
+    expect(screen.queryByTestId('label-list')).not.toBeInTheDocument();
   });
 
   it('exports pdf', async () => {

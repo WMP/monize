@@ -14,6 +14,7 @@ import {
   Legend,
   ReferenceLine,
   ReferenceDot,
+  LabelList,
 } from 'recharts';
 import { format } from 'date-fns';
 import { netWorthApi } from '@/lib/net-worth';
@@ -38,7 +39,7 @@ export function NetWorthReport() {
   const [monthlyData, setMonthlyData] = useState<MonthlyNetWorth[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
-  const [chartType, setChartType] = useState<'line' | 'bar' | 'table'>('line');
+  const [chartType, setChartType] = useState<'line' | 'bar' | 'table'>('bar');
   const chartRef = useRef<HTMLDivElement>(null);
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } = useDateRange({ defaultRange: '1y', alignment: 'month' });
   const { sortField, sortDirection, handleSort } = useSortableTable<NetWorthSortField>(
@@ -199,6 +200,12 @@ export function NetWorthReport() {
     };
   }, [chartData]);
 
+  // Per-bar value labels are only legible on the shorter (1y/2y) ranges; longer
+  // ranges pack too many bars together. Beyond ~14 bars the labels are rotated
+  // vertical so the 2-year view doesn't overlap.
+  const showBarLabels = dateRange === '1y' || dateRange === '2y';
+  const barLabelsVertical = showBarLabels && chartData.length > 14;
+
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string; payload: { name: string } }> }) => {
     if (active && payload && payload.length) {
       const data = payload[0]?.payload;
@@ -274,7 +281,7 @@ export function NetWorthReport() {
             <ChartViewToggle
               value={chartType}
               onChange={(v) => setChartType(v as 'line' | 'bar' | 'table')}
-              options={['line', 'bar', 'table']}
+              options={['bar', 'line', 'table']}
             />
             <button
               onClick={handleRecalculate}
@@ -427,8 +434,8 @@ export function NetWorthReport() {
                 )}
               </AreaChart>
               ) : (
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <BarChart data={chartData} margin={{ top: showBarLabels ? (barLabelsVertical ? 52 : 22) : 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                 <XAxis
                   dataKey="name"
                   tick={{ fontSize: 12 }}
@@ -451,7 +458,24 @@ export function NetWorthReport() {
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
                 <ReferenceLine y={0} stroke="#9ca3af" strokeDasharray="3 3" />
-                <Bar dataKey="NetWorth" fill="#3b82f6" name="Net Worth" />
+                <Bar dataKey="NetWorth" fill="#3b82f6" name="Net Worth" radius={[4, 4, 0, 0]}>
+                  {showBarLabels && (
+                    <LabelList
+                      dataKey="NetWorth"
+                      position="top"
+                      angle={barLabelsVertical ? -90 : 0}
+                      offset={barLabelsVertical ? 6 : 5}
+                      textAnchor={barLabelsVertical ? 'start' : 'middle'}
+                      formatter={(value: unknown) => formatCurrencyLabel(Number(value))}
+                      style={{
+                        fill: '#6b7280',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        ...(barLabelsVertical && { dominantBaseline: 'central' as const }),
+                      }}
+                    />
+                  )}
+                </Bar>
               </BarChart>
               )}
             </ResponsiveContainer>

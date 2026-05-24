@@ -3,13 +3,13 @@
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  ReferenceDot,
+  LabelList,
 } from 'recharts';
 import { format } from 'date-fns';
 import { MonthlyNetWorth } from '@/types/net-worth';
@@ -63,20 +63,6 @@ export function NetWorthChart({ data, isLoading }: NetWorthChartProps) {
     const change = current - initial;
     const changePercent = initial !== 0 ? (change / Math.abs(initial)) * 100 : 0;
     return { current, change, changePercent };
-  }, [chartData]);
-
-  const minMax = useMemo(() => {
-    if (chartData.length < 2) return null;
-    let minIdx = 0, maxIdx = 0;
-    for (let i = 1; i < chartData.length; i++) {
-      if (chartData[i].netWorth < chartData[minIdx].netWorth) minIdx = i;
-      if (chartData[i].netWorth > chartData[maxIdx].netWorth) maxIdx = i;
-    }
-    if (minIdx === maxIdx) return null;
-    return {
-      min: chartData[minIdx],
-      max: chartData[maxIdx],
-    };
   }, [chartData]);
 
   if (isLoading) {
@@ -139,14 +125,8 @@ export function NetWorthChart({ data, isLoading }: NetWorthChartProps) {
       </div>
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-          <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="dashboardNetWorthGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <YAxis hide domain={['auto', 'auto']} />
+          <BarChart data={chartData} margin={{ top: 52, right: 12, left: 12, bottom: 0 }}>
+            <YAxis hide domain={[(min: number) => Math.min(0, min), 'auto']} />
             <XAxis
               dataKey="name"
               tick={{ fill: '#6b7280', fontSize: 11 }}
@@ -155,38 +135,22 @@ export function NetWorthChart({ data, isLoading }: NetWorthChartProps) {
               interval="preserveStartEnd"
               tickFormatter={(value: string) => value.split(' ')[0]}
             />
-            <Tooltip content={<NetWorthTooltip formatCurrency={formatCurrency} />} />
-            <Area
-              type="monotone"
-              dataKey="netWorth"
-              stroke="#3b82f6"
-              strokeWidth={2}
-              fillOpacity={1}
-              fill="url(#dashboardNetWorthGradient)"
+            <Tooltip
+              content={<NetWorthTooltip formatCurrency={formatCurrency} />}
+              cursor={{ fill: '#e5e7eb', fillOpacity: 0.35 }}
             />
-            {minMax && (
-              <ReferenceDot
-                x={minMax.max.name}
-                y={minMax.max.netWorth}
-                r={5}
-                fill="#16a34a"
-                stroke="#fff"
-                strokeWidth={2}
-                label={{ value: formatCurrencyLabel(minMax.max.netWorth), position: 'bottom', fontSize: 11, fill: '#16a34a', fontWeight: 600, offset: 8 }}
+            <Bar dataKey="netWorth" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+              <LabelList
+                dataKey="netWorth"
+                position="top"
+                angle={-90}
+                offset={6}
+                textAnchor="start"
+                formatter={(value: unknown) => formatCurrencyLabel(Number(value))}
+                style={{ fill: '#6b7280', fontSize: 11, fontWeight: 600, dominantBaseline: 'central' }}
               />
-            )}
-            {minMax && (
-              <ReferenceDot
-                x={minMax.min.name}
-                y={minMax.min.netWorth}
-                r={5}
-                fill="#dc2626"
-                stroke="#fff"
-                strokeWidth={2}
-                label={{ value: formatCurrencyLabel(minMax.min.netWorth), position: 'top', fontSize: 11, fill: '#dc2626', fontWeight: 600, offset: 8 }}
-              />
-            )}
-          </AreaChart>
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
       </div>
       <button

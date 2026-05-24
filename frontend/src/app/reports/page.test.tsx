@@ -221,20 +221,31 @@ describe('ReportsPage', () => {
     expect(mockPush).toHaveBeenCalledWith('/reports/spending-by-category');
   });
 
-  it('renders New Custom Report button', async () => {
+  it('renders the New Report dropdown trigger', async () => {
     render(<ReportsPage />);
     await waitFor(() => {
-      expect(screen.getByText('New Custom Report')).toBeInTheDocument();
+      expect(screen.getByText('New Report')).toBeInTheDocument();
     });
   });
 
-  it('navigates to custom report creation when button is clicked', async () => {
+  it('navigates to standard report creation from the dropdown', async () => {
     render(<ReportsPage />);
     await waitFor(() => {
-      expect(screen.getByText('New Custom Report')).toBeInTheDocument();
+      expect(screen.getByText('New Report')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('New Custom Report'));
+    fireEvent.click(screen.getByText('New Report'));
+    fireEvent.click(screen.getByText('Standard Report'));
     expect(mockPush).toHaveBeenCalledWith('/reports/custom/new');
+  });
+
+  it('navigates to investment report creation from the dropdown', async () => {
+    render(<ReportsPage />);
+    await waitFor(() => {
+      expect(screen.getByText('New Report')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('New Report'));
+    fireEvent.click(screen.getByText('Investment Report'));
+    expect(mockPush).toHaveBeenCalledWith('/reports/investment/new');
   });
 
   it('renders density toggle button', async () => {
