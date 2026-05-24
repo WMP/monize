@@ -142,6 +142,26 @@ describe('InvestmentReportViewer', () => {
     expect(headers[0]).toBe('Account');
   });
 
+  it('renders all groups in a single table so columns line up', async () => {
+    mockGetById.mockResolvedValue({ ...report, groupBy: 'ACCOUNT' });
+    mockExecute.mockResolvedValue({
+      ...result,
+      groupBy: 'ACCOUNT',
+      columns: ['symbol', 'marketValue'],
+      groups: [
+        { key: 'a1', label: 'Acc One', rows: [{ id: '1', currency: 'USD', baseExchangeRate: 1, values: { symbol: 'AAA', marketValue: 200 } }] },
+        { key: 'a2', label: 'Acc Two', rows: [{ id: '2', currency: 'USD', baseExchangeRate: 1, values: { symbol: 'BBB', marketValue: 100 } }] },
+      ],
+    });
+    await renderViewer();
+    await screen.findByText('Acc One');
+    // A single shared table guarantees identical column widths across groups.
+    expect(screen.getAllByRole('table')).toHaveLength(1);
+    // Each group label is a full-width row spanning every column.
+    const groupCell = screen.getByText('Acc One').closest('td');
+    expect(groupCell).toHaveAttribute('colspan', '2');
+  });
+
   it('re-runs with an as-of override and resets to the latest', async () => {
     await renderViewer();
     await screen.findByText('AAA');

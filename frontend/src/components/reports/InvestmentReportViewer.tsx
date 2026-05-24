@@ -348,66 +348,72 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
               No holdings found for the selected accounts and date.
             </div>
           ) : (
-            <div className="space-y-6">
-              {result.groups.map((group) => (
-                <div key={group.key}>
-                  {result.groupBy !== InvestmentGroupBy.NONE && (
-                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                      {group.label || 'Ungrouped'}
-                    </h4>
-                  )}
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                      <thead className="bg-gray-50 dark:bg-gray-900/50">
-                        <tr>
-                          {columns.map((key) => {
-                            const col = INVESTMENT_COLUMN_MAP[key];
-                            const numeric = col && NUMERIC_TYPES.includes(col.type);
-                            return (
-                              <SortableHeader<string>
-                                key={key}
-                                field={key}
-                                sortField={sortField}
-                                sortDirection={sortDirection}
-                                onSort={handleSort}
-                                align={numeric ? 'right' : 'left'}
-                                className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap"
-                              >
-                                {col?.label ?? key}
-                              </SortableHeader>
-                            );
-                          })}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {sortRows(group.rows).map((row) => (
-                          <tr
-                            key={row.id}
-                            className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                          >
-                            {columns.map((key) => {
-                              const col = INVESTMENT_COLUMN_MAP[key];
-                              const numeric = col && NUMERIC_TYPES.includes(col.type);
-                              return (
-                                <td
-                                  key={key}
-                                  className={`px-3 py-2 text-sm whitespace-nowrap ${
-                                    numeric
-                                      ? 'text-right tabular-nums text-gray-900 dark:text-gray-100'
-                                      : 'text-gray-700 dark:text-gray-300'
-                                  }`}
-                                >
-                                  {formatCell(row.values[key], col?.type ?? 'text', row)}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              {/* A single table (one header, one tbody per group) so every group
+                  shares the same column widths and lines up vertically. */}
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-900/50">
+                  <tr>
+                    {columns.map((key) => {
+                      const col = INVESTMENT_COLUMN_MAP[key];
+                      const numeric = col && NUMERIC_TYPES.includes(col.type);
+                      return (
+                        <SortableHeader<string>
+                          key={key}
+                          field={key}
+                          sortField={sortField}
+                          sortDirection={sortDirection}
+                          onSort={handleSort}
+                          align={numeric ? 'right' : 'left'}
+                          className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap"
+                        >
+                          {col?.label ?? key}
+                        </SortableHeader>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                {result.groups.map((group) => (
+                  <tbody
+                    key={group.key}
+                    className="divide-y divide-gray-200 dark:divide-gray-700"
+                  >
+                    {result.groupBy !== InvestmentGroupBy.NONE && (
+                      <tr className="bg-gray-50 dark:bg-gray-900/40">
+                        <td
+                          colSpan={columns.length}
+                          className="px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
+                        >
+                          {group.label || 'Ungrouped'}
+                        </td>
+                      </tr>
+                    )}
+                    {sortRows(group.rows).map((row) => (
+                      <tr
+                        key={row.id}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      >
+                        {columns.map((key) => {
+                          const col = INVESTMENT_COLUMN_MAP[key];
+                          const numeric = col && NUMERIC_TYPES.includes(col.type);
+                          return (
+                            <td
+                              key={key}
+                              className={`px-3 py-2 text-sm whitespace-nowrap ${
+                                numeric
+                                  ? 'text-right tabular-nums text-gray-900 dark:text-gray-100'
+                                  : 'text-gray-700 dark:text-gray-300'
+                              }`}
+                            >
+                              {formatCell(row.values[key], col?.type ?? 'text', row)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                ))}
+              </table>
             </div>
           )}
         </div>

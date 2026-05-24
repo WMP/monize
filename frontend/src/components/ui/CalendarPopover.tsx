@@ -44,19 +44,30 @@ export function CalendarPopover({ value, onSelect, onClose, anchorRef }: Calenda
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Position relative to anchor element
+  // Position relative to anchor element, flipping above the field when there
+  // isn't enough room below (e.g. the field sits near the bottom of the page).
   useEffect(() => {
     const anchor = anchorRef.current;
-    if (!anchor) return;
+    const popover = popoverRef.current;
+    if (!anchor || !popover) return;
     const rect = anchor.getBoundingClientRect();
     const popoverWidth = 280;
+    const popoverHeight = popover.offsetHeight || 340;
+    const gap = 4;
     let left = rect.left;
     // Keep within viewport
     if (left + popoverWidth > window.innerWidth - 8) {
       left = window.innerWidth - popoverWidth - 8;
     }
     if (left < 8) left = 8;
-    setPosition({ top: rect.bottom + 4, left });
+
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    let top = rect.bottom + gap;
+    if (spaceBelow < popoverHeight + gap + 8 && spaceAbove > spaceBelow) {
+      top = Math.max(8, rect.top - popoverHeight - gap);
+    }
+    setPosition({ top, left });
   }, [anchorRef]);
 
   // Close on outside click or Escape
@@ -97,8 +108,6 @@ export function CalendarPopover({ value, onSelect, onClose, anchorRef }: Calenda
     onClose();
   }, [onSelect, onClose]);
 
-  if (!position) return null;
-
   const daysInMonth = getDaysInMonth(viewYear, viewMonth);
   const firstDay = getFirstDayOfWeek(viewYear, viewMonth);
   const selectedDay = parsed && parsed[0] === viewYear && parsed[1] - 1 === viewMonth ? parsed[2] : null;
@@ -126,7 +135,11 @@ export function CalendarPopover({ value, onSelect, onClose, anchorRef }: Calenda
     <div
       ref={popoverRef}
       className="fixed z-50 w-[280px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl"
-      style={{ top: position.top, left: position.left }}
+      style={{
+        top: position?.top ?? 0,
+        left: position?.left ?? 0,
+        visibility: position ? 'visible' : 'hidden',
+      }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700">
