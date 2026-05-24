@@ -118,4 +118,149 @@ describe('InvestmentReportViewer', () => {
       await screen.findByText(/No holdings found/),
     ).toBeInTheDocument();
   });
+
+  it('renders group headings when grouped', async () => {
+    mockGetById.mockResolvedValue({ ...report, groupBy: 'ACCOUNT' });
+    mockExecute.mockResolvedValue({
+      ...result,
+      groupBy: 'ACCOUNT',
+      groups: [
+        { key: 'a1', label: 'Acc One', rows: [{ id: '1', values: { symbol: 'AAA', marketValue: 200 } }] },
+        { key: 'a2', label: 'Acc Two', rows: [{ id: '2', values: { symbol: 'BBB', marketValue: 100 } }] },
+      ],
+    });
+    await renderViewer();
+    expect(await screen.findByText('Acc One')).toBeInTheDocument();
+    expect(screen.getByText('Acc Two')).toBeInTheDocument();
+
+    // Exporting a grouped report prepends the group heading column.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+    });
+    const [, headers] = mockExportToCsv.mock.calls[0];
+    expect(headers[0]).toBe('Account');
+  });
+
+  it('re-runs with an as-of override and resets to the latest', async () => {
+    await renderViewer();
+    await screen.findByText('AAA');
+    const dateInput = screen.getByLabelText('As of date');
+    await act(async () => {
+      fireEvent.change(dateInput, { target: { value: '2024-03-15' } });
+    });
+    await waitFor(() =>
+      expect(mockExecute).toHaveBeenCalledWith('r1', { asOfDate: '2024-03-15' }),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByText('Reset to latest market day'));
+    });
+    await waitFor(() => expect(mockExecute).toHaveBeenLastCalledWith('r1', {}));
+  });
+
+  it('formats each column type and renders a dash for missing values', async () => {
+    mockGetById.mockResolvedValue({
+      ...report,
+      config: { ...report.config, columns: ['symbol', 'marketValue', 'gainPercent', 'volume', 'quantity', 'lastTransactionDate', 'exchangeRate', 'name'] },
+    });
+    mockExecute.mockResolvedValue({
+      ...result,
+      columns: ['symbol', 'marketValue', 'gainPercent', 'volume', 'quantity', 'lastTransactionDate', 'exchangeRate', 'name', 'currency'],
+      groups: [
+        {
+          key: 'all',
+          label: '',
+          rows: [
+            {
+              id: '1',
+              values: {
+                symbol: 'AAA',
+                marketValue: 1000.5,
+                gainPercent: 12.34,
+                volume: 5000,
+                quantity: 10.25,
+                lastTransactionDate: '2024-05-01',
+                exchangeRate: 1.25,
+                name: null, // null -> dash
+                currency: '', // empty string -> dash
+              },
+            },
+          ],
+        },
+      ],
+      rowCount: 1,
+    });
+    await renderViewer();
+    await screen.findByText('AAA');
+    expect(screen.getByText('1000.5')).toBeInTheDocument(); // currency -> formatNumber
+    expect(screen.getByText('12.34%')).toBeInTheDocument(); // percent
+    expect(screen.getByText('5000')).toBeInTheDocument(); // integer
+    expect(screen.getByText('10.25')).toBeInTheDocument(); // shares
+    expect(screen.getByText('2024-05-01')).toBeInTheDocument(); // date
+    expect(screen.getByText('1.25')).toBeInTheDocument(); // number
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2); // null and empty
+  });
+
+  it('exports group headings for symbol and currency groupings', async () => {
+    for (const [groupBy, heading] of [
+      ['SYMBOL', 'Symbol'],
+      ['CURRENCY', 'Currency'],
+    ] as const) {
+      mockExportToCsv.mockClear();
+      mockGetById.mockResolvedValue({ ...report, groupBy });
+      mockExecute.mockResolvedValue({
+        ...result,
+        groupBy,
+        groups: [{ key: 'g', label: 'G', rows: [{ id: '1', values: { symbol: 'AAA', marketValue: 200 } }] }],
+      });
+      const { unmount } = render(<InvestmentReportViewer reportId="r1" />);
+      await screen.findByText('AAA');
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+      });
+      expect(mockExportToCsv.mock.calls[0][1][0]).toBe(heading);
+      unmount();
+    }
+  });
+
+  it('shows a not-found state when the report fails to load', async () => {
+    mockGetById.mockRejectedValue(new Error('boom'));
+    await renderViewer();
+    expect(await screen.findByText('Report not found')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Reports' }));
+    expect(mockPush).toHaveBeenCalledWith('/reports');
+  });
+
+  it('does not crash when execution fails', async () => {
+    mockExecute.mockRejectedValue(new Error('exec failed'));
+    await renderViewer();
+    // The report header still renders even though execution failed.
+    expect(await screen.findByText('Holdings')).toBeInTheDocument();
+  });
+
+  it('falls back to the raw key and text formatting for unknown columns', async () => {
+    mockGetById.mockResolvedValue({
+      ...report,
+      config: { ...report.config, columns: ['symbol', 'mysteryCol'] },
+    });
+    mockExecute.mockResolvedValue({
+      ...result,
+      columns: ['symbol', 'mysteryCol'],
+      groups: [
+        { key: 'all', label: '', rows: [{ id: '1', values: { symbol: 'AAA', mysteryCol: 'hello' } }] },
+      ],
+      rowCount: 1,
+    });
+    await renderViewer();
+    await screen.findByText('AAA');
+    // Unknown column header renders the raw key and its value as plain text.
+    expect(screen.getByText('mysteryCol')).toBeInTheDocument();
+    expect(screen.getByText('hello')).toBeInTheDocument();
+  });
+
+  it('navigates to edit when Edit is clicked', async () => {
+    await renderViewer();
+    await screen.findByText('AAA');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(mockPush).toHaveBeenCalledWith('/reports/investment/r1/edit');
+  });
 });

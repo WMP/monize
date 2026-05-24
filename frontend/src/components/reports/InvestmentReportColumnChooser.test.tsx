@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@/test/render';
 import { InvestmentReportColumnChooser } from './InvestmentReportColumnChooser';
+import { INVESTMENT_REPORT_COLUMNS } from '@/types/investment-report';
 
 describe('InvestmentReportColumnChooser', () => {
   it('always pins symbol first and marks it as locked', () => {
@@ -44,10 +45,30 @@ describe('InvestmentReportColumnChooser', () => {
     expect(onChange).toHaveBeenCalledWith(['symbol', 'marketValue', 'gain']);
   });
 
+  it('moves a column down with the down button', () => {
+    const onChange = vi.fn();
+    render(
+      <InvestmentReportColumnChooser
+        value={['symbol', 'gain', 'marketValue']}
+        onChange={onChange}
+      />,
+    );
+    // Move "Gain" (index 1) down to index 2
+    fireEvent.click(screen.getByLabelText('Move Gain down'));
+    expect(onChange).toHaveBeenCalledWith(['symbol', 'marketValue', 'gain']);
+  });
+
   it('never moves a column above the pinned symbol', () => {
     const onChange = vi.fn();
     render(<InvestmentReportColumnChooser value={['symbol', 'gain']} onChange={onChange} />);
     // The first non-symbol item's up button is disabled (cannot pass symbol)
     expect(screen.getByLabelText('Move Gain up')).toBeDisabled();
+  });
+
+  it('shows an empty state when every column is selected', () => {
+    const onChange = vi.fn();
+    const allKeys = INVESTMENT_REPORT_COLUMNS.map((c) => c.key);
+    render(<InvestmentReportColumnChooser value={allKeys} onChange={onChange} />);
+    expect(screen.getByText('All columns selected')).toBeInTheDocument();
   });
 });
