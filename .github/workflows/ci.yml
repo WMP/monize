@@ -305,7 +305,7 @@ jobs:
         run: docker compose -f docker-compose.e2e.yml build
 
       - name: Start application stack
-        run: docker compose -f docker-compose.e2e.yml up -d --wait --wait-timeout 420
+        run: docker compose -f docker-compose.e2e.yml up -d --wait --wait-timeout 600
 
       - name: Install E2E dependencies
         working-directory: e2e
@@ -336,9 +336,25 @@ jobs:
           path: e2e/playwright-report/
           retention-days: 7
 
-      - name: Dump container logs on failure
+      # Mirror container status + logs into the job summary, which renders on
+      # the run page (readable without downloading the auth-gated raw logs).
+      - name: Collect diagnostics on failure
         if: failure()
-        run: docker compose -f docker-compose.e2e.yml logs --no-color --tail=200
+        run: |
+          {
+            echo '## E2E diagnostics'
+            echo
+            echo '### docker compose ps'
+            echo '```'
+            docker compose -f docker-compose.e2e.yml ps -a
+            echo '```'
+            for svc in postgres backend frontend; do
+              echo "### $svc (last 120 lines)"
+              echo '```'
+              docker compose -f docker-compose.e2e.yml logs "$svc" --no-color --tail=120 2>&1 || true
+              echo '```'
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Stop services
         if: always()

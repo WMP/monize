@@ -49,17 +49,21 @@ services:
       REGISTRATION_ENABLED: "true"
       FORCE_2FA: "false"
       DEMO_MODE: "false"
+      AI_ENCRYPTION_KEY: ""
     ports:
       - "3000:3000"
     networks:
       - e2e-network
-    command: sh -c "npm run build && node dist/db-init.js && node dist/db-migrate.js && npm run start:dev"
+    # Build once, then run the compiled output directly. `start:dev` (nest
+    # --watch) would recompile the whole app a second time, roughly doubling
+    # boot time on a 2-core CI runner -- and E2E needs no file watching.
+    command: sh -c "npm run build && node dist/db-init.js && node dist/db-migrate.js && node dist/main.js"
     healthcheck:
       test:
         ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/api/v1/health || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 30
+      timeout: 10s
+      retries: 50
       start_period: 120s
 
   frontend:
@@ -82,9 +86,9 @@ services:
       test:
         ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/login || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 20
-      start_period: 30s
+      timeout: 10s
+      retries: 50
+      start_period: 60s
 
 networks:
   e2e-network:
