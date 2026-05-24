@@ -261,6 +261,8 @@ export class InvestmentReportsService {
       );
       const rows: InvestmentReportRow[] = sorted.map((h) => ({
         id: `${h.accountId}:${h.securityId}`,
+        currency: h.currencyCode,
+        baseExchangeRate: h.exchangeRate,
         values: this.pickColumns(h.values, columns),
       }));
       groups.push({ key, label: bucket.label, rows });

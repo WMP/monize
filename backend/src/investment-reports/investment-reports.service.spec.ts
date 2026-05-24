@@ -17,6 +17,7 @@ function holding(
     symbol: "AAA",
     securityName: "Alpha",
     currencyCode: "USD",
+    exchangeRate: 1,
     values: { symbol: "AAA" },
     ...over,
   } as ComputedHolding;
@@ -224,6 +225,9 @@ describe("InvestmentReportsService", () => {
       expect(result.groups[0].rows[0].values.symbol).toBe("BBB");
       expect(result.groups[0].rows[1].values.symbol).toBe("AAA");
       expect(result.rowCount).toBe(2);
+      // Each row carries its native currency and base-currency conversion rate.
+      expect(result.groups[0].rows[0].currency).toBe("USD");
+      expect(result.groups[0].rows[0].baseExchangeRate).toBe(1);
     });
 
     it("honours an as-of date override and restricts requested accounts", async () => {

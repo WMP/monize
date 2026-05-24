@@ -135,6 +135,10 @@ export type InvestmentCellValue = string | number | null;
 
 export interface InvestmentReportRow {
   id: string;
+  /** The holding's own (security) currency, for formatting native values. */
+  currency: string;
+  /** Multiply this row's native monetary values by this to get base currency. */
+  baseExchangeRate: number;
   values: Record<string, InvestmentCellValue>;
 }
 

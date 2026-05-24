@@ -20,6 +20,7 @@ vi.mock('@/hooks/useNumberFormat', () => ({
   useNumberFormat: () => ({
     formatNumber: (n: number) => String(n),
     formatPercent: (n: number) => `${n}%`,
+    formatCurrency: (n: number, code?: string) => `${code ?? 'USD'} ${n}`,
   }),
 }));
 vi.mock('@/hooks/useDateFormat', () => ({
@@ -49,8 +50,8 @@ const result = {
       key: 'all',
       label: '',
       rows: [
-        { id: '1', values: { symbol: 'AAA', marketValue: 200 } },
-        { id: '2', values: { symbol: 'BBB', marketValue: 100 } },
+        { id: '1', currency: 'USD', baseExchangeRate: 1, values: { symbol: 'AAA', marketValue: 200 } },
+        { id: '2', currency: 'USD', baseExchangeRate: 1, values: { symbol: 'BBB', marketValue: 100 } },
       ],
     },
   ],
@@ -172,6 +173,8 @@ describe('InvestmentReportViewer', () => {
           rows: [
             {
               id: '1',
+              currency: 'USD',
+              baseExchangeRate: 1,
               values: {
                 symbol: 'AAA',
                 marketValue: 1000.5,
@@ -191,13 +194,54 @@ describe('InvestmentReportViewer', () => {
     });
     await renderViewer();
     await screen.findByText('AAA');
-    expect(screen.getByText('1000.5')).toBeInTheDocument(); // currency -> formatNumber
+    expect(screen.getByText('USD 1000.5')).toBeInTheDocument(); // currency -> formatCurrency
     expect(screen.getByText('12.34%')).toBeInTheDocument(); // percent
     expect(screen.getByText('5000')).toBeInTheDocument(); // integer
     expect(screen.getByText('10.25')).toBeInTheDocument(); // shares
     expect(screen.getByText('2024-05-01')).toBeInTheDocument(); // date
     expect(screen.getByText('1.25')).toBeInTheDocument(); // number
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2); // null and empty
+  });
+
+  it('toggles monetary values between native and base currency', async () => {
+    mockGetById.mockResolvedValue(report);
+    mockExecute.mockResolvedValue({
+      ...result,
+      baseCurrency: 'CAD',
+      columns: ['symbol', 'marketValue'],
+      groups: [
+        {
+          key: 'all',
+          label: '',
+          rows: [
+            { id: '1', currency: 'USD', baseExchangeRate: 1.25, values: { symbol: 'AAA', marketValue: 100 } },
+          ],
+        },
+      ],
+      rowCount: 1,
+    });
+    await renderViewer();
+    await screen.findByText('AAA');
+    // Native: shown in the holding's own currency (USD)
+    expect(screen.getByText('USD 100')).toBeInTheDocument();
+    // Switch to base currency (CAD): 100 * 1.25 = 125
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'CAD' }));
+    });
+    expect(screen.getByText('CAD 125')).toBeInTheDocument();
+
+    // CSV export reflects the base-currency conversion.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+    });
+    const exportedRows = mockExportToCsv.mock.calls.at(-1)?.[2];
+    expect(exportedRows[0]).toContain(125);
+
+    // Switch back to native.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Native' }));
+    });
+    expect(screen.getByText('USD 100')).toBeInTheDocument();
   });
 
   it('exports group headings for symbol and currency groupings', async () => {

@@ -41,13 +41,16 @@ interface InvestmentReportViewerProps {
 
 export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps) {
   const router = useRouter();
-  const { formatNumber, formatPercent } = useNumberFormat();
+  const { formatNumber, formatPercent, formatCurrency } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const [report, setReport] = useState<InvestmentReport | null>(null);
   const [result, setResult] = useState<InvestmentReportResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
   const [asOfOverride, setAsOfOverride] = useState('');
+  // Show monetary values in each holding's own currency, or convert to the
+  // user's base currency.
+  const [currencyMode, setCurrencyMode] = useState<'native' | 'base'>('native');
 
   const { sortField, sortDirection, handleSort } = useSortableTable<string>(
     'reports.investment.table.sort',
@@ -94,11 +97,21 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
     executeReport();
   }, [report, executeReport]);
 
-  const formatCell = (value: InvestmentCellValue, type: InvestmentColumnType): string => {
+  const formatCell = (
+    value: InvestmentCellValue,
+    type: InvestmentColumnType,
+    row: InvestmentReportRow,
+  ): string => {
     if (value === null || value === undefined || value === '') return '—';
     switch (type) {
-      case 'currency':
-        return formatNumber(Number(value), 2);
+      case 'currency': {
+        const num = Number(value);
+        // Native values are in the holding's currency; convert to base when toggled.
+        if (currencyMode === 'base' && result) {
+          return formatCurrency(num * row.baseExchangeRate, result.baseCurrency);
+        }
+        return formatCurrency(num, row.currency);
+      }
       case 'number':
         return formatNumber(Number(value), 4);
       case 'integer':
@@ -139,7 +152,15 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
         ...(grouped ? [g.label] : []),
         ...cols.map((key) => {
           const v = row.values[key];
-          return v === null || v === undefined ? '' : v;
+          if (v === null || v === undefined) return '';
+          // Mirror the on-screen currency mode in the exported numbers.
+          if (
+            currencyMode === 'base' &&
+            INVESTMENT_COLUMN_MAP[key]?.type === 'currency'
+          ) {
+            return Number(v) * row.baseExchangeRate;
+          }
+          return v;
         }),
       ]),
     );
@@ -190,28 +211,46 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
       />
 
       {/* Controls */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="w-56">
-            <DateInput
-              label="As of date"
-              value={asOfOverride}
-              onChange={(e) => setAsOfOverride(e.target.value)}
-              onDateChange={(date) => setAsOfOverride(date)}
-            />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {asOfOverride ? (
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="w-48">
+              <DateInput
+                label="As of date"
+                value={asOfOverride}
+                onChange={(e) => setAsOfOverride(e.target.value)}
+                onDateChange={(date) => setAsOfOverride(date)}
+              />
+            </div>
+            <div>
+              <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Currency
+              </span>
+              <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden">
                 <button
                   type="button"
-                  className="text-blue-600 dark:text-blue-400 hover:underline"
-                  onClick={() => setAsOfOverride('')}
+                  onClick={() => setCurrencyMode('native')}
+                  className={`px-3 py-2 text-sm transition-colors ${
+                    currencyMode === 'native'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                  }`}
                 >
-                  Reset to latest market day
+                  Native
                 </button>
-              ) : (
-                'Showing the latest market day.'
-              )}
-            </p>
+                <button
+                  type="button"
+                  onClick={() => setCurrencyMode('base')}
+                  className={`px-3 py-2 text-sm border-l border-gray-300 dark:border-gray-600 transition-colors ${
+                    currencyMode === 'base'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  {result?.baseCurrency || 'Base'}
+                </button>
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {isExecuting && (
@@ -229,6 +268,23 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
             </Button>
           </div>
         </div>
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          {asOfOverride ? (
+            <button
+              type="button"
+              className="text-blue-600 dark:text-blue-400 hover:underline"
+              onClick={() => setAsOfOverride('')}
+            >
+              Reset to latest market day
+            </button>
+          ) : (
+            'Showing the latest market day.'
+          )}
+          {' · '}
+          {currencyMode === 'base' && result
+            ? `Values shown in ${result.baseCurrency}.`
+            : "Values shown in each holding's native currency."}
+        </p>
       </div>
 
       {/* Results */}
@@ -302,7 +358,7 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
                                       : 'text-gray-700 dark:text-gray-300'
                                   }`}
                                 >
-                                  {formatCell(row.values[key], col?.type ?? 'text')}
+                                  {formatCell(row.values[key], col?.type ?? 'text', row)}
                                 </td>
                               );
                             })}

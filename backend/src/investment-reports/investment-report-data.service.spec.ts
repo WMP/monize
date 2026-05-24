@@ -288,6 +288,8 @@ describe("InvestmentReportDataService", () => {
       "USD",
     );
     expect(rows[0].values.exchangeRate).toBe(0.75);
+    expect(rows[0].exchangeRate).toBe(0.75); // native -> base rate on the row
+    expect(rows[0].currencyCode).toBe("CAD");
     expect(rows[0].values.portfolioPercent).toBe(100);
     // Monetary values stay in the holding's native (CAD) currency.
     expect(rows[0].values.marketValue).toBe(1200);

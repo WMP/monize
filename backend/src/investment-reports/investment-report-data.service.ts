@@ -19,6 +19,8 @@ export interface ComputedHolding {
   symbol: string;
   securityName: string;
   currencyCode: string;
+  /** Rate to convert this holding's native monetary values to the base currency. */
+  exchangeRate: number;
   /** Every column key -> computed value (null when unavailable). */
   values: Record<string, InvestmentCellValue>;
 }
@@ -294,6 +296,7 @@ export class InvestmentReportDataService {
           symbol: security.symbol,
           securityName: security.name,
           currencyCode: security.currencyCode,
+          exchangeRate: fxRate,
           values,
         },
         marketValueBase,
