@@ -161,7 +161,7 @@ describe('NetWorthChart', () => {
     expect(currentEl.className).toContain('text-red');
   });
 
-  it('anchors the Y-axis at 0 on non-mobile screens', () => {
+  it('uses a tight Y-axis domain above 0 on desktop to surface differences', () => {
     setMobile(false);
     const data = [
       { month: '2024-01-01', netWorth: 500000 },
@@ -169,10 +169,14 @@ describe('NetWorthChart', () => {
     ] as any[];
 
     render(<NetWorthChart data={data} isLoading={false} />);
-    // The anchored domain's lower bound is a function, which JSON.stringify
-    // drops to null, leaving [null, "auto"].
-    const domain = screen.getByTestId('y-axis').getAttribute('data-domain');
-    expect(domain).toBe('[null,"auto"]');
+    const domain = JSON.parse(
+      screen.getByTestId('y-axis').getAttribute('data-domain') as string,
+    );
+    // Lower bound is a concrete number padded below the minimum (not 0).
+    expect(typeof domain[0]).toBe('number');
+    expect(domain[0]).toBeGreaterThan(0);
+    expect(domain[0]).toBeLessThan(500000);
+    expect(domain[1]).toBe('auto');
   });
 
   it('uses a tight Y-axis domain above 0 on mobile to surface differences', () => {
@@ -193,8 +197,7 @@ describe('NetWorthChart', () => {
     expect(domain[1]).toBe('auto');
   });
 
-  it('falls back to the anchored domain on mobile when all values are equal', () => {
-    setMobile(true);
+  it('falls back to the anchored domain when all values are equal', () => {
     const data = [
       { month: '2024-01-01', netWorth: 500000 },
       { month: '2024-06-01', netWorth: 500000 },
