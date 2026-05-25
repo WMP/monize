@@ -128,3 +128,31 @@ export function createTransaction(
     ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
   });
 }
+
+export interface CreatedScheduledTransaction {
+  id: string;
+  name: string;
+  amount: number;
+  frequency: string;
+}
+
+export function createScheduledTransaction(
+  api: ApiClient,
+  data: {
+    accountId: string;
+    name?: string;
+    amount?: number;
+    frequency?: string;
+    nextDueDate?: string;
+    currencyCode?: string;
+  },
+): Promise<CreatedScheduledTransaction> {
+  return api.post<CreatedScheduledTransaction>('/scheduled-transactions', {
+    accountId: data.accountId,
+    name: data.name ?? `E2E Schedule ${uniqueId()}`,
+    amount: data.amount ?? -100,
+    currencyCode: data.currencyCode ?? 'USD',
+    frequency: data.frequency ?? 'MONTHLY',
+    nextDueDate: data.nextDueDate ?? new Date().toISOString().slice(0, 10),
+  });
+}
