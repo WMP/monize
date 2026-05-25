@@ -288,9 +288,9 @@ jobs:
             --generate-notes
 
   # Runs the Playwright suite against a full stack (postgres + backend +
-  # frontend) brought up via docker-compose.e2e.yml. Currently chromium-only
-  # and intentionally NOT a dependency of build-and-push while the suite is
-  # being stabilized -- a flaky run should not block releases yet.
+  # frontend) brought up via docker-compose.e2e.yml. Runs chromium + firefox.
+  # Intentionally NOT a dependency of build-and-push yet -- a flaky run should
+  # not block releases.
   e2e-tests:
     name: E2E Tests
     runs-on: ubuntu-latest
@@ -318,21 +318,21 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+          key: playwright-chromium-firefox-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
 
-      - name: Install Playwright browser
+      - name: Install Playwright browsers
         working-directory: e2e
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium firefox
 
-      - name: Run E2E tests (chromium)
+      - name: Run E2E tests
         working-directory: e2e
-        timeout-minutes: 20
+        timeout-minutes: 30
         env:
           BASE_URL: http://localhost:3001
           CI: 'true'
         run: |
           set -o pipefail
-          npx playwright test --project=chromium --max-failures=5 2>&1 | tee /tmp/pw-output.txt
+          npx playwright test --max-failures=5 2>&1 | tee /tmp/pw-output.txt
 
       - name: Upload Playwright report
         if: always()

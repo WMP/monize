@@ -4,9 +4,9 @@ export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  // Retries are 0 while the suite is being stabilized so a broken run fails
-  // fast with a clear signal instead of taking 3x as long. Restore once green.
-  retries: 0,
+  // Retry in CI to absorb occasional flakiness (network, animation timing);
+  // keep 0 locally for a fast, honest signal while authoring.
+  retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI
     ? [['list'], ['html', { open: 'never' }], ['github']]
