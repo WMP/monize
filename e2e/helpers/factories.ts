@@ -66,3 +66,37 @@ export function createPayee(
     ...(data.notes !== undefined ? { notes: data.notes } : {}),
   });
 }
+
+export type AccountType =
+  | 'CHEQUING'
+  | 'SAVINGS'
+  | 'CREDIT_CARD'
+  | 'CASH'
+  | 'LINE_OF_CREDIT'
+  | 'OTHER';
+
+export interface CreatedAccount {
+  id: string;
+  name: string;
+  accountType: string;
+  currencyCode: string;
+  currentBalance: number;
+}
+
+export function createAccount(
+  api: ApiClient,
+  data: {
+    name?: string;
+    accountType?: AccountType;
+    currencyCode?: string;
+    openingBalance?: number;
+  } = {},
+): Promise<CreatedAccount> {
+  // A fresh user's default currency is USD (user_preference default).
+  return api.post<CreatedAccount>('/accounts', {
+    name: data.name ?? `E2E Account ${uniqueId()}`,
+    accountType: data.accountType ?? 'CHEQUING',
+    currencyCode: data.currencyCode ?? 'USD',
+    openingBalance: data.openingBalance ?? 0,
+  });
+}
