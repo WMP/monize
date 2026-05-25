@@ -7,10 +7,12 @@ import {
 import { uniqueId } from '../helpers/api';
 
 // Investments portfolio view. Preconditions (account pair, security, trades)
-// are seeded through the API -- the investment-transaction form is a heavy
-// combobox-driven modal, so the UI work here is reserved for asserting that a
-// seeded BUY rolls up into the holdings view. The driven-in-UI trade entry is
-// deferred (see ROADMAP Phase 2.1).
+// are seeded through the API; one test also drives the transaction form in the
+// UI. The holdings roll-up renders one collapsed row per brokerage account --
+// the backend strips the " - Brokerage" suffix from the displayed name (see
+// PortfolioCalculationService), and the row's "N position(s)" count is the
+// honest signal that a trade actually rolled into a holding (the account row
+// itself shows even with zero holdings).
 test.describe('Investments', () => {
   test('shows the investments page chrome', async ({ authedPage: page }) => {
     await page.goto('/investments');
@@ -28,12 +30,9 @@ test.describe('Investments', () => {
     authedPage: page,
     api,
   }) => {
-    const pairName = `Brokerage ${uniqueId()}`;
-    const pair = await createInvestmentAccountPair(api, { name: pairName });
-    const security = await createSecurity(api, {
-      symbol: `Z${uniqueId().slice(-5).toUpperCase()}`,
-      name: `Held ${uniqueId()}`,
-    });
+    const name = `Invest ${uniqueId()}`;
+    const pair = await createInvestmentAccountPair(api, { name });
+    const security = await createSecurity(api, { name: `Held ${uniqueId()}` });
     await createInvestmentTransaction(api, {
       accountId: pair.brokerageAccount.id,
       fundingAccountId: pair.cashAccount.id,
@@ -45,27 +44,22 @@ test.describe('Investments', () => {
 
     await page.goto('/investments');
 
-    // The holdings section and the brokerage account header render with the
-    // seeded position even while its rows are collapsed.
     await expect(
       page.getByRole('heading', { name: 'Holdings by Account' }),
     ).toBeVisible({ timeout: 15000 });
-    const accountHeader = page.locator('button', {
-      hasText: `${pairName} - Brokerage`,
-    });
+    // The display name has the " - Brokerage" suffix stripped; the position
+    // count proves the BUY produced a holding rather than just an empty account.
+    const accountHeader = page.locator('button', { hasText: name }).first();
     await expect(accountHeader).toBeVisible();
-
-    // Expand the account (rows start collapsed) and confirm the held symbol.
-    await accountHeader.click();
-    await expect(page.getByText(security.symbol, { exact: true })).toBeVisible();
+    await expect(accountHeader).toContainText('1 position');
   });
 
   test('keeps holdings after a reload (persistence)', async ({
     authedPage: page,
     api,
   }) => {
-    const pairName = `Brokerage ${uniqueId()}`;
-    const pair = await createInvestmentAccountPair(api, { name: pairName });
+    const name = `Invest ${uniqueId()}`;
+    const pair = await createInvestmentAccountPair(api, { name });
     const security = await createSecurity(api, { name: `Held ${uniqueId()}` });
     await createInvestmentTransaction(api, {
       accountId: pair.brokerageAccount.id,
@@ -78,13 +72,13 @@ test.describe('Investments', () => {
 
     await page.goto('/investments');
     await expect(
-      page.locator('button', { hasText: `${pairName} - Brokerage` }),
-    ).toBeVisible({ timeout: 15000 });
+      page.locator('button', { hasText: name }).first(),
+    ).toContainText('1 position', { timeout: 15000 });
 
     await page.reload();
     await expect(
-      page.locator('button', { hasText: `${pairName} - Brokerage` }),
-    ).toBeVisible({ timeout: 15000 });
+      page.locator('button', { hasText: name }).first(),
+    ).toContainText('1 position', { timeout: 15000 });
   });
 
   test('records a BUY through the transaction form', async ({
@@ -94,8 +88,8 @@ test.describe('Investments', () => {
     // The account pair and security are seeded; the trade itself is entered in
     // the UI. The transaction form uses native selects (not comboboxes), so the
     // dropdowns are driven with selectOption by id.
-    const pairName = `Brokerage ${uniqueId()}`;
-    const pair = await createInvestmentAccountPair(api, { name: pairName });
+    const name = `Invest ${uniqueId()}`;
+    const pair = await createInvestmentAccountPair(api, { name });
     const security = await createSecurity(api, {
       symbol: `Z${uniqueId().slice(-5).toUpperCase()}`,
       name: `Traded ${uniqueId()}`,
@@ -117,11 +111,7 @@ test.describe('Investments', () => {
     await dialog.getByRole('button', { name: 'Create Transaction' }).click();
 
     // The new position rolls into the holdings view.
-    const accountHeader = page.locator('button', {
-      hasText: `${pairName} - Brokerage`,
-    });
-    await expect(accountHeader).toBeVisible({ timeout: 15000 });
-    await accountHeader.click();
-    await expect(page.getByText(security.symbol, { exact: true })).toBeVisible();
+    const accountHeader = page.locator('button', { hasText: name }).first();
+    await expect(accountHeader).toContainText('1 position', { timeout: 15000 });
   });
 });
