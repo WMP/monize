@@ -15,7 +15,7 @@ export default function ViewInvestmentReportPage({ params }: PageProps) {
   return (
     <ProtectedRoute>
       <PageLayout>
-        <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8">
+        <main className="px-4 sm:px-6 lg:px-8 pt-6 pb-8">
           <InvestmentReportViewer reportId={id} />
         </main>
       </PageLayout>
