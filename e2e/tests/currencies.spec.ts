@@ -1,6 +1,6 @@
 import { test, expect } from '../fixtures';
 import { createCurrency } from '../helpers/factories';
-import { uniqueId } from '../helpers/api';
+import { uniqueId, randomCurrencyCode } from '../helpers/api';
 
 // Currencies are a global catalog (seeded with ~21 real currencies, default
 // "active" filter). Tests use distinct fake 3-char codes so they don't collide
@@ -20,7 +20,7 @@ test.describe('Currencies', () => {
   });
 
   test('creates a currency through the UI', async ({ authedPage: page }) => {
-    const code = 'ZQA';
+    const code = randomCurrencyCode();
     const name = `E2E Dollar ${uniqueId()}`;
 
     await page.goto('/currencies');
@@ -39,7 +39,7 @@ test.describe('Currencies', () => {
 
   test('edits a currency through the UI', async ({ authedPage: page, api }) => {
     const currency = await createCurrency(api, {
-      code: 'ZQB',
+      code: randomCurrencyCode(),
       name: `Edit Me ${uniqueId()}`,
     });
     const newName = `Edited ${uniqueId()}`;

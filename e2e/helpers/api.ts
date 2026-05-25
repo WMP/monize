@@ -7,6 +7,16 @@ const API_PREFIX = '/api/v1';
 export const uniqueId = (): string =>
   Date.now().toString(36) + randomBytes(3).toString('hex');
 
+// Currencies are a GLOBAL catalog (shared across users), so a hardcoded code
+// would collide across the chromium and firefox projects. Generate a random
+// 3-letter code; the "Q" prefix avoids the seeded ISO currencies (none start
+// with Q), and retries re-draw on the rare cross-test clash.
+export const randomCurrencyCode = (): string => {
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const b = randomBytes(2);
+  return `Q${A[b[0] % 26]}${A[b[1] % 26]}`;
+};
+
 export interface TestUser {
   email: string;
   password: string;
