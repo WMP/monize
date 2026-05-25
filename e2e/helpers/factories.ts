@@ -345,14 +345,16 @@ export interface CreatedDelegate {
 }
 
 // The owner creates a delegate by email with an owner-set password (12+ chars,
-// upper/lower/digit/special). The delegate becomes a delegate-only user.
+// upper/lower/digit/special). The delegate becomes a delegate-only user. The
+// caller supplies the password (a per-test value) so no credential is hardcoded
+// here.
 export function createDelegate(
   api: ApiClient,
-  data: { email: string; password?: string },
+  data: { email: string; password: string },
 ): Promise<CreatedDelegate> {
   return api.post<CreatedDelegate>('/delegation/delegates', {
     email: data.email,
-    password: data.password ?? 'E2eTestPass123!',
+    password: data.password,
   });
 }
 
