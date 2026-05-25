@@ -59,6 +59,19 @@ test.describe('Currencies', () => {
     await expect(page.locator('tr', { hasText: newName })).toBeVisible();
   });
 
+  test('deactivates a seeded currency to hide it', async ({ authedPage: page }) => {
+    await page.goto('/currencies');
+
+    // Seeded currencies are a shared catalog and can't be deleted, but a
+    // non-default, unused one can be deactivated, which removes it from the
+    // default "active" view.
+    const row = page.locator('tr', { hasText: 'Japanese Yen' });
+    await expect(row).toBeVisible();
+    await row.getByRole('button', { name: /deactivate/i }).click();
+
+    await expect(page.locator('tr', { hasText: 'Japanese Yen' })).toHaveCount(0);
+  });
+
   test('rejects a too-short currency code', async ({ authedPage: page }) => {
     await page.goto('/currencies');
     await page.getByRole('button', { name: /new currency/i }).first().click();

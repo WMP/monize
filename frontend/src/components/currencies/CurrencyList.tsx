@@ -461,7 +461,7 @@ export function CurrencyList({
                   {contextCurrency.isActive ? 'Deactivate' : 'Activate'}
                 </button>
               )}
-              {canDeactivateOrDelete && (
+              {canDeactivateOrDelete && !contextCurrency.isSystem && (
                 <button
                   onClick={() => { setContextCurrency(null); setDeleteCurrency(contextCurrency); }}
                   className="w-full text-left px-5 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"

@@ -162,6 +162,25 @@ describe('CurrencyList', () => {
       expect(screen.getByText('Edit Currency')).toBeInTheDocument();
       vi.useRealTimers();
     });
+
+    it('hides Delete Currency in context menu for system currencies', async () => {
+      vi.useFakeTimers();
+      const currencies = [makeCurrency({ code: 'JPY', name: 'Japanese Yen', isSystem: true })];
+
+      render(<CurrencyList currencies={currencies} {...defaultProps} />);
+      const row = screen.getByText('JPY').closest('tr')!;
+
+      await act(async () => {
+        fireEvent.mouseDown(row);
+        vi.advanceTimersByTime(750);
+      });
+
+      // System currencies are shared catalog rows: they can be deactivated
+      // (hidden from your list) but not deleted.
+      expect(screen.getAllByText('Deactivate').length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText('Delete Currency')).not.toBeInTheDocument();
+      vi.useRealTimers();
+    });
   });
 
   it('shows Default badge for default currency', () => {
