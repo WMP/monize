@@ -12,8 +12,12 @@ const FILTER_STORAGE_KEY = 'dashboard.topMovers.filter';
 
 function getStoredFilter(): MoverFilter {
   if (typeof window === 'undefined') return 'all';
-  const stored = localStorage.getItem(FILTER_STORAGE_KEY);
-  return stored === 'gainers' || stored === 'losers' || stored === 'all' ? stored : 'all';
+  try {
+    const stored = localStorage.getItem(FILTER_STORAGE_KEY);
+    return stored === 'gainers' || stored === 'losers' || stored === 'all' ? stored : 'all';
+  } catch {
+    return 'all';
+  }
 }
 
 interface TopMoversProps {
@@ -88,7 +92,11 @@ export function TopMovers({ movers, isLoading, hasInvestmentAccounts, onRefresh,
   const [filter, setFilter] = useState<MoverFilter>(getStoredFilter);
 
   useEffect(() => {
-    localStorage.setItem(FILTER_STORAGE_KEY, filter);
+    try {
+      localStorage.setItem(FILTER_STORAGE_KEY, filter);
+    } catch {
+      // Ignore storage failures (e.g. disabled/blocked storage); persistence is best-effort.
+    }
   }, [filter]);
 
   if (isLoading) {
