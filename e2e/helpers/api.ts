@@ -127,22 +127,30 @@ export function createApiClient(request: APIRequestContext): ApiClient {
     return res;
   };
 
+  // Mutations (PUT/PATCH/DELETE) often return 204 or an empty 200 body; parse
+  // defensively so an empty response doesn't throw "Unexpected end of JSON".
+  const parseBody = async (res: Awaited<ReturnType<typeof send>>) => {
+    if (res.status() === 204) return undefined;
+    const text = await res.text();
+    return text ? JSON.parse(text) : undefined;
+  };
+
   return {
     get: async <T>(path: string): Promise<T> => {
       const res = await send('GET', path);
-      return (await res.json()) as T;
+      return (await parseBody(res)) as T;
     },
     post: async <T>(path: string, body?: unknown): Promise<T> => {
       const res = await send('POST', path, body);
-      return (res.status() === 204 ? undefined : await res.json()) as T;
+      return (await parseBody(res)) as T;
     },
     put: async <T>(path: string, body?: unknown): Promise<T> => {
       const res = await send('PUT', path, body);
-      return (res.status() === 204 ? undefined : await res.json()) as T;
+      return (await parseBody(res)) as T;
     },
     patch: async <T>(path: string, body?: unknown): Promise<T> => {
       const res = await send('PATCH', path, body);
-      return (await res.json()) as T;
+      return (await parseBody(res)) as T;
     },
     delete: async (path: string): Promise<void> => {
       await send('DELETE', path);

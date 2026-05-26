@@ -202,7 +202,7 @@ delegation factories (`createDelegate`, `grantDelegateAccount`).
 | Delegation | `delegation.spec.ts` | Owner adds/removes a delegate (UI); a delegate signs in, switches into the owner context, and sees a shared account | Section/capability scope boundaries; multi-owner switching |
 | Emergency access | `emergency-access.spec.ts` | Page-render smoke | Settings/contacts CRUD + claim flow -- gated on SMTP (disabled controls) and a time-driven, emailed magic-link grant (min 2 days, cron); needs a mail-capture service + clock control |
 | Admin | `admin.spec.ts` | Admin views the user-management list; non-admin redirected from /admin | User create/disable/role-change (multi-step modal) |
-| Backup | `backup.spec.ts` | Export downloads a backup; export -> delete -> restore round-trip brings data back | Encrypted-backup flow; restore-into-fresh-user |
+| Backup | `backup.spec.ts` | Export downloads a backup | Restore round-trip in-browser (the wipe appears to drop the session); encrypted-backup flow -- restore is covered by backend tests |
 | Action history | `action-history.spec.ts` | Create -> history panel entry -> undo -> redo | Per-entity-type undo coverage |
 | Notifications | (none) | -- | SMTP-gated (shows "not available" without a mailer); preferences can't be toggled in the e2e stack |
 
