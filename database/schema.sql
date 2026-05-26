@@ -504,6 +504,7 @@ CREATE TABLE investment_transactions (
     account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
     transaction_split_id UUID REFERENCES transaction_splits(id) ON DELETE CASCADE, -- when embedded inside a split transaction
+    linked_transaction_id UUID REFERENCES investment_transactions(id) ON DELETE SET NULL, -- links the two legs of a security transfer (TRANSFER_OUT <-> TRANSFER_IN)
     security_id UUID REFERENCES securities(id),
     funding_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
     action investment_action NOT NULL,
@@ -524,6 +525,7 @@ CREATE INDEX idx_investment_transactions_security ON investment_transactions(sec
 CREATE INDEX idx_investment_transactions_date ON investment_transactions(transaction_date DESC);
 CREATE INDEX idx_investment_transactions_transaction ON investment_transactions(transaction_id);
 CREATE INDEX idx_investment_transactions_split_id ON investment_transactions(transaction_split_id);
+CREATE INDEX idx_investment_transactions_linked ON investment_transactions(linked_transaction_id);
 
 -- User Preferences
 CREATE TABLE user_preferences (

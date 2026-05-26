@@ -103,6 +103,7 @@ describe("InvestmentTransactionsService", () => {
     securityId,
     fundingAccountId: null,
     transactionId: cashTransactionId,
+    linkedTransactionId: null,
     action: InvestmentAction.BUY,
     transactionDate: "2025-01-15",
     quantity: 10,
@@ -128,6 +129,7 @@ describe("InvestmentTransactionsService", () => {
     securityId,
     fundingAccountId: null,
     transactionId: "cash-tx-2",
+    linkedTransactionId: null,
     action: InvestmentAction.SELL,
     transactionDate: "2025-02-15",
     quantity: 5,
@@ -153,6 +155,7 @@ describe("InvestmentTransactionsService", () => {
     securityId,
     fundingAccountId: null,
     transactionId: "cash-tx-3",
+    linkedTransactionId: null,
     action: InvestmentAction.DIVIDEND,
     transactionDate: "2025-03-15",
     quantity: 1,
@@ -4928,6 +4931,135 @@ describe("InvestmentTransactionsService", () => {
       ).rejects.toThrow(BadRequestException);
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
       expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
+    });
+
+    it("links the two legs to each other", async () => {
+      await service.transferSecurity(userId, transferDto);
+      // Each leg is updated to point at the other via linkedTransactionId.
+      const linkUpdates = mockQueryRunner.manager.update.mock.calls.filter(
+        (c: any[]) =>
+          c[0] === InvestmentTransaction &&
+          c[2] &&
+          "linkedTransactionId" in c[2],
+      );
+      expect(linkUpdates).toHaveLength(2);
+    });
+  });
+
+  describe("linked transfer cascade", () => {
+    const toAccountId = "account-2";
+    const mockToAccount = {
+      id: toAccountId,
+      userId,
+      accountType: "INVESTMENT",
+      accountSubType: AccountSubType.INVESTMENT_BROKERAGE,
+      linkedAccountId: null,
+      currencyCode: "USD",
+      name: "Brokerage B",
+    };
+
+    function makeLegs() {
+      const base = {
+        userId,
+        securityId,
+        fundingAccountId: null,
+        transactionId: null,
+        transactionSplitId: null,
+        transactionDate: "2025-04-01",
+        quantity: 100,
+        price: 1.67,
+        commission: 0,
+        totalAmount: 0,
+        exchangeRate: 1,
+        description: null,
+        account: null as any,
+        transaction: null as any,
+        security: mockSecurity as any,
+        fundingAccount: null,
+        transactionSplit: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const outLeg = {
+        ...base,
+        id: "leg-out",
+        accountId,
+        action: InvestmentAction.TRANSFER_OUT,
+        linkedTransactionId: "leg-in",
+      } as InvestmentTransaction;
+      const inLeg = {
+        ...base,
+        id: "leg-in",
+        accountId: toAccountId,
+        action: InvestmentAction.TRANSFER_IN,
+        linkedTransactionId: "leg-out",
+      } as InvestmentTransaction;
+      return { outLeg, inLeg };
+    }
+
+    beforeEach(() => {
+      accountsService.findOne.mockImplementation((uid: string, aid: string) => {
+        if (aid === accountId) return Promise.resolve(mockInvestmentAccount);
+        if (aid === toAccountId) return Promise.resolve(mockToAccount);
+        if (aid === cashAccountId) return Promise.resolve(mockCashAccount);
+        return Promise.reject(new NotFoundException("Account not found"));
+      });
+      transactionRepository.findOne.mockResolvedValue(null);
+    });
+
+    it("remove deletes both legs and validates both accounts", async () => {
+      const { outLeg, inLeg } = makeLegs();
+      investmentTransactionsRepository.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder(outLeg),
+      );
+      investmentTransactionsRepository.findOne.mockResolvedValue(inLeg);
+
+      await service.remove(userId, "leg-out");
+
+      expect(mockQueryRunner.manager.remove).toHaveBeenCalledTimes(2);
+      expect(
+        holdingsService.validateNoNegativeHoldingsHistory,
+      ).toHaveBeenCalledWith(
+        userId,
+        mockQueryRunner,
+        expect.arrayContaining([accountId, toAccountId]),
+        [securityId],
+      );
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+    });
+
+    it("update propagates the edit to both legs and keeps them linked", async () => {
+      const { outLeg, inLeg } = makeLegs();
+      investmentTransactionsRepository.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder(outLeg),
+      );
+      investmentTransactionsRepository.findOne.mockResolvedValue(inLeg);
+
+      await service.update(userId, "leg-out", { quantity: 50 });
+
+      // Both legs reversed (add/remove) and reapplied -> 4 holding updates.
+      expect(holdingsService.updateHolding).toHaveBeenCalled();
+      // Both legs saved.
+      const savedActions = mockQueryRunner.manager.save.mock.calls
+        .map((c: any[]) => c[0]?.action)
+        .filter(Boolean);
+      expect(savedActions).toContain(InvestmentAction.TRANSFER_OUT);
+      expect(savedActions).toContain(InvestmentAction.TRANSFER_IN);
+      // Edit propagated to the linked leg too.
+      expect(inLeg.quantity).toBe(50);
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+    });
+
+    it("update rejects changing the transfer direction", async () => {
+      const { outLeg, inLeg } = makeLegs();
+      investmentTransactionsRepository.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder(outLeg),
+      );
+      investmentTransactionsRepository.findOne.mockResolvedValue(inLeg);
+
+      await expect(
+        service.update(userId, "leg-out", { action: InvestmentAction.BUY }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

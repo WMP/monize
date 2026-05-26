@@ -650,6 +650,15 @@ export class InvestmentTransactionsService {
         false,
       );
 
+      // Link the two legs to each other so a later edit or delete of one
+      // cascades to its pair.
+      await queryRunner.manager.update(InvestmentTransaction, outId, {
+        linkedTransactionId: inId,
+      });
+      await queryRunner.manager.update(InvestmentTransaction, inId, {
+        linkedTransactionId: outId,
+      });
+
       // Guard against transferring more than the source holds. Validates the
       // full replayed history so it catches both the immediate over-draw and
       // any back-dated transfer that would make a past balance go negative.
@@ -1493,12 +1502,191 @@ export class InvestmentTransactionsService {
     return transaction;
   }
 
+  /**
+   * Edit one leg of a linked security transfer and keep its pair consistent.
+   * The edited leg may change its own account; the security, quantity,
+   * per-share cost, date and description are shared and propagated to both
+   * legs so the cost basis stays balanced across the move. The transfer's
+   * direction (which leg is IN vs OUT) cannot be changed here.
+   */
+  private async updateLinkedTransfer(
+    userId: string,
+    editedLeg: InvestmentTransaction,
+    linkedLeg: InvestmentTransaction,
+    updateDto: UpdateInvestmentTransactionDto,
+  ): Promise<InvestmentTransaction> {
+    if (
+      updateDto.action !== undefined &&
+      updateDto.action !== editedLeg.action
+    ) {
+      throw new BadRequestException(
+        "Cannot change the direction of a transfer; delete it and create a new transfer instead",
+      );
+    }
+
+    const beforeData = { ...editedLeg };
+    const beforeLinked = { ...linkedLeg };
+    const editedLegId = editedLeg.id;
+
+    // Track every (account, security) the edit could touch -- old and new on
+    // both legs -- so the negative-holdings guard is scoped correctly.
+    const affectedAccountIds = new Set<string>([
+      editedLeg.accountId,
+      linkedLeg.accountId,
+    ]);
+    const affectedSecurityIds = new Set<string>();
+    if (editedLeg.securityId) affectedSecurityIds.add(editedLeg.securityId);
+
+    if (updateDto.securityId !== undefined && updateDto.securityId) {
+      await this.securitiesService.findOne(userId, updateDto.securityId);
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Reverse both legs at their original values before reapplying.
+      await this.reverseTransactionEffectsInTransaction(
+        queryRunner,
+        userId,
+        editedLeg,
+      );
+      await this.reverseTransactionEffectsInTransaction(
+        queryRunner,
+        userId,
+        linkedLeg,
+      );
+
+      // The edited leg may move to a different account.
+      if (updateDto.accountId !== undefined) {
+        const account = await this.accountsService.findOne(
+          userId,
+          updateDto.accountId,
+        );
+        if (account.accountType !== "INVESTMENT") {
+          throw new BadRequestException("Account must be of type INVESTMENT");
+        }
+        editedLeg.accountId = updateDto.accountId;
+        editedLeg.account = { id: updateDto.accountId } as any;
+      }
+
+      // Shared fields applied to both legs.
+      const applyShared = (leg: InvestmentTransaction) => {
+        if (updateDto.securityId !== undefined) {
+          leg.securityId = updateDto.securityId || null;
+          leg.security = updateDto.securityId
+            ? ({ id: updateDto.securityId } as any)
+            : (null as any);
+        }
+        if (updateDto.quantity !== undefined) leg.quantity = updateDto.quantity;
+        if (updateDto.price !== undefined) leg.price = updateDto.price;
+        if (updateDto.commission !== undefined)
+          leg.commission = updateDto.commission;
+        if (updateDto.transactionDate !== undefined)
+          leg.transactionDate = updateDto.transactionDate;
+        if (updateDto.description !== undefined)
+          leg.description = updateDto.description;
+        // Transfers carry no cash.
+        leg.totalAmount = 0;
+        leg.exchangeRate = 1;
+      };
+      applyShared(editedLeg);
+      applyShared(linkedLeg);
+
+      affectedAccountIds.add(editedLeg.accountId);
+      if (editedLeg.securityId) affectedSecurityIds.add(editedLeg.securityId);
+
+      const savedEdited = await queryRunner.manager.save(editedLeg);
+      const savedLinked = await queryRunner.manager.save(linkedLeg);
+
+      await this.processTransactionEffectsInTransaction(
+        queryRunner,
+        userId,
+        savedEdited,
+        true,
+        false,
+      );
+      await this.processTransactionEffectsInTransaction(
+        queryRunner,
+        userId,
+        savedLinked,
+        true,
+        false,
+      );
+
+      await this.holdingsService.validateNoNegativeHoldingsHistory(
+        userId,
+        queryRunner,
+        Array.from(affectedAccountIds),
+        affectedSecurityIds.size > 0
+          ? Array.from(affectedSecurityIds)
+          : undefined,
+      );
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+
+    for (const accId of affectedAccountIds) {
+      this.triggerRecalcWithCashAccount(accId, userId);
+    }
+
+    if (editedLeg.securityId) {
+      this.securityPriceService
+        .upsertTransactionPrice(editedLeg.securityId, editedLeg.transactionDate)
+        .catch((err) =>
+          this.logger.warn(
+            `Failed to update transaction-derived price: ${err.message}`,
+          ),
+        );
+    }
+
+    const result = await this.findOne(userId, editedLegId);
+
+    this.actionHistoryService.record(userId, {
+      entityType: "investment_transaction",
+      entityId: editedLegId,
+      action: "update",
+      beforeData: { ...beforeData, linkedTransferLeg: beforeLinked },
+      afterData: { ...result },
+      description: "Updated security transfer",
+    });
+
+    return result;
+  }
+
   async update(
     userId: string,
     id: string,
     updateDto: UpdateInvestmentTransactionDto,
   ): Promise<InvestmentTransaction> {
     const transaction = await this.findOne(userId, id);
+
+    // A security transfer is two linked legs. Editing one keeps the pair in
+    // sync (shared security/quantity/cost/date) so cost basis stays balanced.
+    if (
+      transaction.linkedTransactionId &&
+      (transaction.action === InvestmentAction.TRANSFER_IN ||
+        transaction.action === InvestmentAction.TRANSFER_OUT)
+    ) {
+      const linkedLeg = await this.investmentTransactionsRepository.findOne({
+        where: { id: transaction.linkedTransactionId, userId },
+      });
+      if (linkedLeg) {
+        return this.updateLinkedTransfer(
+          userId,
+          transaction,
+          linkedLeg,
+          updateDto,
+        );
+      }
+    }
+
     const beforeData = { ...transaction };
     const accountId = transaction.accountId;
     const oldSecurityId = transaction.securityId;
@@ -1965,24 +2153,60 @@ export class InvestmentTransactionsService {
       }
     }
 
+    // A security transfer is two linked legs (TRANSFER_OUT <-> TRANSFER_IN).
+    // Deleting either one removes the whole transfer so holdings can't be
+    // left half-moved.
+    const linkedLeg = transaction.linkedTransactionId
+      ? await this.investmentTransactionsRepository.findOne({
+          where: { id: transaction.linkedTransactionId, userId },
+        })
+      : null;
+    if (linkedLeg) {
+      beforeData.linkedTransferLeg = { ...linkedLeg };
+    }
+
+    const legsToRemove = linkedLeg ? [transaction, linkedLeg] : [transaction];
+    const affectedAccountIds = Array.from(
+      new Set(legsToRemove.map((leg) => leg.accountId)),
+    );
+    const affectedSecurityIds = Array.from(
+      new Set(
+        legsToRemove
+          .map((leg) => leg.securityId)
+          .filter((sid): sid is string => Boolean(sid)),
+      ),
+    );
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      await this.reverseTransactionEffectsInTransaction(
-        queryRunner,
-        userId,
-        transaction,
-      );
+      // Break the mutual link before deleting so neither row's FK points at a
+      // row that is about to disappear.
+      for (const leg of legsToRemove) {
+        if (leg.linkedTransactionId) {
+          await queryRunner.manager.update(InvestmentTransaction, leg.id, {
+            linkedTransactionId: null,
+          });
+          leg.linkedTransactionId = null;
+        }
+      }
 
-      await queryRunner.manager.remove(transaction);
+      for (const leg of legsToRemove) {
+        await this.reverseTransactionEffectsInTransaction(
+          queryRunner,
+          userId,
+          leg,
+        );
+        await queryRunner.manager.remove(leg);
+      }
 
       await this.holdingsService.validateNoNegativeHoldingsHistory(
         userId,
         queryRunner,
-        [accountId],
-        transaction.securityId ? [transaction.securityId] : undefined,
+        affectedAccountIds,
+        affectedSecurityIds.length > 0 ? affectedSecurityIds : undefined,
       );
 
       await queryRunner.commitTransaction();
@@ -2003,11 +2227,16 @@ export class InvestmentTransactionsService {
         );
     }
 
-    this.triggerRecalcWithCashAccount(
-      accountId,
-      userId,
-      transaction.fundingAccountId,
-    );
+    for (const accId of affectedAccountIds) {
+      this.triggerRecalcWithCashAccount(accId, userId);
+    }
+    if (transaction.fundingAccountId) {
+      this.triggerRecalcWithCashAccount(
+        accountId,
+        userId,
+        transaction.fundingAccountId,
+      );
+    }
 
     if (
       transaction.securityId &&
