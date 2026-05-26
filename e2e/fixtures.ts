@@ -1,6 +1,7 @@
 import { test as base, expect, type Page } from '@playwright/test';
-import { registerUser } from './helpers/auth';
+import { registerUser, loginUser } from './helpers/auth';
 import { createApiClient, type ApiClient, type TestUser } from './helpers/api';
+import { ADMIN_CREDS } from './helpers/admin-creds';
 
 type Fixtures = {
   /** A fresh user (unique email per test), authenticated in the browser. */
@@ -9,6 +10,10 @@ type Fixtures = {
   api: ApiClient;
   /** A page already logged in -- just `goto` the route under test. */
   authedPage: Page;
+  /** The known admin's credentials (registered in global setup as user #1). */
+  adminUser: TestUser;
+  /** A page logged in as the admin, in its own browser context. */
+  adminPage: Page;
 };
 
 export const test = base.extend<Fixtures>({
@@ -28,6 +33,18 @@ export const test = base.extend<Fixtures>({
   authedPage: async ({ page, user }, use) => {
     void user;
     await use(page);
+  },
+  adminUser: async ({}, use) => {
+    await use(ADMIN_CREDS);
+  },
+  // The admin lives in its own context so it never collides with a test's
+  // per-test user in the default `page`.
+  adminPage: async ({ browser, adminUser }, use) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await loginUser(page, adminUser.email, adminUser.password);
+    await use(page);
+    await context.close();
   },
 });
 

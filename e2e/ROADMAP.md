@@ -107,6 +107,38 @@ High value, builds directly on the existing fixtures. Same pattern per area:
 create via UI → appears + persists after reload; seed N via API → render; edit;
 delete/guards; validation.
 
+### Phase 2 status snapshot (first pass landed)
+
+New factories in `factories.ts`: `createSecurity`, `createInvestmentAccountPair`
+(POSTs `accountType: INVESTMENT` + `createInvestmentPair` and returns the linked
+`{ cashAccount, brokerageAccount }`), `createInvestmentTransaction`,
+`createBudget`, `addBudgetCategory`, `createCustomReport`. 2FA codes are
+generated with `otplib` via `helpers/totp.ts`.
+
+| Area | Spec | Landed | Deferred (follow-up) |
+|------|------|--------|----------------------|
+| Securities | `securities.spec.ts` | Full CRUD + deactivate + validation | — |
+| Investments | `investments.spec.ts` | Page chrome; seeded BUY rolls into holdings; reload persistence; UI-driven BUY through the transaction form | Other actions (SELL/DIVIDEND/SPLIT) via UI; price-refresh assertion |
+| Budgets | `budgets.spec.ts` | List; detail actuals-vs-budget (seeded category + txn); delete | Wizard-based create + validation (no UI path that isn't the spending-analysis wizard) |
+| Reports/insights/net-worth | `reports.spec.ts` | Built-in catalogue; open a report; net-worth + Monte-Carlo report render smokes; dashboard net-worth surface; insights page; seed+open and UI-create a custom report | Custom report builder advanced fields (filters/columns); editing/deleting custom reports; driving the Monte-Carlo projection inputs; asserting exact report figures |
+| Error states | `error-states.spec.ts` | Route-intercepted 500s surface a friendly message (tags, securities) -- target endpoints NOT pre-cached by the dashboard | Broader per-page coverage |
+| Mobile | `mobile.spec.ts` | Phone-viewport dashboard render + create-account flow | Hamburger-nav navigation; per-flow mobile coverage |
+| Settings | `settings.spec.ts` | Sections render; profile-name + default-currency persistence; password change happy + wrong-current + weak-new (incl. re-login) | — |
+| 2FA + reset | `security.spec.ts` | 2FA enable (API) reflected in UI; 2FA *enforced* at login; successful TOTP verify via the disable flow; forgot-password SMTP-redirect; reset missing/invalid-token guards | Completing 2FA-verify-to-dashboard in-test (session/cookie issue after verify in the e2e env); forgot→reset happy path (infra-blocked, below) |
+| Authorization | `authorization.spec.ts` | Unauthenticated visits to every protected route redirect to /login | Cross-user denial (needs the Phase 3 multi-user fixture) |
+| Danger zone | `zz-danger-zone.spec.ts` | Account deletion + re-login blocked; named to run **last** (sequential CI), the suite's destructive finale | — |
+
+**Infra blocker for the forgot/reset happy path (2.4):** the e2e stack
+configures no SMTP and does not expose the Postgres port to the host, so the raw
+reset token (hashed in the DB, only ever emailed) cannot be retrieved by the
+runner. It needs either a mail-capture service (e.g. Mailpit) in
+`docker-compose.e2e.yml` or an exposed DB/test endpoint. The forgot-request UI
+and the invalid-token reset path are covered without it.
+
+**Note on holdings:** `GroupedHoldingsList` seeds its expanded-accounts set from
+the first render (empty during load), so account rows render collapsed — expand
+the account header before asserting individual holding rows.
+
 ### 2.1 Investments & securities (`investments.spec.ts`, new `securities.spec.ts`)
 *Current: smoke only.* Routes `/investments`, `/securities`; modules `securities`,
 `transactions` (investment txns), `net-worth`.
@@ -157,6 +189,31 @@ delete/guards; validation.
 
 Needs the multi-user / admin fixtures above. Higher setup cost, lower change
 frequency, so it follows Phase 2.
+
+### Phase 3 status snapshot (first pass landed)
+
+Infrastructure added: a `put()` method on the API client; an `adminUser` /
+`adminPage` fixture backed by a Playwright `globalSetup` that registers the
+**first** user (=> admin role) and stashes its credentials in a gitignored file;
+delegation factories (`createDelegate`, `grantDelegateAccount`).
+
+| Area | Spec | Landed | Deferred (follow-up) |
+|------|------|--------|----------------------|
+| Delegation | `delegation.spec.ts` | Owner adds/removes a delegate (UI); a delegate signs in, switches into the owner context, and sees a shared account | Section/capability scope boundaries; multi-owner switching |
+| Emergency access | `emergency-access.spec.ts` | Page-render smoke | Settings/contacts CRUD + claim flow -- gated on SMTP (disabled controls) and a time-driven, emailed magic-link grant (min 2 days, cron); needs a mail-capture service + clock control |
+| Admin | `admin.spec.ts` | Admin views the user-management list; non-admin redirected from /admin | User create/disable/role-change (multi-step modal) |
+| Backup | `backup.spec.ts` | Export downloads a backup | Restore round-trip in-browser (the wipe appears to drop the session); encrypted-backup flow -- restore is covered by backend tests |
+| Action history | `action-history.spec.ts` | Create -> history panel entry -> undo -> redo | Per-entity-type undo coverage |
+| Notifications | (none) | -- | SMTP-gated (shows "not available" without a mailer); preferences can't be toggled in the e2e stack |
+
+**Infra-blocked / deferred (need stack changes):**
+- **3.6 AI assistant & MCP** -- requires a stubbed LLM provider; the e2e stack
+  configures no AI provider and the LLM call is server-side (can't be
+  route-intercepted from the browser). Needs a backend test/stub provider.
+- **3.7 OIDC / OAuth** -- requires a mock OIDC provider in
+  `docker-compose.e2e.yml`. Heaviest item.
+- **Emergency-access claim** and **forgot/reset happy path** -- both need SMTP
+  (mail capture, e.g. Mailpit) and, for time-gated grants, clock control.
 
 ### 3.1 Shared access & delegation (`delegation.spec.ts`, new)
 Module `delegation`. Two users via a `secondUser` fixture: owner grants a

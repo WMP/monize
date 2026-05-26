@@ -179,3 +179,209 @@ export function createCurrency(
     decimalPlaces: data.decimalPlaces ?? 2,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Phase 2 -- Wealth & analytics factories
+// ---------------------------------------------------------------------------
+
+export interface CreatedSecurity {
+  id: string;
+  symbol: string;
+  name: string;
+  securityType: string | null;
+  currencyCode: string;
+  isActive: boolean;
+}
+
+// Securities are per-user (the service scopes by userId), so a short unique
+// symbol per fresh user never collides across the chromium/firefox projects.
+export function createSecurity(
+  api: ApiClient,
+  data: {
+    symbol?: string;
+    name?: string;
+    securityType?: string;
+    exchange?: string;
+    currencyCode?: string;
+  } = {},
+): Promise<CreatedSecurity> {
+  return api.post<CreatedSecurity>('/securities', {
+    symbol: data.symbol ?? `E${uniqueId().slice(-6).toUpperCase()}`,
+    name: data.name ?? `E2E Security ${uniqueId()}`,
+    securityType: data.securityType ?? 'STOCK',
+    currencyCode: data.currencyCode ?? 'USD',
+    ...(data.exchange !== undefined ? { exchange: data.exchange } : {}),
+  });
+}
+
+export interface CreatedInvestmentPair {
+  cashAccount: CreatedAccount;
+  brokerageAccount: CreatedAccount;
+}
+
+// POST /accounts with accountType INVESTMENT + createInvestmentPair returns a
+// linked { cashAccount, brokerageAccount } pair (see AccountsService.create).
+// Investment transactions post against the brokerage account; the cash account
+// funds buys / receives sells.
+export function createInvestmentAccountPair(
+  api: ApiClient,
+  data: { name?: string; currencyCode?: string; openingBalance?: number } = {},
+): Promise<CreatedInvestmentPair> {
+  return api.post<CreatedInvestmentPair>('/accounts', {
+    name: data.name ?? `E2E Brokerage ${uniqueId()}`,
+    accountType: 'INVESTMENT',
+    currencyCode: data.currencyCode ?? 'USD',
+    openingBalance: data.openingBalance ?? 10000,
+    createInvestmentPair: true,
+  });
+}
+
+export type InvestmentAction =
+  | 'BUY'
+  | 'SELL'
+  | 'DIVIDEND'
+  | 'INTEREST'
+  | 'CAPITAL_GAIN'
+  | 'SPLIT'
+  | 'TRANSFER_IN'
+  | 'TRANSFER_OUT'
+  | 'REINVEST'
+  | 'ADD_SHARES'
+  | 'REMOVE_SHARES';
+
+export interface CreatedInvestmentTransaction {
+  id: string;
+  action: string;
+  quantity: number;
+  price: number;
+}
+
+// accountId must be an INVESTMENT (brokerage) account; BUY/SELL also require a
+// securityId. fundingAccountId (the linked cash account) is optional.
+export function createInvestmentTransaction(
+  api: ApiClient,
+  data: {
+    accountId: string;
+    securityId?: string;
+    action?: InvestmentAction;
+    quantity?: number;
+    price?: number;
+    commission?: number;
+    fundingAccountId?: string;
+    transactionDate?: string;
+  },
+): Promise<CreatedInvestmentTransaction> {
+  return api.post<CreatedInvestmentTransaction>('/investment-transactions', {
+    accountId: data.accountId,
+    action: data.action ?? 'BUY',
+    transactionDate:
+      data.transactionDate ?? new Date().toISOString().slice(0, 10),
+    ...(data.securityId !== undefined ? { securityId: data.securityId } : {}),
+    ...(data.fundingAccountId !== undefined
+      ? { fundingAccountId: data.fundingAccountId }
+      : {}),
+    quantity: data.quantity ?? 10,
+    price: data.price ?? 100,
+    ...(data.commission !== undefined ? { commission: data.commission } : {}),
+  });
+}
+
+export interface CreatedBudget {
+  id: string;
+  name: string;
+  budgetType: string;
+  strategy: string;
+  currencyCode: string;
+  periodStart: string;
+}
+
+// A budget needs name, periodStart, currencyCode. periodStart defaults to the
+// first of the current month so the active period scopes to "now".
+export function createBudget(
+  api: ApiClient,
+  data: {
+    name?: string;
+    periodStart?: string;
+    currencyCode?: string;
+    budgetType?: 'MONTHLY' | 'ANNUAL' | 'PAY_PERIOD';
+    strategy?: 'FIXED' | 'ROLLOVER' | 'ZERO_BASED' | 'FIFTY_THIRTY_TWENTY';
+    baseIncome?: number;
+  } = {},
+): Promise<CreatedBudget> {
+  const now = new Date();
+  const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  return api.post<CreatedBudget>('/budgets', {
+    name: data.name ?? `E2E Budget ${uniqueId()}`,
+    periodStart: data.periodStart ?? firstOfMonth,
+    currencyCode: data.currencyCode ?? 'USD',
+    budgetType: data.budgetType ?? 'MONTHLY',
+    strategy: data.strategy ?? 'FIXED',
+    ...(data.baseIncome !== undefined ? { baseIncome: data.baseIncome } : {}),
+  });
+}
+
+export interface CreatedBudgetCategory {
+  id: string;
+  categoryId: string;
+  amount: number;
+}
+
+export function addBudgetCategory(
+  api: ApiClient,
+  budgetId: string,
+  data: { categoryId: string; amount?: number; isIncome?: boolean },
+): Promise<CreatedBudgetCategory> {
+  return api.post<CreatedBudgetCategory>(`/budgets/${budgetId}/categories`, {
+    categoryId: data.categoryId,
+    amount: data.amount ?? 500,
+    ...(data.isIncome !== undefined ? { isIncome: data.isIncome } : {}),
+  });
+}
+
+export interface CreatedDelegate {
+  id: string;
+  delegateUserId: string;
+  email: string;
+}
+
+// The owner creates a delegate by email with an owner-set password (12+ chars,
+// upper/lower/digit/special). The delegate becomes a delegate-only user. The
+// caller supplies the password (a per-test value) so no credential is hardcoded
+// here.
+export function createDelegate(
+  api: ApiClient,
+  data: { email: string; password: string },
+): Promise<CreatedDelegate> {
+  return api.post<CreatedDelegate>('/delegation/delegates', {
+    email: data.email,
+    password: data.password,
+  });
+}
+
+// Grant the delegate read access to a specific account.
+export function grantDelegateAccount(
+  api: ApiClient,
+  delegateId: string,
+  accountId: string,
+): Promise<void> {
+  return api.put<void>(`/delegation/delegates/${delegateId}/grants`, {
+    grants: [{ accountId, canRead: true }],
+  });
+}
+
+export interface CreatedCustomReport {
+  id: string;
+  name: string;
+}
+
+// Only `name` is required; every other field defaults server-side. The full
+// report-builder form is deferred (see ROADMAP Phase 2.3) -- this seeds a
+// report so the viewer/open path can be exercised.
+export function createCustomReport(
+  api: ApiClient,
+  data: { name?: string } = {},
+): Promise<CreatedCustomReport> {
+  return api.post<CreatedCustomReport>('/reports/custom', {
+    name: data.name ?? `E2E Report ${uniqueId()}`,
+  });
+}

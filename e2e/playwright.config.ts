@@ -2,6 +2,9 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
+  // Registers a known admin as the very first user (first user => admin role)
+  // before any test runs; the admin fixture logs in with these credentials.
+  globalSetup: './global-setup.ts',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   // Retry in CI to absorb occasional flakiness (network, animation timing);
