@@ -11,6 +11,8 @@ import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useDateRange } from '@/hooks/useDateRange';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
+import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
 import { exportToCsv } from '@/lib/csv-export';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
@@ -61,10 +63,12 @@ export function InvestmentTransactionHistoryReport() {
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const [transactions, setTransactions] = useState<InvestmentTransaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
   const [selectedAction, setSelectedAction] = useState<string>('');
   const { dateRange, setDateRange, resolvedRange, isValid } = useDateRange({ defaultRange: '1y', alignment: 'month' });
   const [isLoading, setIsLoading] = useState(true);
+  const isSingleAccount = selectedAccountIds.length === 1;
   const { sortField, sortDirection, handleSort } = useSortableTable<InvestmentTxSortField>(
     'reports.investment-transactions.sort',
     { field: 'date', direction: 'desc' },
@@ -76,16 +80,18 @@ export function InvestmentTransactionHistoryReport() {
     return map;
   }, [accounts]);
 
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  const selectedAccount = isSingleAccount
+    ? accounts.find((a) => a.id === selectedAccountIds[0])
+    : undefined;
   const displayCurrency = selectedAccount?.currencyCode || defaultCurrency;
   const isForeign = displayCurrency !== defaultCurrency;
 
   const getTxAmount = useCallback((tx: InvestmentTransaction): number => {
     const amount = Math.abs(tx.totalAmount);
-    if (selectedAccountId) return amount;
+    if (isSingleAccount) return amount;
     const txCurrency = accountCurrencyMap.get(tx.accountId) || defaultCurrency;
     return convertToDefault(amount, txCurrency);
-  }, [selectedAccountId, accountCurrencyMap, defaultCurrency, convertToDefault]);
+  }, [isSingleAccount, accountCurrencyMap, defaultCurrency, convertToDefault]);
 
   const fmtValue = useCallback((value: number): string => {
     if (isForeign) {
@@ -112,7 +118,7 @@ export function InvestmentTransactionHistoryReport() {
         let hasMore = true;
         while (hasMore && page <= MAX_PAGES) {
           const result = await investmentsApi.getTransactions({
-            accountIds: selectedAccountId || undefined,
+            accountIds: selectedAccountIds.length > 0 ? selectedAccountIds.join(',') : undefined,
             startDate: start || undefined,
             endDate: end,
             action: selectedAction || undefined,
@@ -132,7 +138,7 @@ export function InvestmentTransactionHistoryReport() {
       }
     };
     loadData();
-  }, [selectedAccountId, selectedAction, resolvedRange, isValid]);
+  }, [selectedAccountIds, selectedAction, resolvedRange, isValid, reloadKey]);
 
   const actionSummaries = useMemo((): ActionSummary[] => {
     const map = new Map<InvestmentAction, ActionSummary>();
@@ -284,21 +290,11 @@ export function InvestmentTransactionHistoryReport() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-3 items-center">
           <div className="flex gap-3 items-center">
-            <select
-              value={selectedAccountId}
-              onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm"
-            >
-              <option value="">All Accounts</option>
-              {accounts
-                .filter((a) => a.accountSubType !== 'INVESTMENT_BROKERAGE')
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name.replace(/ - (Brokerage|Cash)$/, '')}
-                  </option>
-                ))}
-            </select>
+            <ReportAccountMultiSelect
+              accounts={accounts}
+              value={selectedAccountIds}
+              onChange={setSelectedAccountIds}
+            />
             <select
               value={selectedAction}
               onChange={(e) => setSelectedAction(e.target.value)}
@@ -317,7 +313,8 @@ export function InvestmentTransactionHistoryReport() {
             value={dateRange}
             onChange={setDateRange}
           />
-          <div className="ml-auto shrink-0">
+          <div className="ml-auto shrink-0 flex gap-2 items-center">
+            <RefreshPricesButton onRefreshComplete={() => setReloadKey((k) => k + 1)} />
             <ExportDropdown onExportCsv={handleExportCsv} onExportPdf={handleExportPdf} disabled={transactions.length === 0} />
           </div>
         </div>

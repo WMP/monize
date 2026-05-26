@@ -236,31 +236,22 @@ describe('GeographicAllocationReport', () => {
     await waitFor(() => {
       expect(screen.getByText('Total Portfolio')).toBeInTheDocument();
     });
-    await act(async () => {
-      fireEvent.click(screen.getByText(/^Accounts/));
+    const trigger = screen.getByRole('button', { name: 'Filter by account' });
+    await act(async () => { fireEvent.click(trigger); });
+    // Cash sub-account is hidden; only the brokerage account is offered.
+    expect(screen.queryByText('Cash Acc')).not.toBeInTheDocument();
+    // Toggle TFSA on, then clear it
+    await act(async () => { fireEvent.click(screen.getByText('TFSA')); });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Filter by account' })).toHaveTextContent('TFSA');
     });
-    // Toggle TFSA
-    const checkbox = document.querySelector('input[type="checkbox"]') as HTMLInputElement;
-    if (checkbox) {
-      await act(async () => {
-        fireEvent.click(checkbox);
-      });
-    }
-    // Click outside to close (mousedown)
-    await act(async () => {
-      document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await act(async () => { fireEvent.click(screen.getByText('Clear')); });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Filter by account' })).toHaveTextContent('All Accounts');
     });
-    // Re-open and clear
-    if (screen.queryByText(/^Accounts/)) {
-      // Clear Filters button
-      const clearBtn = screen.queryByText('Clear Filters');
-      if (clearBtn) {
-        await act(async () => { fireEvent.click(clearBtn); });
-      }
-    }
   });
 
-  it('shows no investment accounts message when filter has none', async () => {
+  it('shows no options message when no investment accounts are available', async () => {
     mockGetPortfolioSummary.mockResolvedValue({ holdings: mockHoldings });
     mockGetInvestmentAccounts.mockResolvedValue([
       { id: 'acc-1', name: 'Cash', accountSubType: 'INVESTMENT_CASH' },
@@ -271,9 +262,9 @@ describe('GeographicAllocationReport', () => {
       expect(screen.getByText('Total Portfolio')).toBeInTheDocument();
     });
     await act(async () => {
-      fireEvent.click(screen.getByText(/^Accounts/));
+      fireEvent.click(screen.getByRole('button', { name: 'Filter by account' }));
     });
-    expect(screen.getByText('No investment accounts')).toBeInTheDocument();
+    expect(screen.getByText('No options found')).toBeInTheDocument();
   });
 
   it('exports pdf in region and exchange views', async () => {

@@ -321,6 +321,36 @@ describe("InvestmentReportsService", () => {
       );
     });
 
+    it("prefers a request-level account override over the saved config", async () => {
+      reportsRepository.findOne.mockResolvedValue({
+        ...baseReport,
+        config: { ...baseReport.config, accountIds: ["a1"] },
+      });
+      await service.execute("u1", "r1", { accountIds: ["a2"] });
+      expect(dataService.computeHoldings).toHaveBeenCalledWith(
+        "u1",
+        ["a2"], // override wins over the saved ["a1"]
+        "2024-06-10",
+        "USD",
+        false,
+      );
+    });
+
+    it("treats an empty account override as all holdings accounts", async () => {
+      reportsRepository.findOne.mockResolvedValue({
+        ...baseReport,
+        config: { ...baseReport.config, accountIds: ["a1"] },
+      });
+      await service.execute("u1", "r1", { accountIds: [] });
+      expect(dataService.computeHoldings).toHaveBeenCalledWith(
+        "u1",
+        ["a1", "a2"], // empty override -> every holdings account, ignoring config
+        "2024-06-10",
+        "USD",
+        false,
+      );
+    });
+
     it("prepends the account column when separating securities grouped by symbol", async () => {
       reportsRepository.findOne.mockResolvedValue({
         ...baseReport,

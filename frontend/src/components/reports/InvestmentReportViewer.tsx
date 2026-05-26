@@ -7,8 +7,12 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { DateInput } from '@/components/ui/DateInput';
+import { MultiSelect } from '@/components/ui/MultiSelect';
 import { SortableHeader } from '@/components/ui/SortableHeader';
+import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
 import { investmentReportsApi } from '@/lib/investment-reports';
+import { accountsApi } from '@/lib/accounts';
+import { Account } from '@/types/account';
 import {
   InvestmentReport,
   InvestmentReportResult,
@@ -45,9 +49,22 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
   const { formatDate } = useDateFormat();
   const [report, setReport] = useState<InvestmentReport | null>(null);
   const [result, setResult] = useState<InvestmentReportResult | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
   const [asOfOverride, setAsOfOverride] = useState('');
+  // View-time account override. Seeded from the report's saved config (below,
+  // once the report loads) but freely changeable without persisting.
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [seededReportId, setSeededReportId] = useState<string | null>(null);
+
+  // Seed the account filter from the saved config the first time the report
+  // (or a different report) loads. Done during render, not in an effect, so
+  // the first execute already carries the saved accounts.
+  if (report && seededReportId !== report.id) {
+    setSeededReportId(report.id);
+    setSelectedAccountIds(report.config.accountIds ?? []);
+  }
   // Show monetary values in each holding's own currency, or convert to the
   // user's base currency.
   const [currencyMode, setCurrencyMode] = useState<'native' | 'base'>('native');
@@ -72,6 +89,7 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
     try {
       const data = await investmentReportsApi.execute(reportId, {
         ...(asOfOverride ? { asOfDate: asOfOverride } : {}),
+        accountIds: selectedAccountIds,
       });
       setResult(data);
     } catch (error) {
@@ -80,12 +98,27 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
     } finally {
       setIsExecuting(false);
     }
-  }, [reportId, asOfOverride]);
+  }, [reportId, asOfOverride, selectedAccountIds]);
 
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
-      await loadReport();
+      await Promise.all([
+        loadReport(),
+        accountsApi
+          .getAll()
+          .then((all) =>
+            setAccounts(
+              all.filter(
+                (a) =>
+                  a.accountType === 'INVESTMENT' &&
+                  a.accountSubType !== 'INVESTMENT_CASH' &&
+                  !a.isClosed,
+              ),
+            ),
+          )
+          .catch((error) => logger.error('Failed to load accounts:', error)),
+      ]);
       setIsLoading(false);
     };
     init();
@@ -218,6 +251,18 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-wrap items-end gap-4">
+            <div className="w-56">
+              <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Accounts
+              </span>
+              <MultiSelect
+                ariaLabel="Filter by account"
+                placeholder="All investment accounts"
+                options={accounts.map((a) => ({ value: a.id, label: a.name }))}
+                value={selectedAccountIds}
+                onChange={setSelectedAccountIds}
+              />
+            </div>
             <div className="w-48">
               <DateInput
                 label="As of date"
@@ -263,6 +308,7 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
                 <span>Updating...</span>
               </div>
             )}
+            <RefreshPricesButton onRefreshComplete={executeReport} />
             <Button
               variant="outline"
               onClick={handleExportCsv}

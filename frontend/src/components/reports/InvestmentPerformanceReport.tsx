@@ -16,6 +16,8 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { CHART_COLOURS } from '@/lib/chart-colours';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
+import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { createLogger } from '@/lib/logger';
@@ -31,10 +33,12 @@ export function InvestmentPerformanceReport() {
   const chartRef = useRef<HTMLDivElement>(null);
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
   const [expandedSecurityId, setExpandedSecurityId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [viewType, setViewType] = useState<'performance' | 'allocation'>('performance');
+  const isSingleAccount = selectedAccountIds.length === 1;
   const { sortField, sortDirection, handleSort } = useSortableTable<HoldingsSortField>(
     'reports.investment-performance.holdings.sort',
     { field: 'marketValue', direction: 'desc' },
@@ -45,7 +49,7 @@ export function InvestmentPerformanceReport() {
       setIsLoading(true);
       try {
         const [portfolioData, accountsData] = await Promise.all([
-          investmentsApi.getPortfolioSummary(selectedAccountId ? [selectedAccountId] : undefined),
+          investmentsApi.getPortfolioSummary(selectedAccountIds.length > 0 ? selectedAccountIds : undefined),
           investmentsApi.getInvestmentAccounts(),
         ]);
         setPortfolio(portfolioData);
@@ -57,7 +61,7 @@ export function InvestmentPerformanceReport() {
       }
     };
     loadData();
-  }, [selectedAccountId]);
+  }, [selectedAccountIds, reloadKey]);
 
   const formatPercent = (value: number) => {
     const sign = value >= 0 ? '+' : '';
@@ -66,14 +70,16 @@ export function InvestmentPerformanceReport() {
 
   // When a single account is selected, show summary values in that account's native currency
   // (per-account totals are in native currency; top-level totals are converted to default)
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  const selectedAccount = isSingleAccount
+    ? accounts.find((a) => a.id === selectedAccountIds[0])
+    : undefined;
   const summaryCurrency = selectedAccount?.currencyCode || defaultCurrency;
   const isForeignSummary = summaryCurrency !== defaultCurrency;
 
   // Derive native-currency summary from holdingsByAccount when a single account is selected
   const summaryValues = useMemo(() => {
     if (!portfolio) return null;
-    if (selectedAccountId && portfolio.holdingsByAccount.length > 0) {
+    if (isSingleAccount && portfolio.holdingsByAccount.length > 0) {
       // Use per-account totals (native currency) instead of converted top-level totals
       let totalMarketValue = 0;
       let totalCashBalance = 0;
@@ -95,7 +101,7 @@ export function InvestmentPerformanceReport() {
       totalGainLoss: portfolio.totalGainLoss,
       totalGainLossPercent: portfolio.totalGainLossPercent,
     };
-  }, [portfolio, selectedAccountId]);
+  }, [portfolio, isSingleAccount]);
 
   const fmtSummary = (value: number) => {
     if (isForeignSummary) {
@@ -293,23 +299,14 @@ export function InvestmentPerformanceReport() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-4 items-center justify-between">
           <div className="flex flex-wrap gap-2">
-            <select
-              value={selectedAccountId}
-              onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm"
-            >
-              <option value="">All Accounts</option>
-              {accounts
-                .filter((a) => a.accountSubType !== 'INVESTMENT_BROKERAGE')
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name.replace(/ - (Brokerage|Cash)$/, '')}
-                  </option>
-                ))}
-            </select>
+            <ReportAccountMultiSelect
+              accounts={accounts}
+              value={selectedAccountIds}
+              onChange={setSelectedAccountIds}
+            />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <RefreshPricesButton onRefreshComplete={() => setReloadKey((k) => k + 1)} />
             <button
               onClick={() => setViewType('performance')}
               className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${

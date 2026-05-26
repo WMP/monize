@@ -23,6 +23,8 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ChartViewToggle } from '@/components/ui/ChartViewToggle';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
+import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { exportToCsv } from '@/lib/csv-export';
@@ -69,9 +71,11 @@ export function PortfolioValueReport() {
   const [chartPoints, setChartPoints] = useState<Array<{ name: string; Value: number }>>([]);
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [chartViewType, setChartViewType] = useState<'area' | 'table'>('area');
+  const isSingleAccount = selectedAccountIds.length === 1;
   const { sortField, sortDirection, handleSort } = useSortableTable<PortfolioBreakdownSortField>(
     'reports.portfolio-value.breakdown.sort',
     { field: 'total', direction: 'desc' },
@@ -109,7 +113,9 @@ export function PortfolioValueReport() {
   const isIntraday = INTRADAY_RANGES.has(dateRange);
   const useDaily = !isIntraday && DAILY_RANGES.has(dateRange);
 
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  const selectedAccount = isSingleAccount
+    ? accounts.find((a) => a.id === selectedAccountIds[0])
+    : undefined;
   const foreignCurrency = selectedAccount?.currencyCode && selectedAccount.currencyCode !== defaultCurrency
     ? selectedAccount.currencyCode
     : null;
@@ -153,7 +159,7 @@ export function PortfolioValueReport() {
     if (!isValid) return;
     const seq = ++loadSeqRef.current;
 
-    const accountIds = selectedAccountId ? [selectedAccountId] : undefined;
+    const accountIds = selectedAccountIds.length > 0 ? selectedAccountIds : undefined;
     const accountIdsCsv = accountIds?.join(',');
 
     const loadDailyOrMonthly = async () => {
@@ -291,7 +297,8 @@ export function PortfolioValueReport() {
 
     loadData();
   }, [
-    selectedAccountId,
+    selectedAccountIds,
+    reloadKey,
     resolvedRange,
     isValid,
     foreignCurrency,
@@ -450,21 +457,11 @@ export function PortfolioValueReport() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-4 items-center justify-between">
           <div className="flex flex-wrap gap-2 items-center">
-            <select
-              value={selectedAccountId}
-              onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm"
-            >
-              <option value="">All Accounts</option>
-              {accounts
-                .filter((a) => a.accountSubType !== 'INVESTMENT_BROKERAGE')
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name.replace(/ - (Brokerage|Cash)$/, '')}
-                  </option>
-                ))}
-            </select>
+            <ReportAccountMultiSelect
+              accounts={accounts}
+              value={selectedAccountIds}
+              onChange={setSelectedAccountIds}
+            />
             <DateRangeSelector
               ranges={['1d', '1w', '1m', '3m', 'ytd', '1y', '2y', '5y', 'all']}
               value={dateRange}
@@ -473,6 +470,7 @@ export function PortfolioValueReport() {
             />
           </div>
           <div className="flex items-center gap-3">
+            <RefreshPricesButton onRefreshComplete={() => setReloadKey((k) => k + 1)} />
             <ChartViewToggle
               value={chartViewType}
               onChange={(v) => setChartViewType(v as 'area' | 'table')}

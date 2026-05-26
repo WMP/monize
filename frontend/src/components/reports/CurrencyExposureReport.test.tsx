@@ -206,28 +206,24 @@ describe('CurrencyExposureReport', () => {
     mockGetPortfolioSummary.mockResolvedValue({ holdings: mockHoldings });
     mockGetInvestmentAccounts.mockResolvedValue(mockAccounts);
     render(<CurrencyExposureReport />);
-    await waitFor(() => {
-      expect(screen.getByText('Accounts')).toBeInTheDocument();
-    });
+    const trigger = await screen.findByRole('button', { name: 'Filter by account' });
 
-    fireEvent.click(screen.getByText('Accounts'));
+    fireEvent.click(trigger);
     expect(screen.getByText('TFSA')).toBeInTheDocument();
     expect(screen.queryByText('Cash Reserve')).not.toBeInTheDocument();
   });
 
-  it('shows clear filters button when filters are selected', async () => {
+  it('reflects the selected account in the filter trigger', async () => {
     mockGetPortfolioSummary.mockResolvedValue({ holdings: mockHoldings });
     mockGetInvestmentAccounts.mockResolvedValue(mockAccounts);
     render(<CurrencyExposureReport />);
-    await waitFor(() => {
-      expect(screen.getByText('Accounts')).toBeInTheDocument();
-    });
+    const trigger = await screen.findByRole('button', { name: 'Filter by account' });
 
-    fireEvent.click(screen.getByText('Accounts'));
-    fireEvent.click(screen.getByText('TFSA'));
+    fireEvent.click(trigger);
+    await act(async () => { fireEvent.click(screen.getByText('TFSA')); });
 
     await waitFor(() => {
-      expect(screen.getByText('Clear Filters')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Filter by account' })).toHaveTextContent('TFSA');
     });
   });
 
@@ -258,33 +254,32 @@ describe('CurrencyExposureReport', () => {
     });
   });
 
-  it('clears filters when Clear Filters clicked', async () => {
+  it('clears the account filter via the Clear action', async () => {
     mockGetPortfolioSummary.mockResolvedValue({ holdings: mockHoldings });
     mockGetInvestmentAccounts.mockResolvedValue(mockAccounts);
     render(<CurrencyExposureReport />);
+    const trigger = await screen.findByRole('button', { name: 'Filter by account' });
+    fireEvent.click(trigger);
+    await act(async () => { fireEvent.click(screen.getByText('TFSA')); });
     await waitFor(() => {
-      expect(screen.getByText('Accounts')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Filter by account' })).toHaveTextContent('TFSA');
     });
-    fireEvent.click(screen.getByText('Accounts'));
-    fireEvent.click(screen.getByText('TFSA'));
+    await act(async () => { fireEvent.click(screen.getByText('Clear')); });
     await waitFor(() => {
-      expect(screen.getByText('Clear Filters')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Filter by account' })).toHaveTextContent('All Accounts');
     });
-    await act(async () => { fireEvent.click(screen.getByText('Clear Filters')); });
   });
 
   it('closes dropdown when clicking outside', async () => {
     mockGetPortfolioSummary.mockResolvedValue({ holdings: mockHoldings });
     mockGetInvestmentAccounts.mockResolvedValue(mockAccounts);
     render(<CurrencyExposureReport />);
-    await waitFor(() => {
-      expect(screen.getByText('Accounts')).toBeInTheDocument();
-    });
+    const trigger = await screen.findByRole('button', { name: 'Filter by account' });
 
-    fireEvent.click(screen.getByText('Accounts'));
+    fireEvent.click(trigger);
     expect(screen.getByText('TFSA')).toBeInTheDocument();
 
     fireEvent.mouseDown(document.body);
-    expect(screen.queryByText('TFSA')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('TFSA')).not.toBeInTheDocument());
   });
 });

@@ -143,9 +143,11 @@ export class InvestmentReportsService {
     overrides?: ExecuteInvestmentReportDto,
   ): Promise<InvestmentReportResult> {
     const report = await this.findOne(userId, id);
+    // A request-level account override (from the report viewer) takes
+    // precedence over the saved config; an empty array means "all accounts".
     const accountIds = await this.resolveAccountIds(
       userId,
-      report.config.accountIds ?? [],
+      overrides?.accountIds ?? report.config.accountIds ?? [],
     );
 
     const asOfDate =
@@ -177,10 +179,7 @@ export class InvestmentReportsService {
     // When securities from multiple accounts are listed separately, lead with
     // the account column so the user can tell the holdings apart.
     if (groupsAcross && !mergeAccounts) {
-      columns = [
-        "account",
-        ...columns.filter((c) => c !== "account"),
-      ];
+      columns = ["account", ...columns.filter((c) => c !== "account")];
     }
     const groups = this.buildGroups(
       holdings,

@@ -9,6 +9,11 @@ import { getCached, setCache, invalidateCache } from './apiCache';
 
 export interface ExecuteInvestmentReportParams {
   asOfDate?: string;
+  /**
+   * Override the accounts to run against for this execution. Empty array means
+   * all accounts. Omit to fall back to the report's saved config.
+   */
+  accountIds?: string[];
 }
 
 export const investmentReportsApi = {
