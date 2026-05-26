@@ -15,6 +15,7 @@ import {
   TopMover,
   SectorWeightingResult,
   SecurityPrice,
+  SecurityTransactionHistory,
 } from '@/types/investment';
 import { getCached, setCache, invalidateCache } from './apiCache';
 
@@ -225,6 +226,17 @@ export const investmentsApi = {
   getTransaction: async (id: string): Promise<InvestmentTransaction> => {
     const response = await apiClient.get<InvestmentTransaction>(
       `/investment-transactions/${id}`,
+    );
+    return response.data;
+  },
+
+  // Full transaction history for a security with running share totals and the
+  // accounts (including closed) it was used in.
+  getSecurityTransactionHistory: async (
+    securityId: string,
+  ): Promise<SecurityTransactionHistory> => {
+    const response = await apiClient.get<SecurityTransactionHistory>(
+      `/investment-transactions/security/${securityId}/history`,
     );
     return response.data;
   },

@@ -13,6 +13,7 @@ import {
   hasCalculatorOperators,
   evaluateExpression,
   formatRelativeTime,
+  formatShareQuantity,
 } from './format';
 
 describe('getCurrencySymbol', () => {
@@ -202,6 +203,33 @@ describe('formatAmount', () => {
 
   it('formats with 3 decimal places', () => {
     expect(formatAmount(10.5, 3)).toBe('10.500');
+  });
+});
+
+describe('formatShareQuantity', () => {
+  it('formats whole share counts without decimals', () => {
+    expect(formatShareQuantity(100)).toBe('100');
+  });
+
+  it('keeps tiny residual quantities visible', () => {
+    expect(formatShareQuantity(0.0003)).toBe('0.0003');
+    expect(formatShareQuantity(0.00000001)).toBe('0.00000001');
+  });
+
+  it('trims trailing zeros', () => {
+    expect(formatShareQuantity(12.5)).toBe('12.5');
+    expect(formatShareQuantity(12.34)).toBe('12.34');
+  });
+
+  it('handles negatives', () => {
+    expect(formatShareQuantity(-0.5)).toBe('-0.5');
+  });
+
+  it('returns 0 for zero, null, undefined and NaN', () => {
+    expect(formatShareQuantity(0)).toBe('0');
+    expect(formatShareQuantity(null)).toBe('0');
+    expect(formatShareQuantity(undefined)).toBe('0');
+    expect(formatShareQuantity(NaN)).toBe('0');
   });
 });
 

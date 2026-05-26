@@ -16,6 +16,7 @@ import { investmentsApi } from '@/lib/investments';
 import { Security, CreateSecurityData, Holding } from '@/types/investment';
 const SecurityForm = dynamic(() => import('@/components/securities/SecurityForm').then(m => m.SecurityForm), { ssr: false });
 const SecurityPriceHistory = dynamic(() => import('@/components/securities/SecurityPriceHistory').then(m => m.SecurityPriceHistory), { ssr: false });
+const SecurityTransactionHistory = dynamic(() => import('@/components/securities/SecurityTransactionHistory').then(m => m.SecurityTransactionHistory), { ssr: false });
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { SecurityList, type SecurityHoldings, type SecurityTransactions, type SecuritySortField, type SortDirection } from '@/components/securities/SecurityList';
 import { type DensityLevel } from '@/hooks/useTableDensity';
@@ -47,6 +48,7 @@ function SecuritiesContent() {
   });
   const { showForm, editingItem: editingSecurity, openCreate, openEdit, close, isEditing, modalProps, setFormDirty, unsavedChangesDialog, formSubmitRef } = useFormModal<Security>();
   const [priceSecurity, setPriceSecurity] = useState<Security | undefined>();
+  const [historySecurity, setHistorySecurity] = useState<Security | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
   const [currentPage, setCurrentPage] = useState(1);
@@ -308,6 +310,17 @@ function SecuritiesContent() {
           )}
         </Modal>
 
+        {/* Transaction History Modal */}
+        <Modal isOpen={!!historySecurity} onClose={() => setHistorySecurity(undefined)} maxWidth="5xl" className="p-6" pushHistory>
+          {historySecurity && (
+            <SecurityTransactionHistory
+              security={historySecurity}
+              onClose={() => setHistorySecurity(undefined)}
+              onChanged={loadData}
+            />
+          )}
+        </Modal>
+
         {/* Securities List */}
         <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg overflow-hidden">
           {isLoading ? (
@@ -321,6 +334,7 @@ function SecuritiesContent() {
               onToggleActive={handleToggleActive}
               onDelete={handleDeleteClick}
               onViewPrices={setPriceSecurity}
+              onViewHistory={setHistorySecurity}
               density={listDensity}
               onDensityChange={setListDensity}
               sortField={sortField}

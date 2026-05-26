@@ -350,6 +350,27 @@ export class InvestmentTransactionsController {
     );
   }
 
+  @Get("security/:securityId/history")
+  @ApiOperation({
+    summary:
+      "Transaction history for a security with running share totals and the accounts (including closed) it was used in",
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      "Security transaction history with per-account and cross-account running share balances",
+  })
+  @ApiResponse({ status: 404, description: "Security not found" })
+  getSecurityTransactionHistory(
+    @Request() req,
+    @Param("securityId", ParseUUIDPipe) securityId: string,
+  ) {
+    return this.investmentTransactionsService.getSecurityTransactionHistory(
+      req.user.id,
+      securityId,
+    );
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Get an investment transaction by ID" })
   @ApiResponse({

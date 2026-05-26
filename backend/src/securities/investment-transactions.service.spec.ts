@@ -5099,4 +5099,173 @@ describe("InvestmentTransactionsService", () => {
       ).rejects.toThrow(BadRequestException);
     });
   });
+
+  describe("getSecurityTransactionHistory", () => {
+    const acctA = "acct-a";
+    const acctB = "acct-b";
+
+    function tx(
+      id: string,
+      accountId: string,
+      accountName: string,
+      isClosed: boolean,
+      action: InvestmentAction,
+      transactionDate: string,
+      quantity: number | null,
+      extra: Partial<InvestmentTransaction> = {},
+    ): InvestmentTransaction {
+      return {
+        id,
+        userId,
+        accountId,
+        securityId,
+        action,
+        transactionDate,
+        quantity,
+        price: 1,
+        commission: 0,
+        totalAmount: 0,
+        exchangeRate: 1,
+        description: null,
+        account: { id: accountId, name: accountName, isClosed } as any,
+        ...extra,
+      } as InvestmentTransaction;
+    }
+
+    beforeEach(() => {
+      securitiesService.findOne.mockResolvedValue({
+        ...mockSecurity,
+        isActive: false,
+      });
+    });
+
+    it("computes per-account and cross-account running totals without snapping", async () => {
+      investmentTransactionsRepository.find.mockResolvedValue([
+        tx(
+          "t1",
+          acctA,
+          "Account A",
+          false,
+          InvestmentAction.BUY,
+          "2025-01-01",
+          100,
+        ),
+        tx(
+          "t2",
+          acctB,
+          "Account B",
+          true,
+          InvestmentAction.BUY,
+          "2025-02-01",
+          50,
+        ),
+        tx(
+          "t3",
+          acctA,
+          "Account A",
+          false,
+          InvestmentAction.SELL,
+          "2025-03-01",
+          99.9999,
+        ),
+        tx(
+          "t4",
+          acctB,
+          "Account B",
+          true,
+          InvestmentAction.SPLIT,
+          "2025-04-01",
+          2,
+        ),
+      ]);
+
+      const result = await service.getSecurityTransactionHistory(
+        userId,
+        securityId,
+      );
+
+      expect(result.transactions).toHaveLength(4);
+
+      // Account A drawn down to a tiny residual, kept visible (not snapped).
+      const sell = result.transactions[2];
+      expect(sell.runningQuantityAccount).toBeCloseTo(0.0001, 8);
+      expect(sell.runningQuantityAll).toBeCloseTo(50.0001, 8);
+
+      // SPLIT multiplies only Account B's balance; cross-account total follows.
+      const split = result.transactions[3];
+      expect(split.runningQuantityAccount).toBe(100);
+      expect(split.runningQuantityAll).toBeCloseTo(100.0001, 8);
+
+      expect(result.currentQuantityAll).toBeCloseTo(100.0001, 8);
+    });
+
+    it("lists every account the security was used in, including closed ones", async () => {
+      investmentTransactionsRepository.find.mockResolvedValue([
+        tx(
+          "t1",
+          acctA,
+          "Account A",
+          false,
+          InvestmentAction.BUY,
+          "2025-01-01",
+          100,
+        ),
+        tx(
+          "t2",
+          acctB,
+          "Account B",
+          true,
+          InvestmentAction.BUY,
+          "2025-02-01",
+          50,
+        ),
+        tx(
+          "t3",
+          acctA,
+          "Account A",
+          false,
+          InvestmentAction.SELL,
+          "2025-03-01",
+          99.9999,
+        ),
+      ]);
+
+      const result = await service.getSecurityTransactionHistory(
+        userId,
+        securityId,
+      );
+
+      expect(result.accounts).toHaveLength(2);
+      const a = result.accounts.find((x) => x.accountId === acctA)!;
+      const b = result.accounts.find((x) => x.accountId === acctB)!;
+      expect(a.currentQuantity).toBeCloseTo(0.0001, 8);
+      expect(b.isClosed).toBe(true);
+      expect(b.currentQuantity).toBe(50);
+      // Works for an inactive security.
+      expect(result.isActive).toBe(false);
+    });
+
+    it("returns empty history for a security with no transactions", async () => {
+      investmentTransactionsRepository.find.mockResolvedValue([]);
+
+      const result = await service.getSecurityTransactionHistory(
+        userId,
+        securityId,
+      );
+
+      expect(result.transactions).toEqual([]);
+      expect(result.accounts).toEqual([]);
+      expect(result.currentQuantityAll).toBe(0);
+    });
+
+    it("throws when the security does not exist", async () => {
+      securitiesService.findOne.mockRejectedValue(
+        new NotFoundException("Security not found"),
+      );
+
+      await expect(
+        service.getSecurityTransactionHistory(userId, securityId),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
 });

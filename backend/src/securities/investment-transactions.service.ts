@@ -112,6 +112,45 @@ export interface LlmInvestmentTransactionsResult {
   truncatedTransactionList: boolean;
 }
 
+/** One account a security has been transacted in (including closed ones). */
+export interface SecurityHistoryAccount {
+  accountId: string;
+  accountName: string;
+  isClosed: boolean;
+  /** Exact (un-snapped) current share balance in this account. */
+  currentQuantity: number;
+}
+
+/** A single transaction in a security's history, with running share balances. */
+export interface SecurityHistoryTransaction {
+  id: string;
+  transactionDate: string;
+  accountId: string;
+  accountName: string;
+  action: InvestmentAction;
+  quantity: number | null;
+  price: number | null;
+  commission: number;
+  totalAmount: number;
+  description: string | null;
+  /** Running share balance within this transaction's own account. */
+  runningQuantityAccount: number;
+  /** Running share balance across all accounts the security is held in. */
+  runningQuantityAll: number;
+}
+
+export interface SecurityTransactionHistory {
+  securityId: string;
+  symbol: string;
+  name: string;
+  currencyCode: string;
+  isActive: boolean;
+  accounts: SecurityHistoryAccount[];
+  transactions: SecurityHistoryTransaction[];
+  /** Exact (un-snapped) total current shares across all accounts. */
+  currentQuantityAll: number;
+}
+
 @Injectable()
 export class InvestmentTransactionsService {
   private readonly logger = new Logger(InvestmentTransactionsService.name);
@@ -1217,6 +1256,118 @@ export class InvestmentTransactionsService {
         totalPages,
         hasMore: pageNum < totalPages,
       },
+    };
+  }
+
+  /**
+   * Apply a transaction's effect on a running share balance. Mirrors the
+   * authoritative per-action math in HoldingsService.getHoldingAt so the
+   * running totals reconcile with stored holdings.
+   */
+  private applyQuantityToBalance(
+    balance: number,
+    action: InvestmentAction,
+    quantity: number,
+  ): number {
+    switch (action) {
+      case InvestmentAction.BUY:
+      case InvestmentAction.REINVEST:
+      case InvestmentAction.TRANSFER_IN:
+      case InvestmentAction.ADD_SHARES:
+        return balance + quantity;
+      case InvestmentAction.SELL:
+      case InvestmentAction.TRANSFER_OUT:
+      case InvestmentAction.REMOVE_SHARES:
+        return balance - quantity;
+      case InvestmentAction.SPLIT:
+        return quantity > 0 ? balance * quantity : balance;
+      default:
+        // DIVIDEND / INTEREST / CAPITAL_GAIN do not move shares.
+        return balance;
+    }
+  }
+
+  /**
+   * Full transaction history for a single security with a running share
+   * balance after each transaction -- both within the transaction's own
+   * account and across all accounts the security is held in. Also returns the
+   * list of accounts the security was ever transacted in (including closed
+   * accounts) with their exact current share balance.
+   *
+   * Quantities are intentionally NOT snapped to zero, so tiny residual
+   * positions remain visible -- this view exists to track them down.
+   */
+  async getSecurityTransactionHistory(
+    userId: string,
+    securityId: string,
+  ): Promise<SecurityTransactionHistory> {
+    // Validates ownership and existence (works for inactive securities too).
+    const security = await this.securitiesService.findOne(userId, securityId);
+
+    const transactions = await this.investmentTransactionsRepository.find({
+      where: { userId, securityId },
+      relations: ["account"],
+      order: { transactionDate: "ASC", createdAt: "ASC" },
+    });
+
+    const balances = new Map<string, number>();
+    const accountMeta = new Map<string, { name: string; isClosed: boolean }>();
+    let runningAll = 0;
+
+    const rows: SecurityHistoryTransaction[] = transactions.map((tx) => {
+      const accountId = tx.accountId;
+      if (!accountMeta.has(accountId)) {
+        accountMeta.set(accountId, {
+          name: tx.account?.name ?? "Unknown account",
+          isClosed: tx.account?.isClosed ?? false,
+        });
+      }
+
+      const prevBalance = balances.get(accountId) ?? 0;
+      const newBalance = this.applyQuantityToBalance(
+        prevBalance,
+        tx.action,
+        Number(tx.quantity) || 0,
+      );
+      balances.set(accountId, newBalance);
+      // Delta keeps the cross-account total correct even for SPLIT, which
+      // multiplies a single account's balance rather than adding to it.
+      runningAll += newBalance - prevBalance;
+
+      return {
+        id: tx.id,
+        transactionDate: tx.transactionDate,
+        accountId,
+        accountName: accountMeta.get(accountId)!.name,
+        action: tx.action,
+        quantity: tx.quantity === null ? null : Number(tx.quantity),
+        price: tx.price === null ? null : Number(tx.price),
+        commission: Number(tx.commission) || 0,
+        totalAmount: Number(tx.totalAmount) || 0,
+        description: tx.description,
+        runningQuantityAccount: newBalance,
+        runningQuantityAll: runningAll,
+      };
+    });
+
+    const accounts: SecurityHistoryAccount[] = Array.from(accountMeta.entries())
+      .map(([accountId, meta]) => ({
+        accountId,
+        accountName: meta.name,
+        isClosed: meta.isClosed,
+        currentQuantity: balances.get(accountId) ?? 0,
+      }))
+      .sort((a, b) => a.accountName.localeCompare(b.accountName));
+
+    return {
+      securityId,
+      symbol: security.symbol,
+      name: security.name,
+      currencyCode: security.currencyCode,
+      isActive: security.isActive,
+      accounts,
+      transactions: rows,
+      currentQuantityAll: runningAll,
     };
   }
 

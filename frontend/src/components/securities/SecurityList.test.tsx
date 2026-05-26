@@ -114,6 +114,46 @@ describe('SecurityList', () => {
     expect(screen.getByText('Deactivate')).toBeInTheDocument();
   });
 
+  it('shows the current share count column at full precision', () => {
+    const securities = [makeSecurity()];
+    const holdings = { s1: 0.0003 };
+
+    render(<SecurityList securities={securities} holdings={holdings} onEdit={onEdit} onToggleActive={onToggleActive} />);
+    expect(screen.getByText('Shares')).toBeInTheDocument();
+    // Residual quantity shown exactly, not rounded away.
+    expect(screen.getByText('0.0003')).toBeInTheDocument();
+  });
+
+  it('shows 0 shares when a security has no holdings', () => {
+    const securities = [makeSecurity()];
+
+    render(<SecurityList securities={securities} onEdit={onEdit} onToggleActive={onToggleActive} />);
+    expect(screen.getByText('0')).toBeInTheDocument();
+  });
+
+  it('renders a History action and calls onViewHistory when clicked', () => {
+    const securities = [makeSecurity()];
+    const onViewHistory = vi.fn();
+
+    render(
+      <SecurityList
+        securities={securities}
+        onEdit={onEdit}
+        onToggleActive={onToggleActive}
+        onViewHistory={onViewHistory}
+      />,
+    );
+    fireEvent.click(screen.getByText('History'));
+    expect(onViewHistory).toHaveBeenCalledWith(expect.objectContaining({ symbol: 'AAPL' }));
+  });
+
+  it('omits the History action when onViewHistory is not provided', () => {
+    const securities = [makeSecurity()];
+
+    render(<SecurityList securities={securities} onEdit={onEdit} onToggleActive={onToggleActive} />);
+    expect(screen.queryByText('History')).not.toBeInTheDocument();
+  });
+
   it('toggles density when density button is clicked', () => {
     const securities = [makeSecurity()];
 

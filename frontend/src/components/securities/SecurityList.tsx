@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/Modal';
 import { DensityLevel, nextDensity } from '@/hooks/useTableDensity';
 import { SortIcon } from '@/components/ui/SortIcon';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { formatShareQuantity } from '@/lib/format';
 
 export type SecuritySortField = 'symbol' | 'name' | 'type' | 'exchange' | 'currency' | 'provider' | 'source';
 
@@ -60,6 +61,7 @@ interface SecurityListProps {
   onToggleActive: (security: Security) => void;
   onDelete?: (security: Security) => void;
   onViewPrices?: (security: Security) => void;
+  onViewHistory?: (security: Security) => void;
   density?: DensityLevel;
   onDensityChange?: (density: DensityLevel) => void;
   sortField?: SecuritySortField;
@@ -71,12 +73,14 @@ interface SecurityRowProps {
   security: Security;
   hasHoldings: boolean;
   hasTransactions: boolean;
+  shares: number;
   density: DensityLevel;
   cellPadding: string;
   onEdit: (security: Security) => void;
   onToggleActive: (security: Security) => void;
   onDelete?: (security: Security) => void;
   onViewPrices?: (security: Security) => void;
+  onViewHistory?: (security: Security) => void;
   onLongPressStart: (security: Security) => void;
   onLongPressStartTouch: (security: Security, e: React.TouchEvent) => void;
   onLongPressEnd: () => void;
@@ -105,12 +109,14 @@ const SecurityRow = memo(function SecurityRow({
   security,
   hasHoldings,
   hasTransactions,
+  shares,
   density,
   cellPadding,
   onEdit,
   onToggleActive,
   onDelete,
   onViewPrices,
+  onViewHistory,
   onLongPressStart,
   onLongPressStartTouch,
   onLongPressEnd,
@@ -135,6 +141,10 @@ const SecurityRow = memo(function SecurityRow({
   const handleViewPrices = useCallback(() => {
     onViewPrices?.(security);
   }, [onViewPrices, security]);
+
+  const handleViewHistory = useCallback(() => {
+    onViewHistory?.(security);
+  }, [onViewHistory, security]);
 
   return (
     <tr
@@ -162,6 +172,14 @@ const SecurityRow = memo(function SecurityRow({
       <td className={`${cellPadding} whitespace-nowrap`}>
         <span className="text-sm text-gray-500 dark:text-gray-400">
           {formatSecurityType(security.securityType, density === 'dense')}
+        </span>
+      </td>
+      <td className={`${cellPadding} whitespace-nowrap text-right`}>
+        <span
+          className="font-mono text-sm text-gray-900 dark:text-gray-100"
+          title="Current shares held across all accounts"
+        >
+          {formatShareQuantity(shares)}
         </span>
       </td>
       {density === 'normal' && (
@@ -229,6 +247,16 @@ const SecurityRow = memo(function SecurityRow({
       {/* Actions - hidden on mobile */}
       <td className={`${cellPadding} whitespace-nowrap text-right text-sm font-medium hidden sm:table-cell sticky right-0 ${density !== 'normal' && index % 2 === 1 ? 'bg-gray-50 dark:bg-table-stripe-dark' : 'bg-white dark:bg-gray-900'} group-hover:bg-gray-100 dark:group-hover:bg-gray-800`}>
         <div className="flex justify-end gap-2">
+          {onViewHistory && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleViewHistory}
+              className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+            >
+              {density === 'dense' ? '☰' : 'History'}
+            </Button>
+          )}
           {onViewPrices && (
             <Button
               variant="ghost"
@@ -285,6 +313,7 @@ export function SecurityList({
   onToggleActive,
   onDelete,
   onViewPrices,
+  onViewHistory,
   density: propDensity,
   onDensityChange,
   sortField: propSortField,
@@ -456,6 +485,9 @@ export function SecurityList({
               >
                 Type<SortIcon field="type" sortField={sortField} sortDirection={sortDirection} />
               </th>
+              <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
+                Shares
+              </th>
               {density === 'normal' && (
                 <>
                   <th
@@ -501,12 +533,14 @@ export function SecurityList({
                 security={security}
                 hasHoldings={(holdings[security.id] || 0) > 0}
                 hasTransactions={transactionSecurityIds.has(security.id)}
+                shares={holdings[security.id] || 0}
                 density={density}
                 cellPadding={cellPadding}
                 onEdit={onEdit}
                 onToggleActive={onToggleActive}
                 onDelete={onDelete}
                 onViewPrices={onViewPrices}
+                onViewHistory={onViewHistory}
                 onLongPressStart={handleLongPressStart}
                 onLongPressStartTouch={handleLongPressStartTouch}
                 onLongPressEnd={handleLongPressEnd}
@@ -532,6 +566,17 @@ export function SecurityList({
               <p className="text-sm text-gray-500 dark:text-gray-400">{contextSecurity.name}</p>
             </div>
             <div className="py-2">
+              {onViewHistory && (
+                <button
+                  onClick={() => { setContextSecurity(null); onViewHistory(contextSecurity); }}
+                  className="w-full text-left px-5 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
+                >
+                  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  Transaction History
+                </button>
+              )}
               {onViewPrices && (
                 <button
                   onClick={() => { setContextSecurity(null); onViewPrices(contextSecurity); }}
