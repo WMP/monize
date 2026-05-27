@@ -57,6 +57,15 @@ export class CreateSecurityDto {
   isActive?: boolean;
 
   @ApiProperty({
+    example: false,
+    description: "Pin to the dashboard Favourite Securities widget",
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isFavourite?: boolean;
+
+  @ApiProperty({
     example: "msn",
     description:
       "Per-security provider override; omit or null to use the user default",

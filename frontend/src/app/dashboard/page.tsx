@@ -10,6 +10,7 @@ import { FavouriteAccounts } from '@/components/dashboard/FavouriteAccounts';
 import { UpcomingBills } from '@/components/dashboard/UpcomingBills';
 import { GettingStarted } from '@/components/dashboard/GettingStarted';
 import { TopMovers } from '@/components/dashboard/TopMovers';
+import { FavouriteSecurities } from '@/components/dashboard/FavouriteSecurities';
 import { InsightsWidget } from '@/components/dashboard/InsightsWidget';
 import { BudgetStatusWidget } from '@/components/dashboard/BudgetStatusWidget';
 
@@ -25,17 +26,22 @@ const NetWorthChart = dynamic(() => import('@/components/dashboard/NetWorthChart
   ssr: false,
   loading: () => <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[500px]" />,
 });
+const AssetsVsLiabilities = dynamic(() => import('@/components/dashboard/AssetsVsLiabilities').then(m => m.AssetsVsLiabilities), {
+  ssr: false,
+  loading: () => <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[500px]" />,
+});
 import { accountsApi } from '@/lib/accounts';
 import { transactionsApi } from '@/lib/transactions';
 import { categoriesApi } from '@/lib/categories';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { investmentsApi } from '@/lib/investments';
 import { netWorthApi } from '@/lib/net-worth';
+import { invalidateCache } from '@/lib/apiCache';
 import { Account } from '@/types/account';
 import { Transaction } from '@/types/transaction';
 import { Category } from '@/types/category';
 import { ScheduledTransaction } from '@/types/scheduled-transaction';
-import { TopMover, PortfolioSummary } from '@/types/investment';
+import { TopMover, PortfolioSummary, FavouriteSecurityQuote } from '@/types/investment';
 import { MonthlyNetWorth } from '@/types/net-worth';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -74,6 +80,8 @@ function DashboardContent() {
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
   const [hasInvestments, setHasInvestments] = useState(false);
   const [netWorthData, setNetWorthData] = useState<MonthlyNetWorth[]>([]);
+  const [favouriteSecurities, setFavouriteSecurities] = useState<FavouriteSecurityQuote[]>([]);
+  const [hasSecurities, setHasSecurities] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const brokerageMarketValues = useMemo(() => {
@@ -85,22 +93,31 @@ function DashboardContent() {
     return map;
   }, [portfolioSummary]);
 
-  const reloadTopMovers = useCallback(async () => {
-    if (!hasInvestments) return;
-    try {
-      const [moversData, portfolio] = await Promise.all([
-        investmentsApi.getTopMovers(),
-        investmentsApi.getPortfolioSummary().catch(() => null),
-      ]);
-      setTopMovers(moversData);
-      setPortfolioSummary(portfolio);
-    } catch {
-      // Silently fail
+  const reloadInvestmentWidgets = useCallback(async () => {
+    // Favourite securities can exist without investment accounts, so always
+    // refresh them; top movers only apply when there are holdings.
+    invalidateCache('investments:favouriteSecurities');
+    const favouritesPromise = investmentsApi
+      .getFavouriteSecurities()
+      .then(setFavouriteSecurities)
+      .catch(() => {});
+    if (hasInvestments) {
+      try {
+        const [moversData, portfolio] = await Promise.all([
+          investmentsApi.getTopMovers(),
+          investmentsApi.getPortfolioSummary().catch(() => null),
+        ]);
+        setTopMovers(moversData);
+        setPortfolioSummary(portfolio);
+      } catch {
+        // Silently fail
+      }
     }
+    await favouritesPromise;
   }, [hasInvestments]);
 
   const { isRefreshing, triggerManualRefresh, triggerAutoRefresh } = usePriceRefresh({
-    onRefreshComplete: reloadTopMovers,
+    onRefreshComplete: reloadInvestmentWidgets,
   });
 
   const loadDashboardData = useCallback(async () => {
@@ -154,12 +171,14 @@ function DashboardContent() {
         return allTransactions;
       };
 
-      const [accountsData, allTransactions, categoriesData, scheduledData, netWorth] = await Promise.all([
+      const [accountsData, allTransactions, categoriesData, scheduledData, netWorth, favouriteSecs, securitiesList] = await Promise.all([
         accountsApi.getAll(),
         fetchAllTransactions(chartStartDate, today),
         categoriesApi.getAll(),
         scheduledTransactionsApi.getAll(),
         netWorthApi.getMonthly({ startDate: twelveMonthsAgo, endDate: today }).catch(() => [] as MonthlyNetWorth[]),
+        investmentsApi.getFavouriteSecurities().catch(() => [] as FavouriteSecurityQuote[]),
+        investmentsApi.getSecurities().catch(() => []),
       ]);
 
       setAccounts(accountsData);
@@ -167,6 +186,8 @@ function DashboardContent() {
       setCategories(categoriesData);
       setScheduledTransactions(scheduledData);
       setNetWorthData(netWorth);
+      setFavouriteSecurities(favouriteSecs);
+      setHasSecurities(securitiesList.length > 0);
 
       const investmentAccounts = accountsData.filter(
         (a: Account) => a.accountType === 'INVESTMENT' && !a.isClosed,
@@ -264,9 +285,16 @@ function DashboardContent() {
                 />
               </div>
 
+              {(isLoading || hasSecurities) && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <TopMovers movers={topMovers} isLoading={isLoading} hasInvestmentAccounts={hasInvestments} onRefresh={triggerManualRefresh} isRefreshing={isRefreshing} />
+                  <FavouriteSecurities securities={favouriteSecurities} isLoading={isLoading} onRefresh={triggerManualRefresh} isRefreshing={isRefreshing} />
+                </div>
+              )}
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <NetWorthChart data={netWorthData} isLoading={isLoading} />
-                <TopMovers movers={topMovers} isLoading={isLoading} hasInvestmentAccounts={hasInvestments} onRefresh={triggerManualRefresh} isRefreshing={isRefreshing} />
+                <AssetsVsLiabilities data={netWorthData} isLoading={isLoading} />
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

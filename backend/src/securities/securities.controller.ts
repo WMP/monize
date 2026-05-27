@@ -119,6 +119,18 @@ export class SecuritiesController {
     return this.securitiesService.getSecurityIdsWithTransactions(req.user.id);
   }
 
+  @Get("favourites")
+  @ApiOperation({
+    summary: "Get favourite securities with latest price and daily change",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Favourite securities with price movement",
+  })
+  getFavourites(@Request() req) {
+    return this.securitiesService.getFavouriteSecurities(req.user.id);
+  }
+
   @Get("search")
   @ApiOperation({ summary: "Search securities by symbol or name" })
   @ApiQuery({ name: "q", required: true, description: "Search query" })

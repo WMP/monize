@@ -60,6 +60,13 @@ export class Security {
 
   @ApiProperty({
     example: false,
+    description: "Pinned to the dashboard Favourite Securities widget",
+  })
+  @Column({ type: "boolean", default: false, name: "is_favourite" })
+  isFavourite: boolean;
+
+  @ApiProperty({
+    example: false,
     description: "Skip price updates for auto-generated symbols",
   })
   @Column({ type: "boolean", default: false, name: "skip_price_updates" })

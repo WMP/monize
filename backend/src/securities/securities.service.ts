@@ -15,6 +15,17 @@ import { UpdateSecurityDto } from "./dto/update-security.dto";
 import { SecurityPriceService } from "./security-price.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
 
+export interface FavouriteSecurityQuote {
+  securityId: string;
+  symbol: string;
+  name: string;
+  currencyCode: string;
+  currentPrice: number | null;
+  previousPrice: number | null;
+  dailyChange: number;
+  dailyChangePercent: number;
+}
+
 @Injectable()
 export class SecuritiesService {
   private readonly logger = new Logger(SecuritiesService.name);
@@ -165,6 +176,8 @@ export class SecuritiesService {
       security.currencyCode = updateSecurityDto.currencyCode;
     if (updateSecurityDto.isActive !== undefined)
       security.isActive = updateSecurityDto.isActive;
+    if (updateSecurityDto.isFavourite !== undefined)
+      security.isFavourite = updateSecurityDto.isFavourite;
     if (updateSecurityDto.quoteProvider !== undefined)
       security.quoteProvider = updateSecurityDto.quoteProvider ?? null;
     if (updateSecurityDto.msnInstrumentId !== undefined)
@@ -273,6 +286,70 @@ export class SecuritiesService {
       action: "delete",
       beforeData,
       description: `Deleted security "${beforeData.symbol}"`,
+    });
+  }
+
+  /**
+   * Favourite securities for the dashboard widget, decorated with their latest
+   * price and the day-over-day change. Favourites are independent of holdings
+   * (a user can pin a security they don't own), so this is keyed off the
+   * is_favourite flag rather than the holdings table. Securities with fewer
+   * than two price points report a zero daily change.
+   */
+  async getFavouriteSecurities(
+    userId: string,
+  ): Promise<FavouriteSecurityQuote[]> {
+    const securities = await this.securitiesRepository.find({
+      where: { userId, isFavourite: true, isActive: true },
+      order: { symbol: "ASC" },
+    });
+    if (securities.length === 0) return [];
+
+    const ids = securities.map((s) => s.id);
+    // Two most recent prices per security in a single pass.
+    const priceRows: Array<{
+      security_id: string;
+      close_price: string;
+      rn: string;
+    }> = await this.securitiesRepository.manager.query(
+      `SELECT security_id, close_price, rn FROM (
+         SELECT security_id, close_price,
+                ROW_NUMBER() OVER (PARTITION BY security_id ORDER BY price_date DESC) as rn
+         FROM security_prices
+         WHERE security_id = ANY($1::uuid[])
+       ) sub
+       WHERE rn <= 2
+       ORDER BY security_id, rn`,
+      [ids],
+    );
+
+    const priceMap = new Map<string, number[]>();
+    for (const row of priceRows) {
+      const existing = priceMap.get(row.security_id) || [];
+      existing.push(Number(row.close_price));
+      priceMap.set(row.security_id, existing);
+    }
+
+    return securities.map((s) => {
+      const prices = priceMap.get(s.id) || [];
+      const currentPrice = prices[0] ?? null;
+      const previousPrice = prices[1] ?? null;
+      let dailyChange = 0;
+      let dailyChangePercent = 0;
+      if (currentPrice != null && previousPrice != null && previousPrice !== 0) {
+        dailyChange = currentPrice - previousPrice;
+        dailyChangePercent = (dailyChange / previousPrice) * 100;
+      }
+      return {
+        securityId: s.id,
+        symbol: s.symbol,
+        name: s.name,
+        currencyCode: s.currencyCode,
+        currentPrice,
+        previousPrice,
+        dailyChange,
+        dailyChangePercent,
+      };
     });
   }
 

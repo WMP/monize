@@ -13,6 +13,7 @@ import {
   CreateSecurityPriceData,
   PaginatedInvestmentTransactions,
   TopMover,
+  FavouriteSecurityQuote,
   SectorWeightingResult,
   SecurityPrice,
   SecurityTransactionHistory,
@@ -252,6 +253,24 @@ export const investmentsApi = {
     const response = await apiClient.get<Security[]>('/securities', {
       params: includeInactive ? { includeInactive: true } : undefined,
     });
+    return response.data;
+  },
+
+  // Get favourite securities with latest price and daily change (for the dashboard widget)
+  getFavouriteSecurities: async (): Promise<FavouriteSecurityQuote[]> => {
+    const cacheKey = 'investments:favouriteSecurities';
+    const cached = getCached<FavouriteSecurityQuote[]>(cacheKey);
+    if (cached) return cached;
+    const response = await apiClient.get<FavouriteSecurityQuote[]>('/securities/favourites');
+    setCache(cacheKey, response.data, 60_000);
+    return response.data;
+  },
+
+  // Toggle a security's favourite flag. Invalidates the cached favourites list
+  // so the dashboard widget reflects the change on next load.
+  setSecurityFavourite: async (id: string, isFavourite: boolean): Promise<Security> => {
+    const response = await apiClient.patch<Security>(`/securities/${id}`, { isFavourite });
+    invalidateCache('investments:favouriteSecurities');
     return response.data;
   },
 

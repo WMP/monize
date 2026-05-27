@@ -151,6 +151,23 @@ function SecuritiesContent() {
     setDeleteConfirm({ isOpen: false, security: null });
   };
 
+  const handleToggleFavourite = async (security: Security) => {
+    const newValue = !security.isFavourite;
+    // Optimistic, in-place update so the star flips instantly without a reload.
+    setAllSecurities((prev) =>
+      prev.map((s) => (s.id === security.id ? { ...s, isFavourite: newValue } : s)),
+    );
+    try {
+      await investmentsApi.setSecurityFavourite(security.id, newValue);
+    } catch (error) {
+      // Revert on failure.
+      setAllSecurities((prev) =>
+        prev.map((s) => (s.id === security.id ? { ...s, isFavourite: !newValue } : s)),
+      );
+      toast.error(getErrorMessage(error, 'Failed to update favourite'));
+    }
+  };
+
   const handleToggleActive = async (security: Security) => {
     try {
       if (security.isActive) {
@@ -334,6 +351,7 @@ function SecuritiesContent() {
               transactionSecurityIds={transactionSecurityIds}
               onEdit={handleEdit}
               onToggleActive={handleToggleActive}
+              onToggleFavourite={handleToggleFavourite}
               onDelete={handleDeleteClick}
               onViewPrices={setPriceSecurity}
               onViewHistory={setHistorySecurity}
