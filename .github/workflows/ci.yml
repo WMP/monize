@@ -294,9 +294,19 @@ jobs:
   # Gates releases: build-and-push lists this job in its needs, so a red E2E
   # run blocks the container build/push. Retries (2 in CI) absorb flakiness.
   e2e-tests:
-    name: E2E Tests
+    name: E2E Tests (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     needs: [backend-unit-tests, frontend-unit-tests]
+    # Shard across 4 runners. Each shard brings up its OWN isolated stack
+    # (postgres + backend + frontend) below, so there is no shared database
+    # state between shards. Within a shard Playwright still runs serially
+    # (workers: 1 in playwright.config.ts), preserving the existing ordering
+    # guarantees (e.g. zz-danger-zone last). fail-fast: false lets every shard
+    # finish so we see all failures, not just the first shard to go red.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     permissions:
       contents: read
       pull-requests: write
@@ -334,13 +344,13 @@ jobs:
           CI: 'true'
         run: |
           set -o pipefail
-          npx playwright test --max-failures=5 2>&1 | tee /tmp/pw-output.txt
+          npx playwright test --shard=${{ matrix.shard }}/4 --max-failures=5 2>&1 | tee /tmp/pw-output.txt
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: e2e-report
+          name: e2e-report-shard-${{ matrix.shard }}
           path: e2e/playwright-report/
           retention-days: 7
 
@@ -353,7 +363,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           {
-            echo '## E2E diagnostics'
+            echo "## E2E diagnostics (shard ${{ matrix.shard }}/4)"
             echo
             if [ -f /tmp/pw-output.txt ]; then
               echo '### Playwright output (tail)'
