@@ -41,6 +41,7 @@ describe("SecuritiesController", () => {
       activate: jest.fn(),
       remove: jest.fn(),
       getSecurityIdsWithTransactions: jest.fn(),
+      getFavouriteSecurities: jest.fn(),
     };
 
     securityPriceService = {
@@ -349,6 +350,31 @@ describe("SecuritiesController", () => {
       await controller.remove(req, "sec-1");
 
       expect(securitiesService.remove).toHaveBeenCalledWith("user-1", "sec-1");
+    });
+  });
+
+  describe("getFavourites", () => {
+    it("delegates to securitiesService.getFavouriteSecurities", async () => {
+      const favourites = [
+        {
+          securityId: "sec-1",
+          symbol: "AAPL",
+          name: "Apple Inc.",
+          currencyCode: "USD",
+          currentPrice: 110,
+          previousPrice: 100,
+          dailyChange: 10,
+          dailyChangePercent: 10,
+        },
+      ];
+      securitiesService.getFavouriteSecurities.mockResolvedValue(favourites);
+
+      const result = await controller.getFavourites(req);
+
+      expect(securitiesService.getFavouriteSecurities).toHaveBeenCalledWith(
+        "user-1",
+      );
+      expect(result).toEqual(favourites);
     });
   });
 

@@ -21,6 +21,7 @@ export interface Security {
   exchange: string | null;
   currencyCode: string;
   isActive: boolean;
+  isFavourite: boolean;
   skipPriceUpdates: boolean;
   sector: string | null;
   industry: string | null;
@@ -239,6 +240,19 @@ export interface CreateSecurityData {
   currencyCode: string;
   quoteProvider?: QuoteProviderName | null;
   msnInstrumentId?: string;
+  isFavourite?: boolean;
+}
+
+/** A favourite security decorated with its latest price and daily change. */
+export interface FavouriteSecurityQuote {
+  securityId: string;
+  symbol: string;
+  name: string;
+  currencyCode: string;
+  currentPrice: number | null;
+  previousPrice: number | null;
+  dailyChange: number;
+  dailyChangePercent: number;
 }
 
 export interface InvestmentTransactionPaginationInfo {

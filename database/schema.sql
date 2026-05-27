@@ -309,6 +309,7 @@ CREATE TABLE securities (
     exchange VARCHAR(50), -- 'NYSE', 'NASDAQ', 'TSX', 'TSXV', etc
     currency_code VARCHAR(3) NOT NULL REFERENCES currencies(code),
     is_active BOOLEAN DEFAULT true,
+    is_favourite BOOLEAN NOT NULL DEFAULT false, -- pinned to the dashboard Favourite Securities widget
     skip_price_updates BOOLEAN DEFAULT false, -- for auto-generated symbols that can't be looked up
     sector VARCHAR(100),             -- stock sector from Yahoo Finance (e.g. 'Technology')
     industry VARCHAR(100),           -- stock industry (e.g. 'Consumer Electronics')
@@ -327,6 +328,7 @@ CREATE TABLE securities (
 CREATE INDEX idx_securities_user_id ON securities(user_id);
 CREATE INDEX idx_securities_symbol ON securities(symbol);
 CREATE INDEX idx_securities_exchange ON securities(exchange);
+CREATE INDEX idx_securities_user_favourite ON securities(user_id, is_favourite);
 
 -- Scheduled Transactions (recurring payments / bills & deposits)
 CREATE TABLE scheduled_transactions (

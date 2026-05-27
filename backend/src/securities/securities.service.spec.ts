@@ -302,6 +302,15 @@ describe("SecuritiesService", () => {
       expect(saved.quoteProvider).toBeNull();
     });
 
+    it("persists isFavourite updates", async () => {
+      securitiesRepository.findOne.mockResolvedValue({ ...mockSecurity });
+
+      await service.update("user-1", "sec-1", { isFavourite: true });
+
+      const saved = securitiesRepository.save.mock.calls[0][0];
+      expect(saved.isFavourite).toBe(true);
+    });
+
     it("records action history on update", async () => {
       securitiesRepository.findOne.mockResolvedValue({ ...mockSecurity });
 
@@ -317,6 +326,67 @@ describe("SecuritiesService", () => {
           description: expect.stringContaining("AAPL"),
         }),
       );
+    });
+  });
+
+  describe("getFavouriteSecurities", () => {
+    it("returns an empty array when the user has no favourites", async () => {
+      securitiesRepository.find.mockResolvedValue([]);
+
+      const result = await service.getFavouriteSecurities("user-1");
+
+      expect(result).toEqual([]);
+      expect(securitiesRepository.find).toHaveBeenCalledWith({
+        where: { userId: "user-1", isFavourite: true, isActive: true },
+        order: { symbol: "ASC" },
+      });
+      // No price query when there are no favourites.
+      expect(securitiesRepository.manager.query).not.toHaveBeenCalled();
+    });
+
+    it("computes the daily change from the two most recent prices", async () => {
+      securitiesRepository.find.mockResolvedValue([{ ...mockSecurity }]);
+      securitiesRepository.manager.query.mockResolvedValue([
+        { security_id: "sec-1", close_price: "110", rn: "1" },
+        { security_id: "sec-1", close_price: "100", rn: "2" },
+      ]);
+
+      const [quote] = await service.getFavouriteSecurities("user-1");
+
+      expect(quote).toEqual(
+        expect.objectContaining({
+          securityId: "sec-1",
+          symbol: "AAPL",
+          currentPrice: 110,
+          previousPrice: 100,
+          dailyChange: 10,
+        }),
+      );
+      expect(quote.dailyChangePercent).toBeCloseTo(10);
+    });
+
+    it("reports a zero change when fewer than two prices exist", async () => {
+      securitiesRepository.find.mockResolvedValue([{ ...mockSecurity }]);
+      securitiesRepository.manager.query.mockResolvedValue([
+        { security_id: "sec-1", close_price: "110", rn: "1" },
+      ]);
+
+      const [quote] = await service.getFavouriteSecurities("user-1");
+
+      expect(quote.currentPrice).toBe(110);
+      expect(quote.previousPrice).toBeNull();
+      expect(quote.dailyChange).toBe(0);
+      expect(quote.dailyChangePercent).toBe(0);
+    });
+
+    it("returns a null price when the security has no prices yet", async () => {
+      securitiesRepository.find.mockResolvedValue([{ ...mockSecurity }]);
+      securitiesRepository.manager.query.mockResolvedValue([]);
+
+      const [quote] = await service.getFavouriteSecurities("user-1");
+
+      expect(quote.currentPrice).toBeNull();
+      expect(quote.dailyChange).toBe(0);
     });
   });
 

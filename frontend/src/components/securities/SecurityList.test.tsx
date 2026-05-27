@@ -14,6 +14,7 @@ describe('SecurityList', () => {
     exchange: 'NASDAQ',
     currencyCode: 'USD',
     isActive: true,
+    isFavourite: false,
     skipPriceUpdates: false,
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -1088,6 +1089,49 @@ describe('SecurityList', () => {
       const securities = [makeSecurity()];
       render(<SecurityList securities={securities} onEdit={onEdit} onToggleActive={onToggleActive} onDelete={onDelete} density="dense" />);
       expect(screen.queryByText('Delete')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('favourite column', () => {
+    it('renders an "Add to favourites" star for a non-favourite security', () => {
+      render(<SecurityList securities={[makeSecurity()]} onEdit={onEdit} onToggleActive={onToggleActive} />);
+      expect(screen.getByTitle('Add to favourites')).toBeInTheDocument();
+    });
+
+    it('renders a filled star (Remove from favourites) for a favourite security', () => {
+      render(<SecurityList securities={[makeSecurity({ isFavourite: true })]} onEdit={onEdit} onToggleActive={onToggleActive} />);
+      const btn = screen.getByTitle('Remove from favourites');
+      expect(btn).toBeInTheDocument();
+      expect(btn.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('calls onToggleFavourite with the security when the star is clicked', () => {
+      const onToggleFavourite = vi.fn();
+      render(
+        <SecurityList
+          securities={[makeSecurity()]}
+          onEdit={onEdit}
+          onToggleActive={onToggleActive}
+          onToggleFavourite={onToggleFavourite}
+        />,
+      );
+      fireEvent.click(screen.getByTitle('Add to favourites'));
+      expect(onToggleFavourite).toHaveBeenCalledWith(expect.objectContaining({ id: 's1' }));
+    });
+
+    it('does not invoke other row handlers when the star is clicked', () => {
+      const onToggleFavourite = vi.fn();
+      render(
+        <SecurityList
+          securities={[makeSecurity()]}
+          onEdit={onEdit}
+          onToggleActive={onToggleActive}
+          onToggleFavourite={onToggleFavourite}
+        />,
+      );
+      fireEvent.click(screen.getByTitle('Add to favourites'));
+      expect(onEdit).not.toHaveBeenCalled();
+      expect(onToggleActive).not.toHaveBeenCalled();
     });
   });
 });

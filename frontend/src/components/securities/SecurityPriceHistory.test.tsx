@@ -28,6 +28,7 @@ const mockSecurity = {
   exchange: 'NASDAQ',
   currencyCode: 'USD',
   isActive: true,
+  isFavourite: false,
   skipPriceUpdates: false,
   sector: null,
   industry: null,

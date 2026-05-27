@@ -61,6 +61,7 @@ function createSecurity(overrides: Partial<Security> = {}): Security {
     exchange: 'NASDAQ',
     currencyCode: 'USD',
     isActive: true,
+    isFavourite: false,
     skipPriceUpdates: false,
     sector: null,
     industry: null,
@@ -299,6 +300,29 @@ describe('SecurityForm', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalled();
     });
+  });
+
+  it('defaults a new security to not favourite and can toggle it on before submit', async () => {
+    render(<SecurityForm onSubmit={onSubmit} onCancel={onCancel} />);
+
+    fireEvent.change(screen.getByLabelText('Symbol'), { target: { value: 'MSFT' } });
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Microsoft Corporation' } });
+
+    // Star starts as "Add to favourites"; click it to mark favourite.
+    fireEvent.click(screen.getByTitle('Add to favourites'));
+    expect(screen.getByTitle('Remove from favourites')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Create Security'));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ isFavourite: true }));
+    });
+  });
+
+  it('shows an existing favourite security as already starred', () => {
+    const security = createSecurity({ isFavourite: true });
+    render(<SecurityForm security={security} onSubmit={onSubmit} onCancel={onCancel} />);
+    expect(screen.getByTitle('Remove from favourites')).toBeInTheDocument();
   });
 
   it('shows validation error when symbol is empty', async () => {

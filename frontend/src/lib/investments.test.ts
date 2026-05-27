@@ -45,6 +45,35 @@ describe('investmentsApi', () => {
     expect(apiClient.get).toHaveBeenCalledWith('/portfolio/top-movers');
   });
 
+  it('getFavouriteSecurities fetches /securities/favourites', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+    await investmentsApi.getFavouriteSecurities();
+    expect(apiClient.get).toHaveBeenCalledWith('/securities/favourites');
+  });
+
+  it('getFavouriteSecurities returns cached result on second call', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: [{ securityId: '1' }] });
+    await investmentsApi.getFavouriteSecurities();
+    await investmentsApi.getFavouriteSecurities();
+    expect(apiClient.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('setSecurityFavourite patches the security and invalidates the cache', async () => {
+    // Prime the favourites cache.
+    vi.mocked(apiClient.get).mockResolvedValue({ data: [{ securityId: '1' }] });
+    await investmentsApi.getFavouriteSecurities();
+
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: { id: 's-1', isFavourite: true } });
+    await investmentsApi.setSecurityFavourite('s-1', true);
+    expect(apiClient.patch).toHaveBeenCalledWith('/securities/s-1', { isFavourite: true });
+
+    // Cache was invalidated, so the next read hits the API again.
+    vi.mocked(apiClient.get).mockClear();
+    vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+    await investmentsApi.getFavouriteSecurities();
+    expect(apiClient.get).toHaveBeenCalledTimes(1);
+  });
+
   it('getHoldings fetches /holdings with optional accountId', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
     await investmentsApi.getHoldings('a1');
