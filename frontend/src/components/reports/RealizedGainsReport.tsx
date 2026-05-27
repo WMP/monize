@@ -20,6 +20,8 @@ import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useDateRange } from '@/hooks/useDateRange';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
+import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
 import { exportToCsv } from '@/lib/csv-export';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
@@ -62,10 +64,12 @@ export function RealizedGainsReport() {
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const [entries, setEntries] = useState<RealizedGainEntry[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
   const { dateRange, setDateRange, resolvedRange, isValid } = useDateRange({ defaultRange: '1y', alignment: 'month' });
   const [isLoading, setIsLoading] = useState(true);
   const [viewType, setViewType] = useState<'chart' | 'table'>('chart');
+  const isSingleAccount = selectedAccountIds.length === 1;
   const securityGainsSort = useSortableTable<SecurityGainsSortField>(
     'reports.realized-gains.securities.sort',
     { field: 'realizedGain', direction: 'desc' },
@@ -75,16 +79,19 @@ export function RealizedGainsReport() {
     { field: 'date', direction: 'desc' },
   );
 
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  const selectedAccount = isSingleAccount
+    ? accounts.find((a) => a.id === selectedAccountIds[0])
+    : undefined;
   const displayCurrency = selectedAccount?.currencyCode || defaultCurrency;
   const isForeign = displayCurrency !== defaultCurrency;
 
   // Backend returns each figure in the holding account's currency. Convert to
-  // the default currency when viewing All Accounts; otherwise pass through.
+  // the default currency when viewing All Accounts or several accounts;
+  // otherwise (a single account) pass through in its native currency.
   const toDisplay = useCallback((amount: number, accountCurrencyCode: string | null): number => {
-    if (selectedAccountId) return amount;
+    if (isSingleAccount) return amount;
     return convertToDefault(amount, accountCurrencyCode || defaultCurrency);
-  }, [selectedAccountId, defaultCurrency, convertToDefault]);
+  }, [isSingleAccount, defaultCurrency, convertToDefault]);
 
   const fmtValue = useCallback((value: number): string => {
     if (isForeign) {
@@ -107,7 +114,7 @@ export function RealizedGainsReport() {
       try {
         const { start, end } = resolvedRange;
         const data = await investmentsApi.getRealizedGains({
-          accountIds: selectedAccountId || undefined,
+          accountIds: selectedAccountIds.length > 0 ? selectedAccountIds.join(',') : undefined,
           startDate: start || undefined,
           endDate: end,
         });
@@ -119,7 +126,7 @@ export function RealizedGainsReport() {
       }
     };
     loadData();
-  }, [selectedAccountId, resolvedRange, isValid]);
+  }, [selectedAccountIds, resolvedRange, isValid, reloadKey]);
 
   const securityGains = useMemo((): SecurityGain[] => {
     const map = new Map<string, SecurityGain>();
@@ -318,27 +325,18 @@ export function RealizedGainsReport() {
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-3 items-center">
-          <select
-            value={selectedAccountId}
-            onChange={(e) => setSelectedAccountId(e.target.value)}
-            className="max-w-48 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm"
-          >
-            <option value="">All Accounts</option>
-            {accounts
-              .filter((a) => a.accountSubType !== 'INVESTMENT_BROKERAGE')
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name.replace(/ - (Brokerage|Cash)$/, '')}
-                </option>
-              ))}
-          </select>
+          <ReportAccountMultiSelect
+            accounts={accounts}
+            value={selectedAccountIds}
+            onChange={setSelectedAccountIds}
+          />
           <DateRangeSelector
             ranges={['6m', '1y', '2y', 'all']}
             value={dateRange}
             onChange={setDateRange}
           />
           <div className="ml-auto shrink-0 flex gap-2 items-center">
+            <RefreshPricesButton onRefreshComplete={() => setReloadKey((k) => k + 1)} />
             <button
               onClick={() => setViewType('chart')}
               title="Chart"

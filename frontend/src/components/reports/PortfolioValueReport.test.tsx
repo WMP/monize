@@ -255,8 +255,9 @@ describe('PortfolioValueReport', () => {
     await waitFor(() => {
       expect(screen.getByText('Current Portfolio Breakdown')).toBeInTheDocument();
     });
-    // 'TFSA' appears in both the account selector dropdown and the breakdown table
-    expect(screen.getAllByText('TFSA').length).toBeGreaterThanOrEqual(2);
+    // 'TFSA' appears in the breakdown table (the account picker shows the
+    // "All Accounts" placeholder until opened).
+    expect(screen.getAllByText('TFSA').length).toBeGreaterThanOrEqual(1);
   });
 
   it('passes date filter ranges including 1w, 1m, 3m, ytd to DateRangeSelector', async () => {
@@ -345,12 +346,10 @@ describe('PortfolioValueReport', () => {
       { id: 'acc-1', name: 'TFSA - Cash', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
     ]);
     render(<PortfolioValueReport />);
-    await waitFor(() => {
-      expect(screen.getByText('All Accounts')).toBeInTheDocument();
-    });
-    const select = document.querySelector('select') as HTMLSelectElement;
+    const trigger = await screen.findByRole('button', { name: 'Filter by account' });
+    await act(async () => { fireEvent.click(trigger); });
     await act(async () => {
-      fireEvent.change(select, { target: { value: 'acc-1' } });
+      fireEvent.click(screen.getByText('TFSA'));
     });
   });
 
@@ -421,10 +420,10 @@ describe('PortfolioValueReport', () => {
       { id: 'acc-1', name: 'TFSA - Cash', currencyCode: 'CAD', accountSubType: 'INVESTMENT_CASH' },
     ]);
     render(<PortfolioValueReport />);
-    await waitFor(() => {
-      // The " - Cash" suffix should be stripped
-      expect(screen.getByText('TFSA')).toBeInTheDocument();
-    });
+    const trigger = await screen.findByRole('button', { name: 'Filter by account' });
+    fireEvent.click(trigger);
+    // The " - Cash" suffix should be stripped in the option label
+    expect(screen.getByText('TFSA')).toBeInTheDocument();
   });
 
   it('shows breakdown negative gain/loss in red colour class', async () => {
@@ -484,12 +483,10 @@ describe('PortfolioValueReport', () => {
       { id: 'acc-usd', name: 'USD Account - Cash', currencyCode: 'USD', accountSubType: 'INVESTMENT_CASH' },
     ]);
     render(<PortfolioValueReport />);
-    await waitFor(() => {
-      expect(screen.getByText('All Accounts')).toBeInTheDocument();
-    });
-    const select = document.querySelector('select') as HTMLSelectElement;
+    const trigger = await screen.findByRole('button', { name: 'Filter by account' });
+    await act(async () => { fireEvent.click(trigger); });
     await act(async () => {
-      fireEvent.change(select, { target: { value: 'acc-usd' } });
+      fireEvent.click(screen.getByText('USD Account'));
     });
     await waitFor(() => {
       // When foreign currency is active, values are formatted with the currency code suffix
@@ -624,9 +621,11 @@ describe('PortfolioValueReport', () => {
       expect(screen.getByText('Portfolio Value Over Time')).toBeInTheDocument();
     });
     // Trigger a reload by changing the account — new fetch hangs, but old points are shown
-    const select = document.querySelector('select') as HTMLSelectElement;
     await act(async () => {
-      fireEvent.change(select, { target: { value: 'acc-1' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Filter by account' }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('TFSA'));
     });
     await waitFor(() => {
       expect(screen.getByTestId('report-chart-loading-indicator')).toBeInTheDocument();
@@ -683,10 +682,12 @@ describe('PortfolioValueReport', () => {
     ]);
     render(<PortfolioValueReport />);
     // Select the USD account first to activate foreign currency path
-    await waitFor(() => expect(screen.getByText('All Accounts')).toBeInTheDocument());
-    const select = document.querySelector('select') as HTMLSelectElement;
+    const trigger = await screen.findByRole('button', { name: 'Filter by account' });
+    await act(async () => { fireEvent.click(trigger); });
+    // The account name also appears in the breakdown table, so target the
+    // option's checkbox inside the dropdown rather than matching by text.
     await act(async () => {
-      fireEvent.change(select, { target: { value: 'acc-usd' } });
+      fireEvent.click(screen.getByRole('checkbox'));
     });
     await waitFor(() => expect(screen.getByTestId('export-pdf')).toBeInTheDocument());
     await act(async () => {

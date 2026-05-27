@@ -213,14 +213,13 @@ describe('InvestmentPerformanceReport', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('Holdings'));
     });
-    // change account filter
-    const select = document.querySelector('select') as HTMLSelectElement;
+    // change account filter via the multi-select; selecting the single USD
+    // account exercises the foreign-currency summary path
     await act(async () => {
-      fireEvent.change(select, { target: { value: 'acc-1' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Filter by account' }));
     });
-    // also test foreign currency summary by switching to USD-only account
     await act(async () => {
-      fireEvent.change(select, { target: { value: 'acc-3' } });
+      fireEvent.click(screen.getByText('RRSP'));
     });
     // export pdf
     const exportBtn = screen.getByRole('button', { name: /export/i });

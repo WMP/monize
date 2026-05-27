@@ -24,6 +24,7 @@ import { useDateRange } from '@/hooks/useDateRange';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { MultiSelect } from '@/components/ui/MultiSelect';
+import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { exportToCsv } from '@/lib/csv-export';
@@ -91,6 +92,8 @@ export function DividendIncomeReport() {
     if (accountDebounceRef.current) clearTimeout(accountDebounceRef.current);
   }, []);
   const [selectedSecurityId, setSelectedSecurityId] = useState<string>('');
+  // Bumped after a manual price refresh to force the data effects to re-fetch.
+  const [reloadKey, setReloadKey] = useState(0);
   // When exactly one account is selected we keep its native currency; with no
   // selection (all accounts) or several selected accounts we may have mixed
   // currencies, so we convert into the user's default currency.
@@ -290,7 +293,7 @@ export function DividendIncomeReport() {
       }
     };
     loadData();
-  }, [appliedAccountIds, resolvedRange, isValid]);
+  }, [appliedAccountIds, resolvedRange, isValid, reloadKey]);
 
   // Lazy-load daily capital gains only when the user switches to the daily view.
   useEffect(() => {
@@ -313,7 +316,7 @@ export function DividendIncomeReport() {
       }
     };
     load();
-  }, [viewType, appliedAccountIds, resolvedRange, isValid]);
+  }, [viewType, appliedAccountIds, resolvedRange, isValid, reloadKey]);
 
   const monthlyData = useMemo((): MonthlyIncome[] => {
     const { start, end } = resolvedRange;
@@ -1060,6 +1063,7 @@ export function DividendIncomeReport() {
             >
               By Security
             </button>
+            <RefreshPricesButton onRefreshComplete={() => setReloadKey((k) => k + 1)} />
             <ExportDropdown
               onExportPdf={handleExportPdf}
               onExportCsv={isTableView ? handleExportCsv : undefined}

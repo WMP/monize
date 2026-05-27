@@ -11,6 +11,9 @@ import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useDateRange } from '@/hooks/useDateRange';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { MultiSelect } from '@/components/ui/MultiSelect';
+import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
+import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
 import { exportToCsv } from '@/lib/csv-export';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
@@ -61,10 +64,20 @@ export function InvestmentTransactionHistoryReport() {
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const [transactions, setTransactions] = useState<InvestmentTransaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
-  const [selectedAction, setSelectedAction] = useState<string>('');
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [selectedActions, setSelectedActions] = useState<string[]>([]);
+  const actionOptions = useMemo(
+    () =>
+      (Object.keys(ACTION_LABELS) as InvestmentAction[]).map((action) => ({
+        value: action,
+        label: ACTION_LABELS[action],
+      })),
+    [],
+  );
   const { dateRange, setDateRange, resolvedRange, isValid } = useDateRange({ defaultRange: '1y', alignment: 'month' });
   const [isLoading, setIsLoading] = useState(true);
+  const isSingleAccount = selectedAccountIds.length === 1;
   const { sortField, sortDirection, handleSort } = useSortableTable<InvestmentTxSortField>(
     'reports.investment-transactions.sort',
     { field: 'date', direction: 'desc' },
@@ -76,16 +89,18 @@ export function InvestmentTransactionHistoryReport() {
     return map;
   }, [accounts]);
 
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  const selectedAccount = isSingleAccount
+    ? accounts.find((a) => a.id === selectedAccountIds[0])
+    : undefined;
   const displayCurrency = selectedAccount?.currencyCode || defaultCurrency;
   const isForeign = displayCurrency !== defaultCurrency;
 
   const getTxAmount = useCallback((tx: InvestmentTransaction): number => {
     const amount = Math.abs(tx.totalAmount);
-    if (selectedAccountId) return amount;
+    if (isSingleAccount) return amount;
     const txCurrency = accountCurrencyMap.get(tx.accountId) || defaultCurrency;
     return convertToDefault(amount, txCurrency);
-  }, [selectedAccountId, accountCurrencyMap, defaultCurrency, convertToDefault]);
+  }, [isSingleAccount, accountCurrencyMap, defaultCurrency, convertToDefault]);
 
   const fmtValue = useCallback((value: number): string => {
     if (isForeign) {
@@ -112,10 +127,9 @@ export function InvestmentTransactionHistoryReport() {
         let hasMore = true;
         while (hasMore && page <= MAX_PAGES) {
           const result = await investmentsApi.getTransactions({
-            accountIds: selectedAccountId || undefined,
+            accountIds: selectedAccountIds.length > 0 ? selectedAccountIds.join(',') : undefined,
             startDate: start || undefined,
             endDate: end,
-            action: selectedAction || undefined,
             limit: 200,
             page,
           });
@@ -132,12 +146,19 @@ export function InvestmentTransactionHistoryReport() {
       }
     };
     loadData();
-  }, [selectedAccountId, selectedAction, resolvedRange, isValid]);
+  }, [selectedAccountIds, resolvedRange, isValid, reloadKey]);
+
+  // Action filtering happens client-side so toggling actions never re-fetches.
+  const filteredTransactions = useMemo(() => {
+    if (selectedActions.length === 0) return transactions;
+    const set = new Set(selectedActions);
+    return transactions.filter((tx) => set.has(tx.action));
+  }, [transactions, selectedActions]);
 
   const actionSummaries = useMemo((): ActionSummary[] => {
     const map = new Map<InvestmentAction, ActionSummary>();
 
-    transactions.forEach((tx) => {
+    filteredTransactions.forEach((tx) => {
       let entry = map.get(tx.action);
       if (!entry) {
         entry = { action: tx.action, count: 0, totalAmount: 0 };
@@ -148,11 +169,11 @@ export function InvestmentTransactionHistoryReport() {
     });
 
     return Array.from(map.values()).sort((a, b) => b.totalAmount - a.totalAmount);
-  }, [transactions, getTxAmount]);
+  }, [filteredTransactions, getTxAmount]);
 
   const totalAmount = useMemo(
-    () => transactions.reduce((sum, tx) => sum + getTxAmount(tx), 0),
-    [transactions, getTxAmount],
+    () => filteredTransactions.reduce((sum, tx) => sum + getTxAmount(tx), 0),
+    [filteredTransactions, getTxAmount],
   );
 
   const accountNameMap = useMemo(() => {
@@ -162,7 +183,7 @@ export function InvestmentTransactionHistoryReport() {
   }, [accounts]);
 
   const sortedTransactions = useMemo(() => {
-    const sorted = [...transactions];
+    const sorted = [...filteredTransactions];
     sorted.sort((a, b) => {
       let comparison = 0;
       switch (sortField) {
@@ -197,7 +218,7 @@ export function InvestmentTransactionHistoryReport() {
       return sortDirection === 'asc' ? comparison : -comparison;
     });
     return sorted;
-  }, [transactions, sortField, sortDirection, accountNameMap, getTxAmount]);
+  }, [filteredTransactions, sortField, sortDirection, accountNameMap, getTxAmount]);
 
   const getExportData = useCallback((formatted: boolean) => {
     const headers = ['Date', 'Action', 'Security', 'Account', 'Quantity', 'Price', 'Total'];
@@ -224,12 +245,12 @@ export function InvestmentTransactionHistoryReport() {
     const accountLabel = selectedAccount
       ? selectedAccount.name.replace(/ - (Brokerage|Cash)$/, '')
       : 'All Accounts';
-    const uniqueSecurities = new Set(transactions.filter((tx) => tx.security).map((tx) => tx.security!.symbol)).size;
+    const uniqueSecurities = new Set(filteredTransactions.filter((tx) => tx.security).map((tx) => tx.security!.symbol)).size;
     await exportToPdf({
       title: 'Investment Transaction History',
-      subtitle: `${accountLabel} | ${transactions.length} transactions | Total volume: ${fmtValue(totalAmount)}`,
+      subtitle: `${accountLabel} | ${filteredTransactions.length} transactions | Total volume: ${fmtValue(totalAmount)}`,
       summaryCards: [
-        { label: 'Total Transactions', value: String(transactions.length), color: '#111827' },
+        { label: 'Total Transactions', value: String(filteredTransactions.length), color: '#111827' },
         { label: 'Total Volume', value: fmtValue(totalAmount), color: '#111827' },
         { label: 'Action Types', value: String(actionSummaries.length), color: '#111827' },
         { label: 'Securities Traded', value: String(uniqueSecurities), color: '#111827' },
@@ -237,7 +258,7 @@ export function InvestmentTransactionHistoryReport() {
       tableData: { headers, rows },
       filename: 'investment-transactions',
     });
-  }, [getExportData, selectedAccount, transactions, fmtValue, totalAmount, actionSummaries]);
+  }, [getExportData, selectedAccount, filteredTransactions, fmtValue, totalAmount, actionSummaries]);
 
   if (isLoading) {
     return (
@@ -257,7 +278,7 @@ export function InvestmentTransactionHistoryReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">Total Transactions</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            {transactions.length}
+            {filteredTransactions.length}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
@@ -275,7 +296,7 @@ export function InvestmentTransactionHistoryReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">Securities Traded</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            {new Set(transactions.filter((tx) => tx.security).map((tx) => tx.security!.symbol)).size}
+            {new Set(filteredTransactions.filter((tx) => tx.security).map((tx) => tx.security!.symbol)).size}
           </div>
         </div>
       </div>
@@ -284,41 +305,30 @@ export function InvestmentTransactionHistoryReport() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-3 items-center">
           <div className="flex gap-3 items-center">
-            <select
-              value={selectedAccountId}
-              onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm"
-            >
-              <option value="">All Accounts</option>
-              {accounts
-                .filter((a) => a.accountSubType !== 'INVESTMENT_BROKERAGE')
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name.replace(/ - (Brokerage|Cash)$/, '')}
-                  </option>
-                ))}
-            </select>
-            <select
-              value={selectedAction}
-              onChange={(e) => setSelectedAction(e.target.value)}
-              className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm"
-            >
-              <option value="">All Actions</option>
-              {(Object.keys(ACTION_LABELS) as InvestmentAction[]).map((action) => (
-                <option key={action} value={action}>
-                  {ACTION_LABELS[action]}
-                </option>
-              ))}
-            </select>
+            <ReportAccountMultiSelect
+              accounts={accounts}
+              value={selectedAccountIds}
+              onChange={setSelectedAccountIds}
+            />
+            <div className="w-48">
+              <MultiSelect
+                ariaLabel="Filter by action"
+                placeholder="All Actions"
+                showSearch={false}
+                options={actionOptions}
+                value={selectedActions}
+                onChange={setSelectedActions}
+              />
+            </div>
           </div>
           <DateRangeSelector
             ranges={['6m', '1y', '2y', 'all']}
             value={dateRange}
             onChange={setDateRange}
           />
-          <div className="ml-auto shrink-0">
-            <ExportDropdown onExportCsv={handleExportCsv} onExportPdf={handleExportPdf} disabled={transactions.length === 0} />
+          <div className="ml-auto shrink-0 flex gap-2 items-center">
+            <RefreshPricesButton onRefreshComplete={() => setReloadKey((k) => k + 1)} />
+            <ExportDropdown onExportCsv={handleExportCsv} onExportPdf={handleExportPdf} disabled={filteredTransactions.length === 0} />
           </div>
         </div>
       </div>
@@ -351,7 +361,7 @@ export function InvestmentTransactionHistoryReport() {
       )}
 
       {/* Transaction List */}
-      {transactions.length === 0 ? (
+      {filteredTransactions.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
             No investment transactions found for this period.
@@ -361,7 +371,7 @@ export function InvestmentTransactionHistoryReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Transaction History ({transactions.length})
+              Transaction History ({filteredTransactions.length})
             </h3>
           </div>
           <div className="overflow-x-auto">

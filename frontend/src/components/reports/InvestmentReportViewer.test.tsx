@@ -16,6 +16,13 @@ vi.mock('@/lib/csv-export', () => ({
   exportToCsv: (...a: unknown[]) => mockExportToCsv(...a),
 }));
 
+const mockGetAllAccounts = vi.fn();
+vi.mock('@/lib/accounts', () => ({
+  accountsApi: {
+    getAll: (...a: unknown[]) => mockGetAllAccounts(...a),
+  },
+}));
+
 vi.mock('@/hooks/useNumberFormat', () => ({
   useNumberFormat: () => ({
     formatNumber: (n: number) => String(n),
@@ -69,6 +76,7 @@ describe('InvestmentReportViewer', () => {
     vi.clearAllMocks();
     mockGetById.mockResolvedValue(report);
     mockExecute.mockResolvedValue(result);
+    mockGetAllAccounts.mockResolvedValue([]);
   });
 
   it('runs the report and renders rows with the as-of date', async () => {
@@ -109,7 +117,7 @@ describe('InvestmentReportViewer', () => {
   it('re-runs the report when the as-of date is changed', async () => {
     await renderViewer();
     await screen.findByText('AAA');
-    expect(mockExecute).toHaveBeenCalledWith('r1', {});
+    expect(mockExecute).toHaveBeenCalledWith('r1', { accountIds: [] });
   });
 
   it('shows an empty state when there are no holdings', async () => {
@@ -172,13 +180,14 @@ describe('InvestmentReportViewer', () => {
     await waitFor(() =>
       expect(mockExecute).toHaveBeenCalledWith('r1', {
         asOfDate: '2024-03-15',
+        accountIds: [],
       }),
     );
     await act(async () => {
       fireEvent.click(screen.getByText('Reset to latest market day'));
     });
     await waitFor(() =>
-      expect(mockExecute).toHaveBeenLastCalledWith('r1', {}),
+      expect(mockExecute).toHaveBeenLastCalledWith('r1', { accountIds: [] }),
     );
   });
 

@@ -9,7 +9,7 @@ import { SortIcon } from '@/components/ui/SortIcon';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { formatShareQuantity } from '@/lib/format';
 
-export type SecuritySortField = 'symbol' | 'name' | 'type' | 'exchange' | 'currency' | 'provider' | 'source';
+export type SecuritySortField = 'symbol' | 'name' | 'type' | 'shares' | 'exchange' | 'currency' | 'provider' | 'source';
 
 /** Format a security_prices.source value into a short human label. */
 function formatPriceSource(source: string | null | undefined): string {
@@ -485,8 +485,11 @@ export function SecurityList({
               >
                 Type<SortIcon field="type" sortField={sortField} sortDirection={sortDirection} />
               </th>
-              <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
-                Shares
+              <th
+                className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
+                onClick={() => handleSort('shares')}
+              >
+                Shares<SortIcon field="shares" sortField={sortField} sortDirection={sortDirection} />
               </th>
               {density === 'normal' && (
                 <>

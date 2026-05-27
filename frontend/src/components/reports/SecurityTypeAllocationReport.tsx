@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useClickOutside } from '@/hooks/useClickOutside';
 import {
   PieChart,
   Pie,
@@ -16,12 +15,18 @@ import { Account } from '@/types/account';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
+import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { createLogger } from '@/lib/logger';
 import { aggregateHoldingsBySecurity, AggregatedHolding } from '@/lib/aggregate-holdings';
 
 const logger = createLogger('SecurityTypeAllocationReport');
+
+// Holdings are keyed off the brokerage sub-account, so offer those (the
+// sibling cash account is excluded from the picker).
+const excludeCashAccounts = (a: Account) => a.accountSubType !== 'INVESTMENT_CASH';
 
 type SecurityTypeSortField = 'label' | 'totalValue' | 'percentage' | 'count';
 
@@ -81,15 +86,11 @@ export function SecurityTypeAllocationReport() {
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [expandedType, setExpandedType] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showAccountFilter, setShowAccountFilter] = useState(false);
-  const accountFilterRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   const { sortField, sortDirection, handleSort } = useSortableTable<SecurityTypeSortField>(
     'reports.security-type-allocation.sort',
     { field: 'totalValue', direction: 'desc' },
   );
-
-  useClickOutside(accountFilterRef, () => setShowAccountFilter(false), { enabled: showAccountFilter });
 
   // Fetch accounts once on mount
   useEffect(() => {
@@ -115,12 +116,6 @@ export function SecurityTypeAllocationReport() {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const toggleAccountId = (id: string) => {
-    setSelectedAccountIds((prev) =>
-      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id],
-    );
-  };
 
   const allocationData = useMemo((): TypeAllocation[] => {
     // Aggregate holdings by security first so the same symbol held across
@@ -245,51 +240,18 @@ export function SecurityTypeAllocationReport() {
       {/* Account Filter */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-3 items-center justify-between">
-          <div className="flex flex-wrap gap-3">
-            <div className="relative" ref={accountFilterRef}>
-              <button
-                onClick={() => setShowAccountFilter(!showAccountFilter)}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                Accounts{selectedAccountIds.length > 0 ? ` (${selectedAccountIds.length})` : ''}
-              </button>
-              {showAccountFilter && (
-                <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/50 border border-gray-200 dark:border-gray-700 z-10 max-h-60 overflow-y-auto">
-                  <div className="p-2">
-                    {accounts.filter((a) => a.accountSubType !== 'INVESTMENT_CASH').length === 0 ? (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 p-2">No investment accounts</p>
-                    ) : (
-                      accounts.filter((a) => a.accountSubType !== 'INVESTMENT_CASH').map((acct) => (
-                        <label
-                          key={acct.id}
-                          className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedAccountIds.includes(acct.id)}
-                            onChange={() => toggleAccountId(acct.id)}
-                            className="rounded border-gray-300 dark:border-gray-600"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
-                            {acct.name}
-                          </span>
-                        </label>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-            {selectedAccountIds.length > 0 && (
-              <button
-                onClick={() => setSelectedAccountIds([])}
-                className="px-4 py-2 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-              >
-                Clear Filters
-              </button>
-            )}
+          <div className="flex flex-wrap gap-3 items-center">
+            <ReportAccountMultiSelect
+              accounts={accounts}
+              value={selectedAccountIds}
+              onChange={setSelectedAccountIds}
+              filter={excludeCashAccounts}
+            />
           </div>
-          <ExportDropdown onExportPdf={handleExportPdf} />
+          <div className="flex gap-2 items-center">
+            <RefreshPricesButton onRefreshComplete={loadData} />
+            <ExportDropdown onExportPdf={handleExportPdf} />
+          </div>
         </div>
       </div>
 

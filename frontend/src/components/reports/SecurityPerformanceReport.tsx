@@ -19,6 +19,7 @@ import { parseLocalDate } from '@/lib/utils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { createLogger } from '@/lib/logger';
@@ -51,6 +52,7 @@ export function SecurityPerformanceReport() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [viewType, setViewType] = useState<'chart' | 'transactions' | 'dividends'>('chart');
   const tradeSort = useSortableTable<TradeSortField>(
     'reports.security-performance.trades.sort',
@@ -80,7 +82,7 @@ export function SecurityPerformanceReport() {
       }
     };
     load();
-  }, []);
+  }, [reloadKey]);
 
   const selectedSecurity = securities.find((s) => s.id === selectedSecurityId);
 
@@ -133,7 +135,7 @@ export function SecurityPerformanceReport() {
       }
     };
     loadDetail();
-  }, [selectedSecurityId, securities]);
+  }, [selectedSecurityId, securities, reloadKey]);
   const selectedHolding = useMemo(() => {
     if (!selectedSecurityId) return null;
     const matches = holdings.filter((h) => h.securityId === selectedSecurityId);
@@ -347,49 +349,54 @@ export function SecurityPerformanceReport() {
       {/* Security Selector */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-4 items-center justify-between">
-          <select
-            value={selectedSecurityId}
-            onChange={(e) => setSelectedSecurityId(e.target.value)}
-            className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm min-w-[250px]"
-          >
-            <option value="">Select a security...</option>
-            {securities
-              .sort((a, b) => a.symbol.localeCompare(b.symbol))
-              .map((sec) => (
-                <option key={sec.id} value={sec.id}>
-                  {sec.symbol} - {sec.name}
-                </option>
-              ))}
-          </select>
-          {selectedSecurityId && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewType('chart')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  viewType === 'chart' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                Price Chart
-              </button>
-              <button
-                onClick={() => setViewType('transactions')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  viewType === 'transactions' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                Transactions
-              </button>
-              <button
-                onClick={() => setViewType('dividends')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  viewType === 'dividends' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                Dividends
-              </button>
-              <ExportDropdown onExportPdf={handleExportPdf} />
-            </div>
-          )}
+          <div className="flex gap-2 items-center">
+            <select
+              value={selectedSecurityId}
+              onChange={(e) => setSelectedSecurityId(e.target.value)}
+              className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm min-w-[250px]"
+            >
+              <option value="">Select a security...</option>
+              {securities
+                .sort((a, b) => a.symbol.localeCompare(b.symbol))
+                .map((sec) => (
+                  <option key={sec.id} value={sec.id}>
+                    {sec.symbol} - {sec.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div className="flex gap-2 items-center">
+            {selectedSecurityId && (
+              <>
+                <button
+                  onClick={() => setViewType('chart')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    viewType === 'chart' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Price Chart
+                </button>
+                <button
+                  onClick={() => setViewType('transactions')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    viewType === 'transactions' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Transactions
+                </button>
+                <button
+                  onClick={() => setViewType('dividends')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    viewType === 'dividends' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Dividends
+                </button>
+              </>
+            )}
+            <RefreshPricesButton onRefreshComplete={() => setReloadKey((k) => k + 1)} />
+            {selectedSecurityId && <ExportDropdown onExportPdf={handleExportPdf} />}
+          </div>
         </div>
       </div>
 

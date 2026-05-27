@@ -533,6 +533,15 @@ describe('SecurityList', () => {
       // Click Name header to sort - should not throw
       fireEvent.click(screen.getByText('Name'));
     });
+
+    it('calls onSort with "shares" when the Shares header is clicked', () => {
+      const onSort = vi.fn();
+      const securities = [makeSecurity()];
+
+      render(<SecurityList securities={securities} onEdit={onEdit} onToggleActive={onToggleActive} onSort={onSort} sortField="symbol" sortDirection="asc" />);
+      fireEvent.click(screen.getByText('Shares'));
+      expect(onSort).toHaveBeenCalledWith('shares');
+    });
   });
 
   describe('long-press with touch events', () => {

@@ -18,6 +18,8 @@ import { parseLocalDate } from '@/lib/utils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
+import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
+import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { createLogger } from '@/lib/logger';
@@ -72,9 +74,11 @@ export function DividendYieldGrowthReport() {
   const [transactions, setTransactions] = useState<InvestmentTransaction[]>([]);
   const [holdings, setHoldings] = useState<HoldingWithMarketValue[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [viewType, setViewType] = useState<'yield' | 'growth' | 'frequency'>('yield');
+  const isSingleAccount = selectedAccountIds.length === 1;
   const yieldSort = useSortableTable<YieldSortField>(
     'reports.dividend-yield-growth.yield.sort',
     { field: 'yield', direction: 'desc' },
@@ -94,15 +98,17 @@ export function DividendYieldGrowthReport() {
     return map;
   }, [accounts]);
 
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  const selectedAccount = isSingleAccount
+    ? accounts.find((a) => a.id === selectedAccountIds[0])
+    : undefined;
   const displayCurrency = selectedAccount?.currencyCode || defaultCurrency;
 
   const getTxAmount = useCallback((tx: InvestmentTransaction): number => {
     const amount = Math.abs(tx.totalAmount);
-    if (selectedAccountId) return amount;
+    if (isSingleAccount) return amount;
     const txCurrency = accountCurrencyMap.get(tx.accountId) || defaultCurrency;
     return convertToDefault(amount, txCurrency);
-  }, [selectedAccountId, accountCurrencyMap, defaultCurrency, convertToDefault]);
+  }, [isSingleAccount, accountCurrencyMap, defaultCurrency, convertToDefault]);
 
   const fmtValue = useCallback((value: number): string => {
     const isForeign = displayCurrency !== defaultCurrency;
@@ -121,7 +127,7 @@ export function DividendYieldGrowthReport() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const accountIds = selectedAccountId || undefined;
+        const accountIds = selectedAccountIds.length > 0 ? selectedAccountIds.join(',') : undefined;
 
         const fetchAllPages = async (action: string): Promise<InvestmentTransaction[]> => {
           const results: InvestmentTransaction[] = [];
@@ -143,7 +149,7 @@ export function DividendYieldGrowthReport() {
 
         const [summaryData, dividendTx, reinvestTx] = await Promise.all([
           investmentsApi.getPortfolioSummary(
-            selectedAccountId ? [selectedAccountId] : undefined,
+            selectedAccountIds.length > 0 ? selectedAccountIds : undefined,
           ),
           fetchAllPages('DIVIDEND'),
           fetchAllPages('REINVEST'),
@@ -158,7 +164,7 @@ export function DividendYieldGrowthReport() {
       }
     };
     loadData();
-  }, [selectedAccountId]);
+  }, [selectedAccountIds, reloadKey]);
 
   // Trailing 12-month portfolio yield
   const trailing12mTotal = useMemo(() => {
@@ -425,21 +431,11 @@ export function DividendYieldGrowthReport() {
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-4 items-center justify-between">
-          <select
-            value={selectedAccountId}
-            onChange={(e) => setSelectedAccountId(e.target.value)}
-            className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm"
-          >
-            <option value="">All Accounts</option>
-            {accounts
-              .filter((a) => a.accountSubType !== 'INVESTMENT_BROKERAGE')
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name.replace(/ - (Brokerage|Cash)$/, '')}
-                </option>
-              ))}
-          </select>
+          <ReportAccountMultiSelect
+            accounts={accounts}
+            value={selectedAccountIds}
+            onChange={setSelectedAccountIds}
+          />
           <div className="flex gap-2 items-center">
             <button
               onClick={() => setViewType('yield')}
@@ -466,7 +462,8 @@ export function DividendYieldGrowthReport() {
               Frequency
             </button>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex gap-2 items-center">
+            <RefreshPricesButton onRefreshComplete={() => setReloadKey((k) => k + 1)} />
             <ExportDropdown onExportPdf={handleExportPdf} />
           </div>
         </div>
