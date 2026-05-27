@@ -186,6 +186,8 @@ function SecuritiesContent() {
         comparison = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
       } else if (sortField === 'type') {
         comparison = (a.securityType || '').localeCompare(b.securityType || '', undefined, { sensitivity: 'base' });
+      } else if (sortField === 'shares') {
+        comparison = (holdings[a.id] || 0) - (holdings[b.id] || 0);
       } else if (sortField === 'exchange') {
         comparison = (a.exchange || '').localeCompare(b.exchange || '', undefined, { sensitivity: 'base' });
       } else if (sortField === 'currency') {
@@ -197,7 +199,7 @@ function SecuritiesContent() {
       }
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [filteredSecurities, sortField, sortDirection]);
+  }, [filteredSecurities, sortField, sortDirection, holdings]);
 
   // Pagination logic
   const totalPages = Math.ceil(sortedSecurities.length / PAGE_SIZE);
