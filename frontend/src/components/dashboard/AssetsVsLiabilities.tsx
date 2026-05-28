@@ -96,7 +96,7 @@ export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProp
         </button>
         <span className="text-sm text-gray-500 dark:text-gray-400">Current</span>
       </div>
-      <div className="h-64 flex-1">
+      <div className="flex-1 min-h-[16rem]">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <PieChart>
             <Pie
