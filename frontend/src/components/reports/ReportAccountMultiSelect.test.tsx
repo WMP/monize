@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@/test/render';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, act, waitFor } from '@/test/render';
 import { ReportAccountMultiSelect } from './ReportAccountMultiSelect';
 import { Account } from '@/types/account';
 
@@ -10,6 +10,10 @@ const accounts = [
 ] as unknown as Account[];
 
 describe('ReportAccountMultiSelect', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('shows the All Accounts placeholder, strips name suffixes, and excludes brokerage by default', () => {
     render(<ReportAccountMultiSelect accounts={accounts} value={[]} onChange={() => {}} />);
     const trigger = screen.getByRole('button', { name: 'Filter by account' });
@@ -23,12 +27,58 @@ describe('ReportAccountMultiSelect', () => {
     expect(screen.queryByText('TFSA - Brokerage')).not.toBeInTheDocument();
   });
 
-  it('calls onChange when an option is toggled', () => {
+  it('reflects a toggle immediately but debounces the onChange notification', async () => {
+    vi.useFakeTimers();
     const onChange = vi.fn();
     render(<ReportAccountMultiSelect accounts={accounts} value={[]} onChange={onChange} />);
     fireEvent.click(screen.getByRole('button', { name: 'Filter by account' }));
     fireEvent.click(screen.getByText('RRSP'));
+
+    // The trigger reflects the selection right away, but the host report is not
+    // notified until the debounce window elapses.
+    expect(screen.getByRole('button', { name: 'Filter by account' })).toHaveTextContent('RRSP');
+    expect(onChange).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith(['a3']);
+  });
+
+  it('keeps the dropdown open across rapid toggles and collapses them into one onChange', () => {
+    vi.useFakeTimers();
+    const onChange = vi.fn();
+    render(<ReportAccountMultiSelect accounts={accounts} value={[]} onChange={onChange} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Filter by account' }));
+
+    fireEvent.click(screen.getByText('RRSP'));
+    fireEvent.click(screen.getByText('TFSA'));
+
+    // The portal dropdown is still mounted (options remain queryable) between
+    // checkbox clicks, so the user can keep selecting without re-opening it.
+    expect(screen.getByText('Select All')).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(['a3', 'a2']);
+  });
+
+  it('adopts an external value reset', async () => {
+    const { rerender } = render(
+      <ReportAccountMultiSelect accounts={accounts} value={['a3']} onChange={() => {}} />,
+    );
+    expect(screen.getByRole('button', { name: 'Filter by account' })).toHaveTextContent('RRSP');
+
+    rerender(<ReportAccountMultiSelect accounts={accounts} value={[]} onChange={() => {}} />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Filter by account' })).toHaveTextContent(
+        'All Accounts',
+      );
+    });
   });
 
   it('honours a custom filter that excludes cash sub-accounts', () => {

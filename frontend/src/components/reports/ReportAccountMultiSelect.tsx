@@ -1,7 +1,15 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { Account } from '@/types/account';
+
+// Rapid checkbox toggles (the typical multi-account selection flow) should
+// collapse into a single reload once the user pauses, matching the debounce in
+// DividendIncomeReport. Without it, every checkbox click immediately re-renders
+// the host report into its loading skeleton, unmounting this dropdown and
+// forcing the user to re-open it for each account.
+const ACCOUNT_DEBOUNCE_MS = 350;
 
 interface ReportAccountMultiSelectProps {
   accounts: Account[];
@@ -20,6 +28,9 @@ interface ReportAccountMultiSelectProps {
 const defaultFilter = (account: Account) =>
   account.accountSubType !== 'INVESTMENT_BROKERAGE';
 
+const sameIds = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((id, i) => id === b[i]);
+
 export function ReportAccountMultiSelect({
   accounts,
   value,
@@ -36,14 +47,43 @@ export function ReportAccountMultiSelect({
       label: account.name.replace(/ - (Brokerage|Cash)$/, ''),
     }));
 
+  // Local draft so checkbox toggles render instantly and the dropdown stays
+  // open while selecting. The host report (which reloads its data from this
+  // selection) is only notified after the user pauses.
+  const [draft, setDraft] = useState(value);
+  const [syncedValue, setSyncedValue] = useState(value);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Adopt external value changes (e.g. a reset) without a setState-in-effect.
+  if (value !== syncedValue && !sameIds(value, syncedValue)) {
+    setSyncedValue(value);
+    setDraft(value);
+  }
+
+  useEffect(
+    () => () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    },
+    [],
+  );
+
+  const handleChange = (next: string[]) => {
+    setDraft(next);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      onChange(next);
+    }, ACCOUNT_DEBOUNCE_MS);
+  };
+
   return (
     <div className={className}>
       <MultiSelect
         ariaLabel="Filter by account"
         placeholder="All Accounts"
         options={options}
-        value={value}
-        onChange={onChange}
+        value={draft}
+        onChange={handleChange}
       />
     </div>
   );
