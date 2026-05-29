@@ -254,6 +254,9 @@ const mockScheduledTransactions = [
 describe('BillsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Filters (type tab + panel selections) now persist to localStorage;
+    // reset it so each case starts from the default unfiltered view.
+    localStorage.clear();
     nav.searchParams = new URLSearchParams();
     vi.useFakeTimers({ now, shouldAdvanceTime: true });
     mockGetAll.mockResolvedValue(mockScheduledTransactions);

@@ -1,8 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useBillsFilters } from './useBillsFilters';
 
 describe('useBillsFilters', () => {
+  beforeEach(() => {
+    // Filters persist to localStorage, so reset it to keep cases isolated.
+    localStorage.clear();
+  });
+
   it('initializes with empty filters', () => {
     const { result } = renderHook(() => useBillsFilters());
     expect(result.current.nameSearch).toBe('');
@@ -71,5 +76,43 @@ describe('useBillsFilters', () => {
     });
     expect(result.current.filtersExpanded).toBe(true);
     expect(result.current.activeFilterCount).toBe(0);
+  });
+
+  it('persists filter selections across remounts via localStorage', () => {
+    const first = renderHook(() => useBillsFilters());
+    act(() => {
+      first.result.current.setNameSearch('rent');
+      first.result.current.setSelectedPayeeIds(['p1']);
+      first.result.current.setSelectedAccountIds(['a1']);
+      first.result.current.setSelectedCategoryIds(['c1']);
+      first.result.current.setFiltersExpanded(true);
+    });
+    first.unmount();
+
+    // A fresh mount (simulating a page reload) reads the stored values.
+    const second = renderHook(() => useBillsFilters());
+    expect(second.result.current.nameSearch).toBe('rent');
+    expect(second.result.current.selectedPayeeIds).toEqual(['p1']);
+    expect(second.result.current.selectedAccountIds).toEqual(['a1']);
+    expect(second.result.current.selectedCategoryIds).toEqual(['c1']);
+    expect(second.result.current.filtersExpanded).toBe(true);
+    expect(second.result.current.activeFilterCount).toBe(4);
+  });
+
+  it('clearing filters also clears the persisted values', () => {
+    const first = renderHook(() => useBillsFilters());
+    act(() => {
+      first.result.current.setNameSearch('rent');
+      first.result.current.setSelectedPayeeIds(['p1']);
+    });
+    act(() => {
+      first.result.current.clearFilters();
+    });
+    first.unmount();
+
+    const second = renderHook(() => useBillsFilters());
+    expect(second.result.current.nameSearch).toBe('');
+    expect(second.result.current.selectedPayeeIds).toEqual([]);
+    expect(second.result.current.activeFilterCount).toBe(0);
   });
 });

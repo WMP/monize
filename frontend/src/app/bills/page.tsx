@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import toast from 'react-hot-toast';
 import {
   format,
@@ -83,7 +84,7 @@ function BillsContent() {
   const [futureTransactions, setFutureTransactions] = useState<FutureTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { showForm, editingItem: editingTransaction, openCreate, openEdit, close, isEditing, modalProps, setFormDirty, unsavedChangesDialog, formSubmitRef } = useFormModal<ScheduledTransaction>();
-  const [filterType, setFilterType] = useState<'all' | 'bills' | 'deposits'>('all');
+  const [filterType, setFilterType] = useLocalStorage<'all' | 'bills' | 'deposits'>('monize-bills-filter-type', 'all');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const filters = useBillsFilters();
   const [calendarMonth, setCalendarMonth] = useState(new Date());
