@@ -2,9 +2,13 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MultiSelectOption } from '@/components/ui/MultiSelect';
 import { isInvestmentBrokerageAccount } from '@/lib/account-utils';
-import { buildCategoryColorMap, buildCategoryLabelMap } from '@/lib/categoryUtils';
+import {
+  buildCategoryColorMap,
+  buildCategoryLabelMap,
+  buildCategoryFilterOptions,
+  resolveSelectedCategories,
+} from '@/lib/categoryUtils';
 import { Account } from '@/types/account';
 import { Category } from '@/types/category';
 import { Payee } from '@/types/payee';
@@ -178,11 +182,7 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
   }, [router]);
 
   // Get display info for selected filters
-  const selectedCategories = filterCategoryIds.map(id => {
-    if (id === 'uncategorized') return { id, name: 'Uncategorized', color: null } as Category;
-    if (id === 'transfer') return { id, name: 'Transfers', color: null } as Category;
-    return categories.find(c => c.id === id);
-  }).filter((c): c is Category => c !== undefined);
+  const selectedCategories = resolveSelectedCategories(filterCategoryIds, categories);
 
   const selectedPayees = filterPayeeIds
     .map(id => payees.find(p => p.id === id))
@@ -207,27 +207,10 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
   }, [accounts, filterAccountStatus]);
 
   // Memoize filter option arrays
-  const categoryFilterOptions = useMemo(() => {
-    const specialOptions: MultiSelectOption[] = [
-      { value: 'uncategorized', label: 'Uncategorized' },
-      { value: 'transfer', label: 'Transfers' },
-    ];
-    const buildOptions = (parentId: string | null = null): MultiSelectOption[] => {
-      return categories
-        .filter(c => c.parentId === parentId)
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .flatMap(cat => {
-          const children = buildOptions(cat.id);
-          return [{
-            value: cat.id,
-            label: cat.name,
-            parentId: cat.parentId,
-            children: children.length > 0 ? children : undefined,
-          }];
-        });
-    };
-    return [...specialOptions, ...buildOptions()];
-  }, [categories]);
+  const categoryFilterOptions = useMemo(
+    () => buildCategoryFilterOptions(categories),
+    [categories],
+  );
 
   const categoryColorMap = useMemo(() => buildCategoryColorMap(categories), [categories]);
   const categoryLabelMap = useMemo(() => buildCategoryLabelMap(categories), [categories]);

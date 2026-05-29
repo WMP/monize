@@ -51,11 +51,15 @@ test.describe('Budgets', () => {
     // The category appears with its budgeted target.
     await expect(page.getByText(category.name).first()).toBeVisible();
     await expect(page.getByText(/\$500/).first()).toBeVisible();
-    // The seeded spend shows as the actual. Reload once and allow extra time:
-    // the summary is recomputed on load, and the just-seeded transaction can
-    // occasionally miss the very first render.
-    await page.reload();
-    await expect(page.getByText(/\$120/).first()).toBeVisible({ timeout: 15000 });
+    // The seeded spend shows as the actual. The period summary is recomputed
+    // on load, and the just-seeded transaction can occasionally miss the very
+    // first render (eventual consistency between the write and the aggregate).
+    // Poll: reload and re-check until the actual appears, rather than relying
+    // on a single reload landing after the recompute.
+    await expect(async () => {
+      await page.reload();
+      await expect(page.getByText(/\$120/).first()).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 30000 });
   });
 
   test('deletes a budget through the UI', async ({ authedPage: page, api }) => {

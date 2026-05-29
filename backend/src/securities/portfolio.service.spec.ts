@@ -1907,6 +1907,34 @@ describe("PortfolioService", () => {
         expect(result).toHaveLength(1);
         expect(result[0].symbol).toBe("AAPL");
       });
+
+      it("skips a weekly-priced security whose two prices are exactly 7 days apart", async () => {
+        accountsRepository.find.mockResolvedValue([
+          mockBrokerageAccount,
+          mockCashAccount,
+        ]);
+        holdingsRepository.find.mockResolvedValue([mockHoldingAAPL]);
+        // Exactly a 7-day cadence (e.g. a weekly-priced fund): the week-over-week
+        // delta is not a daily move and must not surface as one.
+        securityPriceRepository.query.mockResolvedValue([
+          {
+            security_id: "sec-1",
+            close_price: "180",
+            price_date: "2026-02-13",
+            rn: "1",
+          },
+          {
+            security_id: "sec-1",
+            close_price: "175",
+            price_date: "2026-02-06",
+            rn: "2",
+          },
+        ]);
+
+        const result = await service.getTopMovers(userId);
+
+        expect(result).toHaveLength(0);
+      });
     });
   });
 

@@ -14,10 +14,17 @@ vi.mock('@/lib/account-utils', () => ({
   isInvestmentBrokerageAccount: () => false,
 }));
 
-vi.mock('@/lib/categoryUtils', () => ({
-  buildCategoryColorMap: () => new Map(),
-  buildCategoryLabelMap: () => new Map(),
-}));
+vi.mock('@/lib/categoryUtils', async (importOriginal) => {
+  // Keep the real, pure category-option helpers (buildCategoryFilterOptions,
+  // resolveSelectedCategories) so the hook's category logic is exercised;
+  // only the color/label maps are stubbed to trivial values.
+  const actual = await importOriginal<typeof import('@/lib/categoryUtils')>();
+  return {
+    ...actual,
+    buildCategoryColorMap: () => new Map(),
+    buildCategoryLabelMap: () => new Map(),
+  };
+});
 
 import { useTransactionFilters } from './useTransactionFilters';
 

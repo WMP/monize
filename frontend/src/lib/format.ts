@@ -115,7 +115,9 @@ export function adaptiveFractionDigits(
   // (negative for sub-1 values), e.g. 0.000342 -> -4.
   const firstSignificantExp = Math.floor(Math.log10(abs));
   const digits = -firstSignificantExp + (significantDigits - 1);
-  return Math.min(maxDigits, Math.max(baseDigits, digits));
+  // Cap at maxDigits, but never return fewer than the requested base precision
+  // (guards a caller passing baseDigits > maxDigits).
+  return Math.max(baseDigits, Math.min(maxDigits, digits));
 }
 
 /**
