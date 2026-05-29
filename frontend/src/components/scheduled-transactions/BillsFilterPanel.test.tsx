@@ -122,6 +122,20 @@ describe('BillsFilterPanel', () => {
     expect(props.setSelectedAccountIds).toHaveBeenCalledWith(['acc-2']);
   });
 
+  it('keeps a selected id removable even when it is no longer in the option list', () => {
+    // e.g. the only schedule referencing this account was deleted, so it
+    // dropped out of the derived accounts list but is still selected.
+    const props = makeProps({
+      filtersExpanded: false,
+      activeFilterCount: 1,
+      selectedAccountIds: ['acc-gone'],
+    });
+    render(<BillsFilterPanel {...props} />);
+    const orphanChip = screen.getByText('Unknown account').closest('span')!;
+    fireEvent.click(orphanChip.querySelector('button')!);
+    expect(props.setSelectedAccountIds).toHaveBeenCalledWith([]);
+  });
+
   it('clears the name search from its chip', () => {
     const props = makeProps({
       filtersExpanded: false,

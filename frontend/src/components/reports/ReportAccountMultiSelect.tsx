@@ -60,6 +60,18 @@ export function ReportAccountMultiSelect({
     setDraft(value);
   }
 
+  // Cancel any pending debounced notification whenever the parent pushes a new
+  // value. This covers the external-reset case: without it, a toggle made just
+  // before the reset would still fire its (now stale) onChange after the reset
+  // and clobber it. When our own debounce commits, the timer has already
+  // cleared itself, so this is a no-op in the common path.
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+  }, [value]);
+
   useEffect(
     () => () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);

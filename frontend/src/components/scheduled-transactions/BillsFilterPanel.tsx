@@ -66,12 +66,15 @@ export function BillsFilterPanel(props: BillsFilterPanelProps) {
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg">
-      {/* Filter header */}
-      <button
-        onClick={() => setFiltersExpanded(!filtersExpanded)}
-        className="w-full flex items-center justify-between p-4 text-left"
-      >
-        <div className="flex items-center gap-2">
+      {/* Filter header. The toggle and the Clear action are sibling buttons
+          (not nested) so both are keyboard-operable. */}
+      <div className="w-full flex items-center justify-between p-4">
+        <button
+          type="button"
+          onClick={() => setFiltersExpanded(!filtersExpanded)}
+          aria-expanded={filtersExpanded}
+          className="flex flex-1 min-w-0 items-center gap-2 text-left"
+        >
           <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L14 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 018 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
           </svg>
@@ -81,29 +84,34 @@ export function BillsFilterPanel(props: BillsFilterPanelProps) {
               {activeFilterCount}
             </span>
           )}
-        </div>
-        <div className="flex items-center gap-2">
+        </button>
+        <div className="flex items-center gap-2 pl-2">
           {activeFilterCount > 0 && (
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                onClearFilters();
-              }}
+            <button
+              type="button"
+              onClick={onClearFilters}
               className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
             >
               Clear
-            </span>
+            </button>
           )}
-          <svg
-            className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform ${filtersExpanded ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+          <button
+            type="button"
+            onClick={() => setFiltersExpanded(!filtersExpanded)}
+            aria-label={filtersExpanded ? 'Collapse filters' : 'Expand filters'}
+            className="text-gray-500 dark:text-gray-400"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+            <svg
+              className={`w-5 h-5 transition-transform ${filtersExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
         </div>
-      </button>
+      </div>
 
       {/* Active filter chips (collapsed view) */}
       {!filtersExpanded && activeFilterCount > 0 && (
@@ -116,27 +124,31 @@ export function BillsFilterPanel(props: BillsFilterPanelProps) {
               </button>
             </span>
           )}
+          {/* Always render a chip for every selected id so a selection that has
+              dropped out of the derived list (e.g. its only schedule was
+              deleted) stays removable rather than leaving an active filter the
+              user cannot clear. */}
           {selectedPayeeIds.map((id) => {
             const payee = payees.find((p) => p.id === id);
-            return payee ? (
+            return (
               <span key={id} className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs rounded-full">
-                {payee.name}
+                {payee?.name ?? 'Unknown payee'}
                 <button onClick={() => setSelectedPayeeIds(selectedPayeeIds.filter((p) => p !== id))} className="hover:text-purple-900 dark:hover:text-purple-100">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </span>
-            ) : null;
+            );
           })}
           {selectedAccountIds.map((id) => {
             const account = accounts.find((a) => a.id === id);
-            return account ? (
+            return (
               <span key={id} className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs rounded-full">
-                {account.name}
+                {account?.name ?? 'Unknown account'}
                 <button onClick={() => setSelectedAccountIds(selectedAccountIds.filter((a) => a !== id))} className="hover:text-emerald-900 dark:hover:text-emerald-100">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </span>
-            ) : null;
+            );
           })}
           {selectedCategories.map((category) => (
             <span key={category.id} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs rounded-full">

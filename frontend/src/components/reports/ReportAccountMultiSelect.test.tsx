@@ -67,6 +67,24 @@ describe('ReportAccountMultiSelect', () => {
     expect(onChange).toHaveBeenCalledWith(['a3', 'a2']);
   });
 
+  it('cancels a pending debounce when the parent pushes an external value change', () => {
+    vi.useFakeTimers();
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <ReportAccountMultiSelect accounts={accounts} value={[]} onChange={onChange} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Filter by account' }));
+    fireEvent.click(screen.getByText('RRSP'));
+
+    // Before the 350ms debounce elapses, the parent resets the selection
+    // externally. The pending (now stale) onChange must NOT fire afterwards.
+    rerender(<ReportAccountMultiSelect accounts={accounts} value={[]} onChange={onChange} />);
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('adopts an external value reset', async () => {
     const { rerender } = render(
       <ReportAccountMultiSelect accounts={accounts} value={['a3']} onChange={() => {}} />,

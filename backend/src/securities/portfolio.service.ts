@@ -205,12 +205,13 @@ const RANGE_FALLBACKS: Record<
 
 const INTRADAY_CACHE_TTL_MS = 60_000;
 
-// Max gap (in days) between a security's two most recent prices for their
-// delta to count as a "daily" move in Top Movers. A normal daily-priced
-// security spans 1-4 days (weekends/holidays); a sparsely priced holding such
-// as a GIC can span months, which would otherwise surface a stale, perpetual
-// daily change.
-const MAX_DAILY_PRICE_GAP_DAYS = 7;
+// Gap (in days) between a security's two most recent prices at or above which
+// their delta is NOT treated as a "daily" move in Top Movers. A normal
+// daily-priced security spans 1-4 days (weekends/holidays); a weekly-priced
+// fund spans exactly 7, and a sparsely priced holding such as a GIC can span
+// months -- all of which would otherwise surface a stale, perpetual daily
+// change.
+const DAILY_PRICE_GAP_EXCLUSION_DAYS = 7;
 
 @Injectable()
 export class PortfolioService {
@@ -557,13 +558,13 @@ export class PortfolioService {
       // Skip securities whose two most recent prices are far apart: the
       // "previous" close isn't an adjacent trading session, so the delta is a
       // long-period change rather than a daily move. Without this a sparsely
-      // priced holding (e.g. a matured GIC re-bought under the same symbol)
-      // reports the same stale "daily" change every day.
+      // priced holding (e.g. a matured GIC re-bought under the same symbol) or a
+      // weekly-priced fund reports the same stale "daily" change every day.
       const gapDays = Math.round(
         (new Date(current.date).getTime() - new Date(previous.date).getTime()) /
           86_400_000,
       );
-      if (gapDays > MAX_DAILY_PRICE_GAP_DAYS) continue;
+      if (gapDays >= DAILY_PRICE_GAP_EXCLUSION_DAYS) continue;
 
       const currentPrice = current.price;
       const previousPrice = previous.price;
