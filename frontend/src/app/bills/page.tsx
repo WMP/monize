@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { ScheduledTransactionForm } from '@/components/scheduled-transactions/ScheduledTransactionForm';
 import { CashFlowForecastChart } from '@/components/bills/CashFlowForecastChart';
 import { ScheduledTransactionList } from '@/components/scheduled-transactions/ScheduledTransactionList';
+import { BillsFilterPanel } from '@/components/scheduled-transactions/BillsFilterPanel';
 import { OverrideEditorDialog } from '@/components/scheduled-transactions/OverrideEditorDialog';
 import { OccurrenceDatePicker } from '@/components/scheduled-transactions/OccurrenceDatePicker';
 import { PostTransactionDialog } from '@/components/scheduled-transactions/PostTransactionDialog';
@@ -36,6 +37,11 @@ import { accountsApi } from '@/lib/accounts';
 import { ScheduledTransaction, ScheduledTransactionOverride } from '@/types/scheduled-transaction';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
+import { useBillsFilters } from '@/hooks/useBillsFilters';
+import {
+  filterScheduledTransactions,
+  derivePayeesFromScheduledTransactions,
+} from '@/lib/bills-filters';
 import { parseLocalDate } from '@/lib/utils';
 import type { FutureTransaction } from '@/lib/forecast';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
@@ -78,6 +84,7 @@ function BillsContent() {
   const { showForm, editingItem: editingTransaction, openCreate, openEdit, close, isEditing, modalProps, setFormDirty, unsavedChangesDialog, formSubmitRef } = useFormModal<ScheduledTransaction>();
   const [filterType, setFilterType] = useState<'all' | 'bills' | 'deposits'>('all');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const filters = useBillsFilters();
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [overrideEditor, setOverrideEditor] = useState<OverrideEditorState>({
     isOpen: false,
@@ -313,16 +320,27 @@ function BillsContent() {
     }
   }
 
-  // Filter transactions based on type, then sort by effective date (considering overrides)
-  const filteredTransactions = scheduledTransactions.filter((t) => {
-    if (filterType === 'bills') return t.amount < 0;
-    if (filterType === 'deposits') return t.amount > 0;
-    return true;
-  }).sort((a, b) => {
-    const dateA = a.nextOverride?.overrideDate || a.nextDueDate || '';
-    const dateB = b.nextOverride?.overrideDate || b.nextDueDate || '';
-    return dateA.localeCompare(dateB);
-  });
+  // Distinct payees referenced by the loaded schedules, for the filter dropdown
+  const payees = useMemo(
+    () => derivePayeesFromScheduledTransactions(scheduledTransactions),
+    [scheduledTransactions]
+  );
+
+  // Filter by type and the Name/Payee/Account/Category filters, then sort by
+  // effective date (considering overrides)
+  const filteredTransactions = useMemo(() => {
+    const byType = scheduledTransactions.filter((t) => {
+      if (filterType === 'bills') return Number(t.amount) < 0;
+      if (filterType === 'deposits') return Number(t.amount) > 0;
+      return true;
+    });
+
+    return filterScheduledTransactions(byType, filters.filterState).sort((a, b) => {
+      const dateA = a.nextOverride?.overrideDate || a.nextDueDate || '';
+      const dateB = b.nextOverride?.overrideDate || b.nextDueDate || '';
+      return dateA.localeCompare(dateB);
+    });
+  }, [scheduledTransactions, filterType, filters.filterState]);
 
   const categoryColorMap = useMemo(() => buildCategoryColorMap(categories), [categories]);
 
@@ -587,6 +605,28 @@ function BillsContent() {
             )}
           </div>
         </div>
+
+        {viewMode === 'list' && (
+          <div className="mb-6">
+            <BillsFilterPanel
+              filtersExpanded={filters.filtersExpanded}
+              setFiltersExpanded={filters.setFiltersExpanded}
+              nameSearch={filters.nameSearch}
+              setNameSearch={filters.setNameSearch}
+              selectedPayeeIds={filters.selectedPayeeIds}
+              setSelectedPayeeIds={filters.setSelectedPayeeIds}
+              selectedAccountIds={filters.selectedAccountIds}
+              setSelectedAccountIds={filters.setSelectedAccountIds}
+              selectedCategoryIds={filters.selectedCategoryIds}
+              setSelectedCategoryIds={filters.setSelectedCategoryIds}
+              accounts={accounts}
+              categories={categories}
+              payees={payees}
+              activeFilterCount={filters.activeFilterCount}
+              onClearFilters={filters.clearFilters}
+            />
+          </div>
+        )}
 
         {viewMode === 'list' ? (
           /* Scheduled Transactions List */
