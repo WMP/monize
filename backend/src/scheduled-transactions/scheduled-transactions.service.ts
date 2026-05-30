@@ -415,6 +415,22 @@ export class ScheduledTransactionsService {
   ): Promise<ScheduledTransactionSplit[]> {
     const savedSplits: ScheduledTransactionSplit[] = [];
 
+    // Batch-fetch every tag referenced across all splits so the per-split
+    // tag assignment doesn't trigger one `findBy(Tag, ...)` query per row
+    // (the prior N+1 pattern).
+    const allTagIds = Array.from(
+      new Set(splits.flatMap((s) => s.tagIds ?? [])),
+    );
+    const tagsById =
+      allTagIds.length > 0
+        ? new Map(
+            (await manager.findBy(Tag, { id: In(allTagIds) })).map((t) => [
+              t.id,
+              t,
+            ]),
+          )
+        : new Map<string, Tag>();
+
     for (const split of splits) {
       const inferredKind: SplitKind = split.splitKind
         ? split.splitKind
@@ -464,10 +480,9 @@ export class ScheduledTransactionsService {
       const saved = await manager.save(entity);
 
       if (split.tagIds && split.tagIds.length > 0) {
-        const tags = await manager.findBy(Tag, {
-          id: In(split.tagIds),
-        });
-        saved.tags = tags;
+        saved.tags = split.tagIds
+          .map((id) => tagsById.get(id))
+          .filter((t): t is Tag => t != null);
         await manager.save(saved);
       }
 

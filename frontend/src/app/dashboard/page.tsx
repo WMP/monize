@@ -153,27 +153,9 @@ function DashboardContent() {
 
       const twelveMonthsAgo = format(subMonths(new Date(), 12), 'yyyy-MM-dd');
 
-      const fetchAllTransactions = async (startDate: string, endDate: string): Promise<Transaction[]> => {
-        const allTransactions: Transaction[] = [];
-        let page = 1;
-        let hasMore = true;
-        while (hasMore) {
-          const result = await transactionsApi.getAll({
-            startDate,
-            endDate,
-            page,
-            limit: 200,
-          });
-          allTransactions.push(...result.data);
-          hasMore = result.pagination.hasMore;
-          page++;
-        }
-        return allTransactions;
-      };
-
       const [accountsData, allTransactions, categoriesData, scheduledData, netWorth, favouriteSecs, securitiesList] = await Promise.all([
         accountsApi.getAll(),
-        fetchAllTransactions(chartStartDate, today),
+        transactionsApi.getAllPages({ startDate: chartStartDate, endDate: today }),
         categoriesApi.getAll(),
         scheduledTransactionsApi.getAll(),
         netWorthApi.getMonthly({ startDate: twelveMonthsAgo, endDate: today }).catch(() => [] as MonthlyNetWorth[]),

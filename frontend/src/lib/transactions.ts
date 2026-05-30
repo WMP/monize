@@ -57,6 +57,25 @@ function buildFilterParams(params?: {
   return result;
 }
 
+export interface TransactionsGetAllParams {
+  accountId?: string;
+  accountIds?: string[];
+  startDate?: string;
+  endDate?: string;
+  categoryId?: string;
+  categoryIds?: string[];
+  payeeId?: string;
+  payeeIds?: string[];
+  page?: number;
+  limit?: number;
+  search?: string;
+  targetTransactionId?: string;
+  amountFrom?: number;
+  amountTo?: number;
+  tagIds?: string[];
+  statuses?: TransactionStatus[];
+}
+
 export const transactionsApi = {
   // Create a new transaction
   create: async (data: CreateTransactionData): Promise<Transaction> => {
@@ -67,24 +86,7 @@ export const transactionsApi = {
   },
 
   // Get paginated transactions with optional filters
-  getAll: async (params?: {
-    accountId?: string;
-    accountIds?: string[];
-    startDate?: string;
-    endDate?: string;
-    categoryId?: string;
-    categoryIds?: string[];
-    payeeId?: string;
-    payeeIds?: string[];
-    page?: number;
-    limit?: number;
-    search?: string;
-    targetTransactionId?: string;
-    amountFrom?: number;
-    amountTo?: number;
-    tagIds?: string[];
-    statuses?: TransactionStatus[];
-  }): Promise<PaginatedTransactions> => {
+  getAll: async (params?: TransactionsGetAllParams): Promise<PaginatedTransactions> => {
     const apiParams = {
       ...buildFilterParams(params),
       startDate: params?.startDate,
@@ -103,6 +105,32 @@ export const transactionsApi = {
       timeout: 60000,
     });
     return response.data;
+  },
+
+  /**
+   * Fetch every transaction matching the filters by walking the paginated
+   * endpoint until `hasMore=false`. The dashboard uses this for the trend
+   * chart where partial-page data would render wrong totals. Defaults to
+   * the maximum page size (200) so the round-trip count stays low.
+   */
+  getAllPages: async (
+    params?: TransactionsGetAllParams & { pageSize?: number },
+  ): Promise<Transaction[]> => {
+    const { pageSize = 200, ...rest } = params ?? {};
+    const all: Transaction[] = [];
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const result = await transactionsApi.getAll({
+        ...rest,
+        page,
+        limit: pageSize,
+      });
+      all.push(...result.data);
+      hasMore = result.pagination.hasMore;
+      page++;
+    }
+    return all;
   },
 
   // Quick-fill recents. Without a payee filter the backend dedups by
