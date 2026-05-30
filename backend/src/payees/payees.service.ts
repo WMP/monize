@@ -321,18 +321,34 @@ export class PayeesService {
     if (updatePayeeDto.isActive !== undefined)
       payee.isActive = updatePayeeDto.isActive;
 
-    await this.payeesRepository.save(payee);
+    // Save the payee and cascade the name change to existing transactions and
+    // scheduled transactions atomically, so a partial failure cannot leave the
+    // denormalised payeeName snapshots out of sync with the payee record.
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      await queryRunner.manager.save(payee);
 
-    // Cascade name change to existing transactions and scheduled transactions
-    if (nameChanged) {
-      await this.transactionsRepository.update(
-        { payeeId: id, userId },
-        { payeeName: updatePayeeDto.name },
-      );
-      await this.scheduledTransactionsRepository.update(
-        { payeeId: id, userId },
-        { payeeName: updatePayeeDto.name },
-      );
+      if (nameChanged) {
+        await queryRunner.manager.update(
+          Transaction,
+          { payeeId: id, userId },
+          { payeeName: updatePayeeDto.name },
+        );
+        await queryRunner.manager.update(
+          ScheduledTransaction,
+          { payeeId: id, userId },
+          { payeeName: updatePayeeDto.name },
+        );
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
 
     // Re-fetch with relations and computed counts so the frontend has complete data

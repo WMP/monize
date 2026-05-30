@@ -40,8 +40,10 @@ describe("TransactionAnalyticsService", () => {
       leftJoin: jest.fn().mockReturnValue(mockQueryBuilder),
       groupBy: jest.fn().mockReturnValue(mockQueryBuilder),
       addGroupBy: jest.fn().mockReturnValue(mockQueryBuilder),
+      having: jest.fn().mockReturnValue(mockQueryBuilder),
       orderBy: jest.fn().mockReturnValue(mockQueryBuilder),
       setParameter: jest.fn().mockReturnValue(mockQueryBuilder),
+      setParameters: jest.fn().mockReturnValue(mockQueryBuilder),
       getRawMany: jest.fn().mockResolvedValue([]),
     });
 
@@ -2078,6 +2080,106 @@ describe("TransactionAnalyticsService", () => {
         (c) => typeof c === "string" && /[<>] 0/.test(c),
       );
       expect(directionCalls).toHaveLength(0);
+    });
+  });
+
+  describe("getRecurringCharges", () => {
+    const start = "2025-01-01";
+    const end = "2025-12-31";
+
+    it("detects a recurring charge with consistent monthly timing", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        {
+          payeeName: "Netflix",
+          categoryName: "Entertainment",
+          amounts: [15.99, 15.99, 15.99, 17.99],
+          dates: ["2025-09-01", "2025-10-01", "2025-11-01", "2025-12-01"],
+          txnCount: "4",
+        },
+      ]);
+
+      const result = await service.getRecurringCharges(userId, start, end);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].payeeName).toBe("Netflix");
+      expect(result[0].frequency).toBe("monthly");
+      expect(result[0].currentAmount).toBe(17.99);
+      expect(result[0].previousAmount).toBe(15.99);
+      expect(result[0].categoryName).toBe("Entertainment");
+    });
+
+    it("treats a single repeated amount as both current and previous", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        {
+          payeeName: "Service",
+          categoryName: "Utilities",
+          amounts: [29.99, 29.99, 29.99],
+          dates: ["2025-10-15", "2025-11-15", "2025-12-15"],
+          txnCount: "3",
+        },
+      ]);
+
+      const result = await service.getRecurringCharges(userId, start, end);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].currentAmount).toBe(29.99);
+      expect(result[0].previousAmount).toBe(29.99);
+    });
+
+    it("filters out charges with irregular timing", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        {
+          payeeName: "Random Store",
+          categoryName: "Shopping",
+          amounts: [50, 20, 150],
+          dates: ["2025-08-10", "2025-09-25", "2025-12-01"],
+          txnCount: "3",
+        },
+      ]);
+
+      const result = await service.getRecurringCharges(userId, start, end);
+
+      expect(result).toHaveLength(0);
+    });
+
+    it("excludes investment-linked cash debits from the query", async () => {
+      await service.getRecurringCharges(userId, start, end);
+
+      const andWhereClauses = (
+        mockQueryBuilder.andWhere.mock.calls as any[][]
+      ).map((c) => c[0] as string);
+      expect(andWhereClauses).toContain(
+        "NOT EXISTS (SELECT 1 FROM investment_transactions it WHERE it.transaction_id = t.id)",
+      );
+      expect(andWhereClauses).toContain("t.status != 'VOID'");
+      expect(andWhereClauses).toContain("t.isTransfer = false");
+      expect(andWhereClauses).toContain("t.parentTransactionId IS NULL");
+    });
+
+    it("selects a bare category name by default", async () => {
+      await service.getRecurringCharges(userId, start, end);
+
+      const addSelectClauses = (
+        mockQueryBuilder.addSelect.mock.calls as any[][]
+      ).map((c) => c[0] as string);
+      expect(addSelectClauses).toContain("cat.name");
+      expect(mockQueryBuilder.setParameters).toHaveBeenCalledWith({});
+    });
+
+    it("substitutes an uncategorized label when requested", async () => {
+      await service.getRecurringCharges(userId, start, end, {
+        uncategorizedLabel: "Uncategorized",
+      });
+
+      const addSelectClauses = (
+        mockQueryBuilder.addSelect.mock.calls as any[][]
+      ).map((c) => c[0] as string);
+      expect(addSelectClauses).toContain(
+        "COALESCE(cat.name, :uncategorizedLabel)",
+      );
+      expect(mockQueryBuilder.setParameters).toHaveBeenCalledWith({
+        uncategorizedLabel: "Uncategorized",
+      });
     });
   });
 });

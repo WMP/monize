@@ -14,6 +14,7 @@ import {
   buildTransactionSearchClause,
   escapeLikePattern,
 } from "./transaction-search.util";
+import { RecurringCharge, detectFrequency } from "./recurring-charges.util";
 
 export interface TransferAccountSummary {
   accountName: string;
@@ -1175,6 +1176,85 @@ export class TransactionAnalyticsService {
     }
 
     return items.map((r) => ({ label: r.label, total: r.total }));
+  }
+
+  /**
+   * Detect recurring (subscription-like) charges for a user over a date range.
+   * Shared by the AI insights and forecast aggregators so both compute
+   * recurring charges identically. Groups debit transactions by payee/category,
+   * keeps groups seen at least 3 times, and classifies their cadence. Pass
+   * `uncategorizedLabel` to substitute a label for charges with no category
+   * (the forecast aggregator uses "Uncategorized"; insights leaves it null).
+   */
+  async getRecurringCharges(
+    userId: string,
+    startDate: string,
+    endDate: string,
+    options: { uncategorizedLabel?: string } = {},
+  ): Promise<RecurringCharge[]> {
+    const categoryNameSelect = options.uncategorizedLabel
+      ? "COALESCE(cat.name, :uncategorizedLabel)"
+      : "cat.name";
+
+    const rows = await this.transactionsRepository
+      .createQueryBuilder("t")
+      .leftJoin("t.category", "cat")
+      .select("COALESCE(t.payeeName, 'Unknown')", "payeeName")
+      .addSelect(categoryNameSelect, "categoryName")
+      .addSelect(
+        "ARRAY_AGG(ABS(t.amount) ORDER BY t.transactionDate ASC)",
+        "amounts",
+      )
+      .addSelect(
+        "ARRAY_AGG(TO_CHAR(t.transactionDate, 'YYYY-MM-DD') ORDER BY t.transactionDate ASC)",
+        "dates",
+      )
+      .addSelect("COUNT(*)", "txnCount")
+      .where("t.userId = :userId", { userId })
+      .andWhere("t.transactionDate >= :startDate", { startDate })
+      .andWhere("t.transactionDate <= :endDate", { endDate })
+      .andWhere("t.amount < 0")
+      .andWhere("t.status != 'VOID'")
+      .andWhere("t.isTransfer = false")
+      .andWhere("t.parentTransactionId IS NULL")
+      .andWhere("t.payeeName IS NOT NULL")
+      // Exclude investment-linked cash debits so regular BUY activity
+      // isn't flagged as a subscription-like "recurring charge".
+      .andWhere(
+        "NOT EXISTS (SELECT 1 FROM investment_transactions it WHERE it.transaction_id = t.id)",
+      )
+      .setParameters(
+        options.uncategorizedLabel
+          ? { uncategorizedLabel: options.uncategorizedLabel }
+          : {},
+      )
+      .groupBy("t.payeeName")
+      .addGroupBy("cat.name")
+      .having("COUNT(*) >= 3")
+      .orderBy("COUNT(*)", "DESC")
+      .getRawMany();
+
+    return rows
+      .map((r) => {
+        const amounts: number[] = (r.amounts || []).map(Number);
+        const dates: string[] = r.dates || [];
+        const frequency = detectFrequency(dates);
+        const currentAmount =
+          amounts.length > 0 ? amounts[amounts.length - 1] : 0;
+        const previousAmount =
+          amounts.length > 1 ? amounts[amounts.length - 2] : currentAmount;
+
+        return {
+          payeeName: r.payeeName,
+          amounts,
+          dates,
+          frequency,
+          currentAmount,
+          previousAmount,
+          categoryName: r.categoryName,
+        };
+      })
+      .filter((r) => r.frequency !== "irregular");
   }
 }
 

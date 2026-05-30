@@ -394,6 +394,16 @@ describe("ToolExecutorService", () => {
         undefined,
       );
       expect(result.sources[0].type).toBe("net_worth");
+      // data must be the bare array returned by getLlmHistory so it matches the
+      // MCP server's get_net_worth_history payload exactly.
+      expect(result.data).toEqual([
+        {
+          month: "2026-01",
+          assets: 19000,
+          liabilities: 1300,
+          netWorth: 17700,
+        },
+      ]);
     });
 
     it("compare_periods delegates to analytics.getLlmPeriodComparison", async () => {

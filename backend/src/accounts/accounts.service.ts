@@ -661,33 +661,53 @@ export class AccountsService {
    * Reopen a closed account
    */
   async reopen(userId: string, id: string): Promise<Account> {
-    const account = await this.findOne(userId, id);
+    // Mirror close(): reopen the account and any linked brokerage account in a
+    // single transaction so the pair cannot end up in mismatched states.
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (!account.isClosed) {
-      throw new BadRequestException("Account is not closed");
-    }
-
-    account.isClosed = false;
-    account.closedDate = null;
-
-    const saved = await this.accountsRepository.save(account);
-
-    // If this is an investment cash account, also reopen the linked brokerage account
-    if (
-      account.accountSubType === AccountSubType.INVESTMENT_CASH &&
-      account.linkedAccountId
-    ) {
-      const brokerageAccount = await this.accountsRepository.findOne({
-        where: { id: account.linkedAccountId, userId },
+    try {
+      const account = await queryRunner.manager.findOne(Account, {
+        where: { id, userId },
       });
-      if (brokerageAccount && brokerageAccount.isClosed) {
-        brokerageAccount.isClosed = false;
-        brokerageAccount.closedDate = null;
-        await this.accountsRepository.save(brokerageAccount);
-      }
-    }
 
-    return saved;
+      if (!account) {
+        throw new NotFoundException(`Account with ID ${id} not found`);
+      }
+
+      if (!account.isClosed) {
+        throw new BadRequestException("Account is not closed");
+      }
+
+      account.isClosed = false;
+      account.closedDate = null;
+
+      const saved = await queryRunner.manager.save(account);
+
+      // If this is an investment cash account, also reopen the linked brokerage account
+      if (
+        account.accountSubType === AccountSubType.INVESTMENT_CASH &&
+        account.linkedAccountId
+      ) {
+        const brokerageAccount = await queryRunner.manager.findOne(Account, {
+          where: { id: account.linkedAccountId, userId },
+        });
+        if (brokerageAccount && brokerageAccount.isClosed) {
+          brokerageAccount.isClosed = false;
+          brokerageAccount.closedDate = null;
+          await queryRunner.manager.save(brokerageAccount);
+        }
+      }
+
+      await queryRunner.commitTransaction();
+      return saved;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   /**
@@ -1004,18 +1024,10 @@ export class AccountsService {
       );
     }
 
-    // If this is part of an investment account pair, remove the link from the paired account
-    if (account.linkedAccountId) {
-      const linkedAccount = await this.accountsRepository.findOne({
-        where: { id: account.linkedAccountId },
-      });
-      if (linkedAccount) {
-        linkedAccount.linkedAccountId = null;
-        await this.accountsRepository.save(linkedAccount);
-      }
-    }
-
-    // If this is a loan or mortgage account with an associated scheduled transaction, delete it
+    // If this is a loan or mortgage account with an associated scheduled
+    // transaction, delete it first. This runs in the scheduled-transactions
+    // service's own transaction and is best-effort, so it stays outside the
+    // account-deletion transaction below.
     if (
       (account.accountType === AccountType.LOAN ||
         account.accountType === AccountType.MORTGAGE) &&
@@ -1035,7 +1047,32 @@ export class AccountsService {
     }
 
     const beforeData = { ...account };
-    await this.accountsRepository.remove(account);
+
+    // Unlink the paired account and remove this account atomically, so a
+    // failure cannot leave a dangling link pointing at a deleted account.
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      if (account.linkedAccountId) {
+        const linkedAccount = await queryRunner.manager.findOne(Account, {
+          where: { id: account.linkedAccountId },
+        });
+        if (linkedAccount) {
+          linkedAccount.linkedAccountId = null;
+          await queryRunner.manager.save(linkedAccount);
+        }
+      }
+
+      await queryRunner.manager.remove(account);
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
 
     this.actionHistoryService.record(userId, {
       entityType: "account",

@@ -384,7 +384,9 @@ export class ToolExecutorService {
         : new Date().toISOString().substring(0, 10));
 
     return {
-      data: { months: history },
+      // Return the bare array so this matches the MCP server's
+      // get_net_worth_history payload exactly (shared-tool data-shape parity).
+      data: history,
       summary: `Net worth history: ${history.length} months from ${start} to ${end}`,
       sources: [
         {

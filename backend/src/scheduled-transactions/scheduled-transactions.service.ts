@@ -7,7 +7,13 @@ import {
   Logger,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, LessThanOrEqual, DataSource, In } from "typeorm";
+import {
+  Repository,
+  LessThanOrEqual,
+  DataSource,
+  EntityManager,
+  In,
+} from "typeorm";
 import { Cron } from "@nestjs/schedule";
 import {
   ScheduledTransaction,
@@ -455,6 +461,7 @@ export class ScheduledTransactionsService {
   private async createSplits(
     scheduledTransactionId: string,
     splits: CreateScheduledTransactionSplitDto[],
+    manager: EntityManager = this.splitsRepository.manager,
   ): Promise<ScheduledTransactionSplit[]> {
     const savedSplits: ScheduledTransactionSplit[] = [];
 
@@ -467,7 +474,7 @@ export class ScheduledTransactionsService {
             ? SplitKind.TRANSFER
             : SplitKind.CATEGORY;
 
-      const entity = this.splitsRepository.create({
+      const entity = manager.create(ScheduledTransactionSplit, {
         scheduledTransactionId,
         kind: inferredKind,
         categoryId:
@@ -504,14 +511,14 @@ export class ScheduledTransactionsService {
             : null,
       });
 
-      const saved = await this.splitsRepository.save(entity);
+      const saved = await manager.save(entity);
 
       if (split.tagIds && split.tagIds.length > 0) {
-        const tags = await this.tagRepository.findBy({
+        const tags = await manager.findBy(Tag, {
           id: In(split.tagIds),
         });
         saved.tags = tags;
-        await this.splitsRepository.save(saved);
+        await manager.save(saved);
       }
 
       savedSplits.push(saved);
@@ -785,27 +792,16 @@ export class ScheduledTransactionsService {
       ...updateData
     } = updateDto;
 
-    if (splits !== undefined) {
-      if (Array.isArray(splits) && splits.length > 0) {
-        const amount = updateData.amount ?? scheduled.amount;
-        this.validateSplits(splits, amount);
-
-        await this.splitsRepository.delete({ scheduledTransactionId: id });
-        await this.createSplits(id, splits);
-
-        await this.scheduledTransactionsRepository.update(id, {
-          isSplit: true,
-          categoryId: null,
-        });
-      } else if (Array.isArray(splits) && splits.length === 0) {
-        await this.splitsRepository.delete({ scheduledTransactionId: id });
-        await this.scheduledTransactionsRepository.update(id, {
-          isSplit: false,
-        });
-      }
+    // Validate splits before opening the transaction so user errors fail fast
+    // without holding a connection.
+    if (splits !== undefined && Array.isArray(splits) && splits.length > 0) {
+      const amount = updateData.amount ?? scheduled.amount;
+      this.validateSplits(splits, amount);
     }
 
     const fieldsToUpdate: Record<string, any> = {};
+    // Set when switching to transfer/investment mode, which clears any splits.
+    let clearSplitsForModeSwitch = false;
 
     if (updateData.accountId !== undefined)
       fieldsToUpdate.accountId = updateData.accountId;
@@ -856,7 +852,7 @@ export class ScheduledTransactionsService {
         fieldsToUpdate.investmentCommission = null;
         fieldsToUpdate.investmentTotalAmount = null;
         fieldsToUpdate.investmentExchangeRate = null;
-        await this.splitsRepository.delete({ scheduledTransactionId: id });
+        clearSplitsForModeSwitch = true;
       }
     }
     if (transferAccountId !== undefined) {
@@ -870,7 +866,7 @@ export class ScheduledTransactionsService {
         fieldsToUpdate.isTransfer = false;
         fieldsToUpdate.categoryId = null;
         fieldsToUpdate.transferAccountId = null;
-        await this.splitsRepository.delete({ scheduledTransactionId: id });
+        clearSplitsForModeSwitch = true;
       } else {
         fieldsToUpdate.investmentAction = null;
         fieldsToUpdate.investmentSecurityId = null;
@@ -907,8 +903,53 @@ export class ScheduledTransactionsService {
           updateData.investmentExchangeRate ?? null;
     }
 
-    if (Object.keys(fieldsToUpdate).length > 0) {
-      await this.scheduledTransactionsRepository.update(id, fieldsToUpdate);
+    // Apply the split rewrite, any mode-switch split clearing, and the main
+    // row update atomically so a partial failure cannot leave the row and its
+    // splits in an inconsistent state.
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      if (splits !== undefined) {
+        if (Array.isArray(splits) && splits.length > 0) {
+          await queryRunner.manager.delete(ScheduledTransactionSplit, {
+            scheduledTransactionId: id,
+          });
+          await this.createSplits(id, splits, queryRunner.manager);
+          await queryRunner.manager.update(ScheduledTransaction, id, {
+            isSplit: true,
+            categoryId: null,
+          });
+        } else if (Array.isArray(splits) && splits.length === 0) {
+          await queryRunner.manager.delete(ScheduledTransactionSplit, {
+            scheduledTransactionId: id,
+          });
+          await queryRunner.manager.update(ScheduledTransaction, id, {
+            isSplit: false,
+          });
+        }
+      }
+
+      if (clearSplitsForModeSwitch) {
+        await queryRunner.manager.delete(ScheduledTransactionSplit, {
+          scheduledTransactionId: id,
+        });
+      }
+
+      if (Object.keys(fieldsToUpdate).length > 0) {
+        await queryRunner.manager.update(
+          ScheduledTransaction,
+          id,
+          fieldsToUpdate,
+        );
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
 
     const result = await this.findOne(userId, id);

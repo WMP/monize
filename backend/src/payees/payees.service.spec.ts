@@ -434,7 +434,7 @@ describe("PayeesService", () => {
 
       expect(result.name).toBe("New Name");
       expect(result.notes).toBe("Updated notes");
-      expect(payeesRepository.save).toHaveBeenCalled();
+      expect(mockDataSource.createQueryRunner().manager.save).toHaveBeenCalled();
     });
 
     it("should throw NotFoundException when payee not found", async () => {
@@ -465,11 +465,14 @@ describe("PayeesService", () => {
 
       await service.update(userId, "payee-1", { name: "NewName" });
 
-      expect(transactionsRepository.update).toHaveBeenCalledWith(
+      const manager = mockDataSource.createQueryRunner().manager;
+      expect(manager.update).toHaveBeenCalledWith(
+        Transaction,
         { payeeId: "payee-1", userId },
         { payeeName: "NewName" },
       );
-      expect(scheduledTransactionsRepository.update).toHaveBeenCalledWith(
+      expect(manager.update).toHaveBeenCalledWith(
+        ScheduledTransaction,
         { payeeId: "payee-1", userId },
         { payeeName: "NewName" },
       );
@@ -483,8 +486,7 @@ describe("PayeesService", () => {
 
       await service.update(userId, "payee-1", { notes: "Just updating notes" });
 
-      expect(transactionsRepository.update).not.toHaveBeenCalled();
-      expect(scheduledTransactionsRepository.update).not.toHaveBeenCalled();
+      expect(mockDataSource.createQueryRunner().manager.update).not.toHaveBeenCalled();
     });
 
     it("should skip name conflict check when name is unchanged", async () => {
@@ -511,7 +513,7 @@ describe("PayeesService", () => {
       });
 
       expect(result.defaultCategoryId).toBe("cat-99");
-      expect(payeesRepository.save).toHaveBeenCalled();
+      expect(mockDataSource.createQueryRunner().manager.save).toHaveBeenCalled();
     });
 
     it("should clear defaultCategoryId when set to null", async () => {
@@ -535,7 +537,8 @@ describe("PayeesService", () => {
       expect(result.defaultCategoryId).toBeNull();
       // Verify the relation object is also nulled so TypeORM save() doesn't
       // re-derive the FK from the stale loaded relation entity
-      const savedPayee = payeesRepository.save.mock.calls[0][0];
+      const savedPayee =
+        mockDataSource.createQueryRunner().manager.save.mock.calls[0][0];
       expect(savedPayee.defaultCategoryId).toBeNull();
       expect(savedPayee.defaultCategory).toBeNull();
     });
@@ -1421,7 +1424,7 @@ describe("PayeesService", () => {
       });
 
       expect(result.isActive).toBe(false);
-      expect(payeesRepository.save).toHaveBeenCalled();
+      expect(mockDataSource.createQueryRunner().manager.save).toHaveBeenCalled();
     });
 
     it("should not modify isActive when not included in DTO", async () => {

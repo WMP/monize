@@ -22,7 +22,11 @@ biggest single dedup win.
 
 ## P0 / P1 — Highest impact (correctness + biggest dedup)
 
-### 1. Money rounding & summation: standardize on one shared helper (HIGH)
+> Status (2026-05-30): Items #2, #3, and #4 below have been implemented on
+> branch `claude/code-audit-efficiency-Ifpnl` with full unit-test coverage.
+> Item #1 (money helper) is intentionally deferred.
+
+### 1. Money rounding & summation: standardize on one shared helper (HIGH) — DEFERRED
 Three distinct conventions are in active use, and the helper is redefined ~7 times.
 - Core write/balance path correctly uses 4dp (`accounts.service.ts:269,275,464,781,818`;
   `transaction-split.service.ts:77,80`).
@@ -42,7 +46,7 @@ replace all of the above, and only round to 2dp at the display layer — never i
 A `roundToDecimals` already exists in `common/round.util.ts` (used only by `format-currency.util.ts`);
 fold this into it.
 
-### 2. Wrap remaining multi-table writes in QueryRunner transactions (MEDIUM)
+### 2. Wrap remaining multi-table writes in QueryRunner transactions (MEDIUM) — DONE
 The hot paths are covered; these read-modify-write cascades are not, and can leave denormalized
 data inconsistent on partial failure:
 - `payees.update` — `payees.service.ts:279` saves payee then separately updates `transactions`
@@ -55,14 +59,14 @@ data inconsistent on partial failure:
 - `accounts.reopen` (`:663`) and `accounts.delete` (`:981`) — multi-table writes; `close()` (`:601`)
   correctly uses a pessimistic-locked QueryRunner, so these are inconsistent with their sibling.
 
-### 3. AI tool / MCP data-shape divergence: `get_net_worth_history` (HIGH, scoped)
+### 3. AI tool / MCP data-shape divergence: `get_net_worth_history` (HIGH, scoped) — DONE
 `NetWorthService.getLlmHistory` returns a bare array, but the AI executor wraps it as
 `{ months: history }` (`tool-executor.service.ts:387`) while MCP returns the bare array
 (`net-worth.tool.ts:92`). The shared-tool rule requires identical shapes. **Fix:** drop the
 `{ months }` wrapper in the executor so `data` equals the MCP payload (preferred), or push the
 wrapper into the service and update MCP. Update the corresponding specs.
 
-### 4. De-duplicate recurring-charge detection across AI aggregators (MEDIUM, largest AI dup)
+### 4. De-duplicate recurring-charge detection across AI aggregators (MEDIUM, largest AI dup) — DONE
 `getRecurringCharges` + `detectFrequency` + the `RecurringCharge` interface are copy-pasted in
 `insights-aggregator.service.ts:26-34,244-332` and `forecast-aggregator.service.ts:60-68,296-383`
 (near-identical QueryBuilder, same frequency thresholds). **Fix:** extract to a single

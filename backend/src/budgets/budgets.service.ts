@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
+import { DataSource, In, IsNull, Repository } from "typeorm";
 import { Budget } from "./entities/budget.entity";
 import { BudgetCategory } from "./entities/budget-category.entity";
 import {
@@ -84,6 +84,7 @@ export class BudgetsService {
     private scheduledTransactionsRepository: Repository<ScheduledTransaction>,
     @InjectRepository(ScheduledTransactionOverride)
     private overridesRepository: Repository<ScheduledTransactionOverride>,
+    private dataSource: DataSource,
     private actionHistoryService: ActionHistoryService,
   ) {}
 
@@ -288,24 +289,43 @@ export class BudgetsService {
   ): Promise<BudgetCategory[]> {
     await this.findOne(userId, budgetId);
 
-    const results: BudgetCategory[] = [];
+    // Load all targeted budget categories in a single query (avoids the prior
+    // per-item N+1) and validate before any write.
+    const ids = categories.map((item) => item.id);
+    const existing = await this.budgetCategoriesRepository.find({
+      where: { id: In(ids), budgetId },
+    });
+    const byId = new Map(existing.map((bc) => [bc.id, bc]));
 
     for (const item of categories) {
-      const budgetCategory = await this.budgetCategoriesRepository.findOne({
-        where: { id: item.id, budgetId },
-      });
-
-      if (!budgetCategory) {
+      if (!byId.has(item.id)) {
         throw new NotFoundException(
           `Budget category with ID ${item.id} not found`,
         );
       }
-
-      budgetCategory.amount = item.amount;
-      results.push(await this.budgetCategoriesRepository.save(budgetCategory));
     }
 
-    return results;
+    // Apply all amount changes atomically so a partial failure cannot leave
+    // some categories updated and others not.
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const results: BudgetCategory[] = [];
+      for (const item of categories) {
+        const budgetCategory = byId.get(item.id)!;
+        budgetCategory.amount = item.amount;
+        results.push(await queryRunner.manager.save(budgetCategory));
+      }
+
+      await queryRunner.commitTransaction();
+      return results;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async getSummary(

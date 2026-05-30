@@ -18,7 +18,7 @@ import { ActionHistoryService } from "../action-history/action-history.service";
 describe("ScheduledTransactionsService", () => {
   let service: ScheduledTransactionsService;
   let scheduledRepo: Record<string, jest.Mock>;
-  let splitsRepo: Record<string, jest.Mock>;
+  let splitsRepo: Record<string, any>;
   let overridesRepo: Record<string, jest.Mock>;
   let accountsRepo: Record<string, jest.Mock>;
   let tagRepo: Record<string, jest.Mock>;
@@ -106,6 +106,13 @@ describe("ScheduledTransactionsService", () => {
       save: jest.fn().mockImplementation((data) => Promise.resolve(data)),
       find: jest.fn().mockResolvedValue([]),
       delete: jest.fn().mockResolvedValue({ affected: 0 }),
+      // createSplits() defaults to splitsRepository.manager when no transaction
+      // manager is supplied (the create() flow).
+      manager: {
+        create: jest.fn().mockImplementation((_entity, data) => data),
+        save: jest.fn().mockImplementation((data) => Promise.resolve(data)),
+        findBy: jest.fn().mockResolvedValue([]),
+      },
     };
 
     overridesRepo = {
@@ -162,6 +169,10 @@ describe("ScheduledTransactionsService", () => {
       manager: {
         remove: jest.fn(),
         update: jest.fn(),
+        delete: jest.fn().mockResolvedValue({ affected: 0 }),
+        create: jest.fn().mockImplementation((_entity, data) => data),
+        save: jest.fn().mockImplementation((data) => Promise.resolve(data)),
+        findBy: jest.fn().mockResolvedValue([]),
         createQueryBuilder: jest.fn(() => ({
           delete: jest.fn().mockReturnThis(),
           from: jest.fn().mockReturnThis(),
@@ -383,8 +394,8 @@ describe("ScheduledTransactionsService", () => {
       };
       await service.create(userId, dto);
 
-      expect(splitsRepo.create).toHaveBeenCalledTimes(2);
-      expect(splitsRepo.save).toHaveBeenCalled();
+      expect(splitsRepo.manager.create).toHaveBeenCalledTimes(2);
+      expect(splitsRepo.manager.save).toHaveBeenCalled();
     });
 
     it("records action history on create", async () => {
@@ -579,7 +590,8 @@ describe("ScheduledTransactionsService", () => {
         amount: -1500,
       });
 
-      expect(scheduledRepo.update).toHaveBeenCalledWith(
+      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+        ScheduledTransaction,
         stId,
         expect.objectContaining({ name: "Updated Rent", amount: -1500 }),
       );
@@ -617,10 +629,11 @@ describe("ScheduledTransactionsService", () => {
         ],
       });
 
-      expect(splitsRepo.delete).toHaveBeenCalledWith({
-        scheduledTransactionId: stId,
-      });
-      expect(splitsRepo.create).toHaveBeenCalledTimes(2);
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
+        ScheduledTransactionSplit,
+        { scheduledTransactionId: stId },
+      );
+      expect(mockQueryRunner.manager.create).toHaveBeenCalledTimes(2);
     });
 
     it("should clear splits when empty array provided", async () => {
@@ -629,10 +642,12 @@ describe("ScheduledTransactionsService", () => {
 
       await service.update(userId, stId, { splits: [] });
 
-      expect(splitsRepo.delete).toHaveBeenCalledWith({
-        scheduledTransactionId: stId,
-      });
-      expect(scheduledRepo.update).toHaveBeenCalledWith(
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
+        ScheduledTransactionSplit,
+        { scheduledTransactionId: stId },
+      );
+      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+        ScheduledTransaction,
         stId,
         expect.objectContaining({ isSplit: false }),
       );
@@ -647,7 +662,7 @@ describe("ScheduledTransactionsService", () => {
         payeeName: "" as any,
       });
 
-      const updateArg = scheduledRepo.update.mock.calls[0][1];
+      const updateArg = mockQueryRunner.manager.update.mock.calls[0][2];
       expect(updateArg.description).toBeNull();
       expect(updateArg.payeeName).toBeNull();
     });
@@ -661,10 +676,11 @@ describe("ScheduledTransactionsService", () => {
         transferAccountId: "acc-2",
       });
 
-      expect(splitsRepo.delete).toHaveBeenCalledWith({
-        scheduledTransactionId: stId,
-      });
-      const updateArg = scheduledRepo.update.mock.calls[0][1];
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
+        ScheduledTransactionSplit,
+        { scheduledTransactionId: stId },
+      );
+      const updateArg = mockQueryRunner.manager.update.mock.calls[0][2];
       expect(updateArg.isTransfer).toBe(true);
       expect(updateArg.isSplit).toBe(false);
       expect(updateArg.categoryId).toBeNull();
@@ -1950,9 +1966,9 @@ describe("ScheduledTransactionsService", () => {
         investmentCommission: 5,
       } as any);
 
-      const fields = scheduledRepo.update.mock.calls.find(
-        (c: any[]) => c[0] === stId && c[1].investmentQuantity !== undefined,
-      )?.[1];
+      const fields = mockQueryRunner.manager.update.mock.calls.find(
+        (c: any[]) => c[1] === stId && c[2].investmentQuantity !== undefined,
+      )?.[2];
       expect(fields).toBeDefined();
       expect(fields.investmentQuantity).toBe(2);
       expect(fields.investmentPrice).toBe(480);
@@ -1980,18 +1996,19 @@ describe("ScheduledTransactionsService", () => {
         investmentPrice: 500,
       } as any);
 
-      const fields = scheduledRepo.update.mock.calls.find(
-        (c: any[]) => c[0] === stId && c[1].isInvestment !== undefined,
-      )?.[1];
+      const fields = mockQueryRunner.manager.update.mock.calls.find(
+        (c: any[]) => c[1] === stId && c[2].isInvestment !== undefined,
+      )?.[2];
       expect(fields).toBeDefined();
       expect(fields.isInvestment).toBe(true);
       expect(fields.isSplit).toBe(false);
       expect(fields.isTransfer).toBe(false);
       expect(fields.categoryId).toBeNull();
       expect(fields.transferAccountId).toBeNull();
-      expect(splitsRepo.delete).toHaveBeenCalledWith({
-        scheduledTransactionId: stId,
-      });
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
+        ScheduledTransactionSplit,
+        { scheduledTransactionId: stId },
+      );
     });
 
     it("update() switching to isInvestment=false clears every investment field", async () => {
@@ -2009,9 +2026,9 @@ describe("ScheduledTransactionsService", () => {
         isInvestment: false,
       } as any);
 
-      const fields = scheduledRepo.update.mock.calls.find(
-        (c: any[]) => c[0] === stId && c[1].isInvestment !== undefined,
-      )?.[1];
+      const fields = mockQueryRunner.manager.update.mock.calls.find(
+        (c: any[]) => c[1] === stId && c[2].isInvestment !== undefined,
+      )?.[2];
       expect(fields).toBeDefined();
       expect(fields.isInvestment).toBe(false);
       expect(fields.investmentAction).toBeNull();
@@ -2041,9 +2058,9 @@ describe("ScheduledTransactionsService", () => {
         transferAccountId: "acc-2",
       } as any);
 
-      const fields = scheduledRepo.update.mock.calls.find(
-        (c: any[]) => c[0] === stId && c[1].isTransfer === true,
-      )?.[1];
+      const fields = mockQueryRunner.manager.update.mock.calls.find(
+        (c: any[]) => c[1] === stId && c[2].isTransfer === true,
+      )?.[2];
       expect(fields).toBeDefined();
       expect(fields.investmentAction).toBeNull();
       expect(fields.investmentSecurityId).toBeNull();
@@ -2663,8 +2680,8 @@ describe("ScheduledTransactionsService", () => {
       });
       scheduledRepo.create.mockImplementation((d) => ({ id: stId, ...d }));
       scheduledRepo.save.mockImplementation(async (d) => d);
-      splitsRepo.create.mockImplementation((d) => d);
-      splitsRepo.save.mockImplementation(async (d) => ({
+      splitsRepo.manager.create.mockImplementation((_e, d) => d);
+      splitsRepo.manager.save.mockImplementation(async (d) => ({
         id: "split-x",
         ...d,
       }));
@@ -2675,11 +2692,11 @@ describe("ScheduledTransactionsService", () => {
       await service.create(userId, dto as any);
 
       // Verify the investment-kind split was created with all fields populated
-      const investmentCall = splitsRepo.create.mock.calls.find(
-        ([arg]) => arg.kind === "investment",
+      const investmentCall = splitsRepo.manager.create.mock.calls.find(
+        (c: any[]) => c[1]?.kind === "investment",
       );
       expect(investmentCall).toBeDefined();
-      expect(investmentCall![0]).toMatchObject({
+      expect(investmentCall![1]).toMatchObject({
         kind: "investment",
         categoryId: null,
         transferAccountId: null,

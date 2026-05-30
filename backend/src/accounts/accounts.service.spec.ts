@@ -125,6 +125,7 @@ describe("AccountsService", () => {
         findOne: jest.fn(),
         findOneOrFail: jest.fn(),
         save: jest.fn().mockImplementation((data) => data),
+        remove: jest.fn().mockImplementation((data) => data),
       },
     };
 
@@ -670,7 +671,7 @@ describe("AccountsService", () => {
 
   describe("reopen", () => {
     it("reopens a closed account", async () => {
-      accountsRepository.findOne.mockResolvedValue({
+      mockQueryRunner.manager.findOne.mockResolvedValue({
         ...mockAccount,
         isClosed: true,
         closedDate: new Date(),
@@ -683,7 +684,7 @@ describe("AccountsService", () => {
     });
 
     it("throws when account is not closed", async () => {
-      accountsRepository.findOne.mockResolvedValue(mockAccount);
+      mockQueryRunner.manager.findOne.mockResolvedValue(mockAccount);
 
       await expect(service.reopen("user-1", "account-1")).rejects.toThrow(
         "Account is not closed",
@@ -709,7 +710,7 @@ describe("AccountsService", () => {
 
       await service.delete("user-1", "account-1");
 
-      expect(accountsRepository.remove).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.remove).toHaveBeenCalled();
     });
 
     it("throws when account has transactions", async () => {
@@ -732,21 +733,20 @@ describe("AccountsService", () => {
     });
 
     it("unlinks paired investment account before deletion", async () => {
-      accountsRepository.findOne
-        .mockResolvedValueOnce({
-          ...mockAccount,
-          linkedAccountId: "brokerage-1",
-        })
-        .mockResolvedValueOnce({
-          id: "brokerage-1",
-          linkedAccountId: "account-1",
-        });
+      accountsRepository.findOne.mockResolvedValueOnce({
+        ...mockAccount,
+        linkedAccountId: "brokerage-1",
+      });
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce({
+        id: "brokerage-1",
+        linkedAccountId: "account-1",
+      });
       transactionRepository.count.mockResolvedValue(0);
       investmentTxRepository.count.mockResolvedValue(0);
 
       await service.delete("user-1", "account-1");
 
-      const savedLinked = accountsRepository.save.mock.calls[0][0];
+      const savedLinked = mockQueryRunner.manager.save.mock.calls[0][0];
       expect(savedLinked.linkedAccountId).toBeNull();
     });
 
@@ -1977,7 +1977,7 @@ describe("AccountsService", () => {
 
   describe("reopen - investment cash account linked behavior", () => {
     it("also reopens linked brokerage account for investment cash", async () => {
-      accountsRepository.findOne
+      mockQueryRunner.manager.findOne
         .mockResolvedValueOnce({
           ...mockAccount,
           isClosed: true,
@@ -1991,18 +1991,17 @@ describe("AccountsService", () => {
           isClosed: true,
           closedDate: new Date(),
         });
-      accountsRepository.save.mockImplementation((data) => data);
 
       await service.reopen("user-1", "account-1");
 
-      expect(accountsRepository.save).toHaveBeenCalledTimes(2);
-      const brokerageSave = accountsRepository.save.mock.calls[1][0];
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledTimes(2);
+      const brokerageSave = mockQueryRunner.manager.save.mock.calls[1][0];
       expect(brokerageSave.isClosed).toBe(false);
       expect(brokerageSave.closedDate).toBeNull();
     });
 
     it("does not reopen brokerage if already open", async () => {
-      accountsRepository.findOne
+      mockQueryRunner.manager.findOne
         .mockResolvedValueOnce({
           ...mockAccount,
           isClosed: true,
@@ -2016,27 +2015,25 @@ describe("AccountsService", () => {
           isClosed: false,
           closedDate: null,
         });
-      accountsRepository.save.mockImplementation((data) => data);
 
       await service.reopen("user-1", "account-1");
 
       // Only one save for the cash account
-      expect(accountsRepository.save).toHaveBeenCalledTimes(1);
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledTimes(1);
     });
 
     it("does not attempt to reopen linked account for non-investment account", async () => {
-      accountsRepository.findOne.mockResolvedValue({
+      mockQueryRunner.manager.findOne.mockResolvedValue({
         ...mockAccount,
         isClosed: true,
         closedDate: new Date(),
         accountSubType: null,
         linkedAccountId: null,
       });
-      accountsRepository.save.mockImplementation((data) => data);
 
       await service.reopen("user-1", "account-1");
 
-      expect(accountsRepository.save).toHaveBeenCalledTimes(1);
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -2057,7 +2054,7 @@ describe("AccountsService", () => {
         "user-1",
         "sched-tx-to-delete",
       );
-      expect(accountsRepository.remove).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.remove).toHaveBeenCalled();
     });
 
     it("deletes scheduled transaction for mortgage account", async () => {
@@ -2093,7 +2090,7 @@ describe("AccountsService", () => {
 
       await service.delete("user-1", "account-1");
 
-      expect(accountsRepository.remove).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.remove).toHaveBeenCalled();
     });
 
     it("does not delete scheduled transaction for non-loan/mortgage accounts", async () => {
@@ -2114,41 +2111,39 @@ describe("AccountsService", () => {
 
   describe("delete - linked account unlinking", () => {
     it("unlinks paired investment account before deletion", async () => {
-      accountsRepository.findOne
-        .mockResolvedValueOnce({
-          ...mockAccount,
-          linkedAccountId: "brokerage-1",
-        })
-        .mockResolvedValueOnce({
-          id: "brokerage-1",
-          linkedAccountId: "account-1",
-        });
+      accountsRepository.findOne.mockResolvedValueOnce({
+        ...mockAccount,
+        linkedAccountId: "brokerage-1",
+      });
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce({
+        id: "brokerage-1",
+        linkedAccountId: "account-1",
+      });
       transactionRepository.count.mockResolvedValue(0);
       investmentTxRepository.count.mockResolvedValue(0);
 
       await service.delete("user-1", "account-1");
 
-      const savedLinked = accountsRepository.save.mock.calls[0][0];
+      const savedLinked = mockQueryRunner.manager.save.mock.calls[0][0];
       expect(savedLinked.linkedAccountId).toBeNull();
-      expect(accountsRepository.remove).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.remove).toHaveBeenCalled();
     });
 
     it("handles case where linked account no longer exists", async () => {
-      accountsRepository.findOne
-        .mockResolvedValueOnce({
-          ...mockAccount,
-          linkedAccountId: "gone-account",
-        })
-        .mockResolvedValueOnce(null);
+      accountsRepository.findOne.mockResolvedValueOnce({
+        ...mockAccount,
+        linkedAccountId: "gone-account",
+      });
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce(null);
       transactionRepository.count.mockResolvedValue(0);
       investmentTxRepository.count.mockResolvedValue(0);
 
       await service.delete("user-1", "account-1");
 
       // Should still delete successfully without error
-      expect(accountsRepository.remove).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.remove).toHaveBeenCalled();
       // save should not have been called for the linked account
-      expect(accountsRepository.save).not.toHaveBeenCalled();
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
     });
   });
 
