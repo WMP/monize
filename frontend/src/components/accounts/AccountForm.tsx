@@ -497,6 +497,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
             options={currencyOptions}
             error={errors.currencyCode?.message}
             disabled={isCurrencyLocked}
+            className={isCurrencyLocked ? 'opacity-60' : undefined}
             {...register('currencyCode')}
           />
         </div>

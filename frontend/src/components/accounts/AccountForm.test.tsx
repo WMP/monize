@@ -1617,7 +1617,27 @@ describe('AccountForm', () => {
       await waitFor(() => {
         expect(currencySelect.disabled).toBe(true);
       });
+      // Dimmed to visually signal it cannot be changed
+      expect(currencySelect.className).toContain('opacity-60');
       expect(screen.getByLabelText(/Currency is locked/i)).toBeInTheDocument();
+    });
+
+    it('does not dim the currency select when it is unlocked', async () => {
+      (accountsApi.canDelete as any).mockResolvedValue({
+        transactionCount: 0,
+        investmentTransactionCount: 0,
+        canDelete: true,
+      });
+      const account = createExistingAccount();
+
+      render(<AccountForm account={account} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+
+      await waitFor(() => {
+        expect(accountsApi.canDelete).toHaveBeenCalledWith(account.id);
+      });
+
+      const currencySelect = screen.getByLabelText('Currency') as HTMLSelectElement;
+      expect(currencySelect.className).not.toContain('opacity-60');
     });
 
     it('disables currency when the account has only investment transactions', async () => {
