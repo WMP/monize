@@ -25,6 +25,7 @@ import {
   MortgageAmortizationResult,
 } from "./mortgage-amortization.util";
 import { formatDateYMD } from "../common/date-utils";
+import { roundMoney } from "../common/round.util";
 
 @Injectable()
 export class LoanMortgageAccountService {
@@ -383,9 +384,8 @@ export class LoanMortgageAccountService {
         periodicRate = newRate / 100 / periodsPerYear;
       }
 
-      interestPayment = Math.round(currentBalance * periodicRate * 100) / 100;
-      principalPayment =
-        Math.round((paymentAmount - interestPayment) * 100) / 100;
+      interestPayment = roundMoney(currentBalance * periodicRate);
+      principalPayment = roundMoney(paymentAmount - interestPayment);
     } else {
       const result = recalculateMortgageAfterRateChange(
         currentBalance,

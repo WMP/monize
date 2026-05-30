@@ -21,6 +21,7 @@ import {
   isInvestmentActionAllowedInSplit,
 } from "../securities/cash-impact.util";
 import { NetWorthService } from "../net-worth/net-worth.service";
+import { roundMoney, sumMoney } from "../common/round.util";
 
 function inferSplitKind(split: CreateTransactionSplitDto): SplitKind {
   if (split.splitKind) return split.splitKind;
@@ -73,15 +74,12 @@ export class TransactionSplitService {
       );
     }
 
-    const splitsSumCents = splits.reduce(
-      (sum, split) => sum + Math.round(Number(split.amount) * 10000),
-      0,
-    );
-    const expectedSumCents = Math.round(Number(transactionAmount) * 10000);
+    const splitsSum = sumMoney(splits.map((split) => Number(split.amount)));
+    const expectedSum = roundMoney(Number(transactionAmount));
 
-    if (splitsSumCents !== expectedSumCents) {
+    if (splitsSum !== expectedSum) {
       throw new BadRequestException(
-        `Split amounts (${splitsSumCents / 10000}) must equal transaction amount (${expectedSumCents / 10000})`,
+        `Split amounts (${splitsSum}) must equal transaction amount (${expectedSum})`,
       );
     }
 
@@ -118,10 +116,10 @@ export class TransactionSplitService {
           : 1;
       const expectedAmount = cashImpactInSecurity * exchangeRate;
 
-      const expectedCents = Math.round(expectedAmount * 10000);
-      const actualCents = Math.round(Number(split.amount) * 10000);
+      const expectedRounded = roundMoney(expectedAmount);
+      const actualRounded = roundMoney(Number(split.amount));
 
-      if (expectedCents !== actualCents) {
+      if (expectedRounded !== actualRounded) {
         throw new BadRequestException(
           `Investment split amount (${split.amount}) does not match the cash impact ` +
             `of ${inv.action} ${inv.quantity ?? 0} @ ${inv.price ?? 0} ` +
@@ -550,20 +548,14 @@ export class TransactionSplitService {
     }
 
     const existingSplits = await this.getSplits(transaction.id);
-    const existingTotalCents = existingSplits.reduce(
-      (sum, s) => sum + Math.round(Number(s.amount) * 10000),
-      0,
-    );
-    const newTotalCents =
-      existingTotalCents + Math.round(Number(splitDto.amount) * 10000);
-    const transactionAmountCents = Math.round(
-      Number(transaction.amount) * 10000,
-    );
+    const existingTotal = sumMoney(existingSplits.map((s) => Number(s.amount)));
+    const newTotal = sumMoney([existingTotal, Number(splitDto.amount)]);
+    const transactionAmount = roundMoney(Number(transaction.amount));
 
-    if (Math.abs(newTotalCents) > Math.abs(transactionAmountCents)) {
+    if (Math.abs(newTotal) > Math.abs(transactionAmount)) {
       throw new BadRequestException(
         `Adding this split would exceed the transaction amount. ` +
-          `Current total: ${existingTotalCents / 10000}, New split: ${splitDto.amount}, ` +
+          `Current total: ${existingTotal}, New split: ${splitDto.amount}, ` +
           `Transaction amount: ${transaction.amount}`,
       );
     }

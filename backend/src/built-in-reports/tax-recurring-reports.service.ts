@@ -13,6 +13,7 @@ import {
   MonthlyBillTotal,
 } from "./dto";
 import { formatDateYMD } from "../common/date-utils";
+import { roundMoney, sumMoney } from "../common/round.util";
 
 @Injectable()
 export class TaxRecurringReportsService {
@@ -144,34 +145,31 @@ export class TaxRecurringReportsService {
       }
     });
 
-    const totalDeductible = Array.from(deductibleExpenses.values()).reduce(
-      (sum, v) => sum + v,
-      0,
-    );
+    const totalDeductible = sumMoney(Array.from(deductibleExpenses.values()));
 
     return {
       incomeBySource: Array.from(incomeBySource.entries())
         .map(([name, total]) => ({
           name,
-          total: Math.round(total * 100) / 100,
+          total: roundMoney(total),
         }))
         .sort((a, b) => b.total - a.total),
       deductibleExpenses: Array.from(deductibleExpenses.entries())
         .map(([name, total]) => ({
           name,
-          total: Math.round(total * 100) / 100,
+          total: roundMoney(total),
         }))
         .sort((a, b) => b.total - a.total),
       allExpenses: Array.from(allExpensesByCategory.entries())
         .map(([name, total]) => ({
           name,
-          total: Math.round(total * 100) / 100,
+          total: roundMoney(total),
         }))
         .sort((a, b) => b.total - a.total),
       totals: {
-        income: Math.round(totalIncome * 100) / 100,
-        expenses: Math.round(totalExpenses * 100) / 100,
-        deductible: Math.round(totalDeductible * 100) / 100,
+        income: roundMoney(totalIncome),
+        expenses: roundMoney(totalExpenses),
+        deductible: roundMoney(totalDeductible),
       },
     };
   }
@@ -290,8 +288,8 @@ export class TaxRecurringReportsService {
           payeeName: row.payeeName,
           payeeId: row.payeeId,
           occurrences,
-          totalAmount: Math.round(totalAmount * 100) / 100,
-          averageAmount: Math.round((totalAmount / occurrences) * 100) / 100,
+          totalAmount: roundMoney(totalAmount),
+          averageAmount: roundMoney(totalAmount / occurrences),
           lastTransactionDate: formatDateYMD(row.lastTransactionDate),
           frequency,
           categoryName: row.categoryName || "Uncategorized",
@@ -299,16 +297,13 @@ export class TaxRecurringReportsService {
       },
     );
 
-    const totalRecurring = data.reduce(
-      (sum, item) => sum + item.totalAmount,
-      0,
-    );
+    const totalRecurring = sumMoney(data.map((item) => item.totalAmount));
 
     return {
       data,
       summary: {
-        totalRecurring: Math.round(totalRecurring * 100) / 100,
-        monthlyEstimate: Math.round((totalRecurring / 6) * 100) / 100,
+        totalRecurring: roundMoney(totalRecurring),
+        monthlyEstimate: roundMoney(totalRecurring / 6),
         uniquePayees: data.length,
       },
     };
@@ -457,7 +452,7 @@ export class TaxRecurringReportsService {
     const billPayments: BillPaymentItem[] = Array.from(billPaymentMap.values())
       .filter((bp) => bp.payments.length > 0)
       .map((bp) => {
-        const totalPaid = bp.payments.reduce((sum, p) => sum + p.amount, 0);
+        const totalPaid = sumMoney(bp.payments.map((p) => p.amount));
         const sortedPayments = [...bp.payments].sort(
           (a, b) => b.date.getTime() - a.date.getTime(),
         );
@@ -465,10 +460,9 @@ export class TaxRecurringReportsService {
           scheduledTransactionId: bp.id,
           scheduledTransactionName: bp.name,
           payeeName: bp.payeeName,
-          totalPaid: Math.round(totalPaid * 100) / 100,
+          totalPaid: roundMoney(totalPaid),
           paymentCount: bp.payments.length,
-          averagePayment:
-            Math.round((totalPaid / bp.payments.length) * 100) / 100,
+          averagePayment: roundMoney(totalPaid / bp.payments.length),
           lastPaymentDate: sortedPayments[0]
             ? formatDateYMD(sortedPayments[0].date)
             : null,
@@ -500,11 +494,11 @@ export class TaxRecurringReportsService {
       .map(([month, data]) => ({
         month,
         label: data.label,
-        total: Math.round(data.total * 100) / 100,
+        total: roundMoney(data.total),
       }))
       .sort((a, b) => a.month.localeCompare(b.month));
 
-    const totalPaid = billPayments.reduce((sum, bp) => sum + bp.totalPaid, 0);
+    const totalPaid = sumMoney(billPayments.map((bp) => bp.totalPaid));
     const totalPayments = billPayments.reduce(
       (sum, bp) => sum + bp.paymentCount,
       0,
@@ -515,10 +509,10 @@ export class TaxRecurringReportsService {
       billPayments,
       monthlyTotals,
       summary: {
-        totalPaid: Math.round(totalPaid * 100) / 100,
+        totalPaid: roundMoney(totalPaid),
         totalPayments,
         uniqueBills: billPayments.length,
-        monthlyAverage: Math.round((totalPaid / monthCount) * 100) / 100,
+        monthlyAverage: roundMoney(totalPaid / monthCount),
       },
     };
   }

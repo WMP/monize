@@ -13,6 +13,7 @@ import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { BudgetsService } from "./budgets.service";
 import { getCurrentMonthPeriodDates } from "./budget-date.utils";
+import { roundMoney, sumMoney } from "../common/round.util";
 
 @Injectable()
 export class BudgetPeriodService {
@@ -158,9 +159,11 @@ export class BudgetPeriodService {
 
     const budgetCategories = budget.categories || [];
 
-    const totalBudgeted = budgetCategories
-      .filter((bc) => !bc.isIncome)
-      .reduce((sum, bc) => sum + Number(bc.amount), 0);
+    const totalBudgeted = sumMoney(
+      budgetCategories
+        .filter((bc) => !bc.isIncome)
+        .map((bc) => Number(bc.amount)),
+    );
 
     const periodsRepo = queryRunner
       ? queryRunner.manager.getRepository(BudgetPeriod)
@@ -228,7 +231,7 @@ export class BudgetPeriodService {
       rollover = Math.min(rollover, Number(budgetCategory.rolloverCap));
     }
 
-    return Math.round(rollover * 10000) / 10000;
+    return roundMoney(rollover);
   }
 
   private async createNextPeriod(

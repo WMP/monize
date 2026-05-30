@@ -29,6 +29,7 @@ import {
   resolveCategorySpent,
 } from "./budget-spending.util";
 import { formatCurrency } from "../common/format-currency.util";
+import { roundMoney, sumMoney } from "../common/round.util";
 
 interface SeasonalProfile {
   budgetCategoryId: string;
@@ -428,9 +429,9 @@ export class BudgetAlertService {
         message: `At your current pace, ${cat.categoryName} is projected to reach ${formatCurrency(projectedTotal, cat.currencyCode)} by the end of the period (budget: ${formatCurrency(cat.budgeted, cat.currencyCode)}).`,
         data: {
           categoryName: cat.categoryName,
-          projectedTotal: Math.round(projectedTotal * 100) / 100,
+          projectedTotal: roundMoney(projectedTotal),
           budgeted: cat.budgeted,
-          dailyRate: Math.round(dailyRate * 100) / 100,
+          dailyRate: roundMoney(dailyRate),
           projectedPercent: Math.round(projectedPercent * 10) / 10,
         },
       };
@@ -491,10 +492,7 @@ export class BudgetAlertService {
   ): AlertCandidate | null {
     if (periodProgress < 0.5) return null;
 
-    const totalActualIncome = incomeActuals.reduce(
-      (sum, cat) => sum + cat.spent,
-      0,
-    );
+    const totalActualIncome = sumMoney(incomeActuals.map((cat) => cat.spent));
     const expectedSoFar = expectedIncome * periodProgress;
     const incomeRatio = totalActualIncome / expectedSoFar;
 
@@ -525,8 +523,8 @@ export class BudgetAlertService {
   ): AlertCandidate[] {
     if (periodProgress < 0.5 || daysRemaining <= 0) return [];
 
-    const totalBudgeted = actuals.reduce((sum, c) => sum + c.budgeted, 0);
-    const totalSpent = actuals.reduce((sum, c) => sum + c.spent, 0);
+    const totalBudgeted = sumMoney(actuals.map((c) => c.budgeted));
+    const totalSpent = sumMoney(actuals.map((c) => c.spent));
 
     if (totalBudgeted <= 0) return [];
 
@@ -773,10 +771,9 @@ export class BudgetAlertService {
             highMonthName: monthName,
             typicalMonthlySpend: profile.typicalMonthlySpend,
             typicalIncrease: profile.typicalIncrease,
-            suggestedBudget:
-              Math.round(
-                profile.typicalMonthlySpend * profile.typicalIncrease * 100,
-              ) / 100,
+            suggestedBudget: roundMoney(
+              profile.typicalMonthlySpend * profile.typicalIncrease,
+            ),
           },
         });
       }
@@ -868,7 +865,7 @@ export class BudgetAlertService {
       const nonZero = amounts.filter((a) => a > 0);
       if (nonZero.length < 3) continue;
 
-      const mean = nonZero.reduce((s, v) => s + v, 0) / nonZero.length;
+      const mean = sumMoney(nonZero) / nonZero.length;
       const stdDev = this.standardDeviation(nonZero);
       const threshold = mean + 1.5 * stdDev;
 
@@ -893,7 +890,7 @@ export class BudgetAlertService {
         categoryId: catId,
         categoryName: info.name,
         highMonths,
-        typicalMonthlySpend: Math.round(mean * 100) / 100,
+        typicalMonthlySpend: roundMoney(mean),
         typicalIncrease: Math.round(maxIncrease * 10) / 10,
       });
     }

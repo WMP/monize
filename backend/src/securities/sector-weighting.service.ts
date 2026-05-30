@@ -7,6 +7,7 @@ import { Account, AccountType } from "../accounts/entities/account.entity";
 import { SecurityPrice } from "./entities/security-price.entity";
 import { YahooFinanceService } from "./yahoo-finance.service";
 import { PortfolioCalculationService } from "./portfolio-calculation.service";
+import { roundMoney, sumMoney } from "../common/round.util";
 
 export interface SectorWeightingItem {
   sector: string;
@@ -271,26 +272,27 @@ export class SectorWeightingService {
 
     // 6. Merge maps and compute percentages
     const allSectors = new Set([...directMap.keys(), ...etfMap.keys()]);
-    let totalDirectValue = 0;
-    let totalEtfValue = 0;
 
     const items: SectorWeightingItem[] = [];
     for (const sector of allSectors) {
       const dv = directMap.get(sector) || 0;
       const ev = etfMap.get(sector) || 0;
-      totalDirectValue += dv;
-      totalEtfValue += ev;
       items.push({
         sector,
-        directValue: Math.round(dv * 100) / 100,
-        etfValue: Math.round(ev * 100) / 100,
-        totalValue: Math.round((dv + ev) * 100) / 100,
+        directValue: roundMoney(dv),
+        etfValue: roundMoney(ev),
+        totalValue: roundMoney(dv + ev),
         percentage: 0, // computed below
       });
     }
 
-    const totalPortfolioValue =
-      totalDirectValue + totalEtfValue + unclassifiedValue;
+    const totalDirectValue = sumMoney([...directMap.values()]);
+    const totalEtfValue = sumMoney([...etfMap.values()]);
+    const totalPortfolioValue = sumMoney([
+      totalDirectValue,
+      totalEtfValue,
+      unclassifiedValue,
+    ]);
 
     // Compute percentages
     for (const item of items) {
@@ -305,10 +307,10 @@ export class SectorWeightingService {
 
     return {
       items,
-      totalPortfolioValue: Math.round(totalPortfolioValue * 100) / 100,
-      totalDirectValue: Math.round(totalDirectValue * 100) / 100,
-      totalEtfValue: Math.round(totalEtfValue * 100) / 100,
-      unclassifiedValue: Math.round(unclassifiedValue * 100) / 100,
+      totalPortfolioValue: roundMoney(totalPortfolioValue),
+      totalDirectValue: roundMoney(totalDirectValue),
+      totalEtfValue: roundMoney(totalEtfValue),
+      unclassifiedValue: roundMoney(unclassifiedValue),
     };
   }
 }

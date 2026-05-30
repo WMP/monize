@@ -10,6 +10,7 @@ import {
 import { Account } from "../accounts/entities/account.entity";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { InvestmentCellValue } from "./dto/execute-investment-report.dto";
+import { roundToDecimals, sumMoney } from "../common/round.util";
 import { todayYMD } from "../common/date-utils";
 
 /** One computed holding row plus the fields needed to group it. */
@@ -52,11 +53,6 @@ interface GroupRecord {
   securityId: string;
   txs: InvestmentTransaction[];
   state: ReplayState;
-}
-
-function round(value: number, dp = 4): number {
-  const f = Math.pow(10, dp);
-  return Math.round(value * f) / f;
 }
 
 function isoAddDays(iso: string, days: number): string {
@@ -192,14 +188,26 @@ export class InvestmentReportDataService {
     const holdings = await this.holdingsRepository.find({
       where: { accountId: In(accountIds) },
     });
-    const holdingsMap = new Map<string, { quantity: number; averageCost: number }>();
+    const holdingsMap = new Map<
+      string,
+      { quantity: number; averageCost: number }
+    >();
     // Summed across accounts per security, for the merged (cross-account) view.
-    const summedHoldings = new Map<string, { quantity: number; costBasis: number }>();
+    const summedHoldings = new Map<
+      string,
+      { quantity: number; costBasis: number }
+    >();
     for (const h of holdings) {
       const quantity = Number(h.quantity) || 0;
       const averageCost = Number(h.averageCost) || 0;
-      holdingsMap.set(`${h.accountId}:${h.securityId}`, { quantity, averageCost });
-      const summed = summedHoldings.get(h.securityId) ?? { quantity: 0, costBasis: 0 };
+      holdingsMap.set(`${h.accountId}:${h.securityId}`, {
+        quantity,
+        averageCost,
+      });
+      const summed = summedHoldings.get(h.securityId) ?? {
+        quantity: 0,
+        costBasis: 0,
+      };
       summed.quantity += quantity;
       summed.costBasis += quantity * averageCost;
       summedHoldings.set(h.securityId, summed);
@@ -258,8 +266,8 @@ export class InvestmentReportDataService {
       const lastPrice = asOfRow ? asOfRow.close : null;
       const previousClose = prevRow ? prevRow.close : null;
 
-      let quantity = round(group.state.quantity, 8);
-      let costBasis = round(group.state.costBasis, 4);
+      let quantity = roundToDecimals(group.state.quantity, 8);
+      let costBasis = roundToDecimals(group.state.costBasis, 4);
 
       // When no transactions occur after the as-of date, the maintained
       // holdings table is the authoritative snapshot of this position. Defer to
@@ -273,43 +281,50 @@ export class InvestmentReportDataService {
         if (mergeAccounts) {
           const current = summedHoldings.get(group.securityId);
           if (!current || Math.abs(current.quantity) < 0.0001) continue;
-          quantity = round(current.quantity, 8);
-          costBasis = round(current.costBasis, 4);
+          quantity = roundToDecimals(current.quantity, 8);
+          costBasis = roundToDecimals(current.costBasis, 4);
         } else {
-          const current = holdingsMap.get(`${group.accountId}:${group.securityId}`);
+          const current = holdingsMap.get(
+            `${group.accountId}:${group.securityId}`,
+          );
           if (!current || Math.abs(current.quantity) < 0.0001) continue;
-          quantity = round(current.quantity, 8);
-          costBasis = round(current.quantity * current.averageCost, 4);
+          quantity = roundToDecimals(current.quantity, 8);
+          costBasis = roundToDecimals(
+            current.quantity * current.averageCost,
+            4,
+          );
         }
       } else if (Math.abs(quantity) < 0.0001) {
         continue;
       }
 
       const averageCost =
-        quantity !== 0 ? round(costBasis / quantity, 6) : null;
+        quantity !== 0 ? roundToDecimals(costBasis / quantity, 6) : null;
       const marketValue =
-        lastPrice !== null ? round(quantity * lastPrice, 4) : null;
-      const income = round(group.state.income, 4);
+        lastPrice !== null ? roundToDecimals(quantity * lastPrice, 4) : null;
+      const income = roundToDecimals(group.state.income, 4);
       const gain =
         marketValue !== null
-          ? round(marketValue + income - costBasis, 4)
+          ? roundToDecimals(marketValue + income - costBasis, 4)
           : null;
       const priceAppreciation =
-        marketValue !== null ? round(marketValue - costBasis, 4) : null;
+        marketValue !== null
+          ? roundToDecimals(marketValue - costBasis, 4)
+          : null;
       const gainPercent =
         gain !== null && costBasis > 0
-          ? round((gain / costBasis) * 100, 4)
+          ? roundToDecimals((gain / costBasis) * 100, 4)
           : null;
       const change =
         lastPrice !== null && previousClose !== null
-          ? round(lastPrice - previousClose, 6)
+          ? roundToDecimals(lastPrice - previousClose, 6)
           : null;
       const changePercent =
         change !== null && previousClose
-          ? round((change / previousClose) * 100, 4)
+          ? roundToDecimals((change / previousClose) * 100, 4)
           : null;
       const todaysTotalChange =
-        change !== null ? round(change * quantity, 4) : null;
+        change !== null ? roundToDecimals(change * quantity, 4) : null;
 
       const fxRate = await this.fxRate(
         security.currencyCode,
@@ -350,12 +365,12 @@ export class InvestmentReportDataService {
         volume: asOfRow?.volume ?? null,
         lastTransactionDate: group.state.lastTransactionDate,
         income,
-        commissions: round(group.state.commissions, 4),
-        purchases: round(group.state.purchases, 4),
-        sales: round(group.state.sales, 4),
-        reinvestments: round(group.state.reinvestments, 4),
-        realizedGains: round(group.state.realizedGains, 4),
-        exchangeRate: round(fxRate, 6),
+        commissions: roundToDecimals(group.state.commissions, 4),
+        purchases: roundToDecimals(group.state.purchases, 4),
+        sales: roundToDecimals(group.state.sales, 4),
+        reinvestments: roundToDecimals(group.state.reinvestments, 4),
+        realizedGains: roundToDecimals(group.state.realizedGains, 4),
+        exchangeRate: roundToDecimals(fxRate, 6),
         lastUpdated: asOfRow?.date ?? null,
         fiftyTwoWeekHigh: high52,
         fiftyTwoWeekLow: low52,
@@ -385,13 +400,10 @@ export class InvestmentReportDataService {
     }
 
     // Second pass: % of portfolio against total (base-currency) market value.
-    const totalBase = computed.reduce(
-      (sum, c) => sum + (c.marketValueBase ?? 0),
-      0,
-    );
+    const totalBase = sumMoney(computed.map((c) => c.marketValueBase ?? 0));
     for (const c of computed) {
       if (c.marketValueBase !== null && totalBase > 0) {
-        c.holding.values.portfolioPercent = round(
+        c.holding.values.portfolioPercent = roundToDecimals(
           (c.marketValueBase / totalBase) * 100,
           4,
         );
@@ -521,7 +533,9 @@ export class InvestmentReportDataService {
         if (a.transactionDate !== b.transactionDate) {
           return a.transactionDate < b.transactionDate ? -1 : 1;
         }
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return (
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
       });
       for (const tx of m.txs) {
         if (tx.transactionDate <= asOfDate) this.applyToState(m.state, tx);
@@ -643,8 +657,8 @@ export class InvestmentReportDataService {
       if (low === null || l < low) low = l;
     }
     return {
-      high: high === null ? null : round(high, 6),
-      low: low === null ? null : round(low, 6),
+      high: high === null ? null : roundToDecimals(high, 6),
+      low: low === null ? null : roundToDecimals(low, 6),
     };
   }
 
@@ -728,7 +742,7 @@ export class InvestmentReportDataService {
       const beginValue = beginQty * beginPrice;
       if (beginValue <= 0) continue;
       const income = this.incomeBetween(group, start, asOfDate);
-      result[key] = round(
+      result[key] = roundToDecimals(
         ((marketValue + income - beginValue) / beginValue) * 100,
         4,
       );
@@ -739,7 +753,7 @@ export class InvestmentReportDataService {
       const allIncome = group.state.income;
       const allDates =
         ((marketValue + allIncome - costBasis) / costBasis) * 100;
-      result.totalReturnAllDates = round(allDates, 4);
+      result.totalReturnAllDates = roundToDecimals(allDates, 4);
 
       const firstDate = group.txs[0]?.transactionDate;
       if (firstDate) {
@@ -750,7 +764,7 @@ export class InvestmentReportDataService {
           const growth = 1 + allDates / 100;
           result.totalAnnualizedReturn =
             growth > 0
-              ? round((Math.pow(growth, 1 / years) - 1) * 100, 4)
+              ? roundToDecimals((Math.pow(growth, 1 / years) - 1) * 100, 4)
               : -100;
         }
       }

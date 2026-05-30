@@ -11,6 +11,7 @@ import {
   FlexGroupStatusResult,
 } from "./budget-reports.service";
 import { formatDateYMD } from "../common/date-utils";
+import { roundMoney, roundToDecimals, sumMoney } from "../common/round.util";
 
 const MONTH_NAMES = [
   "January",
@@ -141,15 +142,12 @@ export class BudgetActivityReportsService {
         monthlyAverages.push({
           month: m,
           monthName: MONTH_NAMES[m - 1],
-          average: this.round(avg),
+          average: roundMoney(avg),
         });
       }
 
       const nonZero = amounts.filter((a) => a > 0);
-      const mean =
-        nonZero.length > 0
-          ? nonZero.reduce((s, v) => s + v, 0) / nonZero.length
-          : 0;
+      const mean = nonZero.length > 0 ? sumMoney(nonZero) / nonZero.length : 0;
       const stdDev = this.standardDeviation(nonZero);
 
       // High months: > mean + 1.5 * stdDev
@@ -163,7 +161,7 @@ export class BudgetActivityReportsService {
         categoryName: categoryNameMap.get(catId) || "Unknown",
         monthlyAverages,
         highMonths,
-        typicalMonthlySpend: this.round(mean),
+        typicalMonthlySpend: roundMoney(mean),
       });
     }
 
@@ -277,7 +275,7 @@ export class BudgetActivityReportsService {
 
     // Convert map to sorted array
     return Array.from(spendingMap.entries())
-      .map(([date, amount]) => ({ date, amount: this.round(amount) }))
+      .map(([date, amount]) => ({ date, amount: roundMoney(amount) }))
       .sort((a, b) => a.date.localeCompare(b.date));
   }
 
@@ -337,14 +335,14 @@ export class BudgetActivityReportsService {
       const remaining = data.totalBudgeted - data.totalSpent;
       const percentUsed =
         data.totalBudgeted > 0
-          ? this.round((data.totalSpent / data.totalBudgeted) * 100)
+          ? roundToDecimals((data.totalSpent / data.totalBudgeted) * 100, 2)
           : 0;
 
       results.push({
         groupName,
-        totalBudgeted: this.round(data.totalBudgeted),
-        totalSpent: this.round(data.totalSpent),
-        remaining: this.round(remaining),
+        totalBudgeted: roundMoney(data.totalBudgeted),
+        totalSpent: roundMoney(data.totalSpent),
+        remaining: roundMoney(remaining),
         percentUsed,
         categories: data.categories,
       });
@@ -372,9 +370,5 @@ export class BudgetActivityReportsService {
     const squaredDiffs = values.map((v) => (v - avg) ** 2);
     const variance = squaredDiffs.reduce((s, v) => s + v, 0) / values.length;
     return Math.sqrt(variance);
-  }
-
-  private round(value: number): number {
-    return Math.round(value * 100) / 100;
   }
 }

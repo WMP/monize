@@ -27,6 +27,7 @@ import {
   AggregatedDataPoint,
   ReportSummary,
 } from "./dto/execute-report.dto";
+import { roundMoney, sumMoney } from "../common/round.util";
 import { BudgetsService } from "../budgets/budgets.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import {
@@ -637,20 +638,20 @@ export class ReportsService {
     }
 
     // For other metrics, aggregate into a single total
-    let sum = 0;
-    let count = 0;
+    const amounts: number[] = [];
 
     for (const tx of transactions) {
       if (tx.isSplit && tx.splits && tx.splits.length > 0) {
         for (const split of tx.splits) {
-          sum += Math.abs(Number(split.amount));
-          count += 1;
+          amounts.push(Math.abs(Number(split.amount)));
         }
       } else {
-        sum += Math.abs(Number(tx.amount));
-        count += 1;
+        amounts.push(Math.abs(Number(tx.amount)));
       }
     }
+
+    const count = amounts.length;
+    const sum = sumMoney(amounts);
 
     if (count === 0) {
       return [];
@@ -680,7 +681,9 @@ export class ReportsService {
         for (const split of tx.splits) {
           const categoryId = split.categoryId || "uncategorized";
           const existing = dataMap.get(categoryId) || { sum: 0, count: 0 };
-          existing.sum += Math.abs(Number(split.amount));
+          existing.sum = roundMoney(
+            existing.sum + Math.abs(Number(split.amount)),
+          );
           existing.count += 1;
           dataMap.set(categoryId, existing);
         }
@@ -688,16 +691,13 @@ export class ReportsService {
         // Regular transaction
         const categoryId = tx.categoryId || "uncategorized";
         const existing = dataMap.get(categoryId) || { sum: 0, count: 0 };
-        existing.sum += Math.abs(Number(tx.amount));
+        existing.sum = roundMoney(existing.sum + Math.abs(Number(tx.amount)));
         existing.count += 1;
         dataMap.set(categoryId, existing);
       }
     }
 
-    const totalSum = Array.from(dataMap.values()).reduce(
-      (acc, v) => acc + v.sum,
-      0,
-    );
+    const totalSum = sumMoney(Array.from(dataMap.values()).map((v) => v.sum));
 
     const result: AggregatedDataPoint[] = [];
     for (const [categoryId, data] of dataMap) {
@@ -732,7 +732,7 @@ export class ReportsService {
         count: 0,
         payeeName: tx.payeeName ?? undefined,
       };
-      existing.sum += Math.abs(Number(tx.amount));
+      existing.sum = roundMoney(existing.sum + Math.abs(Number(tx.amount)));
       existing.count += 1;
       if (!existing.payeeName && tx.payeeName) {
         existing.payeeName = tx.payeeName;
@@ -740,10 +740,7 @@ export class ReportsService {
       dataMap.set(payeeId, existing);
     }
 
-    const totalSum = Array.from(dataMap.values()).reduce(
-      (acc, v) => acc + v.sum,
-      0,
-    );
+    const totalSum = sumMoney(Array.from(dataMap.values()).map((v) => v.sum));
 
     const result: AggregatedDataPoint[] = [];
     for (const [payeeId, data] of dataMap) {
@@ -791,7 +788,7 @@ export class ReportsService {
           count: 0,
           tagName: "Untagged",
         };
-        existing.sum += Math.abs(Number(tx.amount));
+        existing.sum = roundMoney(existing.sum + Math.abs(Number(tx.amount)));
         existing.count += 1;
         dataMap.set("untagged", existing);
       } else {
@@ -802,17 +799,14 @@ export class ReportsService {
             tagName: tag.name,
             color: tag.color ?? undefined,
           };
-          existing.sum += Math.abs(Number(tx.amount));
+          existing.sum = roundMoney(existing.sum + Math.abs(Number(tx.amount)));
           existing.count += 1;
           dataMap.set(tag.id, existing);
         }
       }
     }
 
-    const totalSum = Array.from(dataMap.values()).reduce(
-      (acc, v) => acc + v.sum,
-      0,
-    );
+    const totalSum = sumMoney(Array.from(dataMap.values()).map((v) => v.sum));
 
     const result: AggregatedDataPoint[] = [];
     for (const [tagId, data] of dataMap) {
@@ -864,7 +858,7 @@ export class ReportsService {
       }
 
       const existing = dataMap.get(key) || { sum: 0, count: 0, label };
-      existing.sum += Math.abs(Number(tx.amount));
+      existing.sum = roundMoney(existing.sum + Math.abs(Number(tx.amount)));
       existing.count += 1;
       dataMap.set(key, existing);
     }
@@ -890,16 +884,16 @@ export class ReportsService {
   ): number {
     switch (metric) {
       case MetricType.NONE:
-        return Math.round(sum * 100) / 100;
+        return roundMoney(sum);
       case MetricType.TOTAL_AMOUNT:
-        return Math.round(sum * 100) / 100;
+        return roundMoney(sum);
       case MetricType.COUNT:
         return count;
       case MetricType.AVERAGE:
-        return count > 0 ? Math.round((sum / count) * 100) / 100 : 0;
+        return count > 0 ? roundMoney(sum / count) : 0;
       case MetricType.BUDGET_VARIANCE:
         // For budget variance, sum contains the variance (actual - budgeted)
-        return Math.round(sum * 100) / 100;
+        return roundMoney(sum);
       default:
         return sum;
     }
@@ -927,9 +921,9 @@ export class ReportsService {
         const variance = point.value - budgeted;
         return {
           ...point,
-          value: Math.round(variance * 100) / 100,
-          budgeted: Math.round(budgeted * 100) / 100,
-          actual: Math.round(point.value * 100) / 100,
+          value: roundMoney(variance),
+          budgeted: roundMoney(budgeted),
+          actual: roundMoney(point.value),
         };
       });
     } catch {
@@ -938,14 +932,14 @@ export class ReportsService {
   }
 
   private calculateSummary(data: AggregatedDataPoint[]): ReportSummary {
-    const total = data.reduce((acc, d) => acc + d.value, 0);
+    const total = sumMoney(data.map((d) => d.value));
     const count = data.reduce((acc, d) => acc + (d.count || 1), 0);
     const average = count > 0 ? total / count : 0;
 
     return {
-      total: Math.round(total * 100) / 100,
+      total: roundMoney(total),
       count,
-      average: Math.round(average * 100) / 100,
+      average: roundMoney(average),
     };
   }
 

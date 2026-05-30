@@ -10,6 +10,7 @@ import {
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { todayInTimezone } from "../common/date-utils";
+import { sumMoney } from "../common/round.util";
 import {
   Repository,
   In,
@@ -374,9 +375,8 @@ export class HoldingsService {
     const summary = {
       totalHoldings: holdings.length,
       totalQuantity: holdings.reduce((sum, h) => sum + Number(h.quantity), 0),
-      totalCostBasis: holdings.reduce(
-        (sum, h) => sum + Number(h.quantity) * Number(h.averageCost || 0),
-        0,
+      totalCostBasis: sumMoney(
+        holdings.map((h) => Number(h.quantity) * Number(h.averageCost || 0)),
       ),
       holdings: holdings.map((h) => ({
         id: h.id,
@@ -696,7 +696,8 @@ export class HoldingsService {
     for (const [accountId, securities] of holdingsMap) {
       for (const [securityId, data] of securities) {
         if (Math.abs(data.quantity) > 0.00000001) {
-          const avgCost = data.quantity > 0 ? data.totalCost / data.quantity : 0;
+          const avgCost =
+            data.quantity > 0 ? data.totalCost / data.quantity : 0;
           holdingsToCreate.push(
             holdingsRepo.create({
               accountId,

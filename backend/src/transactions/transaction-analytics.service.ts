@@ -15,6 +15,7 @@ import {
   escapeLikePattern,
 } from "./transaction-search.util";
 import { RecurringCharge, detectFrequency } from "./recurring-charges.util";
+import { roundMoney, sumMoney } from "../common/round.util";
 
 export interface TransferAccountSummary {
   accountName: string;
@@ -114,14 +115,6 @@ export interface LlmPeriodComparisonResult {
   }>;
 }
 
-function sumMoney(values: number[]): number {
-  return values.reduce((sum, v) => sum + Math.round(v * 10000), 0) / 10000;
-}
-
-function roundMoney(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
 function sanitizeLikePattern(input: string | undefined): string | undefined {
   if (!input) return undefined;
   return input
@@ -183,10 +176,6 @@ export class TransactionAnalyticsService {
     }
 
     const rows = await qb.getRawMany();
-
-    const roundMoney = (v: number): number => Math.round(v * 10000) / 10000;
-    const sumMoney = (values: number[]): number =>
-      values.reduce((s, v) => s + Math.round(v * 10000), 0) / 10000;
 
     const accounts: TransferAccountSummary[] = rows.map((r) => {
       const inbound = roundMoney(Number(r.inbound) || 0);
@@ -613,7 +602,7 @@ export class TransactionAnalyticsService {
 
     return rows.map((row) => ({
       month: row.month,
-      total: Math.round((Number(row.total) || 0) * 100) / 100,
+      total: roundMoney(Number(row.total) || 0),
       count: Number(row.count) || 0,
     }));
   }

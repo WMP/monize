@@ -16,6 +16,7 @@ import { NetWorthService } from "../net-worth/net-worth.service";
 import { isTransactionInFuture } from "../common/date-utils";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { formatCurrency } from "../common/format-currency.util";
+import { roundMoney } from "../common/round.util";
 
 export interface TransferResult {
   fromTransaction: Transaction;
@@ -82,8 +83,8 @@ export class TransactionTransferService {
 
     const toAmount =
       explicitToAmount !== undefined
-        ? Math.round(explicitToAmount * 10000) / 10000
-        : Math.round(amount * exchangeRate * 10000) / 10000;
+        ? roundMoney(explicitToAmount)
+        : roundMoney(amount * exchangeRate);
     const destinationCurrency = toCurrencyCode || fromCurrencyCode;
 
     const fromPayeeName = customPayeeName || `Transfer to ${toAccount.name}`;
@@ -456,8 +457,8 @@ export class TransactionTransferService {
       updateDto.exchangeRate ?? toTransaction.exchangeRate;
     const newToAmount =
       updateDto.toAmount !== undefined
-        ? Math.round(updateDto.toAmount * 10000) / 10000
-        : Math.round(newAmount * newExchangeRate * 10000) / 10000;
+        ? roundMoney(updateDto.toAmount)
+        : roundMoney(newAmount * newExchangeRate);
 
     const accountsOrAmountsChanged =
       updateDto.fromAccountId ||

@@ -1077,14 +1077,14 @@ describe("TransactionAnalyticsService", () => {
       ]);
     });
 
-    it("rounds totals to two decimal places", async () => {
+    it("rounds totals to storage precision (four decimal places)", async () => {
       mockQueryBuilder.getRawMany.mockResolvedValue([
         { month: "2025-01", total: "-123.456", count: "3" },
       ]);
 
       const result = await service.getMonthlyTotals(userId);
 
-      expect(result[0].total).toBe(-123.46);
+      expect(result[0].total).toBe(-123.456);
     });
 
     it("handles null values in raw query results", async () => {

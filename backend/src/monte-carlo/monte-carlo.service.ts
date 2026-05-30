@@ -23,6 +23,7 @@ import { Holding } from "../securities/entities/holding.entity";
 import { Security } from "../securities/entities/security.entity";
 import { SecurityPrice } from "../securities/entities/security-price.entity";
 import { Account } from "../accounts/entities/account.entity";
+import { roundMoney } from "../common/round.util";
 
 export interface HistoricalStats {
   /** Number of full calendar years of data used to compute the stats. */
@@ -503,10 +504,7 @@ export class MonteCarloService {
         name: h.security?.name ?? "Unknown",
         currencyCode: h.security?.currencyCode ?? "USD",
         quantity: Number(h.quantity),
-        marketValue:
-          price == null
-            ? 0
-            : Math.round(Number(h.quantity) * price * 100) / 100,
+        marketValue: price == null ? 0 : roundMoney(Number(h.quantity) * price),
         yearsObserved: series.length,
         meanReturn: stats.mean,
         volatility: stats.stdev,
@@ -650,7 +648,7 @@ export class MonteCarloService {
       // with more than 4 decimals fail the DTO's @IsNumber maxDecimalPlaces
       // check. Clamp non-finite values to 0 and round to 4 decimal places.
       if (!Number.isFinite(value)) return 0;
-      return Math.round(value * 10000) / 10000;
+      return roundMoney(value);
     } catch (err) {
       this.logger.warn(
         `Failed to compute current portfolio value for accounts ${accountIds.join(",")}: ${
