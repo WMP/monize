@@ -11,6 +11,7 @@ import {
   BudgetTrendPoint,
   CategoryTrendSeries,
 } from "./budget-reports.service";
+import { roundMoney, roundToDecimals, sumMoney } from "../common/round.util";
 
 const MONTH_NAMES = [
   "January",
@@ -61,13 +62,13 @@ export class BudgetTrendReportsService {
       const actual = Number(period.actualExpenses) || 0;
       const variance = actual - budgeted;
       const percentUsed =
-        budgeted > 0 ? this.round((actual / budgeted) * 100) : 0;
+        budgeted > 0 ? roundToDecimals((actual / budgeted) * 100, 2) : 0;
 
       return {
         month: this.formatPeriodMonth(period.periodStart),
-        budgeted: this.round(budgeted),
-        actual: this.round(actual),
-        variance: this.round(variance),
+        budgeted: roundMoney(budgeted),
+        actual: roundMoney(actual),
+        variance: roundMoney(variance),
         percentUsed,
       };
     });
@@ -83,13 +84,15 @@ export class BudgetTrendReportsService {
       const budgeted = Number(currentPeriod.totalBudgeted) || 0;
       const variance = currentActuals - budgeted;
       const percentUsed =
-        budgeted > 0 ? this.round((currentActuals / budgeted) * 100) : 0;
+        budgeted > 0
+          ? roundToDecimals((currentActuals / budgeted) * 100, 2)
+          : 0;
 
       result.push({
         month: this.formatPeriodMonth(currentPeriod.periodStart),
-        budgeted: this.round(budgeted),
-        actual: this.round(currentActuals),
-        variance: this.round(variance),
+        budgeted: roundMoney(budgeted),
+        actual: roundMoney(currentActuals),
+        variance: roundMoney(variance),
         percentUsed,
       });
     }
@@ -174,13 +177,13 @@ export class BudgetTrendReportsService {
 
         const variance = actual - budgeted;
         const percentUsed =
-          budgeted > 0 ? this.round((actual / budgeted) * 100) : 0;
+          budgeted > 0 ? roundToDecimals((actual / budgeted) * 100, 2) : 0;
 
         seriesMap.get(catId)!.data.push({
           month: periodMonth,
-          budgeted: this.round(budgeted),
-          actual: this.round(actual),
-          variance: this.round(variance),
+          budgeted: roundMoney(budgeted),
+          actual: roundMoney(actual),
+          variance: roundMoney(variance),
           percentUsed,
         });
       }
@@ -452,13 +455,13 @@ export class BudgetTrendReportsService {
         const actual = actualMap.get(catId)?.get(monthKey) || 0;
         const variance = actual - budgeted;
         const percentUsed =
-          budgeted > 0 ? this.round((actual / budgeted) * 100) : 0;
+          budgeted > 0 ? roundToDecimals((actual / budgeted) * 100, 2) : 0;
 
         data.push({
           month: monthLabel,
-          budgeted: this.round(budgeted),
-          actual: this.round(actual),
-          variance: this.round(variance),
+          budgeted: roundMoney(budgeted),
+          actual: roundMoney(actual),
+          variance: roundMoney(variance),
           percentUsed,
         });
       }
@@ -486,10 +489,7 @@ export class BudgetTrendReportsService {
 
     if (categoryIds.length === 0 && transferAccountIds.length === 0) return [];
 
-    const totalBudgeted = categories.reduce(
-      (sum, bc) => sum + Number(bc.amount),
-      0,
-    );
+    const totalBudgeted = sumMoney(categories.map((bc) => Number(bc.amount)));
 
     const today = new Date();
 
@@ -621,13 +621,15 @@ export class BudgetTrendReportsService {
       const actual = actualByMonth.get(monthKey) || 0;
       const variance = actual - totalBudgeted;
       const percentUsed =
-        totalBudgeted > 0 ? this.round((actual / totalBudgeted) * 100) : 0;
+        totalBudgeted > 0
+          ? roundToDecimals((actual / totalBudgeted) * 100, 2)
+          : 0;
 
       result.push({
         month: monthLabel,
-        budgeted: this.round(totalBudgeted),
-        actual: this.round(actual),
-        variance: this.round(variance),
+        budgeted: roundMoney(totalBudgeted),
+        actual: roundMoney(actual),
+        variance: roundMoney(variance),
         percentUsed,
       });
     }
@@ -640,9 +642,5 @@ export class BudgetTrendReportsService {
     const year = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10);
     return `${MONTH_NAMES[month - 1].substring(0, 3)} ${year}`;
-  }
-
-  private round(value: number): number {
-    return Math.round(value * 100) / 100;
   }
 }

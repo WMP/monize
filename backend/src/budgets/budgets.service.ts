@@ -33,6 +33,7 @@ import {
 } from "./budget-spending.util";
 import { formatDateYMD, todayYMD } from "../common/date-utils";
 import { formatCurrency } from "../common/format-currency.util";
+import { roundMoney, sumMoney } from "../common/round.util";
 import { ActionHistoryService } from "../action-history/action-history.service";
 
 export interface UpcomingBill {
@@ -366,13 +367,10 @@ export class BudgetsService {
     const expenseCategories = categoryBreakdown.filter((c) => !c.isIncome);
     const incomeCategories = categoryBreakdown.filter((c) => c.isIncome);
 
-    const totalBudgeted = expenseCategories.reduce(
-      (sum, c) => sum + c.budgeted,
-      0,
-    );
-    const totalSpent = expenseCategories.reduce((sum, c) => sum + c.spent, 0);
-    const totalIncome = incomeCategories.reduce((sum, c) => sum + c.spent, 0);
-    const remaining = totalBudgeted - totalSpent;
+    const totalBudgeted = sumMoney(expenseCategories.map((c) => c.budgeted));
+    const totalSpent = sumMoney(expenseCategories.map((c) => c.spent));
+    const totalIncome = sumMoney(incomeCategories.map((c) => c.spent));
+    const remaining = roundMoney(totalBudgeted - totalSpent);
     const percentUsed =
       totalBudgeted > 0
         ? Math.round((totalSpent / totalBudgeted) * 10000) / 100
@@ -468,22 +466,16 @@ export class BudgetsService {
     );
 
     const expenseCategories = categoryBreakdown.filter((c) => !c.isIncome);
-    const currentSpent = expenseCategories.reduce((sum, c) => sum + c.spent, 0);
-    const budgetTotal = expenseCategories.reduce(
-      (sum, c) => sum + c.budgeted,
-      0,
-    );
+    const currentSpent = sumMoney(expenseCategories.map((c) => c.spent));
+    const budgetTotal = sumMoney(expenseCategories.map((c) => c.budgeted));
 
     const upcomingBills = await this.getUpcomingBills(userId, periodEnd);
-    const totalUpcomingBills = upcomingBills.reduce(
-      (sum, b) => sum + b.amount,
-      0,
-    );
+    const totalUpcomingBills = sumMoney(upcomingBills.map((b) => b.amount));
 
     const dailyBurnRate = currentSpent / daysElapsed;
     const projectedTotal = dailyBurnRate * totalDays;
     const projectedVariance = projectedTotal - budgetTotal;
-    const remaining = budgetTotal - currentSpent;
+    const remaining = roundMoney(budgetTotal - currentSpent);
     const trulyAvailable = remaining - totalUpcomingBills;
     const safeDailySpend =
       daysRemaining > 0 ? Math.max(0, trulyAvailable / daysRemaining) : 0;
@@ -499,19 +491,19 @@ export class BudgetsService {
     }
 
     return {
-      dailyBurnRate: Math.round(dailyBurnRate * 100) / 100,
-      projectedTotal: Math.round(projectedTotal * 100) / 100,
+      dailyBurnRate: roundMoney(dailyBurnRate),
+      projectedTotal: roundMoney(projectedTotal),
       budgetTotal,
-      projectedVariance: Math.round(projectedVariance * 100) / 100,
-      safeDailySpend: Math.round(safeDailySpend * 100) / 100,
+      projectedVariance: roundMoney(projectedVariance),
+      safeDailySpend: roundMoney(safeDailySpend),
       daysElapsed,
       daysRemaining,
       totalDays,
       currentSpent,
       paceStatus,
       upcomingBills,
-      totalUpcomingBills: Math.round(totalUpcomingBills * 100) / 100,
-      trulyAvailable: Math.round(trulyAvailable * 100) / 100,
+      totalUpcomingBills: roundMoney(totalUpcomingBills),
+      trulyAvailable: roundMoney(trulyAvailable),
     };
   }
 
@@ -742,12 +734,9 @@ export class BudgetsService {
 
     const expenseCategories = categoryBreakdown.filter((c) => !c.isIncome);
 
-    const totalBudgeted = expenseCategories.reduce(
-      (sum, c) => sum + c.budgeted,
-      0,
-    );
-    const totalSpent = expenseCategories.reduce((sum, c) => sum + c.spent, 0);
-    const remaining = totalBudgeted - totalSpent;
+    const totalBudgeted = sumMoney(expenseCategories.map((c) => c.budgeted));
+    const totalSpent = sumMoney(expenseCategories.map((c) => c.spent));
+    const remaining = roundMoney(totalBudgeted - totalSpent);
     const percentUsed =
       totalBudgeted > 0
         ? Math.round((totalSpent / totalBudgeted) * 10000) / 100
@@ -787,7 +776,7 @@ export class BudgetsService {
       totalSpent,
       remaining,
       percentUsed,
-      safeDailySpend: Math.round(safeDailySpend * 100) / 100,
+      safeDailySpend: roundMoney(safeDailySpend),
       daysRemaining,
       topCategories,
     };
@@ -996,14 +985,14 @@ export class BudgetsService {
 
       if (budget.incomeLinked && !bc.isIncome) {
         percentage = rawAmount;
-        budgeted = Math.round(((actualIncome * rawAmount) / 100) * 100) / 100;
+        budgeted = roundMoney((actualIncome * rawAmount) / 100);
       } else {
         budgeted = rawAmount;
       }
 
       const spent = resolveCategorySpent(bc, spendingMap, transferSpendingMap);
       const categoryName = resolveCategoryName(bc);
-      const remaining = budgeted - spent;
+      const remaining = roundMoney(budgeted - spent);
       const percentUsed =
         budgeted > 0 ? Math.round((spent / budgeted) * 10000) / 100 : 0;
 

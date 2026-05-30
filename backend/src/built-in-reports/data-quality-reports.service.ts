@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { ReportCurrencyService } from "./report-currency.service";
+import { roundMoney, sumMoney } from "../common/round.util";
 import {
   UncategorizedTransactionsResponse,
   UncategorizedTransactionItem,
@@ -175,9 +176,9 @@ export class DataQualityReportsService {
       summary: {
         totalCount,
         expenseCount,
-        expenseTotal: Math.round(expenseTotal * 100) / 100,
+        expenseTotal: roundMoney(expenseTotal),
         incomeCount,
-        incomeTotal: Math.round(incomeTotal * 100) / 100,
+        incomeTotal: roundMoney(incomeTotal),
       },
     };
   }
@@ -383,10 +384,12 @@ export class DataQualityReportsService {
     const medium = groups.filter((g) => g.confidence === "medium");
     const low = groups.filter((g) => g.confidence === "low");
 
-    const potentialSavings = groups.reduce((sum, group) => {
-      const duplicateCount = group.transactions.length - 1;
-      return sum + Math.abs(group.transactions[0].amount) * duplicateCount;
-    }, 0);
+    const potentialSavings = sumMoney(
+      groups.map((group) => {
+        const duplicateCount = group.transactions.length - 1;
+        return Math.abs(group.transactions[0].amount) * duplicateCount;
+      }),
+    );
 
     return {
       groups,
@@ -395,7 +398,7 @@ export class DataQualityReportsService {
         highCount: high.length,
         mediumCount: medium.length,
         lowCount: low.length,
-        potentialSavings: Math.round(potentialSavings * 100) / 100,
+        potentialSavings: roundMoney(potentialSavings),
       },
     };
   }

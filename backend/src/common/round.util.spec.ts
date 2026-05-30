@@ -81,6 +81,25 @@ describe("roundToDecimals", () => {
       expect(roundToDecimals(1.2345, 3)).toBe(1.235);
       expect(roundToDecimals(1.2344, 3)).toBe(1.234);
     });
+
+    it("handles tiny magnitudes that stringify in exponential notation", () => {
+      // toString() would give "1e-7", and "1e-7e8" parses to NaN; the
+      // exponential decomposition handles it.
+      expect(roundToDecimals(1e-7, 8)).toBe(1e-7);
+      expect(roundToDecimals(1.2345e-5, 8)).toBe(0.00001235);
+      expect(roundToDecimals(8e-7, 6)).toBe(0.000001);
+      expect(roundToDecimals(-1e-7, 8)).toBe(-1e-7);
+    });
+
+    it("rounds tiny magnitudes to zero at coarser precision", () => {
+      expect(roundToDecimals(1e-7, 4)).toBe(0);
+      expect(roundToDecimals(8e-7, 4)).toBe(0);
+    });
+
+    it("handles zero without producing -0 or NaN", () => {
+      expect(roundToDecimals(0, 4)).toBe(0);
+      expect(Object.is(roundToDecimals(0, 4), 0)).toBe(true);
+    });
   });
 });
 

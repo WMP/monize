@@ -29,7 +29,7 @@ import { SecurityPriceService } from "./security-price.service";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { CurrenciesService } from "../currencies/currencies.service";
-import { roundToDecimals } from "../common/round.util";
+import { roundToDecimals, roundMoney, sumMoney } from "../common/round.util";
 import {
   Transaction,
   TransactionStatus,
@@ -818,8 +818,8 @@ export class InvestmentTransactionsService {
         return 0;
     }
 
-    // M13: Round to 4 decimal places to avoid floating-point drift
-    return roundToDecimals(result, 4);
+    // M13: Round to money storage precision (4dp) to avoid floating-point drift
+    return roundMoney(result);
   }
 
   private async processTransactionEffectsInTransaction(
@@ -1169,9 +1169,8 @@ export class InvestmentTransactionsService {
       Number(saved.price ?? 0),
       Number(saved.commission ?? 0),
     );
-    const newSplitAmount = roundToDecimals(
+    const newSplitAmount = roundMoney(
       cashImpactInSecurity * Number(saved.exchangeRate),
-      4,
     );
 
     const split = await queryRunner.manager.findOne(TransactionSplit, {
@@ -1199,13 +1198,13 @@ export class InvestmentTransactionsService {
     const siblingSplits = await queryRunner.manager.find(TransactionSplit, {
       where: { transactionId: split.transactionId },
     });
-    const newParentTotalCents = siblingSplits.reduce((sum, s) => {
-      const amt = s.id === splitId ? newSplitAmount : Number(s.amount);
-      return sum + Math.round(amt * 10000);
-    }, 0);
-    const newParentAmount = newParentTotalCents / 10000;
+    const newParentAmount = sumMoney(
+      siblingSplits.map((s) =>
+        s.id === splitId ? newSplitAmount : Number(s.amount),
+      ),
+    );
     const oldParentAmount = Number(parentTransaction.amount);
-    const delta = roundToDecimals(newParentAmount - oldParentAmount, 4);
+    const delta = roundMoney(newParentAmount - oldParentAmount);
 
     await queryRunner.manager.update(Transaction, parentTransaction.id, {
       amount: newParentAmount,
@@ -1565,7 +1564,6 @@ export class InvestmentTransactionsService {
     const groupBy: LlmCapitalGainsGroupBy = options.groupBy ?? "month";
 
     // Aggregate in integer 1e-4 units so sums stay free of float drift.
-    const round4 = (n: number): number => Math.round(n * 10000) / 10000;
     interface Bucket {
       month: string | null;
       accountName: string | null;
@@ -1655,11 +1653,11 @@ export class InvestmentTransactionsService {
         symbol: b.symbol,
         securityName: b.securityName,
         currency: b.currency ?? null,
-        startValue: round4(b.startValueScaled / 10000),
-        endValue: round4(b.endValueScaled / 10000),
-        realizedGain: round4(b.realizedScaled / 10000),
-        unrealizedGain: round4(b.unrealizedScaled / 10000),
-        totalCapitalGain: round4(b.totalScaled / 10000),
+        startValue: roundMoney(b.startValueScaled / 10000),
+        endValue: roundMoney(b.endValueScaled / 10000),
+        realizedGain: roundMoney(b.realizedScaled / 10000),
+        unrealizedGain: roundMoney(b.unrealizedScaled / 10000),
+        totalCapitalGain: roundMoney(b.totalScaled / 10000),
       }),
     );
     allEntries.sort((a, b) => {
@@ -1672,9 +1670,9 @@ export class InvestmentTransactionsService {
       startDate: options.startDate,
       endDate: options.endDate,
       totals: {
-        realizedGain: round4(totalsRealizedScaled / 10000),
-        unrealizedGain: round4(totalsUnrealizedScaled / 10000),
-        totalCapitalGain: round4(totalsCapitalScaled / 10000),
+        realizedGain: roundMoney(totalsRealizedScaled / 10000),
+        unrealizedGain: roundMoney(totalsUnrealizedScaled / 10000),
+        totalCapitalGain: roundMoney(totalsCapitalScaled / 10000),
       },
       groupedBy: groupBy,
       entries: allEntries.slice(0, MAX_ENTRIES),
@@ -2586,6 +2584,8 @@ export class InvestmentTransactionsService {
 
     const rows = await query.getMany();
 
+    // round4 here is reserved for per-share prices (4dp price precision);
+    // monetary amounts use the shared roundMoney, quantities use round8 (1e-8).
     const round4 = (n: number): number => Math.round(n * 10000) / 10000;
     const round8 = (n: number): number => Math.round(n * 1e8) / 1e8;
 
@@ -2620,8 +2620,8 @@ export class InvestmentTransactionsService {
           r.price !== null && r.price !== undefined
             ? round4(Number(r.price))
             : null,
-        commission: round4(Number(r.commission || 0)),
-        totalAmount: round4(Number(r.totalAmount)),
+        commission: roundMoney(Number(r.commission || 0)),
+        totalAmount: roundMoney(Number(r.totalAmount)),
         currency: r.account?.currencyCode ?? null,
         description: r.description ?? null,
       }));
@@ -2658,8 +2658,8 @@ export class InvestmentTransactionsService {
           key,
           transactionCount: b.count,
           totalQuantity: round8(b.quantityScaled / 1e8),
-          totalAmount: round4(b.amountScaled / 10000),
-          totalCommission: round4(b.commissionScaled / 10000),
+          totalAmount: roundMoney(b.amountScaled / 10000),
+          totalCommission: roundMoney(b.commissionScaled / 10000),
         }))
         .sort((a, b) =>
           options.groupBy === "date"
@@ -2670,8 +2670,8 @@ export class InvestmentTransactionsService {
 
     return {
       transactionCount: rows.length,
-      totalAmount: round4(totalAmountScaled / 10000),
-      totalCommission: round4(totalCommissionScaled / 10000),
+      totalAmount: roundMoney(totalAmountScaled / 10000),
+      totalCommission: roundMoney(totalCommissionScaled / 10000),
       totalQuantity: round8(totalQuantityScaled / 1e8),
       actionCounts,
       groupedBy: options.groupBy ?? null,
@@ -2722,18 +2722,23 @@ export class InvestmentTransactionsService {
         .length,
       totalSells: transactions.filter((t) => t.action === InvestmentAction.SELL)
         .length,
-      totalDividends: transactions
-        .filter((t) => t.action === InvestmentAction.DIVIDEND)
-        .reduce((sum, t) => sum + Number(t.totalAmount), 0),
-      totalInterest: transactions
-        .filter((t) => t.action === InvestmentAction.INTEREST)
-        .reduce((sum, t) => sum + Number(t.totalAmount), 0),
-      totalCapitalGains: transactions
-        .filter((t) => t.action === InvestmentAction.CAPITAL_GAIN)
-        .reduce((sum, t) => sum + Number(t.totalAmount), 0),
-      totalCommissions: transactions.reduce(
-        (sum, t) => sum + Number(t.commission || 0),
-        0,
+      totalDividends: sumMoney(
+        transactions
+          .filter((t) => t.action === InvestmentAction.DIVIDEND)
+          .map((t) => Number(t.totalAmount)),
+      ),
+      totalInterest: sumMoney(
+        transactions
+          .filter((t) => t.action === InvestmentAction.INTEREST)
+          .map((t) => Number(t.totalAmount)),
+      ),
+      totalCapitalGains: sumMoney(
+        transactions
+          .filter((t) => t.action === InvestmentAction.CAPITAL_GAIN)
+          .map((t) => Number(t.totalAmount)),
+      ),
+      totalCommissions: sumMoney(
+        transactions.map((t) => Number(t.commission || 0)),
       ),
     };
 

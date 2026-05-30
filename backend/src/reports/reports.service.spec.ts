@@ -2190,7 +2190,7 @@ describe("ReportsService", () => {
         expect(result.data[0].label).toBe("Transaction");
       });
 
-      it("rounds metric values to 2 decimal places", async () => {
+      it("rounds metric values to 4 decimal places (storage precision)", async () => {
         const transactions = [
           createMockTransaction({ id: "tx-1", amount: -33.33 }),
           createMockTransaction({ id: "tx-2", amount: -33.33 }),
@@ -2207,10 +2207,11 @@ describe("ReportsService", () => {
         const result = await service.execute("user-1", "report-1");
 
         // Average of 33.33, 33.33, 33.34 = 33.3333...
-        // Should be rounded to 2 decimal places
+        // Rounded to 4 decimal places (storage precision); display layer trims to 2
         const value = result.data[0].value;
+        expect(value).toBe(33.3333);
         const decimals = value.toString().split(".")[1] || "";
-        expect(decimals.length).toBeLessThanOrEqual(2);
+        expect(decimals.length).toBeLessThanOrEqual(4);
       });
 
       it("does not fetch categories or payees when groupBy is NONE", async () => {
@@ -2963,9 +2964,9 @@ describe("ReportsService", () => {
 
         const result = await service.execute("user-1", "report-1");
 
-        // Value should be rounded to 2 decimal places
+        // Value should be rounded to 4 decimal places (storage precision)
         expect(result.data).toHaveLength(1);
-        expect(result.data[0].value).toBe(75.56);
+        expect(result.data[0].value).toBe(75.555);
       });
     });
 

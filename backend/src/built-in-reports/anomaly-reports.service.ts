@@ -10,6 +10,7 @@ import {
   AnomalySeverity,
 } from "./dto";
 import { formatDateYMD } from "../common/date-utils";
+import { roundMoney, sumMoney } from "../common/round.util";
 
 @Injectable()
 export class AnomalyReportsService {
@@ -95,7 +96,7 @@ export class AnomalyReportsService {
         rateMap,
       ),
     );
-    const mean = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
+    const mean = sumMoney(amounts) / amounts.length;
     const variance =
       amounts.reduce((sum, a) => sum + Math.pow(a - mean, 2), 0) /
       amounts.length;
@@ -126,7 +127,7 @@ export class AnomalyReportsService {
           severity,
           title: "Unusually large transaction",
           description: `${row.payee_name || "Unknown payee"} - ${txDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`,
-          amount: Math.round(amount * 100) / 100,
+          amount: roundMoney(amount),
           transactionId: row.id,
           transactionDate: row.transaction_date.toString().split("T")[0],
           payeeName: row.payee_name || undefined,
@@ -162,8 +163,8 @@ export class AnomalyReportsService {
 
     return {
       statistics: {
-        mean: Math.round(mean * 100) / 100,
-        stdDev: Math.round(stdDev * 100) / 100,
+        mean: roundMoney(mean),
+        stdDev: roundMoney(stdDev),
       },
       anomalies,
       counts: {
@@ -236,8 +237,8 @@ export class AnomalyReportsService {
           description: `${Math.round(percentChange)}% increase from last month`,
           categoryId: categoryId === "uncategorized" ? undefined : categoryId,
           categoryName: category?.name || "Uncategorized",
-          currentPeriodAmount: Math.round(currentAmount * 100) / 100,
-          previousPeriodAmount: Math.round(previousAmount * 100) / 100,
+          currentPeriodAmount: roundMoney(currentAmount),
+          previousPeriodAmount: roundMoney(previousAmount),
           percentChange: Math.round(percentChange),
         });
       }
@@ -316,7 +317,7 @@ export class AnomalyReportsService {
             severity,
             title: "New payee detected",
             description: `${recent.name} - ${recent.count} transaction(s)`,
-            amount: Math.round(recent.total * 100) / 100,
+            amount: roundMoney(recent.total),
             transactionId: recent.txId,
             payeeName: recent.name,
           });

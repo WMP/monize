@@ -11,6 +11,7 @@ import {
   CreateScheduledTransactionOverrideDto,
   UpdateScheduledTransactionOverrideDto,
 } from "./dto/scheduled-transaction-override.dto";
+import { roundMoney, sumMoney } from "../common/round.util";
 
 @Injectable()
 export class ScheduledTransactionOverrideService {
@@ -224,12 +225,8 @@ export class ScheduledTransactionOverrideService {
       );
     }
 
-    const splitsSum = splits.reduce(
-      (sum, split) => sum + Number(split.amount),
-      0,
-    );
-    const roundedSum = Math.round(splitsSum * 10000) / 10000;
-    const roundedAmount = Math.round(Number(transactionAmount) * 10000) / 10000;
+    const roundedSum = sumMoney(splits.map((split) => Number(split.amount)));
+    const roundedAmount = roundMoney(Number(transactionAmount));
 
     if (roundedSum !== roundedAmount) {
       throw new BadRequestException(

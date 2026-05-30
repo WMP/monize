@@ -14,6 +14,7 @@ import {
   AccountHoldings,
   AllocationItem,
 } from "./portfolio.service";
+import { roundMoney } from "../common/round.util";
 
 /**
  * Categorised investment accounts: brokerage, standalone, and cash accounts
@@ -79,10 +80,6 @@ export interface CapitalGainEntry {
   realizedGain: number;
   unrealizedGain: number;
   totalCapitalGain: number;
-}
-
-function roundMoney(value: number): number {
-  return Math.round(value * 10000) / 10000;
 }
 
 /**
@@ -311,7 +308,7 @@ export class PortfolioCalculationService {
     for (const account of accounts) {
       effectiveBalances.set(
         account.id,
-        Math.round(Number(account.currentBalance) * 10000) / 10000,
+        roundMoney(Number(account.currentBalance)),
       );
     }
     return effectiveBalances;
@@ -492,7 +489,7 @@ export class PortfolioCalculationService {
     }
 
     for (const [key, entry] of state) {
-      result.set(key, Math.round(entry.costBasis * 10000) / 10000);
+      result.set(key, roundMoney(entry.costBasis));
     }
 
     return result;
@@ -1107,7 +1104,7 @@ export class PortfolioCalculationService {
         totalMarketValue: accountMarketValue,
         totalGainLoss: accountGainLoss,
         totalGainLossPercent: accountGainLossPercent,
-        netInvested: Math.round(accountNetInvested * 100) / 100,
+        netInvested: roundMoney(accountNetInvested),
       });
     }
 
@@ -1159,7 +1156,7 @@ export class PortfolioCalculationService {
         totalMarketValue: accountMarketValue,
         totalGainLoss: accountGainLoss,
         totalGainLossPercent: accountGainLossPercent,
-        netInvested: Math.round(standaloneNetInvested * 100) / 100,
+        netInvested: roundMoney(standaloneNetInvested),
       });
     }
 

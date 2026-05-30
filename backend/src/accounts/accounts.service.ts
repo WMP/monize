@@ -28,6 +28,7 @@ import {
   MortgageAmortizationResult,
 } from "./mortgage-amortization.util";
 import { Cron } from "@nestjs/schedule";
+import { roundMoney } from "../common/round.util";
 import { formatDateYMD, todayInTimezone, todayYMD } from "../common/date-utils";
 import { ActionHistoryService } from "../action-history/action-history.service";
 
@@ -264,15 +265,12 @@ export class AccountsService {
       invTxCountMap.set(row.accountId, parseInt(row.cnt, 10));
     const futureSumMap = new Map<string, number>();
     for (const row of futureSums)
-      futureSumMap.set(
-        row.accountId,
-        Math.round(Number(row.futureSum) * 10000) / 10000,
-      );
+      futureSumMap.set(row.accountId, roundMoney(Number(row.futureSum)));
     const currentBalanceMap = new Map<string, number>();
     for (const row of currentSums)
       currentBalanceMap.set(
         row.accountId,
-        Math.round(Number(row.currentBalance) * 10000) / 10000,
+        roundMoney(Number(row.currentBalance)),
       );
 
     return accounts.map((account) => ({
@@ -460,9 +458,9 @@ export class AccountsService {
         const difference = newOpeningBalance - oldOpeningBalance;
 
         // Adjust currentBalance by the difference
-        account.currentBalance =
-          Math.round((Number(account.currentBalance) + difference) * 10000) /
-          10000;
+        account.currentBalance = roundMoney(
+          Number(account.currentBalance) + difference,
+        );
       }
 
       // SECURITY: Explicit property mapping instead of Object.assign to prevent mass assignment
@@ -798,8 +796,8 @@ export class AccountsService {
 
     const newBalance =
       result.length > 0
-        ? Math.round(Number(result[0].balance) * 10000) / 10000
-        : Math.round(Number(account.openingBalance) * 10000) / 10000;
+        ? roundMoney(Number(result[0].balance))
+        : roundMoney(Number(account.openingBalance));
 
     if (queryRunner) {
       await queryRunner.query(
@@ -835,7 +833,7 @@ export class AccountsService {
         GROUP BY a.id, a.opening_balance`,
       [accountId, userId],
     );
-    return Math.round(Number(result?.[0]?.balance ?? 0) * 10000) / 10000;
+    return roundMoney(Number(result?.[0]?.balance ?? 0));
   }
 
   /**
@@ -936,8 +934,6 @@ export class AccountsService {
       const lowerNames = new Set(accountNames.map((n) => n.toLowerCase()));
       accounts = accounts.filter((a) => lowerNames.has(a.name.toLowerCase()));
     }
-
-    const roundMoney = (v: number): number => Math.round(v * 100) / 100;
 
     const accountList = accounts.map((a) => {
       const balance =
@@ -1300,7 +1296,7 @@ export class AccountsService {
           );
 
         for (const row of balances) {
-          const newBalance = Math.round(Number(row.balance) * 10000) / 10000;
+          const newBalance = roundMoney(Number(row.balance));
           await this.accountsRepository.update(row.account_id, {
             currentBalance: newBalance,
           });

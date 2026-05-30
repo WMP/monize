@@ -15,23 +15,32 @@
  * IEEE 754 but should round as 159.735 -> 159.74). The nudge is smaller
  * than any legitimate distance from a midpoint in financial arithmetic.
  *
+ * The shift is performed via `toExponential()` (which always yields a
+ * `d.ddde±N` form, parseable and exponent-shiftable) rather than `toString()`
+ * concatenation. `toString()` switches to exponential notation for magnitudes
+ * below 1e-6, producing un-parseable strings like "1e-7e4" that evaluate to
+ * NaN; decomposing the exponential form avoids that for any decimalPlaces
+ * (e.g. share quantities rounded at 8dp).
+ *
  * Examples:
  *   roundToDecimals(159.735, 2)       => 159.74   (not 159.73)
  *   roundToDecimals(10 * 15.9735, 2)  => 159.74   (not 159.73)
  *   roundToDecimals(-159.735, 2)      => -159.74  (not -159.73)
  *   roundToDecimals(1.005, 2)         => 1.01     (not 1.00)
+ *   roundToDecimals(1e-7, 8)          => 1e-7     (not NaN)
  */
 export function roundToDecimals(value: number, decimalPlaces: number): number {
   if (!isFinite(value)) return value;
+  if (value === 0) return 0;
   const sign = value < 0 ? -1 : 1;
   const abs = Math.abs(value);
   const nudged = abs + Number.EPSILON * abs;
-  return (
-    sign *
-    Number(
-      Math.round(Number(nudged + "e" + decimalPlaces)) + "e-" + decimalPlaces,
-    )
-  );
+  // Decompose into mantissa/exponent so the decimal-point shift works
+  // regardless of whether the value would stringify in exponential notation.
+  const [mantissa, exp] = nudged.toExponential().split("e");
+  const shiftedExp = Number(exp) + decimalPlaces;
+  const rounded = Math.round(Number(mantissa + "e" + shiftedExp));
+  return sign * Number(rounded + "e-" + decimalPlaces);
 }
 
 /**
@@ -75,4 +84,3 @@ export function sumMoney(values: number[]): number {
   }, 0);
   return totalUnits / scale;
 }
-

@@ -8,6 +8,7 @@ import { UserPreference } from "../users/entities/user-preference.entity";
 import { PortfolioCalculationService } from "./portfolio-calculation.service";
 import { YahooFinanceService } from "./yahoo-finance.service";
 import { QuoteProviderRegistry } from "./providers/quote-provider.registry";
+import { roundMoney } from "../common/round.util";
 import {
   IntradayInterval,
   IntradayPoint,
@@ -432,12 +433,10 @@ export class PortfolioService {
   ): Promise<LlmPortfolioSummary> {
     const summary = await this.getPortfolioSummary(userId, accountIds);
 
-    const roundMoney = (v: number | null | undefined): number =>
-      v === null || v === undefined ? 0 : Math.round(Number(v) * 10000) / 10000;
+    const roundMoneyValue = (v: number | null | undefined): number =>
+      v === null || v === undefined ? 0 : roundMoney(Number(v));
     const roundMoneyNullable = (v: number | null | undefined): number | null =>
-      v === null || v === undefined
-        ? null
-        : Math.round(Number(v) * 10000) / 10000;
+      v === null || v === undefined ? null : roundMoney(Number(v));
     const roundPct = (v: number | null | undefined): number | null =>
       v === null || v === undefined ? null : Math.round(Number(v) * 100) / 100;
 
@@ -448,7 +447,7 @@ export class PortfolioService {
       currency: h.currencyCode,
       quantity: h.quantity,
       averageCost: roundMoneyNullable(h.averageCost),
-      costBasis: roundMoney(h.costBasis),
+      costBasis: roundMoneyValue(h.costBasis),
       marketValue: roundMoneyNullable(h.marketValue),
       gainLoss: roundMoneyNullable(h.gainLoss),
       gainLossPercent: roundPct(h.gainLossPercent),
@@ -459,18 +458,18 @@ export class PortfolioService {
         name: a.name,
         symbol: a.symbol,
         type: a.type,
-        value: roundMoney(a.value),
+        value: roundMoneyValue(a.value),
         percentage: roundPct(a.percentage) ?? 0,
       }),
     );
 
     return {
       holdingCount: holdings.length,
-      totalCashValue: roundMoney(summary.totalCashValue),
-      totalHoldingsValue: roundMoney(summary.totalHoldingsValue),
-      totalCostBasis: roundMoney(summary.totalCostBasis),
-      totalPortfolioValue: roundMoney(summary.totalPortfolioValue),
-      totalGainLoss: roundMoney(summary.totalGainLoss),
+      totalCashValue: roundMoneyValue(summary.totalCashValue),
+      totalHoldingsValue: roundMoneyValue(summary.totalHoldingsValue),
+      totalCostBasis: roundMoneyValue(summary.totalCostBasis),
+      totalPortfolioValue: roundMoneyValue(summary.totalPortfolioValue),
+      totalGainLoss: roundMoneyValue(summary.totalGainLoss),
       totalGainLossPercent: roundPct(summary.totalGainLossPercent) ?? 0,
       timeWeightedReturn: roundPct(summary.timeWeightedReturn),
       cagr: roundPct(summary.cagr),

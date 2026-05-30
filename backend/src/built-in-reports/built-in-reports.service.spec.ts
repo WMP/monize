@@ -897,8 +897,8 @@ describe("BuiltInReportsService", () => {
 
       const result = await service.getYearOverYear(mockUserId, 1);
 
-      expect(yearData(result, currentYear).totals.income).toBe(100.33);
-      expect(yearData(result, currentYear).totals.expenses).toBe(50.67);
+      expect(yearData(result, currentYear).totals.income).toBe(100.333);
+      expect(yearData(result, currentYear).totals.expenses).toBe(50.666);
     });
 
     it("sorts year data in ascending order", async () => {
@@ -1441,8 +1441,8 @@ describe("BuiltInReportsService", () => {
       // USD: 100 + EUR: 50 * 1.1 = 155
       expect(result.data[0].totalAmount).toBe(155);
       expect(result.data[0].occurrences).toBe(6);
-      // Average: 155 / 6 = 25.83
-      expect(result.data[0].averageAmount).toBe(25.83);
+      // Average: 155 / 6 = 25.8333 (4dp storage precision)
+      expect(result.data[0].averageAmount).toBe(25.8333);
     });
 
     it("calculates summary correctly", async () => {

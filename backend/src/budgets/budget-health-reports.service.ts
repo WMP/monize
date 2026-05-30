@@ -14,6 +14,7 @@ import {
   HealthScoreHistoryPoint,
   SavingsRatePoint,
 } from "./budget-reports.service";
+import { roundMoney, roundToDecimals } from "../common/round.util";
 
 const MONTH_NAMES = [
   "January",
@@ -101,7 +102,7 @@ export class BudgetHealthReportsService {
         categoryId: cat.categoryId || "",
         categoryName: cat.categoryName,
         percentUsed: cat.percentUsed,
-        impact: this.round(impact),
+        impact: roundToDecimals(impact, 2),
         categoryGroup: group,
       });
     }
@@ -124,10 +125,10 @@ export class BudgetHealthReportsService {
       label,
       breakdown: {
         baseScore,
-        overBudgetDeductions: this.round(overBudgetDeductions),
-        underBudgetBonus: this.round(underBudgetBonus),
-        trendBonus: this.round(trendBonus),
-        essentialWeightPenalty: this.round(essentialWeightPenalty),
+        overBudgetDeductions: roundToDecimals(overBudgetDeductions, 2),
+        underBudgetBonus: roundToDecimals(underBudgetBonus, 2),
+        trendBonus: roundToDecimals(trendBonus, 2),
+        essentialWeightPenalty: roundToDecimals(essentialWeightPenalty, 2),
       },
       categoryScores,
     };
@@ -436,13 +437,14 @@ export class BudgetHealthReportsService {
       const income = incomeByMonth.get(monthKey) || 0;
       const expenses = expenseByMonth.get(monthKey) || 0;
       const savings = income - expenses;
-      const savingsRate = income > 0 ? this.round((savings / income) * 100) : 0;
+      const savingsRate =
+        income > 0 ? roundToDecimals((savings / income) * 100, 2) : 0;
 
       result.push({
         month: monthLabel,
-        income: this.round(income),
-        expenses: this.round(expenses),
-        savings: this.round(savings),
+        income: roundMoney(income),
+        expenses: roundMoney(expenses),
+        savings: roundMoney(savings),
         savingsRate,
       });
     }
@@ -533,9 +535,5 @@ export class BudgetHealthReportsService {
     const year = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10);
     return `${MONTH_NAMES[month - 1].substring(0, 3)} ${year}`;
-  }
-
-  private round(value: number): number {
-    return Math.round(value * 100) / 100;
   }
 }

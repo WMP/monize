@@ -44,6 +44,7 @@ import {
   ensureYMD,
 } from "../common/recurrence";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import { roundMoney, sumMoney } from "../common/round.util";
 
 const INVESTMENT_RELATIONS = [
   "account",
@@ -444,12 +445,8 @@ export class ScheduledTransactionsService {
       );
     }
 
-    const splitsSum = splits.reduce(
-      (sum, split) => sum + Number(split.amount),
-      0,
-    );
-    const roundedSum = Math.round(splitsSum * 10000) / 10000;
-    const roundedAmount = Math.round(Number(transactionAmount) * 10000) / 10000;
+    const roundedSum = sumMoney(splits.map((split) => Number(split.amount)));
+    const roundedAmount = roundMoney(Number(transactionAmount));
 
     if (roundedSum !== roundedAmount) {
       throw new BadRequestException(
