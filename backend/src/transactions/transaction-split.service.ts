@@ -22,6 +22,7 @@ import {
 } from "../securities/cash-impact.util";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { roundMoney, sumMoney } from "../common/round.util";
+import { validateSplitAmountSum } from "../common/split-amount.util";
 
 function inferSplitKind(split: CreateTransactionSplitDto): SplitKind {
   if (split.splitKind) return split.splitKind;
@@ -64,24 +65,13 @@ export class TransactionSplitService {
     splits: CreateTransactionSplitDto[],
     transactionAmount: number,
   ): void {
-    const isSinglePassthrough =
-      splits.length === 1 &&
-      (splits[0].transferAccountId || splits[0].investment);
-
-    if (splits.length < 2 && !isSinglePassthrough) {
-      throw new BadRequestException(
-        "Split transactions must have at least 2 splits",
-      );
-    }
-
-    const splitsSum = sumMoney(splits.map((split) => Number(split.amount)));
-    const expectedSum = roundMoney(Number(transactionAmount));
-
-    if (splitsSum !== expectedSum) {
-      throw new BadRequestException(
-        `Split amounts (${splitsSum}) must equal transaction amount (${expectedSum})`,
-      );
-    }
+    validateSplitAmountSum(splits, transactionAmount, {
+      allowSinglePassthrough: true,
+      isPassthrough: (s) => {
+        const split = s as CreateTransactionSplitDto;
+        return Boolean(split.transferAccountId || split.investment);
+      },
+    });
 
     for (const split of splits) {
       const kind = inferSplitKind(split);

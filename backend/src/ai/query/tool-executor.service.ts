@@ -17,8 +17,8 @@ import { executeCalculation, CalculateInput } from "./calculate-tool";
 import { sanitizePromptValue } from "../../common/sanitization.util";
 import {
   DEFAULT_TOP_N,
-  getDefaultComparePeriods,
   getDefaultDateRange,
+  resolveComparePeriods,
 } from "../../common/tool-schemas";
 
 interface ToolResult {
@@ -402,41 +402,34 @@ export class ToolExecutorService {
     userId: string,
     input: Record<string, unknown>,
   ): Promise<ToolResult> {
-    // All-or-nothing defaults: if any of the four dates is missing, fall
-    // back to "previous month vs current month-to-date". Mixing caller
-    // dates with computed ones would compare unrelated windows.
-    const hasAllPeriods = Boolean(
-      input.period1Start &&
-      input.period1End &&
-      input.period2Start &&
-      input.period2End,
-    );
-    const defaults = hasAllPeriods ? null : getDefaultComparePeriods();
-    const p1Start = (input.period1Start as string) ?? defaults!.period1Start;
-    const p1End = (input.period1End as string) ?? defaults!.period1End;
-    const p2Start = (input.period2Start as string) ?? defaults!.period2Start;
-    const p2End = (input.period2End as string) ?? defaults!.period2End;
+    const { period1Start, period1End, period2Start, period2End } =
+      resolveComparePeriods({
+        period1Start: input.period1Start as string | undefined,
+        period1End: input.period1End as string | undefined,
+        period2Start: input.period2Start as string | undefined,
+        period2End: input.period2End as string | undefined,
+      });
     const groupBy = (input.groupBy as "category" | "payee") || "category";
     const direction =
       (input.direction as "expenses" | "income" | "both") || "expenses";
 
     const data = await this.analyticsService.getLlmPeriodComparison(userId, {
-      period1Start: p1Start,
-      period1End: p1End,
-      period2Start: p2Start,
-      period2End: p2End,
+      period1Start,
+      period1End,
+      period2Start,
+      period2End,
       groupBy,
       direction,
     });
 
     return {
       data,
-      summary: `Period 1 (${p1Start} to ${p1End}): ${data.period1.total.toFixed(2)}, Period 2 (${p2Start} to ${p2End}): ${data.period2.total.toFixed(2)}, Change: ${data.totalChange >= 0 ? "+" : ""}${data.totalChange.toFixed(2)} (${data.totalChangePercent >= 0 ? "+" : ""}${data.totalChangePercent}%)`,
+      summary: `Period 1 (${period1Start} to ${period1End}): ${data.period1.total.toFixed(2)}, Period 2 (${period2Start} to ${period2End}): ${data.period2.total.toFixed(2)}, Change: ${data.totalChange >= 0 ? "+" : ""}${data.totalChange.toFixed(2)} (${data.totalChangePercent >= 0 ? "+" : ""}${data.totalChangePercent}%)`,
       sources: [
         {
           type: "comparison",
           description: `Period comparison by ${groupBy}`,
-          dateRange: `${p1Start}-${p1End} vs ${p2Start}-${p2End}`,
+          dateRange: `${period1Start}-${period1End} vs ${period2Start}-${period2End}`,
         },
       ],
     };

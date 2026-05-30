@@ -139,7 +139,7 @@ export class NetWorthService {
     if (accounts.length === 0) return;
 
     const populated = await this.mabRepo.find({
-      where: { userId, month: currentMonthStr as any },
+      where: { userId, month: currentMonthStr },
       select: ["accountId"],
     });
     const populatedIds = new Set(populated.map((p) => p.accountId));

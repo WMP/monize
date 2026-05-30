@@ -209,7 +209,10 @@ export class TransactionTransferService {
 
     try {
       return await findOne(userId, transaction.linkedTransactionId);
-    } catch {
+    } catch (err) {
+      this.logger.warn(
+        `Failed to load linked transaction ${transaction.linkedTransactionId}: ${err instanceof Error ? err.message : err}`,
+      );
       return null;
     }
   }

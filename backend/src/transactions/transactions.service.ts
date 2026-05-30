@@ -38,6 +38,11 @@ import { ActionHistoryService } from "../action-history/action-history.service";
 import { getAllCategoryIdsWithChildren } from "../common/category-tree.util";
 import { formatCurrency } from "../common/format-currency.util";
 import {
+  buildPaginationMeta,
+  clampPagination,
+  PaginatedResult,
+} from "../common/dto/pagination-query.dto";
+import {
   buildTransactionSearchClause,
   escapeLikePattern,
 } from "./transaction-search.util";
@@ -46,15 +51,8 @@ export interface TransactionWithInvestmentLink extends Transaction {
   linkedInvestmentTransactionId?: string | null;
 }
 
-export interface PaginatedTransactions {
-  data: TransactionWithInvestmentLink[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasMore: boolean;
-  };
+export interface PaginatedTransactions
+  extends PaginatedResult<TransactionWithInvestmentLink> {
   startingBalance?: number;
 }
 
@@ -293,8 +291,7 @@ export class TransactionsService {
     tagIds?: string[],
     statuses?: TransactionStatus[],
   ): Promise<PaginatedTransactions> {
-    let safePage = Math.max(1, page);
-    const safeLimit = Math.min(200, Math.max(1, limit));
+    let { page: safePage, limit: safeLimit } = clampPagination(page, limit);
 
     const queryBuilder = this.transactionsRepository
       .createQueryBuilder("transaction")
@@ -421,8 +418,6 @@ export class TransactionsService {
       .take(safeLimit)
       .getManyAndCount();
 
-    const totalPages = Math.ceil(total / safeLimit);
-
     let startingBalance: number | undefined;
     const singleAccountId =
       accountIds?.length === 1 ? accountIds[0] : undefined;
@@ -500,13 +495,7 @@ export class TransactionsService {
 
     return {
       data: enrichedData,
-      pagination: {
-        page: safePage,
-        limit: safeLimit,
-        total,
-        totalPages,
-        hasMore: safePage < totalPages,
-      },
+      pagination: buildPaginationMeta(safePage, safeLimit, total),
       startingBalance,
     };
   }

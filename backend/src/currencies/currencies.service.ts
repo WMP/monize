@@ -490,8 +490,10 @@ export class CurrenciesService {
           decimalPlaces: metadata.decimalPlaces,
         };
       }
-    } catch {
-      // Yahoo verification failed, still return our metadata
+    } catch (err) {
+      this.logger.debug(
+        `Yahoo verification failed for ${code}, falling back to local metadata: ${err instanceof Error ? err.message : err}`,
+      );
     }
 
     return {

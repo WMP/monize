@@ -70,6 +70,6 @@ import { SecuritiesModule } from "../securities/securities.module";
     AiInsightsController,
     AiForecastController,
   ],
-  exports: [AiService, AiUsageService],
+  exports: [AiService, AiUsageService, AiEncryptionService],
 })
 export class AiModule {}

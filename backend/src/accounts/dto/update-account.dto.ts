@@ -16,6 +16,7 @@ import { ApiPropertyOptional } from "@nestjs/swagger";
 import { AccountType } from "../entities/account.entity";
 import { PAYMENT_FREQUENCIES, PaymentFrequency } from "./create-account.dto";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
+import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
 
 export class UpdateAccountDto {
   @ApiPropertyOptional({
@@ -43,8 +44,7 @@ export class UpdateAccountDto {
     maxLength: 3,
   })
   @IsOptional()
-  @IsString()
-  @MaxLength(3)
+  @IsCurrencyCode()
   currencyCode?: string;
 
   @ApiPropertyOptional({
@@ -53,6 +53,8 @@ export class UpdateAccountDto {
   })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(-999999999999)
+  @Max(999999999999)
   openingBalance?: number;
 
   @ApiPropertyOptional({

@@ -15,8 +15,8 @@ import { McpWriteLimiter } from "../mcp-write-limiter";
 import { stripHtml } from "../../common/sanitization.util";
 import {
   DEFAULT_TOP_N,
-  getDefaultComparePeriods,
   getDefaultDateRange,
+  resolveComparePeriods,
 } from "../../common/tool-schemas";
 
 @Injectable()
@@ -356,20 +356,19 @@ export class McpTransactionsTools {
         if (check.error) return check.result;
 
         try {
-          const hasAllPeriods = Boolean(
-            args.period1Start &&
-            args.period1End &&
-            args.period2Start &&
-            args.period2End,
-          );
-          const defaults = hasAllPeriods ? null : getDefaultComparePeriods();
+          const periods = resolveComparePeriods({
+            period1Start: args.period1Start,
+            period1End: args.period1End,
+            period2Start: args.period2Start,
+            period2End: args.period2End,
+          });
           const data = await this.analyticsService.getLlmPeriodComparison(
             ctx.userId,
             {
-              period1Start: args.period1Start ?? defaults!.period1Start,
-              period1End: args.period1End ?? defaults!.period1End,
-              period2Start: args.period2Start ?? defaults!.period2Start,
-              period2End: args.period2End ?? defaults!.period2End,
+              period1Start: periods.period1Start,
+              period1End: periods.period1End,
+              period2Start: periods.period2Start,
+              period2End: periods.period2End,
               groupBy: args.groupBy,
               direction: args.direction,
             },

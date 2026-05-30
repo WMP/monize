@@ -1,14 +1,5 @@
-import * as he from "he";
+import { escapeHtml } from "../common/escape-html.util";
 import { formatCurrency } from "../common/format-currency.util";
-
-/**
- * Escape HTML entities to prevent HTML injection in email templates.
- * User-controlled data (names, payee fields) must be escaped before
- * interpolation into HTML to prevent phishing via injected markup.
- */
-function escapeHtml(unsafe: string): string {
-  return he.encode(unsafe, { useNamedReferences: true });
-}
 
 export function testEmailTemplate(firstName: string): string {
   const safeName = escapeHtml(firstName || "there");
