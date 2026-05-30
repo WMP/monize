@@ -24,7 +24,11 @@ export function toCountMap<T extends Record<string, unknown>>(
   for (const row of rows) {
     const key = row[keyField] as unknown as string | null | undefined;
     if (key == null) continue;
-    const raw = row[countField] as unknown as string | number | null | undefined;
+    const raw = row[countField] as unknown as
+      | string
+      | number
+      | null
+      | undefined;
     const value =
       typeof raw === "number"
         ? raw

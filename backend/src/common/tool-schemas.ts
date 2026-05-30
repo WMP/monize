@@ -139,9 +139,9 @@ export function resolveComparePeriods(input: {
 }): ComparePeriods {
   const hasAllPeriods = Boolean(
     input.period1Start &&
-      input.period1End &&
-      input.period2Start &&
-      input.period2End,
+    input.period1End &&
+    input.period2Start &&
+    input.period2End,
   );
   if (hasAllPeriods) {
     return {

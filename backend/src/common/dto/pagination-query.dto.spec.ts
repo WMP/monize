@@ -45,7 +45,11 @@ describe("clampPagination", () => {
   });
 
   it("floors fractional inputs", () => {
-    expect(clampPagination(2.7, 10.9)).toEqual({ page: 2, limit: 10, skip: 10 });
+    expect(clampPagination(2.7, 10.9)).toEqual({
+      page: 2,
+      limit: 10,
+      skip: 10,
+    });
   });
 });
 

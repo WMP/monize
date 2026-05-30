@@ -1,4 +1,4 @@
-import { Module, forwardRef } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { ConfigModule, ConfigService } from "@nestjs/config";
@@ -37,7 +37,7 @@ import { DelegationModule } from "../delegation/delegation.module";
       PersonalAccessToken,
     ]),
     PassportModule,
-    forwardRef(() => UsersModule),
+    UsersModule,
     NotificationsModule,
     DelegationModule,
     JwtModule.registerAsync({

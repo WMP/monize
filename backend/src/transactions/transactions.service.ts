@@ -51,8 +51,7 @@ export interface TransactionWithInvestmentLink extends Transaction {
   linkedInvestmentTransactionId?: string | null;
 }
 
-export interface PaginatedTransactions
-  extends PaginatedResult<TransactionWithInvestmentLink> {
+export interface PaginatedTransactions extends PaginatedResult<TransactionWithInvestmentLink> {
   startingBalance?: number;
 }
 
@@ -291,7 +290,9 @@ export class TransactionsService {
     tagIds?: string[],
     statuses?: TransactionStatus[],
   ): Promise<PaginatedTransactions> {
-    let { page: safePage, limit: safeLimit } = clampPagination(page, limit);
+    const clamped = clampPagination(page, limit);
+    const safeLimit = clamped.limit;
+    let safePage = clamped.page;
 
     const queryBuilder = this.transactionsRepository
       .createQueryBuilder("transaction")

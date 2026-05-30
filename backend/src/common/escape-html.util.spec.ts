@@ -3,18 +3,23 @@ import { escapeHtml } from "./escape-html.util";
 describe("escapeHtml", () => {
   it("escapes angle brackets and double quotes", () => {
     const out = escapeHtml(`<script>alert("xss")</script>`);
-    expect(out).not.toMatch(/<script>/);
-    expect(out).not.toMatch(/<\/script>/);
-    expect(out).not.toMatch(/"xss"/);
+    // No raw <, >, or " should remain anywhere in the output. Use
+    // character-level checks rather than substring patterns so the
+    // assertion cannot be misread as an HTML-filtering regex (CodeQL).
+    expect(out.includes("<")).toBe(false);
+    expect(out.includes(">")).toBe(false);
+    expect(out.includes(`"`)).toBe(false);
     expect(out.toLowerCase()).toContain("lt");
     expect(out.toLowerCase()).toContain("gt");
   });
 
   it("escapes ampersand and single quote", () => {
     const out = escapeHtml("Tom & Jerry's");
-    // Original & and ' must not appear as literal HTML
-    expect(out).not.toMatch(/ & /);
-    expect(out).not.toMatch(/Jerry's/);
+    // Original & and ' must be replaced with their entity references
+    // (named or numeric); no raw apostrophe should remain.
+    expect(out.includes("'")).toBe(false);
+    // The ampersand is now part of the entity references themselves, so
+    // assert via the entity names rather than a raw-char check.
     expect(out.toLowerCase()).toContain("amp");
     expect(out.toLowerCase()).toContain("apos");
   });

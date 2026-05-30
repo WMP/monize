@@ -434,7 +434,9 @@ describe("PayeesService", () => {
 
       expect(result.name).toBe("New Name");
       expect(result.notes).toBe("Updated notes");
-      expect(mockDataSource.createQueryRunner().manager.save).toHaveBeenCalled();
+      expect(
+        mockDataSource.createQueryRunner().manager.save,
+      ).toHaveBeenCalled();
     });
 
     it("should throw NotFoundException when payee not found", async () => {
@@ -486,7 +488,9 @@ describe("PayeesService", () => {
 
       await service.update(userId, "payee-1", { notes: "Just updating notes" });
 
-      expect(mockDataSource.createQueryRunner().manager.update).not.toHaveBeenCalled();
+      expect(
+        mockDataSource.createQueryRunner().manager.update,
+      ).not.toHaveBeenCalled();
     });
 
     it("should skip name conflict check when name is unchanged", async () => {
@@ -513,7 +517,9 @@ describe("PayeesService", () => {
       });
 
       expect(result.defaultCategoryId).toBe("cat-99");
-      expect(mockDataSource.createQueryRunner().manager.save).toHaveBeenCalled();
+      expect(
+        mockDataSource.createQueryRunner().manager.save,
+      ).toHaveBeenCalled();
     });
 
     it("should clear defaultCategoryId when set to null", async () => {
@@ -1424,7 +1430,9 @@ describe("PayeesService", () => {
       });
 
       expect(result.isActive).toBe(false);
-      expect(mockDataSource.createQueryRunner().manager.save).toHaveBeenCalled();
+      expect(
+        mockDataSource.createQueryRunner().manager.save,
+      ).toHaveBeenCalled();
     });
 
     it("should not modify isActive when not included in DTO", async () => {

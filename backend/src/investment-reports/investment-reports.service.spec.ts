@@ -232,7 +232,11 @@ describe("InvestmentReportsService", () => {
         },
       });
       const saved = await service.update("u1", "r1", {
-        config: { columns: ["symbol"], sortColumn: null, asOfDate: null } as any,
+        config: {
+          columns: ["symbol"],
+          sortColumn: null,
+          asOfDate: null,
+        } as any,
       });
       expect(saved.config.sortColumn).toBeNull();
       expect(saved.config.asOfDate).toBeNull();
@@ -446,30 +450,62 @@ describe("InvestmentReportsService", () => {
 
     it("groups by account and by currency", async () => {
       dataService.computeHoldings.mockResolvedValue([
-        holding({ accountId: "a1", accountName: "Acc One", currencyCode: "USD", symbol: "AAA", values: { symbol: "AAA", marketValue: 100 } }),
-        holding({ accountId: "a2", accountName: "Acc Two", currencyCode: "CAD", symbol: "BBB", securityId: "s2", values: { symbol: "BBB", marketValue: 200 } }),
+        holding({
+          accountId: "a1",
+          accountName: "Acc One",
+          currencyCode: "USD",
+          symbol: "AAA",
+          values: { symbol: "AAA", marketValue: 100 },
+        }),
+        holding({
+          accountId: "a2",
+          accountName: "Acc Two",
+          currencyCode: "CAD",
+          symbol: "BBB",
+          securityId: "s2",
+          values: { symbol: "BBB", marketValue: 200 },
+        }),
       ]);
 
-      reportsRepository.findOne.mockResolvedValue({ ...baseReport, groupBy: InvestmentGroupBy.ACCOUNT });
+      reportsRepository.findOne.mockResolvedValue({
+        ...baseReport,
+        groupBy: InvestmentGroupBy.ACCOUNT,
+      });
       const byAccount = await service.execute("u1", "r1");
-      expect(byAccount.groups.map((g) => g.label).sort()).toEqual(["Acc One", "Acc Two"]);
+      expect(byAccount.groups.map((g) => g.label).sort()).toEqual([
+        "Acc One",
+        "Acc Two",
+      ]);
 
-      reportsRepository.findOne.mockResolvedValue({ ...baseReport, groupBy: InvestmentGroupBy.CURRENCY });
+      reportsRepository.findOne.mockResolvedValue({
+        ...baseReport,
+        groupBy: InvestmentGroupBy.CURRENCY,
+      });
       const byCurrency = await service.execute("u1", "r1");
-      expect(byCurrency.groups.map((g) => g.label).sort()).toEqual(["CAD", "USD"]);
+      expect(byCurrency.groups.map((g) => g.label).sort()).toEqual([
+        "CAD",
+        "USD",
+      ]);
     });
 
     it("defaults to sorting by symbol when no sort column is set", async () => {
       reportsRepository.findOne.mockResolvedValue({
         ...baseReport,
-        config: { ...baseReport.config, sortColumn: null, sortDirection: InvestmentSortDirection.ASC },
+        config: {
+          ...baseReport.config,
+          sortColumn: null,
+          sortDirection: InvestmentSortDirection.ASC,
+        },
       });
       dataService.computeHoldings.mockResolvedValue([
         holding({ symbol: "ZZZ", securityId: "s2", values: { symbol: "ZZZ" } }),
         holding({ symbol: "AAA", values: { symbol: "AAA" } }),
       ]);
       const result = await service.execute("u1", "r1");
-      expect(result.groups[0].rows.map((r) => r.values.symbol)).toEqual(["AAA", "ZZZ"]);
+      expect(result.groups[0].rows.map((r) => r.values.symbol)).toEqual([
+        "AAA",
+        "ZZZ",
+      ]);
     });
 
     it("sorts nulls last regardless of direction", async () => {
