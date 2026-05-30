@@ -10,6 +10,8 @@ import {
   ArrayMaxSize,
   ValidateNested,
   IsNumber,
+  Min,
+  Max,
   Matches,
   ValidatorConstraint,
   ValidatorConstraintInterface,
@@ -160,5 +162,7 @@ export class CreateInvestmentReportDto {
   @ApiPropertyOptional({ description: "Sort order for display" })
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(1000)
   sortOrder?: number;
 }

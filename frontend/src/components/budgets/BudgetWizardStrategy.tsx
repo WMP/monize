@@ -7,7 +7,8 @@ import { DateInput } from '@/components/ui/DateInput';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Select } from '@/components/ui/Select';
 import { STRATEGY_LABELS } from './utils/budget-labels';
-import { getCurrencySymbol, formatCurrency } from '@/lib/format';
+import { getCurrencySymbol } from '@/lib/format';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 import type { WizardState } from './BudgetWizard';
 import type { RolloverType } from '@/types/budget';
 import type { Account } from '@/types/account';
@@ -40,6 +41,7 @@ export function BudgetWizardStrategy({
   onNext,
   onBack,
 }: BudgetWizardStrategyProps) {
+  const { formatCurrency } = useNumberFormat();
   const [showFlexGroups, setShowFlexGroups] = useState(false);
 
   const hasErrors = !state.budgetName.trim() || !state.periodStart;

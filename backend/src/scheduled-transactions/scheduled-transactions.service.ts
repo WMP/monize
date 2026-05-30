@@ -44,7 +44,8 @@ import {
   ensureYMD,
 } from "../common/recurrence";
 import { ActionHistoryService } from "../action-history/action-history.service";
-import { roundMoney, sumMoney } from "../common/round.util";
+import { getUsersByEffectiveTimezone } from "../common/users-by-timezone.util";
+import { validateSplitAmountSum } from "../common/split-amount.util";
 
 const INVESTMENT_RELATIONS = [
   "account",
@@ -117,45 +118,8 @@ export class ScheduledTransactionsService {
     this.logger.log("Starting auto-post processing for scheduled transactions");
 
     try {
-      // Bucket users by their effective IANA timezone so "today" is computed
-      // per-user rather than against container UTC. Without this, an EST user
-      // sees transactions auto-post at 21:00 the previous local day (when
-      // 02:00 UTC ticks over to the new UTC date).
-      //
-      // Resolution order per user:
-      //   1. user_preferences.timezone, when it is a real IANA name (the user
-      //      explicitly picked one in Settings).
-      //   2. user_preferences.last_client_timezone -- the most recent
-      //      X-Client-Timezone header observed by RequestContextInterceptor.
-      //      Covers the common case where timezone is still the default
-      //      "browser" sentinel.
-      //   3. UTC, only as a last resort.
-      const userRows: {
-        user_id: string;
-        timezone: string | null;
-        last_client_timezone: string | null;
-      }[] = await this.dataSource.query(
-        `SELECT u.id as user_id, p.timezone, p.last_client_timezone
-           FROM users u
-           LEFT JOIN user_preferences p ON p.user_id = u.id`,
-      );
-
-      if (userRows.length === 0) return;
-
-      const userIdsByTz = new Map<string, string[]>();
-      for (const { user_id, timezone, last_client_timezone } of userRows) {
-        const explicit = timezone?.trim();
-        const cached = last_client_timezone?.trim();
-        const tz =
-          explicit && explicit !== "browser"
-            ? explicit
-            : cached && cached !== "browser"
-              ? cached
-              : "UTC";
-        const list = userIdsByTz.get(tz) ?? [];
-        list.push(user_id);
-        userIdsByTz.set(tz, list);
-      }
+      const userIdsByTz = await getUsersByEffectiveTimezone(this.dataSource);
+      if (userIdsByTz.size === 0) return;
 
       let totalSuccess = 0;
       let totalError = 0;
@@ -435,24 +399,13 @@ export class ScheduledTransactionsService {
     splits: CreateScheduledTransactionSplitDto[],
     transactionAmount: number,
   ): void {
-    const isPassthrough =
-      splits.length === 1 &&
-      (splits[0].transferAccountId || splits[0].investment);
-
-    if (splits.length < 2 && !isPassthrough) {
-      throw new BadRequestException(
-        "Split transactions must have at least 2 splits",
-      );
-    }
-
-    const roundedSum = sumMoney(splits.map((split) => Number(split.amount)));
-    const roundedAmount = roundMoney(Number(transactionAmount));
-
-    if (roundedSum !== roundedAmount) {
-      throw new BadRequestException(
-        `Split amounts (${roundedSum}) must equal transaction amount (${roundedAmount})`,
-      );
-    }
+    validateSplitAmountSum(splits, transactionAmount, {
+      allowSinglePassthrough: true,
+      isPassthrough: (s) => {
+        const split = s as CreateScheduledTransactionSplitDto;
+        return Boolean(split.transferAccountId || split.investment);
+      },
+    });
   }
 
   private async createSplits(
@@ -461,6 +414,22 @@ export class ScheduledTransactionsService {
     manager: EntityManager = this.splitsRepository.manager,
   ): Promise<ScheduledTransactionSplit[]> {
     const savedSplits: ScheduledTransactionSplit[] = [];
+
+    // Batch-fetch every tag referenced across all splits so the per-split
+    // tag assignment doesn't trigger one `findBy(Tag, ...)` query per row
+    // (the prior N+1 pattern).
+    const allTagIds = Array.from(
+      new Set(splits.flatMap((s) => s.tagIds ?? [])),
+    );
+    const tagsById =
+      allTagIds.length > 0
+        ? new Map(
+            (await manager.findBy(Tag, { id: In(allTagIds) })).map((t) => [
+              t.id,
+              t,
+            ]),
+          )
+        : new Map<string, Tag>();
 
     for (const split of splits) {
       const inferredKind: SplitKind = split.splitKind
@@ -511,10 +480,9 @@ export class ScheduledTransactionsService {
       const saved = await manager.save(entity);
 
       if (split.tagIds && split.tagIds.length > 0) {
-        const tags = await manager.findBy(Tag, {
-          id: In(split.tagIds),
-        });
-        saved.tags = tags;
+        saved.tags = split.tagIds
+          .map((id) => tagsById.get(id))
+          .filter((t): t is Tag => t != null);
         await manager.save(saved);
       }
 

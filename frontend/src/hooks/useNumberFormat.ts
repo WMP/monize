@@ -14,6 +14,31 @@ function getEffectiveLocale(numberFormat: string): string | undefined {
 }
 
 /**
+ * Module-level cache for Intl.NumberFormat instances. These objects are
+ * relatively expensive to construct (each one builds a locale-specific
+ * formatter), and the hook callbacks below are invoked once per cell per
+ * row per render in tables -- creating a fresh instance every time was
+ * showing up in profiler traces. Cache keys are (locale + JSON(options))
+ * so distinct currencies and option sets don't collide. The cache is
+ * unbounded; in practice the keyspace stays small (a handful of
+ * locale/currency/option combinations per user session).
+ */
+const formatterCache = new Map<string, Intl.NumberFormat>();
+
+function getNumberFormat(
+  locale: string | undefined,
+  options: Intl.NumberFormatOptions,
+): Intl.NumberFormat {
+  const key = `${locale ?? ''}|${JSON.stringify(options)}`;
+  let formatter = formatterCache.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, options);
+    formatterCache.set(key, formatter);
+  }
+  return formatter;
+}
+
+/**
  * Hook to format numbers according to user preferences.
  * Returns formatCurrency and formatNumber functions that use the user's preferred number format.
  * All currency functions default to the user's configured defaultCurrency preference.
@@ -36,7 +61,7 @@ export function useNumberFormat() {
         options.minimumFractionDigits = fractionDigits;
         options.maximumFractionDigits = fractionDigits;
       }
-      const formatter = new Intl.NumberFormat(locale, options);
+      const formatter = getNumberFormat(locale, options);
       // Pre-round to the target decimal places to avoid IEEE 754
       // midpoint errors (e.g., 159.735 stored as 159.73499... rounding to
       // 159.73 instead of 159.74).
@@ -62,7 +87,7 @@ export function useNumberFormat() {
       const currency = currencyCode || defaultCurrency;
       const locale = getEffectiveLocale(numberFormat);
       const currencyDigits =
-        new Intl.NumberFormat(locale, {
+        getNumberFormat(locale, {
           style: 'currency',
           currency,
           currencyDisplay: 'narrowSymbol',
@@ -77,7 +102,7 @@ export function useNumberFormat() {
     (amount: number, currencyCode?: string): string => {
       const currency = currencyCode || defaultCurrency;
       const locale = getEffectiveLocale(numberFormat);
-      return new Intl.NumberFormat(locale, {
+      return getNumberFormat(locale, {
         style: 'currency',
         currency,
         currencyDisplay: 'narrowSymbol',
@@ -94,7 +119,7 @@ export function useNumberFormat() {
     (value: number, currencyCodeOrIndex?: string | number): string => {
       const currency = typeof currencyCodeOrIndex === 'string' ? currencyCodeOrIndex : defaultCurrency;
       const locale = getEffectiveLocale(numberFormat);
-      return new Intl.NumberFormat(locale, {
+      return getNumberFormat(locale, {
         style: 'currency',
         currency,
         currencyDisplay: 'narrowSymbol',
@@ -109,7 +134,7 @@ export function useNumberFormat() {
   const formatNumber = useCallback(
     (value: number, decimals: number = 2): string => {
       const locale = getEffectiveLocale(numberFormat);
-      return new Intl.NumberFormat(locale, {
+      return getNumberFormat(locale, {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       }).format(value);
@@ -120,7 +145,7 @@ export function useNumberFormat() {
   const formatPercent = useCallback(
     (value: number, decimals: number = 2): string => {
       const locale = getEffectiveLocale(numberFormat);
-      return new Intl.NumberFormat(locale, {
+      return getNumberFormat(locale, {
         style: 'percent',
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
@@ -142,7 +167,7 @@ export function useNumberFormat() {
       else { divisor = 1; suffix = ''; decimals = 0; }
 
       const scaled = value / divisor;
-      const formatted = new Intl.NumberFormat(locale, {
+      const formatted = getNumberFormat(locale, {
         style: 'currency',
         currency: defaultCurrency,
         currencyDisplay: 'narrowSymbol',
@@ -162,7 +187,7 @@ export function useNumberFormat() {
     (value: number, currencyCode?: string): string => {
       const currency = currencyCode || defaultCurrency;
       const locale = getEffectiveLocale(numberFormat);
-      return new Intl.NumberFormat(locale, {
+      return getNumberFormat(locale, {
         style: 'currency',
         currency,
         currencyDisplay: 'narrowSymbol',

@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { DataSource } from "typeorm";
 
 import { SeedService } from "./seed.service";
@@ -15,6 +15,8 @@ import { demoPreferences } from "./demo-seed-data/preferences";
 
 @Injectable()
 export class DemoSeedService {
+  private readonly logger = new Logger(DemoSeedService.name);
+
   constructor(
     private dataSource: DataSource,
     private seedService: SeedService,
@@ -24,7 +26,7 @@ export class DemoSeedService {
    * Full demo seed: currencies + demo user + rich demo data.
    */
   async seedAll(): Promise<void> {
-    console.log("🎭 Starting DEMO database seeding...\n");
+    this.logger.log("Starting DEMO database seeding");
 
     // Seed currencies via existing service
     await this.seedService.seedAll();
@@ -94,7 +96,7 @@ export class DemoSeedService {
 
     await this.seedDemoData(demoUser.id);
 
-    console.log("\n🎭 DEMO database seeding completed!");
+    this.logger.log("DEMO database seeding completed");
   }
 
   /**
@@ -118,7 +120,7 @@ export class DemoSeedService {
   }
 
   private async seedCategories(userId: string): Promise<Map<string, string>> {
-    console.log("📁 Seeding demo categories...");
+    this.logger.log("Seeding demo categories");
 
     const categoryMap = new Map<string, string>();
 
@@ -219,12 +221,12 @@ export class DemoSeedService {
       }
     }
 
-    console.log(`   ✓ Seeded ${categoryMap.size} categories`);
+    this.logger.log(`Seeded ${categoryMap.size} categories`);
     return categoryMap;
   }
 
   private async seedAccounts(userId: string): Promise<Map<string, string>> {
-    console.log("💳 Seeding demo accounts...");
+    this.logger.log("Seeding demo accounts");
 
     const accountMap = new Map<string, string>();
 
@@ -333,7 +335,7 @@ export class DemoSeedService {
       );
     }
 
-    console.log(`   ✓ Seeded ${accountMap.size} accounts`);
+    this.logger.log(`Seeded ${accountMap.size} accounts`);
     return accountMap;
   }
 
@@ -341,7 +343,7 @@ export class DemoSeedService {
     userId: string,
     categoryMap: Map<string, string>,
   ): Promise<Map<string, string>> {
-    console.log("👥 Seeding demo payees...");
+    this.logger.log("Seeding demo payees");
 
     const payeeMap = new Map<string, string>();
 
@@ -371,7 +373,7 @@ export class DemoSeedService {
       payeeMap.set("Transfer", transferResult[0].id);
     }
 
-    console.log(`   ✓ Seeded ${payeeMap.size} payees`);
+    this.logger.log(`Seeded ${payeeMap.size} payees`);
     return payeeMap;
   }
 
@@ -381,7 +383,7 @@ export class DemoSeedService {
     categoryMap: Map<string, string>,
     payeeMap: Map<string, string>,
   ): Promise<void> {
-    console.log("💸 Seeding demo transactions...");
+    this.logger.log("Seeding demo transactions");
 
     const transactions = generateTransactions(new Date());
     let count = 0;
@@ -533,8 +535,8 @@ export class DemoSeedService {
       );
     }
 
-    console.log(
-      `   ✓ Seeded ${count} transactions (${splitCount} splits, ${transferCount} transfers)`,
+    this.logger.log(
+      `Seeded ${count} transactions (${splitCount} splits, ${transferCount} transfers)`,
     );
   }
 
@@ -544,7 +546,7 @@ export class DemoSeedService {
     categoryMap: Map<string, string>,
     payeeMap: Map<string, string>,
   ): Promise<void> {
-    console.log("🔄 Seeding scheduled transactions...");
+    this.logger.log("Seeding scheduled transactions");
 
     const now = new Date();
 
@@ -599,8 +601,8 @@ export class DemoSeedService {
       );
     }
 
-    console.log(
-      `   ✓ Seeded ${demoScheduledTransactions.length} scheduled transactions`,
+    this.logger.log(
+      `Seeded ${demoScheduledTransactions.length} scheduled transactions`,
     );
   }
 
@@ -608,7 +610,7 @@ export class DemoSeedService {
     userId: string,
     accountMap: Map<string, string>,
   ): Promise<void> {
-    console.log("📊 Seeding securities, prices, and holdings...");
+    this.logger.log("Seeding securities, prices, and holdings");
 
     const now = new Date();
     let priceCount = 0;
@@ -704,13 +706,13 @@ export class DemoSeedService {
       }
     }
 
-    console.log(
-      `   ✓ Seeded ${demoSecurities.length} securities, ${priceCount} price records, holdings, and investment transactions`,
+    this.logger.log(
+      `Seeded ${demoSecurities.length} securities, ${priceCount} price records, holdings, and investment transactions`,
     );
   }
 
   private async seedReports(userId: string): Promise<void> {
-    console.log("📋 Seeding custom reports...");
+    this.logger.log("Seeding custom reports");
 
     for (const report of demoReports) {
       await this.dataSource.query(
@@ -736,11 +738,11 @@ export class DemoSeedService {
       );
     }
 
-    console.log(`   ✓ Seeded ${demoReports.length} custom reports`);
+    this.logger.log(`Seeded ${demoReports.length} custom reports`);
   }
 
   private async seedPreferences(userId: string): Promise<void> {
-    console.log("⚙️ Seeding user preferences...");
+    this.logger.log("Seeding user preferences");
 
     const p = demoPreferences;
     await this.dataSource.query(
@@ -768,6 +770,6 @@ export class DemoSeedService {
       ],
     );
 
-    console.log("   ✓ Seeded user preferences");
+    this.logger.log("Seeded user preferences");
   }
 }

@@ -7,6 +7,7 @@ import {
   IsIn,
 } from "class-validator";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
+import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
 
 export class CreateSecurityDto {
   @ApiProperty({ example: "AAPL", description: "Stock symbol or ticker" })
@@ -47,8 +48,7 @@ export class CreateSecurityDto {
   exchange?: string;
 
   @ApiProperty({ example: "USD", description: "Currency code" })
-  @IsString()
-  @MaxLength(3)
+  @IsCurrencyCode()
   currencyCode: string;
 
   @ApiProperty({ example: true, required: false })

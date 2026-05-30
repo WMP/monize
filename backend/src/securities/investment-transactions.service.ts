@@ -31,6 +31,11 @@ import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { CurrenciesService } from "../currencies/currencies.service";
 import { roundToDecimals, roundMoney, sumMoney } from "../common/round.util";
 import {
+  buildPaginationMeta,
+  clampPagination,
+  PaginatedResult,
+} from "../common/dto/pagination-query.dto";
+import {
   Transaction,
   TransactionStatus,
 } from "../transactions/entities/transaction.entity";
@@ -1235,18 +1240,12 @@ export class InvestmentTransactionsService {
     limit?: number,
     symbol?: string,
     action?: string,
-  ): Promise<{
-    data: InvestmentTransaction[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      hasMore: boolean;
-    };
-  }> {
-    const pageNum = page && page > 0 ? page : 1;
-    const pageSize = limit && limit > 0 ? Math.min(limit, 200) : 50;
+  ): Promise<PaginatedResult<InvestmentTransaction>> {
+    const {
+      page: pageNum,
+      limit: pageSize,
+      skip,
+    } = clampPagination(page, limit);
 
     const query = this.investmentTransactionsRepository
       .createQueryBuilder("it")
@@ -1289,21 +1288,13 @@ export class InvestmentTransactionsService {
     const data = await query
       .orderBy("it.transactionDate", "DESC")
       .addOrderBy("it.createdAt", "DESC")
-      .skip((pageNum - 1) * pageSize)
+      .skip(skip)
       .take(pageSize)
       .getMany();
 
-    const totalPages = Math.ceil(total / pageSize);
-
     return {
       data,
-      pagination: {
-        page: pageNum,
-        limit: pageSize,
-        total,
-        totalPages,
-        hasMore: pageNum < totalPages,
-      },
+      pagination: buildPaginationMeta(pageNum, pageSize, total),
     };
   }
 

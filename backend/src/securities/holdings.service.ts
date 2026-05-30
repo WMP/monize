@@ -11,6 +11,7 @@ import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { todayInTimezone } from "../common/date-utils";
 import { sumMoney } from "../common/round.util";
+import { getUsersByEffectiveTimezone } from "../common/users-by-timezone.util";
 import {
   Repository,
   In,
@@ -843,31 +844,8 @@ export class HoldingsService {
   @Cron("30 * * * *")
   async applyMaturedInvestmentHoldings(): Promise<void> {
     try {
-      const userRows: {
-        user_id: string;
-        timezone: string | null;
-        last_client_timezone: string | null;
-      }[] = await this.dataSource.query(
-        `SELECT u.id as user_id, p.timezone, p.last_client_timezone
-           FROM users u
-           LEFT JOIN user_preferences p ON p.user_id = u.id`,
-      );
-      if (userRows.length === 0) return;
-
-      const userIdsByTz = new Map<string, string[]>();
-      for (const { user_id, timezone, last_client_timezone } of userRows) {
-        const explicit = timezone?.trim();
-        const cached = last_client_timezone?.trim();
-        const tz =
-          explicit && explicit !== "browser"
-            ? explicit
-            : cached && cached !== "browser"
-              ? cached
-              : "UTC";
-        const list = userIdsByTz.get(tz) ?? [];
-        list.push(user_id);
-        userIdsByTz.set(tz, list);
-      }
+      const userIdsByTz = await getUsersByEffectiveTimezone(this.dataSource);
+      if (userIdsByTz.size === 0) return;
 
       let rebuilt = 0;
       for (const [tz, userIds] of userIdsByTz) {

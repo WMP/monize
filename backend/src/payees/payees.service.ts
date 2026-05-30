@@ -17,6 +17,7 @@ import { UpdatePayeeDto } from "./dto/update-payee.dto";
 import { CreatePayeeAliasDto } from "./dto/create-payee-alias.dto";
 import { MergePayeeDto } from "./dto/merge-payee.dto";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import { toCountMap } from "../common/count-map.util";
 
 function escapeLikeWildcards(value: string): string {
   // Escape backslash first, then the LIKE wildcards. Escaping only the
@@ -168,17 +169,16 @@ export class PayeesService {
       .getRawMany();
 
     // Create maps for counts and last used dates
-    const countMap = new Map<string, number>();
+    const countMap = toCountMap(stats);
     const lastUsedMap = new Map<string, string | null>();
     for (const row of stats) {
-      countMap.set(row.id, parseInt(row.count || "0", 10));
       lastUsedMap.set(row.id, row.last_used_date || null);
     }
 
-    const aliasCountMap = new Map<string, number>();
-    for (const row of aliasCounts) {
-      aliasCountMap.set(row.payee_id, parseInt(row.alias_count || "0", 10));
-    }
+    const aliasCountMap = toCountMap(aliasCounts, {
+      keyField: "payee_id",
+      countField: "alias_count",
+    });
 
     // Merge stats with payees
     return payees.map((payee) => ({
@@ -652,10 +652,10 @@ export class PayeesService {
     }
 
     const totalCounts = await totalCountsQuery.getRawMany();
-    const totalCountMap = new Map<string, number>();
-    for (const row of totalCounts) {
-      totalCountMap.set(row.payee_id, parseInt(row.total_count, 10));
-    }
+    const totalCountMap = toCountMap(totalCounts, {
+      keyField: "payee_id",
+      countField: "total_count",
+    });
 
     // Get current category names for payees that have one
     const payeesWithCategories = await this.payeesRepository.find({

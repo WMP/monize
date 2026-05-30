@@ -7,7 +7,8 @@ import { getIconComponent } from '@/components/ui/IconPicker';
 import { Transaction, TransactionSplit, TransactionStatus } from '@/types/transaction';
 import { CategoryBudgetStatus } from '@/types/budget';
 import { DensityLevel } from '@/hooks/useTableDensity';
-import { formatAmountWithCommas, formatCurrency, getDecimalPlacesForCurrency } from '@/lib/format';
+import { formatAmountWithCommas, getDecimalPlacesForCurrency } from '@/lib/format';
+import { useNumberFormat } from '@/hooks/useNumberFormat';
 
 const INVESTMENT_ACTION_LABELS: Record<string, string> = {
   BUY: 'Buy',
@@ -200,6 +201,7 @@ export const TransactionRow = memo(function TransactionRow({
   budgetStatusMap,
   isFuture,
 }: TransactionRowProps) {
+  const { formatCurrency } = useNumberFormat();
   const isVoid = transaction.status === TransactionStatus.VOID;
   const categoryColor = transaction.category
     ? (categoryColorMap?.get(transaction.category.id) ?? transaction.category.color)

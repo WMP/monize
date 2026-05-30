@@ -79,28 +79,6 @@ export class McpAccountsTools {
     );
 
     server.registerTool(
-      "get_account_summary",
-      {
-        description:
-          "Get total assets, liabilities, and net worth across all accounts",
-        inputSchema: {},
-      },
-      async (_args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "read");
-        if (check.error) return check.result;
-
-        try {
-          const summary = await this.accountsService.getSummary(ctx.userId);
-          return toolResult(summary);
-        } catch (err: unknown) {
-          return safeToolError(err);
-        }
-      },
-    );
-
-    server.registerTool(
       "get_account_balances",
       {
         description:

@@ -26,17 +26,13 @@ import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { exportToCsv } from '@/lib/csv-export';
 import { createLogger } from '@/lib/logger';
+import type { ChartDatum } from '@/types/chart';
 
 const logger = createLogger('SpendingByCategoryReport');
 
 type SpendingCategorySortField = 'name' | 'value' | 'percentage';
 
-interface ChartDataItem {
-  id: string;
-  name: string;
-  value: number;
-  colour: string;
-}
+type ChartDataItem = ChartDatum & { id: string; colour: string };
 
 export function SpendingByCategoryReport() {
   const router = useRouter();

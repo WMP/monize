@@ -14,6 +14,7 @@ import { ScheduledTransactionSplit } from "../scheduled-transactions/entities/sc
 import { CreateCategoryDto } from "./dto/create-category.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import { toCountMap } from "../common/count-map.util";
 import {
   DEFAULT_INCOME_CATEGORIES,
   DEFAULT_EXPENSE_CATEGORIES,
@@ -150,14 +151,8 @@ export class CategoriesService {
         .getRawMany(),
     ]);
 
-    const countMap = new Map<string, number>();
-    for (const row of directCounts) {
-      countMap.set(row.categoryId, parseInt(row.count || "0", 10));
-    }
-    for (const row of splitCounts) {
-      const existing = countMap.get(row.categoryId) || 0;
-      countMap.set(row.categoryId, existing + parseInt(row.count || "0", 10));
-    }
+    const countMap = toCountMap(directCounts, { keyField: "categoryId" });
+    toCountMap(splitCounts, { keyField: "categoryId", into: countMap });
 
     const categoriesWithCounts = categories.map((category) => ({
       ...category,

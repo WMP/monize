@@ -5001,7 +5001,10 @@ describe("InvestmentTransactionsService", () => {
         averageCost: 4.25,
       } as any);
 
-      await service.transferSecurity(userId, { ...transferDto, costPerShare: 0 });
+      await service.transferSecurity(userId, {
+        ...transferDto,
+        costPerShare: 0,
+      });
 
       expect(holdingsService.updateHolding).toHaveBeenCalledWith(
         userId,

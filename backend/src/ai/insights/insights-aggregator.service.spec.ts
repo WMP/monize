@@ -248,6 +248,5 @@ describe("InsightsAggregatorService", () => {
 
       expect(qb.innerJoin).toHaveBeenCalled();
     });
-
   });
 });

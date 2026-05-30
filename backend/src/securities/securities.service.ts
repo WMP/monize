@@ -336,7 +336,11 @@ export class SecuritiesService {
       const previousPrice = prices[1] ?? null;
       let dailyChange = 0;
       let dailyChangePercent = 0;
-      if (currentPrice != null && previousPrice != null && previousPrice !== 0) {
+      if (
+        currentPrice != null &&
+        previousPrice != null &&
+        previousPrice !== 0
+      ) {
         dailyChange = currentPrice - previousPrice;
         dailyChangePercent = (dailyChange / previousPrice) * 100;
       }

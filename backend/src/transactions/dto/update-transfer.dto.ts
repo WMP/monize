@@ -13,6 +13,7 @@ import {
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { TransactionStatus } from "../entities/transaction.entity";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
+import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
 
 export class UpdateTransferDto {
   @ApiPropertyOptional({ description: "Source account ID" })
@@ -41,20 +42,19 @@ export class UpdateTransferDto {
 
   @ApiPropertyOptional({ description: "Currency code of source account" })
   @IsOptional()
-  @IsString()
-  @MaxLength(3)
+  @IsCurrencyCode()
   fromCurrencyCode?: string;
 
   @ApiPropertyOptional({ description: "Currency code of destination account" })
   @IsOptional()
-  @IsString()
-  @MaxLength(3)
+  @IsCurrencyCode()
   toCurrencyCode?: string;
 
   @ApiPropertyOptional({ description: "Exchange rate" })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 10 })
   @Min(0.0001)
+  @Max(1_000_000)
   exchangeRate?: number;
 
   @ApiPropertyOptional({ description: "Destination amount" })

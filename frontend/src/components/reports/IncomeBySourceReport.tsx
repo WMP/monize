@@ -26,17 +26,13 @@ import { SortableHeader } from '@/components/ui/SortableHeader';
 import { CHART_COLOURS_INCOME } from '@/lib/chart-colours';
 import { exportToCsv } from '@/lib/csv-export';
 import { createLogger } from '@/lib/logger';
+import type { ChartDatum } from '@/types/chart';
 
 const logger = createLogger('IncomeBySourceReport');
 
 type IncomeSourceSortField = 'name' | 'value' | 'percentage';
 
-interface ChartDataItem {
-  id: string;
-  name: string;
-  value: number;
-  colour: string;
-}
+type ChartDataItem = ChartDatum & { id: string; colour: string };
 
 export function IncomeBySourceReport() {
   const router = useRouter();

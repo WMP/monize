@@ -11,7 +11,7 @@ import {
   CreateScheduledTransactionOverrideDto,
   UpdateScheduledTransactionOverrideDto,
 } from "./dto/scheduled-transaction-override.dto";
-import { roundMoney, sumMoney } from "../common/round.util";
+import { validateSplitAmountSum } from "../common/split-amount.util";
 
 @Injectable()
 export class ScheduledTransactionOverrideService {
@@ -219,19 +219,6 @@ export class ScheduledTransactionOverrideService {
     }[],
     transactionAmount: number,
   ): void {
-    if (splits.length < 2) {
-      throw new BadRequestException(
-        "Split overrides must have at least 2 splits",
-      );
-    }
-
-    const roundedSum = sumMoney(splits.map((split) => Number(split.amount)));
-    const roundedAmount = roundMoney(Number(transactionAmount));
-
-    if (roundedSum !== roundedAmount) {
-      throw new BadRequestException(
-        `Split amounts (${roundedSum}) must equal transaction amount (${roundedAmount})`,
-      );
-    }
+    validateSplitAmountSum(splits, transactionAmount);
   }
 }

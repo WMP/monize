@@ -28,8 +28,8 @@ describe("McpAccountsTools", () => {
     tool.register(server as any, resolve);
   });
 
-  it("should register 4 tools", () => {
-    expect(server.registerTool).toHaveBeenCalledTimes(4);
+  it("should register 3 tools", () => {
+    expect(server.registerTool).toHaveBeenCalledTimes(3);
   });
 
   describe("get_account_balances", () => {
@@ -158,53 +158,6 @@ describe("McpAccountsTools", () => {
 
       const result = await handlers["get_account_balance"](
         { accountId: "bad" },
-        { sessionId: "s1" },
-      );
-      expect(result.isError).toBe(true);
-    });
-  });
-
-  describe("get_account_summary", () => {
-    it("should return summary on success", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      accountsService.getSummary.mockResolvedValue({
-        totalAssets: 5000,
-        totalLiabilities: 1000,
-        netWorth: 4000,
-      });
-
-      const result = await handlers["get_account_summary"](
-        {},
-        { sessionId: "s1" },
-      );
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.netWorth).toBe(4000);
-    });
-
-    it("returns an error result when the service throws", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      accountsService.getSummary.mockRejectedValue(new Error("DB fail"));
-
-      const result = await handlers["get_account_summary"](
-        {},
-        { sessionId: "s1" },
-      );
-      expect(result.isError).toBe(true);
-    });
-
-    it("returns an error result when no user context is present", async () => {
-      resolve.mockReturnValue(undefined);
-      const result = await handlers["get_account_summary"](
-        {},
-        { sessionId: "s1" },
-      );
-      expect(result.isError).toBe(true);
-    });
-
-    it("returns an error result when scope is insufficient", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write_only" } as any);
-      const result = await handlers["get_account_summary"](
-        {},
         { sessionId: "s1" },
       );
       expect(result.isError).toBe(true);

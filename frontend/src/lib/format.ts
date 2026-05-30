@@ -16,7 +16,12 @@ export function getCurrencySymbol(currencyCode: string): string {
 
 /**
  * Format a number as currency with the specified currency code.
- * Uses Intl.NumberFormat currency-native decimal places (e.g., JPY=0, USD=2, BHD=3).
+ *
+ * **Prefer `useNumberFormat()` for any user-facing render.** This pure
+ * helper hardcodes the `en-US` locale and falls back to USD, so it ignores
+ * the user's `numberFormat` / `defaultCurrency` preferences. Use it only
+ * in non-React contexts (e.g., CSV exports, unit tests) where a hook is
+ * unavailable.
  */
 export function formatCurrency(amount: number, currencyCode: string = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
