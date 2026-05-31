@@ -164,14 +164,15 @@ describe("SpendingByPayeeReport", () => {
     });
   });
 
-  it("handles API error gracefully", async () => {
+  it("surfaces a retryable error state when the API fails", async () => {
     mockGetSpendingByPayee.mockRejectedValue(new Error("Network error"));
     render(<SpendingByPayeeReport />);
     await waitFor(() => {
       expect(
-        screen.getByText("No expense data for this period."),
+        screen.getByText(/failed to load report data/i),
       ).toBeInTheDocument();
     });
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
   it("navigates to transactions page with payee and date range on bar click", async () => {
