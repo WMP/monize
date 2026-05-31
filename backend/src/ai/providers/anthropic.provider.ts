@@ -95,11 +95,35 @@ export class AnthropicProvider implements AiProvider {
       }));
   }
 
+  /**
+   * Build the `system` parameter as a single cached text block so the large,
+   * stable financial-context prompt (and the tool definitions, which render
+   * before `system`) are served from Anthropic's prompt cache on repeated turns
+   * of a multi-turn tool-use conversation instead of being re-billed at full
+   * input cost every turn. A breakpoint on the last system block caches the
+   * tools + system prefix together. Returns the bare string when there is no
+   * prompt to cache.
+   */
+  private toCachedSystem(
+    systemPrompt: string,
+  ): string | Anthropic.TextBlockParam[] {
+    if (!systemPrompt) {
+      return systemPrompt;
+    }
+    return [
+      {
+        type: "text",
+        text: systemPrompt,
+        cache_control: { type: "ephemeral" },
+      },
+    ];
+  }
+
   async complete(request: AiCompletionRequest): Promise<AiCompletionResponse> {
     const response = await this.client.messages.create({
       model: this.modelId,
       max_tokens: request.maxTokens || 1024,
-      system: request.systemPrompt,
+      system: this.toCachedSystem(request.systemPrompt),
       messages: this.toSimpleMessages(request.messages),
       ...(request.temperature !== undefined && {
         temperature: request.temperature,
@@ -131,7 +155,7 @@ export class AnthropicProvider implements AiProvider {
         {
           model: this.modelId,
           max_tokens: request.maxTokens || 1024,
-          system: request.systemPrompt,
+          system: this.toCachedSystem(request.systemPrompt),
           messages: this.toSimpleMessages(request.messages),
           ...(request.temperature !== undefined && {
             temperature: request.temperature,
@@ -162,7 +186,7 @@ export class AnthropicProvider implements AiProvider {
     const response = await this.client.messages.create({
       model: this.modelId,
       max_tokens: request.maxTokens || 4096,
-      system: request.systemPrompt,
+      system: this.toCachedSystem(request.systemPrompt),
       messages: this.toAnthropicMessages(request.messages),
       tools: tools.map((tool) => ({
         name: tool.name,
@@ -224,7 +248,7 @@ export class AnthropicProvider implements AiProvider {
       stream = this.client.messages.stream({
         model: this.modelId,
         max_tokens: request.maxTokens || 4096,
-        system: request.systemPrompt,
+        system: this.toCachedSystem(request.systemPrompt),
         messages: this.toAnthropicMessages(request.messages),
         tools: tools.map((tool) => ({
           name: tool.name,
