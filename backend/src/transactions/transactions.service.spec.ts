@@ -22,6 +22,7 @@ import { isTransactionInFuture } from "../common/date-utils";
 import { buildTransactionSearchClause } from "./transaction-search.util";
 
 jest.mock("../common/date-utils", () => ({
+  ...jest.requireActual("../common/date-utils"),
   isTransactionInFuture: jest.fn().mockReturnValue(false),
   todayYMD: jest.fn().mockReturnValue("2026-01-01"),
 }));
@@ -5397,6 +5398,123 @@ describe("TransactionsService", () => {
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
       expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
       expect(mockQueryRunner.release).toHaveBeenCalled();
+    });
+  });
+
+  describe("getLlmTransactionRows", () => {
+    it("expands split transactions into per-split rows with their real category", async () => {
+      jest.spyOn(service, "findAll").mockResolvedValue({
+        data: [
+          {
+            id: "t-split",
+            transactionDate: "2025-01-15",
+            payeeName: "Costco",
+            category: null,
+            amount: -150,
+            account: { name: "Checking" },
+            description: "Warehouse run",
+            status: "cleared",
+            isSplit: true,
+            splits: [
+              {
+                id: "s1",
+                amount: -100,
+                memo: "Groceries portion",
+                category: { name: "Groceries" },
+              },
+              {
+                id: "s2",
+                amount: -50,
+                memo: null,
+                category: { name: "Household" },
+              },
+            ],
+          },
+          {
+            id: "t-plain",
+            transactionDate: "2025-01-14",
+            payeeName: "Coffee",
+            category: { name: "Dining" },
+            amount: -5,
+            account: { name: "Checking" },
+            description: null,
+            status: "cleared",
+            isSplit: false,
+          },
+        ],
+        pagination: { total: 2, hasMore: false },
+      } as any);
+
+      const result = await service.getLlmTransactionRows("user-1", {});
+
+      expect(result.transactions).toHaveLength(3);
+      const splitRows = result.transactions.filter((r) => r.id === "t-split");
+      expect(splitRows[0].categoryName).toBe("Groceries");
+      expect(splitRows[0].splitId).toBe("s1");
+      expect(splitRows[0].isSplit).toBe(true);
+      expect(splitRows[0].description).toBe("Groceries portion");
+      expect(splitRows[1].description).toBe("Warehouse run"); // falls back to parent
+      const plain = result.transactions.find((r) => r.id === "t-plain");
+      expect(plain?.categoryName).toBe("Dining");
+      expect(plain?.isSplit).toBeUndefined();
+      expect(result.total).toBe(2);
+    });
+
+    it("applies min/max amount filters to the expanded rows", async () => {
+      jest.spyOn(service, "findAll").mockResolvedValue({
+        data: [
+          {
+            id: "t-split",
+            transactionDate: "2025-01-15",
+            payeeName: "Costco",
+            amount: -150,
+            account: { name: "Checking" },
+            isSplit: true,
+            splits: [
+              { id: "s1", amount: -100, category: { name: "Groceries" } },
+              { id: "s2", amount: -50, category: { name: "Household" } },
+            ],
+          },
+        ],
+        pagination: { total: 1, hasMore: false },
+      } as any);
+
+      const result = await service.getLlmTransactionRows("user-1", {
+        minAmount: -75,
+      });
+
+      expect(result.transactions).toHaveLength(1);
+      expect(result.transactions[0].amount).toBe(-50);
+    });
+
+    it("caps the limit at 100 and passes filters to findAll", async () => {
+      const spy = jest.spyOn(service, "findAll").mockResolvedValue({
+        data: [],
+        pagination: { total: 0, hasMore: false },
+      } as any);
+
+      await service.getLlmTransactionRows("user-1", {
+        accountId: "a1",
+        startDate: "2025-01-01",
+        endDate: "2025-01-31",
+        categoryId: "c1",
+        payeeId: "p1",
+        query: "q",
+        limit: 999,
+      });
+
+      expect(spy).toHaveBeenCalledWith(
+        "user-1",
+        ["a1"],
+        "2025-01-01",
+        "2025-01-31",
+        ["c1"],
+        ["p1"],
+        1,
+        100,
+        false,
+        "q",
+      );
     });
   });
 });

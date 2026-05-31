@@ -14,6 +14,7 @@ describe("McpTransactionsTools", () => {
   beforeEach(() => {
     transactionsService = {
       findAll: jest.fn(),
+      getLlmTransactionRows: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     };
@@ -338,22 +339,23 @@ describe("McpTransactionsTools", () => {
       expect(result.isError).toBe(true);
     });
 
-    it("should search transactions with filters", async () => {
+    it("returns the rows the domain service produces", async () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      transactionsService.findAll.mockResolvedValue({
-        data: [
+      transactionsService.getLlmTransactionRows.mockResolvedValue({
+        transactions: [
           {
             id: "t1",
-            transactionDate: "2025-01-15",
+            date: "2025-01-15",
             payeeName: "Store",
-            category: { name: "Food" },
+            categoryName: "Food",
             amount: -50,
-            account: { name: "Checking" },
+            accountName: "Checking",
             description: "Groceries",
             status: "cleared",
           },
         ],
-        pagination: { total: 1, hasMore: false },
+        total: 1,
+        hasMore: false,
       });
 
       const result = await handlers["search_transactions"](
@@ -363,156 +365,45 @@ describe("McpTransactionsTools", () => {
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.transactions).toHaveLength(1);
       expect(parsed.transactions[0].payeeName).toBe("Store");
+      expect(parsed.total).toBe(1);
     });
 
-    it("should cap limit at 100", async () => {
+    it("delegates the filter args to the domain service (thin adapter)", async () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      transactionsService.findAll.mockResolvedValue({
-        data: [],
-        pagination: { total: 0, hasMore: false },
+      transactionsService.getLlmTransactionRows.mockResolvedValue({
+        transactions: [],
+        total: 0,
+        hasMore: false,
       });
 
       await handlers["search_transactions"](
-        { limit: 999 },
+        {
+          query: "q",
+          accountId: "a1",
+          categoryId: "c1",
+          payeeId: "p1",
+          startDate: "2025-01-01",
+          endDate: "2025-01-31",
+          minAmount: -150,
+          maxAmount: -10,
+          limit: 999,
+        },
         { sessionId: "s1" },
       );
-      expect(transactionsService.findAll).toHaveBeenCalledWith(
+      expect(transactionsService.getLlmTransactionRows).toHaveBeenCalledWith(
         "u1",
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        1,
-        100,
-        false,
-        undefined,
+        {
+          query: "q",
+          accountId: "a1",
+          categoryId: "c1",
+          payeeId: "p1",
+          startDate: "2025-01-01",
+          endDate: "2025-01-31",
+          minAmount: -150,
+          maxAmount: -10,
+          limit: 999,
+        },
       );
-    });
-
-    it("should apply min/max amount filters", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      transactionsService.findAll.mockResolvedValue({
-        data: [
-          { id: "t1", amount: -20, transactionDate: "2025-01-15" },
-          { id: "t2", amount: -100, transactionDate: "2025-01-14" },
-          { id: "t3", amount: -200, transactionDate: "2025-01-13" },
-        ],
-        pagination: { total: 3, hasMore: false },
-      });
-
-      const result = await handlers["search_transactions"](
-        { minAmount: -150, maxAmount: -10 },
-        { sessionId: "s1" },
-      );
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.transactions).toHaveLength(2);
-    });
-
-    it("should expand split transactions into per-split rows", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      transactionsService.findAll.mockResolvedValue({
-        data: [
-          {
-            id: "t-split",
-            transactionDate: "2025-01-15",
-            payeeName: "Costco",
-            category: null,
-            amount: -150,
-            account: { name: "Checking" },
-            description: "Warehouse run",
-            status: "cleared",
-            isSplit: true,
-            splits: [
-              {
-                id: "s1",
-                amount: -100,
-                memo: "Groceries portion",
-                category: { name: "Groceries" },
-              },
-              {
-                id: "s2",
-                amount: -50,
-                memo: null,
-                category: { name: "Household" },
-              },
-            ],
-          },
-          {
-            id: "t-plain",
-            transactionDate: "2025-01-14",
-            payeeName: "Coffee",
-            category: { name: "Dining" },
-            amount: -5,
-            account: { name: "Checking" },
-            description: null,
-            status: "cleared",
-            isSplit: false,
-          },
-        ],
-        pagination: { total: 2, hasMore: false },
-      });
-
-      const result = await handlers["search_transactions"](
-        {},
-        { sessionId: "s1" },
-      );
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.transactions).toHaveLength(3);
-
-      const splitRows = parsed.transactions.filter(
-        (r: any) => r.id === "t-split",
-      );
-      expect(splitRows).toHaveLength(2);
-      expect(splitRows[0].categoryName).toBe("Groceries");
-      expect(splitRows[0].amount).toBe(-100);
-      expect(splitRows[0].splitId).toBe("s1");
-      expect(splitRows[0].isSplit).toBe(true);
-      expect(splitRows[0].description).toBe("Groceries portion");
-      expect(splitRows[1].categoryName).toBe("Household");
-      expect(splitRows[1].amount).toBe(-50);
-      expect(splitRows[1].description).toBe("Warehouse run");
-
-      const plainRow = parsed.transactions.find((r: any) => r.id === "t-plain");
-      expect(plainRow.categoryName).toBe("Dining");
-      expect(plainRow.isSplit).toBeUndefined();
-    });
-
-    it("should apply amount filter to unpacked splits", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      transactionsService.findAll.mockResolvedValue({
-        data: [
-          {
-            id: "t-split",
-            transactionDate: "2025-01-15",
-            payeeName: "Costco",
-            amount: -150,
-            account: { name: "Checking" },
-            isSplit: true,
-            splits: [
-              {
-                id: "s1",
-                amount: -100,
-                category: { name: "Groceries" },
-              },
-              {
-                id: "s2",
-                amount: -50,
-                category: { name: "Household" },
-              },
-            ],
-          },
-        ],
-        pagination: { total: 1, hasMore: false },
-      });
-
-      const result = await handlers["search_transactions"](
-        { minAmount: -75 },
-        { sessionId: "s1" },
-      );
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.transactions).toHaveLength(1);
-      expect(parsed.transactions[0].amount).toBe(-50);
     });
   });
 

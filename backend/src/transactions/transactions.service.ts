@@ -55,6 +55,25 @@ export interface PaginatedTransactions extends PaginatedResult<TransactionWithIn
   startingBalance?: number;
 }
 
+export interface LlmTransactionRow {
+  id: string;
+  splitId?: string;
+  date: string;
+  payeeName: string | null;
+  categoryName?: string;
+  amount: number;
+  accountName?: string;
+  description: string | null;
+  status: string;
+  isSplit?: boolean;
+}
+
+export interface LlmTransactionSearch {
+  transactions: LlmTransactionRow[];
+  total: number;
+  hasMore: boolean;
+}
+
 export { TransferResult };
 
 @Injectable()
@@ -1923,5 +1942,87 @@ export class TransactionsService {
       afterData: action === "delete" ? undefined : snapshot,
       description: `${action === "create" ? "Created" : action === "update" ? "Updated" : "Deleted"} transaction ${tx.payeeName || ""} ${formatCurrency(Number(tx.amount), tx.currencyCode)}`,
     });
+  }
+
+  /**
+   * Search transactions and shape them as flat rows for LLM tools (the MCP
+   * server's search_transactions tool and any AI Assistant equivalent). Split
+   * transactions are expanded so each split appears as its own row with its
+   * real category -- the parent of a split has categoryId NULL by design, so
+   * reporting it as-is would make the model think it is uncategorized. Amount
+   * filters are applied per expanded row. Keeping this on the domain service
+   * (rather than in the tool layer) keeps both surfaces consistent.
+   */
+  async getLlmTransactionRows(
+    userId: string,
+    filters: {
+      accountId?: string;
+      categoryId?: string;
+      payeeId?: string;
+      startDate?: string;
+      endDate?: string;
+      query?: string;
+      minAmount?: number;
+      maxAmount?: number;
+      limit?: number;
+    },
+  ): Promise<LlmTransactionSearch> {
+    const limit = Math.min(filters.limit || 50, 100);
+    const result = await this.findAll(
+      userId,
+      filters.accountId ? [filters.accountId] : undefined,
+      filters.startDate,
+      filters.endDate,
+      filters.categoryId ? [filters.categoryId] : undefined,
+      filters.payeeId ? [filters.payeeId] : undefined,
+      1,
+      limit,
+      false,
+      filters.query,
+    );
+
+    const transactions = result.data.flatMap((t): LlmTransactionRow[] => {
+      const rows: LlmTransactionRow[] =
+        t.isSplit && Array.isArray(t.splits) && t.splits.length > 0
+          ? t.splits.map((s) => ({
+              id: t.id,
+              splitId: s.id,
+              date: t.transactionDate,
+              payeeName: t.payeeName,
+              categoryName: s.category?.name,
+              amount: Number(s.amount),
+              accountName: t.account?.name,
+              description: s.memo ?? t.description,
+              status: t.status,
+              isSplit: true,
+            }))
+          : [
+              {
+                id: t.id,
+                date: t.transactionDate,
+                payeeName: t.payeeName,
+                categoryName: t.category?.name,
+                amount: Number(t.amount),
+                accountName: t.account?.name,
+                description: t.description,
+                status: t.status,
+              },
+            ];
+      return rows.filter((row) => {
+        if (filters.minAmount !== undefined && row.amount < filters.minAmount) {
+          return false;
+        }
+        if (filters.maxAmount !== undefined && row.amount > filters.maxAmount) {
+          return false;
+        }
+        return true;
+      });
+    });
+
+    return {
+      transactions,
+      total: result.pagination.total,
+      hasMore: result.pagination.hasMore,
+    };
   }
 }

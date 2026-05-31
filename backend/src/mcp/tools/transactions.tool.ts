@@ -85,63 +85,24 @@ export class McpTransactionsTools {
         if (check.error) return check.result;
 
         try {
-          const limit = Math.min(args.limit || 50, 100);
-          const result = await this.transactionsService.findAll(
+          // Split-expansion + amount filtering live on the domain service so
+          // this tool stays a thin adapter and any AI Assistant equivalent
+          // returns the same shape.
+          const result = await this.transactionsService.getLlmTransactionRows(
             ctx.userId,
-            args.accountId ? [args.accountId] : undefined,
-            args.startDate,
-            args.endDate,
-            args.categoryId ? [args.categoryId] : undefined,
-            args.payeeId ? [args.payeeId] : undefined,
-            1,
-            limit,
-            false,
-            args.query,
+            {
+              accountId: args.accountId,
+              categoryId: args.categoryId,
+              payeeId: args.payeeId,
+              startDate: args.startDate,
+              endDate: args.endDate,
+              query: args.query,
+              minAmount: args.minAmount,
+              maxAmount: args.maxAmount,
+              limit: args.limit,
+            },
           );
-          const transactions = result.data.flatMap((t: any) => {
-            // Expand split transactions so each split appears as its own row
-            // with its real category. The parent of a split has categoryId
-            // NULL by design; reporting it as-is makes the AI think it is
-            // uncategorized.
-            const rows =
-              t.isSplit && Array.isArray(t.splits) && t.splits.length > 0
-                ? t.splits.map((s: any) => ({
-                    id: t.id,
-                    splitId: s.id,
-                    date: t.transactionDate,
-                    payeeName: t.payeeName,
-                    categoryName: s.category?.name,
-                    amount: Number(s.amount),
-                    accountName: t.account?.name,
-                    description: s.memo ?? t.description,
-                    status: t.status,
-                    isSplit: true,
-                  }))
-                : [
-                    {
-                      id: t.id,
-                      date: t.transactionDate,
-                      payeeName: t.payeeName,
-                      categoryName: t.category?.name,
-                      amount: Number(t.amount),
-                      accountName: t.account?.name,
-                      description: t.description,
-                      status: t.status,
-                    },
-                  ];
-            return rows.filter((row: any) => {
-              if (args.minAmount !== undefined && row.amount < args.minAmount)
-                return false;
-              if (args.maxAmount !== undefined && row.amount > args.maxAmount)
-                return false;
-              return true;
-            });
-          });
-          return toolResult({
-            transactions,
-            total: result.pagination.total,
-            hasMore: result.pagination.hasMore,
-          });
+          return toolResult(result);
         } catch (err: unknown) {
           return safeToolError(err);
         }
