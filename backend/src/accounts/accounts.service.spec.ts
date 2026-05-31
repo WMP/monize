@@ -2317,8 +2317,8 @@ describe("AccountsService", () => {
   });
 
   describe("reorderFavourites()", () => {
-    it("updates favourite_sort_order for each account in order", async () => {
-      mockQueryRunner.manager.update = jest.fn().mockResolvedValue(undefined);
+    it("applies the new ordering in a single bulk UPDATE scoped to the user", async () => {
+      accountsRepository.query.mockResolvedValue(undefined);
 
       await service.reorderFavourites("user-1", [
         "account-a",
@@ -2326,39 +2326,20 @@ describe("AccountsService", () => {
         "account-c",
       ]);
 
-      expect(mockQueryRunner.connect).toHaveBeenCalled();
-      expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
-      expect(mockQueryRunner.manager.update).toHaveBeenCalledTimes(3);
-      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
-        Account,
-        { id: "account-a", userId: "user-1" },
-        { favouriteSortOrder: 0 },
-      );
-      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
-        Account,
-        { id: "account-b", userId: "user-1" },
-        { favouriteSortOrder: 1 },
-      );
-      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
-        Account,
-        { id: "account-c", userId: "user-1" },
-        { favouriteSortOrder: 2 },
-      );
-      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
-      expect(mockQueryRunner.release).toHaveBeenCalled();
+      expect(accountsRepository.query).toHaveBeenCalledTimes(1);
+      const [sql, params] = accountsRepository.query.mock.calls[0];
+      // ids are parameterized, the sort order is the array index, and the
+      // userId is the final parameter constraining the update.
+      expect(sql).toContain("UPDATE accounts SET favourite_sort_order");
+      expect(sql).toContain("accounts.user_id = $4");
+      expect(sql).toContain("($1::uuid, 0)");
+      expect(sql).toContain("($3::uuid, 2)");
+      expect(params).toEqual(["account-a", "account-b", "account-c", "user-1"]);
     });
 
-    it("rolls back transaction on error", async () => {
-      mockQueryRunner.manager.update = jest
-        .fn()
-        .mockRejectedValue(new Error("DB error"));
-
-      await expect(
-        service.reorderFavourites("user-1", ["account-a"]),
-      ).rejects.toThrow("DB error");
-
-      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
-      expect(mockQueryRunner.release).toHaveBeenCalled();
+    it("does nothing when the list is empty", async () => {
+      await service.reorderFavourites("user-1", []);
+      expect(accountsRepository.query).not.toHaveBeenCalled();
     });
 
     it("throws BadRequestException when accountIds is not an array", async () => {

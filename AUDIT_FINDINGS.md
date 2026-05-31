@@ -61,17 +61,23 @@ fail-fast, fully unit-tested). Applied to #5, #6, the FX refresh cron, and #17.
 
 ### N+1 / per-row write loops (collapse each to a single bulk statement)
 
-- [ ] **9. Net-worth charts:** per-selected-account linked-account resolution ->
+- [x] **9. Net-worth charts:** per-selected-account linked-account resolution ->
   `WHERE id = ANY($1)`. `net-worth.service.ts:347-355, 607-615`
+  DONE: both sites resolve all requested accounts plus their linked pairs in a single
+  `id = ANY($1) OR linked_account_id = ANY($1) OR id IN (...)` query.
 - [ ] **10. Bulk tag update:** ~3N queries (validate+delete+insert per txn) -> validate once
   + one bulk delete + one multi-row insert. `transaction-bulk-update.service.ts:146-155` ->
   `tags.service.setTransactionTags`
-- [ ] **11. Per-row balance UPDATEs** in deferred-balance cron / post-import /
+- [~] **11. Per-row balance UPDATEs** in deferred-balance cron / post-import /
   `reorderFavourites` / bulk payee save -> single `UPDATE ... FROM (VALUES ...)`.
   `accounts.service.ts:1293-1298, 1327-1338`, `import.service.ts:1654-1686`,
   `payees.service.ts:549-560`
-- [ ] **12. Split-transfer cleanup** does `findOne` per split -> batch with `In(...)`.
+  PARTIAL: `reorderFavourites` now uses a single bulk `UPDATE ... FROM (VALUES ...)`.
+  Deferred-balance cron, post-import recompute, and bulk payee save still pending.
+- [x] **12. Split-transfer cleanup** does `findOne` per split -> batch with `In(...)`.
   `transactions.service.ts:1558-1582`
+  DONE: linked transfer transactions for a parent's splits are now fetched in one
+  `In(linkedIds)` query; the per-transaction balance/remove logic is unchanged.
 
 ---
 

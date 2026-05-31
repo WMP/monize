@@ -1311,28 +1311,20 @@ export class AccountsService {
     if (!Array.isArray(accountIds)) {
       throw new BadRequestException("accountIds must be an array");
     }
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    try {
-      for (let i = 0; i < accountIds.length; i++) {
-        await queryRunner.manager.update(
-          Account,
-          {
-            id: accountIds[i],
-            userId,
-          },
-          {
-            favouriteSortOrder: i,
-          },
-        );
-      }
-      await queryRunner.commitTransaction();
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
+    if (accountIds.length === 0) {
+      return;
     }
+
+    // Apply the new ordering in a single statement instead of one UPDATE per
+    // account. favouriteSortOrder is the array index; ids are parameterized and
+    // the user_id predicate keeps the update scoped to the caller's accounts.
+    const valuesClause = accountIds
+      .map((_, i) => `($${i + 1}::uuid, ${i})`)
+      .join(", ");
+    const userParam = `$${accountIds.length + 1}`;
+    const sql = `UPDATE accounts SET favourite_sort_order = c.ord
+       FROM (VALUES ${valuesClause}) AS c(id, ord)
+       WHERE accounts.id = c.id AND accounts.user_id = ${userParam}`;
+    await this.accountsRepository.query(sql, [...accountIds, userId]);
   }
 }
