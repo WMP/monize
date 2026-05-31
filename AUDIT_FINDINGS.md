@@ -108,14 +108,20 @@ fail-fast, fully unit-tested). Applied to #5, #6, the FX refresh cron, and #17.
 
 ## P2 — Performance polish
 
-- [ ] **13. Reports page rebuilds map+filter+sort (and SVG icon nodes) on every keystroke**,
+- [x] **13. Reports page rebuilds map+filter+sort (and SVG icon nodes) on every keystroke**,
   no `useMemo`, no search debounce. `app/reports/page.tsx:722-772`
-- [ ] **14. DividendIncomeReport fetch waterfall:** accounts + capital-gains wait behind the
+  DONE: `useMemo` on the derived report arrays + `filteredReports`; new `useDebouncedValue`
+  hook (tested) debounces search 200ms; `favouriteReportIds` memoized.
+- [x] **14. DividendIncomeReport fetch waterfall:** accounts + capital-gains wait behind the
   sequential transaction-pagination loop; inline MultiSelect options rebuilt each render.
   `DividendIncomeReport.tsx:254-273, 989-995`
-- [ ] **15. Whole-store Zustand subscriptions** (destructuring instead of slice selectors);
+  DONE: the three fetches now run concurrently via `Promise.all`; MultiSelect options and the
+  negative-capital-gains scans are memoized.
+- [x] **15. Whole-store Zustand subscriptions** (destructuring instead of slice selectors);
   widest-reach is `ProtectedRoute.tsx:18-19` (wraps every authed page); also `AppHeader`,
   `FavouriteAccounts`, dashboard.
+  DONE: all 5 listed sites converted to slice selectors; the 8 other whole-store call sites
+  (out of scope) were verified and left.
 - [x] **16. Anthropic provider has no prompt caching** (`cache_control` zero hits repo-wide)
   — resends large financial-context system prompts at full token cost every turn.
   `ai/providers/anthropic.provider.ts:98-107`
@@ -145,20 +151,41 @@ fail-fast, fully unit-tested). Applied to #5, #6, the FX refresh cron, and #17.
 
 ### Frontend (presentation drift)
 
-- [ ] **21. `LoadingSkeleton.tsx` is dead code** — 0 imports, yet 63 components hand-roll
+- [~] **21. `LoadingSkeleton.tsx` is dead code** — 0 imports, yet 63 components hand-roll
   `animate-pulse` skeletons. Highest-leverage cleanup.
-- [ ] **22. Signed-percent formatting reimplemented 40+ times** as
+  PARTIAL: adopted the kit at 47 sites (40 report chart skeletons + 5 chart components +
+  HoldingsList + GroupedHoldingsList). The "zero imports" claim was inaccurate -- the 8
+  `loading.tsx` route files already used it. Remaining hand-rolled cases are bespoke per-widget
+  dashboard layouts (left for clarity) and `bg-gray-200` progress-bar backgrounds (not
+  skeletons).
+- [x] **22. Signed-percent formatting reimplemented 40+ times** as
   `${v>=0?'+':''}${v.toFixed(1)}%`, bypassing `useNumberFormat`. Add `formatSignedPercent`.
-- [ ] **23. Gain/loss green/red ternary inlined in 71 files** with no helper. Add
+  DONE: added `formatSignedPercent` to `lib/format.ts` + `useNumberFormat`; migrated the
+  signed-percent sites. CurrencyExposureReport was intentionally NOT migrated (its percents are
+  unsigned "% of portfolio" proportions, where a signed helper would be wrong).
+- [x] **23. Gain/loss green/red ternary inlined in 71 files** with no helper. Add
   `gainLossColor(value)` to `lib/format.ts`.
-- [ ] **24. ~40 report components duplicate fetch/loading boilerplate** — and none track an
+  DONE: added `gainLossColor`; migrated ~50 sites (investments/reports edits + a scripted pass
+  across 23 files). Inverted-logic ternaries (e.g. spending where `<= 0` is green) were
+  correctly left alone.
+- [~] **24. ~40 report components duplicate fetch/loading boilerplate** — and none track an
   error state (`setError` count = 0 across reports -> failed fetches silently show empty).
   Extract `useReportData(fetcher, deps)`.
-- [ ] **25. `SummaryCard`/`SummaryIcons` exist but reports hand-roll** the card container
+  PARTIAL: created the tested `useReportData` hook + `ReportError` component, which surface a
+  retryable error state (the key gap -- reports previously showed empty on failure). Migrated 6
+  reports as a template covering both single-fetch and multi-response patterns; ~34 remain
+  (many have bespoke conditional/multi-fetch shapes needing per-file care).
+- [~] **25. `SummaryCard`/`SummaryIcons` exist but reports hand-roll** the card container
   string (appears in 42 files); 23 reports define their own inline Recharts tooltip.
-- [ ] **26. 3 forms bypass mandated rhf+Zod** (`BulkUpdateModal`, `CreateUserModal`,
+  PARTIAL: created shared `ChartTooltip`/`ChartTooltipPanel`, adopted in the 6 migrated reports.
+  `SummaryCard` had no clean unmigrated cases (already used in 8 page stat rows; report summary
+  cards use a structurally different colored-background, icon-less layout).
+- [x] **26. 3 forms bypass mandated rhf+Zod** (`BulkUpdateModal`, `CreateUserModal`,
   `MonteCarloSaveAsDialog`); `formatQuantity` copied in 3 investment lists; email Zod schema
   duplicated in 3 auth pages.
+  DONE: all 3 forms migrated to react-hook-form + zodResolver; `emailSchema` added to
+  `zod-helpers` and used in login/register/forgot-password; `formatQuantity` added to
+  `useNumberFormat` and the 3 inline copies removed.
 
 ### Backend (logic drift)
 
