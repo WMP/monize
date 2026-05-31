@@ -71,12 +71,14 @@ fail-fast, fully unit-tested). Applied to #5, #6, the FX refresh cron, and #17.
   DONE: added `TagsService.setTransactionTagsBulk` (validate once, one
   `DELETE ... WHERE transaction_id IN (...)`, one multi-row insert of the txn x tag product);
   the bulk-update service now calls it once instead of looping `setTransactionTags`.
-- [~] **11. Per-row balance UPDATEs** in deferred-balance cron / post-import /
+- [x] **11. Per-row balance UPDATEs** in deferred-balance cron / post-import /
   `reorderFavourites` / bulk payee save -> single `UPDATE ... FROM (VALUES ...)`.
   `accounts.service.ts:1293-1298, 1327-1338`, `import.service.ts:1654-1686`,
   `payees.service.ts:549-560`
-  PARTIAL: `reorderFavourites` now uses a single bulk `UPDATE ... FROM (VALUES ...)`.
-  Deferred-balance cron, post-import recompute, and bulk payee save still pending.
+  DONE: `reorderFavourites`, the deferred-balance cron, and the post-import recompute now
+  each apply balances in a single bulk `UPDATE ... FROM (VALUES ...)` (post-import also
+  collapsed 3-queries-per-account into one grouped balance query). Bulk payee deactivation
+  was already a single `find` + single batched `save` (no per-row loop), so left as-is.
 - [x] **12. Split-transfer cleanup** does `findOne` per split -> batch with `In(...)`.
   `transactions.service.ts:1558-1582`
   DONE: linked transfer transactions for a parent's splits are now fetched in one

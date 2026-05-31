@@ -2766,12 +2766,19 @@ describe("AccountsService", () => {
         // accountRows
         .mockResolvedValueOnce([{ account_id: "a1" }])
         // balances
-        .mockResolvedValueOnce([{ account_id: "a1", balance: "150" }]);
-      accountsRepository.update.mockResolvedValue({ affected: 1 });
+        .mockResolvedValueOnce([{ account_id: "a1", balance: "150" }])
+        // bulk UPDATE ... FROM (VALUES ...)
+        .mockResolvedValueOnce(undefined);
       await service.applyDueTransactionBalances();
-      expect(accountsRepository.update).toHaveBeenCalledWith("a1", {
-        currentBalance: 150,
-      });
+      // Balances applied via a single bulk UPDATE, not one update per account
+      const bulkUpdateCall = ds.query.mock.calls.find(
+        (c) =>
+          typeof c[0] === "string" &&
+          c[0].includes("UPDATE accounts SET current_balance"),
+      );
+      expect(bulkUpdateCall).toBeDefined();
+      expect(bulkUpdateCall?.[1]).toEqual(["a1", 150]);
+      expect(accountsRepository.update).not.toHaveBeenCalled();
     });
 
     it("logs error when query throws", async () => {

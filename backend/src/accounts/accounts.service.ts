@@ -1281,11 +1281,22 @@ export class AccountsService {
             [accountIds, today],
           );
 
-        for (const row of balances) {
-          const newBalance = roundMoney(Number(row.balance));
-          await this.accountsRepository.update(row.account_id, {
-            currentBalance: newBalance,
-          });
+        if (balances.length > 0) {
+          // Apply all recomputed balances in a single statement instead of one
+          // UPDATE per account.
+          const valuesClause = balances
+            .map((_, i) => `($${i * 2 + 1}::uuid, $${i * 2 + 2}::numeric)`)
+            .join(", ");
+          const params = balances.flatMap((row) => [
+            row.account_id,
+            roundMoney(Number(row.balance)),
+          ]);
+          await this.dataSource.query(
+            `UPDATE accounts SET current_balance = v.balance
+               FROM (VALUES ${valuesClause}) AS v(id, balance)
+               WHERE accounts.id = v.id`,
+            params,
+          );
         }
 
         totalApplied += balances.length;
