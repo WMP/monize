@@ -1,6 +1,7 @@
 'use client';
 
 import { memo } from 'react';
+import { gainLossColor } from '@/lib/format';
 import { Account, AccountType } from '@/types/account';
 import { Button } from '@/components/ui/Button';
 
@@ -187,7 +188,7 @@ export const AccountRow = memo(function AccountRow({
                 <>
                   <div
                     className={`text-sm font-medium ${
-                      totalBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                      gainLossColor(totalBalance)
                     }`}
                   >
                     {formatCurrency(totalBalance, account.currencyCode)}

@@ -15,8 +15,11 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAuthenticated, isLoading, _hasHydrated } = useAuthStore();
-  const { preferences } = usePreferencesStore();
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isLoading = useAuthStore((s) => s.isLoading);
+  const _hasHydrated = useAuthStore((s) => s._hasHydrated);
+  const preferences = usePreferencesStore((s) => s.preferences);
   const [force2fa, setForce2fa] = useState(false);
   useUndoRedo();
 

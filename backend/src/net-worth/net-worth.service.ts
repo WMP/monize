@@ -15,6 +15,8 @@ import { SecurityPrice } from "../securities/entities/security-price.entity";
 import { Security } from "../securities/entities/security.entity";
 import { ExchangeRate } from "../currencies/entities/exchange-rate.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
+import { convertWithRateLookup } from "../common/currency-conversion.util";
+import { formatDateYMDLocal } from "../common/date-utils";
 
 const LIABILITY_TYPES: AccountType[] = [
   AccountType.CREDIT_CARD,
@@ -1101,8 +1103,7 @@ export class NetWorthService {
     }
 
     // Load investment transactions for holdings replay (exclude future-dated)
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const today = formatDateYMDLocal(new Date());
     const invTxs = await this.invTxRepo.find({
       where: {
         accountId: account.id,
@@ -1390,21 +1391,14 @@ export class NetWorthService {
     monthEnd: string,
     rateIndex: RateIndex,
   ): number {
-    if (from === to) return amount;
-
-    const directRates = rateIndex.get(`${from}->${to}`);
-    if (directRates) {
-      const rate = this.findBestRate(directRates, monthEnd);
-      if (rate != null) return amount * rate;
-    }
-
-    const reverseRates = rateIndex.get(`${to}->${from}`);
-    if (reverseRates) {
-      const rate = this.findBestRate(reverseRates, monthEnd);
-      if (rate != null) return amount / rate;
-    }
-
-    return amount;
+    // Date-aware rate lookup: resolve the best rate on or before monthEnd from
+    // the historical index. The direct/inverse decision lives in the shared
+    // convertWithRateLookup helper so reports and net worth stay consistent.
+    const result = convertWithRateLookup(amount, from, to, (f, t) => {
+      const rates = rateIndex.get(`${f}->${t}`);
+      return rates ? this.findBestRate(rates, monthEnd) : undefined;
+    });
+    return result ?? amount;
   }
 
   private findBestRate(

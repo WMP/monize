@@ -10,7 +10,7 @@ import {
   SeasonalPattern,
   FlexGroupStatusResult,
 } from "./budget-reports.service";
-import { formatDateYMD } from "../common/date-utils";
+import { formatDateYMD, getMonthEndYMD } from "../common/date-utils";
 import { roundMoney, roundToDecimals, sumMoney } from "../common/round.util";
 
 const MONTH_NAMES = [
@@ -62,7 +62,10 @@ export class BudgetActivityReportsService {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 12);
     const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-01`;
-    const endStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0).getDate()).padStart(2, "0")}`;
+    const endStr = getMonthEndYMD(
+      endDate.getFullYear(),
+      endDate.getMonth() + 1,
+    );
 
     // Query monthly spending per category
     const directSpending = await this.transactionsRepository

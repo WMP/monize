@@ -50,7 +50,8 @@ const steps = [
 ];
 
 export function GettingStarted() {
-  const { preferences, updatePreferences } = usePreferencesStore();
+  const preferences = usePreferencesStore((s) => s.preferences);
+  const updatePreferences = usePreferencesStore((s) => s.updatePreferences);
   const [dismissing, setDismissing] = useState(false);
 
   if (!preferences || preferences.gettingStartedDismissed || dismissing) {

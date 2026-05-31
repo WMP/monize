@@ -1,6 +1,7 @@
 'use client';
 
 import type { BudgetVelocity } from '@/types/budget';
+import { gainLossColor } from '@/lib/format';
 
 interface BudgetVelocityWidgetProps {
   velocity: BudgetVelocity;
@@ -111,9 +112,7 @@ export function BudgetVelocityWidget({
               Truly available
             </div>
             <div className={`text-lg font-semibold ${
-              velocity.trulyAvailable >= 0
-                ? 'text-green-600 dark:text-green-400'
-                : 'text-red-600 dark:text-red-400'
+              gainLossColor(velocity.trulyAvailable)
             }`}>
               {formatCurrency(Math.abs(velocity.trulyAvailable))}
               {velocity.trulyAvailable < 0 && ' over'}

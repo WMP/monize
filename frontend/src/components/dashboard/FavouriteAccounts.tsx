@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { gainLossColor } from '@/lib/format';
 import { useRouter } from 'next/navigation';
 import { Account } from '@/types/account';
 import { usePreferencesStore } from '@/store/preferencesStore';
@@ -31,7 +32,7 @@ interface FavouriteAccountsProps {
 
 export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, onAccountsChanged: _onAccountsChanged }: FavouriteAccountsProps) {
   const router = useRouter();
-  const { preferences } = usePreferencesStore();
+  const preferences = usePreferencesStore((s) => s.preferences);
   const { formatCurrency: formatCurrencyBase } = useNumberFormat();
   const defaultCurrency = preferences?.defaultCurrency || 'CAD';
   const [reordering, setReordering] = useState(false);
@@ -215,9 +216,7 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
                   <div className="text-right ml-2">
                     <div
                       className={`font-semibold whitespace-nowrap ${
-                        displayValue >= 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-600 dark:text-red-400'
+                        gainLossColor(displayValue)
                       }`}
                     >
                       {formatCurrency(displayValue, account.currencyCode)}

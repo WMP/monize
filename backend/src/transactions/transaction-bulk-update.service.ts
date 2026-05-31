@@ -20,7 +20,10 @@ import {
   BulkUpdateFilterDto,
 } from "./dto/bulk-update.dto";
 import { getAllCategoryIdsWithChildren } from "../common/category-tree.util";
-import { isTransactionInFuture } from "../common/date-utils";
+import {
+  isTransactionInFuture,
+  formatDateYMDLocal,
+} from "../common/date-utils";
 import {
   buildTransactionSearchClause,
   escapeLikePattern,
@@ -483,8 +486,7 @@ export class TransactionBulkUpdateService {
       : "transaction.status = :voidStatus";
 
     // Only include non-future transactions in balance changes
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const today = formatDateYMDLocal(new Date());
 
     const repo = queryRunner
       ? queryRunner.manager.getRepository(Transaction)

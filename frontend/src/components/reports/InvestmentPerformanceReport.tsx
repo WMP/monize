@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import {
   Tooltip,
   ResponsiveContainer,
@@ -15,6 +16,7 @@ import { Account } from '@/types/account';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { CHART_COLOURS } from '@/lib/chart-colours';
+import { gainLossColor } from '@/lib/format';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
 import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
@@ -28,7 +30,7 @@ const logger = createLogger('InvestmentPerformanceReport');
 type HoldingsSortField = 'symbol' | 'quantity' | 'averageCost' | 'currentPrice' | 'marketValue' | 'gainLoss' | 'gainLossPercent';
 
 export function InvestmentPerformanceReport() {
-  const { formatCurrency: formatCurrencyFull } = useNumberFormat();
+  const { formatCurrency: formatCurrencyFull, formatSignedPercent } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
@@ -68,10 +70,7 @@ export function InvestmentPerformanceReport() {
     loadData();
   }, [selectedAccountIds, reloadKey]);
 
-  const formatPercent = (value: number) => {
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(2)}%`;
-  };
+  const formatPercent = (value: number) => formatSignedPercent(value);
 
   // When a single account is selected, show summary values in that account's native currency
   // (per-account totals are in native currency; top-level totals are converted to default)
@@ -189,7 +188,7 @@ export function InvestmentPerformanceReport() {
           <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
             Value: {fmtHolding(data.marketValue, data.currencyCode)}
           </p>
-          <p className={`text-sm ${(data.gainLoss || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          <p className={`text-sm ${gainLossColor(data.gainLoss || 0)}`}>
             Gain/Loss: {fmtHolding(data.gainLoss, data.currencyCode)} ({formatPercent(data.gainLossPercent || 0)})
           </p>
         </div>
@@ -252,9 +251,9 @@ export function InvestmentPerformanceReport() {
   if (isLoading && !hasLoadedOnce) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-64 w-full" />
         </div>
       </div>
     );
@@ -288,13 +287,13 @@ export function InvestmentPerformanceReport() {
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">Total Gain/Loss</div>
-          <div className={`text-xl font-bold ${summaryValues.totalGainLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          <div className={`text-xl font-bold ${gainLossColor(summaryValues.totalGainLoss)}`}>
             {summaryValues.totalGainLoss >= 0 ? '+' : ''}{fmtSummary(summaryValues.totalGainLoss)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">Return</div>
-          <div className={`text-xl font-bold ${summaryValues.totalGainLossPercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          <div className={`text-xl font-bold ${gainLossColor(summaryValues.totalGainLossPercent)}`}>
             {formatPercent(summaryValues.totalGainLossPercent)}
           </div>
         </div>

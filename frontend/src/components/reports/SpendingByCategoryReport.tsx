@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { useRouter } from 'next/navigation';
 import {
   PieChart,
@@ -18,17 +19,17 @@ import { builtInReportsApi } from '@/lib/built-in-reports';
 import { CategorySpendingItem } from '@/types/built-in-reports';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateRange } from '@/hooks/useDateRange';
+import { useReportData } from '@/hooks/useReportData';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { CHART_COLOURS } from '@/lib/chart-colours';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ChartViewToggle } from '@/components/ui/ChartViewToggle';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { SortableHeader } from '@/components/ui/SortableHeader';
+import { ChartTooltipPanel } from '@/components/reports/ChartTooltip';
+import { ReportError } from '@/components/reports/ReportError';
 import { exportToCsv } from '@/lib/csv-export';
-import { createLogger } from '@/lib/logger';
 import type { ChartDatum } from '@/types/chart';
-
-const logger = createLogger('SpendingByCategoryReport');
 
 type SpendingCategorySortField = 'name' | 'value' | 'percentage';
 
@@ -38,9 +39,6 @@ export function SpendingByCategoryReport() {
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
   const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
-  const [chartData, setChartData] = useState<ChartDataItem[]>([]);
-  const [totalExpenses, setTotalExpenses] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
   const [viewType, setViewType] = useState<'pie' | 'bar' | 'table'>('pie');
   const { dateRange, setDateRange, startDate, setStartDate, endDate, setEndDate, resolvedRange, isValid } =
     useDateRange({ defaultRange: '3m' });
@@ -48,6 +46,39 @@ export function SpendingByCategoryReport() {
     'reports.spending-by-category.table.sort',
     { field: 'value', direction: 'desc' },
   );
+
+  const { start: rangeStart, end: rangeEnd } = resolvedRange;
+
+  const { data: response, isLoading, error, reload } = useReportData(
+    () =>
+      isValid
+        ? builtInReportsApi.getSpendingByCategory({
+            startDate: rangeStart || undefined,
+            endDate: rangeEnd,
+          })
+        : Promise.resolve(null),
+    [isValid, rangeStart, rangeEnd],
+  );
+
+  const chartData = useMemo<ChartDataItem[]>(() => {
+    if (!response) return [];
+    let colourIndex = 0;
+    return response.data.map((item: CategorySpendingItem) => {
+      let colour = item.color || '';
+      if (!colour) {
+        colour = CHART_COLOURS[colourIndex % CHART_COLOURS.length];
+        colourIndex++;
+      }
+      return {
+        id: item.categoryId || '',
+        name: item.categoryName,
+        value: item.total,
+        colour,
+      };
+    });
+  }, [response]);
+
+  const totalExpenses = response?.totalSpending ?? 0;
 
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
@@ -71,44 +102,6 @@ export function SpendingByCategoryReport() {
     });
     return sorted;
   }, [chartData, sortField, sortDirection, totalExpenses]);
-
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const { start, end } = resolvedRange;
-      const response = await builtInReportsApi.getSpendingByCategory({
-        startDate: start || undefined,
-        endDate: end,
-      });
-
-      // Map response to chart data with colours
-      let colourIndex = 0;
-      const data: ChartDataItem[] = response.data.map((item: CategorySpendingItem) => {
-        let colour = item.color || '';
-        if (!colour) {
-          colour = CHART_COLOURS[colourIndex % CHART_COLOURS.length];
-          colourIndex++;
-        }
-        return {
-          id: item.categoryId || '',
-          name: item.categoryName,
-          value: item.total,
-          colour,
-        };
-      });
-
-      setChartData(data);
-      setTotalExpenses(response.totalSpending);
-    } catch (error) {
-      logger.error('Failed to load data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [resolvedRange]);
-
-  useEffect(() => {
-    if (isValid) loadData();
-  }, [isValid, loadData]);
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
@@ -149,30 +142,32 @@ export function SpendingByCategoryReport() {
   };
 
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { id: string; name: string; value: number } }> }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      const percentage = totalExpenses > 0 ? ((data.value / totalExpenses) * 100).toFixed(1) : '0';
-      return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
-          <p className="text-gray-600 dark:text-gray-400">
-            {formatCurrency(data.value)} ({percentage}%)
-          </p>
-        </div>
-      );
-    }
-    return null;
+    if (!active || !payload || !payload.length) return null;
+    const data = payload[0].payload;
+    const percentage = totalExpenses > 0 ? ((data.value / totalExpenses) * 100).toFixed(1) : '0';
+    return (
+      <ChartTooltipPanel>
+        <p className="font-medium text-gray-900 dark:text-gray-100">{data.name}</p>
+        <p className="text-gray-600 dark:text-gray-400">
+          {formatCurrency(data.value)} ({percentage}%)
+        </p>
+      </ChartTooltipPanel>
+    );
   };
 
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-64 w-full" />
         </div>
       </div>
     );
+  }
+
+  if (error) {
+    return <ReportError onRetry={reload} />;
   }
 
   return (

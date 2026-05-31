@@ -71,8 +71,8 @@ describe("mapWithConcurrency", () => {
   });
 
   it("throws when the limit is less than 1", async () => {
-    await expect(
-      mapWithConcurrency([1], 0, async (x) => x),
-    ).rejects.toThrow("limit must be at least 1");
+    await expect(mapWithConcurrency([1], 0, async (x) => x)).rejects.toThrow(
+      "limit must be at least 1",
+    );
   });
 });

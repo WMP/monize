@@ -11,9 +11,10 @@ import Image from 'next/image';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { authApi } from '@/lib/auth';
+import { emailSchema } from '@/lib/zod-helpers';
 
 const schema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: emailSchema,
 });
 
 type FormData = z.infer<typeof schema>;

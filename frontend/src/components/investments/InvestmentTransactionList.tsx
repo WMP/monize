@@ -237,7 +237,7 @@ export function InvestmentTransactionList({
   availableSymbols = [],
   viewToggle,
 }: InvestmentTransactionListProps) {
-  const { formatCurrency, numberFormat } = useNumberFormat();
+  const { formatCurrency, formatQuantity } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const { defaultCurrency } = useExchangeRates();
   const accountMap = useMemo(() => new Map(accounts.map(a => [a.id, a.name])), [accounts]);
@@ -357,14 +357,6 @@ export function InvestmentTransactionList({
       setLocalDensity(next);
     }
   }, [density, onDensityChange]);
-
-  const formatQuantity = useCallback((value: number) => {
-    const locale = numberFormat === 'browser' ? undefined : numberFormat;
-    return new Intl.NumberFormat(locale, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 4,
-    }).format(value);
-  }, [numberFormat]);
 
   if (isLoading) {
     return (

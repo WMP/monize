@@ -61,6 +61,7 @@ import { ImportRegularProcessorService } from "./import-regular-processor.servic
 import { Tag } from "../tags/entities/tag.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
+import { roundMoney } from "../common/round.util";
 
 @Injectable()
 export class ImportService {
@@ -1676,7 +1677,7 @@ export class ImportService {
             .join(", ");
           const params = balances.flatMap((row) => [
             row.account_id,
-            Math.round(Number(row.balance) * 10000) / 10000,
+            roundMoney(Number(row.balance)),
           ]);
           await this.dataSource.query(
             `UPDATE accounts SET current_balance = v.balance

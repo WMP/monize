@@ -4,6 +4,7 @@
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS pg_trgm; -- trigram indexes for transaction search
 
 -- Schema migration tracking (used by db-migrate to track applied migrations)
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -173,6 +174,7 @@ CREATE TABLE categories (
 
 CREATE INDEX idx_categories_user ON categories(user_id);
 CREATE INDEX idx_categories_parent ON categories(parent_id);
+CREATE INDEX idx_categories_name_trgm ON categories USING gin (name gin_trgm_ops);
 
 -- Payees
 CREATE TABLE payees (
@@ -188,6 +190,7 @@ CREATE TABLE payees (
 
 CREATE INDEX idx_payees_user ON payees(user_id);
 CREATE INDEX idx_payees_user_active ON payees(user_id, is_active);
+CREATE INDEX idx_payees_name_trgm ON payees USING gin (name gin_trgm_ops);
 
 -- Payee Aliases (for mapping imported payee names to canonical payees)
 CREATE TABLE payee_aliases (
@@ -238,6 +241,9 @@ CREATE INDEX idx_transactions_linked ON transactions(linked_transaction_id);
 CREATE INDEX idx_transactions_cleared ON transactions(is_cleared); -- LEGACY
 CREATE INDEX idx_transactions_reconciled ON transactions(is_reconciled); -- LEGACY
 CREATE INDEX idx_transactions_user_cleared ON transactions(user_id, is_cleared); -- LEGACY
+-- Trigram indexes accelerate the register/report search (ILIKE '%term%')
+CREATE INDEX idx_transactions_payee_name_trgm ON transactions USING gin (payee_name gin_trgm_ops);
+CREATE INDEX idx_transactions_description_trgm ON transactions USING gin (description gin_trgm_ops);
 
 -- Transaction Splits (details for split transactions)
 CREATE TABLE transaction_splits (

@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo, useRef } from 'react';
+import { gainLossColor } from '@/lib/format';
+import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import {
   BarChart,
   Bar,
@@ -57,9 +59,7 @@ function MonthlyTotalTooltip({
         </p>
         <p
           className={`text-lg font-semibold ${
-            data.total >= 0
-              ? 'text-green-600 dark:text-green-400'
-              : 'text-red-600 dark:text-red-400'
+            gainLossColor(data.total)
           }`}
         >
           {formatCurrency(data.total)}
@@ -115,7 +115,7 @@ export function CategoryPayeeBarChart({
           {CHART_TITLE}
         </h3>
         <div className="h-72 flex items-center justify-center">
-          <div className="animate-pulse w-full h-full bg-gray-200 dark:bg-gray-700 rounded" />
+          <Skeleton className="w-full h-full" />
         </div>
       </div>
     );
@@ -227,9 +227,7 @@ export function CategoryPayeeBarChart({
             <div className="text-sm text-gray-500 dark:text-gray-400">Monthly Avg</div>
             <div
               className={`font-semibold ${
-                summary.monthlyAvg >= 0
-                  ? 'text-green-600 dark:text-green-400'
-                  : 'text-red-600 dark:text-red-400'
+                gainLossColor(summary.monthlyAvg)
               }`}
             >
               {formatCurrency(summary.monthlyAvg)}
@@ -239,9 +237,7 @@ export function CategoryPayeeBarChart({
             <div className="text-sm text-gray-500 dark:text-gray-400">Total</div>
             <div
               className={`font-semibold ${
-                summary.total >= 0
-                  ? 'text-green-600 dark:text-green-400'
-                  : 'text-red-600 dark:text-red-400'
+                gainLossColor(summary.total)
               }`}
             >
               {formatCurrency(summary.total)}

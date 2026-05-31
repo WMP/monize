@@ -9,7 +9,7 @@ import {
 } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import { todayInTimezone } from "../common/date-utils";
+import { todayInTimezone, formatDateYMDLocal } from "../common/date-utils";
 import { sumMoney } from "../common/round.util";
 import { getUsersByEffectiveTimezone } from "../common/users-by-timezone.util";
 import {
@@ -531,8 +531,7 @@ export class HoldingsService {
    * callers that need a timezone-correct cutoff pass it explicitly.
    */
   private serverToday(): string {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    return formatDateYMDLocal(new Date());
   }
 
   /**

@@ -215,14 +215,15 @@ describe("SpendingByCategoryReport", () => {
     expect(button).toBeDisabled();
   });
 
-  it("handles API error gracefully", async () => {
+  it("surfaces a retryable error state when the API fails", async () => {
     mockGetSpendingByCategory.mockRejectedValue(new Error("Network error"));
     render(<SpendingByCategoryReport />);
     await waitFor(() => {
       expect(
-        screen.getByText("No expense data for this period."),
+        screen.getByText(/failed to load report data/i),
       ).toBeInTheDocument();
     });
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
   it("navigates to transactions page on category legend click", async () => {

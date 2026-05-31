@@ -9,6 +9,8 @@ vi.mock('@/hooks/useDateFormat', () => ({
 vi.mock('@/hooks/useNumberFormat', () => ({
   useNumberFormat: () => ({
     formatCurrency: (n: number) => `$${n.toFixed(2)}`,
+    formatQuantity: (n: number) =>
+      new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 4 }).format(n),
     numberFormat: 'en-US',
   }),
 }));

@@ -93,6 +93,22 @@ describe("AnthropicProvider", () => {
       expect(result.provider).toBe("anthropic");
       expect(result.model).toBe("claude-sonnet-4-20250514");
     });
+
+    it("sends the system prompt as a cached text block for prompt caching", async () => {
+      await provider.complete({
+        systemPrompt: "You are helpful.",
+        messages: [{ role: "user", content: "Hello" }],
+      });
+
+      const callArgs = mockCreate.mock.calls[0][0];
+      expect(callArgs.system).toEqual([
+        {
+          type: "text",
+          text: "You are helpful.",
+          cache_control: { type: "ephemeral" },
+        },
+      ]);
+    });
   });
 
   describe("stream()", () => {
@@ -156,6 +172,11 @@ describe("AnthropicProvider", () => {
       expect(result.usage.outputTokens).toBe(25);
       expect(result.provider).toBe("anthropic");
       expect(result.stopReason).toBe("end_turn");
+
+      // The cached system block also caches the tools prefix that renders
+      // before it, so multi-turn tool-use conversations hit the prompt cache.
+      const callArgs = mockCreate.mock.calls[0][0];
+      expect(callArgs.system[0].cache_control).toEqual({ type: "ephemeral" });
     });
 
     it("maps stop_reason tool_use correctly", async () => {

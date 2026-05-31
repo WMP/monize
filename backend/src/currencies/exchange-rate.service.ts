@@ -20,6 +20,7 @@ import { Account } from "../accounts/entities/account.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { YahooFinanceService } from "../securities/yahoo-finance.service";
 import { mapWithConcurrency } from "../common/concurrency.util";
+import { roundMoney } from "../common/round.util";
 
 // Cap concurrent Yahoo FX fetches so the daily refresh does not burst every
 // currency pair at once (this cron also runs alongside the security price
@@ -182,7 +183,7 @@ export class ExchangeRateService implements OnModuleInit {
     const result = await this.saveOneDirection(from, to, rate, date);
 
     // Also save the inverse rate so both directions stay current
-    const inverseRate = Math.round((1 / rate) * 10000) / 10000;
+    const inverseRate = roundMoney(1 / rate);
     await this.saveOneDirection(to, from, inverseRate, date);
 
     return result;

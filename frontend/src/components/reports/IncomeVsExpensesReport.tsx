@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
+import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { useRouter } from "next/navigation";
 import {
   BarChart,
@@ -18,15 +19,15 @@ import { builtInReportsApi } from "@/lib/built-in-reports";
 import { MonthlyIncomeExpenseItem } from "@/types/built-in-reports";
 import { useNumberFormat } from "@/hooks/useNumberFormat";
 import { useDateRange } from "@/hooks/useDateRange";
+import { useReportData } from "@/hooks/useReportData";
 import { useSortableTable, compareValues } from "@/hooks/useSortableTable";
 import { DateRangeSelector } from "@/components/ui/DateRangeSelector";
 import { ChartViewToggle } from "@/components/ui/ChartViewToggle";
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { SortableHeader } from '@/components/ui/SortableHeader';
+import { ChartTooltip } from "@/components/reports/ChartTooltip";
+import { ReportError } from "@/components/reports/ReportError";
 import { exportToCsv } from "@/lib/csv-export";
-import { createLogger } from "@/lib/logger";
-
-const logger = createLogger("IncomeVsExpensesReport");
 
 type IncomeVsExpensesSortField = 'name' | 'income' | 'expenses' | 'savings' | 'savingsRate';
 
@@ -46,14 +47,6 @@ export function IncomeVsExpensesReport() {
   const chartRef = useRef<HTMLDivElement>(null);
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } =
     useNumberFormat();
-  const [chartData, setChartData] = useState<ChartDataItem[]>([]);
-  const [totals, setTotals] = useState({
-    totalIncome: 0,
-    totalExpenses: 0,
-    totalSavings: 0,
-    savingsRate: 0,
-  });
-  const [isLoading, setIsLoading] = useState(true);
   const [viewType, setViewType] = useState<'bar' | 'table'>('bar');
   const {
     dateRange,
@@ -69,6 +62,52 @@ export function IncomeVsExpensesReport() {
     'reports.income-vs-expenses.table.sort',
     { field: 'name', direction: 'asc' },
   );
+
+  const { start: rangeStart, end: rangeEnd } = resolvedRange;
+
+  const { data: response, isLoading, error, reload } = useReportData(
+    () =>
+      isValid
+        ? builtInReportsApi.getIncomeVsExpenses({
+            startDate: rangeStart || undefined,
+            endDate: rangeEnd,
+          })
+        : Promise.resolve(null),
+    [isValid, rangeStart, rangeEnd],
+  );
+
+  // Map response to chart data. `name` must be unique across the dataset
+  // (used as the XAxis category key); a non-unique value like "May" causes
+  // Recharts to resolve the tooltip's payload to the first matching row,
+  // showing data from the wrong year on multi-year ranges.
+  const chartData = useMemo<ChartDataItem[]>(
+    () =>
+      (response?.data ?? []).map((item: MonthlyIncomeExpenseItem) => {
+        const monthDate = parseISO(item.month + "-01");
+        const savings = item.income - item.expenses;
+        const savingsRate =
+          item.income > 0 ? Math.round((savings / item.income) * 100) : 0;
+        return {
+          name: item.month,
+          fullName: format(monthDate, "MMM yyyy"),
+          Income: Math.round(item.income),
+          Expenses: Math.round(item.expenses),
+          Savings: Math.round(savings),
+          SavingsRate: savingsRate,
+          monthStart: format(startOfMonth(monthDate), "yyyy-MM-dd"),
+          monthEnd: format(endOfMonth(monthDate), "yyyy-MM-dd"),
+        };
+      }),
+    [response],
+  );
+
+  const totals = useMemo(() => {
+    const totalIncome = response?.totals.income ?? 0;
+    const totalExpenses = response?.totals.expenses ?? 0;
+    const totalSavings = totalIncome - totalExpenses;
+    const savingsRate = totalIncome > 0 ? (totalSavings / totalIncome) * 100 : 0;
+    return { totalIncome, totalExpenses, totalSavings, savingsRate };
+  }, [response]);
 
   const sortedTableData = useMemo(() => {
     const sorted = [...chartData];
@@ -95,57 +134,6 @@ export function IncomeVsExpensesReport() {
     });
     return sorted;
   }, [chartData, sortField, sortDirection]);
-
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const { start, end } = resolvedRange;
-      const response = await builtInReportsApi.getIncomeVsExpenses({
-        startDate: start || undefined,
-        endDate: end,
-      });
-
-      // Map response to chart data. `name` must be unique across the dataset
-      // (used as the XAxis category key); a non-unique value like "May" causes
-      // Recharts to resolve the tooltip's payload to the first matching row,
-      // showing data from the wrong year on multi-year ranges.
-      const data: ChartDataItem[] = response.data.map(
-        (item: MonthlyIncomeExpenseItem) => {
-          const monthDate = parseISO(item.month + "-01");
-          const savings = item.income - item.expenses;
-          const savingsRate =
-            item.income > 0 ? Math.round((savings / item.income) * 100) : 0;
-          return {
-            name: item.month,
-            fullName: format(monthDate, "MMM yyyy"),
-            Income: Math.round(item.income),
-            Expenses: Math.round(item.expenses),
-            Savings: Math.round(savings),
-            SavingsRate: savingsRate,
-            monthStart: format(startOfMonth(monthDate), "yyyy-MM-dd"),
-            monthEnd: format(endOfMonth(monthDate), "yyyy-MM-dd"),
-          };
-        },
-      );
-
-      setChartData(data);
-
-      const totalIncome = response.totals.income;
-      const totalExpenses = response.totals.expenses;
-      const totalSavings = totalIncome - totalExpenses;
-      const savingsRate =
-        totalIncome > 0 ? (totalSavings / totalIncome) * 100 : 0;
-      setTotals({ totalIncome, totalExpenses, totalSavings, savingsRate });
-    } catch (error) {
-      logger.error("Failed to load data:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [resolvedRange]);
-
-  useEffect(() => {
-    if (isValid) loadData();
-  }, [isValid, loadData]);
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import("@/lib/pdf-export");
@@ -205,7 +193,6 @@ export function IncomeVsExpensesReport() {
   const CustomTooltip = ({
     active,
     payload,
-    label: _label,
   }: {
     active?: boolean;
     payload?: Array<{
@@ -216,25 +203,21 @@ export function IncomeVsExpensesReport() {
     }>;
     label?: string;
   }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0]?.payload;
-      return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-            {data?.fullName}
-          </p>
-          {payload.map((entry, index) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {formatCurrency(entry.value)}
-            </p>
-          ))}
+    const data = payload?.[0]?.payload;
+    return (
+      <ChartTooltip
+        active={active}
+        label={data?.fullName}
+        payload={payload}
+        formatValue={(v) => formatCurrency(v)}
+      >
+        {data && (
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Savings Rate: {data?.SavingsRate}%
+            Savings Rate: {data.SavingsRate}%
           </p>
-        </div>
-      );
-    }
-    return null;
+        )}
+      </ChartTooltip>
+    );
   };
 
   return (
@@ -270,10 +253,12 @@ export function IncomeVsExpensesReport() {
       {/* Chart */}
       <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         {isLoading ? (
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-            <div className="h-96 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-96 w-full" />
           </div>
+        ) : error ? (
+          <ReportError onRetry={reload} />
         ) : chartData.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
             No data for this period.

@@ -42,13 +42,11 @@ const aiLinks: { href: string; label: string }[] = [
 export function AppHeader() {
   const router = useRouter();
   const pathname = usePathname();
-  const {
-    user,
-    logout,
-    actingAsUserId,
-    delegateCapabilities,
-    delegateSections,
-  } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const actingAsUserId = useAuthStore((s) => s.actingAsUserId);
+  const delegateCapabilities = useAuthStore((s) => s.delegateCapabilities);
+  const delegateSections = useAuthStore((s) => s.delegateSections);
   const isDelegateView = !!actingAsUserId;
   // A delegate sees a top-nav entry only if it is reachable: granted
   // sections (bills/investments/budgets/reports) plus Transactions when

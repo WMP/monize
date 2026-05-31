@@ -108,28 +108,42 @@ fail-fast, fully unit-tested). Applied to #5, #6, the FX refresh cron, and #17.
 
 ## P2 — Performance polish
 
-- [ ] **13. Reports page rebuilds map+filter+sort (and SVG icon nodes) on every keystroke**,
+- [x] **13. Reports page rebuilds map+filter+sort (and SVG icon nodes) on every keystroke**,
   no `useMemo`, no search debounce. `app/reports/page.tsx:722-772`
-- [ ] **14. DividendIncomeReport fetch waterfall:** accounts + capital-gains wait behind the
+  DONE: `useMemo` on the derived report arrays + `filteredReports`; new `useDebouncedValue`
+  hook (tested) debounces search 200ms; `favouriteReportIds` memoized.
+- [x] **14. DividendIncomeReport fetch waterfall:** accounts + capital-gains wait behind the
   sequential transaction-pagination loop; inline MultiSelect options rebuilt each render.
   `DividendIncomeReport.tsx:254-273, 989-995`
-- [ ] **15. Whole-store Zustand subscriptions** (destructuring instead of slice selectors);
+  DONE: the three fetches now run concurrently via `Promise.all`; MultiSelect options and the
+  negative-capital-gains scans are memoized.
+- [x] **15. Whole-store Zustand subscriptions** (destructuring instead of slice selectors);
   widest-reach is `ProtectedRoute.tsx:18-19` (wraps every authed page); also `AppHeader`,
   `FavouriteAccounts`, dashboard.
-- [ ] **16. Anthropic provider has no prompt caching** (`cache_control` zero hits repo-wide)
+  DONE: all 5 listed sites converted to slice selectors; the 8 other whole-store call sites
+  (out of scope) were verified and left.
+- [x] **16. Anthropic provider has no prompt caching** (`cache_control` zero hits repo-wide)
   — resends large financial-context system prompts at full token cost every turn.
   `ai/providers/anthropic.provider.ts:98-107`
+  DONE: wrap the system prompt in a single `cache_control: ephemeral` text block across all
+  four call sites; since tools render before system, one breakpoint caches the tools+system
+  prefix so repeated multi-turn tool-use turns hit the prompt cache.
 - [x] **17. "Batched" AI-insights cron is actually fully sequential** (`for ... await` inside
   the batch) — batching is dead code. `ai-insights.service.ts:246-261`
   DONE: replaced the dead batch loop with `mapWithConcurrency` at a conservative limit of 5
   (LLM calls per user), preserving the per-user try/catch so one failure does not abort the run.
-- [ ] **18. `refreshAllPrices` re-scans everything** with no staleness filter.
+- [x] **18. `refreshAllPrices` re-scans everything** with no staleness filter.
   `security-price.service.ts:312-330`
+  DONE: skip securities that already have a price row dated today before fanning out, and
+  report the skipped count. Conservative: outside the post-close window nothing matches.
 - [x] **19. Two Yahoo crons collide at 17:00 ET** (price + FX refresh) — stagger them.
   `security-price.service.ts:947`, `exchange-rate.service.ts:609`
   DONE: FX refresh moved to 17:05 ET (`5 17 * * 1-5`); `docs/cron-jobs.md` updated.
-- [ ] **20. Report search `LOWER(col) LIKE '%term%'`** on un-indexed `payee_name`/`description`
+- [x] **20. Report search `LOWER(col) LIKE '%term%'`** on un-indexed `payee_name`/`description`
   -> seq scans. Add `pg_trgm` GIN indexes. `reports.service.ts:402, 545-549`
+  DONE: migration 080 enables `pg_trgm` and adds GIN trigram indexes on
+  transactions.payee_name/description and payees.name/categories.name (the search uses ILIKE,
+  which gin_trgm_ops accelerates directly); schema.sql updated for fresh installs.
 
 ---
 
@@ -137,36 +151,73 @@ fail-fast, fully unit-tested). Applied to #5, #6, the FX refresh cron, and #17.
 
 ### Frontend (presentation drift)
 
-- [ ] **21. `LoadingSkeleton.tsx` is dead code** — 0 imports, yet 63 components hand-roll
+- [~] **21. `LoadingSkeleton.tsx` is dead code** — 0 imports, yet 63 components hand-roll
   `animate-pulse` skeletons. Highest-leverage cleanup.
-- [ ] **22. Signed-percent formatting reimplemented 40+ times** as
+  PARTIAL: adopted the kit at 47 sites (40 report chart skeletons + 5 chart components +
+  HoldingsList + GroupedHoldingsList). The "zero imports" claim was inaccurate -- the 8
+  `loading.tsx` route files already used it. Remaining hand-rolled cases are bespoke per-widget
+  dashboard layouts (left for clarity) and `bg-gray-200` progress-bar backgrounds (not
+  skeletons).
+- [x] **22. Signed-percent formatting reimplemented 40+ times** as
   `${v>=0?'+':''}${v.toFixed(1)}%`, bypassing `useNumberFormat`. Add `formatSignedPercent`.
-- [ ] **23. Gain/loss green/red ternary inlined in 71 files** with no helper. Add
+  DONE: added `formatSignedPercent` to `lib/format.ts` + `useNumberFormat`; migrated the
+  signed-percent sites. CurrencyExposureReport was intentionally NOT migrated (its percents are
+  unsigned "% of portfolio" proportions, where a signed helper would be wrong).
+- [x] **23. Gain/loss green/red ternary inlined in 71 files** with no helper. Add
   `gainLossColor(value)` to `lib/format.ts`.
-- [ ] **24. ~40 report components duplicate fetch/loading boilerplate** — and none track an
+  DONE: added `gainLossColor`; migrated ~50 sites (investments/reports edits + a scripted pass
+  across 23 files). Inverted-logic ternaries (e.g. spending where `<= 0` is green) were
+  correctly left alone.
+- [~] **24. ~40 report components duplicate fetch/loading boilerplate** — and none track an
   error state (`setError` count = 0 across reports -> failed fetches silently show empty).
   Extract `useReportData(fetcher, deps)`.
-- [ ] **25. `SummaryCard`/`SummaryIcons` exist but reports hand-roll** the card container
+  PARTIAL: created the tested `useReportData` hook + `ReportError` component, which surface a
+  retryable error state (the key gap -- reports previously showed empty on failure). Migrated 6
+  reports as a template covering both single-fetch and multi-response patterns; ~34 remain
+  (many have bespoke conditional/multi-fetch shapes needing per-file care).
+- [~] **25. `SummaryCard`/`SummaryIcons` exist but reports hand-roll** the card container
   string (appears in 42 files); 23 reports define their own inline Recharts tooltip.
-- [ ] **26. 3 forms bypass mandated rhf+Zod** (`BulkUpdateModal`, `CreateUserModal`,
+  PARTIAL: created shared `ChartTooltip`/`ChartTooltipPanel`, adopted in the 6 migrated reports.
+  `SummaryCard` had no clean unmigrated cases (already used in 8 page stat rows; report summary
+  cards use a structurally different colored-background, icon-less layout).
+- [x] **26. 3 forms bypass mandated rhf+Zod** (`BulkUpdateModal`, `CreateUserModal`,
   `MonteCarloSaveAsDialog`); `formatQuantity` copied in 3 investment lists; email Zod schema
   duplicated in 3 auth pages.
+  DONE: all 3 forms migrated to react-hook-form + zodResolver; `emailSchema` added to
+  `zod-helpers` and used in login/register/forgot-password; `formatQuantity` added to
+  `useNumberFormat` and the 3 inline copies removed.
 
 ### Backend (logic drift)
 
-- [ ] **27. `convertCurrency` reimplemented twice** with different fallback behavior — net-worth
+- [x] **27. `convertCurrency` reimplemented twice** with different fallback behavior — net-worth
   vs report-currency can convert the same amount differently.
   `net-worth.service.ts:1376-1398` vs `report-currency.service.ts:65+`
-- [ ] **28. YMD date formatting inlined ~12 times** despite `formatDateYMD` helper (add a
-  `formatDateYMDUtc` for the UTC variants).
-- [ ] **29. Inline `Math.round(x*10000)/10000`** alongside imported `roundMoney`
-  (investment-transactions has 13; exchange-rate doesn't import the util at all).
-- [ ] **30. MCP `search_transactions` re-implements split-expansion + amount-filter** in the
-  tool layer (CLAUDE.md violation) and has no AI-executor twin. `transactions.tool.ts:101-139`
-- [ ] **31. `parseFloat` vs `Number`** split for decimal parsing (67 vs 519), concentrated in
+  DONE: extracted `common/currency-conversion.util.ts` (`convertWithRateLookup`) as the single
+  direct/inverse decision; each service parameterizes it with its own rate source.
+- [x] **28. YMD date formatting inlined ~12 times** despite `formatDateYMD` helper.
+  DONE: added `formatDateYMDLocal` (local components, distinct from UTC `formatDateYMD` and
+  TZ-aware `todayYMD`) for the 5 inline local-time "today" sites; budget month-end sites now
+  use the existing `getMonthEndYMD`. Behavior preserved exactly.
+- [x] **29. Inline `Math.round(x*10000)/10000`** alongside imported `roundMoney`.
+  DONE: migrated the money-rounding sites (exchange-rate inverse rate, AI usage cost,
+  post-import balance, OFX parser amount) to `roundMoney`. The documented per-share-price
+  `round4` helper in investment-transactions is intentionally left (distinct semantics).
+- [x] **30. MCP `search_transactions` re-implements split-expansion + amount-filter** in the
+  tool layer (CLAUDE.md violation). `transactions.tool.ts:101-139`
+  DONE: moved to `TransactionsService.getLlmTransactionRows`; the MCP tool is now a thin
+  adapter. Behavioral tests live on the service spec.
+- [x] **31. `parseFloat` vs `Number`** split for decimal parsing, concentrated in
   `built-in-reports/*`. Standardize on a `toMoneyNumber()` helper.
+  DONE: added `common/round.util` `toMoneyNumber` (Number-based parse, NaN->0, 4dp round) and
+  applied it across the comparison/income/spending/anomaly/tax/data-quality report services.
 - [ ] **32. docker-compose backend `environment:` block copy-pasted across 4 files** (drift
   risk on new env vars). Extract a shared base via `extends`/`env_file`.
+  SKIPPED (judgment call): the dev/prod/e2e files differ substantially and intentionally
+  (network names, `build` vs `image`, and the `${VAR:-default}` vs `${VAR}` syntax IS the
+  per-environment behavior). `env_file` cannot express the compose-default interpolation, and
+  an `extends` base would still need per-file overrides for most vars while making any single
+  environment harder to read. The dedup value did not justify restructuring deployment-critical
+  files that can't be fully validated here. Left as-is.
 
 ---
 

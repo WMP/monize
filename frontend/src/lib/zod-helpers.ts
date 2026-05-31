@@ -11,6 +11,11 @@ export const passwordSchema = z
   .regex(/(?=.*\d)/, 'Must contain a number')
   .regex(/(?=.*[^A-Za-z\d\s])/, 'Must contain a special character');
 
+/** Shared email validation used by the auth forms (login, register, forgot password). */
+export const emailSchema = z
+  .string()
+  .email('Please enter a valid email address');
+
 export const PASSWORD_REQUIREMENTS_TEXT =
   'Password must be at least 12 characters and contain an uppercase letter, a lowercase letter, a number, and a special character.';
 

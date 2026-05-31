@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { gainLossColor } from '@/lib/format';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { budgetsApi } from '@/lib/budgets';
@@ -201,9 +202,7 @@ export function BudgetWizardReview({
           </div>
           <div
             className={`text-lg sm:text-xl font-bold ${
-              net >= 0
-                ? 'text-green-600 dark:text-green-400'
-                : 'text-red-600 dark:text-red-400'
+              gainLossColor(net)
             }`}
           >
             {formatCurrency(net, state.currencyCode)}

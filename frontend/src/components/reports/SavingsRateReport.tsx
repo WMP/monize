@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { gainLossColor } from '@/lib/format';
+import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import {
   LineChart,
   Line,
@@ -131,9 +133,9 @@ export function SavingsRateReport() {
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-64 w-full" />
         </div>
       </div>
     );
@@ -222,7 +224,7 @@ export function SavingsRateReport() {
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 text-center">
           <p className="text-xs text-gray-500 dark:text-gray-400">Total Saved</p>
-          <p className={`text-2xl font-bold ${totalSaved >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          <p className={`text-2xl font-bold ${gainLossColor(totalSaved)}`}>
             {formatCurrency(totalSaved)}
           </p>
         </div>
@@ -350,7 +352,7 @@ export function SavingsRateReport() {
                     <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{point.month}</td>
                     <td className="py-2 pr-4 text-right text-gray-600 dark:text-gray-400">{formatCurrency(point.income)}</td>
                     <td className="py-2 pr-4 text-right text-gray-600 dark:text-gray-400">{formatCurrency(point.expenses)}</td>
-                    <td className={`py-2 pr-4 text-right font-medium ${point.savings >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    <td className={`py-2 pr-4 text-right font-medium ${gainLossColor(point.savings)}`}>
                       {formatCurrency(point.savings)}
                     </td>
                     <td className={`py-2 text-right font-medium ${point.savingsRate >= targetRate ? 'text-green-600 dark:text-green-400' : point.savingsRate >= 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>

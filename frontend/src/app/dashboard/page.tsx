@@ -60,7 +60,7 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const actingAsUserId = useAuthStore((s) => s.actingAsUserId);
   const isDelegateView = !!actingAsUserId;
   const delegateSections = useAuthStore((s) => s.delegateSections);

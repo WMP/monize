@@ -374,8 +374,11 @@ describe('ReportsPage', () => {
     fireEvent.change(screen.getByPlaceholderText(/search reports/i), {
       target: { value: 'Tax Summary' },
     });
+    // Search is debounced, so wait for the filtered list to settle.
+    await waitFor(() => {
+      expect(screen.queryByText('Spending by Category')).not.toBeInTheDocument();
+    });
     expect(screen.getByText('Tax Summary')).toBeInTheDocument();
-    expect(screen.queryByText('Spending by Category')).not.toBeInTheDocument();
     expect(screen.queryByText('Income vs Expenses')).not.toBeInTheDocument();
   });
 
@@ -387,9 +390,12 @@ describe('ReportsPage', () => {
     fireEvent.change(screen.getByPlaceholderText(/search reports/i), {
       target: { value: 'subscriptions' },
     });
-    // "Recurring Expenses Tracker" has "subscriptions" in its description
+    // "Recurring Expenses Tracker" has "subscriptions" in its description.
+    // Search is debounced, so wait for the filtered list to settle.
+    await waitFor(() => {
+      expect(screen.queryByText('Spending by Category')).not.toBeInTheDocument();
+    });
     expect(screen.getByText('Recurring Expenses Tracker')).toBeInTheDocument();
-    expect(screen.queryByText('Spending by Category')).not.toBeInTheDocument();
   });
 
   it('search is case-insensitive', async () => {
@@ -411,7 +417,10 @@ describe('ReportsPage', () => {
     fireEvent.change(screen.getByPlaceholderText(/search reports/i), {
       target: { value: 'xyznonexistent' },
     });
-    expect(screen.getByText('0 reports available')).toBeInTheDocument();
+    // Search is debounced, so wait for the filtered list to settle.
+    await waitFor(() => {
+      expect(screen.getByText('0 reports available')).toBeInTheDocument();
+    });
   });
 
   it('search works combined with category filter', async () => {
@@ -455,8 +464,11 @@ describe('ReportsPage', () => {
     fireEvent.change(screen.getByPlaceholderText(/search reports/i), {
       target: { value: 'My Custom' },
     });
+    // Search is debounced, so wait for the filtered list to settle.
+    await waitFor(() => {
+      expect(screen.queryByText('Spending by Category')).not.toBeInTheDocument();
+    });
     expect(screen.getByText('My Custom Report')).toBeInTheDocument();
-    expect(screen.queryByText('Spending by Category')).not.toBeInTheDocument();
   });
 
   it('filters to custom category shows only custom reports', async () => {

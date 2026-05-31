@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import {
   AreaChart,
   Area,
@@ -21,6 +22,7 @@ import { netWorthApi } from '@/lib/net-worth';
 import { MonthlyNetWorth } from '@/types/net-worth';
 import { parseLocalDate } from '@/lib/utils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { gainLossColor } from '@/lib/format';
 import { useDateRange } from '@/hooks/useDateRange';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
@@ -36,7 +38,7 @@ const logger = createLogger('NetWorthReport');
 type NetWorthSortField = 'name' | 'assets' | 'liabilities' | 'netWorth';
 
 export function NetWorthReport() {
-  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatCurrencyLabel } = useNumberFormat();
+  const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatCurrencyLabel, formatSignedPercent } = useNumberFormat();
   const isMobile = useIsMobile();
   const [monthlyData, setMonthlyData] = useState<MonthlyNetWorth[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,7 +96,7 @@ export function NetWorthReport() {
       summaryCards: [
         { label: 'Current Net Worth', value: formatCurrency(summary.current), color: summary.current >= 0 ? '#16a34a' : '#dc2626' },
         { label: 'Change', value: `${summary.change >= 0 ? '+' : ''}${formatCurrency(summary.change)}`, color: summary.change >= 0 ? '#16a34a' : '#dc2626' },
-        { label: 'Change %', value: `${summary.changePercent >= 0 ? '+' : ''}${summary.changePercent.toFixed(1)}%`, color: summary.changePercent >= 0 ? '#16a34a' : '#dc2626' },
+        { label: 'Change %', value: formatSignedPercent(summary.changePercent, 1), color: summary.changePercent >= 0 ? '#16a34a' : '#dc2626' },
       ],
       chartContainer: chartRef.current,
       filename: 'net-worth-report',
@@ -229,9 +231,9 @@ export function NetWorthReport() {
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-          <div className="h-96 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-96 w-full" />
         </div>
       </div>
     );
@@ -244,25 +246,21 @@ export function NetWorthReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <div className="text-sm text-gray-500 dark:text-gray-400">Current Net Worth</div>
           <div className={`text-2xl font-bold ${
-            summary.current >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+            gainLossColor(summary.current)
           }`}>
             {formatCurrency(summary.current)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <div className="text-sm text-gray-500 dark:text-gray-400">Change</div>
-          <div className={`text-2xl font-bold ${
-            summary.change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-          }`}>
+          <div className={`text-2xl font-bold ${gainLossColor(summary.change)}`}>
             {summary.change >= 0 ? '+' : ''}{formatCurrency(summary.change)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <div className="text-sm text-gray-500 dark:text-gray-400">Change %</div>
-          <div className={`text-2xl font-bold ${
-            summary.changePercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-          }`}>
-            {summary.changePercent >= 0 ? '+' : ''}{summary.changePercent.toFixed(1)}%
+          <div className={`text-2xl font-bold ${gainLossColor(summary.changePercent)}`}>
+            {formatSignedPercent(summary.changePercent, 1)}
           </div>
         </div>
       </div>

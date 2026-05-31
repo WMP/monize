@@ -65,6 +65,20 @@ export function roundMoney(value: number): number {
 }
 
 /**
+ * Parse a money value coming from a `decimal(20,4)` SQL aggregate (a string,
+ * number, null, or undefined) into a rounded number. Standardizes the mix of
+ * `parseFloat(row.x) || 0` and `Number(row.x)` across report aggregation code:
+ * `Number` rejects trailing garbage that `parseFloat` would silently accept,
+ * the `|| 0` equivalent maps null/NaN to 0, and the result is rounded to the
+ * 4dp money precision. Inputs that are already 4dp (the DB representation) are
+ * unchanged numerically.
+ */
+export function toMoneyNumber(value: unknown): number {
+  const n = Number(value);
+  return isFinite(n) ? roundMoney(n) : 0;
+}
+
+/**
  * Sum an array of monetary values without floating-point drift by accumulating
  * in integer "ten-thousandths" (the 4dp storage unit) and converting back.
  *

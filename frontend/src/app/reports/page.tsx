@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { NewReportButton } from '@/components/reports/NewReportButton';
@@ -584,7 +585,12 @@ function ReportsContent() {
   const preferences = usePreferencesStore((s) => s.preferences);
   const updateStorePreferences = usePreferencesStore((s) => s.updatePreferences);
   const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
-  const favouriteReportIds = preferences?.favouriteReportIds ?? [];
+  // Memoized so the `??[]` fallback does not create a new array reference each
+  // render, which would otherwise invalidate the filteredReports memo.
+  const favouriteReportIds = useMemo(
+    () => preferences?.favouriteReportIds ?? [],
+    [preferences?.favouriteReportIds],
+  );
 
   // Refresh preferences from server on mount to pick up changes from other devices
   useEffect(() => {
@@ -718,58 +724,80 @@ function ReportsContent() {
     dense: 'Dense',
   };
 
-  // Convert custom reports to the Report interface
-  const customReportsAsReports: Report[] = customReports.map((cr) => {
-    const iconNode = cr.icon ? getIconComponent(cr.icon) : null;
-    return {
-      id: `custom/${cr.id}`,
-      name: cr.name,
-      description: cr.description || `${VIEW_TYPE_LABELS[cr.viewType]} · ${TIMEFRAME_LABELS[cr.timeframeType]}`,
-      category: 'custom' as ReportCategory,
-      color: cr.backgroundColor ? '' : 'bg-purple-500',
-      isCustom: true,
-      isFavourite: cr.isFavourite,
-      icon: iconNode || (
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-    };
-  });
+  // Convert custom reports to the Report interface. Memoized so the SVG icon
+  // nodes are not rebuilt on every render (e.g. each search keystroke).
+  const customReportsAsReports: Report[] = useMemo(
+    () =>
+      customReports.map((cr) => {
+        const iconNode = cr.icon ? getIconComponent(cr.icon) : null;
+        return {
+          id: `custom/${cr.id}`,
+          name: cr.name,
+          description: cr.description || `${VIEW_TYPE_LABELS[cr.viewType]} · ${TIMEFRAME_LABELS[cr.timeframeType]}`,
+          category: 'custom' as ReportCategory,
+          color: cr.backgroundColor ? '' : 'bg-purple-500',
+          isCustom: true,
+          isFavourite: cr.isFavourite,
+          icon: iconNode || (
+            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          ),
+        };
+      }),
+    [customReports],
+  );
 
-  // Convert investment reports to the Report interface
-  const investmentReportsAsReports: Report[] = investmentReports.map((ir) => {
-    const iconNode = ir.icon ? getIconComponent(ir.icon) : null;
-    return {
-      id: `investment/${ir.id}`,
-      name: ir.name,
-      description:
-        ir.description ||
-        `Investment report · ${ir.config.columns?.length ?? 0} columns`,
-      category: 'investment' as ReportCategory,
-      color: ir.backgroundColor ? '' : 'bg-lime-500',
-      isInvestment: true,
-      isFavourite: ir.isFavourite,
-      icon: iconNode || (
-        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-        </svg>
-      ),
-    };
-  });
+  // Convert investment reports to the Report interface (memoized, see above).
+  const investmentReportsAsReports: Report[] = useMemo(
+    () =>
+      investmentReports.map((ir) => {
+        const iconNode = ir.icon ? getIconComponent(ir.icon) : null;
+        return {
+          id: `investment/${ir.id}`,
+          name: ir.name,
+          description:
+            ir.description ||
+            `Investment report · ${ir.config.columns?.length ?? 0} columns`,
+          category: 'investment' as ReportCategory,
+          color: ir.backgroundColor ? '' : 'bg-lime-500',
+          isInvestment: true,
+          isFavourite: ir.isFavourite,
+          icon: iconNode || (
+            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
+          ),
+        };
+      }),
+    [investmentReports],
+  );
 
-  const allReports = [...reports, ...customReportsAsReports, ...investmentReportsAsReports];
+  const allReports = useMemo(
+    () => [...reports, ...customReportsAsReports, ...investmentReportsAsReports],
+    [customReportsAsReports, investmentReportsAsReports],
+  );
 
-  const filteredReports = allReports
-    .filter(r => {
-      if (categoryFilter !== 'all' && r.category !== categoryFilter) return false;
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        return r.name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q);
-      }
-      return true;
-    })
-    .sort((a, b) => Number(isReportFavourite(b)) - Number(isReportFavourite(a)));
+  // Debounce the search term so filter + sort does not re-run on every
+  // keystroke. The input stays bound to the immediate `searchQuery` value.
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 200);
+
+  const filteredReports = useMemo(() => {
+    const isFavourite = (report: Report): boolean =>
+      report.isCustom || report.isInvestment
+        ? report.isFavourite ?? false
+        : favouriteReportIds.includes(report.id);
+    const q = debouncedSearchQuery.toLowerCase();
+    return allReports
+      .filter(r => {
+        if (categoryFilter !== 'all' && r.category !== categoryFilter) return false;
+        if (debouncedSearchQuery) {
+          return r.name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q);
+        }
+        return true;
+      })
+      .sort((a, b) => Number(isFavourite(b)) - Number(isFavourite(a)));
+  }, [allReports, categoryFilter, debouncedSearchQuery, favouriteReportIds]);
 
   const handleReportClick = (reportId: string) => {
     router.push(`/reports/${reportId}`);

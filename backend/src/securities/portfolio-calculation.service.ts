@@ -15,6 +15,7 @@ import {
   AllocationItem,
 } from "./portfolio.service";
 import { roundMoney } from "../common/round.util";
+import { formatDateYMDLocal } from "../common/date-utils";
 
 /**
  * Categorised investment accounts: brokerage, standalone, and cash accounts
@@ -418,8 +419,7 @@ export class PortfolioCalculationService {
     const result = new Map<string, number>();
     if (holdingsAccountIds.length === 0) return result;
 
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const today = formatDateYMDLocal(new Date());
 
     const transactions = await this.investmentTransactionRepository.find({
       where: {

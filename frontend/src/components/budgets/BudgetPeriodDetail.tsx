@@ -1,6 +1,7 @@
 'use client';
 
 import { format, parseISO } from 'date-fns';
+import { gainLossColor } from '@/lib/format';
 import { BudgetProgressBar } from './BudgetProgressBar';
 import type { BudgetPeriod, BudgetPeriodCategory } from '@/types/budget';
 
@@ -92,9 +93,7 @@ export function BudgetPeriodDetail({
           value={formatCurrency(Math.abs(remaining))}
           sublabel={remaining >= 0 ? 'saved' : 'overspent'}
           valueColor={
-            remaining >= 0
-              ? 'text-green-600 dark:text-green-400'
-              : 'text-red-600 dark:text-red-400'
+            gainLossColor(remaining)
           }
         />
         <SummaryCard

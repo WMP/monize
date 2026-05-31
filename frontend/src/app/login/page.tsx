@@ -17,11 +17,12 @@ import { authApi, AuthMethods } from '@/lib/auth';
 import { TwoFactorVerify } from '@/components/auth/TwoFactorVerify';
 import { User } from '@/types/auth';
 import { createLogger } from '@/lib/logger';
+import { emailSchema } from '@/lib/zod-helpers';
 
 const logger = createLogger('Login');
 
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: emailSchema,
   password: z.string().min(1, 'Password is required'),
   rememberMe: z.boolean(),
 });

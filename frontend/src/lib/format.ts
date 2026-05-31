@@ -125,6 +125,55 @@ export function adaptiveFractionDigits(
   return Math.max(baseDigits, Math.min(maxDigits, digits));
 }
 
+interface FormatSignedPercentOptions {
+  /** Number of decimal places to show (default 2). */
+  decimals?: number;
+  /**
+   * When true the value is already a percentage (e.g. 12.5 = 12.5%) and is
+   * used as-is. When false the value is a fraction (e.g. 0.125 = 12.5%) and is
+   * multiplied by 100. Defaults to true since most call sites already work in
+   * percentage units.
+   */
+  alreadyPercent?: boolean;
+}
+
+/**
+ * Format a percentage with an explicit leading sign (e.g. "+12.50%",
+ * "-3.40%", "0.00%"). Replaces the repeated
+ * `${v >= 0 ? '+' : ''}${v.toFixed(n)}%` idiom across the report components.
+ *
+ * The magnitude is rendered with the user-locale-agnostic `en-US` grouping so
+ * it matches the surrounding `toFixed` output it replaces. A leading "+" is
+ * added for values >= 0; negatives keep their intrinsic minus sign. NaN and
+ * non-finite inputs render as a sign-less "0.00%" so a broken datum never
+ * shows "NaN%".
+ */
+export function formatSignedPercent(
+  value: number,
+  options: FormatSignedPercentOptions = {},
+): string {
+  const { decimals = 2, alreadyPercent = true } = options;
+  const pct = alreadyPercent ? value : value * 100;
+  if (!isFinite(pct)) {
+    return `${(0).toFixed(decimals)}%`;
+  }
+  const rounded = roundToDecimals(pct, decimals);
+  const sign = rounded >= 0 ? '+' : '';
+  return `${sign}${rounded.toFixed(decimals)}%`;
+}
+
+/**
+ * Tailwind text-colour classes for a gain/loss value: green when >= 0, red
+ * when negative. Replaces the repeated
+ * `value >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'`
+ * ternary across the investment/report components.
+ */
+export function gainLossColor(value: number): string {
+  return value >= 0
+    ? 'text-green-600 dark:text-green-400'
+    : 'text-red-600 dark:text-red-400';
+}
+
 /**
  * Format a number to the specified decimal places for display in inputs.
  * Defaults to 2 decimal places.

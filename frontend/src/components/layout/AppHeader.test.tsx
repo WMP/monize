@@ -51,10 +51,16 @@ let mockUser: any = {
 };
 
 vi.mock('@/store/authStore', () => ({
-  useAuthStore: () => ({
-    user: mockUser,
-    logout: mockLogout,
-  }),
+  useAuthStore: (selector?: (state: Record<string, unknown>) => unknown) => {
+    const state = {
+      user: mockUser,
+      logout: mockLogout,
+      actingAsUserId: null,
+      delegateCapabilities: null,
+      delegateSections: null,
+    };
+    return selector ? selector(state) : state;
+  },
 }));
 
 // Mock BudgetAlertBadge to avoid async act() warnings (tested in its own file)

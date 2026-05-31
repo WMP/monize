@@ -8,7 +8,7 @@ import {
   RawCategoryAggregate,
   RawMonthlyAggregate,
 } from "./report-currency.service";
-import { roundMoney, sumMoney } from "../common/round.util";
+import { roundMoney, sumMoney, toMoneyNumber } from "../common/round.util";
 import {
   IncomeBySourceResponse,
   IncomeSourceItem,
@@ -85,7 +85,7 @@ export class IncomeReportsService {
 
     for (const row of rawResults) {
       const total = this.currencyService.convertAmount(
-        parseFloat(row.total) || 0,
+        toMoneyNumber(row.total),
         row.currency_code,
         defaultCurrency,
         rateMap,
@@ -194,13 +194,13 @@ export class IncomeReportsService {
     const monthlyMap = new Map<string, { income: number; expenses: number }>();
     for (const row of rawResults) {
       const income = this.currencyService.convertAmount(
-        parseFloat(row.income) || 0,
+        toMoneyNumber(row.income),
         row.currency_code,
         defaultCurrency,
         rateMap,
       );
       const expenses = this.currencyService.convertAmount(
-        parseFloat(row.expenses) || 0,
+        toMoneyNumber(row.expenses),
         row.currency_code,
         defaultCurrency,
         rateMap,

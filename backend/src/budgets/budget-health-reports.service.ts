@@ -9,6 +9,7 @@ import { BudgetPeriod, PeriodStatus } from "./entities/budget-period.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { BudgetsService } from "./budgets.service";
+import { getMonthEndYMD } from "../common/date-utils";
 import {
   HealthScoreResult,
   HealthScoreHistoryPoint,
@@ -249,12 +250,7 @@ export class BudgetHealthReportsService {
       1,
     );
     const rangeStart = `${startD.getFullYear()}-${String(startD.getMonth() + 1).padStart(2, "0")}-01`;
-    const lastDay = new Date(
-      today.getFullYear(),
-      today.getMonth() + 1,
-      0,
-    ).getDate();
-    const rangeEnd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    const rangeEnd = getMonthEndYMD(today.getFullYear(), today.getMonth() + 1);
 
     // Batch queries: group by month across entire range
     const incomeByMonth = new Map<string, number>();

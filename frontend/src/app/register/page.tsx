@@ -14,14 +14,14 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
 import { authApi, AuthMethods } from '@/lib/auth';
-import { passwordSchema, PASSWORD_REQUIREMENTS_TEXT } from '@/lib/zod-helpers';
+import { passwordSchema, PASSWORD_REQUIREMENTS_TEXT, emailSchema } from '@/lib/zod-helpers';
 import { TwoFactorSetup } from '@/components/auth/TwoFactorSetup';
 import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('Register');
 
 const registerSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: emailSchema,
   password: passwordSchema,
   confirmPassword: z.string(),
   firstName: z.string().max(100, 'First name must be less than 100 characters').optional(),

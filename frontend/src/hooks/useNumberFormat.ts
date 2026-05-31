@@ -154,6 +154,48 @@ export function useNumberFormat() {
     [numberFormat]
   );
 
+  /**
+   * Locale-aware signed percentage with an explicit leading sign
+   * (e.g. "+12.50%", "-3.40%"). Honours the user's number-format locale for
+   * grouping/decimal separators. Replaces the inline
+   * `${v >= 0 ? '+' : ''}${v.toFixed(n)}%` idiom in the report/holdings views.
+   * Non-finite input renders a sign-less zero so a broken datum never shows
+   * "NaN%".
+   */
+  const formatSignedPercent = useCallback(
+    (value: number, decimals: number = 2): string => {
+      const locale = getEffectiveLocale(numberFormat);
+      const magnitudeFormat = getNumberFormat(locale, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      });
+      if (!isFinite(value)) {
+        return `${magnitudeFormat.format(0)}%`;
+      }
+      const rounded = roundToDecimals(value, decimals);
+      const sign = rounded >= 0 ? '+' : '';
+      return `${sign}${magnitudeFormat.format(rounded)}%`;
+    },
+    [numberFormat]
+  );
+
+  /**
+   * Locale-aware share/quantity formatter: up to 4 decimal places with
+   * trailing zeros trimmed (minimumFractionDigits 0). Replaces the inline
+   * `new Intl.NumberFormat(locale, { ..., maximumFractionDigits: 4 })` copies
+   * in the holdings/transaction lists.
+   */
+  const formatQuantity = useCallback(
+    (value: number): string => {
+      const locale = getEffectiveLocale(numberFormat);
+      return getNumberFormat(locale, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 4,
+      }).format(value);
+    },
+    [numberFormat]
+  );
+
   /** Compact currency for chart labels: K with 1dp, M/B/T with 2dp (e.g., "$123.5K", "$1.23M"). */
   const formatCurrencyLabel = useCallback(
     (value: number): string => {
@@ -200,5 +242,5 @@ export function useNumberFormat() {
     [numberFormat, defaultCurrency]
   );
 
-  return { formatCurrency, formatCurrencyPrecise, formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatCurrencyLabel, formatNumber, formatPercent, defaultCurrency, numberFormat };
+  return { formatCurrency, formatCurrencyPrecise, formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatCurrencyLabel, formatNumber, formatPercent, formatSignedPercent, formatQuantity, defaultCurrency, numberFormat };
 }

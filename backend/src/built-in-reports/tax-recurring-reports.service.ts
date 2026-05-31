@@ -13,7 +13,7 @@ import {
   MonthlyBillTotal,
 } from "./dto";
 import { formatDateYMD } from "../common/date-utils";
-import { roundMoney, sumMoney } from "../common/round.util";
+import { roundMoney, sumMoney, toMoneyNumber } from "../common/round.util";
 
 @Injectable()
 export class TaxRecurringReportsService {
@@ -109,7 +109,7 @@ export class TaxRecurringReportsService {
 
     rawResults.forEach((row) => {
       const amount = this.currencyService.convertAmount(
-        parseFloat(row.amount) || 0,
+        toMoneyNumber(row.amount),
         row.currency_code,
         defaultCurrency,
         rateMap,
@@ -246,7 +246,7 @@ export class TaxRecurringReportsService {
 
     for (const row of rawResults) {
       const totalAmount = this.currencyService.convertAmount(
-        parseFloat(row.total_amount) || 0,
+        toMoneyNumber(row.total_amount),
         row.currency_code,
         defaultCurrency,
         rateMap,
@@ -364,7 +364,7 @@ export class TaxRecurringReportsService {
         payeeToScheduled.set(st.payee_name.toLowerCase().trim(), {
           id: st.id,
           name: st.name,
-          amount: Math.abs(parseFloat(st.amount)),
+          amount: Math.abs(toMoneyNumber(st.amount)),
         });
       }
     });
@@ -423,7 +423,7 @@ export class TaxRecurringReportsService {
       if (!scheduled) return;
 
       const txAmount = this.currencyService.convertAmount(
-        parseFloat(tx.amount) || 0,
+        toMoneyNumber(tx.amount),
         tx.currency_code,
         defaultCurrency,
         rateMap,

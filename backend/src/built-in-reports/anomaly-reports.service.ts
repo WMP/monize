@@ -10,7 +10,7 @@ import {
   AnomalySeverity,
 } from "./dto";
 import { formatDateYMD } from "../common/date-utils";
-import { roundMoney, sumMoney } from "../common/round.util";
+import { roundMoney, sumMoney, toMoneyNumber } from "../common/round.util";
 
 @Injectable()
 export class AnomalyReportsService {
@@ -90,7 +90,7 @@ export class AnomalyReportsService {
 
     const amounts = rawResults.map((r) =>
       this.currencyService.convertAmount(
-        parseFloat(r.amount) || 0,
+        toMoneyNumber(r.amount),
         r.currency_code,
         defaultCurrency,
         rateMap,
@@ -107,7 +107,7 @@ export class AnomalyReportsService {
     // 1. Large single transactions
     rawResults.forEach((row) => {
       const amount = this.currencyService.convertAmount(
-        parseFloat(row.amount) || 0,
+        toMoneyNumber(row.amount),
         row.currency_code,
         defaultCurrency,
         rateMap,
@@ -198,7 +198,7 @@ export class AnomalyReportsService {
     rawResults.forEach((row) => {
       const txDate = new Date(row.transaction_date);
       const amount = this.currencyService.convertAmount(
-        parseFloat(row.amount) || 0,
+        toMoneyNumber(row.amount),
         row.currency_code,
         defaultCurrency,
         rateMap,
@@ -284,7 +284,7 @@ export class AnomalyReportsService {
         const existing = payeeRecentSpending.get(payeeName);
         if (existing) {
           existing.total += this.currencyService.convertAmount(
-            parseFloat(row.amount) || 0,
+            toMoneyNumber(row.amount),
             row.currency_code,
             defaultCurrency,
             rateMap,
@@ -294,7 +294,7 @@ export class AnomalyReportsService {
           payeeRecentSpending.set(payeeName, {
             name: row.payee_name || "Unknown",
             total: this.currencyService.convertAmount(
-              parseFloat(row.amount) || 0,
+              toMoneyNumber(row.amount),
               row.currency_code,
               defaultCurrency,
               rateMap,

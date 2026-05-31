@@ -8,6 +8,7 @@ import { AccountsService } from "../accounts/accounts.service";
 import { isTransactionInFuture } from "../common/date-utils";
 
 jest.mock("../common/date-utils", () => ({
+  ...jest.requireActual("../common/date-utils"),
   isTransactionInFuture: jest.fn().mockReturnValue(false),
 }));
 

@@ -8,7 +8,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
 import { Transaction, TransactionStatus } from "./entities/transaction.entity";
 import { AccountsService } from "../accounts/accounts.service";
-import { isTransactionInFuture } from "../common/date-utils";
+import {
+  isTransactionInFuture,
+  formatDateYMDLocal,
+} from "../common/date-utils";
 
 @Injectable()
 export class TransactionReconciliationService {
@@ -71,8 +74,7 @@ export class TransactionReconciliationService {
         status === TransactionStatus.RECONCILED &&
         oldStatus !== TransactionStatus.RECONCILED
       ) {
-        const now = new Date();
-        const reconciledDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        const reconciledDate = formatDateYMDLocal(new Date());
         await queryRunner.manager.update(Transaction, transaction.id, {
           reconciledDate,
         });

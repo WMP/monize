@@ -15,6 +15,8 @@ import {
   evaluateExpression,
   formatRelativeTime,
   formatShareQuantity,
+  formatSignedPercent,
+  gainLossColor,
 } from './format';
 
 describe('getCurrencySymbol', () => {
@@ -499,5 +501,49 @@ describe('adaptiveFractionDigits', () => {
   it('respects a non-2 base precision (e.g. JPY=0)', () => {
     expect(adaptiveFractionDigits(123, 0)).toBe(0); // already non-zero at 0dp
     expect(adaptiveFractionDigits(0.4, 0)).toBe(3); // expands to ~3 significant figures
+  });
+});
+
+describe('formatSignedPercent', () => {
+  it('adds a leading + for positive values', () => {
+    expect(formatSignedPercent(12.5)).toBe('+12.50%');
+  });
+
+  it('keeps the minus sign for negative values', () => {
+    expect(formatSignedPercent(-3.4)).toBe('-3.40%');
+  });
+
+  it('treats zero as positive (+0.00%)', () => {
+    expect(formatSignedPercent(0)).toBe('+0.00%');
+  });
+
+  it('honours the decimals option', () => {
+    expect(formatSignedPercent(7.1234, { decimals: 1 })).toBe('+7.1%');
+    expect(formatSignedPercent(7.1, { decimals: 0 })).toBe('+7%');
+  });
+
+  it('multiplies fractions when alreadyPercent is false', () => {
+    expect(formatSignedPercent(0.125, { alreadyPercent: false })).toBe('+12.50%');
+    expect(formatSignedPercent(-0.05, { alreadyPercent: false })).toBe('-5.00%');
+  });
+
+  it('renders a sign-less 0 for non-finite input', () => {
+    expect(formatSignedPercent(NaN)).toBe('0.00%');
+    expect(formatSignedPercent(Infinity)).toBe('0.00%');
+  });
+
+  it('rounds half away from zero before formatting', () => {
+    expect(formatSignedPercent(2.345, { decimals: 2 })).toBe('+2.35%');
+  });
+});
+
+describe('gainLossColor', () => {
+  it('returns green classes for non-negative values', () => {
+    expect(gainLossColor(0)).toBe('text-green-600 dark:text-green-400');
+    expect(gainLossColor(10)).toBe('text-green-600 dark:text-green-400');
+  });
+
+  it('returns red classes for negative values', () => {
+    expect(gainLossColor(-1)).toBe('text-red-600 dark:text-red-400');
   });
 });

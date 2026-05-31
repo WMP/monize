@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { ReportCurrencyService } from "./report-currency.service";
-import { roundMoney, sumMoney } from "../common/round.util";
+import { roundMoney, sumMoney, toMoneyNumber } from "../common/round.util";
 import {
   UncategorizedTransactionsResponse,
   UncategorizedTransactionItem,
@@ -91,7 +91,7 @@ export class DataQualityReportsService {
         .toISOString()
         .split("T")[0],
       amount: this.currencyService.convertAmount(
-        parseFloat(row.amount) || 0,
+        toMoneyNumber(row.amount),
         row.currency_code,
         defaultCurrency,
         rateMap,
@@ -157,14 +157,14 @@ export class DataQualityReportsService {
       totalCount += parseInt(row.total_count, 10);
       expenseCount += parseInt(row.expense_count, 10);
       expenseTotal += this.currencyService.convertAmount(
-        parseFloat(row.expense_total) || 0,
+        toMoneyNumber(row.expense_total),
         row.currency_code,
         defaultCurrency,
         rateMap,
       );
       incomeCount += parseInt(row.income_count, 10);
       incomeTotal += this.currencyService.convertAmount(
-        parseFloat(row.income_total) || 0,
+        toMoneyNumber(row.income_total),
         row.currency_code,
         defaultCurrency,
         rateMap,
@@ -241,7 +241,7 @@ export class DataQualityReportsService {
       transactionDate: new Date(row.transaction_date)
         .toISOString()
         .split("T")[0],
-      amount: parseFloat(row.amount),
+      amount: toMoneyNumber(row.amount),
       payeeName: row.payee_name,
       description: row.description,
       accountName: row.account_name,

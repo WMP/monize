@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import {
   AreaChart,
   Area,
@@ -17,6 +18,7 @@ import { PortfolioSummary } from '@/types/investment';
 import { Account } from '@/types/account';
 import { parseLocalDate } from '@/lib/utils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { gainLossColor } from '@/lib/format';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useDateRange } from '@/hooks/useDateRange';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -65,7 +67,7 @@ function CustomTooltip({ active, payload, fmtFull }: {
 }
 
 export function PortfolioValueReport() {
-  const { formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatCurrency: formatCurrencyFull } = useNumberFormat();
+  const { formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatCurrency: formatCurrencyFull, formatSignedPercent } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
   const [chartPoints, setChartPoints] = useState<Array<{ name: string; Value: number }>>([]);
@@ -391,7 +393,7 @@ export function PortfolioValueReport() {
         { label: 'Highest Value', value: fmtVal(summary.highest), color: '#111827' },
         { label: 'Lowest Value', value: fmtVal(summary.lowest), color: '#111827' },
         { label: 'Period Change', value: `${summary.change >= 0 ? '+' : ''}${fmtVal(summary.change)}`, color: summary.change >= 0 ? '#16a34a' : '#dc2626' },
-        { label: 'Period Return', value: `${summary.changePercent >= 0 ? '+' : ''}${summary.changePercent.toFixed(1)}%`, color: summary.changePercent >= 0 ? '#16a34a' : '#dc2626' },
+        { label: 'Period Return', value: formatSignedPercent(summary.changePercent, 1), color: summary.changePercent >= 0 ? '#16a34a' : '#dc2626' },
       ],
       chartContainer: chartRef.current,
       additionalTables: breakdownRows.length > 0 ? [{
@@ -415,9 +417,9 @@ export function PortfolioValueReport() {
   if (isLoading && chartPoints.length === 0 && !intradayUnavailable) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-64 w-full" />
         </div>
       </div>
     );
@@ -441,14 +443,14 @@ export function PortfolioValueReport() {
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">Period Change</div>
-          <div className={`text-xl font-bold ${summary.change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          <div className={`text-xl font-bold ${gainLossColor(summary.change)}`}>
             {summary.change >= 0 ? '+' : ''}{fmtVal(summary.change)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400">Period Return</div>
-          <div className={`text-xl font-bold ${summary.changePercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-            {summary.changePercent >= 0 ? '+' : ''}{summary.changePercent.toFixed(1)}%
+          <div className={`text-xl font-bold ${gainLossColor(summary.changePercent)}`}>
+            {formatSignedPercent(summary.changePercent, 1)}
           </div>
         </div>
       </div>
@@ -780,7 +782,7 @@ export function PortfolioValueReport() {
                     <td className="px-4 py-3 text-right text-sm font-medium text-gray-900 dark:text-gray-100">
                       {fmtFull(acct.totalMarketValue + acct.cashBalance)}
                     </td>
-                    <td className={`px-4 py-3 text-right text-sm font-medium ${acct.totalGainLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    <td className={`px-4 py-3 text-right text-sm font-medium ${gainLossColor(acct.totalGainLoss)}`}>
                       {acct.totalGainLoss >= 0 ? '+' : ''}{fmtFull(acct.totalGainLoss)}
                     </td>
                   </tr>

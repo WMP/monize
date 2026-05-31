@@ -13,6 +13,7 @@ import { BulkUpdateDto, BulkDeleteDto } from "./dto/bulk-update.dto";
 import { Brackets, DataSource } from "typeorm";
 
 jest.mock("../common/date-utils", () => ({
+  ...jest.requireActual("../common/date-utils"),
   isTransactionInFuture: jest.fn().mockReturnValue(false),
 }));
 

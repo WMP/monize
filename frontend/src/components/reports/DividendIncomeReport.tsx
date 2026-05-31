@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import {
   BarChart,
   Bar,
@@ -250,24 +251,31 @@ export function DividendIncomeReport() {
           endDate: end,
         });
 
-        // Paginate through all transactions (API limit is 200 per page)
-        let allTransactions: InvestmentTransaction[] = [];
-        let page = 1;
-        let hasMore = true;
-        while (hasMore) {
-          const result = await investmentsApi.getTransactions({
-            accountIds: accountIdsParam,
-            startDate: start || undefined,
-            endDate: end,
-            limit: 200,
-            page,
-          });
-          allTransactions = allTransactions.concat(result.data);
-          hasMore = result.pagination.hasMore;
-          page++;
-        }
+        // Paginate through all transactions (API limit is 200 per page).
+        // Run the pagination loop concurrently with the accounts and capital
+        // gains requests instead of awaiting it first -- otherwise the three
+        // fetches serialize and the slowest path is the sum of all of them.
+        const transactionsPromise = (async () => {
+          let allTransactions: InvestmentTransaction[] = [];
+          let page = 1;
+          let hasMore = true;
+          while (hasMore) {
+            const result = await investmentsApi.getTransactions({
+              accountIds: accountIdsParam,
+              startDate: start || undefined,
+              endDate: end,
+              limit: 200,
+              page,
+            });
+            allTransactions = allTransactions.concat(result.data);
+            hasMore = result.pagination.hasMore;
+            page++;
+          }
+          return allTransactions;
+        })();
 
-        const [accountsData, capitalGainsData] = await Promise.all([
+        const [allTransactions, accountsData, capitalGainsData] = await Promise.all([
+          transactionsPromise,
           accountsPromise,
           capitalGainsPromise,
         ]);
@@ -480,6 +488,33 @@ export function DividendIncomeReport() {
           )
         : dailyData,
     [dailyData, hideInactiveDays],
+  );
+
+  // Only stack series where every value is non-negative; once losses appear
+  // we render bars side-by-side so negatives can drop below the zero line
+  // instead of being hidden inside a stack. Memoized so the per-render array
+  // scans don't run on every keystroke/interaction.
+  const hasNegativeCapitalGains = useMemo(
+    () => monthlyData.some((m) => m.capitalGains < 0),
+    [monthlyData],
+  );
+  const dailyHasNegativeCapitalGains = useMemo(
+    () => displayedDailyData.some((d) => d.capitalGains < 0),
+    [displayedDailyData],
+  );
+
+  // Account filter options for the MultiSelect, memoized so the filter/sort/map
+  // chain (and the new array of option objects) is not rebuilt every render.
+  const accountOptions = useMemo(
+    () =>
+      accounts
+        .filter((a) => a.accountSubType !== 'INVESTMENT_BROKERAGE')
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((account) => ({
+          value: account.id,
+          label: account.name.replace(/ - (Brokerage|Cash)$/, ''),
+        })),
+    [accounts],
   );
 
   const securityData = useMemo((): SecurityIncome[] => {
@@ -933,20 +968,15 @@ export function DividendIncomeReport() {
   if (isLoading && !hasLoadedOnce) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
-          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-64 w-full" />
         </div>
       </div>
     );
   }
 
-  // Only stack series where every value is non-negative; once losses appear
-  // we render bars side-by-side so negatives can drop below the zero line
-  // instead of being hidden inside a stack.
-  const hasNegativeCapitalGains = monthlyData.some((m) => m.capitalGains < 0);
   const stackId = hasNegativeCapitalGains ? undefined : 'a';
-  const dailyHasNegativeCapitalGains = displayedDailyData.some((d) => d.capitalGains < 0);
   const dailyStackId = dailyHasNegativeCapitalGains ? undefined : 'a';
 
   return (
@@ -986,13 +1016,7 @@ export function DividendIncomeReport() {
             <MultiSelect
               ariaLabel="Filter by account"
               placeholder="All Accounts"
-              options={accounts
-                .filter((a) => a.accountSubType !== 'INVESTMENT_BROKERAGE')
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((account) => ({
-                  value: account.id,
-                  label: account.name.replace(/ - (Brokerage|Cash)$/, ''),
-                }))}
+              options={accountOptions}
               value={selectedAccountIds}
               onChange={(values) => {
                 setSelectedAccountIds(values);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { gainLossColor } from '@/lib/format';
 import { differenceInDays, startOfDay, parseISO } from 'date-fns';
 import type { ScheduledTransaction } from '@/types/scheduled-transaction';
 
@@ -96,9 +97,7 @@ export function BudgetUpcomingBills({
           <span className="text-gray-600 dark:text-gray-400">Truly available</span>
           <span
             className={`font-semibold ${
-              trulyAvailable >= 0
-                ? 'text-green-600 dark:text-green-400'
-                : 'text-red-600 dark:text-red-400'
+              gainLossColor(trulyAvailable)
             }`}
           >
             {formatCurrency(Math.abs(trulyAvailable))}

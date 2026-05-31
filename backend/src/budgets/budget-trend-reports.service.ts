@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Budget } from "./entities/budget.entity";
 import { BudgetPeriod, PeriodStatus } from "./entities/budget-period.entity";
+import { getMonthEndYMD } from "../common/date-utils";
 import { BudgetPeriodCategory } from "./entities/budget-period-category.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
@@ -363,12 +364,7 @@ export class BudgetTrendReportsService {
       1,
     );
     const rangeStart = `${startD.getFullYear()}-${String(startD.getMonth() + 1).padStart(2, "0")}-01`;
-    const lastDay = new Date(
-      today.getFullYear(),
-      today.getMonth() + 1,
-      0,
-    ).getDate();
-    const rangeEnd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    const rangeEnd = getMonthEndYMD(today.getFullYear(), today.getMonth() + 1);
 
     // Batch query: per-category, per-month actuals in 2 parallel queries
     // Map<categoryId, Map<monthKey, amount>>
@@ -500,12 +496,7 @@ export class BudgetTrendReportsService {
       1,
     );
     const rangeStart = `${startD.getFullYear()}-${String(startD.getMonth() + 1).padStart(2, "0")}-01`;
-    const lastDay = new Date(
-      today.getFullYear(),
-      today.getMonth() + 1,
-      0,
-    ).getDate();
-    const rangeEnd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    const rangeEnd = getMonthEndYMD(today.getFullYear(), today.getMonth() + 1);
 
     // Batch queries grouped by month
     const actualByMonth = new Map<string, number>();

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Sparkline } from './Sparkline';
-import { getCurrencySymbol, formatAmount, getDecimalPlacesForCurrency } from '@/lib/format';
+import { getCurrencySymbol, formatAmount, getDecimalPlacesForCurrency, gainLossColor } from '@/lib/format';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import type { WizardState } from './BudgetWizard';
 import type { BudgetProfile, CategoryGroup, TransferAnalysis } from '@/types/budget';
@@ -604,9 +604,7 @@ export function BudgetWizardCategories({
             </div>
             <div
               className={`text-lg font-semibold ${
-                totals.net >= 0
-                  ? 'text-green-600 dark:text-green-400'
-                  : 'text-red-600 dark:text-red-400'
+                gainLossColor(totals.net)
               }`}
             >
               {formatCurrency(totals.net, currencyCode)}

@@ -148,6 +148,39 @@ describe('useNumberFormat', () => {
     const formatted = result.current.formatCurrencyLabel(50);
     expect(formatted).not.toMatch(/[KMBT]/);
   });
+
+  it('formatSignedPercent adds a leading + for non-negative values', () => {
+    const { result } = renderHook(() => useNumberFormat());
+    expect(result.current.formatSignedPercent(12.5)).toBe('+12.50%');
+    expect(result.current.formatSignedPercent(0)).toBe('+0.00%');
+  });
+
+  it('formatSignedPercent keeps the minus sign for negatives', () => {
+    const { result } = renderHook(() => useNumberFormat());
+    expect(result.current.formatSignedPercent(-3.4)).toBe('-3.40%');
+  });
+
+  it('formatSignedPercent honours the decimals argument', () => {
+    const { result } = renderHook(() => useNumberFormat());
+    expect(result.current.formatSignedPercent(7.123, 1)).toBe('+7.1%');
+  });
+
+  it('formatSignedPercent renders a sign-less zero for non-finite input', () => {
+    const { result } = renderHook(() => useNumberFormat());
+    expect(result.current.formatSignedPercent(NaN)).toBe('0.00%');
+  });
+
+  it('formatQuantity trims trailing zeros up to 4dp', () => {
+    const { result } = renderHook(() => useNumberFormat());
+    expect(result.current.formatQuantity(100)).toBe('100');
+    expect(result.current.formatQuantity(1.5)).toBe('1.5');
+    expect(result.current.formatQuantity(1.23456)).toBe('1.2346');
+  });
+
+  it('formatQuantity adds thousands separators', () => {
+    const { result } = renderHook(() => useNumberFormat());
+    expect(result.current.formatQuantity(1234.5)).toBe('1,234.5');
+  });
 });
 
 describe('useNumberFormat with browser locale', () => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { gainLossColor } from '@/lib/format';
 import type { CategoryBreakdown } from '@/types/budget';
 
 interface BudgetScenarioPlannerProps {
@@ -173,9 +174,7 @@ export function BudgetScenarioPlanner({
           <p className="text-xs text-gray-500 dark:text-gray-400">Projected Savings</p>
           <p
             className={`text-base font-semibold ${
-              adjustedSavings >= 0
-                ? 'text-green-600 dark:text-green-400'
-                : 'text-red-600 dark:text-red-400'
+              gainLossColor(adjustedSavings)
             }`}
             data-testid="projected-savings"
           >

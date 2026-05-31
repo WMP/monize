@@ -5,6 +5,8 @@ import { AccountHoldings, HoldingWithMarketValue } from '@/types/investment';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
+import { gainLossColor } from '@/lib/format';
+import { Skeleton } from '@/components/ui/LoadingSkeleton';
 
 interface GroupedHoldingsListProps {
   holdingsByAccount: AccountHoldings[];
@@ -21,7 +23,7 @@ export function GroupedHoldingsList({
   onSymbolClick,
   onCashClick,
 }: GroupedHoldingsListProps) {
-  const { formatCurrency: formatCurrencyBase, formatCurrencyPrecise, numberFormat } = useNumberFormat();
+  const { formatCurrency: formatCurrencyBase, formatCurrencyPrecise, formatSignedPercent, formatNumber, formatQuantity } = useNumberFormat();
   const { convert, convertToDefault, defaultCurrency } = useExchangeRates();
 
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(
@@ -54,23 +56,12 @@ export function GroupedHoldingsList({
 
   const formatPercent = (value: number | null, showSign = true) => {
     if (value === null) return '-';
-    const sign = showSign && value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(2)}%`;
-  };
-
-  const formatQuantity = (value: number) => {
-    const locale = numberFormat === 'browser' ? undefined : numberFormat;
-    return new Intl.NumberFormat(locale, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 4,
-    }).format(value);
+    return showSign ? formatSignedPercent(value) : `${formatNumber(value, 2)}%`;
   };
 
   const getGainLossColor = (value: number | null) => {
     if (value === null) return 'text-gray-500 dark:text-gray-400';
-    return value >= 0
-      ? 'text-green-600 dark:text-green-400'
-      : 'text-red-600 dark:text-red-400';
+    return gainLossColor(value);
   };
 
   const getPortfolioPercent = (value: number | null, currencyCode?: string): string => {
@@ -89,13 +80,13 @@ export function GroupedHoldingsList({
         </h3>
         <div className="space-y-4">
           {[1, 2].map((i) => (
-            <div key={i} className="animate-pulse">
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-3" />
+            <div key={i}>
+              <Skeleton className="h-6 w-1/3 mb-3" />
               <div className="space-y-2">
                 {[1, 2, 3].map((j) => (
                   <div key={j} className="flex justify-between">
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-4 w-1/4" />
                   </div>
                 ))}
               </div>

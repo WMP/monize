@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { gainLossColor } from '@/lib/format';
+import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import {
   LineChart,
   Line,
@@ -51,9 +53,7 @@ function CashFlowTooltip({
         </p>
         <p
           className={`text-lg font-semibold ${
-            data.balance >= 0
-              ? 'text-green-600 dark:text-green-400'
-              : 'text-red-600 dark:text-red-400'
+            gainLossColor(data.balance)
           }`}
         >
           {formatCurrency(data.balance)}
@@ -67,9 +67,7 @@ function CashFlowTooltip({
               <p key={i} className="text-sm text-gray-700 dark:text-gray-300">
                 <span
                   className={
-                    tx.amount >= 0
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-red-600 dark:text-red-400'
+                    gainLossColor(tx.amount)
                   }
                 >
                   {formatCurrency(tx.amount)}
@@ -193,7 +191,7 @@ export function CashFlowForecastChart({
           </h3>
         </div>
         <div className="h-72 flex items-center justify-center">
-          <div className="animate-pulse w-full h-full bg-gray-200 dark:bg-gray-700 rounded" />
+          <Skeleton className="w-full h-full" />
         </div>
       </div>
     );
@@ -394,9 +392,7 @@ export function CashFlowForecastChart({
             <div className="text-sm text-gray-500 dark:text-gray-400">Ending</div>
             <div
               className={`font-semibold ${
-                summary.endingBalance >= 0
-                  ? 'text-green-600 dark:text-green-400'
-                  : 'text-red-600 dark:text-red-400'
+                gainLossColor(summary.endingBalance)
               }`}
             >
               {formatCurrency(summary.endingBalance)}

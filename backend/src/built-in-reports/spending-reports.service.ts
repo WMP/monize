@@ -10,7 +10,7 @@ import {
   RawPayeeAggregate,
   RawMonthlyCategoryAggregate,
 } from "./report-currency.service";
-import { roundMoney, sumMoney } from "../common/round.util";
+import { roundMoney, sumMoney, toMoneyNumber } from "../common/round.util";
 import {
   SpendingByCategoryResponse,
   CategorySpendingItem,
@@ -91,7 +91,7 @@ export class SpendingReportsService {
 
     for (const row of rawResults) {
       const total = this.currencyService.convertAmount(
-        parseFloat(row.total) || 0,
+        toMoneyNumber(row.total),
         row.currency_code,
         defaultCurrency,
         rateMap,
@@ -231,7 +231,7 @@ export class SpendingReportsService {
     >();
     for (const row of rawResults) {
       const total = this.currencyService.convertAmount(
-        parseFloat(row.total) || 0,
+        toMoneyNumber(row.total),
         row.currency_code,
         defaultCurrency,
         rateMap,
@@ -329,7 +329,7 @@ export class SpendingReportsService {
     for (const row of rawResults) {
       const month = row.month;
       const total = this.currencyService.convertAmount(
-        parseFloat(row.total) || 0,
+        toMoneyNumber(row.total),
         row.currency_code,
         defaultCurrency,
         rateMap,

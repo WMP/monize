@@ -3,6 +3,7 @@ import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { LessThan, IsNull, Repository } from "typeorm";
 import { ConfigService } from "@nestjs/config";
+import { getMonthEndYMD } from "../common/date-utils";
 import { Budget } from "./entities/budget.entity";
 import {
   BudgetAlert,
@@ -795,7 +796,10 @@ export class BudgetAlertService {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 12);
     const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-01`;
-    const endStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0).getDate()).padStart(2, "0")}`;
+    const endStr = getMonthEndYMD(
+      endDate.getFullYear(),
+      endDate.getMonth() + 1,
+    );
 
     const directSpending = await this.transactionsRepository
       .createQueryBuilder("t")

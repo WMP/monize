@@ -4,7 +4,7 @@ import { Repository } from "typeorm";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { Category } from "../categories/entities/category.entity";
 import { ReportCurrencyService } from "./report-currency.service";
-import { roundMoney, sumMoney } from "../common/round.util";
+import { roundMoney, sumMoney, toMoneyNumber } from "../common/round.util";
 import {
   YearOverYearResponse,
   YearData,
@@ -88,13 +88,13 @@ export class ComparisonReportsService {
       if (yearData) {
         const monthData = yearData.months[row.month - 1];
         const income = this.currencyService.convertAmount(
-          parseFloat(row.income) || 0,
+          toMoneyNumber(row.income),
           row.currency_code,
           defaultCurrency,
           rateMap,
         );
         const expenses = this.currencyService.convertAmount(
-          parseFloat(row.expenses) || 0,
+          toMoneyNumber(row.expenses),
           row.currency_code,
           defaultCurrency,
           rateMap,
@@ -188,7 +188,7 @@ export class ComparisonReportsService {
 
     rawResults.forEach((row) => {
       const total = this.currencyService.convertAmount(
-        parseFloat(row.total) || 0,
+        toMoneyNumber(row.total),
         row.currency_code,
         defaultCurrency,
         rateMap,

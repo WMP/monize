@@ -1,4 +1,35 @@
-import { roundToDecimals, roundMoney, sumMoney } from "./round.util";
+import {
+  roundToDecimals,
+  roundMoney,
+  sumMoney,
+  toMoneyNumber,
+} from "./round.util";
+
+describe("toMoneyNumber", () => {
+  it("parses a decimal SQL string to a number", () => {
+    expect(toMoneyNumber("12.3400")).toBe(12.34);
+  });
+
+  it("maps null/undefined/empty to 0", () => {
+    expect(toMoneyNumber(null)).toBe(0);
+    expect(toMoneyNumber(undefined)).toBe(0);
+    expect(toMoneyNumber("")).toBe(0);
+  });
+
+  it("maps non-numeric garbage to 0 (unlike parseFloat)", () => {
+    expect(toMoneyNumber("abc")).toBe(0);
+    // parseFloat("12.34abc") would be 12.34; Number() rejects it -> 0
+    expect(toMoneyNumber("12.34abc")).toBe(0);
+  });
+
+  it("rounds to 4dp money precision", () => {
+    expect(toMoneyNumber(1.234567)).toBe(1.2346);
+  });
+
+  it("passes through plain numbers", () => {
+    expect(toMoneyNumber(42)).toBe(42);
+  });
+});
 
 describe("roundToDecimals", () => {
   describe("basic rounding", () => {
