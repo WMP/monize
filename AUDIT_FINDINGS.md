@@ -29,13 +29,27 @@ real wins cluster in a few hot paths plus "a helper exists but people reinvent i
 
 ## P1 — High-impact performance (hot paths, largest table)
 
-- [ ] **3. Transaction register paginates in memory.** `findAll()` joins to-many relations
+- [x] **3. Transaction register paginates in memory.** `findAll()` joins to-many relations
   (tags, splits, linkedSplits) then `.skip/.take` — TypeORM cannot push LIMIT to SQL with
   collection joins, so it fetches the whole row-explosion per user and paginates in JS. The
   hottest read path. Fix: two-phase (lean ID page, then `whereIn(ids)` hydrate) or
   `relationLoadStrategy:'query'`. `transactions.service.ts:297-420`
+  INVESTIGATED - PREMISE CORRECTED, NO CHANGE MADE. The query uses `.skip()/.take()`
+  (entity pagination), not `.limit()/.offset()`. For TypeORM 0.3.27, `getManyAndCount()`
+  with `.skip()/.take()` AND joined to-many collections triggers the distinct-primary-key
+  subquery strategy: TypeORM selects the page of distinct `transaction.id`s with LIMIT/OFFSET
+  pushed to SQL, then hydrates only that page's relations. So it does NOT paginate the full
+  row-explosion in JS. `relationLoadStrategy:'query'` does not apply here because the
+  relations are loaded via explicit `leftJoinAndSelect`, not find-options `relations`.
+  Residual (real but lower-impact): the distinct-id subquery and the `COUNT(DISTINCT)` still
+  materialize the join before deduping. Optimizing that into a hand-rolled lean two-phase
+  query is worthwhile only with profiling against production-scale data and e2e coverage,
+  since it reimplements TypeORM's own pagination and risks ordering/dedup regressions on the
+  busiest endpoint. Deferred to a profiling-backed change.
 - [ ] **4. Custom reports load up to 50,000 transactions and group/sum in Node.** Push
   `GROUP BY`/`SUM` into Postgres. `reports.service.ts:421-424`, aggregation `602-867`
+  DEFERRED (per audit decision): large, correctness-sensitive rewrite (splits,
+  multi-dimension grouping, currency). Tackle with profiling against a real DB.
 - [x] **5. Unbounded `Promise.all` over Yahoo on a live portfolio-chart request** — N holdings
   = N concurrent external calls in user latency. Bounded concurrency + 60s intraday cache.
   `portfolio.service.ts:924-941, 1066-1080`
@@ -49,9 +63,15 @@ real wins cluster in a few hot paths plus "a helper exists but people reinvent i
 - [ ] **7. No quote/price caching or in-flight dedup** for Yahoo/MSN/FX. Two users holding
   AAPL = two fetches; chart reloads refetch identical series. Short-TTL quote cache +
   in-flight promise map. `yahoo-finance.service.ts`, `currencies.service.ts:344,476`
+  DEFERRED (not selected this pass): worthwhile but needs careful TTL/invalidation design and
+  staleness testing. The fan-out is now at least concurrency-bounded (see #5/#6).
 - [ ] **8. `AccountList` renders every account, no virtualization/pagination**, heavy per-row
   SVG rows re-render on any sort/filter/density change. Virtualize or paginate.
   `AccountList.tsx:678-752`
+  DEFERRED (per audit decision): frontend react-window work needing visual verification;
+  handle in a dedicated frontend pass.
+  DEFERRED (per audit decision): frontend react-window work needing visual verification;
+  handle in a dedicated frontend pass.
 
 **Recurring root cause for #5/#6:** no shared bounded-concurrency util in `common/` — every
 fetch site reinvents naive `Promise.all` or a hand-rolled `setTimeout(500)` loop (duplicated
