@@ -15,25 +15,39 @@ real wins cluster in a few hot paths plus "a helper exists but people reinvent i
 
 ## P0 — Correctness-adjacent (fix first)
 
-- [ ] **1. `updateStatus` mutates account balance + transactions across 4 writes with no
+- [x] **1. `updateStatus` mutates account balance + transactions across 4 writes with no
   QueryRunner.** A mid-operation failure desyncs balance vs status. `updateBalance` already
   accepts an optional `queryRunner`. `markCleared`/`reconcile`/`unreconcile` route through it.
   `transactions/transaction-reconciliation.service.ts:22-73`
-- [ ] **2. Two divergent net-worth computations.** MCP `get_net_worth` -> `getSummary` sums
+  DONE: the status change + balance adjustment are wrapped in a single QueryRunner that
+  commits atomically (rolls back on failure); added rollback-contract tests.
+- [x] **2. Two divergent net-worth computations.** MCP `get_net_worth` -> `getSummary` sums
   raw `currentBalance` with a hardcoded asset/liability list, ignoring market value + future
   sums; `get_account_balances` -> `getLlmBalances` uses market value. Same user, two different
   net-worth numbers from the AI. Consolidate valuation + asset/liability classification.
   `accounts.service.ts:866-908` vs `:921+`, `net-worth.service.ts:80-170`
+  DONE: `getSummary` now derives assets/liabilities/netWorth from the canonical
+  `getMonthlyNetWorth` (same source as the dashboard widget and `get_account_balances`);
+  `totalBalance` stays the raw book-balance sum. The frontend does not consume this endpoint,
+  so no UI impact.
 
 ---
 
 ## P1 — High-impact performance (hot paths, largest table)
 
-- [ ] **3. Transaction register paginates in memory.** `findAll()` joins to-many relations
+- [x] **3. Transaction register paginates in memory.** `findAll()` joins to-many relations
   (tags, splits, linkedSplits) then `.skip/.take` — TypeORM cannot push LIMIT to SQL with
   collection joins, so it fetches the whole row-explosion per user and paginates in JS. The
   hottest read path. Fix: two-phase (lean ID page, then `whereIn(ids)` hydrate) or
   `relationLoadStrategy:'query'`. `transactions.service.ts:297-420`
+  INVESTIGATED - PREMISE CORRECTED, NO CODE CHANGE. The query uses `.skip()/.take()`, and
+  TypeORM 0.3.28 (verified in node_modules SelectQueryBuilder.executeEntitiesAndRawResults,
+  the `(skip||take) && joinAttributes.length>0` branch) paginates it via a distinct-primary-
+  key subquery with LIMIT/OFFSET pushed to SQL, then hydrates only that page; count uses
+  COUNT(DISTINCT pk). So it does NOT paginate the row-explosion in JS. `relationLoadStrategy`
+  does not apply to explicit `leftJoinAndSelect`. Residual cost (join materialized before the
+  distinct/count) is real but optimizing it reimplements TypeORM's pagination; deferred to a
+  profiling-backed change with e2e coverage.
 - [ ] **4. Custom reports load up to 50,000 transactions and group/sum in Node.** Push
   `GROUP BY`/`SUM` into Postgres. `reports.service.ts:421-424`, aggregation `602-867`
   DEFERRED (per audit decision): large, correctness-sensitive rewrite (splits, multi-dimension
