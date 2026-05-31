@@ -1566,9 +1566,7 @@ export class TransactionsService {
         ...new Set(
           allSplits
             .map((s) => s.linkedTransactionId)
-            .filter(
-              (id): id is string => !!id && id !== linkedTransactionId,
-            ),
+            .filter((id): id is string => !!id && id !== linkedTransactionId),
         ),
       ];
 

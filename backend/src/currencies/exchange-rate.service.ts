@@ -277,33 +277,37 @@ export class ExchangeRateService implements OnModuleInit {
     today.setHours(0, 0, 0, 0);
 
     // Fetch rates with bounded concurrency
-    await mapWithConcurrency(pairs, FX_FETCH_CONCURRENCY, async ({ from, to }) => {
-      const pairLabel = `${from}/${to}`;
-      const rate = await this.fetchYahooRate(from, to);
+    await mapWithConcurrency(
+      pairs,
+      FX_FETCH_CONCURRENCY,
+      async ({ from, to }) => {
+        const pairLabel = `${from}/${to}`;
+        const rate = await this.fetchYahooRate(from, to);
 
-      if (rate === null) {
-        results.push({
-          pair: pairLabel,
-          success: false,
-          error: "No rate data available",
-        });
-        failed++;
-        return;
-      }
+        if (rate === null) {
+          results.push({
+            pair: pairLabel,
+            success: false,
+            error: "No rate data available",
+          });
+          failed++;
+          return;
+        }
 
-      try {
-        await this.saveRate(from, to, rate, today);
-        results.push({ pair: pairLabel, success: true, rate });
-        updated++;
-      } catch (error) {
-        results.push({
-          pair: pairLabel,
-          success: false,
-          error: error.message,
-        });
-        failed++;
-      }
-    });
+        try {
+          await this.saveRate(from, to, rate, today);
+          results.push({ pair: pairLabel, success: true, rate });
+          updated++;
+        } catch (error) {
+          results.push({
+            pair: pairLabel,
+            success: false,
+            error: error.message,
+          });
+          failed++;
+        }
+      },
+    );
 
     const duration = Date.now() - startTime;
     this.logger.log(
