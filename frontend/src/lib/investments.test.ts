@@ -365,4 +365,36 @@ describe('investmentsApi', () => {
     await investmentsApi.getAssetAllocation([]);
     expect(apiClient.get).toHaveBeenCalledWith('/portfolio/allocation', { params: undefined });
   });
+
+  it('transferSecurity posts both legs and invalidates the cache', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { transferOut: { id: 'out' }, transferIn: { id: 'in' } },
+    });
+    const data = {
+      fromAccountId: 'a1',
+      toAccountId: 'a2',
+      securityId: 's1',
+      transactionDate: '2025-01-01',
+      quantity: 10,
+      costPerShare: 5,
+    };
+    const result = await investmentsApi.transferSecurity(data);
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/investment-transactions/transfer-security',
+      data,
+    );
+    expect(result).toEqual({
+      transferOut: { id: 'out' },
+      transferIn: { id: 'in' },
+    });
+  });
+
+  it('getSecurityTransactionHistory fetches the security history', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { transactions: [] } });
+    const result = await investmentsApi.getSecurityTransactionHistory('s1');
+    expect(apiClient.get).toHaveBeenCalledWith(
+      '/investment-transactions/security/s1/history',
+    );
+    expect(result).toEqual({ transactions: [] });
+  });
 });

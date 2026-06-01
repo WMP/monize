@@ -1449,5 +1449,182 @@ describe('PostTransactionDialog', () => {
       // Override qty 3 * price 100 = -300 → 5000 - 300 = 4700
       expect(screen.getByText('$4700.00')).toBeInTheDocument();
     });
+
+    it('rejects post when quantity is empty for a qty+price action', async () => {
+      const emptyQtyTx = {
+        ...investmentTransaction,
+        investmentQuantity: null,
+        investmentPrice: null,
+      };
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={emptyQtyTx}
+        />,
+      );
+      const buttons = screen.getAllByText('Post Transaction');
+      fireEvent.click(buttons[buttons.length - 1]);
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('Quantity must be greater than zero');
+      });
+      expect(mockPostApi).not.toHaveBeenCalled();
+    });
+
+    it('rejects post when price is empty for a qty+price action', async () => {
+      const noPriceTx = {
+        ...investmentTransaction,
+        investmentPrice: null,
+      };
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={noPriceTx}
+        />,
+      );
+      // qty is 10 (valid), but price is empty -> price validation fails
+      const buttons = screen.getAllByText('Post Transaction');
+      fireEvent.click(buttons[buttons.length - 1]);
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('Price must be greater than zero');
+      });
+      expect(mockPostApi).not.toHaveBeenCalled();
+    });
+
+    it('rejects post when total amount is empty for an amount-only action', async () => {
+      const dividendNoTotal = {
+        ...investmentTransaction,
+        investmentAction: 'DIVIDEND',
+        investmentQuantity: null,
+        investmentPrice: null,
+        investmentTotalAmount: null,
+      };
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={dividendNoTotal}
+        />,
+      );
+      const buttons = screen.getAllByText('Post Transaction');
+      fireEvent.click(buttons[buttons.length - 1]);
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('Total amount is required');
+      });
+      expect(mockPostApi).not.toHaveBeenCalled();
+    });
+
+    it('renders Quantity field for a quantity-only action (ADD_SHARES)', () => {
+      const addSharesTx = {
+        ...investmentTransaction,
+        investmentAction: 'ADD_SHARES',
+        investmentQuantity: 5,
+        investmentPrice: null,
+      };
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={addSharesTx}
+        />,
+      );
+      expect(screen.getByLabelText('Quantity (shares)')).toBeInTheDocument();
+      // No price/total inputs for quantity-only actions
+      expect(screen.queryByLabelText('Price per share')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Total Price')).not.toBeInTheDocument();
+    });
+
+    it('edits quantity directly for a quantity-only action and posts it', async () => {
+      const addSharesTx = {
+        ...investmentTransaction,
+        investmentAction: 'ADD_SHARES',
+        investmentQuantity: 5,
+        investmentPrice: null,
+      };
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={addSharesTx}
+        />,
+      );
+      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      fireEvent.change(qtyInput, { target: { value: '8' } });
+      expect(Number(qtyInput.value)).toBe(8);
+
+      const buttons = screen.getAllByText('Post Transaction');
+      fireEvent.click(buttons[buttons.length - 1]);
+      await waitFor(() => {
+        expect(mockPostApi).toHaveBeenCalledWith('inv1', expect.objectContaining({
+          investmentQuantity: 8,
+        }));
+      });
+    });
+
+    it('clears quantity to empty for quantity-only action', () => {
+      const addSharesTx = {
+        ...investmentTransaction,
+        investmentAction: 'ADD_SHARES',
+        investmentQuantity: 5,
+        investmentPrice: null,
+      };
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={addSharesTx}
+        />,
+      );
+      const qtyInput = screen.getByLabelText('Quantity (shares)') as HTMLInputElement;
+      fireEvent.change(qtyInput, { target: { value: '' } });
+      expect(qtyInput.value).toBe('');
+    });
+
+    it('shows manual-price hint when security has no price history', async () => {
+      mockGetSecurityPrices.mockResolvedValue([]);
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={investmentTransaction}
+        />,
+      );
+      await waitFor(() => {
+        expect(
+          screen.getByText(/No price history yet for this security/),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('handles a getSecurityPrices rejection without crashing', async () => {
+      mockGetSecurityPrices.mockRejectedValueOnce(new Error('network'));
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={investmentTransaction}
+        />,
+      );
+      await act(async () => {});
+      await waitFor(() => {
+        expect(screen.getByLabelText('Price per share')).toBeInTheDocument();
+      });
+    });
+
+    it('posts an amount-only DIVIDEND with the total amount', async () => {
+      const dividendTx = {
+        ...investmentTransaction,
+        investmentAction: 'DIVIDEND',
+        investmentQuantity: null,
+        investmentPrice: null,
+        investmentTotalAmount: 75,
+      };
+      render(
+        <PostTransactionDialog
+          {...defaultProps}
+          scheduledTransaction={dividendTx}
+        />,
+      );
+      const buttons = screen.getAllByText('Post Transaction');
+      fireEvent.click(buttons[buttons.length - 1]);
+      await waitFor(() => {
+        expect(mockPostApi).toHaveBeenCalledWith('inv1', expect.objectContaining({
+          investmentTotalAmount: 75,
+        }));
+      });
+    });
   });
 });

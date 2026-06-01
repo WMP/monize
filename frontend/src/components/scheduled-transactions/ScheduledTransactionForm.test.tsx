@@ -2368,3 +2368,251 @@ describe('ScheduledTransactionForm', () => {
     });
   });
 });
+
+describe('ScheduledTransactionForm - extra coverage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAccountsGetAll.mockResolvedValue(mockAccounts);
+    mockCategoriesGetAll.mockResolvedValue(mockCategories);
+    mockPayeesGetAll.mockResolvedValue(mockPayees);
+    mockPayeesGetById.mockResolvedValue({ id: 'inactive-payee', name: 'Inactive Payee' });
+    mockPayeesCreate.mockResolvedValue({ id: 'new-payee', name: 'New Co' });
+    mockTagsCreate.mockResolvedValue({ id: 'new-tag', name: 'New Tag' });
+    mockCreate.mockResolvedValue({});
+    mockUpdate.mockResolvedValue({});
+    mockGetSecurities.mockResolvedValue(mockSecurities);
+    mockGetSecurityPrices.mockResolvedValue([
+      { id: 1, securityId: 'sec-voo', priceDate: '2026-05-09', closePrice: 500, openPrice: 499, highPrice: 501, lowPrice: 498, volume: 1000, source: 'manual', createdAt: '' },
+    ]);
+  });
+
+  async function renderForm(props: Record<string, unknown> = {}) {
+    let result: ReturnType<typeof render>;
+    await act(async () => {
+      result = render(<ScheduledTransactionForm {...props} />);
+    });
+    await act(async () => {}); // flush mount data loads
+    return result!;
+  }
+
+  async function openInvestment() {
+    await act(async () => { fireEvent.click(screen.getByText('Investment')); });
+    await act(async () => {}); // flush lazy securities load
+    await waitFor(() => expect(screen.getByLabelText('Action')).toBeInTheDocument());
+  }
+
+  function submit(container: HTMLElement) {
+    const btn = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+    fireEvent.click(btn);
+  }
+
+  it('seeds the split editor when switching to the Split tab', async () => {
+    await renderForm();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'acc-1' } });
+    });
+    await act(async () => { fireEvent.click(screen.getByText('Split')); });
+    expect(screen.getByTestId('split-editor')).toBeInTheDocument();
+    expect(screen.getByText('Cancel Split')).toBeInTheDocument();
+  });
+
+  it('cancels the split and returns to the transaction tab', async () => {
+    await renderForm();
+    await act(async () => { fireEvent.click(screen.getByText('Split')); });
+    expect(screen.getByText('Cancel Split')).toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByText('Cancel Split')); });
+    expect(screen.queryByText('Cancel Split')).not.toBeInTheDocument();
+  });
+
+  it('shows From/To account selects on the Transfer tab', async () => {
+    await renderForm();
+    await act(async () => { fireEvent.click(screen.getByText('Transfer')); });
+    expect(screen.getByLabelText('From Account')).toBeInTheDocument();
+    expect(screen.getByLabelText('To Account')).toBeInTheDocument();
+  });
+
+  it('shows only the quantity field for an ADD_SHARES investment action', async () => {
+    await renderForm();
+    await openInvestment();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Action'), { target: { value: 'ADD_SHARES' } });
+    });
+    expect(screen.getByLabelText('Quantity (shares)')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Funding Account (optional)')).not.toBeInTheDocument();
+  });
+
+  it('recomputes total value from quantity in investment BUY mode', async () => {
+    await renderForm();
+    await openInvestment();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Security'), { target: { value: 'sec-voo' } });
+    });
+    await act(async () => {}); // market price arrives
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Price per share'), { target: { value: '10' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Quantity (shares)'), { target: { value: '5' } });
+    });
+    const total = screen.getByLabelText('Total Value') as HTMLInputElement;
+    await waitFor(() =>
+      expect(Number(total.value.replace(/,/g, ''))).toBeGreaterThan(0),
+    );
+  });
+
+  it('blocks a transfer when no destination account is chosen', async () => {
+    const { container } = await renderForm();
+    await act(async () => { fireEvent.click(screen.getByText('Transfer')); });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Move money' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('From Account'), { target: { value: 'acc-1' } });
+    });
+    await act(async () => { submit(container); });
+    await act(async () => {});
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith(
+      'Please select a destination account for the transfer',
+    );
+  });
+
+  it('creates a transfer scheduled transaction with a negative amount', async () => {
+    const onSuccess = vi.fn();
+    const { container } = await renderForm({ onSuccess });
+    await act(async () => { fireEvent.click(screen.getByText('Transfer')); });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'CC Payment' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('From Account'), { target: { value: 'acc-1' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('To Account'), { target: { value: 'acc-2' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Transfer Amount'), { target: { value: '100' } });
+    });
+    await act(async () => { submit(container); });
+    await act(async () => {});
+    await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+    const payload = mockCreate.mock.calls[0][0];
+    expect(payload.isTransfer).toBe(true);
+    expect(payload.transferAccountId).toBe('acc-2');
+    expect(payload.amount).toBeLessThan(0);
+    expect(onSuccess).toHaveBeenCalled();
+  });
+
+  it('renders the SplitEditor when in split mode after selecting a category', async () => {
+    await renderForm();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'acc-1' } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('option-cat-1'));
+    });
+    await act(async () => { fireEvent.click(screen.getByText('Split')); });
+    expect(screen.getByTestId('split-editor')).toBeInTheDocument();
+  });
+
+  it('creates a new payee from the payee combobox', async () => {
+    await renderForm();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('combobox-create-Payee'));
+    });
+    await waitFor(() => expect(mockPayeesCreate).toHaveBeenCalledWith({ name: 'New Item' }));
+  });
+
+  it('fetches an inactive payee when editing a scheduled transaction', async () => {
+    const sched = {
+      id: 'sched-x', accountId: 'acc-1', name: 'Old bill', amount: -50, currencyCode: 'CAD',
+      frequency: 'MONTHLY', nextDueDate: '2025-03-01', isActive: true, autoPost: false,
+      reminderDaysBefore: 3, isTransfer: false, isSplit: false, isInvestment: false,
+      payeeId: 'payee-x', payeeName: 'Archived Payee',
+    } as any;
+    await renderForm({ scheduledTransaction: sched });
+    await waitFor(() => expect(mockPayeesGetById).toHaveBeenCalledWith('payee-x'));
+  });
+
+  it('reveals the End Date input when toggling End-by-date on', async () => {
+    await renderForm();
+    expect(screen.getByLabelText('End by date')).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('End by date'));
+    });
+    await waitFor(() => expect(screen.getByLabelText('End Date')).toBeInTheDocument());
+  });
+
+  it('toggles the Active and Auto-post switches', async () => {
+    await renderForm();
+    const active = screen.getByLabelText('Active');
+    const autoPost = screen.getByLabelText('Auto-post on due date');
+    await act(async () => { fireEvent.click(active); });
+    await act(async () => { fireEvent.click(autoPost); });
+    expect(active).toBeInTheDocument();
+    expect(autoPost).toBeInTheDocument();
+  });
+
+  it('blocks an investment submit when the action requires a security', async () => {
+    const { container } = await renderForm();
+    await openInvestment();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'DCA VOO' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Investment Account'), { target: { value: 'acc-4' } });
+    });
+    await act(async () => { submit(container); });
+    await act(async () => {});
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith('This investment action requires a security');
+  });
+
+  it('creates a scheduled investment BUY transaction', async () => {
+    const onSuccess = vi.fn();
+    const { container } = await renderForm({ onSuccess });
+    await openInvestment();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'DCA VOO' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Investment Account'), { target: { value: 'acc-4' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Security'), { target: { value: 'sec-voo' } });
+    });
+    await act(async () => {});
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Price per share'), { target: { value: '10' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Quantity (shares)'), { target: { value: '5' } });
+    });
+    await act(async () => { submit(container); });
+    await act(async () => {});
+    await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+    const payload = mockCreate.mock.calls[0][0];
+    expect(payload.isInvestment).toBe(true);
+    expect(payload.investmentAction).toBe('BUY');
+    expect(payload.investmentSecurityId).toBe('sec-voo');
+    expect(onSuccess).toHaveBeenCalled();
+  });
+
+  it('flips the amount sign when an expense category is chosen', async () => {
+    await renderForm();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'acc-1' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } });
+    });
+    // Choose the expense category "Rent" (cat-1) from the mocked combobox option.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('option-cat-1'));
+    });
+    const amount = screen.getByLabelText('Amount') as HTMLInputElement;
+    await waitFor(() =>
+      expect(Number(amount.value.replace(/,/g, ''))).toBeLessThan(0),
+    );
+  });
+});

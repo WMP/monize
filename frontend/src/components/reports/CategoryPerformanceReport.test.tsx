@@ -239,7 +239,7 @@ describe('CategoryPerformanceReport', () => {
 
   it('handles category trend load failure gracefully', async () => {
     mockGetAll.mockResolvedValue([makeBudget()]);
-    mockGetCategoryTrend.mockRejectedValue(new Error('nope'));
+    mockGetCategoryTrend.mockRejectedValueOnce(new Error('nope'));
     await renderReport();
     await waitFor(() => {
       expect(screen.getByText(/Failed to load report data/)).toBeInTheDocument();

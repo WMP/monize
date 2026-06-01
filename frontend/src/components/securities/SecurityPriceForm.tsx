@@ -61,7 +61,16 @@ export function SecurityPriceForm({ price, onSubmit, onCancel, onDirtyChange, su
       ...(data.lowPrice && { lowPrice: Number(data.lowPrice) }),
       ...(data.volume && { volume: Number(data.volume) }),
     };
-    await onSubmit(cleanedData);
+    // onSubmit may re-throw after surfacing its own error toast (so the parent
+    // keeps the form open). Swallow it here: react-hook-form's handleSubmit
+    // would otherwise reject, producing an unhandled promise rejection. The
+    // failure is already handled (toast) and the form stays open because the
+    // parent does not clear its open state on error.
+    try {
+      await onSubmit(cleanedData);
+    } catch {
+      // handled upstream via toast; nothing to do here
+    }
   };
 
   useFormDirtyNotify(isDirty, onDirtyChange);

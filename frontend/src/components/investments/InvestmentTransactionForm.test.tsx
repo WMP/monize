@@ -1609,3 +1609,194 @@ describe('InvestmentTransactionForm', () => {
     });
   });
 });
+
+describe('InvestmentTransactionForm - extra coverage', () => {
+  const brokerageAccount = {
+    id: 'a1', name: 'RRSP Brokerage', accountType: 'INVESTMENT',
+    accountSubType: 'INVESTMENT_BROKERAGE', currencyCode: 'CAD',
+  } as any;
+  const brokerageB = {
+    id: 'b1', name: 'TFSA Brokerage', accountType: 'INVESTMENT',
+    accountSubType: 'INVESTMENT_BROKERAGE', currencyCode: 'CAD',
+  } as any;
+  const chequingAccount = {
+    id: 'a2', name: 'Main Chequing', accountType: 'CHEQUING',
+    accountSubType: null, currencyCode: 'CAD',
+  } as any;
+  const accounts = [brokerageAccount, brokerageB, chequingAccount];
+
+  const sourceHoldings = [
+    {
+      id: 'h1', accountId: 'a1', securityId: 'sec-1', quantity: 100, averageCost: 1.67,
+      security: { id: 'sec-1', symbol: 'AAPL', name: 'Apple Inc.', currencyCode: 'USD' },
+    },
+  ] as any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getMarketRateMock.mockReset();
+    getMarketRateMock.mockReturnValue(null);
+    vi.mocked(investmentsApi.getHoldings).mockResolvedValue(sourceHoldings);
+    vi.mocked(investmentsApi.getSecurities).mockResolvedValue([
+      { id: 'sec-1', symbol: 'AAPL', name: 'Apple Inc.', securityType: 'STOCK', currencyCode: 'USD' } as any,
+    ]);
+  });
+
+  it('blocks a transfer with zero quantity', async () => {
+    render(<InvestmentTransactionForm accounts={accounts} />);
+    await waitFor(() => expect(screen.getByText('Brokerage Account')).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Transaction Type'), { target: { value: 'TRANSFER' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('From Account'), { target: { value: 'a1' } });
+    });
+    await waitFor(() => expect(investmentsApi.getHoldings).toHaveBeenCalledWith('a1'));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('To Account'), { target: { value: 'b1' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Security'), { target: { value: 'sec-1' } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Transfer Securities'));
+    });
+    await act(async () => {});
+    expect(investmentsApi.transferSecurity).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith('Quantity must be greater than zero');
+  });
+
+  it('blocks a transfer that exceeds the available quantity', async () => {
+    render(<InvestmentTransactionForm accounts={accounts} />);
+    await waitFor(() => expect(screen.getByText('Brokerage Account')).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Transaction Type'), { target: { value: 'TRANSFER' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('From Account'), { target: { value: 'a1' } });
+    });
+    await waitFor(() => expect(investmentsApi.getHoldings).toHaveBeenCalledWith('a1'));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('To Account'), { target: { value: 'b1' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Security'), { target: { value: 'sec-1' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Quantity (Shares)'), { target: { value: '999' } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Transfer Securities'));
+    });
+    await act(async () => {});
+    expect(investmentsApi.transferSecurity).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith('Only 100 shares available to transfer');
+  });
+
+  it('rejects a SPLIT with a non-positive ratio', async () => {
+    render(<InvestmentTransactionForm accounts={accounts} />);
+    await waitFor(() => expect(screen.getByText('Brokerage Account')).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Brokerage Account'), { target: { value: 'a1' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Transaction Type'), { target: { value: 'SPLIT' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Security'), { target: { value: 'sec-1' } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Create Transaction'));
+    });
+    await act(async () => {});
+    expect(investmentsApi.createTransaction).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith('Split ratio must be greater than zero');
+  });
+
+  it('shows the split holding preview when shares are held at the split date', async () => {
+    vi.mocked(investmentsApi.getHoldingAt).mockResolvedValue({ quantity: 100, averageCost: 50 });
+    const splitTx = {
+      id: 'tx-split', accountId: 'a1', action: 'SPLIT' as const, transactionDate: '2026-01-15',
+      securityId: 'sec-1',
+      security: { id: 'sec-1', symbol: 'AAPL', name: 'Apple Inc.', securityType: 'STOCK', currencyCode: 'USD' } as any,
+      quantity: 2, price: 0, commission: 0, totalAmount: 0, description: '',
+    } as any;
+    await act(async () => {
+      render(<InvestmentTransactionForm accounts={accounts} transaction={splitTx} />);
+    });
+    await waitFor(() => expect(screen.getByText(/Holding preview/i)).toBeInTheDocument());
+    // 100 @ $50 -> 200 @ $25 after a 2-for-1 split.
+    expect(screen.getByText(/200\.0000/)).toBeInTheDocument();
+  });
+
+  it('submits an edited transfer leg via the source (OUT) leg', async () => {
+    const linkedLeg = {
+      id: 'leg-in', accountId: 'b1', action: 'TRANSFER_IN', transactionDate: '2026-01-10',
+      securityId: 'sec-1', quantity: 10, price: 1.67, linkedTransactionId: 'leg-out',
+    } as any;
+    vi.mocked(investmentsApi.getTransaction).mockResolvedValue(linkedLeg);
+    const outLeg = {
+      id: 'leg-out', accountId: 'a1', action: 'TRANSFER_OUT' as const, transactionDate: '2026-01-10',
+      securityId: 'sec-1',
+      security: { id: 'sec-1', symbol: 'AAPL', name: 'Apple Inc.', securityType: 'STOCK', currencyCode: 'USD' } as any,
+      quantity: 10, price: 1.67, commission: 0, totalAmount: 0, description: '',
+      linkedTransactionId: 'leg-in',
+    } as any;
+    await act(async () => {
+      render(<InvestmentTransactionForm accounts={accounts} transaction={outLeg} />);
+    });
+    await waitFor(() => expect(screen.getByText('Update Transaction')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText('To Account')).toHaveValue('b1'));
+    // Re-assert the source/security/quantity explicitly so the submit payload
+    // is deterministic regardless of async resync timing.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Security'), { target: { value: 'sec-1' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Quantity (Shares)'), { target: { value: '5' } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Update Transaction'));
+    });
+    await act(async () => {});
+    await waitFor(() => expect(investmentsApi.updateTransaction).toHaveBeenCalled());
+    const [id, payload] = vi.mocked(investmentsApi.updateTransaction).mock.calls[0];
+    expect(id).toBe('leg-out');
+    expect(payload).toMatchObject({ accountId: 'a1', destinationAccountId: 'b1', quantity: 5 });
+  });
+
+  it('derives a converted total back into the exchange rate for a cross-currency BUY', async () => {
+    const usdSecurity = {
+      id: 'sec-usd', symbol: 'MSFT', name: 'Microsoft', securityType: 'STOCK', currencyCode: 'USD',
+    };
+    vi.mocked(investmentsApi.getSecurities).mockResolvedValue([usdSecurity as any]);
+    const cadBrokerage = {
+      id: 'a-cad', name: 'CAD Broker', accountType: 'INVESTMENT',
+      accountSubType: 'INVESTMENT_BROKERAGE', currencyCode: 'CAD', linkedAccountId: null,
+    } as any;
+    getMarketRateMock.mockReturnValue(1.35);
+
+    render(<InvestmentTransactionForm accounts={[cadBrokerage]} />);
+    await waitFor(() => expect(screen.getByText('Brokerage Account')).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Brokerage Account'), { target: { value: 'a-cad' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Security'), { target: { value: 'sec-usd' } });
+    });
+    // The conversion section appears once the USD security is selected.
+    await waitFor(() => expect(screen.getByLabelText(/Exchange rate/i)).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Quantity (Shares)'), { target: { value: '10' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(/Price per Share/i), { target: { value: '5' } });
+    });
+    // Editing the converted total back-derives the exchange rate.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(/Converted total/i), { target: { value: '100' } });
+    });
+    const rate = screen.getByLabelText(/Exchange rate/i) as HTMLInputElement;
+    await waitFor(() => expect(Number(rate.value)).toBeGreaterThan(0));
+  });
+});

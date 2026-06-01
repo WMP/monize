@@ -220,7 +220,7 @@ describe('useImportWizard - initial load', () => {
   });
 
   it('handles getColumnMappings rejection without breaking load', async () => {
-    mockGetColumnMappings.mockRejectedValue(new Error('nope'));
+    mockGetColumnMappings.mockRejectedValueOnce(new Error('nope'));
     const { result } = renderHook(() => useImportWizard());
     await waitFor(() => {
       expect(result.current.savedColumnMappings).toEqual([]);
@@ -966,6 +966,25 @@ describe('useImportWizard - import handlers', () => {
     expect(result.current.importResult?.imported).toBe(5);
   });
 
+  it('imports a single QIF file that completes with errors', async () => {
+    mockGetAllAccounts.mockResolvedValue([baseAccount()]);
+    mockParseQif.mockResolvedValue(baseParsedQif({ categories: [] }));
+    mockImportQif.mockResolvedValue(importResult({ imported: 3, errors: 2 }));
+
+    const { result } = renderHook(() => useImportWizard());
+    await waitFor(() => expect(result.current.accounts).toHaveLength(1));
+
+    await act(async () => {
+      await result.current.handleFileSelect(fileEvent([makeFile('a.qif', 'x')]));
+    });
+    act(() => result.current.setSelectedAccountId('acc-1'));
+    await act(async () => {
+      await result.current.handleImport();
+    });
+    expect(result.current.step).toBe('complete');
+    expect(result.current.importResult?.errors).toBe(2);
+  });
+
   it('imports CSV successfully', async () => {
     mockGetAllAccounts.mockResolvedValue([baseAccount()]);
     mockParseCsvHeaders.mockResolvedValue({ headers: ['D', 'A'], sampleRows: [], rowCount: 0 });
@@ -1331,6 +1350,21 @@ describe('useImportWizard - derived options', () => {
     const { result } = renderHook(() => useImportWizard());
     await waitFor(() => expect(result.current.currencyOptions.length).toBeGreaterThan(0));
     expect(result.current.currencyOptions[0].value).toBe('CAD');
+  });
+
+  it('currencyOptions places the default first even when it is the later currency', async () => {
+    // USD comes before CAD alphabetically; making CAD the default exercises the
+    // comparator branch where the second operand equals the default currency.
+    mockPrefDefaultCurrency = 'CAD';
+    mockGetCurrencies.mockResolvedValue([
+      { code: 'USD', name: 'US Dollar', symbol: '$', decimalPlaces: 2, isActive: true },
+      { code: 'CAD', name: 'CA Dollar', symbol: 'CA$', decimalPlaces: 2, isActive: true },
+      { code: 'AUD', name: 'AU Dollar', symbol: 'A$', decimalPlaces: 2, isActive: true },
+    ]);
+    const { result } = renderHook(() => useImportWizard());
+    await waitFor(() => expect(result.current.currencyOptions.length).toBe(3));
+    expect(result.current.currencyOptions[0].value).toBe('CAD');
+    expect(result.current.currencyOptions.slice(1).map((o) => o.value)).toEqual(['AUD', 'USD']);
   });
 });
 
