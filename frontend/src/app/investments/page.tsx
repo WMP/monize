@@ -189,7 +189,7 @@ function InvestmentsContent() {
                     variant="outline"
                     onClick={handleRefreshClick}
                     disabled={data.isRefreshingPrices}
-                    className="whitespace-nowrap h-full"
+                    className="whitespace-nowrap"
                     title={data.lastPriceUpdate ? `Last updated: ${formatRelativeTime(data.lastPriceUpdate)}` : 'Never updated'}
                   >
                     {data.isRefreshingPrices ? (
