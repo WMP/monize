@@ -233,7 +233,7 @@ function OwnerSettingsView() {
         )}
 
         {/* Mobile horizontal tabs */}
-        <div className="lg:hidden sticky top-0 z-10 -mx-4 px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 mb-6">
+        <div className="lg:hidden sticky top-16 z-10 -mx-4 px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 mb-6">
           <SettingsNav
             sections={visibleSections}
             activeSection={activeSection}
@@ -245,7 +245,7 @@ function OwnerSettingsView() {
         <div className="lg:flex lg:gap-10">
           {/* Desktop sidebar */}
           <aside className="hidden lg:block lg:w-52 shrink-0">
-            <div className="sticky top-6">
+            <div className="sticky top-22">
               <SettingsNav
                 sections={visibleSections}
                 activeSection={activeSection}
@@ -258,7 +258,7 @@ function OwnerSettingsView() {
           {/* Content column */}
           <div className="flex-1 min-w-0">
             {user && !isDemoMode && (
-              <div id="profile" className="scroll-mt-16 lg:scroll-mt-6">
+              <div id="profile" className="scroll-mt-32 lg:scroll-mt-22">
                 <ProfileSection
                   user={user}
                   onUserUpdated={setUser}
@@ -267,7 +267,7 @@ function OwnerSettingsView() {
             )}
 
             {preferences && (
-              <div id="preferences" className="scroll-mt-16 lg:scroll-mt-6">
+              <div id="preferences" className="scroll-mt-32 lg:scroll-mt-22">
                 <PreferencesSection
                   preferences={preferences}
                   onPreferencesUpdated={setPreferences}
@@ -276,7 +276,7 @@ function OwnerSettingsView() {
             )}
 
             {preferences && (
-              <div id="notifications" className="scroll-mt-16 lg:scroll-mt-6">
+              <div id="notifications" className="scroll-mt-32 lg:scroll-mt-22">
                 <NotificationsSection
                   initialNotificationEmail={preferences.notificationEmail}
                   smtpConfigured={smtpConfigured}
@@ -287,7 +287,7 @@ function OwnerSettingsView() {
             )}
 
             {user && preferences && !isDemoMode && (
-              <div id="security" className="scroll-mt-16 lg:scroll-mt-6">
+              <div id="security" className="scroll-mt-32 lg:scroll-mt-22">
                 <SecuritySection
                   user={user}
                   preferences={preferences}
@@ -298,7 +298,7 @@ function OwnerSettingsView() {
             )}
 
             {!isDemoMode && (
-              <div id="shared-access" className="scroll-mt-16 lg:scroll-mt-6">
+              <div id="shared-access" className="scroll-mt-32 lg:scroll-mt-22">
                 <Link
                   href="/settings/shared-access"
                   className="block bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -314,7 +314,7 @@ function OwnerSettingsView() {
             )}
 
             {!isDemoMode && (
-              <div id="emergency-access" className="scroll-mt-16 lg:scroll-mt-6">
+              <div id="emergency-access" className="scroll-mt-32 lg:scroll-mt-22">
                 <Link
                   href="/settings/emergency-access"
                   className="block bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -331,13 +331,13 @@ function OwnerSettingsView() {
             )}
 
             {!isDemoMode && (
-              <div id="api-access" className="scroll-mt-16 lg:scroll-mt-6">
+              <div id="api-access" className="scroll-mt-32 lg:scroll-mt-22">
                 <ApiAccessSection />
               </div>
             )}
 
             {!isDemoMode && (
-              <div id="ai-settings" className="scroll-mt-16 lg:scroll-mt-6">
+              <div id="ai-settings" className="scroll-mt-32 lg:scroll-mt-22">
                 <Link
                   href="/settings/ai"
                   className="block bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -353,19 +353,19 @@ function OwnerSettingsView() {
             )}
 
             {!isDemoMode && user && (
-              <div id="backup-restore" className="scroll-mt-16 lg:scroll-mt-6">
+              <div id="backup-restore" className="scroll-mt-32 lg:scroll-mt-22">
                 <BackupRestoreSection user={user} />
               </div>
             )}
 
             {!isDemoMode && (
-              <div id="auto-backup" className="scroll-mt-16 lg:scroll-mt-6">
+              <div id="auto-backup" className="scroll-mt-32 lg:scroll-mt-22">
                 <AutoBackupSection />
               </div>
             )}
 
             {!isDemoMode && user && (
-              <div id="danger-zone" className="scroll-mt-16 lg:scroll-mt-6">
+              <div id="danger-zone" className="scroll-mt-32 lg:scroll-mt-22">
                 <DangerZoneSection user={user} />
               </div>
             )}

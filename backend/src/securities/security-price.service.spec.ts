@@ -1044,8 +1044,14 @@ describe("SecurityPriceService", () => {
       // No transactions for this security
       dataSourceMock.query.mockResolvedValueOnce([]);
 
+      // Timestamps relative to "now" so the prices always land inside the
+      // rolling 1-year backfill window (cutoff = today - 1y), regardless of
+      // when the test runs. Hardcoded dates here rot once the window passes
+      // them.
+      const daySeconds = 24 * 60 * 60;
+      const nowSeconds = Math.floor(Date.now() / 1000);
       const historicalData = makeYahooHistoricalResponse({
-        timestamps: [1748700000, 1748800000],
+        timestamps: [nowSeconds - 2 * daySeconds, nowSeconds - daySeconds],
         closes: [193.0, 194.0],
       });
       global.fetch = jest
