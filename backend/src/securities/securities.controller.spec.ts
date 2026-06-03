@@ -49,6 +49,7 @@ describe("SecuritiesController", () => {
       refreshAllPrices: jest.fn(),
       refreshPricesForSecurities: jest.fn(),
       backfillHistoricalPrices: jest.fn(),
+      backfillSecurityHoldingPeriod: jest.fn(),
       backfillTransactionPrices: jest.fn(),
       getLastUpdateTime: jest.fn(),
       getPriceHistory: jest.fn(),
@@ -491,6 +492,74 @@ describe("SecuritiesController", () => {
 
       expect(securityPriceService.backfillHistoricalPrices).toHaveBeenCalled();
       expect(result).toEqual(summary);
+    });
+  });
+
+  describe("backfillSecurityPrices", () => {
+    it("delegates to backfillSecurityHoldingPeriod and recalculates accounts when prices loaded", async () => {
+      const result = {
+        symbol: "AAPL",
+        success: true,
+        pricesLoaded: 250,
+        provider: "yahoo" as const,
+      };
+      securityPriceService.backfillSecurityHoldingPeriod.mockResolvedValue(
+        result,
+      );
+
+      const response = await controller.backfillSecurityPrices(req, "sec-1");
+
+      expect(
+        securityPriceService.backfillSecurityHoldingPeriod,
+      ).toHaveBeenCalledWith("user-1", "sec-1");
+      expect(response).toEqual(result);
+      // Fire-and-forget recalc runs in the background.
+      await Promise.resolve();
+      expect(netWorthService.recalculateAllAccounts).toHaveBeenCalledWith(
+        "user-1",
+      );
+    });
+
+    it("does not recalculate when no prices were loaded", async () => {
+      securityPriceService.backfillSecurityHoldingPeriod.mockResolvedValue({
+        symbol: "AAPL",
+        success: true,
+        pricesLoaded: 0,
+        provider: "yahoo",
+      });
+
+      await controller.backfillSecurityPrices(req, "sec-1");
+
+      expect(netWorthService.recalculateAllAccounts).not.toHaveBeenCalled();
+    });
+
+    it("does not recalculate when the backfill failed", async () => {
+      securityPriceService.backfillSecurityHoldingPeriod.mockResolvedValue({
+        symbol: "AAPL",
+        success: false,
+        error: "No historical data available",
+      });
+
+      const response = await controller.backfillSecurityPrices(req, "sec-1");
+
+      expect(response.success).toBe(false);
+      expect(netWorthService.recalculateAllAccounts).not.toHaveBeenCalled();
+    });
+
+    it("swallows background recalculation errors", async () => {
+      securityPriceService.backfillSecurityHoldingPeriod.mockResolvedValue({
+        symbol: "AAPL",
+        success: true,
+        pricesLoaded: 10,
+        provider: "yahoo",
+      });
+      netWorthService.recalculateAllAccounts.mockRejectedValue(
+        new Error("recalc failed"),
+      );
+
+      await expect(
+        controller.backfillSecurityPrices(req, "sec-1"),
+      ).resolves.toBeDefined();
     });
   });
 

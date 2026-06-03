@@ -33,6 +33,7 @@ import {
   SecurityPriceService,
   PriceRefreshSummary,
   HistoricalBackfillSummary,
+  HistoricalBackfillResult,
   SecurityLookupResult,
 } from "./security-price.service";
 import { MsnFinanceService } from "./msn-finance.service";
@@ -482,6 +483,37 @@ export class SecuritiesController {
       undefined,
       limit,
     );
+  }
+
+  @Post(":id/prices/backfill")
+  @ApiOperation({
+    summary: "Force-update historical prices for a single security",
+    description:
+      "Re-fetches historical prices across the full period the user has held this security and overwrites existing rows. Useful after correcting an imported security's symbol.",
+  })
+  @ApiResponse({ status: 200, description: "Historical backfill completed" })
+  @ApiResponse({ status: 404, description: "Security not found" })
+  async backfillSecurityPrices(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+  ): Promise<HistoricalBackfillResult> {
+    const result =
+      await this.securityPriceService.backfillSecurityHoldingPeriod(
+        req.user.id,
+        id,
+      );
+    if (result.success && (result.pricesLoaded ?? 0) > 0) {
+      // Fire-and-forget: recalculate this user's accounts so holdings and
+      // charts reflect the refreshed history.
+      this.netWorthService
+        .recalculateAllAccounts(req.user.id)
+        .catch((err) =>
+          this.logger.warn(
+            `Background account recalculation failed: ${err.message}`,
+          ),
+        );
+    }
+    return result;
   }
 
   @Post(":id/prices")

@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { NotFoundException } from "@nestjs/common";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import { SecurityPriceService } from "./security-price.service";
@@ -19,6 +20,7 @@ describe("SecurityPriceService", () => {
   let userPreferenceRepository: Record<string, jest.Mock>;
   let dataSourceMock: Record<string, jest.Mock>;
   let netWorthService: Record<string, jest.Mock>;
+  let msnFinanceService: Record<string, jest.Mock>;
   let originalFetch: typeof global.fetch;
 
   const mockSecurity: Security = {
@@ -162,7 +164,29 @@ describe("SecurityPriceService", () => {
 
     netWorthService = {
       recalculateAllInvestmentSnapshots: jest.fn().mockResolvedValue(undefined),
+      recalculateAllAccounts: jest.fn().mockResolvedValue(undefined),
     };
+
+    // Mock MSN to always return null by default so most tests stay
+    // Yahoo-focused. Individual tests override these to exercise the MSN path.
+    msnFinanceService = {
+      fetchQuote: jest.fn().mockResolvedValue(null),
+      fetchHistorical: jest.fn().mockResolvedValue(null),
+      lookupSecurity: jest.fn().mockResolvedValue(null),
+      fetchStockSectorInfo: jest.fn().mockResolvedValue(null),
+      fetchEtfSectorWeightings: jest.fn().mockResolvedValue(null),
+      resolveInstrumentId: jest.fn().mockResolvedValue(null),
+      getTradingDate: jest.fn((q: { regularMarketTime?: number }) => {
+        if (q.regularMarketTime) {
+          const d = new Date(q.regularMarketTime * 1000);
+          d.setUTCHours(0, 0, 0, 0);
+          return d;
+        }
+        return new Date();
+      }),
+    };
+    // The registry reads provider.name to order/resolve providers.
+    (msnFinanceService as Record<string, unknown>).name = "msn";
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -189,26 +213,8 @@ describe("SecurityPriceService", () => {
         },
         YahooFinanceService,
         {
-          // Mock MSN to always return null so these tests stay Yahoo-focused.
-          // The registry fallback still calls these methods, but they're no-ops.
           provide: MsnFinanceService,
-          useValue: {
-            name: "msn",
-            fetchQuote: jest.fn().mockResolvedValue(null),
-            fetchHistorical: jest.fn().mockResolvedValue(null),
-            lookupSecurity: jest.fn().mockResolvedValue(null),
-            fetchStockSectorInfo: jest.fn().mockResolvedValue(null),
-            fetchEtfSectorWeightings: jest.fn().mockResolvedValue(null),
-            resolveInstrumentId: jest.fn().mockResolvedValue(null),
-            getTradingDate: jest.fn((q: { regularMarketTime?: number }) => {
-              if (q.regularMarketTime) {
-                const d = new Date(q.regularMarketTime * 1000);
-                d.setUTCHours(0, 0, 0, 0);
-                return d;
-              }
-              return new Date();
-            }),
-          },
+          useValue: msnFinanceService,
         },
         QuoteProviderRegistry,
       ],
@@ -1349,6 +1355,256 @@ describe("SecurityPriceService", () => {
       await expect(
         service.backfillSecurity(mockSecurity),
       ).resolves.not.toThrow();
+    });
+  });
+
+  describe("backfillSecurityHoldingPeriod", () => {
+    const daySeconds = 24 * 60 * 60;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+
+    it("throws NotFoundException when the security is not owned by the user", async () => {
+      securitiesRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.backfillSecurityHoldingPeriod(TEST_USER_ID, "missing"),
+      ).rejects.toThrow(NotFoundException);
+      expect(securitiesRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "missing", userId: TEST_USER_ID },
+      });
+    });
+
+    it("backfills only 1Y when the earliest transaction is within the last year", async () => {
+      securitiesRepository.findOne.mockResolvedValue(mockSecurity);
+      const recent = new Date();
+      recent.setMonth(recent.getMonth() - 1);
+      const recentStr = recent.toISOString().substring(0, 10);
+      dataSourceMock.query.mockResolvedValueOnce([{ earliest: recentStr }]);
+
+      const historicalData = makeYahooHistoricalResponse({
+        timestamps: [nowSeconds - 2 * daySeconds, nowSeconds - daySeconds],
+        closes: [193.0, 194.0],
+      });
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse(historicalData),
+        ) as jest.Mock;
+      dataSourceMock.query.mockResolvedValue(undefined);
+
+      const result = await service.backfillSecurityHoldingPeriod(
+        TEST_USER_ID,
+        "sec-1",
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.symbol).toBe("AAPL");
+      expect(result.pricesLoaded).toBeGreaterThan(0);
+      // Only the 1Y range is fetched -- no "max" call -- since the holding
+      // period is under a year.
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).toContain(
+        "range=1y",
+      );
+    });
+
+    it("fetches max history when the earliest transaction predates one year", async () => {
+      securitiesRepository.findOne.mockResolvedValue(mockSecurity);
+      dataSourceMock.query.mockResolvedValueOnce([{ earliest: "2018-01-01" }]);
+
+      const historicalData = makeYahooHistoricalResponse({
+        timestamps: [nowSeconds - 2 * daySeconds, nowSeconds - daySeconds],
+        closes: [193.0, 194.0],
+      });
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse(historicalData),
+        ) as jest.Mock;
+      dataSourceMock.query.mockResolvedValue(undefined);
+
+      const result = await service.backfillSecurityHoldingPeriod(
+        TEST_USER_ID,
+        "sec-1",
+      );
+
+      expect(result.success).toBe(true);
+      // Both 1Y and max ranges are fetched and merged for deep history.
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      const ranges = (global.fetch as jest.Mock).mock.calls.map((c) => c[0]);
+      expect(ranges.some((u: string) => u.includes("range=1y"))).toBe(true);
+      expect(ranges.some((u: string) => u.includes("range=max"))).toBe(true);
+    });
+
+    it("falls back to 1Y when the security has no transactions", async () => {
+      securitiesRepository.findOne.mockResolvedValue(mockSecurity);
+      dataSourceMock.query.mockResolvedValueOnce([{ earliest: null }]);
+
+      const historicalData = makeYahooHistoricalResponse({
+        timestamps: [nowSeconds - 2 * daySeconds, nowSeconds - daySeconds],
+        closes: [193.0, 194.0],
+      });
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse(historicalData),
+        ) as jest.Mock;
+      dataSourceMock.query.mockResolvedValue(undefined);
+
+      const result = await service.backfillSecurityHoldingPeriod(
+        TEST_USER_ID,
+        "sec-1",
+      );
+
+      expect(result.success).toBe(true);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).toContain(
+        "range=1y",
+      );
+    });
+
+    it("bypasses the skipPriceUpdates flag (force update)", async () => {
+      const skipSec = { ...mockSecurity, skipPriceUpdates: true } as Security;
+      securitiesRepository.findOne.mockResolvedValue(skipSec);
+      dataSourceMock.query.mockResolvedValueOnce([{ earliest: null }]);
+
+      const historicalData = makeYahooHistoricalResponse({
+        timestamps: [nowSeconds - daySeconds],
+        opens: [191.0],
+        highs: [196.0],
+        lows: [190.0],
+        closes: [194.0],
+        volumes: [51000000],
+      });
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse(historicalData),
+        ) as jest.Mock;
+      dataSourceMock.query.mockResolvedValue(undefined);
+
+      const result = await service.backfillSecurityHoldingPeriod(
+        TEST_USER_ID,
+        "sec-1",
+      );
+
+      expect(result.success).toBe(true);
+      expect(global.fetch).toHaveBeenCalled();
+    });
+
+    it("returns failure when no historical data is available", async () => {
+      securitiesRepository.findOne.mockResolvedValue(mockSecurity);
+      dataSourceMock.query.mockResolvedValueOnce([{ earliest: null }]);
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse({ chart: { result: [] } }),
+        ) as jest.Mock;
+
+      const result = await service.backfillSecurityHoldingPeriod(
+        TEST_USER_ID,
+        "sec-1",
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("No historical data available");
+    });
+
+    it("returns failure when the upsert throws", async () => {
+      securitiesRepository.findOne.mockResolvedValue(mockSecurity);
+      dataSourceMock.query
+        .mockResolvedValueOnce([{ earliest: null }])
+        .mockRejectedValueOnce(new Error("INSERT failed"));
+
+      const historicalData = makeYahooHistoricalResponse({
+        timestamps: [nowSeconds - daySeconds],
+        closes: [194.0],
+      });
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse(historicalData),
+        ) as jest.Mock;
+
+      const result = await service.backfillSecurityHoldingPeriod(
+        TEST_USER_ID,
+        "sec-1",
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("INSERT failed");
+    });
+
+    it("returns success with zero prices loaded when all data predates the cutoff", async () => {
+      securitiesRepository.findOne.mockResolvedValue(mockSecurity);
+      // No transactions -> cutoff falls back to one year ago.
+      dataSourceMock.query.mockResolvedValueOnce([{ earliest: null }]);
+
+      // Prices two years old are entirely clipped by the 1y fallback cutoff.
+      const twoYearsAgo = nowSeconds - 2 * 365 * daySeconds;
+      const historicalData = makeYahooHistoricalResponse({
+        timestamps: [twoYearsAgo, twoYearsAgo + daySeconds],
+        closes: [100.0, 101.0],
+      });
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse(historicalData),
+        ) as jest.Mock;
+
+      const result = await service.backfillSecurityHoldingPeriod(
+        TEST_USER_ID,
+        "sec-1",
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.pricesLoaded).toBe(0);
+      // No INSERT is issued when there is nothing within the window.
+      expect(dataSourceMock.query).toHaveBeenCalledTimes(1);
+    });
+
+    it("persists the MSN instrument id when MSN wins the backfill", async () => {
+      const msnSec = {
+        ...mockSecurity,
+        quoteProvider: "msn",
+        msnInstrumentId: null,
+      } as Security;
+      securitiesRepository.findOne.mockResolvedValue(msnSec);
+      dataSourceMock.query.mockResolvedValueOnce([{ earliest: null }]);
+      dataSourceMock.query.mockResolvedValue(undefined);
+
+      const recent = new Date(Date.now() - daySeconds * 1000);
+      recent.setHours(0, 0, 0, 0);
+      msnFinanceService.fetchHistorical.mockResolvedValue([
+        {
+          date: recent,
+          open: 10,
+          high: 11,
+          low: 9,
+          close: 10.5,
+          adjClose: 10.5,
+          volume: 1000,
+        },
+      ]);
+      msnFinanceService.resolveInstrumentId.mockResolvedValue("MSN-123");
+      // Yahoo should never be reached, but guard against accidental calls.
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(
+          createMockFetchResponse({ chart: { result: [] } }),
+        ) as jest.Mock;
+
+      const result = await service.backfillSecurityHoldingPeriod(
+        TEST_USER_ID,
+        "sec-1",
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.provider).toBe("msn");
+      expect(result.pricesLoaded).toBe(1);
+      expect(msnFinanceService.fetchHistorical).toHaveBeenCalled();
+      expect(securitiesRepository.update).toHaveBeenCalledWith("sec-1", {
+        msnInstrumentId: "MSN-123",
+      });
     });
   });
 

@@ -1056,6 +1056,122 @@ export class SecurityPriceService {
   }
 
   /**
+   * Force-refresh historical prices for a single security across the full
+   * period the user has held it (earliest investment transaction through the
+   * latest available price), overwriting any existing rows. Unlike the
+   * scheduled backfill this bypasses the skipPriceUpdates eligibility check:
+   * the user has explicitly requested the update, and imports flag securities
+   * with skipPriceUpdates=true, so this is how a user opts a single corrected
+   * symbol back in. Scoped by userId for multi-tenancy.
+   */
+  async backfillSecurityHoldingPeriod(
+    userId: string,
+    securityId: string,
+  ): Promise<HistoricalBackfillResult> {
+    const security = await this.securitiesRepository.findOne({
+      where: { id: securityId, userId },
+    });
+    if (!security) {
+      throw new NotFoundException(`Security ${securityId} not found`);
+    }
+
+    const ctx = (await this.loadUserContexts([userId])).get(userId) ?? {
+      defaultQuoteProvider: DEFAULT_QUOTE_PROVIDER,
+      preferredExchanges: [],
+    };
+
+    // Earliest date the user has held the security. Null when there are no
+    // transactions yet (e.g. a watchlist-only security) -- fall back to 1y.
+    const earliestRows: Array<{ earliest: string | null }> =
+      await this.dataSource.query(
+        `SELECT MIN(transaction_date)::TEXT as earliest
+         FROM investment_transactions
+         WHERE security_id = $1`,
+        [securityId],
+      );
+    const earliestTx = earliestRows[0]?.earliest ?? null;
+
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    oneYearAgo.setHours(0, 0, 0, 0);
+    const oneYearAgoStr = oneYearAgo.toISOString().substring(0, 10);
+
+    const needsOlderData = !!earliestTx && earliestTx < oneYearAgoStr;
+
+    const daily = await this.fetchHistoricalWithFallback(security, "1y", ctx);
+    const maxBundle = needsOlderData
+      ? await this.fetchHistoricalWithFallback(security, "max", ctx)
+      : null;
+
+    if (!daily && !maxBundle) {
+      return {
+        symbol: security.symbol,
+        success: false,
+        error: "No historical data available",
+      };
+    }
+
+    const winner = daily || maxBundle!;
+    if (winner.provider === "msn") {
+      await this.persistMsnInstrumentIdIfResolved(security, "msn", ctx);
+    }
+
+    let allPrices =
+      maxBundle && daily
+        ? this.mergePrices(maxBundle.prices, daily.prices, oneYearAgo)
+        : (daily?.prices ?? maxBundle!.prices);
+
+    const seen = new Set<string>();
+    allPrices = allPrices.filter((p) => {
+      const key = p.date.toISOString().substring(0, 10);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // Clip to the holding period: from the first transaction date (or 1y ago
+    // when the security has never been transacted) through the latest price.
+    const cutoffStr = earliestTx ?? oneYearAgoStr;
+    const cutoff = new Date(cutoffStr);
+    cutoff.setHours(0, 0, 0, 0);
+    const prices = allPrices.filter((p) => p.date >= cutoff);
+
+    if (prices.length === 0) {
+      return {
+        symbol: security.symbol,
+        success: true,
+        pricesLoaded: 0,
+        provider: winner.provider,
+      };
+    }
+
+    const source = sourceFor(winner.provider);
+    try {
+      await this.bulkUpsertPrices(security.id, prices, source);
+    } catch (error) {
+      this.logger.error(
+        `Failed to force-backfill prices for ${security.symbol}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return {
+        symbol: security.symbol,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+
+    this.logger.log(
+      `Force-backfilled ${prices.length} prices for ${security.symbol} via ${winner.provider} (from ${cutoffStr})`,
+    );
+
+    return {
+      symbol: security.symbol,
+      success: true,
+      pricesLoaded: prices.length,
+      provider: winner.provider,
+    };
+  }
+
+  /**
    * Upsert a transaction-derived price for a security on a given date.
    * Computes average price from all price-relevant transactions on that date.
    * Never overwrites provider-sourced (yahoo_finance, msn_finance) or manual

@@ -197,6 +197,20 @@ describe('investmentsApi', () => {
     );
   });
 
+  it('backfillSecurityPrices posts to the per-security backfill endpoint', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { symbol: 'AAPL', success: true, pricesLoaded: 100 },
+    });
+    const result = await investmentsApi.backfillSecurityPrices('s-1');
+    // Generous timeout: fetches the security's full provider history.
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/securities/s-1/prices/backfill',
+      undefined,
+      { timeout: 120_000 },
+    );
+    expect(result.pricesLoaded).toBe(100);
+  });
+
   it('getPriceStatus fetches /securities/prices/status', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: { lastUpdated: '2025-01-01' } });
     const result = await investmentsApi.getPriceStatus();

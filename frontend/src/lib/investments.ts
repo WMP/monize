@@ -425,6 +425,28 @@ export const investmentsApi = {
     return response.data;
   },
 
+  // Force-refresh historical prices for a single security across the full
+  // period the user has held it, overwriting existing rows.
+  backfillSecurityPrices: async (
+    securityId: string,
+  ): Promise<{
+    symbol: string;
+    success: boolean;
+    pricesLoaded?: number;
+    error?: string;
+    provider?: string;
+  }> => {
+    // Hits the quote provider for the security's full history, so give it the
+    // same generous timeout as the bulk refresh endpoints.
+    const response = await apiClient.post(
+      `/securities/${securityId}/prices/backfill`,
+      undefined,
+      { timeout: 120_000 },
+    );
+    invalidateCache('investments:');
+    return response.data;
+  },
+
   // Get price update status
   getPriceStatus: async (): Promise<{ lastUpdated: string | null }> => {
     const response = await apiClient.get('/securities/prices/status');

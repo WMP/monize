@@ -8,6 +8,7 @@ vi.mock('@/lib/investments', () => ({
     createSecurityPrice: vi.fn(),
     updateSecurityPrice: vi.fn(),
     deleteSecurityPrice: vi.fn(),
+    backfillSecurityPrices: vi.fn(),
   },
 }));
 
@@ -369,5 +370,109 @@ describe('SecurityPriceHistory', () => {
 
     expect(toast.error).toHaveBeenCalledWith('Failed to delete price');
     expect(screen.getAllByText('Edit')).toHaveLength(3);
+  });
+
+  describe('Force Update Prices', () => {
+    it('force-updates prices, shows a success toast with the count, and reloads', async () => {
+      const toast = (await import('react-hot-toast')).default;
+      (investmentsApi.backfillSecurityPrices as ReturnType<typeof vi.fn>).mockResolvedValue({
+        symbol: 'AAPL',
+        success: true,
+        pricesLoaded: 252,
+        provider: 'yahoo',
+      });
+      await renderComponent();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Force Update Prices' }));
+      });
+
+      expect(investmentsApi.backfillSecurityPrices).toHaveBeenCalledWith('sec-1');
+      expect(toast.success).toHaveBeenCalledWith('Updated 252 prices for AAPL');
+      // Reloaded after the update (initial mount + post-update).
+      expect(investmentsApi.getSecurityPrices).toHaveBeenCalledTimes(2);
+    });
+
+    it('uses singular wording when exactly one price is loaded', async () => {
+      const toast = (await import('react-hot-toast')).default;
+      (investmentsApi.backfillSecurityPrices as ReturnType<typeof vi.fn>).mockResolvedValue({
+        symbol: 'AAPL',
+        success: true,
+        pricesLoaded: 1,
+        provider: 'yahoo',
+      });
+      await renderComponent();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Force Update Prices' }));
+      });
+
+      expect(toast.success).toHaveBeenCalledWith('Updated 1 price for AAPL');
+    });
+
+    it('shows a "no prices found" toast when zero prices are loaded', async () => {
+      const toast = (await import('react-hot-toast')).default;
+      (investmentsApi.backfillSecurityPrices as ReturnType<typeof vi.fn>).mockResolvedValue({
+        symbol: 'AAPL',
+        success: true,
+        pricesLoaded: 0,
+        provider: 'yahoo',
+      });
+      await renderComponent();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Force Update Prices' }));
+      });
+
+      expect(toast.success).toHaveBeenCalledWith('No prices found for AAPL');
+    });
+
+    it('shows the backend error message when the update reports failure', async () => {
+      const toast = (await import('react-hot-toast')).default;
+      (investmentsApi.backfillSecurityPrices as ReturnType<typeof vi.fn>).mockResolvedValue({
+        symbol: 'AAPL',
+        success: false,
+        error: 'No historical data available',
+      });
+      await renderComponent();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Force Update Prices' }));
+      });
+
+      expect(toast.error).toHaveBeenCalledWith('No historical data available');
+      // No reload on failure (only the initial mount load).
+      expect(investmentsApi.getSecurityPrices).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back to a generic message when failure has no error string', async () => {
+      const toast = (await import('react-hot-toast')).default;
+      (investmentsApi.backfillSecurityPrices as ReturnType<typeof vi.fn>).mockResolvedValue({
+        symbol: 'AAPL',
+        success: false,
+      });
+      await renderComponent();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Force Update Prices' }));
+      });
+
+      expect(toast.error).toHaveBeenCalledWith('Failed to update prices for AAPL');
+    });
+
+    it('shows an error toast when the request throws', async () => {
+      const toast = (await import('react-hot-toast')).default;
+      (investmentsApi.backfillSecurityPrices as ReturnType<typeof vi.fn>).mockRejectedValue(
+        'boom',
+      );
+      await renderComponent();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Force Update Prices' }));
+      });
+      await act(async () => {});
+
+      expect(toast.error).toHaveBeenCalledWith('Failed to update prices');
+    });
   });
 });

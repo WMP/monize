@@ -60,6 +60,7 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingPrice, setEditingPrice] = useState<SecurityPrice | undefined>();
   const [deletingPrice, setDeletingPrice] = useState<SecurityPrice | undefined>();
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const loadPrices = useCallback(async () => {
     setIsLoading(true);
@@ -114,6 +115,27 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
     }
   }, [security.id, deletingPrice, loadPrices]);
 
+  const handleForceUpdate = useCallback(async () => {
+    setIsUpdating(true);
+    try {
+      const result = await investmentsApi.backfillSecurityPrices(security.id);
+      if (result.success) {
+        toast.success(
+          result.pricesLoaded
+            ? `Updated ${result.pricesLoaded} price${result.pricesLoaded !== 1 ? 's' : ''} for ${result.symbol}`
+            : `No prices found for ${result.symbol}`,
+        );
+        await loadPrices();
+      } else {
+        toast.error(result.error || `Failed to update prices for ${result.symbol}`);
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to update prices'));
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [security.id, loadPrices]);
+
   const isFormOpen = showAddForm || !!editingPrice;
 
   return (
@@ -124,9 +146,20 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
         </h2>
         <div className="flex gap-2">
           {!isFormOpen && (
-            <Button onClick={() => setShowAddForm(true)} size="sm">
-              + Add Price
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={handleForceUpdate}
+                size="sm"
+                isLoading={isUpdating}
+                title="Re-fetch historical prices for the entire period you've held this security"
+              >
+                Force Update Prices
+              </Button>
+              <Button onClick={() => setShowAddForm(true)} size="sm" disabled={isUpdating}>
+                + Add Price
+              </Button>
+            </>
           )}
           <Button variant="outline" onClick={onClose} size="sm">
             Close
