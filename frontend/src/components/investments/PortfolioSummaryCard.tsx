@@ -49,21 +49,15 @@ export function PortfolioSummaryCard({
       return { cash, holdings, costBasis, netInvested, portfolio, gainLoss, gainLossPercent };
     }
 
-    let cash = 0;
-    let holdings = 0;
-    let costBasis = 0;
-    let netInvested = 0;
-    for (const acct of summary.holdingsByAccount) {
-      cash += convertToDefault(acct.cashBalance, acct.currencyCode);
-      holdings += convertToDefault(acct.totalMarketValue, acct.currencyCode);
-      costBasis += convertToDefault(acct.totalCostBasis, acct.currencyCode);
-      netInvested += convertToDefault(acct.netInvested, acct.currencyCode);
-    }
-    const portfolio = cash + holdings;
-    const gainLoss = holdings - costBasis;
-    const gainLossPercent = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0;
-    return { cash, holdings, costBasis, netInvested, portfolio, gainLoss, gainLossPercent };
-  }, [summary, convertToDefault, foreignCurrency]);
+    // Default-currency view: use the backend totals as-is. They are already
+    // converted to the default currency using live spot FX -- the same rate
+    // source the Portfolio Value Over Time chart uses -- so the two stay in
+    // sync. Re-converting per account here with the cached daily-snapshot
+    // rates from useExchangeRates drifted from the chart (and triangulated
+    // through each account's currency); returning null makes every field below
+    // fall back to summary.total* directly.
+    return null;
+  }, [summary, foreignCurrency]);
 
   // Compute default-currency total when showing foreign, for the "approx" line
   const defaultTotal = useMemo(() => {
