@@ -16,6 +16,12 @@ import {
 } from "./portfolio.service";
 import { roundMoney } from "../common/round.util";
 import { formatDateYMDLocal } from "../common/date-utils";
+import { mapWithConcurrency } from "../common/concurrency.util";
+
+// "As of now" portfolio valuations fetch a live spot rate per foreign
+// currency. Cap concurrent quote-provider fetches so a portfolio spanning
+// many currencies does not burst the provider on an interactive request.
+const LIVE_FX_FETCH_CONCURRENCY = 6;
 
 /**
  * Categorised investment accounts: brokerage, standalone, and cash accounts
@@ -254,6 +260,59 @@ export class PortfolioCalculationService {
       rateCache.set(cacheKey, rate);
     }
     return amount * rate;
+  }
+
+  /**
+   * Pre-populate the rate cache with live spot FX rates for every non-default
+   * currency held across the given accounts and their holdings. The portfolio
+   * summary's "as of now" valuations (holdings value, cash, allocation, net
+   * invested) then convert at the current rate -- matching the live Portfolio
+   * Value Over Time chart -- instead of the once-a-day stored snapshot used by
+   * getLatestRate.
+   *
+   * Best effort: when a live quote is unavailable for a currency the cache is
+   * left unset for that pair, so the downstream convertToDefault falls back to
+   * the stored daily rate (its existing behaviour).
+   */
+  async primeLiveRates(
+    rateCache: Map<string, number>,
+    accounts: Account[],
+    holdingsAccountIds: string[],
+    defaultCurrency: string,
+  ): Promise<void> {
+    const currencies = new Set<string>();
+    for (const account of accounts) {
+      if (account.currencyCode) currencies.add(account.currencyCode);
+    }
+
+    if (holdingsAccountIds.length > 0) {
+      const rows: Array<{ currency: string | null }> =
+        await this.holdingsRepository
+          .createQueryBuilder("h")
+          .innerJoin("h.security", "s")
+          .where("h.account_id IN (:...ids)", { ids: holdingsAccountIds })
+          .select("DISTINCT s.currency_code", "currency")
+          .getRawMany();
+      for (const row of rows) {
+        if (row.currency) currencies.add(row.currency);
+      }
+    }
+
+    currencies.delete(defaultCurrency);
+
+    await mapWithConcurrency(
+      [...currencies],
+      LIVE_FX_FETCH_CONCURRENCY,
+      async (currency) => {
+        const rate = await this.exchangeRateService.getLiveRate(
+          currency,
+          defaultCurrency,
+        );
+        if (rate !== null && rate > 0) {
+          rateCache.set(`${currency}->${defaultCurrency}`, rate);
+        }
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------

@@ -308,6 +308,18 @@ export class PortfolioService {
     // Categorise into cash / brokerage / standalone
     const categorised = this.calculationService.categoriseAccounts(accounts);
 
+    // Prime the rate cache with live spot FX so every "as of now" valuation
+    // below (holdings value, cash, net invested, allocation) converts at the
+    // current rate and matches the live Portfolio Value Over Time chart rather
+    // than the once-a-day stored snapshot. Best effort -- per currency, falls
+    // back to the stored daily rate when no live quote is available.
+    await this.calculationService.primeLiveRates(
+      rateCache,
+      accounts,
+      categorised.holdingsAccountIds,
+      defaultCurrency,
+    );
+
     // Compute effective cash balances excluding future-dated transactions
     const cashAndStandaloneIds = [
       ...categorised.cashAccounts,

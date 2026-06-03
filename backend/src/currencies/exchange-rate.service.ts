@@ -568,6 +568,36 @@ export class ExchangeRateService implements OnModuleInit {
   }
 
   /**
+   * Get the current spot rate for a currency pair, fetched live from the quote
+   * provider. Tries the direct pair, then the reverse pair (inverted), then
+   * falls back to the most recent stored daily rate when the live fetch is
+   * unavailable (rate limited, unsupported pair, offline).
+   *
+   * Use this for "as of now" valuations such as the Investments portfolio
+   * summary so they line up with the live intraday Portfolio Value Over Time
+   * chart, which fetches live FX directly from the quote provider, rather than
+   * the once-a-day stored snapshot returned by getLatestRate. Returns null when
+   * neither a live quote nor a stored rate is available, letting callers apply
+   * their own fallback (e.g. reverse lookup or treating the rate as 1).
+   */
+  async getLiveRate(from: string, to: string): Promise<number | null> {
+    if (from === to) return 1;
+    try {
+      const direct = await this.fetchYahooRate(from, to);
+      if (direct !== null && direct > 0) return direct;
+      const reverse = await this.fetchYahooRate(to, from);
+      if (reverse !== null && reverse > 0) return 1 / reverse;
+    } catch (error) {
+      this.logger.warn(
+        `Live FX fetch ${from}->${to} failed, falling back to stored rate: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    return this.getLatestRate(from, to);
+  }
+
+  /**
    * Get exchange rates within a date range (for historical net worth)
    */
   async getRateHistory(

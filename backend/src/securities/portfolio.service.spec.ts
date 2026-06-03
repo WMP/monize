@@ -136,6 +136,14 @@ describe("PortfolioService", () => {
   beforeEach(async () => {
     holdingsRepository = {
       find: jest.fn(),
+      // primeLiveRates queries distinct holding currencies via the query
+      // builder. Default: no rows, so only account currencies are considered.
+      createQueryBuilder: jest.fn(() => ({
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      })),
     };
 
     securityPriceRepository = {
@@ -157,6 +165,10 @@ describe("PortfolioService", () => {
 
     exchangeRateService = {
       getLatestRate: jest.fn(),
+      // Default: no live quote available, so primeLiveRates leaves the cache
+      // unset and conversions fall back to the stored getLatestRate path that
+      // these tests configure. Tests for the live-rate path override this.
+      getLiveRate: jest.fn().mockResolvedValue(null),
     };
 
     yahooFinanceService = {

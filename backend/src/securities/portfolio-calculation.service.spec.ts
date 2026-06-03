@@ -722,3 +722,97 @@ describe("PortfolioCalculationService.calculateCapitalGainsByDay", () => {
     expect(result).toEqual([]);
   });
 });
+
+describe("PortfolioCalculationService.primeLiveRates", () => {
+  let service: PortfolioCalculationService;
+  let holdingsRepo: { createQueryBuilder: jest.Mock };
+  let exchangeRateService: { getLiveRate: jest.Mock };
+  let rawCurrencies: Array<{ currency: string | null }>;
+
+  const makeQueryBuilder = () => ({
+    innerJoin: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    getRawMany: jest.fn().mockResolvedValue(rawCurrencies),
+  });
+
+  beforeEach(async () => {
+    rawCurrencies = [];
+    holdingsRepo = {
+      createQueryBuilder: jest.fn(() => makeQueryBuilder()),
+    };
+    exchangeRateService = { getLiveRate: jest.fn() };
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        PortfolioCalculationService,
+        { provide: getRepositoryToken(Holding), useValue: holdingsRepo },
+        { provide: getRepositoryToken(SecurityPrice), useValue: {} },
+        { provide: getRepositoryToken(InvestmentTransaction), useValue: {} },
+        { provide: getRepositoryToken(Account), useValue: {} },
+        { provide: ExchangeRateService, useValue: exchangeRateService },
+      ],
+    }).compile();
+    service = module.get(PortfolioCalculationService);
+  });
+
+  const account = (currencyCode: string) =>
+    ({ id: "a", currencyCode }) as Account;
+
+  it("primes the cache with live rates for account and holding currencies", async () => {
+    rawCurrencies = [{ currency: "EUR" }, { currency: "GBP" }];
+    exchangeRateService.getLiveRate.mockImplementation(
+      async (from: string) =>
+        ({ USD: 1.37, EUR: 1.48, GBP: 1.72 })[from] ?? null,
+    );
+    const rateCache = new Map<string, number>();
+
+    await service.primeLiveRates(
+      rateCache,
+      [account("USD")],
+      ["acct-1"],
+      "CAD",
+    );
+
+    expect(rateCache.get("USD->CAD")).toBe(1.37);
+    expect(rateCache.get("EUR->CAD")).toBe(1.48);
+    expect(rateCache.get("GBP->CAD")).toBe(1.72);
+  });
+
+  it("skips the default currency and de-duplicates currencies", async () => {
+    rawCurrencies = [{ currency: "USD" }, { currency: "CAD" }];
+    exchangeRateService.getLiveRate.mockResolvedValue(1.37);
+    const rateCache = new Map<string, number>();
+
+    await service.primeLiveRates(
+      rateCache,
+      [account("USD"), account("CAD")],
+      ["acct-1"],
+      "CAD",
+    );
+
+    // CAD is the default currency, so it is never fetched or cached
+    expect(rateCache.has("CAD->CAD")).toBe(false);
+    expect(exchangeRateService.getLiveRate).toHaveBeenCalledTimes(1);
+    expect(exchangeRateService.getLiveRate).toHaveBeenCalledWith("USD", "CAD");
+  });
+
+  it("leaves the cache unset for a currency when no live rate is available", async () => {
+    rawCurrencies = [];
+    exchangeRateService.getLiveRate.mockResolvedValue(null);
+    const rateCache = new Map<string, number>();
+
+    await service.primeLiveRates(rateCache, [account("USD")], [], "CAD");
+
+    expect(rateCache.has("USD->CAD")).toBe(false);
+  });
+
+  it("does not query holdings when there are no holdings accounts", async () => {
+    exchangeRateService.getLiveRate.mockResolvedValue(1.37);
+    const rateCache = new Map<string, number>();
+
+    await service.primeLiveRates(rateCache, [account("USD")], [], "CAD");
+
+    expect(holdingsRepo.createQueryBuilder).not.toHaveBeenCalled();
+    expect(rateCache.get("USD->CAD")).toBe(1.37);
+  });
+});
