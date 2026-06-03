@@ -264,8 +264,8 @@ export function PayeeList({
       if (sortField === 'name') {
         comparison = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
       } else if (sortField === 'category') {
-        const catA = a.defaultCategory?.name || '';
-        const catB = b.defaultCategory?.name || '';
+        const catA = a.defaultCategory ? (categoryLabelMap?.get(a.defaultCategory.id) ?? a.defaultCategory.name) : '';
+        const catB = b.defaultCategory ? (categoryLabelMap?.get(b.defaultCategory.id) ?? b.defaultCategory.name) : '';
         comparison = catA.localeCompare(catB, undefined, { sensitivity: 'base' });
       } else if (sortField === 'count') {
         comparison = (a.transactionCount ?? 0) - (b.transactionCount ?? 0);
@@ -278,7 +278,7 @@ export function PayeeList({
       }
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [payees, sortField, sortDirection, onSort]);
+  }, [payees, sortField, sortDirection, onSort, categoryLabelMap]);
 
   const handleViewTransactions = useCallback((payee: Payee) => {
     router.push(`/transactions?payeeId=${payee.id}`);

@@ -147,8 +147,8 @@ function PayeesContent() {
       if (sortField === 'name') {
         comparison = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
       } else if (sortField === 'category') {
-        const catA = a.defaultCategory?.name || '';
-        const catB = b.defaultCategory?.name || '';
+        const catA = a.defaultCategory ? (categoryLabelMap.get(a.defaultCategory.id) ?? a.defaultCategory.name) : '';
+        const catB = b.defaultCategory ? (categoryLabelMap.get(b.defaultCategory.id) ?? b.defaultCategory.name) : '';
         comparison = catA.localeCompare(catB, undefined, { sensitivity: 'base' });
       } else if (sortField === 'count') {
         comparison = (a.transactionCount ?? 0) - (b.transactionCount ?? 0);
@@ -161,7 +161,7 @@ function PayeesContent() {
       }
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [filteredPayees, sortField, sortDirection]);
+  }, [filteredPayees, sortField, sortDirection, categoryLabelMap]);
 
   const totalPages = Math.ceil(sortedPayees.length / PAGE_SIZE);
   const paginatedPayees = useMemo(() => {

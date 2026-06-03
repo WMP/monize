@@ -406,6 +406,52 @@ describe('PayeeList', () => {
     expect(screen.getByText('Netflix')).toBeInTheDocument();
   });
 
+  it('sorts by full category label when categoryLabelMap is provided', () => {
+    // Leaf names would order Walmart (Apples) before Netflix (Zebra), but the
+    // full labels invert that: "Zoo: Apples" sorts after "Animals: Zebra".
+    const payees = [
+      makePayee({
+        id: 'p1',
+        name: 'Walmart',
+        defaultCategory: {
+          id: 'cat-1', userId: 'u', parentId: 'zoo', parent: null, children: [],
+          name: 'Apples', description: null, icon: null, color: null, effectiveColor: null,
+          isIncome: false, isSystem: false, createdAt: '',
+        },
+      }),
+      makePayee({
+        id: 'p2',
+        name: 'Netflix',
+        defaultCategory: {
+          id: 'cat-2', userId: 'u', parentId: 'animals', parent: null, children: [],
+          name: 'Zebra', description: null, icon: null, color: null, effectiveColor: null,
+          isIncome: false, isSystem: false, createdAt: '',
+        },
+      }),
+    ];
+    const categoryLabelMap = new Map([
+      ['cat-1', 'Zoo: Apples'],
+      ['cat-2', 'Animals: Zebra'],
+    ]);
+
+    const { container } = render(
+      <PayeeList
+        payees={payees}
+        onEdit={onEdit}
+        onRefresh={onRefresh}
+        categoryLabelMap={categoryLabelMap}
+      />,
+    );
+    fireEvent.click(screen.getByText('Default Category'));
+
+    const names = Array.from(container.querySelectorAll('tbody tr')).map(
+      (row) => row.querySelector('td')?.textContent?.trim(),
+    );
+    // Ascending by full label: "Animals: Zebra" (Netflix) < "Zoo: Apples" (Walmart)
+    expect(names[0]).toBe('Netflix');
+    expect(names[1]).toBe('Walmart');
+  });
+
   it('sorts by count when Count header is clicked', () => {
     const payees = [
       makePayee({ id: 'p1', name: 'Walmart', transactionCount: 10 }),
