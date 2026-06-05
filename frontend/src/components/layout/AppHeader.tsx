@@ -10,6 +10,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { BudgetAlertBadge } from '@/components/budgets/BudgetAlertBadge';
 import { ActionHistoryPanel } from '@/components/layout/ActionHistoryPanel';
+import { MobileNavDrawer } from '@/components/layout/MobileNavDrawer';
 import {
   HEADER_SEARCH_EVENT,
   clearTransactionFilterStorage,
@@ -97,14 +98,12 @@ export function AppHeader() {
   const [searchTerm, setSearchTerm] = useState('');
   const toolsRef = useRef<HTMLDivElement>(null);
   const aiRef = useRef<HTMLDivElement>(null);
-  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Close dropdowns when clicking outside
   useClickOutside(toolsRef, () => setToolsOpen(false));
   useClickOutside(aiRef, () => setAiOpen(false));
-  useClickOutside(mobileMenuRef, () => setMobileMenuOpen(false));
   useClickOutside(searchRef, () => setSearchOpen(false));
 
   // Focus the search input as it slides open.
@@ -193,7 +192,7 @@ export function AppHeader() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             {/* Mobile hamburger menu button */}
-            <div className="relative lg:hidden" ref={mobileMenuRef}>
+            <div className="lg:hidden">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="p-2 mr-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
@@ -210,134 +209,20 @@ export function AppHeader() {
                 )}
               </button>
 
-              {/* Mobile menu dropdown */}
-              {mobileMenuOpen && (
-                <div className="absolute left-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg dark:shadow-gray-700/50 border border-gray-200 dark:border-gray-700 z-50">
-                  <div className="py-1">
-                    {/* Dashboard link */}
-                    <button
-                      onClick={() => router.push('/dashboard')}
-                      className={`block w-full text-left px-4 py-2 text-sm transition-colors ${
-                        pathname === '/dashboard'
-                          ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      Dashboard
-                    </button>
-
-                    {/* Main nav links */}
-                    {visibleNavLinks.map((link) => (
-                      <button
-                        key={link.href}
-                        onClick={() => router.push(link.href)}
-                        className={`block w-full text-left px-4 py-2 text-sm transition-colors ${
-                          pathname === link.href
-                            ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
-                      >
-                        {link.label}
-                      </button>
-                    ))}
-
-                    {showAiMenu && (
-                    <>
-                    {/* Divider */}
-                    <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-
-                    {/* AI section header */}
-                    <div className="px-4 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      AI
-                    </div>
-
-                    {/* AI links */}
-                    {aiLinks.map((link) => (
-                      <button
-                        key={link.href}
-                        onClick={() => router.push(link.href)}
-                        className={`block w-full text-left px-4 py-2 text-sm transition-colors ${
-                          pathname === link.href
-                            ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
-                      >
-                        {link.label}
-                      </button>
-                    ))}
-                    </>
-                    )}
-
-                    {visibleToolsLinks.length > 0 && (
-                    <>
-                    {/* Divider */}
-                    <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-
-                    {/* Tools section header */}
-                    <div className="px-4 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Tools
-                    </div>
-
-                    {/* Tools links */}
-                    {visibleToolsLinks.map((link) => (
-                      <button
-                        key={link.href}
-                        onClick={() => router.push(link.href)}
-                        className={`block w-full text-left px-4 py-2 text-sm transition-colors ${
-                          pathname === link.href
-                            ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
-                      >
-                        {link.label}
-                        {link.badge && (
-                          <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                            {link.badge}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                    </>
-                    )}
-
-                    {/* Admin section - only for admins */}
-                    {!isDelegateView && user?.role === 'admin' && (
-                      <>
-                        <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-                        <div className="px-4 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Admin
-                        </div>
-                        <button
-                          onClick={() => router.push('/admin/users')}
-                          className={`block w-full text-left px-4 py-2 text-sm transition-colors ${
-                            pathname.startsWith('/admin')
-                              ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200'
-                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                          }`}
-                        >
-                          User Management
-                        </button>
-                      </>
-                    )}
-
-                    {/* Divider */}
-                    <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
-
-                    {/* Settings link -- delegates land on a Security-only
-                        view that manages their OWN credentials. */}
-                    <button
-                      onClick={() => router.push('/settings')}
-                      className={`block w-full text-left px-4 py-2 text-sm transition-colors ${
-                        pathname === '/settings'
-                          ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-200'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      Settings
-                    </button>
-                  </div>
-                </div>
-              )}
+              {/* Mobile navigation drawer (slides in from the left).
+                  Delegates land on a Security-only Settings view that manages
+                  their OWN credentials. */}
+              <MobileNavDrawer
+                isOpen={mobileMenuOpen}
+                onClose={() => setMobileMenuOpen(false)}
+                pathname={pathname}
+                onNavigate={(href) => router.push(href)}
+                navLinks={visibleNavLinks}
+                aiLinks={aiLinks}
+                showAiMenu={showAiMenu}
+                toolsLinks={visibleToolsLinks}
+                showAdmin={!isDelegateView && user?.role === 'admin'}
+              />
             </div>
 
             <button

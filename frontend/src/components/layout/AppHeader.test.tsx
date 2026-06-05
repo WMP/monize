@@ -374,17 +374,36 @@ describe('AppHeader', () => {
     expect(dashboardButton.closest('button')?.className).toContain('bg-blue-50');
   });
 
-  it('closes mobile menu when clicking outside', () => {
+  it('closes mobile menu when the backdrop is clicked', () => {
     render(<AppHeader />);
     const menuToggle = screen.getByLabelText('Toggle menu');
     fireEvent.click(menuToggle);
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
 
-    // Click outside (mousedown on document)
-    fireEvent.mouseDown(document);
+    // The drawer renders inside the shared Modal; clicking its backdrop
+    // (the parent of the dialog) dismisses it.
+    const backdrop = screen.getByRole('dialog').parentElement!;
+    fireEvent.click(backdrop);
 
-    // Mobile menu should close
+    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
+  });
+
+  it('closes mobile menu when the close button is clicked', () => {
+    render(<AppHeader />);
+    fireEvent.click(screen.getByLabelText('Toggle menu'));
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Close menu'));
+    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
+  });
+
+  it('closes mobile menu on Escape', () => {
+    render(<AppHeader />);
+    fireEvent.click(screen.getByLabelText('Toggle menu'));
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
   });
 
