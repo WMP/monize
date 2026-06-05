@@ -788,6 +788,21 @@ describe("BackupService", () => {
       expect(deleteCalls[0][1]).toEqual([userId]);
     });
 
+    it("should delete existing action_history during restore wipe", async () => {
+      mockUserRepo.findOne.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await service.restoreData(userId, makeInput({ password: "test" }));
+
+      const deleteCalls = mockQueryRunner.query.mock.calls.filter(
+        (call: unknown[]) =>
+          typeof call[0] === "string" &&
+          call[0].includes("DELETE FROM action_history"),
+      );
+      expect(deleteCalls).toHaveLength(1);
+      expect(deleteCalls[0][1]).toEqual([userId]);
+    });
+
     it("should rollback transaction on error", async () => {
       mockUserRepo.findOne.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
