@@ -809,6 +809,12 @@ export class BackupService {
   ): Promise<void> {
     // Delete in FK-safe order (reverse of insert order)
 
+    // Action history (undo/redo log) -- not included in backups, so wipe it
+    // outright; restored data should not be undoable to the prior state.
+    await queryRunner.query("DELETE FROM action_history WHERE user_id = $1", [
+      userId,
+    ]);
+
     // Monte Carlo scenarios (cash flows cascade on scenario delete)
     await queryRunner.query(
       `DELETE FROM monte_carlo_cash_flows WHERE scenario_id IN
