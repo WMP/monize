@@ -135,6 +135,62 @@ jobs:
       - run: cd backend && npm ci && npm audit --audit-level=high
       - run: cd frontend && npm ci && npm audit --audit-level=high
 
+  license-check:
+    name: License Compliance (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [backend, frontend]
+    defaults:
+      run:
+        working-directory: ${{ matrix.package }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm ci
+      # Allow permissive licenses + AGPL-3.0 (the project's own license).
+      # Anything else (GPL-2.0, LGPL with conditions, proprietary, UNKNOWN)
+      # fails the build until explicitly reviewed.
+      - name: Check licenses
+        run: |
+          npx --yes license-checker-rseidelsohn \
+            --production \
+            --excludePrivatePackages \
+            --onlyAllow 'MIT;MIT-0;Apache-2.0;BSD-2-Clause;BSD-3-Clause;BSD;ISC;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;BlueOak-1.0.0;AGPL-3.0;AGPL-3.0-only;WTFPL'
+
+  schema-drift:
+    name: Schema vs Migrations Drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify schema.sql matches migrations state
+        run: scripts/verify-schema.sh
+
+  zizmor-scan:
+    name: Workflow Security Scan (zizmor)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v4
+      - name: Install zizmor
+        run: uv tool install zizmor
+      - name: Run zizmor
+        run: zizmor --format sarif .github/workflows/ > zizmor.sarif || true
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: zizmor.sarif
+          category: zizmor
+
   dockerfile-lint:
     name: Dockerfile Lint (hadolint)
     runs-on: ubuntu-latest
@@ -187,6 +243,9 @@ jobs:
         npm-audit,
         bearer-scan,
         dockerfile-lint,
+        license-check,
+        schema-drift,
+        zizmor-scan,
         e2e-tests,
       ]
     permissions:
