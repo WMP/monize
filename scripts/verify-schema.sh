@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
-# Verify database/schema.sql matches the state produced by applying all
-# migrations in database/migrations/ in order.
+# Verify database/schema.sql is in sync with database/migrations/.
 #
-# Background: fresh installs run schema.sql; existing installs run
-# incremental migrations. database/CLAUDE.md mandates schema.sql must stay
-# in sync with migrations. This script proves it.
+# Invariant (per database/CLAUDE.md): "Always update database/schema.sql
+# alongside any migration." We check this by:
+#
+#   db_schema      = fresh DB + apply schema.sql
+#   db_migrations  = fresh DB + apply schema.sql + apply all migrations
+#
+# If schema.sql is fully up to date, every migration uses IF NOT EXISTS /
+# IF EXISTS guards and is a no-op on top of schema.sql, so the two dumps
+# are identical. If someone adds a column in a migration but forgets to
+# add it to schema.sql, db_migrations has the column and db_schema does
+# not, and the diff fails the build.
+#
+# Note: migrations cannot recreate the full schema from scratch -- only
+# the most recent ones live in database/migrations/, the older ones were
+# rolled into schema.sql long ago.
 #
 # Usage: scripts/verify-schema.sh
 #
@@ -49,20 +60,20 @@ echo "Applying database/schema.sql to db_schema..."
 docker cp "$REPO_ROOT/database/schema.sql" "$CONTAINER:/tmp/schema.sql"
 psql_in -d db_schema -f /tmp/schema.sql >/dev/null
 
-echo "Applying migrations to db_migrations..."
-# db_migrations starts empty; bootstrap the schema_migrations tracking table
-# the same way db-migrate does for a brand-new DB.
-psql_in -d db_migrations -c "
-  CREATE TABLE schema_migrations (
-    filename VARCHAR(255) PRIMARY KEY,
-    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-"
+echo "Applying database/schema.sql to db_migrations (baseline)..."
+psql_in -d db_migrations -f /tmp/schema.sql >/dev/null
+
+echo "Applying migrations on top of db_migrations..."
+# Migrations should be no-ops on a schema.sql baseline (per CLAUDE.md they
+# must use IF NOT EXISTS / IF EXISTS). A migration that fails here -- or
+# that succeeds but mutates the schema -- means schema.sql is missing the
+# change and would diverge from upgraded installs.
 for f in "$REPO_ROOT"/database/migrations/*.sql; do
   fname="$(basename "$f")"
   docker cp "$f" "$CONTAINER:/tmp/migration.sql"
   if ! psql_in -d db_migrations -f /tmp/migration.sql >/dev/null 2>&1; then
-    echo "FAIL: migration $fname did not apply cleanly to a fresh database"
+    echo "FAIL: migration $fname errored when applied on top of schema.sql"
+    echo "      (likely missing IF NOT EXISTS / IF EXISTS guards)"
     psql_in -d db_migrations -f /tmp/migration.sql || true
     exit 1
   fi
