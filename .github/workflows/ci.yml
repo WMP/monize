@@ -24,8 +24,8 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 24
       - run: npm ci
@@ -39,15 +39,15 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 24
       - run: npm ci
       - run: npm run test:unit -- --coverage
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: backend-unit-coverage
           path: backend/coverage/
@@ -81,8 +81,8 @@ jobs:
       JWT_SECRET: test-jwt-secret-for-ci-minimum-32-characters-long
       NODE_ENV: test
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 24
       - run: npm ci
@@ -96,8 +96,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 24
       - run: npm ci
@@ -111,15 +111,15 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 24
       - run: npm ci
       - run: npm run test:cov
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: frontend-coverage
           path: frontend/coverage/
@@ -128,33 +128,170 @@ jobs:
     name: NPM Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 24
       - run: cd backend && npm ci && npm audit --audit-level=high
       - run: cd frontend && npm ci && npm audit --audit-level=high
 
+  license-check:
+    name: License Compliance (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [backend, frontend]
+    defaults:
+      run:
+        working-directory: ${{ matrix.package }}
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 24
+      - run: npm ci
+      # Allowed: permissive (MIT, BSD, ISC, Apache-2.0, 0BSD, Unlicense, ...);
+      # the project's own license (AGPL-3.0 family); LGPL variants (compatible
+      # with AGPL since npm dependency = dynamic-linking equivalent which LGPL
+      # permits; e.g. @img/sharp-libvips-*); MPL-2.0 (weak copyleft, AGPL
+      # compatible; e.g. lightningcss, dompurify); Zlib (e.g. pako).
+      #
+      # MIT* matches packages whose license is inferred from a LICENSE file
+      # but not declared via SPDX (currently pause, rgbcolor) -- still MIT in
+      # practice. Compound SPDX expressions are matched literally because
+      # license-checker doesn't parse them; new ones will need to be added
+      # as they appear.
+      #
+      # Disallowed: GPL-2.0/3.0 (incompatible network-use semantics),
+      # proprietary, UNKNOWN, anything not listed.
+      - name: Check licenses
+        run: |
+          npx --yes license-checker-rseidelsohn \
+            --production \
+            --excludePrivatePackages \
+            --onlyAllow 'MIT;MIT-0;Apache-2.0;BSD-2-Clause;BSD-3-Clause;BSD;ISC;0BSD;CC0-1.0;CC-BY-3.0;CC-BY-4.0;Unlicense;Python-2.0;BlueOak-1.0.0;AGPL-3.0;AGPL-3.0-only;AGPL-3.0-or-later;LGPL-3.0;LGPL-3.0-or-later;LGPL-3.0-only;LGPL-2.1;LGPL-2.1-or-later;LGPL-2.1-only;MPL-2.0;Zlib;WTFPL;MIT*;(MIT AND BSD-3-Clause);(MIT AND Zlib);(MIT AND ISC);(MPL-2.0 OR Apache-2.0)'
+
+  schema-drift:
+    name: Schema vs Migrations Drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - name: Verify schema.sql matches migrations state
+        run: scripts/verify-schema.sh
+
+  frontend-bundle-size:
+    name: Frontend Bundle Size
+    runs-on: ubuntu-latest
+    # Skip on the build-and-push commit so we don't double-build on main.
+    if: github.event_name == 'pull_request'
+    defaults:
+      run:
+        working-directory: frontend
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm run build
+        env:
+          # Same env the e2e build uses so the bundle reflects production output.
+          NODE_ENV: production
+      - name: Report bundle sizes
+        run: |
+          {
+            echo "## Frontend bundle sizes"
+            echo
+            echo '| Path | Size |'
+            echo '|------|------|'
+            # Top 20 largest files under .next/static
+            find .next/static -type f -printf '%s\t%P\n' \
+              | sort -rn | head -20 \
+              | awk '{ printf "| %s | %.1f KB |\n", $2, $1/1024 }'
+            echo
+            echo '### Totals'
+            echo
+            TOTAL_STATIC=$(du -sb .next/static | cut -f1)
+            TOTAL_STANDALONE=$(du -sb .next/standalone 2>/dev/null | cut -f1 || echo 0)
+            printf -- '- .next/static: **%.1f MB**\n' "$(echo "$TOTAL_STATIC/1048576" | bc -l)"
+            printf -- '- .next/standalone: **%.1f MB**\n' "$(echo "$TOTAL_STANDALONE/1048576" | bc -l)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  env-doc-check:
+    name: Env Var Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 24
+      - name: Verify env vars are documented
+        run: node scripts/check-env-docs.mjs
+
+  zizmor-scan:
+    name: Workflow Security Scan (zizmor)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4.2.0
+      - name: Install zizmor
+        run: uv tool install zizmor
+      - name: Run zizmor
+        run: zizmor --format sarif .github/workflows/ > zizmor.sarif || true
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@fb0994ef1c058010acf1efccff928b0a83b1ed54 # v4.32.6
+        with:
+          sarif_file: zizmor.sarif
+          category: zizmor
+
+  dockerfile-lint:
+    name: Dockerfile Lint (hadolint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - name: Lint backend Dockerfile
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
+        with:
+          dockerfile: backend/Dockerfile
+          config: .hadolint.yaml
+      - name: Lint frontend Dockerfile
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
+        with:
+          dockerfile: frontend/Dockerfile
+          config: .hadolint.yaml
+
   bearer-scan:
     name: Bearer Security Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
       - name: Bearer
-        uses: bearer/bearer-action@v2
+        uses: bearer/bearer-action@828eeb928ce2f4a7ca5ed57fb8b59508cb8c79bc # v2
         with:
           # We explicitly don't provide HTTPS out-of-the-box since most users self-host in environments where HTTPS is terminated at a reverse proxy, and we provide guidance on how to securely configure this in our docs. 
           # We also have some known exception messages that contain payee names which would otherwise be flagged as potential secrets, but we have determined that the risk of these being exploited is low and the value of having the full exception message in our logs outweighs the risk.
           skip-rule: "javascript_lang_logger_leak,javascript_express_https_protocol_missing,javascript_lang_exception" 
-          # Exclude some false positives and low-risk findings that we are aware of and have accepted for now. We can re-evaluate these over time to see if any should be remediated.
-          # b65bd7b1a0585cd1d0a326cdb09ce40d_0 - Hard-coded secret used for demo site
-          # da119900eefffd8b84e7693e0388568a_0 - Hard-coded secret used for E2E tests
-          # 95857358158e4664c01c05441df9f2a9_0 - Hard-coded secret used for demo site
-          # 842822dd22cd4403ab5800ac89480c0a_0 - Insufficient randomness for inconsequential task
-          # aa2e6330aede1004652f740df19e1d86_0 - Insufficient randomness for inconsequential task
-          # b04cb91b90deb5e16504baa7ab95f678_0 - Unsanitized dynamic input in file path [CWE-22]
-          # b04cb91b90deb5e16504baa7ab95f678_1 - Unsanitized dynamic input in file path [CWE-22]
-          # b04cb91b90deb5e16504baa7ab95f678_2 - Unsanitized dynamic input in file path [CWE-22]
+          # Exclude some false positives and low-risk findings that we are aware of and have accepted for now.
+          # Each entry has a "review-by" date; the bearer-exceptions-review workflow
+          # opens an issue when any entry is past due, so exceptions don't become permanent debt.
+          # b65bd7b1a0585cd1d0a326cdb09ce40d_0 - Hard-coded secret used for demo site - review-by: 2026-09-04
+          # da119900eefffd8b84e7693e0388568a_0 - Hard-coded secret used for E2E tests - review-by: 2026-09-04
+          # 95857358158e4664c01c05441df9f2a9_0 - Hard-coded secret used for demo site - review-by: 2026-09-04
+          # 842822dd22cd4403ab5800ac89480c0a_0 - Insufficient randomness for inconsequential task - review-by: 2026-09-04
+          # aa2e6330aede1004652f740df19e1d86_0 - Insufficient randomness for inconsequential task - review-by: 2026-09-04
+          # b04cb91b90deb5e16504baa7ab95f678_0 - Unsanitized dynamic input in file path [CWE-22] - review-by: 2026-09-04
+          # b04cb91b90deb5e16504baa7ab95f678_1 - Unsanitized dynamic input in file path [CWE-22] - review-by: 2026-09-04
+          # b04cb91b90deb5e16504baa7ab95f678_2 - Unsanitized dynamic input in file path [CWE-22] - review-by: 2026-09-04
           exclude-fingerprint: "b65bd7b1a0585cd1d0a326cdb09ce40d_0,da119900eefffd8b84e7693e0388568a_0,95857358158e4664c01c05441df9f2a9_0,842822dd22cd4403ab5800ac89480c0a_0,aa2e6330aede1004652f740df19e1d86_0,b04cb91b90deb5e16504baa7ab95f678_0,b04cb91b90deb5e16504baa7ab95f678_1,b04cb91b90deb5e16504baa7ab95f678_2"
 
   build-and-push:
@@ -170,17 +307,28 @@ jobs:
         frontend-unit-tests,
         npm-audit,
         bearer-scan,
+        dockerfile-lint,
+        license-check,
+        schema-drift,
+        zizmor-scan,
+        env-doc-check,
         e2e-tests,
       ]
     permissions:
       contents: write
       packages: write
+      # Needed for cosign keyless signing and SBOM/provenance attestations
+      # via GitHub's OIDC token.
+      id-token: write
+      attestations: write
+      # Needed for Trivy to upload SARIF results to the Security tab.
+      security-events: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 24
 
@@ -196,17 +344,17 @@ jobs:
           cd frontend && npm version "$NEW_VERSION" --no-git-tag-version && cd ..
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Set build metadata
         id: meta
@@ -215,7 +363,8 @@ jobs:
           echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
 
       - name: Build and push backend
-        uses: docker/build-push-action@v6
+        id: build-backend
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: backend/Dockerfile
@@ -223,6 +372,7 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           provenance: true
+          sbom: true
           tags: |
             ghcr.io/kenlasko/monize-backend:latest
             ghcr.io/kenlasko/monize-backend:${{ steps.version.outputs.version }}
@@ -244,7 +394,8 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push frontend
-        uses: docker/build-push-action@v6
+        id: build-frontend
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: frontend
           file: frontend/Dockerfile
@@ -252,6 +403,7 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           provenance: true
+          sbom: true
           tags: |
             ghcr.io/kenlasko/monize-frontend:latest
             ghcr.io/kenlasko/monize-frontend:${{ steps.version.outputs.version }}
@@ -271,6 +423,122 @@ jobs:
             index:org.opencontainers.image.version=${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
+
+      # Keyless signing via GitHub OIDC. No long-lived keys to manage; the
+      # signature is bound to this workflow's identity and verifiable with
+      # `cosign verify --certificate-identity-regexp ...`.
+      - name: Sign backend image
+        env:
+          DIGEST: ${{ steps.build-backend.outputs.digest }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cosign sign --yes \
+            "ghcr.io/kenlasko/monize-backend@${DIGEST}" \
+            "ghcr.io/kenlasko/monize-backend:${VERSION}" \
+            ghcr.io/kenlasko/monize-backend:latest
+
+      - name: Sign frontend image
+        env:
+          DIGEST: ${{ steps.build-frontend.outputs.digest }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cosign sign --yes \
+            "ghcr.io/kenlasko/monize-frontend@${DIGEST}" \
+            "ghcr.io/kenlasko/monize-frontend:${VERSION}" \
+            ghcr.io/kenlasko/monize-frontend:latest
+
+      # Generate and attest an SPDX SBOM for each image. The provenance and
+      # SBOM produced by docker/build-push-action above are embedded in the
+      # OCI manifest; these attestations make them discoverable via
+      # `gh attestation verify` for downstream consumers.
+      - name: Generate backend SBOM
+        uses: anchore/sbom-action@fd74a6fb98a204a1ad35bbfae0122c1a302ff88b # v0.15.0
+        with:
+          image: ghcr.io/kenlasko/monize-backend@${{ steps.build-backend.outputs.digest }}
+          format: spdx-json
+          output-file: backend-sbom.spdx.json
+
+      - name: Attest backend SBOM
+        uses: actions/attest-sbom@cbfd0027ae731a5892db25ecd226930d7ffd19eb # v2.1.0
+        with:
+          subject-name: ghcr.io/kenlasko/monize-backend
+          subject-digest: ${{ steps.build-backend.outputs.digest }}
+          sbom-path: backend-sbom.spdx.json
+          push-to-registry: true
+
+      - name: Generate frontend SBOM
+        uses: anchore/sbom-action@fd74a6fb98a204a1ad35bbfae0122c1a302ff88b # v0.15.0
+        with:
+          image: ghcr.io/kenlasko/monize-frontend@${{ steps.build-frontend.outputs.digest }}
+          format: spdx-json
+          output-file: frontend-sbom.spdx.json
+
+      - name: Attest frontend SBOM
+        uses: actions/attest-sbom@cbfd0027ae731a5892db25ecd226930d7ffd19eb # v2.1.0
+        with:
+          subject-name: ghcr.io/kenlasko/monize-frontend
+          subject-digest: ${{ steps.build-frontend.outputs.digest }}
+          sbom-path: frontend-sbom.spdx.json
+          push-to-registry: true
+
+      # Scan the pushed images for OS + library CVEs. SARIF goes to the
+      # Security tab so findings are tracked over time. We fail on CRITICAL
+      # only - HIGH issues surface in the Security tab but do not block
+      # releases, matching the npm-audit policy.
+      - name: Scan backend image (Trivy)
+        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
+        with:
+          image-ref: ghcr.io/kenlasko/monize-backend@${{ steps.build-backend.outputs.digest }}
+          format: sarif
+          output: trivy-backend.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+          ignore-unfixed: true
+
+      - name: Upload backend Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@fb0994ef1c058010acf1efccff928b0a83b1ed54 # v4.32.6
+        with:
+          sarif_file: trivy-backend.sarif
+          category: trivy-backend
+
+      - name: Scan frontend image (Trivy)
+        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
+        with:
+          image-ref: ghcr.io/kenlasko/monize-frontend@${{ steps.build-frontend.outputs.digest }}
+          format: sarif
+          output: trivy-frontend.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+          ignore-unfixed: true
+
+      - name: Upload frontend Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@fb0994ef1c058010acf1efccff928b0a83b1ed54 # v4.32.6
+        with:
+          sarif_file: trivy-frontend.sarif
+          category: trivy-frontend
+
+      - name: Fail on critical CVEs (backend)
+        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
+        with:
+          image-ref: ghcr.io/kenlasko/monize-backend@${{ steps.build-backend.outputs.digest }}
+          format: table
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Fail on critical CVEs (frontend)
+        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
+        with:
+          image-ref: ghcr.io/kenlasko/monize-frontend@${{ steps.build-frontend.outputs.digest }}
+          format: table
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
 
       - name: Commit version bump
         run: |
@@ -302,8 +570,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-unit-tests, frontend-unit-tests]
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 24
       - name: Install E2E dependencies
@@ -311,7 +579,7 @@ jobs:
         run: npm ci
       - name: Cache Playwright browsers
         id: pw-cache
-        uses: actions/cache@v5
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-firefox-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
@@ -346,8 +614,8 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 24
 
@@ -363,7 +631,7 @@ jobs:
 
       - name: Restore Playwright browsers
         id: pw-cache
-        uses: actions/cache@v5
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-firefox-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
@@ -394,7 +662,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: e2e-report-shard-${{ matrix.shard }}
           path: e2e/playwright-report/
