@@ -1,0 +1,39 @@
+{
+  "links": {
+    "transactions": "Transactions",
+    "billsDeposits": "Bills & Deposits",
+    "investments": "Investments",
+    "accounts": "Accounts",
+    "budgets": "Budgets",
+    "reports": "Reports",
+    "categories": "Categories",
+    "payees": "Payees",
+    "tags": "Tags",
+    "securities": "Securities",
+    "currencies": "Currencies",
+    "importTransactions": "Import Transactions",
+    "insights": "Insights",
+    "aiAssistant": "AI Assistant",
+    "dashboard": "Dashboard",
+    "userManagement": "User Management"
+  },
+  "menus": {
+    "ai": "AI",
+    "tools": "Tools",
+    "admin": "Admin"
+  },
+  "actions": {
+    "toggleMenu": "Toggle menu",
+    "openSearch": "Open search",
+    "search": "Search",
+    "searchTransactions": "Search transactions",
+    "searchPlaceholder": "Search transactions...",
+    "settings": "Settings",
+    "logout": "Logout",
+    "closeMenu": "Close menu",
+    "mainMenu": "Main menu"
+  },
+  "toast": {
+    "loggedOut": "Logged out successfully"
+  }
+}

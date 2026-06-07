@@ -1,6 +1,7 @@
 'use client';
 
 import { MutableRefObject, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import {
   delegationApi,
@@ -10,7 +11,7 @@ import {
   DelegateSectionFlags,
 } from '@/lib/delegation';
 import { Account, AccountType } from '@/types/account';
-import { formatAccountType } from '@/lib/account-utils';
+import { useAccountTypeLabel } from '@/hooks/useAccountTypeLabel';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
@@ -37,42 +38,42 @@ interface Draft {
   sections: Record<SectionKey, boolean>;
 }
 
-const GRANT_OPS: { key: GrantOp; label: string }[] = [
-  { key: 'canRead', label: 'Read' },
-  { key: 'canCreate', label: 'Create' },
-  { key: 'canEdit', label: 'Edit' },
-  { key: 'canDelete', label: 'Delete' },
+const GRANT_OPS: { key: GrantOp; labelKey: string }[] = [
+  { key: 'canRead', labelKey: 'delegateAccess.ops.read' },
+  { key: 'canCreate', labelKey: 'delegateAccess.ops.create' },
+  { key: 'canEdit', labelKey: 'delegateAccess.ops.edit' },
+  { key: 'canDelete', labelKey: 'delegateAccess.ops.delete' },
 ];
 
-const CAP_RESOURCES: { key: CapResource; label: string }[] = [
-  { key: 'payees', label: 'Payees' },
-  { key: 'categories', label: 'Categories' },
-  { key: 'tags', label: 'Tags' },
+const CAP_RESOURCES: { key: CapResource; labelKey: string }[] = [
+  { key: 'payees', labelKey: 'delegateAccess.resources.payees' },
+  { key: 'categories', labelKey: 'delegateAccess.resources.categories' },
+  { key: 'tags', labelKey: 'delegateAccess.resources.tags' },
 ];
 
-const CAP_OPS: { op: CapOp; label: string }[] = [
-  { op: 'create', label: 'Create' },
-  { op: 'edit', label: 'Edit' },
-  { op: 'delete', label: 'Delete' },
+const CAP_OPS: { op: CapOp; labelKey: string }[] = [
+  { op: 'create', labelKey: 'delegateAccess.ops.create' },
+  { op: 'edit', labelKey: 'delegateAccess.ops.edit' },
+  { op: 'delete', labelKey: 'delegateAccess.ops.delete' },
 ];
 
-const SECTIONS: { key: SectionKey; label: string; description: string }[] = [
+const SECTIONS: { key: SectionKey; labelKey: string; descriptionKey: string }[] = [
   {
     key: 'bills',
-    label: 'Bills & Deposits',
-    description: 'Scheduled transactions for granted accounts',
+    labelKey: 'delegateAccess.sections.bills',
+    descriptionKey: 'delegateAccess.sections.billsDescription',
   },
   {
     key: 'investments',
-    label: 'Investments',
-    description: 'Holdings and investment transactions for granted accounts',
+    labelKey: 'delegateAccess.sections.investments',
+    descriptionKey: 'delegateAccess.sections.investmentsDescription',
   },
-  { key: 'budgets', label: 'Budgets', description: 'Read-only budget figures' },
-  { key: 'reports', label: 'Reports', description: 'Read-only reports' },
+  { key: 'budgets', labelKey: 'delegateAccess.sections.budgets', descriptionKey: 'delegateAccess.sections.budgetsDescription' },
+  { key: 'reports', labelKey: 'delegateAccess.sections.reports', descriptionKey: 'delegateAccess.sections.reportsDescription' },
   {
     key: 'ai',
-    label: 'AI Assistant',
-    description: "Uses the owner's configured AI provider",
+    labelKey: 'delegateAccess.sections.ai',
+    descriptionKey: 'delegateAccess.sections.aiDescription',
   },
 ];
 
@@ -160,6 +161,8 @@ export function DelegateAccessModal({
   setFormDirty,
   submitRef,
 }: DelegateAccessModalProps) {
+  const t = useTranslations('settings');
+  const formatAccountType = useAccountTypeLabel();
   const baseline = useMemo(
     () => buildInitialDraft(delegate),
     [delegate],
@@ -181,7 +184,7 @@ export function DelegateAccessModal({
     return Array.from(groups.entries()).sort((x, y) =>
       formatAccountType(x[0]).localeCompare(formatAccountType(y[0])),
     );
-  }, [accounts]);
+  }, [accounts, formatAccountType]);
 
   const baselineGrantArray = useMemo(
     () => grantsToArray(accounts, baseline.grants),
@@ -297,11 +300,11 @@ export function DelegateAccessModal({
         );
       }
       await Promise.all(calls);
-      toast.success('Access updated');
+      toast.success(t('delegateAccess.accessUpdated'));
       setFormDirty(false);
       onSaved();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to update access'));
+      toast.error(getErrorMessage(err, t('delegateAccess.updateError')));
       logger.error(err);
     } finally {
       setSaving(false);
@@ -313,16 +316,16 @@ export function DelegateAccessModal({
   };
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'accounts', label: 'Accounts' },
-    { key: 'sections', label: 'Sections' },
-    { key: 'shared', label: 'Shared data' },
+    { key: 'accounts', label: t('delegateAccess.tabAccounts') },
+    { key: 'sections', label: t('delegateAccess.tabSections') },
+    { key: 'shared', label: t('delegateAccess.tabShared') },
   ];
 
   return (
     <div className="flex flex-col max-h-[90vh]">
       <div className="border-b border-gray-200 dark:border-gray-700 px-4 py-3">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Edit access
+          {t('delegateAccess.editAccess')}
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {delegate.delegate.email}
@@ -355,8 +358,7 @@ export function DelegateAccessModal({
         {tab === 'sections' && (
           <div className="space-y-3">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Grant read-only access to whole app sections. Account-scoped
-              data still also needs per-account access.
+              {t('delegateAccess.sectionsHint')}
             </p>
             {SECTIONS.map((s) => (
               <div
@@ -365,16 +367,16 @@ export function DelegateAccessModal({
               >
                 <div>
                   <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                    {s.label}
+                    {t(s.labelKey)}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {s.description}
+                    {t(s.descriptionKey)}
                   </p>
                 </div>
                 <ToggleSwitch
                   checked={draft.sections[s.key]}
                   onChange={(v) => setSection(s.key, v)}
-                  label={`${s.label} section`}
+                  label={t('delegateAccess.aria.sectionToggle', { label: t(s.labelKey) })}
                 />
               </div>
             ))}
@@ -385,7 +387,7 @@ export function DelegateAccessModal({
           <div className="space-y-3">
             {accounts.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                No accounts to grant.
+                {t('delegateAccess.noAccountsToGrant')}
               </p>
             ) : (
               groupedAccounts.map(([type, list]) => {
@@ -406,7 +408,7 @@ export function DelegateAccessModal({
                     <div className="px-3 pb-3">
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-gray-100 dark:border-gray-700/50 pb-2 mb-2">
                         <span className="w-40 text-xs uppercase tracking-wide text-gray-400">
-                          Grant all
+                          {t('delegateAccess.grantAll')}
                         </span>
                         {GRANT_OPS.map((o) => (
                           <label
@@ -424,9 +426,9 @@ export function DelegateAccessModal({
                               onChange={(v) =>
                                 setColumnForAccounts(ids, o.key, v)
                               }
-                              label={`${o.label} all ${typeLabel} accounts`}
+                              label={t('delegateAccess.aria.grantAllType', { op: t(o.labelKey), type: typeLabel })}
                             />
-                            <span className="text-xs">{o.label}</span>
+                            <span className="text-xs">{t(o.labelKey)}</span>
                           </label>
                         ))}
                       </div>
@@ -455,9 +457,9 @@ export function DelegateAccessModal({
                                     onChange={(v) =>
                                       setGrant(a.id, o.key, v)
                                     }
-                                    label={`${o.label} access to ${a.name}`}
+                                    label={t('delegateAccess.aria.grantAccount', { op: t(o.labelKey), account: a.name })}
                                   />
-                                  <span className="text-xs">{o.label}</span>
+                                  <span className="text-xs">{t(o.labelKey)}</span>
                                 </label>
                               ))}
                             </div>
@@ -475,8 +477,7 @@ export function DelegateAccessModal({
         {tab === 'shared' && (
           <div className="space-y-2">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              READ of payees, categories and tags is always allowed. These
-              control create/edit/delete.
+              {t('delegateAccess.sharedHint')}
             </p>
             {CAP_RESOURCES.map((res) => (
               <div
@@ -484,7 +485,7 @@ export function DelegateAccessModal({
                 className="flex items-center gap-x-3 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700/50 pb-2"
               >
                 <span className="w-24 shrink-0 truncate font-medium">
-                  {res.label}
+                  {t(res.labelKey)}
                 </span>
                 {CAP_OPS.map((o) => (
                   <label key={o.op} className="flex items-center gap-1.5">
@@ -492,9 +493,9 @@ export function DelegateAccessModal({
                       size="sm"
                       checked={draft.capabilities[res.key][o.op]}
                       onChange={(v) => setCapability(res.key, o.op, v)}
-                      label={`${o.label} ${res.label}`}
+                      label={t('delegateAccess.aria.capability', { op: t(o.labelKey), resource: t(res.labelKey) })}
                     />
-                    <span className="text-xs">{o.label}</span>
+                    <span className="text-xs">{t(o.labelKey)}</span>
                   </label>
                 ))}
               </div>

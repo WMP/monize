@@ -385,11 +385,33 @@ export function evaluateExpression(input: string): number | undefined {
   return roundToCents(result);
 }
 
+export interface RelativeTimeLabels {
+  never?: string;
+  justNow?: string;
+  minutesAgo?: (minutes: number) => string;
+  hoursAgo?: (hours: number) => string;
+  yesterday?: string;
+  daysAgo?: (days: number) => string;
+}
+
 /**
- * Format a date string as a relative time (e.g. "5m ago", "2h ago", "Yesterday")
+ * Format a date string as a relative time (e.g. "5m ago", "2h ago", "Yesterday").
+ *
+ * Defaults to English so this pure helper keeps its unit tests stable and stays
+ * usable outside the React tree. The React layer injects localized labels.
  */
-export function formatRelativeTime(dateString: string | null): string {
-  if (!dateString) return 'Never';
+export function formatRelativeTime(
+  dateString: string | null,
+  labels: RelativeTimeLabels = {},
+): string {
+  const never = labels.never ?? 'Never';
+  const justNow = labels.justNow ?? 'Just now';
+  const minutesAgo = labels.minutesAgo ?? ((m: number) => `${m}m ago`);
+  const hoursAgo = labels.hoursAgo ?? ((h: number) => `${h}h ago`);
+  const yesterday = labels.yesterday ?? 'Yesterday';
+  const daysAgo = labels.daysAgo ?? ((d: number) => `${d}d ago`);
+
+  if (!dateString) return never;
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -397,10 +419,10 @@ export function formatRelativeTime(dateString: string | null): string {
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 1) return justNow;
+  if (diffMins < 60) return minutesAgo(diffMins);
+  if (diffHours < 24) return hoursAgo(diffHours);
+  if (diffDays === 1) return yesterday;
+  if (diffDays < 7) return daysAgo(diffDays);
   return date.toLocaleDateString();
 }

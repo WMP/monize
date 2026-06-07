@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,14 +39,27 @@ const profileSchema = z.object({
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
+const VALIDATION_KEYS: Record<string, string> = {
+  'First name must be 100 characters or less': 'profile.validation.firstNameMax',
+  'Last name must be 100 characters or less': 'profile.validation.lastNameMax',
+  'Email is required': 'profile.validation.emailRequired',
+  'Please enter a valid email address': 'profile.validation.emailInvalid',
+  'Email must be 254 characters or less': 'profile.validation.emailMax',
+  'Password must be 128 characters or less': 'profile.validation.passwordMax',
+};
+
 interface ProfileSectionProps {
   user: User;
   onUserUpdated: (user: User) => void;
 }
 
 export function ProfileSection({ user, onUserUpdated }: ProfileSectionProps) {
+  const t = useTranslations('settings');
   const { setUser } = useAuthStore();
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  const tError = (msg?: string) =>
+    msg ? (VALIDATION_KEYS[msg] ? t(VALIDATION_KEYS[msg]) : msg) : msg;
 
   const {
     register,
@@ -74,7 +88,7 @@ export function ProfileSection({ user, onUserUpdated }: ProfileSectionProps) {
       if (formData.lastName !== (user.lastName || '')) data.lastName = formData.lastName;
       if (isEmailChanged) {
         if (!formData.currentPassword) {
-          toast.error('Current password is required to change email');
+          toast.error(t('profile.passwordRequiredForEmail'));
           return;
         }
         data.email = formData.email;
@@ -82,7 +96,7 @@ export function ProfileSection({ user, onUserUpdated }: ProfileSectionProps) {
       }
 
       if (Object.keys(data).length === 0) {
-        toast.error('No changes to save');
+        toast.error(t('profile.noChanges'));
         return;
       }
 
@@ -90,9 +104,9 @@ export function ProfileSection({ user, onUserUpdated }: ProfileSectionProps) {
       onUserUpdated(updatedUser);
       setUser(updatedUser);
       setValue('currentPassword', '');
-      toast.success('Profile updated successfully');
+      toast.success(t('profile.updated'));
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to update profile'));
+      toast.error(getErrorMessage(error, t('profile.updateError')));
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -100,48 +114,48 @@ export function ProfileSection({ user, onUserUpdated }: ProfileSectionProps) {
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Profile</h2>
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('profile.title')}</h2>
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
-            label="First Name"
+            label={t('profile.firstName')}
             {...register('firstName')}
-            error={errors.firstName?.message}
-            placeholder="Enter your first name"
+            error={tError(errors.firstName?.message)}
+            placeholder={t('profile.firstNamePlaceholder')}
           />
           <Input
-            label="Last Name"
+            label={t('profile.lastName')}
             {...register('lastName')}
-            error={errors.lastName?.message}
-            placeholder="Enter your last name"
+            error={tError(errors.lastName?.message)}
+            placeholder={t('profile.lastNamePlaceholder')}
           />
         </div>
         <div className="mt-4">
           <Input
-            label="Email"
+            label={t('profile.email')}
             type="email"
             {...register('email')}
-            error={errors.email?.message}
-            placeholder="Enter your email"
+            error={tError(errors.email?.message)}
+            placeholder={t('profile.emailPlaceholder')}
           />
         </div>
         {isEmailChanged && (
           <div className="mt-4">
             <Input
-              label="Current Password"
+              label={t('profile.currentPassword')}
               type="password"
               {...register('currentPassword')}
-              error={errors.currentPassword?.message}
-              placeholder="Required to change email"
+              error={tError(errors.currentPassword?.message)}
+              placeholder={t('profile.currentPasswordPlaceholder')}
             />
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Password confirmation is required when changing your email address.
+              {t('profile.emailConfirmHint')}
             </p>
           </div>
         )}
         <div className="mt-4 flex justify-end">
           <Button type="submit" disabled={isUpdatingProfile}>
-            {isUpdatingProfile ? 'Saving...' : 'Save Profile'}
+            {isUpdatingProfile ? t('profile.saving') : t('profile.save')}
           </Button>
         </div>
       </form>

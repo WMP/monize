@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import toast from 'react-hot-toast';
@@ -66,6 +67,7 @@ export default function TransactionsPage() {
 }
 
 function TransactionsContent() {
+  const t = useTranslations('transactions');
   const router = useRouter();
   const { formatDate } = useDateFormat();
   const weekStartsOn = (usePreferencesStore((s) => s.preferences?.weekStartsOn) ?? 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -122,10 +124,10 @@ function TransactionsContent() {
       setTags(tagsData);
       staticDataLoaded.current = true;
     } catch (error) {
-      showErrorToast(error, 'Failed to load form data');
+      showErrorToast(error, t('pageError.loadFormData'));
       logger.error(error);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load transaction data and chart data in parallel
   const loadTransactions = useCallback(async (page: number) => {
@@ -221,7 +223,7 @@ function TransactionsContent() {
         budgetsApi.getCategoryBudgetStatus(categoryIds).then(setBudgetStatusMap).catch(() => {});
       }
     } catch (error) {
-      showErrorToast(error, 'Failed to load transactions');
+      showErrorToast(error, t('pageError.loadTransactions'));
       logger.error(error);
     } finally {
       setIsLoading(false);
@@ -307,7 +309,7 @@ function TransactionsContent() {
 
   const handleEdit = async (transaction: Transaction) => {
     if (transaction.linkedInvestmentTransactionId) {
-      toast('This transaction is linked to an investment. Opening in Investments page.', { icon: '📈' });
+      toast(t('pageToast.linkedInvestment'), { icon: '📈' });
       router.push(`/investments?edit=${transaction.linkedInvestmentTransactionId}`);
       return;
     }
@@ -359,7 +361,7 @@ function TransactionsContent() {
   const handleScheduleFormSuccess = () => {
     setSchedulingFrom(undefined);
     setShowScheduleForm(false);
-    toast.success('Scheduled transaction created');
+    toast.success(t('pageToast.scheduledCreated'));
   };
 
   const handleScheduleFormClose = () => {
@@ -387,7 +389,7 @@ function TransactionsContent() {
       setEditingPayee(payee);
       setShowPayeeForm(true);
     } catch (error) {
-      showErrorToast(error, 'Failed to load payee details');
+      showErrorToast(error, t('pageError.loadPayeeDetails'));
       logger.error(error);
     }
   };
@@ -401,12 +403,12 @@ function TransactionsContent() {
         notes: data.notes || undefined,
       };
       const updated = await payeesApi.update(editingPayee.id, cleanedData);
-      toast.success('Payee updated successfully');
+      toast.success(t('pageToast.payeeUpdated'));
       setShowPayeeForm(false);
       setEditingPayee(undefined);
       setPayees(prev => prev.map(p => p.id === updated.id ? updated : p));
     } catch (error) {
-      showErrorToast(error, 'Failed to update payee');
+      showErrorToast(error, t('pageError.updatePayee'));
     }
   };
 
@@ -541,8 +543,8 @@ function TransactionsContent() {
     const payload = selection.buildSelectionPayload();
     const result = await transactionsApi.bulkUpdate({ ...payload, ...updateFields } as BulkUpdateData);
 
-    const parts = [`${result.updated} transaction${result.updated !== 1 ? 's' : ''} updated`];
-    if (result.skipped > 0) parts.push(`${result.skipped} skipped`);
+    const parts = [t('pageToast.transactionsUpdated', { count: result.updated, plural: result.updated !== 1 ? 's' : '' })];
+    if (result.skipped > 0) parts.push(t('pageToast.skipped', { count: result.skipped }));
     if (result.updated > 0) {
       toast.success(parts.join(', '));
     } else if (result.skipped > 0) {
@@ -564,7 +566,7 @@ function TransactionsContent() {
     const result = await transactionsApi.bulkDelete(payload as BulkDeleteData);
 
     if (result.deleted > 0) {
-      toast.success(`${result.deleted} transaction${result.deleted !== 1 ? 's' : ''} deleted`);
+      toast.success(t('pageToast.transactionsDeleted', { count: result.deleted, plural: result.deleted !== 1 ? 's' : '' }));
     }
 
     setShowBulkDeleteConfirm(false);
@@ -620,7 +622,7 @@ function TransactionsContent() {
       }
 
       if (allTransactions.length === 0) {
-        toast.error('No transactions to export');
+        toast.error(t('pageToast.noTransactionsToExport'));
         return;
       }
 
@@ -661,9 +663,9 @@ function TransactionsContent() {
       const filename = `Monize_Transactions_${datePart}_${timePart}.csv`;
 
       exportToCsv(filename, headers, rows);
-      toast.success(`Exported ${allTransactions.length} transaction${allTransactions.length !== 1 ? 's' : ''}`);
+      toast.success(t('pageToast.exported', { count: allTransactions.length, plural: allTransactions.length !== 1 ? 's' : '' }));
     } catch (error) {
-      showErrorToast(error, 'Failed to export transactions');
+      showErrorToast(error, t('pageError.exportTransactions'));
       logger.error(error);
     } finally {
       setIsExporting(false);
@@ -674,10 +676,10 @@ function TransactionsContent() {
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
         <PageHeader
-          title="Transactions"
-          subtitle="Manage your income and expenses"
+          title={t('page.title')}
+          subtitle={t('page.subtitle')}
           helpUrl="https://github.com/kenlasko/monize/wiki/Transactions"
-          actions={<Button onClick={handleCreateNew}>+ New Transaction</Button>}
+          actions={<Button onClick={handleCreateNew}>{t('page.newTransaction')}</Button>}
         />
         {filters.filterCategoryIds.length > 0 || filters.filterPayeeIds.length > 0 || filters.filterTagIds.length > 0 || filters.filterSearch.length > 0 ? (
           <CategoryPayeeBarChart
@@ -710,7 +712,7 @@ function TransactionsContent() {
         {/* Form Modal */}
         <Modal isOpen={showForm} onClose={handleClose} {...modalProps} maxWidth="6xl" className="p-6 !max-w-[69rem]">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            {editingTransaction ? 'Edit Transaction' : duplicatingFrom ? 'Duplicate Transaction' : 'New Transaction'}
+            {editingTransaction ? t('page.editTransaction') : duplicatingFrom ? t('page.duplicateTransaction') : t('page.newTransactionHeading')}
           </h2>
           <TransactionForm
             key={`${editingTransaction?.id || 'new'}-${duplicatingFrom?.id || ''}-${filters.filterAccountIds.join(',')}-${formKey}`}
@@ -737,7 +739,7 @@ function TransactionsContent() {
         {showScheduleForm && (
           <Modal isOpen={showScheduleForm} onClose={handleScheduleFormClose} maxWidth="6xl" className="p-6 !max-w-[69rem]" pushHistory>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              Schedule as Recurring
+              {t('page.scheduleAsRecurring')}
             </h2>
             <ScheduledTransactionForm
               key={`schedule-${schedulingFrom?.id || 'new'}`}
@@ -751,7 +753,7 @@ function TransactionsContent() {
         {/* Payee Edit Modal */}
         {editingPayee && (
           <Modal isOpen={showPayeeForm} onClose={handlePayeeFormCancel} maxWidth="lg" className="p-6" pushHistory>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Edit Payee</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">{t('page.editPayee')}</h2>
             <PayeeForm
               payee={editingPayee}
               categories={categories}
@@ -839,16 +841,16 @@ function TransactionsContent() {
           isOpen={showBulkDeleteConfirm}
           onCancel={() => setShowBulkDeleteConfirm(false)}
           onConfirm={handleBulkDelete}
-          title="Delete Transactions"
-          message={`Are you sure you want to delete ${selection.selectionCount} transaction${selection.selectionCount !== 1 ? 's' : ''}? This will also delete any linked transfer counterparts. This action cannot be undone.`}
-          confirmLabel="Delete"
+          title={t('page.deleteTransactionsTitle')}
+          message={t('page.deleteTransactionsMessage', { count: selection.selectionCount, plural: selection.selectionCount !== 1 ? 's' : '' })}
+          confirmLabel={t('bulkBanner.delete')}
           variant="danger"
         />
 
         {/* Transactions List */}
         <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg overflow-hidden">
           {isLoading && transactions.length === 0 ? (
-            <LoadingSpinner text="Loading transactions..." />
+            <LoadingSpinner text={t('page.loadingTransactions')} />
           ) : (
             <TransactionList
               transactions={transactions}
@@ -906,7 +908,7 @@ function TransactionsContent() {
         {/* Show total count when only one page */}
         {pagination && pagination.totalPages <= 1 && pagination.total > 0 && (
           <div className="mt-4 text-sm text-gray-500 dark:text-gray-400 text-center">
-            {pagination.total} transaction{pagination.total !== 1 ? 's' : ''}
+            {t('page.transactionCount', { count: pagination.total, plural: pagination.total !== 1 ? 's' : '' })}
           </div>
         )}
       </main>

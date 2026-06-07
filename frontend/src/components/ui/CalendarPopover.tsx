@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
@@ -16,8 +17,8 @@ interface CalendarPopoverProps {
   anchorRef: React.RefObject<HTMLElement | null>;
 }
 
-const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAY_KEYS = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
+const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
 // Approximate rendered height of the fixed-size calendar, used only to decide
 // whether to open below the field or flip above it near the page bottom.
@@ -38,6 +39,7 @@ function getFirstDayOfWeek(year: number, month: number): number {
 type View = 'days' | 'months';
 
 export function CalendarPopover({ value, onSelect, onClose, anchorRef }: CalendarPopoverProps) {
+  const t = useTranslations('ui');
   const parsed = value ? value.split('-').map(Number) : null;
   const initialYear = parsed ? parsed[0] : new Date().getFullYear();
   const initialMonth = parsed ? parsed[1] - 1 : new Date().getMonth();
@@ -160,7 +162,7 @@ export function CalendarPopover({ value, onSelect, onClose, anchorRef }: Calenda
           className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1 rounded"
         >
           {view === 'days'
-            ? `${MONTHS[viewMonth]} ${viewYear}`
+            ? `${t(`calendar.months.${MONTH_KEYS[viewMonth]}`)} ${viewYear}`
             : String(viewYear)}
         </button>
         <button
@@ -178,9 +180,9 @@ export function CalendarPopover({ value, onSelect, onClose, anchorRef }: Calenda
         /* Day grid */
         <div className="p-2">
           <div className="grid grid-cols-7 mb-1">
-            {DAYS.map((d) => (
+            {DAY_KEYS.map((d) => (
               <div key={d} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-1">
-                {d}
+                {t(`calendar.days.${d}`)}
               </div>
             ))}
           </div>
@@ -216,7 +218,7 @@ export function CalendarPopover({ value, onSelect, onClose, anchorRef }: Calenda
         /* Month grid */
         <div className="p-3">
           <div className="grid grid-cols-3 gap-2">
-            {MONTHS.map((m, i) => (
+            {MONTH_KEYS.map((m, i) => (
               <button
                 key={m}
                 type="button"
@@ -227,7 +229,7 @@ export function CalendarPopover({ value, onSelect, onClose, anchorRef }: Calenda
                   i === viewMonth && viewYear === initialYear && 'bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-500',
                 )}
               >
-                {m}
+                {t(`calendar.months.${m}`)}
               </button>
             ))}
           </div>
@@ -241,14 +243,14 @@ export function CalendarPopover({ value, onSelect, onClose, anchorRef }: Calenda
           onClick={handleClear}
           className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
         >
-          Clear
+          {t('calendar.clear')}
         </button>
         <button
           type="button"
           onClick={handleToday}
           className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
         >
-          Today
+          {t('calendar.today')}
         </button>
       </div>
     </div>,

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -56,6 +57,7 @@ export function CreateUserModal({
   onClose,
   onCreated,
 }: CreateUserModalProps) {
+  const t = useTranslations('admin');
   const defaultMethod: CredentialMethod = smtpConfigured ? 'invite' : 'password';
 
   const {
@@ -108,7 +110,7 @@ export function CreateUserModal({
       onCreated(result);
       onClose();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to create user'));
+      toast.error(getErrorMessage(err, t('createUser.createError')));
     }
   };
 
@@ -120,49 +122,48 @@ export function CreateUserModal({
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-            Add User
+            {t('createUser.title')}
           </h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Create a new account. You can email an invite, set a password
-            yourself, or generate a temporary one to share.
+            {t('createUser.description')}
           </p>
         </div>
 
         <div className="px-6 py-4 space-y-4">
           <Input
             type="email"
-            label="Email"
+            label={t('createUser.emailLabel')}
             required
-            placeholder="user@example.com"
+            placeholder={t('createUser.emailPlaceholder')}
             error={errors.email?.message}
             {...register('email')}
           />
 
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="First name (optional)"
-              placeholder="First name"
+              label={t('createUser.firstNameLabel')}
+              placeholder={t('createUser.firstNamePlaceholder')}
               {...register('firstName')}
             />
             <Input
-              label="Last name (optional)"
-              placeholder="Last name"
+              label={t('createUser.lastNameLabel')}
+              placeholder={t('createUser.lastNamePlaceholder')}
               {...register('lastName')}
             />
           </div>
 
           <Select
-            label="Role"
+            label={t('createUser.roleLabel')}
             options={[
-              { value: 'user', label: 'User' },
-              { value: 'admin', label: 'Admin' },
+              { value: 'user', label: t('createUser.roleUser') },
+              { value: 'admin', label: t('createUser.roleAdmin') },
             ]}
             {...register('role')}
           />
 
           <fieldset className="space-y-2">
             <legend className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Credentials
+              {t('createUser.credentialsLegend')}
             </legend>
 
             <label className="flex items-start gap-2 cursor-pointer">
@@ -175,10 +176,10 @@ export function CreateUserModal({
                 onChange={() => setValue('method', 'invite')}
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                Send an email invite to set a password
+                {t('createUser.inviteOption')}
                 {!smtpConfigured && (
                   <span className="block text-xs text-gray-500 dark:text-gray-400">
-                    Requires SMTP to be configured.
+                    {t('createUser.inviteRequiresSmtp')}
                   </span>
                 )}
               </span>
@@ -193,7 +194,7 @@ export function CreateUserModal({
                 onChange={() => setValue('method', 'password')}
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                Set a password now
+                {t('createUser.passwordOption')}
               </span>
             </label>
 
@@ -206,10 +207,9 @@ export function CreateUserModal({
                 onChange={() => setValue('method', 'temporary')}
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                Generate a temporary password
+                {t('createUser.temporaryOption')}
                 <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Shown once after creation. The user must change it on first
-                  login.
+                  {t('createUser.temporaryHint')}
                 </span>
               </span>
             </label>
@@ -218,11 +218,11 @@ export function CreateUserModal({
           {method === 'password' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Password
+                {t('createUser.passwordLabel')}
               </label>
               <PasswordInput
                 required
-                placeholder="Set a password"
+                placeholder={t('createUser.passwordPlaceholder')}
                 className={inputClass}
                 {...register('password')}
               />
@@ -246,10 +246,10 @@ export function CreateUserModal({
             onClick={onClose}
             disabled={isSubmitting}
           >
-            Cancel
+            {t('createUser.cancel')}
           </Button>
           <Button type="submit" isLoading={isSubmitting}>
-            Create User
+            {t('createUser.submit')}
           </Button>
         </div>
       </form>

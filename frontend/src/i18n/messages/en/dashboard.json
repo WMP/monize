@@ -1,0 +1,133 @@
+{
+  "page": {
+    "welcome": "Welcome{firstNamePart}!",
+    "subtitle": "Here's your financial overview"
+  },
+  "assetsVsLiabilities": {
+    "title": "Assets vs Liabilities",
+    "empty": "No net worth data available yet.",
+    "current": "Current",
+    "assets": "Assets",
+    "liabilities": "Liabilities",
+    "netWorth": "Net Worth"
+  },
+  "budgetStatus": {
+    "title": "Budget Status",
+    "empty": "No active budget found. Create a budget to track your spending.",
+    "createBudget": "Create Budget",
+    "daysLeft": "{days} days left",
+    "safeToSpendToday": "Safe to spend today",
+    "topCategories": "Top Categories",
+    "viewFullBudget": "View full budget"
+  },
+  "expensesPieChart": {
+    "title": "Expenses by Category",
+    "empty": "No expense data for this period.",
+    "past30Days": "Past 30 days",
+    "uncategorized": "Uncategorized",
+    "other": "Other",
+    "total": "Total"
+  },
+  "favouriteAccounts": {
+    "title": "Favourite Accounts",
+    "empty": "No favourite accounts yet. Mark accounts as favourites to see them here.",
+    "doneReordering": "Done reordering",
+    "reorderFavourites": "Reorder favourites",
+    "done": "Done",
+    "reorder": "Reorder",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "due": "Due: {day}",
+    "dueTooltip": "The day of each month when your credit card payment is due",
+    "settlement": "Settlement: {day}",
+    "settlementTooltip": "The last day of the billing cycle. Transactions posted on or before this day appear on the current statement.",
+    "marketValue": "Market value"
+  },
+  "favouriteSecurities": {
+    "title": "Favourite Securities",
+    "dailyChange": "Daily change",
+    "refreshPrices": "Refresh prices",
+    "emptyPrefix": "No favourite securities yet. Visit the",
+    "securitiesPage": "Securities page",
+    "emptySuffix": "and star the securities you want to track here.",
+    "noPriceYet": "No price yet",
+    "manageSecurities": "Manage securities"
+  },
+  "gettingStarted": {
+    "title": "Getting Started",
+    "subtitle": "Set up your account in a few quick steps",
+    "dismiss": "Dismiss",
+    "steps": {
+      "settings": {
+        "title": "Review your settings",
+        "description": "Set your currency, date format, and theme"
+      },
+      "categories": {
+        "title": "Set up categories",
+        "description": "Create categories or import a default set"
+      },
+      "account": {
+        "title": "Add your first account",
+        "description": "Create a bank account to start tracking"
+      },
+      "import": {
+        "title": "Import from QIF",
+        "description": "Import accounts and transactions from QIF files"
+      }
+    }
+  },
+  "incomeExpenses": {
+    "title": "Income vs Expenses",
+    "last5Weeks": "Last 5 weeks",
+    "weekOf": "Week of {label}",
+    "income": "Income",
+    "expenses": "Expenses",
+    "net": "Net"
+  },
+  "insights": {
+    "title": "Spending Insights",
+    "empty": "No insights available. Visit the Insights page to generate your first analysis.",
+    "goToInsights": "Go to Insights",
+    "activeCount": "{count} active",
+    "viewAllInsights": "View all insights"
+  },
+  "netWorth": {
+    "title": "Net Worth",
+    "empty": "No net worth data available yet.",
+    "past12Months": "Past 12 months",
+    "viewFullReport": "View full report"
+  },
+  "topMovers": {
+    "title": "Top Movers",
+    "dailyChange": "Daily change",
+    "refreshPrices": "Refresh prices",
+    "all": "All",
+    "gainers": "Gainers",
+    "losers": "Losers",
+    "noPriceChanges": "No price changes available yet.",
+    "addInvestmentAccounts": "Add investment accounts to track daily movers.",
+    "noGainersToday": "No gainers today.",
+    "noLosersToday": "No losers today.",
+    "viewPortfolio": "View portfolio"
+  },
+  "upcomingBills": {
+    "title": "Upcoming Bills & Deposits",
+    "empty": "No overdue or upcoming bills, deposits, or transfers within their reminder windows.",
+    "perReminderSettings": "Per reminder settings",
+    "overdue": "Overdue",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "daysAway": "{days} days",
+    "bill": "Bill",
+    "deposit": "Deposit",
+    "transfer": "Transfer",
+    "manual": "Manual",
+    "requiresManualPosting": "Requires manual posting",
+    "postThisTransaction": "Post this transaction",
+    "negativeBalanceWarning": "This transaction will cause the account balance to go below zero",
+    "moreCount": "+{count} more",
+    "totalDue": "Total due",
+    "totalIncoming": "Total incoming",
+    "viewAll": "View all bills & deposits"
+  }
+}

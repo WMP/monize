@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, RefObject } from 'react';
+import { useTranslations } from 'next-intl';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { createPortal } from 'react-dom';
 import { transactionsApi } from '@/lib/transactions';
@@ -26,16 +27,19 @@ interface RecentTransactionsPopoverProps {
 
 const POPOVER_WIDTH = 360;
 
-function formatSplitCategoryLabel(t: Transaction): string {
-  const categories = (t.splits ?? [])
+function formatSplitCategoryLabel(
+  tx: Transaction,
+  translate: ReturnType<typeof useTranslations>,
+): string {
+  const categories = (tx.splits ?? [])
     .map((s) => s.category?.name)
     .filter((name): name is string => !!name);
   if (categories.length === 0) {
-    return `Split (${(t.splits ?? []).length} items)`;
+    return translate('recentPopover.splitItems', { count: (tx.splits ?? []).length });
   }
   const unique = Array.from(new Set(categories));
-  if (unique.length <= 2) return `Split: ${unique.join(', ')}`;
-  return `Split: ${unique.slice(0, 2).join(', ')} +${unique.length - 2}`;
+  if (unique.length <= 2) return translate('recentPopover.splitCategories', { categories: unique.join(', ') });
+  return translate('recentPopover.splitCategoriesMore', { categories: unique.slice(0, 2).join(', '), count: unique.length - 2 });
 }
 
 export function RecentTransactionsPopover({
@@ -45,6 +49,7 @@ export function RecentTransactionsPopover({
   onSelect,
   onClose,
 }: RecentTransactionsPopoverProps) {
+  const tr = useTranslations('transactions');
   const popoverRef = useRef<HTMLDivElement>(null);
   const { formatDate } = useDateFormat();
   const { formatCurrency } = useNumberFormat();
@@ -86,7 +91,7 @@ export function RecentTransactionsPopover({
       .catch((err) => {
         if (cancelled) return;
         logger.warn('Failed to load recent transactions', err);
-        setError('Could not load recent transactions');
+        setError(tr('recentPopover.loadError'));
         setIsLoading(false);
       });
     return () => {
@@ -99,7 +104,9 @@ export function RecentTransactionsPopover({
 
   if (!position) return null;
 
-  const heading = payeeId || payeeName ? `Recent for ${payeeName || 'this payee'}` : 'Recent transactions';
+  const heading = payeeId || payeeName
+    ? tr('recentPopover.recentFor', { payee: payeeName || tr('recentPopover.thisPayee') })
+    : tr('recentPopover.recentTransactions');
 
   const content = (
     <div
@@ -114,23 +121,23 @@ export function RecentTransactionsPopover({
       </div>
       <div className="max-h-80 overflow-y-auto">
         {isLoading && (
-          <div className="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">Loading...</div>
+          <div className="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">{tr('recentPopover.loading')}</div>
         )}
         {!isLoading && error && (
           <div className="px-3 py-4 text-sm text-red-600 dark:text-red-400">{error}</div>
         )}
         {!isLoading && !error && transactions.length === 0 && (
           <div className="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-            No recent transactions{payeeId || payeeName ? ' for this payee' : ''}.
+            {tr('recentPopover.noRecent', { suffix: payeeId || payeeName ? tr('recentPopover.forThisPayee') : '' })}
           </div>
         )}
         {!isLoading && !error && transactions.length > 0 && (
           <ul>
             {transactions.map((t) => {
-              const payeeLabel = t.payeeName || t.payee?.name || '(no payee)';
+              const payeeLabel = t.payeeName || t.payee?.name || tr('recentPopover.noPayee');
               const categoryLabel = t.isSplit
-                ? formatSplitCategoryLabel(t)
-                : t.category?.name || '(uncategorized)';
+                ? formatSplitCategoryLabel(t, tr)
+                : t.category?.name || tr('recentPopover.uncategorized');
               return (
                 <li key={t.id}>
                   <button

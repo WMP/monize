@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { gainLossColor } from '@/lib/format';
 import { differenceInDays, startOfDay, parseISO } from 'date-fns';
 import type { ScheduledTransaction } from '@/types/scheduled-transaction';
@@ -20,6 +21,7 @@ export function BudgetUpcomingBills({
   periodEnd,
   formatCurrency,
 }: BudgetUpcomingBillsProps) {
+  const t = useTranslations('budgets');
   const today = startOfDay(new Date());
   const endDate = parseISO(periodEnd);
 
@@ -53,11 +55,11 @@ export function BudgetUpcomingBills({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-        Upcoming Bills
+        {t('upcomingBills.title')}
       </h2>
       {upcomingBills.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          No bills due this period.
+          {t('upcomingBills.noBills')}
         </p>
       ) : (
         <div className="space-y-2">
@@ -81,27 +83,27 @@ export function BudgetUpcomingBills({
           ))}
           {upcomingBills.length > 5 && (
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              +{upcomingBills.length - 5} more bills
+              {t('upcomingBills.moreBills', { count: upcomingBills.length - 5 })}
             </p>
           )}
         </div>
       )}
       <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600 dark:text-gray-400">Total upcoming</span>
+          <span className="text-gray-600 dark:text-gray-400">{t('upcomingBills.totalUpcoming')}</span>
           <span className="font-semibold text-red-600 dark:text-red-400">
             {formatCurrency(totalUpcoming)}
           </span>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600 dark:text-gray-400">Truly available</span>
+          <span className="text-gray-600 dark:text-gray-400">{t('upcomingBills.trulyAvailable')}</span>
           <span
             className={`font-semibold ${
               gainLossColor(trulyAvailable)
             }`}
           >
             {formatCurrency(Math.abs(trulyAvailable))}
-            {trulyAvailable < 0 && ' over'}
+            {trulyAvailable < 0 && t('upcomingBills.over')}
           </span>
         </div>
       </div>

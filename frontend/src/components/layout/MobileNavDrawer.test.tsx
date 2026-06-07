@@ -7,16 +7,16 @@ vi.mock('next/image', () => ({
 }));
 
 const navLinks = [
-  { href: '/transactions', label: 'Transactions' },
-  { href: '/accounts', label: 'Accounts' },
+  { href: '/transactions', labelKey: 'links.transactions' },
+  { href: '/accounts', labelKey: 'links.accounts' },
 ];
 const aiLinks = [
-  { href: '/insights', label: 'Insights' },
-  { href: '/ai', label: 'AI Assistant' },
+  { href: '/insights', labelKey: 'links.insights' },
+  { href: '/ai', labelKey: 'links.aiAssistant' },
 ];
 const toolsLinks = [
-  { href: '/categories', label: 'Categories' },
-  { href: '/import', label: 'Import Transactions', badge: 'Beta' },
+  { href: '/categories', labelKey: 'links.categories' },
+  { href: '/import', labelKey: 'links.importTransactions', badge: 'Beta' },
 ];
 
 function renderDrawer(overrides: Partial<React.ComponentProps<typeof MobileNavDrawer>> = {}) {

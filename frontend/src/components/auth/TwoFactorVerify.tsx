@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,6 +32,7 @@ interface TwoFactorVerifyProps {
 }
 
 export function TwoFactorVerify({ tempToken, onVerified, onCancel }: TwoFactorVerifyProps) {
+  const t = useTranslations('auth');
   const [isLoading, setIsLoading] = useState(false);
   const [useBackupCode, setUseBackupCode] = useState(false);
 
@@ -71,7 +73,7 @@ export function TwoFactorVerify({ tempToken, onVerified, onCancel }: TwoFactorVe
         onVerified(response.user);
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Invalid verification code'));
+      toast.error(getErrorMessage(error, t('twoFactorVerify.invalidCode')));
       setValue('code', '');
     } finally {
       setIsLoading(false);
@@ -87,19 +89,19 @@ export function TwoFactorVerify({ tempToken, onVerified, onCancel }: TwoFactorVe
           </svg>
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Two-Factor Authentication
+          {t('twoFactorVerify.title')}
         </h3>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
           {useBackupCode
-            ? 'Enter one of your backup codes.'
-            : 'Enter the 6-digit code from your authenticator app.'}
+            ? t('twoFactorVerify.backupPrompt')
+            : t('twoFactorVerify.totpPrompt')}
         </p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {useBackupCode ? (
           <Input
-            label="Backup Code"
+            label={t('twoFactorVerify.backupCodeLabel')}
             type="text"
             autoComplete="off"
             maxLength={9}
@@ -114,7 +116,7 @@ export function TwoFactorVerify({ tempToken, onVerified, onCancel }: TwoFactorVe
           />
         ) : (
           <Input
-            label="Verification Code"
+            label={t('twoFactorVerify.verificationCodeLabel')}
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
@@ -137,7 +139,7 @@ export function TwoFactorVerify({ tempToken, onVerified, onCancel }: TwoFactorVe
             className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
           />
           <span className="text-sm text-gray-600 dark:text-gray-400">
-            Don&apos;t ask again on this browser for 30 days
+            {t('twoFactorVerify.rememberDevice')}
           </span>
         </label>
 
@@ -149,7 +151,7 @@ export function TwoFactorVerify({ tempToken, onVerified, onCancel }: TwoFactorVe
           disabled={!isCodeValid}
           className="w-full"
         >
-          Verify
+          {t('twoFactorVerify.verify')}
         </Button>
 
         <button
@@ -157,7 +159,7 @@ export function TwoFactorVerify({ tempToken, onVerified, onCancel }: TwoFactorVe
           onClick={handleToggleMode}
           className="w-full text-center text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
         >
-          {useBackupCode ? 'Use authenticator code instead' : 'Use a backup code instead'}
+          {useBackupCode ? t('twoFactorVerify.useAuthenticatorInstead') : t('twoFactorVerify.useBackupCodeInstead')}
         </button>
 
         <button
@@ -165,7 +167,7 @@ export function TwoFactorVerify({ tempToken, onVerified, onCancel }: TwoFactorVe
           onClick={onCancel}
           className="w-full text-center text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
         >
-          Back to login
+          {t('twoFactorVerify.backToLogin')}
         </button>
       </form>
     </div>

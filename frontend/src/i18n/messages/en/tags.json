@@ -1,0 +1,79 @@
+{
+  "page": {
+    "title": "Tags",
+    "subtitle": "Label your transactions with custom tags",
+    "newTag": "+ New Tag",
+    "searchPlaceholder": "Search tags...",
+    "summary": {
+      "totalTags": "Total Tags",
+      "tagsWithColour": "Tags with Colour",
+      "tagsWithIcon": "Tags with Icon"
+    },
+    "modal": {
+      "editTitle": "Edit Tag",
+      "newTitle": "New Tag"
+    },
+    "delete": {
+      "title": "Delete Tag",
+      "messageInUse": "Are you sure you want to delete \"{name}\"? This tag is used on {count} transaction{plural}. The tag will be removed from those transactions.",
+      "message": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+      "confirmLabel": "Delete"
+    },
+    "loading": "Loading tags...",
+    "empty": {
+      "title": "No tags yet",
+      "description": "Tags help you label and filter your transactions. Create your first tag to get started.",
+      "createButton": "Create Your First Tag"
+    },
+    "count": "{count} tag{plural}",
+    "toast": {
+      "loadFailed": "Failed to load tags",
+      "updated": "Tag updated successfully",
+      "created": "Tag created successfully",
+      "updateFailed": "Failed to update tag",
+      "createFailed": "Failed to create tag",
+      "deleted": "Tag deleted successfully",
+      "deleteFailed": "Failed to delete tag"
+    }
+  },
+  "form": {
+    "nameLabel": "Tag Name",
+    "nameRequired": "Tag name is required",
+    "colourLabel": "Colour",
+    "noColour": "No colour",
+    "iconLabel": "Icon",
+    "update": "Update Tag",
+    "create": "Create Tag",
+    "colours": {
+      "red": "Red",
+      "orange": "Orange",
+      "yellow": "Yellow",
+      "green": "Green",
+      "teal": "Teal",
+      "blue": "Blue",
+      "purple": "Purple",
+      "pink": "Pink",
+      "grey": "Grey"
+    }
+  },
+  "list": {
+    "empty": {
+      "title": "No tags found",
+      "description": "No tags match your current search."
+    },
+    "densityToggle": "Toggle row density",
+    "density": {
+      "normal": "Normal",
+      "compact": "Compact",
+      "dense": "Dense"
+    },
+    "columns": {
+      "name": "Name",
+      "icon": "Icon",
+      "transactions": "Transactions",
+      "actions": "Actions"
+    },
+    "edit": "Edit",
+    "delete": "Delete"
+  }
+}

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, MutableRefObject } from 'react';
+import { useEffect, useMemo, MutableRefObject } from 'react';
+import { useTranslations } from 'next-intl';
 import { useForm, useWatch } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,15 +13,16 @@ import { useFormDirtyNotify } from '@/hooks/useFormDirtyNotify';
 import { FormActions } from '@/components/ui/FormActions';
 import { Category } from '@/types/category';
 
-const categorySchema = z.object({
-  name: z.string().min(1, 'Category name is required').max(255),
-  parentId: z.string().optional(),
-  description: z.string().optional(),
-  color: z.string().optional(),
-  isIncome: z.boolean(),
-});
+const buildCategorySchema = (nameRequired: string) =>
+  z.object({
+    name: z.string().min(1, nameRequired).max(255),
+    parentId: z.string().optional(),
+    description: z.string().optional(),
+    color: z.string().optional(),
+    isIncome: z.boolean(),
+  });
 
-type CategoryFormData = z.infer<typeof categorySchema>;
+type CategoryFormData = z.infer<ReturnType<typeof buildCategorySchema>>;
 
 interface CategoryFormProps {
   category?: Category;
@@ -31,19 +33,23 @@ interface CategoryFormProps {
   submitRef?: MutableRefObject<(() => void) | null>;
 }
 
+// Labels resolve at render via t(opt.labelKey) so the palette follows the
+// active locale. labelKey points into the `categories.form.colours` namespace.
 const colourPalette = [
-  { value: '#ef4444', label: 'Red' },
-  { value: '#f97316', label: 'Orange' },
-  { value: '#eab308', label: 'Yellow' },
-  { value: '#22c55e', label: 'Green' },
-  { value: '#14b8a6', label: 'Teal' },
-  { value: '#3b82f6', label: 'Blue' },
-  { value: '#8b5cf6', label: 'Purple' },
-  { value: '#ec4899', label: 'Pink' },
-  { value: '#6b7280', label: 'Grey' },
+  { value: '#ef4444', labelKey: 'form.colours.red' },
+  { value: '#f97316', labelKey: 'form.colours.orange' },
+  { value: '#eab308', labelKey: 'form.colours.yellow' },
+  { value: '#22c55e', labelKey: 'form.colours.green' },
+  { value: '#14b8a6', labelKey: 'form.colours.teal' },
+  { value: '#3b82f6', labelKey: 'form.colours.blue' },
+  { value: '#8b5cf6', labelKey: 'form.colours.purple' },
+  { value: '#ec4899', labelKey: 'form.colours.pink' },
+  { value: '#6b7280', labelKey: 'form.colours.grey' },
 ];
 
 export function CategoryForm({ category, categories, onSubmit, onCancel, onDirtyChange, submitRef }: CategoryFormProps) {
+  const t = useTranslations('categories');
+  const categorySchema = useMemo(() => buildCategorySchema(t('form.nameRequired')), [t]);
   const {
     register,
     handleSubmit,
@@ -120,7 +126,7 @@ export function CategoryForm({ category, categories, onSubmit, onCancel, onDirty
   };
 
   const parentOptions = [
-    { value: '', label: 'No parent (top-level)' },
+    { value: '', label: t('form.noParent') },
     ...getAvailableParents().map(({ category: cat }) => {
       const parent = cat.parentId ? categories.find(c => c.id === cat.parentId) : null;
       const displayName = parent ? `${parent.name}: ${cat.name}` : cat.name;
@@ -132,20 +138,20 @@ export function CategoryForm({ category, categories, onSubmit, onCancel, onDirty
   ];
 
   const typeOptions = [
-    { value: 'false', label: 'Expense' },
-    { value: 'true', label: 'Income' },
+    { value: 'false', label: t('form.typeExpense') },
+    { value: 'true', label: t('form.typeIncome') },
   ];
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <Input
-        label="Category Name"
+        label={t('form.nameLabel')}
         error={errors.name?.message}
         {...register('name')}
       />
 
       <Select
-        label="Parent Category"
+        label={t('form.parentLabel')}
         options={parentOptions}
         error={errors.parentId?.message}
         {...register('parentId')}
@@ -154,7 +160,7 @@ export function CategoryForm({ category, categories, onSubmit, onCancel, onDirty
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Select
-            label="Type"
+            label={t('form.typeLabel')}
             options={typeOptions}
             error={errors.isIncome?.message}
             disabled={hasParent}
@@ -163,14 +169,14 @@ export function CategoryForm({ category, categories, onSubmit, onCancel, onDirty
           />
           {hasParent && parentCategory && (
             <p className="mt-1 text-xs text-gray-500">
-              Type inherited from parent
+              {t('form.typeInherited')}
             </p>
           )}
         </div>
 
         <div>
           <input type="hidden" {...register('color')} />
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Colour</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('form.colourLabel')}</label>
           {/* Mobile: dropdown select */}
           <div className="md:hidden">
             <div className="flex items-center gap-2">
@@ -189,9 +195,9 @@ export function CategoryForm({ category, categories, onSubmit, onCancel, onDirty
                 onChange={(e) => setValue('color', e.target.value, { shouldDirty: true })}
                 className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 text-sm"
               >
-                <option value="">{hasParent ? 'Inherit from parent' : 'No colour'}</option>
+                <option value="">{hasParent ? t('form.inheritFromParent') : t('form.noColour')}</option>
                 {colourPalette.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
                 ))}
               </select>
             </div>
@@ -206,7 +212,7 @@ export function CategoryForm({ category, categories, onSubmit, onCancel, onDirty
                   ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-800'
                   : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
               }`}
-              title={hasParent ? 'Inherit from parent' : 'No colour'}
+              title={hasParent ? t('form.inheritFromParent') : t('form.noColour')}
               style={
                 !watchedColor && parentCategory?.effectiveColor
                   ? { backgroundColor: parentCategory.effectiveColor, opacity: 0.4 }
@@ -230,25 +236,25 @@ export function CategoryForm({ category, categories, onSubmit, onCancel, onDirty
                     : 'border-transparent hover:border-gray-400 dark:hover:border-gray-500 hover:scale-110'
                 }`}
                 style={{ backgroundColor: opt.value }}
-                title={opt.label}
+                title={t(opt.labelKey)}
               />
             ))}
           </div>
           {hasParent && !watchedColor && parentCategory?.effectiveColor && (
             <p className="mt-1 text-xs text-gray-500">
-              Colour inherited from parent ({parentCategory.name})
+              {t('form.colourInherited', { name: parentCategory.name })}
             </p>
           )}
         </div>
       </div>
 
       <Input
-        label="Description (optional)"
+        label={t('form.descriptionLabel')}
         error={errors.description?.message}
         {...register('description')}
       />
 
-      <FormActions onCancel={onCancel} submitLabel={category ? 'Update Category' : 'Create Category'} isSubmitting={isSubmitting} />
+      <FormActions onCancel={onCancel} submitLabel={category ? t('form.submitUpdate') : t('form.submitCreate')} isSubmitting={isSubmitting} />
     </form>
   );
 }

@@ -48,20 +48,30 @@ export function buildAccountDropdownOptions(
   return options;
 }
 
-/** Format an account type enum to a human-readable label. */
-export const formatAccountType = (type: AccountType): string => {
-  const labels: Record<AccountType, string> = {
-    CHEQUING: 'Chequing',
-    SAVINGS: 'Savings',
-    CREDIT_CARD: 'Credit Card',
-    INVESTMENT: 'Investment',
-    LOAN: 'Loan',
-    MORTGAGE: 'Mortgage',
-    CASH: 'Cash',
-    LINE_OF_CREDIT: 'Line of Credit',
-    ASSET: 'Asset',
-    OTHER: 'Other',
-  };
+const ENGLISH_ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  CHEQUING: 'Chequing',
+  SAVINGS: 'Savings',
+  CREDIT_CARD: 'Credit Card',
+  INVESTMENT: 'Investment',
+  LOAN: 'Loan',
+  MORTGAGE: 'Mortgage',
+  CASH: 'Cash',
+  LINE_OF_CREDIT: 'Line of Credit',
+  ASSET: 'Asset',
+  OTHER: 'Other',
+};
+
+/**
+ * Format an account type enum to a human-readable label.
+ *
+ * Defaults to English labels so this pure helper stays usable outside the
+ * React tree (and keeps its unit tests stable). The React layer injects a
+ * localized label map (see `useAccountTypeLabel`) to render translated text.
+ */
+export const formatAccountType = (
+  type: AccountType,
+  labels: Record<AccountType, string> = ENGLISH_ACCOUNT_TYPE_LABELS,
+): string => {
   return labels[type] || type;
 };
 
@@ -99,29 +109,38 @@ export function countLogicalAccounts(accounts: Account[]): number {
  *   (names are the accounts that are NOT selected)
  * - Otherwise: "X, Y" (names are the accounts that ARE selected)
  */
+export interface AccountFilterLabels {
+  allAccounts?: string;
+  allBut?: (names: string) => string;
+}
+
 export function buildAccountFilterLabel(
   selectedIds: string[],
   availableAccounts: { id: string; name: string }[],
   getDisplayName: (account: { id: string; name: string }) => string = (a) => a.name,
+  labels: AccountFilterLabels = {},
 ): string {
+  const allAccounts = labels.allAccounts ?? 'All Accounts';
+  const allBut = labels.allBut ?? ((names: string) => `All but ${names}`);
+
   if (availableAccounts.length === 0 || selectedIds.length === 0) {
-    return 'All Accounts';
+    return allAccounts;
   }
 
   const selectedSet = new Set(selectedIds);
   const selected = availableAccounts.filter((a) => selectedSet.has(a.id));
 
   if (selected.length === 0) {
-    return 'All Accounts';
+    return allAccounts;
   }
 
   if (selected.length === availableAccounts.length) {
-    return 'All Accounts';
+    return allAccounts;
   }
 
   if (selected.length > availableAccounts.length / 2) {
     const unselected = availableAccounts.filter((a) => !selectedSet.has(a.id));
-    return `All but ${unselected.map(getDisplayName).join(', ')}`;
+    return allBut(unselected.map(getDisplayName).join(', '));
   }
 
   return selected.map(getDisplayName).join(', ');

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -24,12 +25,12 @@ import toast from 'react-hot-toast';
 const logger = createLogger('LoanPaymentSetupDialog');
 
 const paymentFrequencyOptions = [
-  { value: 'WEEKLY', label: 'Weekly' },
-  { value: 'BIWEEKLY', label: 'Every 2 Weeks' },
-  { value: 'SEMIMONTHLY', label: 'Semi-Monthly' },
-  { value: 'MONTHLY', label: 'Monthly' },
-  { value: 'QUARTERLY', label: 'Quarterly' },
-  { value: 'YEARLY', label: 'Yearly' },
+  { value: 'WEEKLY', labelKey: 'loanPaymentSetup.frequency.weekly' },
+  { value: 'BIWEEKLY', labelKey: 'loanPaymentSetup.frequency.biweekly' },
+  { value: 'SEMIMONTHLY', labelKey: 'loanPaymentSetup.frequency.semimonthly' },
+  { value: 'MONTHLY', labelKey: 'loanPaymentSetup.frequency.monthly' },
+  { value: 'QUARTERLY', labelKey: 'loanPaymentSetup.frequency.quarterly' },
+  { value: 'YEARLY', labelKey: 'loanPaymentSetup.frequency.yearly' },
 ];
 
 interface LoanPaymentSetupDialogProps {
@@ -47,6 +48,7 @@ export function LoanPaymentSetupDialog({
   accounts,
   onSetupComplete,
 }: LoanPaymentSetupDialogProps) {
+  const t = useTranslations('accounts');
   const [isDetecting, setIsDetecting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [detected, setDetected] = useState<DetectedLoanPayment | null>(null);
@@ -174,16 +176,16 @@ export function LoanPaymentSetupDialog({
       setPayees((prev) => [...prev, newPayee]);
       setSelectedPayeeId(newPayee.id);
       setPayeeName(newPayee.name);
-      toast.success(`Payee "${name}" created`);
+      toast.success(t('loanPaymentSetup.payeeCreated', { name }));
     } catch (error: any) {
-      const message = error?.response?.data?.message || 'Failed to create payee';
+      const message = error?.response?.data?.message || t('loanPaymentSetup.createPayeeFailed');
       toast.error(message);
     }
-  }, []);
+  }, [t]);
 
   const handleSubmit = useCallback(async () => {
     if (!totalPaymentAmount || !sourceAccountId || !nextDueDate) {
-      toast.error('Please fill in all required fields');
+      toast.error(t('loanPaymentSetup.requiredFields'));
       return;
     }
 
@@ -217,11 +219,11 @@ export function LoanPaymentSetupDialog({
       }
 
       await accountsApi.setupLoanPayments(loanAccount.accountId, data);
-      toast.success(`Scheduled payments set up for ${loanAccount.accountName}`);
+      toast.success(t('loanPaymentSetup.setupSuccess', { name: loanAccount.accountName }));
       onSetupComplete?.();
       onClose();
     } catch (error: any) {
-      const message = error?.response?.data?.message || 'Failed to set up payments';
+      const message = error?.response?.data?.message || t('loanPaymentSetup.setupFailed');
       toast.error(message);
       logger.error('Failed to set up loan payments:', error);
     } finally {
@@ -232,24 +234,24 @@ export function LoanPaymentSetupDialog({
     interestRate, interestCategoryId, selectedPayeeId, payeeName, autoPost,
     includeExtraPrincipal, extraPrincipal, useDetectedSplit, detected,
     isMortgage, isCanadianMortgage, isVariableRate, amortizationMonths, termMonths,
-    loanAccount, onSetupComplete, onClose,
+    loanAccount, onSetupComplete, onClose, t,
   ]);
 
   const confidenceLabel = detected
     ? detected.confidence >= 0.7
-      ? 'High'
+      ? t('loanPaymentSetup.confidenceHigh')
       : detected.confidence >= 0.4
-        ? 'Medium'
-        : 'Low'
+        ? t('loanPaymentSetup.confidenceMedium')
+        : t('loanPaymentSetup.confidenceLow')
     : null;
 
-  const accountLabel = isMortgage ? 'Mortgage' : 'Loan';
+  const accountLabel = isMortgage ? t('loanPaymentSetup.accountMortgage') : t('loanPaymentSetup.accountLoan');
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="lg">
       <div className="p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          Set Up {accountLabel} Payments
+          {t('loanPaymentSetup.setUpPayments', { account: accountLabel })}
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           {loanAccount.accountName}
@@ -259,7 +261,7 @@ export function LoanPaymentSetupDialog({
           <div className="flex flex-col items-center py-8">
             <LoadingSpinner />
             <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-              Analyzing transaction history...
+              {t('loanPaymentSetup.analyzing')}
             </p>
           </div>
         ) : (
@@ -267,28 +269,30 @@ export function LoanPaymentSetupDialog({
             {detected && detected.paymentCount > 0 && (
               <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 mb-4">
                 <p className="text-sm text-blue-800 dark:text-blue-300">
-                  Detected {detected.paymentCount} payments from{' '}
-                  {detected.firstPaymentDate} to {detected.lastPaymentDate}.
+                  {t('loanPaymentSetup.detectedPayments', { count: detected.paymentCount, from: detected.firstPaymentDate, to: detected.lastPaymentDate })}
                   {confidenceLabel && (
                     <span className="ml-1">
-                      Confidence: <strong>{confidenceLabel}</strong>
+                      {t('loanPaymentSetup.confidenceLabel')}<strong>{confidenceLabel}</strong>
                     </span>
                   )}
                 </p>
                 {hasDetectedSplit && (
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                    Last payment split: {currencySymbol}{detected.lastPrincipalAmount?.toFixed(2)} principal
-                    {' / '}{currencySymbol}{detected.lastInterestAmount?.toFixed(2)} interest
+                    {t('loanPaymentSetup.lastPaymentSplit', {
+                      principal: `${currencySymbol}${detected.lastPrincipalAmount?.toFixed(2)}`,
+                      interest: `${currencySymbol}${detected.lastInterestAmount?.toFixed(2)}`,
+                    })}
                   </p>
                 )}
                 {detected.extraPrincipalCount > 0 && (
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                    {detected.extraPrincipalCount} extra principal payment{detected.extraPrincipalCount !== 1 ? 's' : ''} detected
-                    {' ('}avg {currencySymbol}{detected.averageExtraPrincipal.toFixed(2)}/period)
+                    {detected.extraPrincipalCount !== 1
+                      ? t('loanPaymentSetup.extraPrincipalDetectedOther', { count: detected.extraPrincipalCount, avg: `${currencySymbol}${detected.averageExtraPrincipal.toFixed(2)}` })
+                      : t('loanPaymentSetup.extraPrincipalDetectedOne', { count: detected.extraPrincipalCount, avg: `${currencySymbol}${detected.averageExtraPrincipal.toFixed(2)}` })}
                   </p>
                 )}
                 <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                  Review and adjust the values below before saving.
+                  {t('loanPaymentSetup.reviewAndAdjust')}
                 </p>
               </div>
             )}
@@ -297,7 +301,7 @@ export function LoanPaymentSetupDialog({
               {/* Payment Amount */}
               <div>
                 <CurrencyInput
-                  label="Regular Payment Amount *"
+                  label={t('loanPaymentSetup.regularPaymentAmount')}
                   value={paymentAmount || undefined}
                   onChange={(val) => setPaymentAmount(val ?? 0)}
                   prefix={currencySymbol}
@@ -314,19 +318,19 @@ export function LoanPaymentSetupDialog({
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Include extra payment to principal
+                    {t('loanPaymentSetup.includeExtraPrincipal')}
                   </span>
                 </label>
                 {includeExtraPrincipal && (
                   <div className="ml-6">
                     <CurrencyInput
-                      label="Extra Principal Per Payment"
+                      label={t('loanPaymentSetup.extraPrincipalPerPayment')}
                       value={extraPrincipal || undefined}
                       onChange={(val) => setExtraPrincipal(val ?? 0)}
                       prefix={currencySymbol}
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Total payment: {currencySymbol}{totalPaymentAmount.toFixed(2)}
+                      {t('loanPaymentSetup.totalPayment', { amount: `${currencySymbol}${totalPaymentAmount.toFixed(2)}` })}
                     </p>
                   </div>
                 )}
@@ -343,13 +347,13 @@ export function LoanPaymentSetupDialog({
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Use principal/interest split from imported transactions
+                      {t('loanPaymentSetup.useDetectedSplit')}
                     </span>
                   </label>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
                     {useDetectedSplit
-                      ? `Will use ${currencySymbol}${detected!.lastInterestAmount!.toFixed(2)} for interest, remainder to principal`
-                      : 'Will calculate split from the interest rate and current balance'}
+                      ? t('loanPaymentSetup.useDetectedSplitOn', { interest: `${currencySymbol}${detected!.lastInterestAmount!.toFixed(2)}` })
+                      : t('loanPaymentSetup.useDetectedSplitOff')}
                   </p>
                 </div>
               )}
@@ -357,21 +361,21 @@ export function LoanPaymentSetupDialog({
               {/* Payment Frequency */}
               <div>
                 <Select
-                  label="Payment Frequency *"
+                  label={t('loanPaymentSetup.paymentFrequency')}
                   value={paymentFrequency}
                   onChange={(e) => setPaymentFrequency(e.target.value)}
-                  options={paymentFrequencyOptions}
+                  options={paymentFrequencyOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
                 />
               </div>
 
               {/* Source Account */}
               <div>
                 <Select
-                  label="Payment From Account *"
+                  label={t('loanPaymentSetup.paymentFromAccount')}
                   value={sourceAccountId}
                   onChange={(e) => setSourceAccountId(e.target.value)}
                   options={[
-                    { value: '', label: 'Select account...' },
+                    { value: '', label: t('loanPaymentSetup.selectAccount') },
                     ...sourceAccountOptions,
                   ]}
                 />
@@ -380,7 +384,7 @@ export function LoanPaymentSetupDialog({
               {/* Next Due Date */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Next Payment Date *
+                  {t('loanPaymentSetup.nextPaymentDate')}
                 </label>
                 <DateInput
                   value={nextDueDate}
@@ -392,7 +396,7 @@ export function LoanPaymentSetupDialog({
               {/* Interest Rate */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Annual Interest Rate (%)
+                  {t('loanPaymentSetup.annualInterestRate')}
                 </label>
                 <Input
                   type="number"
@@ -403,11 +407,11 @@ export function LoanPaymentSetupDialog({
                   onChange={(e) =>
                     setInterestRate(e.target.value ? Number(e.target.value) : undefined)
                   }
-                  placeholder="e.g., 5.5"
+                  placeholder={t('loanPaymentSetup.interestRatePlaceholder')}
                 />
                 {detected?.estimatedInterestRate && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Estimated from transaction history: {detected.estimatedInterestRate}%
+                    {t('loanPaymentSetup.estimatedFromHistory', { rate: detected.estimatedInterestRate })}
                   </p>
                 )}
               </div>
@@ -415,17 +419,17 @@ export function LoanPaymentSetupDialog({
               {/* Interest Category */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Interest Expense Category
+                  {t('loanPaymentSetup.interestExpenseCategory')}
                 </label>
                 <Combobox
                   value={interestCategoryId}
                   onChange={(val) => setInterestCategoryId(val)}
                   options={categoryOptions}
-                  placeholder="Select category..."
+                  placeholder={t('loanPaymentSetup.selectCategory')}
                 />
                 {detected?.interestCategoryName && !interestCategoryId && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Detected: {detected.interestCategoryName}
+                    {t('loanPaymentSetup.detectedCategory', { name: detected.interestCategoryName })}
                   </p>
                 )}
               </div>
@@ -433,14 +437,14 @@ export function LoanPaymentSetupDialog({
               {/* Payee */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Payee / Lender
+                  {t('loanPaymentSetup.payeeLender')}
                 </label>
                 <Combobox
                   value={selectedPayeeId}
                   onChange={handlePayeeChange}
                   onCreateNew={handlePayeeCreate}
                   options={payeeOptions}
-                  placeholder="Select or create payee..."
+                  placeholder={t('loanPaymentSetup.selectOrCreatePayee')}
                   allowCustomValue={true}
                 />
               </div>
@@ -449,7 +453,7 @@ export function LoanPaymentSetupDialog({
               {isMortgage && (
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
                   <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
-                    Mortgage Details
+                    {t('loanPaymentSetup.mortgageDetails')}
                   </h3>
 
                   <div className="space-y-3">
@@ -461,7 +465,7 @@ export function LoanPaymentSetupDialog({
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                       <span className="text-sm text-gray-700 dark:text-gray-300">
-                        Canadian Mortgage (semi-annual compounding)
+                        {t('loanPaymentSetup.canadianMortgage')}
                       </span>
                     </label>
 
@@ -473,14 +477,14 @@ export function LoanPaymentSetupDialog({
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                       <span className="text-sm text-gray-700 dark:text-gray-300">
-                        Variable Rate
+                        {t('loanPaymentSetup.variableRate')}
                       </span>
                     </label>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Amortization (months)
+                          {t('loanPaymentSetup.amortizationMonths')}
                         </label>
                         <Input
                           type="number"
@@ -492,12 +496,12 @@ export function LoanPaymentSetupDialog({
                               e.target.value ? Number(e.target.value) : undefined,
                             )
                           }
-                          placeholder="e.g., 300"
+                          placeholder={t('loanPaymentSetup.amortizationPlaceholder')}
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Term (months)
+                          {t('loanPaymentSetup.termMonths')}
                         </label>
                         <Input
                           type="number"
@@ -509,7 +513,7 @@ export function LoanPaymentSetupDialog({
                               e.target.value ? Number(e.target.value) : undefined,
                             )
                           }
-                          placeholder="e.g., 60"
+                          placeholder={t('loanPaymentSetup.termPlaceholder')}
                         />
                       </div>
                     </div>
@@ -526,7 +530,7 @@ export function LoanPaymentSetupDialog({
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
-                  Automatically post transactions when due
+                  {t('loanPaymentSetup.autoPost')}
                 </span>
               </label>
             </div>
@@ -534,13 +538,13 @@ export function LoanPaymentSetupDialog({
             {/* Actions */}
             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
               <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-                Skip
+                {t('loanPaymentSetup.skip')}
               </Button>
               <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting || !totalPaymentAmount || !sourceAccountId || !nextDueDate}
               >
-                {isSubmitting ? 'Setting Up...' : 'Set Up Payments'}
+                {isSubmitting ? t('loanPaymentSetup.settingUp') : t('loanPaymentSetup.setUpPaymentsButton')}
               </Button>
             </div>
           </>

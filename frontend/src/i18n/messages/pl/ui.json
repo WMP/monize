@@ -1,0 +1,132 @@
+{
+  "chartDownload": {
+    "captureError": "Nie udało się przechwycić obrazu wykresu",
+    "downloadError": "Nie udało się pobrać wykresu",
+    "downloadTitle": "Pobierz {filename} jako PNG"
+  },
+  "chartView": {
+    "pie": "Wykres kołowy",
+    "bar": "Wykres słupkowy",
+    "line": "Wykres liniowy",
+    "area": "Wykres warstwowy",
+    "table": "Tabela"
+  },
+  "colorPicker": {
+    "custom": "Własny:",
+    "apply": "Zastosuj"
+  },
+  "combobox": {
+    "placeholder": "Wybierz lub wpisz...",
+    "create": "Utwórz \"{value}\"",
+    "alias": "alias: {keyword}"
+  },
+  "confirmDialog": {
+    "confirm": "Potwierdź",
+    "cancel": "Anuluj"
+  },
+  "currencyInput": {
+    "addPlus": "Dodaj operator plus",
+    "addMinus": "Dodaj operator minus",
+    "addMultiply": "Dodaj operator mnożenia",
+    "addDivide": "Dodaj operator dzielenia",
+    "openCalculator": "Otwórz kalkulator",
+    "calculator": "Kalkulator",
+    "calculatorPlaceholder": "np. 100*1.13",
+    "cancel": "Anuluj",
+    "apply": "Zastosuj"
+  },
+  "dateInput": {
+    "shortcutsHeading": "Skróty klawiszowe",
+    "today": "Dzisiaj",
+    "firstDayOfYear": "Pierwszy dzień roku",
+    "lastDayOfYear": "Ostatni dzień roku",
+    "firstDayOfMonth": "Pierwszy dzień miesiąca",
+    "lastDayOfMonth": "Ostatni dzień miesiąca",
+    "nextDay": "Następny dzień",
+    "previousDay": "Poprzedni dzień",
+    "nextMonth": "Następny miesiąc",
+    "previousMonth": "Poprzedni miesiąc",
+    "openDatePicker": "Otwórz kalendarz"
+  },
+  "dateRange": {
+    "ytd": "Od początku roku",
+    "allTime": "Cały okres",
+    "custom": "Niestandardowy",
+    "startDate": "Data początkowa",
+    "endDate": "Data końcowa"
+  },
+  "exportDropdown": {
+    "pdfError": "Nie udało się wyeksportować pliku PDF. Spróbuj ponownie.",
+    "exportPdfTitle": "Eksportuj PDF",
+    "exportReportTitle": "Eksportuj raport",
+    "exporting": "Eksportowanie...",
+    "exportPdf": "Eksportuj PDF",
+    "export": "Eksportuj"
+  },
+  "input": {
+    "hide": "Ukryj treść",
+    "show": "Pokaż treść"
+  },
+  "calendar": {
+    "clear": "Wyczyść",
+    "today": "Dzisiaj",
+    "days": {
+      "su": "Nd",
+      "mo": "Pn",
+      "tu": "Wt",
+      "we": "Śr",
+      "th": "Cz",
+      "fr": "Pt",
+      "sa": "So"
+    },
+    "months": {
+      "jan": "sty",
+      "feb": "lut",
+      "mar": "mar",
+      "apr": "kwi",
+      "may": "maj",
+      "jun": "cze",
+      "jul": "lip",
+      "aug": "sie",
+      "sep": "wrz",
+      "oct": "paź",
+      "nov": "lis",
+      "dec": "gru"
+    }
+  },
+  "multiSelect": {
+    "placeholder": "Wybierz...",
+    "createNew": "Utwórz nowy...",
+    "search": "Szukaj...",
+    "selectAll": "Zaznacz wszystko",
+    "clear": "Wyczyść",
+    "noOptions": "Nie znaleziono opcji",
+    "oneSelected": "wybrano 1",
+    "countSelected": "wybrano: {count}"
+  },
+  "pagination": {
+    "showing": "Wyświetlanie",
+    "of": "z",
+    "items": "elementów",
+    "firstPage": "Pierwsza strona",
+    "back10": "Cofnij o 10 stron",
+    "previousPage": "Poprzednia strona",
+    "enterPageNumber": "Wpisz numer strony",
+    "nextPage": "Następna strona",
+    "forward10": "Do przodu o 10 stron",
+    "lastPage": "Ostatnia strona"
+  },
+  "themeToggle": {
+    "light": "Jasny",
+    "dark": "Ciemny",
+    "system": "Systemowy",
+    "title": "Motyw: {label}. Kliknij, aby zmienić."
+  },
+  "unsavedChanges": {
+    "title": "Niezapisane zmiany",
+    "message": "Masz niezapisane zmiany. Co chcesz zrobić?",
+    "discard": "Odrzuć",
+    "cancel": "Anuluj",
+    "save": "Zapisz"
+  }
+}

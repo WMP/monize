@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
@@ -25,6 +26,7 @@ export function DelegateSectionGuard({
   section: Section;
   children: React.ReactNode;
 }) {
+  const t = useTranslations('auth');
   const router = useRouter();
   const actingAsUserId = useAuthStore((s) => s.actingAsUserId);
   const delegateSections = useAuthStore((s) => s.delegateSections);
@@ -38,7 +40,7 @@ export function DelegateSectionGuard({
   useEffect(() => {
     if (blocked && !notified.current) {
       notified.current = true;
-      toast.error("You don't have access to that section.");
+      toast.error(t('delegateGuard.noAccess'));
       router.replace('/dashboard');
     }
   }, [blocked, router]);

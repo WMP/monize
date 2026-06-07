@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -70,6 +71,7 @@ export function PostTransactionDialog({
   onClose,
   onPosted,
 }: PostTransactionDialogProps) {
+  const t = useTranslations('scheduledTransactions');
   const { formatCurrency, formatNumber } = useNumberFormat();
   const [isLoading, setIsLoading] = useState(false);
   const [amount, setAmount] = useState<number>(0);
@@ -400,31 +402,31 @@ export function PostTransactionDialog({
     if (isInvestmentKind) {
       if (isInvestmentQuantityPrice || isInvestmentQuantityOnly) {
         if (investmentQuantity === '' || Number(investmentQuantity) <= 0) {
-          toast.error('Quantity must be greater than zero');
+          toast.error(t('postDialog.errorQuantityPositive'));
           return;
         }
       }
       if (isInvestmentQuantityPrice) {
         if (investmentPrice === '' || Number(investmentPrice) <= 0) {
-          toast.error('Price must be greater than zero');
+          toast.error(t('postDialog.errorPricePositive'));
           return;
         }
       }
       if (isInvestmentAmountOnly) {
         if (investmentTotalAmount === '') {
-          toast.error('Total amount is required');
+          toast.error(t('postDialog.errorTotalRequired'));
           return;
         }
       }
     } else if (isSplit) {
       if (splits.length < 2) {
-        toast.error('Split transactions require at least 2 splits');
+        toast.error(t('postDialog.errorSplitMinimum'));
         return;
       }
       const splitsTotal = splits.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
       const remaining = Math.abs(amount - splitsTotal);
       if (remaining >= 0.01) {
-        toast.error('Split amounts must equal the transaction amount');
+        toast.error(t('postDialog.errorSplitTotal'));
         return;
       }
     }
@@ -453,11 +455,11 @@ export function PostTransactionDialog({
           };
 
       await scheduledTransactionsApi.post(scheduledTransaction.id, postData);
-      toast.success('Transaction posted');
+      toast.success(t('postDialog.transactionPosted'));
       onPosted();
       onClose();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to post transaction'));
+      toast.error(getErrorMessage(error, t('postDialog.failedToPost')));
     } finally {
       setIsLoading(false);
     }
@@ -473,7 +475,7 @@ export function PostTransactionDialog({
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="5xl" className="p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-          Post Transaction
+          {t('postDialog.title')}
         </h3>
         <button
           onClick={onClose}
@@ -488,26 +490,31 @@ export function PostTransactionDialog({
       <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
         {isInvestmentKind ? (
           <>
-            Post {investmentAction || 'investment'}{' '}
+            {t('postDialog.postInvestmentPrefix', {
+              action: investmentAction || t('postDialog.postInvestmentInfix'),
+            })}{' '}
             {scheduledTransaction.investmentSecurity && (
               <span className="font-medium text-gray-700 dark:text-gray-300">
                 {scheduledTransaction.investmentSecurity.symbol || scheduledTransaction.investmentSecurity.name}
               </span>
             )}{' '}
-            on {scheduledTransaction.account?.name}.
-            Adjust quantity / price / total below if this occurrence differs.
+            {t('postDialog.postInvestmentSuffix', {
+              account: scheduledTransaction.account?.name ?? '',
+            })}
           </>
         ) : scheduledTransaction.isTransfer ? (
           <>
-            Post transfer &quot;{scheduledTransaction.name}&quot; from{' '}
+            {t('postDialog.postTransferPrefix', { name: scheduledTransaction.name })}{' '}
             <span className="font-medium text-gray-700 dark:text-gray-300">{scheduledTransaction.account?.name}</span>
-            {' '}to{' '}
+            {' '}{t('postDialog.postTransferInfix')}{' '}
             <span className="font-medium text-gray-700 dark:text-gray-300">{scheduledTransaction.transferAccount?.name}</span>.
           </>
         ) : (
           <>
-            Post &quot;{scheduledTransaction.name}&quot; to {scheduledTransaction.account?.name}.
-            Modify values below if needed for this posting only.
+            {t('postDialog.postIntro', {
+              name: scheduledTransaction.name,
+              account: scheduledTransaction.account?.name ?? '',
+            })}
           </>
         )}
       </div>
@@ -548,7 +555,7 @@ export function PostTransactionDialog({
         if (!sourceWarn && !transferWarn) return null;
 
         const warningLabel = (account: Account) =>
-          isLiabilityAccount(account) ? 'over the credit limit' : 'below zero';
+          isLiabilityAccount(account) ? t('postDialog.overTheCreditLimit') : t('postDialog.belowZero');
 
         return (
           <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 mb-4 flex items-start gap-2">
@@ -558,19 +565,19 @@ export function PostTransactionDialog({
             <div className="text-sm text-amber-700 dark:text-amber-300">
               {sourceWarn && transferWarn ? (
                 <>
-                  Posting on this date will bring <span className="font-medium">{sourceAccount?.name}</span> to{' '}
-                  <span className="font-medium">{formatCurrency(projectedBalances.sourceAfter!, scheduledTransaction.currencyCode)}</span> ({warningLabel(sourceAccount!)}) and{' '}
-                  <span className="font-medium">{transferAccount?.name}</span> to{' '}
+                  {t('postDialog.postingWillBring')} <span className="font-medium">{sourceAccount?.name}</span> {t('postDialog.warningTo')}{' '}
+                  <span className="font-medium">{formatCurrency(projectedBalances.sourceAfter!, scheduledTransaction.currencyCode)}</span> ({warningLabel(sourceAccount!)}) {t('postDialog.warningAnd')}{' '}
+                  <span className="font-medium">{transferAccount?.name}</span> {t('postDialog.warningTo')}{' '}
                   <span className="font-medium">{formatCurrency(projectedBalances.transferAfter!, scheduledTransaction.currencyCode)}</span> ({warningLabel(transferAccount!)}).
                 </>
               ) : sourceWarn ? (
                 <>
-                  Posting on this date will bring <span className="font-medium">{sourceAccount?.name}</span> to{' '}
+                  {t('postDialog.postingWillBring')} <span className="font-medium">{sourceAccount?.name}</span> {t('postDialog.warningTo')}{' '}
                   <span className="font-medium">{formatCurrency(projectedBalances.sourceAfter!, scheduledTransaction.currencyCode)}</span>, {warningLabel(sourceAccount!)}.
                 </>
               ) : (
                 <>
-                  Posting on this date will bring <span className="font-medium">{transferAccount?.name}</span> to{' '}
+                  {t('postDialog.postingWillBring')} <span className="font-medium">{transferAccount?.name}</span> {t('postDialog.warningTo')}{' '}
                   <span className="font-medium">{formatCurrency(projectedBalances.transferAfter!, scheduledTransaction.currencyCode)}</span>, {warningLabel(transferAccount!)}.
                 </>
               )}
@@ -584,7 +591,7 @@ export function PostTransactionDialog({
         <div>
           <div className="flex items-center gap-2">
             <DateInput
-              label="Transaction Date"
+              label={t('postDialog.transactionDate')}
               value={transactionDate}
               onDateChange={(date) => setTransactionDate(date)}
             />
@@ -594,7 +601,7 @@ export function PostTransactionDialog({
                 onClick={() => setTransactionDate(todayStr)}
                 className="shrink-0 mt-6 px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
               >
-                Today
+                {t('postDialog.today')}
               </button>
             )}
           </div>
@@ -605,7 +612,7 @@ export function PostTransactionDialog({
           <>
             {(isInvestmentQuantityPrice || isInvestmentQuantityOnly) && (
               <Input
-                label="Quantity (shares)"
+                label={t('postDialog.quantityShares')}
                 type="number"
                 step="0.00000001"
                 min={0}
@@ -622,20 +629,20 @@ export function PostTransactionDialog({
             {isInvestmentQuantityPrice && (
               <>
                 <Input
-                  label="Price per share"
+                  label={t('postDialog.pricePerShare')}
                   type="number"
                   step="0.000001"
                   min={0}
                   placeholder={
                     marketPrice != null
-                      ? `Latest: ${formatNumber(marketPrice, 6).replace(/0+$/, '').replace(/\.$/, '')}`
+                      ? t('postDialog.latestPrice', { price: formatNumber(marketPrice, 6).replace(/0+$/, '').replace(/\.$/, '') })
                       : undefined
                   }
                   value={investmentPrice}
                   onChange={(e) => handleInvestmentPriceChange(e.target.value)}
                 />
                 <CurrencyInput
-                  label="Total Price"
+                  label={t('postDialog.totalPrice')}
                   prefix={getCurrencySymbol(scheduledTransaction.currencyCode)}
                   value={
                     typeof investmentTotalValue === 'number'
@@ -646,14 +653,14 @@ export function PostTransactionDialog({
                 />
                 {scheduledTransaction.investmentSecurityId && marketPrice == null && (
                   <p className="-mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    No price history yet for this security. Enter the price manually.
+                    {t('postDialog.noPriceHistory')}
                   </p>
                 )}
               </>
             )}
             {isInvestmentAmountOnly && (
               <CurrencyInput
-                label="Total Amount"
+                label={t('postDialog.totalAmount')}
                 prefix={getCurrencySymbol(scheduledTransaction.currencyCode)}
                 value={typeof investmentTotalAmount === 'number' ? investmentTotalAmount : undefined}
                 onChange={(value) => setInvestmentTotalAmount(value ?? '')}
@@ -661,13 +668,13 @@ export function PostTransactionDialog({
             )}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Description (optional)
+                {t('postDialog.descriptionOptional')}
               </label>
               <Input
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Description..."
+                placeholder={t('postDialog.description')}
               />
             </div>
           </>
@@ -676,7 +683,7 @@ export function PostTransactionDialog({
         {/* Amount — non-investment only */}
         {!isInvestmentKind && (
         <CurrencyInput
-          label="Amount"
+          label={t('postDialog.amount')}
           prefix={getCurrencySymbol(scheduledTransaction.currencyCode)}
           value={amount}
           onChange={(value) => setAmount(value ?? 0)}
@@ -692,7 +699,7 @@ export function PostTransactionDialog({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
               </svg>
               <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                Transfer: {scheduledTransaction.account?.name} → {scheduledTransaction.transferAccount?.name}
+                {t('postDialog.transferLabel', { from: scheduledTransaction.account?.name ?? '', to: scheduledTransaction.transferAccount?.name ?? '' })}
               </span>
             </div>
           </div>
@@ -713,7 +720,7 @@ export function PostTransactionDialog({
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
               <label htmlFor="isSplit" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                Split this transaction
+                {t('postDialog.splitThisTransaction')}
               </label>
             </div>
 
@@ -736,10 +743,10 @@ export function PostTransactionDialog({
             ) : (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Category
+                  {t('postDialog.category')}
                 </label>
                 <Combobox
-                  placeholder="Select category..."
+                  placeholder={t('postDialog.selectCategory')}
                   options={categoryOptions}
                   value={categoryId}
                   initialDisplayValue={currentCategory?.name || ''}
@@ -756,24 +763,24 @@ export function PostTransactionDialog({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description (optional)
+              {t('postDialog.descriptionOptional')}
             </label>
             <Input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Description..."
+              placeholder={t('postDialog.description')}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Reference Number (optional)
+              {t('postDialog.referenceNumberOptional')}
             </label>
             <Input
               type="text"
               value={referenceNumber}
               onChange={(e) => setReferenceNumber(e.target.value)}
-              placeholder="Cheque #, confirmation #..."
+              placeholder={t('postDialog.referencePlaceholder')}
             />
           </div>
         </div>
@@ -783,10 +790,10 @@ export function PostTransactionDialog({
       {/* Actions */}
       <div className="mt-6 flex justify-end space-x-3">
         <Button variant="outline" onClick={onClose} disabled={isLoading}>
-          Cancel
+          {t('postDialog.cancel')}
         </Button>
         <Button onClick={handlePost} isLoading={isLoading}>
-          Post Transaction
+          {t('postDialog.title')}
         </Button>
       </div>
     </Modal>

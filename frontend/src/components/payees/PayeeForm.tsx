@@ -2,6 +2,7 @@
 
 import { useState, useRef, useMemo, useCallback, MutableRefObject } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,13 +16,14 @@ import { useFormDirtyNotify } from '@/hooks/useFormDirtyNotify';
 import { FormActions } from '@/components/ui/FormActions';
 import { PayeeAliasManager } from './PayeeAliasManager';
 
-const payeeSchema = z.object({
-  name: z.string().min(1, 'Payee name is required').max(255),
-  defaultCategoryId: z.string().optional(),
-  notes: z.string().optional(),
-});
+const buildPayeeSchema = (nameRequiredMessage: string) =>
+  z.object({
+    name: z.string().min(1, nameRequiredMessage).max(255),
+    defaultCategoryId: z.string().optional(),
+    notes: z.string().optional(),
+  });
 
-type PayeeFormData = z.infer<typeof payeeSchema>;
+type PayeeFormData = z.infer<ReturnType<typeof buildPayeeSchema>>;
 
 export type PayeeFormSubmitData = PayeeFormData & {
   pendingAliases?: string[];
@@ -37,8 +39,11 @@ interface PayeeFormProps {
 }
 
 export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange, submitRef }: PayeeFormProps) {
+  const t = useTranslations('payees');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(payee?.defaultCategoryId || '');
   const pendingAliasesRef = useRef<string[]>([]);
+
+  const payeeSchema = useMemo(() => buildPayeeSchema(t('form.nameRequired')), [t]);
 
   const {
     register,
@@ -105,14 +110,14 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
   return (
     <form onSubmit={onFormSubmit} className="space-y-4">
       <Input
-        label="Payee Name"
+        label={t('form.nameLabel')}
         error={errors.name?.message}
         {...register('name')}
       />
 
       <Combobox
-        label="Default Category"
-        placeholder="Select category..."
+        label={t('form.defaultCategoryLabel')}
+        placeholder={t('form.selectCategoryPlaceholder')}
         options={categoryOptions}
         value={selectedCategoryId}
         initialDisplayValue={initialCategoryName}
@@ -121,7 +126,7 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
       />
 
       <Input
-        label="Notes (optional)"
+        label={t('form.notesLabel')}
         error={errors.notes?.message}
         {...register('notes')}
       />
@@ -132,7 +137,7 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
         <PayeeAliasManager onPendingAliasesChange={(aliases) => { pendingAliasesRef.current = aliases; }} />
       )}
 
-      <FormActions onCancel={onCancel} submitLabel={payee ? 'Update Payee' : 'Create Payee'} isSubmitting={isSubmitting} />
+      <FormActions onCancel={onCancel} submitLabel={payee ? t('form.updatePayee') : t('form.createPayee')} isSubmitting={isSubmitting} />
     </form>
   );
 }

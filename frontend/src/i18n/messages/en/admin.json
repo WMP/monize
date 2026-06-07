@@ -1,0 +1,116 @@
+{
+  "users": {
+    "title": "User Management",
+    "userCountSingular": "{count} user",
+    "userCountPlural": "{count} users",
+    "newUser": "+ New User",
+    "loadingUsers": "Loading users...",
+    "errors": {
+      "loadUsers": "Failed to load users",
+      "changeRole": "Failed to {action} user",
+      "disableUser": "Failed to disable user",
+      "resetPassword": "Failed to reset password",
+      "deleteUser": "Failed to delete user"
+    },
+    "created": {
+      "fallbackName": "the new user",
+      "upgradedTitle": "Account Upgraded",
+      "createdTitle": "User Created",
+      "upgradedDescription": "An existing shared user was upgraded to a full account. Share this temporary password with {userName}.",
+      "createdDescription": "A temporary password was generated for {userName}. Share it with them to sign in.",
+      "inviteSent": "Invite email sent to {email}",
+      "upgradedToast": "{userName} was upgraded to a full account",
+      "createdToast": "{userName} has been created"
+    },
+    "fallbackUser": "this user",
+    "changeRole": {
+      "promoteTitle": "Promote User?",
+      "demoteTitle": "Demote User?",
+      "message": "Are you sure you want to {action} {userName} to {role}?",
+      "promoteConfirm": "Promote to Admin",
+      "demoteConfirm": "Demote to User",
+      "promotedToast": "{userName} is now an admin",
+      "demotedToast": "{userName} is now a user"
+    },
+    "toggleStatus": {
+      "disableTitle": "Disable User?",
+      "disableMessage": "Are you sure you want to disable {userName}? They will be unable to log in.",
+      "disableConfirm": "Disable User",
+      "disabledToast": "{userName} has been disabled",
+      "enabledToast": "{userName} has been enabled"
+    },
+    "resetPassword": {
+      "title": "Reset Password?",
+      "message": "This will generate a new temporary password for {userName}. They will be required to change it on next login.",
+      "confirm": "Reset Password"
+    },
+    "deleteUser": {
+      "title": "Delete User?",
+      "message": "Are you sure you want to delete {userName}? This will permanently remove their account and all associated data. This action cannot be undone. If they are a delegate of another account, their own data is removed but their login is kept so the delegation still works -- they become a delegate-only user.",
+      "confirm": "Delete User",
+      "downgradedToast": "{userName}'s own data was removed; their delegate access remains.",
+      "deletedToast": "{userName} has been deleted"
+    },
+    "defaultConfirmLabel": "Confirm"
+  },
+  "createUser": {
+    "title": "Add User",
+    "description": "Create a new account. You can email an invite, set a password yourself, or generate a temporary one to share.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "user@example.com",
+    "firstNameLabel": "First name (optional)",
+    "firstNamePlaceholder": "First name",
+    "lastNameLabel": "Last name (optional)",
+    "lastNamePlaceholder": "Last name",
+    "roleLabel": "Role",
+    "roleUser": "User",
+    "roleAdmin": "Admin",
+    "credentialsLegend": "Credentials",
+    "inviteOption": "Send an email invite to set a password",
+    "inviteRequiresSmtp": "Requires SMTP to be configured.",
+    "passwordOption": "Set a password now",
+    "temporaryOption": "Generate a temporary password",
+    "temporaryHint": "Shown once after creation. The user must change it on first login.",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Set a password",
+    "cancel": "Cancel",
+    "submit": "Create User",
+    "createError": "Failed to create user"
+  },
+  "resetPasswordModal": {
+    "defaultTitle": "Password Reset Successful",
+    "defaultDescriptionPrefix": "A temporary password has been set for ",
+    "defaultDescriptionSuffix": ".",
+    "temporaryPasswordLabel": "Temporary Password",
+    "copy": "Copy",
+    "copied": "Copied",
+    "warning": "This password will not be shown again.",
+    "changeOnNextLogin": "The user will be required to change their password on next login.",
+    "close": "Close",
+    "copySuccess": "Password copied to clipboard",
+    "copyError": "Failed to copy to clipboard"
+  },
+  "userTable": {
+    "columnUser": "User",
+    "columnRole": "Role",
+    "columnProvider": "Provider",
+    "columnStatus": "Status",
+    "columnLastLogin": "Last Login",
+    "columnActions": "Actions",
+    "you": "(you)",
+    "noEmail": "No email",
+    "unknown": "Unknown",
+    "roleAdmin": "Admin",
+    "roleUser": "User",
+    "providerSso": "SSO",
+    "providerLocal": "Local",
+    "statusActive": "Active",
+    "statusDisabled": "Disabled",
+    "clickToDisable": "Click to disable",
+    "clickToEnable": "Click to enable",
+    "never": "Never",
+    "resetPassword": "Reset Password",
+    "delete": "Delete",
+    "noUsers": "No users found."
+  }
+}

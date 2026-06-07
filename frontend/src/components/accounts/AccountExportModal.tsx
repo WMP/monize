@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
@@ -56,8 +57,8 @@ const FORMAT_OPTIONS = [
 ];
 
 const SPLIT_OPTIONS = [
-  { value: 'expand', label: 'With split details' },
-  { value: 'collapse', label: 'One line per transaction' },
+  { value: 'expand', labelKey: 'splitExpand' },
+  { value: 'collapse', labelKey: 'splitCollapse' },
 ];
 
 export function AccountExportModal({
@@ -66,6 +67,7 @@ export function AccountExportModal({
   accountId,
   accountName,
 }: AccountExportModalProps) {
+  const t = useTranslations('accounts');
   const userDateFormat = usePreferencesStore((state) => state.preferences?.dateFormat) || 'browser';
 
   const [format, setFormat] = useState<'csv' | 'qif'>('csv');
@@ -82,7 +84,7 @@ export function AccountExportModal({
       resolvedDateFormat = resolveBrowserDateFormat();
     } else if (dateFormat === 'custom') {
       if (!customDateFormat.trim()) {
-        toast.error('Please enter a custom date format');
+        toast.error(t('exportModal.customFormatRequired'));
         return;
       }
       resolvedDateFormat = customDateFormat.trim();
@@ -96,11 +98,11 @@ export function AccountExportModal({
         expandSplits: format === 'csv' ? splitMode === 'expand' : undefined,
         dateFormat: resolvedDateFormat,
       });
-      toast.success(`Exported as ${format.toUpperCase()}`);
+      toast.success(t('exportModal.exportedAs', { format: format.toUpperCase() }));
       onClose();
     } catch (error) {
       logger.error('Export failed', error);
-      toast.error(getErrorMessage(error, 'Failed to export account'));
+      toast.error(getErrorMessage(error, t('exportModal.exportFailed')));
     } finally {
       setIsExporting(false);
     }
@@ -110,12 +112,12 @@ export function AccountExportModal({
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="sm">
       <div className="p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Export {accountName}
+          {t('exportModal.title', { name: accountName })}
         </h2>
 
         <div className="space-y-4">
           <Select
-            label="Format"
+            label={t('exportModal.format')}
             options={FORMAT_OPTIONS}
             value={format}
             onChange={(e) => setFormat(e.target.value as 'csv' | 'qif')}
@@ -123,15 +125,15 @@ export function AccountExportModal({
 
           {format === 'csv' && (
             <Select
-              label="Split transactions"
-              options={SPLIT_OPTIONS}
+              label={t('exportModal.splitTransactions')}
+              options={SPLIT_OPTIONS.map((o) => ({ value: o.value, label: t(`exportModal.${o.labelKey}`) }))}
               value={splitMode}
               onChange={(e) => setSplitMode(e.target.value)}
             />
           )}
 
           <Select
-            label="Date format"
+            label={t('exportModal.dateFormat')}
             options={EXPORT_DATE_FORMAT_OPTIONS}
             value={dateFormat}
             onChange={(e) => setDateFormat(e.target.value)}
@@ -140,13 +142,13 @@ export function AccountExportModal({
           {dateFormat === 'custom' && (
             <div>
               <Input
-                label="Custom format"
+                label={t('exportModal.customFormat')}
                 value={customDateFormat}
                 onChange={(e) => setCustomDateFormat(e.target.value)}
-                placeholder="e.g. DD.MM.YYYY"
+                placeholder={t('exportModal.customFormatPlaceholder')}
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Use Y for year, M for month, D for day with separators (- / &apos;)
+                {t('exportModal.customFormatHint')}
               </p>
             </div>
           )}
@@ -154,10 +156,10 @@ export function AccountExportModal({
 
         <div className="flex justify-end gap-3 pt-6">
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t('exportModal.cancel')}
           </Button>
           <Button onClick={handleExport} isLoading={isExporting}>
-            Export
+            {t('exportModal.export')}
           </Button>
         </div>
       </div>

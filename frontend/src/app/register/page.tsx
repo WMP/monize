@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import '@/lib/zodConfig';
@@ -38,6 +39,7 @@ const registerSchema = z.object({
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
+  const t = useTranslations('auth');
   const router = useRouter();
   const { login } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
@@ -101,7 +103,7 @@ export default function RegisterPage() {
     const sendingClaim = !!trimmed;
 
     if (delegateEmail && !sendingClaim) {
-      setDelegatePasswordError('Please enter your delegate password.');
+      setDelegatePasswordError(t('register.enterDelegatePassword'));
       return;
     }
 
@@ -114,7 +116,7 @@ export default function RegisterPage() {
       const response = await authApi.register(registerData);
       // Token is now in httpOnly cookie, not in response body
       login(response.user!, 'httpOnly');
-      toast.success('Account created successfully!');
+      toast.success(t('register.accountCreated'));
       // Show 2FA setup after registration
       setShowTwoFactorSetup(true);
     } catch (error) {
@@ -135,7 +137,7 @@ export default function RegisterPage() {
       ) {
         if (sendingClaim) {
           setDelegatePasswordError(
-            'The delegate password is incorrect. Please try again.',
+            t('register.delegatePasswordIncorrect'),
           );
         } else {
           setDelegateEmail(rest.email);
@@ -145,10 +147,10 @@ export default function RegisterPage() {
         error instanceof AxiosError &&
         error.response?.status === 400
       ) {
-        const fallback = 'Unable to create account. Please try again.';
+        const fallback = t('register.createAccountFailed');
         toast.error(error.response.data?.message || fallback);
       } else {
-        toast.error('Unable to create account. Please try again.');
+        toast.error(t('register.createAccountFailed'));
       }
     } finally {
       setIsLoading(false);
@@ -162,7 +164,7 @@ export default function RegisterPage() {
   if (isLoadingMethods || !authMethods.local || !authMethods.registration) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-gray-500 dark:text-gray-400">Loading...</div>
+        <div className="text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
       </div>
     );
   }
@@ -172,14 +174,14 @@ export default function RegisterPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
-            <Image src="/icons/monize-logo.svg" alt="Monize" width={96} height={96} className="mx-auto rounded-xl" priority />
+            <Image src="/icons/monize-logo.svg" alt={t('common.monizeLogoAlt')} width={96} height={96} className="mx-auto rounded-xl" priority />
             <h2 className="mt-4 text-3xl font-extrabold text-gray-900 dark:text-gray-100">
-              Secure Your Account
+              {t('register.secureYourAccount')}
             </h2>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
               {authMethods.force2fa
-                ? 'Two-factor authentication is required by the administrator.'
-                : 'Add an extra layer of security to your account.'}
+                ? t('register.twoFactorRequired')
+                : t('register.addExtraSecurity')}
             </p>
           </div>
           <TwoFactorSetup
@@ -196,17 +198,17 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <Image src="/icons/monize-logo.svg" alt="Monize" width={96} height={96} className="mx-auto rounded-xl" priority />
+          <Image src="/icons/monize-logo.svg" alt={t('common.monizeLogoAlt')} width={96} height={96} className="mx-auto rounded-xl" priority />
           <h2 className="mt-4 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100">
-            Create your account
+            {t('register.createYourAccount')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Or{' '}
+            {t('register.orPrefix')}{' '}
             <Link
               href="/login"
               className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
             >
-              sign in to your existing account
+              {t('register.signInExisting')}
             </Link>
           </p>
         </div>
@@ -214,7 +216,7 @@ export default function RegisterPage() {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4">
             <Input
-              label="Email address"
+              label={t('register.emailLabel')}
               type="email"
               autoComplete="email"
               error={errors.email?.message}
@@ -223,7 +225,7 @@ export default function RegisterPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <Input
-                label="First name"
+                label={t('register.firstNameLabel')}
                 type="text"
                 autoComplete="given-name"
                 error={errors.firstName?.message}
@@ -231,7 +233,7 @@ export default function RegisterPage() {
               />
 
               <Input
-                label="Last name"
+                label={t('register.lastNameLabel')}
                 type="text"
                 autoComplete="family-name"
                 error={errors.lastName?.message}
@@ -241,7 +243,7 @@ export default function RegisterPage() {
 
             <div>
               <Input
-                label="Password"
+                label={t('register.passwordLabel')}
                 type="password"
                 autoComplete="new-password"
                 error={errors.password?.message}
@@ -255,7 +257,7 @@ export default function RegisterPage() {
             </div>
 
             <Input
-              label="Confirm password"
+              label={t('register.confirmPasswordLabel')}
               type="password"
               autoComplete="new-password"
               error={errors.confirmPassword?.message}
@@ -268,14 +270,10 @@ export default function RegisterPage() {
                 className="rounded border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-3 py-3 text-sm text-amber-900 dark:text-amber-100"
               >
                 <p className="font-semibold">
-                  This email already exists as a shared user.
+                  {t('register.delegateExistsTitle')}
                 </p>
                 <p className="mt-1">
-                  Someone has already invited{' '}
-                  <span className="font-mono">{delegateEmail}</span> as a
-                  delegate on their account. Enter the delegate password
-                  you were given to join that access to this new account.
-                  If the password is wrong, no account will be created.
+                  {t('register.delegateExistsBody', { email: delegateEmail })}
                 </p>
               </div>
             )}
@@ -283,7 +281,7 @@ export default function RegisterPage() {
             {delegateEmail && (
               <div>
                 <Input
-                  label="Delegate password"
+                  label={t('register.delegatePasswordLabel')}
                   type="password"
                   autoComplete="off"
                   error={
@@ -304,7 +302,7 @@ export default function RegisterPage() {
               isLoading={isLoading}
               className="w-full"
             >
-              Create account
+              {t('register.createAccount')}
             </Button>
 
             {authMethods.oidc && (
@@ -315,7 +313,7 @@ export default function RegisterPage() {
                   </div>
                   <div className="relative flex justify-center text-sm">
                     <span className="px-2 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400">
-                      Or continue with
+                      {t('register.orContinueWith')}
                     </span>
                   </div>
                 </div>
@@ -339,20 +337,20 @@ export default function RegisterPage() {
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
-                  Sign up with SSO
+                  {t('register.signUpWithSso')}
                 </Button>
               </>
             )}
           </div>
 
           <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-            By creating an account, you agree to our{' '}
+            {t('register.termsPrefix')}{' '}
             <a href="#" className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
-              Terms of Service
+              {t('register.termsOfService')}
             </a>{' '}
-            and{' '}
+            {t('register.and')}{' '}
             <a href="#" className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
-              Privacy Policy
+              {t('register.privacyPolicy')}
             </a>
           </p>
         </form>

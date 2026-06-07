@@ -1,6 +1,8 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,18 +18,20 @@ import type {
 const ROLLOVER_TYPES = ['NONE', 'MONTHLY', 'QUARTERLY', 'ANNUAL'] as const;
 const CATEGORY_GROUPS = ['', 'NEED', 'WANT', 'SAVING'] as const;
 
-const budgetCategoryFormSchema = z.object({
-  amount: z.number().min(0, 'Amount must be 0 or greater'),
-  rolloverType: z.enum(ROLLOVER_TYPES),
-  rolloverCap: z.string().max(20).optional().or(z.literal('')),
-  flexGroup: z.string().max(100).optional().or(z.literal('')),
-  categoryGroup: z.enum(CATEGORY_GROUPS),
-  alertWarnPercent: z.string().regex(/^\d*$/, 'Must be a number'),
-  alertCriticalPercent: z.string().regex(/^\d*$/, 'Must be a number'),
-  notes: z.string().max(1000).optional().or(z.literal('')),
-});
+function createBudgetCategoryFormSchema(t: (key: string) => string) {
+  return z.object({
+    amount: z.number().min(0, t('categoryForm.amountMin')),
+    rolloverType: z.enum(ROLLOVER_TYPES),
+    rolloverCap: z.string().max(20).optional().or(z.literal('')),
+    flexGroup: z.string().max(100).optional().or(z.literal('')),
+    categoryGroup: z.enum(CATEGORY_GROUPS),
+    alertWarnPercent: z.string().regex(/^\d*$/, t('categoryForm.mustBeNumber')),
+    alertCriticalPercent: z.string().regex(/^\d*$/, t('categoryForm.mustBeNumber')),
+    notes: z.string().max(1000).optional().or(z.literal('')),
+  });
+}
 
-type BudgetCategoryFormData = z.infer<typeof budgetCategoryFormSchema>;
+type BudgetCategoryFormData = z.infer<ReturnType<typeof createBudgetCategoryFormSchema>>;
 
 interface BudgetCategoryFormProps {
   category: BudgetCategory;
@@ -37,18 +41,18 @@ interface BudgetCategoryFormProps {
   isSaving?: boolean;
 }
 
-const ROLLOVER_OPTIONS: Array<{ value: (typeof ROLLOVER_TYPES)[number]; label: string }> = [
-  { value: 'NONE', label: 'None (resets each period)' },
-  { value: 'MONTHLY', label: 'Monthly rollover' },
-  { value: 'QUARTERLY', label: 'Quarterly rollover' },
-  { value: 'ANNUAL', label: 'Annual rollover' },
+const ROLLOVER_OPTIONS: Array<{ value: (typeof ROLLOVER_TYPES)[number]; labelKey: string }> = [
+  { value: 'NONE', labelKey: 'categoryForm.rolloverNone' },
+  { value: 'MONTHLY', labelKey: 'categoryForm.rolloverMonthly' },
+  { value: 'QUARTERLY', labelKey: 'categoryForm.rolloverQuarterly' },
+  { value: 'ANNUAL', labelKey: 'categoryForm.rolloverAnnual' },
 ];
 
-const GROUP_OPTIONS: Array<{ value: (typeof CATEGORY_GROUPS)[number]; label: string }> = [
-  { value: '', label: 'None' },
-  { value: 'NEED', label: 'Need' },
-  { value: 'WANT', label: 'Want' },
-  { value: 'SAVING', label: 'Saving' },
+const GROUP_OPTIONS: Array<{ value: (typeof CATEGORY_GROUPS)[number]; labelKey: string }> = [
+  { value: '', labelKey: 'categoryForm.groupNone' },
+  { value: 'NEED', labelKey: 'categoryForm.groupNeed' },
+  { value: 'WANT', labelKey: 'categoryForm.groupWant' },
+  { value: 'SAVING', labelKey: 'categoryForm.groupSaving' },
 ];
 
 export function BudgetCategoryForm({
@@ -58,6 +62,11 @@ export function BudgetCategoryForm({
   onCancel,
   isSaving = false,
 }: BudgetCategoryFormProps) {
+  const t = useTranslations('budgets');
+  const budgetCategoryFormSchema = useMemo(
+    () => createBudgetCategoryFormSchema(t),
+    [t],
+  );
   const {
     register,
     handleSubmit,
@@ -99,7 +108,11 @@ export function BudgetCategoryForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-        Edit: {category.category?.parent ? `${category.category.parent.name}: ${category.category.name}` : category.category?.name ?? 'Category'}
+        {t('categoryForm.edit', {
+          name: category.category?.parent
+            ? `${category.category.parent.name}: ${category.category.name}`
+            : category.category?.name ?? t('categoryForm.editFallback'),
+        })}
       </h3>
 
       <Controller
@@ -107,7 +120,7 @@ export function BudgetCategoryForm({
         control={control}
         render={({ field }) => (
           <CurrencyInput
-            label="Budget Amount"
+            label={t('categoryForm.budgetAmount')}
             value={field.value}
             onChange={field.onChange}
             onBlur={field.onBlur}
@@ -121,7 +134,7 @@ export function BudgetCategoryForm({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Rollover Type
+          {t('categoryForm.rolloverType')}
         </label>
         <select
           {...register('rolloverType')}
@@ -129,7 +142,7 @@ export function BudgetCategoryForm({
         >
           {ROLLOVER_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
-              {opt.label}
+              {t(opt.labelKey)}
             </option>
           ))}
         </select>
@@ -137,26 +150,26 @@ export function BudgetCategoryForm({
 
       {watchedRolloverType !== 'NONE' && (
         <Input
-          label="Rollover Cap (optional)"
+          label={t('categoryForm.rolloverCapOptional')}
           type="number"
           {...register('rolloverCap')}
           error={errors.rolloverCap?.message}
           min="0"
           step="0.01"
-          placeholder="No cap"
+          placeholder={t('categoryForm.rolloverCapPlaceholder')}
         />
       )}
 
       <Input
-        label="Flex Group (optional)"
+        label={t('categoryForm.flexGroupOptional')}
         {...register('flexGroup')}
         error={errors.flexGroup?.message}
-        placeholder="e.g., Fun Money"
+        placeholder={t('categoryForm.flexGroupPlaceholder')}
       />
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Category Group (50/30/20)
+          {t('categoryForm.categoryGroup')}
         </label>
         <select
           {...register('categoryGroup')}
@@ -164,7 +177,7 @@ export function BudgetCategoryForm({
         >
           {GROUP_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
-              {opt.label}
+              {t(opt.labelKey)}
             </option>
           ))}
         </select>
@@ -172,7 +185,7 @@ export function BudgetCategoryForm({
 
       <div className="grid grid-cols-2 gap-4">
         <Input
-          label="Warning at (%)"
+          label={t('categoryForm.warningAt')}
           type="number"
           {...register('alertWarnPercent')}
           error={errors.alertWarnPercent?.message}
@@ -180,7 +193,7 @@ export function BudgetCategoryForm({
           max="100"
         />
         <Input
-          label="Critical at (%)"
+          label={t('categoryForm.criticalAt')}
           type="number"
           {...register('alertCriticalPercent')}
           error={errors.alertCriticalPercent?.message}
@@ -190,18 +203,18 @@ export function BudgetCategoryForm({
       </div>
 
       <Input
-        label="Notes (optional)"
+        label={t('categoryForm.notesOptional')}
         {...register('notes')}
         error={errors.notes?.message}
-        placeholder="Notes about this category budget"
+        placeholder={t('categoryForm.notesPlaceholder')}
       />
 
       <div className="flex justify-end gap-3 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+          {t('categoryForm.cancel')}
         </Button>
         <Button type="submit" disabled={isSaving}>
-          {isSaving ? 'Saving...' : 'Save'}
+          {isSaving ? t('categoryForm.saving') : t('categoryForm.save')}
         </Button>
       </div>
     </form>

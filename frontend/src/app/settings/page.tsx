@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -29,18 +30,18 @@ import Link from 'next/link';
 const logger = createLogger('Settings');
 
 const ALL_SETTINGS_SECTIONS: readonly (SettingsSection & { demoVisible?: boolean })[] = [
-  { id: 'profile', label: 'Profile' },
-  { id: 'preferences', label: 'Preferences', demoVisible: true },
-  { id: 'notifications', label: 'Notifications', demoVisible: true },
-  { id: 'security', label: 'Security' },
-  { id: 'shared-access', label: 'Shared Access', href: '/settings/shared-access' },
-  { id: 'emergency-access', label: 'Emergency Access', href: '/settings/emergency-access' },
-  { id: 'api-access', label: 'API Access' },
-  { id: 'ai-settings', label: 'AI Settings', href: '/settings/ai' },
-  { id: 'backup-restore', label: 'Backup & Restore' },
-  { id: 'auto-backup', label: 'Automatic Backup' },
-  { id: 'help', label: 'Help & Support' },
-  { id: 'danger-zone', label: 'Danger Zone', variant: 'danger' },
+  { id: 'profile', labelKey: 'nav.profile' },
+  { id: 'preferences', labelKey: 'nav.preferences', demoVisible: true },
+  { id: 'notifications', labelKey: 'nav.notifications', demoVisible: true },
+  { id: 'security', labelKey: 'nav.security' },
+  { id: 'shared-access', labelKey: 'nav.sharedAccess', href: '/settings/shared-access' },
+  { id: 'emergency-access', labelKey: 'nav.emergencyAccess', href: '/settings/emergency-access' },
+  { id: 'api-access', labelKey: 'nav.apiAccess' },
+  { id: 'ai-settings', labelKey: 'nav.aiSettings', href: '/settings/ai' },
+  { id: 'backup-restore', labelKey: 'nav.backupRestore' },
+  { id: 'auto-backup', labelKey: 'nav.autoBackup' },
+  { id: 'help', labelKey: 'nav.help' },
+  { id: 'danger-zone', labelKey: 'nav.dangerZone', variant: 'danger' },
 ] as const;
 
 export default function SettingsPage() {
@@ -60,6 +61,7 @@ export default function SettingsPage() {
  * hidden: they would reflect or alter the owner's account.
  */
 function DelegateSecurityView() {
+  const t = useTranslations('settings');
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -81,7 +83,7 @@ function DelegateSecurityView() {
         setForce2fa(!!methods.force2fa);
       })
       .catch((error) => {
-        toast.error(getErrorMessage(error, 'Failed to load security settings'));
+        toast.error(getErrorMessage(error, t('page.loadSecurityError')));
         logger.error(error);
       })
       .finally(() => {
@@ -108,9 +110,9 @@ function DelegateSecurityView() {
     return (
       <PageLayout>
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-12 pt-6 pb-8">
-          <PageHeader title="Settings" />
+          <PageHeader title={t('page.title')} />
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            Unable to load your security settings.
+            {t('page.delegateUnable')}
           </p>
         </main>
       </PageLayout>
@@ -127,7 +129,7 @@ function DelegateSecurityView() {
   return (
     <PageLayout>
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-12 pt-6 pb-8">
-        <PageHeader title="Settings" />
+        <PageHeader title={t('page.title')} />
         <div id="security">
           <SecuritySection
             user={user}
@@ -151,6 +153,7 @@ function SettingsContent() {
 }
 
 function OwnerSettingsView() {
+  const t = useTranslations('settings');
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
@@ -191,7 +194,7 @@ function OwnerSettingsView() {
       setForce2fa(authMethods.force2fa);
       useDemoStore.getState().setDemoMode(authMethods.demo ?? false);
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to load settings'));
+      toast.error(getErrorMessage(error, t('page.loadError')));
       logger.error(error);
     } finally {
       setIsLoading(false);
@@ -221,15 +224,15 @@ function OwnerSettingsView() {
   return (
     <PageLayout>
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-12 pt-6 pb-8">
-        <PageHeader title="Settings" helpUrl="https://github.com/kenlasko/monize/wiki/Settings-and-Security" />
+        <PageHeader title={t('page.title')} helpUrl="https://github.com/kenlasko/monize/wiki/Settings-and-Security" />
 
         {isDemoMode && (
           <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-6 mb-6">
             <h2 className="text-lg font-semibold text-amber-800 dark:text-amber-200 mb-2">
-              Restricted in Demo Mode
+              {t('page.demoTitle')}
             </h2>
             <p className="text-sm text-amber-700 dark:text-amber-300">
-              Profile editing, password changes, two-factor authentication, and account deletion are disabled in demo mode.
+              {t('page.demoDescription')}
             </p>
           </div>
         )}
@@ -306,10 +309,10 @@ function OwnerSettingsView() {
                   className="block bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                    Shared Access
+                    {t('page.sharedAccessTitle')}
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Grant another person granular access to specific accounts.
+                    {t('page.sharedAccessDescription')}
                   </p>
                 </Link>
               </div>
@@ -322,11 +325,10 @@ function OwnerSettingsView() {
                   className="block bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                    Emergency Access
+                    {t('page.emergencyAccessTitle')}
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Designate contacts who automatically receive full access to
-                    your account if you do not sign in for an extended period.
+                    {t('page.emergencyAccessDescription')}
                   </p>
                 </Link>
               </div>
@@ -345,10 +347,10 @@ function OwnerSettingsView() {
                   className="block bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                    AI Settings
+                    {t('page.aiSettingsTitle')}
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Configure AI providers, manage API keys, and view usage statistics.
+                    {t('page.aiSettingsDescription')}
                   </p>
                 </Link>
               </div>

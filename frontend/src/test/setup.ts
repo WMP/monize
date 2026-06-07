@@ -52,6 +52,97 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+// Mock next-intl. Translations resolve against the real English catalog so
+// existing assertions on visible English text keep passing after components
+// switch to t('...'). Interpolation ({name}) and t.rich/raw are supported.
+vi.mock('next-intl', async () => {
+  const en = (await import('@/i18n/messages/en')).default as Record<string, unknown>;
+
+  const lookup = (namespace: string, key: string): string => {
+    const root = (en[namespace] ?? {}) as Record<string, unknown>;
+    let cur: unknown = root;
+    for (const part of key.split('.')) {
+      cur = cur != null ? (cur as Record<string, unknown>)[part] : undefined;
+    }
+    return typeof cur === 'string' ? cur : `${namespace}.${key}`;
+  };
+
+  // Cache the translator per namespace so useTranslations returns a STABLE
+  // function identity across renders, mirroring real next-intl. Components
+  // legitimately put `t` in useCallback/useEffect dependency arrays; an
+  // unstable mock would recreate those callbacks every render and can spin
+  // mount effects into an infinite loop (manifesting as test timeouts).
+  const translatorCache = new Map<string, ReturnType<typeof buildTranslator>>();
+  function buildTranslator(namespace: string) {
+    const t = (key: string, values?: Record<string, unknown>) => {
+      let str = lookup(namespace, key);
+      if (values) {
+        for (const [k, v] of Object.entries(values)) {
+          str = str.replaceAll(`{${k}}`, String(v));
+        }
+      }
+      return str;
+    };
+    t.rich = (key: string) => lookup(namespace, key);
+    t.markup = (key: string) => lookup(namespace, key);
+    t.raw = (key: string) => lookup(namespace, key);
+    t.has = () => true;
+    return t;
+  }
+  const useTranslations = (namespace = '') => {
+    let t = translatorCache.get(namespace);
+    if (!t) {
+      t = buildTranslator(namespace);
+      translatorCache.set(namespace, t);
+    }
+    return t;
+  };
+
+  return {
+    useTranslations,
+    useLocale: () => 'en',
+    useMessages: () => en,
+    useNow: () => new Date(0),
+    useTimeZone: () => 'UTC',
+    useFormatter: () => ({
+      number: (value: number) => String(value),
+      dateTime: (value: Date) => value.toISOString(),
+      relativeTime: (value: Date) => value.toISOString(),
+      list: (value: Iterable<string>) => Array.from(value).join(', '),
+    }),
+    NextIntlClientProvider: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
+
+// Mock next-intl/server for any server-component code reached in tests.
+vi.mock('next-intl/server', async () => {
+  const en = (await import('@/i18n/messages/en')).default as Record<string, unknown>;
+  const lookup = (namespace: string, key: string): string => {
+    const root = (en[namespace] ?? {}) as Record<string, unknown>;
+    let cur: unknown = root;
+    for (const part of key.split('.')) {
+      cur = cur != null ? (cur as Record<string, unknown>)[part] : undefined;
+    }
+    return typeof cur === 'string' ? cur : `${namespace}.${key}`;
+  };
+  return {
+    getTranslations: async (namespace = '') => {
+      const t = (key: string, values?: Record<string, unknown>) => {
+        let str = lookup(namespace as string, key);
+        if (values) {
+          for (const [k, v] of Object.entries(values)) {
+            str = str.replaceAll(`{${k}}`, String(v));
+          }
+        }
+        return str;
+      };
+      return t;
+    },
+    getLocale: async () => 'en',
+    getMessages: async () => en,
+  };
+});
+
 // Mock react-hot-toast
 vi.mock('react-hot-toast', () => ({
   default: {

@@ -1,0 +1,74 @@
+{
+  "page": {
+    "title": "Rachunki i wpłaty",
+    "subtitle": "Zarządzaj cyklicznymi transakcjami i zaplanowanymi płatnościami",
+    "newSchedule": "+ Nowy harmonogram",
+    "loadError": "Nie udało się wczytać zaplanowanych transakcji",
+    "overridesDeleted": "Usunięto wyjątki",
+    "deleteOverridesError": "Nie udało się usunąć wyjątków",
+    "scheduledPaymentNotFound": "Nie znaleziono zaplanowanej płatności",
+    "transactionFallback": "Transakcja"
+  },
+  "summary": {
+    "activeBills": "Aktywne rachunki",
+    "activeDeposits": "Aktywne wpłaty",
+    "monthlyNet": "Saldo miesięczne",
+    "dueNow": "Do zapłaty teraz"
+  },
+  "chartFallback": "Wykres chwilowo niedostępny",
+  "form": {
+    "editTitle": "Edytuj zaplanowaną transakcję",
+    "newTitle": "Nowa zaplanowana transakcja"
+  },
+  "tabs": {
+    "list": "Lista",
+    "calendar": "Kalendarz"
+  },
+  "filterTabs": {
+    "all": "Wszystkie ({count})",
+    "bills": "Rachunki ({count})",
+    "deposits": "Wpłaty ({count})"
+  },
+  "calendar": {
+    "today": "Dziś",
+    "moreCount": "+{count} więcej",
+    "days": {
+      "sun": "Nd",
+      "mon": "Pn",
+      "tue": "Wt",
+      "wed": "Śr",
+      "thu": "Czw",
+      "fri": "Pt",
+      "sat": "Sob"
+    }
+  },
+  "list": {
+    "loading": "Wczytywanie zaplanowanych transakcji..."
+  },
+  "overrideConfirm": {
+    "title": "Znaleziono istniejące wyjątki",
+    "descriptionSingular": "Ta zaplanowana transakcja ma {count} pojedyncze wystąpienie z własnymi modyfikacjami.",
+    "descriptionPlural": "Ta zaplanowana transakcja ma {count} pojedynczych wystąpień z własnymi modyfikacjami.",
+    "question": "Co chcesz zrobić z tymi modyfikacjami podczas aktualizacji szablonu bazowego?",
+    "cancel": "Anuluj",
+    "keep": "Zachowaj modyfikacje",
+    "deleteAll": "Usuń wszystkie modyfikacje"
+  },
+  "forecast": {
+    "title": "Prognoza przepływów pieniężnych",
+    "transactionsCountSingular": "{count} zaplanowana transakcja w prognozie",
+    "transactionsCountPlural": "{count} zaplanowanych transakcji w prognozie",
+    "allAccounts": "Wszystkie konta",
+    "noData": "Brak danych do wyświetlenia",
+    "noAccounts": "Nie znaleziono kont",
+    "noScheduledTransactions": "Brak zaplanowanych transakcji",
+    "selectAccount": "Wybierz konto z zaplanowanymi transakcjami",
+    "flatLine": "Brak nadchodzących transakcji w tym okresie - pokazano bieżące saldo",
+    "transactions": "Transakcje:",
+    "moreCount": "+{count} więcej",
+    "starting": "Saldo początkowe",
+    "ending": "Saldo końcowe",
+    "lowest": "Najniższe",
+    "minBalance": "Min. saldo"
+  }
+}

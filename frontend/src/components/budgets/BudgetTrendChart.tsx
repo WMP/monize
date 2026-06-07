@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import {
   LineChart,
   Line,
@@ -33,6 +34,7 @@ function CustomTooltip({
   label?: string;
   formatCurrency: (amount: number) => string;
 }) {
+  const t = useTranslations('budgets');
   if (!active || !payload || payload.length === 0) return null;
 
   return (
@@ -46,7 +48,7 @@ function CustomTooltip({
           className="text-sm"
           style={{ color: entry.color }}
         >
-          {entry.dataKey === 'budgeted' ? 'Budgeted' : 'Actual'}:{' '}
+          {entry.dataKey === 'budgeted' ? t('trendChart.budgeted') : t('trendChart.actual')}:{' '}
           {formatCurrency(entry.value)}
         </p>
       ))}
@@ -58,14 +60,15 @@ export function BudgetTrendChart({
   data,
   formatCurrency,
 }: BudgetTrendChartProps) {
+  const t = useTranslations('budgets');
   if (data.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Budget vs Actual Trend
+          {t('trendChart.title')}
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Not enough data to display trends yet.
+          {t('trendChart.notEnoughData')}
         </p>
       </div>
     );
@@ -74,7 +77,7 @@ export function BudgetTrendChart({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-        Budget vs Actual Trend
+        {t('trendChart.title')}
       </h2>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -103,7 +106,7 @@ export function BudgetTrendChart({
               strokeWidth={2}
               strokeDasharray="5 5"
               dot={{ r: 4 }}
-              name="Budgeted"
+              name={t('trendChart.budgeted')}
             />
             <Line
               type="monotone"
@@ -111,7 +114,7 @@ export function BudgetTrendChart({
               stroke="#10b981"
               strokeWidth={2}
               dot={{ r: 4 }}
-              name="Actual"
+              name={t('trendChart.actual')}
             />
           </LineChart>
         </ResponsiveContainer>

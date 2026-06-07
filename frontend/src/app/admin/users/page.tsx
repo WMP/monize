@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -22,6 +23,7 @@ import { getErrorMessage } from '@/lib/errors';
 const logger = createLogger('AdminUsers');
 
 export default function AdminUsersPage() {
+  const t = useTranslations('admin');
   const router = useRouter();
   const { user: currentUser } = useAuthStore();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -52,7 +54,7 @@ export default function AdminUsersPage() {
     title: '',
     message: '',
     variant: 'danger',
-    confirmLabel: 'Confirm',
+    confirmLabel: t('users.defaultConfirmLabel'),
     onConfirm: () => {},
   });
 
@@ -69,10 +71,11 @@ export default function AdminUsersPage() {
       setUsers(data);
     } catch (error) {
       logger.error('Failed to load users:', error);
-      toast.error(getErrorMessage(error, 'Failed to load users'));
+      toast.error(getErrorMessage(error, t('users.errors.loadUsers')));
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -91,24 +94,26 @@ export default function AdminUsersPage() {
     const userName =
       [result.firstName, result.lastName].filter(Boolean).join(' ') ||
       result.email ||
-      'the new user';
+      t('users.created.fallbackName');
     if (result.temporaryPassword) {
       setResetPasswordModal({
         isOpen: true,
         temporaryPassword: result.temporaryPassword,
         userName,
-        title: result.upgraded ? 'Account Upgraded' : 'User Created',
+        title: result.upgraded
+          ? t('users.created.upgradedTitle')
+          : t('users.created.createdTitle'),
         description: result.upgraded
-          ? `An existing shared user was upgraded to a full account. Share this temporary password with ${userName}.`
-          : `A temporary password was generated for ${userName}. Share it with them to sign in.`,
+          ? t('users.created.upgradedDescription', { userName })
+          : t('users.created.createdDescription', { userName }),
       });
     } else if (result.invited) {
-      toast.success(`Invite email sent to ${result.email}`);
+      toast.success(t('users.created.inviteSent', { email: result.email ?? '' }));
     } else {
       toast.success(
         result.upgraded
-          ? `${userName} was upgraded to a full account`
-          : `${userName} has been created`,
+          ? t('users.created.upgradedToast', { userName })
+          : t('users.created.createdToast', { userName }),
       );
     }
   };
@@ -117,21 +122,29 @@ export default function AdminUsersPage() {
     if (role === user.role) return;
 
     const action = role === 'admin' ? 'promote' : 'demote';
-    const userName = user.firstName || user.email || 'this user';
+    const userName = user.firstName || user.email || t('users.fallbackUser');
 
     setConfirmDialog({
       isOpen: true,
-      title: `${role === 'admin' ? 'Promote' : 'Demote'} User?`,
-      message: `Are you sure you want to ${action} ${userName} to ${role}?`,
+      title: role === 'admin'
+        ? t('users.changeRole.promoteTitle')
+        : t('users.changeRole.demoteTitle'),
+      message: t('users.changeRole.message', { action, userName, role }),
       variant: role === 'admin' ? 'info' : 'warning',
-      confirmLabel: role === 'admin' ? 'Promote to Admin' : 'Demote to User',
+      confirmLabel: role === 'admin'
+        ? t('users.changeRole.promoteConfirm')
+        : t('users.changeRole.demoteConfirm'),
       onConfirm: async () => {
         try {
           const updated = await adminApi.updateUserRole(user.id, role);
           setUsers((prev) => prev.map((u) => (u.id === user.id ? updated : u)));
-          toast.success(`${userName} is now ${role === 'admin' ? 'an admin' : 'a user'}`);
+          toast.success(
+            role === 'admin'
+              ? t('users.changeRole.promotedToast', { userName })
+              : t('users.changeRole.demotedToast', { userName }),
+          );
         } catch (error) {
-          toast.error(getErrorMessage(error, `Failed to ${action} user`));
+          toast.error(getErrorMessage(error, t('users.errors.changeRole', { action })));
           // Reload to reset the select back to the actual value
           loadUsers();
         }
@@ -142,24 +155,24 @@ export default function AdminUsersPage() {
 
   const handleToggleStatus = async (user: AdminUser) => {
     const newStatus = !user.isActive;
-    const userName = user.firstName || user.email || 'this user';
+    const userName = user.firstName || user.email || t('users.fallbackUser');
     const action = newStatus ? 'enable' : 'disable';
 
     if (!newStatus) {
       // Confirm before disabling
       setConfirmDialog({
         isOpen: true,
-        title: 'Disable User?',
-        message: `Are you sure you want to disable ${userName}? They will be unable to log in.`,
+        title: t('users.toggleStatus.disableTitle'),
+        message: t('users.toggleStatus.disableMessage', { userName }),
         variant: 'warning',
-        confirmLabel: 'Disable User',
+        confirmLabel: t('users.toggleStatus.disableConfirm'),
         onConfirm: async () => {
           try {
             const updated = await adminApi.updateUserStatus(user.id, false);
             setUsers((prev) => prev.map((u) => (u.id === user.id ? updated : u)));
-            toast.success(`${userName} has been disabled`);
+            toast.success(t('users.toggleStatus.disabledToast', { userName }));
           } catch (error) {
-            toast.error(getErrorMessage(error, 'Failed to disable user'));
+            toast.error(getErrorMessage(error, t('users.errors.disableUser')));
           }
           setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
         },
@@ -169,22 +182,22 @@ export default function AdminUsersPage() {
       try {
         const updated = await adminApi.updateUserStatus(user.id, true);
         setUsers((prev) => prev.map((u) => (u.id === user.id ? updated : u)));
-        toast.success(`${userName} has been enabled`);
+        toast.success(t('users.toggleStatus.enabledToast', { userName }));
       } catch (error) {
-        toast.error(getErrorMessage(error, `Failed to ${action} user`));
+        toast.error(getErrorMessage(error, t('users.errors.changeRole', { action })));
       }
     }
   };
 
   const handleResetPassword = (user: AdminUser) => {
-    const userName = user.firstName || user.email || 'this user';
+    const userName = user.firstName || user.email || t('users.fallbackUser');
 
     setConfirmDialog({
       isOpen: true,
-      title: 'Reset Password?',
-      message: `This will generate a new temporary password for ${userName}. They will be required to change it on next login.`,
+      title: t('users.resetPassword.title'),
+      message: t('users.resetPassword.message', { userName }),
       variant: 'warning',
-      confirmLabel: 'Reset Password',
+      confirmLabel: t('users.resetPassword.confirm'),
       onConfirm: async () => {
         try {
           const result = await adminApi.resetUserPassword(user.id);
@@ -195,7 +208,7 @@ export default function AdminUsersPage() {
             userName: userName,
           });
         } catch (error) {
-          toast.error(getErrorMessage(error, 'Failed to reset password'));
+          toast.error(getErrorMessage(error, t('users.errors.resetPassword')));
           setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
         }
       },
@@ -203,32 +216,25 @@ export default function AdminUsersPage() {
   };
 
   const handleDeleteUser = (user: AdminUser) => {
-    const userName = user.firstName || user.email || 'this user';
+    const userName = user.firstName || user.email || t('users.fallbackUser');
 
     setConfirmDialog({
       isOpen: true,
-      title: 'Delete User?',
-      message:
-        `Are you sure you want to delete ${userName}? This will permanently ` +
-        'remove their account and all associated data. This action cannot ' +
-        'be undone. If they are a delegate of another account, their own ' +
-        'data is removed but their login is kept so the delegation still ' +
-        'works -- they become a delegate-only user.',
+      title: t('users.deleteUser.title'),
+      message: t('users.deleteUser.message', { userName }),
       variant: 'danger',
-      confirmLabel: 'Delete User',
+      confirmLabel: t('users.deleteUser.confirm'),
       onConfirm: async () => {
         try {
           const res = await adminApi.deleteUser(user.id);
           setUsers((prev) => prev.filter((u) => u.id !== user.id));
           if (res.downgraded) {
-            toast.success(
-              `${userName}'s own data was removed; their delegate access remains.`,
-            );
+            toast.success(t('users.deleteUser.downgradedToast', { userName }));
           } else {
-            toast.success(`${userName} has been deleted`);
+            toast.success(t('users.deleteUser.deletedToast', { userName }));
           }
         } catch (error) {
-          toast.error(getErrorMessage(error, 'Failed to delete user'));
+          toast.error(getErrorMessage(error, t('users.errors.deleteUser')));
         }
         setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
       },
@@ -244,16 +250,20 @@ export default function AdminUsersPage() {
       <PageLayout>
         <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
           <PageHeader
-            title="User Management"
-            subtitle={`${users.length} user${users.length !== 1 ? 's' : ''}`}
+            title={t('users.title')}
+            subtitle={
+              users.length === 1
+                ? t('users.userCountSingular', { count: users.length })
+                : t('users.userCountPlural', { count: users.length })
+            }
             actions={
-              <Button onClick={() => setCreateModalOpen(true)}>+ New User</Button>
+              <Button onClick={() => setCreateModalOpen(true)}>{t('users.newUser')}</Button>
             }
           />
 
           <div className="bg-white dark:bg-gray-900 shadow rounded-lg overflow-hidden">
           {isLoading ? (
-            <LoadingSpinner text="Loading users..." />
+            <LoadingSpinner text={t('users.loadingUsers')} />
           ) : (
             <UserManagementTable
               users={users}

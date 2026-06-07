@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, Suspense } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/lib/auth';
@@ -8,6 +9,7 @@ import { getErrorMessage } from '@/lib/errors';
 import toast from 'react-hot-toast';
 
 function CallbackContent() {
+  const t = useTranslations('auth');
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, setLoading, setError } = useAuthStore();
@@ -21,7 +23,7 @@ function CallbackContent() {
 
         // Handle error from OIDC provider
         if (error) {
-          toast.error('Authentication failed. Please try again.');
+          toast.error(t('callback.authFailed'));
           router.push('/login');
           return;
         }
@@ -35,7 +37,7 @@ function CallbackContent() {
           // Store a placeholder to indicate we're authenticated via cookie
           login(user, 'httpOnly');
 
-          toast.success('Successfully signed in!');
+          toast.success(t('callback.signedIn'));
           if (user.mustChangePassword && user.hasPassword) {
             router.push('/change-password');
           } else {
@@ -65,11 +67,11 @@ function CallbackContent() {
             }
           }
         } catch {
-          toast.error(!success ? 'No authentication token received' : 'Authentication failed');
+          toast.error(!success ? t('callback.noToken') : t('callback.authFailedShort'));
           router.push('/login');
         }
       } catch (error) {
-        const message = getErrorMessage(error, 'Authentication failed');
+        const message = getErrorMessage(error, t('callback.authFailedShort'));
         setError(message);
         toast.error(message);
         router.push('/login');
@@ -86,21 +88,22 @@ function CallbackContent() {
       <div className="text-center">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          Completing sign in...
+          {t('callback.completingSignIn')}
         </h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Please wait while we authenticate you</p>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">{t('callback.pleaseWait')}</p>
       </div>
     </div>
   );
 }
 
 export default function CallbackPage() {
+  const t = useTranslations('auth');
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Loading...</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t('callback.loading')}</h2>
         </div>
       </div>
     }>

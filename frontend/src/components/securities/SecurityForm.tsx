@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, MutableRefObject } from 'react';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,29 +26,33 @@ import { EXCHANGE_OPTIONS } from '@/lib/constants';
 
 const logger = createLogger('SecurityForm');
 
-const securitySchema = z.object({
-  symbol: z.string().min(1, 'Symbol is required').max(20, 'Symbol must be 20 characters or less'),
-  name: z.string().min(1, 'Name is required').max(255, 'Name must be 255 characters or less'),
-  securityType: z.string().optional(),
-  exchange: z.string().optional(),
-  currencyCode: z.string().min(1, 'Currency is required'),
-  quoteProvider: z.enum(['', 'yahoo', 'msn']).optional(),
-  msnInstrumentId: z.string().max(50).optional(),
-  isFavourite: z.boolean().optional(),
-});
+// Validation messages are resolved at render time via t(...) so the schema can
+// be localized. The type below is derived from a base schema with the same shape.
+const makeSecuritySchema = (t: ReturnType<typeof useTranslations>) =>
+  z.object({
+    symbol: z.string().min(1, t('form.validation.symbolRequired')).max(20, t('form.validation.symbolMax')),
+    name: z.string().min(1, t('form.validation.nameRequired')).max(255, t('form.validation.nameMax')),
+    securityType: z.string().optional(),
+    exchange: z.string().optional(),
+    currencyCode: z.string().min(1, t('form.validation.currencyRequired')),
+    quoteProvider: z.enum(['', 'yahoo', 'msn']).optional(),
+    msnInstrumentId: z.string().max(50).optional(),
+    isFavourite: z.boolean().optional(),
+  });
 
-type SecurityFormData = z.infer<typeof securitySchema>;
+type SecurityFormData = z.infer<ReturnType<typeof makeSecuritySchema>>;
 
+// Option labels are stored as message keys and resolved at render via t(...).
 const quoteProviderOverrideOptions = [
-  { value: '', label: 'Use default' },
-  { value: 'yahoo', label: 'Yahoo Finance' },
-  { value: 'msn', label: 'MSN Money' },
+  { value: '', labelKey: 'form.quoteProviderOptions.useDefault' },
+  { value: 'yahoo', labelKey: 'form.quoteProviderOptions.yahooFinance' },
+  { value: 'msn', labelKey: 'form.quoteProviderOptions.msnMoney' },
 ];
 
 const lookupProviderOptions = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'yahoo', label: 'Yahoo' },
-  { value: 'msn', label: 'MSN' },
+  { value: 'auto', labelKey: 'form.lookupProviderOptions.auto' },
+  { value: 'yahoo', labelKey: 'form.lookupProviderOptions.yahoo' },
+  { value: 'msn', labelKey: 'form.lookupProviderOptions.msn' },
 ];
 
 interface SecurityFormProps {
@@ -59,17 +64,19 @@ interface SecurityFormProps {
 }
 
 const securityTypeOptions = [
-  { value: '', label: 'Select type...' },
-  { value: 'STOCK', label: 'Stock' },
-  { value: 'ETF', label: 'ETF' },
-  { value: 'MUTUAL_FUND', label: 'Mutual Fund' },
-  { value: 'BOND', label: 'Bond' },
-  { value: 'OPTION', label: 'Option' },
-  { value: 'CRYPTO', label: 'Cryptocurrency' },
-  { value: 'OTHER', label: 'Other' },
+  { value: '', labelKey: 'form.typeOptions.select' },
+  { value: 'STOCK', labelKey: 'form.typeOptions.stock' },
+  { value: 'ETF', labelKey: 'form.typeOptions.etf' },
+  { value: 'MUTUAL_FUND', labelKey: 'form.typeOptions.mutualFund' },
+  { value: 'BOND', labelKey: 'form.typeOptions.bond' },
+  { value: 'OPTION', labelKey: 'form.typeOptions.option' },
+  { value: 'CRYPTO', labelKey: 'form.typeOptions.crypto' },
+  { value: 'OTHER', labelKey: 'form.typeOptions.other' },
 ];
 
 export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, submitRef }: SecurityFormProps) {
+  const t = useTranslations('securities');
+  const securitySchema = useMemo(() => makeSecuritySchema(t), [t]);
   const { defaultCurrency } = useNumberFormat();
   const rawPreferredExchanges = usePreferencesStore((s) => s.preferences?.preferredExchanges);
   const preferredExchanges = useMemo(() => rawPreferredExchanges || [], [rawPreferredExchanges]);
@@ -104,6 +111,15 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
       label: `${c.code} - ${c.name} (${c.symbol})`,
     }));
   }, [currencies, defaultCurrency]);
+
+  const securityTypeSelectOptions = useMemo(
+    () => securityTypeOptions.map((o) => ({ value: o.value, label: t(o.labelKey) })),
+    [t],
+  );
+  const lookupProviderSelectOptions = useMemo(
+    () => lookupProviderOptions.map((o) => ({ value: o.value, label: t(o.labelKey) })),
+    [t],
+  );
 
   const {
     register,
@@ -155,21 +171,24 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
 
       setHasLookupResult(true);
 
-      const details = [`Symbol: ${result.symbol}`, `Name: ${result.name}`];
-      if (result.exchange) details.push(`Exchange: ${result.exchange}`);
-      if (result.securityType) details.push(`Type: ${result.securityType}`);
-      if (result.currencyCode) details.push(`Currency: ${result.currencyCode}`);
-      if (result.provider) details.push(`Provider: ${result.provider === 'msn' ? 'MSN' : 'Yahoo'}`);
-      toast.success(`Found: ${details.join(', ')}`);
+      const details = [
+        t('form.toast.detailSymbol', { value: result.symbol }),
+        t('form.toast.detailName', { value: result.name }),
+      ];
+      if (result.exchange) details.push(t('form.toast.detailExchange', { value: result.exchange }));
+      if (result.securityType) details.push(t('form.toast.detailType', { value: result.securityType }));
+      if (result.currencyCode) details.push(t('form.toast.detailCurrency', { value: result.currencyCode }));
+      if (result.provider) details.push(t('form.toast.detailProvider', { value: result.provider === 'msn' ? 'MSN' : 'Yahoo' }));
+      toast.success(t('form.toast.foundDetails', { details: details.join(', ') }));
     },
-    [setValue, lookupProvider, userDefaultProvider],
+    [setValue, lookupProvider, userDefaultProvider, t],
   );
 
   const handleLookup = useCallback(async () => {
     const { symbol, name, exchange: currentExchange } = getValues();
     const query = (symbol?.trim() || name?.trim() || '');
     if (query.length < 2) {
-      toast.error('Enter a symbol or name (at least 2 characters) to lookup');
+      toast.error(t('form.toast.enterQuery'));
       return;
     }
 
@@ -187,7 +206,7 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
         lookupProvider,
       );
       if (candidates.length === 0) {
-        toast.error(`No security found for "${query}"`);
+        toast.error(t('form.toast.noSecurityFound', { query }));
       } else if (candidates.length === 1) {
         applyLookupResult(candidates[0]);
       } else {
@@ -196,11 +215,11 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
       }
     } catch (error) {
       logger.error('Security lookup failed:', error);
-      toast.error('Lookup failed - please try again');
+      toast.error(t('form.toast.lookupFailed'));
     } finally {
       setIsLookingUp(false);
     }
-  }, [getValues, preferredExchanges, lookupProvider, applyLookupResult]);
+  }, [getValues, preferredExchanges, lookupProvider, applyLookupResult, t]);
 
   // In edit mode, revert to the original security values. In create mode,
   // blank everything out (keeping the user's default currency).
@@ -264,17 +283,17 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
       <div className="flex gap-2 items-end">
         <div className="flex-1">
           <Input
-            label="Symbol"
+            label={t('form.symbol')}
             {...register('symbol')}
             error={errors.symbol?.message}
-            placeholder="e.g., AAPL, XEQT, BTC"
+            placeholder={t('form.symbolPlaceholder')}
             className="uppercase"
           />
         </div>
         <div className="flex gap-1.5">
           <Select
-            aria-label="Lookup provider"
-            options={lookupProviderOptions}
+            aria-label={t('form.lookupProvider')}
+            options={lookupProviderSelectOptions}
             value={lookupProvider}
             onChange={(e) =>
               setLookupProvider(e.target.value as 'auto' | 'yahoo' | 'msn')
@@ -288,7 +307,7 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
             disabled={isLookingUp}
             className="mb-[1px] relative"
           >
-            <span className={isLookingUp ? 'invisible' : ''}>Lookup</span>
+            <span className={isLookingUp ? 'invisible' : ''}>{t('form.lookup')}</span>
             {isLookingUp && (
               <span className="absolute inset-0 flex items-center justify-center">
                 <LoadingSpinner size="sm" fullContainer={false} />
@@ -301,36 +320,36 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
               variant="ghost"
               onClick={handleClear}
               className="mb-[1px] text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              title={security ? 'Revert to original values' : 'Clear all fields'}
+              title={security ? t('form.revertTitle') : t('form.clearTitle')}
             >
-              {security ? 'Revert' : 'Clear'}
+              {security ? t('form.revert') : t('form.clear')}
             </Button>
           )}
         </div>
       </div>
 
       <Input
-        label="Name"
+        label={t('form.name')}
         {...register('name')}
         error={errors.name?.message}
-        placeholder="e.g., Apple Inc., iShares Core Equity ETF"
+        placeholder={t('form.namePlaceholder')}
       />
 
       <Select
-        label="Type"
-        options={securityTypeOptions}
+        label={t('form.type')}
+        options={securityTypeSelectOptions}
         value={watch('securityType') || ''}
         onChange={(e) => setValue('securityType', e.target.value, { shouldDirty: true })}
         error={errors.securityType?.message}
       />
 
       <Combobox
-        label="Exchange"
+        label={t('form.exchange')}
         options={EXCHANGE_OPTIONS}
         value={watch('exchange') || ''}
         onChange={(value, label) => setValue('exchange', value || label, { shouldDirty: true })}
         error={errors.exchange?.message}
-        placeholder="Search exchanges..."
+        placeholder={t('form.exchangePlaceholder')}
         allowCustomValue
         usePortal
         alwaysShowSubtitle
@@ -338,7 +357,7 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
       />
 
       <Select
-        label="Currency"
+        label={t('form.currency')}
         options={currencyOptions}
         {...register('currencyCode')}
         error={errors.currencyCode?.message}
@@ -346,10 +365,10 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
 
       <div>
         <Select
-          label="Quote Provider"
+          label={t('form.quoteProvider')}
           options={[
-            { value: '', label: `Use default (${userDefaultProvider === 'msn' ? 'MSN Money' : 'Yahoo Finance'})` },
-            ...quoteProviderOverrideOptions.slice(1),
+            { value: '', label: t('form.useDefaultProvider', { provider: userDefaultProvider === 'msn' ? t('form.providerMsn') : t('form.providerYahoo') }) },
+            ...quoteProviderOverrideOptions.slice(1).map((o) => ({ value: o.value, label: t(o.labelKey) })),
           ]}
           value={watch('quoteProvider') || ''}
           onChange={(e) =>
@@ -365,20 +384,18 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
             className="text-sm text-red-600 dark:text-red-400 mt-2"
             data-testid="msn-not-configured-error"
           >
-            MSN is selected as the default quote provider, but{' '}
-            <code>MSN_API_KEY</code> is not configured on the server. MSN
-            quotes will fail until an administrator sets the env var and
-            restarts the backend.
+            {t('form.msnNotConfigured')}
+            <code>MSN_API_KEY</code>{t('form.msnNotConfiguredSuffix')}
           </p>
         )}
       </div>
 
       {watch('quoteProvider') === 'msn' && (
         <Input
-          label="MSN Instrument ID (advanced)"
+          label={t('form.msnInstrumentId')}
           {...register('msnInstrumentId')}
           error={errors.msnInstrumentId?.message}
-          placeholder="Auto-resolved from ticker; override only if wrong"
+          placeholder={t('form.msnInstrumentIdPlaceholder')}
         />
       )}
 
@@ -387,7 +404,7 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
         type="button"
         onClick={toggleFavourite}
         className="flex items-center gap-2 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-        title={isFavourite ? 'Remove from favourites' : 'Add to favourites'}
+        title={isFavourite ? t('form.removeFromFavourites') : t('form.addToFavourites')}
         aria-pressed={isFavourite}
       >
         <svg
@@ -406,11 +423,11 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
           />
         </svg>
         <span className="text-sm text-gray-700 dark:text-gray-300">
-          {isFavourite ? 'Favourite' : 'Add to favourites'}
+          {isFavourite ? t('form.favourite') : t('form.addToFavourites')}
         </span>
       </button>
 
-      <FormActions onCancel={onCancel} submitLabel={security ? 'Update Security' : 'Create Security'} isSubmitting={isSubmitting} />
+      <FormActions onCancel={onCancel} submitLabel={security ? t('form.updateSecurity') : t('form.createSecurity')} isSubmitting={isSubmitting} />
     </form>
     </>
   );

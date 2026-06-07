@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { TwoFactorSetup } from '@/components/auth/TwoFactorSetup';
 import { usePreferencesStore } from '@/store/preferencesStore';
 
 export default function Setup2FAPage() {
+  const t = useTranslations('auth');
   const router = useRouter();
   const { preferences } = usePreferencesStore();
 
@@ -25,10 +27,10 @@ export default function Setup2FAPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100">
-            Set Up Two-Factor Authentication
+            {t('setup2fa.title')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Two-factor authentication is required by the administrator before you can continue.
+            {t('setup2fa.intro')}
           </p>
         </div>
 

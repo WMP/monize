@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { createPortal } from 'react-dom';
 import { cn, inputBaseClasses, inputErrorClasses } from '@/lib/utils';
@@ -35,7 +36,7 @@ interface ComboboxProps {
 
 export function Combobox({
   label,
-  placeholder = 'Select or type...',
+  placeholder,
   options,
   value,
   initialDisplayValue,
@@ -49,6 +50,8 @@ export function Combobox({
   alwaysShowSubtitle = false,
   priorityValues,
 }: ComboboxProps) {
+  const t = useTranslations('ui');
+  const resolvedPlaceholder = placeholder ?? t('combobox.placeholder');
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState(initialDisplayValue || '');
   const [selectedLabel, setSelectedLabel] = useState(initialDisplayValue || '');
@@ -446,7 +449,7 @@ export function Combobox({
           <div className="flex items-center">
             <span className="text-green-600 dark:text-green-400 mr-2">+</span>
             <span className="font-medium text-green-700 dark:text-green-300">
-              Create "{inputValue.trim()}"
+              {t('combobox.create', { value: inputValue.trim() })}
             </span>
           </div>
         </div>
@@ -486,7 +489,7 @@ export function Combobox({
                 if (!matchedKeyword) return null;
                 return (
                   <span className="text-purple-500 dark:text-purple-400 text-xs truncate">
-                    alias: {matchedKeyword}
+                    {t('combobox.alias', { keyword: matchedKeyword })}
                   </span>
                 );
               })()}
@@ -527,7 +530,7 @@ export function Combobox({
           onFocus={handleFocus}
           onClick={handleClick}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           disabled={disabled}
           className={cn(
             inputBaseClasses,

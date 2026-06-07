@@ -1,0 +1,55 @@
+{
+  "page": {
+    "title": "Analiza wydatków",
+    "subtitle": "Analiza wzorców wydatków i anomalii oparta na AI"
+  },
+  "card": {
+    "dismiss": "Odrzuć",
+    "dismissing": "Odrzucanie..."
+  },
+  "types": {
+    "anomaly": "Anomalia",
+    "trend": "Trend",
+    "subscription": "Subskrypcja",
+    "budget_pace": "Tempo budżetu",
+    "seasonal": "Sezonowość",
+    "new_recurring": "Nowy cykliczny"
+  },
+  "severities": {
+    "info": "Informacja",
+    "warning": "Ostrzeżenie",
+    "alert": "Alert"
+  },
+  "notConfigured": {
+    "title": "AI nie jest skonfigurowane",
+    "messagePrefix": "Brak skonfigurowanego dostawcy AI. Aby korzystać z analizy wydatków, ",
+    "link": "skonfiguruj dostawcę AI",
+    "messageSuffix": " w ustawieniach."
+  },
+  "stats": {
+    "alertSingular": "alert",
+    "alertPlural": "alerty",
+    "warningSingular": "ostrzeżenie",
+    "warningPlural": "ostrzeżenia",
+    "lastUpdated": "Ostatnia aktualizacja: {date} {time}"
+  },
+  "actions": {
+    "refreshInsights": "Odśwież analizę",
+    "generating": "Generowanie...",
+    "generateInsights": "Wygeneruj analizę"
+  },
+  "filters": {
+    "allTypes": "Wszystkie typy",
+    "allSeverities": "Wszystkie poziomy",
+    "showDismissed": "Pokaż odrzucone"
+  },
+  "empty": {
+    "noneYet": "Nie wygenerowano jeszcze żadnej analizy. Kliknij \"Odśwież analizę\", aby przeanalizować wzorce wydatków.",
+    "noMatch": "Żadna analiza nie pasuje do bieżących filtrów."
+  },
+  "errors": {
+    "takingLonger": "Generowanie analizy trwa dłużej niż zwykle. Poczekaj lub odśwież stronę.",
+    "loadFailed": "Nie udało się wczytać analizy. Spróbuj ponownie.",
+    "generateFailed": "Nie udało się wygenerować analizy. Upewnij się, że dostawca AI jest skonfigurowany."
+  }
+}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 type ChartView = 'pie' | 'bar' | 'line' | 'area' | 'table';
@@ -12,25 +13,25 @@ interface ChartViewToggleProps {
   className?: string;
 }
 
-const CHART_ICONS: Record<ChartView, { title: string; path: string }> = {
+const CHART_ICONS: Record<ChartView, { titleKey: string; path: string }> = {
   pie: {
-    title: 'Pie Chart',
+    titleKey: 'chartView.pie',
     path: 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z',
   },
   bar: {
-    title: 'Bar Chart',
+    titleKey: 'chartView.bar',
     path: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
   },
   line: {
-    title: 'Line Chart',
+    titleKey: 'chartView.line',
     path: 'M3 17l4-4 4 4 4-8 4 4',
   },
   area: {
-    title: 'Area Chart',
+    titleKey: 'chartView.area',
     path: 'M3 17l4-4 4 4 4-8 4 4V21H3z',
   },
   table: {
-    title: 'Table',
+    titleKey: 'chartView.table',
     path: 'M3 10h18M3 14h18M3 6h18M3 18h18',
   },
 };
@@ -42,6 +43,7 @@ export function ChartViewToggle({
   activeColour = 'bg-blue-600',
   className,
 }: ChartViewToggleProps) {
+  const t = useTranslations('ui');
   const inactiveClasses = 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
 
   return (
@@ -56,7 +58,7 @@ export function ChartViewToggle({
               'p-2 rounded-md transition-colors',
               value === view ? `${activeColour} text-white` : inactiveClasses
             )}
-            title={icon.title}
+            title={t(icon.titleKey)}
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon.path} />

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { FavouriteSecurityQuote } from '@/types/investment';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
@@ -13,13 +14,14 @@ interface FavouriteSecuritiesProps {
 }
 
 function RefreshButton({ onRefresh, isRefreshing }: { onRefresh?: () => void; isRefreshing?: boolean }) {
+  const t = useTranslations('dashboard');
   if (!onRefresh) return null;
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onRefresh(); }}
       disabled={isRefreshing}
       className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
-      title="Refresh prices"
+      title={t('favouriteSecurities.refreshPrices')}
     >
       <svg
         className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
@@ -39,6 +41,7 @@ function RefreshButton({ onRefresh, isRefreshing }: { onRefresh?: () => void; is
 }
 
 export function FavouriteSecurities({ securities, isLoading, onRefresh, isRefreshing }: FavouriteSecuritiesProps) {
+  const t = useTranslations('dashboard');
   const router = useRouter();
   const { formatCurrencyPrecise, formatPercent } = useNumberFormat();
   const defaultCurrency = usePreferencesStore((s) => s.preferences?.defaultCurrency) || 'USD';
@@ -48,11 +51,11 @@ export function FavouriteSecurities({ securities, isLoading, onRefresh, isRefres
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[500px]">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Favourite Securities
+            {t('favouriteSecurities.title')}
           </h3>
           <div className="flex items-center gap-2">
             <RefreshButton onRefresh={onRefresh} isRefreshing={isRefreshing} />
-            <span className="text-sm text-gray-500 dark:text-gray-400">Daily change</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">{t('favouriteSecurities.dailyChange')}</span>
           </div>
         </div>
         <div className="animate-pulse space-y-3">
@@ -68,17 +71,17 @@ export function FavouriteSecurities({ securities, isLoading, onRefresh, isRefres
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[500px]">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Favourite Securities
+          {t('favouriteSecurities.title')}
         </h3>
         <p className="text-gray-500 dark:text-gray-400 text-sm">
-          No favourite securities yet. Visit the{' '}
+          {t('favouriteSecurities.emptyPrefix')}{' '}
           <button
             onClick={() => router.push('/securities')}
             className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
           >
-            Securities page
+            {t('favouriteSecurities.securitiesPage')}
           </button>{' '}
-          and star the securities you want to track here.
+          {t('favouriteSecurities.emptySuffix')}
         </p>
       </div>
     );
@@ -91,11 +94,11 @@ export function FavouriteSecurities({ securities, isLoading, onRefresh, isRefres
           onClick={() => router.push('/securities')}
           className="text-lg font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
         >
-          Favourite Securities
+          {t('favouriteSecurities.title')}
         </button>
         <div className="flex items-center gap-2">
           <RefreshButton onRefresh={onRefresh} isRefreshing={isRefreshing} />
-          <span className="text-sm text-gray-500 dark:text-gray-400">Daily change</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">{t('favouriteSecurities.dailyChange')}</span>
         </div>
       </div>
       <div className="space-y-2 sm:space-y-3">
@@ -134,7 +137,7 @@ export function FavouriteSecurities({ securities, isLoading, onRefresh, isRefres
                     </div>
                   </>
                 ) : (
-                  <div className="text-sm text-gray-400 dark:text-gray-500">No price yet</div>
+                  <div className="text-sm text-gray-400 dark:text-gray-500">{t('favouriteSecurities.noPriceYet')}</div>
                 )}
               </div>
             </div>
@@ -145,7 +148,7 @@ export function FavouriteSecurities({ securities, isLoading, onRefresh, isRefres
         onClick={() => router.push('/securities')}
         className="mt-3 w-full text-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
       >
-        Manage securities
+        {t('favouriteSecurities.manageSecurities')}
       </button>
     </div>
   );

@@ -1,0 +1,73 @@
+{
+  "page": {
+    "title": "Asystent AI",
+    "subtitle": "Zadawaj pytania o swoje finanse w naturalnym języku"
+  },
+  "chat": {
+    "notConfiguredTitle": "AI nie jest skonfigurowane",
+    "notConfiguredBefore": "Nie skonfigurowano żadnego dostawcy AI. Aby korzystać z Asystenta AI, ",
+    "configureLink": "skonfiguruj dostawcę AI",
+    "notConfiguredAfter": " w ustawieniach.",
+    "conversationSaved": "Rozmowa zapisana w przeglądarce",
+    "clearConversation": "Wyczyść rozmowę",
+    "inputPlaceholderDisabled": "Dostawca AI nie jest skonfigurowany",
+    "inputPlaceholder": "Zapytaj o swoje finanse...",
+    "cancel": "Anuluj",
+    "send": "Wyślij",
+    "enterHint": "Naciśnij Enter, aby wysłać, Shift+Enter dla nowej linii"
+  },
+  "tools": {
+    "labels": {
+      "query_transactions": "Transakcje",
+      "get_account_balances": "Salda kont",
+      "get_spending_by_category": "Wydatki według kategorii",
+      "get_income_summary": "Podsumowanie przychodów",
+      "get_net_worth_history": "Historia wartości netto",
+      "compare_periods": "Porównanie okresów",
+      "get_budget_status": "Stan budżetu",
+      "calculate": "Obliczenie",
+      "render_chart": "Wykres"
+    },
+    "failed": "Narzędzie nie powiodło się",
+    "succeeded": "Narzędzie zakończone powodzeniem",
+    "input": "Dane wejściowe",
+    "result": "Wynik"
+  },
+  "table": {
+    "noData": "Brak danych tabeli do wyeksportowania",
+    "download": "Pobierz tabelę jako CSV"
+  },
+  "chart": {
+    "captureFailed": "Nie udało się przechwycić obrazu wykresu",
+    "downloadFailed": "Nie udało się pobrać wykresu",
+    "download": "Pobierz wykres jako PNG"
+  },
+  "suggested": {
+    "heading": "Zapytaj o swoje finanse",
+    "intro": "Mogę odpowiadać na pytania o Twoje wydatki, przychody, salda kont, wartość netto i wiele więcej.",
+    "monthlySpending": {
+      "label": "Miesięczne wydatki",
+      "query": "Ile wydałem w zeszłym miesiącu?"
+    },
+    "topCategories": {
+      "label": "Najwyższe kategorie",
+      "query": "Jakie jest moje 5 najwyższych kategorii wydatków w tym roku?"
+    },
+    "accountBalances": {
+      "label": "Salda kont",
+      "query": "Jakie są moje aktualne salda kont?"
+    },
+    "compareMonths": {
+      "label": "Porównaj miesiące",
+      "query": "Porównaj moje wydatki w tym miesiącu z poprzednim"
+    },
+    "netWorthTrend": {
+      "label": "Trend wartości netto",
+      "query": "Pokaż trend mojej wartości netto z ostatnich 12 miesięcy"
+    },
+    "savingsRate": {
+      "label": "Stopa oszczędności",
+      "query": "Ile zaoszczędziłem w tym roku w porównaniu z moimi przychodami?"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 'use client';
 
-import { MutableRefObject } from 'react';
+import { MutableRefObject, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,19 +13,22 @@ import { useFormSubmitRef } from '@/hooks/useFormSubmitRef';
 import { useFormDirtyNotify } from '@/hooks/useFormDirtyNotify';
 import { FormActions } from '@/components/ui/FormActions';
 
-const priceSchema = z.object({
-  priceDate: z.string().min(1, 'Date is required'),
-  closePrice: z.string().min(1, 'Price is required').refine(
-    (val) => !isNaN(Number(val)) && Number(val) >= 0,
-    'Price must be a non-negative number',
-  ),
-  openPrice: z.string().optional(),
-  highPrice: z.string().optional(),
-  lowPrice: z.string().optional(),
-  volume: z.string().optional(),
-});
+// Validation messages are resolved at render time via t(...) so the schema can
+// be localized. The type below is derived from the schema's shape.
+const makePriceSchema = (t: ReturnType<typeof useTranslations>) =>
+  z.object({
+    priceDate: z.string().min(1, t('priceForm.validation.dateRequired')),
+    closePrice: z.string().min(1, t('priceForm.validation.priceRequired')).refine(
+      (val) => !isNaN(Number(val)) && Number(val) >= 0,
+      t('priceForm.validation.priceNonNegative'),
+    ),
+    openPrice: z.string().optional(),
+    highPrice: z.string().optional(),
+    lowPrice: z.string().optional(),
+    volume: z.string().optional(),
+  });
 
-type PriceFormData = z.infer<typeof priceSchema>;
+type PriceFormData = z.infer<ReturnType<typeof makePriceSchema>>;
 
 interface SecurityPriceFormProps {
   price?: SecurityPrice;
@@ -35,6 +39,8 @@ interface SecurityPriceFormProps {
 }
 
 export function SecurityPriceForm({ price, onSubmit, onCancel, onDirtyChange, submitRef }: SecurityPriceFormProps) {
+  const t = useTranslations('securities');
+  const priceSchema = useMemo(() => makePriceSchema(t), [t]);
   const {
     register,
     handleSubmit,
@@ -79,59 +85,59 @@ export function SecurityPriceForm({ price, onSubmit, onCancel, onDirtyChange, su
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
       <DateInput
-        label="Date"
+        label={t('priceForm.date')}
         error={errors.priceDate?.message}
         onDateChange={(date) => setValue('priceDate', date, { shouldDirty: true, shouldValidate: true })}
         {...register('priceDate')}
       />
 
       <Input
-        label="Close Price"
+        label={t('priceForm.closePrice')}
         type="number"
         step="any"
         {...register('closePrice')}
         error={errors.closePrice?.message}
-        placeholder="0.00"
+        placeholder={t('priceForm.closePricePlaceholder')}
       />
 
       <div className="grid grid-cols-2 gap-3">
         <Input
-          label="Open Price"
+          label={t('priceForm.openPrice')}
           type="number"
           step="any"
           {...register('openPrice')}
           error={errors.openPrice?.message}
-          placeholder="Optional"
+          placeholder={t('priceForm.optional')}
         />
         <Input
-          label="High Price"
+          label={t('priceForm.highPrice')}
           type="number"
           step="any"
           {...register('highPrice')}
           error={errors.highPrice?.message}
-          placeholder="Optional"
+          placeholder={t('priceForm.optional')}
         />
         <Input
-          label="Low Price"
+          label={t('priceForm.lowPrice')}
           type="number"
           step="any"
           {...register('lowPrice')}
           error={errors.lowPrice?.message}
-          placeholder="Optional"
+          placeholder={t('priceForm.optional')}
         />
         <Input
-          label="Volume"
+          label={t('priceForm.volume')}
           type="number"
           step="1"
           {...register('volume')}
           error={errors.volume?.message}
-          placeholder="Optional"
+          placeholder={t('priceForm.optional')}
         />
       </div>
 
       <FormActions
         onCancel={onCancel}
-        submitLabel={price ? 'Update Price' : 'Add Price'}
+        submitLabel={price ? t('priceForm.updatePrice') : t('priceForm.addPrice')}
         isSubmitting={isSubmitting}
       />
     </form>

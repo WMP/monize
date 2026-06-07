@@ -1,14 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { userSettingsApi } from '@/lib/user-settings';
 
+// Labels are resolved at render time via t(step.titleKey) / t(step.descriptionKey)
+// so the steps follow the active locale.
 const steps = [
   {
-    title: 'Review your settings',
-    description: 'Set your currency, date format, and theme',
+    titleKey: 'gettingStarted.steps.settings.title',
+    descriptionKey: 'gettingStarted.steps.settings.description',
     href: '/settings',
     icon: (
       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -18,8 +21,8 @@ const steps = [
     ),
   },
   {
-    title: 'Set up categories',
-    description: 'Create categories or import a default set',
+    titleKey: 'gettingStarted.steps.categories.title',
+    descriptionKey: 'gettingStarted.steps.categories.description',
     href: '/categories',
     icon: (
       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -28,8 +31,8 @@ const steps = [
     ),
   },
   {
-    title: 'Add your first account',
-    description: 'Create a bank account to start tracking',
+    titleKey: 'gettingStarted.steps.account.title',
+    descriptionKey: 'gettingStarted.steps.account.description',
     href: '/accounts',
     icon: (
       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -38,8 +41,8 @@ const steps = [
     ),
   },
   {
-    title: 'Import from QIF',
-    description: 'Import accounts and transactions from QIF files',
+    titleKey: 'gettingStarted.steps.import.title',
+    descriptionKey: 'gettingStarted.steps.import.description',
     href: '/import',
     icon: (
       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -50,6 +53,7 @@ const steps = [
 ];
 
 export function GettingStarted() {
+  const t = useTranslations('dashboard');
   const preferences = usePreferencesStore((s) => s.preferences);
   const updatePreferences = usePreferencesStore((s) => s.updatePreferences);
   const [dismissing, setDismissing] = useState(false);
@@ -73,16 +77,16 @@ export function GettingStarted() {
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Getting Started
+            {t('gettingStarted.title')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Set up your account in a few quick steps
+            {t('gettingStarted.subtitle')}
           </p>
         </div>
         <button
           onClick={handleDismiss}
           className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-          title="Dismiss"
+          title={t('gettingStarted.dismiss')}
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -101,10 +105,10 @@ export function GettingStarted() {
             </div>
             <div className="min-w-0">
               <div className="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                {step.title}
+                {t(step.titleKey)}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                {step.description}
+                {t(step.descriptionKey)}
               </div>
             </div>
           </Link>

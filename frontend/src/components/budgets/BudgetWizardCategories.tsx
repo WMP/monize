@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Sparkline } from './Sparkline';
 import { getCurrencySymbol, formatAmount, getDecimalPlacesForCurrency, gainLossColor } from '@/lib/format';
@@ -65,25 +66,27 @@ interface BudgetWizardCategoriesProps {
 
 const PROFILE_OPTIONS: Array<{
   value: BudgetProfile;
-  label: string;
+  labelKey: string;
 }> = [
-  { value: 'COMFORTABLE', label: 'Comfortable' },
-  { value: 'ON_TRACK', label: 'On Track' },
-  { value: 'AGGRESSIVE', label: 'Aggressive' },
+  { value: 'COMFORTABLE', labelKey: 'wizardCategories.profileComfortable' },
+  { value: 'ON_TRACK', labelKey: 'wizardCategories.profileOnTrack' },
+  { value: 'AGGRESSIVE', labelKey: 'wizardCategories.profileAggressive' },
 ];
 
-const CATEGORY_GROUP_OPTIONS: Array<{ value: CategoryGroup; label: string; short: string; activeClass: string }> = [
-  { value: 'NEED', label: 'Need', short: 'N', activeClass: 'bg-blue-600 text-white' },
-  { value: 'WANT', label: 'Want', short: 'W', activeClass: 'bg-purple-600 text-white' },
-  { value: 'SAVING', label: 'Saving', short: 'S', activeClass: 'bg-green-600 text-white' },
+const CATEGORY_GROUP_OPTIONS: Array<{ value: CategoryGroup; labelKey: string; short: string; activeClass: string }> = [
+  { value: 'NEED', labelKey: 'wizardCategories.groupNeed', short: 'N', activeClass: 'bg-blue-600 text-white' },
+  { value: 'WANT', labelKey: 'wizardCategories.groupWant', short: 'W', activeClass: 'bg-purple-600 text-white' },
+  { value: 'SAVING', labelKey: 'wizardCategories.groupSaving', short: 'S', activeClass: 'bg-green-600 text-white' },
 ];
 
 function CategoryGroupPicker({
   value,
   onChange,
+  t,
 }: {
   value: CategoryGroup;
   onChange: (group: CategoryGroup) => void;
+  t: (key: string) => string;
 }) {
   return (
     <div className="flex flex-shrink-0 rounded overflow-hidden border border-gray-300 dark:border-gray-600">
@@ -91,7 +94,7 @@ function CategoryGroupPicker({
         <button
           key={opt.value}
           type="button"
-          title={opt.label}
+          title={t(opt.labelKey)}
           onClick={(e) => { e.preventDefault(); onChange(opt.value); }}
           className={`px-1.5 py-0.5 text-[10px] font-semibold leading-none transition-colors ${
             value === opt.value
@@ -112,6 +115,7 @@ export function BudgetWizardCategories({
   onNext,
   onBack,
 }: BudgetWizardCategoriesProps) {
+  const t = useTranslations('budgets');
   const { formatCurrency } = useNumberFormat();
   const { analysisResult, selectedCategories, selectedTransfers = new Map(), profile, strategy, currencyCode } = state;
   const is503020 = strategy === 'FIFTY_THIRTY_TWENTY';
@@ -324,7 +328,7 @@ export function BudgetWizardCategories({
               </span>
               {transfer.isFixed && (
                 <span className="hidden sm:inline text-xs bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 px-1.5 py-0.5 rounded flex-shrink-0">
-                  Fixed
+                  {t('wizardCategories.fixed')}
                 </span>
               )}
             </label>
@@ -332,6 +336,7 @@ export function BudgetWizardCategories({
               <CategoryGroupPicker
                 value={currentGroup}
                 onChange={(group) => handleTransferGroupChange(transfer.accountId, group)}
+                t={t}
               />
             )}
           </div>
@@ -394,7 +399,7 @@ export function BudgetWizardCategories({
               </span>
               {cat.isFixed && (
                 <span className="hidden sm:inline text-xs bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 px-1.5 py-0.5 rounded flex-shrink-0">
-                  Fixed
+                  {t('wizardCategories.fixed')}
                 </span>
               )}
             </label>
@@ -402,6 +407,7 @@ export function BudgetWizardCategories({
               <CategoryGroupPicker
                 value={currentGroup}
                 onChange={(group) => handleCategoryGroupChange(cat.categoryId, group)}
+                t={t}
               />
             )}
           </div>
@@ -456,16 +462,16 @@ export function BudgetWizardCategories({
 
     const income = totals.totalIncome;
     return [
-      { key: 'NEED', label: 'Needs', target: 50, amount: groups.NEED, percent: income > 0 ? Math.round((groups.NEED / income) * 100) : 0, color: 'bg-blue-500' },
-      { key: 'WANT', label: 'Wants', target: 30, amount: groups.WANT, percent: income > 0 ? Math.round((groups.WANT / income) * 100) : 0, color: 'bg-purple-500' },
-      { key: 'SAVING', label: 'Savings', target: 20, amount: groups.SAVING, percent: income > 0 ? Math.round((groups.SAVING / income) * 100) : 0, color: 'bg-green-500' },
+      { key: 'NEED', labelKey: 'wizardCategories.needs', target: 50, amount: groups.NEED, percent: income > 0 ? Math.round((groups.NEED / income) * 100) : 0, color: 'bg-blue-500' },
+      { key: 'WANT', labelKey: 'wizardCategories.wants', target: 30, amount: groups.WANT, percent: income > 0 ? Math.round((groups.WANT / income) * 100) : 0, color: 'bg-purple-500' },
+      { key: 'SAVING', labelKey: 'wizardCategories.savings', target: 20, amount: groups.SAVING, percent: income > 0 ? Math.round((groups.SAVING / income) * 100) : 0, color: 'bg-green-500' },
     ];
   }, [is503020, selectedCategories, selectedTransfers, totals.totalIncome]);
 
   if (!analysisResult) {
     return (
       <div className="text-center text-gray-500 dark:text-gray-400 py-12">
-        No analysis data. Go back and run the analysis first.
+        {t('wizardCategories.noAnalysisData')}
       </div>
     );
   }
@@ -475,7 +481,7 @@ export function BudgetWizardCategories({
       {/* Profile toggle */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Review Categories
+          {t('wizardCategories.reviewCategories')}
         </h3>
         <div className="flex rounded-md shadow-sm">
           {PROFILE_OPTIONS.map((p) => (
@@ -489,7 +495,7 @@ export function BudgetWizardCategories({
                   : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700'
               }`}
             >
-              {p.label}
+              {t(p.labelKey)}
             </button>
           ))}
         </div>
@@ -503,13 +509,13 @@ export function BudgetWizardCategories({
               <thead>
                 <tr className="bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800">
                   <th className="text-left py-2 pl-1 pr-0 sm:px-4 text-xs font-medium text-green-700 dark:text-green-400 uppercase">
-                    Income
+                    {t('wizardCategories.income')}
                   </th>
                   <th className="hidden sm:table-cell w-44 text-right py-2 px-4 text-xs font-medium text-green-700 dark:text-green-400 uppercase">
-                    Trend / Median
+                    {t('wizardCategories.trendMedian')}
                   </th>
                   <th className="w-24 sm:w-48 py-2 pl-0.5 pr-1 sm:px-4 text-xs font-medium text-green-700 dark:text-green-400 uppercase text-right">
-                    Amount
+                    {t('wizardCategories.amount')}
                   </th>
                 </tr>
               </thead>
@@ -528,13 +534,13 @@ export function BudgetWizardCategories({
             <thead>
               <tr className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
                 <th className="text-left py-2 pl-1 pr-0 sm:px-4 text-xs font-medium text-red-700 dark:text-red-400 uppercase">
-                  Expenses
+                  {t('wizardCategories.expenses')}
                 </th>
                 <th className="hidden sm:table-cell w-44 text-right py-2 px-4 text-xs font-medium text-red-700 dark:text-red-400 uppercase">
-                  Trend / Median
+                  {t('wizardCategories.trendMedian')}
                 </th>
                 <th className="w-24 sm:w-48 py-2 pl-0.5 pr-1 sm:px-4 text-xs font-medium text-red-700 dark:text-red-400 uppercase text-right">
-                  Amount
+                  {t('wizardCategories.amount')}
                 </th>
               </tr>
             </thead>
@@ -553,13 +559,13 @@ export function BudgetWizardCategories({
               <thead>
                 <tr className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
                   <th className="text-left py-2 pl-1 pr-0 sm:px-4 text-xs font-medium text-blue-700 dark:text-blue-400 uppercase">
-                    Transfers / Savings
+                    {t('wizardCategories.transfersSavings')}
                   </th>
                   <th className="hidden sm:table-cell w-44 text-right py-2 px-4 text-xs font-medium text-blue-700 dark:text-blue-400 uppercase">
-                    Trend / Median
+                    {t('wizardCategories.trendMedian')}
                   </th>
                   <th className="w-24 sm:w-48 py-2 pl-0.5 pr-1 sm:px-4 text-xs font-medium text-blue-700 dark:text-blue-400 uppercase text-right">
-                    Amount
+                    {t('wizardCategories.amount')}
                   </th>
                 </tr>
               </thead>
@@ -576,7 +582,7 @@ export function BudgetWizardCategories({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-center">
           <div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              Total Income
+              {t('wizardCategories.totalIncome')}
             </div>
             <div className="text-lg font-semibold text-green-600 dark:text-green-400">
               {formatCurrency(totals.totalIncome, currencyCode)}
@@ -584,7 +590,7 @@ export function BudgetWizardCategories({
           </div>
           <div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              Total Expenses
+              {t('wizardCategories.totalExpenses')}
             </div>
             <div className="text-lg font-semibold text-red-600 dark:text-red-400">
               {formatCurrency(totals.totalExpenses, currencyCode)}
@@ -592,7 +598,7 @@ export function BudgetWizardCategories({
           </div>
           <div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              Transfers
+              {t('wizardCategories.transfers')}
             </div>
             <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
               {formatCurrency(totals.totalTransfers, currencyCode)}
@@ -600,7 +606,7 @@ export function BudgetWizardCategories({
           </div>
           <div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              Remaining
+              {t('wizardCategories.remaining')}
             </div>
             <div
               className={`text-lg font-semibold ${
@@ -617,7 +623,7 @@ export function BudgetWizardCategories({
       {allocation503020 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
           <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
-            50/30/20 Allocation
+            {t('wizardCategories.allocationTitle')}
           </h4>
           <div className="space-y-2.5">
             {allocation503020.map((g) => {
@@ -632,7 +638,7 @@ export function BudgetWizardCategories({
                 <div key={g.key}>
                   <div className="flex items-center justify-between text-xs mb-0.5">
                     <span className="font-medium text-gray-700 dark:text-gray-300">
-                      {g.label} <span className="text-gray-400">(target {g.target}%)</span>
+                      {t(g.labelKey)} <span className="text-gray-400">{t('wizardCategories.groupTarget', { percent: g.target })}</span>
                     </span>
                     <span className={`font-medium ${statusColor}`}>
                       {g.percent}% &middot; {formatCurrency(g.amount, currencyCode)}
@@ -658,13 +664,13 @@ export function BudgetWizardCategories({
       {/* Actions */}
       <div className="flex justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
         <Button variant="outline" onClick={onBack}>
-          Back
+          {t('wizardCategories.back')}
         </Button>
         <Button
           onClick={onNext}
           disabled={selectedCategories.size === 0 && selectedTransfers.size === 0}
         >
-          Next: Configure
+          {t('wizardCategories.nextConfigure')}
         </Button>
       </div>
     </div>

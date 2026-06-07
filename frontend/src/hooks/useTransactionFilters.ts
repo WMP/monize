@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { isInvestmentBrokerageAccount } from '@/lib/account-utils';
 import {
   buildCategoryColorMap,
@@ -109,6 +110,17 @@ interface UseTransactionFiltersOptions {
 export function useTransactionFilters({ accounts, categories, payees, tags, weekStartsOn: _weekStartsOn }: UseTransactionFiltersOptions) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('transactions');
+
+  // Localized labels for the "Uncategorized"/"Transfers" pseudo-categories
+  // shown in the category filter dropdown and selection chips.
+  const specialCategoryLabels = useMemo(
+    () => ({
+      uncategorized: t('filterPanel.uncategorized'),
+      transfers: t('filterPanel.transfers'),
+    }),
+    [t],
+  );
 
   // Pagination state - initialize from URL
   const [currentPage, setCurrentPage] = useState(() => {
@@ -182,7 +194,7 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
   }, [router]);
 
   // Get display info for selected filters
-  const selectedCategories = resolveSelectedCategories(filterCategoryIds, categories);
+  const selectedCategories = resolveSelectedCategories(filterCategoryIds, categories, specialCategoryLabels);
 
   const selectedPayees = filterPayeeIds
     .map(id => payees.find(p => p.id === id))
@@ -208,8 +220,8 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
 
   // Memoize filter option arrays
   const categoryFilterOptions = useMemo(
-    () => buildCategoryFilterOptions(categories),
-    [categories],
+    () => buildCategoryFilterOptions(categories, specialCategoryLabels),
+    [categories, specialCategoryLabels],
   );
 
   const categoryColorMap = useMemo(() => buildCategoryColorMap(categories), [categories]);

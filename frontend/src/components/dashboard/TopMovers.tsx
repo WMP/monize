@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { TopMover } from '@/types/investment';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
@@ -35,10 +36,11 @@ function MoverFilterControl({
   filter: MoverFilter;
   onChange: (filter: MoverFilter) => void;
 }) {
-  const options: { value: MoverFilter; label: string; rounded: string }[] = [
-    { value: 'all', label: 'All', rounded: 'rounded-l-md border' },
-    { value: 'gainers', label: 'Gainers', rounded: 'border-t border-b' },
-    { value: 'losers', label: 'Losers', rounded: 'rounded-r-md border' },
+  const t = useTranslations('dashboard');
+  const options: { value: MoverFilter; labelKey: string; rounded: string }[] = [
+    { value: 'all', labelKey: 'topMovers.all', rounded: 'rounded-l-md border' },
+    { value: 'gainers', labelKey: 'topMovers.gainers', rounded: 'border-t border-b' },
+    { value: 'losers', labelKey: 'topMovers.losers', rounded: 'rounded-r-md border' },
   ];
   return (
     <div className="inline-flex rounded-md shadow-sm">
@@ -52,7 +54,7 @@ function MoverFilterControl({
               : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
           }`}
         >
-          {option.label}
+          {t(option.labelKey)}
         </button>
       ))}
     </div>
@@ -60,13 +62,14 @@ function MoverFilterControl({
 }
 
 function RefreshButton({ onRefresh, isRefreshing }: { onRefresh?: () => void; isRefreshing?: boolean }) {
+  const t = useTranslations('dashboard');
   if (!onRefresh) return null;
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onRefresh(); }}
       disabled={isRefreshing}
       className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
-      title="Refresh prices"
+      title={t('topMovers.refreshPrices')}
     >
       <svg
         className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
@@ -86,6 +89,7 @@ function RefreshButton({ onRefresh, isRefreshing }: { onRefresh?: () => void; is
 }
 
 export function TopMovers({ movers, isLoading, hasInvestmentAccounts, onRefresh, isRefreshing }: TopMoversProps) {
+  const t = useTranslations('dashboard');
   const router = useRouter();
   const { formatCurrencyPrecise, formatPercent } = useNumberFormat();
   const defaultCurrency = usePreferencesStore((s) => s.preferences?.defaultCurrency) || 'USD';
@@ -107,11 +111,11 @@ export function TopMovers({ movers, isLoading, hasInvestmentAccounts, onRefresh,
             onClick={() => router.push('/investments')}
             className="text-lg font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
-            Top Movers
+            {t('topMovers.title')}
           </button>
           <div className="flex items-center gap-2">
             <RefreshButton onRefresh={onRefresh} isRefreshing={isRefreshing} />
-            <span className="text-sm text-gray-500 dark:text-gray-400">Daily change</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">{t('topMovers.dailyChange')}</span>
           </div>
         </div>
         <div className="animate-pulse space-y-3">
@@ -131,14 +135,14 @@ export function TopMovers({ movers, isLoading, hasInvestmentAccounts, onRefresh,
             onClick={() => router.push('/investments')}
             className="text-lg font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
-            Top Movers
+            {t('topMovers.title')}
           </button>
           <RefreshButton onRefresh={onRefresh} isRefreshing={isRefreshing} />
         </div>
         <p className="text-gray-500 dark:text-gray-400 text-sm">
           {hasInvestmentAccounts
-            ? 'No price changes available yet.'
-            : 'Add investment accounts to track daily movers.'}
+            ? t('topMovers.noPriceChanges')
+            : t('topMovers.addInvestmentAccounts')}
         </p>
       </div>
     );
@@ -161,11 +165,11 @@ export function TopMovers({ movers, isLoading, hasInvestmentAccounts, onRefresh,
           onClick={() => router.push('/investments')}
           className="text-lg font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
         >
-          Top Movers
+          {t('topMovers.title')}
         </button>
         <div className="flex items-center gap-2">
           <RefreshButton onRefresh={onRefresh} isRefreshing={isRefreshing} />
-          <span className="text-sm text-gray-500 dark:text-gray-400">Daily change</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">{t('topMovers.dailyChange')}</span>
         </div>
       </div>
       <div className="mb-4">
@@ -173,7 +177,7 @@ export function TopMovers({ movers, isLoading, hasInvestmentAccounts, onRefresh,
       </div>
       {topMovers.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400 text-sm">
-          {filter === 'gainers' ? 'No gainers today.' : 'No losers today.'}
+          {filter === 'gainers' ? t('topMovers.noGainersToday') : t('topMovers.noLosersToday')}
         </p>
       ) : (
       <div className="space-y-2 sm:space-y-3">
@@ -220,7 +224,7 @@ export function TopMovers({ movers, isLoading, hasInvestmentAccounts, onRefresh,
         onClick={() => router.push('/investments')}
         className="mt-3 w-full text-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
       >
-        View portfolio
+        {t('topMovers.viewPortfolio')}
       </button>
     </div>
   );

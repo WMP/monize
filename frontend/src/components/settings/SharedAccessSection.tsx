@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { delegationApi, DelegateSummary } from '@/lib/delegation';
 import { accountsApi } from '@/lib/accounts';
@@ -43,6 +44,7 @@ const inputClass =
   'w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm';
 
 export function SharedAccessSection() {
+  const t = useTranslations('settings');
   const [delegates, setDelegates] = useState<DelegateSummary[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,12 +88,12 @@ export function SharedAccessSection() {
       setDelegates(d);
       setAccounts(a);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load shared access'));
+      toast.error(getErrorMessage(err, t('sharedAccess.loadError')));
       logger.error(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -144,7 +146,7 @@ export function SharedAccessSection() {
     // Existing login: just link the access, never touch their credentials.
     if (!emailExists && !sendInvite) {
       if (!password) {
-        toast.error('Set a password or send an email invite.');
+        toast.error(t('sharedAccess.setPasswordOrInvite'));
         return;
       }
       const parsed = passwordSchema.safeParse(password);
@@ -166,19 +168,19 @@ export function SharedAccessSection() {
       });
       if (res.temporaryPassword) {
         toast.success(
-          `Delegate created. Temporary password: ${res.temporaryPassword}`,
+          t('sharedAccess.delegateCreatedTempPassword', { password: res.temporaryPassword }),
           { duration: 12000 },
         );
       } else if (res.invited) {
-        toast.success('Invitation email sent');
+        toast.success(t('sharedAccess.invitationSent'));
       } else {
-        toast.success('Delegate created');
+        toast.success(t('sharedAccess.delegateCreated'));
       }
       setShowCreate(false);
       resetCreateForm();
       await load();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to create delegate'));
+      toast.error(getErrorMessage(err, t('sharedAccess.createError')));
       logger.error(err);
     } finally {
       setSubmitting(false);
@@ -190,11 +192,11 @@ export function SharedAccessSection() {
     setRevoking(true);
     try {
       await delegationApi.revokeDelegate(revokeTarget.id);
-      toast.success('Delegate removed');
+      toast.success(t('sharedAccess.delegateRemoved'));
       setRevokeTarget(null);
       await load();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to revoke delegate'));
+      toast.error(getErrorMessage(err, t('sharedAccess.revokeError')));
       logger.error(err);
     } finally {
       setRevoking(false);
@@ -207,7 +209,7 @@ export function SharedAccessSection() {
       setCopied(false);
       setTempPassword(res.temporaryPassword);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to reset password'));
+      toast.error(getErrorMessage(err, t('sharedAccess.resetPasswordError')));
       logger.error(err);
     }
   };
@@ -218,7 +220,7 @@ export function SharedAccessSection() {
       await navigator.clipboard.writeText(tempPassword);
       setCopied(true);
     } catch (err) {
-      toast.error('Could not copy to clipboard');
+      toast.error(t('sharedAccess.copyError'));
       logger.error(err);
     }
   };
@@ -227,18 +229,17 @@ export function SharedAccessSection() {
     <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6">
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <p className="text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
-          Delegates sign in with their own credentials and never see your
-          password. They only see the accounts and sections you grant them.
+          {t('sharedAccess.intro')}
         </p>
         <Button size="sm" onClick={openCreate}>
-          Add delegate
+          {t('sharedAccess.addDelegate')}
         </Button>
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
+        <p className="text-sm text-gray-500">{t('sharedAccess.loading')}</p>
       ) : delegates.length === 0 ? (
-        <p className="text-sm text-gray-500">No delegates yet.</p>
+        <p className="text-sm text-gray-500">{t('sharedAccess.noDelegates')}</p>
       ) : (
         <ul className="space-y-3">
           {delegates.map((d) => (
@@ -251,14 +252,17 @@ export function SharedAccessSection() {
                   {d.delegate.email}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Status: {d.status} &middot; Sections: {sectionCount(d)}{' '}
-                  &middot; Accounts: {accountCount(d)} &middot; Shared data:{' '}
-                  {sharedDataCount(d)}
+                  {t('sharedAccess.delegateStatus', {
+                    status: d.status,
+                    sections: sectionCount(d),
+                    accounts: accountCount(d),
+                    sharedData: sharedDataCount(d),
+                  })}
                 </p>
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => openEdit(d)}>
-                  Edit access
+                  {t('sharedAccess.editAccess')}
                 </Button>
                 <Button
                   variant="outline"
@@ -266,19 +270,19 @@ export function SharedAccessSection() {
                   disabled={!d.delegate.canResetPassword}
                   title={
                     !d.delegate.canResetPassword
-                      ? 'This person manages their own password (they have their own Monize account or delegated access elsewhere).'
+                      ? t('sharedAccess.resetPasswordDisabledTitle')
                       : undefined
                   }
                   onClick={() => handleResetPassword(d.id)}
                 >
-                  Reset password
+                  {t('sharedAccess.resetPassword')}
                 </Button>
                 <Button
                   variant="danger"
                   size="sm"
                   onClick={() => setRevokeTarget(d)}
                 >
-                  Remove
+                  {t('sharedAccess.remove')}
                 </Button>
               </div>
             </li>
@@ -295,22 +299,22 @@ export function SharedAccessSection() {
         <form onSubmit={handleCreate} className="flex flex-col">
           <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Add delegate
+              {t('sharedAccess.addDelegate')}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Grant another person scoped access to your accounts.
+              {t('sharedAccess.addDelegateModalSubtitle')}
             </p>
           </div>
 
           <div className="px-6 py-4 space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Email
+                {t('sharedAccess.email')}
               </label>
               <input
                 type="email"
                 required
-                placeholder="Delegate email"
+                placeholder={t('sharedAccess.emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={inputClass}
@@ -321,11 +325,11 @@ export function SharedAccessSection() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    First name
+                    {t('sharedAccess.firstName')}
                   </label>
                   <input
                     type="text"
-                    placeholder="First name (optional)"
+                    placeholder={t('sharedAccess.firstNamePlaceholder')}
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     className={inputClass}
@@ -333,11 +337,11 @@ export function SharedAccessSection() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Last name
+                    {t('sharedAccess.lastName')}
                   </label>
                   <input
                     type="text"
-                    placeholder="Last name (optional)"
+                    placeholder={t('sharedAccess.lastNamePlaceholder')}
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     className={inputClass}
@@ -348,9 +352,7 @@ export function SharedAccessSection() {
 
             {emailExists ? (
               <div className="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 text-sm text-blue-800 dark:text-blue-200">
-                This person already has a Monize login. They&apos;ll keep
-                their own credentials and simply be granted the additional
-                shared access &mdash; no password or invite needed.
+                {t('sharedAccess.existingLoginNotice')}
               </div>
             ) : (
               <>
@@ -358,21 +360,21 @@ export function SharedAccessSection() {
                   <ToggleSwitch
                     checked={sendInvite}
                     onChange={setSendInvite}
-                    label="Send an email invite instead of setting a password"
+                    label={t('sharedAccess.sendInvite')}
                   />
                   <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Send an email invite instead of setting a password
+                    {t('sharedAccess.sendInvite')}
                   </span>
                 </div>
 
                 {!sendInvite && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Password
+                      {t('sharedAccess.password')}
                     </label>
                     <PasswordInput
                       required
-                      placeholder="Set a password"
+                      placeholder={t('sharedAccess.passwordPlaceholder')}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className={inputClass}
@@ -393,10 +395,10 @@ export function SharedAccessSection() {
               onClick={() => setShowCreate(false)}
               disabled={submitting}
             >
-              Cancel
+              {t('sharedAccess.cancel')}
             </Button>
             <Button type="submit" isLoading={submitting}>
-              Add delegate
+              {t('sharedAccess.addDelegate')}
             </Button>
           </div>
         </form>
@@ -425,14 +427,9 @@ export function SharedAccessSection() {
 
       <ConfirmDialog
         isOpen={revokeTarget !== null}
-        title="Remove delegate"
-        message={
-          'Remove this delegate? They lose access to your account. If they ' +
-          'have no other shared access and never claimed this email as ' +
-          'their own Monize account, their owner-managed login is removed ' +
-          'too.'
-        }
-        confirmLabel={revoking ? 'Removing...' : 'Remove'}
+        title={t('sharedAccess.removeDelegateTitle')}
+        message={t('sharedAccess.removeDelegateMessage')}
+        confirmLabel={revoking ? t('sharedAccess.removing') : t('sharedAccess.remove')}
         variant="danger"
         pushHistory
         onConfirm={handleRevoke}
@@ -447,23 +444,22 @@ export function SharedAccessSection() {
       >
         <div className="p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Temporary password
+            {t('sharedAccess.temporaryPasswordTitle')}
           </h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Share this with the delegate securely. They will be asked to
-            change it on first sign in. It will not be shown again.
+            {t('sharedAccess.temporaryPasswordHint')}
           </p>
           <div className="mt-4 flex items-stretch gap-2">
             <code className="flex-1 select-all rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm font-mono break-all">
               {tempPassword}
             </code>
             <Button type="button" variant="outline" onClick={copyTempPassword}>
-              {copied ? 'Copied' : 'Copy'}
+              {copied ? t('sharedAccess.copied') : t('sharedAccess.copy')}
             </Button>
           </div>
           <div className="mt-6 flex justify-end">
             <Button type="button" onClick={() => setTempPassword(null)}>
-              Done
+              {t('sharedAccess.done')}
             </Button>
           </div>
         </div>

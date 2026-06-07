@@ -15,12 +15,21 @@ vi.mock('@heroicons/react/20/solid', () => ({
 }));
 
 const defaultSections: SettingsSection[] = [
-  { id: 'profile', label: 'Profile' },
-  { id: 'preferences', label: 'Preferences' },
-  { id: 'security', label: 'Security' },
-  { id: 'ai-settings', label: 'AI Settings', href: '/settings/ai' },
-  { id: 'danger-zone', label: 'Danger Zone' },
+  { id: 'profile', labelKey: 'nav.profile' },
+  { id: 'preferences', labelKey: 'nav.preferences' },
+  { id: 'security', labelKey: 'nav.security' },
+  { id: 'ai-settings', labelKey: 'nav.aiSettings', href: '/settings/ai' },
+  { id: 'danger-zone', labelKey: 'nav.dangerZone' },
 ];
+
+// The next-intl test mock resolves labelKey -> the English settings catalog.
+const LABELS: Record<string, string> = {
+  'nav.profile': 'Profile',
+  'nav.preferences': 'Preferences',
+  'nav.security': 'Security',
+  'nav.aiSettings': 'AI Settings',
+  'nav.dangerZone': 'Danger Zone',
+};
 
 describe('SettingsNav', () => {
   const onSectionClick = vi.fn();
@@ -41,7 +50,7 @@ describe('SettingsNav', () => {
       );
 
       for (const section of defaultSections) {
-        expect(screen.getByText(section.label)).toBeInTheDocument();
+        expect(screen.getByText(LABELS[section.labelKey])).toBeInTheDocument();
       }
     });
 
@@ -200,7 +209,7 @@ describe('SettingsNav', () => {
       );
 
       for (const section of defaultSections) {
-        expect(screen.getByText(section.label)).toBeInTheDocument();
+        expect(screen.getByText(LABELS[section.labelKey])).toBeInTheDocument();
       }
     });
 
@@ -325,8 +334,8 @@ describe('SettingsNav', () => {
 
   describe('danger variant styling', () => {
     const dangerSections: SettingsSection[] = [
-      { id: 'profile', label: 'Profile' },
-      { id: 'danger-zone', label: 'Danger Zone', variant: 'danger' },
+      { id: 'profile', labelKey: 'nav.profile' },
+      { id: 'danger-zone', labelKey: 'nav.dangerZone', variant: 'danger' },
     ];
 
     it('renders a danger section in red text in the vertical sidebar', () => {

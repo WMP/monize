@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { subMonths, subWeeks, startOfWeek, format } from 'date-fns';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import dynamic from 'next/dynamic';
@@ -60,6 +61,7 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
+  const t = useTranslations('dashboard');
   const user = useAuthStore((s) => s.user);
   const actingAsUserId = useAuthStore((s) => s.actingAsUserId);
   const isDelegateView = !!actingAsUserId;
@@ -213,8 +215,10 @@ function DashboardContent() {
         <div className="sm:px-0">
           {/* Welcome section */}
           <PageHeader
-            title={`Welcome${user?.firstName ? `, ${user.firstName}` : ''}!`}
-            subtitle="Here's your financial overview"
+            title={t('page.welcome', {
+              firstNamePart: user?.firstName ? `, ${user.firstName}` : '',
+            })}
+            subtitle={t('page.subtitle')}
             helpUrl="https://github.com/kenlasko/monize/wiki/Dashboard"
           />
 

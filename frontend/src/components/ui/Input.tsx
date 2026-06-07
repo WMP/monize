@@ -1,6 +1,7 @@
 'use client';
 
 import { forwardRef, useState, InputHTMLAttributes } from 'react';
+import { useTranslations } from 'next-intl';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { cn, inputBaseClasses, inputErrorClasses } from '@/lib/utils';
 
@@ -12,6 +13,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, prefix, className, id, type, value, ...props }, ref) => {
+    const t = useTranslations('ui');
     const inputId = id || `input-${label?.toLowerCase().replace(/\s+/g, '-')}`;
     const isEmptyDate = type === 'date' && value !== undefined && !value;
     const isPassword = type === 'password';
@@ -56,8 +58,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               type="button"
               tabIndex={-1}
               onClick={() => setRevealed((v) => !v)}
-              aria-label={revealed ? 'Hide input' : 'Show input'}
-              title={revealed ? 'Hide input' : 'Show input'}
+              aria-label={revealed ? t('input.hide') : t('input.show')}
+              title={revealed ? t('input.hide') : t('input.show')}
               className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"
             >
               {revealed ? (

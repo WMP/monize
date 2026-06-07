@@ -1,0 +1,132 @@
+{
+  "chartDownload": {
+    "captureError": "Unable to capture chart image",
+    "downloadError": "Failed to download chart",
+    "downloadTitle": "Download {filename} as PNG"
+  },
+  "chartView": {
+    "pie": "Pie Chart",
+    "bar": "Bar Chart",
+    "line": "Line Chart",
+    "area": "Area Chart",
+    "table": "Table"
+  },
+  "colorPicker": {
+    "custom": "Custom:",
+    "apply": "Apply"
+  },
+  "combobox": {
+    "placeholder": "Select or type...",
+    "create": "Create \"{value}\"",
+    "alias": "alias: {keyword}"
+  },
+  "confirmDialog": {
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "currencyInput": {
+    "addPlus": "Add plus operator",
+    "addMinus": "Add minus operator",
+    "addMultiply": "Add multiply operator",
+    "addDivide": "Add divide operator",
+    "openCalculator": "Open calculator",
+    "calculator": "Calculator",
+    "calculatorPlaceholder": "e.g. 100*1.13",
+    "cancel": "Cancel",
+    "apply": "Apply"
+  },
+  "dateInput": {
+    "shortcutsHeading": "Keyboard shortcuts",
+    "today": "Today",
+    "firstDayOfYear": "First day of year",
+    "lastDayOfYear": "Last day of year",
+    "firstDayOfMonth": "First day of month",
+    "lastDayOfMonth": "Last day of month",
+    "nextDay": "Next day",
+    "previousDay": "Previous day",
+    "nextMonth": "Next month",
+    "previousMonth": "Previous month",
+    "openDatePicker": "Open date picker"
+  },
+  "dateRange": {
+    "ytd": "YTD",
+    "allTime": "All Time",
+    "custom": "Custom",
+    "startDate": "Start Date",
+    "endDate": "End Date"
+  },
+  "exportDropdown": {
+    "pdfError": "Failed to export PDF. Please try again.",
+    "exportPdfTitle": "Export PDF",
+    "exportReportTitle": "Export report",
+    "exporting": "Exporting...",
+    "exportPdf": "Export PDF",
+    "export": "Export"
+  },
+  "input": {
+    "hide": "Hide input",
+    "show": "Show input"
+  },
+  "calendar": {
+    "clear": "Clear",
+    "today": "Today",
+    "days": {
+      "su": "Su",
+      "mo": "Mo",
+      "tu": "Tu",
+      "we": "We",
+      "th": "Th",
+      "fr": "Fr",
+      "sa": "Sa"
+    },
+    "months": {
+      "jan": "Jan",
+      "feb": "Feb",
+      "mar": "Mar",
+      "apr": "Apr",
+      "may": "May",
+      "jun": "Jun",
+      "jul": "Jul",
+      "aug": "Aug",
+      "sep": "Sep",
+      "oct": "Oct",
+      "nov": "Nov",
+      "dec": "Dec"
+    }
+  },
+  "multiSelect": {
+    "placeholder": "Select...",
+    "createNew": "Create new...",
+    "search": "Search...",
+    "selectAll": "Select All",
+    "clear": "Clear",
+    "noOptions": "No options found",
+    "oneSelected": "1 selected",
+    "countSelected": "{count} selected"
+  },
+  "pagination": {
+    "showing": "Showing",
+    "of": "of",
+    "items": "items",
+    "firstPage": "First page",
+    "back10": "Back 10 pages",
+    "previousPage": "Previous page",
+    "enterPageNumber": "Enter page number",
+    "nextPage": "Next page",
+    "forward10": "Forward 10 pages",
+    "lastPage": "Last page"
+  },
+  "themeToggle": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "title": "Theme: {label}. Click to change."
+  },
+  "unsavedChanges": {
+    "title": "Unsaved Changes",
+    "message": "You have unsaved changes. What would you like to do?",
+    "discard": "Discard",
+    "cancel": "Cancel",
+    "save": "Save"
+  }
+}

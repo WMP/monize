@@ -1,0 +1,107 @@
+{
+  "page": {
+    "title": "Categories",
+    "subtitle": "Organize your transactions with custom categories",
+    "newCategory": "+ New Category",
+    "searchPlaceholder": "Search categories...",
+    "summary": {
+      "totalCategories": "Total Categories",
+      "incomeCategories": "Income Categories",
+      "expenseCategories": "Expense Categories",
+      "topLevel": "Top-Level"
+    },
+    "filters": {
+      "all": "All ({count})",
+      "expenses": "Expenses ({count})",
+      "income": "Income ({count})"
+    },
+    "modal": {
+      "editTitle": "Edit Category",
+      "newTitle": "New Category"
+    },
+    "loading": "Loading categories...",
+    "empty": {
+      "title": "No categories yet",
+      "description": "Categories help you organize your transactions. Get started by importing our default set of categories, or create your own from scratch.",
+      "importButton": "Import Default Categories",
+      "createButton": "Create Your Own",
+      "hint": "The default set includes common income and expense categories with subcategories"
+    },
+    "countPlural": "{count} categories",
+    "countSingular": "{count} category",
+    "toast": {
+      "updated": "Category updated successfully",
+      "created": "Category created successfully",
+      "imported": "Successfully imported {count} categories",
+      "loadFailed": "Failed to load categories",
+      "importFailed": "Failed to import default categories",
+      "updateFailed": "Failed to update category",
+      "createFailed": "Failed to create category"
+    }
+  },
+  "form": {
+    "nameLabel": "Category Name",
+    "nameRequired": "Category name is required",
+    "parentLabel": "Parent Category",
+    "typeLabel": "Type",
+    "typeExpense": "Expense",
+    "typeIncome": "Income",
+    "typeInherited": "Type inherited from parent",
+    "noParent": "No parent (top-level)",
+    "colourLabel": "Colour",
+    "inheritFromParent": "Inherit from parent",
+    "noColour": "No colour",
+    "colourInherited": "Colour inherited from parent ({name})",
+    "descriptionLabel": "Description (optional)",
+    "submitUpdate": "Update Category",
+    "submitCreate": "Create Category",
+    "colours": {
+      "red": "Red",
+      "orange": "Orange",
+      "yellow": "Yellow",
+      "green": "Green",
+      "teal": "Teal",
+      "blue": "Blue",
+      "purple": "Purple",
+      "pink": "Pink",
+      "grey": "Grey"
+    }
+  },
+  "list": {
+    "inheritedFromParent": "Inherited from parent",
+    "viewTransactions": "View transactions in this category",
+    "system": "(System)",
+    "income": "Income",
+    "expense": "Expense",
+    "edit": "Edit",
+    "delete": "Delete",
+    "emptyTitle": "No categories",
+    "emptyDescription": "Get started by creating a new category.",
+    "toggleDensity": "Toggle row density",
+    "densityNormal": "Normal",
+    "densityCompact": "Compact",
+    "densityDense": "Dense",
+    "columnName": "Name",
+    "columnType": "Type",
+    "columnCount": "Count",
+    "columnDescription": "Description",
+    "columnActions": "Actions",
+    "systemCannotBeDeleted": "System categories cannot be deleted",
+    "deleteSuccess": "Category deleted successfully",
+    "deleteFailed": "Failed to delete category"
+  },
+  "delete": {
+    "title": "Delete \"{name}\"?",
+    "checkingUsage": "Checking usage...",
+    "usedByPlural": "{count} items",
+    "usedBySingular": "{count} item",
+    "usedByPrefix": "This category is used by",
+    "usedBySuffix": "(transactions and/or scheduled bills & deposits).",
+    "reassignLabel": "Reassign to:",
+    "leaveUncategorized": "Leave uncategorized",
+    "notUsed": "This category is not used. It can be safely deleted.",
+    "cannotUndo": "This action cannot be undone.",
+    "cancel": "Cancel",
+    "confirm": "Delete"
+  }
+}

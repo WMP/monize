@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -40,6 +41,7 @@ export default function ReconcilePage() {
 }
 
 function ReconcileContent() {
+  const t = useTranslations('reconcile');
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedAccountId = searchParams.get('accountId');
@@ -71,7 +73,7 @@ function ReconcileContent() {
         );
         setAccounts(filteredAccounts);
       } catch (error) {
-        toast.error(getErrorMessage(error, 'Failed to load accounts'));
+        toast.error(getErrorMessage(error, t('toast.loadAccountsError')));
       }
     };
     loadAccounts();
@@ -112,7 +114,7 @@ function ReconcileContent() {
 
   const handleStartReconciliation = async () => {
     if (!selectedAccountId || !statementDate || statementBalance === undefined) {
-      toast.error('Please fill in all fields');
+      toast.error(t('toast.fillAllFields'));
       return;
     }
 
@@ -135,7 +137,7 @@ function ReconcileContent() {
 
       setStep('reconcile');
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to load reconciliation data'));
+      toast.error(getErrorMessage(error, t('toast.loadDataError')));
     } finally {
       setIsLoading(false);
     }
@@ -178,12 +180,12 @@ function ReconcileContent() {
 
   const handleFinishReconciliation = async () => {
     if (Math.abs(calculatedDifference) > 0.01) {
-      toast.error(`The difference must be ${formatCurrency(0)} to finish reconciliation`);
+      toast.error(t('toast.differenceMustBeZero', { amount: formatCurrency(0) }));
       return;
     }
 
     if (selectedTransactionIds.size === 0) {
-      toast.error('No transactions selected for reconciliation');
+      toast.error(t('toast.noTransactionsSelected'));
       return;
     }
 
@@ -194,7 +196,7 @@ function ReconcileContent() {
         Array.from(selectedTransactionIds),
         statementDate
       );
-      toast.success(`Successfully reconciled ${result.reconciled} transactions`);
+      toast.success(t('toast.reconcileSuccess', { count: result.reconciled }));
 
       // For revolving-credit accounts, look for an existing scheduled bill that
       // pays down this account so we can offer to update its next instance.
@@ -214,7 +216,7 @@ function ReconcileContent() {
 
       setStep('complete');
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to reconcile transactions'));
+      toast.error(getErrorMessage(error, t('toast.reconcileError')));
     } finally {
       setIsReconciling(false);
     }
@@ -260,17 +262,17 @@ function ReconcileContent() {
     <div className="max-w-xl mx-auto">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Start Reconciliation
+          {t('setup.heading')}
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Reconcile your account against a bank statement to ensure your records match.
+          {t('setup.description')}
         </p>
 
         <div className="space-y-4">
           <Select
-            label="Account"
+            label={t('setup.accountLabel')}
             options={[
-              { value: '', label: 'Select account...' },
+              { value: '', label: t('setup.selectAccount') },
               ...accounts.map((a) => ({
                 value: a.id,
                 label: `${a.name} (${formatCurrency(a.currentBalance)})`,
@@ -281,14 +283,14 @@ function ReconcileContent() {
           />
 
           <DateInput
-            label="Statement Date"
+            label={t('setup.statementDateLabel')}
             value={statementDate}
             onDateChange={(date) => setStatementDate(date)}
             onChange={() => {}}
           />
 
           <CurrencyInput
-            label="Statement Ending Balance"
+            label={t('setup.statementBalanceLabel')}
             prefix={getCurrencySymbol(selectedAccount?.currencyCode || defaultCurrency)}
             placeholder={isLiability ? '-0.00' : '0.00'}
             value={statementBalance}
@@ -298,14 +300,14 @@ function ReconcileContent() {
 
         <div className="flex justify-between mt-6">
           <Button variant="outline" onClick={() => router.push('/accounts')}>
-            Cancel
+            {t('setup.cancel')}
           </Button>
           <Button
             onClick={handleStartReconciliation}
             isLoading={isLoading}
             disabled={!selectedAccountId || !statementDate || statementBalance === undefined}
           >
-            Start Reconciliation
+            {t('setup.start')}
           </Button>
         </div>
       </div>
@@ -324,19 +326,19 @@ function ReconcileContent() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Statement Balance</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{t('summary.statementBalance')}</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {formatCurrency(statementBalance ?? 0)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Reconciled Balance</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{t('summary.reconciledBalance')}</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {formatCurrency(reconciliationData.reconciledBalance)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Selected ({selectedCount})</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{t('summary.selected', { count: selectedCount })}</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {formatCurrency(
                   reconciliationData.transactions
@@ -346,7 +348,7 @@ function ReconcileContent() {
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Difference</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{t('summary.difference')}</p>
               <p
                 className={`text-lg font-semibold ${
                   Math.abs(calculatedDifference) < 0.01
@@ -364,21 +366,21 @@ function ReconcileContent() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Unreconciled Transactions ({totalCount})
+              {t('list.heading', { count: totalCount })}
             </h3>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                Select All
+                {t('list.selectAll')}
               </Button>
               <Button variant="outline" size="sm" onClick={handleSelectNone}>
-                Select None
+                {t('list.selectNone')}
               </Button>
             </div>
           </div>
 
           {totalCount === 0 ? (
             <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-              No unreconciled transactions found for this period.
+              {t('list.empty')}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -386,22 +388,22 @@ function ReconcileContent() {
                 <thead className="bg-gray-50 dark:bg-gray-700/50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-10">
-                      <span className="sr-only">Select</span>
+                      <span className="sr-only">{t('list.select')}</span>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      Date
+                      {t('list.date')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      Payee
+                      {t('list.payee')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      Category
+                      {t('list.category')}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      Amount
+                      {t('list.amount')}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      Status
+                      {t('list.status')}
                     </th>
                   </tr>
                 </thead>
@@ -445,13 +447,13 @@ function ReconcileContent() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {transaction.status === TransactionStatus.CLEARED ? (
-                          <span className="text-blue-600 dark:text-blue-400" title="Cleared">C</span>
+                          <span className="text-blue-600 dark:text-blue-400" title={t('list.statusCleared')}>C</span>
                         ) : transaction.status === TransactionStatus.UNRECONCILED ? (
-                          <span className="text-gray-400" title="Unreconciled">-</span>
+                          <span className="text-gray-400" title={t('list.statusUnreconciled')}>-</span>
                         ) : transaction.status === TransactionStatus.VOID ? (
-                          <span className="text-gray-400 line-through" title="Void">V</span>
+                          <span className="text-gray-400 line-through" title={t('list.statusVoid')}>V</span>
                         ) : (
-                          <span className="text-green-600 dark:text-green-400" title="Reconciled">R</span>
+                          <span className="text-green-600 dark:text-green-400" title={t('list.statusReconciled')}>R</span>
                         )}
                       </td>
                     </tr>
@@ -463,14 +465,14 @@ function ReconcileContent() {
 
           <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between">
             <Button variant="outline" onClick={handleCancel}>
-              Cancel
+              {t('list.cancel')}
             </Button>
             <Button
               onClick={handleFinishReconciliation}
               isLoading={isReconciling}
               disabled={Math.abs(calculatedDifference) > 0.01 || selectedTransactionIds.size === 0}
             >
-              Finish Reconciliation
+              {t('list.finish')}
             </Button>
           </div>
         </div>
@@ -497,11 +499,10 @@ function ReconcileContent() {
           </svg>
         </div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-          Reconciliation Complete
+          {t('complete.heading')}
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Your account has been successfully reconciled as of{' '}
-          {format(new Date(statementDate), 'MMMM d, yyyy')}.
+          {t('complete.asOf', { date: format(new Date(statementDate), 'MMMM d, yyyy') })}
         </p>
 
         {/* Revolving-credit payment prompt: offer to update or create the
@@ -512,34 +513,32 @@ function ReconcileContent() {
             {paymentBill ? (
               <>
                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                  This account has a scheduled payment,{' '}
-                  <span className="font-medium">{paymentBill.name}</span>. Would
-                  you like to update its next instance to the reconciled balance
-                  of{' '}
+                  {t('complete.existingPaymentBefore')}
+                  <span className="font-medium">{paymentBill.name}</span>
+                  {t('complete.existingPaymentAfter')}
                   <span className="font-medium">
                     {formatCurrency(reconciledPaymentAmount)}
                   </span>
-                  ?
+                  {t('complete.existingPaymentEnd')}
                 </p>
                 <div className="mt-3 flex justify-center">
                   <Button onClick={handleUpdatePayment}>
-                    Update Next Payment
+                    {t('complete.updatePayment')}
                   </Button>
                 </div>
               </>
             ) : (
               <>
                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                  No scheduled payment was found for this account. Would you like
-                  to create one for the reconciled balance of{' '}
+                  {t('complete.noPaymentBefore')}
                   <span className="font-medium">
                     {formatCurrency(reconciledPaymentAmount)}
                   </span>
-                  ?
+                  {t('complete.noPaymentEnd')}
                 </p>
                 <div className="mt-3 flex justify-center">
                   <Button onClick={handleCreatePayment}>
-                    Create Scheduled Payment
+                    {t('complete.createPayment')}
                   </Button>
                 </div>
               </>
@@ -549,7 +548,7 @@ function ReconcileContent() {
 
         <div className="flex justify-center space-x-4">
           <Button variant="outline" onClick={() => router.push('/accounts')}>
-            Back to Accounts
+            {t('complete.backToAccounts')}
           </Button>
           <Button
             onClick={() => {
@@ -560,7 +559,7 @@ function ReconcileContent() {
               setPaymentBill(null);
             }}
           >
-            Reconcile Another Account
+            {t('complete.reconcileAnother')}
           </Button>
         </div>
       </div>
@@ -572,10 +571,10 @@ function ReconcileContent() {
 
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
         <PageHeader
-          title="Reconcile Account"
+          title={t('page.title')}
           subtitle={selectedAccount
-            ? `Reconciling: ${selectedAccount.name}`
-            : 'Match your records against your bank statement'}
+            ? t('page.subtitleReconciling', { name: selectedAccount.name })
+            : t('page.subtitleDefault')}
         />
         {step === 'setup' && renderSetupStep()}
         {step === 'reconcile' && renderReconcileStep()}

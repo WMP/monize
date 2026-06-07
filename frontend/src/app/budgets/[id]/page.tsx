@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { PageLayout } from '@/components/layout/PageLayout';
@@ -17,7 +18,6 @@ import { budgetsApi } from '@/lib/budgets';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { getErrorMessage } from '@/lib/errors';
-import { STRATEGY_LABELS } from '@/components/budgets/utils/budget-labels';
 import type {
   BudgetSummary,
   BudgetVelocity,
@@ -56,6 +56,7 @@ function computeHealthScore(summary: BudgetSummary): number {
 }
 
 function BudgetDetailContent() {
+  const t = useTranslations('budgets');
   const params = useParams();
   const router = useRouter();
   const { formatCurrency } = useNumberFormat();
@@ -101,12 +102,13 @@ function BudgetDetailContent() {
       setDailySpending(dailyData);
       setTrendData(trend);
     } catch (err) {
-      const message = getErrorMessage(err, 'Failed to load budget');
+      const message = getErrorMessage(err, t('detail.loadFailed'));
       setError(message);
       toast.error(message);
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [budgetId]);
 
   useEffect(() => {
@@ -135,7 +137,7 @@ function BudgetDetailContent() {
         const periodDetail = await budgetsApi.getPeriodDetail(budgetId, periodId);
         setSelectedPeriod(periodDetail);
       } catch (err) {
-        const message = getErrorMessage(err, 'Failed to load period');
+        const message = getErrorMessage(err, t('detail.loadPeriodFailed'));
         toast.error(message);
         setSelectedPeriodId(null);
         setSelectedPeriod(null);
@@ -143,16 +145,17 @@ function BudgetDetailContent() {
         setIsPeriodLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [budgetId, periods],
   );
 
   const handleDelete = async () => {
     try {
       await budgetsApi.delete(budgetId);
-      toast.success('Budget deleted');
+      toast.success(t('detail.deleted'));
       router.push('/budgets');
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to delete budget'));
+      toast.error(getErrorMessage(err, t('detail.deleteFailed')));
       setShowDeleteConfirm(false);
     }
   };
@@ -199,10 +202,10 @@ function BudgetDetailContent() {
         <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-12 text-center">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-              {error || 'Budget not found'}
+              {error || t('detail.notFound')}
             </h3>
             <Button onClick={() => router.push('/budgets')}>
-              Back to Budgets
+              {t('detail.backToBudgets')}
             </Button>
           </div>
         </main>
@@ -219,7 +222,10 @@ function BudgetDetailContent() {
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
         <PageHeader
           title={summary.budget.name}
-          subtitle={`${STRATEGY_LABELS[summary.budget.strategy] ?? summary.budget.strategy} budget - ${currencyCode}`}
+          subtitle={t('detail.subtitle', {
+            strategy: t(`labels.strategy.${summary.budget.strategy}`),
+            currency: currencyCode,
+          })}
           actions={
             <div className="flex items-center gap-3">
               <BudgetPeriodSelector
@@ -231,16 +237,16 @@ function BudgetDetailContent() {
                 variant="outline"
                 onClick={() => router.push(`/budgets/${budgetId}/edit`)}
               >
-                Edit
+                {t('detail.edit')}
               </Button>
               <Button
                 variant="danger"
                 onClick={() => setShowDeleteConfirm(true)}
               >
-                Delete
+                {t('detail.delete')}
               </Button>
               <Button variant="outline" onClick={() => router.push('/budgets')}>
-                Back
+                {t('detail.back')}
               </Button>
             </div>
           }
@@ -266,10 +272,10 @@ function BudgetDetailContent() {
         )}
         <ConfirmDialog
           isOpen={showDeleteConfirm}
-          title="Delete Budget"
-          message={`Are you sure you want to delete "${summary.budget.name}"? This will remove all budget data including periods and alerts. This action cannot be undone.`}
-          confirmLabel="Delete"
-          cancelLabel="Cancel"
+          title={t('detail.deleteTitle')}
+          message={t('detail.deleteMessage', { name: summary.budget.name })}
+          confirmLabel={t('detail.confirmLabel')}
+          cancelLabel={t('detail.cancelLabel')}
           variant="danger"
           onConfirm={handleDelete}
           onCancel={() => setShowDeleteConfirm(false)}

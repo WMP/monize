@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import '@/lib/zodConfig';
@@ -43,6 +44,7 @@ function safeReturnTo(value: string | null): string | null {
 }
 
 export default function LoginPage() {
+  const t = useTranslations('auth');
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = safeReturnTo(searchParams?.get('returnTo') ?? null);
@@ -101,9 +103,9 @@ export default function LoginPage() {
       // Token is now in httpOnly cookie, not in response body
       login(response.user!, 'httpOnly');
       if (authMethods.demo) {
-        toast.success('Welcome to Monize Demo! Data resets daily at 4:00 AM UTC.', { duration: 6000 });
+        toast.success(t('login.welcomeDemo'), { duration: 6000 });
       } else {
-        toast.success('Welcome back!');
+        toast.success(t('login.welcomeBack'));
       }
       if (response.user!.mustChangePassword) {
         router.push('/change-password');
@@ -116,7 +118,7 @@ export default function LoginPage() {
       }
     } catch {
       // SECURITY: Use generic error message to prevent account enumeration
-      toast.error('Invalid email or password');
+      toast.error(t('login.invalidCredentials'));
     } finally {
       setIsLoading(false);
     }
@@ -125,9 +127,9 @@ export default function LoginPage() {
   const handle2FAVerified = (user: User) => {
     login(user, 'httpOnly');
     if (authMethods.demo) {
-      toast.success('Welcome to Monize Demo! Data resets daily at 4:00 AM UTC.', { duration: 6000 });
+      toast.success(t('login.welcomeDemo'), { duration: 6000 });
     } else {
-      toast.success('Welcome back!');
+      toast.success(t('login.welcomeBack'));
     }
     if (user.mustChangePassword) {
       router.push('/change-password');
@@ -157,7 +159,7 @@ export default function LoginPage() {
   if (isLoadingMethods) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-gray-500 dark:text-gray-400">Loading...</div>
+        <div className="text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
       </div>
     );
   }
@@ -168,13 +170,13 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8 text-center">
           <div>
-            <Image src="/icons/monize-logo.svg" alt="Monize" width={96} height={96} className="mx-auto rounded-xl" priority />
+            <Image src="/icons/monize-logo.svg" alt={t('common.monizeLogoAlt')} width={96} height={96} className="mx-auto rounded-xl" priority />
             <h2 className="mt-4 text-3xl font-extrabold text-gray-900 dark:text-gray-100">
-              Sign in to Monize
+              {t('login.signInToMonize')}
             </h2>
           </div>
           <p className="text-gray-600 dark:text-gray-400">
-            This application uses Single Sign-On for authentication.
+            {t('login.ssoIntro')}
           </p>
           <Button
             type="button"
@@ -195,7 +197,7 @@ export default function LoginPage() {
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            Sign in with SSO
+            {t('login.signInWithSso')}
           </Button>
 
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-6">
@@ -211,7 +213,7 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
-            <Image src="/icons/monize-logo.svg" alt="Monize" width={96} height={96} className="mx-auto rounded-xl" priority />
+            <Image src="/icons/monize-logo.svg" alt={t('common.monizeLogoAlt')} width={96} height={96} className="mx-auto rounded-xl" priority />
           </div>
           <TwoFactorVerify
             tempToken={twoFactorState.tempToken}
@@ -227,18 +229,18 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <Image src="/icons/monize-logo.svg" alt="Monize" width={96} height={96} className="mx-auto rounded-xl" priority />
+          <Image src="/icons/monize-logo.svg" alt={t('common.monizeLogoAlt')} width={96} height={96} className="mx-auto rounded-xl" priority />
           <h2 className="mt-4 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100">
-            Sign in to Monize
+            {t('login.signInToMonize')}
           </h2>
           {authMethods.local && authMethods.registration && !authMethods.demo && (
             <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-              Or{' '}
+              {t('login.orPrefix')}{' '}
               <Link
                 href="/register"
                 className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
               >
-                create a new account
+                {t('login.createNewAccount')}
               </Link>
             </p>
           )}
@@ -246,8 +248,8 @@ export default function LoginPage() {
 
         {authMethods.demo && (
           <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-3 text-center text-sm text-amber-800 dark:text-amber-200">
-            <p className="font-semibold">Demo Mode</p>
-            <p className="mt-1">Credentials are pre-filled. All data resets daily at 4:00 AM UTC.</p>
+            <p className="font-semibold">{t('login.demoModeTitle')}</p>
+            <p className="mt-1">{t('login.demoModeBody')}</p>
           </div>
         )}
 
@@ -255,7 +257,7 @@ export default function LoginPage() {
           <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-4">
               <Input
-                label="Email address"
+                label={t('login.emailLabel')}
                 type="email"
                 autoComplete="email"
                 error={errors.email?.message}
@@ -263,7 +265,7 @@ export default function LoginPage() {
               />
 
               <Input
-                label="Password"
+                label={t('login.passwordLabel')}
                 type="password"
                 autoComplete="current-password"
                 error={errors.password?.message}
@@ -283,7 +285,7 @@ export default function LoginPage() {
                   htmlFor="remember-me"
                   className="ml-2 block text-sm text-gray-900 dark:text-gray-300"
                 >
-                  Remember me
+                  {t('login.rememberMe')}
                 </label>
               </div>
 
@@ -293,7 +295,7 @@ export default function LoginPage() {
                     href="/forgot-password"
                     className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
                   >
-                    Forgot your password?
+                    {t('login.forgotPassword')}
                   </Link>
                 </div>
               )}
@@ -307,7 +309,7 @@ export default function LoginPage() {
                 isLoading={isLoading}
                 className="w-full"
               >
-                {authMethods.demo ? 'Try Demo' : 'Sign in'}
+                {authMethods.demo ? t('login.tryDemo') : t('login.signIn')}
               </Button>
 
               {authMethods.oidc && (
@@ -318,7 +320,7 @@ export default function LoginPage() {
                     </div>
                     <div className="relative flex justify-center text-sm">
                       <span className="px-2 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400">
-                        Or continue with
+                        {t('login.orContinueWith')}
                       </span>
                     </div>
                   </div>
@@ -342,7 +344,7 @@ export default function LoginPage() {
                       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                     </svg>
-                    Sign in with SSO
+                    {t('login.signInWithSso')}
                   </Button>
                 </>
               )}
@@ -352,7 +354,7 @@ export default function LoginPage() {
 
         {!authMethods.local && !authMethods.oidc && (
           <div className="text-center text-red-600 dark:text-red-400">
-            No authentication methods are configured. Please contact the administrator.
+            {t('login.noAuthMethods')}
           </div>
         )}
 

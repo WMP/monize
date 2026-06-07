@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { CategoryMapping } from '@/lib/import';
@@ -25,6 +26,7 @@ export function CategoryMappingRow({
   formatCategoryPath,
   isHighlighted = false,
 }: CategoryMappingRowProps) {
+  const t = useTranslations('import');
   // Local state for inputs - only syncs on blur
   const [localCreateNew, setLocalCreateNew] = useState(mapping.createNew || '');
   const [localNewLoanName, setLocalNewLoanName] = useState(mapping.createNewLoan || '');
@@ -201,7 +203,7 @@ export function CategoryMappingRow({
 
   // Build loan account options
   const loanAccountOptions = [
-    { value: '', label: 'Select existing loan...' },
+    { value: '', label: t('categoryRow.selectExistingLoanPlaceholder') },
     ...loanAccounts.map((account) => ({
       value: account.id,
       label: `${account.name}${account.institution ? ` (${account.institution})` : ''}`,
@@ -212,12 +214,12 @@ export function CategoryMappingRow({
   const getMatchedLoanName = () => {
     if (mapping.loanAccountId) {
       const account = loanAccounts.find(a => a.id === mapping.loanAccountId);
-      return account?.name || 'Unknown';
+      return account?.name || t('categoryRow.unknown');
     }
     if (mapping.createNewLoan) {
-      return `${mapping.createNewLoan} (new)`;
+      return `${mapping.createNewLoan}${t('categoryRow.newSuffix')}`;
     }
-    return 'Unknown';
+    return t('categoryRow.unknown');
   };
 
   return (
@@ -241,7 +243,7 @@ export function CategoryMappingRow({
                 onChange={(e) => handleIsLoanChange(e.target.checked)}
                 className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              This is a loan payment
+              {t('categoryRow.isLoanPayment')}
             </label>
           </div>
 
@@ -249,11 +251,11 @@ export function CategoryMappingRow({
             // Loan mapping UI
             <div className="space-y-4">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Transactions with this category will be transferred to the selected loan account.
+                {t('categoryRow.loanTransferNotice')}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Select
-                  label="Select existing loan"
+                  label={t('categoryRow.selectExistingLoan')}
                   options={loanAccountOptions}
                   value={mapping.loanAccountId || ''}
                   onChange={(e) => handleLoanAccountSelect(e.target.value)}
@@ -261,14 +263,14 @@ export function CategoryMappingRow({
                 {!mapping.loanAccountId && (
                   <div className="space-y-2">
                     <Input
-                      label="Or create new loan"
-                      placeholder="Loan account name"
+                      label={t('categoryRow.orCreateNewLoan')}
+                      placeholder={t('categoryRow.loanAccountNamePlaceholder')}
                       value={localNewLoanName}
                       onChange={(e) => setLocalNewLoanName(e.target.value)}
                       onBlur={handleNewLoanNameBlur}
                     />
                     <Select
-                      label="Loan type"
+                      label={t('categoryRow.loanType')}
                       value={mapping.newLoanType || 'LOAN'}
                       onChange={(e) =>
                         onMappingChange({
@@ -276,27 +278,27 @@ export function CategoryMappingRow({
                         })
                       }
                       options={[
-                        { value: 'LOAN', label: 'Loan' },
-                        { value: 'MORTGAGE', label: 'Mortgage' },
+                        { value: 'LOAN', label: t('categoryRow.loanTypeLoan') },
+                        { value: 'MORTGAGE', label: t('categoryRow.loanTypeMortgage') },
                       ]}
                     />
                     <Input
-                      label="Institution"
-                      placeholder="e.g., TD Bank, RBC"
+                      label={t('categoryRow.institution')}
+                      placeholder={t('categoryRow.institutionPlaceholder')}
                       value={localNewLoanInstitution}
                       onChange={(e) => setLocalNewLoanInstitution(e.target.value)}
                       onBlur={handleNewLoanInstitutionBlur}
                     />
                     <Input
-                      label="Initial loan amount"
+                      label={t('categoryRow.initialLoanAmount')}
                       inputMode="decimal"
-                      placeholder="e.g., 25000"
+                      placeholder={t('categoryRow.initialLoanAmountPlaceholder')}
                       value={localNewLoanAmount}
                       onChange={(e) => setLocalNewLoanAmount(e.target.value)}
                       onBlur={handleNewLoanAmountBlur}
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Enter the original loan principal amount
+                      {t('categoryRow.initialLoanAmountHint')}
                     </p>
                   </div>
                 )}
@@ -306,7 +308,7 @@ export function CategoryMappingRow({
             // Standard category mapping UI
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Select
-                label="Map to existing"
+                label={t('categoryRow.mapToExisting')}
                 options={categoryOptions}
                 value={mapping.categoryId || ''}
                 onChange={(e) => handleCategorySelect(e.target.value)}
@@ -314,8 +316,8 @@ export function CategoryMappingRow({
               <div>
                 <Input
                   ref={inputRef}
-                  label="Or create new"
-                  placeholder="New category name"
+                  label={t('categoryRow.orCreateNew')}
+                  placeholder={t('categoryRow.newCategoryNamePlaceholder')}
                   value={localCreateNew}
                   onChange={(e) => setLocalCreateNew(e.target.value)}
                   onBlur={handleCreateNewBlur}
@@ -323,10 +325,10 @@ export function CategoryMappingRow({
                 {showParentSelector && (
                   <div className="mt-2">
                     <Select
-                      label="Parent category"
+                      label={t('categoryRow.parentCategory')}
                       options={[
                         ...parentCategoryOptions,
-                        { value: '__create_new__', label: '+ Create new parent...' },
+                        { value: '__create_new__', label: t('categoryRow.createNewParentOption') },
                       ]}
                       value={isCreatingNewParent ? '__create_new__' : (mapping.parentCategoryId || '')}
                       onChange={(e) => handleParentCategorySelect(e.target.value)}
@@ -334,8 +336,8 @@ export function CategoryMappingRow({
                     {isCreatingNewParent && (
                       <div className="mt-2">
                         <Input
-                          label="New parent category name"
-                          placeholder="e.g., Fees & Charges"
+                          label={t('categoryRow.newParentCategoryName')}
+                          placeholder={t('categoryRow.newParentCategoryNamePlaceholder')}
                           value={localNewParentName}
                           onChange={(e) => setLocalNewParentName(e.target.value)}
                           onBlur={handleNewParentNameBlur}
@@ -357,7 +359,7 @@ export function CategoryMappingRow({
           <span className="text-gray-400">→</span>
           {mapping.isLoanCategory ? (
             <span className="text-blue-600 dark:text-blue-400 flex-1">
-              Loan: {getMatchedLoanName()}
+              {t('categoryRow.loanPrefix')}{getMatchedLoanName()}
             </span>
           ) : (
             <Select

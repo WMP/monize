@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { Inter } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale } from 'next-intl/server';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { PreferencesLoader } from '@/components/providers/PreferencesLoader';
 import { ServiceWorkerRegistrar } from '@/components/providers/ServiceWorkerRegistrar';
@@ -50,19 +52,23 @@ export default async function RootLayout({
   // to its generated inline scripts.
   const headersList = await headers();
   const httpsHeadersActive = headersList.get('x-https-headers-active') === 'true';
+  // Locale is resolved from the NEXT_LOCALE cookie in src/i18n/request.ts.
+  // NextIntlClientProvider auto-loads the merged messages for client components.
+  const locale = await getLocale();
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body className={inter.className}>
-        <ServiceWorkerRegistrar />
-        <PwaLifecycleHandler />
-        <ThemeProvider>
-          <PreferencesLoader>
-            <SwipeShell httpsHeadersActive={httpsHeadersActive}>
-              {children}
-            </SwipeShell>
-          </PreferencesLoader>
-          <Toaster
+        <NextIntlClientProvider>
+          <ServiceWorkerRegistrar />
+          <PwaLifecycleHandler />
+          <ThemeProvider>
+            <PreferencesLoader>
+              <SwipeShell httpsHeadersActive={httpsHeadersActive}>
+                {children}
+              </SwipeShell>
+            </PreferencesLoader>
+            <Toaster
             position="top-right"
             toastOptions={{
               duration: 4000,
@@ -86,7 +92,8 @@ export default async function RootLayout({
               },
             }}
           />
-        </ThemeProvider>
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

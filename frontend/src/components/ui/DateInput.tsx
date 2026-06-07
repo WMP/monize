@@ -1,4 +1,5 @@
 import { ChangeEvent, forwardRef, InputHTMLAttributes, KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import { Input } from './Input';
@@ -20,26 +21,27 @@ function parseOrToday(value: string): Date {
   return new Date();
 }
 
-const tooltipContent = (
-  <>
-    <span className="block font-medium mb-1">Keyboard shortcuts</span>
-    <span className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-      <kbd className="font-mono">T</kbd><span>Today</span>
-      <kbd className="font-mono">Y</kbd><span>First day of year</span>
-      <kbd className="font-mono">R</kbd><span>Last day of year</span>
-      <kbd className="font-mono">M</kbd><span>First day of month</span>
-      <kbd className="font-mono">H</kbd><span>Last day of month</span>
-      <kbd className="font-mono">+</kbd><span>Next day</span>
-      <kbd className="font-mono">-</kbd><span>Previous day</span>
-      <kbd className="font-mono">PgUp</kbd><span>Next month</span>
-      <kbd className="font-mono">PgDn</kbd><span>Previous month</span>
-    </span>
-  </>
-);
-
 function DateShortcutTooltip() {
+  const t = useTranslations('ui');
   const iconRef = useRef<HTMLSpanElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+
+  const tooltipContent = (
+    <>
+      <span className="block font-medium mb-1">{t('dateInput.shortcutsHeading')}</span>
+      <span className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+        <kbd className="font-mono">T</kbd><span>{t('dateInput.today')}</span>
+        <kbd className="font-mono">Y</kbd><span>{t('dateInput.firstDayOfYear')}</span>
+        <kbd className="font-mono">R</kbd><span>{t('dateInput.lastDayOfYear')}</span>
+        <kbd className="font-mono">M</kbd><span>{t('dateInput.firstDayOfMonth')}</span>
+        <kbd className="font-mono">H</kbd><span>{t('dateInput.lastDayOfMonth')}</span>
+        <kbd className="font-mono">+</kbd><span>{t('dateInput.nextDay')}</span>
+        <kbd className="font-mono">-</kbd><span>{t('dateInput.previousDay')}</span>
+        <kbd className="font-mono">PgUp</kbd><span>{t('dateInput.nextMonth')}</span>
+        <kbd className="font-mono">PgDn</kbd><span>{t('dateInput.previousMonth')}</span>
+      </span>
+    </>
+  );
 
   const showTooltip = useCallback(() => {
     if (!iconRef.current) return;
@@ -239,6 +241,7 @@ function getInputMode(dateFormat: string): InputMode {
 
 export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
   ({ onDateChange, onKeyDown, onChange: externalOnChange, onBlur: externalOnBlur, value: externalValue, label, id, name, ...props }, ref) => {
+    const t = useTranslations('ui');
     const inputId = id || (label ? `input-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
     const { dateFormat } = useDateFormat();
     const mode = getInputMode(dateFormat);
@@ -520,7 +523,7 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
         type="button"
         tabIndex={-1}
         onClick={handleCalendarClick}
-        aria-label="Open date picker"
+        aria-label={t('dateInput.openDatePicker')}
         className="absolute top-px bottom-px right-px z-10 flex items-center pr-2.5 pl-1 bg-white dark:bg-gray-800 rounded-r-md text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
       >
         {calendarIconSvg}

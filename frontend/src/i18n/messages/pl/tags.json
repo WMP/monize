@@ -1,0 +1,79 @@
+{
+  "page": {
+    "title": "Tagi",
+    "subtitle": "Oznaczaj transakcje własnymi tagami",
+    "newTag": "+ Nowy tag",
+    "searchPlaceholder": "Szukaj tagów...",
+    "summary": {
+      "totalTags": "Wszystkie tagi",
+      "tagsWithColour": "Tagi z kolorem",
+      "tagsWithIcon": "Tagi z ikoną"
+    },
+    "modal": {
+      "editTitle": "Edytuj tag",
+      "newTitle": "Nowy tag"
+    },
+    "delete": {
+      "title": "Usuń tag",
+      "messageInUse": "Czy na pewno chcesz usunąć tag \"{name}\"? Ten tag jest używany w {count} transakcjach. Zostanie z nich usunięty.",
+      "message": "Czy na pewno chcesz usunąć tag \"{name}\"? Tej operacji nie można cofnąć.",
+      "confirmLabel": "Usuń"
+    },
+    "loading": "Wczytywanie tagów...",
+    "empty": {
+      "title": "Brak tagów",
+      "description": "Tagi pomagają oznaczać i filtrować transakcje. Utwórz pierwszy tag, aby zacząć.",
+      "createButton": "Utwórz pierwszy tag"
+    },
+    "count": "Tagi: {count}",
+    "toast": {
+      "loadFailed": "Nie udało się wczytać tagów",
+      "updated": "Tag został zaktualizowany",
+      "created": "Tag został utworzony",
+      "updateFailed": "Nie udało się zaktualizować tagu",
+      "createFailed": "Nie udało się utworzyć tagu",
+      "deleted": "Tag został usunięty",
+      "deleteFailed": "Nie udało się usunąć tagu"
+    }
+  },
+  "form": {
+    "nameLabel": "Nazwa tagu",
+    "nameRequired": "Nazwa tagu jest wymagana",
+    "colourLabel": "Kolor",
+    "noColour": "Brak koloru",
+    "iconLabel": "Ikona",
+    "update": "Zapisz tag",
+    "create": "Utwórz tag",
+    "colours": {
+      "red": "Czerwony",
+      "orange": "Pomarańczowy",
+      "yellow": "Żółty",
+      "green": "Zielony",
+      "teal": "Morski",
+      "blue": "Niebieski",
+      "purple": "Fioletowy",
+      "pink": "Różowy",
+      "grey": "Szary"
+    }
+  },
+  "list": {
+    "empty": {
+      "title": "Nie znaleziono tagów",
+      "description": "Żaden tag nie pasuje do bieżącego wyszukiwania."
+    },
+    "densityToggle": "Przełącz gęstość wierszy",
+    "density": {
+      "normal": "Normalna",
+      "compact": "Kompaktowa",
+      "dense": "Gęsta"
+    },
+    "columns": {
+      "name": "Nazwa",
+      "icon": "Ikona",
+      "transactions": "Transakcje",
+      "actions": "Akcje"
+    },
+    "edit": "Edytuj",
+    "delete": "Usuń"
+  }
+}

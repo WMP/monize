@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { useHideOnScroll } from '@/hooks/useHideOnScroll';
 import { useRouter, usePathname } from 'next/navigation';
@@ -18,30 +19,33 @@ import {
 } from '@/hooks/useTransactionFilters';
 import toast from 'react-hot-toast';
 
+// Labels are resolved at render time via t(link.labelKey) so the nav follows
+// the active locale. labelKey points into the `nav` message namespace.
 const navLinks = [
-  { href: '/transactions', label: 'Transactions' },
-  { href: '/bills', label: 'Bills & Deposits' },
-  { href: '/investments', label: 'Investments' },
-  { href: '/accounts', label: 'Accounts' },
-  { href: '/budgets', label: 'Budgets' },
-  { href: '/reports', label: 'Reports' },
+  { href: '/transactions', labelKey: 'links.transactions' },
+  { href: '/bills', labelKey: 'links.billsDeposits' },
+  { href: '/investments', labelKey: 'links.investments' },
+  { href: '/accounts', labelKey: 'links.accounts' },
+  { href: '/budgets', labelKey: 'links.budgets' },
+  { href: '/reports', labelKey: 'links.reports' },
 ];
 
-const toolsLinks: { href: string; label: string; badge?: string }[] = [
-  { href: '/categories', label: 'Categories' },
-  { href: '/payees', label: 'Payees' },
-  { href: '/tags', label: 'Tags' },
-  { href: '/securities', label: 'Securities' },
-  { href: '/currencies', label: 'Currencies' },
-  { href: '/import', label: 'Import Transactions' },
+const toolsLinks: { href: string; labelKey: string; badge?: string }[] = [
+  { href: '/categories', labelKey: 'links.categories' },
+  { href: '/payees', labelKey: 'links.payees' },
+  { href: '/tags', labelKey: 'links.tags' },
+  { href: '/securities', labelKey: 'links.securities' },
+  { href: '/currencies', labelKey: 'links.currencies' },
+  { href: '/import', labelKey: 'links.importTransactions' },
 ];
 
-const aiLinks: { href: string; label: string }[] = [
-  { href: '/insights', label: 'Insights' },
-  { href: '/ai', label: 'AI Assistant' },
+const aiLinks: { href: string; labelKey: string }[] = [
+  { href: '/insights', labelKey: 'links.insights' },
+  { href: '/ai', labelKey: 'links.aiAssistant' },
 ];
 
 export function AppHeader() {
+  const t = useTranslations('nav');
   const router = useRouter();
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
@@ -170,7 +174,7 @@ export function AppHeader() {
     try {
       await authApi.logout();
       logout();
-      toast.success('Logged out successfully');
+      toast.success(t('toast.loggedOut'));
       router.push('/login');
     } catch {
       logout();
@@ -196,7 +200,7 @@ export function AppHeader() {
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="p-2 mr-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-                aria-label="Toggle menu"
+                aria-label={t('actions.toggleMenu')}
               >
                 {mobileMenuOpen ? (
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -253,7 +257,7 @@ export function AppHeader() {
                       : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  {link.label}
+                  {t(link.labelKey)}
                 </button>
               ))}
 
@@ -269,7 +273,7 @@ export function AppHeader() {
                       : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  AI
+                  {t('menus.ai')}
                   <svg
                     className={`w-4 h-4 transition-transform ${aiOpen ? 'rotate-180' : ''}`}
                     fill="none"
@@ -296,7 +300,7 @@ export function AppHeader() {
                               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                           }`}
                         >
-                          {link.label}
+                          {t(link.labelKey)}
                         </button>
                       ))}
                     </div>
@@ -319,7 +323,7 @@ export function AppHeader() {
                       : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  Tools
+                  {t('menus.tools')}
                   <svg
                     className={`w-4 h-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`}
                     fill="none"
@@ -346,7 +350,7 @@ export function AppHeader() {
                               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                           }`}
                         >
-                          {link.label}
+                          {t(link.labelKey)}
                           {link.badge && (
                             <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
                               {link.badge}
@@ -372,7 +376,7 @@ export function AppHeader() {
                       : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  Admin
+                  {t('menus.admin')}
                 </button>
               )}
             </nav>
@@ -387,8 +391,8 @@ export function AppHeader() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={handleSearchKeyDown}
-                  placeholder="Search transactions..."
-                  aria-label="Search transactions"
+                  placeholder={t('actions.searchPlaceholder')}
+                  aria-label={t('actions.searchTransactions')}
                   aria-hidden={!searchOpen}
                   tabIndex={searchOpen ? 0 : -1}
                   className={`overflow-hidden transition-all duration-200 ease-out rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -406,8 +410,8 @@ export function AppHeader() {
                       setSearchOpen(true);
                     }
                   }}
-                  aria-label={searchOpen ? 'Search' : 'Open search'}
-                  title="Search transactions"
+                  aria-label={searchOpen ? t('actions.search') : t('actions.openSearch')}
+                  title={t('actions.searchTransactions')}
                   className="p-2 rounded-md text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   <svg
@@ -436,7 +440,7 @@ export function AppHeader() {
                   ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
                   : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
-              title="Settings"
+              title={t('actions.settings')}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -464,7 +468,7 @@ export function AppHeader() {
               size="sm"
               onClick={handleLogout}
             >
-              Logout
+              {t('actions.logout')}
             </Button>
           </div>
         </div>

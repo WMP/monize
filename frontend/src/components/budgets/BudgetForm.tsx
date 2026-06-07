@@ -1,6 +1,8 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,16 +18,18 @@ import type {
 const BUDGET_TYPES = ['MONTHLY', 'ANNUAL', 'PAY_PERIOD'] as const;
 const STRATEGIES = ['FIXED', 'ROLLOVER', 'ZERO_BASED', 'FIFTY_THIRTY_TWENTY'] as const;
 
-const budgetFormSchema = z.object({
-  name: z.string().min(1, 'Budget name is required').max(255, 'Budget name must be 255 characters or less'),
-  description: z.string().max(1000, 'Description must be 1000 characters or less').optional().or(z.literal('')),
-  budgetType: z.enum(BUDGET_TYPES),
-  strategy: z.enum(STRATEGIES),
-  baseIncome: z.number().min(0).optional(),
-  isActive: z.boolean(),
-});
+function createBudgetFormSchema(t: (key: string) => string) {
+  return z.object({
+    name: z.string().min(1, t('form.nameRequired')).max(255, t('form.nameMaxLength')),
+    description: z.string().max(1000, t('form.descriptionMaxLength')).optional().or(z.literal('')),
+    budgetType: z.enum(BUDGET_TYPES),
+    strategy: z.enum(STRATEGIES),
+    baseIncome: z.number().min(0).optional(),
+    isActive: z.boolean(),
+  });
+}
 
-type BudgetFormData = z.infer<typeof budgetFormSchema>;
+type BudgetFormData = z.infer<ReturnType<typeof createBudgetFormSchema>>;
 
 interface BudgetFormProps {
   budget: Budget;
@@ -34,17 +38,17 @@ interface BudgetFormProps {
   isSaving?: boolean;
 }
 
-const TYPE_OPTIONS: Array<{ value: (typeof BUDGET_TYPES)[number]; label: string }> = [
-  { value: 'MONTHLY', label: 'Monthly' },
-  { value: 'ANNUAL', label: 'Annual' },
-  { value: 'PAY_PERIOD', label: 'Pay Period' },
+const TYPE_OPTIONS: Array<{ value: (typeof BUDGET_TYPES)[number]; labelKey: string }> = [
+  { value: 'MONTHLY', labelKey: 'form.typeMonthly' },
+  { value: 'ANNUAL', labelKey: 'form.typeAnnual' },
+  { value: 'PAY_PERIOD', labelKey: 'form.typePayPeriod' },
 ];
 
-const STRATEGY_OPTIONS: Array<{ value: (typeof STRATEGIES)[number]; label: string }> = [
-  { value: 'FIXED', label: 'Fixed' },
-  { value: 'ROLLOVER', label: 'Rollover' },
-  { value: 'ZERO_BASED', label: 'Zero-Based' },
-  { value: 'FIFTY_THIRTY_TWENTY', label: '50/30/20' },
+const STRATEGY_OPTIONS: Array<{ value: (typeof STRATEGIES)[number]; labelKey: string }> = [
+  { value: 'FIXED', labelKey: 'form.strategyFixed' },
+  { value: 'ROLLOVER', labelKey: 'form.strategyRollover' },
+  { value: 'ZERO_BASED', labelKey: 'form.strategyZeroBased' },
+  { value: 'FIFTY_THIRTY_TWENTY', labelKey: 'form.strategyFiftyThirtyTwenty' },
 ];
 
 export function BudgetForm({
@@ -53,6 +57,8 @@ export function BudgetForm({
   onCancel,
   isSaving = false,
 }: BudgetFormProps) {
+  const t = useTranslations('budgets');
+  const budgetFormSchema = useMemo(() => createBudgetFormSchema(t), [t]);
   const {
     register,
     handleSubmit,
@@ -85,7 +91,7 @@ export function BudgetForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <Input
-        label="Budget Name"
+        label={t('form.budgetName')}
         {...register('name')}
         error={errors.name?.message}
         required
@@ -93,15 +99,15 @@ export function BudgetForm({
       />
 
       <Input
-        label="Description (optional)"
+        label={t('form.descriptionOptional')}
         {...register('description')}
         error={errors.description?.message}
-        placeholder="Budget description"
+        placeholder={t('form.descriptionPlaceholder')}
       />
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Budget Type
+          {t('form.budgetType')}
         </label>
         <select
           {...register('budgetType')}
@@ -109,7 +115,7 @@ export function BudgetForm({
         >
           {TYPE_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
-              {opt.label}
+              {t(opt.labelKey)}
             </option>
           ))}
         </select>
@@ -120,7 +126,7 @@ export function BudgetForm({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Strategy
+          {t('form.strategy')}
         </label>
         <select
           {...register('strategy')}
@@ -128,7 +134,7 @@ export function BudgetForm({
         >
           {STRATEGY_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
-              {opt.label}
+              {t(opt.labelKey)}
             </option>
           ))}
         </select>
@@ -142,13 +148,13 @@ export function BudgetForm({
         control={control}
         render={({ field }) => (
           <CurrencyInput
-            label="Base Income (optional)"
+            label={t('form.baseIncomeOptional')}
             value={field.value}
             onChange={field.onChange}
             onBlur={field.onBlur}
             allowNegative={false}
             prefix={getCurrencySymbol(budget.currencyCode)}
-            placeholder="Expected monthly income"
+            placeholder={t('form.baseIncomePlaceholder')}
           />
         )}
       />
@@ -164,16 +170,16 @@ export function BudgetForm({
           htmlFor="isActive"
           className="text-sm font-medium text-gray-700 dark:text-gray-300"
         >
-          Active
+          {t('form.active')}
         </label>
       </div>
 
       <div className="flex justify-end gap-3 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+          {t('form.cancel')}
         </Button>
         <Button type="submit" disabled={isSaving}>
-          {isSaving ? 'Saving...' : 'Save Changes'}
+          {isSaving ? t('form.saving') : t('form.saveChanges')}
         </Button>
       </div>
     </form>

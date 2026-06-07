@@ -1,0 +1,74 @@
+{
+  "page": {
+    "title": "Bills & Deposits",
+    "subtitle": "Manage your recurring transactions and scheduled payments",
+    "newSchedule": "+ New Schedule",
+    "loadError": "Failed to load scheduled transactions",
+    "overridesDeleted": "Overrides deleted",
+    "deleteOverridesError": "Failed to delete overrides",
+    "scheduledPaymentNotFound": "Scheduled payment not found",
+    "transactionFallback": "Transaction"
+  },
+  "summary": {
+    "activeBills": "Active Bills",
+    "activeDeposits": "Active Deposits",
+    "monthlyNet": "Monthly Net",
+    "dueNow": "Due Now"
+  },
+  "chartFallback": "Chart temporarily unavailable",
+  "form": {
+    "editTitle": "Edit Scheduled Transaction",
+    "newTitle": "New Scheduled Transaction"
+  },
+  "tabs": {
+    "list": "List",
+    "calendar": "Calendar"
+  },
+  "filterTabs": {
+    "all": "All ({count})",
+    "bills": "Bills ({count})",
+    "deposits": "Deposits ({count})"
+  },
+  "calendar": {
+    "today": "Today",
+    "moreCount": "+{count} more",
+    "days": {
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
+    }
+  },
+  "list": {
+    "loading": "Loading scheduled transactions..."
+  },
+  "overrideConfirm": {
+    "title": "Existing Overrides Found",
+    "descriptionSingular": "This scheduled transaction has {count} individual occurrence with custom modifications.",
+    "descriptionPlural": "This scheduled transaction has {count} individual occurrences with custom modifications.",
+    "question": "What would you like to do with these modifications when you update the base template?",
+    "cancel": "Cancel",
+    "keep": "Keep Modifications",
+    "deleteAll": "Delete All Modifications"
+  },
+  "forecast": {
+    "title": "Cash Flow Forecast",
+    "transactionsCountSingular": "{count} scheduled transaction in forecast",
+    "transactionsCountPlural": "{count} scheduled transactions in forecast",
+    "allAccounts": "All Accounts",
+    "noData": "No data to display",
+    "noAccounts": "No accounts found",
+    "noScheduledTransactions": "No scheduled transactions",
+    "selectAccount": "Select an account with scheduled transactions",
+    "flatLine": "No upcoming transactions in this period - showing current balance",
+    "transactions": "Transactions:",
+    "moreCount": "+{count} more",
+    "starting": "Starting",
+    "ending": "Ending",
+    "lowest": "Lowest",
+    "minBalance": "Min Balance"
+  }
+}

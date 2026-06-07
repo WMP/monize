@@ -1,0 +1,39 @@
+{
+  "links": {
+    "transactions": "Transakcje",
+    "billsDeposits": "Rachunki i wpłaty",
+    "investments": "Inwestycje",
+    "accounts": "Konta",
+    "budgets": "Budżety",
+    "reports": "Raporty",
+    "categories": "Kategorie",
+    "payees": "Odbiorcy",
+    "tags": "Tagi",
+    "securities": "Papiery wartościowe",
+    "currencies": "Waluty",
+    "importTransactions": "Import transakcji",
+    "insights": "Analizy",
+    "aiAssistant": "Asystent AI",
+    "dashboard": "Pulpit",
+    "userManagement": "Zarządzanie użytkownikami"
+  },
+  "menus": {
+    "ai": "AI",
+    "tools": "Narzędzia",
+    "admin": "Administracja"
+  },
+  "actions": {
+    "toggleMenu": "Przełącz menu",
+    "openSearch": "Otwórz wyszukiwanie",
+    "search": "Szukaj",
+    "searchTransactions": "Szukaj transakcji",
+    "searchPlaceholder": "Szukaj transakcji...",
+    "settings": "Ustawienia",
+    "logout": "Wyloguj",
+    "closeMenu": "Zamknij menu",
+    "mainMenu": "Menu główne"
+  },
+  "toast": {
+    "loggedOut": "Wylogowano pomyślnie"
+  }
+}

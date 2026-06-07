@@ -41,6 +41,8 @@ export function getCategorySelectOptions(
     excludeIds?: Set<string>;
     includeUncategorized?: boolean;
     includeTransfers?: boolean;
+    uncategorizedLabel?: string;
+    transfersLabel?: string;
   }
 ): CategoryOption[] {
   const {
@@ -49,6 +51,8 @@ export function getCategorySelectOptions(
     excludeIds = new Set<string>(),
     includeUncategorized = false,
     includeTransfers = false,
+    uncategorizedLabel = 'Uncategorized',
+    transfersLabel = 'Transfers',
   } = options || {};
 
   // Build a map for quick parent lookups
@@ -79,11 +83,11 @@ export function getCategorySelectOptions(
   }
 
   if (includeUncategorized) {
-    result.push({ value: 'uncategorized', label: 'Uncategorized' });
+    result.push({ value: 'uncategorized', label: uncategorizedLabel });
   }
 
   if (includeTransfers) {
-    result.push({ value: 'transfer', label: 'Transfers' });
+    result.push({ value: 'transfer', label: transfersLabel });
   }
 
   return [...result, ...categoryOptions];
@@ -128,10 +132,26 @@ export function buildCategoryLabelMap(
  * splits); "Transfers" matches transfer records. Shared by the Transactions
  * and Bills & Deposits filter panels.
  */
+export interface SpecialCategoryLabels {
+  uncategorized?: string;
+  transfers?: string;
+}
+
 export const SPECIAL_CATEGORY_FILTER_OPTIONS: MultiSelectOption[] = [
   { value: 'uncategorized', label: 'Uncategorized' },
   { value: 'transfer', label: 'Transfers' },
 ];
+
+/**
+ * Build the special pseudo-category filter options with optional localized
+ * labels (English by default, so callers outside the React tree keep working).
+ */
+function buildSpecialCategoryOptions(labels: SpecialCategoryLabels = {}): MultiSelectOption[] {
+  return [
+    { value: 'uncategorized', label: labels.uncategorized ?? 'Uncategorized' },
+    { value: 'transfer', label: labels.transfers ?? 'Transfers' },
+  ];
+}
 
 /**
  * Build the category filter options used by the filter panels: the special
@@ -139,7 +159,10 @@ export const SPECIAL_CATEGORY_FILTER_OPTIONS: MultiSelectOption[] = [
  * children nested), sorted alphabetically at each level. Selecting a parent
  * selects all of its descendants (handled by MultiSelect).
  */
-export function buildCategoryFilterOptions(categories: Category[]): MultiSelectOption[] {
+export function buildCategoryFilterOptions(
+  categories: Category[],
+  specialLabels: SpecialCategoryLabels = {},
+): MultiSelectOption[] {
   const buildOptions = (parentId: string | null = null): MultiSelectOption[] =>
     categories
       .filter((c) => c.parentId === parentId)
@@ -155,7 +178,7 @@ export function buildCategoryFilterOptions(categories: Category[]): MultiSelectO
           },
         ];
       });
-  return [...SPECIAL_CATEGORY_FILTER_OPTIONS, ...buildOptions()];
+  return [...buildSpecialCategoryOptions(specialLabels), ...buildOptions()];
 }
 
 /**
@@ -166,11 +189,14 @@ export function buildCategoryFilterOptions(categories: Category[]): MultiSelectO
 export function resolveSelectedCategories(
   categoryIds: string[],
   categories: Category[],
+  specialLabels: SpecialCategoryLabels = {},
 ): Category[] {
+  const uncategorizedLabel = specialLabels.uncategorized ?? 'Uncategorized';
+  const transfersLabel = specialLabels.transfers ?? 'Transfers';
   return categoryIds
     .map((id) => {
-      if (id === 'uncategorized') return { id, name: 'Uncategorized', color: null } as Category;
-      if (id === 'transfer') return { id, name: 'Transfers', color: null } as Category;
+      if (id === 'uncategorized') return { id, name: uncategorizedLabel, color: null } as Category;
+      if (id === 'transfer') return { id, name: transfersLabel, color: null } as Category;
       return categories.find((c) => c.id === id);
     })
     .filter((c): c is Category => c !== undefined);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { MultiSelect, MultiSelectOption } from '@/components/ui/MultiSelect';
 import { Account } from '@/types/account';
 import { Category } from '@/types/category';
@@ -26,6 +27,7 @@ interface BillsFilterPanelProps {
 }
 
 export function BillsFilterPanel(props: BillsFilterPanelProps) {
+  const t = useTranslations('scheduledTransactions');
   const {
     filtersExpanded,
     setFiltersExpanded,
@@ -54,14 +56,22 @@ export function BillsFilterPanel(props: BillsFilterPanelProps) {
     [payees],
   );
 
+  const specialCategoryLabels = useMemo(
+    () => ({
+      uncategorized: t('filterPanel.uncategorized'),
+      transfers: t('filterPanel.transfers'),
+    }),
+    [t],
+  );
+
   const categoryOptions: MultiSelectOption[] = useMemo(
-    () => buildCategoryFilterOptions(categories),
-    [categories],
+    () => buildCategoryFilterOptions(categories, specialCategoryLabels),
+    [categories, specialCategoryLabels],
   );
 
   const selectedCategories = useMemo(
-    () => resolveSelectedCategories(selectedCategoryIds, categories),
-    [selectedCategoryIds, categories],
+    () => resolveSelectedCategories(selectedCategoryIds, categories, specialCategoryLabels),
+    [selectedCategoryIds, categories, specialCategoryLabels],
   );
 
   return (
@@ -78,7 +88,7 @@ export function BillsFilterPanel(props: BillsFilterPanelProps) {
           <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L14 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 018 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
           </svg>
-          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Filters</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('filterPanel.filters')}</span>
           {activeFilterCount > 0 && (
             <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full">
               {activeFilterCount}
@@ -92,13 +102,13 @@ export function BillsFilterPanel(props: BillsFilterPanelProps) {
               onClick={onClearFilters}
               className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
             >
-              Clear
+              {t('filterPanel.clear')}
             </button>
           )}
           <button
             type="button"
             onClick={() => setFiltersExpanded(!filtersExpanded)}
-            aria-label={filtersExpanded ? 'Collapse filters' : 'Expand filters'}
+            aria-label={filtersExpanded ? t('filterPanel.collapseFilters') : t('filterPanel.expandFilters')}
             className="text-gray-500 dark:text-gray-400"
           >
             <svg
@@ -132,7 +142,7 @@ export function BillsFilterPanel(props: BillsFilterPanelProps) {
             const payee = payees.find((p) => p.id === id);
             return (
               <span key={id} className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs rounded-full">
-                {payee?.name ?? 'Unknown payee'}
+                {payee?.name ?? t('filterPanel.unknownPayee')}
                 <button onClick={() => setSelectedPayeeIds(selectedPayeeIds.filter((p) => p !== id))} className="hover:text-purple-900 dark:hover:text-purple-100">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
@@ -143,7 +153,7 @@ export function BillsFilterPanel(props: BillsFilterPanelProps) {
             const account = accounts.find((a) => a.id === id);
             return (
               <span key={id} className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs rounded-full">
-                {account?.name ?? 'Unknown account'}
+                {account?.name ?? t('filterPanel.unknownAccount')}
                 <button onClick={() => setSelectedAccountIds(selectedAccountIds.filter((a) => a !== id))} className="hover:text-emerald-900 dark:hover:text-emerald-100">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
@@ -172,35 +182,35 @@ export function BillsFilterPanel(props: BillsFilterPanelProps) {
         <div className="px-4 pb-4 space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('filterPanel.name')}</label>
               <input
                 type="text"
                 value={nameSearch}
                 onChange={(e) => setNameSearch(e.target.value)}
-                placeholder="Search by name..."
+                placeholder={t('filterPanel.searchByName')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>
             <MultiSelect
-              label="Payees"
+              label={t('filterPanel.payees')}
               options={payeeOptions}
               value={selectedPayeeIds}
               onChange={setSelectedPayeeIds}
-              placeholder="All payees"
+              placeholder={t('filterPanel.allPayees')}
             />
             <MultiSelect
-              label="Accounts"
+              label={t('filterPanel.accounts')}
               options={accountOptions}
               value={selectedAccountIds}
               onChange={setSelectedAccountIds}
-              placeholder="All accounts"
+              placeholder={t('filterPanel.allAccounts')}
             />
             <MultiSelect
-              label="Categories"
+              label={t('filterPanel.categories')}
               options={categoryOptions}
               value={selectedCategoryIds}
               onChange={setSelectedCategoryIds}
-              placeholder="All categories"
+              placeholder={t('filterPanel.allCategories')}
             />
           </div>
         </div>

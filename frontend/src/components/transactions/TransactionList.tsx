@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { Transaction, TransactionStatus } from '@/types/transaction';
 import { CategoryBudgetStatus } from '@/types/budget';
@@ -92,6 +93,7 @@ export function TransactionList({
   budgetStatusMap,
   showToolbar = true,
 }: TransactionListProps) {
+  const t = useTranslations('transactions');
   const { formatDate } = useDateFormat();
   const { formatCurrency } = useNumberFormat();
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -220,15 +222,15 @@ export function TransactionList({
     try {
       if (transaction.isTransfer) {
         await transactionsApi.deleteTransfer(transaction.id);
-        toast.success('Transfer deleted');
+        toast.success(t('list.transferDeleted'));
       } else {
         await transactionsApi.delete(transaction.id);
-        toast.success('Transaction deleted');
+        toast.success(t('list.transactionDeleted'));
       }
       onDelete?.(transaction.id);
       onRefresh?.();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to delete transaction'));
+      toast.error(getErrorMessage(error, t('list.deleteError')));
     } finally {
       setDeletingId(null);
     }
@@ -240,7 +242,7 @@ export function TransactionList({
 
   const handleCycleStatus = useCallback(async (transaction: Transaction) => {
     if (transaction.status === TransactionStatus.VOID) {
-      toast.error('Edit the transaction to change its status from Void');
+      toast.error(t('list.voidStatusError'));
       return;
     }
 
@@ -255,12 +257,12 @@ export function TransactionList({
     try {
       const updatedTransaction = await transactionsApi.updateStatus(transaction.id, nextStatus);
       const statusLabels: Record<TransactionStatus, string> = {
-        [TransactionStatus.UNRECONCILED]: 'Unreconciled',
-        [TransactionStatus.CLEARED]: 'Cleared',
-        [TransactionStatus.RECONCILED]: 'Reconciled',
-        [TransactionStatus.VOID]: 'Void',
+        [TransactionStatus.UNRECONCILED]: t('list.statusUnreconciled'),
+        [TransactionStatus.CLEARED]: t('list.statusCleared'),
+        [TransactionStatus.RECONCILED]: t('list.statusReconciled'),
+        [TransactionStatus.VOID]: t('list.statusVoid'),
       };
-      toast.success(`Status changed to ${statusLabels[nextStatus]}`);
+      toast.success(t('list.statusChanged', { status: statusLabels[nextStatus] }));
 
       if (onTransactionUpdate) {
         onTransactionUpdate(updatedTransaction);
@@ -268,9 +270,9 @@ export function TransactionList({
         onRefresh?.();
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to update status'));
+      toast.error(getErrorMessage(error, t('list.statusError')));
     }
-  }, [onRefresh, onTransactionUpdate]);
+  }, [onRefresh, onTransactionUpdate, t]);
 
   // Find the index where future transactions end and today/past begin.
   // Transactions are sorted DESC by date, so future ones come first.
@@ -368,8 +370,8 @@ export function TransactionList({
         <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
-        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No transactions</h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating a new transaction.</p>
+        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t('list.emptyTitle')}</h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('list.emptyMessage')}</p>
       </div>
     );
   }
@@ -385,7 +387,7 @@ export function TransactionList({
                 onClick={onExport}
                 disabled={isExporting}
                 className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Export transactions to CSV"
+                title={t('list.exportTitle')}
               >
                 {isExporting ? (
                   <svg className="w-4 h-4 sm:mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -397,18 +399,18 @@ export function TransactionList({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 )}
-                <span className="hidden sm:inline">{isExporting ? 'Exporting...' : 'Export'}</span>
+                <span className="hidden sm:inline">{isExporting ? t('list.exporting') : t('list.export')}</span>
               </button>
             )}
             <button
               onClick={cycleDensity}
               className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded flex-shrink-0"
-              title="Toggle row density"
+              title={t('list.toggleDensity')}
             >
               <svg className="w-4 h-4 sm:mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-              <span className="hidden sm:inline">{density === 'normal' ? 'Normal' : density === 'compact' ? 'Compact' : 'Dense'}</span>
+              <span className="hidden sm:inline">{density === 'normal' ? t('list.densityNormal') : density === 'compact' ? t('list.densityCompact') : t('list.densityDense')}</span>
             </button>
           </div>
         );
@@ -448,19 +450,19 @@ export function TransactionList({
                   />
                 </th>
               )}
-              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Date</th>
-              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell`}>Account</th>
-              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Payee</th>
-              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden min-[900px]:table-cell`}>Category</th>
-              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden 2xl:table-cell`}>Description</th>
-              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden 2xl:table-cell`}>Ref #</th>
-              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell`}>Tags</th>
-              <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Amount</th>
+              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>{t('list.headerDate')}</th>
+              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell`}>{t('list.headerAccount')}</th>
+              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>{t('list.headerPayee')}</th>
+              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden min-[900px]:table-cell`}>{t('list.headerCategory')}</th>
+              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden 2xl:table-cell`}>{t('list.headerDescription')}</th>
+              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden 2xl:table-cell`}>{t('list.headerRef')}</th>
+              <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell`}>{t('list.headerTags')}</th>
+              <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>{t('list.headerAmount')}</th>
               {showRunningBalance && (
-                <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>Balance</th>
+                <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>{t('list.headerBalance')}</th>
               )}
-              <th className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden min-[1400px]:table-cell`}>Status</th>
-              <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden min-[480px]:table-cell sticky right-0 bg-gray-50 dark:bg-gray-800`}>Actions</th>
+              <th className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden min-[1400px]:table-cell`}>{t('list.headerStatus')}</th>
+              <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden min-[480px]:table-cell sticky right-0 bg-gray-50 dark:bg-gray-800`}>{t('list.headerActions')}</th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
@@ -476,7 +478,7 @@ export function TransactionList({
                       <td colSpan={colCount} className="px-0 py-0">
                         <div className="flex items-center gap-3 px-4 py-1.5">
                           <div className="flex-1 border-t border-blue-300 dark:border-blue-700" />
-                          <span className="text-xs font-medium text-blue-500 dark:text-blue-400 uppercase tracking-wider whitespace-nowrap">Today</span>
+                          <span className="text-xs font-medium text-blue-500 dark:text-blue-400 uppercase tracking-wider whitespace-nowrap">{t('list.today')}</span>
                           <div className="flex-1 border-t border-blue-300 dark:border-blue-700" />
                         </div>
                       </td>
@@ -545,14 +547,14 @@ export function TransactionList({
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={deleteConfirm.isOpen}
-        title={deleteConfirm.transaction?.isTransfer ? 'Delete Transfer' : 'Delete Transaction'}
+        title={deleteConfirm.transaction?.isTransfer ? t('list.deleteTransferTitle') : t('list.deleteTransactionTitle')}
         message={
           deleteConfirm.transaction?.isTransfer
-            ? 'Are you sure you want to delete this transfer? Both linked transactions will be deleted.'
-            : 'Are you sure you want to delete this transaction? This action cannot be undone.'
+            ? t('list.deleteTransferMessage')
+            : t('list.deleteTransactionMessage')
         }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t('list.confirmDelete')}
+        cancelLabel={t('list.cancel')}
         variant="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}

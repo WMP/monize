@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useRef, memo, Fragment } from 'react';
+import { useTranslations } from 'next-intl';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { DateInput } from '@/components/ui/DateInput';
 import { InvestmentTransaction } from '@/types/investment';
@@ -73,33 +74,36 @@ function formatSplitRatio(quantity: number | null | undefined): string {
   return `1:${trim(1 / ratio)}`;
 }
 
-const ACTION_LABELS: Record<string, { label: string; shortLabel: string; color: string }> = {
-  BUY: { label: 'Buy', shortLabel: 'Buy', color: 'text-green-600 dark:text-green-400' },
-  SELL: { label: 'Sell', shortLabel: 'Sell', color: 'text-red-600 dark:text-red-400' },
-  DIVIDEND: { label: 'Dividend', shortLabel: 'Div', color: 'text-blue-600 dark:text-blue-400' },
-  INTEREST: { label: 'Interest', shortLabel: 'Int', color: 'text-blue-600 dark:text-blue-400' },
-  CAPITAL_GAIN: { label: 'Capital Gain', shortLabel: 'Cap', color: 'text-purple-600 dark:text-purple-400' },
-  SPLIT: { label: 'Split', shortLabel: 'Split', color: 'text-yellow-600 dark:text-yellow-400' },
-  TRANSFER_IN: { label: 'Transfer In', shortLabel: 'In', color: 'text-green-600 dark:text-green-400' },
-  TRANSFER_OUT: { label: 'Transfer Out', shortLabel: 'Out', color: 'text-red-600 dark:text-red-400' },
-  REINVEST: { label: 'Reinvest', shortLabel: 'Reinv', color: 'text-indigo-600 dark:text-indigo-400' },
-  ADD_SHARES: { label: 'Add Shares', shortLabel: 'Add', color: 'text-teal-600 dark:text-teal-400' },
-  REMOVE_SHARES: { label: 'Remove Shares', shortLabel: 'Rem', color: 'text-orange-600 dark:text-orange-400' },
+// Labels are resolved at render time via t(labelKey)/t(shortLabelKey) so the
+// list follows the active locale. The keys point into the `investments`
+// message namespace.
+const ACTION_LABELS: Record<string, { labelKey: string; shortLabelKey: string; color: string }> = {
+  BUY: { labelKey: 'transactionList.actions.buy', shortLabelKey: 'transactionList.shortActions.buy', color: 'text-green-600 dark:text-green-400' },
+  SELL: { labelKey: 'transactionList.actions.sell', shortLabelKey: 'transactionList.shortActions.sell', color: 'text-red-600 dark:text-red-400' },
+  DIVIDEND: { labelKey: 'transactionList.actions.dividend', shortLabelKey: 'transactionList.shortActions.dividend', color: 'text-blue-600 dark:text-blue-400' },
+  INTEREST: { labelKey: 'transactionList.actions.interest', shortLabelKey: 'transactionList.shortActions.interest', color: 'text-blue-600 dark:text-blue-400' },
+  CAPITAL_GAIN: { labelKey: 'transactionList.actions.capitalGain', shortLabelKey: 'transactionList.shortActions.capitalGain', color: 'text-purple-600 dark:text-purple-400' },
+  SPLIT: { labelKey: 'transactionList.actions.split', shortLabelKey: 'transactionList.shortActions.split', color: 'text-yellow-600 dark:text-yellow-400' },
+  TRANSFER_IN: { labelKey: 'transactionList.actions.transferIn', shortLabelKey: 'transactionList.shortActions.transferIn', color: 'text-green-600 dark:text-green-400' },
+  TRANSFER_OUT: { labelKey: 'transactionList.actions.transferOut', shortLabelKey: 'transactionList.shortActions.transferOut', color: 'text-red-600 dark:text-red-400' },
+  REINVEST: { labelKey: 'transactionList.actions.reinvest', shortLabelKey: 'transactionList.shortActions.reinvest', color: 'text-indigo-600 dark:text-indigo-400' },
+  ADD_SHARES: { labelKey: 'transactionList.actions.addShares', shortLabelKey: 'transactionList.shortActions.addShares', color: 'text-teal-600 dark:text-teal-400' },
+  REMOVE_SHARES: { labelKey: 'transactionList.actions.removeShares', shortLabelKey: 'transactionList.shortActions.removeShares', color: 'text-orange-600 dark:text-orange-400' },
 };
 
 const ACTION_OPTIONS = [
-  { value: '', label: 'All Actions' },
-  { value: 'BUY', label: 'Buy' },
-  { value: 'SELL', label: 'Sell' },
-  { value: 'DIVIDEND', label: 'Dividend' },
-  { value: 'INTEREST', label: 'Interest' },
-  { value: 'CAPITAL_GAIN', label: 'Capital Gain' },
-  { value: 'REINVEST', label: 'Reinvest' },
-  { value: 'SPLIT', label: 'Split' },
-  { value: 'TRANSFER_IN', label: 'Transfer In' },
-  { value: 'TRANSFER_OUT', label: 'Transfer Out' },
-  { value: 'ADD_SHARES', label: 'Add Shares' },
-  { value: 'REMOVE_SHARES', label: 'Remove Shares' },
+  { value: '', labelKey: 'transactionList.actions.allActions' },
+  { value: 'BUY', labelKey: 'transactionList.actions.buy' },
+  { value: 'SELL', labelKey: 'transactionList.actions.sell' },
+  { value: 'DIVIDEND', labelKey: 'transactionList.actions.dividend' },
+  { value: 'INTEREST', labelKey: 'transactionList.actions.interest' },
+  { value: 'CAPITAL_GAIN', labelKey: 'transactionList.actions.capitalGain' },
+  { value: 'REINVEST', labelKey: 'transactionList.actions.reinvest' },
+  { value: 'SPLIT', labelKey: 'transactionList.actions.split' },
+  { value: 'TRANSFER_IN', labelKey: 'transactionList.actions.transferIn' },
+  { value: 'TRANSFER_OUT', labelKey: 'transactionList.actions.transferOut' },
+  { value: 'ADD_SHARES', labelKey: 'transactionList.actions.addShares' },
+  { value: 'REMOVE_SHARES', labelKey: 'transactionList.actions.removeShares' },
 ];
 
 interface InvestmentTransactionRowProps {
@@ -139,11 +143,19 @@ const InvestmentTransactionRow = memo(function InvestmentTransactionRow({
   onDeleteClick,
   hasActions,
 }: InvestmentTransactionRowProps) {
-  const actionInfo = ACTION_LABELS[tx.action] || {
-    label: tx.action,
-    shortLabel: tx.action,
-    color: 'text-gray-600 dark:text-gray-400',
-  };
+  const t = useTranslations('investments');
+  const actionMeta = ACTION_LABELS[tx.action];
+  const actionInfo = actionMeta
+    ? {
+        label: t(actionMeta.labelKey),
+        shortLabel: t(actionMeta.shortLabelKey),
+        color: actionMeta.color,
+      }
+    : {
+        label: tx.action,
+        shortLabel: tx.action,
+        color: 'text-gray-600 dark:text-gray-400',
+      };
 
   return (
     <tr
@@ -208,14 +220,14 @@ const InvestmentTransactionRow = memo(function InvestmentTransactionRow({
               onClick={(e) => { e.stopPropagation(); onEdit(tx); }}
               className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
             >
-              {density === 'dense' ? '✎' : 'Edit'}
+              {density === 'dense' ? '✎' : t('transactionList.edit')}
             </button>
           )}
           <button
             onClick={(e) => { e.stopPropagation(); onDeleteClick(tx); }}
             className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
           >
-            {density === 'dense' ? '✕' : 'Delete'}
+            {density === 'dense' ? '✕' : t('transactionList.delete')}
           </button>
         </td>
       )}
@@ -237,6 +249,8 @@ export function InvestmentTransactionList({
   availableSymbols = [],
   viewToggle,
 }: InvestmentTransactionListProps) {
+  const t = useTranslations('investments');
+  const tCommon = useTranslations('common');
   const { formatCurrency, formatQuantity } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const { defaultCurrency } = useExchangeRates();
@@ -363,7 +377,7 @@ export function InvestmentTransactionList({
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
         <div className="flex items-center gap-3 mb-3">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Recent Transactions
+            {t('transactionList.recentTransactions')}
           </h3>
           {viewToggle}
         </div>
@@ -385,7 +399,7 @@ export function InvestmentTransactionList({
         <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Recent Transactions
+              {t('transactionList.recentTransactions')}
             </h3>
             {viewToggle}
           </div>
@@ -394,12 +408,12 @@ export function InvestmentTransactionList({
               onClick={onNewTransaction}
               className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 sm:min-w-[14rem]"
             >
-              + New Brokerage Transaction
+              {t('transactionList.newBrokerageTransaction')}
             </button>
           )}
         </div>
         <p className="text-gray-500 dark:text-gray-400">
-          No investment transactions yet.
+          {t('transactionList.noTransactionsYet')}
         </p>
       </div>
     );
@@ -425,10 +439,10 @@ export function InvestmentTransactionList({
       <div className="px-3 pt-3 sm:px-4 sm:pt-4 flex flex-wrap justify-between items-center gap-2">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Recent Transactions
+            {t('transactionList.recentTransactions')}
             {hasActiveFilters && (
               <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
-                (filtered)
+                {t('transactionList.filtered')}
               </span>
             )}
           </h3>
@@ -440,8 +454,8 @@ export function InvestmentTransactionList({
             onClick={onNewTransaction}
             className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 sm:min-w-[14rem]"
           >
-            <span className="sm:hidden">+ New</span>
-            <span className="hidden sm:inline">+ New Brokerage Transaction</span>
+            <span className="sm:hidden">{t('transactionList.newShort')}</span>
+            <span className="hidden sm:inline">{t('transactionList.newBrokerageTransaction')}</span>
           </button>
         )}
         {onFiltersChange && (
@@ -456,7 +470,7 @@ export function InvestmentTransactionList({
             <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
-            Filter
+            {t('transactionList.filter')}
             {hasActiveFilters && (
               <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full">
                 {[filters?.symbol, filters?.action, filters?.startDate, filters?.endDate].filter(Boolean).length}
@@ -467,12 +481,12 @@ export function InvestmentTransactionList({
         <button
           onClick={cycleDensity}
           className="ml-auto inline-flex items-center px-2 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-          title="Toggle row density"
+          title={t('transactionList.toggleRowDensity')}
         >
           <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-          {density === 'normal' ? 'Normal' : density === 'compact' ? 'Compact' : 'Dense'}
+          {density === 'normal' ? t('transactionList.densityNormal') : density === 'compact' ? t('transactionList.densityCompact') : t('transactionList.densityDense')}
         </button>
         </div>
       </div>
@@ -487,7 +501,7 @@ export function InvestmentTransactionList({
                 htmlFor="investment-tx-filter-symbol"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
-                Symbol
+                {t('transactionList.symbol')}
               </label>
               <select
                 id="investment-tx-filter-symbol"
@@ -496,7 +510,7 @@ export function InvestmentTransactionList({
                 onChange={(e) => handleFilterChange('symbol', e.target.value)}
                 className="w-full text-sm font-sans border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">All Symbols</option>
+                <option value="">{t('transactionList.allSymbols')}</option>
                 {availableSymbols.map((symbol) => (
                   <option key={symbol} value={symbol}>{symbol}</option>
                 ))}
@@ -509,7 +523,7 @@ export function InvestmentTransactionList({
                 htmlFor="investment-tx-filter-action"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
-                Action
+                {t('transactionList.action')}
               </label>
               <select
                 id="investment-tx-filter-action"
@@ -519,7 +533,7 @@ export function InvestmentTransactionList({
                 className="w-full text-sm font-sans border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-blue-500 focus:border-blue-500"
               >
                 {ACTION_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
                 ))}
               </select>
             </div>
@@ -528,12 +542,12 @@ export function InvestmentTransactionList({
                 pairing it with a manual onChange caused the user's date
                 format preference to be ignored on these two inputs. */}
             <DateInput
-              label="From"
+              label={t('transactionList.from')}
               value={filters?.startDate || ''}
               onDateChange={(date) => handleFilterChange('startDate', date)}
             />
             <DateInput
-              label="To"
+              label={t('transactionList.to')}
               value={filters?.endDate || ''}
               onDateChange={(date) => handleFilterChange('endDate', date)}
             />
@@ -546,7 +560,7 @@ export function InvestmentTransactionList({
                 onClick={clearFilters}
                 className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium"
               >
-                Clear Filters
+                {t('transactionList.clearFilters')}
               </button>
             </div>
           )}
@@ -562,29 +576,29 @@ export function InvestmentTransactionList({
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
-                Date
+                {t('transactionList.date')}
               </th>
               <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell`}>
-                Account
+                {t('transactionList.account')}
               </th>
               <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
-                Action
+                {t('transactionList.action')}
               </th>
               <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
-                Symbol
+                {t('transactionList.symbol')}
               </th>
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}>
-                Shares
+                {t('transactionList.shares')}
               </th>
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell`}>
-                Price
+                {t('transactionList.price')}
               </th>
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
-                Total
+                {t('transactionList.total')}
               </th>
               {(onDelete || onEdit) && (
                 <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden min-[480px]:table-cell sticky right-0 bg-gray-50 dark:bg-gray-800`}>
-                  Actions
+                  {t('transactionList.actionsHeader')}
                 </th>
               )}
             </tr>
@@ -593,7 +607,7 @@ export function InvestmentTransactionList({
             {transactions.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
-                  No transactions match your filters.
+                  {t('transactionList.noTransactionsMatchFilters')}
                 </td>
               </tr>
             ) : transactions.map((tx, index) => {
@@ -605,7 +619,7 @@ export function InvestmentTransactionList({
                       <td colSpan={colCount} className="px-0 py-0">
                         <div className="flex items-center gap-3 px-4 py-1.5">
                           <div className="flex-1 border-t border-blue-300 dark:border-blue-700" />
-                          <span className="text-xs font-medium text-blue-500 dark:text-blue-400 uppercase tracking-wider whitespace-nowrap">Today</span>
+                          <span className="text-xs font-medium text-blue-500 dark:text-blue-400 uppercase tracking-wider whitespace-nowrap">{t('transactionList.today')}</span>
                           <div className="flex-1 border-t border-blue-300 dark:border-blue-700" />
                         </div>
                       </td>
@@ -639,12 +653,21 @@ export function InvestmentTransactionList({
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={deleteConfirm.isOpen}
-        title="Delete Transaction"
+        title={t('transactionList.deleteTransaction')}
         message={deleteConfirm.transaction
-          ? `Are you sure you want to delete this ${ACTION_LABELS[deleteConfirm.transaction.action]?.label || deleteConfirm.transaction.action} transaction${deleteConfirm.transaction.security ? ` for ${deleteConfirm.transaction.security.symbol}` : ''}?`
-          : 'Are you sure you want to delete this transaction?'}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+          ? (() => {
+              const meta = ACTION_LABELS[deleteConfirm.transaction.action];
+              const actionLabel = meta ? t(meta.labelKey) : deleteConfirm.transaction.action;
+              return deleteConfirm.transaction.security
+                ? t('transactionList.deleteConfirmTypedForSymbol', {
+                    action: actionLabel,
+                    symbol: deleteConfirm.transaction.security.symbol,
+                  })
+                : t('transactionList.deleteConfirmTyped', { action: actionLabel });
+            })()
+          : t('transactionList.deleteConfirmGeneric')}
+        confirmLabel={t('transactionList.delete')}
+        cancelLabel={tCommon('actions.cancel')}
         variant="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}

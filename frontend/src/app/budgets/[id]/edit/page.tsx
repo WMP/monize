@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { PageLayout } from '@/components/layout/PageLayout';
@@ -23,8 +24,8 @@ import type {
   UpdateBudgetCategoryData,
 } from '@/types/budget';
 
-function getCategoryDisplayName(cat: BudgetCategory): string {
-  if (!cat.category) return 'Unknown';
+function getCategoryDisplayName(cat: BudgetCategory, unknownLabel: string): string {
+  if (!cat.category) return unknownLabel;
   const { name, parent } = cat.category;
   return parent ? `${parent.name}: ${name}` : name;
 }
@@ -38,6 +39,7 @@ export default function BudgetEditPage() {
 }
 
 function BudgetEditContent() {
+  const t = useTranslations('budgets');
   const params = useParams();
   const router = useRouter();
   const { formatCurrency } = useNumberFormat();
@@ -61,11 +63,12 @@ function BudgetEditContent() {
       setBudget(budgetData);
       setSummary(summaryData);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load budget'));
+      toast.error(getErrorMessage(err, t('editPage.loadFailed')));
       router.push('/budgets');
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [budgetId, router]);
 
   useEffect(() => {
@@ -76,10 +79,10 @@ function BudgetEditContent() {
     setIsSaving(true);
     try {
       await budgetsApi.update(budgetId, data);
-      toast.success('Budget updated');
+      toast.success(t('editPage.updated'));
       loadData();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to update budget'));
+      toast.error(getErrorMessage(err, t('editPage.updateFailed')));
     } finally {
       setIsSaving(false);
     }
@@ -90,11 +93,11 @@ function BudgetEditContent() {
     setIsSaving(true);
     try {
       await budgetsApi.updateCategory(budgetId, editingCategory.id, data);
-      toast.success('Category updated');
+      toast.success(t('editPage.categoryUpdated'));
       setEditingCategory(null);
       loadData();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to update category'));
+      toast.error(getErrorMessage(err, t('editPage.categoryUpdateFailed')));
     } finally {
       setIsSaving(false);
     }
@@ -117,15 +120,15 @@ function BudgetEditContent() {
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
         <PageHeader
-          title={`Edit: ${budget.name}`}
-          subtitle="Update budget settings and category allocations"
+          title={t('editPage.title', { name: budget.name })}
+          subtitle={t('editPage.subtitle')}
           actions={
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
                 onClick={() => router.push(`/budgets/${budgetId}`)}
               >
-                Back to Dashboard
+                {t('editPage.backToDashboard')}
               </Button>
             </div>
           }
@@ -135,7 +138,7 @@ function BudgetEditContent() {
           {/* Budget Settings */}
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Budget Settings
+              {t('editPage.budgetSettings')}
             </h2>
             <BudgetForm
               budget={budget}
@@ -148,13 +151,13 @@ function BudgetEditContent() {
           {/* Category List */}
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Category Allocations
+              {t('editPage.categoryAllocations')}
             </h2>
 
             {incomeCategories.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
-                  Income
+                  {t('editPage.income')}
                 </h3>
                 <div className="space-y-2">
                   {incomeCategories.map((cat) => (
@@ -166,7 +169,7 @@ function BudgetEditContent() {
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {getCategoryDisplayName(cat)}
+                          {getCategoryDisplayName(cat, t('editPage.unknownCategory'))}
                         </span>
                         <span className="text-sm text-green-600 dark:text-green-400">
                           {formatCurrency(cat.amount, budget.currencyCode)}
@@ -179,7 +182,7 @@ function BudgetEditContent() {
             )}
 
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
-              Expenses ({expenseCategories.length})
+              {t('editPage.expenses', { count: expenseCategories.length })}
             </h3>
             <div className="space-y-2">
               {expenseCategories.map((cat) => {
@@ -198,7 +201,7 @@ function BudgetEditContent() {
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {getCategoryDisplayName(cat)}
+                          {getCategoryDisplayName(cat, t('editPage.unknownCategory'))}
                         </span>
                         {cat.flexGroup && (
                           <span className="px-1.5 py-0.5 bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 text-xs rounded font-medium">
@@ -214,10 +217,10 @@ function BudgetEditContent() {
                     <div className="flex items-center justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
                       <span>
                         {cat.rolloverType !== 'NONE'
-                          ? `Rollover: ${cat.rolloverType.toLowerCase()}`
-                          : 'Resets each period'}
+                          ? t('editPage.rollover', { type: cat.rolloverType.toLowerCase() })
+                          : t('editPage.resetsEachPeriod')}
                       </span>
-                      <span>{Math.round(percentUsed)}% used</span>
+                      <span>{t('editPage.percentUsed', { percent: Math.round(percentUsed) })}</span>
                     </div>
                   </button>
                 );
@@ -234,7 +237,7 @@ function BudgetEditContent() {
             className="p-6"
           >
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              Edit {getCategoryDisplayName(editingCategory)}
+              {t('editPage.editCategory', { name: getCategoryDisplayName(editingCategory, t('editPage.unknownCategory')) })}
             </h2>
             <BudgetCategoryForm
               category={editingCategory}

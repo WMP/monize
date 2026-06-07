@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { AssetAllocation, AccountHoldings } from '@/types/investment';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
@@ -55,8 +56,12 @@ export function AssetAllocationChart({
   holdingsByAccount,
   titleSuffix,
 }: AssetAllocationChartProps) {
+  const t = useTranslations('investments');
   const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
+  const title = titleSuffix
+    ? t('allocation.assetAllocationWithSuffix', { suffix: titleSuffix })
+    : t('allocation.assetAllocation');
 
   // When viewing a single foreign-currency account, show values in that currency
   const foreignCurrency = singleAccountCurrency && singleAccountCurrency !== defaultCurrency
@@ -94,7 +99,7 @@ export function AssetAllocationChart({
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[420px]">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Asset Allocation{titleSuffix ? ` (${titleSuffix})` : ''}
+          {title}
         </h3>
         <div className="h-64 flex items-center justify-center">
           <div className="animate-pulse w-48 h-48 rounded-full bg-gray-200 dark:bg-gray-700" />
@@ -107,10 +112,10 @@ export function AssetAllocationChart({
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[420px]">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Asset Allocation{titleSuffix ? ` (${titleSuffix})` : ''}
+          {title}
         </h3>
         <p className="text-gray-500 dark:text-gray-400">
-          No allocation data available.
+          {t('allocation.noData')}
         </p>
       </div>
     );
@@ -119,7 +124,7 @@ export function AssetAllocationChart({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[420px]">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-        Asset Allocation{titleSuffix ? ` (${titleSuffix})` : ''}
+        {title}
       </h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>

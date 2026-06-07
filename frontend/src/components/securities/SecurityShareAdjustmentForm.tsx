@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
@@ -23,9 +24,10 @@ interface SecurityShareAdjustmentFormProps {
 
 // Quantity-only adjustments that change the share count without any cash
 // impact -- exactly what's needed to clean up errant/residual share balances.
-const ADJUSTMENT_ACTIONS: { value: InvestmentAction; label: string }[] = [
-  { value: 'REMOVE_SHARES', label: 'Remove Shares' },
-  { value: 'ADD_SHARES', label: 'Add Shares' },
+// Labels are stored as message keys and resolved at render via t(...).
+const ADJUSTMENT_ACTIONS: { value: InvestmentAction; labelKey: string }[] = [
+  { value: 'REMOVE_SHARES', labelKey: 'shareAdjustment.actions.removeShares' },
+  { value: 'ADD_SHARES', labelKey: 'shareAdjustment.actions.addShares' },
 ];
 
 /**
@@ -41,6 +43,7 @@ export function SecurityShareAdjustmentForm({
   onSubmitted,
   onCancel,
 }: SecurityShareAdjustmentFormProps) {
+  const t = useTranslations('securities');
   const [accountId, setAccountId] = useState(
     defaultAccountId || accounts[0]?.accountId || '',
   );
@@ -52,11 +55,11 @@ export function SecurityShareAdjustmentForm({
 
   const handleSubmit = async () => {
     if (!accountId) {
-      toast.error('Select an account');
+      toast.error(t('shareAdjustment.toast.selectAccount'));
       return;
     }
     if (!quantity || quantity <= 0) {
-      toast.error('Quantity must be greater than zero');
+      toast.error(t('shareAdjustment.toast.quantityPositive'));
       return;
     }
     setIsSaving(true);
@@ -69,10 +72,10 @@ export function SecurityShareAdjustmentForm({
         quantity,
         description: description || undefined,
       });
-      toast.success('Adjustment recorded');
+      toast.success(t('shareAdjustment.toast.recorded'));
       onSubmitted();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to record adjustment'));
+      toast.error(getErrorMessage(error, t('shareAdjustment.toast.recordFailed')));
     } finally {
       setIsSaving(false);
     }
@@ -81,52 +84,52 @@ export function SecurityShareAdjustmentForm({
   return (
     <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
       <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-        Adjust shares
+        {t('shareAdjustment.heading')}
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Select
-          label="Account"
+          label={t('shareAdjustment.account')}
           value={accountId}
           onChange={(e) => setAccountId(e.target.value)}
           options={[
-            { value: '', label: 'Select account...' },
+            { value: '', label: t('shareAdjustment.selectAccount') },
             ...accounts.map((a) => ({
               value: a.accountId,
-              label: a.isClosed ? `${a.accountName} (closed)` : a.accountName,
+              label: a.isClosed ? t('shareAdjustment.accountClosed', { name: a.accountName }) : a.accountName,
             })),
           ]}
         />
         <Select
-          label="Action"
+          label={t('shareAdjustment.action')}
           value={action}
           onChange={(e) => setAction(e.target.value as InvestmentAction)}
-          options={ADJUSTMENT_ACTIONS}
+          options={ADJUSTMENT_ACTIONS.map((a) => ({ value: a.value, label: t(a.labelKey) }))}
         />
         <NumericInput
-          label="Quantity (Shares)"
+          label={t('shareAdjustment.quantity')}
           value={quantity}
           onChange={setQuantity}
           decimalPlaces={8}
           min={0}
         />
         <DateInput
-          label="Date"
+          label={t('shareAdjustment.date')}
           value={transactionDate}
           onDateChange={setTransactionDate}
         />
       </div>
       <Input
-        label="Description (optional)"
-        placeholder="e.g. Clean up residual shares"
+        label={t('shareAdjustment.description')}
+        placeholder={t('shareAdjustment.descriptionPlaceholder')}
         value={description}
         onChange={(e) => setDescription(e.target.value)}
       />
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={isSaving}>
-          Cancel
+          {t('shareAdjustment.cancel')}
         </Button>
         <Button size="sm" onClick={handleSubmit} disabled={isSaving}>
-          {isSaving ? 'Saving...' : 'Record adjustment'}
+          {isSaving ? t('shareAdjustment.saving') : t('shareAdjustment.recordAdjustment')}
         </Button>
       </div>
     </div>

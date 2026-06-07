@@ -1,0 +1,107 @@
+{
+  "page": {
+    "title": "Kategorie",
+    "subtitle": "Organizuj swoje transakcje za pomoca wlasnych kategorii",
+    "newCategory": "+ Nowa kategoria",
+    "searchPlaceholder": "Szukaj kategorii...",
+    "summary": {
+      "totalCategories": "Wszystkie kategorie",
+      "incomeCategories": "Kategorie przychodow",
+      "expenseCategories": "Kategorie wydatkow",
+      "topLevel": "Najwyzszy poziom"
+    },
+    "filters": {
+      "all": "Wszystkie ({count})",
+      "expenses": "Wydatki ({count})",
+      "income": "Przychody ({count})"
+    },
+    "modal": {
+      "editTitle": "Edytuj kategorie",
+      "newTitle": "Nowa kategoria"
+    },
+    "loading": "Wczytywanie kategorii...",
+    "empty": {
+      "title": "Brak kategorii",
+      "description": "Kategorie pomagaja organizowac transakcje. Zacznij od zaimportowania naszego domyslnego zestawu kategorii lub utworz wlasne od podstaw.",
+      "importButton": "Importuj domyslne kategorie",
+      "createButton": "Utworz wlasne",
+      "hint": "Domyslny zestaw zawiera typowe kategorie przychodow i wydatkow wraz z podkategoriami"
+    },
+    "countPlural": "Kategorie: {count}",
+    "countSingular": "Kategorie: {count}",
+    "toast": {
+      "updated": "Kategoria zaktualizowana pomyslnie",
+      "created": "Kategoria utworzona pomyslnie",
+      "imported": "Zaimportowano kategorie: {count}",
+      "loadFailed": "Nie udalo sie wczytac kategorii",
+      "importFailed": "Nie udalo sie zaimportowac domyslnych kategorii",
+      "updateFailed": "Nie udalo sie zaktualizowac kategorii",
+      "createFailed": "Nie udalo sie utworzyc kategorii"
+    }
+  },
+  "form": {
+    "nameLabel": "Nazwa kategorii",
+    "nameRequired": "Nazwa kategorii jest wymagana",
+    "parentLabel": "Kategoria nadrzedna",
+    "typeLabel": "Typ",
+    "typeExpense": "Wydatek",
+    "typeIncome": "Przychod",
+    "typeInherited": "Typ dziedziczony z kategorii nadrzednej",
+    "noParent": "Brak nadrzednej (najwyzszy poziom)",
+    "colourLabel": "Kolor",
+    "inheritFromParent": "Dziedzicz z kategorii nadrzednej",
+    "noColour": "Brak koloru",
+    "colourInherited": "Kolor dziedziczony z kategorii nadrzednej ({name})",
+    "descriptionLabel": "Opis (opcjonalnie)",
+    "submitUpdate": "Zaktualizuj kategorie",
+    "submitCreate": "Utworz kategorie",
+    "colours": {
+      "red": "Czerwony",
+      "orange": "Pomaranczowy",
+      "yellow": "Zolty",
+      "green": "Zielony",
+      "teal": "Morski",
+      "blue": "Niebieski",
+      "purple": "Fioletowy",
+      "pink": "Rozowy",
+      "grey": "Szary"
+    }
+  },
+  "list": {
+    "inheritedFromParent": "Dziedziczony z kategorii nadrzednej",
+    "viewTransactions": "Wyswietl transakcje w tej kategorii",
+    "system": "(Systemowa)",
+    "income": "Przychod",
+    "expense": "Wydatek",
+    "edit": "Edytuj",
+    "delete": "Usun",
+    "emptyTitle": "Brak kategorii",
+    "emptyDescription": "Zacznij od utworzenia nowej kategorii.",
+    "toggleDensity": "Przelacz gestosc wierszy",
+    "densityNormal": "Normalna",
+    "densityCompact": "Kompaktowa",
+    "densityDense": "Gesta",
+    "columnName": "Nazwa",
+    "columnType": "Typ",
+    "columnCount": "Liczba",
+    "columnDescription": "Opis",
+    "columnActions": "Akcje",
+    "systemCannotBeDeleted": "Kategorii systemowych nie mozna usuwac",
+    "deleteSuccess": "Kategoria usunieta pomyslnie",
+    "deleteFailed": "Nie udalo sie usunac kategorii"
+  },
+  "delete": {
+    "title": "Usunac \"{name}\"?",
+    "checkingUsage": "Sprawdzanie uzycia...",
+    "usedByPlural": "elementow: {count}",
+    "usedBySingular": "element: {count}",
+    "usedByPrefix": "Ta kategoria jest uzywana przez",
+    "usedBySuffix": "(transakcje i/lub zaplanowane rachunki i wplaty).",
+    "reassignLabel": "Przypisz ponownie do:",
+    "leaveUncategorized": "Pozostaw bez kategorii",
+    "notUsed": "Ta kategoria nie jest uzywana. Mozna ja bezpiecznie usunac.",
+    "cannotUndo": "Tej operacji nie mozna cofnac.",
+    "cancel": "Anuluj",
+    "confirm": "Usun"
+  }
+}

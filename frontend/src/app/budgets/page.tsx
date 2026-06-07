@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { Button } from '@/components/ui/Button';
@@ -14,7 +15,6 @@ import { budgetsApi } from '@/lib/budgets';
 import { accountsApi } from '@/lib/accounts';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { getErrorMessage } from '@/lib/errors';
-import { STRATEGY_LABELS, BUDGET_TYPE_LABELS } from '@/components/budgets/utils/budget-labels';
 import type { Budget } from '@/types/budget';
 import type { Account } from '@/types/account';
 
@@ -27,6 +27,7 @@ export default function BudgetsPage() {
 }
 
 function BudgetsContent() {
+  const t = useTranslations('budgets');
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,11 +49,14 @@ function BudgetsContent() {
           ? (error as { response?: { status?: number } }).response?.status
           : undefined;
       if (status !== 403) {
-        toast.error(getErrorMessage(error, 'Failed to load budgets'));
+        toast.error(getErrorMessage(error, t('page.loadFailed')));
       }
     } finally {
       setIsLoading(false);
     }
+    // `t` is intentionally omitted: the next-intl mock returns a new function
+    // each render, which would otherwise re-trigger the load effect in a loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -72,8 +76,8 @@ function BudgetsContent() {
       <PageLayout>
         <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
           <PageHeader
-            title="Create Budget"
-            subtitle="Analyze your spending and create a personalized budget"
+            title={t('page.createTitle')}
+            subtitle={t('page.createSubtitle')}
           />
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
             <BudgetWizard
@@ -92,12 +96,12 @@ function BudgetsContent() {
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
         <PageHeader
-          title="Budgets"
-          subtitle="Manage your budgets and track spending"
+          title={t('page.title')}
+          subtitle={t('page.subtitle')}
           helpUrl="https://github.com/kenlasko/monize/wiki/Budgets"
           actions={
             <Button onClick={() => setShowWizard(true)}>
-              + New Budget
+              {t('page.newBudget')}
             </Button>
           }
         />
@@ -107,14 +111,13 @@ function BudgetsContent() {
         ) : budgets.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-12 text-center">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-              No budgets yet
+              {t('page.emptyTitle')}
             </h3>
             <p className="text-gray-500 dark:text-gray-400 mb-6">
-              Create your first budget by analyzing your spending history. The
-              wizard will suggest realistic amounts based on your transactions.
+              {t('page.emptyDescription')}
             </p>
             <Button onClick={() => setShowWizard(true)}>
-              Create Your First Budget
+              {t('page.createFirst')}
             </Button>
           </div>
         ) : (
@@ -132,7 +135,7 @@ function BudgetsContent() {
                       {budget.name}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {STRATEGY_LABELS[budget.strategy] ?? budget.strategy} - {BUDGET_TYPE_LABELS[budget.budgetType] ?? budget.budgetType}
+                      {t(`labels.strategy.${budget.strategy}`)} - {t(`labels.budgetType.${budget.budgetType}`)}
                     </p>
                   </div>
                   <span
@@ -142,14 +145,14 @@ function BudgetsContent() {
                         : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
                     }`}
                   >
-                    {budget.isActive ? 'Active' : 'Inactive'}
+                    {budget.isActive ? t('page.active') : t('page.inactive')}
                   </span>
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-300 mb-4">
                   <div>
-                    {budget.categories?.length ?? 0} categories
+                    {t('page.categories', { count: budget.categories?.length ?? 0 })}
                   </div>
-                  <div>Started {budget.periodStart}</div>
+                  <div>{t('page.started', { date: budget.periodStart })}</div>
                 </div>
               </div>
             ))}

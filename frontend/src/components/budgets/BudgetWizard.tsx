@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { BudgetWizardAnalysis } from './BudgetWizardAnalysis';
 import { BudgetWizardCategories } from './BudgetWizardCategories';
 import { BudgetWizardStrategy } from './BudgetWizardStrategy';
@@ -50,7 +51,12 @@ interface BudgetWizardProps {
   accounts?: Account[];
 }
 
-const STEPS = ['Analyze', 'Categories', 'Configure', 'Review'] as const;
+const STEP_KEYS = [
+  'wizard.stepAnalyze',
+  'wizard.stepCategories',
+  'wizard.stepConfigure',
+  'wizard.stepReview',
+] as const;
 
 export function BudgetWizard({
   onComplete,
@@ -58,6 +64,7 @@ export function BudgetWizard({
   defaultCurrency,
   accounts = [],
 }: BudgetWizardProps) {
+  const t = useTranslations('budgets');
   const [currentStep, setCurrentStep] = useState(0);
   const now = new Date();
   const defaultPeriodStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
@@ -71,7 +78,10 @@ export function BudgetWizard({
     analysisResult: null,
     selectedCategories: new Map(),
     selectedTransfers: new Map(),
-    budgetName: `${now.toLocaleString('default', { month: 'long' })} ${now.getFullYear()} Budget`,
+    budgetName: t('wizard.defaultBudgetName', {
+      month: now.toLocaleString('default', { month: 'long' }),
+      year: now.getFullYear(),
+    }),
     budgetType: 'MONTHLY',
     periodStart: defaultPeriodStart,
     currencyCode: defaultCurrency,
@@ -112,7 +122,7 @@ export function BudgetWizard({
 
   const goNext = useCallback(() => {
     setCurrentStep((prev) => {
-      const next = Math.min(prev + 1, STEPS.length - 1);
+      const next = Math.min(prev + 1, STEP_KEYS.length - 1);
       window.history.pushState({ wizardStep: next }, '');
       return next;
     });
@@ -175,10 +185,10 @@ export function BudgetWizard({
   return (
     <div>
       {/* Step indicators */}
-      <nav aria-label="Wizard steps" className="mb-8">
+      <nav aria-label={t('wizard.stepsAriaLabel')} className="mb-8">
         <ol className="flex items-center justify-center gap-1 sm:gap-2">
-          {STEPS.map((stepName, index) => (
-            <li key={stepName} className="flex items-center">
+          {STEP_KEYS.map((stepKey, index) => (
+            <li key={stepKey} className="flex items-center">
               <div
                 className={`flex items-center gap-1 sm:gap-2 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium ${
                   index === currentStep
@@ -199,9 +209,9 @@ export function BudgetWizard({
                 >
                   {index < currentStep ? '\u2713' : index + 1}
                 </span>
-                <span className="hidden sm:inline">{stepName}</span>
+                <span className="hidden sm:inline">{t(stepKey)}</span>
               </div>
-              {index < STEPS.length - 1 && (
+              {index < STEP_KEYS.length - 1 && (
                 <div
                   className={`w-4 sm:w-8 h-0.5 mx-0.5 sm:mx-1 ${
                     index < currentStep

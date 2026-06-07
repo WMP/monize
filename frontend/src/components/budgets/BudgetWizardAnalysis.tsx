@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { budgetsApi } from '@/lib/budgets';
@@ -19,57 +20,57 @@ interface BudgetWizardAnalysisProps {
 
 const STRATEGIES: Array<{
   value: BudgetStrategy;
-  label: string;
-  description: string;
+  labelKey: string;
+  descriptionKey: string;
 }> = [
   {
     value: 'FIXED',
-    label: 'Fixed',
-    description: 'Set fixed amounts per category. Unused budget resets each period.',
+    labelKey: 'wizardAnalysis.strategyFixedLabel',
+    descriptionKey: 'wizardAnalysis.strategyFixedDescription',
   },
   {
     value: 'ROLLOVER',
-    label: 'Rollover',
-    description: 'Unused budget carries forward. Configure rollover rules per category.',
+    labelKey: 'wizardAnalysis.strategyRolloverLabel',
+    descriptionKey: 'wizardAnalysis.strategyRolloverDescription',
   },
   {
     value: 'ZERO_BASED',
-    label: 'Zero-Based',
-    description: 'Every dollar of income is assigned a purpose. Income minus expenses equals zero.',
+    labelKey: 'wizardAnalysis.strategyZeroBasedLabel',
+    descriptionKey: 'wizardAnalysis.strategyZeroBasedDescription',
   },
   {
     value: 'FIFTY_THIRTY_TWENTY',
-    label: '50/30/20',
-    description: '50% needs, 30% wants, 20% savings. Categories are tagged by group.',
+    labelKey: 'wizardAnalysis.strategyFiftyThirtyTwentyLabel',
+    descriptionKey: 'wizardAnalysis.strategyFiftyThirtyTwentyDescription',
   },
 ];
 
 const PROFILES: Array<{
   value: BudgetProfile;
-  label: string;
-  description: string;
+  labelKey: string;
+  descriptionKey: string;
 }> = [
   {
     value: 'COMFORTABLE',
-    label: 'Comfortable',
-    description: 'Based on your 75th percentile spending. Allows headroom.',
+    labelKey: 'wizardAnalysis.profileComfortableLabel',
+    descriptionKey: 'wizardAnalysis.profileComfortableDescription',
   },
   {
     value: 'ON_TRACK',
-    label: 'On Track',
-    description: 'Based on your median spending. Realistic targets.',
+    labelKey: 'wizardAnalysis.profileOnTrackLabel',
+    descriptionKey: 'wizardAnalysis.profileOnTrackDescription',
   },
   {
     value: 'AGGRESSIVE',
-    label: 'Aggressive',
-    description: 'Based on your 25th percentile. A stretch goal to save more.',
+    labelKey: 'wizardAnalysis.profileAggressiveLabel',
+    descriptionKey: 'wizardAnalysis.profileAggressiveDescription',
   },
 ];
 
 const ANALYSIS_PERIODS = [
-  { value: 3, label: '3 months' },
-  { value: 6, label: '6 months' },
-  { value: 12, label: '12 months' },
+  { value: 3, labelKey: 'wizardAnalysis.period3' },
+  { value: 6, labelKey: 'wizardAnalysis.period6' },
+  { value: 12, labelKey: 'wizardAnalysis.period12' },
 ] as const;
 
 export function BudgetWizardAnalysis({
@@ -79,6 +80,7 @@ export function BudgetWizardAnalysis({
   onNext,
   onCancel,
 }: BudgetWizardAnalysisProps) {
+  const t = useTranslations('budgets');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const strategyRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
@@ -100,7 +102,7 @@ export function BudgetWizardAnalysis({
       onAnalysisComplete(result);
       onNext();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to analyze spending'));
+      toast.error(getErrorMessage(error, t('wizardAnalysis.analyzeFailed')));
     } finally {
       setIsAnalyzing(false);
     }
@@ -111,7 +113,7 @@ export function BudgetWizardAnalysis({
       {/* Strategy selection */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Choose a Budget Strategy
+          {t('wizardAnalysis.chooseStrategy')}
         </h3>
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Strategy list - left side */}
@@ -136,10 +138,10 @@ export function BudgetWizardAnalysis({
                       }`}
                     >
                       <div className="font-medium text-gray-900 dark:text-gray-100">
-                        {s.label}
+                        {t(s.labelKey)}
                       </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        {s.description}
+                        {t(s.descriptionKey)}
                       </div>
                     </button>
                     <div
@@ -168,10 +170,10 @@ export function BudgetWizardAnalysis({
                   }`}
                 >
                   <div className="font-medium text-gray-900 dark:text-gray-100">
-                    {s.label}
+                    {t(s.labelKey)}
                   </div>
                   <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {s.description}
+                    {t(s.descriptionKey)}
                   </div>
                 </button>
               ))}
@@ -192,11 +194,10 @@ export function BudgetWizardAnalysis({
       {/* Analysis period */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Analysis Period
+          {t('wizardAnalysis.analysisPeriod')}
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-          How many months of transaction history should we analyze to suggest
-          budget amounts?
+          {t('wizardAnalysis.analysisPeriodDescription')}
         </p>
         <div className="flex gap-3">
           {ANALYSIS_PERIODS.map((p) => (
@@ -210,7 +211,7 @@ export function BudgetWizardAnalysis({
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
               }`}
             >
-              {p.label}
+              {t(p.labelKey)}
             </button>
           ))}
         </div>
@@ -219,7 +220,7 @@ export function BudgetWizardAnalysis({
       {/* Budget profile */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Budget Profile
+          {t('wizardAnalysis.budgetProfile')}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {PROFILES.map((p) => (
@@ -234,10 +235,10 @@ export function BudgetWizardAnalysis({
               }`}
             >
               <div className="font-medium text-gray-900 dark:text-gray-100">
-                {p.label}
+                {t(p.labelKey)}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {p.description}
+                {t(p.descriptionKey)}
               </div>
             </button>
           ))}
@@ -247,10 +248,10 @@ export function BudgetWizardAnalysis({
       {/* Actions */}
       <div className="flex flex-col-reverse sm:flex-row justify-between gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
         <Button variant="outline" onClick={onCancel}>
-          Cancel
+          {t('wizardAnalysis.cancel')}
         </Button>
         <Button onClick={handleAnalyze} isLoading={isAnalyzing} disabled={!state.strategy}>
-          Analyze My Spending
+          {t('wizardAnalysis.analyzeMySpending')}
         </Button>
       </div>
     </div>

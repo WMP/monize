@@ -1,0 +1,63 @@
+{
+  "page": {
+    "title": "Uzgodnij konto",
+    "subtitleReconciling": "Uzgadnianie: {name}",
+    "subtitleDefault": "Porównaj swoje zapisy z wyciągiem bankowym"
+  },
+  "toast": {
+    "loadAccountsError": "Nie udało się wczytać kont",
+    "fillAllFields": "Wypełnij wszystkie pola",
+    "loadDataError": "Nie udało się wczytać danych do uzgodnienia",
+    "differenceMustBeZero": "Aby zakończyć uzgadnianie, różnica musi wynosić {amount}",
+    "noTransactionsSelected": "Nie wybrano transakcji do uzgodnienia",
+    "reconcileSuccess": "Pomyślnie uzgodniono transakcje: {count}",
+    "reconcileError": "Nie udało się uzgodnić transakcji"
+  },
+  "setup": {
+    "heading": "Rozpocznij uzgadnianie",
+    "description": "Uzgodnij swoje konto z wyciągiem bankowym, aby upewnić się, że zapisy się zgadzają.",
+    "accountLabel": "Konto",
+    "selectAccount": "Wybierz konto...",
+    "statementDateLabel": "Data wyciągu",
+    "statementBalanceLabel": "Saldo końcowe wyciągu",
+    "cancel": "Anuluj",
+    "start": "Rozpocznij uzgadnianie"
+  },
+  "summary": {
+    "statementBalance": "Saldo wyciągu",
+    "reconciledBalance": "Saldo uzgodnione",
+    "selected": "Wybrano ({count})",
+    "difference": "Różnica"
+  },
+  "list": {
+    "heading": "Nieuzgodnione transakcje ({count})",
+    "selectAll": "Zaznacz wszystkie",
+    "selectNone": "Odznacz wszystkie",
+    "empty": "Nie znaleziono nieuzgodnionych transakcji w tym okresie.",
+    "select": "Zaznacz",
+    "date": "Data",
+    "payee": "Odbiorca",
+    "category": "Kategoria",
+    "amount": "Kwota",
+    "status": "Status",
+    "cancel": "Anuluj",
+    "finish": "Zakończ uzgadnianie",
+    "statusCleared": "Rozliczona",
+    "statusUnreconciled": "Nieuzgodniona",
+    "statusVoid": "Anulowana",
+    "statusReconciled": "Uzgodniona"
+  },
+  "complete": {
+    "heading": "Uzgadnianie zakończone",
+    "asOf": "Twoje konto zostało pomyślnie uzgodnione na dzień {date}.",
+    "existingPaymentBefore": "To konto ma zaplanowaną płatność, ",
+    "existingPaymentAfter": ". Czy chcesz zaktualizować jej kolejne wystąpienie do uzgodnionego salda ",
+    "existingPaymentEnd": "?",
+    "updatePayment": "Zaktualizuj kolejną płatność",
+    "noPaymentBefore": "Nie znaleziono zaplanowanej płatności dla tego konta. Czy chcesz utworzyć płatność dla uzgodnionego salda ",
+    "noPaymentEnd": "?",
+    "createPayment": "Utwórz zaplanowaną płatność",
+    "backToAccounts": "Powrót do kont",
+    "reconcileAnother": "Uzgodnij kolejne konto"
+  }
+}

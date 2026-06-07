@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useRef, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Security } from '@/types/investment';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -11,19 +12,22 @@ import { formatShareQuantity } from '@/lib/format';
 
 export type SecuritySortField = 'symbol' | 'name' | 'type' | 'shares' | 'exchange' | 'currency' | 'provider' | 'source';
 
-/** Format a security_prices.source value into a short human label. */
-function formatPriceSource(source: string | null | undefined): string {
-  if (!source) return '';
+/**
+ * Map a security_prices.source value to a short label key under
+ * `list.priceSource`, or null when the raw source should be shown as-is.
+ */
+function priceSourceLabelKey(source: string | null | undefined): string | null {
+  if (!source) return null;
   switch (source) {
-    case 'yahoo_finance': return 'Yahoo';
-    case 'msn_finance': return 'MSN';
-    case 'manual': return 'Manual';
+    case 'yahoo_finance': return 'list.priceSource.yahoo';
+    case 'msn_finance': return 'list.priceSource.msn';
+    case 'manual': return 'list.priceSource.manual';
     case 'buy':
     case 'sell':
     case 'reinvest':
     case 'transfer_in':
-    case 'transfer_out': return 'Txn';
-    default: return source;
+    case 'transfer_out': return 'list.priceSource.txn';
+    default: return null;
   }
 }
 
@@ -91,20 +95,27 @@ interface SecurityRowProps {
   defaultQuoteProvider: 'yahoo' | 'msn';
 }
 
-const formatSecurityType = (type: string | null, dense: boolean = false): string => {
+// Maps a securityType enum to the `list.type` label keys (full/short). Returns
+// null for an unknown type so the caller can fall back to showing the raw value.
+const SECURITY_TYPE_LABEL_KEYS: Record<string, { full: string; short: string }> = {
+  STOCK: { full: 'list.type.stock', short: 'list.type.stockShort' },
+  ETF: { full: 'list.type.etf', short: 'list.type.etfShort' },
+  MUTUAL_FUND: { full: 'list.type.mutualFund', short: 'list.type.mutualFundShort' },
+  BOND: { full: 'list.type.bond', short: 'list.type.bondShort' },
+  OPTION: { full: 'list.type.option', short: 'list.type.optionShort' },
+  CRYPTO: { full: 'list.type.crypto', short: 'list.type.cryptoShort' },
+  OTHER: { full: 'list.type.other', short: 'list.type.otherShort' },
+};
+
+const formatSecurityType = (
+  t: ReturnType<typeof useTranslations>,
+  type: string | null,
+  dense: boolean = false,
+): string => {
   if (!type) return '-';
-  const labels: Record<string, { full: string; short: string }> = {
-    STOCK: { full: 'Stock', short: 'Stk' },
-    ETF: { full: 'ETF', short: 'ETF' },
-    MUTUAL_FUND: { full: 'Mutual Fund', short: 'MF' },
-    BOND: { full: 'Bond', short: 'Bnd' },
-    OPTION: { full: 'Option', short: 'Opt' },
-    CRYPTO: { full: 'Crypto', short: 'Cry' },
-    OTHER: { full: 'Other', short: 'Oth' },
-  };
-  const label = labels[type];
+  const label = SECURITY_TYPE_LABEL_KEYS[type];
   if (!label) return type;
-  return dense ? label.short : label.full;
+  return t(dense ? label.short : label.full);
 };
 
 const SecurityRow = memo(function SecurityRow({
@@ -127,6 +138,7 @@ const SecurityRow = memo(function SecurityRow({
   index,
   defaultQuoteProvider,
 }: SecurityRowProps) {
+  const t = useTranslations('securities');
   const canDelete = !hasHoldings && !hasTransactions;
 
   const handleToggleFavourite = useCallback(
@@ -176,8 +188,8 @@ const SecurityRow = memo(function SecurityRow({
           onClick={handleToggleFavourite}
           onMouseDown={(e) => e.stopPropagation()}
           className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          title={security.isFavourite ? 'Remove from favourites' : 'Add to favourites'}
-          aria-label={security.isFavourite ? 'Remove from favourites' : 'Add to favourites'}
+          title={security.isFavourite ? t('list.removeFromFavourites') : t('list.addToFavourites')}
+          aria-label={security.isFavourite ? t('list.removeFromFavourites') : t('list.addToFavourites')}
           aria-pressed={security.isFavourite}
         >
           <svg
@@ -202,13 +214,13 @@ const SecurityRow = memo(function SecurityRow({
       </td>
       <td className={`${cellPadding} whitespace-nowrap`}>
         <span className="text-sm text-gray-500 dark:text-gray-400">
-          {formatSecurityType(security.securityType, density === 'dense')}
+          {formatSecurityType(t, security.securityType, density === 'dense')}
         </span>
       </td>
       <td className={`${cellPadding} whitespace-nowrap text-right`}>
         <span
           className="text-sm text-gray-900 dark:text-gray-100"
-          title="Current shares held across all accounts"
+          title={t('list.currentSharesHeld')}
         >
           {formatShareQuantity(shares)}
         </span>
@@ -240,8 +252,8 @@ const SecurityRow = memo(function SecurityRow({
                   }`}
                   title={
                     isOverride
-                      ? 'Per-security provider override'
-                      : 'Inherited from your default Quote Provider preference'
+                      ? t('list.providerOverride')
+                      : t('list.providerInherited')
                   }
                 >
                   {effective === 'msn' ? 'MSN' : 'Yahoo'}
@@ -255,7 +267,10 @@ const SecurityRow = memo(function SecurityRow({
                 className={`inline-flex items-center rounded text-xs font-medium px-2 py-0.5 ${priceSourceBadgeClass(security.lastPriceSource)}`}
                 title={security.lastPriceSource}
               >
-                {formatPriceSource(security.lastPriceSource)}
+                {(() => {
+                  const key = priceSourceLabelKey(security.lastPriceSource);
+                  return key ? t(key) : security.lastPriceSource;
+                })()}
               </span>
             ) : (
               <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
@@ -267,11 +282,11 @@ const SecurityRow = memo(function SecurityRow({
       <td className={`${cellPadding} whitespace-nowrap hidden sm:table-cell`}>
         {security.isActive ? (
           <span className={`inline-flex items-center rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 ${density === 'dense' ? 'px-1.5 py-0.5' : 'px-2.5 py-0.5'}`}>
-            {density === 'dense' ? 'Act' : 'Active'}
+            {density === 'dense' ? t('list.status.activeShort') : t('list.status.active')}
           </span>
         ) : (
           <span className={`inline-flex items-center rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 ${density === 'dense' ? 'px-1.5 py-0.5' : 'px-2.5 py-0.5'}`}>
-            {density === 'dense' ? 'Ina' : 'Inactive'}
+            {density === 'dense' ? t('list.status.inactiveShort') : t('list.status.inactive')}
           </span>
         )}
       </td>
@@ -285,7 +300,7 @@ const SecurityRow = memo(function SecurityRow({
               onClick={handleViewHistory}
               className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
             >
-              {density === 'dense' ? '☰' : 'History'}
+              {density === 'dense' ? '☰' : t('list.actions.history')}
             </Button>
           )}
           {onViewPrices && (
@@ -295,7 +310,7 @@ const SecurityRow = memo(function SecurityRow({
               onClick={handleViewPrices}
               className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
             >
-              {density === 'dense' ? '$' : 'Prices'}
+              {density === 'dense' ? '$' : t('list.actions.prices')}
             </Button>
           )}
           <Button
@@ -304,7 +319,7 @@ const SecurityRow = memo(function SecurityRow({
             onClick={handleEdit}
             className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
           >
-            {density === 'dense' ? '✎' : 'Edit'}
+            {density === 'dense' ? '✎' : t('list.actions.edit')}
           </Button>
           {!hasHoldings && (
             <Button
@@ -317,7 +332,7 @@ const SecurityRow = memo(function SecurityRow({
             >
               {density === 'dense'
                 ? (security.isActive ? '⊘' : '✓')
-                : (security.isActive ? 'Deactivate' : 'Activate')}
+                : (security.isActive ? t('list.actions.deactivate') : t('list.actions.activate'))}
             </Button>
           )}
           {canDelete && onDelete && (
@@ -327,7 +342,7 @@ const SecurityRow = memo(function SecurityRow({
               onClick={handleDelete}
               className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
             >
-              {density === 'dense' ? '\u2715' : 'Delete'}
+              {density === 'dense' ? '\u2715' : t('list.actions.delete')}
             </Button>
           )}
         </div>
@@ -352,6 +367,7 @@ export function SecurityList({
   sortDirection: propSortDirection,
   onSort,
 }: SecurityListProps) {
+  const t = useTranslations('securities');
   const [localDensity, setLocalDensity] = useState<DensityLevel>('normal');
   const [localSortField, setLocalSortField] = useState<SecuritySortField>('symbol');
   const [localSortDirection, setLocalSortDirection] = useState<SortDirection>('asc');
@@ -471,10 +487,10 @@ export function SecurityList({
           />
         </svg>
         <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-          No securities
+          {t('list.empty.title')}
         </h3>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Get started by adding your first security.
+          {t('list.empty.description')}
         </p>
       </div>
     );
@@ -487,12 +503,12 @@ export function SecurityList({
         <button
           onClick={cycleDensity}
           className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-          title="Toggle row density"
+          title={t('list.toggleDensity')}
         >
           <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-          {density === 'normal' ? 'Normal' : density === 'compact' ? 'Compact' : 'Dense'}
+          {density === 'normal' ? t('list.density.normal') : density === 'compact' ? t('list.density.compact') : t('list.density.dense')}
         </button>
       </div>
       <div className="overflow-x-auto">
@@ -500,31 +516,31 @@ export function SecurityList({
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               <th className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
-                <span className="sr-only">Favourite</span>
+                <span className="sr-only">{t('list.favourite')}</span>
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
                 onClick={() => handleSort('symbol')}
               >
-                Symbol<SortIcon field="symbol" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.headers.symbol')}<SortIcon field="symbol" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
                 onClick={() => handleSort('name')}
               >
-                Name<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.headers.name')}<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
                 onClick={() => handleSort('type')}
               >
-                Type<SortIcon field="type" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.headers.type')}<SortIcon field="type" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
                 onClick={() => handleSort('shares')}
               >
-                Shares<SortIcon field="shares" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.headers.shares')}<SortIcon field="shares" sortField={sortField} sortDirection={sortDirection} />
               </th>
               {density === 'normal' && (
                 <>
@@ -532,35 +548,35 @@ export function SecurityList({
                     className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden sm:table-cell`}
                     onClick={() => handleSort('exchange')}
                   >
-                    Exchange<SortIcon field="exchange" sortField={sortField} sortDirection={sortDirection} />
+                    {t('list.headers.exchange')}<SortIcon field="exchange" sortField={sortField} sortDirection={sortDirection} />
                   </th>
                   <th
                     className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden sm:table-cell`}
                     onClick={() => handleSort('currency')}
                   >
-                    Currency<SortIcon field="currency" sortField={sortField} sortDirection={sortDirection} />
+                    {t('list.headers.currency')}<SortIcon field="currency" sortField={sortField} sortDirection={sortDirection} />
                   </th>
                   <th
                     className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden md:table-cell`}
                     onClick={() => handleSort('provider')}
-                    title="Per-security quote provider override"
+                    title={t('list.providerHeaderTitle')}
                   >
-                    Provider<SortIcon field="provider" sortField={sortField} sortDirection={sortDirection} />
+                    {t('list.headers.provider')}<SortIcon field="provider" sortField={sortField} sortDirection={sortDirection} />
                   </th>
                   <th
                     className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden md:table-cell`}
                     onClick={() => handleSort('source')}
-                    title="Source of the most recent price"
+                    title={t('list.sourceHeaderTitle')}
                   >
-                    Source<SortIcon field="source" sortField={sortField} sortDirection={sortDirection} />
+                    {t('list.headers.source')}<SortIcon field="source" sortField={sortField} sortDirection={sortDirection} />
                   </th>
                 </>
               )}
               <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}>
-                Status
+                {t('list.headers.status')}
               </th>
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell sticky right-0 bg-gray-50 dark:bg-gray-800`}>
-                Actions
+                {t('list.headers.actions')}
               </th>
             </tr>
           </thead>
@@ -613,7 +629,7 @@ export function SecurityList({
                   <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
-                  Transaction History
+                  {t('list.context.transactionHistory')}
                 </button>
               )}
               {onViewPrices && (
@@ -624,7 +640,7 @@ export function SecurityList({
                   <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  View Prices
+                  {t('list.context.viewPrices')}
                 </button>
               )}
               <button
@@ -634,7 +650,7 @@ export function SecurityList({
                 <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
-                Edit Security
+                {t('list.context.editSecurity')}
               </button>
               {!contextHasHoldings && (
                 <button
@@ -654,7 +670,7 @@ export function SecurityList({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   )}
-                  {contextSecurity.isActive ? 'Deactivate' : 'Activate'}
+                  {contextSecurity.isActive ? t('list.actions.deactivate') : t('list.actions.activate')}
                 </button>
               )}
               {contextCanDelete && onDelete && (
@@ -665,7 +681,7 @@ export function SecurityList({
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                  Delete
+                  {t('list.actions.delete')}
                 </button>
               )}
             </div>

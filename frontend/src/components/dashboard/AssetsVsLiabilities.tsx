@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { MonthlyNetWorth } from '@/types/net-worth';
@@ -41,6 +42,7 @@ function AssetsTooltip({
 }
 
 export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProps) {
+  const t = useTranslations('dashboard');
   const router = useRouter();
   const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
 
@@ -51,10 +53,10 @@ export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProp
   const chartData = useMemo(() => {
     if (!latest) return [];
     return [
-      { name: 'Assets', value: Math.round(latest.assets), colour: ASSET_COLOUR },
-      { name: 'Liabilities', value: Math.round(latest.liabilities), colour: LIABILITY_COLOUR },
+      { key: 'assets', name: t('assetsVsLiabilities.assets'), value: Math.round(latest.assets), colour: ASSET_COLOUR },
+      { key: 'liabilities', name: t('assetsVsLiabilities.liabilities'), value: Math.round(latest.liabilities), colour: LIABILITY_COLOUR },
     ].filter((d) => d.value > 0);
-  }, [latest]);
+  }, [latest, t]);
 
   const netWorth = latest ? Math.round(latest.netWorth) : 0;
   const total = chartData.reduce((sum, item) => sum + item.value, 0);
@@ -63,7 +65,7 @@ export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProp
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[500px]">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Assets vs Liabilities
+          {t('assetsVsLiabilities.title')}
         </h3>
         <div className="h-64 flex items-center justify-center">
           <div className="animate-pulse w-48 h-48 rounded-full bg-gray-200 dark:bg-gray-700" />
@@ -76,10 +78,10 @@ export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProp
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[500px]">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Assets vs Liabilities
+          {t('assetsVsLiabilities.title')}
         </h3>
         <p className="text-gray-500 dark:text-gray-400 text-sm">
-          No net worth data available yet.
+          {t('assetsVsLiabilities.empty')}
         </p>
       </div>
     );
@@ -92,9 +94,9 @@ export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProp
           onClick={() => router.push('/reports/net-worth')}
           className="text-lg font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
         >
-          Assets vs Liabilities
+          {t('assetsVsLiabilities.title')}
         </button>
-        <span className="text-sm text-gray-500 dark:text-gray-400">Current</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">{t('assetsVsLiabilities.current')}</span>
       </div>
       <div className="flex-1 min-h-[16rem]">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -109,7 +111,7 @@ export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProp
               dataKey="value"
             >
               {chartData.map((entry) => (
-                <Cell key={entry.name} fill={entry.colour} />
+                <Cell key={entry.key} fill={entry.colour} />
               ))}
             </Pie>
             <Tooltip content={<AssetsTooltip total={total} formatCurrency={formatCurrency} />} />
@@ -118,7 +120,7 @@ export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProp
       </div>
       <div className="mt-2 flex justify-center gap-4">
         {chartData.map((item) => (
-          <div key={item.name} className="flex items-center gap-2 text-sm">
+          <div key={item.key} className="flex items-center gap-2 text-sm">
             <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.colour }} />
             <span className="text-gray-600 dark:text-gray-400">{item.name}</span>
             <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(item.value)}</span>
@@ -126,7 +128,7 @@ export function AssetsVsLiabilities({ data, isLoading }: AssetsVsLiabilitiesProp
         ))}
       </div>
       <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-center flex-shrink-0">
-        <div className="text-sm text-gray-500 dark:text-gray-400">Net Worth</div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">{t('assetsVsLiabilities.netWorth')}</div>
         <div className={`font-semibold ${netWorth >= 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-600 dark:text-red-400'}`}>
           {formatCurrency(netWorth)}
         </div>

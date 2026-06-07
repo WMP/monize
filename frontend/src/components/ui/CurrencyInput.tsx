@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo, forwardRef, InputHTMLAttributes, FocusEvent } from 'react';
+import { useTranslations } from 'next-intl';
 import { CalculatorIcon } from '@heroicons/react/24/outline';
 import { cn, inputBaseClasses, inputErrorClasses } from '@/lib/utils';
 import { formatAmountWithCommas, formatAmount, parseAmount, filterCurrencyInput, filterCalculatorInput, hasCalculatorOperators, evaluateExpression } from '@/lib/format';
 import { Modal } from './Modal';
 
 const CALCULATOR_OPERATORS = [
-  { label: '+', value: '+', ariaLabel: 'Add plus operator' },
-  { label: '\u2212', value: '-', ariaLabel: 'Add minus operator' },
-  { label: '\u00D7', value: '*', ariaLabel: 'Add multiply operator' },
-  { label: '\u00F7', value: '/', ariaLabel: 'Add divide operator' },
+  { label: '+', value: '+', ariaLabelKey: 'currencyInput.addPlus' },
+  { label: '\u2212', value: '-', ariaLabelKey: 'currencyInput.addMinus' },
+  { label: '\u00D7', value: '*', ariaLabelKey: 'currencyInput.addMultiply' },
+  { label: '\u00F7', value: '/', ariaLabelKey: 'currencyInput.addDivide' },
 ] as const;
 
 interface CurrencyInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'type'> {
@@ -54,6 +55,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     },
     ref
   ) => {
+    const t = useTranslations('ui');
     // Local display state - allows free typing
     const [displayValue, setDisplayValue] = useState(() => formatAmountWithCommas(value));
     const [isFocused, setIsFocused] = useState(false);
@@ -288,7 +290,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
             <button
               type="button"
               tabIndex={-1}
-              aria-label="Open calculator"
+              aria-label={t('currencyInput.openCalculator')}
               disabled={disabled}
               onClick={openCalculator}
               className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50 disabled:pointer-events-none"
@@ -304,7 +306,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
         {/* Calculator modal */}
         <Modal isOpen={calcOpen} onClose={() => setCalcOpen(false)} maxWidth="sm" pushHistory>
           <div className="p-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Calculator</h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">{t('currencyInput.calculator')}</h3>
 
             <input
               ref={calcInputRef}
@@ -314,17 +316,17 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
               value={calcExpression}
               onChange={handleCalcExpressionChange}
               onKeyDown={(e) => { if (e.key === 'Enter') applyCalculation(); }}
-              placeholder="e.g. 100*1.13"
+              placeholder={t('currencyInput.calculatorPlaceholder')}
               className={cn(inputBaseClasses, 'text-lg font-mono mb-3')}
             />
 
             <div className="flex items-center gap-1.5 mb-4">
-              {CALCULATOR_OPERATORS.map(({ label: opLabel, value: opValue, ariaLabel }) => (
+              {CALCULATOR_OPERATORS.map(({ label: opLabel, value: opValue, ariaLabelKey }) => (
                 <button
                   key={opValue}
                   type="button"
                   tabIndex={-1}
-                  aria-label={ariaLabel}
+                  aria-label={t(ariaLabelKey)}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     insertOperator(opValue);
@@ -348,7 +350,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
                 onClick={() => setCalcOpen(false)}
                 className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
               >
-                Cancel
+                {t('currencyInput.cancel')}
               </button>
               <button
                 type="button"
@@ -356,7 +358,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
                 disabled={!calcPreview}
                 className="px-4 py-2 text-sm rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Apply
+                {t('currencyInput.apply')}
               </button>
             </div>
           </div>

@@ -1,14 +1,16 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 interface BudgetHealthGaugeProps {
   score: number;
 }
 
-function getScoreLabel(score: number): string {
-  if (score >= 90) return 'Excellent';
-  if (score >= 70) return 'Good';
-  if (score >= 50) return 'Needs Attention';
-  return 'Off Track';
+function getScoreLabel(score: number, t: (key: string) => string): string {
+  if (score >= 90) return t('healthGauge.excellent');
+  if (score >= 70) return t('healthGauge.good');
+  if (score >= 50) return t('healthGauge.needsAttention');
+  return t('healthGauge.offTrack');
 }
 
 function getScoreColor(score: number): {
@@ -39,8 +41,9 @@ function getScoreColor(score: number): {
 }
 
 export function BudgetHealthGauge({ score }: BudgetHealthGaugeProps) {
+  const t = useTranslations('budgets');
   const clampedScore = Math.min(Math.max(Math.round(score), 0), 100);
-  const label = getScoreLabel(clampedScore);
+  const label = getScoreLabel(clampedScore, t);
   const colors = getScoreColor(clampedScore);
 
   // SVG circle math
@@ -51,7 +54,7 @@ export function BudgetHealthGauge({ score }: BudgetHealthGaugeProps) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-        Health Score
+        {t('healthGauge.title')}
       </h2>
       <div className="flex flex-col items-center">
         <div className="relative w-36 h-36">

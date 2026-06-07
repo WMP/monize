@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { AssistantMarkdown } from './AssistantMarkdown';
 import { ResultChart } from './ResultChart';
 
@@ -33,21 +34,26 @@ interface ChatMessageProps {
   error?: string;
 }
 
-const TOOL_LABELS: Record<string, string> = {
-  query_transactions: 'Transactions',
-  get_account_balances: 'Account Balances',
-  get_spending_by_category: 'Spending by Category',
-  get_income_summary: 'Income Summary',
-  get_net_worth_history: 'Net Worth History',
-  compare_periods: 'Period Comparison',
-  get_budget_status: 'Budget Status',
-  calculate: 'Calculation',
-  render_chart: 'Chart',
-};
+// Tool names that have a localized label under the `tools.labels` namespace.
+// Unknown tool names fall back to the raw name.
+const KNOWN_TOOL_NAMES = new Set([
+  'query_transactions',
+  'get_account_balances',
+  'get_spending_by_category',
+  'get_income_summary',
+  'get_net_worth_history',
+  'compare_periods',
+  'get_budget_status',
+  'calculate',
+  'render_chart',
+]);
 
 function ToolDetails({ tool }: { tool: ToolInfo }) {
+  const t = useTranslations('ai');
   const [expanded, setExpanded] = useState(false);
-  const label = TOOL_LABELS[tool.name] || tool.name;
+  const label = KNOWN_TOOL_NAMES.has(tool.name)
+    ? t(`tools.labels.${tool.name}`)
+    : tool.name;
   const hasInput = tool.input && Object.keys(tool.input).length > 0;
   const hasSummary = !!tool.summary;
   const hasDetails = hasInput || hasSummary;
@@ -83,7 +89,7 @@ function ToolDetails({ tool }: { tool: ToolInfo }) {
               viewBox="0 0 24 24"
               strokeWidth={2}
               stroke="currentColor"
-              aria-label="Tool failed"
+              aria-label={t('tools.failed')}
               role="img"
             >
               <path
@@ -99,7 +105,7 @@ function ToolDetails({ tool }: { tool: ToolInfo }) {
               viewBox="0 0 24 24"
               strokeWidth={2}
               stroke="currentColor"
-              aria-label="Tool succeeded"
+              aria-label={t('tools.succeeded')}
               role="img"
             >
               <path
@@ -131,7 +137,7 @@ function ToolDetails({ tool }: { tool: ToolInfo }) {
         <div className={detailsClasses}>
           {hasInput && (
             <div>
-              <div className={labelClasses}>Input</div>
+              <div className={labelClasses}>{t('tools.input')}</div>
               <pre className="text-[11px] text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words font-mono">
                 {JSON.stringify(tool.input, null, 2)}
               </pre>
@@ -139,7 +145,7 @@ function ToolDetails({ tool }: { tool: ToolInfo }) {
           )}
           {hasSummary && (
             <div>
-              <div className={labelClasses}>Result</div>
+              <div className={labelClasses}>{t('tools.result')}</div>
               <p className="text-[11px] text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words">
                 {tool.summary}
               </p>

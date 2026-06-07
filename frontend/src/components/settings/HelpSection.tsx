@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import {
   ArrowTopRightOnSquareIcon,
   BookOpenIcon,
@@ -9,8 +10,8 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface HelpLink {
-  readonly label: string;
-  readonly description: string;
+  readonly labelKey: string;
+  readonly descriptionKey: string;
   readonly href: string;
   readonly Icon: typeof CodeBracketIcon;
 }
@@ -19,42 +20,43 @@ const REPO_URL = 'https://github.com/kenlasko/monize';
 
 const HELP_LINKS: readonly HelpLink[] = [
   {
-    label: 'GitHub',
-    description: 'View the source code and star the project.',
+    labelKey: 'help.github',
+    descriptionKey: 'help.githubDescription',
     href: REPO_URL,
     Icon: CodeBracketIcon,
   },
   {
-    label: 'Open an Issue',
-    description: 'Report a bug or request a feature.',
+    labelKey: 'help.openIssue',
+    descriptionKey: 'help.openIssueDescription',
     href: `${REPO_URL}/issues/new`,
     Icon: ExclamationTriangleIcon,
   },
   {
-    label: 'Discussions',
-    description: 'Ask questions and share ideas with the community.',
+    labelKey: 'help.discussions',
+    descriptionKey: 'help.discussionsDescription',
     href: `${REPO_URL}/discussions`,
     Icon: ChatBubbleLeftRightIcon,
   },
   {
-    label: 'Wiki',
-    description: 'Browse guides and documentation.',
+    labelKey: 'help.wiki',
+    descriptionKey: 'help.wikiDescription',
     href: `${REPO_URL}/wiki`,
     Icon: BookOpenIcon,
   },
 ] as const;
 
 export function HelpSection() {
+  const t = useTranslations('settings');
   return (
     <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-        Help & Support
+        {t('help.title')}
       </h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        Find documentation, report issues, or join the conversation.
+        {t('help.description')}
       </p>
       <ul className="space-y-2">
-        {HELP_LINKS.map(({ label, description, href, Icon }) => (
+        {HELP_LINKS.map(({ labelKey, descriptionKey, href, Icon }) => (
           <li key={href}>
             <a
               href={href}
@@ -65,10 +67,10 @@ export function HelpSection() {
               <Icon className="h-6 w-6 shrink-0 text-gray-400 dark:text-gray-500" />
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {label}
+                  {t(labelKey)}
                 </span>
                 <span className="block text-sm text-gray-500 dark:text-gray-400">
-                  {description}
+                  {t(descriptionKey)}
                 </span>
               </span>
               <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />

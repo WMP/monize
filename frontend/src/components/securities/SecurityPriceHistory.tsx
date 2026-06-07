@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -16,18 +17,20 @@ interface SecurityPriceHistoryProps {
   onClose: () => void;
 }
 
-function getSourceLabel(source: string | null): string {
-  if (!source) return 'Unknown';
+// Maps a price source to a `priceHistory.source` label key, or null when the
+// raw source value should be shown as-is.
+function sourceLabelKey(source: string | null): string | null {
+  if (!source) return 'priceHistory.source.unknown';
   switch (source) {
-    case 'yahoo_finance': return 'Yahoo';
-    case 'msn_finance': return 'MSN';
-    case 'manual': return 'Manual';
-    case 'buy': return 'Buy';
-    case 'sell': return 'Sell';
-    case 'reinvest': return 'Reinvest';
-    case 'transfer_in': return 'Transfer In';
-    case 'transfer_out': return 'Transfer Out';
-    default: return source;
+    case 'yahoo_finance': return 'priceHistory.source.yahoo';
+    case 'msn_finance': return 'priceHistory.source.msn';
+    case 'manual': return 'priceHistory.source.manual';
+    case 'buy': return 'priceHistory.source.buy';
+    case 'sell': return 'priceHistory.source.sell';
+    case 'reinvest': return 'priceHistory.source.reinvest';
+    case 'transfer_in': return 'priceHistory.source.transferIn';
+    case 'transfer_out': return 'priceHistory.source.transferOut';
+    default: return null;
   }
 }
 
@@ -54,6 +57,7 @@ function formatPrice(value: number | null): string {
 }
 
 export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistoryProps) {
+  const t = useTranslations('securities');
   const { formatDate } = useDateFormat();
   const [prices, setPrices] = useState<SecurityPrice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,11 +72,11 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
       const data = await investmentsApi.getSecurityPrices(security.id, 9999);
       setPrices(data);
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to load price history'));
+      toast.error(getErrorMessage(error, t('priceHistory.toast.loadFailed')));
     } finally {
       setIsLoading(false);
     }
-  }, [security.id]);
+  }, [security.id, t]);
 
   useEffect(() => {
     loadPrices();
@@ -81,39 +85,39 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
   const handleAdd = useCallback(async (data: CreateSecurityPriceData) => {
     try {
       await investmentsApi.createSecurityPrice(security.id, data);
-      toast.success('Price added');
+      toast.success(t('priceHistory.toast.added'));
       setShowAddForm(false);
       loadPrices();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to add price'));
+      toast.error(getErrorMessage(error, t('priceHistory.toast.addFailed')));
       throw error;
     }
-  }, [security.id, loadPrices]);
+  }, [security.id, loadPrices, t]);
 
   const handleEdit = useCallback(async (data: CreateSecurityPriceData) => {
     if (!editingPrice) return;
     try {
       await investmentsApi.updateSecurityPrice(security.id, editingPrice.id, data);
-      toast.success('Price updated');
+      toast.success(t('priceHistory.toast.updated'));
       setEditingPrice(undefined);
       loadPrices();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to update price'));
+      toast.error(getErrorMessage(error, t('priceHistory.toast.updateFailed')));
       throw error;
     }
-  }, [security.id, editingPrice, loadPrices]);
+  }, [security.id, editingPrice, loadPrices, t]);
 
   const handleDelete = useCallback(async () => {
     if (!deletingPrice) return;
     try {
       await investmentsApi.deleteSecurityPrice(security.id, deletingPrice.id);
-      toast.success('Price deleted');
+      toast.success(t('priceHistory.toast.deleted'));
       setDeletingPrice(undefined);
       loadPrices();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to delete price'));
+      toast.error(getErrorMessage(error, t('priceHistory.toast.deleteFailed')));
     }
-  }, [security.id, deletingPrice, loadPrices]);
+  }, [security.id, deletingPrice, loadPrices, t]);
 
   const handleForceUpdate = useCallback(async () => {
     setIsUpdating(true);
@@ -122,19 +126,23 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
       if (result.success) {
         toast.success(
           result.pricesLoaded
-            ? `Updated ${result.pricesLoaded} price${result.pricesLoaded !== 1 ? 's' : ''} for ${result.symbol}`
-            : `No prices found for ${result.symbol}`,
+            ? t('priceHistory.toast.updatedCount', {
+                count: result.pricesLoaded,
+                plural: result.pricesLoaded !== 1 ? 's' : '',
+                symbol: result.symbol,
+              })
+            : t('priceHistory.toast.noPricesFound', { symbol: result.symbol }),
         );
         await loadPrices();
       } else {
-        toast.error(result.error || `Failed to update prices for ${result.symbol}`);
+        toast.error(result.error || t('priceHistory.toast.updatePricesFailedFor', { symbol: result.symbol }));
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to update prices'));
+      toast.error(getErrorMessage(error, t('priceHistory.toast.updatePricesFailed')));
     } finally {
       setIsUpdating(false);
     }
-  }, [security.id, loadPrices]);
+  }, [security.id, loadPrices, t]);
 
   const isFormOpen = showAddForm || !!editingPrice;
 
@@ -142,7 +150,7 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          {security.symbol} - Price History
+          {t('priceHistory.heading', { symbol: security.symbol })}
         </h2>
         <div className="flex gap-2">
           {!isFormOpen && (
@@ -152,17 +160,17 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
                 onClick={handleForceUpdate}
                 size="sm"
                 isLoading={isUpdating}
-                title="Re-fetch historical prices for the entire period you've held this security"
+                title={t('priceHistory.forceUpdateTitle')}
               >
-                Force Update Prices
+                {t('priceHistory.forceUpdate')}
               </Button>
               <Button onClick={() => setShowAddForm(true)} size="sm" disabled={isUpdating}>
-                + Add Price
+                {t('priceHistory.addPrice')}
               </Button>
             </>
           )}
           <Button variant="outline" onClick={onClose} size="sm">
-            Close
+            {t('priceHistory.close')}
           </Button>
         </div>
       </div>
@@ -170,7 +178,7 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
       {/* Add/Edit Form */}
       {showAddForm && (
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Add Price</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('priceHistory.addPriceHeading')}</h3>
           <SecurityPriceForm
             onSubmit={handleAdd}
             onCancel={() => setShowAddForm(false)}
@@ -180,7 +188,7 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
 
       {editingPrice && (
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Edit Price</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('priceHistory.editPriceHeading')}</h3>
           <SecurityPriceForm
             price={editingPrice}
             onSubmit={handleEdit}
@@ -191,24 +199,24 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
 
       {/* Price Table */}
       {isLoading ? (
-        <LoadingSpinner text="Loading prices..." />
+        <LoadingSpinner text={t('priceHistory.loadingPrices')} />
       ) : prices.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-          No price history available
+          {t('priceHistory.noHistory')}
         </p>
       ) : (
         <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Close</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">Open</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">High</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">Low</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">Volume</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Source</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('priceHistory.headers.date')}</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('priceHistory.headers.close')}</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">{t('priceHistory.headers.open')}</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">{t('priceHistory.headers.high')}</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">{t('priceHistory.headers.low')}</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell">{t('priceHistory.headers.volume')}</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('priceHistory.headers.source')}</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{t('priceHistory.headers.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -234,7 +242,10 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getSourceColor(price.source)}`}>
-                      {getSourceLabel(price.source)}
+                      {(() => {
+                        const key = sourceLabelKey(price.source);
+                        return key ? t(key) : price.source;
+                      })()}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">
@@ -243,13 +254,13 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
                         onClick={() => { setShowAddForm(false); setEditingPrice(price); }}
                         className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs"
                       >
-                        Edit
+                        {t('priceHistory.edit')}
                       </button>
                       <button
                         onClick={() => setDeletingPrice(price)}
                         className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-xs"
                       >
-                        Delete
+                        {t('priceHistory.delete')}
                       </button>
                     </div>
                   </td>
@@ -262,9 +273,9 @@ export function SecurityPriceHistory({ security, onClose }: SecurityPriceHistory
 
       <ConfirmDialog
         isOpen={!!deletingPrice}
-        title="Delete Price"
-        message={`Delete price entry for ${deletingPrice ? formatDate(deletingPrice.priceDate) : ''}?`}
-        confirmLabel="Delete"
+        title={t('priceHistory.deleteTitle')}
+        message={t('priceHistory.deleteMessage', { date: deletingPrice ? formatDate(deletingPrice.priceDate) : '' })}
+        confirmLabel={t('priceHistory.deleteConfirm')}
         onConfirm={handleDelete}
         onCancel={() => setDeletingPrice(undefined)}
       />

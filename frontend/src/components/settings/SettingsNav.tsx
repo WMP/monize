@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/20/solid';
 
 export interface SettingsSection {
   readonly id: string;
-  readonly label: string;
+  /** Key into the `settings` message namespace, resolved at render time */
+  readonly labelKey: string;
   /** If set, renders as a navigation link instead of a scroll-to button */
   readonly href?: string;
   /** Visual treatment for the nav item (e.g. 'danger' renders in red) */
@@ -26,6 +28,7 @@ export function SettingsNav({
   onSectionClick,
   variant = 'vertical',
 }: SettingsNavProps) {
+  const t = useTranslations('settings');
   const activeRef = useRef<HTMLButtonElement | HTMLAnchorElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -55,7 +58,7 @@ export function SettingsNav({
         ref={scrollContainerRef}
         className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide"
         role="tablist"
-        aria-label="Settings sections"
+        aria-label={t('nav.ariaLabel')}
       >
         {sections.map((section) => {
           const isActive = section.id === activeSection;
@@ -77,7 +80,7 @@ export function SettingsNav({
                 aria-selected={isActive}
               >
                 <span className="inline-flex items-center">
-                  {section.label}
+                  {t(section.labelKey)}
                 </span>
                 <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
               </Link>
@@ -105,7 +108,7 @@ export function SettingsNav({
               role="tab"
               aria-selected={isActive}
             >
-              {section.label}
+              {t(section.labelKey)}
             </button>
           );
         })}
@@ -117,7 +120,7 @@ export function SettingsNav({
   return (
     <nav
       className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-2"
-      aria-label="Settings sections"
+      aria-label={t('nav.ariaLabel')}
     >
       <ul className="space-y-0.5">
         {sections.map((section) => {
@@ -138,7 +141,7 @@ export function SettingsNav({
                   `}
                 >
                   <span className="inline-flex items-center">
-                    {section.label}
+                    {t(section.labelKey)}
                   </span>
                   <ArrowTopRightOnSquareIcon className="h-4 w-4 opacity-50" />
                 </Link>
@@ -165,7 +168,7 @@ export function SettingsNav({
                   }
                 `}
               >
-                {section.label}
+                {t(section.labelKey)}
               </button>
             </li>
           );

@@ -1,6 +1,7 @@
 'use client';
 
 import { format, parseISO } from 'date-fns';
+import { useTranslations } from 'next-intl';
 import type { BudgetPeriod } from '@/types/budget';
 
 interface BudgetPeriodSelectorProps {
@@ -9,11 +10,14 @@ interface BudgetPeriodSelectorProps {
   onPeriodChange: (periodId: string | null) => void;
 }
 
-function formatPeriodLabel(period: BudgetPeriod): string {
+function formatPeriodLabel(
+  period: BudgetPeriod,
+  t: (key: string, values?: Record<string, string | number | Date>) => string,
+): string {
   const start = parseISO(period.periodStart);
   const label = format(start, 'MMM yyyy');
-  if (period.status === 'OPEN') return `${label} (Current)`;
-  if (period.status === 'PROJECTED') return `${label} (Projected)`;
+  if (period.status === 'OPEN') return t('periodSelector.current', { label });
+  if (period.status === 'PROJECTED') return t('periodSelector.projected', { label });
   return label;
 }
 
@@ -22,6 +26,7 @@ export function BudgetPeriodSelector({
   selectedPeriodId,
   onPeriodChange,
 }: BudgetPeriodSelectorProps) {
+  const t = useTranslations('budgets');
   if (periods.length <= 1) return null;
 
   return (
@@ -30,7 +35,7 @@ export function BudgetPeriodSelector({
         htmlFor="period-selector"
         className="text-sm text-gray-600 dark:text-gray-400"
       >
-        Period:
+        {t('periodSelector.period')}
       </label>
       <select
         id="period-selector"
@@ -40,10 +45,10 @@ export function BudgetPeriodSelector({
         }
         className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
       >
-        <option value="">Current Period</option>
+        <option value="">{t('periodSelector.currentPeriod')}</option>
         {periods.map((period) => (
           <option key={period.id} value={period.id}>
-            {formatPeriodLabel(period)}
+            {formatPeriodLabel(period, t)}
           </option>
         ))}
       </select>

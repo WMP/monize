@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, MutableRefObject } from 'react';
+import { useState, useCallback, useMemo, MutableRefObject } from 'react';
+import { useTranslations } from 'next-intl';
 import { useForm, Resolver } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,14 +18,17 @@ import { FormActions } from '@/components/ui/FormActions';
 
 const logger = createLogger('CurrencyForm');
 
-const currencySchema = z.object({
-  code: z.string().length(3, 'Currency code must be exactly 3 characters'),
-  name: z.string().min(1, 'Name is required').max(100, 'Name must be 100 characters or less'),
-  symbol: z.string().min(1, 'Symbol is required').max(10, 'Symbol must be 10 characters or less'),
-  decimalPlaces: z.coerce.number().int().min(0).max(4).default(2),
-});
+type Translate = (key: string) => string;
 
-type CurrencyFormData = z.infer<typeof currencySchema>;
+const buildCurrencySchema = (t: Translate) =>
+  z.object({
+    code: z.string().length(3, t('form.validation.codeLength')),
+    name: z.string().min(1, t('form.validation.nameRequired')).max(100, t('form.validation.nameMax')),
+    symbol: z.string().min(1, t('form.validation.symbolRequired')).max(10, t('form.validation.symbolMax')),
+    decimalPlaces: z.coerce.number().int().min(0).max(4).default(2),
+  });
+
+type CurrencyFormData = z.infer<ReturnType<typeof buildCurrencySchema>>;
 
 interface CurrencyFormProps {
   currency?: CurrencyInfo;
@@ -35,8 +39,11 @@ interface CurrencyFormProps {
 }
 
 export function CurrencyForm({ currency, onSubmit, onCancel, onDirtyChange, submitRef }: CurrencyFormProps) {
+  const t = useTranslations('currencies');
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [hasLookupResult, setHasLookupResult] = useState(false);
+
+  const currencySchema = useMemo(() => buildCurrencySchema(t), [t]);
 
   const {
     register,
@@ -63,7 +70,7 @@ export function CurrencyForm({ currency, onSubmit, onCancel, onDirtyChange, subm
     const query = codeQuery.length >= 2 ? codeQuery : nameQuery;
 
     if (query.length < 2) {
-      toast.error('Enter a currency code or name (at least 2 characters) to lookup');
+      toast.error(t('form.toast.lookupTooShort'));
       return;
     }
 
@@ -77,14 +84,18 @@ export function CurrencyForm({ currency, onSubmit, onCancel, onDirtyChange, subm
         setValue('decimalPlaces', result.decimalPlaces);
         setHasLookupResult(true);
 
-        const details = [`Code: ${result.code}`, `Name: ${result.name}`, `Symbol: ${result.symbol}`];
-        toast.success(`Found: ${details.join(', ')}`);
+        const details = [
+          t('form.toast.lookupCode', { code: result.code }),
+          t('form.toast.lookupName', { name: result.name }),
+          t('form.toast.lookupSymbol', { symbol: result.symbol }),
+        ];
+        toast.success(t('form.toast.lookupFound', { details: details.join(', ') }));
       } else {
-        toast.error(`No currency found for "${query}"`);
+        toast.error(t('form.toast.lookupNotFound', { query }));
       }
     } catch (error) {
       logger.error('Currency lookup failed:', error);
-      toast.error('Lookup failed - please try again');
+      toast.error(t('form.toast.lookupFailed'));
     } finally {
       setIsLookingUp(false);
     }
@@ -120,10 +131,10 @@ export function CurrencyForm({ currency, onSubmit, onCancel, onDirtyChange, subm
       <div className="flex gap-2 items-end">
         <div className="flex-1">
           <Input
-            label="Currency Code"
+            label={t('form.currencyCode')}
             {...register('code')}
             error={errors.code?.message}
-            placeholder="e.g., USD, EUR, GBP"
+            placeholder={t('form.codePlaceholder')}
             className="uppercase"
             disabled={!!currency}
           />
@@ -137,7 +148,7 @@ export function CurrencyForm({ currency, onSubmit, onCancel, onDirtyChange, subm
               disabled={isLookingUp}
               className="mb-[1px]"
             >
-              {isLookingUp ? 'Looking up...' : 'Lookup'}
+              {isLookingUp ? t('form.lookingUp') : t('form.lookup')}
             </Button>
             {hasLookupResult && (
               <Button
@@ -145,9 +156,9 @@ export function CurrencyForm({ currency, onSubmit, onCancel, onDirtyChange, subm
                 variant="ghost"
                 onClick={handleClear}
                 className="mb-[1px] text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                title="Clear all fields"
+                title={t('form.clearTitle')}
               >
-                Clear
+                {t('form.clear')}
               </Button>
             )}
           </div>
@@ -155,21 +166,21 @@ export function CurrencyForm({ currency, onSubmit, onCancel, onDirtyChange, subm
       </div>
 
       <Input
-        label="Name"
+        label={t('form.name')}
         {...register('name')}
         error={errors.name?.message}
-        placeholder={currency ? 'e.g., Canadian Dollar' : 'e.g., Canadian Dollar, Malaysia, Ringgit (used for lookup too)'}
+        placeholder={currency ? t('form.namePlaceholderEdit') : t('form.namePlaceholderCreate')}
       />
 
       <Input
-        label="Symbol"
+        label={t('form.symbol')}
         {...register('symbol')}
         error={errors.symbol?.message}
-        placeholder="e.g., $, €, £, ¥"
+        placeholder={t('form.symbolPlaceholder')}
       />
 
       <Input
-        label="Decimal Places"
+        label={t('form.decimalPlaces')}
         type="number"
         {...register('decimalPlaces')}
         error={errors.decimalPlaces?.message}
@@ -177,7 +188,7 @@ export function CurrencyForm({ currency, onSubmit, onCancel, onDirtyChange, subm
         max={4}
       />
 
-      <FormActions onCancel={onCancel} submitLabel={currency ? 'Update Currency' : 'Create Currency'} isSubmitting={isSubmitting} />
+      <FormActions onCancel={onCancel} submitLabel={currency ? t('form.updateCurrency') : t('form.createCurrency')} isSubmitting={isSubmitting} />
     </form>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Select } from '@/components/ui/Select';
 import { NumericInput } from '@/components/ui/NumericInput';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
@@ -20,18 +21,20 @@ interface InvestmentSplitFieldsProps {
   currencyCode?: string;
 }
 
-const ACTION_LABELS: Record<InvestmentAction, string> = {
-  BUY: 'Buy',
-  SELL: 'Sell',
-  DIVIDEND: 'Dividend',
-  INTEREST: 'Interest',
-  CAPITAL_GAIN: 'Capital Gain',
-  REINVEST: 'Reinvest',
-  SPLIT: 'Split',
-  TRANSFER_IN: 'Transfer In',
-  TRANSFER_OUT: 'Transfer Out',
-  ADD_SHARES: 'Add Shares',
-  REMOVE_SHARES: 'Remove Shares',
+// Maps each investment action to its message key suffix under
+// `investmentSplit.*`, resolved at render time so the labels follow the locale.
+const ACTION_LABEL_KEYS: Record<InvestmentAction, string> = {
+  BUY: 'actionBuy',
+  SELL: 'actionSell',
+  DIVIDEND: 'actionDividend',
+  INTEREST: 'actionInterest',
+  CAPITAL_GAIN: 'actionCapitalGain',
+  REINVEST: 'actionReinvest',
+  SPLIT: 'actionSplit',
+  TRANSFER_IN: 'actionTransferIn',
+  TRANSFER_OUT: 'actionTransferOut',
+  ADD_SHARES: 'actionAddShares',
+  REMOVE_SHARES: 'actionRemoveShares',
 };
 
 const ACTIONS_NEEDING_SECURITY: ReadonlySet<InvestmentAction> = new Set([
@@ -54,6 +57,7 @@ export function InvestmentSplitFields({
   disabled = false,
   currencyCode = 'CAD',
 }: InvestmentSplitFieldsProps) {
+  const t = useTranslations('transactions');
   const [securities, setSecurities] = useState<Security[]>([]);
   const symbol = getCurrencySymbol(currencyCode);
 
@@ -107,17 +111,17 @@ export function InvestmentSplitFields({
         <Select
           options={EMBEDDED_INVESTMENT_SPLIT_ACTIONS.map((a) => ({
             value: a,
-            label: ACTION_LABELS[a],
+            label: t(`investmentSplit.${ACTION_LABEL_KEYS[a]}`),
           }))}
           value={action}
           onChange={(e) => updateField('action', e.target.value as InvestmentAction)}
           disabled={disabled}
-          aria-label="Investment action"
+          aria-label={t('investmentSplit.investmentAction')}
         />
         {needsSecurity && (
           <Select
             options={[
-              { value: '', label: 'Select security...' },
+              { value: '', label: t('investmentSplit.selectSecurity') },
               ...securities.map((s) => ({
                 value: s.id,
                 label: `${s.symbol} - ${s.name}`,
@@ -126,7 +130,7 @@ export function InvestmentSplitFields({
             value={value?.securityId ?? ''}
             onChange={(e) => updateField('securityId', e.target.value || undefined)}
             disabled={disabled}
-            aria-label="Security"
+            aria-label={t('investmentSplit.security')}
           />
         )}
       </div>
@@ -138,7 +142,7 @@ export function InvestmentSplitFields({
             decimalPlaces={8}
             min={0}
             disabled={disabled}
-            placeholder="Quantity"
+            placeholder={t('investmentSplit.quantity')}
           />
           <NumericInput
             value={price || undefined}
@@ -146,14 +150,14 @@ export function InvestmentSplitFields({
             decimalPlaces={6}
             min={0}
             disabled={disabled}
-            placeholder="Price"
+            placeholder={t('investmentSplit.price')}
             prefix={symbol}
           />
           <CurrencyInput
             value={commission || undefined}
             onChange={(v) => updateField('commission', Number(v ?? 0))}
             disabled={disabled}
-            placeholder="Commission"
+            placeholder={t('investmentSplit.commission')}
             prefix={symbol}
             allowNegative={false}
           />
@@ -164,7 +168,7 @@ export function InvestmentSplitFields({
           value={price || undefined}
           onChange={(v) => updateField('price', Number(v ?? 0))}
           disabled={disabled}
-          placeholder={`Amount (${currencyCode})`}
+          placeholder={t('investmentSplit.amountInCurrency', { currency: currencyCode })}
           prefix={symbol}
           allowNegative={false}
         />

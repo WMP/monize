@@ -1,0 +1,63 @@
+{
+  "page": {
+    "title": "Reconcile Account",
+    "subtitleReconciling": "Reconciling: {name}",
+    "subtitleDefault": "Match your records against your bank statement"
+  },
+  "toast": {
+    "loadAccountsError": "Failed to load accounts",
+    "fillAllFields": "Please fill in all fields",
+    "loadDataError": "Failed to load reconciliation data",
+    "differenceMustBeZero": "The difference must be {amount} to finish reconciliation",
+    "noTransactionsSelected": "No transactions selected for reconciliation",
+    "reconcileSuccess": "Successfully reconciled {count} transactions",
+    "reconcileError": "Failed to reconcile transactions"
+  },
+  "setup": {
+    "heading": "Start Reconciliation",
+    "description": "Reconcile your account against a bank statement to ensure your records match.",
+    "accountLabel": "Account",
+    "selectAccount": "Select account...",
+    "statementDateLabel": "Statement Date",
+    "statementBalanceLabel": "Statement Ending Balance",
+    "cancel": "Cancel",
+    "start": "Start Reconciliation"
+  },
+  "summary": {
+    "statementBalance": "Statement Balance",
+    "reconciledBalance": "Reconciled Balance",
+    "selected": "Selected ({count})",
+    "difference": "Difference"
+  },
+  "list": {
+    "heading": "Unreconciled Transactions ({count})",
+    "selectAll": "Select All",
+    "selectNone": "Select None",
+    "empty": "No unreconciled transactions found for this period.",
+    "select": "Select",
+    "date": "Date",
+    "payee": "Payee",
+    "category": "Category",
+    "amount": "Amount",
+    "status": "Status",
+    "cancel": "Cancel",
+    "finish": "Finish Reconciliation",
+    "statusCleared": "Cleared",
+    "statusUnreconciled": "Unreconciled",
+    "statusVoid": "Void",
+    "statusReconciled": "Reconciled"
+  },
+  "complete": {
+    "heading": "Reconciliation Complete",
+    "asOf": "Your account has been successfully reconciled as of {date}.",
+    "existingPaymentBefore": "This account has a scheduled payment, ",
+    "existingPaymentAfter": ". Would you like to update its next instance to the reconciled balance of ",
+    "existingPaymentEnd": "?",
+    "updatePayment": "Update Next Payment",
+    "noPaymentBefore": "No scheduled payment was found for this account. Would you like to create one for the reconciled balance of ",
+    "noPaymentEnd": "?",
+    "createPayment": "Create Scheduled Payment",
+    "backToAccounts": "Back to Accounts",
+    "reconcileAnother": "Reconcile Another Account"
+  }
+}

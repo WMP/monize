@@ -1,0 +1,73 @@
+{
+  "page": {
+    "title": "AI Assistant",
+    "subtitle": "Ask questions about your finances in natural language"
+  },
+  "chat": {
+    "notConfiguredTitle": "AI Not Configured",
+    "notConfiguredBefore": "No AI provider is configured. To use the AI Assistant, please ",
+    "configureLink": "configure an AI provider",
+    "notConfiguredAfter": " in your settings.",
+    "conversationSaved": "Conversation saved in your browser",
+    "clearConversation": "Clear conversation",
+    "inputPlaceholderDisabled": "AI provider not configured",
+    "inputPlaceholder": "Ask about your finances...",
+    "cancel": "Cancel",
+    "send": "Send",
+    "enterHint": "Press Enter to send, Shift+Enter for new line"
+  },
+  "tools": {
+    "labels": {
+      "query_transactions": "Transactions",
+      "get_account_balances": "Account Balances",
+      "get_spending_by_category": "Spending by Category",
+      "get_income_summary": "Income Summary",
+      "get_net_worth_history": "Net Worth History",
+      "compare_periods": "Period Comparison",
+      "get_budget_status": "Budget Status",
+      "calculate": "Calculation",
+      "render_chart": "Chart"
+    },
+    "failed": "Tool failed",
+    "succeeded": "Tool succeeded",
+    "input": "Input",
+    "result": "Result"
+  },
+  "table": {
+    "noData": "No table data to export",
+    "download": "Download table as CSV"
+  },
+  "chart": {
+    "captureFailed": "Unable to capture chart image",
+    "downloadFailed": "Failed to download chart",
+    "download": "Download chart as PNG"
+  },
+  "suggested": {
+    "heading": "Ask about your finances",
+    "intro": "I can answer questions about your spending, income, account balances, net worth, and more.",
+    "monthlySpending": {
+      "label": "Monthly spending",
+      "query": "How much did I spend last month?"
+    },
+    "topCategories": {
+      "label": "Top categories",
+      "query": "What are my top 5 expense categories this year?"
+    },
+    "accountBalances": {
+      "label": "Account balances",
+      "query": "What are my current account balances?"
+    },
+    "compareMonths": {
+      "label": "Compare months",
+      "query": "Compare my spending this month vs last month"
+    },
+    "netWorthTrend": {
+      "label": "Net worth trend",
+      "query": "Show my net worth trend for the last 12 months"
+    },
+    "savingsRate": {
+      "label": "Savings rate",
+      "query": "How much have I saved this year compared to my income?"
+    }
+  }
+}

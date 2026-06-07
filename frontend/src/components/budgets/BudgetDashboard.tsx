@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { BudgetSummaryCards } from './BudgetSummaryCards';
 import { BudgetHealthGauge } from './BudgetHealthGauge';
 import { BudgetVelocityWidget } from './BudgetVelocityWidget';
@@ -11,7 +12,6 @@ import { BudgetTrendChart } from './BudgetTrendChart';
 import { BudgetZeroBasedBar } from './BudgetZeroBasedBar';
 import { Budget503020Summary } from './Budget503020Summary';
 import { BudgetScenarioPlanner } from './BudgetScenarioPlanner';
-import { STRATEGY_LABELS, STRATEGY_DESCRIPTIONS } from './utils/budget-labels';
 import type { BudgetSummary, BudgetVelocity } from '@/types/budget';
 import type { ScheduledTransaction } from '@/types/scheduled-transaction';
 
@@ -47,6 +47,7 @@ export function BudgetDashboard({
   formatCurrency,
   onCategoryClick,
 }: BudgetDashboardProps) {
+  const t = useTranslations('budgets');
   const periodEnd = summary.budget.periodEnd
     ?? new Date(
       new Date(summary.budget.periodStart + 'T00:00:00').getFullYear(),
@@ -71,10 +72,10 @@ export function BudgetDashboard({
       {/* Strategy info bar */}
       <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-sm">
         <span className="font-medium text-blue-700 dark:text-blue-300">
-          {STRATEGY_LABELS[strategy] ?? strategy}
+          {t(`labels.strategy.${strategy}`)}
         </span>
         <span className="hidden sm:inline text-blue-600 dark:text-blue-400">
-          &mdash; {STRATEGY_DESCRIPTIONS[strategy] ?? ''}
+          &mdash; {t(`labels.strategyDescription.${strategy}`)}
         </span>
       </div>
 

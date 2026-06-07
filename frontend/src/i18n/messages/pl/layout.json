@@ -1,0 +1,79 @@
+{
+  "actionHistory": {
+    "title": "Historia akcji",
+    "close": "Zamknij",
+    "undo": "Cofnij",
+    "redo": "Ponów",
+    "noRecentActions": "Brak ostatnich akcji",
+    "undone": "Cofnięto",
+    "timeAgo": {
+      "justNow": "przed chwilą",
+      "minutes": "{minutes} min temu",
+      "hours": "{hours} godz. temu",
+      "days": "{days} dni temu"
+    },
+    "toast": {
+      "nothingToUndo": "Nie ma nic do cofnięcia",
+      "cannotUndo": "Nie można cofnąć tej akcji",
+      "undoFailed": "Cofanie nie powiodło się",
+      "nothingToRedo": "Nie ma nic do ponowienia",
+      "cannotRedo": "Nie można ponowić tej akcji",
+      "redoFailed": "Ponawianie nie powiodło się"
+    },
+    "entity": {
+      "transaction": "Transakcja",
+      "transfer": "Przelew",
+      "investment_transaction": "Inwestycja",
+      "bulk_transaction": "Zbiorcza",
+      "category": "Kategoria",
+      "payee": "Odbiorca",
+      "tag": "Tag",
+      "account": "Konto",
+      "scheduled_transaction": "Zaplanowana",
+      "security": "Papier wartościowy",
+      "budget": "Budżet",
+      "custom_report": "Raport"
+    }
+  },
+  "backendDown": {
+    "connectionBlocked": "Połączenie zablokowane",
+    "httpsBlockedMessage": "Nagłówki bezpieczeństwa blokują żądania przez zwykły protokół HTTP.",
+    "setPrefix": "Ustaw",
+    "setSuffix": "w środowisku lub korzystaj z witryny przez HTTPS.",
+    "connectionLost": "Utracono połączenie",
+    "unreachableMessage": "Nie można połączyć się z serwerem. Ponawianie automatyczne..."
+  },
+  "demoMode": {
+    "title": "Tryb demonstracyjny",
+    "message": "Wszystkie dane są resetowane codziennie o 4:00 UTC. Korzystaj swobodnie!"
+  },
+  "httpWarning": {
+    "title": "Wymagany HTTPS",
+    "message": "Nagłówki bezpieczeństwa są aktywne, ale witryna jest używana przez zwykły protokół HTTP. Żądania API mogą się nie powieść.",
+    "setPrefix": "Ustaw",
+    "setSuffix": "w środowisku lub korzystaj z witryny przez HTTPS.",
+    "dismiss": "Zamknij",
+    "dismissAriaLabel": "Zamknij ostrzeżenie o HTTPS"
+  },
+  "delegation": {
+    "twoFactorRequired": "To konto wymaga uwierzytelniania dwuskładnikowego. Skonfiguruj 2FA w Ustawieniach przed przełączeniem.",
+    "unableToSwitch": "Nie można przełączyć konta",
+    "sharedAccount": "Konto współdzielone",
+    "yourAccount": "Twoje konto",
+    "viewing": "Wyświetlasz:",
+    "switchAccount": "Przełącz konto",
+    "contextSelf": "{label} (Ty)"
+  },
+  "pageHeader": {
+    "helpAriaLabel": "Otwórz wiki Monize, aby uzyskać pomoc dotyczącą tej sekcji",
+    "helpTooltip": "Otwórz wiki Monize, aby uzyskać pomoc dotyczącą tej sekcji"
+  },
+  "updateBanner": {
+    "versionAvailable": "Dostępna jest wersja Monize v{version}",
+    "newVersionAvailable": "Dostępna jest nowa wersja Monize",
+    "runningVersion": "(działa wersja v{version})",
+    "releaseNotes": "Informacje o wydaniu",
+    "dismissAriaLabel": "Zamknij powiadomienie o aktualizacji",
+    "dismiss": "Zamknij"
+  }
+}
