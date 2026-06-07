@@ -73,6 +73,18 @@ const reports: Report[] = [
     ),
   },
   {
+    id: 'monthly-category-breakdown',
+    name: 'Monthly Breakdown',
+    description: 'See expense and income by category broken down month by month, with subtotals, averages, and deviation highlighting.',
+    category: 'spending',
+    color: 'bg-fuchsia-500',
+    icon: (
+      <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M3 14h18M9 4v16M15 4v16M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" />
+      </svg>
+    ),
+  },
+  {
     id: 'income-vs-expenses',
     name: 'Income vs Expenses',
     description: 'Compare your income to expenses and track your savings rate over time.',
