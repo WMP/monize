@@ -754,6 +754,20 @@
     "pdfSubtitlePaymentsSummary": "wykonane spłaty: {count}, łączne odsetki: {interest}"
   },
   "monteCarlo": {
+    "toasts": {
+      "scenarioNameRequired": "Wprowadź nazwę scenariusza, aby go zapisać.",
+      "saved": "Zapisano scenariusz.",
+      "created": "Utworzono scenariusz.",
+      "savedAsNew": "Zapisano jako nowy scenariusz.",
+      "overwritten": "Nadpisano scenariusz.",
+      "deleted": "Usunięto scenariusz.",
+      "simulationFailed": "Symulacja nie powiodła się. Sprawdź parametry i spróbuj ponownie.",
+      "saveFailed": "Nie udało się zapisać scenariusza.",
+      "saveAsFailed": "Nie udało się zapisać jako nowy scenariusz.",
+      "overwriteFailed": "Nie udało się nadpisać scenariusza.",
+      "deleteFailed": "Nie udało się usunąć scenariusza.",
+      "maxCompare": "Możesz porównać maksymalnie {max} scenariusze."
+    },
     "scenarios": "Scenariusze",
     "noScenarios": "Brak zapisanych scenariuszy. Skonfiguruj parametry po prawej i kliknij Zapisz.",
     "reorder": "Zmień kolejność",

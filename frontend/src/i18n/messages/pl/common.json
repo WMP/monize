@@ -172,5 +172,14 @@
     "browserAuto": "Użyj ustawień regionalnych przeglądarki (automatycznie)",
     "custom": "Niestandardowy..."
   },
-  "emailInvalid": "Wprowadź prawidłowy adres e-mail"
+  "emailInvalid": "Wprowadź prawidłowy adres e-mail",
+  "noSectionAccess": "Nie masz dostępu do tej sekcji.",
+  "undoRedo": {
+    "nothingToUndo": "Nie ma nic do cofnięcia",
+    "cannotUndo": "Nie można cofnąć tej operacji",
+    "undoFailed": "Cofnięcie nie powiodło się",
+    "nothingToRedo": "Nie ma nic do ponowienia",
+    "cannotRedo": "Nie można ponowić tej operacji",
+    "redoFailed": "Ponowienie nie powiodło się"
+  }
 }

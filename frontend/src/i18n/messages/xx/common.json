@@ -172,5 +172,14 @@
     "browserAuto": "[XX-Use browser locale (auto-detect)-XX]",
     "custom": "[XX-Custom...-XX]"
   },
-  "emailInvalid": "[XX-Please enter a valid email address-XX]"
+  "emailInvalid": "[XX-Please enter a valid email address-XX]",
+  "noSectionAccess": "[XX-You don't have access to that section.-XX]",
+  "undoRedo": {
+    "nothingToUndo": "[XX-Nothing to undo-XX]",
+    "cannotUndo": "[XX-Cannot undo this action-XX]",
+    "undoFailed": "[XX-Undo failed-XX]",
+    "nothingToRedo": "[XX-Nothing to redo-XX]",
+    "cannotRedo": "[XX-Cannot redo this action-XX]",
+    "redoFailed": "[XX-Redo failed-XX]"
+  }
 }

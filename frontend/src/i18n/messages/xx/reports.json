@@ -754,6 +754,20 @@
     "pdfSubtitlePaymentsSummary": "[XX-{count} payments made, {interest} total interest-XX]"
   },
   "monteCarlo": {
+    "toasts": {
+      "scenarioNameRequired": "[XX-Please enter a scenario name to save.-XX]",
+      "saved": "[XX-Scenario saved.-XX]",
+      "created": "[XX-Scenario created.-XX]",
+      "savedAsNew": "[XX-Saved as new scenario.-XX]",
+      "overwritten": "[XX-Scenario overwritten.-XX]",
+      "deleted": "[XX-Scenario deleted.-XX]",
+      "simulationFailed": "[XX-Simulation failed. Check inputs and try again.-XX]",
+      "saveFailed": "[XX-Could not save scenario.-XX]",
+      "saveAsFailed": "[XX-Could not save as new scenario.-XX]",
+      "overwriteFailed": "[XX-Could not overwrite scenario.-XX]",
+      "deleteFailed": "[XX-Could not delete scenario.-XX]",
+      "maxCompare": "[XX-You can compare up to {max} scenarios.-XX]"
+    },
     "scenarios": "[XX-Scenarios-XX]",
     "noScenarios": "[XX-No saved scenarios. Configure inputs on the right and click Save.-XX]",
     "reorder": "[XX-Reorder-XX]",

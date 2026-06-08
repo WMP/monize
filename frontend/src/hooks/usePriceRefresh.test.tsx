@@ -1,11 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { ReactNode } from 'react';
+import { NextIntlClientProvider } from 'next-intl';
+import securitiesEn from '@/i18n/messages/en/securities.json';
 import {
   isMarketHours,
   getRefreshInProgress,
   setRefreshInProgress,
   usePriceRefresh,
 } from './usePriceRefresh';
+
+// usePriceRefresh emits its toasts through next-intl; resolve them against the
+// real English catalog so assertions on visible text stay accurate.
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <NextIntlClientProvider locale="en" messages={{ securities: securitiesEn }}>
+    {children}
+  </NextIntlClientProvider>
+);
 
 vi.mock('@/lib/investments', () => ({
   investmentsApi: {
@@ -77,7 +88,7 @@ describe('usePriceRefresh', () => {
   });
 
   it('returns isRefreshing and trigger functions', () => {
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     expect(result.current.isRefreshing).toBe(false);
     expect(typeof result.current.triggerManualRefresh).toBe('function');
     expect(typeof result.current.triggerAutoRefresh).toBe('function');
@@ -89,7 +100,7 @@ describe('usePriceRefresh', () => {
       updated: 1, failed: 0, totalSecurities: 1, skipped: 0, results: [], lastUpdated: '',
     });
 
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     await act(async () => {
       await result.current.triggerManualRefresh();
     });
@@ -108,7 +119,7 @@ describe('usePriceRefresh', () => {
       updated: 2, failed: 0, totalSecurities: 2, skipped: 0, results: [], lastUpdated: '',
     });
 
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     await act(async () => {
       await result.current.triggerManualRefresh(['s-1', 's-3']);
     });
@@ -118,7 +129,7 @@ describe('usePriceRefresh', () => {
   it('shows the no-securities toast when scope filters out everything', async () => {
     vi.mocked(investmentsApi.getSecurities).mockResolvedValue([sec('s-1')] as any);
 
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     await act(async () => {
       await result.current.triggerManualRefresh(['s-99']);
     });
@@ -136,7 +147,7 @@ describe('usePriceRefresh', () => {
       updated: 1, failed: 0, totalSecurities: 1, skipped: 0, results: [], lastUpdated: '',
     });
 
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     await act(async () => {
       await result.current.triggerManualRefresh();
     });
@@ -153,7 +164,7 @@ describe('usePriceRefresh', () => {
       updated: 1, failed: 0, totalSecurities: 1, skipped: 0, results: [], lastUpdated: '',
     });
 
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     await act(async () => {
       await result.current.triggerManualRefresh();
     });
@@ -179,7 +190,7 @@ describe('usePriceRefresh', () => {
       updated: 2, failed: 0, totalSecurities: 2, skipped: 0, results: [], lastUpdated: '',
     });
 
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     await act(async () => {
       await result.current.triggerManualRefresh();
     });
@@ -192,7 +203,7 @@ describe('usePriceRefresh', () => {
   it('shows error toast on failure', async () => {
     vi.mocked(investmentsApi.getSecurities).mockRejectedValue(new Error('fail'));
 
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     await act(async () => {
       await result.current.triggerManualRefresh();
     });
@@ -202,7 +213,7 @@ describe('usePriceRefresh', () => {
   it('shows toast when no securities', async () => {
     vi.mocked(investmentsApi.getSecurities).mockResolvedValue([] as any);
 
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     await act(async () => {
       await result.current.triggerManualRefresh();
     });
@@ -215,7 +226,7 @@ describe('usePriceRefresh', () => {
       updated: 1, failed: 1, totalSecurities: 2, skipped: 0, results: [], lastUpdated: '',
     });
 
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     await act(async () => {
       await result.current.triggerManualRefresh();
     });
@@ -241,7 +252,7 @@ describe('usePriceRefresh', () => {
       lastUpdated: '',
     });
 
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     await act(async () => {
       await result.current.triggerManualRefresh();
     });
@@ -263,7 +274,7 @@ describe('usePriceRefresh', () => {
       lastUpdated: '2026-04-15T14:06:00Z',
     });
 
-    const { result } = renderHook(() => usePriceRefresh({ onRefreshComplete }));
+    const { result } = renderHook(() => usePriceRefresh({ onRefreshComplete }), { wrapper });
     await act(async () => {
       await result.current.triggerManualRefresh();
     });
@@ -272,7 +283,7 @@ describe('usePriceRefresh', () => {
 
   it('does nothing when refresh is already in progress', async () => {
     setRefreshInProgress(true);
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     await act(async () => {
       await result.current.triggerManualRefresh();
     });
@@ -282,7 +293,7 @@ describe('usePriceRefresh', () => {
   it('triggerAutoRefresh skips when outside market hours', async () => {
     // Real isMarketHours runs; check that when refreshInProgress is true it short-circuits
     setRefreshInProgress(true);
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     act(() => {
       result.current.triggerAutoRefresh();
     });
@@ -294,7 +305,7 @@ describe('usePriceRefresh', () => {
     vi.mocked(investmentsApi.refreshSelectedPrices).mockResolvedValue({
       updated: 1, failed: 0, totalSecurities: 1, skipped: 0, results: [], lastUpdated: '',
     });
-    const { result } = renderHook(() => usePriceRefresh());
+    const { result } = renderHook(() => usePriceRefresh(), { wrapper });
     await act(async () => {
       await result.current.triggerManualRefresh();
     });

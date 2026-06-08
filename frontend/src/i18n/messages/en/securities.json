@@ -1,4 +1,10 @@
 {
+  "priceRefresh": {
+    "noneToUpdate": "No securities to update",
+    "updated": "{count, plural, one {# security price updated} other {# security prices updated}}",
+    "partialFailure": "Prices updated: {updated} succeeded, {failed} failed{symbols}",
+    "failed": "Failed to refresh prices"
+  },
   "page": {
     "title": "Securities",
     "subtitle": "Manage your stocks, ETFs, mutual funds, and other securities",

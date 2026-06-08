@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { actionHistoryApi } from '@/lib/action-history';
 import { clearAllCache } from '@/lib/apiCache';
@@ -21,6 +22,7 @@ const logger = createLogger('UndoRedo');
  * so pages can refetch their data.
  */
 export function useUndoRedo() {
+  const t = useTranslations('common');
   const pendingRef = useRef(false);
 
   const handleUndo = useCallback(async () => {
@@ -35,17 +37,17 @@ export function useUndoRedo() {
       const status = error?.response?.status;
       const message = error?.response?.data?.message;
       if (status === 404) {
-        toast.success('Nothing to undo');
+        toast.success(t('undoRedo.nothingToUndo'));
       } else if (status === 409) {
-        toast.error(message || 'Cannot undo this action');
+        toast.error(message || t('undoRedo.cannotUndo'));
       } else {
         logger.error('Undo failed', error);
-        toast.error('Undo failed');
+        toast.error(t('undoRedo.undoFailed'));
       }
     } finally {
       pendingRef.current = false;
     }
-  }, []);
+  }, [t]);
 
   const handleRedo = useCallback(async () => {
     if (pendingRef.current) return;
@@ -59,17 +61,17 @@ export function useUndoRedo() {
       const status = error?.response?.status;
       const message = error?.response?.data?.message;
       if (status === 404) {
-        toast.success('Nothing to redo');
+        toast.success(t('undoRedo.nothingToRedo'));
       } else if (status === 409) {
-        toast.error(message || 'Cannot redo this action');
+        toast.error(message || t('undoRedo.cannotRedo'));
       } else {
         logger.error('Redo failed', error);
-        toast.error('Redo failed');
+        toast.error(t('undoRedo.redoFailed'));
       }
     } finally {
       pendingRef.current = false;
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

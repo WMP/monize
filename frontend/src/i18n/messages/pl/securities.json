@@ -1,4 +1,10 @@
 {
+  "priceRefresh": {
+    "noneToUpdate": "Brak papierów wartościowych do zaktualizowania",
+    "updated": "{count, plural, one {Zaktualizowano # cenę papieru wartościowego} few {Zaktualizowano # ceny papierów wartościowych} many {Zaktualizowano # cen papierów wartościowych} other {Zaktualizowano # cen papierów wartościowych}}",
+    "partialFailure": "Aktualizacja cen — udane: {updated}, nieudane: {failed}{symbols}",
+    "failed": "Nie udało się odświeżyć cen"
+  },
   "page": {
     "title": "Papiery wartościowe",
     "subtitle": "Zarządzaj swoimi akcjami, ETF-ami, funduszami inwestycyjnymi i innymi papierami wartościowymi",

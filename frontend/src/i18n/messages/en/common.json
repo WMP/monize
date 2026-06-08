@@ -135,5 +135,14 @@
     "browserAuto": "Use browser locale (auto-detect)",
     "custom": "Custom..."
   },
-  "emailInvalid": "Please enter a valid email address"
+  "emailInvalid": "Please enter a valid email address",
+  "noSectionAccess": "You don't have access to that section.",
+  "undoRedo": {
+    "nothingToUndo": "Nothing to undo",
+    "cannotUndo": "Cannot undo this action",
+    "undoFailed": "Undo failed",
+    "nothingToRedo": "Nothing to redo",
+    "cannotRedo": "Cannot redo this action",
+    "redoFailed": "Redo failed"
+  }
 }
