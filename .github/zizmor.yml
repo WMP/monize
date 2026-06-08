@@ -9,7 +9,7 @@ rules:
     # caching is intentional for build speed). This is a low-confidence false
     # positive in our setup; revisit if we ever add `cache: 'npm'` here.
     ignore:
-      - ci.yml:358:9
+      - ci.yml:367:9
 
   artipacked:
     # The build-and-push job intentionally keeps the GITHUB_TOKEN persisted on
@@ -17,4 +17,4 @@ rules:
     # the version bump and `gh release create` the tag. Every other checkout
     # in this repo sets persist-credentials: false.
     ignore:
-      - ci.yml:353:9
+      - ci.yml:362:9

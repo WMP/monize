@@ -5,6 +5,12 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  # build-and-push only fires on workflow_dispatch so merging to main doesn't
+  # publish a new image set on every PR. Trigger from the Actions tab (or
+  # `gh workflow run "CI Pipeline" --ref main`) when you actually want a
+  # release: it will bump the patch version, build/sign/scan/push the
+  # images, and cut a GitHub release.
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -264,7 +270,7 @@ jobs:
       - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4.2.0
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
       - name: Install zizmor
         run: uv tool install zizmor
       - name: Run zizmor
@@ -323,7 +329,10 @@ jobs:
   build-and-push:
     name: Build & Push Containers
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Manual-only: this is the release step (version bump, tag, signed images,
+    # SBOM/provenance attestations, Trivy scan). Triggered from the Actions tab
+    # rather than on every push, so merges to main don't auto-publish.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     needs:
       [
         backend-lint,
