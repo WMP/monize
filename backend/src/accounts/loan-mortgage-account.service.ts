@@ -26,6 +26,7 @@ import {
 } from "./mortgage-amortization.util";
 import { formatDateYMD } from "../common/date-utils";
 import { roundMoney } from "../common/round.util";
+import { tr } from "../i18n/translate";
 
 @Injectable()
 export class LoanMortgageAccountService {
@@ -63,15 +64,26 @@ export class LoanMortgageAccountService {
       !sourceAccountId
     ) {
       throw new BadRequestException(
-        "Loan accounts require paymentAmount, paymentFrequency, paymentStartDate, and sourceAccountId",
+        tr(
+          "errors.accounts.loanRequiredFields",
+          "Loan accounts require paymentAmount, paymentFrequency, paymentStartDate, and sourceAccountId",
+        ),
       );
     }
     if (interestRate === undefined || interestRate === null) {
-      throw new BadRequestException("Loan accounts require an interest rate");
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.loanRequiresInterestRate",
+          "Loan accounts require an interest rate",
+        ),
+      );
     }
     if (!institution) {
       throw new BadRequestException(
-        "Loan accounts require an institution name",
+        tr(
+          "errors.accounts.loanRequiresInstitution",
+          "Loan accounts require an institution name",
+        ),
       );
     }
 
@@ -176,17 +188,26 @@ export class LoanMortgageAccountService {
       !amortizationMonths
     ) {
       throw new BadRequestException(
-        "Mortgage accounts require mortgagePaymentFrequency, paymentStartDate, sourceAccountId, and amortizationMonths",
+        tr(
+          "errors.accounts.mortgageRequiredFields",
+          "Mortgage accounts require mortgagePaymentFrequency, paymentStartDate, sourceAccountId, and amortizationMonths",
+        ),
       );
     }
     if (interestRate === undefined || interestRate === null) {
       throw new BadRequestException(
-        "Mortgage accounts require an interest rate",
+        tr(
+          "errors.accounts.mortgageRequiresInterestRate",
+          "Mortgage accounts require an interest rate",
+        ),
       );
     }
     if (!institution) {
       throw new BadRequestException(
-        "Mortgage accounts require an institution name",
+        tr(
+          "errors.accounts.mortgageRequiresInstitution",
+          "Mortgage accounts require an institution name",
+        ),
       );
     }
 
@@ -342,12 +363,20 @@ export class LoanMortgageAccountService {
   }> {
     if (account.accountType !== AccountType.MORTGAGE) {
       throw new BadRequestException(
-        "This operation is only valid for mortgage accounts",
+        tr(
+          "errors.accounts.onlyMortgageAccounts",
+          "This operation is only valid for mortgage accounts",
+        ),
       );
     }
 
     if (account.isClosed) {
-      throw new BadRequestException("Cannot update rate on a closed account");
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.updateRateClosed",
+          "Cannot update rate on a closed account",
+        ),
+      );
     }
 
     const currentBalance = Math.abs(Number(account.currentBalance));

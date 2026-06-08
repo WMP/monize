@@ -5,6 +5,7 @@ import {
   BadRequestException,
   Logger,
 } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository, Like, In, Not, IsNull } from "typeorm";
 import { Payee } from "./entities/payee.entity";
@@ -86,7 +87,11 @@ export class PayeesService {
 
     if (existing) {
       throw new ConflictException(
-        `Payee with name "${createPayeeDto.name}" already exists`,
+        tr(
+          "errors.payees.nameConflict",
+          `Payee with name "${createPayeeDto.name}" already exists`,
+          { name: createPayeeDto.name },
+        ),
       );
     }
 
@@ -196,7 +201,9 @@ export class PayeesService {
     });
 
     if (!payee) {
-      throw new NotFoundException(`Payee with ID ${id} not found`);
+      throw new NotFoundException(
+        tr("errors.payees.notFound", `Payee with ID ${id} not found`, { id }),
+      );
     }
 
     return payee;
@@ -300,7 +307,11 @@ export class PayeesService {
 
       if (existing) {
         throw new ConflictException(
-          `Payee with name "${updatePayeeDto.name}" already exists`,
+          tr(
+            "errors.payees.nameConflict",
+            `Payee with name "${updatePayeeDto.name}" already exists`,
+            { name: updatePayeeDto.name },
+          ),
         );
       }
     }
@@ -768,7 +779,11 @@ export class PayeesService {
       );
       if (invalidIds.length > 0) {
         throw new BadRequestException(
-          `Category IDs not found or not owned by user: ${invalidIds.join(", ")}`,
+          tr(
+            "errors.payees.categoryIdsNotOwned",
+            `Category IDs not found or not owned by user: ${invalidIds.join(", ")}`,
+            { ids: invalidIds.join(", ") },
+          ),
         );
       }
     }
@@ -832,7 +847,9 @@ export class PayeesService {
 
     const trimmedAlias = dto.alias.trim();
     if (!trimmedAlias) {
-      throw new BadRequestException("Alias cannot be empty");
+      throw new BadRequestException(
+        tr("errors.payees.aliasEmpty", "Alias cannot be empty"),
+      );
     }
 
     // Check for exact duplicate alias (case-insensitive)
@@ -845,7 +862,14 @@ export class PayeesService {
 
     if (existingExact) {
       throw new ConflictException(
-        `Alias "${trimmedAlias}" is already assigned to payee "${existingExact.payee?.name || "unknown"}"`,
+        tr(
+          "errors.payees.aliasDuplicate",
+          `Alias "${trimmedAlias}" is already assigned to payee "${existingExact.payee?.name || "unknown"}"`,
+          {
+            alias: trimmedAlias,
+            payeeName: existingExact.payee?.name || "unknown",
+          },
+        ),
       );
     }
 
@@ -859,13 +883,29 @@ export class PayeesService {
       // Check if the new alias would match any existing alias patterns
       if (matchesAliasPattern(trimmedAlias, existing.alias)) {
         throw new ConflictException(
-          `Alias "${trimmedAlias}" overlaps with existing alias "${existing.alias}" on payee "${existing.payee?.name || "unknown"}". Consider modifying one of them.`,
+          tr(
+            "errors.payees.aliasOverlap",
+            `Alias "${trimmedAlias}" overlaps with existing alias "${existing.alias}" on payee "${existing.payee?.name || "unknown"}". Consider modifying one of them.`,
+            {
+              alias: trimmedAlias,
+              existingAlias: existing.alias,
+              payeeName: existing.payee?.name || "unknown",
+            },
+          ),
         );
       }
       // Check if any existing alias pattern would match the new one
       if (matchesAliasPattern(existing.alias, trimmedAlias)) {
         throw new ConflictException(
-          `Alias "${trimmedAlias}" overlaps with existing alias "${existing.alias}" on payee "${existing.payee?.name || "unknown"}". Consider modifying one of them.`,
+          tr(
+            "errors.payees.aliasOverlap",
+            `Alias "${trimmedAlias}" overlaps with existing alias "${existing.alias}" on payee "${existing.payee?.name || "unknown"}". Consider modifying one of them.`,
+            {
+              alias: trimmedAlias,
+              existingAlias: existing.alias,
+              payeeName: existing.payee?.name || "unknown",
+            },
+          ),
         );
       }
     }
@@ -888,7 +928,13 @@ export class PayeesService {
     });
 
     if (!alias) {
-      throw new NotFoundException(`Alias with ID ${aliasId} not found`);
+      throw new NotFoundException(
+        tr(
+          "errors.payees.aliasNotFound",
+          `Alias with ID ${aliasId} not found`,
+          { id: aliasId },
+        ),
+      );
     }
 
     await this.aliasRepository.remove(alias);
@@ -940,7 +986,9 @@ export class PayeesService {
     const { targetPayeeId, sourcePayeeId, addAsAlias = true } = dto;
 
     if (targetPayeeId === sourcePayeeId) {
-      throw new BadRequestException("Cannot merge a payee into itself");
+      throw new BadRequestException(
+        tr("errors.payees.mergeSelf", "Cannot merge a payee into itself"),
+      );
     }
 
     // Verify both payees exist and belong to the user

@@ -10,6 +10,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource, QueryRunner } from "typeorm";
 import * as bcrypt from "bcryptjs";
+import { tr } from "../i18n/translate";
 import { User } from "./entities/user.entity";
 import { UserPreference } from "./entities/user-preference.entity";
 import { TrustedDevice } from "./entities/trusted-device.entity";
@@ -59,7 +60,9 @@ export class UsersService {
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new NotFoundException(
+        tr("errors.users.userNotFound", "User not found"),
+      );
     }
 
     // SECURITY: Require password confirmation when changing email to prevent
@@ -67,12 +70,18 @@ export class UsersService {
     if (dto.email && dto.email !== user.email) {
       if (!dto.currentPassword) {
         throw new BadRequestException(
-          "Current password is required to change email address",
+          tr(
+            "errors.users.emailChangePasswordRequired",
+            "Current password is required to change email address",
+          ),
         );
       }
       if (!user.passwordHash) {
         throw new BadRequestException(
-          "Cannot change email for accounts without a local password",
+          tr(
+            "errors.users.emailChangeNoLocalPassword",
+            "Cannot change email for accounts without a local password",
+          ),
         );
       }
       const isPasswordValid = await bcrypt.compare(
@@ -80,13 +89,20 @@ export class UsersService {
         user.passwordHash,
       );
       if (!isPasswordValid) {
-        throw new BadRequestException("Current password is incorrect");
+        throw new BadRequestException(
+          tr(
+            "errors.users.currentPasswordIncorrect",
+            "Current password is incorrect",
+          ),
+        );
       }
       const existingUser = await this.usersRepository.findOne({
         where: { email: dto.email },
       });
       if (existingUser) {
-        throw new ConflictException("Email already in use");
+        throw new ConflictException(
+          tr("errors.users.emailInUse", "Email already in use"),
+        );
       }
       user.email = dto.email;
     }
@@ -241,11 +257,15 @@ export class UsersService {
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new NotFoundException(
+        tr("errors.users.userNotFound", "User not found"),
+      );
     }
 
     if (!user.passwordHash) {
-      throw new BadRequestException("No password set for this account");
+      throw new BadRequestException(
+        tr("errors.users.noPasswordSet", "No password set for this account"),
+      );
     }
 
     // Verify current password
@@ -254,7 +274,12 @@ export class UsersService {
       user.passwordHash,
     );
     if (!isPasswordValid) {
-      throw new BadRequestException("Current password is incorrect");
+      throw new BadRequestException(
+        tr(
+          "errors.users.currentPasswordIncorrect",
+          "Current password is incorrect",
+        ),
+      );
     }
 
     // Check for breached password
@@ -263,7 +288,10 @@ export class UsersService {
     );
     if (isBreached) {
       throw new BadRequestException(
-        "This password has been found in a data breach. Please choose a different password.",
+        tr(
+          "errors.users.passwordBreached",
+          "This password has been found in a data breach. Please choose a different password.",
+        ),
       );
     }
 
@@ -310,25 +338,35 @@ export class UsersService {
   ): Promise<{ downgraded: boolean }> {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new NotFoundException(
+        tr("errors.users.userNotFound", "User not found"),
+      );
     }
 
     // SECURITY: Re-authenticate before account deletion
     if (user.authProvider === "oidc") {
       if (!dto?.oidcIdToken) {
         throw new UnauthorizedException(
-          "OIDC re-authentication is required to confirm account deletion",
+          tr(
+            "errors.users.oidcReauthRequired",
+            "OIDC re-authentication is required to confirm account deletion",
+          ),
         );
       }
     } else if (user.passwordHash) {
       if (!dto?.password) {
         throw new UnauthorizedException(
-          "Password is required to confirm account deletion",
+          tr(
+            "errors.users.passwordRequiredForDelete",
+            "Password is required to confirm account deletion",
+          ),
         );
       }
       const isValid = await bcrypt.compare(dto.password, user.passwordHash);
       if (!isValid) {
-        throw new UnauthorizedException("Invalid password");
+        throw new UnauthorizedException(
+          tr("errors.users.invalidPassword", "Invalid password"),
+        );
       }
     }
 
@@ -340,7 +378,10 @@ export class UsersService {
       });
       if (adminCount <= 1) {
         throw new ForbiddenException(
-          "Cannot delete the last admin account. Promote another user first.",
+          tr(
+            "errors.users.deleteLastAdmin",
+            "Cannot delete the last admin account. Promote another user first.",
+          ),
         );
       }
     }
@@ -376,25 +417,35 @@ export class UsersService {
   ): Promise<{ deleted: Record<string, number> }> {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new NotFoundException(
+        tr("errors.users.userNotFound", "User not found"),
+      );
     }
 
     // SECURITY: Re-authenticate before destructive operation
     if (user.authProvider === "oidc") {
       if (!dto.oidcIdToken) {
         throw new UnauthorizedException(
-          "OIDC re-authentication is required to confirm data deletion",
+          tr(
+            "errors.users.oidcReauthRequiredForDataDelete",
+            "OIDC re-authentication is required to confirm data deletion",
+          ),
         );
       }
     } else if (user.passwordHash) {
       if (!dto.password) {
         throw new UnauthorizedException(
-          "Password is required to confirm data deletion",
+          tr(
+            "errors.users.passwordRequiredForDataDelete",
+            "Password is required to confirm data deletion",
+          ),
         );
       }
       const isValid = await bcrypt.compare(dto.password, user.passwordHash);
       if (!isValid) {
-        throw new UnauthorizedException("Invalid password");
+        throw new UnauthorizedException(
+          tr("errors.users.invalidPassword", "Invalid password"),
+        );
       }
       // The frontend obtains a fresh OIDC token via the re-auth flow.
       // The presence of a valid JWT session + the OIDC token confirms identity.

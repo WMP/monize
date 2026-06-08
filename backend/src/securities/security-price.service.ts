@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, In, DataSource } from "typeorm";
 import { Cron } from "@nestjs/schedule";
@@ -1072,7 +1073,13 @@ export class SecurityPriceService {
       where: { id: securityId, userId },
     });
     if (!security) {
-      throw new NotFoundException(`Security ${securityId} not found`);
+      throw new NotFoundException(
+        tr(
+          "errors.securities.notFoundBySecurityId",
+          `Security ${securityId} not found`,
+          { securityId },
+        ),
+      );
     }
 
     const ctx = (await this.loadUserContexts([userId])).get(userId) ?? {
@@ -1348,7 +1355,9 @@ export class SecurityPriceService {
     });
 
     if (!price) {
-      throw new NotFoundException("Security price not found");
+      throw new NotFoundException(
+        tr("errors.securities.priceNotFound", "Security price not found"),
+      );
     }
 
     if (dto.closePrice !== undefined) price.closePrice = dto.closePrice;
@@ -1368,7 +1377,9 @@ export class SecurityPriceService {
     });
 
     if (!price) {
-      throw new NotFoundException("Security price not found");
+      throw new NotFoundException(
+        tr("errors.securities.priceNotFound", "Security price not found"),
+      );
     }
 
     const priceDate = price.priceDate;

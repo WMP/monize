@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource } from "typeorm";
 import { Budget } from "./entities/budget.entity";
@@ -57,7 +58,11 @@ export class BudgetPeriodService {
 
     if (!period) {
       throw new NotFoundException(
-        `Budget period with ID ${periodId} not found`,
+        tr(
+          "errors.budgets.periodNotFound",
+          `Budget period with ID ${periodId} not found`,
+          { id: periodId },
+        ),
       );
     }
 
@@ -73,7 +78,9 @@ export class BudgetPeriodService {
     });
 
     if (!openPeriod) {
-      throw new BadRequestException("No open period to close");
+      throw new BadRequestException(
+        tr("errors.budgets.noOpenPeriod", "No open period to close"),
+      );
     }
 
     const actuals = await this.computePeriodActuals(

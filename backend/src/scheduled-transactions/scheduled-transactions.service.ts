@@ -47,6 +47,7 @@ import { ActionHistoryService } from "../action-history/action-history.service";
 import { getUsersByEffectiveTimezone } from "../common/users-by-timezone.util";
 import { validateSplitAmountSum } from "../common/split-amount.util";
 import { roundMoney, sumMoney } from "../common/round.util";
+import { tr } from "../i18n/translate";
 
 export type LlmScheduledKind = "bill" | "deposit" | "transfer" | "investment";
 
@@ -277,7 +278,10 @@ export class ScheduledTransactionsService {
   ): Promise<ScheduledTransaction> {
     if (createDto.isInvestment && createDto.isTransfer) {
       throw new BadRequestException(
-        "A scheduled transaction cannot be both a transfer and an investment",
+        tr(
+          "errors.scheduled.notTransferAndInvestment",
+          "A scheduled transaction cannot be both a transfer and an investment",
+        ),
       );
     }
 
@@ -290,7 +294,10 @@ export class ScheduledTransactionsService {
       await this.accountsService.findOne(userId, createDto.transferAccountId);
       if (createDto.transferAccountId === createDto.accountId) {
         throw new BadRequestException(
-          "Source and destination accounts must be different",
+          tr(
+            "errors.scheduled.sameSourceAndDestination",
+            "Source and destination accounts must be different",
+          ),
         );
       }
     }
@@ -298,7 +305,10 @@ export class ScheduledTransactionsService {
     if (createDto.isInvestment) {
       if (account.accountSubType !== AccountSubType.INVESTMENT_BROKERAGE) {
         throw new BadRequestException(
-          "Scheduled investment transactions require a brokerage account",
+          tr(
+            "errors.scheduled.requiresBrokerageAccount",
+            "Scheduled investment transactions require a brokerage account",
+          ),
         );
       }
       this.validateInvestmentFields(createDto);
@@ -397,11 +407,20 @@ export class ScheduledTransactionsService {
     const action = dto.investmentAction;
     if (!action) {
       throw new BadRequestException(
-        "Investment action is required for scheduled investment transactions",
+        tr(
+          "errors.scheduled.investmentActionRequired",
+          "Investment action is required for scheduled investment transactions",
+        ),
       );
     }
     if (SECURITY_REQUIRED_ACTIONS.has(action) && !dto.investmentSecurityId) {
-      throw new BadRequestException(`Action ${action} requires a security`);
+      throw new BadRequestException(
+        tr(
+          "errors.scheduled.actionRequiresSecurity",
+          `Action ${action} requires a security`,
+          { action },
+        ),
+      );
     }
     if (QUANTITY_PRICE_ACTIONS.has(action)) {
       if (
@@ -410,7 +429,11 @@ export class ScheduledTransactionsService {
         Number(dto.investmentQuantity) <= 0
       ) {
         throw new BadRequestException(
-          `Action ${action} requires a positive quantity`,
+          tr(
+            "errors.scheduled.actionRequiresPositiveQuantity",
+            `Action ${action} requires a positive quantity`,
+            { action },
+          ),
         );
       }
       if (
@@ -419,7 +442,11 @@ export class ScheduledTransactionsService {
         Number(dto.investmentPrice) <= 0
       ) {
         throw new BadRequestException(
-          `Action ${action} requires a positive price`,
+          tr(
+            "errors.scheduled.actionRequiresPositivePrice",
+            `Action ${action} requires a positive price`,
+            { action },
+          ),
         );
       }
     } else if (QUANTITY_ONLY_ACTIONS.has(action)) {
@@ -429,7 +456,11 @@ export class ScheduledTransactionsService {
         Number(dto.investmentQuantity) <= 0
       ) {
         throw new BadRequestException(
-          `Action ${action} requires a positive quantity`,
+          tr(
+            "errors.scheduled.actionRequiresPositiveQuantity",
+            `Action ${action} requires a positive quantity`,
+            { action },
+          ),
         );
       }
     } else if (AMOUNT_ONLY_ACTIONS.has(action)) {
@@ -438,7 +469,11 @@ export class ScheduledTransactionsService {
         dto.investmentTotalAmount === null
       ) {
         throw new BadRequestException(
-          `Action ${action} requires a total amount`,
+          tr(
+            "errors.scheduled.actionRequiresTotalAmount",
+            `Action ${action} requires a total amount`,
+            { action },
+          ),
         );
       }
     }
@@ -645,7 +680,11 @@ export class ScheduledTransactionsService {
 
     if (!scheduled) {
       throw new NotFoundException(
-        `Scheduled transaction with ID ${id} not found`,
+        tr(
+          "errors.scheduled.notFound",
+          `Scheduled transaction with ID ${id} not found`,
+          { id },
+        ),
       );
     }
 
@@ -813,7 +852,10 @@ export class ScheduledTransactionsService {
         : scheduled.isTransfer;
     if (effectiveIsInvestment && effectiveIsTransfer) {
       throw new BadRequestException(
-        "A scheduled transaction cannot be both a transfer and an investment",
+        tr(
+          "errors.scheduled.notTransferAndInvestment",
+          "A scheduled transaction cannot be both a transfer and an investment",
+        ),
       );
     }
 
@@ -826,7 +868,10 @@ export class ScheduledTransactionsService {
       const accountId = updateDto.accountId || scheduled.accountId;
       if (updateDto.transferAccountId === accountId) {
         throw new BadRequestException(
-          "Source and destination accounts must be different",
+          tr(
+            "errors.scheduled.sameSourceAndDestination",
+            "Source and destination accounts must be different",
+          ),
         );
       }
     }
@@ -836,7 +881,10 @@ export class ScheduledTransactionsService {
       const account = await this.accountsService.findOne(userId, accountId);
       if (account.accountSubType !== AccountSubType.INVESTMENT_BROKERAGE) {
         throw new BadRequestException(
-          "Scheduled investment transactions require a brokerage account",
+          tr(
+            "errors.scheduled.requiresBrokerageAccount",
+            "Scheduled investment transactions require a brokerage account",
+          ),
         );
       }
       const merged = {
@@ -1347,7 +1395,10 @@ export class ScheduledTransactionsService {
     const action = scheduled.investmentAction as InvestmentAction | null;
     if (!action) {
       throw new BadRequestException(
-        "Scheduled investment transaction is missing an action",
+        tr(
+          "errors.scheduled.missingInvestmentAction",
+          "Scheduled investment transaction is missing an action",
+        ),
       );
     }
 

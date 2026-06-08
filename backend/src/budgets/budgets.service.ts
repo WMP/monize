@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, In, IsNull, Repository } from "typeorm";
 import { Budget } from "./entities/budget.entity";
@@ -131,7 +132,9 @@ export class BudgetsService {
     });
 
     if (!budget) {
-      throw new NotFoundException(`Budget with ID ${id} not found`);
+      throw new NotFoundException(
+        tr("errors.budgets.notFound", `Budget with ID ${id} not found`, { id }),
+      );
     }
 
     return budget;
@@ -206,7 +209,11 @@ export class BudgetsService {
 
     if (!category) {
       throw new NotFoundException(
-        `Category with ID ${dto.categoryId} not found`,
+        tr(
+          "errors.budgets.categoryNotFound",
+          `Category with ID ${dto.categoryId} not found`,
+          { id: dto.categoryId },
+        ),
       );
     }
 
@@ -215,7 +222,12 @@ export class BudgetsService {
     });
 
     if (existing) {
-      throw new BadRequestException("This category is already in the budget");
+      throw new BadRequestException(
+        tr(
+          "errors.budgets.categoryAlreadyInBudget",
+          "This category is already in the budget",
+        ),
+      );
     }
 
     const budgetCategory = this.budgetCategoriesRepository.create({
@@ -240,7 +252,11 @@ export class BudgetsService {
 
     if (!budgetCategory) {
       throw new NotFoundException(
-        `Budget category with ID ${categoryId} not found`,
+        tr(
+          "errors.budgets.budgetCategoryNotFound",
+          `Budget category with ID ${categoryId} not found`,
+          { id: categoryId },
+        ),
       );
     }
 
@@ -276,7 +292,11 @@ export class BudgetsService {
 
     if (!budgetCategory) {
       throw new NotFoundException(
-        `Budget category with ID ${categoryId} not found`,
+        tr(
+          "errors.budgets.budgetCategoryNotFound",
+          `Budget category with ID ${categoryId} not found`,
+          { id: categoryId },
+        ),
       );
     }
 
@@ -301,7 +321,11 @@ export class BudgetsService {
     for (const item of categories) {
       if (!byId.has(item.id)) {
         throw new NotFoundException(
-          `Budget category with ID ${item.id} not found`,
+          tr(
+            "errors.budgets.budgetCategoryNotFound",
+            `Budget category with ID ${item.id} not found`,
+            { id: item.id },
+          ),
         );
       }
     }
@@ -661,7 +685,13 @@ export class BudgetsService {
     });
 
     if (!alert) {
-      throw new NotFoundException(`Alert with ID ${alertId} not found`);
+      throw new NotFoundException(
+        tr(
+          "errors.budgets.alertNotFound",
+          `Alert with ID ${alertId} not found`,
+          { id: alertId },
+        ),
+      );
     }
 
     alert.isRead = true;
@@ -674,7 +704,13 @@ export class BudgetsService {
     });
 
     if (!alert) {
-      throw new NotFoundException(`Alert with ID ${alertId} not found`);
+      throw new NotFoundException(
+        tr(
+          "errors.budgets.alertNotFound",
+          `Alert with ID ${alertId} not found`,
+          { id: alertId },
+        ),
+      );
     }
 
     alert.dismissedAt = new Date();

@@ -17,6 +17,7 @@ import { isTransactionInFuture } from "../common/date-utils";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { formatCurrency } from "../common/format-currency.util";
 import { roundMoney } from "../common/round.util";
+import { tr } from "../i18n/translate";
 
 export interface TransferResult {
   fromTransaction: Transaction;
@@ -67,12 +68,20 @@ export class TransactionTransferService {
 
     if (fromAccountId === toAccountId) {
       throw new BadRequestException(
-        "Source and destination accounts must be different",
+        tr(
+          "errors.transactions.transferSameAccount",
+          "Source and destination accounts must be different",
+        ),
       );
     }
 
     if (amount < 0) {
-      throw new BadRequestException("Transfer amount must not be negative");
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.transferAmountNegative",
+          "Transfer amount must not be negative",
+        ),
+      );
     }
 
     const fromAccount = await this.accountsService.findOne(
@@ -225,7 +234,9 @@ export class TransactionTransferService {
     const transaction = await findOne(userId, transactionId);
 
     if (!transaction.isTransfer) {
-      throw new BadRequestException("Transaction is not a transfer");
+      throw new BadRequestException(
+        tr("errors.transactions.notATransfer", "Transaction is not a transfer"),
+      );
     }
 
     const parentSplit = await this.splitsRepository.findOne({
@@ -410,7 +421,9 @@ export class TransactionTransferService {
     const transaction = await findOne(userId, transactionId);
 
     if (!transaction.isTransfer || !transaction.linkedTransactionId) {
-      throw new BadRequestException("Transaction is not a transfer");
+      throw new BadRequestException(
+        tr("errors.transactions.notATransfer", "Transaction is not a transfer"),
+      );
     }
 
     const linkedTransaction = await findOne(
@@ -432,7 +445,10 @@ export class TransactionTransferService {
 
     if (newFromAccountId === newToAccountId) {
       throw new BadRequestException(
-        "Source and destination accounts must be different",
+        tr(
+          "errors.transactions.transferSameAccount",
+          "Source and destination accounts must be different",
+        ),
       );
     }
 

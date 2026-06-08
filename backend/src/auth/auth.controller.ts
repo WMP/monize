@@ -48,6 +48,7 @@ import { DemoRestricted } from "../common/decorators/demo-restricted.decorator";
 import { DemoModeService } from "../common/demo-mode.service";
 import { generateCsrfToken, getCsrfCookieOptions } from "../common/csrf.util";
 import { encrypt, decrypt, derivePurposeKey } from "./crypto.util";
+import { tr } from "../i18n/translate";
 
 @ApiTags("Authentication")
 @Controller("auth")
@@ -236,11 +237,19 @@ export class AuthController {
   async register(@Body() registerDto: RegisterDto, @Res() res: Response) {
     if (!this.localAuthEnabled) {
       throw new ForbiddenException(
-        "Local authentication is disabled. Please use OIDC to sign in.",
+        tr(
+          "errors.auth.localAuthDisabled",
+          "Local authentication is disabled. Please use OIDC to sign in.",
+        ),
       );
     }
     if (!this.registrationEnabled) {
-      throw new ForbiddenException("New account registration is disabled.");
+      throw new ForbiddenException(
+        tr(
+          "errors.auth.registrationDisabled",
+          "New account registration is disabled.",
+        ),
+      );
     }
     const result = await this.authService.register(registerDto);
 
@@ -267,7 +276,10 @@ export class AuthController {
   ) {
     if (!this.localAuthEnabled) {
       throw new ForbiddenException(
-        "Local authentication is disabled. Please use OIDC to sign in.",
+        tr(
+          "errors.auth.localAuthDisabled",
+          "Local authentication is disabled. Please use OIDC to sign in.",
+        ),
       );
     }
     const trustedDeviceRef = this.decryptTrustedDeviceCookie(
@@ -302,7 +314,12 @@ export class AuthController {
   @ApiResponse({ status: 400, description: "OIDC not configured" })
   async oidcLogin(@Res() res: Response) {
     if (!this.oidcService.enabled) {
-      throw new BadRequestException("OIDC authentication is not configured");
+      throw new BadRequestException(
+        tr(
+          "errors.auth.oidcNotConfigured",
+          "OIDC authentication is not configured",
+        ),
+      );
     }
 
     const state = this.oidcService.generateState();
@@ -547,7 +564,9 @@ export class AuthController {
 
     const realUser = await this.authService.getUserById(realUserId);
     if (!realUser || !realUser.isActive) {
-      throw new UnauthorizedException("User not found or inactive");
+      throw new UnauthorizedException(
+        tr("errors.auth.userNotFoundOrInactive", "User not found or inactive"),
+      );
     }
 
     // SECURITY: revoke the current refresh family so a stale refresh token
@@ -576,7 +595,12 @@ export class AuthController {
   @ApiOperation({ summary: "Request password reset email" })
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     if (!this.localAuthEnabled) {
-      throw new ForbiddenException("Local authentication is disabled.");
+      throw new ForbiddenException(
+        tr(
+          "errors.auth.localAuthDisabledShort",
+          "Local authentication is disabled.",
+        ),
+      );
     }
 
     // M7: Per-email rate limiting (max 3 per email per hour)
@@ -807,7 +831,9 @@ export class AuthController {
   async refresh(@Request() req: ExpressRequest, @Res() res: Response) {
     const refreshToken = req.cookies?.["refresh_token"];
     if (!refreshToken) {
-      throw new UnauthorizedException("No refresh token provided");
+      throw new UnauthorizedException(
+        tr("errors.auth.noRefreshTokenProvided", "No refresh token provided"),
+      );
     }
 
     try {
@@ -852,7 +878,9 @@ export class AuthController {
 
     try {
       if (!token) {
-        throw new BadRequestException("Missing link token");
+        throw new BadRequestException(
+          tr("errors.auth.missingLinkToken", "Missing link token"),
+        );
       }
       await this.authService.confirmOidcLink(token);
       res.redirect(`${frontendUrl}/auth/callback?link=success`);

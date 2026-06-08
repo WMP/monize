@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, In } from "typeorm";
 import { Transaction } from "../transactions/entities/transaction.entity";
@@ -208,7 +209,11 @@ export class BudgetGeneratorService {
         const invalidIds = uniqueIds.filter((id) => !ownedIds.has(id));
         if (invalidIds.length > 0) {
           throw new BadRequestException(
-            `Category IDs not found or not owned by user: ${invalidIds.join(", ")}`,
+            tr(
+              "errors.budgets.categoryIdsNotOwned",
+              `Category IDs not found or not owned by user: ${invalidIds.join(", ")}`,
+              { ids: invalidIds.join(", ") },
+            ),
           );
         }
       }

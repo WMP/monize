@@ -5,6 +5,7 @@ import { Account, AccountType } from "./entities/account.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { roundMoney, sumMoney } from "../common/round.util";
+import { tr } from "../i18n/translate";
 
 export interface DetectedLoanPayment {
   /** Detected regular payment amount (positive) */
@@ -87,7 +88,9 @@ export class LoanPaymentDetectorService {
     });
 
     if (!account) {
-      throw new NotFoundException("Account not found");
+      throw new NotFoundException(
+        tr("errors.accounts.notFound", "Account not found"),
+      );
     }
 
     if (

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, Brackets } from "typeorm";
 import {
@@ -110,7 +111,9 @@ export class ReportsService {
     });
 
     if (!report) {
-      throw new NotFoundException(`Report with ID ${id} not found`);
+      throw new NotFoundException(
+        tr("errors.reports.notFound", `Report with ID ${id} not found`, { id }),
+      );
     }
 
     return report;
@@ -280,7 +283,10 @@ export class ReportsService {
     }
     if (!config?.customStartDate || !config?.customEndDate) {
       throw new BadRequestException(
-        "Custom timeframe requires both start and end dates",
+        tr(
+          "errors.reports.customTimeframeMissingDates",
+          "Custom timeframe requires both start and end dates",
+        ),
       );
     }
   }
@@ -337,7 +343,10 @@ export class ReportsService {
       case TimeframeType.CUSTOM:
         if (!customStart || !customEnd) {
           throw new BadRequestException(
-            "Custom timeframe requires both start and end dates",
+            tr(
+              "errors.reports.customTimeframeMissingDates",
+              "Custom timeframe requires both start and end dates",
+            ),
           );
         }
         startDate = customStart;

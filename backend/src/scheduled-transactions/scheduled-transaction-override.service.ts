@@ -12,6 +12,7 @@ import {
   UpdateScheduledTransactionOverrideDto,
 } from "./dto/scheduled-transaction-override.dto";
 import { validateSplitAmountSum } from "../common/split-amount.util";
+import { tr } from "../i18n/translate";
 
 @Injectable()
 export class ScheduledTransactionOverrideService {
@@ -40,14 +41,21 @@ export class ScheduledTransactionOverrideService {
 
     if (existing) {
       throw new BadRequestException(
-        `An override already exists for the ${createDto.originalDate} occurrence. Use update instead.`,
+        tr(
+          "errors.scheduled.overrideAlreadyExists",
+          `An override already exists for the ${createDto.originalDate} occurrence. Use update instead.`,
+          { originalDate: createDto.originalDate },
+        ),
       );
     }
 
     if (createDto.isSplit && createDto.splits && createDto.splits.length > 0) {
       if (createDto.amount === undefined || createDto.amount === null) {
         throw new BadRequestException(
-          "Amount is required when creating split override",
+          tr(
+            "errors.scheduled.splitOverrideRequiresAmount",
+            "Amount is required when creating split override",
+          ),
         );
       }
       this.validateOverrideSplits(createDto.splits, createDto.amount);
@@ -98,7 +106,13 @@ export class ScheduledTransactionOverrideService {
     });
 
     if (!override) {
-      throw new NotFoundException(`Override with ID ${overrideId} not found`);
+      throw new NotFoundException(
+        tr(
+          "errors.scheduled.overrideNotFound",
+          `Override with ID ${overrideId} not found`,
+          { overrideId },
+        ),
+      );
     }
 
     return override;
@@ -151,7 +165,12 @@ export class ScheduledTransactionOverrideService {
     if (updateDto.isSplit && updateDto.splits && updateDto.splits.length > 0) {
       const amount = updateDto.amount ?? override.amount;
       if (amount === null) {
-        throw new BadRequestException("Amount is required for split override");
+        throw new BadRequestException(
+          tr(
+            "errors.scheduled.updateSplitOverrideRequiresAmount",
+            "Amount is required for split override",
+          ),
+        );
       }
       this.validateOverrideSplits(updateDto.splits, amount);
     }

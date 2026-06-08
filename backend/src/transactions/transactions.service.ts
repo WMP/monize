@@ -46,6 +46,7 @@ import {
   buildTransactionSearchClause,
   escapeLikePattern,
 } from "./transaction-search.util";
+import { tr } from "../i18n/translate";
 
 export interface TransactionWithInvestmentLink extends Transaction {
   linkedInvestmentTransactionId?: string | null;
@@ -126,7 +127,9 @@ export class TransactionsService {
         where: { id: transactionData.categoryId, userId },
       });
       if (!cat) {
-        throw new NotFoundException("Category not found");
+        throw new NotFoundException(
+          tr("errors.transactions.categoryNotFound", "Category not found"),
+        );
       }
     }
 
@@ -1236,7 +1239,13 @@ export class TransactionsService {
     });
 
     if (!transaction) {
-      throw new NotFoundException(`Transaction with ID ${id} not found`);
+      throw new NotFoundException(
+        tr(
+          "errors.transactions.notFoundById",
+          `Transaction with ID ${id} not found`,
+          { id },
+        ),
+      );
     }
 
     return transaction;
@@ -1270,7 +1279,9 @@ export class TransactionsService {
         where: { id: updateData.categoryId, userId },
       });
       if (!cat) {
-        throw new NotFoundException("Category not found");
+        throw new NotFoundException(
+          tr("errors.transactions.categoryNotFound", "Category not found"),
+        );
       }
     }
 
@@ -1408,7 +1419,13 @@ export class TransactionsService {
         where: { id, userId },
       });
       if (!savedTransaction) {
-        throw new NotFoundException(`Transaction with ID ${id} not found`);
+        throw new NotFoundException(
+          tr(
+            "errors.transactions.notFoundById",
+            `Transaction with ID ${id} not found`,
+            { id },
+          ),
+        );
       }
 
       const newAmount = Number(savedTransaction.amount);

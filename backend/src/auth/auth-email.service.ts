@@ -13,6 +13,7 @@ import { User } from "../users/entities/user.entity";
 import { TrustedDevice } from "../users/entities/trusted-device.entity";
 import { hashToken } from "./crypto.util";
 import { PasswordBreachService } from "./password-breach.service";
+import { tr } from "../i18n/translate";
 import { TokenService } from "./token.service";
 
 @Injectable()
@@ -85,7 +86,10 @@ export class AuthEmailService implements OnModuleDestroy {
     const isBreached = await this.passwordBreachService.isBreached(newPassword);
     if (isBreached) {
       throw new BadRequestException(
-        "This password has been found in a data breach. Please choose a different password.",
+        tr(
+          "errors.auth.passwordBreached",
+          "This password has been found in a data breach. Please choose a different password.",
+        ),
       );
     }
 
@@ -110,7 +114,12 @@ export class AuthEmailService implements OnModuleDestroy {
       .execute();
 
     if (!result.affected || result.affected === 0) {
-      throw new BadRequestException("Invalid or expired reset token");
+      throw new BadRequestException(
+        tr(
+          "errors.auth.invalidOrExpiredResetToken",
+          "Invalid or expired reset token",
+        ),
+      );
     }
 
     // Revoke all refresh tokens to force re-login on all devices

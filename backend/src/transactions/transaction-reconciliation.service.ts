@@ -12,6 +12,7 @@ import {
   isTransactionInFuture,
   formatDateYMDLocal,
 } from "../common/date-utils";
+import { tr } from "../i18n/translate";
 
 @Injectable()
 export class TransactionReconciliationService {
@@ -107,7 +108,10 @@ export class TransactionReconciliationService {
       transaction.status === TransactionStatus.VOID
     ) {
       throw new BadRequestException(
-        "Cannot change cleared status of reconciled or void transactions",
+        tr(
+          "errors.transactions.cannotChangeClearedStatusOfReconciledOrVoid",
+          "Cannot change cleared status of reconciled or void transactions",
+        ),
       );
     }
 
@@ -130,11 +134,21 @@ export class TransactionReconciliationService {
     findOne: (userId: string, id: string) => Promise<Transaction>,
   ): Promise<Transaction> {
     if (transaction.status === TransactionStatus.RECONCILED) {
-      throw new BadRequestException("Transaction is already reconciled");
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.alreadyReconciled",
+          "Transaction is already reconciled",
+        ),
+      );
     }
 
     if (transaction.status === TransactionStatus.VOID) {
-      throw new BadRequestException("Cannot reconcile a void transaction");
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.cannotReconcileVoid",
+          "Cannot reconcile a void transaction",
+        ),
+      );
     }
 
     return this.updateStatus(
@@ -152,7 +166,12 @@ export class TransactionReconciliationService {
     findOne: (userId: string, id: string) => Promise<Transaction>,
   ): Promise<Transaction> {
     if (transaction.status !== TransactionStatus.RECONCILED) {
-      throw new BadRequestException("Transaction is not reconciled");
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.notReconciled",
+          "Transaction is not reconciled",
+        ),
+      );
     }
 
     await this.transactionsRepository.update(transaction.id, {
@@ -258,7 +277,10 @@ export class TransactionReconciliationService {
 
     if (transactions.length !== transactionIds.length) {
       throw new BadRequestException(
-        "Some transactions were not found or do not belong to the specified account",
+        tr(
+          "errors.transactions.bulkReconcileNotFound",
+          "Some transactions were not found or do not belong to the specified account",
+        ),
       );
     }
 
@@ -266,7 +288,12 @@ export class TransactionReconciliationService {
       (t) => t.status === TransactionStatus.VOID,
     );
     if (voidTransactions.length > 0) {
-      throw new BadRequestException("Cannot reconcile void transactions");
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.cannotReconcileVoidPlural",
+          "Cannot reconcile void transactions",
+        ),
+      );
     }
 
     await this.transactionsRepository

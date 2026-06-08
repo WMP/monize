@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import {
@@ -83,7 +84,13 @@ export class InvestmentReportsService {
       where: { id, userId },
     });
     if (!report) {
-      throw new NotFoundException(`Investment report with ID ${id} not found`);
+      throw new NotFoundException(
+        tr(
+          "errors.reports.investmentNotFound",
+          `Investment report with ID ${id} not found`,
+          { id },
+        ),
+      );
     }
     return report;
   }

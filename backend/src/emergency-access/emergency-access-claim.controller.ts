@@ -7,6 +7,7 @@ import {
   Post,
   Res,
 } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { ConfigService } from "@nestjs/config";
@@ -73,7 +74,10 @@ export class EmergencyAccessClaimController {
       contact.claimTokenExpiresAt.getTime() < Date.now()
     ) {
       throw new NotFoundException(
-        "This emergency access link is invalid, expired, or has already been used.",
+        tr(
+          "errors.emergencyAccess.invalidClaimLink",
+          "This emergency access link is invalid, expired, or has already been used.",
+        ),
       );
     }
     return contact;
@@ -95,7 +99,12 @@ export class EmergencyAccessClaimController {
       where: { id: contact.ownerUserId },
     });
     if (!settings || !owner) {
-      throw new NotFoundException("Owner account no longer exists.");
+      throw new NotFoundException(
+        tr(
+          "errors.emergencyAccess.ownerAccountGone",
+          "Owner account no longer exists.",
+        ),
+      );
     }
 
     let message: string | null = null;
@@ -140,7 +149,10 @@ export class EmergencyAccessClaimController {
     );
     if (isBreached) {
       throw new BadRequestException(
-        "This password has been found in a data breach. Please choose a different password.",
+        tr(
+          "errors.emergencyAccess.passwordBreached",
+          "This password has been found in a data breach. Please choose a different password.",
+        ),
       );
     }
 
@@ -165,7 +177,10 @@ export class EmergencyAccessClaimController {
         contact.claimTokenExpiresAt.getTime() < Date.now()
       ) {
         throw new NotFoundException(
-          "This emergency access link is invalid, expired, or has already been used.",
+          tr(
+            "errors.emergencyAccess.invalidClaimLink",
+            "This emergency access link is invalid, expired, or has already been used.",
+          ),
         );
       }
       ownerId = contact.ownerUserId;
@@ -174,7 +189,12 @@ export class EmergencyAccessClaimController {
         where: { id: ownerId },
       });
       if (!owner) {
-        throw new NotFoundException("Owner account no longer exists.");
+        throw new NotFoundException(
+          tr(
+            "errors.emergencyAccess.ownerAccountGone",
+            "Owner account no longer exists.",
+          ),
+        );
       }
 
       // Replace credentials so the contact can sign in.
@@ -253,7 +273,12 @@ export class EmergencyAccessClaimController {
 
     const freshOwner = await this.usersRepo.findOne({ where: { id: ownerId } });
     if (!freshOwner) {
-      throw new NotFoundException("Owner account no longer exists.");
+      throw new NotFoundException(
+        tr(
+          "errors.emergencyAccess.ownerAccountGone",
+          "Owner account no longer exists.",
+        ),
+      );
     }
 
     const { accessToken, refreshToken } =

@@ -28,6 +28,7 @@ import {
   buildTransactionSearchClause,
   escapeLikePattern,
 } from "./transaction-search.util";
+import { tr } from "../i18n/translate";
 
 export interface BulkDeleteResult {
   deleted: number;
@@ -66,7 +67,10 @@ export class TransactionBulkUpdateService {
     const isUpdatingTags = "tagIds" in dto;
     if (Object.keys(updateFields).length === 0 && !isUpdatingTags) {
       throw new BadRequestException(
-        "At least one update field must be provided",
+        tr(
+          "errors.transactions.bulkUpdateNoFields",
+          "At least one update field must be provided",
+        ),
       );
     }
 
@@ -76,7 +80,9 @@ export class TransactionBulkUpdateService {
         where: { id: dto.categoryId, userId },
       });
       if (!cat) {
-        throw new NotFoundException("Category not found");
+        throw new NotFoundException(
+          tr("errors.transactions.categoryNotFound", "Category not found"),
+        );
       }
     }
     if ("payeeId" in dto && dto.payeeId) {
@@ -84,7 +90,9 @@ export class TransactionBulkUpdateService {
         where: { id: dto.payeeId, userId },
       });
       if (!payee) {
-        throw new NotFoundException("Payee not found");
+        throw new NotFoundException(
+          tr("errors.transactions.payeeNotFound", "Payee not found"),
+        );
       }
     }
 

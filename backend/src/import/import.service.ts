@@ -62,6 +62,7 @@ import { Tag } from "../tags/entities/tag.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { roundMoney } from "../common/round.util";
+import { tr } from "../i18n/translate";
 
 @Injectable()
 export class ImportService {
@@ -199,7 +200,10 @@ export class ImportService {
 
     if (result.accountBlocks.length === 0) {
       throw new BadRequestException(
-        "No account blocks found in QIF file. This file may not be a multi-account export.",
+        tr(
+          "errors.import.noAccountBlocks",
+          "No account blocks found in QIF file. This file may not be a multi-account export.",
+        ),
       );
     }
 
@@ -452,7 +456,11 @@ export class ImportService {
       );
       await queryRunner.rollbackTransaction();
       throw new BadRequestException(
-        `Import failed after ${importResult.imported} transactions: ${error.message}`,
+        tr(
+          "errors.import.importFailed",
+          `Import failed after ${importResult.imported} transactions: ${error.message}`,
+          { imported: importResult.imported, message: error.message },
+        ),
       );
     } finally {
       await queryRunner.release();
@@ -1042,7 +1050,9 @@ export class ImportService {
       where: { id, userId },
     });
     if (!mapping) {
-      throw new NotFoundException("Column mapping not found");
+      throw new NotFoundException(
+        tr("errors.import.columnMappingNotFound", "Column mapping not found"),
+      );
     }
 
     if (dto.name !== undefined && dto.name !== mapping.name) {
@@ -1051,7 +1061,11 @@ export class ImportService {
       });
       if (duplicate) {
         throw new ConflictException(
-          `A column mapping named "${dto.name}" already exists`,
+          tr(
+            "errors.import.columnMappingDuplicate",
+            `A column mapping named "${dto.name}" already exists`,
+            { name: dto.name },
+          ),
         );
       }
       mapping.name = dto.name;
@@ -1086,7 +1100,9 @@ export class ImportService {
       where: { id, userId },
     });
     if (!mapping) {
-      throw new NotFoundException("Column mapping not found");
+      throw new NotFoundException(
+        tr("errors.import.columnMappingNotFound", "Column mapping not found"),
+      );
     }
     await this.columnMappingRepository.remove(mapping);
   }
@@ -1136,7 +1152,9 @@ export class ImportService {
       where: { id: accountId, userId },
     });
     if (!account) {
-      throw new NotFoundException("Account not found");
+      throw new NotFoundException(
+        tr("errors.import.accountNotFound", "Account not found"),
+      );
     }
 
     // Validate file type matches destination account type
@@ -1146,15 +1164,21 @@ export class ImportService {
 
     if (isInvestment && !isAccountBrokerage) {
       throw new BadRequestException(
-        "This file contains investment transactions but the selected account is not an investment brokerage account. " +
-          "Please select a brokerage account for this import.",
+        tr(
+          "errors.import.investmentFileNeedsBrokerageAccount",
+          "This file contains investment transactions but the selected account is not an investment brokerage account. " +
+            "Please select a brokerage account for this import.",
+        ),
       );
     }
 
     if (!isInvestment && isAccountBrokerage) {
       throw new BadRequestException(
-        "This file contains regular banking transactions but the selected account is an investment brokerage account. " +
-          "Please select a cash account (including investment cash accounts) for this import.",
+        tr(
+          "errors.import.regularFileNeedsCashAccount",
+          "This file contains regular banking transactions but the selected account is an investment brokerage account. " +
+            "Please select a cash account (including investment cash accounts) for this import.",
+        ),
       );
     }
 
@@ -1313,7 +1337,11 @@ export class ImportService {
       );
       await queryRunner.rollbackTransaction();
       throw new BadRequestException(
-        `Import failed after ${importResult.imported} transactions: ${error.message}`,
+        tr(
+          "errors.import.importFailed",
+          `Import failed after ${importResult.imported} transactions: ${error.message}`,
+          { imported: importResult.imported, message: error.message },
+        ),
       );
     } finally {
       await queryRunner.release();
@@ -1431,7 +1459,11 @@ export class ImportService {
       for (const accId of mappedAccountIds) {
         if (!foundAccountIdSet.has(accId)) {
           throw new BadRequestException(
-            `Account mapping references an invalid account: ${accId}`,
+            tr(
+              "errors.import.invalidAccountMapping",
+              `Account mapping references an invalid account: ${accId}`,
+              { accId },
+            ),
           );
         }
       }
@@ -1450,7 +1482,11 @@ export class ImportService {
       for (const catId of mappedCategoryIds) {
         if (!foundCategoryIdSet.has(catId)) {
           throw new BadRequestException(
-            `Category mapping references an invalid category: ${catId}`,
+            tr(
+              "errors.import.invalidCategoryMapping",
+              `Category mapping references an invalid category: ${catId}`,
+              { catId },
+            ),
           );
         }
       }
@@ -1470,7 +1506,11 @@ export class ImportService {
       for (const secId of mappedSecurityIds) {
         if (!foundSecurityIdSet.has(secId)) {
           throw new BadRequestException(
-            `Security mapping references an invalid security: ${secId}`,
+            tr(
+              "errors.import.invalidSecurityMapping",
+              `Security mapping references an invalid security: ${secId}`,
+              { secId },
+            ),
           );
         }
       }

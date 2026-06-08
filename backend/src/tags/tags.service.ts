@@ -4,6 +4,7 @@ import {
   ConflictException,
   Logger,
 } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource, QueryRunner, In } from "typeorm";
 import { Tag } from "./entities/tag.entity";
@@ -40,7 +41,9 @@ export class TagsService {
       where: { id, userId },
     });
     if (!tag) {
-      throw new NotFoundException(`Tag with ID ${id} not found`);
+      throw new NotFoundException(
+        tr("errors.tags.notFound", `Tag with ID ${id} not found`, { id }),
+      );
     }
     return tag;
   }
@@ -53,7 +56,13 @@ export class TagsService {
       .getOne();
 
     if (existing) {
-      throw new ConflictException(`A tag named "${dto.name}" already exists`);
+      throw new ConflictException(
+        tr(
+          "errors.tags.nameConflict",
+          `A tag named "${dto.name}" already exists`,
+          { name: dto.name },
+        ),
+      );
     }
 
     const tag = this.tagsRepository.create({
@@ -91,7 +100,13 @@ export class TagsService {
         .getOne();
 
       if (existing) {
-        throw new ConflictException(`A tag named "${dto.name}" already exists`);
+        throw new ConflictException(
+          tr(
+            "errors.tags.nameConflict",
+            `A tag named "${dto.name}" already exists`,
+            { name: dto.name },
+          ),
+        );
       }
     }
 
@@ -173,7 +188,9 @@ export class TagsService {
         where: { id: In(tagIds), userId },
       });
       if (tags.length !== tagIds.length) {
-        throw new NotFoundException("One or more tags not found");
+        throw new NotFoundException(
+          tr("errors.tags.oneOrMoreNotFound", "One or more tags not found"),
+        );
       }
     }
 
@@ -211,7 +228,9 @@ export class TagsService {
         where: { id: In(tagIds), userId },
       });
       if (tags.length !== tagIds.length) {
-        throw new NotFoundException("One or more tags not found");
+        throw new NotFoundException(
+          tr("errors.tags.oneOrMoreNotFound", "One or more tags not found"),
+        );
       }
     }
 
@@ -243,7 +262,9 @@ export class TagsService {
         where: { id: In(tagIds), userId },
       });
       if (tags.length !== tagIds.length) {
-        throw new NotFoundException("One or more tags not found");
+        throw new NotFoundException(
+          tr("errors.tags.oneOrMoreNotFound", "One or more tags not found"),
+        );
       }
     }
 

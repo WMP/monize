@@ -5,6 +5,7 @@ import {
   ConflictException,
   ForbiddenException,
 } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Security } from "./entities/security.entity";
@@ -52,7 +53,11 @@ export class SecuritiesService {
 
     if (existing) {
       throw new ConflictException(
-        `Security with symbol ${createSecurityDto.symbol} already exists`,
+        tr(
+          "errors.securities.symbolAlreadyExists",
+          `Security with symbol ${createSecurityDto.symbol} already exists`,
+          { symbol: createSecurityDto.symbol },
+        ),
       );
     }
 
@@ -125,7 +130,13 @@ export class SecuritiesService {
       where: { id, userId },
     });
     if (!security) {
-      throw new NotFoundException(`Security with ID ${id} not found`);
+      throw new NotFoundException(
+        tr(
+          "errors.securities.notFoundById",
+          `Security with ID ${id} not found`,
+          { id },
+        ),
+      );
     }
     return security;
   }
@@ -135,7 +146,13 @@ export class SecuritiesService {
       where: { symbol, userId },
     });
     if (!security) {
-      throw new NotFoundException(`Security with symbol ${symbol} not found`);
+      throw new NotFoundException(
+        tr(
+          "errors.securities.notFoundBySymbol",
+          `Security with symbol ${symbol} not found`,
+          { symbol },
+        ),
+      );
     }
     return security;
   }
@@ -158,7 +175,11 @@ export class SecuritiesService {
       });
       if (existing) {
         throw new ConflictException(
-          `Security with symbol ${updateSecurityDto.symbol} already exists`,
+          tr(
+            "errors.securities.symbolAlreadyExists",
+            `Security with symbol ${updateSecurityDto.symbol} already exists`,
+            { symbol: updateSecurityDto.symbol },
+          ),
         );
       }
     }
@@ -219,7 +240,10 @@ export class SecuritiesService {
 
     if (holdingsCount > 0) {
       throw new ForbiddenException(
-        "Cannot deactivate security with active holdings. Please sell all shares first.",
+        tr(
+          "errors.securities.cannotDeactivateWithHoldings",
+          "Cannot deactivate security with active holdings. Please sell all shares first.",
+        ),
       );
     }
 
@@ -248,7 +272,10 @@ export class SecuritiesService {
 
     if (holdingsCount > 0) {
       throw new ForbiddenException(
-        "Cannot delete security that has holdings. Remove all holdings first.",
+        tr(
+          "errors.securities.cannotDeleteWithHoldings",
+          "Cannot delete security that has holdings. Remove all holdings first.",
+        ),
       );
     }
 
@@ -261,7 +288,10 @@ export class SecuritiesService {
 
     if (transactionsCount > 0) {
       throw new ForbiddenException(
-        "Cannot delete security that has investment transactions. Delete all related transactions first.",
+        tr(
+          "errors.securities.cannotDeleteWithTransactions",
+          "Cannot delete security that has investment transactions. Delete all related transactions first.",
+        ),
       );
     }
 

@@ -29,6 +29,7 @@ import {
 } from "./mortgage-amortization.util";
 import { Cron } from "@nestjs/schedule";
 import { roundMoney, sumMoney } from "../common/round.util";
+import { tr } from "../i18n/translate";
 import { formatDateYMD, todayInTimezone, todayYMD } from "../common/date-utils";
 import { getUsersByEffectiveTimezone } from "../common/users-by-timezone.util";
 import { ActionHistoryService } from "../action-history/action-history.service";
@@ -294,7 +295,13 @@ export class AccountsService {
     });
 
     if (!account) {
-      throw new NotFoundException(`Account with ID ${id} not found`);
+      throw new NotFoundException(
+        tr(
+          "errors.accounts.accountWithIdNotFound",
+          `Account with ID ${id} not found`,
+          { id },
+        ),
+      );
     }
 
     return account;
@@ -326,14 +333,20 @@ export class AccountsService {
       !account.accountSubType
     ) {
       throw new BadRequestException(
-        "This account is not part of an investment account pair",
+        tr(
+          "errors.accounts.notInvestmentPair",
+          "This account is not part of an investment account pair",
+        ),
       );
     }
 
     // Get the linked account
     if (!account.linkedAccountId) {
       throw new BadRequestException(
-        "This investment account does not have a linked account",
+        tr(
+          "errors.accounts.noLinkedInvestmentAccount",
+          "This investment account does not have a linked account",
+        ),
       );
     }
 
@@ -439,11 +452,15 @@ export class AccountsService {
       });
 
       if (!account) {
-        throw new NotFoundException("Account not found");
+        throw new NotFoundException(
+          tr("errors.accounts.notFound", "Account not found"),
+        );
       }
 
       if (account.isClosed) {
-        throw new BadRequestException("Cannot update a closed account");
+        throw new BadRequestException(
+          tr("errors.accounts.updateClosed", "Cannot update a closed account"),
+        );
       }
 
       // Currency is locked once the account has transactions. Allowing it to
@@ -464,7 +481,10 @@ export class AccountsService {
 
         if (transactionCount > 0 || investmentTransactionCount > 0) {
           throw new BadRequestException(
-            "Cannot change the currency of an account that has transactions.",
+            tr(
+              "errors.accounts.changeCurrencyWithTransactions",
+              "Cannot change the currency of an account that has transactions.",
+            ),
           );
         }
       }
@@ -634,18 +654,29 @@ export class AccountsService {
       });
 
       if (!account) {
-        throw new NotFoundException(`Account with ID ${id} not found`);
+        throw new NotFoundException(
+          tr(
+            "errors.accounts.accountWithIdNotFound",
+            `Account with ID ${id} not found`,
+            { id },
+          ),
+        );
       }
 
       if (account.isClosed) {
-        throw new BadRequestException("Account is already closed");
+        throw new BadRequestException(
+          tr("errors.accounts.alreadyClosed", "Account is already closed"),
+        );
       }
 
       // Check if balance is not zero (under lock, so no race)
       if (Number(account.currentBalance) !== 0) {
         throw new BadRequestException(
-          "Cannot close account with non-zero balance. Current balance: " +
-            account.currentBalance,
+          tr(
+            "errors.accounts.closeNonZeroBalance",
+            `Cannot close account with non-zero balance. Current balance: ${account.currentBalance}`,
+            { currentBalance: account.currentBalance },
+          ),
         );
       }
 
@@ -695,11 +726,19 @@ export class AccountsService {
       });
 
       if (!account) {
-        throw new NotFoundException(`Account with ID ${id} not found`);
+        throw new NotFoundException(
+          tr(
+            "errors.accounts.accountWithIdNotFound",
+            `Account with ID ${id} not found`,
+            { id },
+          ),
+        );
       }
 
       if (!account.isClosed) {
-        throw new BadRequestException("Account is not closed");
+        throw new BadRequestException(
+          tr("errors.accounts.notClosed", "Account is not closed"),
+        );
       }
 
       account.isClosed = false;
@@ -754,12 +793,21 @@ export class AccountsService {
     });
 
     if (!account) {
-      throw new NotFoundException(`Account with ID ${accountId} not found`);
+      throw new NotFoundException(
+        tr(
+          "errors.accounts.accountWithIdNotFound",
+          `Account with ID ${accountId} not found`,
+          { id: accountId },
+        ),
+      );
     }
 
     if (account.isClosed) {
       throw new BadRequestException(
-        "Cannot modify balance of a closed account",
+        tr(
+          "errors.accounts.modifyBalanceClosed",
+          "Cannot modify balance of a closed account",
+        ),
       );
     }
 
@@ -795,7 +843,13 @@ export class AccountsService {
     });
 
     if (!account) {
-      throw new NotFoundException(`Account with ID ${accountId} not found`);
+      throw new NotFoundException(
+        tr(
+          "errors.accounts.accountWithIdNotFound",
+          `Account with ID ${accountId} not found`,
+          { id: accountId },
+        ),
+      );
     }
 
     const balanceSql = `SELECT COALESCE($2::NUMERIC, 0) + COALESCE(SUM(t.amount), 0) as balance
@@ -1014,7 +1068,11 @@ export class AccountsService {
 
     if (transactionCount > 0) {
       throw new BadRequestException(
-        `Cannot delete account with ${transactionCount} transaction(s). Close the account instead.`,
+        tr(
+          "errors.accounts.deleteWithTransactions",
+          `Cannot delete account with ${transactionCount} transaction(s). Close the account instead.`,
+          { transactionCount },
+        ),
       );
     }
 
@@ -1026,7 +1084,11 @@ export class AccountsService {
 
     if (investmentTransactionCount > 0) {
       throw new BadRequestException(
-        `Cannot delete account with ${investmentTransactionCount} investment transaction(s). Close the account instead.`,
+        tr(
+          "errors.accounts.deleteWithInvestmentTransactions",
+          `Cannot delete account with ${investmentTransactionCount} investment transaction(s). Close the account instead.`,
+          { investmentTransactionCount },
+        ),
       );
     }
 
@@ -1315,7 +1377,12 @@ export class AccountsService {
     // layer already validates this via @IsArray, but we re-check here so the
     // invariant is visible to static analysis.
     if (!Array.isArray(accountIds)) {
-      throw new BadRequestException("accountIds must be an array");
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.accountIdsMustBeArray",
+          "accountIds must be an array",
+        ),
+      );
     }
     if (accountIds.length === 0) {
       return;

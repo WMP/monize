@@ -4,6 +4,7 @@ import {
   ConflictException,
   Logger,
 } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource, QueryRunner } from "typeorm";
 import { Cron } from "@nestjs/schedule";
@@ -289,7 +290,9 @@ export class ActionHistoryService {
     });
 
     if (!action) {
-      throw new NotFoundException("Nothing to undo");
+      throw new NotFoundException(
+        tr("errors.actionHistory.nothingToUndo", "Nothing to undo"),
+      );
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -319,7 +322,9 @@ export class ActionHistoryService {
     });
 
     if (!action) {
-      throw new NotFoundException("Nothing to redo");
+      throw new NotFoundException(
+        tr("errors.actionHistory.nothingToRedo", "Nothing to redo"),
+      );
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -405,7 +410,11 @@ export class ActionHistoryService {
         break;
       default:
         throw new ConflictException(
-          `Undo not supported for entity type: ${action.entityType}`,
+          tr(
+            "errors.actionHistory.undoNotSupportedForEntityType",
+            `Undo not supported for entity type: ${action.entityType}`,
+            { entityType: action.entityType },
+          ),
         );
     }
   }
@@ -459,7 +468,11 @@ export class ActionHistoryService {
         break;
       default:
         throw new ConflictException(
-          `Unsupported transaction action: ${action.action}`,
+          tr(
+            "errors.actionHistory.unsupportedTransactionAction",
+            `Unsupported transaction action: ${action.action}`,
+            { action: action.action },
+          ),
         );
     }
   }
@@ -507,7 +520,12 @@ export class ActionHistoryService {
       where: { id: action.entityId, userId: action.userId },
     });
     if (!transaction) {
-      throw new ConflictException("Cannot undo: transaction no longer exists");
+      throw new ConflictException(
+        tr(
+          "errors.actionHistory.undoTransactionGone",
+          "Cannot undo: transaction no longer exists",
+        ),
+      );
     }
 
     const before = action.beforeData;
@@ -603,7 +621,12 @@ export class ActionHistoryService {
       where: { id: before.accountId, userId: action.userId },
     });
     if (!account) {
-      throw new ConflictException("Cannot undo: the account no longer exists");
+      throw new ConflictException(
+        tr(
+          "errors.actionHistory.undoAccountGone",
+          "Cannot undo: the account no longer exists",
+        ),
+      );
     }
 
     // Re-insert the transaction
@@ -682,7 +705,11 @@ export class ActionHistoryService {
         break;
       default:
         throw new ConflictException(
-          `Unsupported transfer action: ${action.action}`,
+          tr(
+            "errors.actionHistory.unsupportedTransferAction",
+            `Unsupported transfer action: ${action.action}`,
+            { action: action.action },
+          ),
         );
     }
   }
@@ -794,7 +821,11 @@ export class ActionHistoryService {
         break;
       default:
         throw new ConflictException(
-          `Unsupported investment action: ${action.action}`,
+          tr(
+            "errors.actionHistory.unsupportedInvestmentAction",
+            `Unsupported investment action: ${action.action}`,
+            { action: action.action },
+          ),
         );
     }
   }
@@ -813,7 +844,11 @@ export class ActionHistoryService {
     // non-undoable (they would also need the cash side restored).
     if (!before || !linkedBefore) {
       throw new ConflictException(
-        `Unsupported investment action: ${action.action}`,
+        tr(
+          "errors.actionHistory.unsupportedInvestmentAction",
+          `Unsupported investment action: ${action.action}`,
+          { action: action.action },
+        ),
       );
     }
 
@@ -1046,7 +1081,11 @@ export class ActionHistoryService {
         break;
       default:
         throw new ConflictException(
-          `Unsupported bulk action: ${action.action}`,
+          tr(
+            "errors.actionHistory.unsupportedBulkAction",
+            `Unsupported bulk action: ${action.action}`,
+            { action: action.action },
+          ),
         );
     }
   }
@@ -1203,7 +1242,13 @@ export class ActionHistoryService {
         }
         break;
       default:
-        throw new ConflictException(`Unsupported action: ${action.action}`);
+        throw new ConflictException(
+          tr(
+            "errors.actionHistory.unsupportedSimpleAction",
+            `Unsupported action: ${action.action}`,
+            { action: action.action },
+          ),
+        );
     }
   }
 
@@ -1337,7 +1382,11 @@ export class ActionHistoryService {
     const allowedCols = ALLOWED_COLUMNS[tableName];
     if (!allowedCols) {
       throw new ConflictException(
-        `Unsupported table for re-insert: ${tableName}`,
+        tr(
+          "errors.actionHistory.unsupportedTableForReinsert",
+          `Unsupported table for re-insert: ${tableName}`,
+          { tableName },
+        ),
       );
     }
 

@@ -1,4 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { roundMoney, sumMoney } from "./round.util";
 
 /**
@@ -32,7 +33,10 @@ export function validateSplitAmountSum(
 
   if (splits.length < 2 && !isPassthrough) {
     throw new BadRequestException(
-      "Split transactions must have at least 2 splits",
+      tr(
+        "errors.common.splitMinCount",
+        "Split transactions must have at least 2 splits",
+      ),
     );
   }
 
@@ -41,7 +45,11 @@ export function validateSplitAmountSum(
 
   if (roundedSum !== roundedAmount) {
     throw new BadRequestException(
-      `Split amounts (${roundedSum}) must equal transaction amount (${roundedAmount})`,
+      tr(
+        "errors.common.splitAmountMismatch",
+        `Split amounts (${roundedSum}) must equal transaction amount (${roundedAmount})`,
+        { roundedSum, roundedAmount },
+      ),
     );
   }
 }

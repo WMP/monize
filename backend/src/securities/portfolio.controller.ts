@@ -6,6 +6,7 @@ import {
   Query,
   BadRequestException,
 } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import {
   ApiTags,
   ApiOperation,
@@ -71,7 +72,12 @@ export class PortfolioController {
     const ids = csv.split(",").filter(Boolean);
     for (const id of ids) {
       if (!PortfolioController.UUID_REGEX.test(id)) {
-        throw new BadRequestException(`Invalid ${label} UUID: ${id}`);
+        throw new BadRequestException(
+          tr("errors.securities.invalidUuid", `Invalid ${label} UUID: ${id}`, {
+            label,
+            id,
+          }),
+        );
       }
     }
     return ids;

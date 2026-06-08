@@ -32,6 +32,7 @@ import {
   SetBackupPasswordDto,
 } from "./dto/backup-encryption.dto";
 import { DemoRestricted } from "../common/decorators/demo-restricted.decorator";
+import { tr } from "../i18n/translate";
 
 @ApiTags("Backup")
 @Controller("backup")
@@ -90,7 +91,12 @@ export class BackupController {
       !Buffer.isBuffer(body) ||
       body.length === 0
     ) {
-      throw new BadRequestException("Request body must be a backup file");
+      throw new BadRequestException(
+        tr(
+          "errors.backup.restoreBodyMustBeFile",
+          "Request body must be a backup file",
+        ),
+      );
     }
 
     const password = req.headers["x-restore-password"] as string | undefined;

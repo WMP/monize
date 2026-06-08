@@ -30,6 +30,7 @@ import { TokenService } from "./token.service";
 import { TwoFactorService } from "./two-factor.service";
 import { AuthEmailService } from "./auth-email.service";
 import { DelegationService } from "../delegation/delegation.service";
+import { tr } from "../i18n/translate";
 
 @Injectable()
 export class AuthService {
@@ -102,7 +103,12 @@ export class AuthService {
         (await this.delegationService.isDelegateUser(existingUser.id)) &&
         !(await this.delegationService.isFullAccount(existingUser.id));
       if (!isPureDelegate) {
-        throw new ConflictException("Unable to complete registration");
+        throw new ConflictException(
+          tr(
+            "errors.auth.unableToCompleteRegistration",
+            "Unable to complete registration",
+          ),
+        );
       }
 
       if (existingUser.passwordHash) {
@@ -124,9 +130,12 @@ export class AuthService {
         }
         if (!claimOk) {
           throw new UnauthorizedException(
-            "An account with this email already exists as a shared user. " +
-              "Provide the temporary password your administrator gave you " +
-              "to claim it.",
+            tr(
+              "errors.auth.delegateClaimPasswordRequired",
+              "An account with this email already exists as a shared user. " +
+                "Provide the temporary password your administrator gave you " +
+                "to claim it.",
+            ),
           );
         }
       }
@@ -134,7 +143,10 @@ export class AuthService {
       const breached = await this.passwordBreachService.isBreached(password);
       if (breached) {
         throw new BadRequestException(
-          "This password has been found in a data breach. Please choose a different password.",
+          tr(
+            "errors.auth.passwordBreached",
+            "This password has been found in a data breach. Please choose a different password.",
+          ),
         );
       }
 
@@ -167,7 +179,10 @@ export class AuthService {
     const isBreached = await this.passwordBreachService.isBreached(password);
     if (isBreached) {
       throw new BadRequestException(
-        "This password has been found in a data breach. Please choose a different password.",
+        tr(
+          "errors.auth.passwordBreached",
+          "This password has been found in a data breach. Please choose a different password.",
+        ),
       );
     }
 
@@ -216,14 +231,19 @@ export class AuthService {
 
     if (!user || !user.passwordHash) {
       this.logger.warn("Login failed: no matching account");
-      throw new UnauthorizedException("Invalid credentials");
+      throw new UnauthorizedException(
+        tr("errors.auth.invalidCredentials", "Invalid credentials"),
+      );
     }
 
     // Check account lockout
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       this.logger.warn(`Login failed: account locked for user ${user.id}`);
       throw new ForbiddenException(
-        "Account is temporarily locked due to too many failed login attempts. Please try again later.",
+        tr(
+          "errors.auth.accountTemporarilyLocked",
+          "Account is temporarily locked due to too many failed login attempts. Please try again later.",
+        ),
       );
     }
 
@@ -265,12 +285,16 @@ export class AuthService {
         .set(updateFields)
         .where("id = :id", { id: user.id })
         .execute();
-      throw new UnauthorizedException("Invalid credentials");
+      throw new UnauthorizedException(
+        tr("errors.auth.invalidCredentials", "Invalid credentials"),
+      );
     }
 
     if (!user.isActive) {
       this.logger.warn(`Login failed: account deactivated for user ${user.id}`);
-      throw new UnauthorizedException("Account is deactivated");
+      throw new UnauthorizedException(
+        tr("errors.auth.accountDeactivated", "Account is deactivated"),
+      );
     }
 
     // Reset failed attempts on successful login
@@ -366,7 +390,10 @@ export class AuthService {
 
     if (!sub) {
       throw new UnauthorizedException(
-        "OIDC provider did not return a subject identifier",
+        tr(
+          "errors.auth.oidcNoSubject",
+          "OIDC provider did not return a subject identifier",
+        ),
       );
     }
 
@@ -403,7 +430,12 @@ export class AuthService {
 
       if (!user) {
         if (!registrationEnabled) {
-          throw new ForbiddenException("New account registration is disabled.");
+          throw new ForbiddenException(
+            tr(
+              "errors.auth.registrationDisabled",
+              "New account registration is disabled.",
+            ),
+          );
         }
         // C9: Use serializable transaction for first-user admin race prevention
         try {
@@ -593,7 +625,12 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new BadRequestException("Invalid or expired link token");
+      throw new BadRequestException(
+        tr(
+          "errors.auth.invalidOrExpiredLinkToken",
+          "Invalid or expired link token",
+        ),
+      );
     }
 
     if (user.oidcLinkExpiresAt && user.oidcLinkExpiresAt < new Date()) {
@@ -603,7 +640,9 @@ export class AuthService {
       user.oidcLinkExpiresAt = null;
       user.pendingOidcSubject = null;
       await this.usersRepository.save(user);
-      throw new BadRequestException("Link token has expired");
+      throw new BadRequestException(
+        tr("errors.auth.linkTokenExpired", "Link token has expired"),
+      );
     }
 
     // Complete the link

@@ -4,6 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, In, Repository } from "typeorm";
 import { MonteCarloScenario } from "./entities/monte-carlo-scenario.entity";
@@ -127,7 +128,11 @@ export class MonteCarloService {
       relations: ["cashFlows"],
     });
     if (!scenario) {
-      throw new NotFoundException(`Scenario ${id} not found`);
+      throw new NotFoundException(
+        tr("errors.monteCarlo.scenarioNotFound", `Scenario ${id} not found`, {
+          id,
+        }),
+      );
     }
     if (scenario.cashFlows) {
       scenario.cashFlows.sort((a, b) => a.sortOrder - b.sortOrder);
@@ -220,7 +225,12 @@ export class MonteCarloService {
     // this via @IsArray, but we re-check here so the invariant is visible to
     // static analysis (mirrors AccountsService.reorderFavourites).
     if (!Array.isArray(scenarioIds)) {
-      throw new BadRequestException("scenarioIds must be an array");
+      throw new BadRequestException(
+        tr(
+          "errors.monteCarlo.scenarioIdsMustBeArray",
+          "scenarioIds must be an array",
+        ),
+      );
     }
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -363,7 +373,12 @@ export class MonteCarloService {
     accountIds: string[],
   ): Promise<HistoricalStats> {
     if (accountIds.length === 0) {
-      throw new BadRequestException("At least one accountId is required");
+      throw new BadRequestException(
+        tr(
+          "errors.monteCarlo.atLeastOneAccountRequired",
+          "At least one accountId is required",
+        ),
+      );
     }
 
     const currentBalance = await this.computeCurrentValue(userId, accountIds);
@@ -459,7 +474,12 @@ export class MonteCarloService {
     accountIds: string[],
   ): Promise<AccountHoldingStats[]> {
     if (accountIds.length === 0) {
-      throw new BadRequestException("At least one accountId is required");
+      throw new BadRequestException(
+        tr(
+          "errors.monteCarlo.atLeastOneAccountRequired",
+          "At least one accountId is required",
+        ),
+      );
     }
 
     // Verify the requested accounts belong to the user before running queries

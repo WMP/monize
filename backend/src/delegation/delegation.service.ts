@@ -26,6 +26,7 @@ import { Transaction } from "../transactions/entities/transaction.entity";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { hashToken } from "../auth/crypto.util";
 import { generateReadablePassword } from "../admin/utils/password-generator";
+import { tr } from "../i18n/translate";
 import { EmailService } from "../notifications/email.service";
 import { delegateInviteTemplate } from "../notifications/email-templates";
 import { ConfigService } from "@nestjs/config";
@@ -132,14 +133,24 @@ export class DelegationService {
       delegation.delegateUserId !== delegateUserId ||
       delegation.ownerUserId !== actingAsUserId
     ) {
-      throw new UnauthorizedException("Delegated access is no longer valid");
+      throw new UnauthorizedException(
+        tr(
+          "errors.delegation.delegatedAccessInvalid",
+          "Delegated access is no longer valid",
+        ),
+      );
     }
 
     const owner = await this.usersRepository.findOne({
       where: { id: actingAsUserId },
     });
     if (!owner || !owner.isActive) {
-      throw new UnauthorizedException("Delegated access is no longer valid");
+      throw new UnauthorizedException(
+        tr(
+          "errors.delegation.delegatedAccessInvalid",
+          "Delegated access is no longer valid",
+        ),
+      );
     }
 
     if (await this.delegateMustEnrollOwn2FA(actingAsUserId, delegateUserId)) {
@@ -331,7 +342,12 @@ export class DelegationService {
     // so the bound is visible to static analysis. Keep the guard and the
     // loop in the same scope (no closure) so the barrier is tracked.
     if (!Array.isArray(accountIds)) {
-      throw new BadRequestException("accountIds must be an array");
+      throw new BadRequestException(
+        tr(
+          "errors.delegation.accountIdsMustBeArray",
+          "accountIds must be an array",
+        ),
+      );
     }
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -425,7 +441,12 @@ export class DelegationService {
       },
     });
     if (!delegation) {
-      throw new ForbiddenException("No active delegation for that account");
+      throw new ForbiddenException(
+        tr(
+          "errors.delegation.noActiveDelegation",
+          "No active delegation for that account",
+        ),
+      );
     }
     if (await this.delegateMustEnrollOwn2FA(targetUserId, delegateUserId)) {
       throw new ForbiddenException(DELEGATE_2FA_REQUIRED);
@@ -622,7 +643,9 @@ export class DelegationService {
       where: { id: delegationId, ownerUserId },
     });
     if (!delegation) {
-      throw new NotFoundException("Delegate not found");
+      throw new NotFoundException(
+        tr("errors.delegation.delegateNotFound", "Delegate not found"),
+      );
     }
     for (const [key, value] of Object.entries(sections)) {
       if (value !== undefined) {
@@ -654,7 +677,9 @@ export class DelegationService {
       where: { id: delegationId, ownerUserId },
     });
     if (!delegation) {
-      throw new NotFoundException("Delegate not found");
+      throw new NotFoundException(
+        tr("errors.delegation.delegateNotFound", "Delegate not found"),
+      );
     }
     for (const [key, value] of Object.entries(caps)) {
       if (value !== undefined) {
@@ -709,9 +734,17 @@ export class DelegationService {
     const owner = await this.usersRepository.findOne({
       where: { id: ownerUserId },
     });
-    if (!owner) throw new NotFoundException("User not found");
+    if (!owner)
+      throw new NotFoundException(
+        tr("errors.delegation.userNotFound", "User not found"),
+      );
     if (owner.email && owner.email.toLowerCase().trim() === email) {
-      throw new BadRequestException("You cannot delegate access to yourself");
+      throw new BadRequestException(
+        tr(
+          "errors.delegation.cannotDelegateToSelf",
+          "You cannot delegate access to yourself",
+        ),
+      );
     }
 
     let temporaryPassword: string | undefined;
@@ -722,7 +755,12 @@ export class DelegationService {
       const isNew = !delegateUser;
 
       if (delegateUser && delegateUser.id === ownerUserId) {
-        throw new BadRequestException("You cannot delegate access to yourself");
+        throw new BadRequestException(
+          tr(
+            "errors.delegation.cannotDelegateToSelf",
+            "You cannot delegate access to yourself",
+          ),
+        );
       }
 
       // An existing user that is a full account in its own right (owns data,
@@ -787,7 +825,10 @@ export class DelegationService {
         if (dto.sendInvite) {
           if (!this.emailService.getStatus().configured) {
             throw new BadRequestException(
-              "SMTP is not configured. Set a password for the delegate instead.",
+              tr(
+                "errors.delegation.smtpNotConfigured",
+                "SMTP is not configured. Set a password for the delegate instead.",
+              ),
             );
           }
           const rawToken = crypto.randomBytes(32).toString("hex");
@@ -830,7 +871,10 @@ export class DelegationService {
       if (delegation) {
         if (delegation.status === "active") {
           throw new ConflictException(
-            "That user is already a delegate for your account",
+            tr(
+              "errors.delegation.alreadyDelegate",
+              "That user is already a delegate for your account",
+            ),
           );
         }
         delegation.status = "active";
@@ -887,7 +931,9 @@ export class DelegationService {
       where: { id: delegationId, ownerUserId },
     });
     if (!delegation) {
-      throw new NotFoundException("Delegate not found");
+      throw new NotFoundException(
+        tr("errors.delegation.delegateNotFound", "Delegate not found"),
+      );
     }
     const delegateUserId = delegation.delegateUserId;
 
@@ -937,14 +983,19 @@ export class DelegationService {
       where: { id: delegationId, ownerUserId },
     });
     if (!delegation) {
-      throw new NotFoundException("Delegate not found");
+      throw new NotFoundException(
+        tr("errors.delegation.delegateNotFound", "Delegate not found"),
+      );
     }
 
     // READ is the minimum and a prerequisite for CREATE/EDIT/DELETE.
     for (const g of grants) {
       if (!g.canRead && (g.canCreate || g.canEdit || g.canDelete)) {
         throw new BadRequestException(
-          "READ access is required for CREATE, EDIT or DELETE",
+          tr(
+            "errors.delegation.readRequiredForWrite",
+            "READ access is required for CREATE, EDIT or DELETE",
+          ),
         );
       }
     }
@@ -960,7 +1011,10 @@ export class DelegationService {
       });
       if (owned.length !== accountIds.length) {
         throw new ForbiddenException(
-          "One or more accounts do not belong to you",
+          tr(
+            "errors.delegation.accountsNotOwned",
+            "One or more accounts do not belong to you",
+          ),
         );
       }
     }
@@ -991,25 +1045,33 @@ export class DelegationService {
       where: { id: delegationId, ownerUserId, status: "active" },
     });
     if (!delegation) {
-      throw new NotFoundException("Delegate not found");
+      throw new NotFoundException(
+        tr("errors.delegation.delegateNotFound", "Delegate not found"),
+      );
     }
 
     const delegate = await this.usersRepository.findOne({
       where: { id: delegation.delegateUserId },
     });
     if (!delegate) {
-      throw new NotFoundException("Delegate not found");
+      throw new NotFoundException(
+        tr("errors.delegation.delegateNotFound", "Delegate not found"),
+      );
     }
     if (delegate.oidcSubject) {
       throw new BadRequestException(
-        "Cannot reset password for an SSO delegate account",
+        tr(
+          "errors.delegation.cannotResetSsoPassword",
+          "Cannot reset password for an SSO delegate account",
+        ),
       );
     }
     if (!(await this.canOwnerResetDelegatePassword(delegate.id))) {
       throw new ForbiddenException(
-        "This delegate manages their own password (they have their own " +
-          "Monize account or delegated access elsewhere). Only they can " +
-          "change it.",
+        tr(
+          "errors.delegation.delegateManagesOwnPassword",
+          "This delegate manages their own password (they have their own Monize account or delegated access elsewhere). Only they can change it.",
+        ),
       );
     }
 

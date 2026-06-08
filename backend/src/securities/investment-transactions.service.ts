@@ -7,6 +7,7 @@ import {
   Inject,
   forwardRef,
 } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource, QueryRunner, In } from "typeorm";
 import {
@@ -456,7 +457,12 @@ export class InvestmentTransactionsService {
     );
 
     if (account.accountType !== "INVESTMENT") {
-      throw new BadRequestException("Account must be of type INVESTMENT");
+      throw new BadRequestException(
+        tr(
+          "errors.securities.accountMustBeInvestment",
+          "Account must be of type INVESTMENT",
+        ),
+      );
     }
 
     if (
@@ -471,7 +477,11 @@ export class InvestmentTransactionsService {
       !createDto.securityId
     ) {
       throw new BadRequestException(
-        `Security ID is required for ${createDto.action} transactions`,
+        tr(
+          "errors.securities.securityIdRequired",
+          `Security ID is required for ${createDto.action} transactions`,
+          { action: createDto.action },
+        ),
       );
     }
 
@@ -480,7 +490,10 @@ export class InvestmentTransactionsService {
       (!createDto.quantity || Number(createDto.quantity) <= 0)
     ) {
       throw new BadRequestException(
-        "Split ratio (quantity) must be greater than zero",
+        tr(
+          "errors.securities.splitRatioRequired",
+          "Split ratio (quantity) must be greater than zero",
+        ),
       );
     }
 
@@ -611,7 +624,13 @@ export class InvestmentTransactionsService {
       account.accountSubType &&
       account.accountSubType !== AccountSubType.INVESTMENT_BROKERAGE
     ) {
-      throw new BadRequestException(`${label} cannot hold securities`);
+      throw new BadRequestException(
+        tr(
+          "errors.securities.cannotHoldSecurities",
+          `${label} cannot hold securities`,
+          { label },
+        ),
+      );
     }
   }
 
@@ -632,7 +651,10 @@ export class InvestmentTransactionsService {
   }> {
     if (dto.fromAccountId === dto.toAccountId) {
       throw new BadRequestException(
-        "Source and destination accounts must be different",
+        tr(
+          "errors.securities.sourceDestMustDiffer",
+          "Source and destination accounts must be different",
+        ),
       );
     }
 
@@ -645,7 +667,12 @@ export class InvestmentTransactionsService {
       fromAccount.accountType !== "INVESTMENT" ||
       toAccount.accountType !== "INVESTMENT"
     ) {
-      throw new BadRequestException("Both accounts must be of type INVESTMENT");
+      throw new BadRequestException(
+        tr(
+          "errors.securities.bothAccountsMustBeInvestment",
+          "Both accounts must be of type INVESTMENT",
+        ),
+      );
     }
 
     // Securities only live in brokerage / standalone investment accounts. The
@@ -655,7 +682,12 @@ export class InvestmentTransactionsService {
     this.assertCanHoldSecurities(toAccount, "Destination account");
 
     if (toAccount.isClosed) {
-      throw new BadRequestException("Destination account is closed");
+      throw new BadRequestException(
+        tr(
+          "errors.securities.destinationAccountClosed",
+          "Destination account is closed",
+        ),
+      );
     }
 
     await this.securitiesService.findOne(userId, dto.securityId);
@@ -1054,7 +1086,11 @@ export class InvestmentTransactionsService {
   ): Promise<InvestmentTransaction> {
     if (!isInvestmentActionAllowedInSplit(dto.action)) {
       throw new BadRequestException(
-        `Investment action ${dto.action} is not allowed inside a split transaction`,
+        tr(
+          "errors.securities.actionNotAllowedInSplit",
+          `Investment action ${dto.action} is not allowed inside a split transaction`,
+          { action: dto.action },
+        ),
       );
     }
 
@@ -1066,7 +1102,10 @@ export class InvestmentTransactionsService {
       brokerageAccount.accountSubType !== AccountSubType.INVESTMENT_BROKERAGE
     ) {
       throw new BadRequestException(
-        "Embedded investment splits require an INVESTMENT_BROKERAGE account",
+        tr(
+          "errors.securities.embeddedSplitRequiresBrokerage",
+          "Embedded investment splits require an INVESTMENT_BROKERAGE account",
+        ),
       );
     }
 
@@ -1079,7 +1118,11 @@ export class InvestmentTransactionsService {
     ];
     if (securityRequiredActions.includes(dto.action) && !dto.securityId) {
       throw new BadRequestException(
-        `Security ID is required for ${dto.action} transactions`,
+        tr(
+          "errors.securities.securityIdRequired",
+          `Security ID is required for ${dto.action} transactions`,
+          { action: dto.action },
+        ),
       );
     }
 
@@ -1183,7 +1226,11 @@ export class InvestmentTransactionsService {
     });
     if (!split) {
       throw new NotFoundException(
-        `Transaction split ${splitId} not found for embedded investment update`,
+        tr(
+          "errors.securities.transactionSplitNotFound",
+          `Transaction split ${splitId} not found for embedded investment update`,
+          { splitId },
+        ),
       );
     }
 
@@ -1196,7 +1243,11 @@ export class InvestmentTransactionsService {
     });
     if (!parentTransaction) {
       throw new NotFoundException(
-        `Parent transaction ${split.transactionId} not found for embedded investment update`,
+        tr(
+          "errors.securities.parentTransactionNotFound",
+          `Parent transaction ${split.transactionId} not found for embedded investment update`,
+          { transactionId: split.transactionId },
+        ),
       );
     }
 
@@ -1684,7 +1735,11 @@ export class InvestmentTransactionsService {
 
     if (!transaction) {
       throw new NotFoundException(
-        `Investment transaction with ID ${id} not found`,
+        tr(
+          "errors.securities.investmentTransactionNotFound",
+          `Investment transaction with ID ${id} not found`,
+          { id },
+        ),
       );
     }
 
@@ -1709,7 +1764,10 @@ export class InvestmentTransactionsService {
       updateDto.action !== editedLeg.action
     ) {
       throw new BadRequestException(
-        "Cannot change the direction of a transfer; delete it and create a new transfer instead",
+        tr(
+          "errors.securities.cannotChangeTransferDirection",
+          "Cannot change the direction of a transfer; delete it and create a new transfer instead",
+        ),
       );
     }
 
@@ -1767,7 +1825,12 @@ export class InvestmentTransactionsService {
           updateDto.accountId,
         );
         if (account.accountType !== "INVESTMENT") {
-          throw new BadRequestException("Account must be of type INVESTMENT");
+          throw new BadRequestException(
+            tr(
+              "errors.securities.accountMustBeInvestment",
+              "Account must be of type INVESTMENT",
+            ),
+          );
         }
         this.assertCanHoldSecurities(account, "Account");
         outLeg.accountId = updateDto.accountId;
@@ -1782,11 +1845,19 @@ export class InvestmentTransactionsService {
         );
         if (destAccount.accountType !== "INVESTMENT") {
           throw new BadRequestException(
-            "Destination account must be of type INVESTMENT",
+            tr(
+              "errors.securities.destinationAccountMustBeInvestment",
+              "Destination account must be of type INVESTMENT",
+            ),
           );
         }
         if (destAccount.isClosed) {
-          throw new BadRequestException("Destination account is closed");
+          throw new BadRequestException(
+            tr(
+              "errors.securities.destinationAccountClosed",
+              "Destination account is closed",
+            ),
+          );
         }
         this.assertCanHoldSecurities(destAccount, "Destination account");
         inLeg.accountId = updateDto.destinationAccountId;
@@ -1795,7 +1866,10 @@ export class InvestmentTransactionsService {
 
       if (outLeg.accountId === inLeg.accountId) {
         throw new BadRequestException(
-          "Source and destination accounts must be different",
+          tr(
+            "errors.securities.sourceDestMustDiffer",
+            "Source and destination accounts must be different",
+          ),
         );
       }
 
@@ -1918,7 +1992,10 @@ export class InvestmentTransactionsService {
         // alone would leave the two legs unbalanced, so refuse rather than
         // silently corrupting the transfer.
         throw new ConflictException(
-          "This transfer's paired transaction is missing; delete and recreate the transfer instead of editing it",
+          tr(
+            "errors.securities.transferPairMissing",
+            "This transfer's paired transaction is missing; delete and recreate the transfer instead of editing it",
+          ),
         );
       }
       return this.updateLinkedTransfer(
@@ -1948,7 +2025,10 @@ export class InvestmentTransactionsService {
         updateDto.accountId !== transaction.accountId
       ) {
         throw new BadRequestException(
-          "Cannot change the account of an investment split; remove the split and add it on the new account instead",
+          tr(
+            "errors.securities.cannotChangeSplitAccount",
+            "Cannot change the account of an investment split; remove the split and add it on the new account instead",
+          ),
         );
       }
       if (
@@ -1956,7 +2036,10 @@ export class InvestmentTransactionsService {
         (updateDto.fundingAccountId || null) !== transaction.fundingAccountId
       ) {
         throw new BadRequestException(
-          "Investment splits do not use a separate funding account",
+          tr(
+            "errors.securities.splitNoFundingAccount",
+            "Investment splits do not use a separate funding account",
+          ),
         );
       }
       if (
@@ -1964,13 +2047,20 @@ export class InvestmentTransactionsService {
         updateDto.transactionDate !== transaction.transactionDate
       ) {
         throw new BadRequestException(
-          "Cannot change the date of an investment split; edit the parent split transaction date instead",
+          tr(
+            "errors.securities.cannotChangeSplitDate",
+            "Cannot change the date of an investment split; edit the parent split transaction date instead",
+          ),
         );
       }
       const effectiveAction = updateDto.action ?? transaction.action;
       if (!isInvestmentActionAllowedInSplit(effectiveAction)) {
         throw new BadRequestException(
-          `Investment action ${effectiveAction} is not allowed inside a split transaction`,
+          tr(
+            "errors.securities.actionNotAllowedInSplit",
+            `Investment action ${effectiveAction} is not allowed inside a split transaction`,
+            { action: effectiveAction },
+          ),
         );
       }
     }
@@ -2017,7 +2107,11 @@ export class InvestmentTransactionsService {
           !effectiveSecurityId
         ) {
           throw new BadRequestException(
-            `Security ID is required for ${updateDto.action} transactions`,
+            tr(
+              "errors.securities.securityIdRequired",
+              `Security ID is required for ${updateDto.action} transactions`,
+              { action: updateDto.action },
+            ),
           );
         }
         transaction.action = updateDto.action;
@@ -2066,7 +2160,10 @@ export class InvestmentTransactionsService {
           Number(transaction.quantity) <= 0)
       ) {
         throw new BadRequestException(
-          "Split ratio (quantity) must be greater than zero",
+          tr(
+            "errors.securities.splitRatioRequired",
+            "Split ratio (quantity) must be greater than zero",
+          ),
         );
       }
 

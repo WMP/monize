@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, IsNull, DataSource, EntityManager } from "typeorm";
 import { Category } from "./entities/category.entity";
@@ -296,7 +297,11 @@ export class CategoriesService {
     });
 
     if (!category) {
-      throw new NotFoundException(`Category with ID ${id} not found`);
+      throw new NotFoundException(
+        tr("errors.categories.notFound", `Category with ID ${id} not found`, {
+          id,
+        }),
+      );
     }
 
     let effectiveColor = category.color;
@@ -335,12 +340,22 @@ export class CategoriesService {
     };
 
     if (category.isSystem) {
-      throw new BadRequestException("Cannot modify system categories");
+      throw new BadRequestException(
+        tr(
+          "errors.categories.cannotModifySystem",
+          "Cannot modify system categories",
+        ),
+      );
     }
 
     if (updateCategoryDto.parentId) {
       if (updateCategoryDto.parentId === id) {
-        throw new BadRequestException("Category cannot be its own parent");
+        throw new BadRequestException(
+          tr(
+            "errors.categories.selfParent",
+            "Category cannot be its own parent",
+          ),
+        );
       }
       await this.findOne(userId, updateCategoryDto.parentId);
 
@@ -355,7 +370,12 @@ export class CategoriesService {
       const visited = new Set<string>([id]);
       while (current) {
         if (visited.has(current)) {
-          throw new BadRequestException("Circular parent reference detected");
+          throw new BadRequestException(
+            tr(
+              "errors.categories.circularParent",
+              "Circular parent reference detected",
+            ),
+          );
         }
         visited.add(current);
         current = categoryMap.get(current) ?? null;
@@ -458,7 +478,12 @@ export class CategoriesService {
     const category = await this.findOne(userId, id);
 
     if (category.isSystem) {
-      throw new BadRequestException("Cannot delete system categories");
+      throw new BadRequestException(
+        tr(
+          "errors.categories.cannotDeleteSystem",
+          "Cannot delete system categories",
+        ),
+      );
     }
 
     const childCount = await this.categoriesRepository.count({
@@ -467,7 +492,10 @@ export class CategoriesService {
 
     if (childCount > 0) {
       throw new BadRequestException(
-        "Cannot delete category with subcategories. Delete or reassign subcategories first.",
+        tr(
+          "errors.categories.hasSubcategories",
+          "Cannot delete category with subcategories. Delete or reassign subcategories first.",
+        ),
       );
     }
 
@@ -475,7 +503,11 @@ export class CategoriesService {
     const transactionCount = await this.getTransactionCount(userId, id);
     if (transactionCount > 0) {
       throw new BadRequestException(
-        `Cannot delete category with ${transactionCount} referencing transaction(s). Reassign transactions first.`,
+        tr(
+          "errors.categories.hasTransactions",
+          `Cannot delete category with ${transactionCount} referencing transaction(s). Reassign transactions first.`,
+          { count: transactionCount },
+        ),
       );
     }
 
@@ -728,7 +760,10 @@ export class CategoriesService {
 
     if (existingCount > 0) {
       throw new BadRequestException(
-        "Cannot import defaults: user already has categories. Delete existing categories first or start fresh.",
+        tr(
+          "errors.categories.alreadyHasCategories",
+          "Cannot import defaults: user already has categories. Delete existing categories first or start fresh.",
+        ),
       );
     }
 

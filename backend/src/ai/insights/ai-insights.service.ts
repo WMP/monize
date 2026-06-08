@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { tr } from "../../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ConfigService } from "@nestjs/config";
 import { Repository, LessThan } from "typeorm";
@@ -107,7 +108,9 @@ export class AiInsightsService {
     });
 
     if (!insight) {
-      throw new NotFoundException("Insight not found");
+      throw new NotFoundException(
+        tr("errors.ai.insightNotFound", "Insight not found"),
+      );
     }
 
     await this.insightRepo.update({ id: insightId }, { isDismissed: true });

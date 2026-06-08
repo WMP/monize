@@ -5,6 +5,7 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { tr } from "../i18n/translate";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import type { default as ProviderType } from "oidc-provider";
@@ -263,7 +264,12 @@ export class OAuthProviderService implements OnModuleInit {
 
   getProvider(): ProviderType {
     if (!this.provider) {
-      throw new InternalServerErrorException("OAuth provider not initialized");
+      throw new InternalServerErrorException(
+        tr(
+          "errors.common.oauthProviderNotInitialized",
+          "OAuth provider not initialized",
+        ),
+      );
     }
     return this.provider;
   }

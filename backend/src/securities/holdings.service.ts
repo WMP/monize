@@ -7,6 +7,7 @@ import {
   forwardRef,
   Logger,
 } from "@nestjs/common";
+import { tr } from "../i18n/translate";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { todayInTimezone, formatDateYMDLocal } from "../common/date-utils";
@@ -73,7 +74,13 @@ export class HoldingsService {
       .getOne();
 
     if (!holding) {
-      throw new NotFoundException(`Holding with ID ${id} not found`);
+      throw new NotFoundException(
+        tr(
+          "errors.securities.holdingNotFound",
+          `Holding with ID ${id} not found`,
+          { id },
+        ),
+      );
     }
 
     return holding;
@@ -240,8 +247,13 @@ export class HoldingsService {
       // validateHoldingsHistory afterward so oversells at any historical
       // date are still caught.
       if (!allowNegative && newQuantity < -0.00000001) {
+        const reduceBy = Math.abs(quantityChange);
         throw new BadRequestException(
-          `Insufficient shares: cannot reduce by ${Math.abs(quantityChange)}, only ${currentQuantity} held`,
+          tr(
+            "errors.securities.insufficientShares",
+            `Insufficient shares: cannot reduce by ${reduceBy}, only ${currentQuantity} held`,
+            { reduceBy, currentQuantity },
+          ),
         );
       }
 
@@ -288,7 +300,12 @@ export class HoldingsService {
     queryRunner?: QueryRunner,
   ): Promise<Holding | null> {
     if (!ratio || ratio <= 0) {
-      throw new BadRequestException("Split ratio must be greater than zero");
+      throw new BadRequestException(
+        tr(
+          "errors.securities.splitRatioMustBePositive",
+          "Split ratio must be greater than zero",
+        ),
+      );
     }
 
     const repo = queryRunner
@@ -322,7 +339,12 @@ export class HoldingsService {
     queryRunner?: QueryRunner,
   ): Promise<Holding | null> {
     if (!ratio || ratio <= 0) {
-      throw new BadRequestException("Split ratio must be greater than zero");
+      throw new BadRequestException(
+        tr(
+          "errors.securities.splitRatioMustBePositive",
+          "Split ratio must be greater than zero",
+        ),
+      );
     }
     return this.applySplit(accountId, securityId, 1 / ratio, queryRunner);
   }
@@ -354,7 +376,10 @@ export class HoldingsService {
     if (!holding) {
       if (quantityChange < 0) {
         throw new NotFoundException(
-          "Cannot remove shares from a non-existent holding",
+          tr(
+            "errors.securities.cannotRemoveSharesNoHolding",
+            "Cannot remove shares from a non-existent holding",
+          ),
         );
       }
       holding = repo.create({
@@ -398,7 +423,10 @@ export class HoldingsService {
     // Only allow deletion if quantity is zero
     if (Math.abs(Number(holding.quantity)) >= 0.0001) {
       throw new ForbiddenException(
-        "Cannot delete holding with non-zero quantity",
+        tr(
+          "errors.securities.cannotDeleteNonZeroHolding",
+          "Cannot delete holding with non-zero quantity",
+        ),
       );
     }
 
@@ -517,8 +545,11 @@ export class HoldingsService {
       if (next < -0.00000001) {
         const symbol = tx.security?.symbol || "this security";
         throw new BadRequestException(
-          `This change would cause holdings of ${symbol} to go negative on ${tx.transactionDate}. ` +
-            `A ${tx.action} transaction on that date would reduce the balance below zero.`,
+          tr(
+            "errors.securities.holdingsWouldGoNegative",
+            `This change would cause holdings of ${symbol} to go negative on ${tx.transactionDate}. A ${tx.action} transaction on that date would reduce the balance below zero.`,
+            { symbol, transactionDate: tx.transactionDate, action: tx.action },
+          ),
         );
       }
 

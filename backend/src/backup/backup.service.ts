@@ -19,6 +19,7 @@ import {
   isEncryptedBackup,
   BackupDecryptionError,
 } from "./backup-crypto.util";
+import { tr } from "../i18n/translate";
 
 export interface RestoreBackupInput {
   compressedData: Buffer;
@@ -361,7 +362,9 @@ export class BackupService {
   ): Promise<{ message: string; restored: Record<string, number> }> {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException("User not found");
+      throw new NotFoundException(
+        tr("errors.backup.userNotFoundRestore", "User not found"),
+      );
     }
 
     await this.verifyAuthentication(user, input);
@@ -651,8 +654,14 @@ export class BackupService {
 
     throw new BackupPasswordRequiredError(
       input.backupPassword
-        ? "The password you entered cannot decrypt this backup. Try the password that was set when the backup was created."
-        : "This backup is encrypted. Provide the password that was used when the backup was created.",
+        ? tr(
+            "errors.backup.backupPasswordWrong",
+            "The password you entered cannot decrypt this backup. Try the password that was set when the backup was created.",
+          )
+        : tr(
+            "errors.backup.backupPasswordRequired",
+            "This backup is encrypted. Provide the password that was used when the backup was created.",
+          ),
     );
   }
 
@@ -663,7 +672,10 @@ export class BackupService {
       json = decompressed.toString("utf-8");
     } catch {
       throw new BadRequestException(
-        "Failed to decompress backup file. Ensure the file is gzip-compressed.",
+        tr(
+          "errors.backup.decompressFailed",
+          "Failed to decompress backup file. Ensure the file is gzip-compressed.",
+        ),
       );
     }
 
@@ -671,7 +683,10 @@ export class BackupService {
       return JSON.parse(json) as BackupData;
     } catch {
       throw new BadRequestException(
-        "Invalid backup file: decompressed content is not valid JSON",
+        tr(
+          "errors.backup.invalidJsonBackup",
+          "Invalid backup file: decompressed content is not valid JSON",
+        ),
       );
     }
   }
@@ -683,7 +698,10 @@ export class BackupService {
     if (user.authProvider === "oidc") {
       if (!input.oidcIdToken) {
         throw new UnauthorizedException(
-          "OIDC re-authentication is required to confirm restore",
+          tr(
+            "errors.backup.oidcReauthRequired",
+            "OIDC re-authentication is required to confirm restore",
+          ),
         );
       }
       if (
@@ -695,18 +713,26 @@ export class BackupService {
         )
       ) {
         throw new UnauthorizedException(
-          "Invalid OIDC token: the token must be a valid ID token from your SSO provider",
+          tr(
+            "errors.backup.oidcTokenInvalid",
+            "Invalid OIDC token: the token must be a valid ID token from your SSO provider",
+          ),
         );
       }
     } else if (user.passwordHash) {
       if (!input.password) {
         throw new UnauthorizedException(
-          "Password is required to confirm restore",
+          tr(
+            "errors.backup.passwordRequiredForRestore",
+            "Password is required to confirm restore",
+          ),
         );
       }
       const isValid = await bcrypt.compare(input.password, user.passwordHash);
       if (!isValid) {
-        throw new UnauthorizedException("Invalid password");
+        throw new UnauthorizedException(
+          tr("errors.backup.invalidPassword", "Invalid password"),
+        );
       }
     }
   }
@@ -714,17 +740,27 @@ export class BackupService {
   private validateBackupFormat(data: BackupData): void {
     if (!data || typeof data !== "object") {
       throw new BadRequestException(
-        "Invalid backup format: data must be an object",
+        tr(
+          "errors.backup.invalidBackupFormat",
+          "Invalid backup format: data must be an object",
+        ),
       );
     }
     if (data.version !== BACKUP_VERSION) {
       throw new BadRequestException(
-        `Unsupported backup version: ${data.version}. Expected ${BACKUP_VERSION}`,
+        tr(
+          "errors.backup.unsupportedBackupVersion",
+          `Unsupported backup version: ${data.version}. Expected ${BACKUP_VERSION}`,
+          { version: data.version, expected: BACKUP_VERSION },
+        ),
       );
     }
     if (!data.exportedAt) {
       throw new BadRequestException(
-        "Invalid backup format: missing exportedAt",
+        tr(
+          "errors.backup.missingExportedAt",
+          "Invalid backup format: missing exportedAt",
+        ),
       );
     }
   }
@@ -1274,7 +1310,11 @@ export class BackupService {
 
     if (!allowedTables.has(table)) {
       throw new BadRequestException(
-        `Table ${table} is not allowed in backup restore`,
+        tr(
+          "errors.backup.tableNotAllowed",
+          `Table ${table} is not allowed in backup restore`,
+          { table },
+        ),
       );
     }
 
