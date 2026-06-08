@@ -18,6 +18,7 @@ import {
   stashOidcStepUpPending,
 } from '@/lib/stepUpToken';
 import { getErrorMessage } from '@/lib/errors';
+import { buildTotpCodeSchema } from '@/lib/zod-helpers';
 
 interface StepUpAuthModalProps {
   isOpen: boolean;
@@ -48,22 +49,19 @@ interface StepUpAuthModalProps {
   oidcResumePayload?: Record<string, unknown>;
 }
 
-const passwordSchema = z.object({
+const buildPasswordSchema = (t: (key: string) => string) => z.object({
   password: z
     .string()
-    .min(1, 'Password is required')
-    .max(256, 'Password is too long'),
+    .min(1, t('validation.passwordRequired'))
+    .max(256, t('validation.passwordTooLong')),
 });
 
-const totpSchema = z.object({
-  totpCode: z
-    .string()
-    .length(6, 'Code must be exactly 6 digits')
-    .regex(/^\d{6}$/, 'Code must be 6 digits'),
+const buildTotpSchema = (tc: (key: string) => string) => z.object({
+  totpCode: buildTotpCodeSchema(tc),
 });
 
-type PasswordForm = z.infer<typeof passwordSchema>;
-type TotpForm = z.infer<typeof totpSchema>;
+type PasswordForm = z.infer<ReturnType<typeof buildPasswordSchema>>;
+type TotpForm = z.infer<ReturnType<typeof buildTotpSchema>>;
 
 /**
  * Prompt the user to re-prove possession of the account before unlocking a
@@ -112,11 +110,11 @@ export function StepUpAuthModal({
   const [serverError, setServerError] = useState<string | null>(null);
 
   const passwordForm = useForm<PasswordForm>({
-    resolver: zodResolver(passwordSchema),
+    resolver: zodResolver(buildPasswordSchema(t)),
     defaultValues: { password: '' },
   });
   const totpForm = useForm<TotpForm>({
-    resolver: zodResolver(totpSchema),
+    resolver: zodResolver(buildTotpSchema(tc)),
     defaultValues: { totpCode: '' },
   });
   const totpRef = totpForm.register('totpCode');

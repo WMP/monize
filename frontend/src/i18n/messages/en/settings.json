@@ -488,6 +488,7 @@
     },
     "toasts": {
       "created": "Delegate created",
+      "createdWithTempPassword": "Delegate created. Temporary password: {password}",
       "invited": "Invitation email sent",
       "removed": "Delegate removed"
     },

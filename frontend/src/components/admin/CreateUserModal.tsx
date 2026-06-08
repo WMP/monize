@@ -12,37 +12,44 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { adminApi, CreateUserResponse } from '@/lib/admin';
-import { passwordSchema, emailSchema } from '@/lib/zod-helpers';
+import { buildPasswordSchema, buildEmailSchema } from '@/lib/zod-helpers';
 import { getErrorMessage } from '@/lib/errors';
 
 type CredentialMethod = 'invite' | 'password' | 'temporary';
 
 // The password field is only validated when the "password" credential method
 // is chosen; for invite/temporary it is left blank. A superRefine keeps the
-// shared passwordSchema rules without forcing a password for the other methods.
-const createUserSchema = z
-  .object({
-    email: emailSchema,
-    firstName: z.string().optional(),
-    lastName: z.string().optional(),
-    role: z.enum(['user', 'admin']),
-    method: z.enum(['invite', 'password', 'temporary']),
-    password: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.method === 'password') {
-      const result = passwordSchema.safeParse(data.password ?? '');
-      if (!result.success) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['password'],
-          message: result.error.issues[0]?.message ?? 'Invalid password.',
-        });
+// shared password rules without forcing a password for the other methods.
+// `t` is the `admin` translator, `tc` the `common` one (email + password rules).
+const buildCreateUserSchema = (
+  t: (key: string) => string,
+  tc: (key: string) => string,
+) =>
+  z
+    .object({
+      email: buildEmailSchema(tc),
+      firstName: z.string().optional(),
+      lastName: z.string().optional(),
+      role: z.enum(['user', 'admin']),
+      method: z.enum(['invite', 'password', 'temporary']),
+      password: z.string().optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (data.method === 'password') {
+        const result = buildPasswordSchema(tc).safeParse(data.password ?? '');
+        if (!result.success) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['password'],
+            message:
+              result.error.issues[0]?.message ??
+              t('createUserModal.validation.invalidPassword'),
+          });
+        }
       }
-    }
-  });
+    });
 
-type CreateUserFormData = z.infer<typeof createUserSchema>;
+type CreateUserFormData = z.infer<ReturnType<typeof buildCreateUserSchema>>;
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -69,7 +76,7 @@ export function CreateUserModal({
     reset,
     formState: { errors, isSubmitting },
   } = useForm<CreateUserFormData>({
-    resolver: zodResolver(createUserSchema),
+    resolver: zodResolver(buildCreateUserSchema(t, tc)),
     defaultValues: {
       email: '',
       firstName: '',

@@ -11,19 +11,20 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { authApi } from '@/lib/auth';
 import { getErrorMessage } from '@/lib/errors';
+import { buildTotpCodeSchema } from '@/lib/zod-helpers';
 import { User } from '@/types/auth';
 
-const totpSchema = z.object({
-  code: z.string().length(6, 'Code must be exactly 6 digits').regex(/^\d{6}$/, 'Code must be 6 digits'),
+const buildTotpSchema = (tc: (key: string) => string) => z.object({
+  code: buildTotpCodeSchema(tc),
   rememberDevice: z.boolean(),
 });
 
-const backupCodeSchema = z.object({
-  code: z.string().regex(/^[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}$/, 'Backup code must be in XXXX-XXXX format'),
+const buildBackupCodeSchema = (t: (key: string) => string) => z.object({
+  code: z.string().regex(/^[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}$/, t('validation.backupFormat')),
   rememberDevice: z.boolean(),
 });
 
-type VerifyFormData = z.infer<typeof totpSchema>;
+type VerifyFormData = z.infer<ReturnType<typeof buildTotpSchema>>;
 
 interface TwoFactorVerifyProps {
   tempToken: string;
@@ -33,6 +34,7 @@ interface TwoFactorVerifyProps {
 
 export function TwoFactorVerify({ tempToken, onVerified, onCancel }: TwoFactorVerifyProps) {
   const t = useTranslations('auth.twoFactorVerify');
+  const tc = useTranslations('common');
   const [isLoading, setIsLoading] = useState(false);
   const [useBackupCode, setUseBackupCode] = useState(false);
 
@@ -43,7 +45,7 @@ export function TwoFactorVerify({ tempToken, onVerified, onCancel }: TwoFactorVe
     watch,
     reset,
   } = useForm<VerifyFormData>({
-    resolver: zodResolver(useBackupCode ? backupCodeSchema : totpSchema),
+    resolver: zodResolver(useBackupCode ? buildBackupCodeSchema(t) : buildTotpSchema(tc)),
     defaultValues: {
       code: '',
       rememberDevice: false,

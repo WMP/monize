@@ -20,6 +20,9 @@
     "passwordFieldLabel": "[XX-Password-XX]",
     "passwordPlaceholder": "[XX-Set a password-XX]",
     "createButton": "[XX-Create User-XX]",
+    "validation": {
+      "invalidPassword": "[XX-Invalid password.-XX]"
+    },
     "toasts": {
       "createFailed": "[XX-Failed to create user-XX]"
     }

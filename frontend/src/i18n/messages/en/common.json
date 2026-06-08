@@ -123,5 +123,9 @@
     "number": "Must contain a number",
     "special": "Must contain a special character"
   },
+  "codeValidation": {
+    "length": "Code must be exactly 6 digits",
+    "digits": "Code must be 6 digits"
+  },
   "emailInvalid": "Please enter a valid email address"
 }

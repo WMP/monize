@@ -15,7 +15,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { useFormModal } from '@/hooks/useFormModal';
-import { passwordSchema } from '@/lib/zod-helpers';
+import { buildPasswordSchema } from '@/lib/zod-helpers';
 import { DelegateAccessModal } from './DelegateAccessModal';
 
 const logger = createLogger('SharedAccess');
@@ -150,7 +150,7 @@ export function SharedAccessSection() {
         toast.error(t('errors.setPasswordOrInvite'));
         return;
       }
-      const parsed = passwordSchema.safeParse(password);
+      const parsed = buildPasswordSchema(tc).safeParse(password);
       if (!parsed.success) {
         toast.error(tc('passwordRequirements'));
         return;
@@ -169,7 +169,9 @@ export function SharedAccessSection() {
       });
       if (res.temporaryPassword) {
         toast.success(
-          `Delegate created. Temporary password: ${res.temporaryPassword}`,
+          t('toasts.createdWithTempPassword', {
+            password: res.temporaryPassword,
+          }),
           { duration: 12000 },
         );
       } else if (res.invited) {
@@ -181,7 +183,7 @@ export function SharedAccessSection() {
       resetCreateForm();
       await load();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to create delegate'));
+      toast.error(getErrorMessage(err, t('errors.createFailed')));
       logger.error(err);
     } finally {
       setSubmitting(false);
@@ -197,7 +199,7 @@ export function SharedAccessSection() {
       setRevokeTarget(null);
       await load();
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to revoke delegate'));
+      toast.error(getErrorMessage(err, t('errors.revokeFailed')));
       logger.error(err);
     } finally {
       setRevoking(false);
@@ -210,7 +212,7 @@ export function SharedAccessSection() {
       setCopied(false);
       setTempPassword(res.temporaryPassword);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to reset password'));
+      toast.error(getErrorMessage(err, t('errors.resetPasswordFailed')));
       logger.error(err);
     }
   };
@@ -392,7 +394,7 @@ export function SharedAccessSection() {
               onClick={() => setShowCreate(false)}
               disabled={submitting}
             >
-              Cancel
+              {tc('cancel')}
             </Button>
             <Button type="submit" isLoading={submitting}>
               {t('createModal.submitButton')}

@@ -12,19 +12,20 @@ import { Button } from '@/components/ui/Button';
 import { BackupCodesDisplay } from '@/components/auth/BackupCodesDisplay';
 import { authApi } from '@/lib/auth';
 import { getErrorMessage } from '@/lib/errors';
+import { buildTotpCodeSchema } from '@/lib/zod-helpers';
 import { TwoFactorSetupResponse } from '@/types/auth';
 
-const totpCodeSchema = z.object({
-  code: z.string().length(6, 'Code must be exactly 6 digits').regex(/^\d{6}$/, 'Code must be 6 digits'),
+const buildTotpFormSchema = (tc: (key: string) => string) => z.object({
+  code: buildTotpCodeSchema(tc),
 });
 
-type TotpCodeFormData = z.infer<typeof totpCodeSchema>;
+type TotpCodeFormData = z.infer<ReturnType<typeof buildTotpFormSchema>>;
 
-const passwordSchema = z.object({
-  currentPassword: z.string().min(1, 'Password is required').max(128),
+const buildPasswordFormSchema = (t: (key: string) => string) => z.object({
+  currentPassword: z.string().min(1, t('validation.passwordRequired')).max(128),
 });
 
-type PasswordFormData = z.infer<typeof passwordSchema>;
+type PasswordFormData = z.infer<ReturnType<typeof buildPasswordFormSchema>>;
 
 interface TwoFactorSetupProps {
   onComplete: () => void;
@@ -34,6 +35,7 @@ interface TwoFactorSetupProps {
 
 export function TwoFactorSetup({ onComplete, onSkip, isForced }: TwoFactorSetupProps) {
   const t = useTranslations('auth.twoFactorSetup');
+  const tc = useTranslations('common');
   const [setupData, setSetupData] = useState<TwoFactorSetupResponse | null>(null);
   const [showManualKey, setShowManualKey] = useState(false);
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
@@ -45,7 +47,7 @@ export function TwoFactorSetup({ onComplete, onSkip, isForced }: TwoFactorSetupP
     control,
     formState: { isSubmitting },
   } = useForm<TotpCodeFormData>({
-    resolver: zodResolver(totpCodeSchema),
+    resolver: zodResolver(buildTotpFormSchema(tc)),
     defaultValues: {
       code: '',
     },
@@ -62,7 +64,7 @@ export function TwoFactorSetup({ onComplete, onSkip, isForced }: TwoFactorSetupP
     handleSubmit: handlePasswordSubmit,
     formState: { errors: passwordErrors, isSubmitting: isPasswordSubmitting },
   } = useForm<PasswordFormData>({
-    resolver: zodResolver(passwordSchema),
+    resolver: zodResolver(buildPasswordFormSchema(t)),
     defaultValues: { currentPassword: '' },
   });
 

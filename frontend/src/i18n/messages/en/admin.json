@@ -20,6 +20,9 @@
     "passwordFieldLabel": "Password",
     "passwordPlaceholder": "Set a password",
     "createButton": "Create User",
+    "validation": {
+      "invalidPassword": "Invalid password."
+    },
     "toasts": {
       "createFailed": "Failed to create user"
     }

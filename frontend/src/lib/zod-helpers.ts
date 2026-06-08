@@ -30,6 +30,16 @@ export const buildEmailSchema = (t: (key: string) => string) => z
   .string()
   .email(t('emailInvalid'));
 
+/**
+ * Shared 6-digit TOTP code field validation (2FA setup, 2FA verify, step-up
+ * auth). `t` is the `common` namespace translator -- the messages live under
+ * `common.codeValidation`.
+ */
+export const buildTotpCodeSchema = (t: (key: string) => string) => z
+  .string()
+  .length(6, t('codeValidation.length'))
+  .regex(/^\d{6}$/, t('codeValidation.digits'));
+
 export const PASSWORD_REQUIREMENTS_TEXT =
   'Password must be at least 12 characters and contain an uppercase letter, a lowercase letter, a number, and a special character.';
 
