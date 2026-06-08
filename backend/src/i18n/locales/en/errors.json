@@ -1,1 +1,8 @@
-{}
+{
+  "http": {
+    "tooManyRequests": "Too many requests. Please wait a few minutes and try again.",
+    "duplicateRecord": "A record with this value already exists",
+    "referencedRecord": "Referenced record does not exist or cannot be removed",
+    "internal": "Internal server error"
+  }
+}
