@@ -163,4 +163,18 @@ export class UpdatePreferencesDto {
   @Min(1)
   @Max(20)
   recentTransactionsLimit?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "UI language. ISO 639-1 code (e.g. 'en', 'fr') or BCP 47 tag (e.g. 'pt-BR'). Must be one of the SUPPORTED_LOCALES values.",
+    example: "en",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  @Matches(/^[a-z]{2}(-[A-Z]{2})?$/, {
+    message:
+      "language must be an ISO 639-1 code (e.g. 'en') or BCP 47 tag (e.g. 'pt-BR')",
+  })
+  language?: string;
 }

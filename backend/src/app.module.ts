@@ -51,6 +51,7 @@ import { UpdatesModule } from "./updates/updates.module";
 import { MonteCarloModule } from "./monte-carlo/monte-carlo.module";
 import { DelegationModule } from "./delegation/delegation.module";
 import { EmergencyAccessModule } from "./emergency-access/emergency-access.module";
+import { I18nModule } from "./i18n/i18n.module";
 
 @Module({
   imports: [
@@ -99,6 +100,9 @@ import { EmergencyAccessModule } from "./emergency-access/emergency-access.modul
 
     // Demo mode (global — available to all modules)
     DemoModeModule,
+
+    // i18n (global — exception messages, validation, email content)
+    I18nModule,
 
     // UserPreference + User repos for RequestContextInterceptor (resolves the
     // authenticated user's timezone and updates last_activity_at on every

@@ -566,6 +566,7 @@ CREATE TABLE user_preferences (
     dismissed_update_version VARCHAR(50),
     default_quote_provider VARCHAR(20) NOT NULL DEFAULT 'yahoo',
     recent_transactions_limit SMALLINT NOT NULL DEFAULT 5,
+    language VARCHAR(10) NOT NULL DEFAULT 'en', -- UI language; ISO 639-1 or BCP 47 tag matched against SUPPORTED_LOCALES
     last_client_timezone VARCHAR(64), -- Most recently reported X-Client-Timezone, used by cron jobs when timezone='browser'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -49,6 +49,7 @@
     "date-fns": "^4.1.0",
     "he": "^1.2.0",
     "helmet": "^8.1.0",
+    "nestjs-i18n": "^10.8.4",
     "nodemailer": "^8.0.1",
     "oidc-provider": "^9.8.3",
     "openai": "^6.22.0",

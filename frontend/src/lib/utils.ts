@@ -48,13 +48,16 @@ export function parseLocalDate(dateStr: string): Date {
  * Format a date according to the specified format or browser locale.
  * @param date - Date object or date string (YYYY-MM-DD)
  * @param format - Date format string or 'browser' for locale-based formatting
+ * @param locale - Optional BCP 47 locale used only when format is 'browser';
+ *                 falls back to the browser locale when omitted.
  */
-export function formatDate(date: Date | string, format: string = 'browser'): string {
+export function formatDate(date: Date | string, format: string = 'browser', locale?: string): string {
   const d = typeof date === 'string' ? parseLocalDate(date) : date;
 
   if (format === 'browser') {
-    // Use browser locale for formatting
-    return d.toLocaleDateString(undefined, {
+    // Use the supplied locale (typically the user's UI language) when given,
+    // otherwise hand off to the browser default.
+    return d.toLocaleDateString(locale, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

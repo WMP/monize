@@ -130,6 +130,7 @@ export class UsersService {
       preferences.twoFactorEnabled = false;
       preferences.gettingStartedDismissed = false;
       preferences.favouriteReportIds = [];
+      preferences.language = "en";
       await this.preferencesRepository.save(preferences);
     }
 
@@ -202,6 +203,9 @@ export class UsersService {
     }
     if (dto.recentTransactionsLimit !== undefined) {
       preferences.recentTransactionsLimit = dto.recentTransactionsLimit;
+    }
+    if (dto.language !== undefined) {
+      preferences.language = dto.language;
     }
 
     const saved = await this.preferencesRepository.save(preferences);

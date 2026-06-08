@@ -4,13 +4,19 @@ import { roundToDecimals, adaptiveFractionDigits } from '@/lib/format';
 
 /**
  * Get the effective locale for number formatting.
- * If 'browser' is selected, returns undefined to let Intl use the browser's locale.
+ *
+ * - An explicit `numberFormat` (e.g. 'en-GB', 'de-DE') always wins so a user
+ *   can pick German number grouping with an English UI.
+ * - When `numberFormat === 'browser'`, fall back to the user's UI `language`
+ *   so freshly defaulted users see numbers in the same locale as their UI.
+ * - Returning undefined hands off to the browser default.
  */
-function getEffectiveLocale(numberFormat: string): string | undefined {
-  if (numberFormat === 'browser') {
-    return undefined; // Intl will use browser default
-  }
-  return numberFormat;
+function getEffectiveLocale(
+  numberFormat: string,
+  language: string | undefined,
+): string | undefined {
+  if (numberFormat !== 'browser') return numberFormat;
+  return language && language !== 'xx' ? language : undefined;
 }
 
 /**
@@ -47,11 +53,12 @@ export function useNumberFormat() {
   // Subscribe directly to numberFormat and defaultCurrency to ensure reactivity when they change
   const numberFormat = usePreferencesStore((state) => state.preferences?.numberFormat) || 'browser';
   const defaultCurrency = usePreferencesStore((state) => state.preferences?.defaultCurrency) || 'CAD';
+  const language = usePreferencesStore((state) => state.preferences?.language);
 
   const formatCurrency = useCallback(
     (amount: number, currencyCode?: string, fractionDigits?: number): string => {
       const currency = currencyCode || defaultCurrency;
-      const locale = getEffectiveLocale(numberFormat);
+      const locale = getEffectiveLocale(numberFormat, language);
       const options: Intl.NumberFormatOptions = {
         style: 'currency',
         currency,
@@ -68,7 +75,7 @@ export function useNumberFormat() {
       const decimals = fractionDigits ?? formatter.resolvedOptions().minimumFractionDigits ?? 2;
       return formatter.format(roundToDecimals(amount, decimals));
     },
-    [numberFormat, defaultCurrency]
+    [numberFormat, defaultCurrency, language]
   );
 
   /**
@@ -85,7 +92,7 @@ export function useNumberFormat() {
   const formatCurrencyPrecise = useCallback(
     (amount: number, currencyCode?: string, minFractionDigits?: number): string => {
       const currency = currencyCode || defaultCurrency;
-      const locale = getEffectiveLocale(numberFormat);
+      const locale = getEffectiveLocale(numberFormat, language);
       const currencyDigits =
         getNumberFormat(locale, {
           style: 'currency',
@@ -95,13 +102,13 @@ export function useNumberFormat() {
       const baseDigits = Math.max(currencyDigits, minFractionDigits ?? 0);
       return formatCurrency(amount, currency, adaptiveFractionDigits(amount, baseDigits));
     },
-    [numberFormat, defaultCurrency, formatCurrency]
+    [numberFormat, defaultCurrency, language, formatCurrency]
   );
 
   const formatCurrencyCompact = useCallback(
     (amount: number, currencyCode?: string): string => {
       const currency = currencyCode || defaultCurrency;
-      const locale = getEffectiveLocale(numberFormat);
+      const locale = getEffectiveLocale(numberFormat, language);
       return getNumberFormat(locale, {
         style: 'currency',
         currency,
@@ -110,7 +117,7 @@ export function useNumberFormat() {
         maximumFractionDigits: 0,
       }).format(amount);
     },
-    [numberFormat, defaultCurrency]
+    [numberFormat, defaultCurrency, language]
   );
 
   /** Compact currency format for chart axis labels (e.g., "$5K", "€1.5M").
@@ -118,7 +125,7 @@ export function useNumberFormat() {
   const formatCurrencyAxis = useCallback(
     (value: number, currencyCodeOrIndex?: string | number): string => {
       const currency = typeof currencyCodeOrIndex === 'string' ? currencyCodeOrIndex : defaultCurrency;
-      const locale = getEffectiveLocale(numberFormat);
+      const locale = getEffectiveLocale(numberFormat, language);
       return getNumberFormat(locale, {
         style: 'currency',
         currency,
@@ -128,30 +135,30 @@ export function useNumberFormat() {
         maximumFractionDigits: 1,
       }).format(value);
     },
-    [numberFormat, defaultCurrency]
+    [numberFormat, defaultCurrency, language]
   );
 
   const formatNumber = useCallback(
     (value: number, decimals: number = 2): string => {
-      const locale = getEffectiveLocale(numberFormat);
+      const locale = getEffectiveLocale(numberFormat, language);
       return getNumberFormat(locale, {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       }).format(value);
     },
-    [numberFormat]
+    [numberFormat, language]
   );
 
   const formatPercent = useCallback(
     (value: number, decimals: number = 2): string => {
-      const locale = getEffectiveLocale(numberFormat);
+      const locale = getEffectiveLocale(numberFormat, language);
       return getNumberFormat(locale, {
         style: 'percent',
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       }).format(value / 100); // Intl.NumberFormat expects decimal (0.5 = 50%)
     },
-    [numberFormat]
+    [numberFormat, language]
   );
 
   /**
@@ -164,7 +171,7 @@ export function useNumberFormat() {
    */
   const formatSignedPercent = useCallback(
     (value: number, decimals: number = 2): string => {
-      const locale = getEffectiveLocale(numberFormat);
+      const locale = getEffectiveLocale(numberFormat, language);
       const magnitudeFormat = getNumberFormat(locale, {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
@@ -179,7 +186,7 @@ export function useNumberFormat() {
       const sign = normalized >= 0 ? '+' : '';
       return `${sign}${magnitudeFormat.format(normalized)}%`;
     },
-    [numberFormat]
+    [numberFormat, language]
   );
 
   /**
@@ -190,19 +197,19 @@ export function useNumberFormat() {
    */
   const formatQuantity = useCallback(
     (value: number): string => {
-      const locale = getEffectiveLocale(numberFormat);
+      const locale = getEffectiveLocale(numberFormat, language);
       return getNumberFormat(locale, {
         minimumFractionDigits: 0,
         maximumFractionDigits: 4,
       }).format(value);
     },
-    [numberFormat]
+    [numberFormat, language]
   );
 
   /** Compact currency for chart labels: K with 1dp, M/B/T with 2dp (e.g., "$123.5K", "$1.23M"). */
   const formatCurrencyLabel = useCallback(
     (value: number): string => {
-      const locale = getEffectiveLocale(numberFormat);
+      const locale = getEffectiveLocale(numberFormat, language);
       const abs = Math.abs(value);
       let divisor: number, suffix: string, decimals: number;
       if (abs >= 1e12) { divisor = 1e12; suffix = 'T'; decimals = 2; }
@@ -221,7 +228,7 @@ export function useNumberFormat() {
       }).format(scaled);
       return formatted + suffix;
     },
-    [numberFormat, defaultCurrency]
+    [numberFormat, defaultCurrency, language]
   );
 
   /** Compact currency for chart flag/callout bubbles: same K/M/B/T notation
@@ -231,7 +238,7 @@ export function useNumberFormat() {
   const formatCurrencyFlag = useCallback(
     (value: number, currencyCode?: string): string => {
       const currency = currencyCode || defaultCurrency;
-      const locale = getEffectiveLocale(numberFormat);
+      const locale = getEffectiveLocale(numberFormat, language);
       return getNumberFormat(locale, {
         style: 'currency',
         currency,
@@ -242,7 +249,7 @@ export function useNumberFormat() {
         maximumFractionDigits: 2,
       }).format(value);
     },
-    [numberFormat, defaultCurrency]
+    [numberFormat, defaultCurrency, language]
   );
 
   return { formatCurrency, formatCurrencyPrecise, formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatCurrencyLabel, formatNumber, formatPercent, formatSignedPercent, formatQuantity, defaultCurrency, numberFormat };

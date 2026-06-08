@@ -15,6 +15,7 @@ import { exchangeRatesApi, CurrencyInfo } from '@/lib/exchange-rates';
 import { investmentsApi } from '@/lib/investments';
 import { Combobox } from '@/components/ui/Combobox';
 import { DATE_FORMAT_OPTIONS, EXCHANGE_OPTIONS } from '@/lib/constants';
+import { LanguageSelector } from '@/components/settings/LanguageSelector';
 
 const NUMBER_FORMAT_OPTIONS = [
   { value: 'browser', label: 'Use browser locale (auto-detect)' },
@@ -103,6 +104,7 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
   const [recentTransactionsLimit, setRecentTransactionsLimit] = useState(
     preferences.recentTransactionsLimit ?? 5,
   );
+  const [language, setLanguage] = useState(preferences.language ?? 'en');
   const [isUpdatingPreferences, setIsUpdatingPreferences] = useState(false);
 
   const [availableCurrencies, setAvailableCurrencies] = useState<CurrencyInfo[]>([]);
@@ -160,6 +162,8 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Preferences</h2>
 
       <div className="space-y-4">
+        <LanguageSelector value={language} onChange={setLanguage} />
+
         <Select
           label="Theme"
           options={THEME_OPTIONS}

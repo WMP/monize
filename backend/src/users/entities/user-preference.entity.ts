@@ -100,6 +100,9 @@ export class UserPreference {
   })
   recentTransactionsLimit: number;
 
+  @Column({ length: 10, default: "en" })
+  language: string;
+
   // Set opportunistically by RequestContextInterceptor when an authenticated
   // request carries an X-Client-Timezone header. Cron jobs prefer the user's
   // explicit `timezone` setting; this is the fallback when `timezone` is the

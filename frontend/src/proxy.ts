@@ -1,10 +1,26 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createLogger } from '@/lib/logger';
+import {
+  DEFAULT_LOCALE,
+  LOCALE_COOKIE,
+  LOCALE_HEADER,
+  isSupportedLocale,
+  matchAcceptLanguage,
+} from '@/i18n/config';
 
 const logger = createLogger('Proxy');
 const publicPaths = ['/login', '/register', '/auth/callback', '/forgot-password', '/reset-password', '/emergency-access/claim'];
 let backendConnected = false;
+
+function resolveRequestLocale(request: NextRequest): { locale: string; fromCookie: boolean } {
+  const cookieValue = request.cookies.get(LOCALE_COOKIE)?.value;
+  if (cookieValue && isSupportedLocale(cookieValue)) {
+    return { locale: cookieValue, fromCookie: true };
+  }
+  const fromAccept = matchAcceptLanguage(request.headers.get('accept-language'));
+  return { locale: fromAccept || DEFAULT_LOCALE, fromCookie: false };
+}
 
 function buildCspHeader(nonce: string): string {
   const isDev = process.env.NODE_ENV !== 'production';
@@ -32,8 +48,20 @@ function nextWithCsp(request: NextRequest): NextResponse {
     requestHeaders.set('x-https-headers-active', 'true');
   }
 
+  const { locale, fromCookie } = resolveRequestLocale(request);
+  requestHeaders.set(LOCALE_HEADER, locale);
+
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set('Content-Security-Policy', csp);
+  if (!fromCookie) {
+    // Persist the detected locale so subsequent requests are deterministic
+    // and the backend (nestjs-i18n CookieResolver) sees the same value.
+    response.cookies.set(LOCALE_COOKIE, locale, {
+      path: '/',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
   return response;
 }
 
@@ -72,6 +100,9 @@ export async function proxy(request: NextRequest) {
     // to prevent spoofing via client-supplied headers
     const clientIp = request.headers.get('x-real-ip') || '127.0.0.1';
     headers.set('x-forwarded-for', clientIp);
+    // Forward resolved locale so the backend nestjs-i18n HeaderResolver picks
+    // it up and renders error messages / email content in the right language.
+    headers.set(LOCALE_HEADER, resolveRequestLocale(request).locale);
 
     try {
       // Buffer the body to avoid ReadableStream locking issues in Next.js middleware.

@@ -1,0 +1,7 @@
+{
+  "language": {
+    "label": "Language",
+    "helpText": "Choose the language used throughout the Monize interface. Number and date formatting are controlled separately below.",
+    "saved": "Language updated"
+  }
+}

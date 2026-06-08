@@ -464,6 +464,7 @@ describe("UsersService", () => {
       ["timeFormat", "24h"],
       ["defaultQuoteProvider", "yahoo"],
       ["recentTransactionsLimit", 25],
+      ["language", "fr"],
     ])(
       "updates the %s field when provided",
       async (field: string, value: any) => {
@@ -475,6 +476,15 @@ describe("UsersService", () => {
         expect(savedData[field]).toEqual(value);
       },
     );
+
+    it("seeds language='en' when creating default preferences", async () => {
+      preferencesRepository.findOne.mockResolvedValue(null);
+      preferencesRepository.save.mockImplementation((data) => data);
+
+      const result = await service.getPreferences("user-1");
+
+      expect(result.language).toBe("en");
+    });
   });
 
   describe("changePassword", () => {
