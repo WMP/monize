@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { actionHistoryApi, type ActionHistoryItem } from '@/lib/action-history';
@@ -9,6 +10,19 @@ import { notifyUndoRedo, subscribeUndoRedo } from '@/lib/undoRedoSignal';
 import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('ActionHistoryPanel');
+
+const KNOWN_ENTITY_TYPES = new Set([
+  'transaction', 'transfer', 'investment_transaction', 'bulk_transaction',
+  'category', 'payee', 'tag', 'account', 'scheduled_transaction',
+  'security', 'budget', 'custom_report',
+]);
+
+function getEntityLabel(t: ReturnType<typeof useTranslations<'layout'>>, entityType: string): string {
+  if (KNOWN_ENTITY_TYPES.has(entityType)) {
+    return t(`actionHistory.entityLabels.${entityType}` as any);
+  }
+  return entityType;
+}
 
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor(
@@ -23,22 +37,8 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-const entityLabels: Record<string, string> = {
-  transaction: 'Transaction',
-  transfer: 'Transfer',
-  investment_transaction: 'Investment',
-  bulk_transaction: 'Bulk',
-  category: 'Category',
-  payee: 'Payee',
-  tag: 'Tag',
-  account: 'Account',
-  scheduled_transaction: 'Scheduled',
-  security: 'Security',
-  budget: 'Budget',
-  custom_report: 'Report',
-};
-
 export function ActionHistoryPanel() {
+  const t = useTranslations('layout');
   const [isOpen, setIsOpen] = useState(false);
   const [history, setHistory] = useState<ActionHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -89,12 +89,12 @@ export function ActionHistoryPanel() {
       const status = error?.response?.status;
       const message = error?.response?.data?.message;
       if (status === 404) {
-        toast.success('Nothing to undo');
+        toast.success(t('actionHistory.nothingToUndo'));
       } else if (status === 409) {
-        toast.error(message || 'Cannot undo this action');
+        toast.error(message || t('actionHistory.cannotUndoDefault'));
       } else {
         logger.error('Undo failed', error);
-        toast.error('Undo failed');
+        toast.error(t('actionHistory.undoFailed'));
       }
     } finally {
       pendingRef.current = false;
@@ -114,12 +114,12 @@ export function ActionHistoryPanel() {
       const status = error?.response?.status;
       const message = error?.response?.data?.message;
       if (status === 404) {
-        toast.success('Nothing to redo');
+        toast.success(t('actionHistory.nothingToRedo'));
       } else if (status === 409) {
-        toast.error(message || 'Cannot redo this action');
+        toast.error(message || t('actionHistory.cannotRedoDefault'));
       } else {
         logger.error('Redo failed', error);
-        toast.error('Redo failed');
+        toast.error(t('actionHistory.redoFailed'));
       }
     } finally {
       pendingRef.current = false;
@@ -135,8 +135,8 @@ export function ActionHistoryPanel() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-        title="Action History"
-        aria-label="Action History"
+        title={t('actionHistory.title')}
+        aria-label={t('actionHistory.buttonAriaLabel')}
         data-testid="action-history-button"
       >
         <svg
@@ -163,12 +163,12 @@ export function ActionHistoryPanel() {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Action History
+              {t('actionHistory.title')}
             </h3>
             <button
               onClick={() => setIsOpen(false)}
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 sm:hidden"
-              aria-label="Close"
+              aria-label={t('actionHistory.closeAriaLabel')}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -209,7 +209,7 @@ export function ActionHistoryPanel() {
                   d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
                 />
               </svg>
-              Undo
+              {t('actionHistory.undo')}
               <span className="hidden sm:inline text-xs text-gray-400 dark:text-gray-500 ml-1">
                 {mod}+Z
               </span>
@@ -234,7 +234,7 @@ export function ActionHistoryPanel() {
                   d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3"
                 />
               </svg>
-              Redo
+              {t('actionHistory.redo')}
               <span className="hidden sm:inline text-xs text-gray-400 dark:text-gray-500 ml-1">
                 {mod}+Shift+Z
               </span>
@@ -249,7 +249,7 @@ export function ActionHistoryPanel() {
               </div>
             ) : history.length === 0 ? (
               <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
-                No recent actions
+                {t('actionHistory.noRecentActions')}
               </div>
             ) : (
               <ul className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -274,7 +274,7 @@ export function ActionHistoryPanel() {
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
-                            {entityLabels[item.entityType] || item.entityType}
+                            {getEntityLabel(t, item.entityType)}
                           </span>
                           <span className="text-xs text-gray-400 dark:text-gray-500">
                             {timeAgo(item.createdAt)}
@@ -283,7 +283,7 @@ export function ActionHistoryPanel() {
                       </div>
                       {item.isUndone && (
                         <span className="text-xs text-amber-600 dark:text-amber-400 whitespace-nowrap mt-0.5">
-                          Undone
+                          {t('actionHistory.undoneLabel')}
                         </span>
                       )}
                     </div>

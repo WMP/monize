@@ -28,6 +28,7 @@ import { SortableHeader } from '@/components/ui/SortableHeader';
 import { ChartTooltip } from "@/components/reports/ChartTooltip";
 import { ReportError } from "@/components/reports/ReportError";
 import { exportToCsv } from "@/lib/csv-export";
+import { useTranslations } from 'next-intl';
 
 type IncomeVsExpensesSortField = 'name' | 'income' | 'expenses' | 'savings' | 'savingsRate';
 
@@ -43,6 +44,7 @@ interface ChartDataItem {
 }
 
 export function IncomeVsExpensesReport() {
+  const t = useTranslations('reports');
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } =
@@ -138,12 +140,12 @@ export function IncomeVsExpensesReport() {
   const handleExportPdf = async () => {
     const { exportToPdf } = await import("@/lib/pdf-export");
     await exportToPdf({
-      title: "Income vs Expenses",
+      title: t('page.names.income-vs-expenses' as Parameters<typeof t>[0]),
       summaryCards: [
-        { label: "Total Income", value: formatCurrency(totals.totalIncome), color: "#16a34a" },
-        { label: "Total Expenses", value: formatCurrency(totals.totalExpenses), color: "#dc2626" },
-        { label: "Total Savings", value: formatCurrency(totals.totalSavings), color: totals.totalSavings >= 0 ? "#2563eb" : "#ea580c" },
-        { label: "Savings Rate", value: `${totals.savingsRate.toFixed(1)}%`, color: totals.savingsRate >= 0 ? "#9333ea" : "#ea580c" },
+        { label: t('incomeVsExpenses.totalIncome'), value: formatCurrency(totals.totalIncome), color: "#16a34a" },
+        { label: t('incomeVsExpenses.totalExpenses'), value: formatCurrency(totals.totalExpenses), color: "#dc2626" },
+        { label: t('incomeVsExpenses.totalSavings'), value: formatCurrency(totals.totalSavings), color: totals.totalSavings >= 0 ? "#2563eb" : "#ea580c" },
+        { label: t('incomeVsExpenses.savingsRate'), value: `${totals.savingsRate.toFixed(1)}%`, color: totals.savingsRate >= 0 ? "#9333ea" : "#ea580c" },
       ],
       chartContainer: chartRef.current,
       filename: "income-vs-expenses",
@@ -151,7 +153,7 @@ export function IncomeVsExpensesReport() {
   };
 
   const handleExportCsv = () => {
-    const headers = ['Month', 'Income', 'Expenses', 'Savings', 'Savings Rate'];
+    const headers = [t('incomeVsExpenses.colMonth'), t('incomeVsExpenses.colIncome'), t('incomeVsExpenses.colExpenses'), t('incomeVsExpenses.colSavings'), t('incomeVsExpenses.colSavingsRate')];
     const rows = sortedTableData.map((d) => [
       d.fullName,
       d.Income,
@@ -213,7 +215,7 @@ export function IncomeVsExpensesReport() {
       >
         {data && (
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Savings Rate: {data.SavingsRate}%
+            {t('incomeVsExpenses.savingsRateTooltip', { rate: data.SavingsRate })}
           </p>
         )}
       </ChartTooltip>
@@ -261,7 +263,7 @@ export function IncomeVsExpensesReport() {
           <ReportError onRetry={reload} />
         ) : chartData.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No data for this period.
+            {t('incomeVsExpenses.noData')}
           </p>
         ) : viewType === 'table' ? (
           <>
@@ -276,7 +278,7 @@ export function IncomeVsExpensesReport() {
                       onSort={handleSort}
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Month
+                      {t('incomeVsExpenses.colMonth')}
                     </SortableHeader>
                     <SortableHeader<IncomeVsExpensesSortField>
                       field="income"
@@ -286,7 +288,7 @@ export function IncomeVsExpensesReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Income
+                      {t('incomeVsExpenses.colIncome')}
                     </SortableHeader>
                     <SortableHeader<IncomeVsExpensesSortField>
                       field="expenses"
@@ -296,7 +298,7 @@ export function IncomeVsExpensesReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Expenses
+                      {t('incomeVsExpenses.colExpenses')}
                     </SortableHeader>
                     <SortableHeader<IncomeVsExpensesSortField>
                       field="savings"
@@ -306,7 +308,7 @@ export function IncomeVsExpensesReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Savings
+                      {t('incomeVsExpenses.colSavings')}
                     </SortableHeader>
                     <SortableHeader<IncomeVsExpensesSortField>
                       field="savingsRate"
@@ -316,7 +318,7 @@ export function IncomeVsExpensesReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Savings Rate
+                      {t('incomeVsExpenses.colSavingsRate')}
                     </SortableHeader>
                   </tr>
                 </thead>
@@ -355,7 +357,7 @@ export function IncomeVsExpensesReport() {
                 </tbody>
                 <tfoot className="bg-gray-50 dark:bg-gray-900/50">
                   <tr>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">Total</td>
+                    <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">{t('incomeVsExpenses.total')}</td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-green-600 dark:text-green-400">
                       {formatCurrency(totals.totalIncome)}
                     </td>
@@ -404,6 +406,7 @@ export function IncomeVsExpensesReport() {
                   <ReferenceLine y={0} stroke="#9ca3af" />
                   <Bar
                     dataKey="Income"
+                    name={t('incomeVsExpenses.seriesIncome')}
                     fill="#22c55e"
                     radius={[4, 4, 0, 0]}
                     cursor="pointer"
@@ -411,6 +414,7 @@ export function IncomeVsExpensesReport() {
                   />
                   <Bar
                     dataKey="Expenses"
+                    name={t('incomeVsExpenses.seriesExpenses')}
                     fill="#ef4444"
                     radius={[4, 4, 0, 0]}
                     cursor="pointer"
@@ -418,6 +422,7 @@ export function IncomeVsExpensesReport() {
                   />
                   <Bar
                     dataKey="Savings"
+                    name={t('incomeVsExpenses.seriesSavings')}
                     fill="#3b82f6"
                     radius={[4, 4, 0, 0]}
                     cursor="pointer"
@@ -430,7 +435,7 @@ export function IncomeVsExpensesReport() {
             <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
                 <div className="text-sm text-green-600 dark:text-green-400">
-                  Total Income
+                  {t('incomeVsExpenses.totalIncome')}
                 </div>
                 <div className="text-xl font-bold text-green-700 dark:text-green-300">
                   {formatCurrency(totals.totalIncome)}
@@ -438,7 +443,7 @@ export function IncomeVsExpensesReport() {
               </div>
               <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 text-center">
                 <div className="text-sm text-red-600 dark:text-red-400">
-                  Total Expenses
+                  {t('incomeVsExpenses.totalExpenses')}
                 </div>
                 <div className="text-xl font-bold text-red-700 dark:text-red-300">
                   {formatCurrency(totals.totalExpenses)}
@@ -458,7 +463,7 @@ export function IncomeVsExpensesReport() {
                       : "text-orange-600 dark:text-orange-400"
                   }`}
                 >
-                  Total Savings
+                  {t('incomeVsExpenses.totalSavings')}
                 </div>
                 <div
                   className={`text-xl font-bold ${
@@ -484,7 +489,7 @@ export function IncomeVsExpensesReport() {
                       : "text-orange-600 dark:text-orange-400"
                   }`}
                 >
-                  Savings Rate
+                  {t('incomeVsExpenses.savingsRate')}
                 </div>
                 <div
                   className={`text-xl font-bold ${

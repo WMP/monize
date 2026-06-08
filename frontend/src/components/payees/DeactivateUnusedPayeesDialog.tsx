@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { payeesApi } from '@/lib/payees';
@@ -23,6 +24,8 @@ export function DeactivateUnusedPayeesDialog({
   onClose,
   onSuccess,
 }: DeactivateUnusedPayeesDialogProps) {
+  const t = useTranslations('payees');
+  const tc = useTranslations('common');
   const { formatDate: formatUserDate } = useDateFormat();
   const [maxTransactions, setMaxTransactions] = useState(3);
   const [monthsUnused, setMonthsUnused] = useState(12);
@@ -43,12 +46,12 @@ export function DeactivateUnusedPayeesDialog({
       setSelectedIds(new Set(results.map(c => c.payeeId)));
       setHasPreviewLoaded(true);
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to load preview'));
+      toast.error(getErrorMessage(error, t('deactivateUnused.toasts.loadFailed')));
       logger.error(error);
     } finally {
       setIsLoading(false);
     }
-  }, [maxTransactions, monthsUnused]);
+  }, [maxTransactions, monthsUnused, t]);
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -61,7 +64,7 @@ export function DeactivateUnusedPayeesDialog({
 
   const handleApply = async () => {
     if (selectedIds.size === 0) {
-      toast.error('Please select at least one payee to deactivate');
+      toast.error(t('deactivateUnused.toasts.selectAtLeastOne'));
       return;
     }
 
@@ -72,11 +75,11 @@ export function DeactivateUnusedPayeesDialog({
         .map(c => c.payeeId);
 
       const result = await payeesApi.deactivatePayees(payeeIds);
-      toast.success(`Deactivated ${result.deactivated} payee${result.deactivated !== 1 ? 's' : ''}`);
+      toast.success(t('deactivateUnused.toasts.deactivated', { count: result.deactivated }));
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to deactivate payees'));
+      toast.error(getErrorMessage(error, t('deactivateUnused.toasts.deactivateFailed')));
       logger.error(error);
     } finally {
       setIsApplying(false);
@@ -112,7 +115,7 @@ export function DeactivateUnusedPayeesDialog({
   };
 
   const formatDate = (dateStr: string | null): string => {
-    if (!dateStr) return 'Never used';
+    if (!dateStr) return t('deactivateUnused.neverUsed');
     return formatUserDate(dateStr);
   };
 
@@ -121,7 +124,7 @@ export function DeactivateUnusedPayeesDialog({
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          Deactivate Unused Payees
+          {t('deactivateUnused.title')}
         </h2>
       </div>
 
@@ -130,13 +133,10 @@ export function DeactivateUnusedPayeesDialog({
         {/* Description */}
         <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-800">
           <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-2">
-            How it works
+            {t('deactivateUnused.howItWorksTitle')}
           </h3>
           <p className="text-sm text-amber-700 dark:text-amber-300">
-            This feature finds payees that are rarely used and deactivates them.
-            Deactivated payees will not appear in payee dropdowns when creating transactions,
-            but their historical transactions are preserved. You can reactivate a payee at any time
-            from the payees list.
+            {t('deactivateUnused.howItWorksBody')}
           </p>
         </div>
 
@@ -145,7 +145,7 @@ export function DeactivateUnusedPayeesDialog({
           {/* Maximum Transactions */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              <span className="font-bold">{maxTransactions}</span> or fewer transaction{maxTransactions !== 1 ? 's' : ''}
+              {t('deactivateUnused.maxTransactionsLabel', { count: maxTransactions })}
             </label>
             <input
               type="range"
@@ -161,14 +161,14 @@ export function DeactivateUnusedPayeesDialog({
               <span>20</span>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Only include payees with this many transactions or fewer
+              {t('deactivateUnused.maxTransactionsHelp')}
             </p>
           </div>
 
           {/* Months Unused */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Last used more than <span className="font-bold">{formatMonthsLabel(monthsUnused)}</span> ago
+              {t('deactivateUnused.monthsUnusedLabel', { label: formatMonthsLabel(monthsUnused) })}
             </label>
             <input
               type="range"
@@ -185,7 +185,7 @@ export function DeactivateUnusedPayeesDialog({
               <span>10 years</span>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Only include payees not used since this long ago (or never used)
+              {t('deactivateUnused.monthsUnusedHelp')}
             </p>
           </div>
         </div>
@@ -198,7 +198,7 @@ export function DeactivateUnusedPayeesDialog({
             variant="secondary"
             className="w-full"
           >
-            {isLoading ? 'Loading...' : 'Preview Unused Payees'}
+            {isLoading ? t('deactivateUnused.loading') : t('deactivateUnused.previewButton')}
           </Button>
         </div>
 
@@ -207,7 +207,7 @@ export function DeactivateUnusedPayeesDialog({
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Candidates ({candidates.length} found)
+                {t("deactivateUnused.candidatesHeader", { count: candidates.length })}
               </h3>
               {candidates.length > 0 && (
                 <div className="flex gap-2">
@@ -215,14 +215,14 @@ export function DeactivateUnusedPayeesDialog({
                     onClick={selectAll}
                     className="text-xs text-amber-600 dark:text-amber-400 hover:underline"
                   >
-                    Select all
+                    {t('deactivateUnused.selectAll')}
                   </button>
                   <span className="text-gray-300 dark:text-gray-600">|</span>
                   <button
                     onClick={selectNone}
                     className="text-xs text-amber-600 dark:text-amber-400 hover:underline"
                   >
-                    Select none
+                    {t('deactivateUnused.selectNone')}
                   </button>
                 </div>
               )}
@@ -230,8 +230,8 @@ export function DeactivateUnusedPayeesDialog({
 
             {candidates.length === 0 ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <p>No payees match the current criteria.</p>
-                <p className="text-sm mt-1">Try adjusting the settings above.</p>
+                <p>{t('deactivateUnused.empty.line1')}</p>
+                <p className="text-sm mt-1">{t('deactivateUnused.empty.line2')}</p>
               </div>
             ) : (
               <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
@@ -240,13 +240,13 @@ export function DeactivateUnusedPayeesDialog({
                     <tr>
                       <th className="w-10 px-3 py-2"></th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        Payee
+                        {t('deactivateUnused.columns.payee')}
                       </th>
                       <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden sm:table-cell">
-                        Transactions
+                        {t('deactivateUnused.columns.transactions')}
                       </th>
                       <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                        Last Used
+                        {t('deactivateUnused.columns.lastUsed')}
                       </th>
                     </tr>
                   </thead>
@@ -302,19 +302,19 @@ export function DeactivateUnusedPayeesDialog({
       <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
         <div className="text-sm text-gray-500 dark:text-gray-400">
           {selectedIds.size > 0 && (
-            <span>{selectedIds.size} payee{selectedIds.size !== 1 ? 's' : ''} selected</span>
+            <span>{t('deactivateUnused.selectedCount', { count: selectedIds.size })}</span>
           )}
         </div>
         <div className="flex gap-3">
           <Button variant="secondary" onClick={onClose} disabled={isApplying}>
-            Cancel
+            {tc('cancel')}
           </Button>
           <Button
             variant="danger"
             onClick={handleApply}
             disabled={isApplying || selectedIds.size === 0}
           >
-            {isApplying ? 'Deactivating...' : `Deactivate ${selectedIds.size} Payee${selectedIds.size !== 1 ? 's' : ''}`}
+            {isApplying ? t('deactivateUnused.deactivating') : t('deactivateUnused.deactivateButton', { count: selectedIds.size })}
           </Button>
         </div>
       </div>

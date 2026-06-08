@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
@@ -39,6 +40,7 @@ export function MultiSelect({
   onCreateNew,
   createNewLabel = 'Create new...',
 }: MultiSelectProps) {
+  const t = useTranslations('common');
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -297,7 +299,7 @@ export function MultiSelect({
                   type="text"
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
-                  placeholder="Search..."
+                  placeholder={t('multiSelect.search')}
                   className={cn(
                     'block w-full rounded-md border-gray-300 shadow-sm text-sm pr-8',
                     'focus:border-blue-500 focus:ring-blue-500',
@@ -329,14 +331,14 @@ export function MultiSelect({
               onClick={handleSelectAll}
               className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
             >
-              Select All
+              {t('multiSelect.selectAll')}
             </button>
             <button
               type="button"
               onClick={handleClearAll}
               className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             >
-              Clear
+              {t('multiSelect.clear')}
             </button>
           </div>
 
@@ -344,13 +346,13 @@ export function MultiSelect({
           <div className="max-h-[30rem] overflow-auto py-1">
             {filteredOptions.length === 0 && !onCreateNew ? (
               <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-                No options found
+                {t('multiSelect.noOptions')}
               </div>
             ) : (
               <>
                 {filteredOptions.length === 0 && (
                   <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-                    No options found
+                    {t('multiSelect.noOptions')}
                   </div>
                 )}
                 {filteredOptions.map((option) => {

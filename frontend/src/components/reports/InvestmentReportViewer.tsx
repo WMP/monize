@@ -28,6 +28,7 @@ import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { exportToCsv } from '@/lib/csv-export';
 import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
+import { useTranslations } from 'next-intl';
 
 const logger = createLogger('InvestmentReportViewer');
 
@@ -44,6 +45,8 @@ interface InvestmentReportViewerProps {
 }
 
 export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps) {
+  const t = useTranslations('reports');
+  const tc = useTranslations('common');
   const router = useRouter();
   const { formatNumber, formatPercent, formatCurrency } = useNumberFormat();
   const { formatDate } = useDateFormat();
@@ -73,6 +76,13 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
     'reports.investment.table.sort',
     { field: 'symbol', direction: 'asc' },
   );
+
+  const groupHeadings: Record<InvestmentGroupBy, string> = {
+    [InvestmentGroupBy.NONE]: t('investmentReportViewer.groupHeadingNone'),
+    [InvestmentGroupBy.ACCOUNT]: t('investmentReportViewer.groupHeadingAccount'),
+    [InvestmentGroupBy.SYMBOL]: t('investmentReportViewer.groupHeadingSymbol'),
+    [InvestmentGroupBy.CURRENCY]: t('investmentReportViewer.groupHeadingCurrency'),
+  };
 
   const loadReport = useCallback(async () => {
     try {
@@ -181,7 +191,7 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
     const cols = result.columns;
     const grouped = result.groupBy !== InvestmentGroupBy.NONE;
     const headers = [
-      ...(grouped ? [GROUP_HEADINGS[result.groupBy]] : []),
+      ...(grouped ? [groupHeadings[result.groupBy]] : []),
       ...cols.map((key) => INVESTMENT_COLUMN_MAP[key]?.label ?? key),
     ];
     const rows = result.groups.flatMap((g) =>
@@ -216,9 +226,9 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
   if (!report) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 dark:text-gray-400">Report not found</p>
+        <p className="text-gray-500 dark:text-gray-400">{t('investmentReportViewer.notFound')}</p>
         <Button variant="outline" onClick={() => router.push('/reports')} className="mt-4">
-          Back to Reports
+          {t('investmentReportViewer.backToReports')}
         </Button>
       </div>
     );
@@ -234,14 +244,14 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
         actions={
           <div className="flex items-center gap-3 w-full justify-between sm:w-auto sm:justify-end">
             <Link href="/reports" className="order-1 sm:order-2">
-              <Button variant="outline">Back to Reports</Button>
+              <Button variant="outline">{t('investmentReportViewer.backToReports')}</Button>
             </Link>
             <Button
               variant="outline"
               className="shrink-0 order-2 sm:order-1"
               onClick={() => router.push(`/reports/investment/${reportId}/edit`)}
             >
-              Edit
+              {tc('edit')}
             </Button>
           </div>
         }
@@ -253,11 +263,11 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
           <div className="flex flex-wrap items-end gap-4">
             <div className="w-56">
               <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Accounts
+                {t('investmentReportViewer.accountsLabel')}
               </span>
               <MultiSelect
-                ariaLabel="Filter by account"
-                placeholder="All investment accounts"
+                ariaLabel={t('investmentReportViewer.accountsLabel')}
+                placeholder={t('investmentReportViewer.accountsPlaceholder')}
                 options={accounts.map((a) => ({ value: a.id, label: a.name }))}
                 value={selectedAccountIds}
                 onChange={setSelectedAccountIds}
@@ -265,7 +275,7 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
             </div>
             <div className="w-48">
               <DateInput
-                label="As of date"
+                label={t('investmentReportViewer.labelAsOfDate')}
                 value={asOfOverride}
                 onChange={(e) => setAsOfOverride(e.target.value)}
                 onDateChange={(date) => setAsOfOverride(date)}
@@ -273,7 +283,7 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
             </div>
             <div>
               <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Currency
+                {t('investmentReportViewer.currencyLabel')}
               </span>
               <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden">
                 <button
@@ -285,7 +295,7 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
                       : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
                   }`}
                 >
-                  Native
+                  {t('investmentReportViewer.currencyNative')}
                 </button>
                 <button
                   type="button"
@@ -309,7 +319,7 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
               onClick={handleExportCsv}
               disabled={!result || result.rowCount === 0}
             >
-              Export CSV
+              {t('investmentReportViewer.exportCsv')}
             </Button>
           </div>
         </div>
@@ -320,15 +330,15 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
               className="text-blue-600 dark:text-blue-400 hover:underline"
               onClick={() => setAsOfOverride('')}
             >
-              Reset to latest market day
+              {t('investmentReportViewer.resetToLatest')}
             </button>
           ) : (
-            'Showing the latest market day.'
+            t('investmentReportViewer.showingLatest')
           )}
           {' · '}
           {currencyMode === 'base' && result
-            ? `Values shown in ${result.baseCurrency}.`
-            : "Values shown in each holding's native currency."}
+            ? t('investmentReportViewer.baseNote', { currency: result.baseCurrency })
+            : t('investmentReportViewer.nativeNote')}
         </p>
       </div>
 
@@ -337,27 +347,26 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12">
           <div className="flex flex-col items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-            <p className="text-gray-500 dark:text-gray-400">Generating report...</p>
+            <p className="text-gray-500 dark:text-gray-400">{t('investmentReportViewer.generating')}</p>
           </div>
         </div>
       ) : result ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              As of {formatDate(result.asOfDate)} · {result.rowCount} holding
-              {result.rowCount === 1 ? '' : 's'}
+              {t('investmentReportViewer.asOf', { date: formatDate(result.asOfDate) })} · {t('investmentReportViewer.holdingCount', { count: result.rowCount })}
             </span>
             {isExecuting && (
               <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <span>Updating...</span>
+                <span>{t('investmentReportViewer.updating')}</span>
               </div>
             )}
           </div>
 
           {result.rowCount === 0 ? (
             <div className="py-12 text-center text-gray-500 dark:text-gray-400">
-              No holdings found for the selected accounts and date.
+              {t('investmentReportViewer.noHoldings')}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -396,7 +405,7 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
                           colSpan={columns.length}
                           className="px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
                         >
-                          {group.label || 'Ungrouped'}
+                          {group.label || t('investmentReportViewer.ungrouped')}
                         </td>
                       </tr>
                     )}
@@ -434,9 +443,3 @@ export function InvestmentReportViewer({ reportId }: InvestmentReportViewerProps
   );
 }
 
-const GROUP_HEADINGS: Record<InvestmentGroupBy, string> = {
-  [InvestmentGroupBy.NONE]: 'Group',
-  [InvestmentGroupBy.ACCOUNT]: 'Account',
-  [InvestmentGroupBy.SYMBOL]: 'Symbol',
-  [InvestmentGroupBy.CURRENCY]: 'Currency',
-};

@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/Modal';
 
 interface NavLink {
@@ -54,6 +55,7 @@ export function MobileNavDrawer({
   toolsLinks,
   showAdmin,
 }: MobileNavDrawerProps) {
+  const t = useTranslations('navigation');
   const itemClass = (active: boolean) =>
     `flex w-full items-center text-left px-4 py-3 text-base transition-colors ${
       active
@@ -78,7 +80,7 @@ export function MobileNavDrawer({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} variant="drawer-left">
-      <nav aria-label="Main menu" className="flex flex-col">
+      <nav aria-label={t('mainMenu')} className="flex flex-col">
         {/* Drawer header: brand + close button */}
         <div className="flex items-center justify-between px-4 h-16 border-b border-gray-200 dark:border-gray-700">
           <button
@@ -97,7 +99,7 @@ export function MobileNavDrawer({
           </button>
           <button
             onClick={onClose}
-            aria-label="Close menu"
+            aria-label={t('closeMenu')}
             className="p-2 -mr-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -107,13 +109,13 @@ export function MobileNavDrawer({
         </div>
 
         <div className="py-2">
-          {renderLink({ href: '/dashboard', label: 'Dashboard' }, pathname === '/dashboard')}
+          {renderLink({ href: '/dashboard', label: t('dashboard') }, pathname === '/dashboard')}
           {navLinks.map((link) => renderLink(link, pathname === link.href))}
 
           {showAiMenu && (
             <>
               <div className="border-t border-gray-200 dark:border-gray-700 mt-2" />
-              <div className={SECTION_HEADER_CLASS}>AI</div>
+              <div className={SECTION_HEADER_CLASS}>{t('ai')}</div>
               {aiLinks.map((link) => renderLink(link, pathname === link.href))}
             </>
           )}
@@ -121,7 +123,7 @@ export function MobileNavDrawer({
           {toolsLinks.length > 0 && (
             <>
               <div className="border-t border-gray-200 dark:border-gray-700 mt-2" />
-              <div className={SECTION_HEADER_CLASS}>Tools</div>
+              <div className={SECTION_HEADER_CLASS}>{t('tools')}</div>
               {toolsLinks.map((link) => renderLink(link, pathname === link.href))}
             </>
           )}
@@ -129,16 +131,16 @@ export function MobileNavDrawer({
           {showAdmin && (
             <>
               <div className="border-t border-gray-200 dark:border-gray-700 mt-2" />
-              <div className={SECTION_HEADER_CLASS}>Admin</div>
+              <div className={SECTION_HEADER_CLASS}>{t('admin')}</div>
               {renderLink(
-                { href: '/admin/users', label: 'User Management' },
+                { href: '/admin/users', label: t('userManagement') },
                 pathname.startsWith('/admin'),
               )}
             </>
           )}
 
           <div className="border-t border-gray-200 dark:border-gray-700 mt-2" />
-          {renderLink({ href: '/settings', label: 'Settings' }, pathname === '/settings')}
+          {renderLink({ href: '/settings', label: t('settings') }, pathname === '/settings')}
         </div>
       </nav>
     </Modal>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -82,6 +83,8 @@ export function StepUpAuthModal({
   oidcReturnTo,
   oidcResumePayload,
 }: StepUpAuthModalProps) {
+  const t = useTranslations('auth.stepUp');
+  const tc = useTranslations('common');
   const preferences = usePreferencesStore((s) => s.preferences);
   const setStepUp = useStepUpTokenStore((s) => s.set);
 
@@ -136,11 +139,11 @@ export function StepUpAuthModal({
         expiresAt: string;
       }>('/auth/step-up', { purpose, ...body });
       setStepUp(purpose, res.data.stepUpToken, res.data.expiresAt);
-      toast.success('Verified');
+      toast.success(t('toasts.verified'));
       onVerified?.();
       onClose();
     } catch (error) {
-      setServerError(getErrorMessage(error, 'Verification failed'));
+      setServerError(getErrorMessage(error, t('toasts.failed')));
     } finally {
       setSubmitting(false);
     }
@@ -151,7 +154,7 @@ export function StepUpAuthModal({
       <div className="flex flex-col">
         <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Confirm it&apos;s you
+            {t('title')}
           </h2>
           {reason && (
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
@@ -163,28 +166,25 @@ export function StepUpAuthModal({
         {mode === 'unavailable' ? (
           <div className="px-6 py-6 space-y-4">
             <p className="text-sm text-gray-700 dark:text-gray-300">
-              This action requires extra verification. Finish setting up your
-              account password (or sign in with your identity provider) before
-              accessing this setting.
+              {t('unavailable')}
             </p>
             <div className="flex justify-end">
               <Button variant="outline" onClick={onClose}>
-                Close
+                {tc('close')}
               </Button>
             </div>
           </div>
         ) : mode === 'oidc' ? (
           <div className="px-6 py-6 space-y-4">
             <p className="text-sm text-gray-700 dark:text-gray-300">
-              Sign in again with your identity provider to confirm it&apos;s
-              you. You&apos;ll be brought right back here.
+              {t('oidcPrompt')}
             </p>
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={onClose}>
-                Cancel
+                {tc('cancel')}
               </Button>
               <Button onClick={handleOidcReauth}>
-                Continue to identity provider
+                {t('continueOidc')}
               </Button>
             </div>
           </div>
@@ -197,10 +197,10 @@ export function StepUpAuthModal({
           >
             <div className="px-6 py-4 space-y-4">
               <p className="text-sm text-gray-700 dark:text-gray-300">
-                Enter the 6-digit code from your authenticator app.
+                {t('totpPrompt')}
               </p>
               <Input
-                label="Authenticator code"
+                label={t('totpLabel')}
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
@@ -228,10 +228,10 @@ export function StepUpAuthModal({
                 onClick={onClose}
                 disabled={submitting}
               >
-                Cancel
+                {tc('cancel')}
               </Button>
               <Button type="submit" isLoading={submitting}>
-                Verify
+                {t('verify')}
               </Button>
             </div>
           </form>
@@ -244,10 +244,10 @@ export function StepUpAuthModal({
           >
             <div className="px-6 py-4 space-y-4">
               <p className="text-sm text-gray-700 dark:text-gray-300">
-                Enter your current account password to continue.
+                {t('passwordPrompt')}
               </p>
               <Input
-                label="Password"
+                label={t('passwordLabel')}
                 type="password"
                 autoComplete="current-password"
                 autoFocus
@@ -267,10 +267,10 @@ export function StepUpAuthModal({
                 onClick={onClose}
                 disabled={submitting}
               >
-                Cancel
+                {tc('cancel')}
               </Button>
               <Button type="submit" isLoading={submitting}>
-                Verify
+                {t('verify')}
               </Button>
             </div>
           </form>

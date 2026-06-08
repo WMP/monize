@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
@@ -17,27 +18,12 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 import toast from 'react-hot-toast';
 import type { Account } from '@/types/account';
 import type {
-  InvestmentAction,
   InvestmentTransaction,
   Security,
   SecurityTransactionHistory as SecurityTransactionHistoryData,
 } from '@/types/investment';
 
 const logger = createLogger('SecurityTxHistory');
-
-const ACTION_LABELS: Record<InvestmentAction, string> = {
-  BUY: 'Buy',
-  SELL: 'Sell',
-  DIVIDEND: 'Dividend',
-  INTEREST: 'Interest',
-  CAPITAL_GAIN: 'Capital Gain',
-  SPLIT: 'Split',
-  TRANSFER_IN: 'Transfer In',
-  TRANSFER_OUT: 'Transfer Out',
-  REINVEST: 'Reinvest',
-  ADD_SHARES: 'Add Shares',
-  REMOVE_SHARES: 'Remove Shares',
-};
 
 interface SecurityTransactionHistoryProps {
   security: Security;
@@ -51,6 +37,8 @@ export function SecurityTransactionHistory({
   onClose,
   onChanged,
 }: SecurityTransactionHistoryProps) {
+  const t = useTranslations('securities');
+  const tc = useTranslations('common');
   const { formatDate } = useDateFormat();
   const { formatCurrency, formatCurrencyPrecise } = useNumberFormat();
   const [history, setHistory] = useState<SecurityTransactionHistoryData | null>(null);
@@ -149,7 +137,7 @@ export function SecurityTransactionHistory({
             {security.symbol}
             {!security.isActive && (
               <span className="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                Inactive
+                {t('transactionHistory.inactiveBadge')}
               </span>
             )}
           </h2>
@@ -157,7 +145,7 @@ export function SecurityTransactionHistory({
         </div>
         <div className="text-right">
           <div className="text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500">
-            Current shares
+            {t('transactionHistory.currentShares')}
           </div>
           <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {formatShareQuantity(currentShares)}
@@ -169,14 +157,14 @@ export function SecurityTransactionHistory({
         {accounts.length > 0 && (
           <div className="w-full sm:max-w-xs">
             <Select
-              label="Account"
+              label={t('transactionHistory.accountLabel')}
               value={selectedAccountId}
               onChange={(e) => setSelectedAccountId(e.target.value)}
               options={[
-                { value: 'all', label: `All accounts (${formatShareQuantity(history?.currentQuantityAll ?? 0)})` },
+                { value: 'all', label: t('transactionHistory.allAccounts', { shares: formatShareQuantity(history?.currentQuantityAll ?? 0) }) },
                 ...accounts.map((a) => ({
                   value: a.accountId,
-                  label: `${a.isClosed ? `${a.accountName} (closed)` : a.accountName} — ${formatShareQuantity(a.currentQuantity)}`,
+                  label: `${a.isClosed ? t('transactionHistory.accountClosed', { name: a.accountName }) : a.accountName} — ${formatShareQuantity(a.currentQuantity)}`,
                 })),
               ]}
             />
@@ -184,7 +172,7 @@ export function SecurityTransactionHistory({
         )}
         {accounts.length > 0 && !showAddForm && (
           <Button size="sm" variant="outline" onClick={() => setShowAddForm(true)}>
-            + Add transaction
+            {t('transactionHistory.addTransaction')}
           </Button>
         )}
       </div>
@@ -202,27 +190,27 @@ export function SecurityTransactionHistory({
       )}
 
       {isLoading ? (
-        <LoadingSpinner text="Loading transactions..." />
+        <LoadingSpinner text={t('transactionHistory.loading')} />
       ) : visibleTransactions.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
-          No transactions for this security{selectedAccountId !== 'all' ? ' in the selected account' : ''}.
+          {selectedAccountId !== 'all' ? t('transactionHistory.emptyAccount') : t('transactionHistory.emptyAll')}
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Date</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{t('transactionHistory.columns.date')}</th>
                 {showAccountColumn && (
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Account</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{t('transactionHistory.columns.account')}</th>
                 )}
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Action</th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Quantity</th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Running Total</th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Price</th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Amount</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{t('transactionHistory.columns.action')}</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{t('transactionHistory.columns.quantity')}</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{t('transactionHistory.columns.runningTotal')}</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{t('transactionHistory.columns.price')}</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">{t('transactionHistory.columns.amount')}</th>
                 <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{t('transactionHistory.columns.actionsLabel')}</span>
                 </th>
               </tr>
             </thead>
@@ -243,7 +231,7 @@ export function SecurityTransactionHistory({
                       </td>
                     )}
                     <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
-                      {ACTION_LABELS[tx.action] ?? tx.action}
+                      {t(`transactionHistory.actionLabels.${tx.action}` as Parameters<typeof t>[0]) ?? tx.action}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-right text-sm text-gray-900 dark:text-gray-100">
                       {tx.quantity === null ? '-' : formatShareQuantity(tx.quantity)}
@@ -264,7 +252,7 @@ export function SecurityTransactionHistory({
                         onClick={() => handleEditClick(tx.id)}
                         className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
                       >
-                        Edit
+                        {tc('edit')}
                       </Button>
                     </td>
                   </tr>
@@ -277,7 +265,7 @@ export function SecurityTransactionHistory({
 
       <div className="mt-6 flex justify-end">
         <Button variant="outline" onClick={onClose}>
-          Close
+          {tc('close')}
         </Button>
       </div>
 
@@ -292,7 +280,7 @@ export function SecurityTransactionHistory({
         {editTransaction && (
           <>
             <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Edit Transaction
+              {t('transactionHistory.editTransactionTitle')}
             </h2>
             <InvestmentTransactionForm
               transaction={editTransaction}

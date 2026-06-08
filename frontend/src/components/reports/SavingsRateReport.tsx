@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { gainLossColor } from '@/lib/format';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import {
@@ -29,6 +30,7 @@ const logger = createLogger('SavingsRateReport');
 type SavingsRateSortField = 'month' | 'income' | 'expenses' | 'savings' | 'rate';
 
 export function SavingsRateReport() {
+  const t = useTranslations('reports');
   const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -97,17 +99,23 @@ export function SavingsRateReport() {
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
     await exportToPdf({
-      title: 'Savings Rate',
+      title: t('savingsRate.pdfTitle'),
       summaryCards: [
-        { label: 'Current Rate', value: `${currentRate.toFixed(1)}%`, color: meetsTarget ? '#16a34a' : '#dc2626' },
-        { label: 'Average Rate', value: `${avgRate.toFixed(1)}%`, color: '#111827' },
-        { label: 'Target Rate', value: `${targetRate}%`, color: '#2563eb' },
-        { label: 'Total Saved', value: formatCurrency(totalSaved), color: totalSaved >= 0 ? '#16a34a' : '#dc2626' },
+        { label: t('savingsRate.pdfCurrentRate'), value: `${currentRate.toFixed(1)}%`, color: meetsTarget ? '#16a34a' : '#dc2626' },
+        { label: t('savingsRate.pdfAverageRate'), value: `${avgRate.toFixed(1)}%`, color: '#111827' },
+        { label: t('savingsRate.pdfTargetRate'), value: `${targetRate}%`, color: '#2563eb' },
+        { label: t('savingsRate.pdfTotalSaved'), value: formatCurrency(totalSaved), color: totalSaved >= 0 ? '#16a34a' : '#dc2626' },
       ],
       chartContainer: chartRef.current,
       additionalTables: data.length > 0 ? [{
-        title: 'Monthly Breakdown',
-        headers: ['Month', 'Income', 'Expenses', 'Savings', 'Rate'],
+        title: t('savingsRate.pdfBreakdownTitle'),
+        headers: [
+          t('savingsRate.pdfColMonth'),
+          t('savingsRate.pdfColIncome'),
+          t('savingsRate.pdfColExpenses'),
+          t('savingsRate.pdfColSavings'),
+          t('savingsRate.pdfColRate'),
+        ],
         rows: data.map((point) => [
           point.month,
           formatCurrency(point.income),
@@ -139,7 +147,7 @@ export function SavingsRateReport() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6 text-center">
         <p className="text-gray-500 dark:text-gray-400">
-          No budgets found. Create a budget to see your savings rate.
+          {t('savingsRate.noBudgets')}
         </p>
       </div>
     );
@@ -171,12 +179,12 @@ export function SavingsRateReport() {
             onChange={(e) => setMonths(Number(e.target.value))}
             className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           >
-            <option value={6}>6 Months</option>
-            <option value={12}>12 Months</option>
-            <option value={24}>24 Months</option>
+            <option value={6}>{t('savingsRate.months6')}</option>
+            <option value={12}>{t('savingsRate.months12')}</option>
+            <option value={24}>{t('savingsRate.months24')}</option>
           </select>
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Target:</label>
+            <label className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{t('savingsRate.targetLabel')}</label>
             <select
               value={targetRate}
               onChange={(e) => setTargetRate(Number(e.target.value))}
@@ -199,25 +207,25 @@ export function SavingsRateReport() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400">Current Rate</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{t('savingsRate.currentRate')}</p>
           <p className={`text-2xl font-bold ${meetsTarget ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {currentRate.toFixed(1)}%
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400">Average Rate</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{t('savingsRate.averageRate')}</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {avgRate.toFixed(1)}%
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400">Target Rate</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{t('savingsRate.targetRate')}</p>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
             {targetRate}%
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400">Total Saved</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{t('savingsRate.totalSaved')}</p>
           <p className={`text-2xl font-bold ${gainLossColor(totalSaved)}`}>
             {formatCurrency(totalSaved)}
           </p>
@@ -228,7 +236,7 @@ export function SavingsRateReport() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         {data.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No savings rate data available yet.
+            {t('savingsRate.noData')}
           </p>
         ) : (
           <div className="h-80">
@@ -249,11 +257,11 @@ export function SavingsRateReport() {
                     return (
                       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{label}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Income: {formatCurrency(point.income)}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Expenses: {formatCurrency(point.expenses)}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Savings: {formatCurrency(point.savings)}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{t('savingsRate.tooltipIncome', { amount: formatCurrency(point.income) })}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{t('savingsRate.tooltipExpenses', { amount: formatCurrency(point.expenses) })}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{t('savingsRate.tooltipSavings', { amount: formatCurrency(point.savings) })}</p>
                         <p className={`text-sm font-medium ${point.savingsRate >= targetRate ? 'text-green-600' : 'text-red-600'}`}>
-                          Rate: {point.savingsRate.toFixed(1)}%
+                          {t('savingsRate.tooltipRate', { rate: point.savingsRate.toFixed(1) })}
                         </p>
                       </div>
                     );
@@ -264,7 +272,7 @@ export function SavingsRateReport() {
                   y={targetRate}
                   stroke="#3b82f6"
                   strokeDasharray="3 3"
-                  label={{ value: `Target ${targetRate}%`, position: 'right', fill: '#3b82f6', fontSize: 11 }}
+                  label={{ value: t('savingsRate.targetPrefix', { rate: targetRate }), position: 'right', fill: '#3b82f6', fontSize: 11 }}
                 />
                 <ReferenceLine y={0} stroke="#9ca3af" />
                 <Line
@@ -273,7 +281,7 @@ export function SavingsRateReport() {
                   stroke="#10b981"
                   strokeWidth={2}
                   dot={{ r: 4 }}
-                  name="Savings Rate (%)"
+                  name={t('savingsRate.seriesSavingsRate')}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -284,7 +292,7 @@ export function SavingsRateReport() {
       {/* Monthly breakdown table */}
       {data.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Monthly Breakdown</h3>
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t('savingsRate.monthlyBreakdown')}</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
@@ -296,7 +304,7 @@ export function SavingsRateReport() {
                     onSort={handleSort}
                     className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
                   >
-                    Month
+                    {t('savingsRate.colMonth')}
                   </SortableHeader>
                   <SortableHeader<SavingsRateSortField>
                     field="income"
@@ -306,7 +314,7 @@ export function SavingsRateReport() {
                     align="right"
                     className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
                   >
-                    Income
+                    {t('savingsRate.colIncome')}
                   </SortableHeader>
                   <SortableHeader<SavingsRateSortField>
                     field="expenses"
@@ -316,7 +324,7 @@ export function SavingsRateReport() {
                     align="right"
                     className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
                   >
-                    Expenses
+                    {t('savingsRate.colExpenses')}
                   </SortableHeader>
                   <SortableHeader<SavingsRateSortField>
                     field="savings"
@@ -326,7 +334,7 @@ export function SavingsRateReport() {
                     align="right"
                     className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
                   >
-                    Savings
+                    {t('savingsRate.colSavings')}
                   </SortableHeader>
                   <SortableHeader<SavingsRateSortField>
                     field="rate"
@@ -336,7 +344,7 @@ export function SavingsRateReport() {
                     align="right"
                     className="py-2 font-medium text-gray-500 dark:text-gray-400"
                   >
-                    Rate
+                    {t('savingsRate.colRate')}
                   </SortableHeader>
                 </tr>
               </thead>

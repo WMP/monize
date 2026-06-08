@@ -4,6 +4,7 @@ import { useMemo, useRef } from 'react';
 import { gainLossColor } from '@/lib/format';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   BarChart,
   Bar,
@@ -27,17 +28,19 @@ function IncomeExpensesTooltip({
   payload,
   label,
   formatCurrency,
+  weekOfLabel,
 }: {
   active?: boolean;
   payload?: Array<{ name: string; value: number; color: string }>;
   label?: string;
   formatCurrency: (v: number) => string;
+  weekOfLabel: (date: string) => string;
 }) {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
         <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-          Week of {label}
+          {weekOfLabel(label ?? '')}
         </p>
         {payload.map((entry, index) => (
           <p
@@ -63,6 +66,7 @@ export function IncomeExpensesBarChart({
   transactions,
   isLoading,
 }: IncomeExpensesBarChartProps) {
+  const t = useTranslations('dashboard');
   const router = useRouter();
   const { formatDate } = useDateFormat();
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } = useNumberFormat();
@@ -180,7 +184,7 @@ export function IncomeExpensesBarChart({
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[540px]">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Income vs Expenses
+          {t('incomeExpenses.title')}
         </h3>
         <div className="h-64 flex items-center justify-center">
           <Skeleton className="w-full h-full" />
@@ -193,9 +197,9 @@ export function IncomeExpensesBarChart({
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[540px] flex flex-col h-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Income vs Expenses
+          {t('incomeExpenses.title')}
         </h3>
-        <span className="text-sm text-gray-500 dark:text-gray-400">Last 5 weeks</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">{t('incomeExpenses.last5Weeks')}</span>
       </div>
       <div className="flex-1 min-h-[16rem]">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -223,7 +227,7 @@ export function IncomeExpensesBarChart({
               axisLine={{ stroke: '#e5e7eb' }}
               tickFormatter={formatCurrencyAxis}
             />
-            <Tooltip content={<IncomeExpensesTooltip formatCurrency={formatCurrency} />} />
+            <Tooltip content={<IncomeExpensesTooltip formatCurrency={formatCurrency} weekOfLabel={(date) => t('incomeExpenses.weekOf', { date })} />} />
             <Legend
               wrapperStyle={{ paddingTop: '1rem' }}
               formatter={(value) => (
@@ -251,19 +255,19 @@ export function IncomeExpensesBarChart({
       </div>
       <div className="pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-3 gap-4 text-center">
         <div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Income</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('incomeExpenses.income')}</div>
           <div className="font-semibold text-green-600 dark:text-green-400">
             {formatCurrency(totals.income)}
           </div>
         </div>
         <div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Expenses</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('incomeExpenses.expenses')}</div>
           <div className="font-semibold text-red-600 dark:text-red-400">
             {formatCurrency(totals.expenses)}
           </div>
         </div>
         <div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Net</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('incomeExpenses.net')}</div>
           <div
             className={`font-semibold ${gainLossColor(totals.income - totals.expenses)}`}
           >

@@ -31,6 +31,7 @@ import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { exportToCsv } from '@/lib/csv-export';
+import { useTranslations } from 'next-intl';
 
 type SeriesKey = 'dividends' | 'interest' | 'capitalGains';
 type MonthlyIncomeSortField = 'month' | 'startValue' | 'endValue' | 'dividends' | 'interest' | 'capitalGains' | 'total';
@@ -68,13 +69,14 @@ interface DailyIncome {
   total: number;
 }
 
-const SERIES_COLORS: Record<SeriesKey, { positive: string; negative: string; label: string }> = {
-  dividends: { positive: '#22c55e', negative: '#22c55e', label: 'Dividends' },
-  interest: { positive: '#3b82f6', negative: '#3b82f6', label: 'Interest' },
-  capitalGains: { positive: '#8b5cf6', negative: '#ef4444', label: 'Capital Gains' },
+const SERIES_COLORS: Record<SeriesKey, { positive: string; negative: string }> = {
+  dividends: { positive: '#22c55e', negative: '#22c55e' },
+  interest: { positive: '#3b82f6', negative: '#3b82f6' },
+  capitalGains: { positive: '#8b5cf6', negative: '#ef4444' },
 };
 
 export function DividendIncomeReport() {
+  const t = useTranslations('reports');
   const { formatCurrency: formatCurrencyFull, formatCurrencyAxis } = useNumberFormat();
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
@@ -713,13 +715,13 @@ export function DividendIncomeReport() {
 
     if (viewType === 'bySecurity') {
       const headers = [
-        'Symbol',
-        'Security',
-        'Dividends',
-        'Interest',
-        'Capital Gains',
-        'Total',
-        'Currency',
+        t('dividendIncome.colSymbol'),
+        t('dividendIncome.colSecurity'),
+        t('dividendIncome.colDividends'),
+        t('dividendIncome.colInterest'),
+        t('dividendIncome.colCapitalGains'),
+        t('dividendIncome.colTotal'),
+        t('dividendIncome.colCurrency'),
       ];
       const rows = securityData.map((s) => [
         s.symbol,
@@ -735,11 +737,11 @@ export function DividendIncomeReport() {
     }
 
     if (viewType === 'daily') {
-      const headers: string[] = ['Date', 'Start Value', 'End Value'];
-      if (visibleSeries.dividends) headers.push('Dividends');
-      if (visibleSeries.interest) headers.push('Interest');
-      if (visibleSeries.capitalGains) headers.push('Capital Gains');
-      headers.push('Total', 'Currency');
+      const headers: string[] = [t('dividendIncome.colDate'), t('dividendIncome.colStartValueDaily'), t('dividendIncome.colEndValueDaily')];
+      if (visibleSeries.dividends) headers.push(t('dividendIncome.colDividends'));
+      if (visibleSeries.interest) headers.push(t('dividendIncome.colInterest'));
+      if (visibleSeries.capitalGains) headers.push(t('dividendIncome.colCapitalGains'));
+      headers.push(t('dividendIncome.colTotal'), t('dividendIncome.colCurrency'));
       const rows = displayedDailyData.map((row) => {
         const out: (string | number)[] = [row.date, round4(row.startValue), round4(row.endValue)];
         let total = 0;
@@ -765,11 +767,11 @@ export function DividendIncomeReport() {
     // Monthly table export. Respect the series visibility toggles so the CSV
     // matches what the user sees; the Total column reflects only the visible
     // series (same logic as the rendered table).
-    const headers: string[] = ['Month', 'Start Value', 'End Value'];
-    if (visibleSeries.dividends) headers.push('Dividends');
-    if (visibleSeries.interest) headers.push('Interest');
-    if (visibleSeries.capitalGains) headers.push('Capital Gains');
-    headers.push('Total', 'Currency');
+    const headers: string[] = [t('dividendIncome.colMonth'), t('dividendIncome.colStartValue'), t('dividendIncome.colEndValue')];
+    if (visibleSeries.dividends) headers.push(t('dividendIncome.colDividends'));
+    if (visibleSeries.interest) headers.push(t('dividendIncome.colInterest'));
+    if (visibleSeries.capitalGains) headers.push(t('dividendIncome.colCapitalGains'));
+    headers.push(t('dividendIncome.colTotal'), t('dividendIncome.colCurrency'));
     const rows = monthlyData.map((row) => {
       const out: (string | number)[] = [
         row.month,
@@ -811,7 +813,7 @@ export function DividendIncomeReport() {
 
     if (viewType === 'bySecurity') {
       tableData = {
-        headers: ['Symbol', 'Security', 'Dividends', 'Interest', 'Capital Gains', 'Total'],
+        headers: [t('dividendIncome.colSymbol'), t('dividendIncome.colSecurity'), t('dividendIncome.colDividends'), t('dividendIncome.colInterest'), t('dividendIncome.colCapitalGains'), t('dividendIncome.colTotal')],
         rows: securityData.map((s) => [
           s.symbol,
           s.name,
@@ -821,7 +823,7 @@ export function DividendIncomeReport() {
           fmtValue(s.total),
         ]),
         totalRow: [
-          'Total',
+          t('dividendIncome.colTotal'),
           '',
           fmtValue(totals.dividends),
           fmtValue(totals.interest),
@@ -830,11 +832,11 @@ export function DividendIncomeReport() {
         ],
       };
     } else if (viewType === 'daily' && monthlyDisplay === 'table') {
-      const headers: string[] = ['Date', 'Start Value', 'End Value'];
-      if (visibleSeries.dividends) headers.push('Dividends');
-      if (visibleSeries.interest) headers.push('Interest');
-      if (visibleSeries.capitalGains) headers.push('Capital Gains');
-      headers.push('Total');
+      const headers: string[] = [t('dividendIncome.colDate'), t('dividendIncome.colStartValueDaily'), t('dividendIncome.colEndValueDaily')];
+      if (visibleSeries.dividends) headers.push(t('dividendIncome.colDividends'));
+      if (visibleSeries.interest) headers.push(t('dividendIncome.colInterest'));
+      if (visibleSeries.capitalGains) headers.push(t('dividendIncome.colCapitalGains'));
+      headers.push(t('dividendIncome.colTotal'));
       const rows = displayedDailyData.map((row) => {
         const out: (string | number)[] = [row.label, fmtValue(row.startValue), fmtValue(row.endValue)];
         let rowTotal = 0;
@@ -861,7 +863,7 @@ export function DividendIncomeReport() {
         }),
         { dividends: 0, interest: 0, capitalGains: 0 },
       );
-      const totalRow: (string | number)[] = ['Total', '', ''];
+      const totalRow: (string | number)[] = [t('dividendIncome.colTotal'), '', ''];
       let grandTotal = 0;
       if (visibleSeries.dividends) {
         totalRow.push(fmtValue(dailyTotals.dividends));
@@ -878,11 +880,11 @@ export function DividendIncomeReport() {
       totalRow.push(fmtValue(grandTotal));
       tableData = { headers, rows, totalRow };
     } else if (viewType === 'monthly' && monthlyDisplay === 'table') {
-      const headers: string[] = ['Month', 'Start Value', 'End Value'];
-      if (visibleSeries.dividends) headers.push('Dividends');
-      if (visibleSeries.interest) headers.push('Interest');
-      if (visibleSeries.capitalGains) headers.push('Capital Gains');
-      headers.push('Total');
+      const headers: string[] = [t('dividendIncome.colMonth'), t('dividendIncome.colStartValue'), t('dividendIncome.colEndValue')];
+      if (visibleSeries.dividends) headers.push(t('dividendIncome.colDividends'));
+      if (visibleSeries.interest) headers.push(t('dividendIncome.colInterest'));
+      if (visibleSeries.capitalGains) headers.push(t('dividendIncome.colCapitalGains'));
+      headers.push(t('dividendIncome.colTotal'));
       const rows = monthlyData.map((row) => {
         const out: (string | number)[] = [
           row.label,
@@ -908,7 +910,7 @@ export function DividendIncomeReport() {
       // Column totals across the whole window, respecting hidden series so the
       // footer sum matches the visible columns. Start/End values are point-in-
       // time snapshots so a column sum would be meaningless — leave them blank.
-      const totalRow: (string | number)[] = ['Total', '', ''];
+      const totalRow: (string | number)[] = [t('dividendIncome.colTotal'), '', ''];
       let grandTotal = 0;
       if (visibleSeries.dividends) {
         totalRow.push(fmtValue(totals.dividends));
@@ -927,13 +929,13 @@ export function DividendIncomeReport() {
     }
 
     await exportToPdf({
-      title: 'Gains, Dividends & Interest',
+      title: t('dividendIncome.pdfTitle'),
       subtitle: accountLabel,
       summaryCards: [
-        { label: 'Dividends', value: fmtValue(totals.dividends), color: '#16a34a' },
-        { label: 'Interest', value: fmtValue(totals.interest), color: '#2563eb' },
-        { label: 'Capital Gains', value: fmtValue(totals.capitalGains), color: totals.capitalGains < 0 ? '#dc2626' : '#9333ea' },
-        { label: 'Total Income', value: fmtValue(totals.total), color: '#111827' },
+        { label: t('dividendIncome.summaryDividends'), value: fmtValue(totals.dividends), color: '#16a34a' },
+        { label: t('dividendIncome.summaryInterest'), value: fmtValue(totals.interest), color: '#2563eb' },
+        { label: t('dividendIncome.summaryCapitalGains'), value: fmtValue(totals.capitalGains), color: totals.capitalGains < 0 ? '#dc2626' : '#9333ea' },
+        { label: t('dividendIncome.summaryTotalIncome'), value: fmtValue(totals.total), color: '#111827' },
       ],
       chartContainer: tableData ? undefined : chartRef.current,
       tableData,
@@ -943,6 +945,12 @@ export function DividendIncomeReport() {
 
   const toggleSeries = (key: SeriesKey) => {
     setVisibleSeries((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const seriesLabels: Record<SeriesKey, string> = {
+    dividends: t('dividendIncome.seriesDividends'),
+    interest: t('dividendIncome.seriesInterest'),
+    capitalGains: t('dividendIncome.seriesCapitalGains'),
   };
 
   const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string; dataKey?: string }>; label?: string }) => {
@@ -994,25 +1002,25 @@ export function DividendIncomeReport() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-          <div className="text-sm text-green-600 dark:text-green-400">Dividends</div>
+          <div className="text-sm text-green-600 dark:text-green-400">{t('dividendIncome.summaryDividends')}</div>
           <div className="text-xl font-bold text-green-700 dark:text-green-300">
             {fmtValue(totals.dividends)}
           </div>
         </div>
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-          <div className="text-sm text-blue-600 dark:text-blue-400">Interest</div>
+          <div className="text-sm text-blue-600 dark:text-blue-400">{t('dividendIncome.summaryInterest')}</div>
           <div className="text-xl font-bold text-blue-700 dark:text-blue-300">
             {fmtValue(totals.interest)}
           </div>
         </div>
         <div className={`rounded-lg p-4 ${totals.capitalGains < 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-purple-50 dark:bg-purple-900/20'}`}>
-          <div className={`text-sm ${totals.capitalGains < 0 ? 'text-red-600 dark:text-red-400' : 'text-purple-600 dark:text-purple-400'}`}>Capital Gains</div>
+          <div className={`text-sm ${totals.capitalGains < 0 ? 'text-red-600 dark:text-red-400' : 'text-purple-600 dark:text-purple-400'}`}>{t('dividendIncome.summaryCapitalGains')}</div>
           <div className={`text-xl font-bold ${totals.capitalGains < 0 ? 'text-red-700 dark:text-red-300' : 'text-purple-700 dark:text-purple-300'}`}>
             {fmtValue(totals.capitalGains)}
           </div>
         </div>
         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-          <div className="text-sm text-gray-600 dark:text-gray-400">Total Income</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">{t('dividendIncome.summaryTotalIncome')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {fmtValue(totals.total)}
           </div>
@@ -1024,8 +1032,8 @@ export function DividendIncomeReport() {
         <div className="flex flex-wrap gap-3 items-center">
           <div className="w-48">
             <MultiSelect
-              ariaLabel="Filter by account"
-              placeholder="All Accounts"
+              ariaLabel={t('dividendIncome.filterByAccountLabel')}
+              placeholder={t('dividendIncome.allAccountsPlaceholder')}
               options={accountOptions}
               value={selectedAccountIds}
               onChange={(values) => {
@@ -1050,10 +1058,10 @@ export function DividendIncomeReport() {
             value={selectedSecurityId}
             onChange={(e) => setSelectedSecurityId(e.target.value)}
             className="max-w-48 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm"
-            aria-label="Filter by security"
+            aria-label={t('dividendIncome.filterBySecurityLabel')}
             disabled={availableSecurities.length === 0}
           >
-            <option value="">All Securities</option>
+            <option value="">{t('dividendIncome.allSecurities')}</option>
             {availableSecurities.map((security) => (
               <option key={security.id} value={security.id}>
                 {security.symbol}
@@ -1075,7 +1083,7 @@ export function DividendIncomeReport() {
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
-              Monthly
+              {t('dividendIncome.viewMonthly')}
             </button>
             <button
               onClick={() => setViewType('daily')}
@@ -1085,7 +1093,7 @@ export function DividendIncomeReport() {
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
-              Daily
+              {t('dividendIncome.viewDaily')}
             </button>
             <button
               onClick={() => setViewType('bySecurity')}
@@ -1095,7 +1103,7 @@ export function DividendIncomeReport() {
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
-              By Security
+              {t('dividendIncome.viewBySecurity')}
             </button>
             <RefreshPricesButton onRefreshComplete={reloadAll} />
             <ExportDropdown
@@ -1120,7 +1128,7 @@ export function DividendIncomeReport() {
                     : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                 }`}
               >
-                Chart
+                {t('dividendIncome.displayChart')}
               </button>
               <button
                 onClick={() => setMonthlyDisplay('table')}
@@ -1130,12 +1138,12 @@ export function DividendIncomeReport() {
                     : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                 }`}
               >
-                Table
+                {t('dividendIncome.displayTable')}
               </button>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
               <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Show:
+                {t('dividendIncome.showLabel')}
               </span>
               {(Object.keys(SERIES_COLORS) as SeriesKey[]).map((key) => {
                 const active = visibleSeries[key];
@@ -1156,7 +1164,7 @@ export function DividendIncomeReport() {
                         : undefined
                     }
                   >
-                    {SERIES_COLORS[key].label}
+                    {seriesLabels[key]}
                   </button>
                 );
               })}
@@ -1180,7 +1188,7 @@ export function DividendIncomeReport() {
                     }`}
                   />
                 </span>
-                Hide inactive days
+                {t('dividendIncome.hideInactiveDays')}
               </button>
             )}
           </div>
@@ -1190,14 +1198,14 @@ export function DividendIncomeReport() {
       {filteredTransactions.length === 0 && filteredCapitalGains.length === 0 && filteredDailyCapitalGains.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No dividends, interest, or capital gain activity found for this period.
+            {t('dividendIncome.empty')}
           </p>
         </div>
       ) : viewType === 'monthly' && monthlyDisplay === 'chart' ? (
         /* Monthly Chart */
         <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Monthly Gains, Dividends & Interest
+            {t('dividendIncome.monthlyChartTitle')}
           </h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -1213,7 +1221,7 @@ export function DividendIncomeReport() {
                     dataKey="dividends"
                     stackId={stackId}
                     fill={SERIES_COLORS.dividends.positive}
-                    name="Dividends"
+                    name={seriesLabels.dividends}
                   />
                 )}
                 {visibleSeries.interest && (
@@ -1221,7 +1229,7 @@ export function DividendIncomeReport() {
                     dataKey="interest"
                     stackId={stackId}
                     fill={SERIES_COLORS.interest.positive}
-                    name="Interest"
+                    name={seriesLabels.interest}
                   />
                 )}
                 {visibleSeries.capitalGains && (
@@ -1229,7 +1237,7 @@ export function DividendIncomeReport() {
                     dataKey="capitalGains"
                     stackId={stackId}
                     fill={SERIES_COLORS.capitalGains.positive}
-                    name="Capital Gains"
+                    name={seriesLabels.capitalGains}
                   >
                     {monthlyData.map((entry) => (
                       <Cell
@@ -1252,7 +1260,7 @@ export function DividendIncomeReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Monthly Gains, Dividends & Interest
+              {t('dividendIncome.monthlyTableTitle')}
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -1266,7 +1274,7 @@ export function DividendIncomeReport() {
                     onSort={monthlySort.handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Month
+                    {t('dividendIncome.colMonth')}
                   </SortableHeader>
                   <SortableHeader<MonthlyIncomeSortField>
                     field="startValue"
@@ -1276,7 +1284,7 @@ export function DividendIncomeReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Start Value
+                    {t('dividendIncome.colStartValue')}
                   </SortableHeader>
                   <SortableHeader<MonthlyIncomeSortField>
                     field="endValue"
@@ -1286,7 +1294,7 @@ export function DividendIncomeReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    End Value
+                    {t('dividendIncome.colEndValue')}
                   </SortableHeader>
                   {visibleSeries.dividends && (
                     <SortableHeader<MonthlyIncomeSortField>
@@ -1297,7 +1305,7 @@ export function DividendIncomeReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Dividends
+                      {t('dividendIncome.colDividends')}
                     </SortableHeader>
                   )}
                   {visibleSeries.interest && (
@@ -1309,7 +1317,7 @@ export function DividendIncomeReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Interest
+                      {t('dividendIncome.colInterest')}
                     </SortableHeader>
                   )}
                   {visibleSeries.capitalGains && (
@@ -1321,7 +1329,7 @@ export function DividendIncomeReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Capital Gains
+                      {t('dividendIncome.colCapitalGains')}
                     </SortableHeader>
                   )}
                   <SortableHeader<MonthlyIncomeSortField>
@@ -1332,7 +1340,7 @@ export function DividendIncomeReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Total
+                    {t('dividendIncome.colTotal')}
                   </SortableHeader>
                 </tr>
               </thead>
@@ -1394,11 +1402,11 @@ export function DividendIncomeReport() {
         /* Daily Chart */
         <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Daily Gains, Dividends & Interest
+            {t('dividendIncome.dailyChartTitle')}
           </h3>
           {displayedDailyData.length === 0 ? (
             <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-              No daily transaction data for this period.
+              {t('dividendIncome.noDailyData')}
             </p>
           ) : (
             <div className="h-80">
@@ -1415,7 +1423,7 @@ export function DividendIncomeReport() {
                       dataKey="dividends"
                       stackId={dailyStackId}
                       fill={SERIES_COLORS.dividends.positive}
-                      name="Dividends"
+                      name={seriesLabels.dividends}
                     />
                   )}
                   {visibleSeries.interest && (
@@ -1423,7 +1431,7 @@ export function DividendIncomeReport() {
                       dataKey="interest"
                       stackId={dailyStackId}
                       fill={SERIES_COLORS.interest.positive}
-                      name="Interest"
+                      name={seriesLabels.interest}
                     />
                   )}
                   {visibleSeries.capitalGains && (
@@ -1431,7 +1439,7 @@ export function DividendIncomeReport() {
                       dataKey="capitalGains"
                       stackId={dailyStackId}
                       fill={SERIES_COLORS.capitalGains.positive}
-                      name="Capital Gains"
+                      name={seriesLabels.capitalGains}
                     >
                       {displayedDailyData.map((entry) => (
                         <Cell
@@ -1455,12 +1463,12 @@ export function DividendIncomeReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Daily Gains, Dividends & Interest
+              {t('dividendIncome.dailyTableTitle')}
             </h3>
           </div>
           {displayedDailyData.length === 0 ? (
             <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-              No daily transaction data for this period.
+              {t('dividendIncome.noDailyData')}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -1474,7 +1482,7 @@ export function DividendIncomeReport() {
                       onSort={dailySort.handleSort}
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Date
+                      {t('dividendIncome.colDate')}
                     </SortableHeader>
                     <SortableHeader<DailyIncomeSortField>
                       field="startValue"
@@ -1484,7 +1492,7 @@ export function DividendIncomeReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Start Value
+                      {t('dividendIncome.colStartValueDaily')}
                     </SortableHeader>
                     <SortableHeader<DailyIncomeSortField>
                       field="endValue"
@@ -1494,7 +1502,7 @@ export function DividendIncomeReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      End Value
+                      {t('dividendIncome.colEndValueDaily')}
                     </SortableHeader>
                     {visibleSeries.dividends && (
                       <SortableHeader<DailyIncomeSortField>
@@ -1505,7 +1513,7 @@ export function DividendIncomeReport() {
                         align="right"
                         className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       >
-                        Dividends
+                        {t('dividendIncome.colDividends')}
                       </SortableHeader>
                     )}
                     {visibleSeries.interest && (
@@ -1517,7 +1525,7 @@ export function DividendIncomeReport() {
                         align="right"
                         className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       >
-                        Interest
+                        {t('dividendIncome.colInterest')}
                       </SortableHeader>
                     )}
                     {visibleSeries.capitalGains && (
@@ -1529,7 +1537,7 @@ export function DividendIncomeReport() {
                         align="right"
                         className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       >
-                        Capital Gains
+                        {t('dividendIncome.colCapitalGains')}
                       </SortableHeader>
                     )}
                     <SortableHeader<DailyIncomeSortField>
@@ -1540,7 +1548,7 @@ export function DividendIncomeReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Total
+                      {t('dividendIncome.colTotal')}
                     </SortableHeader>
                   </tr>
                 </thead>
@@ -1604,7 +1612,7 @@ export function DividendIncomeReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Income by Security
+              {t('dividendIncome.incomeBySecurityTitle')}
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -1618,7 +1626,7 @@ export function DividendIncomeReport() {
                     onSort={securitySort.handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Security
+                    {t('dividendIncome.colSecurity')}
                   </SortableHeader>
                   <SortableHeader<SecurityIncomeSortField>
                     field="dividends"
@@ -1628,7 +1636,7 @@ export function DividendIncomeReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Dividends
+                    {t('dividendIncome.colDividends')}
                   </SortableHeader>
                   <SortableHeader<SecurityIncomeSortField>
                     field="interest"
@@ -1638,7 +1646,7 @@ export function DividendIncomeReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Interest
+                    {t('dividendIncome.colInterest')}
                   </SortableHeader>
                   <SortableHeader<SecurityIncomeSortField>
                     field="capitalGains"
@@ -1648,7 +1656,7 @@ export function DividendIncomeReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Capital Gains
+                    {t('dividendIncome.colCapitalGains')}
                   </SortableHeader>
                   <SortableHeader<SecurityIncomeSortField>
                     field="total"
@@ -1658,7 +1666,7 @@ export function DividendIncomeReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Total
+                    {t('dividendIncome.colTotal')}
                   </SortableHeader>
                 </tr>
               </thead>

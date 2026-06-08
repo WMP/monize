@@ -21,26 +21,13 @@ import { exportToCsv } from '@/lib/csv-export';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { createLogger } from '@/lib/logger';
+import { useTranslations } from 'next-intl';
 
 const logger = createLogger('InvestmentTransactionHistoryReport');
 
 const MAX_PAGES = 50;
 
 type InvestmentTxSortField = 'date' | 'action' | 'security' | 'account' | 'quantity' | 'price' | 'total';
-
-const ACTION_LABELS: Record<InvestmentAction, string> = {
-  BUY: 'Buy',
-  SELL: 'Sell',
-  DIVIDEND: 'Dividend',
-  INTEREST: 'Interest',
-  CAPITAL_GAIN: 'Capital Gain',
-  SPLIT: 'Split',
-  TRANSFER_IN: 'Transfer In',
-  TRANSFER_OUT: 'Transfer Out',
-  REINVEST: 'Reinvest',
-  ADD_SHARES: 'Add Shares',
-  REMOVE_SHARES: 'Remove Shares',
-};
 
 const ACTION_COLORS: Record<InvestmentAction, string> = {
   BUY: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
@@ -63,18 +50,35 @@ interface ActionSummary {
 }
 
 export function InvestmentTransactionHistoryReport() {
+  const t = useTranslations('reports');
   const { formatCurrency: formatCurrencyFull } = useNumberFormat();
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [selectedActions, setSelectedActions] = useState<string[]>([]);
+
+  const actionLabels = useMemo<Record<InvestmentAction, string>>(() => ({
+    BUY: t('investmentTransactions.actionBuy'),
+    SELL: t('investmentTransactions.actionSell'),
+    DIVIDEND: t('investmentTransactions.actionDividend'),
+    INTEREST: t('investmentTransactions.actionInterest'),
+    CAPITAL_GAIN: t('investmentTransactions.actionCapitalGain'),
+    SPLIT: t('investmentTransactions.actionSplit'),
+    TRANSFER_IN: t('investmentTransactions.actionTransferIn'),
+    TRANSFER_OUT: t('investmentTransactions.actionTransferOut'),
+    REINVEST: t('investmentTransactions.actionReinvest'),
+    ADD_SHARES: t('investmentTransactions.actionAddShares'),
+    REMOVE_SHARES: t('investmentTransactions.actionRemoveShares'),
+  }), [t]);
+
   const actionOptions = useMemo(
     () =>
-      (Object.keys(ACTION_LABELS) as InvestmentAction[]).map((action) => ({
+      (Object.keys(actionLabels) as InvestmentAction[]).map((action) => ({
         value: action,
-        label: ACTION_LABELS[action],
+        label: actionLabels[action],
       })),
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t],
   );
   const { dateRange, setDateRange, resolvedRange, isValid } = useDateRange({ defaultRange: '1y', alignment: 'month' });
   const { start: rangeStart, end: rangeEnd } = resolvedRange;
@@ -218,10 +222,10 @@ export function InvestmentTransactionHistoryReport() {
   }, [filteredTransactions, sortField, sortDirection, accountNameMap, getTxAmount]);
 
   const getExportData = useCallback((formatted: boolean) => {
-    const headers = ['Date', 'Action', 'Security', 'Account', 'Quantity', 'Price', 'Total'];
+    const headers = [t('investmentTransactions.colDate'), t('investmentTransactions.colAction'), t('investmentTransactions.colSecurity'), t('investmentTransactions.colAccount'), t('investmentTransactions.colQuantity'), t('investmentTransactions.colPrice'), t('investmentTransactions.colTotal')];
     const rows: (string | number)[][] = sortedTransactions.map((tx) => [
       format(parseLocalDate(tx.transactionDate), 'yyyy-MM-dd'),
-      ACTION_LABELS[tx.action],
+      actionLabels[tx.action],
       tx.security?.symbol || '-',
       accountNameMap.get(tx.accountId) || '-',
       tx.quantity != null ? Math.abs(tx.quantity) : '',
@@ -229,7 +233,7 @@ export function InvestmentTransactionHistoryReport() {
       formatted ? fmtValue(Math.abs(tx.totalAmount)) : Math.abs(tx.totalAmount),
     ]);
     return { headers, rows };
-  }, [sortedTransactions, accountNameMap, fmtValue]);
+  }, [sortedTransactions, accountNameMap, fmtValue, actionLabels, t]);
 
   const handleExportCsv = useCallback(() => {
     const { headers, rows } = getExportData(false);
@@ -241,21 +245,21 @@ export function InvestmentTransactionHistoryReport() {
     const { headers, rows } = getExportData(true);
     const accountLabel = selectedAccount
       ? selectedAccount.name.replace(/ - (Brokerage|Cash)$/, '')
-      : 'All Accounts';
+      : t('investmentTransactions.allAccounts');
     const uniqueSecurities = new Set(filteredTransactions.filter((tx) => tx.security).map((tx) => tx.security!.symbol)).size;
     await exportToPdf({
-      title: 'Investment Transaction History',
+      title: t('investmentTransactions.pdfTitle'),
       subtitle: `${accountLabel} | ${filteredTransactions.length} transactions | Total volume: ${fmtValue(totalAmount)}`,
       summaryCards: [
-        { label: 'Total Transactions', value: String(filteredTransactions.length), color: '#111827' },
-        { label: 'Total Volume', value: fmtValue(totalAmount), color: '#111827' },
-        { label: 'Action Types', value: String(actionSummaries.length), color: '#111827' },
-        { label: 'Securities Traded', value: String(uniqueSecurities), color: '#111827' },
+        { label: t('investmentTransactions.totalTransactions'), value: String(filteredTransactions.length), color: '#111827' },
+        { label: t('investmentTransactions.totalVolume'), value: fmtValue(totalAmount), color: '#111827' },
+        { label: t('investmentTransactions.actionTypes'), value: String(actionSummaries.length), color: '#111827' },
+        { label: t('investmentTransactions.securitiesTraded'), value: String(uniqueSecurities), color: '#111827' },
       ],
       tableData: { headers, rows },
       filename: 'investment-transactions',
     });
-  }, [getExportData, selectedAccount, filteredTransactions, fmtValue, totalAmount, actionSummaries]);
+  }, [getExportData, selectedAccount, filteredTransactions, fmtValue, totalAmount, actionSummaries, t]);
 
   if (error) {
     return <ReportError onRetry={reload} />;
@@ -277,25 +281,25 @@ export function InvestmentTransactionHistoryReport() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Total Transactions</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('investmentTransactions.totalTransactions')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {filteredTransactions.length}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Total Volume</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('investmentTransactions.totalVolume')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {fmtValue(totalAmount)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Action Types</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('investmentTransactions.actionTypes')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {actionSummaries.length}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Securities Traded</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('investmentTransactions.securitiesTraded')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {new Set(filteredTransactions.filter((tx) => tx.security).map((tx) => tx.security!.symbol)).size}
           </div>
@@ -313,8 +317,8 @@ export function InvestmentTransactionHistoryReport() {
             />
             <div className="w-48">
               <MultiSelect
-                ariaLabel="Filter by action"
-                placeholder="All Actions"
+                ariaLabel={t('investmentTransactions.filterByAction')}
+                placeholder={t('investmentTransactions.allActionsPlaceholder')}
                 showSearch={false}
                 options={actionOptions}
                 value={selectedActions}
@@ -338,7 +342,7 @@ export function InvestmentTransactionHistoryReport() {
       {actionSummaries.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Activity Summary
+            {t('investmentTransactions.activitySummary')}
           </h3>
           <div className="flex flex-wrap gap-3">
             {actionSummaries.map((summary) => (
@@ -347,7 +351,7 @@ export function InvestmentTransactionHistoryReport() {
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/50"
               >
                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ACTION_COLORS[summary.action]}`}>
-                  {ACTION_LABELS[summary.action]}
+                  {actionLabels[summary.action]}
                 </span>
                 <span className="text-sm text-gray-900 dark:text-gray-100 font-medium">
                   {summary.count}
@@ -365,14 +369,14 @@ export function InvestmentTransactionHistoryReport() {
       {filteredTransactions.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No investment transactions found for this period.
+            {t('investmentTransactions.noTransactions')}
           </p>
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Transaction History ({filteredTransactions.length})
+              {t('investmentTransactions.transactionHistory', { count: filteredTransactions.length })}
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -386,7 +390,7 @@ export function InvestmentTransactionHistoryReport() {
                     onSort={handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Date
+                    {t('investmentTransactions.colDate')}
                   </SortableHeader>
                   <SortableHeader<InvestmentTxSortField>
                     field="action"
@@ -395,7 +399,7 @@ export function InvestmentTransactionHistoryReport() {
                     onSort={handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Action
+                    {t('investmentTransactions.colAction')}
                   </SortableHeader>
                   <SortableHeader<InvestmentTxSortField>
                     field="security"
@@ -404,7 +408,7 @@ export function InvestmentTransactionHistoryReport() {
                     onSort={handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Security
+                    {t('investmentTransactions.colSecurity')}
                   </SortableHeader>
                   <SortableHeader<InvestmentTxSortField>
                     field="account"
@@ -413,7 +417,7 @@ export function InvestmentTransactionHistoryReport() {
                     onSort={handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase hidden md:table-cell"
                   >
-                    Account
+                    {t('investmentTransactions.colAccount')}
                   </SortableHeader>
                   <SortableHeader<InvestmentTxSortField>
                     field="quantity"
@@ -423,7 +427,7 @@ export function InvestmentTransactionHistoryReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Quantity
+                    {t('investmentTransactions.colQuantity')}
                   </SortableHeader>
                   <SortableHeader<InvestmentTxSortField>
                     field="price"
@@ -433,7 +437,7 @@ export function InvestmentTransactionHistoryReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Price
+                    {t('investmentTransactions.colPrice')}
                   </SortableHeader>
                   <SortableHeader<InvestmentTxSortField>
                     field="total"
@@ -443,7 +447,7 @@ export function InvestmentTransactionHistoryReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Total
+                    {t('investmentTransactions.colTotal')}
                   </SortableHeader>
                 </tr>
               </thead>
@@ -455,7 +459,7 @@ export function InvestmentTransactionHistoryReport() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ACTION_COLORS[tx.action]}`}>
-                        {ACTION_LABELS[tx.action]}
+                        {actionLabels[tx.action]}
                       </span>
                     </td>
                     <td className="px-4 py-3">

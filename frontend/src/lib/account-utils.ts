@@ -49,7 +49,8 @@ export function buildAccountDropdownOptions(
 }
 
 /** Format an account type enum to a human-readable label. */
-export const formatAccountType = (type: AccountType): string => {
+export const formatAccountType = (type: AccountType, t?: (key: string) => string): string => {
+  if (t) return t(`accountTypes.${type}`);
   const labels: Record<AccountType, string> = {
     CHEQUING: 'Chequing',
     SAVINGS: 'Savings',
@@ -103,25 +104,28 @@ export function buildAccountFilterLabel(
   selectedIds: string[],
   availableAccounts: { id: string; name: string }[],
   getDisplayName: (account: { id: string; name: string }) => string = (a) => a.name,
+  t?: (key: string, values?: Record<string, string>) => string,
 ): string {
+  const allAccounts = () => (t ? t('accountFilter.allAccounts') : 'All Accounts');
   if (availableAccounts.length === 0 || selectedIds.length === 0) {
-    return 'All Accounts';
+    return allAccounts();
   }
 
   const selectedSet = new Set(selectedIds);
   const selected = availableAccounts.filter((a) => selectedSet.has(a.id));
 
   if (selected.length === 0) {
-    return 'All Accounts';
+    return allAccounts();
   }
 
   if (selected.length === availableAccounts.length) {
-    return 'All Accounts';
+    return allAccounts();
   }
 
   if (selected.length > availableAccounts.length / 2) {
     const unselected = availableAccounts.filter((a) => !selectedSet.has(a.id));
-    return `All but ${unselected.map(getDisplayName).join(', ')}`;
+    const names = unselected.map(getDisplayName).join(', ');
+    return t ? t('accountFilter.allBut', { names }) : `All but ${names}`;
   }
 
   return selected.map(getDisplayName).join(', ');

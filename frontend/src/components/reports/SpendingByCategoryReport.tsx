@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { useRouter } from 'next/navigation';
 import {
@@ -36,6 +37,7 @@ type SpendingCategorySortField = 'name' | 'value' | 'percentage';
 type ChartDataItem = ChartDatum & { id: string; colour: string };
 
 export function SpendingByCategoryReport() {
+  const t = useTranslations('reports');
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
   const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
@@ -115,9 +117,9 @@ export function SpendingByCategoryReport() {
     });
 
     await exportToPdf({
-      title: 'Spending by Category',
+      title: t('spendingByCategory.pdfTitle'),
       summaryCards: [
-        { label: 'Total Expenses', value: formatCurrency(totalExpenses), color: '#dc2626' },
+        { label: t('spendingByCategory.totalExpenses'), value: formatCurrency(totalExpenses), color: '#dc2626' },
       ],
       chartContainer: chartRef.current,
       chartLegend: legendItems.length > 0 ? legendItems : undefined,
@@ -126,7 +128,11 @@ export function SpendingByCategoryReport() {
   };
 
   const handleExportCsv = () => {
-    const headers = ['Category', 'Amount', 'Percentage'];
+    const headers = [
+      t('spendingByCategory.csvColCategory'),
+      t('spendingByCategory.csvColAmount'),
+      t('spendingByCategory.csvColPercentage'),
+    ];
     const rows = sortedTableData.map((item) => {
       const percentage = totalExpenses > 0 ? (item.value / totalExpenses) * 100 : 0;
       return [item.name, item.value, `${percentage.toFixed(2)}%`];
@@ -204,7 +210,7 @@ export function SpendingByCategoryReport() {
       <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         {chartData.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No expense data for this period.
+            {t('spendingByCategory.noData')}
           </p>
         ) : viewType === 'table' ? (
           <>
@@ -219,7 +225,7 @@ export function SpendingByCategoryReport() {
                       onSort={handleSort}
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Category
+                      {t('spendingByCategory.colCategory')}
                     </SortableHeader>
                     <SortableHeader<SpendingCategorySortField>
                       field="value"
@@ -229,7 +235,7 @@ export function SpendingByCategoryReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Amount
+                      {t('spendingByCategory.colAmount')}
                     </SortableHeader>
                     <SortableHeader<SpendingCategorySortField>
                       field="percentage"
@@ -239,7 +245,7 @@ export function SpendingByCategoryReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      % of Total
+                      {t('spendingByCategory.colPctOfTotal')}
                     </SortableHeader>
                   </tr>
                 </thead>
@@ -270,7 +276,7 @@ export function SpendingByCategoryReport() {
                 </tbody>
                 <tfoot className="bg-gray-50 dark:bg-gray-900/50">
                   <tr>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">Total</td>
+                    <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">{t('spendingByCategory.total')}</td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-gray-900 dark:text-gray-100">
                       {formatCurrency(totalExpenses)}
                     </td>
@@ -359,7 +365,7 @@ export function SpendingByCategoryReport() {
 
             {/* Total */}
             <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
-              <div className="text-sm text-gray-500 dark:text-gray-400">Total Expenses</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">{t('spendingByCategory.totalExpenses')}</div>
               <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {formatCurrency(totalExpenses)}
               </div>

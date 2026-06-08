@@ -119,6 +119,9 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run type-check
+      # Fail if the generated pseudo-locale (xx) has drifted from the English
+      # source. Run `npm run i18n:pseudo` to regenerate after editing en/*.json.
+      - run: npm run i18n:check
 
   frontend-unit-tests:
     name: Frontend Unit Tests

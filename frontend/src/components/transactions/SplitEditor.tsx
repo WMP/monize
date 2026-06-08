@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/Input';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Button } from '@/components/ui/Button';
@@ -51,6 +52,7 @@ export function SplitEditor({
   onTransactionAmountChange,
   currencyCode = 'CAD',
 }: SplitEditorProps) {
+  const t = useTranslations('transactions');
   const investmentSplitsEnabled = parentAccountSubType === 'INVESTMENT_CASH';
   const currencySymbol = getCurrencySymbol(currencyCode);
   const decimals = getDecimalPlacesForCurrency(currencyCode);
@@ -323,7 +325,7 @@ export function SplitEditor({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center gap-2">
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Split Details</h4>
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('splitEditor.header')}</h4>
         <div className="flex gap-2">
           <Button
             type="button"
@@ -331,9 +333,9 @@ export function SplitEditor({
             size="sm"
             onClick={distributeProportionally}
             disabled={disabled || localSplits.length === 0 || Math.abs(remaining) < 0.01}
-            title="Distribute the remaining amount proportionally based on each split's amount"
+            title={t('splitEditor.distributeProportionallyTitle')}
           >
-            Distribute Proportionally
+            {t('splitEditor.distributeProportionally')}
           </Button>
           <Button
             type="button"
@@ -342,7 +344,7 @@ export function SplitEditor({
             onClick={distributeEvenly}
             disabled={disabled || localSplits.length === 0}
           >
-            Distribute Evenly
+            {t('splitEditor.distributeEvenly')}
           </Button>
         </div>
       </div>
@@ -358,14 +360,14 @@ export function SplitEditor({
             return (
               <div key={split.id} className="p-3 space-y-2 bg-white dark:bg-gray-900">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Split {index + 1}</span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('splitEditor.splitLabel', { number: index + 1 })}</span>
                   <div className="flex space-x-1">
                     <button
                       type="button"
                       onClick={() => addRemainingToSplit(index)}
                       disabled={disabled || Math.abs(remaining) < 0.01}
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={Math.abs(remaining) < 0.01 ? 'No unassigned amount' : `Add remaining to this split`}
+                      title={Math.abs(remaining) < 0.01 ? t('splitEditor.noUnassigned') : t('splitEditor.addRemaining')}
                     >
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -376,7 +378,7 @@ export function SplitEditor({
                       onClick={() => removeSplit(index)}
                       disabled={disabled || localSplits.length <= 2}
                       className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={localSplits.length <= 2 ? 'Minimum 2 splits required' : 'Remove split'}
+                      title={localSplits.length <= 2 ? t('splitEditor.removeMinimum') : t('splitEditor.removeSplit')}
                     >
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -387,10 +389,10 @@ export function SplitEditor({
                 {supportsTransfers && (
                   <Select
                     options={[
-                      { value: 'category', label: 'Category' },
-                      { value: 'transfer', label: 'Transfer' },
+                      { value: 'category', label: t('splitEditor.splitTypes.category') },
+                      { value: 'transfer', label: t('splitEditor.splitTypes.transfer') },
                       ...(investmentSplitsEnabled
-                        ? [{ value: 'investment', label: 'Investment' }]
+                        ? [{ value: 'investment', label: t('splitEditor.splitTypes.investment') }]
                         : []),
                     ]}
                     value={split.splitType}
@@ -410,7 +412,7 @@ export function SplitEditor({
                   />
                 ) : split.splitType === 'category' || !supportsTransfers ? (
                   <Combobox
-                    placeholder="Select category..."
+                    placeholder={t('splitEditor.selectCategory')}
                     options={categoryOptions}
                     value={split.categoryId || ''}
                     initialDisplayValue={currentCategory?.name || ''}
@@ -422,7 +424,7 @@ export function SplitEditor({
                 ) : (
                   <Select
                     options={[
-                      { value: '', label: 'Select account...' },
+                      { value: '', label: t('splitEditor.selectAccount') },
                       ...accountOptions,
                     ]}
                     value={split.transferAccountId || ''}
@@ -445,7 +447,7 @@ export function SplitEditor({
                     type="text"
                     value={split.memo || ''}
                     onChange={(e) => handleSplitChange(index, 'memo', e.target.value)}
-                    placeholder="Memo"
+                    placeholder={t('splitEditor.mobileMemoPlaceholder')}
                     disabled={disabled}
                     className="w-full"
                   />
@@ -455,7 +457,7 @@ export function SplitEditor({
                     options={tagOptions}
                     value={split.tagIds || []}
                     onChange={(values) => handleSplitChange(index, 'tagIds', values)}
-                    placeholder="Tags..."
+                    placeholder={t('splitEditor.tagsPlaceholder')}
                     disabled={disabled}
                   />
                 )}
@@ -474,20 +476,20 @@ export function SplitEditor({
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            <span>Add Split</span>
+            <span>{t('splitEditor.addSplit')}</span>
           </button>
           <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between flex-wrap gap-1">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('splitEditor.total')}</span>
                 <span className={`font-medium ${isBalanced ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {currencySymbol}{formatAmountWithCommas(splitsTotal, decimals)}
                 </span>
                 {isBalanced ? (
-                  <span className="text-xs text-green-600 dark:text-green-400">Balanced</span>
+                  <span className="text-xs text-green-600 dark:text-green-400">{t('splitEditor.balanced')}</span>
                 ) : (
                   <span className="text-xs text-red-600 dark:text-red-400">
-                    Remaining: {currencySymbol}{formatAmountWithCommas(remaining, decimals)}
+                    {t('splitEditor.remaining', { symbol: currencySymbol, amount: formatAmountWithCommas(remaining, decimals) })}
                   </span>
                 )}
               </div>
@@ -498,7 +500,7 @@ export function SplitEditor({
                   disabled={disabled}
                   className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline disabled:opacity-50 whitespace-nowrap"
                 >
-                  Set total to {currencySymbol}{formatAmountWithCommas(splitsTotal, decimals)}
+                  {t('splitEditor.setTotal', { symbol: currencySymbol, amount: formatAmountWithCommas(splitsTotal, decimals) })}
                 </button>
               )}
             </div>
@@ -513,21 +515,21 @@ export function SplitEditor({
             <tr>
               {supportsTransfers && (
                 <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: '14%' }}>
-                  Type
+                  {t('splitEditor.columns.type')}
                 </th>
               )}
               <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: supportsTransfers ? '34%' : '45%' }}>
-                {supportsTransfers ? 'Category / Account' : 'Category'}
+                {supportsTransfers ? t('splitEditor.columns.categoryAccount') : t('splitEditor.columns.category')}
               </th>
               <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: supportsTransfers ? '15%' : '13%' }}>
-                Amount
+                {t('splitEditor.columns.amount')}
               </th>
               <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: '20%' }}>
-                Memo
+                {t('splitEditor.columns.memo')}
               </th>
               {tagOptions.length > 0 && (
                 <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: '15%' }}>
-                  Tags
+                  {t('splitEditor.columns.tags')}
                 </th>
               )}
               <th className="px-1 py-2" style={{ width: '5%' }}></th>
@@ -546,10 +548,10 @@ export function SplitEditor({
                   <td className="px-1 py-2">
                     <Select
                       options={[
-                        { value: 'category', label: 'Category' },
-                        { value: 'transfer', label: 'Transfer' },
+                        { value: 'category', label: t('splitEditor.splitTypes.category') },
+                        { value: 'transfer', label: t('splitEditor.splitTypes.transfer') },
                         ...(investmentSplitsEnabled
-                          ? [{ value: 'investment', label: 'Investment' }]
+                          ? [{ value: 'investment', label: t('splitEditor.splitTypes.investment') }]
                           : []),
                       ]}
                       value={split.splitType}
@@ -571,7 +573,7 @@ export function SplitEditor({
                     />
                   ) : split.splitType === 'category' || !supportsTransfers ? (
                     <Combobox
-                      placeholder="Select category..."
+                      placeholder={t('splitEditor.selectCategory')}
                       options={categoryOptions}
                       value={split.categoryId || ''}
                       initialDisplayValue={currentCategory?.name || ''}
@@ -583,7 +585,7 @@ export function SplitEditor({
                   ) : (
                     <Select
                       options={[
-                        { value: '', label: 'Select account...' },
+                        { value: '', label: t('splitEditor.selectAccount') },
                         ...accountOptions,
                       ]}
                       value={split.transferAccountId || ''}
@@ -609,7 +611,7 @@ export function SplitEditor({
                     type="text"
                     value={split.memo || ''}
                     onChange={(e) => handleSplitChange(index, 'memo', e.target.value)}
-                    placeholder="Optional memo"
+                    placeholder={t('splitEditor.memoPlaceholder')}
                     disabled={disabled}
                     className="w-full"
                   />
@@ -620,7 +622,7 @@ export function SplitEditor({
                       options={tagOptions}
                       value={split.tagIds || []}
                       onChange={(values) => handleSplitChange(index, 'tagIds', values)}
-                      placeholder="Tags..."
+                      placeholder={t('splitEditor.tagsPlaceholder')}
                       disabled={disabled}
                     />
                   </td>
@@ -632,7 +634,7 @@ export function SplitEditor({
                       onClick={() => addRemainingToSplit(index)}
                       disabled={disabled || Math.abs(remaining) < 0.01}
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={Math.abs(remaining) < 0.01 ? 'No unassigned amount' : `Add ${remaining >= 0 ? '+' : ''}${currencySymbol}${formatAmountWithCommas(Math.abs(remaining), decimals)} to this split`}
+                      title={Math.abs(remaining) < 0.01 ? t('splitEditor.noUnassigned') : t('splitEditor.addRemaining')}
                     >
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path
@@ -648,7 +650,7 @@ export function SplitEditor({
                       onClick={() => removeSplit(index)}
                       disabled={disabled || localSplits.length <= 2}
                       className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={localSplits.length <= 2 ? 'Minimum 2 splits required' : 'Remove split'}
+                      title={localSplits.length <= 2 ? t('splitEditor.removeMinimum') : t('splitEditor.removeSplit')}
                     >
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path
@@ -678,7 +680,7 @@ export function SplitEditor({
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  <span>Add Split</span>
+                  <span>{t('splitEditor.addSplit')}</span>
                 </button>
               </td>
             </tr>
@@ -687,7 +689,7 @@ export function SplitEditor({
               <td colSpan={(supportsTransfers ? 5 : 4) + (tagOptions.length > 0 ? 1 : 0)} className="px-3 py-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('splitEditor.total')}</span>
                     <span
                       className={`font-medium ${
                         isBalanced ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
@@ -696,10 +698,10 @@ export function SplitEditor({
                       {currencySymbol}{formatAmountWithCommas(splitsTotal, decimals)}
                     </span>
                     {isBalanced ? (
-                      <span className="text-xs text-green-600 dark:text-green-400">Balanced</span>
+                      <span className="text-xs text-green-600 dark:text-green-400">{t('splitEditor.balanced')}</span>
                     ) : (
                       <span className="text-xs text-red-600 dark:text-red-400 whitespace-nowrap">
-                        Need {currencySymbol}{formatAmountWithCommas(Number(transactionAmount), decimals)} (remaining: {currencySymbol}{formatAmountWithCommas(remaining, decimals)})
+                        {t('splitEditor.needAmount', { symbol: currencySymbol, amount: formatAmountWithCommas(Number(transactionAmount), decimals), remaining: formatAmountWithCommas(remaining, decimals) })}
                       </span>
                     )}
                   </div>
@@ -710,7 +712,7 @@ export function SplitEditor({
                       disabled={disabled}
                       className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline disabled:opacity-50 whitespace-nowrap"
                     >
-                      Set total to {currencySymbol}{formatAmountWithCommas(splitsTotal, decimals)}
+                      {t('splitEditor.setTotal', { symbol: currencySymbol, amount: formatAmountWithCommas(splitsTotal, decimals) })}
                     </button>
                   )}
                 </div>

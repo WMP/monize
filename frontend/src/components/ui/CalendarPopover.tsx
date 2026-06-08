@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
@@ -38,6 +39,7 @@ function getFirstDayOfWeek(year: number, month: number): number {
 type View = 'days' | 'months';
 
 export function CalendarPopover({ value, onSelect, onClose, anchorRef }: CalendarPopoverProps) {
+  const t = useTranslations('common');
   const parsed = value ? value.split('-').map(Number) : null;
   const initialYear = parsed ? parsed[0] : new Date().getFullYear();
   const initialMonth = parsed ? parsed[1] - 1 : new Date().getMonth();
@@ -241,14 +243,14 @@ export function CalendarPopover({ value, onSelect, onClose, anchorRef }: Calenda
           onClick={handleClear}
           className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
         >
-          Clear
+          {t('calendar.clear')}
         </button>
         <button
           type="button"
           onClick={handleToday}
           className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
         >
-          Today
+          {t('calendar.today')}
         </button>
       </div>
     </div>,

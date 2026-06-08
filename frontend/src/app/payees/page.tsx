@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { Button } from '@/components/ui/Button';
@@ -39,6 +40,7 @@ export default function PayeesPage() {
 }
 
 function PayeesContent() {
+  const t = useTranslations('payees');
   const [payees, setPayees] = useState<Payee[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,12 +65,12 @@ function PayeesContent() {
       setPayees(payeesData);
       setCategories(categoriesData);
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to load data'));
+      toast.error(getErrorMessage(error, t('page.toasts.loadFailed')));
       logger.error(error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadData();
@@ -89,7 +91,7 @@ function PayeesContent() {
 
       if (editingItem) {
         const updated = await payeesApi.update(editingItem.id, cleanedData);
-        toast.success('Payee updated successfully');
+        toast.success(t('page.toasts.updated'));
         close();
         setPayees(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p));
       } else {
@@ -104,12 +106,12 @@ function PayeesContent() {
           }
         }
 
-        toast.success('Payee created successfully');
+        toast.success(t('page.toasts.created'));
         close();
         setPayees(prev => [{ ...created, aliasCount }, ...prev]);
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, `Failed to ${editingItem ? 'update' : 'create'} payee`));
+      toast.error(getErrorMessage(error, editingItem ? t('page.toasts.updateFailed') : t('page.toasts.createFailed')));
       throw error;
     }
   };
@@ -117,10 +119,10 @@ function PayeesContent() {
   const handleReactivate = async (payeeId: string) => {
     try {
       const reactivated = await payeesApi.reactivatePayee(payeeId);
-      toast.success(`Payee "${reactivated.name}" reactivated`);
+      toast.success(t('page.toasts.reactivated', { name: reactivated.name }));
       setPayees(prev => prev.map(p => p.id === reactivated.id ? reactivated : p));
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to reactivate payee'));
+      toast.error(getErrorMessage(error, t('page.toasts.reactivateFailed')));
       logger.error(error);
     }
   };
@@ -199,42 +201,42 @@ function PayeesContent() {
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
         <PageHeader
-          title="Payees"
-          subtitle="Manage your payees and their default categories"
+          title={t('page.title')}
+          subtitle={t('page.subtitle')}
           helpUrl="https://github.com/kenlasko/monize/wiki/Categories-and-Payees"
           actions={
             <>
               <Button variant="secondary" onClick={() => setShowDeactivate(true)}>
-                Deactivate Unused
+                {t('page.deactivateUnused')}
               </Button>
               <Button variant="secondary" onClick={() => setShowAutoAssign(true)}>
-                Auto-Assign Categories
+                {t('page.autoAssignCategories')}
               </Button>
-              <Button onClick={openCreate}>+ New Payee</Button>
+              <Button onClick={openCreate}>{t('page.newPayee')}</Button>
             </>
           }
         />
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <SummaryCard
-            label="Total Payees"
+            label={t('page.summary.totalPayees')}
             value={payees.length}
             icon={SummaryIcons.users}
           />
           <SummaryCard
-            label="Active"
+            label={t('page.summary.active')}
             value={activeCount}
             icon={SummaryIcons.checkCircle}
             valueColor="green"
           />
           <SummaryCard
-            label="Inactive"
+            label={t('page.summary.inactive')}
             value={inactiveCount}
             icon={SummaryIcons.warning}
             valueColor={inactiveCount > 0 ? 'yellow' : undefined}
           />
           <SummaryCard
-            label="Without Category"
+            label={t('page.summary.withoutCategory')}
             value={payeesWithoutCategory}
             icon={SummaryIcons.warning}
             valueColor={payeesWithoutCategory > 0 ? 'yellow' : undefined}
@@ -245,7 +247,7 @@ function PayeesContent() {
         <div className="mb-6 flex flex-col sm:flex-row gap-4">
           <input
             type="text"
-            placeholder="Search payees..."
+            placeholder={t('page.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="block w-full sm:max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400"
@@ -267,9 +269,9 @@ function PayeesContent() {
                   status !== 'all' ? '-ml-px' : ''
                 }`}
               >
-                {status === 'active' ? `Active (${activeCount})` :
-                 status === 'inactive' ? `Inactive (${inactiveCount})` :
-                 `All (${payees.length})`}
+                {status === 'active' ? t('page.statusActive', { count: activeCount }) :
+                 status === 'inactive' ? t('page.statusInactive', { count: inactiveCount }) :
+                 t('page.statusAll', { count: payees.length })}
               </button>
             ))}
           </div>
@@ -278,7 +280,7 @@ function PayeesContent() {
         {/* Form Modal */}
         <Modal isOpen={showForm} onClose={close} {...modalProps} maxWidth="lg" className="p-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            {isEditing ? 'Edit Payee' : 'New Payee'}
+            {isEditing ? t('page.modalTitleEdit') : t('page.modalTitleNew')}
           </h2>
           <PayeeForm
             payee={editingItem}
@@ -294,7 +296,7 @@ function PayeesContent() {
         {/* Payees List */}
         <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg overflow-hidden">
           {isLoading ? (
-            <LoadingSpinner text="Loading payees..." />
+            <LoadingSpinner text={t('page.loading')} />
           ) : (
             <PayeeList
               payees={paginatedPayees}
@@ -332,7 +334,7 @@ function PayeesContent() {
         {/* Show total count when only one page */}
         {totalPages <= 1 && sortedPayees.length > 0 && (
           <div className="mt-4 text-sm text-gray-500 dark:text-gray-400 text-center">
-            {sortedPayees.length} payee{sortedPayees.length !== 1 ? 's' : ''}
+            {t('page.count', { count: sortedPayees.length })}
           </div>
         )}
       </main>

@@ -14,11 +14,13 @@ import {
 } from 'recharts';
 import { budgetsApi } from '@/lib/budgets';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useTranslations } from 'next-intl';
 import { useReportData } from '@/hooks/useReportData';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { ReportError } from '@/components/reports/ReportError';
 
 export function BudgetTrendReport() {
+  const t = useTranslations('reports');
   const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [selectedBudgetIdState, setSelectedBudgetId] = useState<string>('');
@@ -64,7 +66,7 @@ export function BudgetTrendReport() {
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
-    const headers = ['Month', 'Budgeted', 'Actual', '% Used'];
+    const headers = [t('budgetTrend.colMonth'), t('budgetTrend.colBudgeted'), t('budgetTrend.colActual'), t('budgetTrend.colPercentUsed')];
     const rows = trendData.map((point) => [
       point.month,
       formatCurrency(point.budgeted),
@@ -72,11 +74,11 @@ export function BudgetTrendReport() {
       `${point.percentUsed}%`,
     ]);
     await exportToPdf({
-      title: 'Budget Trend',
+      title: t('budgetTrend.pdfTitle'),
       chartContainer: chartRef.current,
       chartLegend: [
-        { color: '#3b82f6', label: 'Budgeted' },
-        { color: '#10b981', label: 'Actual' },
+        { color: '#3b82f6', label: t('budgetTrend.seriesBudgeted') },
+        { color: '#10b981', label: t('budgetTrend.seriesActual') },
       ],
       tableData: { headers, rows },
       filename: 'budget-trend',
@@ -102,7 +104,7 @@ export function BudgetTrendReport() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6 text-center">
         <p className="text-gray-500 dark:text-gray-400">
-          No budgets found. Create a budget to see this report.
+          {t('budgetTrend.noBudgets')}
         </p>
       </div>
     );
@@ -127,9 +129,9 @@ export function BudgetTrendReport() {
             onChange={(e) => setMonths(Number(e.target.value))}
             className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           >
-            <option value={6}>6 Months</option>
-            <option value={12}>12 Months</option>
-            <option value={24}>24 Months</option>
+            <option value={6}>{t('budgetTrend.months6')}</option>
+            <option value={12}>{t('budgetTrend.months12')}</option>
+            <option value={24}>{t('budgetTrend.months24')}</option>
           </select>
           <div className="ml-auto">
             <ExportDropdown onExportPdf={handleExportPdf} />
@@ -141,7 +143,7 @@ export function BudgetTrendReport() {
       <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         {trendData.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No trend data available for this budget yet.
+            {t('budgetTrend.noData')}
           </p>
         ) : (
           <>
@@ -174,7 +176,7 @@ export function BudgetTrendReport() {
                     strokeWidth={2}
                     strokeDasharray="5 5"
                     dot={{ r: 4 }}
-                    name="Budgeted"
+                    name={t('budgetTrend.seriesBudgeted')}
                   />
                   <Line
                     type="monotone"
@@ -182,7 +184,7 @@ export function BudgetTrendReport() {
                     stroke="#10b981"
                     strokeWidth={2}
                     dot={{ r: 4 }}
-                    name="Actual"
+                    name={t('budgetTrend.seriesActual')}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -199,23 +201,23 @@ export function BudgetTrendReport() {
                 return (
                   <>
                     <div className="text-center">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Avg Budgeted</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t('budgetTrend.avgBudgeted')}</p>
                       <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(avgBudgeted)}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Avg Actual</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t('budgetTrend.avgActual')}</p>
                       <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(avgActual)}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Avg Variance</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t('budgetTrend.avgVariance')}</p>
                       <p className={`text-lg font-semibold ${avgVariance > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                         {avgVariance > 0 ? '+' : ''}{formatCurrency(avgVariance)}
                       </p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Trend</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{t('budgetTrend.trend')}</p>
                       <p className={`text-lg font-semibold ${improving ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {improving ? 'Improving' : 'Worsening'}
+                        {improving ? t('budgetTrend.improving') : t('budgetTrend.worsening')}
                       </p>
                     </div>
                   </>

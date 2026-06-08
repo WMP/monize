@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { Button } from '@/components/ui/Button';
 import dynamic from 'next/dynamic';
@@ -37,6 +38,7 @@ export default function AccountsPage() {
 }
 
 function AccountsContent() {
+  const t = useTranslations('accounts');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,10 +113,10 @@ function AccountsContent() {
 
       if (editingItem) {
         await accountsApi.update(editingItem.id, cleanedData);
-        toast.success('Account updated successfully');
+        toast.success(t('toast.updateSuccess'));
       } else {
         await accountsApi.create(cleanedData);
-        toast.success('Account created successfully');
+        toast.success(t('toast.createSuccess'));
       }
       close();
       loadAccounts();
@@ -157,32 +159,32 @@ function AccountsContent() {
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
         <PageHeader
-          title="Accounts"
-          subtitle="Manage your bank accounts, credit cards, and investments"
+          title={t('page.title')}
+          subtitle={t('page.subtitle')}
           helpUrl="https://github.com/kenlasko/monize/wiki/Accounts"
-          actions={<Button onClick={openCreate}>+ New Account</Button>}
+          actions={<Button onClick={openCreate}>{t('page.newAccount')}</Button>}
         />
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
           <SummaryCard
-            label="Total Active Accounts"
+            label={t('page.summary.totalActiveAccounts')}
             value={summary.accountCount}
             icon={SummaryIcons.accounts}
           />
           <SummaryCard
-            label="Net Worth"
+            label={t('page.summary.netWorth')}
             value={formatCurrency(summary.totalBalance, defaultCurrency)}
             icon={SummaryIcons.money}
             valueColor={summary.totalBalance >= 0 ? 'blue' : 'red'}
           />
           <SummaryCard
-            label="Total Assets"
+            label={t('page.summary.totalAssets')}
             value={formatCurrency(summary.totalAssets, defaultCurrency)}
             icon={SummaryIcons.checkmark}
             valueColor="green"
           />
           <SummaryCard
-            label="Total Liabilities"
+            label={t('page.summary.totalLiabilities')}
             value={formatCurrency(summary.totalLiabilities, defaultCurrency)}
             icon={SummaryIcons.cross}
             valueColor="red"
@@ -192,7 +194,7 @@ function AccountsContent() {
         {/* Form Modal */}
         <Modal isOpen={showForm} onClose={close} {...modalProps} maxWidth="2xl" className="p-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            {isEditing ? 'Edit Account' : 'New Account'}
+            {isEditing ? t('page.editAccountModal') : t('page.newAccountModal')}
           </h2>
           <AccountForm
             account={editingItem}
@@ -207,7 +209,7 @@ function AccountsContent() {
         {/* Accounts List */}
         <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg overflow-hidden">
           {isLoading ? (
-            <LoadingSpinner text="Loading accounts..." />
+            <LoadingSpinner text={t('page.loadingAccounts')} />
           ) : (
             <AccountList accounts={accounts} brokerageMarketValues={brokerageMarketValues} defaultCurrency={defaultCurrency} convertToDefault={convertToDefault} onEdit={openEdit} onRefresh={loadAccounts} />
           )}

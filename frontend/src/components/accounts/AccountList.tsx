@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Account, AccountType } from '@/types/account';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal } from '@/components/ui/Modal';
@@ -90,6 +91,8 @@ interface AccountListProps {
 }
 
 export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, convertToDefault, onEdit, onRefresh }: AccountListProps) {
+  const t = useTranslations('accounts');
+  const tc = useTranslations('common');
   const router = useRouter();
   const isDelegateView = useAuthStore((s) => !!s.actingAsUserId);
   const { formatCurrency: formatCurrencyBase } = useNumberFormat();
@@ -453,7 +456,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
     setIsDeleting(true);
     try {
       await accountsApi.delete(accountToDelete.id);
-      toast.success('Account deleted successfully');
+      toast.success(t('toast.deleteSuccess'));
       setDeleteDialogOpen(false);
       setAccountToDelete(null);
       onRefresh();
@@ -475,7 +478,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
     setIsClosing(true);
     try {
       await accountsApi.close(accountToClose.id);
-      toast.success('Account closed successfully');
+      toast.success(t('toast.closeSuccess'));
       setCloseDialogOpen(false);
       setAccountToClose(null);
       onRefresh();
@@ -494,12 +497,12 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
   const handleReopen = useCallback(async (account: Account) => {
     try {
       await accountsApi.reopen(account.id);
-      toast.success('Account reopened successfully');
+      toast.success(t('toast.reopenSuccess'));
       onRefresh();
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to reopen account'));
     }
-  }, [onRefresh]);
+  }, [onRefresh, t]);
 
   const handleToggleFavourite = useCallback(
     async (account: Account) => {
@@ -517,10 +520,10 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
       } catch (error) {
         // Roll back the optimistic change on failure.
         setFavOverrides((prev) => ({ ...prev, [account.id]: !next }));
-        toast.error(getErrorMessage(error, 'Failed to update favourite'));
+        toast.error(getErrorMessage(error, t('toast.favouriteError')));
       }
     },
-    [isDelegateView],
+    [isDelegateView, t],
   );
 
   const formatCurrency = useCallback((amount: number | string | null | undefined, currency: string) => {
@@ -537,7 +540,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
   if (accounts.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 dark:text-gray-400">No accounts found. Create your first account to get started!</p>
+        <p className="text-gray-500 dark:text-gray-400">{t('list.empty')}</p>
       </div>
     );
   }
@@ -560,7 +563,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                     : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                 }`}
               >
-                All
+                {t('list.filter.all')}
               </button>
               <button
                 onClick={() => setFilterStatus('active')}
@@ -570,7 +573,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                     : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                 }`}
               >
-                Active
+                {t('list.filter.active')}
               </button>
               <button
                 onClick={() => setFilterStatus('closed')}
@@ -580,7 +583,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                     : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                 }`}
               >
-                Closed
+                {t('list.filter.closed')}
               </button>
               </div>
 
@@ -591,27 +594,27 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                   onChange={(e) => setFilterNetWorth(e.target.value as 'included' | 'excluded' | '')}
                   className="text-sm font-sans border border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 min-w-[16rem]"
                 >
-                  <option value="">Net Worth: All</option>
-                  <option value="included">In Net Worth</option>
-                  <option value="excluded">Excluded from Net Worth</option>
+                  <option value="">{t('list.filter.netWorthAll')}</option>
+                  <option value="included">{t('list.filter.inNetWorth')}</option>
+                  <option value="excluded">{t('list.filter.excludedFromNetWorth')}</option>
                 </select>
               )}
             </div>
           </div>
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {countLogicalAccounts(filteredAndSortedAccounts)} of {countLogicalAccounts(accounts)} accounts
+            {t('list.accountCount', { filtered: countLogicalAccounts(filteredAndSortedAccounts), total: countLogicalAccounts(accounts) })}
           </span>
         </div>
       </div>
 
       {filteredAndSortedAccounts.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-500 dark:text-gray-400">No accounts match your filters.</p>
+          <p className="text-gray-500 dark:text-gray-400">{t('list.noMatch')}</p>
           <button
             onClick={clearFilters}
             className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
           >
-            Clear Filters
+            {t('list.clearFilters')}
           </button>
         </div>
       ) : (
@@ -621,12 +624,12 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
           <button
             onClick={cycleDensity}
             className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-            title="Toggle row density"
+            title={t('list.density.toggle')}
           >
             <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
-            {density === 'normal' ? 'Normal' : density === 'compact' ? 'Compact' : 'Dense'}
+            {density === 'normal' ? t('list.density.normal') : density === 'compact' ? t('list.density.compact') : t('list.density.dense')}
           </button>
         </div>
         <div className="overflow-x-auto">
@@ -638,7 +641,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                 onClick={() => handleSort('name')}
               >
                 <div className="flex items-center">
-                  Account Name
+                  {t('list.columns.accountName')}
                   <SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
                 </div>
               </th>
@@ -647,7 +650,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                 onClick={() => handleSort('type')}
               >
                 <div className="flex items-center">
-                  Type
+                  {t('list.columns.type')}
                   <SortIcon field="type" sortField={sortField} sortDirection={sortDirection} />
                 </div>
               </th>
@@ -656,7 +659,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                 onClick={() => handleSort('status')}
               >
                 <div className="flex items-center">
-                  Status
+                  {t('list.columns.status')}
                   <SortIcon field="status" sortField={sortField} sortDirection={sortDirection} />
                 </div>
               </th>
@@ -665,12 +668,12 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                 onClick={() => handleSort('balance')}
               >
                 <div className="flex items-center justify-end">
-                  Balance
+                  {t('list.columns.balance')}
                   <SortIcon field="balance" sortField={sortField} sortDirection={sortDirection} />
                 </div>
               </th>
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden min-[480px]:table-cell sticky right-0 bg-gray-50 dark:bg-gray-800`}>
-                Actions
+                {t('list.columns.actions')}
               </th>
             </tr>
           </thead>
@@ -695,10 +698,10 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                       <span className="font-semibold text-gray-700 dark:text-gray-200">
-                        {formatAccountType(item.type)}
+                        {formatAccountType(item.type, tc)}
                       </span>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {item.count} {item.count === 1 ? 'account' : 'accounts'}
+                        {t('list.groupCount', { count: item.count })}
                       </span>
                     </div>
                   </td>
@@ -734,7 +737,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                   formatCurrency={formatCurrency}
                   formatCurrencyBase={formatCurrencyBase}
                   convertToDefault={convertToDefault}
-                  formatAccountType={formatAccountType}
+                  formatAccountType={(type) => formatAccountType(type, tc)}
                   getAccountTypeColor={getAccountTypeColor}
                   onRowClick={handleRowClick}
                   onEdit={onEdit}
@@ -763,10 +766,10 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
             <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">{contextAccount.name}</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {contextAccount.accountSubType === 'INVESTMENT_BROKERAGE' ? 'Brokerage' :
-                 contextAccount.accountSubType === 'INVESTMENT_CASH' ? 'Inv. Cash' :
-                 formatAccountType(contextAccount.accountType)}
-                {contextAccount.isClosed ? ' — Closed' : ''}
+                {contextAccount.accountSubType === 'INVESTMENT_BROKERAGE' ? t('contextMenu.subtypeBrokerage') :
+                 contextAccount.accountSubType === 'INVESTMENT_CASH' ? t('contextMenu.subtypeInvCash') :
+                 formatAccountType(contextAccount.accountType, tc)}
+                {contextAccount.isClosed ? t('contextMenu.closedSuffix') : ''}
               </p>
             </div>
             <div className="py-2">
@@ -777,7 +780,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                 <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-                View Transactions
+                {t('row.actions.viewTransactions')}
               </button>
               {!contextAccount.isClosed && (
                 <>
@@ -788,7 +791,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                     <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                    Edit Account
+                    {t('row.actions.editAccount')}
                   </button>
                   {contextAccount.accountSubType !== 'INVESTMENT_BROKERAGE' && (
                     <button
@@ -798,7 +801,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                       <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      Reconcile
+                      {t('row.actions.reconcile')}
                     </button>
                   )}
                   <button
@@ -813,9 +816,9 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                     </svg>
-                    Close Account
+                    {t('row.actions.closeAccount')}
                     {Number(contextAccount.currentBalance) !== 0 && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">Balance must be zero</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">{t('row.actions.balanceMustBeZero')}</span>
                     )}
                   </button>
                 </>
@@ -828,7 +831,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  Reopen Account
+                  {t('row.actions.reopenAccount')}
                 </button>
               )}
               {deletableAccounts.has(contextAccount.id) && (
@@ -839,7 +842,7 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                  Delete Account
+                  {t('row.actions.deleteAccount')}
                 </button>
               )}
             </div>
@@ -850,13 +853,13 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
       {/* Close Account Confirmation Dialog */}
       <ConfirmDialog
         isOpen={closeDialogOpen}
-        title="Close Account"
+        title={t('confirmDialog.closeTitle')}
         message={accountToClose
-          ? `Are you sure you want to close "${accountToClose.name}"? The account must have a zero balance to be closed.`
+          ? t('confirmDialog.closeMessage', { name: accountToClose.name })
           : ''
         }
-        confirmLabel={isClosing ? 'Closing...' : 'Close Account'}
-        cancelLabel="Cancel"
+        confirmLabel={isClosing ? t('confirmDialog.closeConfirmLoading') : t('confirmDialog.closeConfirm')}
+        cancelLabel={tc('cancel')}
         variant="warning"
         onConfirm={handleCloseConfirm}
         onCancel={handleCloseCancel}
@@ -865,13 +868,13 @@ export function AccountList({ accounts, brokerageMarketValues, defaultCurrency, 
       {/* Delete Account Confirmation Dialog */}
       <ConfirmDialog
         isOpen={deleteDialogOpen}
-        title="Delete Account"
+        title={t('confirmDialog.deleteTitle')}
         message={accountToDelete
-          ? `Are you sure you want to permanently delete "${accountToDelete.name}"? This action cannot be undone.`
+          ? t('confirmDialog.deleteMessage', { name: accountToDelete.name })
           : ''
         }
-        confirmLabel={isDeleting ? 'Deleting...' : 'Delete Account'}
-        cancelLabel="Cancel"
+        confirmLabel={isDeleting ? t('confirmDialog.deleteConfirmLoading') : t('confirmDialog.deleteConfirm')}
+        cancelLabel={tc('cancel')}
         variant="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}

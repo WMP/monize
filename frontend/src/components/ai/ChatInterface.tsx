@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { aiApi } from '@/lib/ai';
 import { SuggestedQueries } from './SuggestedQueries';
 import { ChatMessage } from './ChatMessage';
@@ -16,6 +17,7 @@ import Link from 'next/link';
 export { AI_CHAT_STORAGE_KEY };
 
 export function ChatInterface() {
+  const t = useTranslations('ai');
   const messages = useAiChatStore((s) => s.messages);
   const isLoading = useAiChatStore((s) => s.isLoading);
   const thinking = useAiChatStore((s) => s.thinking);
@@ -86,13 +88,15 @@ export function ChatInterface() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
             </svg>
             <div>
-              <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">AI Not Configured</h3>
+              <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">{t('notConfigured.heading')}</h3>
               <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
-                No AI provider is configured. To use the AI Assistant, please{' '}
-                <Link href="/settings/ai" className="font-medium underline hover:text-amber-900 dark:hover:text-amber-100">
-                  configure an AI provider
-                </Link>{' '}
-                in your settings.
+                {t.rich('notConfigured.message', {
+                  link: (chunks) => (
+                    <Link href="/settings/ai" className="font-medium underline hover:text-amber-900 dark:hover:text-amber-100">
+                      {chunks}
+                    </Link>
+                  ),
+                })}
               </p>
             </div>
           </div>
@@ -103,14 +107,14 @@ export function ChatInterface() {
       {messages.length > 0 && (
         <div className="flex items-center justify-between px-2 pb-2 border-b border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-400 dark:text-gray-500">
-            Conversation saved in your browser
+            {t('chat.conversationSaved')}
           </p>
           <button
             type="button"
             onClick={clear}
             className="text-xs text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
           >
-            Clear conversation
+            {t('chat.clearConversation')}
           </button>
         </div>
       )}
@@ -244,7 +248,7 @@ export function ChatInterface() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={aiNotConfigured ? 'AI provider not configured' : 'Ask about your finances...'}
+            placeholder={aiNotConfigured ? t('chat.inputPlaceholderDisabled') : t('chat.inputPlaceholder')}
             disabled={isLoading || !!aiNotConfigured}
             rows={1}
             className="flex-1 resize-none rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
@@ -253,7 +257,7 @@ export function ChatInterface() {
             <button
               onClick={cancel}
               className="flex-shrink-0 p-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors"
-              title="Cancel"
+              title={t('chat.cancelTitle')}
             >
               <svg
                 className="w-5 h-5"
@@ -274,7 +278,7 @@ export function ChatInterface() {
               onClick={() => handleSubmit()}
               disabled={!input.trim() || !!aiNotConfigured}
               className="flex-shrink-0 p-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white transition-colors disabled:cursor-not-allowed"
-              title="Send"
+              title={t('chat.sendTitle')}
             >
               <svg
                 className="w-5 h-5"
@@ -293,7 +297,7 @@ export function ChatInterface() {
           )}
         </div>
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">
-          Press Enter to send, Shift+Enter for new line
+          {t('chat.keyboardHint')}
         </p>
       </div>
     </div>

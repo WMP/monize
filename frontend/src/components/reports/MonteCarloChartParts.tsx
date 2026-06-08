@@ -1,6 +1,7 @@
 'use client';
 
 import { CashFlowType } from '@/lib/monte-carlo';
+import { useTranslations } from 'next-intl';
 
 export interface CashFlowEvent {
   role: 'start' | 'end';
@@ -65,15 +66,17 @@ export function FanChartTooltip({
   fmt: (v: number) => string;
   events?: CashFlowEvent[];
 }) {
+  const t = useTranslations('reports');
+
   if (!active || !payload?.length) return null;
   const row = payload[0]?.payload;
   if (!row) return null;
   const rows: Array<[string, number]> = [
-    ['90th percentile', row.p90],
-    ['75th percentile', row.p75],
-    ['Median (50th)', row.p50],
-    ['25th percentile', row.p25],
-    ['10th percentile', row.p10],
+    [t('monteCarlo.tooltipRow90th'), row.p90],
+    [t('monteCarlo.tooltipRow75th'), row.p75],
+    [t('monteCarlo.tooltipRowMedian'), row.p50],
+    [t('monteCarlo.tooltipRow25th'), row.p25],
+    [t('monteCarlo.tooltipRow10th'), row.p10],
   ];
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 text-sm max-w-xs">
@@ -98,7 +101,7 @@ export function FanChartTooltip({
                 <div className="font-medium text-gray-900 dark:text-gray-100">
                   {e.flowType === 'ONE_TIME'
                     ? e.name
-                    : `${e.role === 'start' ? 'Starts' : 'Ends'}: ${e.name}`}
+                    : `${e.role === 'start' ? t('monteCarloResults.starts') : t('monteCarloResults.ends')}: ${e.name}`}
                 </div>
                 <div
                   className={
@@ -109,15 +112,15 @@ export function FanChartTooltip({
                 >
                   {e.income ? '+' : ''}
                   {fmt(e.amount)}
-                  {e.flowType === 'RECURRING' ? ' / yr' : ''}
-                  {e.inflationAdjust ? ' (inflated)' : ''}
+                  {e.flowType === 'RECURRING' ? ` ${t('monteCarlo.cashFlowPerYear')}` : ''}
+                  {e.inflationAdjust ? t('monteCarlo.tooltipInflated') : ''}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   {e.flowType === 'ONE_TIME'
-                    ? 'One-time'
-                    : `Recurring · year ${e.startYear}${
-                        e.endYear ? `–${e.endYear}` : '+'
-                      }`}
+                    ? t('monteCarlo.cashFlowTypeOneTime')
+                    : e.endYear
+                      ? t('monteCarlo.tooltipRecurring', { startYear: e.startYear, endYear: e.endYear })
+                      : t('monteCarlo.tooltipRecurringOpen', { startYear: e.startYear })}
                 </div>
               </div>
             </div>

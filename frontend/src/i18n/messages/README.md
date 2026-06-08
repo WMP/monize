@@ -33,15 +33,71 @@ be done in focused PRs.
   string with `[XX-...-XX]` markers, making it easy to spot strings that
   haven't been extracted yet.
 
+## The pseudo-locale is generated -- do not hand-edit it
+
+The `xx/` catalogs are generated from `en/` by a script. After editing any
+`en/*.json` file, regenerate them:
+
+    npm run i18n:pseudo
+
+`npm run i18n:check` fails if `xx/` is out of date, so wire it into CI/pre-commit
+to keep the two in sync. ICU placeholders (`{count}`, plural/select blocks) are
+preserved; only the surrounding literal text is marked.
+
+## Extracting strings in a component
+
+Client components read strings through next-intl's `useTranslations`:
+
+    'use client';
+    import { useTranslations } from 'next-intl';
+
+    export function MyComponent() {
+      const t = useTranslations('auth');           // namespace
+      return <button>{t('signIn.submit')}</button>; // -> "Sign in"
+    }
+
+For strings that embed markup (a link, a `<span>`), use `t.rich` with element
+chunks instead of concatenating:
+
+    t.rich('register.agreement', {
+      terms: (chunks) => <a href="/terms">{chunks}</a>,
+    });
+
+Component tests resolve the real English catalog automatically (`test/render.tsx`
+eagerly loads every `en/` namespace), so assertions on visible English text keep
+working without mocking next-intl.
+
 ## Namespaces
 
 The catalogue is split into small files by feature area. To add a new
 namespace, add it to the `NAMESPACES` array in `src/i18n/messages.ts` and
 create matching JSON files for every locale.
 
-| Namespace  | Contents                                          |
-|------------|---------------------------------------------------|
-| `common`   | Shared UI primitives (buttons, dialogs, toasts)   |
-| `settings` | The settings page (themes, preferences, language) |
+| Namespace               | Contents                                                  |
+|-------------------------|-----------------------------------------------------------|
+| `common`                | Shared UI primitives (buttons, dialogs, pagination, etc.) |
+| `navigation`            | App header, mobile nav drawer, search, section links      |
+| `layout`                | Banners (demo, delegation, offline, HTTPS), page headers  |
+| `auth`                  | Login, register, forgot/reset/change password pages       |
+| `settings`              | Settings pages (themes, preferences, security, AI, etc.)  |
+| `dashboard`             | Dashboard widgets and summaries                           |
+| `accounts`              | Accounts list, forms, loan payment setup                  |
+| `transactions`          | Transaction list, forms, splits, bulk update              |
+| `bills`                 | Bills and deposits, cash-flow forecast                    |
+| `scheduledTransactions` | Scheduled transaction forms and occurrence overrides      |
+| `budgets`               | Budget dashboard, wizard, categories, strategies          |
+| `investments`           | Investment transactions and holdings                      |
+| `securities`            | Securities list, forms, price/transaction history         |
+| `reports`               | All report views (net worth, cash flow, investments, ...) |
+| `insights`              | Insights list and detail                                  |
+| `ai`                    | AI assistant UI chrome (not model prompts/output)         |
+| `import`                | Transaction import wizard                                 |
+| `categories`            | Categories list and forms                                 |
+| `payees`                | Payees list, forms, alias/auto-assign dialogs             |
+| `tags`                  | Tags list and forms                                       |
+| `currencies`            | Currencies list and forms                                 |
+| `admin`                 | User management (admin only)                              |
 
-More namespaces will be added in subsequent PRs as feature areas are extracted.
+Most user-facing UI strings have been extracted. Remaining English literals are
+limited to a few areas intentionally left for later: form-validation messages
+defined in module-scope Zod schemas, and a small number of chart-internal labels.

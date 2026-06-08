@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { builtInReportsApi } from '@/lib/built-in-reports';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
@@ -10,6 +11,7 @@ import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
 
 export function TaxSummaryReport() {
+  const t = useTranslations('reports');
   const { formatCurrency } = useNumberFormat();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
@@ -44,35 +46,39 @@ export function TaxSummaryReport() {
   const totals = taxData?.totals ?? { income: 0, expenses: 0, deductible: 0 };
 
   const getExportData = () => {
-    const headers = ['Section', 'Category', 'Amount'];
+    const headers = [
+      t('taxSummary.csvColSection'),
+      t('taxSummary.csvColCategory'),
+      t('taxSummary.csvColAmount'),
+    ];
     const rows: (string | number)[][] = [];
     for (const item of incomeBySource) {
-      rows.push(['Income', item.name, item.total]);
+      rows.push([t('taxSummary.csvSectionIncome'), item.name, item.total]);
     }
     for (const item of deductibleExpenses) {
-      rows.push(['Potential Deductions', item.name, item.total]);
+      rows.push([t('taxSummary.csvSectionDeductions'), item.name, item.total]);
     }
     for (const item of allExpenses) {
-      rows.push(['Expenses', item.name, item.total]);
+      rows.push([t('taxSummary.csvSectionExpenses'), item.name, item.total]);
     }
     return { headers, rows };
   };
 
   const handleExportCsv = () => {
     const { headers, rows } = getExportData();
-    rows.push(['Totals', 'Total Income', totals.income]);
-    rows.push(['Totals', 'Total Expenses', totals.expenses]);
-    rows.push(['Totals', 'Total Deductions', totals.deductible]);
+    rows.push([t('taxSummary.csvSectionTotals'), t('taxSummary.csvTotalIncome'), totals.income]);
+    rows.push([t('taxSummary.csvSectionTotals'), t('taxSummary.csvTotalExpenses'), totals.expenses]);
+    rows.push([t('taxSummary.csvSectionTotals'), t('taxSummary.csvTotalDeductions'), totals.deductible]);
     exportToCsv(`tax-summary-${selectedYear}`, headers, rows);
   };
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
     const { headers, rows } = getExportData();
-    const totalRow: (string | number)[] = ['Totals', 'Total Income / Expenses / Deductions', `${formatCurrency(totals.income)} / ${formatCurrency(totals.expenses)} / ${formatCurrency(totals.deductible)}`];
+    const totalRow: (string | number)[] = [t('taxSummary.csvSectionTotals'), t('taxSummary.pdfTotalsLabel'), `${formatCurrency(totals.income)} / ${formatCurrency(totals.expenses)} / ${formatCurrency(totals.deductible)}`];
     await exportToPdf({
-      title: `Tax Summary - ${selectedYear}`,
-      subtitle: `Income: ${formatCurrency(totals.income)} | Expenses: ${formatCurrency(totals.expenses)} | Deductions: ${formatCurrency(totals.deductible)}`,
+      title: t('taxSummary.pdfTitlePrefix') + selectedYear,
+      subtitle: t('taxSummary.pdfIncomeExpensesDeductions', { income: formatCurrency(totals.income), expenses: formatCurrency(totals.expenses), deductions: formatCurrency(totals.deductible) }),
       tableData: { headers, rows, totalRow },
       filename: `tax-summary-${selectedYear}`,
     });
@@ -85,7 +91,7 @@ export function TaxSummaryReport() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
-              Tax Year:
+              {t('taxSummary.taxYear')}
             </label>
             <select
               value={selectedYear}
@@ -104,19 +110,19 @@ export function TaxSummaryReport() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Total Income</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('taxSummary.totalIncome')}</div>
           <div className="text-2xl font-bold text-green-600 dark:text-green-400">
             {formatCurrency(totals.income)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Total Expenses</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('taxSummary.totalExpenses')}</div>
           <div className="text-2xl font-bold text-red-600 dark:text-red-400">
             {formatCurrency(totals.expenses)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Potential Deductions</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('taxSummary.potentialDeductions')}</div>
           <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
             {formatCurrency(totals.deductible)}
           </div>
@@ -130,10 +136,9 @@ export function TaxSummaryReport() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div className="text-sm text-amber-800 dark:text-amber-200">
-            <p className="font-medium">For Reference Only</p>
+            <p className="font-medium">{t('taxSummary.forReferenceOnly')}</p>
             <p className="mt-1">
-              This summary is based on automatic category detection and may not include all tax-relevant
-              transactions. Consult a tax professional for accurate tax preparation.
+              {t('taxSummary.forReferenceOnlyDesc')}
             </p>
           </div>
         </div>
@@ -143,12 +148,12 @@ export function TaxSummaryReport() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
         <div className="px-6 py-4 bg-green-50 dark:bg-green-900/20 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-green-700 dark:text-green-300">
-            Income by Source
+            {t('taxSummary.incomeBySource')}
           </h3>
         </div>
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
           {incomeBySource.length === 0 ? (
-            <p className="px-6 py-4 text-gray-500 dark:text-gray-400">No income recorded for {selectedYear}</p>
+            <p className="px-6 py-4 text-gray-500 dark:text-gray-400">{t('taxSummary.noIncome', { year: selectedYear })}</p>
           ) : (
             incomeBySource.map((item, index) => (
               <div key={index} className="px-6 py-3 flex items-center justify-between">
@@ -162,7 +167,7 @@ export function TaxSummaryReport() {
         </div>
         {incomeBySource.length > 0 && (
           <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900/50 flex items-center justify-between font-semibold">
-            <span className="text-gray-900 dark:text-gray-100">Total Income</span>
+            <span className="text-gray-900 dark:text-gray-100">{t('taxSummary.totalIncomeLabel')}</span>
             <span className="text-green-600 dark:text-green-400">
               {formatCurrency(totals.income)}
             </span>
@@ -174,14 +179,13 @@ export function TaxSummaryReport() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
         <div className="px-6 py-4 bg-blue-50 dark:bg-blue-900/20 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300">
-            Potentially Tax-Deductible Expenses
+            {t('taxSummary.potentiallyDeductible')}
           </h3>
         </div>
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
           {deductibleExpenses.length === 0 ? (
             <p className="px-6 py-4 text-gray-500 dark:text-gray-400">
-              No potentially deductible expenses detected. Categories containing keywords like
-              "medical", "donation", "education", "childcare", or "RRSP" will appear here.
+              {t('taxSummary.noDeductible')}
             </p>
           ) : (
             deductibleExpenses.map((item, index) => (
@@ -196,7 +200,7 @@ export function TaxSummaryReport() {
         </div>
         {deductibleExpenses.length > 0 && (
           <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900/50 flex items-center justify-between font-semibold">
-            <span className="text-gray-900 dark:text-gray-100">Total Potential Deductions</span>
+            <span className="text-gray-900 dark:text-gray-100">{t('taxSummary.totalPotentialDeductions')}</span>
             <span className="text-blue-600 dark:text-blue-400">
               {formatCurrency(totals.deductible)}
             </span>
@@ -208,7 +212,7 @@ export function TaxSummaryReport() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-            All Expenses by Category
+            {t('taxSummary.allExpensesByCategory')}
           </h3>
         </div>
         <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-96 overflow-y-auto">
@@ -222,7 +226,7 @@ export function TaxSummaryReport() {
           ))}
         </div>
         <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900/50 flex items-center justify-between font-semibold border-t border-gray-200 dark:border-gray-700">
-          <span className="text-gray-900 dark:text-gray-100">Total Expenses</span>
+          <span className="text-gray-900 dark:text-gray-100">{t('taxSummary.totalExpensesLabel')}</span>
           <span className="text-red-600 dark:text-red-400">
             {formatCurrency(totals.expenses)}
           </span>

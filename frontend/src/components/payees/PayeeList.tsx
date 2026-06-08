@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Payee } from '@/types/payee';
 import { Button } from '@/components/ui/Button';
@@ -69,6 +70,7 @@ const PayeeRow = memo(function PayeeRow({
   categoryLabelMap,
   formatDate,
 }: PayeeRowProps) {
+  const t = useTranslations('payees');
   const defaultCategoryColor = payee.defaultCategory
     ? (categoryColorMap?.get(payee.defaultCategory.id) ?? payee.defaultCategory.color)
     : null;
@@ -103,7 +105,7 @@ const PayeeRow = memo(function PayeeRow({
         <button
           onClick={handleViewTransactions}
           className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline text-left"
-          title="View transactions with this payee"
+          title={t('list.viewTransactionsTitle')}
         >
           {payee.name}
         </button>
@@ -124,7 +126,7 @@ const PayeeRow = memo(function PayeeRow({
             {defaultCategoryLabel}
           </span>
         ) : (
-          <span className="text-sm text-gray-400 dark:text-gray-500">None</span>
+          <span className="text-sm text-gray-400 dark:text-gray-500">{t('list.noCategory')}</span>
         )}
       </td>
       <td className={`${cellPadding} whitespace-nowrap text-right text-sm text-gray-600 dark:text-gray-400 hidden md:table-cell`}>
@@ -143,11 +145,11 @@ const PayeeRow = memo(function PayeeRow({
         <td className={`${cellPadding} whitespace-nowrap hidden sm:table-cell`}>
           {payee.isActive ? (
             <span className="inline-flex text-xs font-medium rounded-full px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-              Active
+              {t('list.statusBadge.active')}
             </span>
           ) : (
             <span className="inline-flex text-xs font-medium rounded-full px-2 py-0.5 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-              Inactive
+              {t('list.statusBadge.inactive')}
             </span>
           )}
         </td>
@@ -167,7 +169,7 @@ const PayeeRow = memo(function PayeeRow({
             onClick={handleReactivate}
             className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 mr-2"
           >
-            {density === 'dense' ? 'Re' : 'Reactivate'}
+            {density === 'dense' ? t('list.actions.reactivateShort') : t('list.actions.reactivate')}
           </Button>
         ) : null}
         {onMerge && payee.isActive && (
@@ -177,7 +179,7 @@ const PayeeRow = memo(function PayeeRow({
             onClick={handleMerge}
             className="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 mr-2"
           >
-            {density === 'dense' ? 'M' : 'Merge'}
+            {density === 'dense' ? t('list.actions.mergeShort') : t('list.actions.merge')}
           </Button>
         )}
         <Button
@@ -186,7 +188,7 @@ const PayeeRow = memo(function PayeeRow({
           onClick={handleEdit}
           className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-2"
         >
-          {density === 'dense' ? 'E' : 'Edit'}
+          {density === 'dense' ? t('list.actions.editShort') : t('list.actions.edit')}
         </Button>
         <Button
           variant="ghost"
@@ -194,7 +196,7 @@ const PayeeRow = memo(function PayeeRow({
           onClick={handleDelete}
           className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
         >
-          {density === 'dense' ? 'X' : 'Delete'}
+          {density === 'dense' ? t('list.actions.deleteShort') : t('list.actions.delete')}
         </Button>
       </td>
     </tr>
@@ -217,6 +219,7 @@ export function PayeeList({
   categoryColorMap,
   categoryLabelMap,
 }: PayeeListProps) {
+  const t = useTranslations('payees');
   const router = useRouter();
   const { formatDate } = useDateFormat();
   const [deletePayee, setDeletePayee] = useState<Payee | null>(null);
@@ -289,14 +292,14 @@ export function PayeeList({
 
     try {
       await payeesApi.delete(deletePayee.id);
-      toast.success('Payee deleted successfully');
+      toast.success(t('list.toasts.deleted'));
       if (onDelete) {
         onDelete(deletePayee.id);
       } else {
         onRefresh();
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to delete payee'));
+      toast.error(getErrorMessage(error, t('list.toasts.deleteFailed')));
       logger.error(error);
     } finally {
       setDeletePayee(null);
@@ -319,8 +322,8 @@ export function PayeeList({
             d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
           />
         </svg>
-        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No payees</h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating a new payee.</p>
+        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t('list.empty.title')}</h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('list.empty.subtitle')}</p>
       </div>
     );
   }
@@ -331,12 +334,12 @@ export function PayeeList({
         <button
           onClick={cycleDensity}
           className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-          title="Toggle row density"
+          title={t('list.density.toggle')}
         >
           <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-          {density === 'normal' ? 'Normal' : density === 'compact' ? 'Compact' : 'Dense'}
+          {density === 'normal' ? t('list.density.normal') : density === 'compact' ? t('list.density.compact') : t('list.density.dense')}
         </button>
       </div>
       <div className="overflow-x-auto">
@@ -347,50 +350,50 @@ export function PayeeList({
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
                 onClick={() => handleSort('name')}
               >
-                Name<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.columns.name')}<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden sm:table-cell`}
                 onClick={() => handleSort('category')}
               >
-                Default Category<SortIcon field="category" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.columns.defaultCategory')}<SortIcon field="category" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden md:table-cell`}
                 onClick={() => handleSort('count')}
               >
-                Count<SortIcon field="count" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.columns.count')}<SortIcon field="count" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden lg:table-cell`}
                 onClick={() => handleSort('aliases')}
               >
-                Aliases<SortIcon field="aliases" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.columns.aliases')}<SortIcon field="aliases" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden lg:table-cell`}
                 onClick={() => handleSort('lastUsed')}
               >
-                Last Used<SortIcon field="lastUsed" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.columns.lastUsed')}<SortIcon field="lastUsed" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden lg:table-cell`}
                 onClick={() => handleSort('createdAt')}
               >
-                Created<SortIcon field="createdAt" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.columns.created')}<SortIcon field="createdAt" sortField={sortField} sortDirection={sortDirection} />
               </th>
               {showStatusColumn && (
                 <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}>
-                  Status
+                  {t('list.columns.status')}
                 </th>
               )}
               {density === 'normal' && (
                 <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
-                  Notes
+                  {t('list.columns.notes')}
                 </th>
               )}
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky right-0 bg-gray-50 dark:bg-gray-800`}>
-                Actions
+                {t('list.columns.actions')}
               </th>
             </tr>
           </thead>
@@ -419,10 +422,10 @@ export function PayeeList({
 
       <ConfirmDialog
         isOpen={deletePayee !== null}
-        title={`Delete "${deletePayee?.name}"?`}
-        message="This action cannot be undone."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title={t('list.deleteConfirm.title', { name: deletePayee?.name ?? '' })}
+        message={t('list.deleteConfirm.message')}
+        confirmLabel={t('list.deleteConfirm.confirmLabel')}
+        cancelLabel={t('list.deleteConfirm.cancelLabel')}
         variant="danger"
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeletePayee(null)}

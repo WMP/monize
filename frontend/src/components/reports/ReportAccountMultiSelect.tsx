@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { Account } from '@/types/account';
 
@@ -38,6 +39,7 @@ export function ReportAccountMultiSelect({
   filter = defaultFilter,
   className = 'w-48',
 }: ReportAccountMultiSelectProps) {
+  const t = useTranslations('reports');
   const options = accounts
     .filter(filter)
     .slice()
@@ -91,8 +93,8 @@ export function ReportAccountMultiSelect({
   return (
     <div className={className}>
       <MultiSelect
-        ariaLabel="Filter by account"
-        placeholder="All Accounts"
+        ariaLabel={t('reportAccountMultiSelect.ariaLabel')}
+        placeholder={t('reportAccountMultiSelect.placeholder')}
         options={options}
         value={draft}
         onChange={handleChange}

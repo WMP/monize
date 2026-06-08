@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useMemo, useCallback, MutableRefObject } from 'react';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,13 +16,13 @@ import { useFormDirtyNotify } from '@/hooks/useFormDirtyNotify';
 import { FormActions } from '@/components/ui/FormActions';
 import { PayeeAliasManager } from './PayeeAliasManager';
 
-const payeeSchema = z.object({
-  name: z.string().min(1, 'Payee name is required').max(255),
+const buildPayeeSchema = (t: (key: string) => string) => z.object({
+  name: z.string().min(1, t('validation.nameRequired')).max(255),
   defaultCategoryId: z.string().optional(),
   notes: z.string().optional(),
 });
 
-type PayeeFormData = z.infer<typeof payeeSchema>;
+type PayeeFormData = z.infer<ReturnType<typeof buildPayeeSchema>>;
 
 export type PayeeFormSubmitData = PayeeFormData & {
   pendingAliases?: string[];
@@ -37,6 +38,7 @@ interface PayeeFormProps {
 }
 
 export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange, submitRef }: PayeeFormProps) {
+  const t = useTranslations('payees');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(payee?.defaultCategoryId || '');
   const pendingAliasesRef = useRef<string[]>([]);
 
@@ -46,7 +48,7 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
     setValue,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<PayeeFormData>({
-    resolver: zodResolver(payeeSchema),
+    resolver: zodResolver(buildPayeeSchema(t)),
     defaultValues: payee
       ? {
           name: payee.name,
@@ -105,14 +107,14 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
   return (
     <form onSubmit={onFormSubmit} className="space-y-4">
       <Input
-        label="Payee Name"
+        label={t('form.nameLabel')}
         error={errors.name?.message}
         {...register('name')}
       />
 
       <Combobox
-        label="Default Category"
-        placeholder="Select category..."
+        label={t('form.categoryLabel')}
+        placeholder={t('selectCategoryPlaceholder')}
         options={categoryOptions}
         value={selectedCategoryId}
         initialDisplayValue={initialCategoryName}
@@ -121,7 +123,7 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
       />
 
       <Input
-        label="Notes (optional)"
+        label={t('form.notesLabel')}
         error={errors.notes?.message}
         {...register('notes')}
       />
@@ -132,7 +134,7 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
         <PayeeAliasManager onPendingAliasesChange={(aliases) => { pendingAliasesRef.current = aliases; }} />
       )}
 
-      <FormActions onCancel={onCancel} submitLabel={payee ? 'Update Payee' : 'Create Payee'} isSubmitting={isSubmitting} />
+      <FormActions onCancel={onCancel} submitLabel={payee ? t('form.submitUpdate') : t('form.submitCreate')} isSubmitting={isSubmitting} />
     </form>
   );
 }

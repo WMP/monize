@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { HoldingWithMarketValue } from '@/types/investment';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { gainLossColor } from '@/lib/format';
@@ -11,6 +12,7 @@ interface HoldingsListProps {
 }
 
 export function HoldingsList({ holdings, isLoading }: HoldingsListProps) {
+  const t = useTranslations('investments');
   const { formatCurrency: formatCurrencyBase, formatCurrencyPrecise, formatSignedPercent, formatQuantity } = useNumberFormat();
 
   const formatCurrency = (value: number | null) => {
@@ -34,7 +36,7 @@ export function HoldingsList({ holdings, isLoading }: HoldingsListProps) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Holdings
+          {t('holdingsList.title')}
         </h3>
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
@@ -52,10 +54,10 @@ export function HoldingsList({ holdings, isLoading }: HoldingsListProps) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Holdings
+          {t('holdingsList.title')}
         </h3>
         <p className="text-gray-500 dark:text-gray-400">
-          No holdings in this portfolio.
+          {t('holdingsList.noHoldings')}
         </p>
       </div>
     );
@@ -65,7 +67,7 @@ export function HoldingsList({ holdings, isLoading }: HoldingsListProps) {
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
       <div className="p-6 pb-0">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Holdings
+          {t('holdingsList.title')}
         </h3>
       </div>
       <div className="overflow-x-auto">
@@ -73,22 +75,22 @@ export function HoldingsList({ holdings, isLoading }: HoldingsListProps) {
           <thead className="bg-gray-50 dark:bg-gray-700/50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Symbol
+                {t('holdingsList.symbolColumn')}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Shares
+                {t('holdingsList.sharesColumn')}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Avg Cost
+                {t('holdingsList.avgCostColumn')}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Price
+                {t('holdingsList.priceColumn')}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Market Value
+                {t('holdingsList.marketValueColumn')}
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Gain/Loss
+                {t('holdingsList.gainLossColumn')}
               </th>
             </tr>
           </thead>

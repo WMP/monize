@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { gainLossColor } from '@/lib/format';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Account } from '@/types/account';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
@@ -31,6 +32,7 @@ interface FavouriteAccountsProps {
 }
 
 export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, onAccountsChanged: _onAccountsChanged }: FavouriteAccountsProps) {
+  const t = useTranslations('dashboard');
   const router = useRouter();
   const preferences = usePreferencesStore((s) => s.preferences);
   const { formatCurrency: formatCurrencyBase } = useNumberFormat();
@@ -86,7 +88,7 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[640px]">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Favourite Accounts
+          {t('favouriteAccounts.title')}
         </h3>
         <div className="animate-pulse space-y-3">
           {[1, 2, 3].map((i) => (
@@ -101,10 +103,10 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[640px]">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Favourite Accounts
+          {t('favouriteAccounts.title')}
         </h3>
         <p className="text-gray-500 dark:text-gray-400 text-sm">
-          No favourite accounts yet. Mark accounts as favourites to see them here.
+          {t('favouriteAccounts.empty')}
         </p>
       </div>
     );
@@ -114,7 +116,7 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[640px]">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Favourite Accounts
+          {t('favouriteAccounts.title')}
         </h3>
         {favouriteAccounts.length > 1 && (
           <button
@@ -124,9 +126,9 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
                 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
-            title={reordering ? 'Done reordering' : 'Reorder favourites'}
+            title={reordering ? t('favouriteAccounts.done') : t('favouriteAccounts.reorder')}
           >
-            {reordering ? 'Done' : 'Reorder'}
+            {reordering ? t('favouriteAccounts.done') : t('favouriteAccounts.reorder')}
           </button>
         )}
       </div>
@@ -139,7 +141,7 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
                   onClick={() => moveAccount(index, -1)}
                   disabled={index === 0}
                   className="p-0.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title="Move up"
+                  title={t('favouriteAccounts.moveUp')}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
@@ -149,7 +151,7 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
                   onClick={() => moveAccount(index, 1)}
                   disabled={index === favouriteAccounts.length - 1}
                   className="p-0.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title="Move down"
+                  title={t('favouriteAccounts.moveDown')}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -191,13 +193,13 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
                     <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {account.statementDueDay && (
                         <span className="flex items-center">
-                          Due: {getOrdinal(account.statementDueDay)}
+                          {t('favouriteAccounts.due', { ordinal: getOrdinal(account.statementDueDay) })}
                           <InfoTooltip text="The day of each month when your credit card payment is due" />
                         </span>
                       )}
                       {account.statementSettlementDay && (
                         <span className="flex items-center">
-                          Settlement: {getOrdinal(account.statementSettlementDay)}
+                          {t('favouriteAccounts.settlement', { ordinal: getOrdinal(account.statementSettlementDay) })}
                           <InfoTooltip text="The last day of the billing cycle. Transactions posted on or before this day appear on the current statement." />
                         </span>
                       )}
@@ -223,7 +225,7 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
                     </div>
                     {brokerageMarketValue !== undefined && (
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Market value
+                        {t('favouriteAccounts.marketValue')}
                       </div>
                     )}
                   </div>

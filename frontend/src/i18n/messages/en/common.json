@@ -4,5 +4,124 @@
   "delete": "Delete",
   "edit": "Edit",
   "close": "Close",
-  "loading": "Loading..."
+  "loading": "Loading...",
+  "pagination": {
+    "showing": "Showing",
+    "of": "of",
+    "firstPage": "First page",
+    "lastPage": "Last page",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "back10Pages": "Back 10 pages",
+    "forward10Pages": "Forward 10 pages",
+    "enterPageNumber": "Enter page number"
+  },
+  "confirmDialog": {
+    "confirm": "Confirm"
+  },
+  "unsavedChanges": {
+    "title": "Unsaved Changes",
+    "message": "You have unsaved changes. What would you like to do?",
+    "discard": "Discard"
+  },
+  "exportDropdown": {
+    "export": "Export",
+    "exporting": "Exporting...",
+    "exportPdf": "Export PDF",
+    "exportReport": "Export report",
+    "failedPdf": "Failed to export PDF. Please try again."
+  },
+  "dateRange": {
+    "custom": "Custom",
+    "startDate": "Start Date",
+    "endDate": "End Date"
+  },
+  "colorPicker": {
+    "custom": "Custom:",
+    "apply": "Apply"
+  },
+  "chartDownload": {
+    "downloadAsPng": "Download {filename} as PNG",
+    "unableToCapture": "Unable to capture chart image",
+    "failedToDownload": "Failed to download chart"
+  },
+  "chartViewToggle": {
+    "pieChart": "Pie Chart",
+    "barChart": "Bar Chart",
+    "lineChart": "Line Chart",
+    "areaChart": "Area Chart",
+    "table": "Table"
+  },
+  "formActions": {
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "themeToggle": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "title": "Theme: {label}. Click to change."
+  },
+  "errorBoundary": {
+    "defaultMessage": "Something went wrong rendering this component."
+  },
+  "calendar": {
+    "clear": "Clear",
+    "today": "Today"
+  },
+  "multiSelect": {
+    "search": "Search...",
+    "selectAll": "Select All",
+    "clear": "Clear",
+    "noOptions": "No options found"
+  },
+  "combobox": {
+    "createOption": "Create \"{value}\""
+  },
+  "passwordInput": {
+    "show": "Show input",
+    "hide": "Hide input"
+  },
+  "currencyInput": {
+    "openCalculator": "Open calculator",
+    "calculator": "Calculator"
+  },
+  "dateInput": {
+    "shortcutsTitle": "Keyboard shortcuts",
+    "today": "Today",
+    "firstDayOfYear": "First day of year",
+    "lastDayOfYear": "Last day of year",
+    "firstDayOfMonth": "First day of month",
+    "lastDayOfMonth": "Last day of month",
+    "nextDay": "Next day",
+    "previousDay": "Previous day",
+    "nextMonth": "Next month",
+    "previousMonth": "Previous month"
+  },
+  "accountTypes": {
+    "CHEQUING": "Chequing",
+    "SAVINGS": "Savings",
+    "CREDIT_CARD": "Credit Card",
+    "INVESTMENT": "Investment",
+    "LOAN": "Loan",
+    "MORTGAGE": "Mortgage",
+    "CASH": "Cash",
+    "LINE_OF_CREDIT": "Line of Credit",
+    "ASSET": "Asset",
+    "OTHER": "Other"
+  },
+  "accountFilter": {
+    "allAccounts": "All Accounts",
+    "allBut": "All but {names}"
+  },
+  "passwordRequirements": "Password must be at least 12 characters and contain an uppercase letter, a lowercase letter, a number, and a special character.",
+  "passwordValidation": {
+    "min": "Password must be at least 12 characters",
+    "max": "Password must be 100 characters or less",
+    "lowercase": "Must contain a lowercase letter",
+    "uppercase": "Must contain an uppercase letter",
+    "number": "Must contain a number",
+    "special": "Must contain a special character"
+  },
+  "emailInvalid": "Please enter a valid email address"
 }

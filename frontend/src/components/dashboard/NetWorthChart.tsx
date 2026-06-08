@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   BarChart,
   Bar,
@@ -47,6 +48,7 @@ interface NetWorthChartProps {
 }
 
 export function NetWorthChart({ data, isLoading }: NetWorthChartProps) {
+  const t = useTranslations('dashboard');
   const router = useRouter();
   const { formatCurrencyCompact: formatCurrency, formatCurrencyLabel } = useNumberFormat();
 
@@ -92,7 +94,7 @@ export function NetWorthChart({ data, isLoading }: NetWorthChartProps) {
           onClick={() => router.push('/reports/net-worth')}
           className="text-lg font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors mb-4"
         >
-          Net Worth
+          {t('netWorth.title')}
         </button>
         <div className="animate-pulse space-y-3">
           <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
@@ -109,10 +111,10 @@ export function NetWorthChart({ data, isLoading }: NetWorthChartProps) {
           onClick={() => router.push('/reports/net-worth')}
           className="text-lg font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors mb-4"
         >
-          Net Worth
+          {t('netWorth.title')}
         </button>
         <p className="text-gray-500 dark:text-gray-400 text-sm">
-          No net worth data available yet.
+          {t('netWorth.empty')}
         </p>
       </div>
     );
@@ -127,9 +129,9 @@ export function NetWorthChart({ data, isLoading }: NetWorthChartProps) {
           onClick={() => router.push('/reports/net-worth')}
           className="text-lg font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
         >
-          Net Worth
+          {t('netWorth.title')}
         </button>
-        <span className="text-sm text-gray-500 dark:text-gray-400">Past 12 months</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">{t('netWorth.past12Months')}</span>
       </div>
       <div className="mb-3">
         <div className={`text-2xl font-bold ${
@@ -177,7 +179,7 @@ export function NetWorthChart({ data, isLoading }: NetWorthChartProps) {
         onClick={() => router.push('/reports/net-worth')}
         className="mt-3 w-full text-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
       >
-        View full report
+        {t('netWorth.viewReport')}
       </button>
     </div>
   );

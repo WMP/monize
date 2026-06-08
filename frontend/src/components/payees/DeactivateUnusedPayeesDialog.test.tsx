@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, act } from '@testing-library/react';
+import { render, fireEvent, act } from '@/test/render';
 import { DeactivateUnusedPayeesDialog } from './DeactivateUnusedPayeesDialog';
 import { payeesApi } from '@/lib/payees';
 import toast from 'react-hot-toast';
@@ -307,7 +307,7 @@ describe('DeactivateUnusedPayeesDialog', () => {
         fireEvent.change(monthsSlider, { target: { value: '24' } });
       });
 
-      expect(getByText('2 years')).toBeInTheDocument();
+      expect(getByText(/2 years/)).toBeInTheDocument();
     });
 
     it('formats half-year labels correctly for 6-month offsets', async () => {
@@ -321,7 +321,7 @@ describe('DeactivateUnusedPayeesDialog', () => {
         fireEvent.change(monthsSlider, { target: { value: '18' } });
       });
 
-      expect(getByText('1.5 years')).toBeInTheDocument();
+      expect(getByText(/1\.5 years/)).toBeInTheDocument();
     });
   });
 

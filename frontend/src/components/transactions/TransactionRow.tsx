@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useState, useRef, useEffect, useCallback, type JSX } from 'react';
+import { useTranslations } from 'next-intl';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { createPortal } from 'react-dom';
 import { getIconComponent } from '@/components/ui/IconPicker';
@@ -24,9 +25,9 @@ const INVESTMENT_ACTION_LABELS: Record<string, string> = {
   REMOVE_SHARES: 'Remove Shares',
 };
 
-function describeInvestmentSplit(split: TransactionSplit): string {
+function describeInvestmentSplit(split: TransactionSplit, uncategorizedLabel: string): string {
   const inv = split.investmentTransaction;
-  if (!inv) return 'Uncategorized';
+  if (!inv) return uncategorizedLabel;
   const action = INVESTMENT_ACTION_LABELS[inv.action] || inv.action;
   const symbol = inv.security?.symbol;
   return symbol ? `${action}: ${symbol}` : action;
@@ -37,6 +38,7 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
   onDuplicate?: () => void;
   onScheduleRecurring?: () => void;
 }) {
+  const t = useTranslations('transactions');
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -65,13 +67,13 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
       <button
         onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
         className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-        title="Duplicate transaction"
+        title={t('row.copyOptions.duplicateTitle')}
       >
         {density === 'dense' ? (
           <svg className="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
           </svg>
-        ) : 'Copy'}
+        ) : t('row.copyOptions.copy')}
       </button>
     );
   }
@@ -82,7 +84,7 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
         ref={buttonRef}
         onClick={(e) => { e.stopPropagation(); setIsOpen(prev => !prev); }}
         className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-        title="Copy options"
+        title={t('row.copyOptions.title')}
       >
         {density === 'dense' ? (
           <svg className="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -90,7 +92,7 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
           </svg>
         ) : (
           <span className="inline-flex items-center gap-0.5">
-            Copy
+            {t('row.copyOptions.copy')}
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
@@ -107,7 +109,7 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
               <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
-              Duplicate
+              {t('row.copyOptions.duplicate')}
             </button>
           )}
           {onScheduleRecurring && (
@@ -118,7 +120,7 @@ function CopyDropdown({ density, onDuplicate, onScheduleRecurring }: {
               <svg className="w-4 h-4 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              Schedule as Recurring
+              {t('row.copyOptions.scheduleRecurring')}
             </button>
           )}
         </div>,
@@ -201,6 +203,8 @@ export const TransactionRow = memo(function TransactionRow({
   budgetStatusMap,
   isFuture,
 }: TransactionRowProps) {
+  const t = useTranslations('transactions');
+  const tc = useTranslations('common');
   const { formatCurrency } = useNumberFormat();
   const isVoid = transaction.status === TransactionStatus.VOID;
   // Prefer the denormalized payeeName, but fall back to the linked payee's name
@@ -245,7 +249,7 @@ export const TransactionRow = memo(function TransactionRow({
           <button
             onClick={(e) => { e.stopPropagation(); onPayeeClick(transaction.payeeId!); }}
             className={`text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline block truncate sm:max-w-[280px] text-left ${isVoid ? 'line-through' : ''}`}
-            title={`Edit payee: ${payeeLabel ?? ''}`}
+            title={t('list.row.editPayeeTitle', { name: payeeLabel ?? '' })}
           >
             {payeeLabel || '-'}
           </button>
@@ -259,7 +263,7 @@ export const TransactionRow = memo(function TransactionRow({
         )}
         {density === 'normal' && transaction.referenceNumber && (
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            Ref: {transaction.referenceNumber}
+            {t('list.row.ref', { number: transaction.referenceNumber })}
           </div>
         )}
       </td>
@@ -269,7 +273,7 @@ export const TransactionRow = memo(function TransactionRow({
             className={`inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 ${density === 'dense' ? 'px-1.5 py-0.5' : 'px-2 py-1'}`}
             title="This transaction is linked to an investment transaction"
           >
-            Investment
+            {t('list.row.investmentLabel')}
           </span>
         ) : transaction.isTransfer ? (
           onTransferClick && transaction.linkedTransaction?.account?.id && transaction.linkedTransactionId ? (
@@ -289,14 +293,14 @@ export const TransactionRow = memo(function TransactionRow({
             <span
               className={`inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 truncate max-w-[160px] ${density === 'dense' ? 'px-1.5 py-0.5' : 'px-2 py-1'}`}
               title={transaction.linkedTransaction?.account?.name
-                ? `Transfer ${Number(transaction.amount) < 0 ? 'to' : 'from'} ${transaction.linkedTransaction.account.name}`
-                : 'Transfer'}
+                ? t('list.row.transferTitle', { direction: Number(transaction.amount) < 0 ? 'to' : 'from', name: transaction.linkedTransaction.account.name })
+                : t('list.row.transfer')}
             >
               {transaction.linkedTransaction?.account?.name
                 ? (Number(transaction.amount) < 0
                     ? `\u2192 ${transaction.linkedTransaction.account.name}`
                     : `${transaction.linkedTransaction.account.name} \u2192`)
-                : 'Transfer'}
+                : t('list.row.transfer')}
             </span>
           )
         ) : transaction.isSplit ? (
@@ -319,15 +323,15 @@ export const TransactionRow = memo(function TransactionRow({
                       </span>
                     ) : split.investmentTransaction ? (
                       <span className="text-emerald-600 dark:text-emerald-400">
-                        {describeInvestmentSplit(split)}: {formatAmountWithCommas(Math.abs(Number(split.amount)), getDecimalPlacesForCurrency(transaction.currencyCode))}
+                        {describeInvestmentSplit(split, t('list.row.uncategorized'))}: {formatAmountWithCommas(Math.abs(Number(split.amount)), getDecimalPlacesForCurrency(transaction.currencyCode))}
                       </span>
                     ) : (
-                      <>{split.category?.name || 'Uncategorized'}: {formatAmountWithCommas(Math.abs(Number(split.amount)), getDecimalPlacesForCurrency(transaction.currencyCode))}</>
+                      <>{split.category?.name || t('list.row.uncategorized')}: {formatAmountWithCommas(Math.abs(Number(split.amount)), getDecimalPlacesForCurrency(transaction.currencyCode))}</>
                     )}
                   </div>
                 ))}
                 {transaction.splits.length > 3 && (
-                  <div className="text-gray-400 dark:text-gray-500">+{transaction.splits.length - 3} more</div>
+                  <div className="text-gray-400 dark:text-gray-500">{t('list.row.splitMore', { count: transaction.splits.length - 3 })}</div>
                 )}
               </div>
             )}
@@ -367,7 +371,7 @@ export const TransactionRow = memo(function TransactionRow({
                       ? `color-mix(in srgb, ${categoryColor} 85%, var(--category-text-mix, #000))`
                       : 'var(--category-text-base, #6b7280)',
                   }}
-                  title={`Filter by ${transaction.category!.name}`}
+                  title={t('list.row.filterByCategory', { name: transaction.category!.name })}
                 >
                   {transaction.category!.name}
                 </button>
@@ -425,7 +429,7 @@ export const TransactionRow = memo(function TransactionRow({
                   backgroundColor: tag.color ? `${tag.color}20` : '#9ca3af20',
                   color: tag.color || '#6b7280',
                 }}
-                title={`Filter by ${tag.name}`}
+                title={t('list.row.filterByTag', { name: tag.name })}
               >
                 {tag.icon && (
                   <span className="w-3 h-3 flex-shrink-0 [&>svg]:w-3 [&>svg]:h-3">
@@ -460,7 +464,7 @@ export const TransactionRow = memo(function TransactionRow({
       <td className={`${cellPadding} whitespace-nowrap text-sm font-medium text-right ${isVoid ? 'line-through' : ''}`}>
         {displayAmount !== undefined ? (
           <span
-            title={`Filtered amount (full transaction: ${formatAmountWithCommas(Math.abs(transaction.amount), getDecimalPlacesForCurrency(transaction.currencyCode))})`}
+            title={t('list.row.filteredAmountTitle', { amount: formatAmountWithCommas(Math.abs(transaction.amount), getDecimalPlacesForCurrency(transaction.currencyCode)) })}
             className="inline-flex items-center gap-1 justify-end"
           >
             {formatAmount(displayAmount, transaction.currencyCode)}
@@ -481,16 +485,16 @@ export const TransactionRow = memo(function TransactionRow({
         <button
           onClick={(e) => { e.stopPropagation(); onCycleStatus(transaction); }}
           className="text-sm px-3 py-1.5 -my-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          title="Click to cycle status"
+          title={t('list.status.cycleTitle')}
         >
           {transaction.status === TransactionStatus.RECONCILED ? (
-            <span className="text-blue-600 dark:text-blue-400">{density === 'dense' ? 'R' : 'Reconciled'}</span>
+            <span className="text-blue-600 dark:text-blue-400">{density === 'dense' ? t('list.status.reconciledDense') : t('list.status.reconciled')}</span>
           ) : transaction.status === TransactionStatus.CLEARED ? (
-            <span className="text-green-600 dark:text-green-400">{density === 'dense' ? 'C' : 'Cleared'}</span>
+            <span className="text-green-600 dark:text-green-400">{density === 'dense' ? t('list.status.clearedDense') : t('list.status.cleared')}</span>
           ) : transaction.status === TransactionStatus.VOID ? (
-            <span className="text-red-600 dark:text-red-400">{density === 'dense' ? 'V' : 'VOID'}</span>
+            <span className="text-red-600 dark:text-red-400">{density === 'dense' ? t('list.status.voidDense') : t('list.status.void').toUpperCase()}</span>
           ) : (
-            <span className="text-gray-400 dark:text-gray-500">{density === 'dense' ? '\u25CB' : 'Pending'}</span>
+            <span className="text-gray-400 dark:text-gray-500">{density === 'dense' ? t('list.status.pendingDense') : t('list.status.pending')}</span>
           )}
         </button>
       </td>
@@ -502,11 +506,11 @@ export const TransactionRow = memo(function TransactionRow({
               ? "text-emerald-600 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300"
               : "text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
             }
-            title={transaction.linkedInvestmentTransactionId ? "View in Investments" : undefined}
+            title={transaction.linkedInvestmentTransactionId ? t('list.row.linkedInvestmentTitle') : undefined}
           >
             {transaction.linkedInvestmentTransactionId
-              ? (density === 'dense' ? '\uD83D\uDCC8' : 'View')
-              : (density === 'dense' ? '\u270E' : 'Edit')}
+              ? (density === 'dense' ? '\uD83D\uDCC8' : t('list.row.viewButton'))
+              : (density === 'dense' ? '\u270E' : tc('edit'))}
           </button>
         )}
         {!transaction.linkedInvestmentTransactionId && (onDuplicate || onScheduleRecurring) && (
@@ -522,7 +526,7 @@ export const TransactionRow = memo(function TransactionRow({
             disabled={isDeleting}
             className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
           >
-            {isDeleting ? '...' : density === 'dense' ? '\u2715' : 'Delete'}
+            {isDeleting ? '...' : density === 'dense' ? '\u2715' : tc('delete')}
           </button>
         )}
       </td>

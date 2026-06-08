@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { payeesApi } from '@/lib/payees';
@@ -30,6 +31,7 @@ export function CategoryAutoAssignDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [hasPreviewLoaded, setHasPreviewLoaded] = useState(false);
+  const t = useTranslations('payees');
 
   // Load preview when parameters change
   const loadPreview = useCallback(async () => {
@@ -45,12 +47,12 @@ export function CategoryAutoAssignDialog({
       setSelectedIds(new Set(results.map(s => s.payeeId)));
       setHasPreviewLoaded(true);
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to load suggestions'));
+      toast.error(getErrorMessage(error, t('categoryAutoAssign.toasts.loadFailed')));
       logger.error(error);
     } finally {
       setIsLoading(false);
     }
-  }, [minTransactions, minPercentage, onlyWithoutCategory]);
+  }, [minTransactions, minPercentage, onlyWithoutCategory, t]);
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -63,7 +65,7 @@ export function CategoryAutoAssignDialog({
 
   const handleApply = async () => {
     if (selectedIds.size === 0) {
-      toast.error('Please select at least one payee to update');
+      toast.error(t('categoryAutoAssign.toasts.selectAtLeastOne'));
       return;
     }
 
@@ -77,11 +79,11 @@ export function CategoryAutoAssignDialog({
         }));
 
       const result = await payeesApi.applyCategorySuggestions(assignments);
-      toast.success(`Updated ${result.updated} payee${result.updated !== 1 ? 's' : ''}`);
+      toast.success(t('categoryAutoAssign.toasts.updated', { count: result.updated }));
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to apply category assignments'));
+      toast.error(getErrorMessage(error, t('categoryAutoAssign.toasts.applyFailed')));
       logger.error(error);
     } finally {
       setIsApplying(false);
@@ -113,7 +115,7 @@ export function CategoryAutoAssignDialog({
       {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            Auto-Assign Default Categories
+            {t('categoryAutoAssign.title')}
           </h2>
         </div>
 
@@ -122,13 +124,10 @@ export function CategoryAutoAssignDialog({
           {/* Description */}
           <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
             <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">
-              How it works
+              {t('categoryAutoAssign.howItWorksTitle')}
             </h3>
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              This feature analyzes your transaction history to suggest default categories for payees.
-              It looks at which category is most commonly used for each payee and suggests assigning
-              it as their default category for future transactions. You can always override the default 
-              category if needed.
+              {t('categoryAutoAssign.howItWorksBody')}
             </p>
           </div>
 
@@ -137,7 +136,7 @@ export function CategoryAutoAssignDialog({
             {/* Minimum Transactions */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Minimum Transactions: <span className="font-bold">{minTransactions}</span>
+                {t('categoryAutoAssign.minTransactionsLabel', { count: minTransactions })}
               </label>
               <input
                 type="range"
@@ -153,14 +152,14 @@ export function CategoryAutoAssignDialog({
                 <span>50</span>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Only consider payees with at least this many transactions
+                {t('categoryAutoAssign.minTransactionsHelp')}
               </p>
             </div>
 
             {/* Minimum Percentage */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Category Match Percentage: <span className="font-bold">{minPercentage}%</span>
+                {t('categoryAutoAssign.matchPercentageLabel', { percent: minPercentage })}
               </label>
               <input
                 type="range"
@@ -177,7 +176,7 @@ export function CategoryAutoAssignDialog({
                 <span>100%</span>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                The category must be used in at least this percentage of transactions
+                {t('categoryAutoAssign.matchPercentageHelp')}
               </p>
             </div>
 
@@ -194,7 +193,7 @@ export function CategoryAutoAssignDialog({
                 htmlFor="onlyWithoutCategory"
                 className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
               >
-                Only payees without a default category
+                {t('categoryAutoAssign.onlyWithoutCategoryLabel')}
               </label>
             </div>
           </div>
@@ -207,7 +206,7 @@ export function CategoryAutoAssignDialog({
               variant="secondary"
               className="w-full"
             >
-              {isLoading ? 'Loading...' : 'Preview Suggestions'}
+              {isLoading ? t('categoryAutoAssign.loading') : t('categoryAutoAssign.previewButton')}
             </Button>
           </div>
 
@@ -216,7 +215,7 @@ export function CategoryAutoAssignDialog({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Suggestions ({suggestions.length} found)
+                  {t('categoryAutoAssign.suggestionsHeader', { count: suggestions.length })}
                 </h3>
                 {suggestions.length > 0 && (
                   <div className="flex gap-2">
@@ -224,14 +223,14 @@ export function CategoryAutoAssignDialog({
                       onClick={selectAll}
                       className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                     >
-                      Select all
+                      {t('categoryAutoAssign.selectAll')}
                     </button>
                     <span className="text-gray-300 dark:text-gray-600">|</span>
                     <button
                       onClick={selectNone}
                       className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                     >
-                      Select none
+                      {t('categoryAutoAssign.selectNone')}
                     </button>
                   </div>
                 )}
@@ -239,8 +238,8 @@ export function CategoryAutoAssignDialog({
 
               {suggestions.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  <p>No payees match the current criteria.</p>
-                  <p className="text-sm mt-1">Try adjusting the settings above.</p>
+                  <p>{t('categoryAutoAssign.empty.line1')}</p>
+                  <p className="text-sm mt-1">{t('categoryAutoAssign.empty.line2')}</p>
                 </div>
               ) : (
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
@@ -249,13 +248,13 @@ export function CategoryAutoAssignDialog({
                       <tr>
                         <th className="w-10 px-3 py-2"></th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                          Payee
+                          {t('categoryAutoAssign.columns.payee')}
                         </th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                          Suggested Category
+                          {t('categoryAutoAssign.columns.suggestedCategory')}
                         </th>
                         <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                          Match
+                          {t('categoryAutoAssign.columns.match')}
                         </th>
                       </tr>
                     </thead>
@@ -313,7 +312,7 @@ export function CategoryAutoAssignDialog({
         <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
           <div className="text-sm text-gray-500 dark:text-gray-400">
             {selectedIds.size > 0 && (
-              <span>{selectedIds.size} payee{selectedIds.size !== 1 ? 's' : ''} selected</span>
+              <span>{t('categoryAutoAssign.selectedCount', { count: selectedIds.size })}</span>
             )}
           </div>
           <div className="flex gap-3">
@@ -324,7 +323,7 @@ export function CategoryAutoAssignDialog({
               onClick={handleApply}
               disabled={isApplying || selectedIds.size === 0}
             >
-              {isApplying ? 'Applying...' : `Apply to ${selectedIds.size} Payee${selectedIds.size !== 1 ? 's' : ''}`}
+              {isApplying ? t('categoryAutoAssign.applying') : t('categoryAutoAssign.applyButton', { count: selectedIds.size })}
             </Button>
           </div>
         </div>

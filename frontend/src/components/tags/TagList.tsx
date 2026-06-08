@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Tag } from '@/types/tag';
 import { Button } from '@/components/ui/Button';
 import { getIconComponent } from '@/components/ui/IconPicker';
@@ -33,6 +34,7 @@ const TagRow = memo(function TagRow({
   onTagClick,
   index,
 }: TagRowProps) {
+  const tc = useTranslations('common');
   const handleEdit = useCallback(() => {
     onEdit(tag);
   }, [onEdit, tag]);
@@ -90,7 +92,7 @@ const TagRow = memo(function TagRow({
           onClick={handleEdit}
           className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-2"
         >
-          {density === 'dense' ? '✎' : 'Edit'}
+          {density === 'dense' ? '✎' : tc('edit')}
         </Button>
         <Button
           variant="ghost"
@@ -98,7 +100,7 @@ const TagRow = memo(function TagRow({
           onClick={handleDelete}
           className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
         >
-          {density === 'dense' ? '✕' : 'Delete'}
+          {density === 'dense' ? '✕' : tc('delete')}
         </Button>
       </td>
     </tr>
@@ -130,6 +132,7 @@ export function TagList({
   sortDirection: propSortDirection,
   onSort,
 }: TagListProps) {
+  const t = useTranslations('tags');
   const [localDensity, setLocalDensity] = useState<DensityLevel>('normal');
   const [localSortField, setLocalSortField] = useState<SortField>('name');
   const [localSortDirection, setLocalSortDirection] = useState<SortDirection>('asc');
@@ -194,8 +197,8 @@ export function TagList({
             d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
           />
         </svg>
-        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No tags found</h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">No tags match your current search.</p>
+        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t('list.empty.title')}</h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('list.empty.body')}</p>
       </div>
     );
   }
@@ -207,12 +210,12 @@ export function TagList({
         <button
           onClick={cycleDensity}
           className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-          title="Toggle row density"
+          title={t('list.density.title')}
         >
           <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-          {density === 'normal' ? 'Normal' : density === 'compact' ? 'Compact' : 'Dense'}
+          {density === 'normal' ? t('list.density.normal') : density === 'compact' ? t('list.density.compact') : t('list.density.dense')}
         </button>
       </div>
       <div className="overflow-x-auto">
@@ -223,18 +226,18 @@ export function TagList({
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
                 onClick={() => handleSort('name')}
               >
-                Name<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.header.name')}<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}
               >
-                Icon
+                {t('list.header.icon')}
               </th>
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}>
-                Transactions
+                {t('list.header.transactions')}
               </th>
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky right-0 bg-gray-50 dark:bg-gray-800`}>
-                Actions
+                {t('list.header.actions')}
               </th>
             </tr>
           </thead>

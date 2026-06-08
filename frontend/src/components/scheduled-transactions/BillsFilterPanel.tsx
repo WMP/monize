@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { MultiSelect, MultiSelectOption } from '@/components/ui/MultiSelect';
 import { Account } from '@/types/account';
 import { Category } from '@/types/category';
@@ -26,6 +27,7 @@ interface BillsFilterPanelProps {
 }
 
 export function BillsFilterPanel(props: BillsFilterPanelProps) {
+  const t = useTranslations('scheduledTransactions');
   const {
     filtersExpanded,
     setFiltersExpanded,
@@ -78,7 +80,7 @@ export function BillsFilterPanel(props: BillsFilterPanelProps) {
           <svg className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L14 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 018 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
           </svg>
-          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Filters</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('filters.label')}</span>
           {activeFilterCount > 0 && (
             <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full">
               {activeFilterCount}
@@ -92,13 +94,13 @@ export function BillsFilterPanel(props: BillsFilterPanelProps) {
               onClick={onClearFilters}
               className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
             >
-              Clear
+              {t('filters.clear')}
             </button>
           )}
           <button
             type="button"
             onClick={() => setFiltersExpanded(!filtersExpanded)}
-            aria-label={filtersExpanded ? 'Collapse filters' : 'Expand filters'}
+            aria-label={filtersExpanded ? t('filters.collapseAriaLabel') : t('filters.expandAriaLabel')}
             className="text-gray-500 dark:text-gray-400"
           >
             <svg
@@ -172,35 +174,35 @@ export function BillsFilterPanel(props: BillsFilterPanelProps) {
         <div className="px-4 pb-4 space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('filters.nameLabel')}</label>
               <input
                 type="text"
                 value={nameSearch}
                 onChange={(e) => setNameSearch(e.target.value)}
-                placeholder="Search by name..."
+                placeholder={t('filters.namePlaceholder')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>
             <MultiSelect
-              label="Payees"
+              label={t('filters.payeesLabel')}
               options={payeeOptions}
               value={selectedPayeeIds}
               onChange={setSelectedPayeeIds}
-              placeholder="All payees"
+              placeholder={t('filters.payeesPlaceholder')}
             />
             <MultiSelect
-              label="Accounts"
+              label={t('filters.accountsLabel')}
               options={accountOptions}
               value={selectedAccountIds}
               onChange={setSelectedAccountIds}
-              placeholder="All accounts"
+              placeholder={t('filters.accountsPlaceholder')}
             />
             <MultiSelect
-              label="Categories"
+              label={t('filters.categoriesLabel')}
               options={categoryOptions}
               value={selectedCategoryIds}
               onChange={setSelectedCategoryIds}
-              placeholder="All categories"
+              placeholder={t('filters.categoriesPlaceholder')}
             />
           </div>
         </div>

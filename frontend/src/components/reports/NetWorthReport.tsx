@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import {
   AreaChart,
@@ -40,6 +41,7 @@ const logger = createLogger('NetWorthReport');
 type NetWorthSortField = 'name' | 'assets' | 'liabilities' | 'netWorth';
 
 export function NetWorthReport() {
+  const t = useTranslations('reports');
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis, formatCurrencyLabel, formatSignedPercent } = useNumberFormat();
   const isMobile = useIsMobile();
   const [isRecalculating, setIsRecalculating] = useState(false);
@@ -84,12 +86,12 @@ export function NetWorthReport() {
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
     await exportToPdf({
-      title: 'Net Worth Report',
+      title: t('netWorth.pdfTitle'),
       subtitle: `${chartData[0]?.name || ''} - ${chartData[chartData.length - 1]?.name || ''}`,
       summaryCards: [
-        { label: 'Current Net Worth', value: formatCurrency(summary.current), color: summary.current >= 0 ? '#16a34a' : '#dc2626' },
-        { label: 'Change', value: `${summary.change >= 0 ? '+' : ''}${formatCurrency(summary.change)}`, color: summary.change >= 0 ? '#16a34a' : '#dc2626' },
-        { label: 'Change %', value: formatSignedPercent(summary.changePercent, 1), color: summary.changePercent >= 0 ? '#16a34a' : '#dc2626' },
+        { label: t('netWorth.currentNetWorth'), value: formatCurrency(summary.current), color: summary.current >= 0 ? '#16a34a' : '#dc2626' },
+        { label: t('netWorth.change'), value: `${summary.change >= 0 ? '+' : ''}${formatCurrency(summary.change)}`, color: summary.change >= 0 ? '#16a34a' : '#dc2626' },
+        { label: t('netWorth.changePct'), value: formatSignedPercent(summary.changePercent, 1), color: summary.changePercent >= 0 ? '#16a34a' : '#dc2626' },
       ],
       chartContainer: chartRef.current,
       filename: 'net-worth-report',
@@ -97,7 +99,7 @@ export function NetWorthReport() {
   };
 
   const handleExportCsv = () => {
-    const headers = ['Month', 'Assets', 'Liabilities', 'Net Worth'];
+    const headers = [t('netWorth.colMonth'), t('netWorth.colAssets'), t('netWorth.colLiabilities'), t('netWorth.colNetWorth')];
     const rows = sortedTableData.map((d) => [d.name, d.Assets, d.Liabilities, d.NetWorth]);
     exportToCsv('net-worth-report', headers, rows);
   };
@@ -241,7 +243,7 @@ export function NetWorthReport() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Current Net Worth</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('netWorth.currentNetWorth')}</div>
           <div className={`text-2xl font-bold ${
             gainLossColor(summary.current)
           }`}>
@@ -249,13 +251,13 @@ export function NetWorthReport() {
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Change</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('netWorth.change')}</div>
           <div className={`text-2xl font-bold ${gainLossColor(summary.change)}`}>
             {summary.change >= 0 ? '+' : ''}{formatCurrency(summary.change)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Change %</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('netWorth.changePct')}</div>
           <div className={`text-2xl font-bold ${gainLossColor(summary.changePercent)}`}>
             {formatSignedPercent(summary.changePercent, 1)}
           </div>
@@ -286,7 +288,7 @@ export function NetWorthReport() {
               disabled={isRecalculating}
               className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
             >
-              {isRecalculating ? 'Recalculating...' : 'Recalculate'}
+              {isRecalculating ? t('netWorth.recalculating') : t('netWorth.recalculate')}
             </button>
             <ExportDropdown onExportPdf={handleExportPdf} onExportCsv={handleExportCsv} disabled={chartData.length === 0} />
           </div>
@@ -297,7 +299,7 @@ export function NetWorthReport() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         {chartData.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No data for this period.
+            {t('netWorth.noData')}
           </p>
         ) : chartType === 'table' ? (
           <div className="overflow-x-auto">
@@ -311,7 +313,7 @@ export function NetWorthReport() {
                     onSort={handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Month
+                    {t('netWorth.colMonth')}
                   </SortableHeader>
                   <SortableHeader<NetWorthSortField>
                     field="assets"
@@ -321,7 +323,7 @@ export function NetWorthReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Assets
+                    {t('netWorth.colAssets')}
                   </SortableHeader>
                   <SortableHeader<NetWorthSortField>
                     field="liabilities"
@@ -331,7 +333,7 @@ export function NetWorthReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Liabilities
+                    {t('netWorth.colLiabilities')}
                   </SortableHeader>
                   <SortableHeader<NetWorthSortField>
                     field="netWorth"
@@ -341,7 +343,7 @@ export function NetWorthReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Net Worth
+                    {t('netWorth.colNetWorth')}
                   </SortableHeader>
                 </tr>
               </thead>
@@ -406,7 +408,7 @@ export function NetWorthReport() {
                   strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#colorNetWorth)"
-                  name="Net Worth"
+                  name={t('netWorth.seriesNetWorth')}
                 />
                 {minMax && (
                   <ReferenceDot
@@ -456,7 +458,7 @@ export function NetWorthReport() {
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
                 <ReferenceLine y={0} stroke="#9ca3af" strokeDasharray="3 3" />
-                <Bar dataKey="NetWorth" fill="#3b82f6" name="Net Worth" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="NetWorth" fill="#3b82f6" name={t('netWorth.seriesNetWorth')} radius={[4, 4, 0, 0]}>
                   {showBarLabels && (
                     <LabelList
                       dataKey="NetWorth"

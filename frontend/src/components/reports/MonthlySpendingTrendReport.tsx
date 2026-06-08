@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { gainLossColor } from '@/lib/format';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { useRouter } from "next/navigation";
@@ -42,6 +43,7 @@ interface ChartDataItem {
 }
 
 export function MonthlySpendingTrendReport() {
+  const t = useTranslations('reports');
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } =
@@ -131,24 +133,24 @@ export function MonthlySpendingTrendReport() {
   const handleExportPdf = async () => {
     const { exportToPdf } = await import("@/lib/pdf-export");
     await exportToPdf({
-      title: "Monthly Spending Trend",
+      title: t('monthlySpendingTrend.pdfTitle'),
       summaryCards: [
-        { label: 'Total Income', value: formatCurrency(totals.totalIncome), color: '#16a34a' },
-        { label: 'Total Expenses', value: formatCurrency(totals.totalExpenses), color: '#dc2626' },
-        { label: 'Avg Monthly Income', value: formatCurrency(totals.avgIncome), color: '#16a34a' },
-        { label: 'Avg Monthly Expenses', value: formatCurrency(totals.avgExpenses), color: '#dc2626' },
+        { label: t('monthlySpendingTrend.totalIncome'), value: formatCurrency(totals.totalIncome), color: '#16a34a' },
+        { label: t('monthlySpendingTrend.totalExpenses'), value: formatCurrency(totals.totalExpenses), color: '#dc2626' },
+        { label: t('monthlySpendingTrend.avgMonthlyIncome'), value: formatCurrency(totals.avgIncome), color: '#16a34a' },
+        { label: t('monthlySpendingTrend.avgMonthlyExpenses'), value: formatCurrency(totals.avgExpenses), color: '#dc2626' },
       ],
       chartContainer: chartRef.current,
       chartLegend: [
-        { color: '#ef4444', label: 'Expenses' },
-        { color: '#22c55e', label: 'Income' },
+        { color: '#ef4444', label: t('monthlySpendingTrend.seriesExpenses') },
+        { color: '#22c55e', label: t('monthlySpendingTrend.seriesIncome') },
       ],
       filename: "monthly-spending-trend",
     });
   };
 
   const handleExportCsv = () => {
-    const headers = ['Month', 'Income', 'Expenses', 'Net'];
+    const headers = [t('monthlySpendingTrend.colMonth'), t('monthlySpendingTrend.colIncome'), t('monthlySpendingTrend.colExpenses'), t('monthlySpendingTrend.colNet')];
     const rows = sortedTableData.map((d) => [d.fullName, d.Income, d.Expenses, d.Net]);
     exportToCsv('monthly-spending-trend', headers, rows);
   };
@@ -226,7 +228,7 @@ export function MonthlySpendingTrendReport() {
           <ReportError onRetry={reload} />
         ) : chartData.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No data for this period.
+            {t('monthlySpendingTrend.noData')}
           </p>
         ) : viewType === 'table' ? (
           <>
@@ -241,7 +243,7 @@ export function MonthlySpendingTrendReport() {
                       onSort={handleSort}
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Month
+                      {t('monthlySpendingTrend.colMonth')}
                     </SortableHeader>
                     <SortableHeader<MonthlySpendingSortField>
                       field="income"
@@ -251,7 +253,7 @@ export function MonthlySpendingTrendReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Income
+                      {t('monthlySpendingTrend.colIncome')}
                     </SortableHeader>
                     <SortableHeader<MonthlySpendingSortField>
                       field="expenses"
@@ -261,7 +263,7 @@ export function MonthlySpendingTrendReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Expenses
+                      {t('monthlySpendingTrend.colExpenses')}
                     </SortableHeader>
                     <SortableHeader<MonthlySpendingSortField>
                       field="net"
@@ -271,7 +273,7 @@ export function MonthlySpendingTrendReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Net
+                      {t('monthlySpendingTrend.colNet')}
                     </SortableHeader>
                   </tr>
                 </thead>
@@ -305,7 +307,7 @@ export function MonthlySpendingTrendReport() {
                 </tbody>
                 <tfoot className="bg-gray-50 dark:bg-gray-900/50">
                   <tr>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">Total</td>
+                    <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">{t('monthlySpendingTrend.total')}</td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-green-600 dark:text-green-400">
                       {formatCurrency(totals.totalIncome)}
                     </td>
@@ -370,7 +372,7 @@ export function MonthlySpendingTrendReport() {
             <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  Total Income
+                  {t('monthlySpendingTrend.totalIncome')}
                 </div>
                 <div className="text-lg font-semibold text-green-600 dark:text-green-400">
                   {formatCurrency(totals.totalIncome)}
@@ -378,7 +380,7 @@ export function MonthlySpendingTrendReport() {
               </div>
               <div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  Total Expenses
+                  {t('monthlySpendingTrend.totalExpenses')}
                 </div>
                 <div className="text-lg font-semibold text-red-600 dark:text-red-400">
                   {formatCurrency(totals.totalExpenses)}
@@ -386,7 +388,7 @@ export function MonthlySpendingTrendReport() {
               </div>
               <div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  Avg Monthly Income
+                  {t('monthlySpendingTrend.avgMonthlyIncome')}
                 </div>
                 <div className="text-lg font-semibold text-green-600 dark:text-green-400">
                   {formatCurrency(totals.avgIncome)}
@@ -394,7 +396,7 @@ export function MonthlySpendingTrendReport() {
               </div>
               <div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  Avg Monthly Expenses
+                  {t('monthlySpendingTrend.avgMonthlyExpenses')}
                 </div>
                 <div className="text-lg font-semibold text-red-600 dark:text-red-400">
                   {formatCurrency(totals.avgExpenses)}

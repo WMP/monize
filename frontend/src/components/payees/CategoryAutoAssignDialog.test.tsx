@@ -135,7 +135,7 @@ describe('CategoryAutoAssignDialog', () => {
     it('displays the current value in the label', () => {
       render(<CategoryAutoAssignDialog isOpen={true} onClose={onClose} onSuccess={onSuccess} />);
       // Default label should contain "10"
-      expect(screen.getByText('10')).toBeInTheDocument();
+      expect(screen.getByText(/Minimum Transactions.*10|10.*Minimum Transactions/)).toBeInTheDocument();
     });
   });
 

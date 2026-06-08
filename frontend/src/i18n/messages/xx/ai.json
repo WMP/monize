@@ -1,0 +1,53 @@
+{
+  "page": {
+    "title": "[XX-AI Assistant-XX]",
+    "subtitle": "[XX-Ask questions about your finances in natural language-XX]"
+  },
+  "chat": {
+    "conversationSaved": "[XX-Conversation saved in your browser-XX]",
+    "clearConversation": "[XX-Clear conversation-XX]",
+    "inputPlaceholder": "[XX-Ask about your finances...-XX]",
+    "inputPlaceholderDisabled": "[XX-AI provider not configured-XX]",
+    "keyboardHint": "[XX-Press Enter to send, Shift+Enter for new line-XX]",
+    "cancelTitle": "[XX-Cancel-XX]",
+    "sendTitle": "[XX-Send-XX]"
+  },
+  "notConfigured": {
+    "heading": "[XX-AI Not Configured-XX]",
+    "message": "[XX-No AI provider is configured. To use the AI Assistant, please {link} in your settings.-XX]",
+    "linkText": "[XX-configure an AI provider-XX]"
+  },
+  "suggestedQueries": {
+    "heading": "[XX-Ask about your finances-XX]",
+    "description": "[XX-I can answer questions about your spending, income, account balances, net worth, and more.-XX]",
+    "monthlySpendingLabel": "[XX-Monthly spending-XX]",
+    "monthlySpendingQuery": "[XX-How much did I spend last month?-XX]",
+    "topCategoriesLabel": "[XX-Top categories-XX]",
+    "topCategoriesQuery": "[XX-What are my top 5 expense categories this year?-XX]",
+    "accountBalancesLabel": "[XX-Account balances-XX]",
+    "accountBalancesQuery": "[XX-What are my current account balances?-XX]",
+    "compareMonthsLabel": "[XX-Compare months-XX]",
+    "compareMonthsQuery": "[XX-Compare my spending this month vs last month-XX]",
+    "netWorthTrendLabel": "[XX-Net worth trend-XX]",
+    "netWorthTrendQuery": "[XX-Show my net worth trend for the last 12 months-XX]",
+    "savingsRateLabel": "[XX-Savings rate-XX]",
+    "savingsRateQuery": "[XX-How much have I saved this year compared to my income?-XX]"
+  },
+  "toolDetails": {
+    "inputLabel": "[XX-Input-XX]",
+    "resultLabel": "[XX-Result-XX]",
+    "toolFailedAriaLabel": "[XX-Tool failed-XX]",
+    "toolSucceededAriaLabel": "[XX-Tool succeeded-XX]"
+  },
+  "table": {
+    "downloadTitle": "[XX-Download table as CSV-XX]",
+    "downloadAriaLabel": "[XX-Download table as CSV-XX]",
+    "noDataError": "[XX-No table data to export-XX]"
+  },
+  "chart": {
+    "downloadTitle": "[XX-Download chart as PNG-XX]",
+    "downloadAriaLabel": "[XX-Download chart as PNG-XX]",
+    "captureError": "[XX-Unable to capture chart image-XX]",
+    "downloadError": "[XX-Failed to download chart-XX]"
+  }
+}

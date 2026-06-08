@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { gainLossColor } from '@/lib/format';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { useReportData } from '@/hooks/useReportData';
@@ -64,6 +65,7 @@ interface SecurityGain {
 }
 
 export function RealizedGainsReport() {
+  const t = useTranslations('reports');
   const { formatCurrency: formatCurrencyFull, formatCurrencyAxis } = useNumberFormat();
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -233,7 +235,7 @@ export function RealizedGainsReport() {
   }, [entries, sellTransactionsSort.sortField, sellTransactionsSort.sortDirection, toDisplay]);
 
   const getExportData = useCallback(() => {
-    const headers = ['Security', 'Date Sold', 'Quantity', 'Proceeds', 'Cost Basis', 'Gain/Loss', 'Return %'];
+    const headers = [t('realizedGains.csvColSecurity'), t('realizedGains.csvColDateSold'), t('realizedGains.csvColQuantity'), t('realizedGains.csvColProceeds'), t('realizedGains.csvColCostBasis'), t('realizedGains.csvColGainLoss'), t('realizedGains.csvColReturn')];
     const rows: (string | number)[][] = sortedEntries.map((entry) => {
       const proceeds = toDisplay(entry.proceeds, entry.accountCurrencyCode);
       const costBasis = toDisplay(entry.costBasis, entry.accountCurrencyCode);
@@ -250,7 +252,7 @@ export function RealizedGainsReport() {
       ];
     });
     return { headers, rows };
-  }, [sortedEntries, toDisplay]);
+  }, [sortedEntries, toDisplay, t]);
 
   const handleExportCsv = useCallback(() => {
     const { headers, rows } = getExportData();
@@ -260,19 +262,20 @@ export function RealizedGainsReport() {
   const handleExportPdf = useCallback(async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
     const { headers, rows } = getExportData();
-    const totalRow: (string | number)[] = ['Total', '', '', totals.totalProceeds, totals.totalCostBasis, totals.totalGain, ''];
+    const totalRow: (string | number)[] = [t('realizedGains.total'), '', '', totals.totalProceeds, totals.totalCostBasis, totals.totalGain, ''];
     await exportToPdf({
-      title: 'Realized Gains Report',
-      subtitle: `${securityGains.length} securities | Net gain: ${fmtValue(totals.totalGain)}`,
+      title: t('realizedGains.pdfTitle'),
+      subtitle: t('realizedGains.pdfSubtitle', { count: securityGains.length, gain: fmtValue(totals.totalGain) }),
       summaryCards: [
-        { label: 'Total Proceeds', value: fmtValue(totals.totalProceeds), color: '#111827' },
-        { label: 'Cost Basis', value: fmtValue(totals.totalCostBasis), color: '#111827' },
-        { label: 'Realized Gain/Loss', value: `${totals.totalGain >= 0 ? '+' : ''}${fmtValue(totals.totalGain)}`, color: totals.totalGain >= 0 ? '#16a34a' : '#dc2626' },
+        { label: t('realizedGains.totalProceeds'), value: fmtValue(totals.totalProceeds), color: '#111827' },
+        { label: t('realizedGains.costBasis'), value: fmtValue(totals.totalCostBasis), color: '#111827' },
+        { label: t('realizedGains.realizedGainLoss'), value: `${totals.totalGain >= 0 ? '+' : ''}${fmtValue(totals.totalGain)}`, color: totals.totalGain >= 0 ? '#16a34a' : '#dc2626' },
       ],
       tableData: { headers, rows, totalRow },
       filename: 'realized-gains',
     });
-  }, [getExportData, securityGains.length, fmtValue, totals]);
+   
+  }, [getExportData, securityGains.length, fmtValue, totals, t]);
 
   if (error) {
     return <ReportError onRetry={reload} />;
@@ -294,25 +297,25 @@ export function RealizedGainsReport() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Total Proceeds</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('realizedGains.totalProceeds')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {fmtValue(totals.totalProceeds)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Cost Basis</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('realizedGains.costBasis')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {fmtValue(totals.totalCostBasis)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Realized Gain/Loss</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('realizedGains.realizedGainLoss')}</div>
           <div className={`text-xl font-bold ${gainLossColor(totals.totalGain)}`}>
             {totals.totalGain >= 0 ? '+' : ''}{fmtValue(totals.totalGain)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Securities Sold</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('realizedGains.securitiesSold')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {securityGains.length}
             <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
@@ -341,7 +344,7 @@ export function RealizedGainsReport() {
             <RefreshPricesButton onRefreshComplete={reload} />
             <button
               onClick={() => setViewType('chart')}
-              title="Chart"
+              title={t('realizedGains.viewChart')}
               className={`p-2 rounded-md transition-colors ${
                 viewType === 'chart'
                   ? 'bg-blue-600 text-white'
@@ -354,7 +357,7 @@ export function RealizedGainsReport() {
             </button>
             <button
               onClick={() => setViewType('table')}
-              title="Table"
+              title={t('realizedGains.viewTable')}
               className={`p-2 rounded-md transition-colors ${
                 viewType === 'table'
                   ? 'bg-blue-600 text-white'
@@ -373,17 +376,17 @@ export function RealizedGainsReport() {
       {entries.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No sell transactions found for this period.
+            {t('realizedGains.noTransactions')}
           </p>
         </div>
       ) : viewType === 'chart' ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Realized Gains by Security
+            {t('realizedGains.bySecurityTitle')}
           </h3>
           {chartData.length === 0 ? (
             <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-              No gains or losses to display.
+              {t('realizedGains.noGainsLosses')}
             </p>
           ) : (
             <div className="h-80">
@@ -395,7 +398,7 @@ export function RealizedGainsReport() {
                   <Tooltip content={<CustomTooltip fmtValue={fmtValue} />} />
                   <Bar
                     dataKey="gain"
-                    name="Realized Gain"
+                    name={t('realizedGains.realizedGainLoss')}
                     fill="#22c55e"
                     radius={[0, 4, 4, 0]}
                   />
@@ -408,7 +411,7 @@ export function RealizedGainsReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Realized Gains Detail
+              {t('realizedGains.detailTitle')}
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -422,7 +425,7 @@ export function RealizedGainsReport() {
                     onSort={securityGainsSort.handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Security
+                    {t('realizedGains.colSecurity')}
                   </SortableHeader>
                   <SortableHeader<SecurityGainsSortField>
                     field="transactionCount"
@@ -432,7 +435,7 @@ export function RealizedGainsReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Trades
+                    {t('realizedGains.colTrades')}
                   </SortableHeader>
                   <SortableHeader<SecurityGainsSortField>
                     field="totalProceeds"
@@ -442,7 +445,7 @@ export function RealizedGainsReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Proceeds
+                    {t('realizedGains.colProceeds')}
                   </SortableHeader>
                   <SortableHeader<SecurityGainsSortField>
                     field="totalCostBasis"
@@ -452,7 +455,7 @@ export function RealizedGainsReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Cost Basis
+                    {t('realizedGains.colCostBasis')}
                   </SortableHeader>
                   <SortableHeader<SecurityGainsSortField>
                     field="realizedGain"
@@ -462,7 +465,7 @@ export function RealizedGainsReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Gain/Loss
+                    {t('realizedGains.colGainLoss')}
                   </SortableHeader>
                 </tr>
               </thead>
@@ -495,7 +498,7 @@ export function RealizedGainsReport() {
               <tfoot className="bg-gray-50 dark:bg-gray-900/50">
                 <tr>
                   <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
-                    Total
+                    {t('realizedGains.total')}
                   </td>
                   <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">
                     {totals.totalTransactions}
@@ -521,7 +524,7 @@ export function RealizedGainsReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Sell Transactions ({entries.length})
+              {t('realizedGains.sellTransactions', { count: entries.length })}
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -535,7 +538,7 @@ export function RealizedGainsReport() {
                     onSort={sellTransactionsSort.handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Date
+                    {t('realizedGains.colDate')}
                   </SortableHeader>
                   <SortableHeader<SellTransactionsSortField>
                     field="symbol"
@@ -544,7 +547,7 @@ export function RealizedGainsReport() {
                     onSort={sellTransactionsSort.handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Security
+                    {t('realizedGains.colSecurity')}
                   </SortableHeader>
                   <SortableHeader<SellTransactionsSortField>
                     field="quantity"
@@ -554,7 +557,7 @@ export function RealizedGainsReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Shares
+                    {t('realizedGains.colShares')}
                   </SortableHeader>
                   <SortableHeader<SellTransactionsSortField>
                     field="price"
@@ -564,7 +567,7 @@ export function RealizedGainsReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Price
+                    {t('realizedGains.colPrice')}
                   </SortableHeader>
                   <SortableHeader<SellTransactionsSortField>
                     field="proceeds"
@@ -574,7 +577,7 @@ export function RealizedGainsReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Proceeds
+                    {t('realizedGains.colProceeds')}
                   </SortableHeader>
                 </tr>
               </thead>

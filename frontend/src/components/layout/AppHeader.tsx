@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { useHideOnScroll } from '@/hooks/useHideOnScroll';
 import { useRouter, usePathname } from 'next/navigation';
@@ -18,30 +19,33 @@ import {
 } from '@/hooks/useTransactionFilters';
 import toast from 'react-hot-toast';
 
+// Labels are translation keys in the `navigation` namespace, resolved at
+// render time. The href doubles as the route and the active-state match.
 const navLinks = [
-  { href: '/transactions', label: 'Transactions' },
-  { href: '/bills', label: 'Bills & Deposits' },
-  { href: '/investments', label: 'Investments' },
-  { href: '/accounts', label: 'Accounts' },
-  { href: '/budgets', label: 'Budgets' },
-  { href: '/reports', label: 'Reports' },
+  { href: '/transactions', labelKey: 'transactions' },
+  { href: '/bills', labelKey: 'bills' },
+  { href: '/investments', labelKey: 'investments' },
+  { href: '/accounts', labelKey: 'accounts' },
+  { href: '/budgets', labelKey: 'budgets' },
+  { href: '/reports', labelKey: 'reports' },
 ];
 
-const toolsLinks: { href: string; label: string; badge?: string }[] = [
-  { href: '/categories', label: 'Categories' },
-  { href: '/payees', label: 'Payees' },
-  { href: '/tags', label: 'Tags' },
-  { href: '/securities', label: 'Securities' },
-  { href: '/currencies', label: 'Currencies' },
-  { href: '/import', label: 'Import Transactions' },
+const toolsLinks: { href: string; labelKey: string; badge?: string }[] = [
+  { href: '/categories', labelKey: 'categories' },
+  { href: '/payees', labelKey: 'payees' },
+  { href: '/tags', labelKey: 'tags' },
+  { href: '/securities', labelKey: 'securities' },
+  { href: '/currencies', labelKey: 'currencies' },
+  { href: '/import', labelKey: 'import' },
 ];
 
-const aiLinks: { href: string; label: string }[] = [
-  { href: '/insights', label: 'Insights' },
-  { href: '/ai', label: 'AI Assistant' },
+const aiLinks: { href: string; labelKey: string }[] = [
+  { href: '/insights', labelKey: 'insights' },
+  { href: '/ai', labelKey: 'aiAssistant' },
 ];
 
 export function AppHeader() {
+  const t = useTranslations('navigation');
   const router = useRouter();
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
@@ -170,7 +174,7 @@ export function AppHeader() {
     try {
       await authApi.logout();
       logout();
-      toast.success('Logged out successfully');
+      toast.success(t('loggedOut'));
       router.push('/login');
     } catch {
       logout();
@@ -196,7 +200,7 @@ export function AppHeader() {
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="p-2 mr-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-                aria-label="Toggle menu"
+                aria-label={t('toggleMenu')}
               >
                 {mobileMenuOpen ? (
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -223,10 +227,20 @@ export function AppHeader() {
                   setMobileMenuOpen(false);
                   router.push(href);
                 }}
-                navLinks={visibleNavLinks}
-                aiLinks={aiLinks}
+                navLinks={visibleNavLinks.map((l) => ({
+                  href: l.href,
+                  label: t(l.labelKey),
+                }))}
+                aiLinks={aiLinks.map((l) => ({
+                  href: l.href,
+                  label: t(l.labelKey),
+                }))}
                 showAiMenu={showAiMenu}
-                toolsLinks={visibleToolsLinks}
+                toolsLinks={visibleToolsLinks.map((l) => ({
+                  href: l.href,
+                  label: t(l.labelKey),
+                  badge: l.badge,
+                }))}
                 showAdmin={!isDelegateView && user?.role === 'admin'}
               />
             </div>
@@ -253,7 +267,7 @@ export function AppHeader() {
                       : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  {link.label}
+                  {t(link.labelKey)}
                 </button>
               ))}
 
@@ -269,7 +283,7 @@ export function AppHeader() {
                       : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  AI
+                  {t('ai')}
                   <svg
                     className={`w-4 h-4 transition-transform ${aiOpen ? 'rotate-180' : ''}`}
                     fill="none"
@@ -296,7 +310,7 @@ export function AppHeader() {
                               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                           }`}
                         >
-                          {link.label}
+                          {t(link.labelKey)}
                         </button>
                       ))}
                     </div>
@@ -319,7 +333,7 @@ export function AppHeader() {
                       : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  Tools
+                  {t('tools')}
                   <svg
                     className={`w-4 h-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`}
                     fill="none"
@@ -346,7 +360,7 @@ export function AppHeader() {
                               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                           }`}
                         >
-                          {link.label}
+                          {t(link.labelKey)}
                           {link.badge && (
                             <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
                               {link.badge}
@@ -372,7 +386,7 @@ export function AppHeader() {
                       : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  Admin
+                  {t('admin')}
                 </button>
               )}
             </nav>
@@ -387,8 +401,8 @@ export function AppHeader() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={handleSearchKeyDown}
-                  placeholder="Search transactions..."
-                  aria-label="Search transactions"
+                  placeholder={t('search.placeholder')}
+                  aria-label={t('search.label')}
                   aria-hidden={!searchOpen}
                   tabIndex={searchOpen ? 0 : -1}
                   className={`overflow-hidden transition-all duration-200 ease-out rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -406,8 +420,8 @@ export function AppHeader() {
                       setSearchOpen(true);
                     }
                   }}
-                  aria-label={searchOpen ? 'Search' : 'Open search'}
-                  title="Search transactions"
+                  aria-label={searchOpen ? t('search.submit') : t('search.open')}
+                  title={t('search.label')}
                   className="p-2 rounded-md text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   <svg
@@ -436,7 +450,7 @@ export function AppHeader() {
                   ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
                   : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
-              title="Settings"
+              title={t('settings')}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -464,7 +478,7 @@ export function AppHeader() {
               size="sm"
               onClick={handleLogout}
             >
-              Logout
+              {t('logout')}
             </Button>
           </div>
         </div>

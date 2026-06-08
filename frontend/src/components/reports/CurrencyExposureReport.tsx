@@ -23,6 +23,7 @@ import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
 import { createLogger } from '@/lib/logger';
+import { useTranslations } from 'next-intl';
 
 const logger = createLogger('CurrencyExposureReport');
 
@@ -55,11 +56,13 @@ interface CurrencyAllocation {
   rate: number | null;
 }
 
-function CustomTooltip({ active, payload, formatCurrencyFull, defaultCurrency }: {
+function CustomTooltip({ active, payload, formatCurrencyFull, defaultCurrency, labelNative, labelConverted }: {
   active?: boolean;
   payload?: Array<{ payload: CurrencyAllocation }>;
   formatCurrencyFull: (v: number, c?: string) => string;
   defaultCurrency: string;
+  labelNative: string;
+  labelConverted: string;
 }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
@@ -67,10 +70,10 @@ function CustomTooltip({ active, payload, formatCurrencyFull, defaultCurrency }:
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
       <p className="font-medium text-gray-900 dark:text-gray-100">{d.currency}</p>
       <p className="text-sm text-gray-600 dark:text-gray-400">
-        Native: {formatCurrencyFull(d.nativeValue, d.currency)}
+        {labelNative} {formatCurrencyFull(d.nativeValue, d.currency)}
       </p>
       <p className="text-sm text-gray-600 dark:text-gray-400">
-        Converted: {formatCurrencyFull(d.convertedValue, defaultCurrency)}
+        {labelConverted} {formatCurrencyFull(d.convertedValue, defaultCurrency)}
       </p>
       <p className="text-sm text-gray-500 dark:text-gray-400">
         {d.percentage.toFixed(1)}% of portfolio ({d.count} holding{d.count !== 1 ? 's' : ''})
@@ -80,6 +83,7 @@ function CustomTooltip({ active, payload, formatCurrencyFull, defaultCurrency }:
 }
 
 export function CurrencyExposureReport() {
+  const t = useTranslations('reports');
   const { formatCurrencyCompact: formatCurrency, formatCurrency: formatCurrencyFull } = useNumberFormat();
   const { defaultCurrency, convertToDefault, getRate } = useExchangeRates();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -186,7 +190,7 @@ export function CurrencyExposureReport() {
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
-    const headers = ['Currency', 'Native Value', `Rate to ${defaultCurrency}`, `${defaultCurrency} Value`, '% of Portfolio', 'Holdings'];
+    const headers = [t('currencyExposure.colCurrency'), t('currencyExposure.colNativeValue'), t('currencyExposure.colRate', { defaultCurrency }), t('currencyExposure.colConvertedValue', { defaultCurrency }), t('currencyExposure.colPortfolioPct'), t('currencyExposure.colHoldings')];
     const rows = allocationData.map(item => [
       item.currency,
       formatCurrencyFull(item.nativeValue, item.currency),
@@ -203,7 +207,7 @@ export function CurrencyExposureReport() {
       label: `${item.currency} - ${formatCurrencyFull(item.convertedValue, defaultCurrency)} (${item.percentage.toFixed(1)}%)`,
     }));
     await exportToPdf({
-      title: 'Currency Exposure',
+      title: t('page.names.currency-exposure' as Parameters<typeof t>[0]),
       subtitle: accountLabel,
       chartContainer: chartRef.current,
       chartLegend: legendItems.length > 0 ? legendItems : undefined,
@@ -233,7 +237,7 @@ export function CurrencyExposureReport() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-8 text-center">
         <p className="text-gray-500 dark:text-gray-400">
-          No investment holdings found. Add securities to see currency exposure.
+          {t('currencyExposure.empty')}
         </p>
       </div>
     );
@@ -262,19 +266,19 @@ export function CurrencyExposureReport() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Portfolio</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('currencyExposure.totalPortfolio')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {formatCurrency(totalPortfolioValue, defaultCurrency)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Currencies</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('currencyExposure.currencies')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {allocationData.length}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Home Currency ({defaultCurrency})</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('currencyExposure.homeCurrency', { defaultCurrency })}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {totalPortfolioValue > 0
               ? ((1 - foreignCurrencyExposure / totalPortfolioValue) * 100).toFixed(1)
@@ -282,7 +286,7 @@ export function CurrencyExposureReport() {
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Foreign Exposure</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('currencyExposure.foreignExposure')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {formatCurrency(foreignCurrencyExposure, defaultCurrency)}
           </p>
@@ -292,7 +296,7 @@ export function CurrencyExposureReport() {
       {/* Pie Chart */}
       <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Currency Allocation
+          {t('currencyExposure.currencyAllocation')}
         </h3>
         <div style={{ width: '100%', height: 350 }}>
           <ResponsiveContainer minWidth={0}>
@@ -311,7 +315,7 @@ export function CurrencyExposureReport() {
                   <Cell key={entry.currency} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip formatCurrencyFull={formatCurrencyFull} defaultCurrency={defaultCurrency} />} />
+              <Tooltip content={<CustomTooltip formatCurrencyFull={formatCurrencyFull} defaultCurrency={defaultCurrency} labelNative={t('currencyExposure.tooltipNative')} labelConverted={t('currencyExposure.tooltipConverted')} />} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -331,7 +335,7 @@ export function CurrencyExposureReport() {
                   onSort={handleSort}
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Currency
+                  {t('currencyExposure.colCurrency')}
                 </SortableHeader>
                 <SortableHeader<CurrencyExposureSortField>
                   field="nativeValue"
@@ -341,7 +345,7 @@ export function CurrencyExposureReport() {
                   align="right"
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Native Value
+                  {t('currencyExposure.colNativeValue')}
                 </SortableHeader>
                 <SortableHeader<CurrencyExposureSortField>
                   field="rate"
@@ -351,7 +355,7 @@ export function CurrencyExposureReport() {
                   align="right"
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Rate to {defaultCurrency}
+                  {t('currencyExposure.colRate', { defaultCurrency })}
                 </SortableHeader>
                 <SortableHeader<CurrencyExposureSortField>
                   field="convertedValue"
@@ -361,7 +365,7 @@ export function CurrencyExposureReport() {
                   align="right"
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  {defaultCurrency} Value
+                  {t('currencyExposure.colConvertedValue', { defaultCurrency })}
                 </SortableHeader>
                 <SortableHeader<CurrencyExposureSortField>
                   field="percentage"
@@ -371,7 +375,7 @@ export function CurrencyExposureReport() {
                   align="right"
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  % of Portfolio
+                  {t('currencyExposure.colPortfolioPct')}
                 </SortableHeader>
                 <SortableHeader<CurrencyExposureSortField>
                   field="count"
@@ -381,7 +385,7 @@ export function CurrencyExposureReport() {
                   align="right"
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Holdings
+                  {t('currencyExposure.colHoldings')}
                 </SortableHeader>
               </tr>
             </thead>
@@ -422,7 +426,7 @@ export function CurrencyExposureReport() {
             <tfoot className="bg-gray-50 dark:bg-gray-900/50">
               <tr>
                 <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">
-                  Total
+                  {t('currencyExposure.total')}
                 </td>
                 <td />
                 <td />

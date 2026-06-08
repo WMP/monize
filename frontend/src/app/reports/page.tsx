@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -10,7 +11,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { userSettingsApi } from '@/lib/user-settings';
 import { customReportsApi } from '@/lib/custom-reports';
-import { CustomReport, VIEW_TYPE_LABELS, TIMEFRAME_LABELS } from '@/types/custom-report';
+import { CustomReport } from '@/types/custom-report';
 import { investmentReportsApi } from '@/lib/investment-reports';
 import { InvestmentReport } from '@/types/investment-report';
 import { getIconComponent } from '@/components/ui/IconPicker';
@@ -24,8 +25,8 @@ type ReportCategory = 'spending' | 'income' | 'networth' | 'tax' | 'debt' | 'inv
 
 interface Report {
   id: string;
-  name: string;
-  description: string;
+  name?: string;
+  description?: string;
   icon: React.ReactNode;
   category: ReportCategory;
   color: string;
@@ -37,8 +38,6 @@ interface Report {
 const reports: Report[] = [
   {
     id: 'spending-by-category',
-    name: 'Spending by Category',
-    description: 'See where your money goes with a breakdown of expenses by category over time.',
     category: 'spending',
     color: 'bg-blue-500',
     icon: (
@@ -50,8 +49,6 @@ const reports: Report[] = [
   },
   {
     id: 'spending-by-payee',
-    name: 'Spending by Payee',
-    description: 'Track how much you spend with each merchant or vendor over time.',
     category: 'spending',
     color: 'bg-indigo-500',
     icon: (
@@ -62,8 +59,6 @@ const reports: Report[] = [
   },
   {
     id: 'monthly-spending-trend',
-    name: 'Monthly Spending Trend',
-    description: 'View your spending patterns month over month to identify trends.',
     category: 'spending',
     color: 'bg-purple-500',
     icon: (
@@ -74,8 +69,6 @@ const reports: Report[] = [
   },
   {
     id: 'income-vs-expenses',
-    name: 'Income vs Expenses',
-    description: 'Compare your income to expenses and track your savings rate over time.',
     category: 'income',
     color: 'bg-green-500',
     icon: (
@@ -86,8 +79,6 @@ const reports: Report[] = [
   },
   {
     id: 'income-by-source',
-    name: 'Income by Source',
-    description: 'Break down your income streams to understand where your money comes from.',
     category: 'income',
     color: 'bg-emerald-500',
     icon: (
@@ -98,8 +89,6 @@ const reports: Report[] = [
   },
   {
     id: 'net-worth',
-    name: 'Net Worth Over Time',
-    description: 'Track your total net worth including all accounts, assets, and liabilities.',
     category: 'networth',
     color: 'bg-teal-500',
     icon: (
@@ -110,8 +99,6 @@ const reports: Report[] = [
   },
   {
     id: 'account-balances',
-    name: 'Account Balances',
-    description: 'View balance history for all your accounts over a selected time period.',
     category: 'networth',
     color: 'bg-cyan-500',
     icon: (
@@ -122,8 +109,6 @@ const reports: Report[] = [
   },
   {
     id: 'cash-flow',
-    name: 'Cash Flow Statement',
-    description: 'Detailed view of money coming in and going out across all accounts.',
     category: 'income',
     color: 'bg-sky-500',
     icon: (
@@ -134,8 +119,6 @@ const reports: Report[] = [
   },
   {
     id: 'tax-summary',
-    name: 'Tax Summary',
-    description: 'Annual summary of tax-deductible expenses and taxable income.',
     category: 'tax',
     color: 'bg-red-500',
     icon: (
@@ -146,8 +129,6 @@ const reports: Report[] = [
   },
   {
     id: 'year-over-year',
-    name: 'Year Over Year Comparison',
-    description: 'Compare this year to previous years to track financial progress.',
     category: 'spending',
     color: 'bg-violet-500',
     icon: (
@@ -159,8 +140,6 @@ const reports: Report[] = [
   // Debt & Loans
   {
     id: 'debt-payoff-timeline',
-    name: 'Debt Payoff Timeline',
-    description: 'Visualize your debt reduction progress with projections for payoff dates.',
     category: 'debt',
     color: 'bg-orange-500',
     icon: (
@@ -171,8 +150,6 @@ const reports: Report[] = [
   },
   {
     id: 'loan-amortization',
-    name: 'Loan Amortization Schedule',
-    description: 'Detailed payment schedules for mortgages and loans with principal vs interest breakdown.',
     category: 'debt',
     color: 'bg-amber-500',
     icon: (
@@ -184,8 +161,6 @@ const reports: Report[] = [
   // Investment
   {
     id: 'investment-performance',
-    name: 'Investment Performance',
-    description: 'Track portfolio returns, gains/losses, and asset allocation over time.',
     category: 'investment',
     color: 'bg-lime-500',
     icon: (
@@ -196,8 +171,6 @@ const reports: Report[] = [
   },
   {
     id: 'dividend-income',
-    name: 'Gains, Dividends & Interest',
-    description: 'Track capital gains and losses (realized + unrealized) alongside dividend and interest income.',
     category: 'investment',
     color: 'bg-green-600',
     icon: (
@@ -208,8 +181,6 @@ const reports: Report[] = [
   },
   {
     id: 'sector-weightings',
-    name: 'Sector Weightings',
-    description: 'Analyze portfolio sector exposure from individual stocks and ETFs.',
     category: 'investment',
     color: 'bg-lime-600',
     icon: (
@@ -221,8 +192,6 @@ const reports: Report[] = [
   },
   {
     id: 'realized-gains',
-    name: 'Realized Gains & Losses',
-    description: 'Track realized gains and losses from sold securities for tax planning and performance review.',
     category: 'investment',
     color: 'bg-emerald-600',
     icon: (
@@ -233,8 +202,6 @@ const reports: Report[] = [
   },
   {
     id: 'portfolio-value',
-    name: 'Portfolio Value Over Time',
-    description: 'Visualize your total investment portfolio value with historical trends and period returns.',
     category: 'investment',
     color: 'bg-teal-600',
     icon: (
@@ -245,8 +212,6 @@ const reports: Report[] = [
   },
   {
     id: 'investment-transactions',
-    name: 'Investment Transaction History',
-    description: 'Complete history of all investment transactions with filtering by action, account, and date.',
     category: 'investment',
     color: 'bg-cyan-600',
     icon: (
@@ -257,8 +222,6 @@ const reports: Report[] = [
   },
   {
     id: 'security-type-allocation',
-    name: 'Security Type Allocation',
-    description: 'View portfolio allocation by asset type (stocks, ETFs, mutual funds, bonds) with drill-down into holdings.',
     category: 'investment',
     color: 'bg-blue-600',
     icon: (
@@ -270,8 +233,6 @@ const reports: Report[] = [
   },
   {
     id: 'geographic-allocation',
-    name: 'Geographic/Exchange Allocation',
-    description: 'Analyze portfolio geographic exposure by exchange and region for diversification insights.',
     category: 'investment',
     color: 'bg-sky-600',
     icon: (
@@ -282,8 +243,6 @@ const reports: Report[] = [
   },
   {
     id: 'dividend-yield-growth',
-    name: 'Dividend Yield & Growth',
-    description: 'Track dividend yield, per-security yields, year-over-year growth, and payment frequency analysis.',
     category: 'investment',
     color: 'bg-green-700',
     icon: (
@@ -294,8 +253,6 @@ const reports: Report[] = [
   },
   {
     id: 'security-performance',
-    name: 'Individual Security Performance',
-    description: 'Deep dive into individual security performance with price history, transactions, and returns.',
     category: 'investment',
     color: 'bg-indigo-600',
     icon: (
@@ -306,8 +263,6 @@ const reports: Report[] = [
   },
   {
     id: 'currency-exposure',
-    name: 'Currency Exposure',
-    description: 'Understand currency risk with portfolio allocation by currency and exchange rate details.',
     category: 'investment',
     color: 'bg-amber-600',
     icon: (
@@ -318,8 +273,6 @@ const reports: Report[] = [
   },
   {
     id: 'monte-carlo-simulation',
-    name: 'Monte Carlo Simulation',
-    description: 'Project future portfolio outcomes with thousands of randomized return paths and a saved-scenario library.',
     category: 'investment',
     color: 'bg-emerald-500',
     icon: (
@@ -331,8 +284,6 @@ const reports: Report[] = [
   // Behavioral Insights
   {
     id: 'recurring-expenses',
-    name: 'Recurring Expenses Tracker',
-    description: 'Identify and monitor subscriptions, memberships, and recurring charges.',
     category: 'insights',
     color: 'bg-fuchsia-500',
     icon: (
@@ -343,8 +294,6 @@ const reports: Report[] = [
   },
   {
     id: 'spending-anomalies',
-    name: 'Spending Anomalies',
-    description: 'Detect unusually large transactions and spending spikes that need attention.',
     category: 'insights',
     color: 'bg-rose-500',
     icon: (
@@ -355,8 +304,6 @@ const reports: Report[] = [
   },
   {
     id: 'weekend-weekday-spending',
-    name: 'Weekend vs Weekday Spending',
-    description: 'Analyze your spending patterns based on day of week to understand habits.',
     category: 'insights',
     color: 'bg-pink-500',
     icon: (
@@ -367,8 +314,6 @@ const reports: Report[] = [
   },
   {
     id: 'monthly-comparison',
-    name: 'Monthly Comparison',
-    description: 'Compare any month to the previous month across income, expenses, net worth, and investments.',
     category: 'insights',
     color: 'bg-violet-500',
     icon: (
@@ -380,8 +325,6 @@ const reports: Report[] = [
   // Maintenance & Cleanup
   {
     id: 'uncategorized-transactions',
-    name: 'Uncategorized Transactions',
-    description: 'Find and categorize transactions that are missing categories.',
     category: 'maintenance',
     color: 'bg-gray-500',
     icon: (
@@ -392,8 +335,6 @@ const reports: Report[] = [
   },
   {
     id: 'duplicate-transactions',
-    name: 'Duplicate Transaction Finder',
-    description: 'Identify potential duplicate entries that may need review or deletion.',
     category: 'maintenance',
     color: 'bg-slate-500',
     icon: (
@@ -405,8 +346,6 @@ const reports: Report[] = [
   // Budget
   {
     id: 'budget-vs-actual',
-    name: 'Budget vs Actual',
-    description: 'Compare your budgeted amounts to actual spending over time across all categories.',
     category: 'budget',
     color: 'bg-emerald-600',
     icon: (
@@ -417,8 +356,6 @@ const reports: Report[] = [
   },
   {
     id: 'budget-health-score',
-    name: 'Budget Health Score',
-    description: 'Get a 0-100 health score for your budget with detailed per-category impact analysis.',
     category: 'budget',
     color: 'bg-teal-600',
     icon: (
@@ -429,8 +366,6 @@ const reports: Report[] = [
   },
   {
     id: 'budget-seasonal-patterns',
-    name: 'Seasonal Spending Patterns',
-    description: 'Discover seasonal trends and high-spending months across your budget categories.',
     category: 'budget',
     color: 'bg-cyan-600',
     icon: (
@@ -441,8 +376,6 @@ const reports: Report[] = [
   },
   {
     id: 'budget-trend',
-    name: 'Budget Trend',
-    description: 'Line chart showing total budgeted vs total actual spending over 6-12 months to track improvement.',
     category: 'budget',
     color: 'bg-indigo-600',
     icon: (
@@ -453,8 +386,6 @@ const reports: Report[] = [
   },
   {
     id: 'category-performance',
-    name: 'Category Performance',
-    description: 'Table showing each category budget performance over multiple months with trend indicators.',
     category: 'budget',
     color: 'bg-violet-600',
     icon: (
@@ -465,8 +396,6 @@ const reports: Report[] = [
   },
   {
     id: 'savings-rate',
-    name: 'Savings Rate',
-    description: 'Track your savings rate (income minus expenses divided by income) over time vs your target.',
     category: 'budget',
     color: 'bg-green-600',
     icon: (
@@ -477,8 +406,6 @@ const reports: Report[] = [
   },
   {
     id: 'health-score-history',
-    name: 'Health Score History',
-    description: 'Line chart of monthly budget health scores showing your financial trajectory over time.',
     category: 'budget',
     color: 'bg-purple-600',
     icon: (
@@ -489,8 +416,6 @@ const reports: Report[] = [
   },
   {
     id: 'flex-group-analysis',
-    name: 'Flex Group Analysis',
-    description: 'Stacked bar chart for each flex group showing component categories with group limit reference.',
     category: 'budget',
     color: 'bg-amber-600',
     icon: (
@@ -501,8 +426,6 @@ const reports: Report[] = [
   },
   {
     id: 'seasonal-spending-map',
-    name: 'Seasonal Spending Map',
-    description: 'Heatmap grid showing 12 months across all categories to identify seasonal spending patterns.',
     category: 'budget',
     color: 'bg-rose-600',
     icon: (
@@ -514,8 +437,6 @@ const reports: Report[] = [
   // Scheduled & Bills
   {
     id: 'upcoming-bills',
-    name: 'Upcoming Bills Calendar',
-    description: 'Visual calendar of scheduled transactions and upcoming bill due dates.',
     category: 'bills',
     color: 'bg-yellow-500',
     icon: (
@@ -526,8 +447,6 @@ const reports: Report[] = [
   },
   {
     id: 'bill-payment-history',
-    name: 'Bill Payment History',
-    description: 'Track payment patterns and history for recurring bills and scheduled transactions.',
     category: 'bills',
     color: 'bg-yellow-600',
     icon: (
@@ -537,20 +456,6 @@ const reports: Report[] = [
     ),
   },
 ];
-
-const categoryLabels: Record<ReportCategory, string> = {
-  spending: 'Spending',
-  income: 'Income',
-  networth: 'Net Worth',
-  tax: 'Tax',
-  debt: 'Debt & Loans',
-  investment: 'Investment',
-  insights: 'Insights',
-  maintenance: 'Maintenance',
-  bills: 'Bills',
-  budget: 'Budget',
-  custom: 'Custom',
-};
 
 const categoryColors: Record<ReportCategory, string> = {
   spending: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
@@ -575,6 +480,7 @@ export default function ReportsPage() {
 }
 
 function ReportsContent() {
+  const t = useTranslations('reports');
   const router = useRouter();
   const [density, setDensity] = useLocalStorage<DensityLevel>('monize-reports-density', 'normal');
   const [categoryFilter, setCategoryFilter] = useLocalStorage<ReportCategory | 'all'>('monize-reports-category', 'all');
@@ -719,9 +625,9 @@ function ReportsContent() {
   };
 
   const densityLabels: Record<DensityLevel, string> = {
-    normal: 'Normal',
-    compact: 'Compact',
-    dense: 'Dense',
+    normal: t('page.density.normal'),
+    compact: t('page.density.compact'),
+    dense: t('page.density.dense'),
   };
 
   // Convert custom reports to the Report interface. Memoized so the SVG icon
@@ -733,7 +639,7 @@ function ReportsContent() {
         return {
           id: `custom/${cr.id}`,
           name: cr.name,
-          description: cr.description || `${VIEW_TYPE_LABELS[cr.viewType]} · ${TIMEFRAME_LABELS[cr.timeframeType]}`,
+          description: cr.description || `${t(`customReportLabels.viewType.${cr.viewType}`)} · ${t(`customReportLabels.timeframe.${cr.timeframeType}`)}`,
           category: 'custom' as ReportCategory,
           color: cr.backgroundColor ? '' : 'bg-purple-500',
           isCustom: true,
@@ -745,7 +651,7 @@ function ReportsContent() {
           ),
         };
       }),
-    [customReports],
+    [customReports, t],
   );
 
   // Convert investment reports to the Report interface (memoized, see above).
@@ -782,6 +688,11 @@ function ReportsContent() {
   // keystroke. The input stays bound to the immediate `searchQuery` value.
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 200);
 
+  const getReportName = (report: Report): string =>
+    report.name ?? t(`page.names.${report.id}` as Parameters<typeof t>[0]);
+  const getReportDescription = (report: Report): string =>
+    report.description ?? t(`page.descriptions.${report.id}` as Parameters<typeof t>[0]);
+
   const filteredReports = useMemo(() => {
     const isFavourite = (report: Report): boolean =>
       report.isCustom || report.isInvestment
@@ -792,12 +703,14 @@ function ReportsContent() {
       .filter(r => {
         if (categoryFilter !== 'all' && r.category !== categoryFilter) return false;
         if (debouncedSearchQuery) {
-          return r.name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q);
+          const name = r.name ?? t(`page.names.${r.id}` as Parameters<typeof t>[0]);
+          const desc = r.description ?? t(`page.descriptions.${r.id}` as Parameters<typeof t>[0]);
+          return name.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
         }
         return true;
       })
       .sort((a, b) => Number(isFavourite(b)) - Number(isFavourite(a)));
-  }, [allReports, categoryFilter, debouncedSearchQuery, favouriteReportIds]);
+  }, [allReports, categoryFilter, debouncedSearchQuery, favouriteReportIds, t]);
 
   const handleReportClick = (reportId: string) => {
     router.push(`/reports/${reportId}`);
@@ -808,8 +721,8 @@ function ReportsContent() {
 
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
         <PageHeader
-          title="Reports"
-          subtitle="Generate insights about your financial health"
+          title={t('page.title')}
+          subtitle={t('page.subtitle')}
           helpUrl="https://github.com/kenlasko/monize/wiki/Reports"
           actions={
             <NewReportButton
@@ -822,7 +735,7 @@ function ReportsContent() {
         <div className="mb-4">
           <input
             type="text"
-            placeholder="Search reports by name or description..."
+            placeholder={t('page.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="block w-full max-w-md rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 font-sans"
@@ -839,9 +752,9 @@ function ReportsContent() {
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'
             }`}
           >
-            All Reports
+            {t('page.allReports')}
           </button>
-          {(Object.keys(categoryLabels) as ReportCategory[]).map((cat) => (
+          {(Object.keys(categoryColors) as ReportCategory[]).map((cat) => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
@@ -851,13 +764,13 @@ function ReportsContent() {
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600'
               }`}
             >
-              {categoryLabels[cat]}
+              {t(`page.categories.${cat}` as Parameters<typeof t>[0])}
             </button>
           ))}
           <button
             onClick={cycleDensity}
             className="ml-auto inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            title={`Switch to ${densityLabels[nextDensity(density)]} view`}
+            title={t('page.densityTitle', { nextDensity: densityLabels[nextDensity(density)] })}
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -898,7 +811,7 @@ function ReportsContent() {
                       onClick={(e) => handleToggleFavourite(e, report)}
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleToggleFavourite(e as unknown as React.MouseEvent, report); } }}
                       className="absolute top-3 left-3 p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
-                      title={isReportFavourite(report) ? 'Remove from favourites' : 'Add to favourites'}
+                      title={isReportFavourite(report) ? t('page.removeFavourite') : t('page.addFavourite')}
                     >
                       <svg
                         className={`w-5 h-5 ${isReportFavourite(report) ? 'text-yellow-500' : 'text-gray-300 dark:text-gray-500'}`}
@@ -910,16 +823,16 @@ function ReportsContent() {
                       </svg>
                     </div>
                     <span className={`absolute top-3 right-3 px-2 py-1 text-xs font-medium rounded ${categoryColors[report.category]}`}>
-                      {categoryLabels[report.category]}
+                      {t(`page.categories.${report.category}` as Parameters<typeof t>[0])}
                     </span>
                   </div>
                   {/* Content */}
                   <div className="p-4 flex flex-col flex-1">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                      {report.name}
+                      {getReportName(report)}
                     </h3>
                     <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                      {report.description}
+                      {getReportDescription(report)}
                     </p>
                   </div>
                 </button>
@@ -951,14 +864,14 @@ function ReportsContent() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                        {report.name}
+                        {getReportName(report)}
                       </h3>
                       <span className={`px-2 py-0.5 text-xs font-medium rounded ${categoryColors[report.category]} flex-shrink-0`}>
-                        {categoryLabels[report.category]}
+                        {t(`page.categories.${report.category}` as Parameters<typeof t>[0])}
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
-                      {report.description}
+                      {getReportDescription(report)}
                     </p>
                   </div>
                   <div
@@ -967,7 +880,7 @@ function ReportsContent() {
                     onClick={(e) => handleToggleFavourite(e, report)}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleToggleFavourite(e as unknown as React.MouseEvent, report); } }}
                     className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
-                    title={isReportFavourite(report) ? 'Remove from favourites' : 'Add to favourites'}
+                    title={isReportFavourite(report) ? t('page.removeFavourite') : t('page.addFavourite')}
                   >
                     <svg
                       className={`w-4 h-4 ${isReportFavourite(report) ? 'text-yellow-500' : 'text-gray-300 dark:text-gray-500'}`}
@@ -991,13 +904,13 @@ function ReportsContent() {
                 <tr>
                   <th className="w-10 px-2 py-3"></th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Report
+                    {t('page.tableReport')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Category
+                    {t('page.tableCategory')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
-                    Description
+                    {t('page.tableDescription')}
                   </th>
                 </tr>
               </thead>
@@ -1016,7 +929,7 @@ function ReportsContent() {
                         <button
                           onClick={(e) => { e.stopPropagation(); handleToggleFavourite(e, report); }}
                           className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                          title={isReportFavourite(report) ? 'Remove from favourites' : 'Add to favourites'}
+                          title={isReportFavourite(report) ? t('page.removeFavourite') : t('page.addFavourite')}
                         >
                           <svg
                             className={`w-4 h-4 ${isReportFavourite(report) ? 'text-yellow-500' : 'text-gray-300 dark:text-gray-500'}`}
@@ -1039,17 +952,17 @@ function ReportsContent() {
                             </div>
                           </div>
                           <span className="font-medium text-gray-900 dark:text-gray-100">
-                            {report.name}
+                            {getReportName(report)}
                           </span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 text-xs font-medium rounded ${categoryColors[report.category]}`}>
-                          {categoryLabels[report.category]}
+                          {t(`page.categories.${report.category}` as Parameters<typeof t>[0])}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 hidden md:table-cell">
-                        {report.description}
+                        {getReportDescription(report)}
                       </td>
                     </tr>
                   );
@@ -1061,8 +974,8 @@ function ReportsContent() {
 
         {/* Report Count */}
         <div className="mt-6 text-sm text-gray-500 dark:text-gray-400 text-center">
-          {filteredReports.length} report{filteredReports.length !== 1 ? 's' : ''} available
-          {isLoadingCustom && ' (loading custom reports...)'}
+          {t('page.reportCount', { count: filteredReports.length })}
+          {isLoadingCustom && ` ${t('page.loadingCustom')}`}
         </div>
       </main>
     </PageLayout>

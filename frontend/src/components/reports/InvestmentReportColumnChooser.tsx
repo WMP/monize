@@ -5,6 +5,7 @@ import {
   INVESTMENT_REPORT_COLUMNS,
   INVESTMENT_COLUMN_MAP,
 } from '@/types/investment-report';
+import { useTranslations } from 'next-intl';
 
 interface InvestmentReportColumnChooserProps {
   /** Ordered selected column keys. */
@@ -21,6 +22,7 @@ export function InvestmentReportColumnChooser({
   value,
   onChange,
 }: InvestmentReportColumnChooserProps) {
+  const t = useTranslations('reports');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
 
@@ -48,12 +50,12 @@ export function InvestmentReportColumnChooser({
       {/* Selected (ordered, drag to reorder) */}
       <div>
         <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Selected columns ({value.length})
+          {t('columnChooser.selectedColumns', { count: value.length })}
         </div>
         <ul className="border border-gray-200 dark:border-gray-700 rounded-md divide-y divide-gray-200 dark:divide-gray-700 max-h-96 overflow-auto">
           {value.length === 0 && (
             <li className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-              Add at least one column from the list.
+              {t('columnChooser.addAtLeastOne')}
             </li>
           )}
           {value.map((key, index) => {
@@ -103,19 +105,19 @@ export function InvestmentReportColumnChooser({
           })}
         </ul>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Drag columns to reorder.
+          {t('columnChooser.dragToReorder')}
         </p>
       </div>
 
       {/* Available */}
       <div>
         <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Available columns ({available.length})
+          {t('columnChooser.availableColumns', { count: available.length })}
         </div>
         <ul className="border border-gray-200 dark:border-gray-700 rounded-md divide-y divide-gray-200 dark:divide-gray-700 max-h-96 overflow-auto">
           {available.length === 0 && (
             <li className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-              All columns selected
+              {t('columnChooser.allColumnsSelected')}
             </li>
           )}
           {available.map((col) => (

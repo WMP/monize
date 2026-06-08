@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import {
   AreaChart,
@@ -49,10 +50,11 @@ const logger = createLogger('PortfolioValueReport');
 const DAILY_RANGES = new Set(['1w', '1m', '3m', 'ytd', '1y']);
 const RANGE_STORAGE_KEY = 'monize-reports-portfolio-value-range';
 
-function CustomTooltip({ active, payload, fmtFull }: {
+function CustomTooltip({ active, payload, fmtFull, portfolioLabel }: {
   active?: boolean;
   payload?: Array<{ value: number; payload: { name: string } }>;
   fmtFull: (v: number) => string;
+  portfolioLabel: string;
 }) {
   if (!active || !payload?.length) return null;
   const data = payload[0]?.payload;
@@ -60,13 +62,14 @@ function CustomTooltip({ active, payload, fmtFull }: {
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
       <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">{data?.name}</p>
       <p className="text-sm text-emerald-600 dark:text-emerald-400">
-        Portfolio: {fmtFull(payload[0].value)}
+        {portfolioLabel} {fmtFull(payload[0].value)}
       </p>
     </div>
   );
 }
 
 export function PortfolioValueReport() {
+  const t = useTranslations('reports');
   const { formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatCurrency: formatCurrencyFull, formatSignedPercent } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
@@ -377,8 +380,8 @@ export function PortfolioValueReport() {
     const { exportToPdf } = await import('@/lib/pdf-export');
     const accountLabel = selectedAccount
       ? selectedAccount.name.replace(/ - (Brokerage|Cash)$/, '')
-      : 'All Accounts';
-    const breakdownHeaders = ['Account', 'Holdings', 'Cash', 'Total', 'Gain/Loss'];
+      : t('portfolioValue.allAccounts');
+    const breakdownHeaders = [t('portfolioValue.pdfColAccount'), t('portfolioValue.pdfColHoldings'), t('portfolioValue.pdfColCash'), t('portfolioValue.pdfColTotal'), t('portfolioValue.pdfColGainLoss')];
     const breakdownRows = portfolio?.holdingsByAccount.map((acct) => [
       acct.accountName,
       fmtFull(acct.totalMarketValue),
@@ -387,17 +390,17 @@ export function PortfolioValueReport() {
       `${acct.totalGainLoss >= 0 ? '+' : ''}${fmtFull(acct.totalGainLoss)}`,
     ]) || [];
     await exportToPdf({
-      title: 'Portfolio Value',
+      title: t('portfolioValue.pdfTitle'),
       subtitle: accountLabel,
       summaryCards: [
-        { label: 'Highest Value', value: fmtVal(summary.highest), color: '#111827' },
-        { label: 'Lowest Value', value: fmtVal(summary.lowest), color: '#111827' },
-        { label: 'Period Change', value: `${summary.change >= 0 ? '+' : ''}${fmtVal(summary.change)}`, color: summary.change >= 0 ? '#16a34a' : '#dc2626' },
-        { label: 'Period Return', value: formatSignedPercent(summary.changePercent, 1), color: summary.changePercent >= 0 ? '#16a34a' : '#dc2626' },
+        { label: t('portfolioValue.highestValue'), value: fmtVal(summary.highest), color: '#111827' },
+        { label: t('portfolioValue.lowestValue'), value: fmtVal(summary.lowest), color: '#111827' },
+        { label: t('portfolioValue.periodChange'), value: `${summary.change >= 0 ? '+' : ''}${fmtVal(summary.change)}`, color: summary.change >= 0 ? '#16a34a' : '#dc2626' },
+        { label: t('portfolioValue.periodReturn'), value: formatSignedPercent(summary.changePercent, 1), color: summary.changePercent >= 0 ? '#16a34a' : '#dc2626' },
       ],
       chartContainer: chartRef.current,
       additionalTables: breakdownRows.length > 0 ? [{
-        title: 'Current Portfolio Breakdown',
+        title: t('portfolioValue.pdfBreakdownTitle'),
         headers: breakdownHeaders,
         rows: breakdownRows,
       }] : undefined,
@@ -406,7 +409,7 @@ export function PortfolioValueReport() {
   };
 
   const handleExportCsv = () => {
-    const headers = ['Date', 'Portfolio Value'];
+    const headers = [t('portfolioValue.csvColDate'), t('portfolioValue.csvColValue')];
     const rows = sortedChartTableData.map((p) => [p.name, p.Value]);
     exportToCsv('portfolio-value', headers, rows);
   };
@@ -430,25 +433,25 @@ export function PortfolioValueReport() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Highest Value</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('portfolioValue.highestValue')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {fmtVal(summary.highest)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Lowest Value</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('portfolioValue.lowestValue')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {fmtVal(summary.lowest)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Period Change</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('portfolioValue.periodChange')}</div>
           <div className={`text-xl font-bold ${gainLossColor(summary.change)}`}>
             {summary.change >= 0 ? '+' : ''}{fmtVal(summary.change)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Period Return</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('portfolioValue.periodReturn')}</div>
           <div className={`text-xl font-bold ${gainLossColor(summary.changePercent)}`}>
             {formatSignedPercent(summary.changePercent, 1)}
           </div>
@@ -491,7 +494,7 @@ export function PortfolioValueReport() {
       {/* Chart */}
       <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-1.5">
-          Portfolio Value Over Time
+          {t('portfolioValue.chartTitle')}
           {/* Background-load indicator: chart stays on screen during a
               refetch so Recharts can animate into the new data, but a
               portfolio with many securities can take a few seconds. */}
@@ -516,14 +519,16 @@ export function PortfolioValueReport() {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 />
               </svg>
-              Updating…
+              {t('portfolioValue.updating')}
             </span>
           )}
           {intradayFallbackNotice && (
             <span
               role="img"
-              aria-label="Detailed intraday pricing unavailable"
-              title={`Detailed intraday pricing isn't available because ${intradayFallbackNotice.skipped.length > 0 ? intradayFallbackNotice.skipped.join(', ') : 'one or more holdings'} use MSN Money, which doesn't expose intraday quotes. Showing daily snapshots instead.`}
+              aria-label={t('portfolioValue.intradayUnavailable')}
+              title={intradayFallbackNotice.skipped.length > 0
+                ? t('portfolioValue.intradayFallbackTitle', { symbols: intradayFallbackNotice.skipped.join(', ') })
+                : t('portfolioValue.intradayFallbackTitleGeneric')}
               className="inline-flex text-amber-500 dark:text-amber-400 cursor-help"
               data-testid="report-intraday-fallback-warning"
             >
@@ -540,20 +545,19 @@ export function PortfolioValueReport() {
         {intradayUnavailable ? (
           <div className="text-center py-12 px-4">
             <p className="text-sm text-gray-700 dark:text-gray-200 font-medium mb-1">
-              Intraday view unavailable for this account mix
+              {t('portfolioValue.intradayUnavailableTitle')}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              One or more holdings use a quote provider (MSN Money) that does
-              not expose intraday data
-              {intradayUnavailable.skipped.length > 0
-                ? `: ${intradayUnavailable.skipped.join(', ')}`
-                : ''}
-              . Switch to a longer range to see daily snapshots.
+              {t('portfolioValue.intradayUnavailableDesc', {
+                skipped: intradayUnavailable.skipped.length > 0
+                  ? t('portfolioValue.intradayUnavailableSkipped', { symbols: intradayUnavailable.skipped.join(', ') })
+                  : '',
+              })}
             </p>
           </div>
         ) : chartPoints.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No investment data for this period.
+            {t('portfolioValue.noData')}
           </p>
         ) : chartViewType === 'table' ? (
           <div className="overflow-x-auto">
@@ -567,7 +571,7 @@ export function PortfolioValueReport() {
                     onSort={chartTableSort.handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Date
+                    {t('portfolioValue.colDate')}
                   </SortableHeader>
                   <SortableHeader<PortfolioChartSortField>
                     field="value"
@@ -577,7 +581,7 @@ export function PortfolioValueReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Portfolio Value
+                    {t('portfolioValue.colPortfolioValue')}
                   </SortableHeader>
                 </tr>
               </thead>
@@ -635,7 +639,7 @@ export function PortfolioValueReport() {
                   tickFormatter={fmtAxis}
                   tick={{ fontSize: 12 }}
                 />
-                <Tooltip content={<CustomTooltip fmtFull={fmtFull} />} />
+                <Tooltip content={<CustomTooltip fmtFull={fmtFull} portfolioLabel={t('portfolioValue.tooltipPortfolio')} />} />
                 <Area
                   type="monotone"
                   dataKey="Value"
@@ -643,7 +647,7 @@ export function PortfolioValueReport() {
                   strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#colorPortfolioValue)"
-                  name="Portfolio Value"
+                  name={t('portfolioValue.colPortfolioValue')}
                   isAnimationActive={false}
                   dot={(props: { cx?: number; cy?: number; index?: number }) => {
                     const { cx, cy, index } = props;
@@ -709,7 +713,7 @@ export function PortfolioValueReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Current Portfolio Breakdown
+              {t('portfolioValue.breakdownTitle')}
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -723,7 +727,7 @@ export function PortfolioValueReport() {
                     onSort={handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Account
+                    {t('portfolioValue.colAccount')}
                   </SortableHeader>
                   <SortableHeader<PortfolioBreakdownSortField>
                     field="holdings"
@@ -733,7 +737,7 @@ export function PortfolioValueReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Holdings
+                    {t('portfolioValue.colHoldings')}
                   </SortableHeader>
                   <SortableHeader<PortfolioBreakdownSortField>
                     field="cash"
@@ -743,7 +747,7 @@ export function PortfolioValueReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Cash
+                    {t('portfolioValue.colCash')}
                   </SortableHeader>
                   <SortableHeader<PortfolioBreakdownSortField>
                     field="total"
@@ -753,7 +757,7 @@ export function PortfolioValueReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Total
+                    {t('portfolioValue.colTotal')}
                   </SortableHeader>
                   <SortableHeader<PortfolioBreakdownSortField>
                     field="gainLoss"
@@ -763,7 +767,7 @@ export function PortfolioValueReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Gain/Loss
+                    {t('portfolioValue.colGainLoss')}
                   </SortableHeader>
                 </tr>
               </thead>

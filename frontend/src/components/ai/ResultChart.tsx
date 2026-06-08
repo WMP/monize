@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import {
   BarChart,
@@ -70,6 +71,7 @@ function sanitizeFilename(name: string): string {
 }
 
 export function ResultChart({ type, title, data }: ResultChartProps) {
+  const t = useTranslations('ai');
   const chartRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -81,7 +83,7 @@ export function ResultChart({ type, title, data }: ResultChartProps) {
     try {
       const captured = await captureSvgAsImage(chartRef.current);
       if (!captured) {
-        toast.error('Unable to capture chart image');
+        toast.error(t('chart.captureError'));
         return;
       }
       const link = document.createElement('a');
@@ -91,7 +93,7 @@ export function ResultChart({ type, title, data }: ResultChartProps) {
       link.click();
       document.body.removeChild(link);
     } catch {
-      toast.error('Failed to download chart');
+      toast.error(t('chart.downloadError'));
     } finally {
       setIsDownloading(false);
     }
@@ -108,8 +110,8 @@ export function ResultChart({ type, title, data }: ResultChartProps) {
           onClick={handleDownload}
           disabled={isDownloading}
           className="p-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          title="Download chart as PNG"
-          aria-label="Download chart as PNG"
+          title={t('chart.downloadTitle')}
+          aria-label={t('chart.downloadAriaLabel')}
         >
           <svg
             className="h-4 w-4"

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useRef, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { CurrencyInfo, CurrencyUsage } from '@/lib/exchange-rates';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -66,6 +67,7 @@ const CurrencyRow = memo(function CurrencyRow({
   onTouchMove,
   index,
 }: CurrencyRowProps) {
+  const t = useTranslations('currencies');
   const handleEdit = useCallback(() => onEdit(currency), [onEdit, currency]);
   const handleToggle = useCallback(() => onToggleActive(currency), [onToggleActive, currency]);
 
@@ -90,7 +92,7 @@ const CurrencyRow = memo(function CurrencyRow({
         </span>
         {isDefault && (
           <span className="ml-2 inline-flex text-xs leading-5 font-semibold rounded-full px-1.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-            Default
+            {t('list.defaultBadge')}
           </span>
         )}
       </td>
@@ -111,10 +113,10 @@ const CurrencyRow = memo(function CurrencyRow({
       {/* Usage */}
       <td className={`${cellPadding} whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 hidden sm:table-cell`}>
         {totalUsage > 0 ? (
-          <span title={`${usage?.accounts || 0} account(s), ${usage?.securities || 0} security/ies`}>
-            {usage?.accounts ? `${usage.accounts} acct${usage.accounts !== 1 ? 's' : ''}` : ''}
+          <span title={t('list.usageTooltip', { accounts: usage?.accounts || 0, securities: usage?.securities || 0 })}>
+            {usage?.accounts ? t('list.usageAccounts', { count: usage.accounts }) : ''}
             {usage?.accounts && usage?.securities ? ', ' : ''}
-            {usage?.securities ? `${usage.securities} sec${usage.securities !== 1 ? 's' : ''}` : ''}
+            {usage?.securities ? t('list.usageSecurities', { count: usage.securities }) : ''}
           </span>
         ) : (
           <span className="text-gray-400 dark:text-gray-500">-</span>
@@ -144,8 +146,8 @@ const CurrencyRow = memo(function CurrencyRow({
           }`}
         >
           {density === 'dense'
-            ? currency.isActive ? 'Act' : 'Ina'
-            : currency.isActive ? 'Active' : 'Inactive'}
+            ? currency.isActive ? t('list.statusBadge.activeShort') : t('list.statusBadge.inactiveShort')
+            : currency.isActive ? t('list.statusBadge.active') : t('list.statusBadge.inactive')}
         </span>
       </td>
       {/* Actions - hidden on mobile */}
@@ -157,7 +159,7 @@ const CurrencyRow = memo(function CurrencyRow({
             onClick={handleEdit}
             className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-1"
           >
-            {density === 'dense' ? '✎' : 'Edit'}
+            {density === 'dense' ? '✎' : t('list.actions.edit')}
           </Button>
         )}
         {!isDefault && totalUsage === 0 && (
@@ -173,7 +175,7 @@ const CurrencyRow = memo(function CurrencyRow({
           >
             {density === 'dense'
               ? currency.isActive ? '⊘' : '✓'
-              : currency.isActive ? 'Deactivate' : 'Activate'}
+              : currency.isActive ? t('list.actions.deactivate') : t('list.actions.activate')}
           </Button>
         )}
       </td>
@@ -195,6 +197,7 @@ export function CurrencyList({
   sortDirection: propSortDirection,
   onSort,
 }: CurrencyListProps) {
+  const t = useTranslations('currencies');
   const [deleteCurrency, setDeleteCurrency] = useState<CurrencyInfo | null>(null);
   const [localDensity, setLocalDensity] = useState<DensityLevel>('normal');
   const [localSortField, setLocalSortField] = useState<CurrencySortField>('code');
@@ -297,10 +300,10 @@ export function CurrencyList({
     if (!deleteCurrency) return;
     try {
       await exchangeRatesApi.deleteCurrency(deleteCurrency.code);
-      toast.success('Currency deleted successfully');
+      toast.success(t('list.toasts.deleted'));
       onRefresh();
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to delete currency. It may be in use.'));
+      toast.error(getErrorMessage(error, t('list.toasts.deleteFailed')));
       logger.error(error);
     } finally {
       setDeleteCurrency(null);
@@ -323,8 +326,8 @@ export function CurrencyList({
             d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
           />
         </svg>
-        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No currencies</h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by adding a currency.</p>
+        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t('list.empty.title')}</h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('list.empty.subtitle')}</p>
       </div>
     );
   }
@@ -336,12 +339,12 @@ export function CurrencyList({
         <button
           onClick={cycleDensity}
           className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-          title="Toggle row density"
+          title={t('list.density.toggle')}
         >
           <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-          {density === 'normal' ? 'Normal' : density === 'compact' ? 'Compact' : 'Dense'}
+          {density === 'normal' ? t('list.density.normal') : density === 'compact' ? t('list.density.compact') : t('list.density.dense')}
         </button>
       </div>
       <div className="overflow-x-auto">
@@ -352,42 +355,42 @@ export function CurrencyList({
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
                 onClick={() => handleSort('code')}
               >
-                Code<SortIcon field="code" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.columns.code')}<SortIcon field="code" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden sm:table-cell`}
                 onClick={() => handleSort('name')}
               >
-                Name<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.columns.name')}<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
                 onClick={() => handleSort('symbol')}
               >
-                Symbol<SortIcon field="symbol" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.columns.symbol')}<SortIcon field="symbol" sortField={sortField} sortDirection={sortDirection} />
               </th>
               {density === 'normal' && (
                 <th
                   className={`${headerPadding} text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden lg:table-cell`}
                   onClick={() => handleSort('decimals')}
                 >
-                  Decimals<SortIcon field="decimals" sortField={sortField} sortDirection={sortDirection} />
+                  {t('list.columns.decimals')}<SortIcon field="decimals" sortField={sortField} sortDirection={sortDirection} />
                 </th>
               )}
               <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}>
-                Usage
+                {t('list.columns.usage')}
               </th>
               <th
                 className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
                 onClick={() => handleSort('rate')}
               >
-                Rate ({defaultCurrency})<SortIcon field="rate" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.columns.rate', { currency: defaultCurrency })}<SortIcon field="rate" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}>
-                Status
+                {t('list.columns.status')}
               </th>
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell`}>
-                Actions
+                {t('list.columns.actions')}
               </th>
             </tr>
           </thead>
@@ -437,7 +440,7 @@ export function CurrencyList({
                   <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
-                  Edit Currency
+                  {t('list.contextMenu.editCurrency')}
                 </button>
               )}
               {canDeactivateOrDelete && (
@@ -458,7 +461,7 @@ export function CurrencyList({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   )}
-                  {contextCurrency.isActive ? 'Deactivate' : 'Activate'}
+                  {contextCurrency.isActive ? t('list.contextMenu.deactivate') : t('list.contextMenu.activate')}
                 </button>
               )}
               {canDeactivateOrDelete && !contextCurrency.isSystem && (
@@ -469,7 +472,7 @@ export function CurrencyList({
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                  Delete Currency
+                  {t('list.contextMenu.deleteCurrency')}
                 </button>
               )}
             </div>
@@ -480,10 +483,10 @@ export function CurrencyList({
 
       <ConfirmDialog
         isOpen={deleteCurrency !== null}
-        title={`Delete "${deleteCurrency?.code}"?`}
-        message="This currency will be permanently deleted. This only works if the currency is not in use by any accounts or securities."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title={t('list.deleteConfirm.title', { code: deleteCurrency?.code ?? '' })}
+        message={t('list.deleteConfirm.message')}
+        confirmLabel={t('list.deleteConfirm.confirmLabel')}
+        cancelLabel={t('list.deleteConfirm.cancelLabel')}
         variant="danger"
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteCurrency(null)}

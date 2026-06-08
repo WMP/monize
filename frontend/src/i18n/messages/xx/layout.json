@@ -1,0 +1,70 @@
+{
+  "demoBanner": {
+    "label": "[XX-Demo Mode-XX]",
+    "message": "[XX-All data resets daily at 4:00 AM UTC. Explore freely!-XX]"
+  },
+  "delegationBanner": {
+    "viewing": "[XX-Viewing:-XX]",
+    "sharedAccount": "[XX-Shared account-XX]",
+    "yourAccount": "[XX-Your account-XX]",
+    "switchAccountLabel": "[XX-Switch account-XX]",
+    "selfSuffix": "[XX-{label} (you)-XX]",
+    "error2fa": "[XX-That account requires two-factor authentication. Set up 2FA in Settings before switching.-XX]",
+    "errorSwitch": "[XX-Unable to switch account-XX]"
+  },
+  "backendDownBanner": {
+    "connectionBlockedLabel": "[XX-Connection Blocked-XX]",
+    "connectionBlockedDetail": "[XX-Security headers are blocking requests over plain HTTP.-XX]",
+    "connectionLostLabel": "[XX-Connection Lost-XX]",
+    "connectionLostDetail": "[XX-Unable to reach the server. Retrying automatically...-XX]",
+    "httpsHint": "[XX-Set <code>DISABLE_HTTPS_HEADERS=true</code> in your environment or access the site over HTTPS.-XX]"
+  },
+  "httpWarningBanner": {
+    "label": "[XX-HTTPS Required-XX]",
+    "detail": "[XX-Security headers are active but this site is being accessed over plain HTTP. API requests may fail.-XX]",
+    "httpsHint": "[XX-Set <code>DISABLE_HTTPS_HEADERS=true</code> in your environment or access the site over HTTPS.-XX]",
+    "dismiss": "[XX-Dismiss-XX]",
+    "dismissAriaLabel": "[XX-Dismiss HTTPS warning-XX]"
+  },
+  "updateBanner": {
+    "availableWithVersion": "[XX-Monize v{version} is available-XX]",
+    "availableGeneric": "[XX-A new version of Monize is available-XX]",
+    "runningVersion": "[XX-(running v{version})-XX]",
+    "releaseNotes": "[XX-Release notes-XX]",
+    "dismiss": "[XX-Dismiss-XX]",
+    "dismissAriaLabel": "[XX-Dismiss update notification-XX]"
+  },
+  "actionHistory": {
+    "title": "[XX-Action History-XX]",
+    "buttonAriaLabel": "[XX-Action History-XX]",
+    "closeAriaLabel": "[XX-Close-XX]",
+    "undo": "[XX-Undo-XX]",
+    "redo": "[XX-Redo-XX]",
+    "noRecentActions": "[XX-No recent actions-XX]",
+    "undoneLabel": "[XX-Undone-XX]",
+    "nothingToUndo": "[XX-Nothing to undo-XX]",
+    "nothingToRedo": "[XX-Nothing to redo-XX]",
+    "cannotUndoDefault": "[XX-Cannot undo this action-XX]",
+    "cannotRedoDefault": "[XX-Cannot redo this action-XX]",
+    "undoFailed": "[XX-Undo failed-XX]",
+    "redoFailed": "[XX-Redo failed-XX]",
+    "entityLabels": {
+      "transaction": "[XX-Transaction-XX]",
+      "transfer": "[XX-Transfer-XX]",
+      "investment_transaction": "[XX-Investment-XX]",
+      "bulk_transaction": "[XX-Bulk-XX]",
+      "category": "[XX-Category-XX]",
+      "payee": "[XX-Payee-XX]",
+      "tag": "[XX-Tag-XX]",
+      "account": "[XX-Account-XX]",
+      "scheduled_transaction": "[XX-Scheduled-XX]",
+      "security": "[XX-Security-XX]",
+      "budget": "[XX-Budget-XX]",
+      "custom_report": "[XX-Report-XX]"
+    }
+  },
+  "pageHeader": {
+    "helpAriaLabel": "[XX-Open the Monize wiki for help with this section-XX]",
+    "helpTooltip": "[XX-Open the Monize wiki for help with this section-XX]"
+  }
+}

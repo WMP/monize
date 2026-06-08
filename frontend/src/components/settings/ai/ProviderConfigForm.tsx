@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import '@/lib/zodConfig';
@@ -26,29 +27,29 @@ const costField = z
 // Common billing currencies for AI providers. USD covers Anthropic/OpenAI;
 // the others are included to let users align with locally-billed providers.
 const COST_CURRENCY_OPTIONS = [
-  { value: 'USD', label: 'USD - US Dollar' },
-  { value: 'EUR', label: 'EUR - Euro' },
-  { value: 'GBP', label: 'GBP - British Pound' },
-  { value: 'CAD', label: 'CAD - Canadian Dollar' },
-  { value: 'AUD', label: 'AUD - Australian Dollar' },
-  { value: 'JPY', label: 'JPY - Japanese Yen' },
-  { value: 'CNY', label: 'CNY - Chinese Yuan' },
-  { value: 'INR', label: 'INR - Indian Rupee' },
+  { value: 'USD', labelKey: 'costCurrencies.USD' },
+  { value: 'EUR', labelKey: 'costCurrencies.EUR' },
+  { value: 'GBP', labelKey: 'costCurrencies.GBP' },
+  { value: 'CAD', labelKey: 'costCurrencies.CAD' },
+  { value: 'AUD', labelKey: 'costCurrencies.AUD' },
+  { value: 'JPY', labelKey: 'costCurrencies.JPY' },
+  { value: 'CNY', labelKey: 'costCurrencies.CNY' },
+  { value: 'INR', labelKey: 'costCurrencies.INR' },
 ];
 
-const providerConfigSchema = z.object({
+const buildProviderConfigSchema = (t: (key: string) => string) => z.object({
   provider: z.enum(AI_PROVIDER_TYPES),
-  displayName: z.string().max(100, 'Display name must be 100 characters or less').optional().or(z.literal('')),
+  displayName: z.string().max(100, t('validation.displayNameMax')).optional().or(z.literal('')),
   model: z.string().max(200).optional().or(z.literal('')),
   apiKey: z.string().max(500).optional().or(z.literal('')),
   baseUrl: z.string().max(500).optional().or(z.literal('')),
-  priority: z.string().regex(/^\d*$/, 'Must be a number'),
+  priority: z.string().regex(/^\d*$/, t('validation.mustBeNumber')),
   inputCostPer1M: costField,
   outputCostPer1M: costField,
-  costCurrency: z.string().regex(/^[A-Z]{3}$/, 'Must be a 3-letter currency code'),
+  costCurrency: z.string().regex(/^[A-Z]{3}$/, t('validation.currencyCode')),
 });
 
-type ProviderConfigFormData = z.infer<typeof providerConfigSchema>;
+type ProviderConfigFormData = z.infer<ReturnType<typeof buildProviderConfigSchema>>;
 
 interface ProviderConfigFormProps {
   isOpen: boolean;
@@ -64,6 +65,8 @@ const PROVIDER_OPTIONS = (Object.entries(AI_PROVIDER_LABELS) as [AiProviderType,
 type TestStatus = 'idle' | 'testing' | 'success' | 'error';
 
 export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: ProviderConfigFormProps) {
+  const t = useTranslations('settings.aiProviders.configForm');
+  const tc = useTranslations('common');
   const [error, setError] = useState('');
   const [testStatus, setTestStatus] = useState<TestStatus>('idle');
 
@@ -74,7 +77,7 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<ProviderConfigFormData>({
-    resolver: zodResolver(providerConfigSchema),
+    resolver: zodResolver(buildProviderConfigSchema(t)),
     defaultValues: {
       provider: editConfig?.provider || 'anthropic',
       displayName: editConfig?.displayName || '',
@@ -122,14 +125,13 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
 
       if (!result.available) {
         setTestStatus('error');
-        toast.error(result.error || 'Could not reach the provider.', { duration: 6000 });
+        toast.error(result.error || t('toasts.notReachable'), { duration: 6000 });
         return;
       }
       if (result.modelAvailable === false) {
         setTestStatus('error');
         toast.error(
-          result.modelError ||
-            `Model "${result.model ?? 'unknown'}" is not available on this provider.`,
+          result.modelError || t('toasts.modelUnavailable', { model: result.model ?? 'unknown' }),
           { duration: 7000 },
         );
         return;
@@ -137,12 +139,12 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
       setTestStatus('success');
       toast.success(
         result.modelAvailable
-          ? `Model "${result.model}" is ready.`
-          : 'Connection successful.',
+          ? t('toasts.modelReady', { model: result.model ?? '' })
+          : t('toasts.success'),
       );
     } catch (err) {
       setTestStatus('error');
-      toast.error(getErrorMessage(err, 'Model test failed'));
+      toast.error(getErrorMessage(err, t('toasts.testFailed')));
     }
   };
 
@@ -180,7 +182,7 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
       }
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save configuration');
+      setError(err instanceof Error ? err.message : t('saveFailed'));
     }
   };
 
@@ -188,13 +190,13 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="lg">
       <form onSubmit={handleSubmit(onFormSubmit)} className="p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          {editConfig ? 'Edit Provider' : 'Add AI Provider'}
+          {editConfig ? t('editTitle') : t('addTitle')}
         </h2>
 
         <div className="space-y-4">
           {!editConfig && (
             <Select
-              label="Provider"
+              label={t('providerLabel')}
               {...register('provider')}
               options={PROVIDER_OPTIONS}
               error={errors.provider?.message}
@@ -202,7 +204,7 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
           )}
 
           <Input
-            label="Display Name"
+            label={t('displayNameLabel')}
             {...register('displayName')}
             error={errors.displayName?.message}
             placeholder={AI_PROVIDER_LABELS[provider]}
@@ -214,7 +216,7 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
               htmlFor="input-model"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
-              Model
+              {t('modelLabel')}
             </label>
             <div className="flex items-center gap-2">
               <div className="flex-1 min-w-0">
@@ -222,7 +224,7 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
                   id="input-model"
                   {...register('model')}
                   error={errors.model?.message}
-                  placeholder={modelSuggestions[0] || 'Enter model name'}
+                  placeholder={modelSuggestions[0] || t('modelPlaceholder')}
                 />
               </div>
               <Button
@@ -231,7 +233,7 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
                 size="sm"
                 onClick={handleTestModel}
                 disabled={testStatus === 'testing' || isSubmitting}
-                aria-label="Test model"
+                aria-label={t('testModelAria')}
                 className={`shrink-0 w-24 justify-center ${
                   testStatus === 'success'
                     ? 'border-green-500 text-green-600 dark:border-green-400 dark:text-green-400'
@@ -240,7 +242,7 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
                       : ''
                 }`}
               >
-                {testStatus === 'testing' ? 'Testing...' : 'Test'}
+                {testStatus === 'testing' ? t('testingButton') : t('testButton')}
               </Button>
             </div>
             {modelSuggestions.length > 0 && (
@@ -259,24 +261,24 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
             )}
             {provider === 'ollama-cloud' && (
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Model names must include the <code>-cloud</code> suffix (e.g. <code>gpt-oss:20b-cloud</code>).
+                {t('ollamaCloudNote')}
               </p>
             )}
           </div>
 
           {needsApiKey && (
             <Input
-              label="API Key"
+              label={t('apiKeyLabel')}
               type="password"
               {...register('apiKey')}
               error={errors.apiKey?.message}
-              placeholder={editConfig?.apiKeyMasked || 'Enter API key'}
+              placeholder={editConfig?.apiKeyMasked || t('apiKeyPlaceholder')}
             />
           )}
 
           {needsBaseUrl && (
             <Input
-              label="Base URL"
+              label={t('baseUrlLabel')}
               {...register('baseUrl')}
               error={errors.baseUrl?.message}
               placeholder={
@@ -288,52 +290,52 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
           )}
 
           <Input
-            label="Priority"
+            label={t('priorityLabel')}
             type="number"
             {...register('priority')}
             error={errors.priority?.message}
             min={0}
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 -mt-3">
-            Lower number = higher priority. Used for fallback ordering.
+            {t('priorityHelp')}
           </p>
 
           <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Cost rates (optional)
+              {t('costRatesHeading')}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              Enter your provider&apos;s published rates per 1,000,000 tokens to see estimated cost on the Usage dashboard. Leave blank to skip cost estimates.
+              {t('costRatesHelp')}
             </p>
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Input cost / 1M tokens"
+                label={t('inputCostLabel')}
                 type="number"
                 step="0.0001"
                 min={0}
                 {...register('inputCostPer1M')}
                 error={errors.inputCostPer1M?.message}
-                placeholder="e.g., 3.00"
+                placeholder={t('inputCostPlaceholder')}
               />
               <Input
-                label="Output cost / 1M tokens"
+                label={t('outputCostLabel')}
                 type="number"
                 step="0.0001"
                 min={0}
                 {...register('outputCostPer1M')}
                 error={errors.outputCostPer1M?.message}
-                placeholder="e.g., 15.00"
+                placeholder={t('outputCostPlaceholder')}
               />
             </div>
             <div className="mt-3">
               <Select
-                label="Rate Currency"
+                label={t('rateCurrencyLabel')}
                 {...register('costCurrency')}
-                options={COST_CURRENCY_OPTIONS}
+                options={COST_CURRENCY_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
                 error={errors.costCurrency?.message}
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                If this differs from your home currency, the Usage dashboard can convert costs using your saved exchange rates.
+                {t('rateCurrencyHelp')}
               </p>
             </div>
           </div>
@@ -345,10 +347,10 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
 
         <div className="mt-6 flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
+            {tc('cancel')}
           </Button>
           <Button type="submit" isLoading={isSubmitting}>
-            {editConfig ? 'Save Changes' : 'Add Provider'}
+            {editConfig ? t('saveButton') : t('addProviderButton')}
           </Button>
         </div>
       </form>

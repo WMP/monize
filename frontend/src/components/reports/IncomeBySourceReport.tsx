@@ -30,12 +30,14 @@ import { ReportError } from '@/components/reports/ReportError';
 import { CHART_COLOURS_INCOME } from '@/lib/chart-colours';
 import { exportToCsv } from '@/lib/csv-export';
 import type { ChartDatum } from '@/types/chart';
+import { useTranslations } from 'next-intl';
 
 type IncomeSourceSortField = 'name' | 'value' | 'percentage';
 
 type ChartDataItem = ChartDatum & { id: string; colour: string };
 
 export function IncomeBySourceReport() {
+  const t = useTranslations('reports');
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
   const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
@@ -114,9 +116,9 @@ export function IncomeBySourceReport() {
     });
 
     await exportToPdf({
-      title: 'Income by Source',
+      title: t('page.names.income-by-source' as Parameters<typeof t>[0]),
       summaryCards: [
-        { label: 'Total Income', value: formatCurrency(totalIncome), color: '#16a34a' },
+        { label: t('incomeBySource.totalIncome'), value: formatCurrency(totalIncome), color: '#16a34a' },
       ],
       chartContainer: chartRef.current,
       chartLegend: legendItems.length > 0 ? legendItems : undefined,
@@ -125,7 +127,7 @@ export function IncomeBySourceReport() {
   };
 
   const handleExportCsv = () => {
-    const headers = ['Source', 'Amount', 'Percentage'];
+    const headers = [t('incomeBySource.colSource'), t('incomeBySource.colAmount'), t('incomeBySource.colPercentOfTotal')];
     const rows = sortedTableData.map((item) => {
       const percentage = totalIncome > 0 ? (item.value / totalIncome) * 100 : 0;
       return [item.name, item.value, `${percentage.toFixed(2)}%`];
@@ -203,7 +205,7 @@ export function IncomeBySourceReport() {
       <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         {chartData.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No income data for this period.
+            {t('incomeBySource.noData')}
           </p>
         ) : viewType === 'table' ? (
           <>
@@ -218,7 +220,7 @@ export function IncomeBySourceReport() {
                       onSort={handleSort}
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Source
+                      {t('incomeBySource.colSource')}
                     </SortableHeader>
                     <SortableHeader<IncomeSourceSortField>
                       field="value"
@@ -228,7 +230,7 @@ export function IncomeBySourceReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      Amount
+                      {t('incomeBySource.colAmount')}
                     </SortableHeader>
                     <SortableHeader<IncomeSourceSortField>
                       field="percentage"
@@ -238,7 +240,7 @@ export function IncomeBySourceReport() {
                       align="right"
                       className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                     >
-                      % of Total
+                      {t('incomeBySource.colPercentOfTotal')}
                     </SortableHeader>
                   </tr>
                 </thead>
@@ -269,7 +271,7 @@ export function IncomeBySourceReport() {
                 </tbody>
                 <tfoot className="bg-gray-50 dark:bg-gray-900/50">
                   <tr>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">Total</td>
+                    <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">{t('incomeBySource.total')}</td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-green-600 dark:text-green-400">
                       {formatCurrency(totalIncome)}
                     </td>
@@ -358,7 +360,7 @@ export function IncomeBySourceReport() {
 
             {/* Total */}
             <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
-              <div className="text-sm text-gray-500 dark:text-gray-400">Total Income</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">{t('incomeBySource.totalIncome')}</div>
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {formatCurrency(totalIncome)}
               </div>

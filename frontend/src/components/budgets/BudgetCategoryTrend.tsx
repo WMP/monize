@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   LineChart,
   Line,
@@ -73,6 +74,7 @@ export function BudgetCategoryTrend({
   data,
   formatCurrency,
 }: BudgetCategoryTrendProps) {
+  const t = useTranslations('budgets');
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
     () => new Set(data.map((s) => s.categoryId)),
   );
@@ -118,10 +120,10 @@ export function BudgetCategoryTrend({
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Category Trends
+          {t('categoryTrend.title')}
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Not enough data to display category trends yet.
+          {t('categoryTrend.empty')}
         </p>
       </div>
     );
@@ -130,7 +132,7 @@ export function BudgetCategoryTrend({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-        Category Trends
+        {t('categoryTrend.title')}
       </h2>
 
       {/* Category toggles */}
@@ -201,10 +203,10 @@ export function BudgetCategoryTrend({
         <table className="min-w-full text-sm">
           <thead>
             <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
-              <th className="py-2 pr-4 font-medium">Category</th>
-              <th className="py-2 pr-4 font-medium text-right">Avg Budget</th>
-              <th className="py-2 pr-4 font-medium text-right">Avg Actual</th>
-              <th className="py-2 font-medium text-right">Avg Variance</th>
+              <th className="py-2 pr-4 font-medium">{t('categoryTrend.tableHeaders.category')}</th>
+              <th className="py-2 pr-4 font-medium text-right">{t('categoryTrend.tableHeaders.avgBudget')}</th>
+              <th className="py-2 pr-4 font-medium text-right">{t('categoryTrend.tableHeaders.avgActual')}</th>
+              <th className="py-2 font-medium text-right">{t('categoryTrend.tableHeaders.avgVariance')}</th>
             </tr>
           </thead>
           <tbody>

@@ -1,6 +1,7 @@
 'use client';
 
 import { memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { gainLossColor } from '@/lib/format';
 import { Account, AccountType } from '@/types/account';
 import { Button } from '@/components/ui/Button';
@@ -60,6 +61,7 @@ export const AccountRow = memo(function AccountRow({
   onTouchMove,
   onToggleFavourite,
 }: AccountRowProps) {
+  const t = useTranslations('accounts');
   return (
     <tr
       className={`group hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer select-none ${density !== 'normal' && index % 2 === 1 ? 'bg-gray-50 dark:bg-table-stripe-dark' : 'bg-white dark:bg-gray-900'}`}
@@ -76,7 +78,7 @@ export const AccountRow = memo(function AccountRow({
         <div
           className="text-left w-full"
           title={account.linkedAccountId && (account.accountSubType === 'INVESTMENT_CASH' || account.accountSubType === 'INVESTMENT_BROKERAGE')
-            ? `${account.name} — Paired with ${accountNameMap.get(account.linkedAccountId) || 'linked account'}`
+            ? `${account.name} — ${t('row.pairedWith', { name: accountNameMap.get(account.linkedAccountId) || 'linked account' })}`
             : account.name}
         >
           <div className="flex items-center text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
@@ -90,14 +92,14 @@ export const AccountRow = memo(function AccountRow({
                 className={`mr-1 flex-shrink-0 ${account.isFavourite ? 'text-yellow-500' : 'text-gray-300 dark:text-gray-600 hover:text-yellow-500'}`}
                 aria-label={
                   account.isFavourite
-                    ? 'Remove from favourites'
-                    : 'Add to favourites'
+                    ? t('row.removeFromFavourites')
+                    : t('row.addToFavourites')
                 }
                 aria-pressed={account.isFavourite}
                 title={
                   account.isFavourite
-                    ? 'Remove from favourites'
-                    : 'Add to favourites'
+                    ? t('row.removeFromFavourites')
+                    : t('row.addToFavourites')
                 }
               >
                 <svg
@@ -115,7 +117,7 @@ export const AccountRow = memo(function AccountRow({
                   className="w-4 h-4 mr-1 flex-shrink-0 text-yellow-500"
                   fill="currentColor"
                   viewBox="0 0 20 20"
-                  aria-label="Favourite"
+                  aria-label={t('row.favourite')}
                 >
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                 </svg>
@@ -133,7 +135,7 @@ export const AccountRow = memo(function AccountRow({
               <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
-              Paired with {accountNameMap.get(account.linkedAccountId) || 'linked account'}
+              {t('row.pairedWith', { name: accountNameMap.get(account.linkedAccountId) || 'linked account' })}
             </div>
           )}
           {density === 'normal' && account.description && !account.linkedAccountId && (
@@ -147,8 +149,8 @@ export const AccountRow = memo(function AccountRow({
             account.accountType
           )}`}
         >
-          {account.accountSubType === 'INVESTMENT_BROKERAGE' ? 'Brokerage' :
-           account.accountSubType === 'INVESTMENT_CASH' ? 'Inv. Cash' :
+          {account.accountSubType === 'INVESTMENT_BROKERAGE' ? t('row.subtypeBrokerage') :
+           account.accountSubType === 'INVESTMENT_CASH' ? t('row.subtypeInvCash') :
            formatAccountType(account.accountType)}
         </span>
       </td>
@@ -160,7 +162,7 @@ export const AccountRow = memo(function AccountRow({
               : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
           }`}
         >
-          {!account.isClosed ? 'Active' : 'Closed'}
+          {!account.isClosed ? t('row.statusActive') : t('row.statusClosed')}
         </span>
       </td>
       <td className={`${cellPadding} whitespace-nowrap text-right ${account.isClosed ? 'opacity-50' : ''}`}>
@@ -171,7 +173,7 @@ export const AccountRow = memo(function AccountRow({
             </div>
             {density === 'normal' && (
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                Market value
+                {t('row.marketValue')}
               </div>
             )}
             {density !== 'dense' && account.currencyCode !== defaultCurrency && (
@@ -203,7 +205,7 @@ export const AccountRow = memo(function AccountRow({
             })()}
             {density !== 'dense' && account.creditLimit && (
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                Limit: {formatCurrency(account.creditLimit, account.currencyCode)}
+                {t('row.limit', { amount: formatCurrency(account.creditLimit, account.currencyCode) })}
               </div>
             )}
           </>
@@ -243,22 +245,23 @@ function ActiveAccountActions({ account, density, isDeletable, onEdit, onReconci
   onCloseClick: (account: Account) => void;
   onDeleteClick: (account: Account) => void;
 }) {
+  const t = useTranslations('accounts');
   if (density === 'dense') {
     return (
       <>
-        <button onClick={() => onEdit(account)} className="inline-flex items-center justify-center p-1.5 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title="Edit">
+        <button onClick={() => onEdit(account)} className="inline-flex items-center justify-center p-1.5 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title={t('row.actions.edit')}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
         </button>
         {account.accountSubType !== 'INVESTMENT_BROKERAGE' && (
-          <button onClick={() => onReconcile(account)} className="inline-flex items-center justify-center p-1.5 text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title="Reconcile">
+          <button onClick={() => onReconcile(account)} className="inline-flex items-center justify-center p-1.5 text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title={t('row.actions.reconcile')}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           </button>
         )}
-        <button onClick={() => onCloseClick(account)} disabled={Number(account.currentBalance) !== 0} className={`inline-flex items-center justify-center p-1.5 rounded ${Number(account.currentBalance) !== 0 ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`} title={Number(account.currentBalance) !== 0 ? 'Account must have zero balance to close' : 'Close account'}>
+        <button onClick={() => onCloseClick(account)} disabled={Number(account.currentBalance) !== 0} className={`inline-flex items-center justify-center p-1.5 rounded ${Number(account.currentBalance) !== 0 ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`} title={Number(account.currentBalance) !== 0 ? t('row.actions.closeTitleDisabled') : t('row.actions.closeTitleEnabled')}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
         </button>
         {isDeletable && (
-          <button onClick={() => onDeleteClick(account)} className="inline-flex items-center justify-center p-1.5 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded" title="Permanently delete account (no transactions)">
+          <button onClick={() => onDeleteClick(account)} className="inline-flex items-center justify-center p-1.5 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded" title={t('row.actions.deleteTitle')}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
           </button>
         )}
@@ -268,13 +271,13 @@ function ActiveAccountActions({ account, density, isDeletable, onEdit, onReconci
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => onEdit(account)}>Edit</Button>
+      <Button variant="outline" size="sm" onClick={() => onEdit(account)}>{t('row.actions.edit')}</Button>
       {account.accountSubType !== 'INVESTMENT_BROKERAGE' && (
-        <Button variant="outline" size="sm" onClick={() => onReconcile(account)} title="Reconcile account against a statement">Reconcile</Button>
+        <Button variant="outline" size="sm" onClick={() => onReconcile(account)} title={t('row.actions.reconcileTitle')}>{t('row.actions.reconcile')}</Button>
       )}
-      <Button variant="outline" size="sm" onClick={() => onCloseClick(account)} disabled={Number(account.currentBalance) !== 0} title={Number(account.currentBalance) !== 0 ? 'Account must have zero balance to close' : 'Close account'}>Close</Button>
+      <Button variant="outline" size="sm" onClick={() => onCloseClick(account)} disabled={Number(account.currentBalance) !== 0} title={Number(account.currentBalance) !== 0 ? t('row.actions.closeTitleDisabled') : t('row.actions.closeTitleEnabled')}>{t('row.actions.close')}</Button>
       {isDeletable && (
-        <Button variant="danger" size="sm" onClick={() => onDeleteClick(account)} title="Permanently delete account (no transactions)">Delete</Button>
+        <Button variant="danger" size="sm" onClick={() => onDeleteClick(account)} title={t('row.actions.deleteTitle')}>{t('row.actions.delete')}</Button>
       )}
     </>
   );
@@ -287,14 +290,15 @@ function ClosedAccountActions({ account, density, isDeletable, onReopen, onDelet
   onReopen: (account: Account) => void;
   onDeleteClick: (account: Account) => void;
 }) {
+  const t = useTranslations('accounts');
   if (density === 'dense') {
     return (
       <>
-        <button onClick={() => onReopen(account)} className="inline-flex items-center justify-center p-1.5 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title="Reopen">
+        <button onClick={() => onReopen(account)} className="inline-flex items-center justify-center p-1.5 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title={t('row.actions.reopen')}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
         </button>
         {isDeletable && (
-          <button onClick={() => onDeleteClick(account)} className="inline-flex items-center justify-center p-1.5 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded" title="Permanently delete account (no transactions)">
+          <button onClick={() => onDeleteClick(account)} className="inline-flex items-center justify-center p-1.5 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded" title={t('row.actions.deleteTitle')}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
           </button>
         )}
@@ -304,9 +308,9 @@ function ClosedAccountActions({ account, density, isDeletable, onReopen, onDelet
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => onReopen(account)}>Reopen</Button>
+      <Button variant="outline" size="sm" onClick={() => onReopen(account)}>{t('row.actions.reopen')}</Button>
       {isDeletable && (
-        <Button variant="danger" size="sm" onClick={() => onDeleteClick(account)} title="Permanently delete account (no transactions)">Delete</Button>
+        <Button variant="danger" size="sm" onClick={() => onDeleteClick(account)} title={t('row.actions.deleteTitle')}>{t('row.actions.delete')}</Button>
       )}
     </>
   );

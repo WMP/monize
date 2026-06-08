@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 import { budgetsApi } from '@/lib/budgets';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useTranslations } from 'next-intl';
 import { useReportData } from '@/hooks/useReportData';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { ReportError } from '@/components/reports/ReportError';
@@ -23,6 +24,7 @@ import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 type SeasonalPatternsSortField = 'category' | 'typical' | 'highMonths';
 
 export function BudgetSeasonalPatternsReport() {
+  const t = useTranslations('reports');
   const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [selectedBudgetIdState, setSelectedBudgetId] = useState<string>('');
@@ -111,16 +113,16 @@ export function BudgetSeasonalPatternsReport() {
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const headers = ['Category', 'Typical/Mo', 'High Months'];
+    const headers = [t('budgetSeasonalPatterns.colCategory'), t('budgetSeasonalPatterns.colTypicalPerMo'), t('budgetSeasonalPatterns.colHighMonths')];
     const rows = patterns.map((p) => [
       p.categoryName,
       formatCurrency(p.typicalMonthlySpend),
       p.highMonths.length > 0
         ? p.highMonths.map((m) => monthNames[m - 1]).join(', ')
-        : 'None detected',
+        : t('budgetSeasonalPatterns.noneDetected'),
     ]);
     await exportToPdf({
-      title: 'Budget Seasonal Patterns',
+      title: t('budgetSeasonalPatterns.pdfTitle'),
       chartContainer: chartRef.current,
       tableData: { headers, rows },
       filename: 'budget-seasonal-patterns',
@@ -146,7 +148,7 @@ export function BudgetSeasonalPatternsReport() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6 text-center">
         <p className="text-gray-500 dark:text-gray-400">
-          No budgets found. Create a budget to see seasonal patterns.
+          {t('budgetSeasonalPatterns.noBudgets')}
         </p>
       </div>
     );
@@ -193,7 +195,7 @@ export function BudgetSeasonalPatternsReport() {
       {patterns.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6 text-center">
           <p className="text-gray-500 dark:text-gray-400">
-            Not enough historical data to detect seasonal patterns.
+            {t('budgetSeasonalPatterns.notEnoughData')}
           </p>
         </div>
       ) : activePattern ? (
@@ -202,10 +204,10 @@ export function BudgetSeasonalPatternsReport() {
           <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {activePattern.categoryName} - Monthly Spending
+                {t('budgetSeasonalPatterns.sectionTitle', { categoryName: activePattern.categoryName })}
               </h2>
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                Typical: {formatCurrency(activePattern.typicalMonthlySpend)}/mo
+                {t('budgetSeasonalPatterns.typical', { amount: formatCurrency(activePattern.typicalMonthlySpend) })}
               </span>
             </div>
             <div className="h-72">
@@ -225,7 +227,7 @@ export function BudgetSeasonalPatternsReport() {
                             {formatCurrency(data.amount)}
                           </p>
                           {data.isHigh && (
-                            <p className="text-xs text-red-500 mt-1">High spending month</p>
+                            <p className="text-xs text-red-500 mt-1">{t('budgetSeasonalPatterns.highSpendingTooltip')}</p>
                           )}
                         </div>
                       );
@@ -245,7 +247,7 @@ export function BudgetSeasonalPatternsReport() {
             {activePattern.highMonths.length > 0 && (
               <div className="mt-3 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                 <div className="w-3 h-3 rounded-sm bg-red-500" />
-                <span>High spending months (above typical + 1.5 std dev)</span>
+                <span>{t('budgetSeasonalPatterns.highSpendingLegend')}</span>
               </div>
             )}
           </div>
@@ -253,7 +255,7 @@ export function BudgetSeasonalPatternsReport() {
           {/* All Categories Summary */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              All Category Patterns
+              {t('budgetSeasonalPatterns.allCategoryPatterns')}
             </h2>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
@@ -266,7 +268,7 @@ export function BudgetSeasonalPatternsReport() {
                       onSort={handleSort}
                       className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
                     >
-                      Category
+                      {t('budgetSeasonalPatterns.colCategory')}
                     </SortableHeader>
                     <SortableHeader<SeasonalPatternsSortField>
                       field="typical"
@@ -276,7 +278,7 @@ export function BudgetSeasonalPatternsReport() {
                       align="right"
                       className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
                     >
-                      Typical/Mo
+                      {t('budgetSeasonalPatterns.colTypicalPerMo')}
                     </SortableHeader>
                     <SortableHeader<SeasonalPatternsSortField>
                       field="highMonths"
@@ -285,7 +287,7 @@ export function BudgetSeasonalPatternsReport() {
                       onSort={handleSort}
                       className="py-2 font-medium text-gray-500 dark:text-gray-400"
                     >
-                      High Months
+                      {t('budgetSeasonalPatterns.colHighMonths')}
                     </SortableHeader>
                   </tr>
                 </thead>
@@ -318,7 +320,7 @@ export function BudgetSeasonalPatternsReport() {
                             })}
                           </div>
                         ) : (
-                          <span className="text-gray-400 dark:text-gray-500 text-xs">None detected</span>
+                          <span className="text-gray-400 dark:text-gray-500 text-xs">{t('budgetSeasonalPatterns.noneDetected')}</span>
                         )}
                       </td>
                     </tr>

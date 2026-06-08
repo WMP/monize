@@ -26,6 +26,8 @@ vi.mock('recharts', () => ({
             payload={payload}
             label="Sep"
             formatCurrency={content.props?.formatCurrency}
+            budgetedLabel={content.props?.budgetedLabel}
+            actualLabel={content.props?.actualLabel}
           />
         </div>
       );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, MutableRefObject } from 'react';
+import { useTranslations } from 'next-intl';
 import { useForm, Resolver } from 'react-hook-form';
 import '@/lib/zodConfig';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,9 +40,9 @@ import { FormActions } from '@/components/ui/FormActions';
 
 const logger = createLogger('TransactionForm');
 
-const transactionSchema = z.object({
+const buildTransactionSchema = (t: (key: string) => string) => z.object({
   accountId: z.string().uuid('Please select an account'),
-  transactionDate: z.string().min(1, 'Date is required'),
+  transactionDate: z.string().min(1, t('validation.dateRequired')),
   payeeId: optionalUuid,
   payeeName: optionalString,
   categoryId: optionalUuid,
@@ -52,7 +53,7 @@ const transactionSchema = z.object({
   status: z.nativeEnum(TransactionStatus).default(TransactionStatus.UNRECONCILED),
 });
 
-type TransactionFormData = z.infer<typeof transactionSchema>;
+type TransactionFormData = z.infer<ReturnType<typeof buildTransactionSchema>>;
 
 interface TransactionFormProps {
   transaction?: Transaction;
@@ -69,6 +70,7 @@ interface TransactionFormProps {
 type TransactionMode = 'normal' | 'split' | 'transfer';
 
 export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, onSuccess, onCancel, onDirtyChange, submitRef }: TransactionFormProps) {
+  const t = useTranslations('transactions');
   const { defaultCurrency } = useNumberFormat();
   const showCreatedAt = usePreferencesStore((s) => s.preferences?.showCreatedAt ?? false);
   const timeFormat = usePreferencesStore((s) => s.preferences?.timeFormat ?? '24h');
@@ -174,7 +176,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
     watch,
     formState: { errors, isDirty },
   } = useForm<TransactionFormData>({
-    resolver: zodResolver(transactionSchema) as Resolver<TransactionFormData>,
+    resolver: zodResolver(buildTransactionSchema(t)) as Resolver<TransactionFormData>,
     defaultValues: initSource
       ? {
           // For transfers, use the "from" account as the primary account
@@ -375,10 +377,10 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
         }
       })
       .catch((error) => {
-        toast.error(getErrorMessage(error, 'Failed to load form data'));
+        toast.error(getErrorMessage(error, t('form.toasts.loadFailed')));
         logger.error(error);
       });
-  }, [transaction?.payeeId]);
+  }, [transaction?.payeeId, t]);
 
   // Quick-fill the form from a previously entered transaction (chosen from
   // the history popover next to the Payee field). Resets date to today and
@@ -467,10 +469,10 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
       setSelectedPayeeId(newPayee.id);
       setValue('payeeId', newPayee.id, { shouldDirty: true, shouldValidate: true });
       setValue('payeeName', newPayee.name, { shouldDirty: true, shouldValidate: true });
-      toast.success(`Payee "${name}" created`);
+      toast.success(t('form.toasts.payeeCreated', { name }));
     } catch (error) {
       logger.error('Failed to create payee:', error);
-      toast.error(getErrorMessage(error, 'Failed to create payee'));
+      toast.error(getErrorMessage(error, t('form.toasts.payeeCreateFailed')));
     }
   };
 
@@ -495,13 +497,13 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
         categoryWasAutoSetRef.current = false;
       }
 
-      toast.success(`Payee "${reactivated.name}" reactivated`);
+      toast.success(t('form.toasts.payeeReactivated', { name: reactivated.name }));
       setShowReactivateDialog(false);
       setInactivePayeeMatch(null);
       setPendingPayeeName('');
     } catch (error) {
       logger.error('Failed to reactivate payee:', error);
-      toast.error(getErrorMessage(error, 'Failed to reactivate payee'));
+      toast.error(getErrorMessage(error, t('form.toasts.payeeReactivateFailed')));
     } finally {
       setIsReactivating(false);
     }
@@ -666,13 +668,13 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
       categoryWasAutoSetRef.current = false;
 
       if (parentId && parentName) {
-        toast.success(`Category "${parentName}: ${categoryName}" created`);
+        toast.success(t('form.toasts.categoryCreated', { name: `${parentName}: ${categoryName}` }));
       } else {
-        toast.success(`Category "${categoryName}" created`);
+        toast.success(t('form.toasts.categoryCreated', { name: categoryName }));
       }
     } catch (error) {
       logger.error('Failed to create category:', error);
-      toast.error(getErrorMessage(error, 'Failed to create category'));
+      toast.error(getErrorMessage(error, t('form.toasts.categoryCreateFailed')));
     }
   };
 
@@ -713,7 +715,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
     const newTag = await tagsApi.create(cleanedData);
     setTags(prev => [...prev, newTag]);
     setSelectedTagIds(prev => [...prev, newTag.id]);
-    toast.success(`Tag "${newTag.name}" created`);
+    toast.success(t('form.toasts.tagCreated', { name: newTag.name }));
     setShowTagForm(false);
   };
 
@@ -723,17 +725,17 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
       // Handle transfer mode
       if (mode === 'transfer') {
         if (!transferToAccountId) {
-          toast.error('Please select a destination account');
+          toast.error(t('form.toasts.destinationRequired'));
           setIsLoading(false);
           return;
         }
         if (transferToAccountId === data.accountId) {
-          toast.error('Source and destination accounts must be different');
+          toast.error(t('form.toasts.sameAccount'));
           setIsLoading(false);
           return;
         }
         if (data.amount === undefined || data.amount === null || data.amount < 0) {
-          toast.error('Transfer amount must not be negative');
+          toast.error(t('form.toasts.negativeTransfer'));
           setIsLoading(false);
           return;
         }
@@ -767,10 +769,10 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
             transferData.createdAt = datetimeLocalToIso(createdAtValue, userTimezone);
           }
           await transactionsApi.updateTransfer(transaction.id, transferData);
-          toast.success('Transfer updated');
+          toast.success(t('form.toasts.transferUpdated'));
         } else {
           await transactionsApi.createTransfer(transferData);
-          toast.success('Transfer created');
+          toast.success(t('form.toasts.transferCreated'));
           sessionStorage.setItem('monize-last-transaction-date', JSON.stringify({ date: data.transactionDate, savedAt: Date.now() }));
         }
         onSuccess?.();
@@ -786,7 +788,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
         const roundedSplitsTotal = Math.round(splitsTotal * 100) / 100;
         const roundedAmount = Math.round(data.amount * 100) / 100;
         if (roundedSplitsTotal !== roundedAmount) {
-          toast.error(`Splits total (${roundedSplitsTotal}) must equal transaction amount (${roundedAmount})`);
+          toast.error(t('form.toasts.splitsNotEqual', { splitTotal: roundedSplitsTotal, txAmount: roundedAmount }));
           setIsLoading(false);
           return;
         }
@@ -811,16 +813,16 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           updatePayload.createdAt = datetimeLocalToIso(createdAtValue, userTimezone);
         }
         await transactionsApi.update(transaction.id, updatePayload);
-        toast.success('Transaction updated');
+        toast.success(t('form.toasts.transactionUpdated'));
       } else {
         await transactionsApi.create(payload);
-        toast.success('Transaction created');
+        toast.success(t('form.toasts.transactionCreated'));
         sessionStorage.setItem('monize-last-transaction-date', JSON.stringify({ date: data.transactionDate, savedAt: Date.now() }));
       }
       onSuccess?.();
     } catch (error) {
       logger.error('Submit error:', error);
-      toast.error(getErrorMessage(error, 'Failed to save transaction'));
+      toast.error(getErrorMessage(error, t('form.toasts.saveFailed')));
     } finally {
       setIsLoading(false);
     }
@@ -831,7 +833,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
   const createdAtSlot = showCreatedAt && transaction ? (
     <div>
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        Create Date
+        {t('form.fields.createDate')}
       </label>
       <input
         type="text"
@@ -872,7 +874,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
-            Transaction
+            {t('form.modeTransaction')}
           </button>
           <button
             type="button"
@@ -883,7 +885,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
-            Split
+            {t('form.modeSplit')}
           </button>
           <button
             type="button"
@@ -894,7 +896,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
-            Transfer
+            {t('form.modeTransfer')}
           </button>
         </div>
       )}
@@ -903,10 +905,10 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
       {transaction?.isTransfer && (
         <div className="flex items-center space-x-2 pb-2 border-b dark:border-gray-700">
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-            Transfer
+            {t('form.transferBadge')}
           </span>
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            This is a linked transfer transaction
+            {t('form.isLinkedTransfer')}
           </span>
         </div>
       )}
@@ -988,13 +990,13 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
       {isSplitMode && (
         <div className="border-t dark:border-gray-700 pt-4">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Split Transaction</h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('form.splitSection.title')}</h3>
             <button
               type="button"
               onClick={() => handleSplitModeToggle(false)}
               className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
             >
-              Cancel Split
+              {t('form.splitSection.cancelSplit')}
             </button>
           </div>
           <SplitEditor
@@ -1017,19 +1019,19 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
 
       {/* Tags */}
       <MultiSelect
-        label="Tags"
+        label={t('form.fields.tags')}
         options={tagOptions}
         value={selectedTagIds}
         onChange={setSelectedTagIds}
-        placeholder="Select tags..."
+        placeholder={t('form.placeholders.selectTags')}
         onCreateNew={() => setShowTagForm(true)}
-        createNewLabel="Create new tag..."
+        createNewLabel={t('form.placeholders.createNewTag')}
       />
 
       {/* Tag Creation Modal */}
       <Modal isOpen={showTagForm} onClose={() => setShowTagForm(false)} maxWidth="lg" allowOverflow pushHistory className="p-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-          New Tag
+          {t('form.newTagTitle')}
         </h2>
         <TagForm
           onSubmit={handleTagCreate}
@@ -1041,7 +1043,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
       {!isSplitMode && (
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Description
+            {t('form.fields.description')}
           </label>
           <textarea
             rows={3}
@@ -1056,18 +1058,22 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
 
       {/* Status selector */}
       <Select
-        label="Status"
+        label={t('form.fields.status')}
         options={[
-          { value: TransactionStatus.UNRECONCILED, label: 'Unreconciled' },
-          { value: TransactionStatus.CLEARED, label: 'Cleared' },
-          { value: TransactionStatus.RECONCILED, label: 'Reconciled' },
-          { value: TransactionStatus.VOID, label: 'Void' },
+          { value: TransactionStatus.UNRECONCILED, label: t('form.statusOptions.unreconciled') },
+          { value: TransactionStatus.CLEARED, label: t('form.statusOptions.cleared') },
+          { value: TransactionStatus.RECONCILED, label: t('form.statusOptions.reconciled') },
+          { value: TransactionStatus.VOID, label: t('form.statusOptions.void') },
         ]}
         {...register('status')}
       />
 
       {/* Actions */}
-      <FormActions onCancel={onCancel} submitLabel={`${transaction ? 'Update' : 'Create'} ${mode === 'transfer' ? 'Transfer' : 'Transaction'}`} isSubmitting={isLoading} />
+      <FormActions
+        onCancel={onCancel}
+        submitLabel={t(transaction ? 'form.submitUpdate' : 'form.submitCreate', { mode: t(mode === 'transfer' ? 'form.modeLabel.transfer' : 'form.modeLabel.transaction') })}
+        isSubmitting={isLoading}
+      />
 
       {/* Reactivate Payee Dialog */}
       <ReactivatePayeeDialog

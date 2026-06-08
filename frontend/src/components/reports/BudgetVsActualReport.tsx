@@ -17,6 +17,7 @@ import {
 import { budgetsApi } from '@/lib/budgets';
 import type { CategoryTrendSeries } from '@/types/budget';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useTranslations } from 'next-intl';
 import { useReportData } from '@/hooks/useReportData';
 import { BudgetCategoryTrend } from '@/components/budgets/BudgetCategoryTrend';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
@@ -27,6 +28,7 @@ import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 type BudgetTrendSortField = 'month' | 'budgeted' | 'actual' | 'variance' | 'percentUsed';
 
 export function BudgetVsActualReport() {
+  const t = useTranslations('reports');
   const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
   const [selectedBudgetIdState, setSelectedBudgetId] = useState<string>('');
   const [months, setMonths] = useState(6);
@@ -110,7 +112,7 @@ export function BudgetVsActualReport() {
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
-    const headers = ['Month', 'Budgeted', 'Actual', 'Variance', '% Used'];
+    const headers = [t('budgetVsActual.colMonth'), t('budgetVsActual.colBudgeted'), t('budgetVsActual.colActual'), t('budgetVsActual.colVariance'), t('budgetVsActual.colPercentUsed')];
     const rows = trendData.map(point => [
       point.month,
       formatCurrency(point.budgeted),
@@ -119,7 +121,7 @@ export function BudgetVsActualReport() {
       `${point.percentUsed}%`,
     ]);
     await exportToPdf({
-      title: 'Budget vs Actual',
+      title: t('budgetVsActual.pdfTitle'),
       chartContainer: chartRef.current,
       tableData: { headers, rows },
       filename: 'budget-vs-actual',
@@ -145,7 +147,7 @@ export function BudgetVsActualReport() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6 text-center">
         <p className="text-gray-500 dark:text-gray-400">
-          No budgets found. Create a budget to see this report.
+          {t('budgetVsActual.noBudgets')}
         </p>
       </div>
     );
@@ -173,10 +175,10 @@ export function BudgetVsActualReport() {
               onChange={(e) => setMonths(Number(e.target.value))}
               className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
-              <option value={3}>3 Months</option>
-              <option value={6}>6 Months</option>
-              <option value={12}>12 Months</option>
-              <option value={24}>24 Months</option>
+              <option value={3}>{t('budgetVsActual.months3')}</option>
+              <option value={6}>{t('budgetVsActual.months6')}</option>
+              <option value={12}>{t('budgetVsActual.months12')}</option>
+              <option value={24}>{t('budgetVsActual.months24')}</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
@@ -189,7 +191,7 @@ export function BudgetVsActualReport() {
                     : 'text-gray-500 dark:text-gray-400'
                 }`}
               >
-                Overview
+                {t('budgetVsActual.viewOverview')}
               </button>
               <button
                 onClick={() => setViewMode('categories')}
@@ -199,7 +201,7 @@ export function BudgetVsActualReport() {
                     : 'text-gray-500 dark:text-gray-400'
                 }`}
               >
-                By Category
+                {t('budgetVsActual.viewByCategory')}
               </button>
             </div>
             <ExportDropdown onExportPdf={handleExportPdf} />
@@ -212,7 +214,7 @@ export function BudgetVsActualReport() {
         <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
           {trendData.length === 0 ? (
             <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-              No trend data available for this budget yet.
+              {t('budgetVsActual.noData')}
             </p>
           ) : (
             <>
@@ -238,15 +240,15 @@ export function BudgetVsActualReport() {
                       }}
                     />
                     <Legend />
-                    <Bar dataKey="budgeted" name="Budgeted" fill="#3b82f6" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="actual" name="Actual" fill="#10b981" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="budgeted" name={t('budgetVsActual.seriesBudgeted')} fill="#3b82f6" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="actual" name={t('budgetVsActual.seriesActual')} fill="#10b981" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
               {/* Variance line */}
               <div className="mt-6">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Variance Over Time</h3>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t('budgetVsActual.viewVarianceOverTime')}</h3>
                 <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <LineChart data={trendData}>
@@ -261,7 +263,7 @@ export function BudgetVsActualReport() {
                             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
                               <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{label}</p>
                               <p className={`text-sm font-medium ${variance > 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                Variance: {variance > 0 ? '+' : ''}{formatCurrency(variance)}
+                                {t('budgetVsActual.tooltipVariance')} {variance > 0 ? '+' : ''}{formatCurrency(variance)}
                               </p>
                             </div>
                           );
@@ -273,7 +275,7 @@ export function BudgetVsActualReport() {
                         stroke="#f59e0b"
                         strokeWidth={2}
                         dot={{ r: 4 }}
-                        name="Variance"
+                        name={t('budgetVsActual.seriesVariance')}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -292,7 +294,7 @@ export function BudgetVsActualReport() {
                         onSort={handleSort}
                         className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
                       >
-                        Month
+                        {t('budgetVsActual.colMonth')}
                       </SortableHeader>
                       <SortableHeader<BudgetTrendSortField>
                         field="budgeted"
@@ -302,7 +304,7 @@ export function BudgetVsActualReport() {
                         align="right"
                         className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
                       >
-                        Budgeted
+                        {t('budgetVsActual.colBudgeted')}
                       </SortableHeader>
                       <SortableHeader<BudgetTrendSortField>
                         field="actual"
@@ -312,7 +314,7 @@ export function BudgetVsActualReport() {
                         align="right"
                         className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
                       >
-                        Actual
+                        {t('budgetVsActual.colActual')}
                       </SortableHeader>
                       <SortableHeader<BudgetTrendSortField>
                         field="variance"
@@ -322,7 +324,7 @@ export function BudgetVsActualReport() {
                         align="right"
                         className="py-2 pr-4 font-medium text-gray-500 dark:text-gray-400"
                       >
-                        Variance
+                        {t('budgetVsActual.colVariance')}
                       </SortableHeader>
                       <SortableHeader<BudgetTrendSortField>
                         field="percentUsed"
@@ -332,7 +334,7 @@ export function BudgetVsActualReport() {
                         align="right"
                         className="py-2 font-medium text-gray-500 dark:text-gray-400"
                       >
-                        % Used
+                        {t('budgetVsActual.colPercentUsed')}
                       </SortableHeader>
                     </tr>
                   </thead>

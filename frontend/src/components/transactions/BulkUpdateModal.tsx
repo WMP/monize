@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -61,6 +62,7 @@ export function BulkUpdateModal({
   onSubmit,
   selectionCount,
 }: BulkUpdateModalProps) {
+  const t = useTranslations('transactions');
   const [categories, setCategories] = useState<Category[]>([]);
   const [payees, setPayees] = useState<Payee[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
@@ -119,9 +121,9 @@ export function BulkUpdateModal({
     })), [payees]);
 
   const statusOptions = [
-    { value: TransactionStatus.UNRECONCILED, label: 'Pending' },
-    { value: TransactionStatus.CLEARED, label: 'Cleared' },
-    { value: TransactionStatus.VOID, label: 'Void' },
+    { value: TransactionStatus.UNRECONCILED, label: t('bulk.modal.statusOptions.pending') },
+    { value: TransactionStatus.CLEARED, label: t('bulk.modal.statusOptions.cleared') },
+    { value: TransactionStatus.VOID, label: t('bulk.modal.statusOptions.void') },
   ];
 
   const tagOptions = useMemo(() =>
@@ -189,17 +191,17 @@ export function BulkUpdateModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="lg" className="p-6" allowOverflow>
       <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-        Bulk Update Transactions
+        {t('bulk.modal.title')}
       </h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        Update {selectionCount} selected transaction{selectionCount !== 1 ? 's' : ''}. Toggle the fields you want to change.
+        {t('bulk.modal.subtitle', { count: selectionCount })}
       </p>
 
       <form onSubmit={handleSubmit(submit)}>
         <div className="space-y-4">
           {/* Payee field */}
           <TogglableField
-            label="Payee"
+            label={t('bulk.modal.payee')}
             enabled={enablePayee}
             onToggle={() => setValue('enablePayee', !enablePayee)}
           >
@@ -208,7 +210,7 @@ export function BulkUpdateModal({
               name="payeeId"
               render={({ field }) => (
                 <Combobox
-                  placeholder="Select or type payee name..."
+                  placeholder={t('bulk.modal.payeePlaceholder')}
                   options={payeeOptions}
                   value={field.value}
                   onChange={(payeeId, name) => {
@@ -227,7 +229,7 @@ export function BulkUpdateModal({
 
           {/* Category field */}
           <TogglableField
-            label="Category"
+            label={t('bulk.modal.category')}
             enabled={enableCategory}
             onToggle={() => setValue('enableCategory', !enableCategory)}
           >
@@ -236,7 +238,7 @@ export function BulkUpdateModal({
               name="categoryId"
               render={({ field }) => (
                 <Combobox
-                  placeholder="Select category..."
+                  placeholder={t('bulk.modal.categoryPlaceholder')}
                   options={categoryOptions}
                   value={field.value}
                   onChange={(categoryId) => field.onChange(categoryId)}
@@ -247,13 +249,13 @@ export function BulkUpdateModal({
 
           {/* Description field */}
           <TogglableField
-            label="Description"
+            label={t('bulk.modal.description')}
             enabled={enableDescription}
             onToggle={() => setValue('enableDescription', !enableDescription)}
           >
             <textarea
               {...register('description')}
-              placeholder="Enter description (leave empty to clear)"
+              placeholder={t('bulk.modal.descriptionPlaceholder')}
               rows={2}
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
             />
@@ -261,7 +263,7 @@ export function BulkUpdateModal({
 
           {/* Status field */}
           <TogglableField
-            label="Status"
+            label={t('bulk.modal.status')}
             enabled={enableStatus}
             onToggle={() => setValue('enableStatus', !enableStatus)}
           >
@@ -273,7 +275,7 @@ export function BulkUpdateModal({
 
           {/* Tags field */}
           <TogglableField
-            label="Tags"
+            label={t('bulk.modal.tags')}
             enabled={enableTags}
             onToggle={() => setValue('enableTags', !enableTags)}
           >
@@ -285,7 +287,7 @@ export function BulkUpdateModal({
                   options={tagOptions}
                   value={field.value}
                   onChange={field.onChange}
-                  placeholder="Select tags (leave empty to clear all)..."
+                  placeholder={t('bulk.modal.tagsPlaceholder')}
                 />
               )}
             />
@@ -297,12 +299,12 @@ export function BulkUpdateModal({
           <div className="mt-4 space-y-1">
             {showTransferNote && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Transfer transactions will have their linked counterpart updated as well.
+                {t('bulk.modal.notes.transfer')}
               </p>
             )}
             {showSplitNote && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Split transactions will be skipped for category changes.
+                {t('bulk.modal.notes.split')}
               </p>
             )}
           </div>
@@ -310,7 +312,7 @@ export function BulkUpdateModal({
 
         <FormActions
           onCancel={onClose}
-          submitLabel={`Update ${selectionCount} Transaction${selectionCount !== 1 ? 's' : ''}`}
+          submitLabel={t('bulk.modal.submitLabel', { count: selectionCount })}
           isSubmitting={isSubmitting}
           submitDisabled={!hasAnyEnabled}
         />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import {
   BarChart,
@@ -35,6 +36,7 @@ interface DaySpendingDisplay {
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function WeekendVsWeekdayReport() {
+  const t = useTranslations('reports');
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const { dateRange, setDateRange, resolvedRange } = useDateRange({ defaultRange: '3m', alignment: 'day' });
@@ -110,8 +112,8 @@ export function WeekendVsWeekdayReport() {
   const weekendPercent = totalSpending > 0 ? (weekendTotal / totalSpending) * 100 : 0;
 
   const pieData = [
-    { name: 'Weekend', value: weekendTotal, color: '#8b5cf6' },
-    { name: 'Weekday', value: weekdayTotal, color: '#3b82f6' },
+    { name: t('weekendVsWeekday.weekendLabel'), value: weekendTotal, color: '#8b5cf6' },
+    { name: t('weekendVsWeekday.weekdayLabel'), value: weekdayTotal, color: '#3b82f6' },
   ];
 
   const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) => {
@@ -134,17 +136,17 @@ export function WeekendVsWeekdayReport() {
     const { exportToPdf } = await import('@/lib/pdf-export');
     const weekdayPercent = totalSpending > 0 ? (weekdayTotal / totalSpending) * 100 : 0;
     await exportToPdf({
-      title: 'Weekend vs Weekday Spending',
+      title: t('weekendVsWeekday.pdfTitle'),
       summaryCards: [
-        { label: 'Weekend Spending', value: formatCurrency(weekendTotal), color: '#7c3aed' },
-        { label: 'Weekday Spending', value: formatCurrency(weekdayTotal), color: '#2563eb' },
-        { label: 'Avg Weekend Txn', value: formatCurrency(weekendAvg), color: '#111827' },
-        { label: 'Avg Weekday Txn', value: formatCurrency(weekdayAvg), color: '#111827' },
+        { label: t('weekendVsWeekday.pdfWeekendSpending'), value: formatCurrency(weekendTotal), color: '#7c3aed' },
+        { label: t('weekendVsWeekday.pdfWeekdaySpending'), value: formatCurrency(weekdayTotal), color: '#2563eb' },
+        { label: t('weekendVsWeekday.pdfAvgWeekend'), value: formatCurrency(weekendAvg), color: '#111827' },
+        { label: t('weekendVsWeekday.pdfAvgWeekday'), value: formatCurrency(weekdayAvg), color: '#111827' },
       ],
       chartContainer: chartRef.current,
       chartLegend: [
-        { color: '#8b5cf6', label: `Weekend (Sat-Sun) - ${formatCurrency(weekendTotal)} (${weekendPercent.toFixed(1)}%)` },
-        { color: '#3b82f6', label: `Weekday (Mon-Fri) - ${formatCurrency(weekdayTotal)} (${weekdayPercent.toFixed(1)}%)` },
+        { color: '#8b5cf6', label: `${t('weekendVsWeekday.weekendLabel')} - ${formatCurrency(weekendTotal)} (${weekendPercent.toFixed(1)}%)` },
+        { color: '#3b82f6', label: `${t('weekendVsWeekday.weekdayLabel')} - ${formatCurrency(weekdayTotal)} (${weekdayPercent.toFixed(1)}%)` },
       ],
       filename: 'weekend-vs-weekday',
     });
@@ -172,31 +174,31 @@ export function WeekendVsWeekdayReport() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
-          <div className="text-sm text-purple-600 dark:text-purple-400">Weekend Spending</div>
+          <div className="text-sm text-purple-600 dark:text-purple-400">{t('weekendVsWeekday.weekendSpending')}</div>
           <div className="text-xl font-bold text-purple-700 dark:text-purple-300">
             {formatCurrency(weekendTotal)}
           </div>
           <div className="text-xs text-purple-500 dark:text-purple-400">
-            {weekendCount} transactions
+            {t('weekendVsWeekday.weekendTransactions', { count: weekendCount })}
           </div>
         </div>
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-          <div className="text-sm text-blue-600 dark:text-blue-400">Weekday Spending</div>
+          <div className="text-sm text-blue-600 dark:text-blue-400">{t('weekendVsWeekday.weekdaySpending')}</div>
           <div className="text-xl font-bold text-blue-700 dark:text-blue-300">
             {formatCurrency(weekdayTotal)}
           </div>
           <div className="text-xs text-blue-500 dark:text-blue-400">
-            {weekdayCount} transactions
+            {t('weekendVsWeekday.weekdayTransactions', { count: weekdayCount })}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Avg Weekend Transaction</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('weekendVsWeekday.avgWeekendTransaction')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {formatCurrency(weekendAvg)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Avg Weekday Transaction</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('weekendVsWeekday.avgWeekdayTransaction')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {formatCurrency(weekdayAvg)}
           </div>
@@ -220,7 +222,7 @@ export function WeekendVsWeekdayReport() {
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
-              Overview
+              {t('weekendVsWeekday.viewOverview')}
             </button>
             <button
               onClick={() => setViewType('byDay')}
@@ -230,7 +232,7 @@ export function WeekendVsWeekdayReport() {
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
-              By Day
+              {t('weekendVsWeekday.viewByDay')}
             </button>
             <button
               onClick={() => setViewType('categories')}
@@ -240,7 +242,7 @@ export function WeekendVsWeekdayReport() {
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
-              By Category
+              {t('weekendVsWeekday.viewByCategory')}
             </button>
             <ExportDropdown onExportPdf={handleExportPdf} />
           </div>
@@ -250,13 +252,13 @@ export function WeekendVsWeekdayReport() {
       {!hasData ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No expense transactions found for this period.
+            {t('weekendVsWeekday.noData')}
           </p>
         </div>
       ) : viewType === 'comparison' ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Weekend vs Weekday Split
+            {t('weekendVsWeekday.weekendVsWeekdaySplit')}
           </h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="h-96">
@@ -283,7 +285,7 @@ export function WeekendVsWeekdayReport() {
               <div className="flex items-center gap-4">
                 <div className="w-4 h-4 rounded bg-purple-500" />
                 <div className="flex-1">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Weekend (Sat-Sun)</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{t('weekendVsWeekday.weekendLabel')}</div>
                   <div className="font-medium text-gray-900 dark:text-gray-100">
                     {formatCurrency(weekendTotal)} ({weekendPercent.toFixed(1)}%)
                   </div>
@@ -292,7 +294,7 @@ export function WeekendVsWeekdayReport() {
               <div className="flex items-center gap-4">
                 <div className="w-4 h-4 rounded bg-blue-500" />
                 <div className="flex-1">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">Weekday (Mon-Fri)</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{t('weekendVsWeekday.weekdayLabel')}</div>
                   <div className="font-medium text-gray-900 dark:text-gray-100">
                     {formatCurrency(weekdayTotal)} ({(100 - weekendPercent).toFixed(1)}%)
                   </div>
@@ -301,11 +303,11 @@ export function WeekendVsWeekdayReport() {
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 {weekendAvg > weekdayAvg ? (
                   <p className="text-sm text-purple-600 dark:text-purple-400">
-                    You spend {formatCurrency(weekendAvg - weekdayAvg)} more per transaction on weekends
+                    {t('weekendVsWeekday.spendMoreWeekend', { amount: formatCurrency(weekendAvg - weekdayAvg) })}
                   </p>
                 ) : (
                   <p className="text-sm text-blue-600 dark:text-blue-400">
-                    You spend {formatCurrency(weekdayAvg - weekendAvg)} more per transaction on weekdays
+                    {t('weekendVsWeekday.spendMoreWeekday', { amount: formatCurrency(weekdayAvg - weekendAvg) })}
                   </p>
                 )}
               </div>
@@ -315,7 +317,7 @@ export function WeekendVsWeekdayReport() {
       ) : viewType === 'byDay' ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Spending by Day of Week
+            {t('weekendVsWeekday.spendingByDayOfWeek')}
           </h3>
           <div className="h-96">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -324,7 +326,7 @@ export function WeekendVsWeekdayReport() {
                 <XAxis dataKey="day" />
                 <YAxis tickFormatter={formatCurrencyAxis} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="total" name="Total Spent">
+                <Bar dataKey="total" name={t('weekendVsWeekday.barTotalSpent')}>
                   {dayData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
@@ -349,7 +351,7 @@ export function WeekendVsWeekdayReport() {
                 <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {day.count}
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">txns</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{t('weekendVsWeekday.txnsLabel')}</div>
               </div>
             ))}
           </div>
@@ -357,7 +359,7 @@ export function WeekendVsWeekdayReport() {
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Category Comparison
+            {t('weekendVsWeekday.categoryComparison')}
           </h3>
           <div className="h-[480px]">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -367,8 +369,8 @@ export function WeekendVsWeekdayReport() {
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={80} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Bar dataKey="weekendTotal" fill="#8b5cf6" name="Weekend" />
-                <Bar dataKey="weekdayTotal" fill="#3b82f6" name="Weekday" />
+                <Bar dataKey="weekendTotal" fill="#8b5cf6" name={t('weekendVsWeekday.barWeekend')} />
+                <Bar dataKey="weekdayTotal" fill="#3b82f6" name={t('weekendVsWeekday.barWeekday')} />
               </BarChart>
             </ResponsiveContainer>
           </div>

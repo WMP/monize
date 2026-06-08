@@ -23,12 +23,14 @@ import { exportToCsv } from '@/lib/csv-export';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
+import { useTranslations } from 'next-intl';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
 
 type BillSortField = 'bill' | 'count' | 'average' | 'total' | 'lastPayment';
 
 export function BillPaymentHistoryReport() {
+  const t = useTranslations('reports');
   const router = useRouter();
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
@@ -83,7 +85,7 @@ export function BillPaymentHistoryReport() {
 
   const getExportData = () => {
     if (!billData) return null;
-    const headers = ['Bill', 'Payee', 'Payments', 'Average', 'Total Paid', 'Last Payment'];
+    const headers = [t('billPaymentHistory.colBill'), t('billPaymentHistory.colPayee'), t('billPaymentHistory.colPayments'), t('billPaymentHistory.colAverage'), t('billPaymentHistory.colTotalPaid'), t('billPaymentHistory.colLastPayment')];
     const rows = billData.billPayments.map((bp) => [
       bp.scheduledTransactionName,
       bp.payeeName || '',
@@ -106,13 +108,13 @@ export function BillPaymentHistoryReport() {
     if (!data || !billData) return;
     const { exportToPdf } = await import('@/lib/pdf-export');
     await exportToPdf({
-      title: 'Bill Payment History',
-      subtitle: `${billData.summary.uniqueBills} bills, ${billData.summary.totalPayments} payments`,
+      title: t('billPaymentHistory.paymentHistoryByBill'),
+      subtitle: `${billData.summary.uniqueBills} ${t('billPaymentHistory.uniqueBills')}, ${billData.summary.totalPayments} ${t('billPaymentHistory.totalPayments').toLowerCase()}`,
       summaryCards: [
-        { label: 'Total Paid', value: formatCurrency(billData.summary.totalPaid), color: '#111827' },
-        { label: 'Monthly Average', value: formatCurrency(billData.summary.monthlyAverage), color: '#2563eb' },
-        { label: 'Bills Paid', value: String(billData.summary.uniqueBills), color: '#111827' },
-        { label: 'Total Payments', value: String(billData.summary.totalPayments), color: '#111827' },
+        { label: t('billPaymentHistory.totalPaid'), value: formatCurrency(billData.summary.totalPaid), color: '#111827' },
+        { label: t('billPaymentHistory.monthlyAverage'), value: formatCurrency(billData.summary.monthlyAverage), color: '#2563eb' },
+        { label: t('billPaymentHistory.billsPaid'), value: String(billData.summary.uniqueBills), color: '#111827' },
+        { label: t('billPaymentHistory.totalPayments'), value: String(billData.summary.totalPayments), color: '#111827' },
       ],
       chartContainer: chartRef.current,
       tableData: { headers: data.headers, rows: data.rows },
@@ -153,7 +155,7 @@ export function BillPaymentHistoryReport() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
         <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-          Failed to load bill payment history data.
+          {t('billPaymentHistory.loadError')}
         </p>
       </div>
     );
@@ -164,26 +166,26 @@ export function BillPaymentHistoryReport() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Total Paid</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('billPaymentHistory.totalPaid')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {formatCurrency(billData.summary.totalPaid)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Monthly Average</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('billPaymentHistory.monthlyAverage')}</div>
           <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
             {formatCurrency(billData.summary.monthlyAverage)}
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Bills Paid</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('billPaymentHistory.billsPaid')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {billData.summary.uniqueBills}
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">unique bills</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{t('billPaymentHistory.uniqueBills')}</div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Total Payments</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{t('billPaymentHistory.totalPayments')}</div>
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {billData.summary.totalPayments}
           </div>
@@ -207,7 +209,7 @@ export function BillPaymentHistoryReport() {
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
-              Overview
+              {t('billPaymentHistory.overview')}
             </button>
             <button
               onClick={() => setViewType('byBill')}
@@ -217,7 +219,7 @@ export function BillPaymentHistoryReport() {
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
-              By Bill
+              {t('billPaymentHistory.byBill')}
             </button>
             <ExportDropdown onExportCsv={handleExportCsv} onExportPdf={handleExportPdf} />
           </div>
@@ -227,14 +229,14 @@ export function BillPaymentHistoryReport() {
       {billData.billPayments.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No bill payments found for this period. Post scheduled transactions to see payment history.
+            {t('billPaymentHistory.empty')}
           </p>
         </div>
       ) : viewType === 'overview' ? (
         /* Monthly Overview Chart */
         <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Monthly Bill Payments
+            {t('billPaymentHistory.monthlyBillPayments')}
           </h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -243,7 +245,7 @@ export function BillPaymentHistoryReport() {
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                 <YAxis tickFormatter={formatCurrencyAxis} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="total" fill="#3b82f6" name="Total Paid" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="total" fill="#3b82f6" name={t('billPaymentHistory.totalPaid')} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -253,7 +255,7 @@ export function BillPaymentHistoryReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Payment History by Bill
+              {t('billPaymentHistory.paymentHistoryByBill')}
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -267,7 +269,7 @@ export function BillPaymentHistoryReport() {
                     onSort={handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Bill
+                    {t('billPaymentHistory.colBill')}
                   </SortableHeader>
                   <SortableHeader<BillSortField>
                     field="count"
@@ -277,7 +279,7 @@ export function BillPaymentHistoryReport() {
                     align="center"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Payments
+                    {t('billPaymentHistory.colPayments')}
                   </SortableHeader>
                   <SortableHeader<BillSortField>
                     field="average"
@@ -287,7 +289,7 @@ export function BillPaymentHistoryReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Average
+                    {t('billPaymentHistory.colAverage')}
                   </SortableHeader>
                   <SortableHeader<BillSortField>
                     field="total"
@@ -297,7 +299,7 @@ export function BillPaymentHistoryReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Total Paid
+                    {t('billPaymentHistory.colTotalPaid')}
                   </SortableHeader>
                   <SortableHeader<BillSortField>
                     field="lastPayment"
@@ -307,7 +309,7 @@ export function BillPaymentHistoryReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                   >
-                    Last Payment
+                    {t('billPaymentHistory.colLastPayment')}
                   </SortableHeader>
                 </tr>
               </thead>
@@ -323,7 +325,7 @@ export function BillPaymentHistoryReport() {
                         {bp.scheduledTransactionName}
                       </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {bp.payeeName || 'No payee'}
+                        {bp.payeeName || t('billPaymentHistory.noPayee')}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center text-sm text-gray-900 dark:text-gray-100">

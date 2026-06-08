@@ -1,0 +1,70 @@
+{
+  "demoBanner": {
+    "label": "Demo Mode",
+    "message": "All data resets daily at 4:00 AM UTC. Explore freely!"
+  },
+  "delegationBanner": {
+    "viewing": "Viewing:",
+    "sharedAccount": "Shared account",
+    "yourAccount": "Your account",
+    "switchAccountLabel": "Switch account",
+    "selfSuffix": "{label} (you)",
+    "error2fa": "That account requires two-factor authentication. Set up 2FA in Settings before switching.",
+    "errorSwitch": "Unable to switch account"
+  },
+  "backendDownBanner": {
+    "connectionBlockedLabel": "Connection Blocked",
+    "connectionBlockedDetail": "Security headers are blocking requests over plain HTTP.",
+    "connectionLostLabel": "Connection Lost",
+    "connectionLostDetail": "Unable to reach the server. Retrying automatically...",
+    "httpsHint": "Set <code>DISABLE_HTTPS_HEADERS=true</code> in your environment or access the site over HTTPS."
+  },
+  "httpWarningBanner": {
+    "label": "HTTPS Required",
+    "detail": "Security headers are active but this site is being accessed over plain HTTP. API requests may fail.",
+    "httpsHint": "Set <code>DISABLE_HTTPS_HEADERS=true</code> in your environment or access the site over HTTPS.",
+    "dismiss": "Dismiss",
+    "dismissAriaLabel": "Dismiss HTTPS warning"
+  },
+  "updateBanner": {
+    "availableWithVersion": "Monize v{version} is available",
+    "availableGeneric": "A new version of Monize is available",
+    "runningVersion": "(running v{version})",
+    "releaseNotes": "Release notes",
+    "dismiss": "Dismiss",
+    "dismissAriaLabel": "Dismiss update notification"
+  },
+  "actionHistory": {
+    "title": "Action History",
+    "buttonAriaLabel": "Action History",
+    "closeAriaLabel": "Close",
+    "undo": "Undo",
+    "redo": "Redo",
+    "noRecentActions": "No recent actions",
+    "undoneLabel": "Undone",
+    "nothingToUndo": "Nothing to undo",
+    "nothingToRedo": "Nothing to redo",
+    "cannotUndoDefault": "Cannot undo this action",
+    "cannotRedoDefault": "Cannot redo this action",
+    "undoFailed": "Undo failed",
+    "redoFailed": "Redo failed",
+    "entityLabels": {
+      "transaction": "Transaction",
+      "transfer": "Transfer",
+      "investment_transaction": "Investment",
+      "bulk_transaction": "Bulk",
+      "category": "Category",
+      "payee": "Payee",
+      "tag": "Tag",
+      "account": "Account",
+      "scheduled_transaction": "Scheduled",
+      "security": "Security",
+      "budget": "Budget",
+      "custom_report": "Report"
+    }
+  },
+  "pageHeader": {
+    "helpAriaLabel": "Open the Monize wiki for help with this section",
+    "helpTooltip": "Open the Monize wiki for help with this section"
+  }
+}

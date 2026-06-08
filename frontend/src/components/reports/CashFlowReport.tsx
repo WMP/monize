@@ -28,6 +28,7 @@ import { DateRangeSelector } from "@/components/ui/DateRangeSelector";
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { ChartTooltip } from "@/components/reports/ChartTooltip";
 import { ReportError } from "@/components/reports/ReportError";
+import { useTranslations } from 'next-intl';
 
 interface ChartDataItem {
   name: string;
@@ -40,6 +41,7 @@ interface ChartDataItem {
 }
 
 export function CashFlowReport() {
+  const t = useTranslations('reports');
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement>(null);
   const { formatCurrencyCompact: formatCurrency, formatCurrencyAxis } =
@@ -118,25 +120,25 @@ export function CashFlowReport() {
     const outflowRows = expenseItems.map((item) => [item.categoryName, formatCurrency(item.total)]);
 
     await exportToPdf({
-      title: "Cash Flow Report",
+      title: t('cashFlow.monthlyCashFlow'),
       summaryCards: [
-        { label: "Total Inflows", value: formatCurrency(totals.totalIncome), color: "#16a34a" },
-        { label: "Total Outflows", value: formatCurrency(totals.totalExpenses), color: "#dc2626" },
-        { label: "Net Cash Flow", value: `${totals.netCashFlow >= 0 ? "+" : ""}${formatCurrency(totals.netCashFlow)}`, color: totals.netCashFlow >= 0 ? "#2563eb" : "#ea580c" },
+        { label: t('cashFlow.totalInflows'), value: formatCurrency(totals.totalIncome), color: "#16a34a" },
+        { label: t('cashFlow.totalOutflows'), value: formatCurrency(totals.totalExpenses), color: "#dc2626" },
+        { label: t('cashFlow.netCashFlow'), value: `${totals.netCashFlow >= 0 ? "+" : ""}${formatCurrency(totals.netCashFlow)}`, color: totals.netCashFlow >= 0 ? "#2563eb" : "#ea580c" },
       ],
       chartContainer: chartRef.current,
       additionalTables: [
         ...(inflowRows.length > 0 ? [{
-          title: "Inflows by Category",
+          title: t('cashFlow.inflowsByCategory'),
           headers: ["Category", "Amount"],
           rows: inflowRows,
-          totalRow: ["Total Inflows", formatCurrency(totals.totalIncome)],
+          totalRow: [t('cashFlow.totalInflows'), formatCurrency(totals.totalIncome)],
         }] : []),
         ...(outflowRows.length > 0 ? [{
-          title: "Outflows by Category",
+          title: t('cashFlow.outflowsByCategory'),
           headers: ["Category", "Amount"],
           rows: outflowRows,
-          totalRow: ["Total Outflows", formatCurrency(totals.totalExpenses)],
+          totalRow: [t('cashFlow.totalOutflows'), formatCurrency(totals.totalExpenses)],
         }] : []),
       ],
       filename: "cash-flow",
@@ -224,7 +226,7 @@ export function CashFlowReport() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 sm:p-6">
           <div className="text-sm text-green-600 dark:text-green-400">
-            Total Inflows
+            {t('cashFlow.totalInflows')}
           </div>
           <div className="text-2xl font-bold text-green-700 dark:text-green-300">
             {formatCurrency(totals.totalIncome)}
@@ -232,7 +234,7 @@ export function CashFlowReport() {
         </div>
         <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 sm:p-6">
           <div className="text-sm text-red-600 dark:text-red-400">
-            Total Outflows
+            {t('cashFlow.totalOutflows')}
           </div>
           <div className="text-2xl font-bold text-red-700 dark:text-red-300">
             {formatCurrency(totals.totalExpenses)}
@@ -252,7 +254,7 @@ export function CashFlowReport() {
                 : "text-orange-600 dark:text-orange-400"
             }`}
           >
-            Net Cash Flow
+            {t('cashFlow.netCashFlow')}
           </div>
           <div
             className={`text-2xl font-bold ${
@@ -287,7 +289,7 @@ export function CashFlowReport() {
       {/* Monthly Chart */}
       <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 px-1 sm:px-0">
-          Monthly Cash Flow
+          {t('cashFlow.monthlyCashFlow')}
         </h3>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -315,13 +317,13 @@ export function CashFlowReport() {
               <Bar
                 dataKey="Income"
                 fill="#22c55e"
-                name="Inflows"
+                name={t('cashFlow.seriesInflows')}
                 radius={[4, 4, 0, 0]}
               />
               <Bar
                 dataKey="Expenses"
                 fill="#ef4444"
-                name="Outflows"
+                name={t('cashFlow.seriesOutflows')}
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
@@ -335,13 +337,13 @@ export function CashFlowReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
           <div className="px-6 py-4 bg-green-50 dark:bg-green-900/20 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-green-700 dark:text-green-300">
-              Inflows by Category
+              {t('cashFlow.inflowsByCategory')}
             </h3>
           </div>
           <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-96 overflow-y-auto">
             {incomeItems.length === 0 ? (
               <p className="px-6 py-4 text-gray-500 dark:text-gray-400">
-                No income in this period
+                {t('cashFlow.noIncome')}
               </p>
             ) : (
               incomeItems.map((item, index) => (
@@ -366,13 +368,13 @@ export function CashFlowReport() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
           <div className="px-6 py-4 bg-red-50 dark:bg-red-900/20 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-red-700 dark:text-red-300">
-              Outflows by Category
+              {t('cashFlow.outflowsByCategory')}
             </h3>
           </div>
           <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-96 overflow-y-auto">
             {expenseItems.length === 0 ? (
               <p className="px-6 py-4 text-gray-500 dark:text-gray-400">
-                No expenses in this period
+                {t('cashFlow.noExpenses')}
               </p>
             ) : (
               expenseItems.map((item, index) => (

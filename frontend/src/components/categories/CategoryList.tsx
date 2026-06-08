@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, memo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Category } from '@/types/category';
 import { Button } from '@/components/ui/Button';
@@ -38,6 +39,8 @@ const CategoryRow = memo(function CategoryRow({
   onViewTransactions,
   index,
 }: CategoryRowProps) {
+  const t = useTranslations('categories');
+  const tc = useTranslations('common');
   const handleEdit = useCallback(() => {
     onEdit(category);
   }, [onEdit, category]);
@@ -65,18 +68,18 @@ const CategoryRow = memo(function CategoryRow({
                 !category.color && category.effectiveColor ? 'opacity-50' : ''
               }`}
               style={{ backgroundColor: category.effectiveColor }}
-              title={!category.color && category.effectiveColor ? 'Inherited from parent' : undefined}
+              title={!category.color && category.effectiveColor ? t('list.inheritedColorTitle') : undefined}
             />
           )}
           <button
             onClick={handleView}
             className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline text-left"
-            title="View transactions in this category"
+            title={t('list.viewTransactionsTitle')}
           >
             {category.name}
           </button>
           {category.isSystem && density !== 'dense' && (
-            <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">(System)</span>
+            <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">{t('list.systemBadge')}</span>
           )}
         </div>
       </td>
@@ -88,7 +91,7 @@ const CategoryRow = memo(function CategoryRow({
               : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
           } ${density === 'dense' ? 'px-1.5 py-0.5' : 'px-2 py-1'}`}
         >
-          {category.isIncome ? 'Income' : 'Expense'}
+          {category.isIncome ? t('list.badgeIncome') : t('list.badgeExpense')}
         </span>
       </td>
       <td className={`${cellPadding} whitespace-nowrap text-right text-sm text-gray-600 dark:text-gray-400 hidden md:table-cell`}>
@@ -108,7 +111,7 @@ const CategoryRow = memo(function CategoryRow({
           onClick={handleEdit}
           className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-2"
         >
-          {density === 'dense' ? '✎' : 'Edit'}
+          {density === 'dense' ? '✎' : tc('edit')}
         </Button>
         {!category.isSystem && (
           <Button
@@ -117,7 +120,7 @@ const CategoryRow = memo(function CategoryRow({
             onClick={handleDelete}
             className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
           >
-            {density === 'dense' ? '✕' : 'Delete'}
+            {density === 'dense' ? '✕' : tc('delete')}
           </Button>
         )}
       </td>
@@ -148,6 +151,7 @@ export function CategoryList({
   sortDirection: propSortDirection,
   onSort,
 }: CategoryListProps) {
+  const t = useTranslations('categories');
   const router = useRouter();
   const [deleteCategory, setDeleteCategory] = useState<Category | null>(null);
   const [localDensity, setLocalDensity] = useState<DensityLevel>('normal');
@@ -191,11 +195,11 @@ export function CategoryList({
 
   const handleDeleteClick = useCallback((category: Category) => {
     if (category.isSystem) {
-      toast.error('System categories cannot be deleted');
+      toast.error(t('toasts.cannotDeleteSystem'));
       return;
     }
     setDeleteCategory(category);
-  }, []);
+  }, [t]);
 
   const handleConfirmDelete = async (reassignToCategoryId: string | null) => {
     if (!deleteCategory) return;
@@ -208,7 +212,7 @@ export function CategoryList({
       }
 
       await categoriesApi.delete(deleteCategory.id);
-      toast.success('Category deleted successfully');
+      toast.success(t('toasts.deleted'));
       if (onDelete) {
         onDelete(deleteCategory.id);
       } else {
@@ -267,8 +271,8 @@ export function CategoryList({
             d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
           />
         </svg>
-        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No categories</h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating a new category.</p>
+        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t('list.emptyHeading')}</h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('list.emptyDescription')}</p>
       </div>
     );
   }
@@ -280,12 +284,12 @@ export function CategoryList({
         <button
           onClick={cycleDensity}
           className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-          title="Toggle row density"
+          title={t('list.densityToggleTitle')}
         >
           <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-          {density === 'normal' ? 'Normal' : density === 'compact' ? 'Compact' : 'Dense'}
+          {density === 'normal' ? t('list.densityNormal') : density === 'compact' ? t('list.densityCompact') : t('list.densityDense')}
         </button>
       </div>
       <div className="overflow-x-auto">
@@ -296,27 +300,27 @@ export function CategoryList({
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200`}
                 onClick={() => handleSort('name')}
               >
-                Name<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.colName')}<SortIcon field="name" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden sm:table-cell`}
                 onClick={() => handleSort('type')}
               >
-                Type<SortIcon field="type" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.colType')}<SortIcon field="type" sortField={sortField} sortDirection={sortDirection} />
               </th>
               <th
                 className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 hidden md:table-cell`}
                 onClick={() => handleSort('count')}
               >
-                Count<SortIcon field="count" sortField={sortField} sortDirection={sortDirection} />
+                {t('list.colCount')}<SortIcon field="count" sortField={sortField} sortDirection={sortDirection} />
               </th>
               {density === 'normal' && (
                 <th className={`${headerPadding} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
-                  Description
+                  {t('list.colDescription')}
                 </th>
               )}
               <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky right-0 bg-gray-50 dark:bg-gray-800`}>
-                Actions
+                {t('list.colActions')}
               </th>
             </tr>
           </thead>

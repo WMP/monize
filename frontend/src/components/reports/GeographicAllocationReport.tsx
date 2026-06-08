@@ -27,6 +27,7 @@ import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
 import { createLogger } from '@/lib/logger';
+import { useTranslations } from 'next-intl';
 
 const logger = createLogger('GeographicAllocationReport');
 
@@ -98,10 +99,11 @@ interface RegionAllocation {
   color: string;
 }
 
-function CustomTooltip({ active, payload, formatCurrencyFull }: {
+function CustomTooltip({ active, payload, formatCurrencyFull, holdingLabel }: {
   active?: boolean;
   payload?: Array<{ payload: RegionAllocation | ExchangeAllocation }>;
   formatCurrencyFull: (v: number) => string;
+  holdingLabel: (count: number) => string;
 }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
@@ -112,12 +114,13 @@ function CustomTooltip({ active, payload, formatCurrencyFull }: {
       <p className="text-sm text-gray-600 dark:text-gray-400">
         {formatCurrencyFull(d.marketValue)} ({('percentage' in d ? d.percentage : 0).toFixed(1)}%)
       </p>
-      <p className="text-sm text-gray-500 dark:text-gray-400">{d.count} holding{d.count !== 1 ? 's' : ''}</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400">{holdingLabel(d.count)}</p>
     </div>
   );
 }
 
 export function GeographicAllocationReport() {
+  const t = useTranslations('reports');
   const { formatCurrencyCompact: formatCurrency, formatCurrency: formatCurrencyFull, formatCurrencyAxis } = useNumberFormat();
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -274,8 +277,8 @@ export function GeographicAllocationReport() {
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
     const headers = viewType === 'region'
-      ? ['Region', 'Holdings', 'Market Value', '% of Portfolio']
-      : ['Exchange', 'Country', 'Holdings', 'Market Value', '% of Portfolio'];
+      ? [t('geographicAllocation.colRegion'), t('geographicAllocation.colHoldings'), t('geographicAllocation.colMarketValue'), t('geographicAllocation.colPortfolioPct')]
+      : [t('geographicAllocation.colExchange'), t('geographicAllocation.colCountry'), t('geographicAllocation.colHoldings'), t('geographicAllocation.colMarketValue'), t('geographicAllocation.colPortfolioPct')];
     const rows = viewType === 'region'
       ? regionData.map(item => [
           item.region,
@@ -302,13 +305,13 @@ export function GeographicAllocationReport() {
         }));
 
     await exportToPdf({
-      title: 'Geographic Allocation',
-      subtitle: viewType === 'region' ? 'By Region' : 'By Exchange',
+      title: t('page.names.geographic-allocation' as Parameters<typeof t>[0]),
+      subtitle: viewType === 'region' ? t('geographicAllocation.viewByRegion') : t('geographicAllocation.viewByExchange'),
       summaryCards: [
-        { label: 'Total Portfolio', value: formatCurrency(totalValue, defaultCurrency), color: '#111827' },
-        { label: 'Regions', value: String(regionData.length), color: '#111827' },
-        { label: 'Exchanges', value: String(exchangeData.length), color: '#111827' },
-        { label: 'Top Region', value: regionData[0]?.region || '-', color: '#111827' },
+        { label: t('geographicAllocation.totalPortfolio'), value: formatCurrency(totalValue, defaultCurrency), color: '#111827' },
+        { label: t('geographicAllocation.regions'), value: String(regionData.length), color: '#111827' },
+        { label: t('geographicAllocation.exchanges'), value: String(exchangeData.length), color: '#111827' },
+        { label: t('geographicAllocation.topRegion'), value: regionData[0]?.region || '-', color: '#111827' },
       ],
       chartContainer: chartRef.current,
       chartLegend: legendItems.length > 0 ? legendItems : undefined,
@@ -338,7 +341,7 @@ export function GeographicAllocationReport() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-8 text-center">
         <p className="text-gray-500 dark:text-gray-400">
-          No investment holdings found. Add securities to see geographic allocation.
+          {t('geographicAllocation.empty')}
         </p>
       </div>
     );
@@ -366,7 +369,7 @@ export function GeographicAllocationReport() {
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
-              By Region
+              {t('geographicAllocation.viewByRegion')}
             </button>
             <button
               onClick={() => setViewType('exchange')}
@@ -376,7 +379,7 @@ export function GeographicAllocationReport() {
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
-              By Exchange
+              {t('geographicAllocation.viewByExchange')}
             </button>
             <RefreshPricesButton onRefreshComplete={reload} />
             <ExportDropdown onExportPdf={handleExportPdf} />
@@ -387,25 +390,25 @@ export function GeographicAllocationReport() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Portfolio</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('geographicAllocation.totalPortfolio')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {formatCurrency(totalValue, defaultCurrency)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Regions</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('geographicAllocation.regions')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {regionData.length}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Exchanges</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('geographicAllocation.exchanges')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {exchangeData.length}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Top Region</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('geographicAllocation.topRegion')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {regionData[0]?.region || '-'}
           </p>
@@ -416,7 +419,7 @@ export function GeographicAllocationReport() {
       {viewType === 'region' ? (
         <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Regional Allocation
+            {t('geographicAllocation.regionalAllocation')}
           </h3>
           <div style={{ width: '100%', height: 350 }}>
             <ResponsiveContainer minWidth={0}>
@@ -435,7 +438,7 @@ export function GeographicAllocationReport() {
                     <Cell key={entry.region} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomTooltip formatCurrencyFull={(v) => formatCurrencyFull(v, defaultCurrency)} />} />
+                <Tooltip content={<CustomTooltip formatCurrencyFull={(v) => formatCurrencyFull(v, defaultCurrency)} holdingLabel={(count) => t('geographicAllocation.holdingCount', { count })} />} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -444,7 +447,7 @@ export function GeographicAllocationReport() {
       ) : (
         <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Exchange Allocation
+            {t('geographicAllocation.exchangeAllocation')}
           </h3>
           <div style={{ width: '100%', height: Math.max(300, exchangeData.length * 40 + 60) }}>
             <ResponsiveContainer minWidth={0}>
@@ -464,7 +467,7 @@ export function GeographicAllocationReport() {
                   width={100}
                   tick={{ fill: 'currentColor', fontSize: 11 }}
                 />
-                <Tooltip content={<CustomTooltip formatCurrencyFull={(v) => formatCurrencyFull(v, defaultCurrency)} />} />
+                <Tooltip content={<CustomTooltip formatCurrencyFull={(v) => formatCurrencyFull(v, defaultCurrency)} holdingLabel={(count) => t('geographicAllocation.holdingCount', { count })} />} />
                 <Bar dataKey="marketValue" fill="#3b82f6" radius={[0, 4, 4, 0]}>
                   {exchangeData.map((entry, index) => (
                     <Cell key={entry.exchange} fill={COUNTRY_COLOURS[index % COUNTRY_COLOURS.length]} />
@@ -490,7 +493,7 @@ export function GeographicAllocationReport() {
                     onSort={regionSort.handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
-                    Region
+                    {t('geographicAllocation.colRegion')}
                   </SortableHeader>
                 ) : (
                   <SortableHeader<GeoExchangeSortField>
@@ -500,7 +503,7 @@ export function GeographicAllocationReport() {
                     onSort={exchangeSort.handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
-                    Exchange
+                    {t('geographicAllocation.colExchange')}
                   </SortableHeader>
                 )}
                 {viewType === 'exchange' && (
@@ -511,7 +514,7 @@ export function GeographicAllocationReport() {
                     onSort={exchangeSort.handleSort}
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
-                    Country
+                    {t('geographicAllocation.colCountry')}
                   </SortableHeader>
                 )}
                 {viewType === 'region' ? (
@@ -523,7 +526,7 @@ export function GeographicAllocationReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
-                    Holdings
+                    {t('geographicAllocation.colHoldings')}
                   </SortableHeader>
                 ) : (
                   <SortableHeader<GeoExchangeSortField>
@@ -534,7 +537,7 @@ export function GeographicAllocationReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
-                    Holdings
+                    {t('geographicAllocation.colHoldings')}
                   </SortableHeader>
                 )}
                 {viewType === 'region' ? (
@@ -546,7 +549,7 @@ export function GeographicAllocationReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
-                    Market Value
+                    {t('geographicAllocation.colMarketValue')}
                   </SortableHeader>
                 ) : (
                   <SortableHeader<GeoExchangeSortField>
@@ -557,7 +560,7 @@ export function GeographicAllocationReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
-                    Market Value
+                    {t('geographicAllocation.colMarketValue')}
                   </SortableHeader>
                 )}
                 {viewType === 'region' ? (
@@ -569,7 +572,7 @@ export function GeographicAllocationReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
-                    % of Portfolio
+                    {t('geographicAllocation.colPortfolioPct')}
                   </SortableHeader>
                 ) : (
                   <SortableHeader<GeoExchangeSortField>
@@ -580,7 +583,7 @@ export function GeographicAllocationReport() {
                     align="right"
                     className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
-                    % of Portfolio
+                    {t('geographicAllocation.colPortfolioPct')}
                   </SortableHeader>
                 )}
               </tr>
@@ -638,7 +641,7 @@ export function GeographicAllocationReport() {
             <tfoot className="bg-gray-50 dark:bg-gray-900/50">
               <tr>
                 <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">
-                  Total
+                  {t('geographicAllocation.total')}
                 </td>
                 {viewType === 'exchange' && <td />}
                 <td className="px-4 py-3 text-sm text-right font-bold text-gray-900 dark:text-gray-100">

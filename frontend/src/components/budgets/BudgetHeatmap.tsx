@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import {
   eachDayOfInterval,
@@ -91,6 +92,7 @@ export function BudgetHeatmap({
     return result;
   }, [days, spendingMap]);
 
+  const t = useTranslations('budgets');
   const router = useRouter();
   const today = new Date();
 
@@ -104,10 +106,10 @@ export function BudgetHeatmap({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-        Spending Heatmap - {monthLabel}
+        {t('heatmap.title', { monthLabel })}
       </h2>
       <div className="overflow-x-auto">
-        <table className="mx-auto" role="grid" aria-label="Spending heatmap">
+        <table className="mx-auto" role="grid" aria-label={t('heatmap.ariaLabel')}>
           <thead>
             <tr>
               {WEEKDAY_LABELS.map((label, i) => (
@@ -158,13 +160,13 @@ export function BudgetHeatmap({
         </table>
       </div>
       <div className="flex items-center justify-center gap-2 mt-3 text-xs text-gray-500 dark:text-gray-400">
-        <span>Less</span>
+        <span>{t('heatmap.less')}</span>
         <div className="w-4 h-4 rounded-sm bg-gray-100 dark:bg-gray-700" />
         <div className="w-4 h-4 rounded-sm bg-green-200 dark:bg-green-600" />
         <div className="w-4 h-4 rounded-sm bg-yellow-300 dark:bg-yellow-400" />
         <div className="w-4 h-4 rounded-sm bg-orange-300 dark:bg-orange-400" />
         <div className="w-4 h-4 rounded-sm bg-red-400 dark:bg-red-500" />
-        <span>More</span>
+        <span>{t('heatmap.more')}</span>
       </div>
     </div>
   );

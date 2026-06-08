@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   AreaChart,
   Area,
@@ -52,6 +53,7 @@ interface InvestmentValueChartProps {
 }
 
 export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix }: InvestmentValueChartProps) {
+  const t = useTranslations('investments');
   const { formatCurrency, formatCurrencyCompact, formatCurrencyAxis, formatCurrencyFlag, formatSignedPercent } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
   const isMobile = useIsMobile();
@@ -352,7 +354,7 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
           <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">{data?.name}</p>
           <p className="text-sm text-emerald-600 dark:text-emerald-400">
-            Portfolio: {fmtVal(payload[0].value)}
+            {t('investmentValueChart.portfolioLabel')} {fmtVal(payload[0].value)}
           </p>
         </div>
       );
@@ -381,7 +383,7 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
       {/* Header with title and date range buttons */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-          Portfolio Value Over Time{titleSuffix ? ` (${titleSuffix})` : ''}
+          {t('investmentValueChart.title')}{titleSuffix ? ` (${titleSuffix})` : ''}
           {/* Background-load indicator: chart stays on screen during a refetch
               so Recharts can animate into the new data, but a portfolio with
               many securities can still take a few seconds (the backend pulls
@@ -408,13 +410,13 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 />
               </svg>
-              Updating…
+              {t('investmentValueChart.updatingLabel')}
             </span>
           )}
           {intradayFallbackNotice && (
             <span
               role="img"
-              aria-label="Detailed intraday pricing unavailable"
+              aria-label={t('investmentValueChart.intradayFallbackWarningAriaLabel')}
               title={`Detailed intraday pricing isn't available because ${intradayFallbackNotice.skipped.length > 0 ? intradayFallbackNotice.skipped.join(', ') : 'one or more holdings'} use MSN Money, which doesn't expose intraday quotes. Showing daily snapshots instead.`}
               className="inline-flex text-amber-500 dark:text-amber-400 cursor-help"
               data-testid="intraday-fallback-warning"
@@ -441,25 +443,25 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
         <div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Highest Value</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{t('investmentValueChart.highestValue')}</div>
           <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
             {fmtFull(summary.highest)}
           </div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Lowest Value</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{t('investmentValueChart.lowestValue')}</div>
           <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
             {fmtFull(summary.lowest)}
           </div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Change</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{t('investmentValueChart.change')}</div>
           <div className={`text-lg font-bold ${gainLossColor(summary.change)}`}>
             {summary.change >= 0 ? '+' : ''}{fmtFull(summary.change)}
           </div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Change %</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{t('investmentValueChart.changePercent')}</div>
           <div className={`text-lg font-bold ${gainLossColor(summary.changePercent)}`}>
             {formatSignedPercent(summary.changePercent, 1)}
           </div>
@@ -470,20 +472,18 @@ export function InvestmentValueChart({ accountIds, displayCurrency, titleSuffix 
       {intradayUnavailable ? (
         <div className="text-center py-12 px-4">
           <p className="text-sm text-gray-700 dark:text-gray-200 font-medium mb-1">
-            Intraday view unavailable for this account mix
+            {t('investmentValueChart.intradayUnavailableTitle')}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            One or more holdings use a quote provider (MSN Money) that does not
-            expose intraday data
+            {t('investmentValueChart.intradayUnavailableDescription')}
             {intradayUnavailable.skipped.length > 0
               ? `: ${intradayUnavailable.skipped.join(', ')}`
               : ''}
-            . Switch to a longer range to see daily snapshots.
           </p>
         </div>
       ) : chartPoints.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-          No investment data for this period.
+          {t('investmentValueChart.noDataForPeriod')}
         </p>
       ) : (
         <div

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { PortfolioSummary } from '@/types/investment';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
@@ -20,6 +21,7 @@ export function PortfolioSummaryCard({
   singleAccountCurrency,
   titleSuffix,
 }: PortfolioSummaryCardProps) {
+  const t = useTranslations('investments');
   const { formatCurrency, formatSignedPercent } = useNumberFormat();
   const { convertToDefault, defaultCurrency } = useExchangeRates();
 
@@ -86,7 +88,7 @@ export function PortfolioSummaryCard({
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[420px]">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Portfolio Summary{titleSuffix ? ` (${titleSuffix})` : ''}
+          {t('portfolioSummary.title')}{titleSuffix ? ` (${titleSuffix})` : ''}
         </h3>
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((i) => (
@@ -104,10 +106,10 @@ export function PortfolioSummaryCard({
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[420px]">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Portfolio Summary{titleSuffix ? ` (${titleSuffix})` : ''}
+          {t('portfolioSummary.title')}{titleSuffix ? ` (${titleSuffix})` : ''}
         </h3>
         <p className="text-gray-500 dark:text-gray-400">
-          No investment data available.
+          {t('portfolioSummary.noData')}
         </p>
       </div>
     );
@@ -121,14 +123,14 @@ export function PortfolioSummaryCard({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[420px]">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-        Portfolio Summary{titleSuffix ? ` (${titleSuffix})` : ''}
+        {t('portfolioSummary.title')}{titleSuffix ? ` (${titleSuffix})` : ''}
       </h3>
 
       <div className="space-y-4">
         {/* Total Portfolio Value */}
         <div>
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            Total Portfolio Value
+            {t('portfolioSummary.totalPortfolioValue')}
           </div>
           <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {fmtVal(converted?.portfolio ?? summary.totalPortfolioValue)}
@@ -143,13 +145,13 @@ export function PortfolioSummaryCard({
         {/* Values Section */}
         <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
           <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">
-            Values
+            {t('portfolioSummary.values')}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
             <div>
               <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                Holdings Value
-                <InfoTooltip placement="top" text="The current market value of all securities you hold, based on the latest available prices." />
+                {t('portfolioSummary.holdingsValue')}
+                <InfoTooltip placement="top" text={t('portfolioSummary.holdingsValueTooltip')} />
               </div>
               <div className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {fmtVal(converted?.holdings ?? summary.totalHoldingsValue)}
@@ -157,8 +159,8 @@ export function PortfolioSummaryCard({
             </div>
             <div>
               <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                Cash Balance
-                <InfoTooltip placement="top" text="Uninvested cash sitting in your investment accounts, available for purchasing securities." />
+                {t('portfolioSummary.cashBalance')}
+                <InfoTooltip placement="top" text={t('portfolioSummary.cashBalanceTooltip')} />
               </div>
               <div className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {fmtVal(converted?.cash ?? summary.totalCashValue)}
@@ -166,8 +168,8 @@ export function PortfolioSummaryCard({
             </div>
             <div>
               <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                Total Gain
-                <InfoTooltip placement="top" text="The total profit or loss across all your investments: Portfolio Value minus Net Invested. Includes realized gains, unrealized gains, dividends, and interest." />
+                {t('portfolioSummary.totalGain')}
+                <InfoTooltip placement="top" text={t('portfolioSummary.totalGainTooltip')} />
               </div>
               <div className={`text-base sm:text-lg font-semibold ${returnColorClass((converted?.portfolio ?? summary.totalPortfolioValue) - (converted?.netInvested ?? summary.totalNetInvested))}`}>
                 {fmtVal((converted?.portfolio ?? summary.totalPortfolioValue) - (converted?.netInvested ?? summary.totalNetInvested))}
@@ -175,8 +177,8 @@ export function PortfolioSummaryCard({
             </div>
             <div>
               <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                Net Invested
-                <InfoTooltip placement="top" text="The net amount of your own money deposited into your investment accounts. This is total contributions minus withdrawals, excluding any investment gains, dividends, or interest earned." />
+                {t('portfolioSummary.netInvested')}
+                <InfoTooltip placement="top" text={t('portfolioSummary.netInvestedTooltip')} />
               </div>
               <div className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {fmtVal(converted?.netInvested ?? summary.totalNetInvested)}
@@ -184,8 +186,8 @@ export function PortfolioSummaryCard({
             </div>
             <div>
               <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                Cost Basis
-                <InfoTooltip placement="top" text="The total amount you originally paid to acquire your investments, including purchase prices and transaction fees. Used to calculate your gains and losses." />
+                {t('portfolioSummary.costBasis')}
+                <InfoTooltip placement="top" text={t('portfolioSummary.costBasisTooltip')} />
               </div>
               <div className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {fmtVal(converted?.costBasis ?? summary.totalCostBasis)}
@@ -193,8 +195,8 @@ export function PortfolioSummaryCard({
             </div>
             <div>
               <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                Gain/Loss
-                <InfoTooltip placement="top" text="Unrealized gain or loss on your current holdings: Market Value minus Cost Basis. Does not include realized gains from past sales or income received." />
+                {t('portfolioSummary.gainLoss')}
+                <InfoTooltip placement="top" text={t('portfolioSummary.gainLossTooltip')} />
               </div>
               <div className={`text-base sm:text-lg font-semibold ${returnColorClass(gainLossVal)}`}>
                 {fmtVal(gainLossVal)}
@@ -206,13 +208,13 @@ export function PortfolioSummaryCard({
         {/* Returns Section */}
         <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
           <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">
-            Returns
+            {t('portfolioSummary.returns')}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
             <div>
               <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                Simple Return
-                <InfoTooltip placement="top" text="Total percentage gain or loss on your holdings, calculated as (Market Value − Cost Basis) ÷ Cost Basis. Does not account for the timing of contributions or withdrawals." />
+                {t('portfolioSummary.simpleReturn')}
+                <InfoTooltip placement="top" text={t('portfolioSummary.simpleReturnTooltip')} />
               </div>
               <div className={`text-base sm:text-lg font-semibold ${returnColorClass(gainLossPercentVal)}`}>
                 {formatPercent(gainLossPercentVal)}
@@ -220,24 +222,24 @@ export function PortfolioSummaryCard({
             </div>
             <div>
               <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                TWR
-                <span className="hidden sm:inline">&nbsp;(Time-Weighted)</span>
-                <InfoTooltip placement="top" text="Measures how well your investments performed regardless of when you added or removed money. Eliminates the impact of cash flow timing to show pure investment performance." />
+                {t('portfolioSummary.twr')}
+                <span className="hidden sm:inline">&nbsp;{t('portfolioSummary.twrFull')}</span>
+                <InfoTooltip placement="top" text={t('portfolioSummary.twrTooltip')} />
               </div>
               <div className={`text-base sm:text-lg font-semibold ${returnColorClass(twr)}`}>
                 {twr != null ? formatPercent(twr) : (
-                  <span className="text-gray-400 dark:text-gray-500 text-sm font-normal">N/A</span>
+                  <span className="text-gray-400 dark:text-gray-500 text-sm font-normal">{t('portfolioSummary.notAvailable')}</span>
                 )}
               </div>
             </div>
             <div>
               <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                CAGR
-                <InfoTooltip placement="top" text="Compound Annual Growth Rate. Your annualized return based on Net Invested vs. current portfolio value, as if growth had been perfectly steady each year." />
+                {t('portfolioSummary.cagr')}
+                <InfoTooltip placement="top" text={t('portfolioSummary.cagrTooltip')} />
               </div>
               <div className={`text-base sm:text-lg font-semibold ${returnColorClass(cagrVal)}`}>
                 {cagrVal != null ? formatPercent(cagrVal) : (
-                  <span className="text-gray-400 dark:text-gray-500 text-sm font-normal">N/A</span>
+                  <span className="text-gray-400 dark:text-gray-500 text-sm font-normal">{t('portfolioSummary.notAvailable')}</span>
                 )}
               </div>
             </div>

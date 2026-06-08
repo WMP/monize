@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
@@ -18,11 +19,11 @@ import { DATE_FORMAT_OPTIONS, EXCHANGE_OPTIONS } from '@/lib/constants';
 import { LanguageSelector } from '@/components/settings/LanguageSelector';
 
 const NUMBER_FORMAT_OPTIONS = [
-  { value: 'browser', label: 'Use browser locale (auto-detect)' },
-  { value: 'en-US', label: 'English (US) - 1,234.56' },
-  { value: 'en-GB', label: 'English (UK) - 1,234.56' },
-  { value: 'de-DE', label: 'German - 1.234,56' },
-  { value: 'fr-FR', label: 'French - 1 234,56' },
+  { value: 'browser', labelKey: 'numberFormatOptions.browser' },
+  { value: 'en-US', labelKey: 'numberFormatOptions.enUS' },
+  { value: 'en-GB', labelKey: 'numberFormatOptions.enGB' },
+  { value: 'de-DE', labelKey: 'numberFormatOptions.deDE' },
+  { value: 'fr-FR', labelKey: 'numberFormatOptions.frFR' },
 ];
 
 function getBrowserTimezone(): string {
@@ -50,19 +51,19 @@ function buildTimezoneOptions(): { value: string; label: string }[] {
 const TIMEZONE_OPTIONS = buildTimezoneOptions();
 
 const WEEK_STARTS_ON_OPTIONS = [
-  { value: '0', label: 'Sunday' },
-  { value: '1', label: 'Monday' },
-  { value: '2', label: 'Tuesday' },
-  { value: '3', label: 'Wednesday' },
-  { value: '4', label: 'Thursday' },
-  { value: '5', label: 'Friday' },
-  { value: '6', label: 'Saturday' },
+  { value: '0', labelKey: 'weekDays.sunday' },
+  { value: '1', labelKey: 'weekDays.monday' },
+  { value: '2', labelKey: 'weekDays.tuesday' },
+  { value: '3', labelKey: 'weekDays.wednesday' },
+  { value: '4', labelKey: 'weekDays.thursday' },
+  { value: '5', labelKey: 'weekDays.friday' },
+  { value: '6', labelKey: 'weekDays.saturday' },
 ];
 
 const THEME_OPTIONS = [
-  { value: 'system', label: 'System (follow device setting)' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
+  { value: 'system', labelKey: 'themeOptions.system' },
+  { value: 'light', labelKey: 'themeOptions.light' },
+  { value: 'dark', labelKey: 'themeOptions.dark' },
 ];
 
 const QUOTE_PROVIDER_OPTIONS = [
@@ -84,6 +85,7 @@ interface PreferencesSectionProps {
 }
 
 export function PreferencesSection({ preferences, onPreferencesUpdated }: PreferencesSectionProps) {
+  const t = useTranslations('settings.preferences');
   const updatePreferencesStore = usePreferencesStore((state) => state.updatePreferences);
   const { setTheme: setAppTheme } = useTheme();
 
@@ -149,7 +151,7 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
       onPreferencesUpdated(updated);
       updatePreferencesStore(updated);
       setAppTheme(theme);
-      toast.success('Preferences saved');
+      toast.success(t('toasts.saved'));
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to save preferences'));
     } finally {
@@ -159,20 +161,20 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-6 mb-6">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Preferences</h2>
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('heading')}</h2>
 
       <div className="space-y-4">
         <LanguageSelector value={language} onChange={setLanguage} />
 
         <Select
-          label="Theme"
-          options={THEME_OPTIONS}
+          label={t('themeLabel')}
+          options={THEME_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
           value={theme}
           onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')}
         />
 
         <Select
-          label="Default Currency"
+          label={t('defaultCurrencyLabel')}
           options={currencyOptions}
           value={defaultCurrency}
           onChange={(e) => setDefaultCurrency(e.target.value)}
@@ -180,10 +182,10 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Preferred Exchanges (for security lookups)
+            {t('preferredExchangesLabel')}
           </label>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-            Select up to 3 exchanges in priority order. These will be preferred when looking up securities.
+            {t('preferredExchangesHelp')}
           </p>
           <div className="grid grid-cols-3 gap-2">
             {[0, 1, 2].map((i) => (
@@ -206,7 +208,7 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
                   }
                   setPreferredExchanges(updated.filter(Boolean));
                 }}
-                placeholder={`Priority ${i + 1}`}
+                placeholder={t('exchangePriorityPlaceholder', { n: i + 1 })}
                 alwaysShowSubtitle
               />
             ))}
@@ -215,16 +217,16 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
 
         <div>
           <Select
-            label="Default Stock Quote Provider"
+            label={t('defaultQuoteProviderLabel')}
             options={QUOTE_PROVIDER_OPTIONS}
             value={defaultQuoteProvider}
             onChange={(e) => setDefaultQuoteProvider(e.target.value as 'yahoo' | 'msn')}
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Used when a security has no provider override. If the chosen provider fails, Monize automatically tries the other.
+            {t('defaultQuoteProviderHelp')}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Note: MSN Money does not provide intraday quote data, so the 1D / 1W / 1M ranges on the Portfolio Value Over Time chart are unavailable for MSN-tracked holdings.
+            {t('msnNoIntradayNote')}
           </p>
           {defaultQuoteProvider === 'msn' && msnReady === false && (
             <p
@@ -232,39 +234,36 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
               className="text-sm text-red-600 dark:text-red-400 mt-2"
               data-testid="msn-not-configured-error"
             >
-              MSN is selected as the default quote provider, but{' '}
-              <code>MSN_API_KEY</code> is not configured on the server. MSN
-              quotes will fail until an administrator sets the env var and
-              restarts the backend.
+              {t('msnNotConfigured')}
             </p>
           )}
         </div>
 
         <Select
-          label="Date Format"
+          label={t('dateFormatLabel')}
           options={DATE_FORMAT_OPTIONS}
           value={dateFormat}
           onChange={(e) => setDateFormat(e.target.value)}
         />
 
         <Select
-          label="Number Format"
-          options={NUMBER_FORMAT_OPTIONS}
+          label={t('numberFormatLabel')}
+          options={NUMBER_FORMAT_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
           value={numberFormat}
           onChange={(e) => setNumberFormat(e.target.value)}
         />
 
         <Combobox
-          label="Timezone"
-          options={TIMEZONE_OPTIONS}
+          label={t('timezoneLabel')}
+          options={[{ value: 'browser', label: t('timezoneBrowserOption', { tz: getBrowserTimezone() }) }, ...TIMEZONE_OPTIONS.slice(1)]}
           value={timezone}
           onChange={(value) => setTimezone(value)}
-          placeholder="Search timezones..."
+          placeholder={t('timezonePlaceholder')}
         />
 
         <Select
-          label="Week starts on"
-          options={WEEK_STARTS_ON_OPTIONS}
+          label={t('weekStartsOnLabel')}
+          options={WEEK_STARTS_ON_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
           value={String(weekStartsOn)}
           onChange={(e) => setWeekStartsOn(Number(e.target.value))}
         />
@@ -277,18 +276,18 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
             <ToggleSwitch
               checked={showCreatedAt}
               onChange={setShowCreatedAt}
-              label="Show Create Date in transaction forms"
+              label={t('showCreatedAtLabel')}
             />
             <span className="text-sm text-gray-900 dark:text-gray-100">
-              Show Create Date in transaction forms
+              {t('showCreatedAtLabel')}
             </span>
           </label>
-          <InfoTooltip text="Displays the date and time a transaction was originally created on transaction forms. This is separate from the transaction date and can help you tell when an entry was actually added to Monize." />
+          <InfoTooltip text={t('showCreatedAtTooltip')} />
         </div>
 
         {showCreatedAt && (
           <Select
-            label="Time Format"
+            label={t('timeFormatLabel')}
             options={[
               { value: '24h', label: '24-hour (14:30)' },
               { value: '12h', label: '12-hour (2:30 PM)' },
@@ -300,20 +299,20 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
 
         <div>
           <Select
-            label="Recent transactions in quick-fill"
+            label={t('recentTransactionsLabel')}
             options={RECENT_TRANSACTIONS_LIMIT_OPTIONS}
             value={String(recentTransactionsLimit)}
             onChange={(e) => setRecentTransactionsLimit(Number(e.target.value))}
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Number of entries shown in the history button popover next to the Payee field on transaction forms.
+            {t('recentTransactionsHelp')}
           </p>
         </div>
       </div>
 
       <div className="mt-6 flex justify-end">
         <Button onClick={handleUpdatePreferences} disabled={isUpdatingPreferences}>
-          {isUpdatingPreferences ? 'Saving...' : 'Save Preferences'}
+          {isUpdatingPreferences ? t('savingButton') : t('saveButton')}
         </Button>
       </div>
     </div>

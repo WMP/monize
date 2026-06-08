@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
@@ -65,10 +66,11 @@ function getColor(type: string, index: number): string {
   return TYPE_COLOURS[type] || FALLBACK_COLOURS[index % FALLBACK_COLOURS.length];
 }
 
-function CustomTooltip({ active, payload, formatCurrencyFull }: {
+function CustomTooltip({ active, payload, formatCurrencyFull, getHoldingsLabel }: {
   active?: boolean;
   payload?: Array<{ payload: TypeAllocation }>;
   formatCurrencyFull: (v: number) => string;
+  getHoldingsLabel: (count: number) => string;
 }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
@@ -76,12 +78,13 @@ function CustomTooltip({ active, payload, formatCurrencyFull }: {
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
       <p className="font-medium text-gray-900 dark:text-gray-100">{d.label}</p>
       <p className="text-sm text-gray-600 dark:text-gray-400">{formatCurrencyFull(d.totalValue)} ({d.percentage.toFixed(1)}%)</p>
-      <p className="text-sm text-gray-500 dark:text-gray-400">{d.count} holding{d.count !== 1 ? 's' : ''}</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400">{getHoldingsLabel(d.count)}</p>
     </div>
   );
 }
 
 export function SecurityTypeAllocationReport() {
+  const t = useTranslations('reports');
   const { formatCurrencyCompact: formatCurrency, formatCurrency: formatCurrencyFull } = useNumberFormat();
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -184,7 +187,12 @@ export function SecurityTypeAllocationReport() {
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
-    const headers = ['Asset Type', 'Total Value', '% of Portfolio', 'Holdings'];
+    const headers = [
+      t('securityTypeAllocation.pdfColAssetType'),
+      t('securityTypeAllocation.pdfColTotalValue'),
+      t('securityTypeAllocation.pdfColPortfolioPct'),
+      t('securityTypeAllocation.pdfColHoldings'),
+    ];
     const rows = allocationData.map(item => [
       item.label,
       formatCurrencyFull(item.totalValue, defaultCurrency),
@@ -193,12 +201,12 @@ export function SecurityTypeAllocationReport() {
     ]);
     const totalHoldings = allocationData.reduce((sum, a) => sum + a.count, 0);
     await exportToPdf({
-      title: 'Security Type Allocation',
+      title: t('securityTypeAllocation.pdfTitle'),
       summaryCards: [
-        { label: 'Total Portfolio', value: formatCurrency(totalPortfolioValue, defaultCurrency), color: '#111827' },
-        { label: 'Asset Types', value: String(allocationData.length), color: '#111827' },
-        { label: 'Total Holdings', value: String(totalHoldings), color: '#111827' },
-        { label: 'Largest Type', value: allocationData[0]?.label || '-', color: '#111827' },
+        { label: t('securityTypeAllocation.pdfTotalPortfolio'), value: formatCurrency(totalPortfolioValue, defaultCurrency), color: '#111827' },
+        { label: t('securityTypeAllocation.pdfAssetTypes'), value: String(allocationData.length), color: '#111827' },
+        { label: t('securityTypeAllocation.pdfTotalHoldings'), value: String(totalHoldings), color: '#111827' },
+        { label: t('securityTypeAllocation.pdfLargestType'), value: allocationData[0]?.label || '-', color: '#111827' },
       ],
       chartContainer: chartRef.current,
       chartLegend: allocationData.map((item) => ({
@@ -231,7 +239,7 @@ export function SecurityTypeAllocationReport() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-8 text-center">
         <p className="text-gray-500 dark:text-gray-400">
-          No investment holdings found. Add securities to see the asset type breakdown.
+          {t('securityTypeAllocation.noData')}
         </p>
       </div>
     );
@@ -260,25 +268,25 @@ export function SecurityTypeAllocationReport() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Portfolio</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('securityTypeAllocation.totalPortfolio')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {formatCurrency(totalPortfolioValue, defaultCurrency)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Asset Types</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('securityTypeAllocation.assetTypes')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {allocationData.length}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Holdings</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('securityTypeAllocation.totalHoldings')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {allocationData.reduce((sum, a) => sum + a.count, 0)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Largest Type</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('securityTypeAllocation.largestType')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {allocationData[0]?.label || '-'}
           </p>
@@ -288,7 +296,7 @@ export function SecurityTypeAllocationReport() {
       {/* Pie Chart */}
       <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Asset Type Allocation
+          {t('securityTypeAllocation.assetTypeAllocation')}
         </h3>
         <div style={{ width: '100%', height: 350 }}>
           <ResponsiveContainer minWidth={0}>
@@ -307,7 +315,7 @@ export function SecurityTypeAllocationReport() {
                   <Cell key={entry.type} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip formatCurrencyFull={(v) => formatCurrencyFull(v, defaultCurrency)} />} />
+              <Tooltip content={<CustomTooltip formatCurrencyFull={(v) => formatCurrencyFull(v, defaultCurrency)} getHoldingsLabel={(count) => t('securityTypeAllocation.tooltipHoldings', { count })} />} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -327,7 +335,7 @@ export function SecurityTypeAllocationReport() {
                   onSort={handleSort}
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Asset Type
+                  {t('securityTypeAllocation.colAssetType')}
                 </SortableHeader>
                 <SortableHeader<SecurityTypeSortField>
                   field="totalValue"
@@ -337,7 +345,7 @@ export function SecurityTypeAllocationReport() {
                   align="right"
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Total Value
+                  {t('securityTypeAllocation.colTotalValue')}
                 </SortableHeader>
                 <SortableHeader<SecurityTypeSortField>
                   field="percentage"
@@ -347,7 +355,7 @@ export function SecurityTypeAllocationReport() {
                   align="right"
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  % of Portfolio
+                  {t('securityTypeAllocation.colPortfolioPct')}
                 </SortableHeader>
                 <SortableHeader<SecurityTypeSortField>
                   field="count"
@@ -357,7 +365,7 @@ export function SecurityTypeAllocationReport() {
                   align="right"
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Holdings
+                  {t('securityTypeAllocation.colHoldings')}
                 </SortableHeader>
               </tr>
             </thead>
@@ -401,7 +409,7 @@ export function SecurityTypeAllocationReport() {
                         {h.symbol} - {h.name}
                         {h.accountBreakdowns.length > 1 && (
                           <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
-                            ({h.accountBreakdowns.length} accounts)
+                            ({t('securityTypeAllocation.holdingsCount', { count: h.accountBreakdowns.length })})
                           </span>
                         )}
                       </td>
@@ -424,7 +432,7 @@ export function SecurityTypeAllocationReport() {
             <tfoot className="bg-gray-50 dark:bg-gray-900/50">
               <tr>
                 <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">
-                  Total
+                  {t('securityTypeAllocation.total')}
                 </td>
                 <td className="px-4 py-3 text-sm text-right font-bold text-gray-900 dark:text-gray-100">
                   {formatCurrencyFull(totalPortfolioValue, defaultCurrency)}

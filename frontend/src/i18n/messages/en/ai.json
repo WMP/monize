@@ -1,0 +1,53 @@
+{
+  "page": {
+    "title": "AI Assistant",
+    "subtitle": "Ask questions about your finances in natural language"
+  },
+  "chat": {
+    "conversationSaved": "Conversation saved in your browser",
+    "clearConversation": "Clear conversation",
+    "inputPlaceholder": "Ask about your finances...",
+    "inputPlaceholderDisabled": "AI provider not configured",
+    "keyboardHint": "Press Enter to send, Shift+Enter for new line",
+    "cancelTitle": "Cancel",
+    "sendTitle": "Send"
+  },
+  "notConfigured": {
+    "heading": "AI Not Configured",
+    "message": "No AI provider is configured. To use the AI Assistant, please {link} in your settings.",
+    "linkText": "configure an AI provider"
+  },
+  "suggestedQueries": {
+    "heading": "Ask about your finances",
+    "description": "I can answer questions about your spending, income, account balances, net worth, and more.",
+    "monthlySpendingLabel": "Monthly spending",
+    "monthlySpendingQuery": "How much did I spend last month?",
+    "topCategoriesLabel": "Top categories",
+    "topCategoriesQuery": "What are my top 5 expense categories this year?",
+    "accountBalancesLabel": "Account balances",
+    "accountBalancesQuery": "What are my current account balances?",
+    "compareMonthsLabel": "Compare months",
+    "compareMonthsQuery": "Compare my spending this month vs last month",
+    "netWorthTrendLabel": "Net worth trend",
+    "netWorthTrendQuery": "Show my net worth trend for the last 12 months",
+    "savingsRateLabel": "Savings rate",
+    "savingsRateQuery": "How much have I saved this year compared to my income?"
+  },
+  "toolDetails": {
+    "inputLabel": "Input",
+    "resultLabel": "Result",
+    "toolFailedAriaLabel": "Tool failed",
+    "toolSucceededAriaLabel": "Tool succeeded"
+  },
+  "table": {
+    "downloadTitle": "Download table as CSV",
+    "downloadAriaLabel": "Download table as CSV",
+    "noDataError": "No table data to export"
+  },
+  "chart": {
+    "downloadTitle": "Download chart as PNG",
+    "downloadAriaLabel": "Download chart as PNG",
+    "captureError": "Unable to capture chart image",
+    "downloadError": "Failed to download chart"
+  }
+}

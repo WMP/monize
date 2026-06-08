@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { useReportData } from '@/hooks/useReportData';
 import { ReportError } from '@/components/reports/ReportError';
@@ -40,11 +41,14 @@ const SECTOR_COLOURS = [
   '#f43f5e', '#84cc16',
 ];
 
-function CustomTooltip({ active, payload, formatCurrencyFull, defaultCurrency }: {
+function CustomTooltip({ active, payload, formatCurrencyFull, defaultCurrency, labelDirect, labelEtf, labelTotal }: {
   active?: boolean;
   payload?: Array<{ payload: { sector: string; direct: number; etf: number; total: number; percentage: number } }>;
   formatCurrencyFull: (v: number, c: string) => string;
   defaultCurrency: string;
+  labelDirect: string;
+  labelEtf: string;
+  labelTotal: string;
 }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
@@ -52,17 +56,18 @@ function CustomTooltip({ active, payload, formatCurrencyFull, defaultCurrency }:
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
       <p className="font-medium text-gray-900 dark:text-gray-100">{d.sector} ({d.percentage.toFixed(1)}%)</p>
       {d.direct > 0 && (
-        <p className="text-sm text-blue-600 dark:text-blue-400">Direct (Stocks): {formatCurrencyFull(d.direct, defaultCurrency)}</p>
+        <p className="text-sm text-blue-600 dark:text-blue-400">{labelDirect.replace('{amount}', formatCurrencyFull(d.direct, defaultCurrency))}</p>
       )}
       {d.etf > 0 && (
-        <p className="text-sm text-green-600 dark:text-green-400">ETF Exposure: {formatCurrencyFull(d.etf, defaultCurrency)}</p>
+        <p className="text-sm text-green-600 dark:text-green-400">{labelEtf.replace('{amount}', formatCurrencyFull(d.etf, defaultCurrency))}</p>
       )}
-      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-1">Total: {formatCurrencyFull(d.total, defaultCurrency)}</p>
+      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-1">{labelTotal.replace('{amount}', formatCurrencyFull(d.total, defaultCurrency))}</p>
     </div>
   );
 }
 
 export function SectorWeightingsReport() {
+  const t = useTranslations('reports');
   const { formatCurrencyCompact: formatCurrency, formatCurrency: formatCurrencyFull } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -136,7 +141,13 @@ export function SectorWeightingsReport() {
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
-    const headers = ['Sector', 'Direct Value', 'ETF Value', 'Total Value', '% of Portfolio'];
+    const headers = [
+      t('sectorWeightings.pdfColSector'),
+      t('sectorWeightings.pdfColDirectValue'),
+      t('sectorWeightings.pdfColEtfValue'),
+      t('sectorWeightings.pdfColTotalValue'),
+      t('sectorWeightings.pdfColPortfolioPct'),
+    ];
     const rows = data ? data.items.map(item => [
       item.sector,
       formatCurrencyFull(item.directValue, defaultCurrency),
@@ -146,9 +157,9 @@ export function SectorWeightingsReport() {
     ]) : [];
     const accountLabel = selectedAccountIds.length > 0
       ? accounts.filter((a) => selectedAccountIds.includes(a.id)).map((a) => a.name).join(', ')
-      : 'All Accounts';
+      : t('sectorWeightings.pdfAllAccounts');
     await exportToPdf({
-      title: 'Sector Weightings',
+      title: t('sectorWeightings.pdfTitle'),
       subtitle: accountLabel,
       chartContainer: chartRef.current,
       tableData: { headers, rows },
@@ -177,7 +188,7 @@ export function SectorWeightingsReport() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-8 text-center">
         <p className="text-gray-500 dark:text-gray-400">
-          No investment holdings with sector data found. Add securities with sector classification to see the breakdown.
+          {t('sectorWeightings.noData')}
         </p>
       </div>
     );
@@ -209,8 +220,8 @@ export function SectorWeightingsReport() {
             {/* Security Filter */}
             <div className="w-48">
               <MultiSelect
-                ariaLabel="Filter by security"
-                placeholder="All Securities"
+                ariaLabel={t('sectorWeightings.filterBySecurityLabel')}
+                placeholder={t('sectorWeightings.allSecuritiesPlaceholder')}
                 options={securityOptions}
                 value={selectedSecurityIds}
                 onChange={setSelectedSecurityIds}
@@ -225,7 +236,7 @@ export function SectorWeightingsReport() {
                 }}
                 className="px-4 py-2 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
               >
-                Clear Filters
+                {t('sectorWeightings.clearFilters')}
               </button>
             )}
           </div>
@@ -239,25 +250,25 @@ export function SectorWeightingsReport() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Portfolio</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('sectorWeightings.totalPortfolio')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {formatCurrency(data.totalPortfolioValue, defaultCurrency)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Direct Exposure</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('sectorWeightings.directExposure')}</p>
           <p className="text-lg sm:text-xl font-bold text-blue-600 dark:text-blue-400">
             {formatCurrency(data.totalDirectValue, defaultCurrency)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">ETF Exposure</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('sectorWeightings.etfExposure')}</p>
           <p className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">
             {formatCurrency(data.totalEtfValue, defaultCurrency)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Sectors</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t('sectorWeightings.sectors')}</p>
           <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
             {data.items.length}
           </p>
@@ -267,7 +278,7 @@ export function SectorWeightingsReport() {
       {/* Stacked Bar Chart */}
       <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Sector Allocation
+          {t('sectorWeightings.sectorAllocation')}
         </h3>
         <div style={{ width: '100%', height: Math.max(300, chartData.length * 40 + 60) }}>
           <ResponsiveContainer minWidth={0}>
@@ -287,10 +298,10 @@ export function SectorWeightingsReport() {
                 width={100}
                 tick={{ fill: 'currentColor', fontSize: 11 }}
               />
-              <Tooltip content={<CustomTooltip formatCurrencyFull={formatCurrencyFull} defaultCurrency={defaultCurrency} />} />
+              <Tooltip content={<CustomTooltip formatCurrencyFull={formatCurrencyFull} defaultCurrency={defaultCurrency} labelDirect={t('sectorWeightings.tooltipDirect')} labelEtf={t('sectorWeightings.tooltipEtf')} labelTotal={t('sectorWeightings.tooltipTotal')} />} />
               <Legend
                 formatter={(value: string) =>
-                  value === 'direct' ? 'Direct (Stocks)' : 'ETF Exposure'
+                  value === 'direct' ? t('sectorWeightings.viewDirect') : t('sectorWeightings.viewEtf')
                 }
               />
               <Bar dataKey="direct" stackId="a" fill="#3b82f6" name="direct" />
@@ -313,7 +324,7 @@ export function SectorWeightingsReport() {
                   onSort={handleSort}
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Sector
+                  {t('sectorWeightings.colSector')}
                 </SortableHeader>
                 <SortableHeader<SectorSortField>
                   field="direct"
@@ -323,7 +334,7 @@ export function SectorWeightingsReport() {
                   align="right"
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Direct Value
+                  {t('sectorWeightings.colDirectValue')}
                 </SortableHeader>
                 <SortableHeader<SectorSortField>
                   field="etf"
@@ -333,7 +344,7 @@ export function SectorWeightingsReport() {
                   align="right"
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  ETF Value
+                  {t('sectorWeightings.colEtfValue')}
                 </SortableHeader>
                 <SortableHeader<SectorSortField>
                   field="total"
@@ -343,7 +354,7 @@ export function SectorWeightingsReport() {
                   align="right"
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Total Value
+                  {t('sectorWeightings.colTotalValue')}
                 </SortableHeader>
                 <SortableHeader<SectorSortField>
                   field="percentage"
@@ -353,7 +364,7 @@ export function SectorWeightingsReport() {
                   align="right"
                   className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  % of Portfolio
+                  {t('sectorWeightings.colPortfolioPct')}
                 </SortableHeader>
               </tr>
             </thead>
@@ -389,7 +400,7 @@ export function SectorWeightingsReport() {
               {data.unclassifiedValue > 0 && (
                 <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
                   <td className="px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 italic">
-                    Unclassified
+                    {t('sectorWeightings.unclassified')}
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-500 dark:text-gray-400">
                     —
@@ -411,7 +422,7 @@ export function SectorWeightingsReport() {
             <tfoot className="bg-gray-50 dark:bg-gray-900/50">
               <tr>
                 <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">
-                  Total
+                  {t('sectorWeightings.total')}
                 </td>
                 <td className="px-4 py-3 text-sm text-right font-bold text-blue-600 dark:text-blue-400">
                   {formatCurrencyFull(data.totalDirectValue, defaultCurrency)}

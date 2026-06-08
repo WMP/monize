@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { budgetsApi } from '@/lib/budgets';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
@@ -35,6 +36,7 @@ function getTextColor(value: number, max: number): string {
 }
 
 export function SeasonalSpendingMapReport() {
+  const t = useTranslations('reports');
   const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
   const [selectedBudgetIdOverride, setSelectedBudgetIdOverride] = useState<string>('');
@@ -118,7 +120,7 @@ export function SeasonalSpendingMapReport() {
 
   const handleExportPdf = async () => {
     const { exportToPdf } = await import('@/lib/pdf-export');
-    const headers = ['Category', ...MONTH_LABELS, 'Typical/Mo'];
+    const headers = [t('seasonalSpendingMap.pdfColCategory'), ...MONTH_LABELS, t('seasonalSpendingMap.pdfColTypical')];
     const rows = gridData.map((row) => [
       row.categoryName,
       ...row.values.map((v) => {
@@ -147,7 +149,7 @@ export function SeasonalSpendingMapReport() {
       formatCurrency(row.typical),
     ]);
     await exportToPdf({
-      title: 'Seasonal Spending Map',
+      title: t('seasonalSpendingMap.pdfTitle'),
       chartContainer: chartRef.current,
       tableData: { headers, rows },
       filename: 'seasonal-spending-map',
@@ -173,7 +175,7 @@ export function SeasonalSpendingMapReport() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6 text-center">
         <p className="text-gray-500 dark:text-gray-400">
-          No budgets found. Create a budget to see seasonal spending patterns.
+          {t('seasonalSpendingMap.noBudgets')}
         </p>
       </div>
     );
@@ -203,7 +205,7 @@ export function SeasonalSpendingMapReport() {
       <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6">
         {gridData.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            Not enough historical data to display seasonal patterns.
+            {t('seasonalSpendingMap.noData')}
           </p>
         ) : (
           <>
@@ -218,7 +220,7 @@ export function SeasonalSpendingMapReport() {
                       onSort={handleSort}
                       className="py-2 pr-3 text-xs font-medium text-gray-500 dark:text-gray-400 sticky left-0 bg-white dark:bg-gray-800"
                     >
-                      Category
+                      {t('seasonalSpendingMap.colCategory')}
                     </SortableHeader>
                     {MONTH_LABELS.map((month, idx) => (
                       <SortableHeader<SeasonalMapSortField>
@@ -241,7 +243,7 @@ export function SeasonalSpendingMapReport() {
                       align="right"
                       className="pl-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400"
                     >
-                      Typical/Mo
+                      {t('seasonalSpendingMap.colTypicalPerMonth')}
                     </SortableHeader>
                   </tr>
                 </thead>
@@ -257,7 +259,10 @@ export function SeasonalSpendingMapReport() {
                           <td key={monthIdx} className="px-1 py-1.5">
                             <div
                               className={`rounded px-1 py-1 text-center text-xs font-medium ${getHeatColor(value, globalMax)} ${getTextColor(value, globalMax)} ${isHigh ? 'ring-2 ring-red-500 dark:ring-red-400' : ''}`}
-                              title={`${row.categoryName} - ${MONTH_LABELS[monthIdx]}: ${formatCurrency(value)}${isHigh ? ' (High)' : ''}`}
+                              title={isHigh
+                              ? t('seasonalSpendingMap.highSpendingCellTitle', { categoryName: row.categoryName, month: MONTH_LABELS[monthIdx], amount: formatCurrency(value) })
+                              : t('seasonalSpendingMap.highSpendingCellTitleNoHigh', { categoryName: row.categoryName, month: MONTH_LABELS[monthIdx], amount: formatCurrency(value) })
+                            }
                             >
                               {value > 0 ? formatCurrency(value) : '--'}
                             </div>
@@ -275,30 +280,30 @@ export function SeasonalSpendingMapReport() {
 
             {/* Legend */}
             <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-              <span className="font-medium">Intensity:</span>
+              <span className="font-medium">{t('seasonalSpendingMap.intensityLabel')}</span>
               <div className="flex items-center gap-1">
                 <div className="w-4 h-4 rounded bg-green-100 dark:bg-green-900" />
-                <span>Low</span>
+                <span>{t('seasonalSpendingMap.intensityLow')}</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-4 h-4 rounded bg-green-200 dark:bg-green-700" />
-                <span>Below Avg</span>
+                <span>{t('seasonalSpendingMap.intensityBelowAvg')}</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-4 h-4 rounded bg-yellow-300 dark:bg-yellow-500" />
-                <span>Average</span>
+                <span>{t('seasonalSpendingMap.intensityAverage')}</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-4 h-4 rounded bg-orange-400 dark:bg-orange-500" />
-                <span>Above Avg</span>
+                <span>{t('seasonalSpendingMap.intensityAboveAvg')}</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-4 h-4 rounded bg-red-500 dark:bg-red-600" />
-                <span>High</span>
+                <span>{t('seasonalSpendingMap.intensityHigh')}</span>
               </div>
               <div className="flex items-center gap-1 ml-2">
                 <div className="w-4 h-4 rounded ring-2 ring-red-500 dark:ring-red-400 bg-gray-100 dark:bg-gray-700" />
-                <span>High Spending Month</span>
+                <span>{t('seasonalSpendingMap.highSpendingMonth')}</span>
               </div>
             </div>
           </>

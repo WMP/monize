@@ -26,6 +26,7 @@ import {
 import { Account } from '@/types/account';
 import { accountsApi } from '@/lib/accounts';
 import { createLogger } from '@/lib/logger';
+import { useTranslations } from 'next-intl';
 
 const logger = createLogger('InvestmentReportForm');
 
@@ -66,6 +67,7 @@ export function InvestmentReportForm({
   onSubmit,
   onCancel,
 }: InvestmentReportFormProps) {
+  const t = useTranslations('reports');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [columns, setColumns] = useState<string[]>(
@@ -153,15 +155,15 @@ export function InvestmentReportForm({
     await onSubmit(submitData);
   };
 
-  const groupByOptions = Object.entries(GROUP_BY_LABELS).map(([value, label]) => ({
+  const groupByOptions = Object.keys(GROUP_BY_LABELS).map((value) => ({
     value,
-    label,
+    label: t(`investmentReportLabels.groupBy.${value}`),
   }));
-  const sortDirectionOptions = Object.entries(SORT_DIRECTION_LABELS).map(
-    ([value, label]) => ({ value, label }),
+  const sortDirectionOptions = Object.keys(SORT_DIRECTION_LABELS).map(
+    (value) => ({ value, label: t(`investmentReportLabels.sortDirection.${value}`) }),
   );
   const sortByOptions = [
-    { value: '', label: 'Default (Symbol)' },
+    { value: '', label: t('investmentReportForm.defaultSortBy') },
     ...columns.map((key) => ({
       value: key,
       label: INVESTMENT_COLUMN_MAP[key]?.label ?? key,
@@ -183,29 +185,29 @@ export function InvestmentReportForm({
       {/* Basic Information */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-          Basic Information
+          {t('investmentReportForm.basicInformation')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <Input
-              label="Report Name"
+              label={t('investmentReportForm.labelReportName')}
               {...register('name')}
               error={errors.name?.message}
-              placeholder="e.g., Taxable Holdings Overview"
+              placeholder={t('investmentReportForm.namePlaceholder')}
             />
           </div>
           <div className="md:col-span-2">
             <Input
-              label="Description (optional)"
+              label={t('investmentReportForm.labelDescription')}
               {...register('description')}
-              placeholder="Brief description of what this report shows"
+              placeholder={t('investmentReportForm.descriptionPlaceholder')}
             />
           </div>
           <Controller
             name="icon"
             control={control}
             render={({ field }) => (
-              <IconPicker label="Icon" value={field.value || null} onChange={field.onChange} />
+              <IconPicker label={t('investmentReportForm.labelIcon')} value={field.value || null} onChange={field.onChange} />
             )}
           />
           <Controller
@@ -213,7 +215,7 @@ export function InvestmentReportForm({
             control={control}
             render={({ field }) => (
               <ColorPicker
-                label="Background Color"
+                label={t('investmentReportForm.labelBackgroundColor')}
                 value={field.value || null}
                 onChange={field.onChange}
               />
@@ -225,11 +227,10 @@ export function InvestmentReportForm({
       {/* Columns */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">
-          Columns
+          {t('investmentReportForm.columns')}
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Choose which columns to show and drag the order with the arrows. Symbol is
-          always included.
+          {t('investmentReportForm.columnsDescription')}
         </p>
         <InvestmentReportColumnChooser value={columns} onChange={setColumns} />
       </div>
@@ -237,38 +238,37 @@ export function InvestmentReportForm({
       {/* Accounts */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-          Accounts
+          {t('investmentReportForm.accounts')}
         </h3>
         <MultiSelect
-          label="Investment accounts to include"
+          label={t('investmentReportForm.labelInvestmentAccounts')}
           options={accountOptions}
           value={accountIds}
           onChange={setAccountIds}
-          placeholder="All investment accounts"
+          placeholder={t('investmentReportForm.accountsPlaceholder')}
         />
         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-          Leave empty to include all of your investment accounts.
+          {t('investmentReportForm.accountsNote')}
         </p>
       </div>
 
       {/* Grouping & Sorting */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-          Grouping &amp; Sorting
+          {t('investmentReportForm.groupingAndSorting')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Select label="Group By" options={groupByOptions} {...register('groupBy')} />
-          <Select label="Sort By" options={sortByOptions} {...register('sortColumn')} />
+          <Select label={t('investmentReportForm.labelGroupBy')} options={groupByOptions} {...register('groupBy')} />
+          <Select label={t('investmentReportForm.labelSortBy')} options={sortByOptions} {...register('sortColumn')} />
           <Select
-            label="Sort Direction"
+            label={t('investmentReportForm.labelSortDirection')}
             options={sortDirectionOptions}
             {...register('sortDirection')}
           />
         </div>
         {watchGroupBy !== InvestmentGroupBy.NONE && (
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            Rows are grouped by {GROUP_BY_LABELS[watchGroupBy].toLowerCase()} and sorted
-            within each group.
+            {t('investmentReportForm.groupByNote', { groupByLabel: t(`investmentReportLabels.groupBy.${watchGroupBy}`).toLowerCase() })}
           </p>
         )}
         {watchGroupBy !== InvestmentGroupBy.ACCOUNT && (
@@ -280,17 +280,16 @@ export function InvestmentReportForm({
                 <ToggleSwitch
                   checked={!!field.value}
                   onChange={field.onChange}
-                  label="Combine the same security held in multiple accounts"
+                  label={t('investmentReportForm.mergeAccountsLabel')}
                 />
               )}
             />
             <div>
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                Combine the same security held in multiple accounts
+                {t('investmentReportForm.mergeAccountsLabel')}
               </span>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                When off, each account&apos;s holding is listed separately with an
-                Account column.
+                {t('investmentReportForm.mergeAccountsNote')}
               </p>
             </div>
           </div>
@@ -300,18 +299,18 @@ export function InvestmentReportForm({
       {/* Report Date */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-          Report Date
+          {t('investmentReportForm.reportDate')}
         </h3>
         <div className="max-w-xs">
           <DateInput
-            label="As of date"
+            label={t('investmentReportForm.labelAsOfDate')}
             value={asOfDate}
             onChange={(e) => setAsOfDate(e.target.value)}
             onDateChange={(date) => setAsOfDate(date)}
           />
         </div>
         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-          Leave empty to always value the report as of the last day the markets were open.
+          {t('investmentReportForm.asOfDateNote')}
         </p>
       </div>
 
@@ -325,19 +324,19 @@ export function InvestmentReportForm({
               <ToggleSwitch
                 checked={!!field.value}
                 onChange={field.onChange}
-                label="Add to favourites"
+                label={t('investmentReportForm.labelFavourite')}
               />
             )}
           />
           <span className="text-sm text-gray-700 dark:text-gray-300">
-            Add to favourites
+            {t('investmentReportForm.labelFavourite')}
           </span>
         </div>
       </div>
 
       <FormActions
         onCancel={onCancel}
-        submitLabel={report ? 'Update Report' : 'Create Report'}
+        submitLabel={report ? t('investmentReportForm.submitUpdate') : t('investmentReportForm.submitCreate')}
         isSubmitting={isSubmitting}
       />
     </form>

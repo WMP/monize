@@ -34,6 +34,7 @@ import { buildCategoryTree } from '@/lib/categoryUtils';
 import { roundToCents, getCurrencySymbol } from '@/lib/format';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { getErrorMessage } from '@/lib/errors';
+import { useTranslations } from 'next-intl';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { createLogger } from '@/lib/logger';
 
@@ -46,19 +47,6 @@ const logger = createLogger('ScheduledTxForm');
 
 export type ScheduledTransactionMode = 'transaction' | 'split' | 'transfer' | 'investment';
 
-const INVESTMENT_ACTION_LABELS: Record<InvestmentAction, string> = {
-  BUY: 'Buy',
-  SELL: 'Sell',
-  DIVIDEND: 'Dividend',
-  INTEREST: 'Interest',
-  CAPITAL_GAIN: 'Capital Gain',
-  SPLIT: 'Stock Split',
-  TRANSFER_IN: 'Transfer In',
-  TRANSFER_OUT: 'Transfer Out',
-  REINVEST: 'Reinvest Dividend',
-  ADD_SHARES: 'Add Shares',
-  REMOVE_SHARES: 'Remove Shares',
-};
 
 // Mirrors visibility rules in InvestmentTransactionForm — keep in sync.
 const SECURITY_REQUIRED_ACTIONS: InvestmentAction[] = [
@@ -73,9 +61,9 @@ const SCHEDULABLE_INVESTMENT_ACTIONS: InvestmentAction[] = [
   'BUY', 'SELL', 'DIVIDEND', 'INTEREST', 'CAPITAL_GAIN', 'REINVEST', 'ADD_SHARES', 'REMOVE_SHARES',
 ];
 
-const scheduledTransactionSchema = z.object({
+const buildScheduledTransactionSchema = (t: (key: string) => string) => z.object({
   accountId: z.string().uuid('Please select an account'),
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, t('validation.nameRequired')),
   payeeId: optionalUuid,
   payeeName: optionalString,
   categoryId: optionalUuid,
@@ -84,7 +72,7 @@ const scheduledTransactionSchema = z.object({
   description: optionalString,
   referenceNumber: optionalString,
   frequency: z.enum(['ONCE', 'DAILY', 'WEEKLY', 'BIWEEKLY', 'EVERY4WEEKS', 'SEMIMONTHLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']),
-  nextDueDate: z.string().min(1, 'Due date is required'),
+  nextDueDate: z.string().min(1, t('validation.dueDateRequired')),
   endDate: optionalString,
   occurrencesRemaining: optionalNumber,
   isActive: z.boolean().default(true),
@@ -92,7 +80,7 @@ const scheduledTransactionSchema = z.object({
   reminderDaysBefore: z.number().min(0).default(3),
 });
 
-type ScheduledTransactionFormData = z.infer<typeof scheduledTransactionSchema>;
+type ScheduledTransactionFormData = z.infer<ReturnType<typeof buildScheduledTransactionSchema>>;
 
 interface ScheduledTransactionFormProps {
   scheduledTransaction?: ScheduledTransaction;
@@ -131,6 +119,7 @@ export function ScheduledTransactionForm({
   onDirtyChange,
   submitRef,
 }: ScheduledTransactionFormProps) {
+  const t = useTranslations('scheduledTransactions');
   const { defaultCurrency } = useNumberFormat();
   const [isLoading, setIsLoading] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -226,7 +215,7 @@ export function ScheduledTransactionForm({
     watch,
     formState: { errors, isDirty },
   } = useForm<ScheduledTransactionFormData>({
-    resolver: zodResolver(scheduledTransactionSchema) as Resolver<ScheduledTransactionFormData>,
+    resolver: zodResolver(buildScheduledTransactionSchema(t)) as Resolver<ScheduledTransactionFormData>,
     defaultValues: scheduledTransaction
       ? {
           accountId: scheduledTransaction.accountId,
@@ -393,10 +382,10 @@ export function ScheduledTransactionForm({
     investmentsApi.getSecurities()
       .then(setSecurities)
       .catch((err) => {
-        toast.error(getErrorMessage(err, 'Failed to load securities'));
+        toast.error(getErrorMessage(err, t('form.toasts.loadSecuritiesFailed')));
         logger.error(err);
       });
-  }, [mode, securities.length]);
+  }, [mode, securities.length, t]);
 
   // When the chosen security changes, fetch its most recent close price so we
   // can auto-fill the Price field and back-derive quantity from Total Value.
@@ -520,10 +509,10 @@ export function ScheduledTransactionForm({
         }
       })
       .catch((error) => {
-        toast.error(getErrorMessage(error, 'Failed to load form data'));
+        toast.error(getErrorMessage(error, t('form.toasts.loadFormDataFailed')));
         logger.error(error);
       });
-  }, [scheduledTransaction?.payeeId]);
+  }, [scheduledTransaction?.payeeId, t]);
 
   // Handle mode changes
   const handleModeChange = (newMode: ScheduledTransactionMode) => {
@@ -625,10 +614,10 @@ export function ScheduledTransactionForm({
       setSelectedPayeeId(newPayee.id);
       setValue('payeeId', newPayee.id, { shouldDirty: true, shouldValidate: true });
       setValue('payeeName', newPayee.name, { shouldDirty: true, shouldValidate: true });
-      toast.success(`Payee "${name}" created`);
+      toast.success(t('form.toasts.payeeCreated', { name }));
     } catch (error) {
       logger.error('Failed to create payee:', error);
-      toast.error(getErrorMessage(error, 'Failed to create payee'));
+      toast.error(getErrorMessage(error, t('form.toasts.payeeCreateFailed')));
     }
   };
 
@@ -661,10 +650,10 @@ export function ScheduledTransactionForm({
       setCategories((prev) => [...prev, newCategory]);
       setSelectedCategoryId(newCategory.id);
       setValue('categoryId', newCategory.id, { shouldDirty: true, shouldValidate: true });
-      toast.success(`Category "${name}" created`);
+      toast.success(t('form.toasts.categoryCreated', { name }));
     } catch (error) {
       logger.error('Failed to create category:', error);
-      toast.error(getErrorMessage(error, 'Failed to create category'));
+      toast.error(getErrorMessage(error, t('form.toasts.categoryCreateFailed')));
     }
   };
 
@@ -682,7 +671,7 @@ export function ScheduledTransactionForm({
     const newTag = await tagsApi.create(cleanedData);
     setTags(prev => [...prev, newTag]);
     setSelectedTagIds(prev => [...prev, newTag.id]);
-    toast.success(`Tag "${newTag.name}" created`);
+    toast.success(t('form.toasts.tagCreated', { name: newTag.name }));
     setShowTagForm(false);
   };
 
@@ -690,11 +679,11 @@ export function ScheduledTransactionForm({
     // Validate transfer destination
     if (mode === 'transfer') {
       if (!transferToAccountId) {
-        toast.error('Please select a destination account for the transfer');
+        toast.error(t('form.toasts.selectTransferDestination'));
         return;
       }
       if (transferToAccountId === data.accountId) {
-        toast.error('Source and destination accounts must be different');
+        toast.error(t('form.toasts.differentTransferAccounts'));
         return;
       }
     }
@@ -702,13 +691,13 @@ export function ScheduledTransactionForm({
     // Validate splits if in split mode
     if (mode === 'split') {
       if (splits.length < 2) {
-        toast.error('Split transactions require at least 2 splits');
+        toast.error(t('form.toasts.splitsMinimum'));
         return;
       }
       const splitsTotal = splits.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
       const remaining = Math.abs(Number(data.amount) - splitsTotal);
       if (remaining >= 0.01) {
-        toast.error('Split amounts must equal the transaction amount');
+        toast.error(t('form.toasts.splitsTotal'));
         return;
       }
     }
@@ -717,30 +706,30 @@ export function ScheduledTransactionForm({
     if (mode === 'investment') {
       const acc = accounts.find(a => a.id === data.accountId);
       if (!acc || acc.accountSubType !== 'INVESTMENT_BROKERAGE') {
-        toast.error('Scheduled investment transactions require a brokerage account');
+        toast.error(t('form.toasts.brokerageAccountRequired'));
         return;
       }
       if (SECURITY_REQUIRED_ACTIONS.includes(investmentAction) && !investmentSecurityId) {
-        toast.error('This investment action requires a security');
+        toast.error(t('form.toasts.securityRequired'));
         return;
       }
       if (QUANTITY_PRICE_ACTIONS.includes(investmentAction)) {
         if (!investmentQuantity || Number(investmentQuantity) <= 0) {
-          toast.error('Quantity must be greater than zero');
+          toast.error(t('form.toasts.quantityRequired'));
           return;
         }
         if (!investmentPrice || Number(investmentPrice) <= 0) {
-          toast.error('Price must be greater than zero');
+          toast.error(t('form.toasts.priceRequired'));
           return;
         }
       } else if (QUANTITY_ONLY_ACTIONS.includes(investmentAction)) {
         if (!investmentQuantity || Number(investmentQuantity) <= 0) {
-          toast.error('Quantity must be greater than zero');
+          toast.error(t('form.toasts.quantityRequired'));
           return;
         }
       } else if (AMOUNT_ONLY_ACTIONS.includes(investmentAction)) {
         if (investmentTotalAmount === '' || investmentTotalAmount === undefined) {
-          toast.error('Total amount is required for this action');
+          toast.error(t('form.toasts.totalAmountRequired'));
           return;
         }
       }
@@ -827,24 +816,24 @@ export function ScheduledTransactionForm({
 
       if (scheduledTransaction) {
         await scheduledTransactionsApi.update(scheduledTransaction.id, payload);
-        toast.success('Scheduled transaction updated');
+        toast.success(t('form.toasts.updated'));
       } else {
         await scheduledTransactionsApi.create(payload);
-        toast.success('Scheduled transaction created');
+        toast.success(t('form.toasts.created'));
       }
       onSuccess?.();
     } catch (error) {
       logger.error('Submit error:', error);
-      toast.error(getErrorMessage(error, 'Failed to save scheduled transaction'));
+      toast.error(getErrorMessage(error, t('form.toasts.saveFailed')));
     } finally {
       setIsLoading(false);
     }
   };
   useFormSubmitRef(submitRef, handleSubmit, onSubmit);
 
-  const frequencyOptions = Object.entries(FREQUENCY_LABELS).map(([value, label]) => ({
+  const frequencyOptions = Object.keys(FREQUENCY_LABELS).map((value) => ({
     value,
-    label,
+    label: t(`frequency.${value}`),
   }));
 
   // Shared End Condition section
@@ -852,7 +841,7 @@ export function ScheduledTransactionForm({
     if (watchedFrequency === 'ONCE') return null;
     return (
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-4">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">End Condition (optional)</h3>
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('form.endConditionTitle')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="flex items-center gap-2 mb-2 cursor-pointer w-fit">
@@ -862,15 +851,15 @@ export function ScheduledTransactionForm({
                   setUseEndDate(next);
                   if (next) setUseOccurrences(false);
                 }}
-                label="End by date"
+                label={t('form.endByDateLabel')}
               />
               <span className="block text-sm text-gray-900 dark:text-gray-100">
-                End by date
+                {t('form.endByDateLabel')}
               </span>
             </label>
             {useEndDate && (
               <DateInput
-                label="End Date"
+                label={t('form.endDateLabel')}
                 error={errors.endDate?.message}
                 onDateChange={(date) => setValue('endDate', date, { shouldDirty: true, shouldValidate: true })}
                 {...register('endDate')}
@@ -885,17 +874,17 @@ export function ScheduledTransactionForm({
                   setUseOccurrences(next);
                   if (next) setUseEndDate(false);
                 }}
-                label="Number of occurrences"
+                label={t('form.numberOfOccurrencesLabel')}
               />
               <span className="block text-sm text-gray-900 dark:text-gray-100">
-                Number of occurrences
+                {t('form.numberOfOccurrencesLabel')}
               </span>
             </label>
             {useOccurrences && (
               <Input
                 type="number"
                 min={1}
-                placeholder="# remaining"
+                placeholder={t('form.occurrencesPlaceholder')}
                 error={errors.occurrencesRemaining?.message}
                 {...register('occurrencesRemaining', { valueAsNumber: true })}
               />
@@ -913,20 +902,20 @@ export function ScheduledTransactionForm({
         <ToggleSwitch
           checked={!!watch('isActive')}
           onChange={(next) => setValue('isActive', next, { shouldDirty: true })}
-          label="Active"
+          label={t('form.activeLabel')}
         />
         <span className="block text-sm text-gray-900 dark:text-gray-100">
-          Active
+          {t('form.activeLabel')}
         </span>
       </label>
       <label className="flex items-center gap-2 cursor-pointer">
         <ToggleSwitch
           checked={!!watch('autoPost')}
           onChange={(next) => setValue('autoPost', next, { shouldDirty: true })}
-          label="Auto-post on due date"
+          label={t('form.autoPostLabel')}
         />
         <span className="block text-sm text-gray-900 dark:text-gray-100">
-          Auto-post on due date
+          {t('form.autoPostLabel')}
         </span>
       </label>
     </div>
@@ -936,17 +925,17 @@ export function ScheduledTransactionForm({
   const renderTags = () => (
     <>
       <MultiSelect
-        label="Tags"
+        label={t('form.tagsLabel')}
         options={tagOptions}
         value={selectedTagIds}
         onChange={setSelectedTagIds}
-        placeholder="Select tags..."
+        placeholder={t('form.tagsPlaceholder')}
         onCreateNew={() => setShowTagForm(true)}
-        createNewLabel="Create new tag..."
+        createNewLabel={t('form.createTagLabel')}
       />
       <Modal isOpen={showTagForm} onClose={() => setShowTagForm(false)} maxWidth="lg" allowOverflow pushHistory className="p-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-          New Tag
+          {t('form.newTagTitle')}
         </h2>
         <TagForm
           onSubmit={handleTagCreate}
@@ -959,7 +948,7 @@ export function ScheduledTransactionForm({
   // Shared Description textarea section
   const renderDescription = () => (
     <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('form.descriptionLabel')}</label>
       <textarea
         rows={2}
         className="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -986,13 +975,7 @@ export function ScheduledTransactionForm({
                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
-            {tabMode === 'transaction'
-              ? 'Transaction'
-              : tabMode === 'split'
-              ? 'Split'
-              : tabMode === 'transfer'
-              ? 'Transfer'
-              : 'Investment'}
+            {t(`form.tabs.${tabMode}` as Parameters<typeof t>[0])}
           </button>
         ))}
       </div>
@@ -1002,9 +985,9 @@ export function ScheduledTransactionForm({
         <div className="space-y-4">
           {/* Row 1: Name */}
           <Input
-            label="Name"
+            label={t('form.nameLabel')}
             type="text"
-            placeholder="e.g., Rent, Netflix, Salary..."
+            placeholder={t('form.namePlaceholderTransaction')}
             error={errors.name?.message}
             {...register('name')}
           />
@@ -1012,17 +995,17 @@ export function ScheduledTransactionForm({
           {/* Row 2: Account, Next Due Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Account"
+              label={t('form.accountLabel')}
               error={errors.accountId?.message}
               value={watchedAccountId || ''}
               options={[
-                { value: '', label: 'Select account...' },
+                { value: '', label: t('form.accountPlaceholder') },
                 ...accountOptions,
               ]}
               {...register('accountId')}
             />
             <DateInput
-              label="Next Due Date"
+              label={t('form.nextDueDateLabel')}
               error={errors.nextDueDate?.message}
               onDateChange={(date) => setValue('nextDueDate', date, { shouldDirty: true, shouldValidate: true })}
               {...register('nextDueDate')}
@@ -1032,8 +1015,8 @@ export function ScheduledTransactionForm({
           {/* Row 3: Payee, Category + Split Transaction button */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Combobox
-              label="Payee"
-              placeholder="Select or type payee name..."
+              label={t('form.payeeLabel')}
+              placeholder={t('form.payeePlaceholder')}
               options={payeeOptions}
               value={selectedPayeeId}
               initialDisplayValue={scheduledTransaction?.payeeName || ''}
@@ -1047,8 +1030,8 @@ export function ScheduledTransactionForm({
               <div className="flex items-end sm:space-x-2">
                 <div className="flex-1">
                   <Combobox
-                    label="Category"
-                    placeholder="Select or create category..."
+                    label={t('form.categoryLabel')}
+                    placeholder={t('form.categoryPlaceholder')}
                     options={categoryOptions}
                     value={selectedCategoryId}
                     initialDisplayValue={scheduledTransaction?.category?.name || ''}
@@ -1063,7 +1046,7 @@ export function ScheduledTransactionForm({
                   onClick={() => handleModeChange('split')}
                   className="hidden sm:block px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 whitespace-nowrap"
                 >
-                  Split Transaction
+                  {t('form.splitTransactionButton')}
                 </button>
               </div>
               <button
@@ -1071,7 +1054,7 @@ export function ScheduledTransactionForm({
                 onClick={() => handleModeChange('split')}
                 className="sm:hidden mt-2 w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
               >
-                Split Transaction
+                {t('form.splitTransactionButton')}
               </button>
             </div>
           </div>
@@ -1079,16 +1062,16 @@ export function ScheduledTransactionForm({
           {/* Row 4: Amount, Reference Number */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <CurrencyInput
-              label="Amount"
+              label={t('form.amountLabel')}
               prefix={currencySymbol}
               value={watchedAmount}
               onChange={(value) => setValue('amount', value ?? 0, { shouldValidate: true })}
               error={errors.amount?.message}
             />
             <Input
-              label="Reference Number"
+              label={t('form.referenceNumberLabel')}
               type="text"
-              placeholder="Cheque #, confirmation #..."
+              placeholder={t('form.referenceNumberPlaceholder')}
               error={errors.referenceNumber?.message}
               {...register('referenceNumber')}
             />
@@ -1097,14 +1080,14 @@ export function ScheduledTransactionForm({
           {/* Row 5: Frequency, Remind Days Before */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Frequency"
+              label={t('form.frequencyLabel')}
               error={errors.frequency?.message}
               value={watchedFrequency || 'MONTHLY'}
               options={frequencyOptions}
               {...register('frequency')}
             />
             <Input
-              label="Remind Days Before"
+              label={t('form.remindDaysBeforeLabel')}
               type="number"
               min={0}
               error={errors.reminderDaysBefore?.message}
@@ -1131,9 +1114,9 @@ export function ScheduledTransactionForm({
         <div className="space-y-4">
           {/* Row 1: Name */}
           <Input
-            label="Name"
+            label={t('form.nameLabel')}
             type="text"
-            placeholder="e.g., Rent, Netflix, Salary..."
+            placeholder={t('form.namePlaceholderTransaction')}
             error={errors.name?.message}
             {...register('name')}
           />
@@ -1141,17 +1124,17 @@ export function ScheduledTransactionForm({
           {/* Row 2: Account, Next Due Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Account"
+              label={t('form.accountLabel')}
               error={errors.accountId?.message}
               value={watchedAccountId || ''}
               options={[
-                { value: '', label: 'Select account...' },
+                { value: '', label: t('form.accountPlaceholder') },
                 ...accountOptions,
               ]}
               {...register('accountId')}
             />
             <DateInput
-              label="Next Due Date"
+              label={t('form.nextDueDateLabel')}
               error={errors.nextDueDate?.message}
               onDateChange={(date) => setValue('nextDueDate', date, { shouldDirty: true, shouldValidate: true })}
               {...register('nextDueDate')}
@@ -1161,8 +1144,8 @@ export function ScheduledTransactionForm({
           {/* Row 3: Payee, Total Amount */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Combobox
-              label="Payee"
-              placeholder="Select or type payee name..."
+              label={t('form.payeeLabel')}
+              placeholder={t('form.payeePlaceholder')}
               options={payeeOptions}
               value={selectedPayeeId}
               initialDisplayValue={scheduledTransaction?.payeeName || ''}
@@ -1173,7 +1156,7 @@ export function ScheduledTransactionForm({
               error={errors.payeeName?.message}
             />
             <CurrencyInput
-              label="Total Amount"
+              label={t('form.totalAmountLabel')}
               prefix={currencySymbol}
               value={watchedAmount}
               onChange={(value) => setValue('amount', value ?? 0, { shouldValidate: true })}
@@ -1184,16 +1167,16 @@ export function ScheduledTransactionForm({
           {/* Row 4: Reference Number, Description */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Reference Number"
+              label={t('form.referenceNumberLabel')}
               type="text"
-              placeholder="Cheque #, confirmation #..."
+              placeholder={t('form.referenceNumberPlaceholder')}
               error={errors.referenceNumber?.message}
               {...register('referenceNumber')}
             />
             <Input
-              label="Description"
+              label={t('form.descriptionLabel')}
               type="text"
-              placeholder="Optional description..."
+              placeholder={t('form.descriptionPlaceholder')}
               error={errors.description?.message}
               {...register('description')}
             />
@@ -1202,13 +1185,13 @@ export function ScheduledTransactionForm({
           {/* Row 5: Split Editor */}
           <div className="border-t dark:border-gray-700 pt-4">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Split Transaction</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">{t('form.splitTransactionTitle')}</h3>
               <button
                 type="button"
                 onClick={() => handleModeChange('transaction')}
                 className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
               >
-                Cancel Split
+                {t('form.cancelSplitButton')}
               </button>
             </div>
             <SplitEditor
@@ -1233,14 +1216,14 @@ export function ScheduledTransactionForm({
           {/* Row 6: Frequency, Remind Days Before */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Frequency"
+              label={t('form.frequencyLabel')}
               error={errors.frequency?.message}
               value={watchedFrequency || 'MONTHLY'}
               options={frequencyOptions}
               {...register('frequency')}
             />
             <Input
-              label="Remind Days Before"
+              label={t('form.remindDaysBeforeLabel')}
               type="number"
               min={0}
               error={errors.reminderDaysBefore?.message}
@@ -1261,9 +1244,9 @@ export function ScheduledTransactionForm({
         <div className="space-y-4">
           {/* Row 1: Name */}
           <Input
-            label="Name"
+            label={t('form.nameLabel')}
             type="text"
-            placeholder="e.g., Savings Transfer, Credit Card Payment..."
+            placeholder={t('form.namePlaceholderTransfer')}
             error={errors.name?.message}
             {...register('name')}
           />
@@ -1271,7 +1254,7 @@ export function ScheduledTransactionForm({
           {/* Row 2: Next Due Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <DateInput
-              label="Next Due Date"
+              label={t('form.nextDueDateLabel')}
               error={errors.nextDueDate?.message}
               onDateChange={(date) => setValue('nextDueDate', date, { shouldDirty: true, shouldValidate: true })}
               {...register('nextDueDate')}
@@ -1281,21 +1264,21 @@ export function ScheduledTransactionForm({
           {/* Row 3: From Account, To Account */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="From Account"
+              label={t('form.fromAccountLabel')}
               error={errors.accountId?.message}
               value={watchedAccountId || ''}
               options={[
-                { value: '', label: 'Select account...' },
+                { value: '', label: t('form.accountPlaceholder') },
                 ...accountOptions,
               ]}
               {...register('accountId')}
             />
             <Select
-              label="To Account"
+              label={t('form.toAccountLabel')}
               value={transferToAccountId}
               onChange={(e) => setTransferToAccountId(e.target.value)}
               options={[
-                { value: '', label: 'Select destination account...' },
+                { value: '', label: t('form.toAccountPlaceholder') },
                 ...transferToAccountOptions,
               ]}
             />
@@ -1304,7 +1287,7 @@ export function ScheduledTransactionForm({
           {/* Row 4: Transfer Amount */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <CurrencyInput
-              label="Transfer Amount"
+              label={t('form.transferAmountLabel')}
               prefix={currencySymbol}
               value={watchedAmount}
               onChange={(value) => setValue('amount', value !== undefined ? Math.abs(value) : 0, { shouldValidate: true })}
@@ -1316,8 +1299,8 @@ export function ScheduledTransactionForm({
           {/* Row 5: Payee, Reference Number */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Combobox
-              label="Payee"
-              placeholder="Select or type payee name..."
+              label={t('form.payeeLabel')}
+              placeholder={t('form.payeePlaceholder')}
               options={payeeOptions}
               value={selectedPayeeId}
               initialDisplayValue={scheduledTransaction?.payeeName || ''}
@@ -1328,9 +1311,9 @@ export function ScheduledTransactionForm({
               error={errors.payeeName?.message}
             />
             <Input
-              label="Reference Number"
+              label={t('form.referenceNumberLabel')}
               type="text"
-              placeholder="Cheque #, confirmation #..."
+              placeholder={t('form.referenceNumberPlaceholder')}
               error={errors.referenceNumber?.message}
               {...register('referenceNumber')}
             />
@@ -1339,14 +1322,14 @@ export function ScheduledTransactionForm({
           {/* Row 6: Frequency, Remind Days Before */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Frequency"
+              label={t('form.frequencyLabel')}
               error={errors.frequency?.message}
               value={watchedFrequency || 'MONTHLY'}
               options={frequencyOptions}
               {...register('frequency')}
             />
             <Input
-              label="Remind Days Before"
+              label={t('form.remindDaysBeforeLabel')}
               type="number"
               min={0}
               error={errors.reminderDaysBefore?.message}
@@ -1370,9 +1353,9 @@ export function ScheduledTransactionForm({
         <div className="space-y-4">
           {/* Row 1: Name */}
           <Input
-            label="Name"
+            label={t('form.nameLabel')}
             type="text"
-            placeholder="e.g., Monthly VOO DCA, Quarterly DRIP..."
+            placeholder={t('form.namePlaceholderInvestment')}
             error={errors.name?.message}
             {...register('name')}
           />
@@ -1380,22 +1363,22 @@ export function ScheduledTransactionForm({
           {/* Row 2: Account, Action */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Investment Account"
+              label={t('form.investmentAccountLabel')}
               error={errors.accountId?.message}
               value={watchedAccountId || ''}
               options={[
-                { value: '', label: 'Select investment account...' },
+                { value: '', label: t('form.investmentAccountPlaceholder') },
                 ...investmentAccountOptions,
               ]}
               {...register('accountId')}
             />
             <Select
-              label="Action"
+              label={t('form.actionLabel')}
               value={investmentAction}
               onChange={(e) => setInvestmentAction(e.target.value as InvestmentAction)}
               options={SCHEDULABLE_INVESTMENT_ACTIONS.map(a => ({
                 value: a,
-                label: INVESTMENT_ACTION_LABELS[a],
+                label: t(`form.investmentActionLabels.${a}` as Parameters<typeof t>[0]),
               }))}
             />
           </div>
@@ -1403,11 +1386,11 @@ export function ScheduledTransactionForm({
           {/* Row 3: Security (when required) */}
           {SECURITY_REQUIRED_ACTIONS.includes(investmentAction) && (
             <Select
-              label="Security"
+              label={t('form.securityLabel')}
               value={investmentSecurityId}
               onChange={(e) => setInvestmentSecurityId(e.target.value)}
               options={[
-                { value: '', label: 'Select security...' },
+                { value: '', label: t('form.securityPlaceholder') },
                 ...securityOptions,
               ]}
             />
@@ -1418,7 +1401,7 @@ export function ScheduledTransactionForm({
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Input
-                  label="Quantity (shares)"
+                  label={t('form.quantityLabel')}
                   type="number"
                   step="0.00000001"
                   min={0}
@@ -1426,7 +1409,7 @@ export function ScheduledTransactionForm({
                   onChange={(e) => handleQuantityChange(e.target.value)}
                 />
                 <Input
-                  label="Price per share"
+                  label={t('form.pricePerShareLabel')}
                   type="number"
                   step="0.000001"
                   min={0}
@@ -1437,7 +1420,7 @@ export function ScheduledTransactionForm({
                   onChange={(e) => handlePriceChange(e.target.value)}
                 />
                 <Input
-                  label="Commission"
+                  label={t('form.commissionLabel')}
                   type="number"
                   step="0.0001"
                   min={0}
@@ -1451,7 +1434,7 @@ export function ScheduledTransactionForm({
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <CurrencyInput
-                  label="Total Value"
+                  label={t('form.totalValueLabel')}
                   prefix={currencySymbol}
                   value={
                     typeof investmentTotalValue === 'number'
@@ -1463,7 +1446,7 @@ export function ScheduledTransactionForm({
               </div>
               {investmentSecurityId && marketPrice == null && (
                 <p className="-mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  No price history yet for this security. Enter the price manually.
+                  {t('form.noPriceHistory')}
                 </p>
               )}
             </>
@@ -1472,7 +1455,7 @@ export function ScheduledTransactionForm({
           {QUANTITY_ONLY_ACTIONS.includes(investmentAction) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
-                label="Quantity (shares)"
+                label={t('form.quantityLabel')}
                 type="number"
                 step="0.00000001"
                 min={0}
@@ -1485,7 +1468,7 @@ export function ScheduledTransactionForm({
           {AMOUNT_ONLY_ACTIONS.includes(investmentAction) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <CurrencyInput
-                label="Total Amount"
+                label={t('form.totalAmountLabel')}
                 prefix={currencySymbol}
                 value={typeof investmentTotalAmount === 'number' ? investmentTotalAmount : undefined}
                 onChange={(value) => setInvestmentTotalAmount(value ?? '')}
@@ -1497,16 +1480,16 @@ export function ScheduledTransactionForm({
           {FUNDING_ACCOUNT_ACTIONS.includes(investmentAction) && (
             <div>
               <Select
-                label="Funding Account (optional)"
+                label={t('form.fundingAccountLabel')}
                 value={investmentFundingAccountId}
                 onChange={(e) => setInvestmentFundingAccountId(e.target.value)}
                 options={[
-                  { value: '', label: 'Use brokerage cash (default)' },
+                  { value: '', label: t('form.fundingAccountPlaceholder') },
                   ...fundingAccountOptions,
                 ]}
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Defaults to the investment account&apos;s cash side. Pick another account to model contribution+buy.
+                {t('form.fundingAccountHelp')}
               </p>
             </div>
           )}
@@ -1514,14 +1497,14 @@ export function ScheduledTransactionForm({
           {/* Row 6: Frequency, Next Due Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Frequency"
+              label={t('form.frequencyLabel')}
               error={errors.frequency?.message}
               value={watchedFrequency || 'MONTHLY'}
               options={frequencyOptions}
               {...register('frequency')}
             />
             <DateInput
-              label="Next Due Date"
+              label={t('form.nextDueDateLabel')}
               error={errors.nextDueDate?.message}
               onDateChange={(date) => setValue('nextDueDate', date, { shouldDirty: true, shouldValidate: true })}
               {...register('nextDueDate')}
@@ -1531,7 +1514,7 @@ export function ScheduledTransactionForm({
           {/* Row 7: Reminder days */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Remind Days Before"
+              label={t('form.remindDaysBeforeLabel')}
               type="number"
               min={0}
               error={errors.reminderDaysBefore?.message}
@@ -1554,7 +1537,7 @@ export function ScheduledTransactionForm({
       )}
 
       {/* Actions */}
-      <FormActions onCancel={onCancel} submitLabel={scheduledTransaction ? 'Update' : 'Create'} isSubmitting={isLoading} />
+      <FormActions onCancel={onCancel} submitLabel={scheduledTransaction ? t('form.submitUpdate') : t('form.submitCreate')} isSubmitting={isLoading} />
     </form>
   );
 }

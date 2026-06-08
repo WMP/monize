@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { gainLossColor } from '@/lib/format';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import {
@@ -44,6 +45,7 @@ function CashFlowTooltip({
   payload?: Array<{ payload: ForecastDataPoint }>;
   formatCurrency: (v: number) => string;
 }) {
+  const t = useTranslations('bills');
   if (active && payload?.[0]) {
     const data = payload[0].payload;
     return (
@@ -61,7 +63,7 @@ function CashFlowTooltip({
         {data.transactions.length > 0 && (
           <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-              Transactions:
+              {t('forecast.tooltipTransactions')}
             </p>
             {data.transactions.slice(0, 5).map((tx, i) => (
               <p key={i} className="text-sm text-gray-700 dark:text-gray-300">
@@ -77,7 +79,7 @@ function CashFlowTooltip({
             ))}
             {data.transactions.length > 5 && (
               <p className="text-xs text-gray-400 dark:text-gray-500">
-                +{data.transactions.length - 5} more
+                {t('forecast.tooltipMore', { count: data.transactions.length - 5 })}
               </p>
             )}
           </div>
@@ -112,6 +114,7 @@ export function CashFlowForecastChart({
   futureTransactions = [],
   isLoading,
 }: CashFlowForecastChartProps) {
+  const t = useTranslations('bills');
   const { formatCurrency: formatCurrencyFull, formatCurrencyAxis } = useNumberFormat();
   const { convertToDefault, defaultCurrency } = useExchangeRates();
   const [selectedPeriod, setSelectedPeriod] = useState<ForecastPeriod>(() => getStoredPeriod());
@@ -129,14 +132,14 @@ export function CashFlowForecastChart({
 
   const accountOptions = useMemo(() => {
     return [
-      { value: 'all', label: 'All Accounts' },
+      { value: 'all', label: t('forecast.allAccounts') },
       ...buildAccountDropdownOptions(
         accounts,
         a => !a.isClosed && a.accountType !== 'ASSET' && a.accountSubType !== 'INVESTMENT_BROKERAGE',
         a => a.name,
       ),
     ];
-  }, [accounts]);
+  }, [accounts, t]);
 
   // Determine display currency from selected accounts
   const { chartCurrency, needsConversion } = useMemo(() => {
@@ -187,7 +190,7 @@ export function CashFlowForecastChart({
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Cash Flow Forecast
+            {t('forecast.title')}
           </h3>
         </div>
         <div className="h-72 flex items-center justify-center">
@@ -203,11 +206,11 @@ export function CashFlowForecastChart({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Cash Flow Forecast
+            {t('forecast.title')}
           </h3>
           {totalForecastedTransactions > 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {totalForecastedTransactions} scheduled transaction{totalForecastedTransactions !== 1 ? 's' : ''} in forecast
+              {t('forecast.scheduledCount', { count: totalForecastedTransactions })}
             </p>
           )}
         </div>
@@ -243,17 +246,17 @@ export function CashFlowForecastChart({
       {/* Chart */}
       {forecastData.length === 0 ? (
         <div className="h-72 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
-          <p>No data to display</p>
+          <p>{t('forecast.noData')}</p>
           <p className="text-sm mt-1">
-            {accounts.length === 0 ? 'No accounts found' :
-             scheduledTransactions.length === 0 ? 'No scheduled transactions' :
-             'Select an account with scheduled transactions'}
+            {accounts.length === 0 ? t('forecast.noAccounts') :
+             scheduledTransactions.length === 0 ? t('forecast.noScheduled') :
+             t('forecast.noMatchingAccount')}
           </p>
         </div>
       ) : totalForecastedTransactions === 0 ? (
         <div className="h-72" style={{ minHeight: 288 }}>
           <div className="text-center text-sm text-gray-500 dark:text-gray-400 mb-2">
-            No upcoming transactions in this period - showing current balance
+            {t('forecast.noUpcoming')}
           </div>
           <ResponsiveContainer width="100%" height="90%" minWidth={0}>
             <LineChart data={forecastData} margin={{ left: 0, right: 8, top: 5, bottom: 0 }}>
@@ -377,7 +380,7 @@ export function CashFlowForecastChart({
       {forecastData.length > 0 && (
         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-3 gap-4 text-center">
           <div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Starting</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{t('forecast.summaryStarting')}</div>
             <div
               className={`font-semibold ${
                 summary.startingBalance >= 0
@@ -389,7 +392,7 @@ export function CashFlowForecastChart({
             </div>
           </div>
           <div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Ending</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{t('forecast.summaryEnding')}</div>
             <div
               className={`font-semibold ${
                 gainLossColor(summary.endingBalance)
@@ -400,7 +403,7 @@ export function CashFlowForecastChart({
           </div>
           <div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              {summary.goesNegative ? 'Lowest' : 'Min Balance'}
+              {summary.goesNegative ? t('forecast.summaryLowest') : t('forecast.summaryMinBalance')}
             </div>
             <div
               className={`font-semibold ${

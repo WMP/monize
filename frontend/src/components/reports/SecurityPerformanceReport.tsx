@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { gainLossColor } from '@/lib/format';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { useReportData } from '@/hooks/useReportData';
@@ -42,6 +43,7 @@ interface PriceChartPoint {
 }
 
 export function SecurityPerformanceReport() {
+  const t = useTranslations('reports');
   const { formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatSignedPercent } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
@@ -284,10 +286,10 @@ export function SecurityPerformanceReport() {
       : undefined;
 
     const summaryCards = stats ? [
-      { label: 'Current Value', value: formatCurrencyFull(stats.currentValue, displayCurrency), color: '#111827' },
-      { label: 'Cost Basis', value: formatCurrencyFull(stats.costBasis, displayCurrency), color: '#111827' },
-      { label: 'Total Return', value: `${stats.totalReturn >= 0 ? '+' : ''}${formatCurrencyFull(stats.totalReturn, displayCurrency)} (${formatSignedPercent(stats.totalReturnPercent)})`, color: stats.totalReturn >= 0 ? '#16a34a' : '#dc2626' },
-      { label: 'Annualized Return', value: stats.annualizedReturn !== null ? formatSignedPercent(stats.annualizedReturn) : '-', color: stats.annualizedReturn !== null ? (stats.annualizedReturn >= 0 ? '#16a34a' : '#dc2626') : '#9ca3af' },
+      { label: t('securityPerformance.pdfCurrentValue'), value: formatCurrencyFull(stats.currentValue, displayCurrency), color: '#111827' },
+      { label: t('securityPerformance.pdfCostBasis'), value: formatCurrencyFull(stats.costBasis, displayCurrency), color: '#111827' },
+      { label: t('securityPerformance.pdfTotalReturn'), value: `${stats.totalReturn >= 0 ? '+' : ''}${formatCurrencyFull(stats.totalReturn, displayCurrency)} (${formatSignedPercent(stats.totalReturnPercent)})`, color: stats.totalReturn >= 0 ? '#16a34a' : '#dc2626' },
+      { label: t('securityPerformance.pdfAnnualizedReturn'), value: stats.annualizedReturn !== null ? formatSignedPercent(stats.annualizedReturn) : '-', color: stats.annualizedReturn !== null ? (stats.annualizedReturn >= 0 ? '#16a34a' : '#dc2626') : '#9ca3af' },
     ] : undefined;
 
     let chartContainer: HTMLElement | null = null;
@@ -297,7 +299,14 @@ export function SecurityPerformanceReport() {
       chartContainer = chartRef.current;
     } else if (viewType === 'transactions') {
       tableData = {
-        headers: ['Date', 'Account', 'Action', 'Shares', 'Price', 'Total'],
+        headers: [
+          t('securityPerformance.pdfColDateTx'),
+          t('securityPerformance.pdfColAccount'),
+          t('securityPerformance.pdfColAction'),
+          t('securityPerformance.pdfColShares'),
+          t('securityPerformance.pdfColPrice'),
+          t('securityPerformance.pdfColTotal'),
+        ],
         rows: tradeTx.map((tx) => [
           format(parseLocalDate(tx.transactionDate), 'MMM d, yyyy'),
           accountNameById.get(tx.accountId) || '-',
@@ -310,19 +319,24 @@ export function SecurityPerformanceReport() {
     } else {
       const totalDividends = dividendTx.reduce((sum, tx) => sum + Math.abs(tx.totalAmount), 0);
       tableData = {
-        headers: ['Date', 'Account', 'Type', 'Amount'],
+        headers: [
+          t('securityPerformance.pdfColDateTx'),
+          t('securityPerformance.pdfColAccount'),
+          t('securityPerformance.colType'),
+          t('securityPerformance.colAmount'),
+        ],
         rows: dividendTx.map((tx) => [
           format(parseLocalDate(tx.transactionDate), 'MMM d, yyyy'),
           accountNameById.get(tx.accountId) || '-',
           tx.action,
           formatCurrencyFull(Math.abs(tx.totalAmount), displayCurrency),
         ]),
-        totalRow: ['Total Dividends', '', '', formatCurrencyFull(totalDividends, displayCurrency)],
+        totalRow: [t('securityPerformance.pdfTotalDividends'), '', '', formatCurrencyFull(totalDividends, displayCurrency)],
       };
     }
 
     await exportToPdf({
-      title: 'Security Performance',
+      title: t('securityPerformance.pdfTitle'),
       subtitle: secLabel,
       summaryCards,
       chartContainer,
@@ -357,7 +371,7 @@ export function SecurityPerformanceReport() {
               onChange={(e) => setSelectedSecurityId(e.target.value)}
               className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm min-w-[250px]"
             >
-              <option value="">Select a security...</option>
+              <option value="">{t('securityPerformance.selectSecurityPlaceholder')}</option>
               {securities
                 .sort((a, b) => a.symbol.localeCompare(b.symbol))
                 .map((sec) => (
@@ -376,7 +390,7 @@ export function SecurityPerformanceReport() {
                     viewType === 'chart' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                   }`}
                 >
-                  Price Chart
+                  {t('securityPerformance.viewPriceChart')}
                 </button>
                 <button
                   onClick={() => setViewType('transactions')}
@@ -384,7 +398,7 @@ export function SecurityPerformanceReport() {
                     viewType === 'transactions' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                   }`}
                 >
-                  Transactions
+                  {t('securityPerformance.viewTransactions')}
                 </button>
                 <button
                   onClick={() => setViewType('dividends')}
@@ -392,7 +406,7 @@ export function SecurityPerformanceReport() {
                     viewType === 'dividends' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                   }`}
                 >
-                  Dividends
+                  {t('securityPerformance.viewDividends')}
                 </button>
               </>
             )}
@@ -405,7 +419,7 @@ export function SecurityPerformanceReport() {
       {!selectedSecurityId ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-8 text-center">
           <p className="text-gray-500 dark:text-gray-400">
-            Select a security above to view its performance details.
+            {t('securityPerformance.selectPrompt')}
           </p>
         </div>
       ) : isLoadingDetail ? (
@@ -427,19 +441,19 @@ export function SecurityPerformanceReport() {
                 </div>
                 {selectedSecurity.exchange && (
                   <div>
-                    <div className="text-xs text-gray-400 dark:text-gray-500 uppercase">Exchange</div>
+                    <div className="text-xs text-gray-400 dark:text-gray-500 uppercase">{t('securityPerformance.labelExchange')}</div>
                     <div className="text-sm font-medium text-gray-700 dark:text-gray-300">{selectedSecurity.exchange}</div>
                   </div>
                 )}
                 {selectedSecurity.securityType && (
                   <div>
-                    <div className="text-xs text-gray-400 dark:text-gray-500 uppercase">Type</div>
+                    <div className="text-xs text-gray-400 dark:text-gray-500 uppercase">{t('securityPerformance.labelType')}</div>
                     <div className="text-sm font-medium text-gray-700 dark:text-gray-300">{selectedSecurity.securityType}</div>
                   </div>
                 )}
                 {selectedSecurity.currencyCode && (
                   <div>
-                    <div className="text-xs text-gray-400 dark:text-gray-500 uppercase">Currency</div>
+                    <div className="text-xs text-gray-400 dark:text-gray-500 uppercase">{t('securityPerformance.labelCurrency')}</div>
                     <div className="text-sm font-medium text-gray-700 dark:text-gray-300">{selectedSecurity.currencyCode}</div>
                   </div>
                 )}
@@ -451,29 +465,29 @@ export function SecurityPerformanceReport() {
           {stats && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-                <div className="text-sm text-gray-500 dark:text-gray-400">Current Value</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">{t('securityPerformance.currentValue')}</div>
                 <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
                   {formatCurrencyFull(stats.currentValue, displayCurrency)}
                 </div>
                 <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                  {stats.quantity} shares @ {formatCurrencyFull(stats.currentPrice ?? 0, displayCurrency)}
+                  {t('securityPerformance.sharesAtPrice', { shares: stats.quantity, price: formatCurrencyFull(stats.currentPrice ?? 0, displayCurrency) })}
                   {stats.accountCount > 1 && (
-                    <span className="ml-1">across {stats.accountCount} accounts</span>
+                    <span className="ml-1">{t('securityPerformance.acrossAccounts', { count: stats.accountCount })}</span>
                   )}
                 </div>
               </div>
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-                <div className="text-sm text-gray-500 dark:text-gray-400">Cost Basis</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">{t('securityPerformance.costBasis')}</div>
                 <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
                   {formatCurrencyFull(stats.costBasis, displayCurrency)}
                 </div>
                 <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                  Avg cost: {formatCurrencyFull(stats.averageCost, displayCurrency)}
+                  {t('securityPerformance.avgCostLabel', { amount: formatCurrencyFull(stats.averageCost, displayCurrency) })}
                 </div>
               </div>
               <div className={`rounded-lg shadow p-4 ${stats.totalReturn >= 0 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
                 <div className={`text-sm ${gainLossColor(stats.totalReturn)}`}>
-                  Total Return
+                  {t('securityPerformance.totalReturn')}
                 </div>
                 <div className={`text-xl font-bold ${stats.totalReturn >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
                   {stats.totalReturn >= 0 ? '+' : ''}{formatCurrencyFull(stats.totalReturn, displayCurrency)}
@@ -483,14 +497,14 @@ export function SecurityPerformanceReport() {
                 </div>
               </div>
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-                <div className="text-sm text-gray-500 dark:text-gray-400">Annualized Return</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">{t('securityPerformance.annualizedReturn')}</div>
                 <div className={`text-xl font-bold ${stats.annualizedReturn !== null ? (stats.annualizedReturn >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300') : 'text-gray-400'}`}>
                   {stats.annualizedReturn !== null
                     ? formatSignedPercent(stats.annualizedReturn)
                     : '-'}
                 </div>
                 {stats.annualizedReturn === null && (
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">Needs 1+ year of data</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('securityPerformance.needs1YearNote')}</div>
                 )}
               </div>
             </div>
@@ -500,7 +514,7 @@ export function SecurityPerformanceReport() {
             /* Price Chart */
             <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Price History - {selectedSecurity?.symbol}
+                {t('securityPerformance.priceHistory', { symbol: selectedSecurity?.symbol ?? '' })}
               </h3>
               {chartData.length > 0 ? (
                 <div className="h-80">
@@ -531,10 +545,10 @@ export function SecurityPerformanceReport() {
                             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
                               <p className="font-medium text-gray-900 dark:text-gray-100">{d.label}</p>
                               <p className="text-sm text-blue-600 dark:text-blue-400">
-                                Close: {formatCurrencyFull(d.close, displayCurrency)}
+                                {t('securityPerformance.closePrice', { price: formatCurrencyFull(d.close, displayCurrency) })}
                               </p>
-                              {d.buyMarker && <p className="text-sm text-green-600 dark:text-green-400">Buy transaction</p>}
-                              {d.sellMarker && <p className="text-sm text-red-600 dark:text-red-400">Sell transaction</p>}
+                              {d.buyMarker && <p className="text-sm text-green-600 dark:text-green-400">{t('securityPerformance.buyTransaction')}</p>}
+                              {d.sellMarker && <p className="text-sm text-red-600 dark:text-red-400">{t('securityPerformance.sellTransaction')}</p>}
                             </div>
                           );
                         }}
@@ -571,14 +585,14 @@ export function SecurityPerformanceReport() {
                           y={stats.averageCost}
                           stroke="#f97316"
                           strokeDasharray="4 4"
-                          label={{ value: 'Avg Cost', position: 'right', fill: '#f97316', fontSize: 11 }}
+                          label={{ value: t('securityPerformance.avgCostRefLine'), position: 'right', fill: '#f97316', fontSize: 11 }}
                         />
                       )}
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-8">No price history available.</p>
+                <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t('securityPerformance.noPriceHistory')}</p>
               )}
             </div>
           ) : viewType === 'transactions' ? (
@@ -586,7 +600,7 @@ export function SecurityPerformanceReport() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Transaction History - {selectedSecurity?.symbol}
+                  {t('securityPerformance.transactionHistory', { symbol: selectedSecurity?.symbol ?? '' })}
                 </h3>
               </div>
               {tradeTx.length > 0 ? (
@@ -601,7 +615,7 @@ export function SecurityPerformanceReport() {
                           onSort={tradeSort.handleSort}
                           className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         >
-                          Date
+                          {t('securityPerformance.colDate')}
                         </SortableHeader>
                         <SortableHeader<TradeSortField>
                           field="account"
@@ -610,7 +624,7 @@ export function SecurityPerformanceReport() {
                           onSort={tradeSort.handleSort}
                           className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         >
-                          Account
+                          {t('securityPerformance.colAccount')}
                         </SortableHeader>
                         <SortableHeader<TradeSortField>
                           field="action"
@@ -619,7 +633,7 @@ export function SecurityPerformanceReport() {
                           onSort={tradeSort.handleSort}
                           className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         >
-                          Action
+                          {t('securityPerformance.colAction')}
                         </SortableHeader>
                         <SortableHeader<TradeSortField>
                           field="shares"
@@ -629,7 +643,7 @@ export function SecurityPerformanceReport() {
                           align="right"
                           className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         >
-                          Shares
+                          {t('securityPerformance.colShares')}
                         </SortableHeader>
                         <SortableHeader<TradeSortField>
                           field="price"
@@ -639,7 +653,7 @@ export function SecurityPerformanceReport() {
                           align="right"
                           className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         >
-                          Price
+                          {t('securityPerformance.colPrice')}
                         </SortableHeader>
                         <SortableHeader<TradeSortField>
                           field="total"
@@ -649,7 +663,7 @@ export function SecurityPerformanceReport() {
                           align="right"
                           className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         >
-                          Total
+                          {t('securityPerformance.colTotal')}
                         </SortableHeader>
                       </tr>
                     </thead>
@@ -688,7 +702,7 @@ export function SecurityPerformanceReport() {
                   </table>
                 </div>
               ) : (
-                <div className="p-6 text-center text-gray-500 dark:text-gray-400">No transactions found.</div>
+                <div className="p-6 text-center text-gray-500 dark:text-gray-400">{t('securityPerformance.noTransactions')}</div>
               )}
             </div>
           ) : (
@@ -696,7 +710,7 @@ export function SecurityPerformanceReport() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  Dividend History - {selectedSecurity?.symbol}
+                  {t('securityPerformance.dividendHistory', { symbol: selectedSecurity?.symbol ?? '' })}
                 </h3>
               </div>
               {dividendTx.length > 0 ? (
@@ -711,7 +725,7 @@ export function SecurityPerformanceReport() {
                           onSort={dividendSort.handleSort}
                           className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         >
-                          Date
+                          {t('securityPerformance.colDate')}
                         </SortableHeader>
                         <SortableHeader<DividendSortField>
                           field="account"
@@ -720,7 +734,7 @@ export function SecurityPerformanceReport() {
                           onSort={dividendSort.handleSort}
                           className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         >
-                          Account
+                          {t('securityPerformance.colAccount')}
                         </SortableHeader>
                         <SortableHeader<DividendSortField>
                           field="type"
@@ -729,7 +743,7 @@ export function SecurityPerformanceReport() {
                           onSort={dividendSort.handleSort}
                           className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         >
-                          Type
+                          {t('securityPerformance.colType')}
                         </SortableHeader>
                         <SortableHeader<DividendSortField>
                           field="amount"
@@ -739,7 +753,7 @@ export function SecurityPerformanceReport() {
                           align="right"
                           className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                         >
-                          Amount
+                          {t('securityPerformance.colAmount')}
                         </SortableHeader>
                       </tr>
                     </thead>
@@ -766,7 +780,7 @@ export function SecurityPerformanceReport() {
                     <tfoot className="bg-gray-50 dark:bg-gray-900/50">
                       <tr>
                         <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100" colSpan={3}>
-                          Total Dividends
+                          {t('securityPerformance.totalDividends')}
                         </td>
                         <td className="px-4 py-3 text-sm text-right font-bold text-green-600 dark:text-green-400">
                           {formatCurrencyFull(
@@ -779,7 +793,7 @@ export function SecurityPerformanceReport() {
                   </table>
                 </div>
               ) : (
-                <div className="p-6 text-center text-gray-500 dark:text-gray-400">No dividend history found.</div>
+                <div className="p-6 text-center text-gray-500 dark:text-gray-400">{t('securityPerformance.noDividendHistory')}</div>
               )}
             </div>
           )}

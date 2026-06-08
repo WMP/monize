@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/20/solid';
+import { useTranslations } from 'next-intl';
 
 export interface SettingsSection {
   readonly id: string;
@@ -26,6 +27,7 @@ export function SettingsNav({
   onSectionClick,
   variant = 'vertical',
 }: SettingsNavProps) {
+  const t = useTranslations('settings.nav');
   const activeRef = useRef<HTMLButtonElement | HTMLAnchorElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -55,7 +57,7 @@ export function SettingsNav({
         ref={scrollContainerRef}
         className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide"
         role="tablist"
-        aria-label="Settings sections"
+        aria-label={t('sectionsAriaLabel')}
       >
         {sections.map((section) => {
           const isActive = section.id === activeSection;
@@ -117,7 +119,7 @@ export function SettingsNav({
   return (
     <nav
       className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/50 rounded-lg p-2"
-      aria-label="Settings sections"
+      aria-label={t('sectionsAriaLabel')}
     >
       <ul className="space-y-0.5">
         {sections.map((section) => {

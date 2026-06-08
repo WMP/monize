@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { createPortal } from 'react-dom';
 import { cn, inputBaseClasses, inputErrorClasses } from '@/lib/utils';
@@ -49,6 +50,7 @@ export function Combobox({
   alwaysShowSubtitle = false,
   priorityValues,
 }: ComboboxProps) {
+  const t = useTranslations('common');
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState(initialDisplayValue || '');
   const [selectedLabel, setSelectedLabel] = useState(initialDisplayValue || '');
@@ -446,7 +448,7 @@ export function Combobox({
           <div className="flex items-center">
             <span className="text-green-600 dark:text-green-400 mr-2">+</span>
             <span className="font-medium text-green-700 dark:text-green-300">
-              Create "{inputValue.trim()}"
+              {t('combobox.createOption', { value: inputValue.trim() })}
             </span>
           </div>
         </div>
