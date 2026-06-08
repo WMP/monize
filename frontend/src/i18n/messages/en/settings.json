@@ -649,15 +649,37 @@
       "rateCurrencyHelp": "If this differs from your home currency, the Usage dashboard can convert costs using your saved exchange rates.",
       "saveButton": "Save Changes",
       "addProviderButton": "Add Provider",
-      "modelPlaceholder": "Enter model name"
+      "modelPlaceholder": "Enter model name",
+      "testModelAria": "Test model",
+      "apiKeyPlaceholder": "Enter API key",
+      "saveFailed": "Failed to save configuration",
+      "inputCostPlaceholder": "e.g., 3.00",
+      "outputCostPlaceholder": "e.g., 15.00",
+      "toasts": {
+        "notReachable": "Could not reach the provider.",
+        "modelUnavailable": "Model \"{model}\" is not available on this provider.",
+        "modelReady": "Model \"{model}\" is ready.",
+        "success": "Connection successful.",
+        "testFailed": "Model test failed"
+      }
     },
     "testButton": {
-      "testLabel": "Test"
+      "testLabel": "Test",
+      "connectionFailed": "Connection failed",
+      "modelUnavailable": "Model \"{model}\" is not available on this provider.",
+      "successWithModel": "Connection successful. Model \"{model}\" is ready.",
+      "success": "Connection successful",
+      "testFailed": "Connection test failed"
     },
     "toasts": {
       "added": "Provider added",
       "updated": "Provider updated",
-      "removed": "Provider removed"
+      "removed": "Provider removed",
+      "modelReady": "Model \"{model}\" is ready.",
+      "notReachable": "Saved, but the provider could not be reached. Double-check the URL/API key.",
+      "modelUnavailable": "Saved, but model \"{model}\" is not available on this provider.",
+      "deleteFailed": "Failed to delete provider",
+      "updateFailed": "Failed to update provider"
     }
   },
   "usage": {
@@ -686,6 +708,13 @@
       "duration": "Duration",
       "estCost": "Est. Cost"
     },
-    "noUsage": "No usage data yet. Usage will appear here once you start using AI features."
+    "noUsage": "No usage data yet. Usage will appear here once you start using AI features.",
+    "periods": {
+      "d7": "7 days",
+      "d30": "30 days",
+      "d90": "90 days",
+      "all": "All time"
+    },
+    "estCostTooltip": "Estimated using the cost rates you configured on each provider. Excludes any activity where no matching rate is set."
   }
 }

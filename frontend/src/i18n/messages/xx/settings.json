@@ -649,15 +649,37 @@
       "rateCurrencyHelp": "[XX-If this differs from your home currency, the Usage dashboard can convert costs using your saved exchange rates.-XX]",
       "saveButton": "[XX-Save Changes-XX]",
       "addProviderButton": "[XX-Add Provider-XX]",
-      "modelPlaceholder": "[XX-Enter model name-XX]"
+      "modelPlaceholder": "[XX-Enter model name-XX]",
+      "testModelAria": "[XX-Test model-XX]",
+      "apiKeyPlaceholder": "[XX-Enter API key-XX]",
+      "saveFailed": "[XX-Failed to save configuration-XX]",
+      "inputCostPlaceholder": "[XX-e.g., 3.00-XX]",
+      "outputCostPlaceholder": "[XX-e.g., 15.00-XX]",
+      "toasts": {
+        "notReachable": "[XX-Could not reach the provider.-XX]",
+        "modelUnavailable": "[XX-Model \"{model}\" is not available on this provider.-XX]",
+        "modelReady": "[XX-Model \"{model}\" is ready.-XX]",
+        "success": "[XX-Connection successful.-XX]",
+        "testFailed": "[XX-Model test failed-XX]"
+      }
     },
     "testButton": {
-      "testLabel": "[XX-Test-XX]"
+      "testLabel": "[XX-Test-XX]",
+      "connectionFailed": "[XX-Connection failed-XX]",
+      "modelUnavailable": "[XX-Model \"{model}\" is not available on this provider.-XX]",
+      "successWithModel": "[XX-Connection successful. Model \"{model}\" is ready.-XX]",
+      "success": "[XX-Connection successful-XX]",
+      "testFailed": "[XX-Connection test failed-XX]"
     },
     "toasts": {
       "added": "[XX-Provider added-XX]",
       "updated": "[XX-Provider updated-XX]",
-      "removed": "[XX-Provider removed-XX]"
+      "removed": "[XX-Provider removed-XX]",
+      "modelReady": "[XX-Model \"{model}\" is ready.-XX]",
+      "notReachable": "[XX-Saved, but the provider could not be reached. Double-check the URL/API key.-XX]",
+      "modelUnavailable": "[XX-Saved, but model \"{model}\" is not available on this provider.-XX]",
+      "deleteFailed": "[XX-Failed to delete provider-XX]",
+      "updateFailed": "[XX-Failed to update provider-XX]"
     }
   },
   "usage": {
@@ -686,6 +708,13 @@
       "duration": "[XX-Duration-XX]",
       "estCost": "[XX-Est. Cost-XX]"
     },
-    "noUsage": "[XX-No usage data yet. Usage will appear here once you start using AI features.-XX]"
+    "noUsage": "[XX-No usage data yet. Usage will appear here once you start using AI features.-XX]",
+    "periods": {
+      "d7": "[XX-7 days-XX]",
+      "d30": "[XX-30 days-XX]",
+      "d90": "[XX-90 days-XX]",
+      "all": "[XX-All time-XX]"
+    },
+    "estCostTooltip": "[XX-Estimated using the cost rates you configured on each provider. Excludes any activity where no matching rate is set.-XX]"
   }
 }
