@@ -475,7 +475,7 @@ export function TransactionFilterPanel({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_2fr_2fr_1fr_1fr_2fr_3fr] gap-4 mt-4">
                 <Select
                   label={t('filter.fields.timePeriod')}
-                  options={TIME_PERIOD_OPTIONS}
+                  options={TIME_PERIOD_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
                   value={filterTimePeriod}
                   onChange={(e) => {
                     const period = e.target.value;

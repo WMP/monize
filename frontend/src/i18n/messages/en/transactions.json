@@ -178,6 +178,18 @@
       "cleared": "Cleared",
       "reconciled": "Reconciled",
       "void": "Void"
+    },
+    "periods": {
+      "select": "Select period...",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "thisWeek": "This Week",
+      "lastWeek": "Last Week",
+      "monthToDate": "Month to Date",
+      "lastMonth": "Last Month",
+      "yearToDate": "Year to Date",
+      "lastYear": "Last Year",
+      "custom": "Custom"
     }
   },
   "bulk": {

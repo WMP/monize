@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, memo, type JSX } from 'react';
 import { useTranslations } from 'next-intl';
 import { isPast, isToday, addDays, isBefore } from 'date-fns';
 import toast from 'react-hot-toast';
-import { ScheduledTransaction, FREQUENCY_LABELS } from '@/types/scheduled-transaction';
+import { ScheduledTransaction } from '@/types/scheduled-transaction';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { parseLocalDate } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors';
@@ -129,7 +129,7 @@ const ScheduledTransactionRow = memo(function ScheduledTransactionRow({
         <div className="sm:hidden mt-0.5">
           <div className="text-xs text-gray-500 dark:text-gray-400">
             {effectiveDueDate ? formatDate(effectiveDueDate) : '\u2014'}
-            {' \u00b7 '}{FREQUENCY_LABELS[transaction.frequency]}
+            {' \u00b7 '}{t(`frequency.${transaction.frequency}`)}
           </div>
           {dueDateStatus && (
             <span className={`inline-flex text-xs font-medium rounded-full px-1.5 py-0.5 mt-0.5 ${dueDateStatus.className}`}>
@@ -246,7 +246,7 @@ const ScheduledTransactionRow = memo(function ScheduledTransactionRow({
           )}
         </div>
         <div className="text-xs text-gray-500 dark:text-gray-400">
-          {FREQUENCY_LABELS[transaction.frequency]}
+          {t(`frequency.${transaction.frequency}`)}
           {transaction.occurrencesRemaining !== null && (
             <span className="ml-1">{'\u00b7'} {t('list.occurrencesRemaining', { count: transaction.occurrencesRemaining })}</span>
           )}
@@ -616,7 +616,7 @@ export function ScheduledTransactionList({
             <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">{contextTransaction.name}</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {FREQUENCY_LABELS[contextTransaction.frequency]}
+                {t(`frequency.${contextTransaction.frequency}`)}
                 {!contextTransaction.isActive ? t('list.inactiveSuffix') : ''}
               </p>
             </div>

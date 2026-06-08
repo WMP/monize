@@ -111,7 +111,29 @@
       "saved": "[XX-Preferences saved-XX]"
     },
     "browserLocale": "[XX-Use browser locale (auto-detect)-XX]",
-    "browserTimezonePrefix": "[XX-Use browser timezone (auto-detected as {tz})-XX]"
+    "browserTimezonePrefix": "[XX-Use browser timezone (auto-detected as {tz})-XX]",
+    "numberFormatOptions": {
+      "browser": "[XX-Use browser locale (auto-detect)-XX]",
+      "enUS": "[XX-English (US) - 1,234.56-XX]",
+      "enGB": "[XX-English (UK) - 1,234.56-XX]",
+      "deDE": "[XX-German - 1.234,56-XX]",
+      "frFR": "[XX-French - 1 234,56-XX]"
+    },
+    "weekDays": {
+      "sunday": "[XX-Sunday-XX]",
+      "monday": "[XX-Monday-XX]",
+      "tuesday": "[XX-Tuesday-XX]",
+      "wednesday": "[XX-Wednesday-XX]",
+      "thursday": "[XX-Thursday-XX]",
+      "friday": "[XX-Friday-XX]",
+      "saturday": "[XX-Saturday-XX]"
+    },
+    "themeOptions": {
+      "system": "[XX-System (follow device setting)-XX]",
+      "light": "[XX-Light-XX]",
+      "dark": "[XX-Dark-XX]"
+    },
+    "timezoneBrowserOption": "[XX-Use browser timezone (auto-detected as {tz})-XX]"
   },
   "notifications": {
     "heading": "[XX-Notifications-XX]",

@@ -19,11 +19,11 @@ import { DATE_FORMAT_OPTIONS, EXCHANGE_OPTIONS } from '@/lib/constants';
 import { LanguageSelector } from '@/components/settings/LanguageSelector';
 
 const NUMBER_FORMAT_OPTIONS = [
-  { value: 'browser', label: 'Use browser locale (auto-detect)' },
-  { value: 'en-US', label: 'English (US) - 1,234.56' },
-  { value: 'en-GB', label: 'English (UK) - 1,234.56' },
-  { value: 'de-DE', label: 'German - 1.234,56' },
-  { value: 'fr-FR', label: 'French - 1 234,56' },
+  { value: 'browser', labelKey: 'numberFormatOptions.browser' },
+  { value: 'en-US', labelKey: 'numberFormatOptions.enUS' },
+  { value: 'en-GB', labelKey: 'numberFormatOptions.enGB' },
+  { value: 'de-DE', labelKey: 'numberFormatOptions.deDE' },
+  { value: 'fr-FR', labelKey: 'numberFormatOptions.frFR' },
 ];
 
 function getBrowserTimezone(): string {
@@ -51,19 +51,19 @@ function buildTimezoneOptions(): { value: string; label: string }[] {
 const TIMEZONE_OPTIONS = buildTimezoneOptions();
 
 const WEEK_STARTS_ON_OPTIONS = [
-  { value: '0', label: 'Sunday' },
-  { value: '1', label: 'Monday' },
-  { value: '2', label: 'Tuesday' },
-  { value: '3', label: 'Wednesday' },
-  { value: '4', label: 'Thursday' },
-  { value: '5', label: 'Friday' },
-  { value: '6', label: 'Saturday' },
+  { value: '0', labelKey: 'weekDays.sunday' },
+  { value: '1', labelKey: 'weekDays.monday' },
+  { value: '2', labelKey: 'weekDays.tuesday' },
+  { value: '3', labelKey: 'weekDays.wednesday' },
+  { value: '4', labelKey: 'weekDays.thursday' },
+  { value: '5', labelKey: 'weekDays.friday' },
+  { value: '6', labelKey: 'weekDays.saturday' },
 ];
 
 const THEME_OPTIONS = [
-  { value: 'system', label: 'System (follow device setting)' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
+  { value: 'system', labelKey: 'themeOptions.system' },
+  { value: 'light', labelKey: 'themeOptions.light' },
+  { value: 'dark', labelKey: 'themeOptions.dark' },
 ];
 
 const QUOTE_PROVIDER_OPTIONS = [
@@ -168,7 +168,7 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
 
         <Select
           label={t('themeLabel')}
-          options={THEME_OPTIONS}
+          options={THEME_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
           value={theme}
           onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')}
         />
@@ -248,14 +248,14 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
 
         <Select
           label={t('numberFormatLabel')}
-          options={NUMBER_FORMAT_OPTIONS}
+          options={NUMBER_FORMAT_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
           value={numberFormat}
           onChange={(e) => setNumberFormat(e.target.value)}
         />
 
         <Combobox
           label={t('timezoneLabel')}
-          options={TIMEZONE_OPTIONS}
+          options={[{ value: 'browser', label: t('timezoneBrowserOption', { tz: getBrowserTimezone() }) }, ...TIMEZONE_OPTIONS.slice(1)]}
           value={timezone}
           onChange={(value) => setTimezone(value)}
           placeholder={t('timezonePlaceholder')}
@@ -263,7 +263,7 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
 
         <Select
           label={t('weekStartsOnLabel')}
-          options={WEEK_STARTS_ON_OPTIONS}
+          options={WEEK_STARTS_ON_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
           value={String(weekStartsOn)}
           onChange={(e) => setWeekStartsOn(Number(e.target.value))}
         />

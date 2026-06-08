@@ -241,5 +241,16 @@
   "postTransaction": {
     "minSplits": "Split transactions require at least 2 splits",
     "splitMismatch": "Split amounts must equal the transaction amount"
+  },
+  "frequency": {
+    "ONCE": "One Time",
+    "DAILY": "Daily",
+    "WEEKLY": "Weekly",
+    "BIWEEKLY": "Every 2 Weeks",
+    "EVERY4WEEKS": "Every 4 Weeks",
+    "SEMIMONTHLY": "Twice a Month",
+    "MONTHLY": "Monthly",
+    "QUARTERLY": "Quarterly",
+    "YEARLY": "Yearly"
   }
 }

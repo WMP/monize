@@ -831,9 +831,9 @@ export function ScheduledTransactionForm({
   };
   useFormSubmitRef(submitRef, handleSubmit, onSubmit);
 
-  const frequencyOptions = Object.entries(FREQUENCY_LABELS).map(([value, label]) => ({
+  const frequencyOptions = Object.keys(FREQUENCY_LABELS).map((value) => ({
     value,
-    label,
+    label: t(`frequency.${value}`),
   }));
 
   // Shared End Condition section

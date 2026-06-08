@@ -178,6 +178,18 @@
       "cleared": "[XX-Cleared-XX]",
       "reconciled": "[XX-Reconciled-XX]",
       "void": "[XX-Void-XX]"
+    },
+    "periods": {
+      "select": "[XX-Select period...-XX]",
+      "today": "[XX-Today-XX]",
+      "yesterday": "[XX-Yesterday-XX]",
+      "thisWeek": "[XX-This Week-XX]",
+      "lastWeek": "[XX-Last Week-XX]",
+      "monthToDate": "[XX-Month to Date-XX]",
+      "lastMonth": "[XX-Last Month-XX]",
+      "yearToDate": "[XX-Year to Date-XX]",
+      "lastYear": "[XX-Last Year-XX]",
+      "custom": "[XX-Custom-XX]"
     }
   },
   "bulk": {
