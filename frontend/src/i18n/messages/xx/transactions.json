@@ -2,6 +2,7 @@
   "accountWidget": {
     "currentBalance": "[XX-Current Balance-XX]",
     "nextPayment": "[XX-Next Payment-XX]",
+    "viewBills": "[XX-View in Bills & Deposits-XX]",
     "type": "[XX-Type-XX]",
     "accountNumber": "[XX-Account Number-XX]",
     "currency": "[XX-Currency-XX]",

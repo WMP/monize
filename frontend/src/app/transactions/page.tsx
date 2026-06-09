@@ -764,8 +764,8 @@ function TransactionsContent() {
               );
             }
             return (
-              <div className="flex flex-col lg:flex-row lg:gap-6">
-                <div className="lg:w-1/4 flex-shrink-0">
+              <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-stretch">
+                <div className="lg:w-1/4 flex-shrink-0 lg:relative">
                   <AccountInfoWidget
                     account={singleFilteredAccount}
                     institution={singleFilteredInstitution}

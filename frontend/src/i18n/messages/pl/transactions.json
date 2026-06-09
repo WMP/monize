@@ -2,6 +2,7 @@
   "accountWidget": {
     "currentBalance": "Bieżące saldo",
     "nextPayment": "Następna płatność",
+    "viewBills": "Zobacz w Rachunki i wpłaty",
     "type": "Typ",
     "accountNumber": "Numer konta",
     "currency": "Waluta",

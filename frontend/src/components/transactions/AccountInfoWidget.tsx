@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { PencilSquareIcon, ChevronDoubleLeftIcon } from '@heroicons/react/24/outline';
 import { Account } from '@/types/account';
 import { ScheduledTransaction } from '@/types/scheduled-transaction';
@@ -38,6 +39,7 @@ export function AccountInfoWidget({
 }: AccountInfoWidgetProps) {
   const t = useTranslations('transactions');
   const tc = useTranslations('common');
+  const router = useRouter();
   const { formatCurrency } = useNumberFormat();
   const { formatDate } = useDateFormat();
 
@@ -100,7 +102,7 @@ export function AccountInfoWidget({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6 mb-6 lg:mb-0 lg:h-full flex flex-col overflow-hidden">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4 sm:p-6 mb-6 lg:mb-0 lg:absolute lg:inset-x-0 lg:top-0 lg:bottom-6 lg:overflow-y-auto flex flex-col">
       <div className="flex items-start justify-between gap-2 mb-4">
         <div className="flex items-center gap-3 min-w-0">
           <InstitutionLogo institution={institution ?? undefined} size={40} fallbackGlyph="$" />
@@ -158,28 +160,37 @@ export function AccountInfoWidget({
       </div>
 
       {nextPayment && (
-        <div className="mb-4 rounded-md bg-gray-50 dark:bg-gray-700/40 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => router.push('/bills')}
+          title={t('accountWidget.viewBills')}
+          className="mb-4 w-full text-left rounded-md bg-gray-50 dark:bg-gray-700/40 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors px-3 py-2"
+        >
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {t('accountWidget.nextPayment')}
           </p>
-          <p
-            className={`text-base font-semibold ${
-              nextPayment.amount < 0
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-green-600 dark:text-green-400'
-            }`}
-          >
-            {formatCurrency(Math.abs(nextPayment.amount), nextPayment.currencyCode)}
-          </p>
-          {nextPayment.payeeName && (
-            <p className="text-sm text-gray-700 dark:text-gray-300 truncate">
-              {nextPayment.payeeName}
+          <div className="flex items-start justify-between gap-3">
+            <p
+              className={`text-base font-semibold ${
+                nextPayment.amount < 0
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-green-600 dark:text-green-400'
+              }`}
+            >
+              {formatCurrency(Math.abs(nextPayment.amount), nextPayment.currencyCode)}
             </p>
-          )}
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {formatDate(nextPayment.date)}
-          </p>
-        </div>
+            <div className="text-right min-w-0">
+              {nextPayment.payeeName && (
+                <p className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                  {nextPayment.payeeName}
+                </p>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {formatDate(nextPayment.date)}
+              </p>
+            </div>
+          </div>
+        </button>
       )}
 
       <dl className="space-y-2 text-sm">

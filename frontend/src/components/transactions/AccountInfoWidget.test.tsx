@@ -10,6 +10,11 @@ vi.mock('@/hooks/useNumberFormat', () => ({
   }),
 }));
 
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 const makeAccount = (overrides: Partial<Account> = {}): Account =>
   ({
     id: 'a-1',
@@ -137,6 +142,23 @@ describe('AccountInfoWidget', () => {
     expect(screen.getByText('Hydro')).toBeInTheDocument();
     expect(screen.queryByText('Landlord')).not.toBeInTheDocument();
     expect(screen.queryByText('CAD 999.00')).not.toBeInTheDocument();
+  });
+
+  it('navigates to Bills & Deposits when the next payment is clicked', () => {
+    mockPush.mockClear();
+    const scheduled = [
+      { id: 's1', accountId: 'a-1', isActive: true, nextDueDate: '2026-06-20', amount: -80, currencyCode: 'CAD', payeeName: 'Hydro' },
+    ] as any;
+    render(
+      <AccountInfoWidget
+        account={makeAccount()}
+        scheduledTransactions={scheduled}
+        onEdit={vi.fn()}
+        onCollapse={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText('Next Payment'));
+    expect(mockPush).toHaveBeenCalledWith('/bills');
   });
 
   it('shows an incoming scheduled deposit in green', () => {
