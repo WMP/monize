@@ -73,3 +73,31 @@ Whichever source wins becomes the full body of the GitHub Release.
 2. Either pass them via `-f release_notes=...` at trigger time, or commit them
    to `docs/release-notes/<version>.md`.
 3. Run the workflow with the matching `release_type` / `version`.
+
+## Archived release notes
+
+Notes for past releases live alongside this file, one Markdown file per version
+(`docs/release-notes/<version>.md`). These mirror the notes published on the
+matching [GitHub Release](https://github.com/kenlasko/monize/releases), newest
+first:
+
+- [v1.10.5](1.10.5.md)
+- [v1.10.4](1.10.4.md)
+- [v1.10.3](1.10.3.md)
+- [v1.10.2](1.10.2.md)
+- [v1.10.1](1.10.1.md)
+- [v1.9.18](1.9.18.md)
+- [v1.9.17](1.9.17.md)
+- [v1.9.16](1.9.16.md)
+- [v1.9.15](1.9.15.md)
+- [v1.9.14](1.9.14.md)
+- [v1.9.13](1.9.13.md)
+- [v1.9.12](1.9.12.md)
+- [v1.9.11](1.9.11.md)
+- [v1.9.10](1.9.10.md)
+- [v1.9.9](1.9.9.md)
+- [v1.9.8](1.9.8.md)
+- [v1.9.7](1.9.7.md)
+- [v1.9.6](1.9.6.md)
+- [v1.9.5](1.9.5.md)
+- [v1.9.4](1.9.4.md)
