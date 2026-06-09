@@ -49,6 +49,7 @@ import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useFormModal } from '@/hooks/useFormModal';
 import { AccountFormModal } from '@/components/accounts/AccountFormModal';
 import { AccountInfoWidget } from '@/components/transactions/AccountInfoWidget';
+import { computeBalanceSummary } from '@/lib/balance-history';
 import { ChevronDoubleRightIcon } from '@heroicons/react/24/outline';
 import { Modal } from '@/components/ui/Modal';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
@@ -562,10 +563,39 @@ function TransactionsContent() {
     );
   }, [filters.filterAccountIds, filters.selectedAccounts, accounts]);
 
-  const singleFilteredInstitution = useMemo(() => {
-    if (!singleFilteredAccount?.institutionId) return undefined;
-    return institutions.find((i) => i.id === singleFilteredAccount.institutionId);
-  }, [singleFilteredAccount, institutions]);
+  // The accounts list is fetched once per page load, so account.currentBalance
+  // goes stale as transactions are added or edited. The daily-balance series is
+  // refetched alongside the transactions, so the widget's balance is derived
+  // from it — the exact figure the Balance History chart shows as "Current".
+  const singleAccountCurrentBalance = useMemo(
+    () => computeBalanceSummary(chartBalances)?.currentBalance,
+    [chartBalances],
+  );
+
+  // Retain the last single-filtered account (and its live balance) across the
+  // moment the filter widens to multiple accounts, so the widget can stay
+  // mounted and play the same slide-out animation as the manual collapse
+  // instead of vanishing abruptly. Synced with the "info from previous render"
+  // pattern (no setState in an effect).
+  const [retainedWidget, setRetainedWidget] = useState<
+    { account: Account; currentBalance?: number } | undefined
+  >();
+  if (
+    singleFilteredAccount &&
+    (retainedWidget?.account !== singleFilteredAccount ||
+      retainedWidget?.currentBalance !== singleAccountCurrentBalance)
+  ) {
+    setRetainedWidget({
+      account: singleFilteredAccount,
+      currentBalance: singleAccountCurrentBalance,
+    });
+  }
+  const widgetAccount = retainedWidget?.account;
+
+  const widgetInstitution = useMemo(() => {
+    if (!widgetAccount?.institutionId) return undefined;
+    return institutions.find((i) => i.id === widgetAccount.institutionId);
+  }, [widgetAccount, institutions]);
 
   const selection = useTransactionSelection(
     transactions,
@@ -716,62 +746,78 @@ function TransactionsContent() {
           actions={<Button onClick={handleCreateNew}>{t('page.newButton')}</Button>}
         />
         {(() => {
-          const chart = filters.filterCategoryIds.length > 0 || filters.filterPayeeIds.length > 0 || filters.filterTagIds.length > 0 || filters.filterSearch.length > 0 ? (
-            <CategoryPayeeBarChart
-              data={monthlyTotals}
-              isLoading={isLoading}
-              filterLabel={monthlyTotalsFilterLabel}
-              onMonthClick={(startDate, endDate) => {
-                filters.isFilterChange.current = true;
-                filters.setFilterStartDate(startDate);
-                filters.setFilterEndDate(endDate);
-                filters.setFilterTimePeriod('custom');
-              }}
-            />
-          ) : accountBalances.length > 1 ? (
-            <AccountBalancesBarChart
-              data={accountBalances}
-              isLoading={isLoading}
-              currencyCode={chartCurrency}
-              onAccountClick={filters.handleAccountFilterClick}
-            />
-          ) : (
-            <BalanceHistoryChart
-              data={chartBalances}
-              isLoading={isLoading}
-              currencyCode={chartCurrency}
-              accountName={balanceHistoryAccountName}
-            />
+          const chartKind =
+            filters.filterCategoryIds.length > 0 || filters.filterPayeeIds.length > 0 || filters.filterTagIds.length > 0 || filters.filterSearch.length > 0
+              ? 'monthlyTotals'
+              : accountBalances.length > 1
+                ? 'accountBalances'
+                : 'balanceHistory';
+          // Keyed by kind so swapping chart types remounts the card and plays
+          // the fade-in, instead of one chart popping into the other.
+          const chart = (
+            <div key={chartKind} className="animate-chart-in motion-reduce:animate-none">
+              {chartKind === 'monthlyTotals' ? (
+                <CategoryPayeeBarChart
+                  data={monthlyTotals}
+                  isLoading={isLoading}
+                  filterLabel={monthlyTotalsFilterLabel}
+                  onMonthClick={(startDate, endDate) => {
+                    filters.isFilterChange.current = true;
+                    filters.setFilterStartDate(startDate);
+                    filters.setFilterEndDate(endDate);
+                    filters.setFilterTimePeriod('custom');
+                  }}
+                />
+              ) : chartKind === 'accountBalances' ? (
+                <AccountBalancesBarChart
+                  data={accountBalances}
+                  isLoading={isLoading}
+                  currencyCode={chartCurrency}
+                  onAccountClick={filters.handleAccountFilterClick}
+                />
+              ) : (
+                <BalanceHistoryChart
+                  data={chartBalances}
+                  isLoading={isLoading}
+                  currencyCode={chartCurrency}
+                  accountName={balanceHistoryAccountName}
+                />
+              )}
+            </div>
           );
 
           // Filtered to a single account: show its info widget (25%) to the
           // left of the chart (75%). Stacks vertically on narrow screens. The
           // widget can be collapsed (persisted) so the chart uses full width.
-          if (singleFilteredAccount) {
+          if (widgetAccount) {
             // The widget animates between expanded and collapsed rather than
-            // mounting/unmounting, so the chevron toggle slides it out of view:
-            // its column collapses width (desktop) or height (mobile) and fades,
-            // while the chart flexes to fill the reclaimed space.
+            // mounting/unmounting, so both the chevron toggle and widening the
+            // filter past one account slide it out of view: its column
+            // collapses width (desktop) or height (mobile) and fades, while
+            // the chart flexes to fill the reclaimed space.
+            const widgetVisible = Boolean(singleFilteredAccount) && !accountWidgetCollapsed;
             return (
               <div className="flex flex-col lg:flex-row lg:items-stretch">
                 <div
-                  aria-hidden={accountWidgetCollapsed}
+                  aria-hidden={!widgetVisible}
+                  inert={!widgetVisible}
                   className={`flex-shrink-0 lg:relative overflow-hidden transition-all duration-300 ease-in-out motion-reduce:transition-none ${
-                    accountWidgetCollapsed
-                      ? 'max-h-0 lg:max-h-none lg:w-0 lg:mr-0 opacity-0 lg:-translate-x-6 pointer-events-none'
-                      : 'max-h-[1000px] lg:max-h-none lg:w-1/4 lg:mr-6 opacity-100 lg:translate-x-0'
+                    widgetVisible
+                      ? 'max-h-[1000px] lg:max-h-none lg:w-1/4 lg:mr-6 opacity-100 lg:translate-x-0'
+                      : 'max-h-0 lg:max-h-none lg:w-0 lg:mr-0 opacity-0 lg:-translate-x-6 pointer-events-none'
                   }`}
                 >
                   <AccountInfoWidget
-                    account={singleFilteredAccount}
-                    institution={singleFilteredInstitution}
+                    account={widgetAccount}
+                    currentBalance={retainedWidget?.currentBalance}
+                    institution={widgetInstitution}
                     scheduledTransactions={scheduledTransactions}
-                    onEdit={() => accountModal.openEdit(singleFilteredAccount)}
+                    onEdit={() => accountModal.openEdit(widgetAccount)}
                     onCollapse={() => setAccountWidgetCollapsed(true)}
                   />
                 </div>
                 <div className="lg:flex-1 min-w-0">
-                  {accountWidgetCollapsed && (
+                  {accountWidgetCollapsed && singleFilteredAccount && (
                     <button
                       type="button"
                       onClick={() => setAccountWidgetCollapsed(false)}

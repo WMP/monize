@@ -16,6 +16,11 @@ import { safeHttpUrl } from '@/lib/safe-url';
 
 interface AccountInfoWidgetProps {
   account: Account;
+  /** Live balance derived from the same daily-balance series the Balance
+   *  History chart summarises ("Current"), so the widget stays in sync as
+   *  transactions change. Falls back to `account.currentBalance` when the
+   *  series is unavailable (e.g. category/payee filters active). */
+  currentBalance?: number;
   /** The account's institution, when assigned, for the logo + name. The
    *  optional website makes the logo a link to the institution's site. */
   institution?: (InstitutionLogoData & { website?: string }) | null;
@@ -34,6 +39,7 @@ interface AccountInfoWidgetProps {
  */
 export function AccountInfoWidget({
   account,
+  currentBalance,
   institution,
   scheduledTransactions = [],
   onEdit,
@@ -48,7 +54,7 @@ export function AccountInfoWidget({
   const isLiability = ['CREDIT_CARD', 'LOAN', 'MORTGAGE', 'LINE_OF_CREDIT'].includes(
     account.accountType,
   );
-  const balance = Number(account.currentBalance) || 0;
+  const balance = currentBalance ?? (Number(account.currentBalance) || 0);
   // Prefer the linked institution's canonical name; fall back to the legacy
   // free-text field stored on the account.
   const institutionName = institution?.name ?? account.institution ?? null;

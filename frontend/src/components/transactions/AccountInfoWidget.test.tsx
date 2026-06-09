@@ -42,6 +42,44 @@ describe('AccountInfoWidget', () => {
     expect(screen.getByText('Chequing')).toBeInTheDocument();
   });
 
+  it('prefers the live chart-derived balance over the stale account balance', () => {
+    render(
+      <AccountInfoWidget
+        account={makeAccount({ currentBalance: 1234.5 })}
+        currentBalance={1500.25}
+        onEdit={vi.fn()}
+        onCollapse={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('CAD 1500.25')).toBeInTheDocument();
+    expect(screen.queryByText('CAD 1234.50')).not.toBeInTheDocument();
+  });
+
+  it('shows a live balance of zero rather than falling back to the account balance', () => {
+    render(
+      <AccountInfoWidget
+        account={makeAccount({ currentBalance: 1234.5 })}
+        currentBalance={0}
+        onEdit={vi.fn()}
+        onCollapse={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('CAD 0.00')).toBeInTheDocument();
+  });
+
+  it('styles a negative live balance in red', () => {
+    render(
+      <AccountInfoWidget
+        account={makeAccount({ currentBalance: 1234.5 })}
+        currentBalance={-42}
+        onEdit={vi.fn()}
+        onCollapse={vi.fn()}
+      />,
+    );
+    const amount = screen.getByText('CAD -42.00');
+    expect(amount.className).toContain('text-red-600');
+  });
+
   it('calls onEdit when the pencil button is clicked', () => {
     const onEdit = vi.fn();
     render(<AccountInfoWidget account={makeAccount()} onEdit={onEdit} onCollapse={vi.fn()} />);

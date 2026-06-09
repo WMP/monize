@@ -16,6 +16,7 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 import { parseLocalDate } from '@/lib/utils';
+import { computeBalanceSummary } from '@/lib/balance-history';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { ChartDownloadButton } from '@/components/ui/ChartDownloadButton';
 
@@ -140,47 +141,7 @@ export function BalanceHistoryChart({
     return { chartData: points, monthTicks: ticks };
   }, [data]);
 
-  const summary = useMemo(() => {
-    if (chartData.length === 0) return null;
-    const startBalance = chartData[0].balance;
-    const endBalance = chartData[chartData.length - 1].balance;
-
-    // Find balance as of today (last data point on or before today)
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    let currentBalance = endBalance;
-    let todayAnchorIdx = -1;
-    for (let i = chartData.length - 1; i >= 0; i--) {
-      if (chartData[i].date <= todayStr) {
-        currentBalance = chartData[i].balance;
-        todayAnchorIdx = i;
-        break;
-      }
-    }
-    if (todayAnchorIdx === -1) {
-      // All data points are in the future
-      currentBalance = startBalance;
-    }
-
-    // The backend returns one data point per day in the filtered range, so
-    // chart points strictly after today do NOT necessarily mean future
-    // transactions exist — the balance simply carries forward on days with
-    // no activity. Only consider the range as having future data when at
-    // least one post-today point differs from the current balance.
-    let hasFutureData = false;
-    for (let i = todayAnchorIdx + 1; i < chartData.length; i++) {
-      if (chartData[i].balance !== currentBalance) {
-        hasFutureData = true;
-        break;
-      }
-    }
-
-    let minBalance = startBalance;
-    for (const point of chartData) {
-      if (point.balance < minBalance) minBalance = point.balance;
-    }
-    return { startBalance, currentBalance, endBalance, hasFutureData, minBalance, goesNegative: minBalance < 0 };
-  }, [chartData]);
+  const summary = useMemo(() => computeBalanceSummary(chartData), [chartData]);
 
   const areaGradient = useMemo(
     () => computeBalanceGradient(chartData.map((point) => point.balance)),
@@ -222,7 +183,10 @@ export function BalanceHistoryChart({
         <ChartDownloadButton chartRef={chartRef} filename={downloadFilename} />
       </div>
 
-      <div ref={chartRef} className="h-72" style={{ minHeight: 288 }}>
+      {/* overflow-hidden: while the account-widget column animates the card's
+          width, the recharts SVG keeps its last measured size until it
+          re-measures, so clip it to the card instead of painting outside. */}
+      <div ref={chartRef} className="h-72 overflow-hidden" style={{ minHeight: 288 }}>
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <AreaChart data={chartData} margin={{ left: 0, right: 8, top: 5, bottom: 0 }}>
             <defs>

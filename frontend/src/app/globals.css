@@ -26,6 +26,22 @@
 
   /* Font family */
   --font-sans: 'Inter', system-ui, sans-serif;
+
+  /* Fade/slide-in for an incoming chart card, used when a page swaps between
+     chart types (e.g. Balance History -> Account Balances) so the change
+     doesn't pop abruptly. Pair with motion-reduce:animate-none. */
+  --animate-chart-in: chart-in 300ms ease-out;
+
+  @keyframes chart-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
 /* Dark mode variant */
