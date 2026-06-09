@@ -254,19 +254,33 @@ describe('PreferencesSection', () => {
     });
   });
 
-  it('sends updated theme when changed and saved', async () => {
+  it('persists the theme immediately on change, without waiting for save', async () => {
     (userSettingsApi.updatePreferences as ReturnType<typeof vi.fn>).mockResolvedValue(mockPreferences);
 
     render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
 
-    fireEvent.change(screen.getByLabelText('Theme'), { target: { value: 'dark' } });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Theme'), { target: { value: 'dark' } });
+    });
+
+    await waitFor(() => {
+      expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith({ theme: 'dark' });
+    });
+  });
+
+  it('does not include theme in the bulk Save Preferences payload', async () => {
+    (userSettingsApi.updatePreferences as ReturnType<typeof vi.fn>).mockResolvedValue(mockPreferences);
+
+    render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
+
     fireEvent.click(screen.getByRole('button', { name: 'Save Preferences' }));
 
     await waitFor(() => {
-      expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
-        expect.objectContaining({ theme: 'dark' })
-      );
+      expect(userSettingsApi.updatePreferences).toHaveBeenCalled();
     });
+    expect(userSettingsApi.updatePreferences).toHaveBeenCalledWith(
+      expect.not.objectContaining({ theme: expect.anything() }),
+    );
   });
 
   it('renders the Week starts on dropdown', async () => {

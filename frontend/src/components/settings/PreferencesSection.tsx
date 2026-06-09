@@ -9,7 +9,6 @@ import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { userSettingsApi } from '@/lib/user-settings';
 import { usePreferencesStore } from '@/store/preferencesStore';
-import { useTheme } from '@/contexts/ThemeContext';
 import { UserPreferences, UpdatePreferencesData } from '@/types/auth';
 import { getErrorMessage } from '@/lib/errors';
 import { exchangeRatesApi, CurrencyInfo } from '@/lib/exchange-rates';
@@ -17,6 +16,7 @@ import { investmentsApi } from '@/lib/investments';
 import { Combobox } from '@/components/ui/Combobox';
 import { getDateFormatOptions, EXCHANGE_OPTIONS } from '@/lib/constants';
 import { LanguageSelector } from '@/components/settings/LanguageSelector';
+import { ThemeSelector } from '@/components/settings/ThemeSelector';
 
 const NUMBER_FORMAT_OPTIONS = [
   { value: 'browser', labelKey: 'numberFormatOptions.browser' },
@@ -60,12 +60,6 @@ const WEEK_STARTS_ON_OPTIONS = [
   { value: '6', labelKey: 'weekDays.saturday' },
 ];
 
-const THEME_OPTIONS = [
-  { value: 'system', labelKey: 'themeOptions.system' },
-  { value: 'light', labelKey: 'themeOptions.light' },
-  { value: 'dark', labelKey: 'themeOptions.dark' },
-];
-
 const QUOTE_PROVIDER_OPTIONS = [
   { value: 'yahoo', label: 'Yahoo Finance' },
   { value: 'msn', label: 'MSN Money' },
@@ -89,7 +83,6 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
   const tc = useTranslations('common');
   const dateFormatOptions = getDateFormatOptions(tc);
   const updatePreferencesStore = usePreferencesStore((state) => state.updatePreferences);
-  const { setTheme: setAppTheme } = useTheme();
 
   const [dateFormat, setDateFormat] = useState(preferences.dateFormat);
   const [numberFormat, setNumberFormat] = useState(preferences.numberFormat);
@@ -135,11 +128,12 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
   const handleUpdatePreferences = async () => {
     setIsUpdatingPreferences(true);
     try {
+      // Theme is applied and persisted immediately by ThemeSelector (like
+      // language), so it is intentionally omitted from this bulk save.
       const data: UpdatePreferencesData = {
         dateFormat,
         numberFormat,
         timezone,
-        theme,
         defaultCurrency,
         weekStartsOn,
         showCreatedAt,
@@ -152,7 +146,6 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
       const updated = await userSettingsApi.updatePreferences(data);
       onPreferencesUpdated(updated);
       updatePreferencesStore(updated);
-      setAppTheme(theme);
       toast.success(t('toasts.saved'));
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to save preferences'));
@@ -168,12 +161,7 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
       <div className="space-y-4">
         <LanguageSelector value={language} onChange={setLanguage} />
 
-        <Select
-          label={t('themeLabel')}
-          options={THEME_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-          value={theme}
-          onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')}
-        />
+        <ThemeSelector value={theme} onChange={setTheme} />
 
         <Select
           label={t('defaultCurrencyLabel')}
