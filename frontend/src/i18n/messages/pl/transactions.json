@@ -1,6 +1,7 @@
 {
   "accountWidget": {
     "currentBalance": "Bieżące saldo",
+    "nextPayment": "Następna płatność",
     "type": "Typ",
     "accountNumber": "Numer konta",
     "currency": "Waluta",

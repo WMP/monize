@@ -27,6 +27,7 @@ const AccountBalancesBarChart = dynamic(() => import('@/components/transactions/
 import { transactionsApi } from '@/lib/transactions';
 import { accountsApi } from '@/lib/accounts';
 import { institutionsApi } from '@/lib/institutions';
+import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { categoriesApi } from '@/lib/categories';
 import { payeesApi } from '@/lib/payees';
 import { tagsApi } from '@/lib/tags';
@@ -40,6 +41,7 @@ import { Institution } from '@/types/institution';
 import { Category } from '@/types/category';
 import { Payee } from '@/types/payee';
 import { Tag } from '@/types/tag';
+import { ScheduledTransaction } from '@/types/scheduled-transaction';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { usePreferencesStore } from '@/store/preferencesStore';
@@ -82,6 +84,7 @@ function TransactionsContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [scheduledTransactions, setScheduledTransactions] = useState<ScheduledTransaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [payees, setPayees] = useState<Payee[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
@@ -123,18 +126,20 @@ function TransactionsContent() {
   const loadStaticData = useCallback(async () => {
     if (staticDataLoaded.current) return;
     try {
-      const [accountsData, categoriesData, payeesData, tagsData, institutionsData] = await Promise.all([
+      const [accountsData, categoriesData, payeesData, tagsData, institutionsData, scheduledData] = await Promise.all([
         accountsApi.getAll(true),
         categoriesApi.getAll(),
         payeesApi.getAll(),
         tagsApi.getAll(),
         institutionsApi.getAll().catch(() => [] as Institution[]),
+        scheduledTransactionsApi.getAll().catch(() => [] as ScheduledTransaction[]),
       ]);
       setAccounts(accountsData);
       setCategories(categoriesData);
       setPayees(payeesData);
       setTags(tagsData);
       setInstitutions(institutionsData);
+      setScheduledTransactions(scheduledData);
       staticDataLoaded.current = true;
     } catch (error) {
       showErrorToast(error, 'Failed to load form data');
@@ -764,6 +769,7 @@ function TransactionsContent() {
                   <AccountInfoWidget
                     account={singleFilteredAccount}
                     institution={singleFilteredInstitution}
+                    scheduledTransactions={scheduledTransactions}
                     onEdit={() => accountModal.openEdit(singleFilteredAccount)}
                     onCollapse={() => setAccountWidgetCollapsed(true)}
                   />

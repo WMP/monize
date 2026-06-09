@@ -1,6 +1,7 @@
 {
   "accountWidget": {
     "currentBalance": "[XX-Current Balance-XX]",
+    "nextPayment": "[XX-Next Payment-XX]",
     "type": "[XX-Type-XX]",
     "accountNumber": "[XX-Account Number-XX]",
     "currency": "[XX-Currency-XX]",

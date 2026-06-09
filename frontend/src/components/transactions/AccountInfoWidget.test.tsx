@@ -114,6 +114,60 @@ describe('AccountInfoWidget', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows the soonest scheduled payment for the account', () => {
+    const scheduled = [
+      { id: 's1', accountId: 'a-1', isActive: true, nextDueDate: '2026-07-15', amount: -120.5, currencyCode: 'CAD' },
+      { id: 's2', accountId: 'a-1', isActive: true, nextDueDate: '2026-06-20', amount: -80, currencyCode: 'CAD' },
+      { id: 's3', accountId: 'other', isActive: true, nextDueDate: '2026-06-01', amount: -999, currencyCode: 'CAD' },
+    ] as any;
+    render(
+      <AccountInfoWidget
+        account={makeAccount()}
+        scheduledTransactions={scheduled}
+        onEdit={vi.fn()}
+        onCollapse={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Next Payment')).toBeInTheDocument();
+    // The 2026-06-20 bill is sooner than 2026-07-15; the other account is ignored.
+    expect(screen.getByText('CAD 80.00')).toBeInTheDocument();
+    expect(screen.queryByText('CAD 999.00')).not.toBeInTheDocument();
+  });
+
+  it('uses the per-occurrence override date and amount when present', () => {
+    const scheduled = [
+      {
+        id: 's1', accountId: 'a-1', isActive: true,
+        nextDueDate: '2026-07-15', amount: -120.5, currencyCode: 'CAD',
+        nextOverride: { overrideDate: '2026-05-01', amount: -42 },
+      },
+    ] as any;
+    render(
+      <AccountInfoWidget
+        account={makeAccount()}
+        scheduledTransactions={scheduled}
+        onEdit={vi.fn()}
+        onCollapse={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('CAD 42.00')).toBeInTheDocument();
+  });
+
+  it('ignores inactive scheduled transactions', () => {
+    const scheduled = [
+      { id: 's1', accountId: 'a-1', isActive: false, nextDueDate: '2026-06-20', amount: -80, currencyCode: 'CAD' },
+    ] as any;
+    render(
+      <AccountInfoWidget
+        account={makeAccount()}
+        scheduledTransactions={scheduled}
+        onEdit={vi.fn()}
+        onCollapse={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('Next Payment')).not.toBeInTheDocument();
+  });
+
   it('omits optional fields that are absent', () => {
     render(<AccountInfoWidget account={makeAccount()} onEdit={vi.fn()} onCollapse={vi.fn()} />);
     expect(screen.queryByText('Account Number')).not.toBeInTheDocument();

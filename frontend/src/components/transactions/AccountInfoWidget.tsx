@@ -1,11 +1,14 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { PencilSquareIcon, ChevronDoubleLeftIcon } from '@heroicons/react/24/outline';
 import { Account } from '@/types/account';
+import { ScheduledTransaction } from '@/types/scheduled-transaction';
 import { formatAccountType } from '@/lib/account-utils';
 import { getOrdinal } from '@/lib/ordinal';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useDateFormat } from '@/hooks/useDateFormat';
 import { InstitutionLogo, InstitutionLogoData } from '@/components/institutions/InstitutionLogo';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 
@@ -13,6 +16,8 @@ interface AccountInfoWidgetProps {
   account: Account;
   /** The account's institution, when assigned, for the logo + name. */
   institution?: InstitutionLogoData | null;
+  /** Scheduled bills/deposits; the soonest for this account is surfaced. */
+  scheduledTransactions?: ScheduledTransaction[];
   /** Open the shared account edit modal for this account. */
   onEdit: () => void;
   /** Collapse the widget so the chart can use the full width. */
@@ -24,10 +29,17 @@ interface AccountInfoWidgetProps {
  * Transactions list is filtered to a single account. The pencil opens the same
  * edit modal used on the Accounts page via the supplied `onEdit` callback.
  */
-export function AccountInfoWidget({ account, institution, onEdit, onCollapse }: AccountInfoWidgetProps) {
+export function AccountInfoWidget({
+  account,
+  institution,
+  scheduledTransactions = [],
+  onEdit,
+  onCollapse,
+}: AccountInfoWidgetProps) {
   const t = useTranslations('transactions');
   const tc = useTranslations('common');
   const { formatCurrency } = useNumberFormat();
+  const { formatDate } = useDateFormat();
 
   const isLiability = ['CREDIT_CARD', 'LOAN', 'MORTGAGE', 'LINE_OF_CREDIT'].includes(
     account.accountType,
@@ -36,6 +48,20 @@ export function AccountInfoWidget({ account, institution, onEdit, onCollapse }: 
   // Prefer the linked institution's canonical name; fall back to the legacy
   // free-text field stored on the account.
   const institutionName = institution?.name ?? account.institution ?? null;
+
+  // The soonest active scheduled bill/deposit booked against this account.
+  // Honours a per-occurrence override for both the date and the amount.
+  const nextPayment = useMemo(() => {
+    const candidates = scheduledTransactions
+      .filter((st) => st.isActive && st.accountId === account.id)
+      .map((st) => ({
+        date: (st.nextOverride?.overrideDate ?? st.nextDueDate).split('T')[0],
+        amount: st.nextOverride?.amount ?? st.amount,
+        currencyCode: st.currencyCode,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return candidates[0] ?? null;
+  }, [scheduledTransactions, account.id]);
 
   const details: Array<{ label: string; value: string; tooltip?: string }> = [];
   details.push({
@@ -129,6 +155,20 @@ export function AccountInfoWidget({ account, institution, onEdit, onCollapse }: 
           {formatCurrency(balance, account.currencyCode)}
         </p>
       </div>
+
+      {nextPayment && (
+        <div className="mb-4 rounded-md bg-gray-50 dark:bg-gray-700/40 px-3 py-2">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {t('accountWidget.nextPayment')}
+          </p>
+          <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            {formatCurrency(Math.abs(nextPayment.amount), nextPayment.currencyCode)}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {formatDate(nextPayment.date)}
+          </p>
+        </div>
+      )}
 
       <dl className="space-y-2 text-sm">
         {details.map((detail) => (
