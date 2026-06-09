@@ -33,6 +33,13 @@ vi.mock('@/lib/constants', () => ({ PAGE_SIZE: 25 }));
 const mockGetAll = vi.fn();
 const mockCreate = vi.fn();
 const mockUpdate = vi.fn();
+const mockAccountsGetAll = vi.fn();
+
+vi.mock('@/lib/accounts', () => ({
+  accountsApi: {
+    getAll: (...a: any[]) => mockAccountsGetAll(...a),
+  },
+}));
 
 vi.mock('@/lib/institutions', () => ({
   institutionsApi: {
@@ -137,6 +144,7 @@ describe('InstitutionsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetAll.mockResolvedValue(mockInstitutions);
+    mockAccountsGetAll.mockResolvedValue([]);
   });
 
   it('renders the header, subtitle and summary cards', async () => {
