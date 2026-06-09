@@ -238,6 +238,9 @@ vi.mock('@/components/transactions/TransactionFilterPanel', () => ({
       <button data-testid="set-account-filter" onClick={() => {
         props.handleArrayFilterChange(props.setFilterAccountIds, ['acc-1']);
       }}>Set Account Filter</button>
+      <button data-testid="set-two-account-filter" onClick={() => {
+        props.handleArrayFilterChange(props.setFilterAccountIds, ['acc-1', 'acc-2']);
+      }}>Set Two Account Filter</button>
       <button data-testid="set-account-status-active" onClick={() => {
         props.setFilterAccountStatus('active');
       }}>Show Active Accounts</button>
@@ -1208,6 +1211,54 @@ describe('TransactionsPage', () => {
       });
       expect(screen.getByText('$1500.00')).toBeInTheDocument();
       expect(screen.queryByText('$5000.00')).not.toBeInTheDocument();
+    });
+
+    it('keeps the widget mounted and slides it out when the filter widens to two accounts', async () => {
+      mockGetAllAccounts.mockResolvedValue(mockAccounts);
+      const rows = [
+        { date: '2026-02-01', balance: 1000, accountId: 'acc-1', currencyCode: 'USD' },
+        { date: '2026-02-15', balance: 1500, accountId: 'acc-1', currencyCode: 'USD' },
+        { date: '2026-02-01', balance: 5000, accountId: 'acc-2', currencyCode: 'USD' },
+        { date: '2026-02-15', balance: 5200, accountId: 'acc-2', currencyCode: 'USD' },
+      ];
+      // Respect the accountIds chart param like the backend does, so the
+      // single-account phase yields one account's series and the two-account
+      // phase yields both.
+      mockGetDailyBalances.mockImplementation((params?: { accountIds?: string }) => {
+        const ids = params?.accountIds?.split(',');
+        return Promise.resolve(ids ? rows.filter((r) => ids.includes(r.accountId)) : rows);
+      });
+
+      render(<TransactionsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-panel')).toBeInTheDocument();
+      });
+
+      // Narrow to one account: the widget is shown next to the history chart.
+      fireEvent.click(screen.getByTestId('set-account-filter'));
+      await waitFor(() => {
+        expect(screen.getByText('Current Balance')).toBeInTheDocument();
+      });
+      const widgetColumn = screen.getByText('Current Balance').closest('[aria-hidden]');
+      expect(widgetColumn).toHaveAttribute('aria-hidden', 'false');
+
+      // Widen to two accounts: the bar chart takes over and the widget stays
+      // mounted but hidden, so its column can animate out of view.
+      fireEvent.click(screen.getByTestId('set-two-account-filter'));
+      await waitFor(() => {
+        expect(screen.getByTestId('chart-account-balances')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Current Balance')).toBeInTheDocument();
+      expect(widgetColumn).toHaveAttribute('aria-hidden', 'true');
+      expect(widgetColumn?.className).toContain('opacity-0');
+      expect(widgetColumn?.className).toContain('pointer-events-none');
+
+      // Narrow back down to one account: the same column slides back in.
+      fireEvent.click(screen.getByTestId('set-account-filter'));
+      await waitFor(() => {
+        expect(widgetColumn).toHaveAttribute('aria-hidden', 'false');
+      });
+      expect(widgetColumn?.className).toContain('opacity-100');
     });
 
     it('falls back to the stored account balance when no daily-balance rows exist', async () => {
