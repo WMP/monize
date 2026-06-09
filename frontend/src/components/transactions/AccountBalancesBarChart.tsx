@@ -237,9 +237,12 @@ export function AccountBalancesBarChart({
         </div>
       </div>
 
+      {/* overflow-hidden: while the account-widget column animates the card's
+          width, the recharts SVG keeps its last measured size until it
+          re-measures, so clip it to the card instead of painting outside. */}
       <div
         ref={chartRef}
-        className="h-72"
+        className="h-72 overflow-hidden"
         style={{ minHeight: 288 }}
       >
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
