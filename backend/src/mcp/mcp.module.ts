@@ -10,6 +10,7 @@ import { SecuritiesModule } from "../securities/securities.module";
 import { BudgetsModule } from "../budgets/budgets.module";
 import { BuiltInReportsModule } from "../built-in-reports/built-in-reports.module";
 import { OAuthModule } from "../oauth/oauth.module";
+import { BrokerImportModule } from "../ai/broker-import/broker-import.module";
 
 import { McpServerService } from "./mcp-server.service";
 import { McpHttpController } from "./mcp-http.controller";
@@ -24,6 +25,7 @@ import { McpNetWorthTools } from "./tools/net-worth.tool";
 import { McpScheduledTools } from "./tools/scheduled.tool";
 import { McpCalculateTools } from "./tools/calculate.tool";
 import { McpBudgetsTools } from "./tools/budgets.tool";
+import { McpBrokerImportTools } from "./tools/broker-import.tool";
 
 import { McpAccountListResource } from "./resources/account-list.resource";
 import { McpCategoryTreeResource } from "./resources/category-tree.resource";
@@ -48,6 +50,7 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
     forwardRef(() => BudgetsModule),
     BuiltInReportsModule,
     OAuthModule,
+    BrokerImportModule,
   ],
   providers: [
     McpServerService,
@@ -61,6 +64,7 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
     McpScheduledTools,
     McpCalculateTools,
     McpBudgetsTools,
+    McpBrokerImportTools,
     McpAccountListResource,
     McpCategoryTreeResource,
     McpRecentTransactionsResource,

@@ -431,6 +431,22 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
     },
   },
   {
+    name: "parse_broker_import",
+    description:
+      "Use AI to parse pasted brokerage order-history HTML into structured buy/sell orders. Only EXECUTED orders are extracted. Returns orders (each matched to an existing security where possible) plus warnings, but records NOTHING -- it is a read-only preview the user reviews and applies elsewhere. Use this for requests like 'import my broker orders' or 'parse this order history I copied from my broker'.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        html: {
+          type: "string",
+          description:
+            "Raw HTML (or text) of the brokerage account's order history, as pasted by the user.",
+        },
+      },
+      required: ["html"],
+    },
+  },
+  {
     name: "calculate",
     description:
       "Perform accurate server-side arithmetic on numbers from previous tool results. Use this instead of doing math yourself. Supports: percentage (part/whole*100), difference (a-b), ratio (a/b), sum, and average. Always use this tool for any calculation rather than computing values yourself.",
