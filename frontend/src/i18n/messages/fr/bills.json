@@ -1,13 +1,13 @@
 {
   "page": {
     "title": "Factures et dépôts",
-    "subtitle": "Gérez vos transactions récurrentes et paiements planifiés",
+    "subtitle": "Gérez vos transactions récurrentes et paiements récurrents",
     "newButton": "+ Nouveau calendrier",
     "summaryActiveBills": "Factures actives",
     "summaryActiveDeposits": "Dépôts actifs",
     "summaryMonthlyNet": "Net mensuel",
     "summaryDueNow": "À payer maintenant",
-    "loadingText": "Chargement des transactions planifiées...",
+    "loadingText": "Chargement des transactions récurrentes...",
     "chartUnavailable": "Graphique temporairement indisponible"
   },
   "viewTabs": {
@@ -19,25 +19,25 @@
     "todayButton": "Aujourd'hui"
   },
   "form": {
-    "titleNew": "Nouvelle transaction planifiée",
-    "titleEdit": "Modifier la transaction planifiée"
+    "titleNew": "Nouvelle transaction récurrente",
+    "titleEdit": "Modifier la transaction récurrente"
   },
   "overrideConfirm": {
     "title": "Remplacements existants détectés",
-    "message": "Cette transaction planifiée comporte {count, plural, one {# occurrence individuelle} other {# occurrences individuelles}} avec des modifications personnalisées.",
+    "message": "Cette transaction récurrente comporte {count, plural, one {# occurrence individuelle} other {# occurrences individuelles}} avec des modifications personnalisées.",
     "question": "Que souhaitez-vous faire de ces modifications lors de la mise à jour du modèle de base ?",
     "keepButton": "Conserver les modifications",
     "deleteButton": "Supprimer toutes les modifications"
   },
   "forecast": {
     "title": "Prévision de trésorerie",
-    "scheduledCount": "{count, plural, one {# transaction planifiée} other {# transactions planifiées}} dans la prévision",
+    "scheduledCount": "{count, plural, one {# transaction récurrente} other {# transactions récurrentes}} dans la prévision",
     "tooltipTransactions": "Transactions :",
     "tooltipMore": "+{count} de plus",
     "noData": "Aucune donnée à afficher",
     "noAccounts": "Aucun compte trouvé",
-    "noScheduled": "Aucune transaction planifiée",
-    "noMatchingAccount": "Sélectionnez un compte avec des transactions planifiées",
+    "noScheduled": "Aucune transaction récurrente",
+    "noMatchingAccount": "Sélectionnez un compte avec des transactions récurrentes",
     "noUpcoming": "Aucune transaction à venir sur cette période - affichage du solde actuel",
     "summaryStarting": "Départ",
     "summaryEnding": "Fin",
@@ -59,6 +59,6 @@
   },
   "toasts": {
     "overridesDeleted": "Remplacements supprimés",
-    "notFound": "Paiement planifié introuvable"
+    "notFound": "Paiement récurrent introuvable"
   }
 }

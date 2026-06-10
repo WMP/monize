@@ -211,7 +211,7 @@
     "commissionSuffix": "comisión",
     "postsToCashAccount": "Se publica en cuenta de efectivo ({currency})",
     "currencyConversion": "Conversión de moneda ({from} → {to})",
-    "exchangeRate": "Tasa de cambio (1 {from} =)",
+    "exchangeRate": "Tipo de cambio (1 {from} =)",
     "convertedTotal": "Total convertido ({currency})",
     "conversionHelp": "Ajusta la tasa o el total convertido para que coincida con el importe realmente acreditado en tu cuenta de efectivo.",
     "newSecurity": "Nuevo Valor",

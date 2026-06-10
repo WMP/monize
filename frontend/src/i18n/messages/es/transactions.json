@@ -34,7 +34,7 @@
       "message": "¿Estás seguro de que quieres eliminar {count, plural, one {# transacción} other {# transacciones}}? También se eliminarán las contrapartes de transferencia vinculadas. Esta acción no se puede deshacer."
     },
     "toasts": {
-      "scheduledCreated": "Transacción programada creada",
+      "scheduledCreated": "Transacción planificada creada",
       "investmentLinked": "Esta transacción está vinculada a una inversión. Abriendo en la página de Inversiones."
     }
   },
@@ -108,10 +108,10 @@
       "filterByTag": "Filtrar por etiqueta {name}",
       "transfer": "Transferencia",
       "transferTitle": "Transferencia {direction} {name}",
-      "split": "División",
+      "split": "Desglose",
       "uncategorized": "Sin categoría",
       "splitMore": "+{count} más",
-      "filteredAmountTitle": "Importe filtrado (transacción completa: {amount})",
+      "filteredAmountTitle": "Cantidad filtrada (transacción completa: {amount})",
       "viewButton": "Ver",
       "editButton": "Editar",
       "deleteButton": "Eliminar"
@@ -238,13 +238,13 @@
       },
       "notes": {
         "transfer": "Las transacciones de transferencia también actualizarán su contraparte vinculada.",
-        "split": "Las transacciones divididas serán omitidas para cambios de categoría."
+        "split": "Las transacciones con desglose serán omitidas para cambios de categoría."
       }
     }
   },
   "form": {
     "modeTransaction": "Transacción",
-    "modeSplit": "División",
+    "modeSplit": "Desglose",
     "modeTransfer": "Transferencia",
     "transferBadge": "Transferencia",
     "isLinkedTransfer": "Esta es una transacción de transferencia vinculada",
@@ -278,8 +278,8 @@
       "createNewTag": "Crear nueva etiqueta..."
     },
     "splitSection": {
-      "title": "Dividir transacción",
-      "cancelSplit": "Cancelar división"
+      "title": "Desglosar transacción",
+      "cancelSplit": "Cancelar desglose"
     },
     "statusOptions": {
       "unreconciled": "Sin conciliar",
@@ -295,7 +295,7 @@
     },
     "transferAmountNote": "El importe debe ser positivo para transferencias",
     "amountReceivedNote": "Importe recibido después de la conversión de moneda",
-    "splitTransaction": "Dividir transacción",
+    "splitTransaction": "Desglosar transacción",
     "newTagTitle": "Nueva etiqueta",
     "toasts": {
       "transferCreated": "Transferencia creada",

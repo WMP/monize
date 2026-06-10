@@ -10,8 +10,8 @@
       "actions": "Actions"
     },
     "empty": {
-      "title": "Aucune transaction planifiée",
-      "subtitle": "Commencez par créer une facture ou un dépôt planifié."
+      "title": "Aucune transaction récurrente",
+      "subtitle": "Commencez par créer une facture ou un dépôt récurrent."
     },
     "dueDateStatus": {
       "overdue": "En retard",
@@ -50,14 +50,14 @@
       "confirmLabel": "Ignorer"
     },
     "confirmDelete": {
-      "title": "Supprimer la transaction planifiée",
+      "title": "Supprimer la transaction récurrente",
       "message": "Voulez-vous vraiment supprimer « {name} » ? Cette action est irréversible.",
       "confirmLabel": "Supprimer"
     },
     "toasts": {
       "posted": "Transaction enregistrée",
       "skipped": "Occurrence ignorée",
-      "deleted": "Transaction planifiée supprimée",
+      "deleted": "Transaction récurrente supprimée",
       "postFailed": "Échec de l'enregistrement de la transaction",
       "skipFailed": "Échec de l'omission de l'occurrence",
       "deleteFailed": "Échec de la suppression"
@@ -90,7 +90,7 @@
     "totalAmountLabel": "Montant total",
     "descriptionLabel": "Description (facultatif)",
     "categoryLabel": "Catégorie",
-    "splitLabel": "Diviser cette transaction",
+    "splitLabel": "Répartir cette transaction",
     "referenceNumberLabel": "Numéro de référence (facultatif)",
     "noPriceHistory": "Aucun historique des cours disponible pour ce titre. Saisissez le prix manuellement.",
     "postButton": "Enregistrer la transaction",
@@ -100,8 +100,8 @@
       "quantityRequired": "La quantité doit être supérieure à zéro",
       "priceRequired": "Le prix doit être supérieur à zéro",
       "totalAmountRequired": "Le montant total est requis",
-      "splitsMinimum": "Les transactions divisées nécessitent au moins 2 divisions",
-      "splitsTotal": "Le total des divisions doit être égal au montant de la transaction"
+      "splitsMinimum": "Les transactions réparties nécessitent au moins 2 répartitions",
+      "splitsTotal": "Le total des répartitions doit être égal au montant de la transaction"
     },
     "latestPlaceholder": "Dernier : {price}",
     "descriptionPlaceholder": "Description…",
@@ -118,7 +118,7 @@
     "amountChange": "Montant : {amount}",
     "categoryChange": "Catégorie : {category}",
     "noteChange": "Note : {note}",
-    "splitModified": "Division modifiée"
+    "splitModified": "Répartition modifiée"
   },
   "overrideEditor": {
     "title": "Modifier l'occurrence",
@@ -131,7 +131,7 @@
     "totalPriceLabel": "Prix total",
     "totalAmountLabel": "Montant total",
     "categoryLabel": "Catégorie",
-    "splitLabel": "Diviser cette occurrence",
+    "splitLabel": "Répartir cette occurrence",
     "descriptionLabel": "Description (facultatif)",
     "noPriceHistory": "Aucun historique des cours disponible pour ce titre. Saisissez le prix manuellement.",
     "resetToDefault": "Réinitialiser",
@@ -152,7 +152,7 @@
   "form": {
     "tabs": {
       "transaction": "Transaction",
-      "split": "Division",
+      "split": "Répartition",
       "transfer": "Virement",
       "investment": "Investissement"
     },
@@ -184,9 +184,9 @@
     "payeePlaceholder": "Sélectionner ou saisir un bénéficiaire…",
     "categoryLabel": "Catégorie",
     "categoryPlaceholder": "Sélectionner ou créer une catégorie…",
-    "splitTransactionButton": "Diviser la transaction",
-    "cancelSplitButton": "Annuler la division",
-    "splitTransactionTitle": "Diviser la transaction",
+    "splitTransactionButton": "Répartir la transaction",
+    "cancelSplitButton": "Annuler la répartition",
+    "splitTransactionTitle": "Répartir la transaction",
     "amountLabel": "Montant",
     "totalAmountLabel": "Montant total",
     "referenceNumberLabel": "Numéro de référence",
@@ -229,14 +229,14 @@
       "categoryCreated": "Catégorie « {name} » créée",
       "categoryCreateFailed": "Échec de la création de la catégorie",
       "tagCreated": "Étiquette « {name} » créée",
-      "updated": "Transaction planifiée mise à jour",
-      "created": "Transaction planifiée créée",
-      "saveFailed": "Échec de l'enregistrement de la transaction planifiée",
+      "updated": "Transaction récurrente mise à jour",
+      "created": "Transaction récurrente créée",
+      "saveFailed": "Échec de l'enregistrement de la transaction récurrente",
       "selectTransferDestination": "Veuillez sélectionner un compte de destination pour le virement",
       "differentTransferAccounts": "Les comptes source et destination doivent être différents",
-      "splitsMinimum": "Les transactions divisées nécessitent au moins 2 divisions",
-      "splitsTotal": "Le total des divisions doit être égal au montant de la transaction",
-      "brokerageAccountRequired": "Les transactions d'investissement planifiées nécessitent un compte de courtage",
+      "splitsMinimum": "Les transactions réparties nécessitent au moins 2 répartitions",
+      "splitsTotal": "Le total des répartitions doit être égal au montant de la transaction",
+      "brokerageAccountRequired": "Les transactions d'investissement récurrentes nécessitent un compte de courtage",
       "securityRequired": "Cette action d'investissement nécessite un titre",
       "quantityRequired": "La quantité doit être supérieure à zéro",
       "priceRequired": "Le prix doit être supérieur à zéro",
@@ -244,8 +244,8 @@
     }
   },
   "postTransaction": {
-    "minSplits": "Les transactions divisées nécessitent au moins 2 divisions",
-    "splitMismatch": "Le total des divisions doit être égal au montant de la transaction"
+    "minSplits": "Les transactions réparties nécessitent au moins 2 répartitions",
+    "splitMismatch": "Le total des répartitions doit être égal au montant de la transaction"
   },
   "frequency": {
     "ONCE": "Une fois",

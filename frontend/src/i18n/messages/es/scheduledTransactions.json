@@ -10,8 +10,8 @@
       "actions": "Acciones"
     },
     "empty": {
-      "title": "No hay transacciones programadas",
-      "subtitle": "Comienza creando una programación de factura o depósito."
+      "title": "No hay transacciones planificadas",
+      "subtitle": "Comienza creando una planificación de factura o depósito."
     },
     "dueDateStatus": {
       "overdue": "Vencida",
@@ -50,14 +50,14 @@
       "confirmLabel": "Omitir"
     },
     "confirmDelete": {
-      "title": "Eliminar transacción programada",
+      "title": "Eliminar transacción planificada",
       "message": "¿Estás seguro de que deseas eliminar \"{name}\"? Esta acción no se puede deshacer.",
       "confirmLabel": "Eliminar"
     },
     "toasts": {
       "posted": "Transacción registrada",
       "skipped": "Ocurrencia omitida",
-      "deleted": "Transacción programada eliminada",
+      "deleted": "Transacción planificada eliminada",
       "postFailed": "Error al registrar la transacción",
       "skipFailed": "Error al omitir la ocurrencia",
       "deleteFailed": "Error al eliminar"
@@ -90,7 +90,7 @@
     "totalAmountLabel": "Monto total",
     "descriptionLabel": "Descripción (opcional)",
     "categoryLabel": "Categoría",
-    "splitLabel": "Dividir esta transacción",
+    "splitLabel": "Desglosar esta transacción",
     "referenceNumberLabel": "Número de referencia (opcional)",
     "noPriceHistory": "No hay historial de precios para este valor. Ingresa el precio manualmente.",
     "postButton": "Registrar transacción",
@@ -100,8 +100,8 @@
       "quantityRequired": "La cantidad debe ser mayor que cero",
       "priceRequired": "El precio debe ser mayor que cero",
       "totalAmountRequired": "El monto total es obligatorio",
-      "splitsMinimum": "Las transacciones divididas requieren al menos 2 partes",
-      "splitsTotal": "Los montos de las partes deben ser iguales al monto de la transacción"
+      "splitsMinimum": "Los desgloses de transacción requieren al menos 2 partes",
+      "splitsTotal": "Los montos de las partes deben ser iguales a la cantidad de la transacción"
     },
     "latestPlaceholder": "Último: {price}",
     "descriptionPlaceholder": "Descripción...",
@@ -118,7 +118,7 @@
     "amountChange": "Monto: {amount}",
     "categoryChange": "Categoría: {category}",
     "noteChange": "Nota: {note}",
-    "splitModified": "División modificada"
+    "splitModified": "Desglose modificado"
   },
   "overrideEditor": {
     "title": "Editar ocurrencia",
@@ -131,7 +131,7 @@
     "totalPriceLabel": "Precio total",
     "totalAmountLabel": "Monto total",
     "categoryLabel": "Categoría",
-    "splitLabel": "Dividir esta ocurrencia",
+    "splitLabel": "Desglosar esta ocurrencia",
     "descriptionLabel": "Descripción (opcional)",
     "noPriceHistory": "No hay historial de precios para este valor. Ingresa el precio manualmente.",
     "resetToDefault": "Restablecer valores predeterminados",
@@ -184,9 +184,9 @@
     "payeePlaceholder": "Seleccionar o escribir el nombre del beneficiario...",
     "categoryLabel": "Categoría",
     "categoryPlaceholder": "Seleccionar o crear categoría...",
-    "splitTransactionButton": "Dividir transacción",
-    "cancelSplitButton": "Cancelar división",
-    "splitTransactionTitle": "Dividir transacción",
+    "splitTransactionButton": "Desglosar transacción",
+    "cancelSplitButton": "Cancelar desglose",
+    "splitTransactionTitle": "Desglosar transacción",
     "amountLabel": "Monto",
     "totalAmountLabel": "Monto total",
     "referenceNumberLabel": "Número de referencia",
@@ -229,14 +229,14 @@
       "categoryCreated": "Categoría \"{name}\" creada",
       "categoryCreateFailed": "Error al crear la categoría",
       "tagCreated": "Etiqueta \"{name}\" creada",
-      "updated": "Transacción programada actualizada",
-      "created": "Transacción programada creada",
-      "saveFailed": "Error al guardar la transacción programada",
+      "updated": "Transacción planificada actualizada",
+      "created": "Transacción planificada creada",
+      "saveFailed": "Error al guardar la transacción planificada",
       "selectTransferDestination": "Selecciona una cuenta destino para la transferencia",
       "differentTransferAccounts": "Las cuentas origen y destino deben ser diferentes",
-      "splitsMinimum": "Las transacciones divididas requieren al menos 2 partes",
-      "splitsTotal": "Los montos de las partes deben ser iguales al monto de la transacción",
-      "brokerageAccountRequired": "Las transacciones de inversión programadas requieren una cuenta de corredora",
+      "splitsMinimum": "Los desgloses de transacción requieren al menos 2 partes",
+      "splitsTotal": "Los montos de las partes deben ser iguales a la cantidad de la transacción",
+      "brokerageAccountRequired": "Las transacciones de inversión planificadas requieren una cuenta de corredora",
       "securityRequired": "Esta acción de inversión requiere un valor",
       "quantityRequired": "La cantidad debe ser mayor que cero",
       "priceRequired": "El precio debe ser mayor que cero",
@@ -244,8 +244,8 @@
     }
   },
   "postTransaction": {
-    "minSplits": "Las transacciones divididas requieren al menos 2 partes",
-    "splitMismatch": "Los montos de las partes deben ser iguales al monto de la transacción"
+    "minSplits": "Los desgloses de transacción requieren al menos 2 partes",
+    "splitMismatch": "Los montos de las partes deben ser iguales a la cantidad de la transacción"
   },
   "frequency": {
     "ONCE": "Una vez",

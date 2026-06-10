@@ -34,7 +34,7 @@
       "message": "Êtes-vous sûr de vouloir supprimer {count, plural, one {# transaction} other {# transactions}} ? Les virements liés seront également supprimés. Cette action est irréversible."
     },
     "toasts": {
-      "scheduledCreated": "Transaction planifiée créée",
+      "scheduledCreated": "Transaction récurrente créée",
       "investmentLinked": "Cette transaction est liée à un investissement. Ouverture dans la page Investissements."
     }
   },
@@ -108,7 +108,7 @@
       "filterByTag": "Filtrer par étiquette {name}",
       "transfer": "Virement",
       "transferTitle": "Virement {direction} {name}",
-      "split": "Ventilation",
+      "split": "Répartition",
       "uncategorized": "Non catégorisé",
       "splitMore": "+{count} de plus",
       "filteredAmountTitle": "Montant filtré (transaction complète : {amount})",
@@ -238,13 +238,13 @@
       },
       "notes": {
         "transfer": "Les transactions de virement auront également leur contrepartie liée mise à jour.",
-        "split": "Les transactions ventilées seront ignorées pour les modifications de catégorie."
+        "split": "Les transactions réparties seront ignorées pour les modifications de catégorie."
       }
     }
   },
   "form": {
     "modeTransaction": "Transaction",
-    "modeSplit": "Ventilation",
+    "modeSplit": "Répartition",
     "modeTransfer": "Virement",
     "transferBadge": "Virement",
     "isLinkedTransfer": "Ceci est une transaction de virement liée",
@@ -278,8 +278,8 @@
       "createNewTag": "Créer une nouvelle étiquette..."
     },
     "splitSection": {
-      "title": "Ventiler la transaction",
-      "cancelSplit": "Annuler la ventilation"
+      "title": "Répartir la transaction",
+      "cancelSplit": "Annuler la répartition"
     },
     "statusOptions": {
       "unreconciled": "Non rapproché",
@@ -295,7 +295,7 @@
     },
     "transferAmountNote": "Le montant doit être positif pour les virements",
     "amountReceivedNote": "Montant reçu après conversion de devise",
-    "splitTransaction": "Ventiler la transaction",
+    "splitTransaction": "Répartir la transaction",
     "newTagTitle": "Nouvelle étiquette",
     "toasts": {
       "transferCreated": "Virement créé",
@@ -304,7 +304,7 @@
       "transactionUpdated": "Transaction mise à jour",
       "saveFailed": "Échec de l'enregistrement de la transaction",
       "loadFailed": "Échec du chargement des données du formulaire",
-      "splitsNotEqual": "Le total des ventilations ({splitTotal}) doit être égal au montant de la transaction ({txAmount})",
+      "splitsNotEqual": "Le total des répartitions ({splitTotal}) doit être égal au montant de la transaction ({txAmount})",
       "destinationRequired": "Veuillez sélectionner un compte destination",
       "sameAccount": "Les comptes source et destination doivent être différents",
       "negativeTransfer": "Le montant du virement ne doit pas être négatif",

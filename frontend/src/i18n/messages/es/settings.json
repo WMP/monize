@@ -740,7 +740,7 @@
       "inputCostLabel": "Costo de entrada / 1M tokens",
       "outputCostLabel": "Costo de salida / 1M tokens",
       "rateCurrencyLabel": "Moneda de la tarifa",
-      "rateCurrencyHelp": "Si difiere de tu moneda local, el panel de Uso puede convertir los costos usando tus tasas de cambio guardadas.",
+      "rateCurrencyHelp": "Si difiere de tu moneda local, el panel de Uso puede convertir los costos usando tus tipos de cambio guardados.",
       "saveButton": "Guardar cambios",
       "addProviderButton": "Agregar proveedor",
       "modelPlaceholder": "Ingresa el nombre del modelo",
