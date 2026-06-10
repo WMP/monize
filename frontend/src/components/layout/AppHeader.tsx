@@ -43,6 +43,7 @@ const toolsLinks: { href: string; labelKey: string; badge?: string }[] = [
 const aiLinks: { href: string; labelKey: string }[] = [
   { href: '/insights', labelKey: 'insights' },
   { href: '/ai', labelKey: 'aiAssistant' },
+  { href: '/ai/import-broker', labelKey: 'importBroker' },
 ];
 
 export function AppHeader() {

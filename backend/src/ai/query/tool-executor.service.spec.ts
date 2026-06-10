@@ -8,6 +8,7 @@ import { BudgetReportsService } from "../../budgets/budget-reports.service";
 import { PortfolioService } from "../../securities/portfolio.service";
 import { InvestmentTransactionsService } from "../../securities/investment-transactions.service";
 import { ScheduledTransactionsService } from "../../scheduled-transactions/scheduled-transactions.service";
+import { BrokerImportService } from "../broker-import/broker-import.service";
 
 describe("ToolExecutorService", () => {
   let service: ToolExecutorService;
@@ -19,6 +20,7 @@ describe("ToolExecutorService", () => {
   let investmentTransactions: Record<string, jest.Mock>;
   let categories: Record<string, jest.Mock>;
   let scheduledTransactions: Record<string, jest.Mock>;
+  let brokerImport: Record<string, jest.Mock>;
 
   const userId = "user-1";
 
@@ -202,6 +204,15 @@ describe("ToolExecutorService", () => {
       }),
     };
 
+    brokerImport = {
+      parse: jest.fn().mockResolvedValue({
+        orders: [],
+        model: "test-model",
+        warnings: [],
+      }),
+      apply: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ToolExecutorService,
@@ -218,6 +229,10 @@ describe("ToolExecutorService", () => {
         {
           provide: ScheduledTransactionsService,
           useValue: scheduledTransactions,
+        },
+        {
+          provide: BrokerImportService,
+          useValue: brokerImport,
         },
       ],
     }).compile();
@@ -721,6 +736,41 @@ describe("ToolExecutorService", () => {
       expect(analytics.getLlmQueryTransactions).not.toHaveBeenCalled();
       expect(accounts.getLlmBalances).not.toHaveBeenCalled();
       expect(result.sources[0].type).toBe("calculation");
+    });
+
+    it("parse_broker_import delegates to brokerImport.parse", async () => {
+      brokerImport.parse.mockResolvedValueOnce({
+        orders: [
+          {
+            rowId: "order-0",
+            securityName: "Apple Inc.",
+            exchange: "NASDAQ",
+            side: "BUY",
+            quantity: 10,
+            price: 100,
+            value: 1000,
+            commission: 1,
+            currency: "USD",
+            tradeDate: "2026-06-05",
+            matchedSecurityId: "sec-1",
+            matchedSecurityName: "Apple Inc.",
+          },
+        ],
+        model: "test-model",
+        warnings: ["a warning"],
+      });
+
+      const result = await service.execute(userId, "parse_broker_import", {
+        html: "<table></table>",
+      });
+
+      expect(brokerImport.parse).toHaveBeenCalledWith(userId, {
+        html: "<table></table>",
+      });
+      expect(result.sources[0].type).toBe("broker_import");
+      expect(result.summary).toContain("1 executed order");
+      expect(result.summary).toContain("1 matched");
+      expect(result.summary).toContain("1 warning");
     });
 
     it("render_chart echoes input as sanitized chart data", async () => {

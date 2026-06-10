@@ -16,6 +16,7 @@ import {
   ScheduledTransactionsService,
   LlmScheduledKind,
 } from "../../scheduled-transactions/scheduled-transactions.service";
+import { BrokerImportService } from "../broker-import/broker-import.service";
 import { validateToolInput } from "./tool-input-schemas";
 import { executeCalculation, CalculateInput } from "./calculate-tool";
 import { sanitizePromptValue } from "../../common/sanitization.util";
@@ -51,6 +52,8 @@ export class ToolExecutorService {
     private readonly investmentTransactionsService: InvestmentTransactionsService,
     @Inject(forwardRef(() => ScheduledTransactionsService))
     private readonly scheduledTransactionsService: ScheduledTransactionsService,
+    @Inject(forwardRef(() => BrokerImportService))
+    private readonly brokerImportService: BrokerImportService,
   ) {}
 
   async execute(
@@ -125,6 +128,9 @@ export class ToolExecutorService {
           break;
         case "get_scheduled_transactions":
           result = await this.getScheduledTransactions(userId, validatedInput);
+          break;
+        case "parse_broker_import":
+          result = await this.parseBrokerImport(userId, validatedInput);
           break;
         case "calculate":
           result = this.calculate(validatedInput);
@@ -723,6 +729,32 @@ export class ToolExecutorService {
           description: accountNames
             ? `Scheduled ${kindDesc} for ${accountNames.join(", ")}`
             : `All scheduled ${kindDesc}`,
+        },
+      ],
+    };
+  }
+
+  private async parseBrokerImport(
+    userId: string,
+    input: Record<string, unknown>,
+  ): Promise<ToolResult> {
+    const html = typeof input.html === "string" ? input.html : "";
+
+    const data = await this.brokerImportService.parse(userId, { html });
+
+    const matched = data.orders.filter((o) => o.matchedSecurityId).length;
+
+    return {
+      data,
+      summary:
+        `Parsed ${data.orders.length} executed order${data.orders.length === 1 ? "" : "s"} ` +
+        `from the pasted broker history (${matched} matched to existing securities)` +
+        `${data.warnings.length ? `, ${data.warnings.length} warning${data.warnings.length === 1 ? "" : "s"}` : ""}.`,
+      sources: [
+        {
+          type: "broker_import",
+          description:
+            "AI-parsed buy/sell orders from pasted brokerage order history",
         },
       ],
     };
