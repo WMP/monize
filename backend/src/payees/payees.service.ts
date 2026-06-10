@@ -486,6 +486,21 @@ export class PayeesService {
   }
 
   /**
+   * Return the subset of the given payee ids that belong to the user, as a
+   * Set for O(1) ownership checks. Used to defensively validate ids before
+   * writing rows that reference them.
+   */
+  async findOwnedIds(userId: string, ids: string[]): Promise<Set<string>> {
+    if (ids.length === 0) return new Set<string>();
+    const uniqueIds = [...new Set(ids)];
+    const payees = await this.payeesRepository.find({
+      where: { id: In(uniqueIds), userId },
+      select: ["id"],
+    });
+    return new Set(payees.map((p) => p.id));
+  }
+
+  /**
    * Preview which payees would be deactivated based on the given criteria.
    * Returns payees with fewer than maxTransactions and last used before the cutoff date.
    */
@@ -755,6 +770,178 @@ export class PayeesService {
     suggestions.sort((a, b) => a.payeeName.localeCompare(b.payeeName));
 
     return suggestions;
+  }
+
+  /**
+   * Find active payees that have no default category assigned, along with up
+   * to `sampleSize` recent transaction descriptions per payee. Used by the
+   * AI payee organizer to feed the LLM payee names plus cheap context.
+   */
+  async findUncategorizedActiveWithSamples(
+    userId: string,
+    limit: number,
+    sampleSize: number,
+    minTransactions = 0,
+  ): Promise<
+    Array<{
+      payeeId: string;
+      payeeName: string;
+      sampleDescriptions: string[];
+    }>
+  > {
+    // When a minimum transaction count is requested, restrict to uncategorized
+    // payees that have at least that many transactions (focus on frequent
+    // payees, skip one-off noise). Otherwise the simple find() is enough.
+    let payees: Array<{ id: string; name: string }>;
+    if (minTransactions > 0) {
+      const rows = await this.payeesRepository
+        .createQueryBuilder("payee")
+        .innerJoin("transactions", "t", "t.payee_id = payee.id")
+        .where("payee.userId = :userId", { userId })
+        .andWhere("payee.isActive = true")
+        .andWhere("payee.defaultCategoryId IS NULL")
+        .groupBy("payee.id")
+        .having("COUNT(t.id) >= :minTx", { minTx: minTransactions })
+        .orderBy("payee.name", "ASC")
+        .limit(limit)
+        .select("payee.id", "id")
+        .addSelect("payee.name", "name")
+        .getRawMany<{ id: string; name: string }>();
+      payees = rows.map((r) => ({ id: r.id, name: r.name }));
+    } else {
+      const found = await this.payeesRepository.find({
+        where: { userId, isActive: true, defaultCategoryId: IsNull() },
+        order: { name: "ASC" },
+        take: limit,
+        select: ["id", "name"],
+      });
+      payees = found.map((p) => ({ id: p.id, name: p.name }));
+    }
+
+    if (payees.length === 0) {
+      return [];
+    }
+
+    const payeeIds = payees.map((p) => p.id);
+
+    // Pull recent transaction descriptions for these payees in one query.
+    // We over-fetch (sampleSize * payee count) and bucket per payee in memory,
+    // keeping at most `sampleSize` distinct, non-empty descriptions each.
+    const rows = await this.transactionsRepository
+      .createQueryBuilder("t")
+      .select(["t.payee_id as payee_id", "t.description as description"])
+      .where("t.user_id = :userId", { userId })
+      .andWhere("t.payee_id IN (:...payeeIds)", { payeeIds })
+      .andWhere("t.description IS NOT NULL")
+      .andWhere("t.description <> ''")
+      .orderBy("t.transaction_date", "DESC")
+      .limit(payeeIds.length * sampleSize * 4)
+      .getRawMany();
+
+    const samplesByPayee = new Map<string, string[]>();
+    for (const row of rows) {
+      const payeeId = row.payee_id as string;
+      const description = (row.description as string)?.trim();
+      if (!description) continue;
+      const existing = samplesByPayee.get(payeeId) ?? [];
+      if (existing.length >= sampleSize) continue;
+      if (existing.includes(description)) continue;
+      samplesByPayee.set(payeeId, [...existing, description]);
+    }
+
+    return payees.map((p) => ({
+      payeeId: p.id,
+      payeeName: p.name,
+      sampleDescriptions: samplesByPayee.get(p.id) ?? [],
+    }));
+  }
+
+  /**
+   * Return all ACTIVE payees for the user, regardless of category, as bare
+   * {id, name} records ordered by name. Used by the payee organizer's
+   * duplicate-detection path, which must consider categorized payees too
+   * (a categorized "Lidl" and an uncategorized "LIDL WARSZAWA" are still
+   * mergeable).
+   */
+  async findActivePayees(
+    userId: string,
+  ): Promise<Array<{ id: string; name: string }>> {
+    return this.payeesRepository.find({
+      where: { userId, isActive: true },
+      order: { name: "ASC" },
+      select: ["id", "name"],
+    });
+  }
+
+  /**
+   * Return the ids of ACTIVE, UNCATEGORIZED payees for the user that meet the
+   * optional minimum transaction count, as a Set for O(1) lookups. Used by the
+   * payee organizer to decide which payees still need a category suggestion
+   * (both cluster canonicals and standalone payees).
+   */
+  async findActiveUncategorizedIds(
+    userId: string,
+    minTransactions = 0,
+  ): Promise<Set<string>> {
+    if (minTransactions > 0) {
+      const rows = await this.payeesRepository
+        .createQueryBuilder("payee")
+        .innerJoin("transactions", "t", "t.payee_id = payee.id")
+        .where("payee.userId = :userId", { userId })
+        .andWhere("payee.isActive = true")
+        .andWhere("payee.defaultCategoryId IS NULL")
+        .groupBy("payee.id")
+        .having("COUNT(t.id) >= :minTx", { minTx: minTransactions })
+        .select("payee.id", "id")
+        .getRawMany<{ id: string }>();
+      return new Set(rows.map((r) => r.id));
+    }
+    const found = await this.payeesRepository.find({
+      where: { userId, isActive: true, defaultCategoryId: IsNull() },
+      select: ["id"],
+    });
+    return new Set(found.map((p) => p.id));
+  }
+
+  /**
+   * Pull up to `sampleSize` recent, distinct, non-empty transaction
+   * descriptions for each of the given payees, returned as a Map keyed by
+   * payeeId. Used by the payee organizer to attach context to survivor payees
+   * (cluster canonicals + standalone uncategorized payees) it asks the AI to
+   * categorize.
+   */
+  async findSamplesForPayees(
+    userId: string,
+    payeeIds: string[],
+    sampleSize: number,
+  ): Promise<Map<string, string[]>> {
+    const uniqueIds = [...new Set(payeeIds)];
+    if (uniqueIds.length === 0 || sampleSize <= 0) {
+      return new Map<string, string[]>();
+    }
+
+    const rows = await this.transactionsRepository
+      .createQueryBuilder("t")
+      .select(["t.payee_id as payee_id", "t.description as description"])
+      .where("t.user_id = :userId", { userId })
+      .andWhere("t.payee_id IN (:...payeeIds)", { payeeIds: uniqueIds })
+      .andWhere("t.description IS NOT NULL")
+      .andWhere("t.description <> ''")
+      .orderBy("t.transaction_date", "DESC")
+      .limit(uniqueIds.length * sampleSize * 4)
+      .getRawMany();
+
+    const samplesByPayee = new Map<string, string[]>();
+    for (const row of rows) {
+      const payeeId = row.payee_id as string;
+      const description = (row.description as string)?.trim();
+      if (!description) continue;
+      const existing = samplesByPayee.get(payeeId) ?? [];
+      if (existing.length >= sampleSize) continue;
+      if (existing.includes(description)) continue;
+      samplesByPayee.set(payeeId, [...existing, description]);
+    }
+    return samplesByPayee;
   }
 
   /**

@@ -8,6 +8,7 @@ import { BudgetReportsService } from "../../budgets/budget-reports.service";
 import { PortfolioService } from "../../securities/portfolio.service";
 import { InvestmentTransactionsService } from "../../securities/investment-transactions.service";
 import { ScheduledTransactionsService } from "../../scheduled-transactions/scheduled-transactions.service";
+import { PayeeOrganizerService } from "../payee-organizer/payee-organizer.service";
 
 describe("ToolExecutorService", () => {
   let service: ToolExecutorService;
@@ -19,6 +20,7 @@ describe("ToolExecutorService", () => {
   let investmentTransactions: Record<string, jest.Mock>;
   let categories: Record<string, jest.Mock>;
   let scheduledTransactions: Record<string, jest.Mock>;
+  let payeeOrganizer: Record<string, jest.Mock>;
 
   const userId = "user-1";
 
@@ -202,6 +204,14 @@ describe("ToolExecutorService", () => {
       }),
     };
 
+    payeeOrganizer = {
+      suggest: jest.fn().mockResolvedValue({
+        categorySuggestions: [],
+        mergeGroups: [],
+        model: "test-model",
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ToolExecutorService,
@@ -218,6 +228,10 @@ describe("ToolExecutorService", () => {
         {
           provide: ScheduledTransactionsService,
           useValue: scheduledTransactions,
+        },
+        {
+          provide: PayeeOrganizerService,
+          useValue: payeeOrganizer,
         },
       ],
     }).compile();

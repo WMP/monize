@@ -431,6 +431,21 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
     },
   },
   {
+    name: "suggest_payee_organization",
+    description:
+      "Analyze the user's UNCATEGORIZED payees and use AI to (1) suggest the best default category for each from its name, and (2) detect groups of likely-duplicate payees that should be merged. Returns categorySuggestions and mergeGroups but does NOT apply anything -- it is a read-only preview the user reviews and applies elsewhere. Use this for requests like 'help me organize my payees', 'suggest categories for my imported payees', or 'find duplicate payees'.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        allowNewCategories: {
+          type: "boolean",
+          description:
+            "When true, the AI may propose creating new categories for payees that fit none of the existing ones. When false (default), only existing categories are suggested.",
+        },
+      },
+    },
+  },
+  {
     name: "calculate",
     description:
       "Perform accurate server-side arithmetic on numbers from previous tool results. Use this instead of doing math yourself. Supports: percentage (part/whole*100), difference (a-b), ratio (a/b), sum, and average. Always use this tool for any calculation rather than computing values yourself.",

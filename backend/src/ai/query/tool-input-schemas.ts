@@ -155,6 +155,10 @@ export const getScheduledTransactionsSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+export const suggestPayeeOrganizationSchema = z.object({
+  allowNewCategories: z.boolean().optional(),
+});
+
 export const calculateSchema = z.object({
   operation: z.enum(["percentage", "difference", "ratio", "sum", "average"]),
   values: z.array(z.number()).min(1).max(100),
@@ -196,6 +200,7 @@ export const toolInputSchemas: Record<string, z.ZodSchema> = {
   get_budget_status: getBudgetStatusSchema,
   get_upcoming_bills: getUpcomingBillsSchema,
   get_scheduled_transactions: getScheduledTransactionsSchema,
+  suggest_payee_organization: suggestPayeeOrganizationSchema,
   calculate: calculateSchema,
   render_chart: renderChartSchema,
 };
