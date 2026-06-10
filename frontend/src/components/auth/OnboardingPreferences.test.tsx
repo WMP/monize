@@ -4,6 +4,17 @@ import { OnboardingPreferences } from './OnboardingPreferences';
 
 const mockUpdatePreferences = vi.fn();
 const mockStoreUpdate = vi.fn();
+const mockRefresh = vi.fn();
+
+vi.mock('next/navigation', async () => {
+  const actual = await vi.importActual<typeof import('next/navigation')>(
+    'next/navigation',
+  );
+  return {
+    ...actual,
+    useRouter: () => ({ refresh: mockRefresh, push: vi.fn(), replace: vi.fn() }),
+  };
+});
 
 vi.mock('@/lib/exchange-rates', () => ({
   exchangeRatesApi: {
@@ -69,6 +80,9 @@ describe('OnboardingPreferences', () => {
       }),
     );
     expect(mockStoreUpdate).toHaveBeenCalled();
+    // The layout must re-render with the new locale's catalogs; without the
+    // refresh the app keeps showing the old language until a full reload.
+    expect(mockRefresh).toHaveBeenCalled();
     expect(onComplete).toHaveBeenCalled();
   });
 
@@ -78,6 +92,7 @@ describe('OnboardingPreferences', () => {
       fireEvent.click(screen.getByText('Skip for now'));
     });
     expect(mockUpdatePreferences).not.toHaveBeenCalled();
+    expect(mockRefresh).not.toHaveBeenCalled();
     expect(onComplete).toHaveBeenCalled();
   });
 });

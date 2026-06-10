@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
 import { Select } from '@/components/ui/Select';
@@ -32,6 +33,7 @@ export function OnboardingPreferences({
   onComplete,
 }: OnboardingPreferencesProps) {
   const t = useTranslations('auth.register.preferences');
+  const router = useRouter();
   const updatePreferencesStore = usePreferencesStore((s) => s.updatePreferences);
 
   const [language, setLanguage] = useState(initialLanguage);
@@ -66,13 +68,18 @@ export function OnboardingPreferences({
       });
       updatePreferencesStore(updated);
       Cookies.set(LOCALE_COOKIE, language, { sameSite: 'lax', expires: 365 });
+      // Invalidate the router cache so the layout re-renders with the new
+      // locale's catalogs. PreferencesLoader skips its own refresh because
+      // the cookie already matches the saved preference by this point, and
+      // the navigation in onComplete() alone reuses the cached layout.
+      router.refresh();
       onComplete();
     } catch (error) {
       toast.error(getErrorMessage(error, t('saveFailed')));
       logger.error(error);
       setIsSaving(false);
     }
-  }, [language, defaultCurrency, updatePreferencesStore, onComplete, t]);
+  }, [language, defaultCurrency, updatePreferencesStore, onComplete, router, t]);
 
   return (
     <div className="space-y-6">

@@ -99,6 +99,11 @@ Monize is running in my [Kubernetes cluster](https://github.com/kenlasko/k8s).
 - Automatic currency conversion for reporting
 - Per-account currency settings
 
+### Multi-Language Support
+- Full user interface translation, including server-generated messages and emails
+- Available languages: English, German (Deutsch), Spanish (Español), French (Français), Italian (Italiano), Dutch (Nederlands), Polish (Polski), Portuguese (Português) and Brazilian Portuguese (Português do Brasil)
+- Language can be chosen on the sign-in and registration screens and in Settings -> Preferences
+
 ### Scheduled Transactions
 - Recurring payment tracking (daily, weekly, bi-weekly, monthly, quarterly, yearly)
 - Automatic transaction entry option
