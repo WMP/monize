@@ -55,10 +55,18 @@ export class UpdatePreferencesDto {
       "default",
       "latte",
       "msmoney",
+      "newspaper",
+      "burgundy",
       "nord",
       "forest",
       "solarized",
+      "gruvbox",
+      "dracula",
+      "tokyonight",
+      "rosepine",
+      "midnight",
       "highcontrast",
+      "colorblind",
     ],
   })
   @IsOptional()
@@ -67,10 +75,18 @@ export class UpdatePreferencesDto {
     "default",
     "latte",
     "msmoney",
+    "newspaper",
+    "burgundy",
     "nord",
     "forest",
     "solarized",
+    "gruvbox",
+    "dracula",
+    "tokyonight",
+    "rosepine",
+    "midnight",
     "highcontrast",
+    "colorblind",
   ])
   colorTheme?: string;
 

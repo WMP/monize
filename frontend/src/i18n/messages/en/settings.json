@@ -152,10 +152,18 @@
       "default": "Default",
       "latte": "Latte",
       "msmoney": "MS Money",
+      "newspaper": "Newspaper",
+      "burgundy": "Burgundy",
       "nord": "Nord",
       "forest": "Forest",
       "solarized": "Solarized",
-      "highcontrast": "High contrast"
+      "gruvbox": "Gruvbox",
+      "dracula": "Dracula",
+      "tokyonight": "Tokyo Night",
+      "rosepine": "Rosé Pine",
+      "midnight": "Midnight",
+      "highcontrast": "High contrast",
+      "colorblind": "Colour-blind safe"
     },
     "timezoneBrowserOption": "Use browser timezone (auto-detected as {tz})"
   },

@@ -10,10 +10,18 @@ export const COLOR_THEMES = [
   'default',
   'latte',
   'msmoney',
+  'newspaper',
+  'burgundy',
   'nord',
   'forest',
   'solarized',
+  'gruvbox',
+  'dracula',
+  'tokyonight',
+  'rosepine',
+  'midnight',
   'highcontrast',
+  'colorblind',
 ] as const;
 
 export type ColorTheme = (typeof COLOR_THEMES)[number];

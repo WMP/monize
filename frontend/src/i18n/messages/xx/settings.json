@@ -152,10 +152,18 @@
       "default": "[XX-Default-XX]",
       "latte": "[XX-Latte-XX]",
       "msmoney": "[XX-MS Money-XX]",
+      "newspaper": "[XX-Newspaper-XX]",
+      "burgundy": "[XX-Burgundy-XX]",
       "nord": "[XX-Nord-XX]",
       "forest": "[XX-Forest-XX]",
       "solarized": "[XX-Solarized-XX]",
-      "highcontrast": "[XX-High contrast-XX]"
+      "gruvbox": "[XX-Gruvbox-XX]",
+      "dracula": "[XX-Dracula-XX]",
+      "tokyonight": "[XX-Tokyo Night-XX]",
+      "rosepine": "[XX-Rosé Pine-XX]",
+      "midnight": "[XX-Midnight-XX]",
+      "highcontrast": "[XX-High contrast-XX]",
+      "colorblind": "[XX-Colour-blind safe-XX]"
     },
     "timezoneBrowserOption": "[XX-Use browser timezone (auto-detected as {tz})-XX]"
   },
