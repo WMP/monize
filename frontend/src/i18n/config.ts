@@ -30,8 +30,11 @@ const ALL_LOCALES: readonly SupportedLocale[] = [
   { code: "en", label: "English", dir: "ltr" },
   { code: "es", label: "Español", dir: "ltr" },
   { code: "fr", label: "Français", dir: "ltr" },
+  { code: "it", label: "Italiano", dir: "ltr" },
+  { code: "nl", label: "Nederlands", dir: "ltr" },
   { code: "pl", label: "Polski", dir: "ltr" },
   { code: "pt", label: "Português", dir: "ltr" },
+  { code: "pt-BR", label: "Português (Brasil)", dir: "ltr" },
   { code: "xx", label: "Pseudo (debug)", dir: "ltr", devOnly: true },
 ];
 
