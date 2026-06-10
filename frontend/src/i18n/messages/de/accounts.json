@@ -274,7 +274,7 @@
   },
   "assetFields": {
     "title": "Einstellungen für Wertänderungen",
-    "description": "Wählen Sie eine Kategorie, die zur Verfolgung von Wertänderungen für dieses Aktiva verwendet wird (z. B. „Hauswertänderung", „Fahrzeugabschreibung").",
+    "description": "Wählen Sie eine Kategorie, die zur Verfolgung von Wertänderungen für dieses Aktiva verwendet wird (z. B. „Hauswertänderung”, „Fahrzeugabschreibung”).",
     "valueChangeCategory": "Wertänderungskategorie",
     "selectOrCreateCategory": "Kategorie auswählen oder erstellen...",
     "dateAcquired": "Erwerbsdatum",

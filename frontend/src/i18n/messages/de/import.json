@@ -111,7 +111,7 @@
     "tagsField": "Tags",
     "tagsHelp": "Mehrere Tags werden automatisch am erkannten Trennzeichen (|, ; oder ,) aufgeteilt. Bindestriche und Schrägstriche bleiben als Teil des Tag-Namens erhalten.",
     "reconciliationStatusField": "Abgleichsstatus",
-    "reconciliationStatusHelp": "Werte wie „cleared", „reconciled", „posted", „void", „*" oder „X" werden automatisch zugeordnet. Unbekannte Werte werden als „Nicht abgeglichen" behandelt.",
+    "reconciliationStatusHelp": "Werte wie „cleared”, „reconciled”, „posted”, „void”, „*” oder „X” werden automatisch zugeordnet. Unbekannte Werte werden als „Nicht abgeglichen” behandelt.",
     "savedMappingsTitle": "Gespeicherte Zuordnungen",
     "loadMappingPlaceholder": "Gespeicherte Zuordnung laden...",
     "noSavedMappings": "Keine gespeicherten Zuordnungen",
@@ -134,7 +134,7 @@
   "transferRules": {
     "title": "Überweisungserkennungsregeln",
     "addRule": "Regel hinzufügen",
-    "description": "Legen Sie Muster fest, um Buchungen als Überweisungen zwischen Konten zu erkennen. Die Übereinstimmung erfolgt ohne Berücksichtigung der Groß-/Kleinschreibung nach dem „Enthält"-Prinzip.",
+    "description": "Legen Sie Muster fest, um Buchungen als Überweisungen zwischen Konten zu erkennen. Die Übereinstimmung erfolgt ohne Berücksichtigung der Groß-/Kleinschreibung nach dem „Enthält”-Prinzip.",
     "noRules": "Keine Überweisungsregeln definiert. Überweisungen werden nicht automatisch erkannt.",
     "typePayee": "Zahlungsempfänger",
     "typeCategory": "Kategorie",

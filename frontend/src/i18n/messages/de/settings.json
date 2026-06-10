@@ -79,7 +79,7 @@
     "trustedDevices": {
       "heading": "Vertrauenswürdige Geräte",
       "revokeAllButton": "Alle widerrufen",
-      “noDevices”: “Keine vertrauenswürdigen Geräte. Wenn Sie bei der 2FA-Anmeldung \”Auf diesem Browser nicht mehr fragen\” aktivieren, wird das Gerät hier angezeigt.”,
+      "noDevices": "Keine vertrauenswürdigen Geräte. Wenn Sie bei der 2FA-Anmeldung \"Auf diesem Browser nicht mehr fragen\" aktivieren, wird das Gerät hier angezeigt.",
       "currentBadge": "Aktuell",
       "revokeButton": "Widerrufen",
       "revokeAllModal": {

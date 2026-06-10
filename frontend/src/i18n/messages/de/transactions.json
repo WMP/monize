@@ -81,7 +81,7 @@
       "error": "Buchung konnte nicht gelöscht werden"
     },
     "status": {
-      "voidError": "Bearbeiten Sie die Buchung, um den Status von „Ungültig" zu ändern",
+      "voidError": "Bearbeiten Sie die Buchung, um den Status von „Ungültig” zu ändern",
       "changed": "Status geändert zu {status}",
       "updateError": "Status konnte nicht aktualisiert werden",
       "unreconciled": "Nicht abgeglichen",
