@@ -11,6 +11,7 @@ import { BudgetsModule } from "../budgets/budgets.module";
 import { BuiltInReportsModule } from "../built-in-reports/built-in-reports.module";
 import { OAuthModule } from "../oauth/oauth.module";
 import { BrokerImportModule } from "../ai/broker-import/broker-import.module";
+import { PayeeOrganizerModule } from "../ai/payee-organizer/payee-organizer.module";
 
 import { McpServerService } from "./mcp-server.service";
 import { McpHttpController } from "./mcp-http.controller";
@@ -26,6 +27,7 @@ import { McpScheduledTools } from "./tools/scheduled.tool";
 import { McpCalculateTools } from "./tools/calculate.tool";
 import { McpBudgetsTools } from "./tools/budgets.tool";
 import { McpBrokerImportTools } from "./tools/broker-import.tool";
+import { McpPayeeOrganizerTools } from "./tools/payee-organizer.tool";
 
 import { McpAccountListResource } from "./resources/account-list.resource";
 import { McpCategoryTreeResource } from "./resources/category-tree.resource";
@@ -51,6 +53,7 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
     BuiltInReportsModule,
     OAuthModule,
     BrokerImportModule,
+    PayeeOrganizerModule,
   ],
   providers: [
     McpServerService,
@@ -65,6 +68,7 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
     McpCalculateTools,
     McpBudgetsTools,
     McpBrokerImportTools,
+    McpPayeeOrganizerTools,
     McpAccountListResource,
     McpCategoryTreeResource,
     McpRecentTransactionsResource,

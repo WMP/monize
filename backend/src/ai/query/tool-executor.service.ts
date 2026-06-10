@@ -17,6 +17,7 @@ import {
   LlmScheduledKind,
 } from "../../scheduled-transactions/scheduled-transactions.service";
 import { BrokerImportService } from "../broker-import/broker-import.service";
+import { PayeeOrganizerService } from "../payee-organizer/payee-organizer.service";
 import { validateToolInput } from "./tool-input-schemas";
 import { executeCalculation, CalculateInput } from "./calculate-tool";
 import { sanitizePromptValue } from "../../common/sanitization.util";
@@ -54,6 +55,8 @@ export class ToolExecutorService {
     private readonly scheduledTransactionsService: ScheduledTransactionsService,
     @Inject(forwardRef(() => BrokerImportService))
     private readonly brokerImportService: BrokerImportService,
+    @Inject(forwardRef(() => PayeeOrganizerService))
+    private readonly payeeOrganizerService: PayeeOrganizerService,
   ) {}
 
   async execute(
@@ -131,6 +134,9 @@ export class ToolExecutorService {
           break;
         case "parse_broker_import":
           result = await this.parseBrokerImport(userId, validatedInput);
+          break;
+        case "suggest_payee_organization":
+          result = await this.suggestPayeeOrganization(userId, validatedInput);
           break;
         case "calculate":
           result = this.calculate(validatedInput);
@@ -755,6 +761,39 @@ export class ToolExecutorService {
           type: "broker_import",
           description:
             "AI-parsed buy/sell orders from pasted brokerage order history",
+        },
+      ],
+    };
+  }
+
+  private async suggestPayeeOrganization(
+    userId: string,
+    input: Record<string, unknown>,
+  ): Promise<ToolResult> {
+    const allowNewCategories = input.allowNewCategories === true;
+
+    const data = await this.payeeOrganizerService.suggest(userId, {
+      allowNewCategories,
+    });
+
+    const newCount = data.categorySuggestions.filter((s) => s.isNew).length;
+    const duplicateCount = data.mergeGroups.reduce(
+      (sum, g) => sum + g.duplicates.length,
+      0,
+    );
+
+    return {
+      data,
+      summary:
+        `${data.categorySuggestions.length} category suggestion${data.categorySuggestions.length === 1 ? "" : "s"} ` +
+        `(${newCount} new categor${newCount === 1 ? "y" : "ies"} proposed), ` +
+        `${data.mergeGroups.length} duplicate group${data.mergeGroups.length === 1 ? "" : "s"} ` +
+        `covering ${duplicateCount} duplicate payee${duplicateCount === 1 ? "" : "s"}.`,
+      sources: [
+        {
+          type: "payees",
+          description:
+            "AI suggestions for uncategorized payees and duplicate merges",
         },
       ],
     };

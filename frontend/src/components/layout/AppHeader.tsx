@@ -44,6 +44,7 @@ const aiLinks: { href: string; labelKey: string }[] = [
   { href: '/insights', labelKey: 'insights' },
   { href: '/ai', labelKey: 'aiAssistant' },
   { href: '/ai/import-broker', labelKey: 'importBroker' },
+  { href: '/ai/organize-payees', labelKey: 'organizePayees' },
 ];
 
 export function AppHeader() {

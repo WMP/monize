@@ -32,6 +32,7 @@ import { BudgetsModule } from "../budgets/budgets.module";
 import { SecuritiesModule } from "../securities/securities.module";
 import { ScheduledTransactionsModule } from "../scheduled-transactions/scheduled-transactions.module";
 import { BrokerImportModule } from "./broker-import/broker-import.module";
+import { PayeeOrganizerModule } from "./payee-organizer/payee-organizer.module";
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { BrokerImportModule } from "./broker-import/broker-import.module";
     SecuritiesModule,
     forwardRef(() => ScheduledTransactionsModule),
     forwardRef(() => BrokerImportModule),
+    forwardRef(() => PayeeOrganizerModule),
   ],
   providers: [
     AiService,

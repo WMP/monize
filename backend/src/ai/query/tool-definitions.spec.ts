@@ -25,6 +25,7 @@ describe("FINANCIAL_TOOLS", () => {
     "get_budget_status",
     "get_upcoming_bills",
     "get_scheduled_transactions",
+    "suggest_payee_organization",
     "calculate",
     "render_chart",
   ];

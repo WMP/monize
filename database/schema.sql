@@ -216,6 +216,20 @@ CREATE INDEX idx_payee_aliases_payee ON payee_aliases(payee_id);
 CREATE INDEX idx_payee_aliases_user ON payee_aliases(user_id);
 CREATE UNIQUE INDEX idx_payee_aliases_user_alias ON payee_aliases(user_id, LOWER(alias));
 
+-- Persisted "these two payees are NOT the same" decisions from the AI Payee
+-- Organizer. A rejection is an unordered pair stored canonically (smaller UUID
+-- string in payee_id_low, larger in payee_id_high) so {A,B} and {B,A} dedupe.
+CREATE TABLE payee_merge_rejections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    payee_id_low UUID NOT NULL REFERENCES payees(id) ON DELETE CASCADE,
+    payee_id_high UUID NOT NULL REFERENCES payees(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(user_id, payee_id_low, payee_id_high)
+);
+
+CREATE INDEX idx_payee_merge_rejections_user ON payee_merge_rejections(user_id);
+
 -- Financial Institutions (per-user registry of banks/brokerages). The brand
 -- icon is the website's favicon, fetched server-side and cached in logo_data so
 -- the browser never contacts a third party to render it.

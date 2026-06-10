@@ -11,6 +11,7 @@ import { McpScheduledTools } from "./tools/scheduled.tool";
 import { McpCalculateTools } from "./tools/calculate.tool";
 import { McpBudgetsTools } from "./tools/budgets.tool";
 import { McpBrokerImportTools } from "./tools/broker-import.tool";
+import { McpPayeeOrganizerTools } from "./tools/payee-organizer.tool";
 import { McpAccountListResource } from "./resources/account-list.resource";
 import { McpCategoryTreeResource } from "./resources/category-tree.resource";
 import { McpRecentTransactionsResource } from "./resources/recent-transactions.resource";
@@ -44,6 +45,7 @@ describe("McpServerService", () => {
         { provide: McpCalculateTools, useValue: mockToolProvider },
         { provide: McpBudgetsTools, useValue: mockToolProvider },
         { provide: McpBrokerImportTools, useValue: mockToolProvider },
+        { provide: McpPayeeOrganizerTools, useValue: mockToolProvider },
         { provide: McpAccountListResource, useValue: mockResourceProvider },
         { provide: McpCategoryTreeResource, useValue: mockResourceProvider },
         {
