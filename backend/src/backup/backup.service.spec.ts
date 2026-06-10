@@ -75,6 +75,7 @@ describe("BackupService", () => {
       "opening_balance",
       "is_active",
       "institution",
+      "institution_id",
       "account_number",
       "notes",
       "sort_order",
@@ -324,6 +325,19 @@ describe("BackupService", () => {
       "created_at",
       "updated_at",
     ],
+    institutions: [
+      "id",
+      "user_id",
+      "name",
+      "website",
+      "country",
+      "logo_data",
+      "logo_content_type",
+      "has_logo",
+      "logo_fetched_at",
+      "created_at",
+      "updated_at",
+    ],
     currencies: [
       "code",
       "name",
@@ -348,7 +362,10 @@ describe("BackupService", () => {
       const cols =
         tableName && schemaColumns[tableName] ? schemaColumns[tableName] : [];
       return Promise.resolve(
-        cols.map((col) => ({ column_name: col, data_type: "text" })),
+        cols.map((col) => ({
+          column_name: col,
+          data_type: col === "logo_data" ? "bytea" : "text",
+        })),
       );
     }
     return Promise.resolve([]);
@@ -568,6 +585,7 @@ describe("BackupService", () => {
       categories: [],
       payees: [],
       payee_aliases: [],
+      institutions: [],
       accounts: [],
       tags: [],
       transactions: [],
@@ -1061,6 +1079,212 @@ describe("BackupService", () => {
           call[0].includes('"linked_account_id"'),
       );
       expect(linkedAccountUpdate).toBeDefined();
+    });
+
+    it("restores institutions before accounts and defers institution_id", async () => {
+      mockUserRepo.findOne.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const institutionId = randomUUID();
+      const accountId = randomUUID();
+      const backup = {
+        ...validBackupData,
+        institutions: [
+          {
+            id: institutionId,
+            user_id: userId,
+            name: "TD Canada Trust",
+            website: "https://www.td.com",
+            country: "CA",
+            logo_data: null,
+            has_logo: false,
+          },
+        ],
+        accounts: [
+          {
+            id: accountId,
+            user_id: userId,
+            name: "Checking",
+            institution_id: institutionId,
+          },
+        ],
+      };
+
+      await service.restoreData(
+        userId,
+        makeInput({ password: "test", data: backup }),
+      );
+
+      const insertCalls = mockQueryRunner.query.mock.calls.filter(
+        (c: unknown[]) =>
+          typeof c[0] === "string" && c[0].includes("INSERT INTO"),
+      );
+
+      // Institutions must be inserted before the accounts that reference them.
+      const instIdx = insertCalls.findIndex((c: unknown[]) =>
+        (c[0] as string).includes('"institutions"'),
+      );
+      const acctIdx = insertCalls.findIndex((c: unknown[]) =>
+        (c[0] as string).includes('"accounts"'),
+      );
+      expect(instIdx).toBeGreaterThanOrEqual(0);
+      expect(acctIdx).toBeGreaterThan(instIdx);
+
+      // institution_id is a deferred FK column, stripped from the account INSERT.
+      const accountInsert = insertCalls[acctIdx];
+      expect(accountInsert[0]).not.toContain("institution_id");
+
+      // ...and re-applied in Phase 3 via a guarded UPDATE keyed on remapped ids.
+      const instRow = insertColumnMap(insertCalls[instIdx]);
+      const acctRow = insertColumnMap(accountInsert);
+      expect(instRow.id).not.toBe(institutionId);
+      expect(acctRow.id).not.toBe(accountId);
+
+      const institutionUpdate = mockQueryRunner.query.mock.calls.find(
+        (c: unknown[]) =>
+          typeof c[0] === "string" &&
+          c[0].includes('UPDATE "accounts"') &&
+          c[0].includes('"institution_id"'),
+      );
+      expect(institutionUpdate).toBeDefined();
+      // The guard only sets the FK when the referenced institution exists.
+      expect(institutionUpdate![0]).toContain(
+        'EXISTS (SELECT 1 FROM "institutions"',
+      );
+      expect(institutionUpdate![1]).toEqual([instRow.id, acctRow.id]);
+    });
+
+    it("restores a legacy backup whose accounts reference institutions not in the backup", async () => {
+      // Backups taken before institutions were added to the export still carry
+      // accounts.institution_id. With no matching institution row, a naive
+      // restore violates fk_accounts_institution. The deferral + EXISTS guard
+      // must drop the dangling reference instead of failing the restore.
+      mockUserRepo.findOne.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const accountId = randomUUID();
+      const danglingInstitutionId = randomUUID();
+      const legacyBackup = {
+        ...validBackupData,
+        // No institutions key at all (legacy shape).
+        institutions: undefined,
+        accounts: [
+          {
+            id: accountId,
+            user_id: userId,
+            name: "Checking",
+            institution_id: danglingInstitutionId,
+          },
+        ],
+      };
+
+      await expect(
+        service.restoreData(
+          userId,
+          makeInput({ password: "test", data: legacyBackup as any }),
+        ),
+      ).resolves.toBeDefined();
+
+      const accountInsert = mockQueryRunner.query.mock.calls.find(
+        (c: unknown[]) =>
+          typeof c[0] === "string" &&
+          c[0].includes("INSERT INTO") &&
+          c[0].includes('"accounts"'),
+      );
+      // institution_id must not be inserted directly.
+      expect(accountInsert![0]).not.toContain("institution_id");
+
+      // The Phase-3 UPDATE is still guarded; with no institution it sets nothing.
+      const institutionUpdate = mockQueryRunner.query.mock.calls.find(
+        (c: unknown[]) =>
+          typeof c[0] === "string" &&
+          c[0].includes('UPDATE "accounts"') &&
+          c[0].includes('"institution_id"'),
+      );
+      expect(institutionUpdate).toBeDefined();
+      expect(institutionUpdate![0]).toContain(
+        'EXISTS (SELECT 1 FROM "institutions"',
+      );
+      // The dangling original id is never reused (no remap target existed).
+      expect(institutionUpdate![1]).toEqual([
+        danglingInstitutionId,
+        insertColumnMap(accountInsert!).id,
+      ]);
+    });
+
+    it("base64-decodes institution logo_data (bytea) on restore", async () => {
+      mockUserRepo.findOne.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const institutionId = randomUUID();
+      const logoBase64 = Buffer.from("fake-png-bytes").toString("base64");
+      const backup = {
+        ...validBackupData,
+        institutions: [
+          {
+            id: institutionId,
+            user_id: userId,
+            name: "RBC",
+            website: "https://www.rbc.com",
+            logo_data: logoBase64,
+            logo_content_type: "image/png",
+            has_logo: true,
+          },
+        ],
+      };
+
+      await service.restoreData(
+        userId,
+        makeInput({ password: "test", data: backup }),
+      );
+
+      const institutionInsert = mockQueryRunner.query.mock.calls.find(
+        (c: unknown[]) =>
+          typeof c[0] === "string" &&
+          c[0].includes("INSERT INTO") &&
+          c[0].includes('"institutions"'),
+      );
+      expect(institutionInsert).toBeDefined();
+      // The bytea placeholder is wrapped in decode(..., 'base64').
+      expect(institutionInsert![0]).toContain("decode(");
+      expect(institutionInsert![0]).toContain("'base64'");
+      // The base64 string is passed through unchanged as the bound parameter.
+      expect(institutionInsert![1]).toContain(logoBase64);
+    });
+
+    it("exports institutions with base64-encoded logo_data", async () => {
+      const mockInstitutions = [
+        { id: "inst-1", name: "TD", user_id: userId, logo_data: "YWJj" },
+      ];
+      const issuedSql: string[] = [];
+      mockDataSource.query.mockImplementation((sql: string) => {
+        issuedSql.push(sql);
+        if (sql.includes("FROM institutions")) {
+          return Promise.resolve(mockInstitutions);
+        }
+        return Promise.resolve([]);
+      });
+
+      const buf = await service.exportToBuffer(userId);
+      const json = JSON.parse(gunzipSync(buf).toString("utf-8"));
+
+      expect(json.institutions).toEqual(mockInstitutions);
+      expect(
+        issuedSql.some((s) => s.includes("encode(logo_data, 'base64')")),
+      ).toBe(true);
+    });
+
+    it("deletes existing institutions during restore wipe", async () => {
+      mockUserRepo.findOne.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await service.restoreData(userId, makeInput({ password: "test" }));
+
+      const deletedInstitutions = mockQueryRunner.query.mock.calls.some(
+        (c: unknown[]) =>
+          typeof c[0] === "string" && c[0].includes("DELETE FROM institutions"),
+      );
+      expect(deletedInstitutions).toBe(true);
     });
 
     it("remaps backup primary keys so a restore never reuses another user's row ids", async () => {

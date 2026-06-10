@@ -51,6 +51,7 @@ interface BackupData {
   categories: Record<string, unknown>[];
   payees: Record<string, unknown>[];
   payee_aliases: Record<string, unknown>[];
+  institutions: Record<string, unknown>[];
   accounts: Record<string, unknown>[];
   tags: Record<string, unknown>[];
   transactions: Record<string, unknown>[];
@@ -205,6 +206,18 @@ export class BackupService {
       {
         key: "payee_aliases",
         sql: "SELECT * FROM payee_aliases WHERE user_id = $1",
+      },
+      {
+        // Institutions must be exported (and restored) before accounts because
+        // accounts.institution_id has an FK to institutions(id). The logo_data
+        // BYTEA column is base64-encoded so it survives JSON serialization;
+        // insertRows decodes it back to bytea on restore.
+        key: "institutions",
+        sql: `SELECT id, user_id, name, website, country,
+                     encode(logo_data, 'base64') AS logo_data,
+                     logo_content_type, has_logo, logo_fetched_at,
+                     created_at, updated_at
+              FROM institutions WHERE user_id = $1 ORDER BY name`,
       },
       {
         key: "accounts",
@@ -431,6 +444,12 @@ export class BackupService {
         queryRunner,
         "payee_aliases",
         data.payee_aliases,
+        userId,
+      );
+      restored.institutions = await this.insertRows(
+        queryRunner,
+        "institutions",
+        data.institutions,
         userId,
       );
       restored.accounts = await this.insertRows(
@@ -1021,6 +1040,12 @@ export class BackupService {
       userId,
     ]);
 
+    // Institutions (accounts reference these via institution_id; deleted after
+    // accounts so no rows still point at them)
+    await queryRunner.query("DELETE FROM institutions WHERE user_id = $1", [
+      userId,
+    ]);
+
     // Categories
     await queryRunner.query("DELETE FROM categories WHERE user_id = $1", [
       userId,
@@ -1060,8 +1085,18 @@ export class BackupService {
       table: string;
       rows: Record<string, unknown>[];
       column: string;
+      // When set, the UPDATE only applies if a row with the referenced id
+      // exists in this table. Used for institution_id so legacy backups that
+      // predate institution export leave the column NULL instead of failing.
+      requireReferencedTable?: string;
     }> = [
       { table: "categories", rows: data.categories, column: "parent_id" },
+      {
+        table: "accounts",
+        rows: data.accounts,
+        column: "institution_id",
+        requireReferencedTable: "institutions",
+      },
       {
         table: "accounts",
         rows: data.accounts,
@@ -1145,14 +1180,20 @@ export class BackupService {
     }
 
     try {
-      for (const { table, rows, column } of deferredUpdates) {
+      for (const {
+        table,
+        rows,
+        column,
+        requireReferencedTable,
+      } of deferredUpdates) {
         if (!rows) continue;
+        const sql = requireReferencedTable
+          ? `UPDATE "${table}" SET "${column}" = $1 WHERE id = $2
+             AND EXISTS (SELECT 1 FROM "${requireReferencedTable}" WHERE id = $1)`
+          : `UPDATE "${table}" SET "${column}" = $1 WHERE id = $2`;
         for (const row of rows) {
           if (row[column] != null && row.id != null) {
-            await queryRunner.query(
-              `UPDATE "${table}" SET "${column}" = $1 WHERE id = $2`,
-              [row[column], row.id],
-            );
+            await queryRunner.query(sql, [row[column], row.id]);
           }
         }
       }
@@ -1279,6 +1320,7 @@ export class BackupService {
       "categories",
       "payees",
       "payee_aliases",
+      "institutions",
       "accounts",
       "tags",
       "transactions",
@@ -1329,6 +1371,10 @@ export class BackupService {
         "principal_category_id",
         "interest_category_id",
         "asset_category_id",
+        // Deferred so that legacy backups (taken before institutions were
+        // included in the export) restore without violating fk_accounts_institution.
+        // Phase 3 only re-applies it when the referenced institution exists.
+        "institution_id",
       ],
       transactions: ["linked_transaction_id", "parent_transaction_id"],
       payees: ["default_category_id"],
@@ -1372,6 +1418,14 @@ export class BackupService {
             typeof r.column_default === "string" &&
             r.column_default.includes("nextval"),
         )
+        .map((r) => r.column_name),
+    );
+    // BYTEA columns (e.g. institutions.logo_data) are base64-encoded in the
+    // backup; their placeholders are wrapped in decode(..., 'base64') so the
+    // bytes are restored correctly.
+    const byteaColumns = new Set<string>(
+      schemaColResult
+        .filter((r) => r.data_type === "bytea")
         .map((r) => r.column_name),
     );
 
@@ -1426,7 +1480,11 @@ export class BackupService {
       }
 
       const columnList = columns.map((c) => `"${c}"`).join(", ");
-      const placeholders = columns.map((_, i) => `$${i + 1}`).join(", ");
+      const placeholders = columns
+        .map((c, i) =>
+          byteaColumns.has(c) ? `decode($${i + 1}, 'base64')` : `$${i + 1}`,
+        )
+        .join(", ");
 
       await queryRunner.query(
         `INSERT INTO "${table}" (${columnList}) VALUES (${placeholders})
