@@ -59,6 +59,7 @@
     "noLocalPassword": "Impossible de réinitialiser le mot de passe pour les comptes sans mot de passe local"
   },
   "ai": {
+    "queryStreamFailed": "Une erreur inattendue s'est produite lors du traitement de votre requête.",
     "providerConfigNotFound": "Configuration du fournisseur IA introuvable",
     "maxProvidersExceeded": "Maximum de {{ maxProvidersPerUser }} configurations de fournisseurs IA par utilisateur",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY n'est pas configuré. Impossible de stocker les clés API de manière sécurisée.",

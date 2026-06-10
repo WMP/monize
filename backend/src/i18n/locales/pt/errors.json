@@ -59,6 +59,7 @@
     "noLocalPassword": "Não é possível redefinir a palavra-passe de contas sem palavra-passe local"
   },
   "ai": {
+    "queryStreamFailed": "Ocorreu um erro inesperado ao processar o seu pedido.",
     "providerConfigNotFound": "Configuração do fornecedor de IA não encontrada",
     "maxProvidersExceeded": "Máximo de {{ maxProvidersPerUser }} configurações de fornecedor de IA por utilizador",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY não está configurado. Não é possível armazenar chaves de API de forma segura.",

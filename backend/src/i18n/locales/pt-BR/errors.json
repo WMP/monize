@@ -59,6 +59,7 @@
     "noLocalPassword": "Não é possível redefinir a senha de contas sem senha local"
   },
   "ai": {
+    "queryStreamFailed": "Ocorreu um erro inesperado ao processar sua consulta.",
     "providerConfigNotFound": "Configuração do provedor de IA não encontrada",
     "maxProvidersExceeded": "Máximo de {{ maxProvidersPerUser }} configurações de provedor de IA por usuário",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY não está configurado. Não é possível armazenar chaves de API de forma segura.",

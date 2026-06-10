@@ -59,6 +59,7 @@
     "noLocalPassword": "No se puede restablecer la contraseña de cuentas sin contraseña local"
   },
   "ai": {
+    "queryStreamFailed": "Se produjo un error inesperado al procesar tu consulta.",
     "providerConfigNotFound": "Configuración del proveedor de AI no encontrada",
     "maxProvidersExceeded": "Máximo de {{ maxProvidersPerUser }} configuraciones de proveedor de AI por usuario",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY no está configurada. No se pueden almacenar las claves API de forma segura.",

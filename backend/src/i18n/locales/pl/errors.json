@@ -59,6 +59,7 @@
     "noLocalPassword": "Nie można zresetować hasła dla kont bez lokalnego hasła"
   },
   "ai": {
+    "queryStreamFailed": "Wystąpił nieoczekiwany błąd podczas przetwarzania zapytania.",
     "providerConfigNotFound": "Nie znaleziono konfiguracji dostawcy AI",
     "maxProvidersExceeded": "Maksymalnie {{ maxProvidersPerUser }} konfiguracji dostawców AI na użytkownika",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY nie jest skonfigurowany. Nie można bezpiecznie przechowywać kluczy API.",

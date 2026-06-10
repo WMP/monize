@@ -59,6 +59,7 @@
     "noLocalPassword": "Impossibile reimpostare la password per account senza password locale"
   },
   "ai": {
+    "queryStreamFailed": "Si è verificato un errore imprevisto durante l'elaborazione della tua richiesta.",
     "providerConfigNotFound": "Configurazione provider AI non trovata",
     "maxProvidersExceeded": "Massimo {{ maxProvidersPerUser }} configurazioni di provider AI per utente",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY non è configurata. Impossibile archiviare le chiavi API in modo sicuro.",

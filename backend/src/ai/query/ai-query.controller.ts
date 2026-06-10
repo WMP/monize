@@ -13,6 +13,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import { Response } from "express";
 import { AiQueryService } from "./ai-query.service";
 import { AiQueryDto } from "./dto/ai-query.dto";
+import { tr } from "../../i18n/translate";
 import {
   AllowDelegate,
   DelegateRequiresSection,
@@ -112,9 +113,11 @@ export class AiQueryController {
           `SSE query stream error user=${userId} after=${Date.now() - streamStart}ms events=${eventCount}: ${rawMessage}`,
           error instanceof Error ? error.stack : undefined,
         );
-        res.write(
-          `data: ${JSON.stringify({ type: "error", message: "An unexpected error occurred while processing your query." })}\n\n`,
+        const message = tr(
+          "errors.ai.queryStreamFailed",
+          "An unexpected error occurred while processing your query.",
         );
+        res.write(`data: ${JSON.stringify({ type: "error", message })}\n\n`);
       }
     } finally {
       clearInterval(heartbeat);

@@ -59,6 +59,7 @@
     "noLocalPassword": "Passwort kann für Konten ohne lokales Passwort nicht zurückgesetzt werden"
   },
   "ai": {
+    "queryStreamFailed": "Bei der Verarbeitung Ihrer Anfrage ist ein unerwarteter Fehler aufgetreten.",
     "providerConfigNotFound": "KI-Anbieterkonfiguration nicht gefunden",
     "maxProvidersExceeded": "Maximal {{ maxProvidersPerUser }} KI-Anbieterkonfigurationen pro Benutzer",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY ist nicht konfiguriert. API-Schlüssel können nicht sicher gespeichert werden.",

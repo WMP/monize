@@ -59,6 +59,7 @@
     "noLocalPassword": "Kan het wachtwoord niet opnieuw instellen voor accounts zonder lokaal wachtwoord"
   },
   "ai": {
+    "queryStreamFailed": "Er is een onverwachte fout opgetreden bij het verwerken van je vraag.",
     "providerConfigNotFound": "AI-providerconfiguratie niet gevonden",
     "maxProvidersExceeded": "Maximaal {{ maxProvidersPerUser }} AI-providerconfiguraties per gebruiker",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY is niet geconfigureerd. Kan API-sleutels niet veilig opslaan.",

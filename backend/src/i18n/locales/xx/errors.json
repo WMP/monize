@@ -59,6 +59,7 @@
     "noLocalPassword": "[XX-Cannot reset password for accounts without a local password-XX]"
   },
   "ai": {
+    "queryStreamFailed": "[XX-An unexpected error occurred while processing your query.-XX]",
     "providerConfigNotFound": "[XX-AI provider configuration not found-XX]",
     "maxProvidersExceeded": "[XX-Maximum of {{ maxProvidersPerUser }} AI provider configurations per user-XX]",
     "encryptionKeyNotConfigured": "[XX-AI_ENCRYPTION_KEY is not configured. Cannot store API keys securely.-XX]",
