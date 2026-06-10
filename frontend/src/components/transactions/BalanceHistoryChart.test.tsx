@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@/test/render';
-import { BalanceHistoryChart, computeBalanceGradient } from './BalanceHistoryChart';
+import { BalanceHistoryChart } from './BalanceHistoryChart';
+import { computeBalanceGradient } from '@/lib/balance-history';
 
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: any) => <div data-testid="responsive-container">{children}</div>,

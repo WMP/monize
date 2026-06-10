@@ -81,3 +81,37 @@ export function computeBalanceSummary(
     goesNegative: minBalance < 0,
   };
 }
+
+/**
+ * Opacity stops for a balance area's vertical gradient. The fill is densest
+ * along the data line and fades to transparent at the zero axis, whether
+ * balances are positive, negative, or cross zero. `zeroOffset` is the fraction
+ * (measured from the top of the area's bounding box) at which the zero line
+ * falls, clamped to [0, 1] so all-positive data keeps the original
+ * top-to-bottom fade and all-negative data mirrors it (shading increasing
+ * toward the bottom).
+ */
+export function computeBalanceGradient(values: number[]): {
+  topOpacity: number;
+  zeroOffset: number;
+  bottomOpacity: number;
+} {
+  const SHADE = 0.3;
+  if (values.length === 0) {
+    return { topOpacity: SHADE, zeroOffset: 1, bottomOpacity: 0 };
+  }
+  let max = values[0];
+  let min = values[0];
+  for (const value of values) {
+    if (value > max) max = value;
+    if (value < min) min = value;
+  }
+  const span = max - min;
+  const zeroOffset =
+    span === 0 ? (max >= 0 ? 1 : 0) : Math.min(1, Math.max(0, max / span));
+  return {
+    topOpacity: max > 0 ? SHADE : 0,
+    zeroOffset,
+    bottomOpacity: min < 0 ? SHADE : 0,
+  };
+}

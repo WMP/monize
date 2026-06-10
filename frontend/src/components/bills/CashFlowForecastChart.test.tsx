@@ -2,17 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@/test/render';
 import { CashFlowForecastChart } from './CashFlowForecastChart';
 
-// The recharts mock invokes the Line `dot` render-prop and the Tooltip
-// `content` render-prop so the SVG min-balance callout (component lines
-// ~320-368) and the tooltip transaction-overflow branch (~38-89) are
-// exercised by the data-driven tests below. The render-prop output is exposed
-// via test ids those tests opt into; existing assertions are unaffected since
-// the chart only renders when forecast data is present.
+// The recharts mock invokes the Area `dot` render-prop and the Tooltip
+// `content` render-prop so the SVG min-balance callout and the tooltip
+// transaction-overflow branch are exercised by the data-driven tests below.
+// The render-prop output is exposed via test ids those tests opt into;
+// existing assertions are unaffected since the chart only renders when
+// forecast data is present.
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: any) => <div data-testid="responsive-container">{children}</div>,
-  LineChart: ({ children }: any) => <div data-testid="line-chart">{children}</div>,
-  Line: ({ dot }: any) => (
-    <div data-testid="line">
+  AreaChart: ({ children }: any) => <div data-testid="area-chart">{children}</div>,
+  Area: ({ dot, fill, stroke }: any) => (
+    <div data-testid="area" data-fill={fill} data-stroke={stroke}>
       {typeof dot === 'function' && (
         <svg data-testid="line-dots">
           {dot({ cx: 50, cy: 60, index: 0 })}
@@ -21,6 +21,8 @@ vi.mock('recharts', () => ({
       )}
     </div>
   ),
+  LineChart: ({ children }: any) => <div data-testid="line-chart">{children}</div>,
+  Line: () => <div data-testid="line" />,
   XAxis: () => <div data-testid="x-axis" />,
   YAxis: ({ tickFormatter }: any) => (
     <div data-testid="y-axis">{tickFormatter ? tickFormatter(2000) : null}</div>
@@ -487,6 +489,30 @@ describe('CashFlowForecastChart', () => {
       expect(screen.getByTestId('line-dots')).toBeInTheDocument();
       // A min balance >= 1000 uses formatCurrencyAxis for the bubble label.
       expect(mockFormatCurrencyAxis).toHaveBeenCalled();
+    });
+
+    it('shades the area under the line with the zero-anchored balance gradient', () => {
+      const forecastData = [
+        { label: 'Day 1', balance: 1000, transactions: [{ amount: 0, name: 'Open' }] },
+        { label: 'Day 2', balance: -150, transactions: [{ amount: -1150, name: 'Rent' }] },
+      ];
+      mockBuildForecast.mockReturnValue(forecastData);
+      mockGetForecastSummary.mockReturnValue({
+        startingBalance: 1000,
+        endingBalance: -150,
+        minBalance: -150,
+        goesNegative: true,
+      });
+      render(
+        <CashFlowForecastChart
+          scheduledTransactions={[{} as any]}
+          accounts={[makeAccount()]}
+          isLoading={false}
+        />,
+      );
+      const area = screen.getByTestId('area');
+      expect(area.getAttribute('data-fill')).toBe('url(#forecastBalance)');
+      expect(area.getAttribute('data-stroke')).toBe('var(--chart-primary)');
     });
 
     it('renders the tooltip content with a transaction overflow indicator', () => {

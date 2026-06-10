@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl';
 import { gainLossColor } from '@/lib/format';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import {
+  AreaChart,
+  Area,
   LineChart,
   Line,
   XAxis,
@@ -14,6 +16,8 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
+import { chartColors } from '@/lib/chart-colors';
+import { computeBalanceGradient } from '@/lib/balance-history';
 import { ScheduledTransaction } from '@/types/scheduled-transaction';
 import { Account } from '@/types/account';
 import { Select } from '@/components/ui/Select';
@@ -185,6 +189,11 @@ export function CashFlowForecastChart({
     return forecastData.findIndex((dp) => dp.balance === summary.minBalance);
   }, [forecastData, summary.minBalance]);
 
+  const areaGradient = useMemo(
+    () => computeBalanceGradient(forecastData.map((point) => point.balance)),
+    [forecastData],
+  );
+
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 mb-6">
@@ -260,38 +269,42 @@ export function CashFlowForecastChart({
           </div>
           <ResponsiveContainer width="100%" height="90%" minWidth={0}>
             <LineChart data={forecastData} margin={{ left: 0, right: 8, top: 5, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
-              <XAxis dataKey="label" tick={{ fill: '#6b7280', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#e5e7eb' }} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={formatAxis} width={45} domain={['auto', 'auto']} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+              <XAxis dataKey="label" tick={{ fill: chartColors.axis, fontSize: 12 }} tickLine={false} axisLine={{ stroke: chartColors.grid }} interval="preserveStartEnd" />
+              <YAxis tick={{ fill: chartColors.axis, fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={formatAxis} width={45} domain={['auto', 'auto']} />
               <Tooltip content={<CashFlowTooltip formatCurrency={formatCurrency} />} />
-              <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="5 5" strokeOpacity={0.5} />
-              <Line type="monotone" dataKey="balance" stroke="#9ca3af" strokeWidth={2} dot={false} strokeDasharray="5 5" />
+              <ReferenceLine y={0} stroke={chartColors.expense} strokeDasharray="5 5" strokeOpacity={0.5} />
+              <Line type="monotone" dataKey="balance" stroke={chartColors.axis} strokeWidth={2} dot={false} strokeDasharray="5 5" />
             </LineChart>
           </ResponsiveContainer>
         </div>
       ) : (
         <div className="h-72" style={{ minHeight: 288 }}>
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <LineChart data={forecastData} margin={{ left: 0, right: 8, top: 5, bottom: 0 }}>
+            <AreaChart data={forecastData} margin={{ left: 0, right: 8, top: 5, bottom: 0 }}>
               <defs>
                 <filter id="minShadow" x="-20%" y="-20%" width="140%" height="140%">
                   <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.3" />
                 </filter>
+                <linearGradient id="forecastBalance" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset={0} stopColor={chartColors.primary} stopOpacity={areaGradient.topOpacity} />
+                  <stop offset={areaGradient.zeroOffset} stopColor={chartColors.primary} stopOpacity={0} />
+                  <stop offset={1} stopColor={chartColors.primary} stopOpacity={areaGradient.bottomOpacity} />
+                </linearGradient>
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="#e5e7eb"
-                className="dark:stroke-gray-700"
+                stroke={chartColors.grid}
               />
               <XAxis
                 dataKey="label"
-                tick={{ fill: '#6b7280', fontSize: 12 }}
+                tick={{ fill: chartColors.axis, fontSize: 12 }}
                 tickLine={false}
-                axisLine={{ stroke: '#e5e7eb' }}
+                axisLine={{ stroke: chartColors.grid }}
                 interval="preserveStartEnd"
               />
               <YAxis
-                tick={{ fill: '#6b7280', fontSize: 11 }}
+                tick={{ fill: chartColors.axis, fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={formatAxis}
@@ -302,7 +315,7 @@ export function CashFlowForecastChart({
               {/* Reference line at $0 */}
               <ReferenceLine
                 y={0}
-                stroke="#ef4444"
+                stroke={chartColors.expense}
                 strokeDasharray="5 5"
                 strokeOpacity={0.5}
               />
@@ -310,20 +323,22 @@ export function CashFlowForecastChart({
               {summary.minBalance !== summary.startingBalance && (
                 <ReferenceLine
                   y={summary.minBalance}
-                  stroke={summary.minBalance < 0 ? '#ef4444' : '#f59e0b'}
+                  stroke={summary.minBalance < 0 ? chartColors.expense : chartColors.warning}
                   strokeDasharray="3 3"
                   strokeOpacity={0.4}
                 />
               )}
-              <Line
+              <Area
                 type="monotone"
                 dataKey="balance"
-                stroke="#3b82f6"
+                stroke={chartColors.primary}
                 strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#forecastBalance)"
                 dot={(props: any) => {
                   const { cx, cy } = props;
                   if (props.index === minBalanceIndex) {
-                    const color = summary.minBalance < 0 ? '#ef4444' : '#f59e0b';
+                    const color = summary.minBalance < 0 ? chartColors.expense : chartColors.warning;
                     const label = Math.abs(summary.minBalance) >= 1000
                       ? formatAxis(summary.minBalance)
                       : formatCurrency(summary.minBalance);
@@ -335,7 +350,7 @@ export function CashFlowForecastChart({
                     const bubbleTop = bubbleBottom - arrowSize - labelHeight;
                     return (
                       <g key={`min-${props.index}`}>
-                        <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" strokeWidth={2} />
+                        <circle cx={cx} cy={cy} r={5} fill={color} stroke="var(--color-white)" strokeWidth={2} />
                         {/* Connector line from dot to arrow */}
                         <line x1={cx} y1={cy - 5} x2={cx} y2={bubbleBottom} stroke={color} strokeWidth={1.5} strokeDasharray="3 2" />
                         {/* Bubble */}
@@ -358,7 +373,7 @@ export function CashFlowForecastChart({
                           y={bubbleTop + labelHeight / 2}
                           textAnchor="middle"
                           dominantBaseline="central"
-                          fill="#fff"
+                          fill="var(--color-white)"
                           fontSize={11}
                           fontWeight={600}
                         >
@@ -369,9 +384,9 @@ export function CashFlowForecastChart({
                   }
                   return <circle key={`dot-${props.index}`} cx={cx} cy={cy} r={0} fill="none" />;
                 }}
-                activeDot={{ r: 6, fill: '#3b82f6' }}
+                activeDot={{ r: 6, fill: chartColors.primary }}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       )}
