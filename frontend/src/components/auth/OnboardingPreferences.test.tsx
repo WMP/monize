@@ -80,10 +80,32 @@ describe('OnboardingPreferences', () => {
       }),
     );
     expect(mockStoreUpdate).toHaveBeenCalled();
-    // The layout must re-render with the new locale's catalogs; without the
-    // refresh the app keeps showing the old language until a full reload.
-    expect(mockRefresh).toHaveBeenCalled();
-    expect(onComplete).toHaveBeenCalled();
+    expect(onComplete).toHaveBeenCalledWith({ localeChanged: false });
+  });
+
+  it('reports a locale change so the caller performs a full navigation', async () => {
+    mockUpdatePreferences.mockResolvedValue({ language: 'pl', defaultCurrency: 'USD' });
+    const { onComplete } = await renderOnboarding();
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Language'), {
+        target: { value: 'pl' },
+      });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Continue'));
+    });
+
+    await waitFor(() =>
+      expect(mockUpdatePreferences).toHaveBeenCalledWith({
+        language: 'pl',
+        defaultCurrency: 'USD',
+      }),
+    );
+    // The active locale is 'en' in tests, so picking 'pl' must flag the
+    // change; the register page then does window.location.assign instead of
+    // a client-side push that would reuse the cached English layout.
+    expect(onComplete).toHaveBeenCalledWith({ localeChanged: true });
   });
 
   it('skips without saving', async () => {
@@ -92,7 +114,7 @@ describe('OnboardingPreferences', () => {
       fireEvent.click(screen.getByText('Skip for now'));
     });
     expect(mockUpdatePreferences).not.toHaveBeenCalled();
-    expect(mockRefresh).not.toHaveBeenCalled();
     expect(onComplete).toHaveBeenCalled();
+    expect(onComplete).not.toHaveBeenCalledWith({ localeChanged: true });
   });
 });

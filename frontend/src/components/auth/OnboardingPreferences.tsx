@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
 import { Select } from '@/components/ui/Select';
@@ -19,8 +18,14 @@ const logger = createLogger('OnboardingPreferences');
 interface OnboardingPreferencesProps {
   /** Initial language (e.g. the locale resolved for the page). */
   initialLanguage?: string;
-  /** Called once the user saves or skips, to continue the sign-up flow. */
-  onComplete: () => void;
+  /**
+   * Called once the user saves or skips, to continue the sign-up flow.
+   * When `localeChanged` is true the caller must perform a full page
+   * navigation (not a client-side push): the root layout's translation
+   * catalogs are only re-fetched on a real document load, and a competing
+   * router.push would reuse the cached layout in the old language.
+   */
+  onComplete: (result?: { localeChanged: boolean }) => void;
 }
 
 /**
@@ -33,7 +38,7 @@ export function OnboardingPreferences({
   onComplete,
 }: OnboardingPreferencesProps) {
   const t = useTranslations('auth.register.preferences');
-  const router = useRouter();
+  const activeLocale = useLocale();
   const updatePreferencesStore = usePreferencesStore((s) => s.updatePreferences);
 
   const [language, setLanguage] = useState(initialLanguage);
@@ -68,18 +73,13 @@ export function OnboardingPreferences({
       });
       updatePreferencesStore(updated);
       Cookies.set(LOCALE_COOKIE, language, { sameSite: 'lax', expires: 365 });
-      // Invalidate the router cache so the layout re-renders with the new
-      // locale's catalogs. PreferencesLoader skips its own refresh because
-      // the cookie already matches the saved preference by this point, and
-      // the navigation in onComplete() alone reuses the cached layout.
-      router.refresh();
-      onComplete();
+      onComplete({ localeChanged: language !== activeLocale });
     } catch (error) {
       toast.error(getErrorMessage(error, t('saveFailed')));
       logger.error(error);
       setIsSaving(false);
     }
-  }, [language, defaultCurrency, updatePreferencesStore, onComplete, router, t]);
+  }, [language, defaultCurrency, updatePreferencesStore, onComplete, activeLocale, t]);
 
   return (
     <div className="space-y-6">
@@ -100,7 +100,7 @@ export function OnboardingPreferences({
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"
-          onClick={onComplete}
+          onClick={() => onComplete()}
           disabled={isSaving}
           className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-50"
         >

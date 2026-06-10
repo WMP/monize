@@ -211,7 +211,16 @@ export default function RegisterPage() {
           </div>
           <OnboardingPreferences
             initialLanguage={locale}
-            onComplete={() => router.push('/dashboard')}
+            onComplete={(result) => {
+              if (result?.localeChanged) {
+                // Full document load so every layout segment re-renders in
+                // the newly chosen language; a client-side push would reuse
+                // the cached root layout (and its catalogs) in the old one.
+                window.location.assign('/dashboard');
+              } else {
+                router.push('/dashboard');
+              }
+            }}
           />
         </div>
       </div>
