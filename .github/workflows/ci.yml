@@ -577,7 +577,7 @@ jobs:
       # only - HIGH issues surface in the Security tab but do not block
       # releases, matching the npm-audit policy.
       - name: Scan backend image (Trivy)
-        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ghcr.io/kenlasko/monize-backend@${{ steps.build-backend.outputs.digest }}
           format: sarif
@@ -594,7 +594,7 @@ jobs:
           category: trivy-backend
 
       - name: Scan frontend image (Trivy)
-        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ghcr.io/kenlasko/monize-frontend@${{ steps.build-frontend.outputs.digest }}
           format: sarif
@@ -611,7 +611,7 @@ jobs:
           category: trivy-frontend
 
       - name: Fail on critical CVEs (backend)
-        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ghcr.io/kenlasko/monize-backend@${{ steps.build-backend.outputs.digest }}
           format: table
@@ -620,7 +620,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Fail on critical CVEs (frontend)
-        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ghcr.io/kenlasko/monize-frontend@${{ steps.build-frontend.outputs.digest }}
           format: table
