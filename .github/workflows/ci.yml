@@ -543,7 +543,7 @@ jobs:
       # OCI manifest; these attestations make them discoverable via
       # `gh attestation verify` for downstream consumers.
       - name: Generate backend SBOM
-        uses: anchore/sbom-action@fd74a6fb98a204a1ad35bbfae0122c1a302ff88b # v0.15.0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
           image: ghcr.io/kenlasko/monize-backend@${{ steps.build-backend.outputs.digest }}
           format: spdx-json
@@ -558,7 +558,7 @@ jobs:
           push-to-registry: true
 
       - name: Generate frontend SBOM
-        uses: anchore/sbom-action@fd74a6fb98a204a1ad35bbfae0122c1a302ff88b # v0.15.0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
           image: ghcr.io/kenlasko/monize-frontend@${{ steps.build-frontend.outputs.digest }}
           format: spdx-json
