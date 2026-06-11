@@ -4,6 +4,7 @@
     "subtitle": "Verwalten Sie Ihre Zahlungsempfänger und deren Standardkategorien",
     "deactivateUnused": "Ungenutzte deaktivieren",
     "autoAssignCategories": "Kategorien automatisch zuweisen",
+    "autoMergePayees": "Zahlungsempfänger automatisch zusammenführen",
     "newPayee": "+ Neuer Zahlungsempfänger",
     "searchPlaceholder": "Zahlungsempfänger suchen...",
     "statusAll": "Alle ({count})",
@@ -136,6 +137,43 @@
       "updated": "{count, plural, one {# Zahlungsempfänger aktualisiert} other {# Zahlungsempfänger aktualisiert}}",
       "loadFailed": "Vorschläge konnten nicht geladen werden",
       "applyFailed": "Kategoriezuweisungen konnten nicht angewendet werden"
+    }
+  },
+  "autoMerge": {
+    "title": "Zahlungsempfänger automatisch zusammenführen",
+    "howItWorksTitle": "So funktioniert es",
+    "howItWorksBody": "Diese Funktion durchsucht Ihre Zahlungsempfänger und gruppiert nahezu identische Einträge mit gemeinsamem Schlüsselwort (zum Beispiel \"Lidl\", \"LIDL sp. z o.o.\" und \"LIDL WARSZAWA 0421\"). Jede Gruppe wird zu einem einzigen Haupt-Zahlungsempfänger zusammengeführt, und ein Platzhalter-Alias (etwa \"*LIDL*\") wird erstellt, damit künftige Importe automatisch zugeordnet werden. Prüfen und passen Sie jede Gruppe vor dem Anwenden an.",
+    "minGroupSizeLabel": "Mindestgruppengröße: {count}",
+    "minGroupSizeHelp": "Nur Gruppen mit mindestens so vielen Zahlungsempfängern vorschlagen",
+    "similarityLabel": "Ähnlichkeitsschwelle: {percent}%",
+    "similarityHelp": "Wie ähnlich zwei Namen sein müssen, um als Tippfehler-Varianten zusammengeführt zu werden",
+    "minTokenLengthLabel": "Mindestlänge des Schlüsselworts: {count}",
+    "minTokenLengthHelp": "Schlüsselwörter, die kürzer sind, beim Gruppieren ignorieren",
+    "includeInactiveLabel": "Inaktive Zahlungsempfänger einbeziehen",
+    "previewButton": "Gruppen anzeigen",
+    "loading": "Wird geladen...",
+    "groupsHeader": "Gruppen ({count} gefunden)",
+    "empty": {
+      "line1": "Keine Zusammenführungsgruppen entsprechen den aktuellen Kriterien.",
+      "line2": "Senken Sie die Ähnlichkeitsschwelle oder die Gruppengröße."
+    },
+    "includeGroupLabel": "Diese Gruppe einbeziehen",
+    "canonicalNameLabel": "Als Zahlungsempfänger behalten",
+    "aliasLabel": "Alias für künftige Importe",
+    "aliasPlaceholder": "z. B. *LIDL*",
+    "keepLabel": "Diesen Zahlungsempfänger behalten",
+    "includeMemberLabel": "In Zusammenführung einbeziehen",
+    "keepBadge": "Behalten",
+    "memberTransactions": "{count, plural, one {# Transaktion} other {# Transaktionen}}",
+    "selectedCount": "{count, plural, one {# Gruppe ausgewählt} other {# Gruppen ausgewählt}}",
+    "applyButton": "{count, plural, one {# Gruppe zusammenführen} other {# Gruppen zusammenführen}}",
+    "applying": "Wird zusammengeführt...",
+    "toasts": {
+      "selectAtLeastOne": "Bitte wählen Sie mindestens eine Gruppe zum Zusammenführen aus",
+      "applied": "{groups, plural, one {# Gruppe} other {# Gruppen}} zusammengeführt ({payees} Zahlungsempfänger kombiniert)",
+      "aliasesSkipped": "{count, plural, one {# Alias wurde wegen eines Konflikts übersprungen} other {# Aliase wurden wegen Konflikten übersprungen}}",
+      "loadFailed": "Zusammenführungsgruppen konnten nicht geladen werden",
+      "applyFailed": "Zahlungsempfänger konnten nicht zusammengeführt werden"
     }
   },
   "deactivateUnused": {

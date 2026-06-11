@@ -4,6 +4,7 @@
     "subtitle": "Gestisci i beneficiari e le loro categorie predefinite",
     "deactivateUnused": "Disattiva inutilizzati",
     "autoAssignCategories": "Assegna categorie automaticamente",
+    "autoMergePayees": "Unisci beneficiari automaticamente",
     "newPayee": "+ Nuovo beneficiario",
     "searchPlaceholder": "Cerca beneficiari...",
     "statusAll": "Tutti ({count})",
@@ -136,6 +137,43 @@
       "updated": "{count, plural, one {# beneficiario aggiornato} other {# beneficiari aggiornati}}",
       "loadFailed": "Caricamento suggerimenti non riuscito",
       "applyFailed": "Applicazione delle categorie non riuscita"
+    }
+  },
+  "autoMerge": {
+    "title": "Unisci beneficiari automaticamente",
+    "howItWorksTitle": "Come funziona",
+    "howItWorksBody": "Questa funzione esamina i tuoi beneficiari e raggruppa i quasi duplicati che condividono una parola chiave (ad esempio \"Lidl\", \"LIDL sp. z o.o.\" e \"LIDL WARSZAWA 0421\"). Ogni gruppo viene unito in un unico beneficiario canonico e viene creato un alias con caratteri jolly (come \"*LIDL*\") in modo che le importazioni future vengano abbinate automaticamente. Rivedi e modifica ciascun gruppo prima di applicarlo.",
+    "minGroupSizeLabel": "Dimensione minima del gruppo: {count}",
+    "minGroupSizeHelp": "Suggerisci solo gruppi con almeno questo numero di beneficiari",
+    "similarityLabel": "Soglia di somiglianza: {percent}%",
+    "similarityHelp": "Quanto devono essere simili due nomi per essere uniti come varianti con errori di battitura",
+    "minTokenLengthLabel": "Lunghezza minima della parola chiave: {count}",
+    "minTokenLengthHelp": "Ignora le parole chiave più corte di questo valore durante il raggruppamento",
+    "includeInactiveLabel": "Includi beneficiari inattivi",
+    "previewButton": "Anteprima gruppi",
+    "loading": "Caricamento...",
+    "groupsHeader": "Gruppi ({count} trovati)",
+    "empty": {
+      "line1": "Nessun gruppo di unione corrisponde ai criteri attuali.",
+      "line2": "Prova ad abbassare la soglia di somiglianza o la dimensione del gruppo."
+    },
+    "includeGroupLabel": "Includi questo gruppo",
+    "canonicalNameLabel": "Mantieni come beneficiario",
+    "aliasLabel": "Alias per importazioni future",
+    "aliasPlaceholder": "es. *LIDL*",
+    "keepLabel": "Mantieni questo beneficiario",
+    "includeMemberLabel": "Includi nell'unione",
+    "keepBadge": "Mantieni",
+    "memberTransactions": "{count, plural, one {# transazione} other {# transazioni}}",
+    "selectedCount": "{count, plural, one {# gruppo selezionato} other {# gruppi selezionati}}",
+    "applyButton": "Unisci {count, plural, one {# gruppo} other {# gruppi}}",
+    "applying": "Unione in corso...",
+    "toasts": {
+      "selectAtLeastOne": "Seleziona almeno un gruppo da unire",
+      "applied": "Uniti {groups, plural, one {# gruppo} other {# gruppi}} ({payees} beneficiari combinati)",
+      "aliasesSkipped": "{count, plural, one {# alias è stato saltato a causa di un conflitto} other {# alias sono stati saltati a causa di conflitti}}",
+      "loadFailed": "Impossibile caricare i gruppi di unione",
+      "applyFailed": "Impossibile unire i beneficiari"
     }
   },
   "deactivateUnused": {

@@ -4,6 +4,7 @@
     "subtitle": "Gerenciar os seus beneficiários e as suas categorias padrão",
     "deactivateUnused": "Desativar Não Utilizados",
     "autoAssignCategories": "Atribuir Categorias Automaticamente",
+    "autoMergePayees": "Mesclar beneficiários automaticamente",
     "newPayee": "+ Novo Beneficiário",
     "searchPlaceholder": "Pesquisar beneficiários...",
     "statusAll": "Todos ({count})",
@@ -136,6 +137,43 @@
       "updated": "{count, plural, one {# beneficiário atualizado} other {# beneficiários atualizados}}",
       "loadFailed": "Falha ao carregar sugestões",
       "applyFailed": "Falha ao aplicar atribuições de categorias"
+    }
+  },
+  "autoMerge": {
+    "title": "Mesclar beneficiários automaticamente",
+    "howItWorksTitle": "Como funciona",
+    "howItWorksBody": "Este recurso examina seus beneficiários e agrupa os quase duplicados que compartilham uma palavra-chave (por exemplo, \"Lidl\", \"LIDL sp. z o.o.\" e \"LIDL WARSZAWA 0421\"). Cada grupo é mesclado em um único beneficiário canônico e um alias com curinga (como \"*LIDL*\") é criado para que as importações futuras sejam correspondidas automaticamente. Revise e ajuste cada grupo antes de aplicar.",
+    "minGroupSizeLabel": "Tamanho mínimo do grupo: {count}",
+    "minGroupSizeHelp": "Sugerir apenas grupos com pelo menos este número de beneficiários",
+    "similarityLabel": "Limite de similaridade: {percent}%",
+    "similarityHelp": "Quão semelhantes dois nomes devem ser para serem mesclados como variantes com erros de digitação",
+    "minTokenLengthLabel": "Comprimento mínimo da palavra-chave: {count}",
+    "minTokenLengthHelp": "Ignorar palavras-chave mais curtas que isto ao agrupar",
+    "includeInactiveLabel": "Incluir beneficiários inativos",
+    "previewButton": "Pré-visualizar grupos",
+    "loading": "Carregando...",
+    "groupsHeader": "Grupos ({count} encontrados)",
+    "empty": {
+      "line1": "Nenhum grupo de mesclagem corresponde aos critérios atuais.",
+      "line2": "Tente reduzir o limite de similaridade ou o tamanho do grupo."
+    },
+    "includeGroupLabel": "Incluir este grupo",
+    "canonicalNameLabel": "Manter como beneficiário",
+    "aliasLabel": "Alias para importações futuras",
+    "aliasPlaceholder": "ex.: *LIDL*",
+    "keepLabel": "Manter este beneficiário",
+    "includeMemberLabel": "Incluir na mesclagem",
+    "keepBadge": "Manter",
+    "memberTransactions": "{count, plural, one {# transação} other {# transações}}",
+    "selectedCount": "{count, plural, one {# grupo selecionado} other {# grupos selecionados}}",
+    "applyButton": "Mesclar {count, plural, one {# grupo} other {# grupos}}",
+    "applying": "Mesclando...",
+    "toasts": {
+      "selectAtLeastOne": "Selecione pelo menos um grupo para mesclar",
+      "applied": "Mesclados {groups, plural, one {# grupo} other {# grupos}} ({payees} beneficiários combinados)",
+      "aliasesSkipped": "{count, plural, one {# alias foi ignorado devido a um conflito} other {# aliases foram ignorados devido a conflitos}}",
+      "loadFailed": "Falha ao carregar os grupos de mesclagem",
+      "applyFailed": "Falha ao mesclar os beneficiários"
     }
   },
   "deactivateUnused": {

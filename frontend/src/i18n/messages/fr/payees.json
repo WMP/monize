@@ -4,6 +4,7 @@
     "subtitle": "Gérez vos bénéficiaires et leurs catégories par défaut",
     "deactivateUnused": "Désactiver les inutilisés",
     "autoAssignCategories": "Attribuer les catégories automatiquement",
+    "autoMergePayees": "Fusionner automatiquement les bénéficiaires",
     "newPayee": "+ Nouveau bénéficiaire",
     "searchPlaceholder": "Rechercher des bénéficiaires...",
     "statusAll": "Tous ({count})",
@@ -136,6 +137,43 @@
       "updated": "{count, plural, one {# bénéficiaire mis à jour} other {# bénéficiaires mis à jour}}",
       "loadFailed": "Échec du chargement des suggestions",
       "applyFailed": "Échec de l'application des catégories"
+    }
+  },
+  "autoMerge": {
+    "title": "Fusionner automatiquement les bénéficiaires",
+    "howItWorksTitle": "Comment ça marche",
+    "howItWorksBody": "Cette fonction analyse vos bénéficiaires et regroupe les quasi-doublons partageant un mot-clé (par exemple \"Lidl\", \"LIDL sp. z o.o.\" et \"LIDL WARSZAWA 0421\"). Chaque groupe est fusionné en un seul bénéficiaire canonique, et un alias générique (tel que \"*LIDL*\") est créé afin que les futurs imports soient associés automatiquement. Vérifiez et ajustez chaque groupe avant de l'appliquer.",
+    "minGroupSizeLabel": "Taille minimale du groupe : {count}",
+    "minGroupSizeHelp": "Ne suggérer que les groupes comptant au moins ce nombre de bénéficiaires",
+    "similarityLabel": "Seuil de similarité : {percent}%",
+    "similarityHelp": "À quel point deux noms doivent se ressembler pour être fusionnés comme variantes avec fautes de frappe",
+    "minTokenLengthLabel": "Longueur minimale du mot-clé : {count}",
+    "minTokenLengthHelp": "Ignorer les mots-clés plus courts que cela lors du regroupement",
+    "includeInactiveLabel": "Inclure les bénéficiaires inactifs",
+    "previewButton": "Aperçu des groupes",
+    "loading": "Chargement...",
+    "groupsHeader": "Groupes ({count} trouvés)",
+    "empty": {
+      "line1": "Aucun groupe de fusion ne correspond aux critères actuels.",
+      "line2": "Essayez de réduire le seuil de similarité ou la taille du groupe."
+    },
+    "includeGroupLabel": "Inclure ce groupe",
+    "canonicalNameLabel": "Conserver comme bénéficiaire",
+    "aliasLabel": "Alias pour les futurs imports",
+    "aliasPlaceholder": "ex. : *LIDL*",
+    "keepLabel": "Conserver ce bénéficiaire",
+    "includeMemberLabel": "Inclure dans la fusion",
+    "keepBadge": "Conserver",
+    "memberTransactions": "{count, plural, one {# transaction} other {# transactions}}",
+    "selectedCount": "{count, plural, one {# groupe sélectionné} other {# groupes sélectionnés}}",
+    "applyButton": "Fusionner {count, plural, one {# groupe} other {# groupes}}",
+    "applying": "Fusion...",
+    "toasts": {
+      "selectAtLeastOne": "Veuillez sélectionner au moins un groupe à fusionner",
+      "applied": "{groups, plural, one {# groupe fusionné} other {# groupes fusionnés}} ({payees} bénéficiaires combinés)",
+      "aliasesSkipped": "{count, plural, one {# alias a été ignoré en raison d'un conflit} other {# alias ont été ignorés en raison de conflits}}",
+      "loadFailed": "Échec du chargement des groupes de fusion",
+      "applyFailed": "Échec de la fusion des bénéficiaires"
     }
   },
   "deactivateUnused": {

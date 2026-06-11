@@ -10,6 +10,7 @@ import { PayeeForm } from '@/components/payees/PayeeForm';
 import { PayeeList, type DensityLevel, type SortField, type SortDirection } from '@/components/payees/PayeeList';
 import { CategoryAutoAssignDialog } from '@/components/payees/CategoryAutoAssignDialog';
 import { DeactivateUnusedPayeesDialog } from '@/components/payees/DeactivateUnusedPayeesDialog';
+import { AutoMergePayeesDialog } from '@/components/payees/AutoMergePayeesDialog';
 import { Modal } from '@/components/ui/Modal';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { payeesApi } from '@/lib/payees';
@@ -46,6 +47,7 @@ function PayeesContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showAutoAssign, setShowAutoAssign] = useState(false);
   const [showDeactivate, setShowDeactivate] = useState(false);
+  const [showAutoMerge, setShowAutoMerge] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PayeeStatusFilter>('active');
   const [currentPage, setCurrentPage] = useState(1);
@@ -206,6 +208,9 @@ function PayeesContent() {
           helpUrl="https://github.com/kenlasko/monize/wiki/Categories-and-Payees"
           actions={
             <>
+              <Button variant="secondary" onClick={() => setShowAutoMerge(true)}>
+                {t('page.autoMergePayees')}
+              </Button>
               <Button variant="secondary" onClick={() => setShowDeactivate(true)}>
                 {t('page.deactivateUnused')}
               </Button>
@@ -359,6 +364,13 @@ function PayeesContent() {
       <DeactivateUnusedPayeesDialog
         isOpen={showDeactivate}
         onClose={() => setShowDeactivate(false)}
+        onSuccess={loadData}
+      />
+
+      {/* Auto-Merge Payees Dialog */}
+      <AutoMergePayeesDialog
+        isOpen={showAutoMerge}
+        onClose={() => setShowAutoMerge(false)}
         onSuccess={loadData}
       />
     </PageLayout>

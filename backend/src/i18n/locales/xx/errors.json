@@ -282,7 +282,9 @@
     "aliasDuplicate": "[XX-Alias \"{{ alias }}\" is already assigned to payee \"{{ payeeName }}\"-XX]",
     "aliasOverlap": "[XX-Alias \"{{ alias }}\" overlaps with existing alias \"{{ existingAlias }}\" on payee \"{{ payeeName }}\". Consider modifying one of them.-XX]",
     "aliasNotFound": "[XX-Alias with ID {{ id }} not found-XX]",
-    "mergeSelf": "[XX-Cannot merge a payee into itself-XX]"
+    "mergeSelf": "[XX-Cannot merge a payee into itself-XX]",
+    "autoMergeDuplicatePayee": "[XX-A payee appears in more than one merge group-XX]",
+    "autoMergeSourceNotFound": "[XX-One or more source payees were not found-XX]"
   },
   "reports": {
     "notFound": "[XX-Report with ID {{ id }} not found-XX]",

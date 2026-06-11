@@ -282,7 +282,9 @@
     "aliasDuplicate": "L'alias « {{ alias }} » est déjà assigné au bénéficiaire « {{ payeeName }} »",
     "aliasOverlap": "L'alias « {{ alias }} » chevauche l'alias existant « {{ existingAlias }} » du bénéficiaire « {{ payeeName }} ». Envisagez de modifier l'un d'eux.",
     "aliasNotFound": "Alias avec l'ID {{ id }} introuvable",
-    "mergeSelf": "Impossible de fusionner un bénéficiaire avec lui-même"
+    "mergeSelf": "Impossible de fusionner un bénéficiaire avec lui-même",
+    "autoMergeDuplicatePayee": "Un bénéficiaire apparaît dans plusieurs groupes de fusion",
+    "autoMergeSourceNotFound": "Un ou plusieurs bénéficiaires sources sont introuvables"
   },
   "reports": {
     "notFound": "Rapport avec l'ID {{ id }} introuvable",

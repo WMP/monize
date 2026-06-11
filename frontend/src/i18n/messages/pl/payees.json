@@ -4,6 +4,7 @@
     "subtitle": "Zarządzaj odbiorcami i ich domyślnymi kategoriami",
     "deactivateUnused": "Dezaktywuj nieużywanych",
     "autoAssignCategories": "Automatycznie przypisz kategorie",
+    "autoMergePayees": "Automatycznie scal odbiorców",
     "newPayee": "+ Nowy odbiorca",
     "searchPlaceholder": "Szukaj odbiorców...",
     "statusAll": "Wszystkie ({count})",
@@ -136,6 +137,43 @@
       "updated": "{count, plural, one {Zaktualizowano # odbiorcę} few {Zaktualizowano # odbiorców} many {Zaktualizowano # odbiorców} other {Zaktualizowano # odbiorcy}}",
       "loadFailed": "Nie udało się wczytać sugestii",
       "applyFailed": "Nie udało się zastosować przypisań kategorii"
+    }
+  },
+  "autoMerge": {
+    "title": "Automatycznie scal odbiorców",
+    "howItWorksTitle": "Jak to działa",
+    "howItWorksBody": "Ta funkcja przeszukuje odbiorców i grupuje niemal duplikaty mające wspólne słowo kluczowe (na przykład \"Lidl\", \"LIDL sp. z o.o.\" i \"LIDL WARSZAWA 0421\"). Każda grupa jest scalana w jednego głównego odbiorcę, a alias z symbolem wieloznacznym (np. \"*LIDL*\") jest tworzony, aby przyszłe importy były dopasowywane automatycznie. Sprawdź i dostosuj każdą grupę przed zastosowaniem.",
+    "minGroupSizeLabel": "Minimalny rozmiar grupy: {count}",
+    "minGroupSizeHelp": "Proponuj tylko grupy z co najmniej taką liczbą odbiorców",
+    "similarityLabel": "Próg podobieństwa: {percent}%",
+    "similarityHelp": "Jak bardzo dwie nazwy muszą być podobne, aby scalić je jako warianty z literówkami",
+    "minTokenLengthLabel": "Minimalna długość słowa kluczowego: {count}",
+    "minTokenLengthHelp": "Ignoruj słowa kluczowe krótsze niż ta wartość podczas grupowania",
+    "includeInactiveLabel": "Uwzględnij nieaktywnych odbiorców",
+    "previewButton": "Podgląd grup",
+    "loading": "Ładowanie...",
+    "groupsHeader": "Grupy (znaleziono {count})",
+    "empty": {
+      "line1": "Żadna grupa scalania nie pasuje do bieżących kryteriów.",
+      "line2": "Spróbuj obniżyć próg podobieństwa lub rozmiar grupy."
+    },
+    "includeGroupLabel": "Uwzględnij tę grupę",
+    "canonicalNameLabel": "Zachowaj jako odbiorcę",
+    "aliasLabel": "Alias dla przyszłych importów",
+    "aliasPlaceholder": "np. *LIDL*",
+    "keepLabel": "Zachowaj tego odbiorcę",
+    "includeMemberLabel": "Uwzględnij w scalaniu",
+    "keepBadge": "Zachowaj",
+    "memberTransactions": "{count, plural, one {# transakcja} few {# transakcje} many {# transakcji} other {# transakcji}}",
+    "selectedCount": "{count, plural, one {# grupa wybrana} few {# grupy wybrane} many {# grup wybranych} other {# grup wybranych}}",
+    "applyButton": "Scal {count, plural, one {# grupę} few {# grupy} many {# grup} other {# grup}}",
+    "applying": "Scalanie...",
+    "toasts": {
+      "selectAtLeastOne": "Wybierz co najmniej jedną grupę do scalenia",
+      "applied": "Scalono {groups, plural, one {# grupę} few {# grupy} many {# grup} other {# grup}} (połączono {payees} odbiorców)",
+      "aliasesSkipped": "{count, plural, one {Pominięto # alias z powodu konfliktu} few {Pominięto # aliasy z powodu konfliktów} many {Pominięto # aliasów z powodu konfliktów} other {Pominięto # aliasów z powodu konfliktów}}",
+      "loadFailed": "Nie udało się załadować grup scalania",
+      "applyFailed": "Nie udało się scalić odbiorców"
     }
   },
   "deactivateUnused": {

@@ -282,7 +282,9 @@
     "aliasDuplicate": "O alias \"{{ alias }}\" já está atribuído ao beneficiário \"{{ payeeName }}\"",
     "aliasOverlap": "O alias \"{{ alias }}\" sobrepõe-se ao alias existente \"{{ existingAlias }}\" do beneficiário \"{{ payeeName }}\". Considere modificar um deles.",
     "aliasNotFound": "Alias com ID {{ id }} não encontrado",
-    "mergeSelf": "Não é possível unir um beneficiário consigo próprio"
+    "mergeSelf": "Não é possível unir um beneficiário consigo próprio",
+    "autoMergeDuplicatePayee": "Um beneficiário aparece em mais de um grupo de combinação",
+    "autoMergeSourceNotFound": "Um ou mais beneficiários de origem não foram encontrados"
   },
   "reports": {
     "notFound": "Relatório com ID {{ id }} não encontrado",

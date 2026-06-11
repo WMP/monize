@@ -282,7 +282,9 @@
     "aliasDuplicate": "Alias \"{{ alias }}\" is al toegewezen aan begunstigde \"{{ payeeName }}\"",
     "aliasOverlap": "Alias \"{{ alias }}\" overlapt met bestaande alias \"{{ existingAlias }}\" op begunstigde \"{{ payeeName }}\". Overweeg een van beide te wijzigen.",
     "aliasNotFound": "Alias met ID {{ id }} niet gevonden",
-    "mergeSelf": "Kan een begunstigde niet samenvoegen met zichzelf"
+    "mergeSelf": "Kan een begunstigde niet samenvoegen met zichzelf",
+    "autoMergeDuplicatePayee": "Een begunstigde komt voor in meer dan één samenvoegingsgroep",
+    "autoMergeSourceNotFound": "Een of meer bronbegunstigden zijn niet gevonden"
   },
   "reports": {
     "notFound": "Rapport met ID {{ id }} niet gevonden",

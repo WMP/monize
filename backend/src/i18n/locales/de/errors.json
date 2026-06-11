@@ -282,7 +282,9 @@
     "aliasDuplicate": "Alias \"{{ alias }}\" ist bereits dem Zahlungsempfänger \"{{ payeeName }}\" zugewiesen",
     "aliasOverlap": "Alias \"{{ alias }}\" überschneidet sich mit dem vorhandenen Alias \"{{ existingAlias }}\" beim Zahlungsempfänger \"{{ payeeName }}\". Erwägen Sie, einen der beiden zu ändern.",
     "aliasNotFound": "Alias mit ID {{ id }} nicht gefunden",
-    "mergeSelf": "Ein Zahlungsempfänger kann nicht mit sich selbst zusammengeführt werden"
+    "mergeSelf": "Ein Zahlungsempfänger kann nicht mit sich selbst zusammengeführt werden",
+    "autoMergeDuplicatePayee": "Ein Zahlungsempfänger erscheint in mehr als einer Zusammenführungsgruppe",
+    "autoMergeSourceNotFound": "Ein oder mehrere Quell-Zahlungsempfänger wurden nicht gefunden"
   },
   "reports": {
     "notFound": "Bericht mit ID {{ id }} nicht gefunden",

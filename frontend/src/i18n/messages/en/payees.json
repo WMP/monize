@@ -4,6 +4,7 @@
     "subtitle": "Manage your payees and their default categories",
     "deactivateUnused": "Deactivate Unused",
     "autoAssignCategories": "Auto-Assign Categories",
+    "autoMergePayees": "Auto-Merge Payees",
     "newPayee": "+ New Payee",
     "searchPlaceholder": "Search payees...",
     "statusAll": "All ({count})",
@@ -136,6 +137,43 @@
       "updated": "{count, plural, one {Updated # payee} other {Updated # payees}}",
       "loadFailed": "Failed to load suggestions",
       "applyFailed": "Failed to apply category assignments"
+    }
+  },
+  "autoMerge": {
+    "title": "Auto-Merge Payees",
+    "howItWorksTitle": "How it works",
+    "howItWorksBody": "This feature scans your payees and groups near-duplicates that share a keyword (for example \"Lidl\", \"LIDL sp. z o.o.\" and \"LIDL WARSZAWA 0421\"). Each group is merged into a single canonical payee, and a wildcard alias (such as \"*LIDL*\") is created so future imports are matched automatically. Review and adjust each group before applying.",
+    "minGroupSizeLabel": "Minimum Group Size: {count}",
+    "minGroupSizeHelp": "Only suggest groups with at least this many payees",
+    "similarityLabel": "Similarity Threshold: {percent}%",
+    "similarityHelp": "How close two names must be to merge as typo variants",
+    "minTokenLengthLabel": "Minimum Keyword Length: {count}",
+    "minTokenLengthHelp": "Ignore keywords shorter than this when grouping",
+    "includeInactiveLabel": "Include inactive payees",
+    "previewButton": "Preview Groups",
+    "loading": "Loading...",
+    "groupsHeader": "Groups ({count} found)",
+    "empty": {
+      "line1": "No merge groups match the current criteria.",
+      "line2": "Try lowering the similarity threshold or group size."
+    },
+    "includeGroupLabel": "Include this group",
+    "canonicalNameLabel": "Keep as payee",
+    "aliasLabel": "Alias for future imports",
+    "aliasPlaceholder": "e.g., *LIDL*",
+    "keepLabel": "Keep this payee",
+    "includeMemberLabel": "Include in merge",
+    "keepBadge": "Keep",
+    "memberTransactions": "{count, plural, one {# transaction} other {# transactions}}",
+    "selectedCount": "{count, plural, one {# group selected} other {# groups selected}}",
+    "applyButton": "Merge {count, plural, one {# Group} other {# Groups}}",
+    "applying": "Merging...",
+    "toasts": {
+      "selectAtLeastOne": "Please select at least one group to merge",
+      "applied": "Merged {groups, plural, one {# group} other {# groups}} ({payees} payees combined)",
+      "aliasesSkipped": "{count, plural, one {# alias was skipped due to a conflict} other {# aliases were skipped due to conflicts}}",
+      "loadFailed": "Failed to load merge groups",
+      "applyFailed": "Failed to merge payees"
     }
   },
   "deactivateUnused": {
