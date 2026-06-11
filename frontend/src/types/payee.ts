@@ -50,6 +50,49 @@ export interface MergePayeeResult {
   sourcePayeeDeleted: boolean;
 }
 
+export type CategoryMatchMode = 'off' | 'category' | 'subcategory';
+
+export interface AutoMergePreviewParams {
+  minGroupSize: number;
+  similarityThreshold: number;
+  minTokenLength: number;
+  includeInactive: boolean;
+  categoryMatch: CategoryMatchMode;
+  ignoreCommonWords: boolean;
+  commonWordMinVariants: number;
+}
+
+export interface AutoMergeMember {
+  payeeId: string;
+  name: string;
+  transactionCount: number;
+  isCanonical: boolean;
+}
+
+export interface AutoMergeGroup {
+  groupKey: string;
+  suggestedCanonicalPayeeId: string;
+  suggestedName: string;
+  suggestedAlias: string;
+  members: AutoMergeMember[];
+  totalTransactions: number;
+}
+
+export interface ApplyAutoMergeGroup {
+  canonicalPayeeId: string;
+  canonicalName?: string;
+  sourcePayeeIds: string[];
+  alias?: string;
+}
+
+export interface ApplyAutoMergeResult {
+  groupsMerged: number;
+  payeesMerged: number;
+  transactionsMigrated: number;
+  aliasesCreated: number;
+  skippedAliases: number;
+}
+
 export interface PayeeSummary {
   totalPayees: number;
   payeesWithCategory: number;

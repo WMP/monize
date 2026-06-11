@@ -4,6 +4,7 @@
     "subtitle": "Beheer je begunstigden en hun standaardcategorieën",
     "deactivateUnused": "Ongebruikte deactiveren",
     "autoAssignCategories": "Categorieën automatisch toewijzen",
+    "autoMergePayees": "Begunstigden automatisch samenvoegen",
     "newPayee": "+ Nieuwe begunstigde",
     "searchPlaceholder": "Begunstigden zoeken...",
     "statusAll": "Alle ({count})",
@@ -137,6 +138,56 @@
       "loadFailed": "Suggesties laden mislukt",
       "applyFailed": "Categorietoewijzingen toepassen mislukt"
     }
+  },
+  "autoMerge": {
+    "title": "Begunstigden automatisch samenvoegen",
+    "howItWorksTitle": "Hoe het werkt",
+    "howItWorksBody": "Deze functie scant uw begunstigden en groepeert varianten waarbij de ene naam een uitbreiding van de andere is - zo bouwen \"Lidl\", \"LIDL sp. z o.o.\" en \"LIDL WARSZAWA 0421\" allemaal voort op \"Lidl\". Elke groep wordt samengevoegd tot één canonieke begunstigde en er wordt een jokertekenalias (zoals \"*LIDL*\") aangemaakt zodat toekomstige imports automatisch worden gekoppeld. Begunstigden die alleen een gemeenschappelijk woord delen (zoals \"Royal Electric\" en \"Royal City Nursery\") blijven gescheiden. Controleer en pas elke groep aan voordat u toepast.",
+    "minGroupSizeLabel": "Minimale groepsgrootte: {count}",
+    "minGroupSizeHelp": "Alleen groepen met ten minste zoveel begunstigden voorstellen",
+    "similarityLabel": "Gelijkenisdrempel: {percent}%",
+    "similarityHelp": "Spellingtolerantie: verlaag deze om ook vergelijkbare schrijfwijzen zoals LIDL / LIDI te groeperen; 100% vereist een exacte trefwoordovereenkomst.",
+    "minTokenLengthLabel": "Minimale trefwoordlengte: {count}",
+    "minTokenLengthHelp": "Negeer trefwoorden die korter zijn dan dit bij het groeperen",
+    "includeInactiveLabel": "Inactieve begunstigden opnemen",
+    "previewButton": "Groepen bekijken",
+    "loading": "Laden...",
+    "groupsHeader": "Groepen ({count} gevonden)",
+    "empty": {
+      "line1": "Geen samenvoegingsgroepen voldoen aan de huidige criteria.",
+      "line2": "Probeer de gelijkenisdrempel of groepsgrootte te verlagen."
+    },
+    "includeGroupLabel": "Deze groep opnemen",
+    "canonicalNameLabel": "Behouden als begunstigde",
+    "aliasLabel": "Alias voor toekomstige imports",
+    "aliasPlaceholder": "bijv. *LIDL*",
+    "keepLabel": "Deze begunstigde behouden",
+    "includeMemberLabel": "Opnemen in samenvoeging",
+    "keepBadge": "Behouden",
+    "memberTransactions": "{count, plural, one {# transactie} other {# transacties}}",
+    "selectedCount": "{count, plural, one {# groep geselecteerd} other {# groepen geselecteerd}}",
+    "applyButton": "{count, plural, one {# groep samenvoegen} other {# groepen samenvoegen}}",
+    "applying": "Samenvoegen...",
+    "toasts": {
+      "selectAtLeastOne": "Selecteer ten minste één groep om samen te voegen",
+      "applied": "{groups, plural, one {# groep} other {# groepen}} samengevoegd ({payees} begunstigden gecombineerd)",
+      "aliasesSkipped": "{count, plural, one {# alias is overgeslagen vanwege een conflict} other {# aliassen zijn overgeslagen vanwege conflicten}}",
+      "loadFailed": "Samenvoegingsgroepen konden niet worden geladen",
+      "applyFailed": "Begunstigden konden niet worden samengevoegd"
+    },
+    "categoryMatchLabel": "Alleen begunstigden in dezelfde categorie samenvoegen",
+    "categoryMatchHelp": "Houdt begunstigden gescheiden als hun categorieën verschillen, waardoor onjuiste overeenkomsten afnemen.",
+    "granularityLabel": "Categorie-overeenkomstniveau",
+    "selectAll": "Alles selecteren",
+    "deselectAll": "Alles deselecteren",
+    "granularity": {
+      "category": "Categorie",
+      "subcategory": "Subcategorie"
+    },
+    "ignoreCommonWordsLabel": "Veelvoorkomende woorden negeren",
+    "ignoreCommonWordsHelp": "Groepeer niet op algemene woorden (Restaurant, Cafe, landnamen) of woorden waarmee veel verschillende begunstigden beginnen.",
+    "commonWordSensitivityLabel": "Gevoeligheid voor veelvoorkomende woorden: {count}+ varianten",
+    "commonWordSensitivityHelp": "Een beginwoord geldt als veelvoorkomend zodra ten minste zoveel verschillende begunstigden ervan aftakken. Lager = agressiever filteren."
   },
   "deactivateUnused": {
     "title": "Ongebruikte begunstigden deactiveren",

@@ -4,6 +4,7 @@
     "subtitle": "Gerir os seus beneficiários e as suas categorias predefinidas",
     "deactivateUnused": "Desativar Não Utilizados",
     "autoAssignCategories": "Atribuir Categorias Automaticamente",
+    "autoMergePayees": "Combinar beneficiários automaticamente",
     "newPayee": "+ Novo Beneficiário",
     "searchPlaceholder": "Pesquisar beneficiários...",
     "statusAll": "Todos ({count})",
@@ -137,6 +138,56 @@
       "loadFailed": "Falha ao carregar sugestões",
       "applyFailed": "Falha ao aplicar atribuições de categorias"
     }
+  },
+  "autoMerge": {
+    "title": "Combinar beneficiários automaticamente",
+    "howItWorksTitle": "Como funciona",
+    "howItWorksBody": "Esta funcionalidade analisa os seus beneficiários e agrupa variantes em que um nome prolonga outro - por exemplo, \"Lidl\", \"LIDL sp. z o.o.\" e \"LIDL WARSZAWA 0421\" baseiam-se todos em \"Lidl\". Cada grupo é combinado num único beneficiário canónico e é criado um alias com carácter universal (como \"*LIDL*\") para que as importações futuras sejam correspondidas automaticamente. Os beneficiários que apenas partilham uma palavra comum (como \"Royal Electric\" e \"Royal City Nursery\") permanecem separados. Reveja e ajuste cada grupo antes de aplicar.",
+    "minGroupSizeLabel": "Tamanho mínimo do grupo: {count}",
+    "minGroupSizeHelp": "Sugerir apenas grupos com pelo menos este número de beneficiários",
+    "similarityLabel": "Limite de semelhança: {percent}%",
+    "similarityHelp": "Tolerância ortográfica: reduza-a para agrupar também correspondências próximas como LIDL / LIDI; 100% exige uma correspondência exata da palavra-chave.",
+    "minTokenLengthLabel": "Comprimento mínimo da palavra-chave: {count}",
+    "minTokenLengthHelp": "Ignorar palavras-chave mais curtas do que isto ao agrupar",
+    "includeInactiveLabel": "Incluir beneficiários inativos",
+    "previewButton": "Pré-visualizar grupos",
+    "loading": "A carregar...",
+    "groupsHeader": "Grupos ({count} encontrados)",
+    "empty": {
+      "line1": "Nenhum grupo de combinação corresponde aos critérios atuais.",
+      "line2": "Experimente reduzir o limite de semelhança ou o tamanho do grupo."
+    },
+    "includeGroupLabel": "Incluir este grupo",
+    "canonicalNameLabel": "Manter como beneficiário",
+    "aliasLabel": "Alias para importações futuras",
+    "aliasPlaceholder": "por ex., *LIDL*",
+    "keepLabel": "Manter este beneficiário",
+    "includeMemberLabel": "Incluir na combinação",
+    "keepBadge": "Manter",
+    "memberTransactions": "{count, plural, one {# transação} other {# transações}}",
+    "selectedCount": "{count, plural, one {# grupo selecionado} other {# grupos selecionados}}",
+    "applyButton": "Combinar {count, plural, one {# grupo} other {# grupos}}",
+    "applying": "A combinar...",
+    "toasts": {
+      "selectAtLeastOne": "Selecione pelo menos um grupo para combinar",
+      "applied": "Combinados {groups, plural, one {# grupo} other {# grupos}} ({payees} beneficiários combinados)",
+      "aliasesSkipped": "{count, plural, one {# alias foi ignorado devido a um conflito} other {# aliases foram ignorados devido a conflitos}}",
+      "loadFailed": "Falha ao carregar os grupos de combinação",
+      "applyFailed": "Falha ao combinar os beneficiários"
+    },
+    "categoryMatchLabel": "Combinar apenas beneficiários da mesma categoria",
+    "categoryMatchHelp": "Mantém os beneficiários separados quando as suas categorias diferem, reduzindo correspondências falsas.",
+    "granularityLabel": "Nível de correspondência de categoria",
+    "selectAll": "Selecionar tudo",
+    "deselectAll": "Desselecionar tudo",
+    "granularity": {
+      "category": "Categoria",
+      "subcategory": "Subcategoria"
+    },
+    "ignoreCommonWordsLabel": "Ignorar palavras comuns",
+    "ignoreCommonWordsHelp": "Não agrupar a partir de palavras genéricas (Restaurante, Cafe, nomes de países) nem de palavras com que começam muitos beneficiários diferentes.",
+    "commonWordSensitivityLabel": "Sensibilidade a palavras comuns: {count}+ variantes",
+    "commonWordSensitivityHelp": "Uma palavra inicial é tratada como comum quando pelo menos este número de beneficiários diferentes deriva dela. Menor = filtrar de forma mais agressiva."
   },
   "deactivateUnused": {
     "title": "Desativar Beneficiários Não Utilizados",

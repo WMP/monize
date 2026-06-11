@@ -4,6 +4,7 @@
     "subtitle": "Manage your payees and their default categories",
     "deactivateUnused": "Deactivate Unused",
     "autoAssignCategories": "Auto-Assign Categories",
+    "autoMergePayees": "Auto-Merge Payees",
     "newPayee": "+ New Payee",
     "searchPlaceholder": "Search payees...",
     "statusAll": "All ({count})",
@@ -137,6 +138,56 @@
       "loadFailed": "Failed to load suggestions",
       "applyFailed": "Failed to apply category assignments"
     }
+  },
+  "autoMerge": {
+    "title": "Auto-Merge Payees",
+    "howItWorksTitle": "How it works",
+    "howItWorksBody": "This feature scans your payees and groups variants where one name extends another - for example \"Lidl\", \"LIDL sp. z o.o.\" and \"LIDL WARSZAWA 0421\" all build on \"Lidl\". Each group is merged into a single canonical payee, and a wildcard alias (such as \"*LIDL*\") is created so future imports are matched automatically. Payees that merely share a common word (like \"Royal Electric\" and \"Royal City Nursery\") are kept separate. Review and adjust each group before applying.",
+    "minGroupSizeLabel": "Minimum Group Size: {count}",
+    "minGroupSizeHelp": "Only suggest groups with at least this many payees",
+    "similarityLabel": "Similarity Threshold: {percent}%",
+    "similarityHelp": "Spelling tolerance: lower it to also group near-matches like LIDL / LIDI; 100% requires an exact keyword match.",
+    "minTokenLengthLabel": "Minimum Keyword Length: {count}",
+    "minTokenLengthHelp": "Ignore keywords shorter than this when grouping",
+    "includeInactiveLabel": "Include inactive payees",
+    "previewButton": "Preview Groups",
+    "loading": "Loading...",
+    "groupsHeader": "Groups ({count} found)",
+    "empty": {
+      "line1": "No merge groups match the current criteria.",
+      "line2": "Try lowering the similarity threshold or group size."
+    },
+    "includeGroupLabel": "Include this group",
+    "canonicalNameLabel": "Keep as payee",
+    "aliasLabel": "Alias for future imports",
+    "aliasPlaceholder": "e.g., *LIDL*",
+    "keepLabel": "Keep this payee",
+    "includeMemberLabel": "Include in merge",
+    "keepBadge": "Keep",
+    "memberTransactions": "{count, plural, one {# transaction} other {# transactions}}",
+    "selectedCount": "{count, plural, one {# group selected} other {# groups selected}}",
+    "applyButton": "Merge {count, plural, one {# Group} other {# Groups}}",
+    "applying": "Merging...",
+    "toasts": {
+      "selectAtLeastOne": "Please select at least one group to merge",
+      "applied": "Merged {groups, plural, one {# group} other {# groups}} ({payees} payees combined)",
+      "aliasesSkipped": "{count, plural, one {# alias was skipped due to a conflict} other {# aliases were skipped due to conflicts}}",
+      "loadFailed": "Failed to load merge groups",
+      "applyFailed": "Failed to merge payees"
+    },
+    "categoryMatchLabel": "Only merge payees in the same category",
+    "categoryMatchHelp": "Keep payees apart when their categories differ, reducing false matches.",
+    "granularityLabel": "Category match level",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "granularity": {
+      "category": "Category",
+      "subcategory": "Subcategory"
+    },
+    "ignoreCommonWordsLabel": "Ignore common words",
+    "ignoreCommonWordsHelp": "Don't anchor groups on generic words (Restaurant, Cafe, country names) or words that many different payees start with.",
+    "commonWordSensitivityLabel": "Common-word sensitivity: {count}+ variants",
+    "commonWordSensitivityHelp": "A leading word is treated as common once at least this many different payees branch off it. Lower = filter more aggressively."
   },
   "deactivateUnused": {
     "title": "Deactivate Unused Payees",

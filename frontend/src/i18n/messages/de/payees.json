@@ -4,6 +4,7 @@
     "subtitle": "Verwalten Sie Ihre Zahlungsempfänger und deren Standardkategorien",
     "deactivateUnused": "Ungenutzte deaktivieren",
     "autoAssignCategories": "Kategorien automatisch zuweisen",
+    "autoMergePayees": "Zahlungsempfänger automatisch zusammenführen",
     "newPayee": "+ Neuer Zahlungsempfänger",
     "searchPlaceholder": "Zahlungsempfänger suchen...",
     "statusAll": "Alle ({count})",
@@ -137,6 +138,56 @@
       "loadFailed": "Vorschläge konnten nicht geladen werden",
       "applyFailed": "Kategoriezuweisungen konnten nicht angewendet werden"
     }
+  },
+  "autoMerge": {
+    "title": "Zahlungsempfänger automatisch zusammenführen",
+    "howItWorksTitle": "So funktioniert es",
+    "howItWorksBody": "Diese Funktion durchsucht Ihre Zahlungsempfänger und gruppiert Varianten, bei denen ein Name einen anderen erweitert - zum Beispiel bauen \"Lidl\", \"LIDL sp. z o.o.\" und \"LIDL WARSZAWA 0421\" alle auf \"Lidl\" auf. Jede Gruppe wird zu einem einzigen Haupt-Zahlungsempfänger zusammengeführt, und ein Platzhalter-Alias (etwa \"*LIDL*\") wird erstellt, damit künftige Importe automatisch zugeordnet werden. Zahlungsempfänger, die nur ein gemeinsames Wort teilen (wie \"Royal Electric\" und \"Royal City Nursery\"), bleiben getrennt. Prüfen und passen Sie jede Gruppe vor dem Anwenden an.",
+    "minGroupSizeLabel": "Mindestgruppengröße: {count}",
+    "minGroupSizeHelp": "Nur Gruppen mit mindestens so vielen Zahlungsempfängern vorschlagen",
+    "similarityLabel": "Ähnlichkeitsschwelle: {percent}%",
+    "similarityHelp": "Schreibtoleranz: niedriger einstellen, um auch ähnliche Schreibweisen wie LIDL / LIDI zu gruppieren; 100% erfordert eine exakte Schlüsselwortübereinstimmung.",
+    "minTokenLengthLabel": "Mindestlänge des Schlüsselworts: {count}",
+    "minTokenLengthHelp": "Schlüsselwörter, die kürzer sind, beim Gruppieren ignorieren",
+    "includeInactiveLabel": "Inaktive Zahlungsempfänger einbeziehen",
+    "previewButton": "Gruppen anzeigen",
+    "loading": "Wird geladen...",
+    "groupsHeader": "Gruppen ({count} gefunden)",
+    "empty": {
+      "line1": "Keine Zusammenführungsgruppen entsprechen den aktuellen Kriterien.",
+      "line2": "Senken Sie die Ähnlichkeitsschwelle oder die Gruppengröße."
+    },
+    "includeGroupLabel": "Diese Gruppe einbeziehen",
+    "canonicalNameLabel": "Als Zahlungsempfänger behalten",
+    "aliasLabel": "Alias für künftige Importe",
+    "aliasPlaceholder": "z. B. *LIDL*",
+    "keepLabel": "Diesen Zahlungsempfänger behalten",
+    "includeMemberLabel": "In Zusammenführung einbeziehen",
+    "keepBadge": "Behalten",
+    "memberTransactions": "{count, plural, one {# Transaktion} other {# Transaktionen}}",
+    "selectedCount": "{count, plural, one {# Gruppe ausgewählt} other {# Gruppen ausgewählt}}",
+    "applyButton": "{count, plural, one {# Gruppe zusammenführen} other {# Gruppen zusammenführen}}",
+    "applying": "Wird zusammengeführt...",
+    "toasts": {
+      "selectAtLeastOne": "Bitte wählen Sie mindestens eine Gruppe zum Zusammenführen aus",
+      "applied": "{groups, plural, one {# Gruppe} other {# Gruppen}} zusammengeführt ({payees} Zahlungsempfänger kombiniert)",
+      "aliasesSkipped": "{count, plural, one {# Alias wurde wegen eines Konflikts übersprungen} other {# Aliase wurden wegen Konflikten übersprungen}}",
+      "loadFailed": "Zusammenführungsgruppen konnten nicht geladen werden",
+      "applyFailed": "Zahlungsempfänger konnten nicht zusammengeführt werden"
+    },
+    "categoryMatchLabel": "Nur Zahlungsempfänger derselben Kategorie zusammenführen",
+    "categoryMatchHelp": "Hält Zahlungsempfänger getrennt, wenn sich ihre Kategorien unterscheiden, und reduziert so Fehltreffer.",
+    "granularityLabel": "Kategorie-Übereinstimmungsebene",
+    "selectAll": "Alle auswählen",
+    "deselectAll": "Alle abwählen",
+    "granularity": {
+      "category": "Kategorie",
+      "subcategory": "Unterkategorie"
+    },
+    "ignoreCommonWordsLabel": "Häufige Wörter ignorieren",
+    "ignoreCommonWordsHelp": "Gruppen nicht auf generische Wörter (Restaurant, Cafe, Ländernamen) oder Wörter stützen, mit denen viele verschiedene Zahlungsempfänger beginnen.",
+    "commonWordSensitivityLabel": "Empfindlichkeit für häufige Wörter: {count}+ Varianten",
+    "commonWordSensitivityHelp": "Ein führendes Wort gilt als häufig, sobald mindestens so viele verschiedene Zahlungsempfänger davon abzweigen. Niedriger = aggressiver filtern."
   },
   "deactivateUnused": {
     "title": "Ungenutzte Zahlungsempfänger deaktivieren",

@@ -4,6 +4,7 @@
     "subtitle": "Gestisci i beneficiari e le loro categorie predefinite",
     "deactivateUnused": "Disattiva inutilizzati",
     "autoAssignCategories": "Assegna categorie automaticamente",
+    "autoMergePayees": "Unisci beneficiari automaticamente",
     "newPayee": "+ Nuovo beneficiario",
     "searchPlaceholder": "Cerca beneficiari...",
     "statusAll": "Tutti ({count})",
@@ -137,6 +138,56 @@
       "loadFailed": "Caricamento suggerimenti non riuscito",
       "applyFailed": "Applicazione delle categorie non riuscita"
     }
+  },
+  "autoMerge": {
+    "title": "Unisci beneficiari automaticamente",
+    "howItWorksTitle": "Come funziona",
+    "howItWorksBody": "Questa funzione esamina i tuoi beneficiari e raggruppa le varianti in cui un nome estende un altro - ad esempio \"Lidl\", \"LIDL sp. z o.o.\" e \"LIDL WARSZAWA 0421\" si basano tutti su \"Lidl\". Ogni gruppo viene unito in un unico beneficiario canonico e viene creato un alias con caratteri jolly (come \"*LIDL*\") in modo che le importazioni future vengano abbinate automaticamente. I beneficiari che condividono solo una parola comune (come \"Royal Electric\" e \"Royal City Nursery\") restano separati. Rivedi e modifica ciascun gruppo prima di applicarlo.",
+    "minGroupSizeLabel": "Dimensione minima del gruppo: {count}",
+    "minGroupSizeHelp": "Suggerisci solo gruppi con almeno questo numero di beneficiari",
+    "similarityLabel": "Soglia di somiglianza: {percent}%",
+    "similarityHelp": "Tolleranza ortografica: abbassala per raggruppare anche corrispondenze simili come LIDL / LIDI; 100% richiede una corrispondenza esatta della parola chiave.",
+    "minTokenLengthLabel": "Lunghezza minima della parola chiave: {count}",
+    "minTokenLengthHelp": "Ignora le parole chiave più corte di questo valore durante il raggruppamento",
+    "includeInactiveLabel": "Includi beneficiari inattivi",
+    "previewButton": "Anteprima gruppi",
+    "loading": "Caricamento...",
+    "groupsHeader": "Gruppi ({count} trovati)",
+    "empty": {
+      "line1": "Nessun gruppo di unione corrisponde ai criteri attuali.",
+      "line2": "Prova ad abbassare la soglia di somiglianza o la dimensione del gruppo."
+    },
+    "includeGroupLabel": "Includi questo gruppo",
+    "canonicalNameLabel": "Mantieni come beneficiario",
+    "aliasLabel": "Alias per importazioni future",
+    "aliasPlaceholder": "es. *LIDL*",
+    "keepLabel": "Mantieni questo beneficiario",
+    "includeMemberLabel": "Includi nell'unione",
+    "keepBadge": "Mantieni",
+    "memberTransactions": "{count, plural, one {# transazione} other {# transazioni}}",
+    "selectedCount": "{count, plural, one {# gruppo selezionato} other {# gruppi selezionati}}",
+    "applyButton": "Unisci {count, plural, one {# gruppo} other {# gruppi}}",
+    "applying": "Unione in corso...",
+    "toasts": {
+      "selectAtLeastOne": "Seleziona almeno un gruppo da unire",
+      "applied": "Uniti {groups, plural, one {# gruppo} other {# gruppi}} ({payees} beneficiari combinati)",
+      "aliasesSkipped": "{count, plural, one {# alias è stato saltato a causa di un conflitto} other {# alias sono stati saltati a causa di conflitti}}",
+      "loadFailed": "Impossibile caricare i gruppi di unione",
+      "applyFailed": "Impossibile unire i beneficiari"
+    },
+    "categoryMatchLabel": "Unisci solo beneficiari della stessa categoria",
+    "categoryMatchHelp": "Mantiene separati i beneficiari quando le categorie differiscono, riducendo le corrispondenze errate.",
+    "granularityLabel": "Livello di corrispondenza della categoria",
+    "selectAll": "Seleziona tutto",
+    "deselectAll": "Deseleziona tutto",
+    "granularity": {
+      "category": "Categoria",
+      "subcategory": "Sottocategoria"
+    },
+    "ignoreCommonWordsLabel": "Ignora le parole comuni",
+    "ignoreCommonWordsHelp": "Non raggruppare in base a parole generiche (Ristorante, Cafe, nomi di Paesi) o a parole con cui iniziano molti beneficiari diversi.",
+    "commonWordSensitivityLabel": "Sensibilità alle parole comuni: {count}+ varianti",
+    "commonWordSensitivityHelp": "Una parola iniziale è considerata comune quando almeno questo numero di beneficiari diversi ne deriva. Più basso = filtro più aggressivo."
   },
   "deactivateUnused": {
     "title": "Disattiva beneficiari inutilizzati",

@@ -282,7 +282,9 @@
     "aliasDuplicate": "L'alias \"{{ alias }}\" è già assegnato al beneficiario \"{{ payeeName }}\"",
     "aliasOverlap": "L'alias \"{{ alias }}\" si sovrappone all'alias esistente \"{{ existingAlias }}\" del beneficiario \"{{ payeeName }}\". Considera di modificarne uno.",
     "aliasNotFound": "Alias con ID {{ id }} non trovato",
-    "mergeSelf": "Impossibile unire un beneficiario con se stesso"
+    "mergeSelf": "Impossibile unire un beneficiario con se stesso",
+    "autoMergeDuplicatePayee": "Un beneficiario compare in più di un gruppo di unione",
+    "autoMergeSourceNotFound": "Uno o più beneficiari di origine non sono stati trovati"
   },
   "reports": {
     "notFound": "Report con ID {{ id }} non trovato",

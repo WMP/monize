@@ -4,6 +4,7 @@
     "subtitle": "[XX-Manage your payees and their default categories-XX]",
     "deactivateUnused": "[XX-Deactivate Unused-XX]",
     "autoAssignCategories": "[XX-Auto-Assign Categories-XX]",
+    "autoMergePayees": "[XX-Auto-Merge Payees-XX]",
     "newPayee": "[XX-+ New Payee-XX]",
     "searchPlaceholder": "[XX-Search payees...-XX]",
     "statusAll": "[XX-All ({count})-XX]",
@@ -137,6 +138,56 @@
       "loadFailed": "[XX-Failed to load suggestions-XX]",
       "applyFailed": "[XX-Failed to apply category assignments-XX]"
     }
+  },
+  "autoMerge": {
+    "title": "[XX-Auto-Merge Payees-XX]",
+    "howItWorksTitle": "[XX-How it works-XX]",
+    "howItWorksBody": "[XX-This feature scans your payees and groups variants where one name extends another - for example \"Lidl\", \"LIDL sp. z o.o.\" and \"LIDL WARSZAWA 0421\" all build on \"Lidl\". Each group is merged into a single canonical payee, and a wildcard alias (such as \"*LIDL*\") is created so future imports are matched automatically. Payees that merely share a common word (like \"Royal Electric\" and \"Royal City Nursery\") are kept separate. Review and adjust each group before applying.-XX]",
+    "minGroupSizeLabel": "[XX-Minimum Group Size: {count}-XX]",
+    "minGroupSizeHelp": "[XX-Only suggest groups with at least this many payees-XX]",
+    "similarityLabel": "[XX-Similarity Threshold: {percent}%-XX]",
+    "similarityHelp": "[XX-Spelling tolerance: lower it to also group near-matches like LIDL / LIDI; 100% requires an exact keyword match.-XX]",
+    "minTokenLengthLabel": "[XX-Minimum Keyword Length: {count}-XX]",
+    "minTokenLengthHelp": "[XX-Ignore keywords shorter than this when grouping-XX]",
+    "includeInactiveLabel": "[XX-Include inactive payees-XX]",
+    "previewButton": "[XX-Preview Groups-XX]",
+    "loading": "[XX-Loading...-XX]",
+    "groupsHeader": "[XX-Groups ({count} found)-XX]",
+    "empty": {
+      "line1": "[XX-No merge groups match the current criteria.-XX]",
+      "line2": "[XX-Try lowering the similarity threshold or group size.-XX]"
+    },
+    "includeGroupLabel": "[XX-Include this group-XX]",
+    "canonicalNameLabel": "[XX-Keep as payee-XX]",
+    "aliasLabel": "[XX-Alias for future imports-XX]",
+    "aliasPlaceholder": "[XX-e.g., *LIDL*-XX]",
+    "keepLabel": "[XX-Keep this payee-XX]",
+    "includeMemberLabel": "[XX-Include in merge-XX]",
+    "keepBadge": "[XX-Keep-XX]",
+    "memberTransactions": "[XX-{count, plural, one {# transaction} other {# transactions}}-XX]",
+    "selectedCount": "[XX-{count, plural, one {# group selected} other {# groups selected}}-XX]",
+    "applyButton": "[XX-Merge {count, plural, one {# Group} other {# Groups}}-XX]",
+    "applying": "[XX-Merging...-XX]",
+    "toasts": {
+      "selectAtLeastOne": "[XX-Please select at least one group to merge-XX]",
+      "applied": "[XX-Merged {groups, plural, one {# group} other {# groups}} ({payees} payees combined)-XX]",
+      "aliasesSkipped": "[XX-{count, plural, one {# alias was skipped due to a conflict} other {# aliases were skipped due to conflicts}}-XX]",
+      "loadFailed": "[XX-Failed to load merge groups-XX]",
+      "applyFailed": "[XX-Failed to merge payees-XX]"
+    },
+    "categoryMatchLabel": "[XX-Only merge payees in the same category-XX]",
+    "categoryMatchHelp": "[XX-Keep payees apart when their categories differ, reducing false matches.-XX]",
+    "granularityLabel": "[XX-Category match level-XX]",
+    "selectAll": "[XX-Select all-XX]",
+    "deselectAll": "[XX-Deselect all-XX]",
+    "granularity": {
+      "category": "[XX-Category-XX]",
+      "subcategory": "[XX-Subcategory-XX]"
+    },
+    "ignoreCommonWordsLabel": "[XX-Ignore common words-XX]",
+    "ignoreCommonWordsHelp": "[XX-Don't anchor groups on generic words (Restaurant, Cafe, country names) or words that many different payees start with.-XX]",
+    "commonWordSensitivityLabel": "[XX-Common-word sensitivity: {count}+ variants-XX]",
+    "commonWordSensitivityHelp": "[XX-A leading word is treated as common once at least this many different payees branch off it. Lower = filter more aggressively.-XX]"
   },
   "deactivateUnused": {
     "title": "[XX-Deactivate Unused Payees-XX]",

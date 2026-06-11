@@ -14,6 +14,10 @@ import {
   CreatePayeeAliasData,
   MergePayeeData,
   MergePayeeResult,
+  AutoMergePreviewParams,
+  AutoMergeGroup,
+  ApplyAutoMergeGroup,
+  ApplyAutoMergeResult,
 } from '@/types/payee';
 import { dedupe, invalidateCache } from './apiCache';
 
@@ -205,6 +209,31 @@ export const payeesApi = {
   // Merge one payee into another
   mergePayees: async (data: MergePayeeData): Promise<MergePayeeResult> => {
     const response = await apiClient.post<MergePayeeResult>('/payees/merge', data);
+    invalidateCache('payees:');
+    return response.data;
+  },
+
+  // ===== Auto-Merge Methods =====
+
+  // Preview auto-merge groups of near-duplicate payees
+  getAutoMergePreview: async (params: AutoMergePreviewParams): Promise<AutoMergeGroup[]> => {
+    const response = await apiClient.get<{ groups: AutoMergeGroup[] }>('/payees/auto-merge/preview', {
+      params: {
+        minGroupSize: params.minGroupSize,
+        similarityThreshold: params.similarityThreshold,
+        minTokenLength: params.minTokenLength,
+        includeInactive: params.includeInactive,
+        categoryMatch: params.categoryMatch,
+        ignoreCommonWords: params.ignoreCommonWords,
+        commonWordMinVariants: params.commonWordMinVariants,
+      },
+    });
+    return response.data.groups;
+  },
+
+  // Apply the chosen auto-merge groups
+  applyAutoMerge: async (groups: ApplyAutoMergeGroup[]): Promise<ApplyAutoMergeResult> => {
+    const response = await apiClient.post<ApplyAutoMergeResult>('/payees/auto-merge/apply', { groups });
     invalidateCache('payees:');
     return response.data;
   },

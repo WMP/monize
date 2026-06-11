@@ -282,7 +282,9 @@
     "aliasDuplicate": "Alias \"{{ alias }}\" jest już przypisany do odbiorcy \"{{ payeeName }}\"",
     "aliasOverlap": "Alias \"{{ alias }}\" pokrywa się z istniejącym aliasem \"{{ existingAlias }}\" odbiorcy \"{{ payeeName }}\". Rozważ modyfikację jednego z nich.",
     "aliasNotFound": "Nie znaleziono aliasu o ID {{ id }}",
-    "mergeSelf": "Nie można scalić odbiorcy z samym sobą"
+    "mergeSelf": "Nie można scalić odbiorcy z samym sobą",
+    "autoMergeDuplicatePayee": "Odbiorca występuje w więcej niż jednej grupie scalania",
+    "autoMergeSourceNotFound": "Nie znaleziono jednego lub więcej odbiorców źródłowych"
   },
   "reports": {
     "notFound": "Nie znaleziono raportu o ID {{ id }}",
