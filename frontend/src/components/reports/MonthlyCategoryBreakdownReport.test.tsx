@@ -112,6 +112,7 @@ describe('MonthlyCategoryBreakdownReport', () => {
     vi.clearAllMocks();
     mockPush.mockClear();
     mockIsValid = true;
+    window.localStorage.clear();
   });
 
   it('shows loading state initially', async () => {
@@ -252,6 +253,30 @@ describe('MonthlyCategoryBreakdownReport', () => {
     });
 
     // Groceries is the only expense, so its monthly value is 100% of expenses.
+    await waitFor(() => {
+      expect(screen.getAllByText('-100.0%').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('persists the percentage toggle to localStorage and restores it', async () => {
+    mockGetMonthlyCategoryBreakdown.mockResolvedValue(sampleResponse);
+    const first = render(<MonthlyCategoryBreakdownReport />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Groceries')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Show percentages'));
+    });
+    await waitFor(() => {
+      expect(screen.getAllByText('-100.0%').length).toBeGreaterThan(0);
+    });
+
+    // Re-mounting the report reads the persisted toggle and stays in
+    // percentage mode without any further interaction.
+    first.unmount();
+    render(<MonthlyCategoryBreakdownReport />);
     await waitFor(() => {
       expect(screen.getAllByText('-100.0%').length).toBeGreaterThan(0);
     });

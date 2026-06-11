@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
@@ -9,11 +9,16 @@ import { MonthlyBreakdownCategoryRow } from '@/types/built-in-reports';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useDateRange } from '@/hooks/useDateRange';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useReportData } from '@/hooks/useReportData';
 import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { ReportError } from '@/components/reports/ReportError';
 import { exportToCsv } from '@/lib/csv-export';
+
+const RANGE_STORAGE_KEY = 'monize-reports-monthly-category-breakdown-range';
+const PERCENTAGES_STORAGE_KEY =
+  'monize-reports-monthly-category-breakdown-percentages';
 
 // Deviation thresholds (fraction of the non-zero average) mirroring yaffa.
 const DEVIATION_LEVEL_1 = 0.05;
@@ -154,7 +159,10 @@ export function MonthlyCategoryBreakdownReport() {
   const { formatCurrency } = useNumberFormat();
   const { formatMonth } = useDateFormat();
   const otherExpensesLabel = t('monthlyCategoryBreakdown.otherExpenses');
-  const [showPercentages, setShowPercentages] = useState(false);
+  const [showPercentages, setShowPercentages] = useLocalStorage<boolean>(
+    PERCENTAGES_STORAGE_KEY,
+    false,
+  );
   const {
     dateRange,
     setDateRange,
@@ -164,7 +172,7 @@ export function MonthlyCategoryBreakdownReport() {
     setEndDate,
     resolvedRange,
     isValid,
-  } = useDateRange({ defaultRange: '6m' });
+  } = useDateRange({ defaultRange: '6m', storageKey: RANGE_STORAGE_KEY });
 
   const { start: rangeStart, end: rangeEnd } = resolvedRange;
 
