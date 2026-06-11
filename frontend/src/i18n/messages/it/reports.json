@@ -37,6 +37,7 @@
       "spending-by-category": "Uscite per categoria",
       "spending-by-payee": "Uscite per beneficiario",
       "monthly-spending-trend": "Andamento mensile delle uscite",
+      "monthly-category-breakdown": "Ripartizione mensile",
       "income-vs-expenses": "Entrate vs uscite",
       "income-by-source": "Entrate per fonte",
       "net-worth": "Patrimonio netto nel tempo",
@@ -81,6 +82,7 @@
       "spending-by-category": "Scopri dove vai i tuoi soldi con una ripartizione delle uscite per categoria nel tempo.",
       "spending-by-payee": "Tieni traccia di quanto spendi con ogni esercente o fornitore nel tempo.",
       "monthly-spending-trend": "Visualizza i tuoi schemi di spesa mese per mese per individuare tendenze.",
+      "monthly-category-breakdown": "Visualizza spese ed entrate per categoria, suddivise mese per mese, con subtotali, medie ed evidenziazione degli scostamenti.",
       "income-vs-expenses": "Confronta le entrate con le uscite e monitora il tasso di risparmio nel tempo.",
       "income-by-source": "Analizza le tue fonti di entrata per capire da dove provengono i tuoi soldi.",
       "net-worth": "Monitora il patrimonio netto complessivo includendo tutti i conti, le attività e le passività.",
@@ -991,6 +993,21 @@
     "colValue": "Valore",
     "colMean": "Media",
     "colVolatility": "Volatilità"
+  },
+  "monthlyCategoryBreakdown": {
+    "showPercentages": "Mostra percentuali",
+    "noData": "Nessun dato per questo periodo.",
+    "category": "Categoria",
+    "total": "Totale",
+    "avgPerMonth": "Media/mese",
+    "otherExpenses": "Altre spese",
+    "subtotal": "Subtotale",
+    "summary": "Riepilogo",
+    "totalExpenses": "Spese totali",
+    "totalIncome": "Entrate totali",
+    "balance": "Saldo",
+    "exportCsv": "Esporta CSV",
+    "csvParentColumn": "Categoria principale"
   },
   "monthlyComparison": {
     "loadError": "Caricamento dati del report non riuscito.",

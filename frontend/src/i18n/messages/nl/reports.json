@@ -37,6 +37,7 @@
       "spending-by-category": "Uitgaven per categorie",
       "spending-by-payee": "Uitgaven per begunstigde",
       "monthly-spending-trend": "Maandelijkse uitgaventrend",
+      "monthly-category-breakdown": "Maandelijks overzicht",
       "income-vs-expenses": "Inkomsten vs. uitgaven",
       "income-by-source": "Inkomsten per bron",
       "net-worth": "Nettowaarde in de tijd",
@@ -81,6 +82,7 @@
       "spending-by-category": "Bekijk waar jouw geld naartoe gaat met een overzicht van uitgaven per categorie in de tijd.",
       "spending-by-payee": "Volg hoeveel je uitgeeft bij elke handelaar of leverancier in de tijd.",
       "monthly-spending-trend": "Bekijk jouw uitgavenpatronen van maand tot maand om trends te herkennen.",
+      "monthly-category-breakdown": "Bekijk uitgaven en inkomsten per categorie, maand voor maand uitgesplitst, met subtotalen, gemiddelden en markering van afwijkingen.",
       "income-vs-expenses": "Vergelijk jouw inkomsten met uitgaven en volg jouw spaarquote in de tijd.",
       "income-by-source": "Analyseer jouw inkomstenstromen om te begrijpen waar jouw geld vandaan komt.",
       "net-worth": "Volg jouw totale nettowaarde inclusief alle rekeningen, activa en passiva.",
@@ -991,6 +993,21 @@
     "colValue": "Waarde",
     "colMean": "Gemiddelde",
     "colVolatility": "Volatiliteit"
+  },
+  "monthlyCategoryBreakdown": {
+    "showPercentages": "Percentages tonen",
+    "noData": "Geen gegevens voor deze periode.",
+    "category": "Categorie",
+    "total": "Totaal",
+    "avgPerMonth": "Gem./maand",
+    "otherExpenses": "Overige uitgaven",
+    "subtotal": "Subtotaal",
+    "summary": "Samenvatting",
+    "totalExpenses": "Totale uitgaven",
+    "totalIncome": "Totale inkomsten",
+    "balance": "Saldo",
+    "exportCsv": "CSV exporteren",
+    "csvParentColumn": "Hoofdcategorie"
   },
   "monthlyComparison": {
     "loadError": "Rapportgegevens konden niet worden geladen.",

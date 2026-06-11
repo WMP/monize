@@ -90,6 +90,46 @@ export function formatDate(date: Date | string, format: string = 'browser', loca
 }
 
 /**
+ * Format a year-month value (YYYY-MM) according to the user's date format,
+ * dropping the day component. Used for month column headers where only the
+ * month and year are meaningful, so headers follow the same ordering and
+ * separators as full dates rendered elsewhere.
+ * @param month - Year-month string in YYYY-MM form
+ * @param format - Date format string or 'browser' for locale-based formatting
+ * @param locale - Optional BCP 47 locale used only when format is 'browser'
+ */
+export function formatMonth(month: string, format: string = 'browser', locale?: string): string {
+  const [yearStr, monStr] = month.split('-');
+  const year = Number(yearStr);
+  const monthIndex = Number(monStr) - 1;
+  const monthPadded = monStr.padStart(2, '0');
+
+  const browserFormat = () =>
+    new Date(year, monthIndex, 1).toLocaleDateString(locale, {
+      year: 'numeric',
+      month: '2-digit',
+    });
+
+  if (format === 'browser') {
+    return browserFormat();
+  }
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  switch (format) {
+    case 'YYYY-MM-DD':
+      return `${year}-${monthPadded}`;
+    case 'MM/DD/YYYY':
+    case 'DD/MM/YYYY':
+      return `${monthPadded}/${year}`;
+    case 'DD-MMM-YYYY':
+      return `${monthNames[monthIndex]}-${year}`;
+    default:
+      return browserFormat();
+  }
+}
+
+/**
  * Resolve the user's timezone preference to an IANA timezone string.
  * 'browser' (or undefined) falls back to the browser's detected timezone.
  */

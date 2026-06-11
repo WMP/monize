@@ -37,6 +37,7 @@
       "spending-by-category": "Despesas por Categoria",
       "spending-by-payee": "Despesas por Beneficiário",
       "monthly-spending-trend": "Tendência Mensal de Despesas",
+      "monthly-category-breakdown": "Repartição mensal",
       "income-vs-expenses": "Receitas vs Despesas",
       "income-by-source": "Receitas por Fonte",
       "net-worth": "Evolução do Valor Líquido",
@@ -81,6 +82,7 @@
       "spending-by-category": "Veja para onde vai o seu dinheiro com uma análise das despesas por categoria ao longo do tempo.",
       "spending-by-payee": "Acompanhe quanto gasta com cada comerciante ou fornecedor ao longo do tempo.",
       "monthly-spending-trend": "Veja os seus padrões de despesa mês a mês para identificar tendências.",
+      "monthly-category-breakdown": "Veja despesas e receitas por categoria, repartidas mês a mês, com subtotais, médias e destaque de desvios.",
       "income-vs-expenses": "Compare as suas receitas com as despesas e acompanhe a sua taxa de poupança ao longo do tempo.",
       "income-by-source": "Analise as suas fontes de receita para perceber de onde vem o seu dinheiro.",
       "net-worth": "Acompanhe o seu valor líquido total incluindo todas as contas, ativos e passivos.",
@@ -991,6 +993,21 @@
     "colValue": "Valor",
     "colMean": "Média",
     "colVolatility": "Volatilidade"
+  },
+  "monthlyCategoryBreakdown": {
+    "showPercentages": "Mostrar percentagens",
+    "noData": "Sem dados para este período.",
+    "category": "Categoria",
+    "total": "Total",
+    "avgPerMonth": "Média/mês",
+    "otherExpenses": "Outras despesas",
+    "subtotal": "Subtotal",
+    "summary": "Resumo",
+    "totalExpenses": "Despesas totais",
+    "totalIncome": "Receitas totais",
+    "balance": "Saldo",
+    "exportCsv": "Exportar CSV",
+    "csvParentColumn": "Categoria principal"
   },
   "monthlyComparison": {
     "loadError": "Falha ao carregar os dados do relatório.",
