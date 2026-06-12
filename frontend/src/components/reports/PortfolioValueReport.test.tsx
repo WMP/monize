@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@/test/render';
 import { PortfolioValueReport } from './PortfolioValueReport';
+import { renderChartFlagDot } from '@/components/investments/portfolio-chart-utils';
+import { chartColors } from '@/lib/chart-colors';
 
 vi.mock('@/lib/pdf-export', () => ({
   exportToPdf: vi.fn().mockResolvedValue(undefined),
@@ -12,6 +14,7 @@ vi.mock('@/hooks/useNumberFormat', () => ({
     formatCurrencyCompact: (n: number, _currency?: string) => `$${n.toFixed(0)}`,
     formatCurrency: (n: number, _currency?: string) => `$${n.toFixed(2)}`,
     formatCurrencyAxis: (n: number) => `$${n}`,
+    formatCurrencyFlag: (n: number, _currency?: string) => `$${n}`,
     defaultCurrency: 'CAD',
   }),
 }));
@@ -72,7 +75,17 @@ vi.mock('@/components/ui/ExportDropdown', () => ({
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: any) => <div data-testid="responsive-container">{children}</div>,
   AreaChart: ({ children }: any) => <div data-testid="area-chart">{children}</div>,
-  Area: () => null,
+  // Invoke the dot render-prop so the high/low bubble wiring (and its dismiss
+  // control) is exercised. Indices 0..2 cover both extremes of the 3-point
+  // series the dismiss test renders.
+  Area: ({ dot }: any) =>
+    typeof dot === 'function' ? (
+      <>
+        {dot({ cx: 10, cy: 20, index: 0 })}
+        {dot({ cx: 30, cy: 40, index: 1 })}
+        {dot({ cx: 50, cy: 60, index: 2 })}
+      </>
+    ) : null,
   XAxis: ({ tickFormatter }: any) => (
     <div>
       {tickFormatter ? tickFormatter('Jan 2024') : ''}
@@ -206,6 +219,36 @@ describe('PortfolioValueReport', () => {
     expect(screen.getByText('Lowest Value')).toBeInTheDocument();
     expect(screen.getByText('Period Change')).toBeInTheDocument();
     expect(screen.getByText('Period Return')).toBeInTheDocument();
+  });
+
+  it('lets the user dismiss a high or low value bubble without persisting it', async () => {
+    mockGetInvestmentsMonthly.mockResolvedValue([
+      { month: '2024-06-01', value: 50000 },
+      { month: '2024-07-01', value: 52000 },
+      { month: '2024-08-01', value: 55000 },
+    ]);
+    mockGetPortfolioSummary.mockResolvedValue(emptyPortfolio);
+    mockGetInvestmentAccounts.mockResolvedValue([]);
+    render(<PortfolioValueReport />);
+
+    const flagMock = vi.mocked(renderChartFlagDot);
+    await waitFor(() => {
+      expect(flagMock.mock.calls.some(([o]: any) => o.color === chartColors.income)).toBe(true);
+    });
+
+    // Both bubbles are wired with a dismiss control and the localized label.
+    const highCall = flagMock.mock.calls.find(([o]: any) => o.color === chartColors.income)!;
+    expect(typeof highCall[0].onDismiss).toBe('function');
+    expect(highCall[0].dismissLabel).toBe('Hide this value');
+    expect(flagMock.mock.calls.some(([o]: any) => o.color === chartColors.expense)).toBe(true);
+
+    // Dismissing the high bubble hides it on the next render; the low remains.
+    flagMock.mockClear();
+    await act(async () => {
+      highCall[0].onDismiss!();
+    });
+    expect(flagMock.mock.calls.some(([o]: any) => o.color === chartColors.income)).toBe(false);
+    expect(flagMock.mock.calls.some(([o]: any) => o.color === chartColors.expense)).toBe(true);
   });
 
   it('renders the area chart', async () => {
