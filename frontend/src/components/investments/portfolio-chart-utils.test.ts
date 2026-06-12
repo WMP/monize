@@ -244,6 +244,24 @@ describe('renderChartFlagDot', () => {
     const el = renderChartFlagDot({ ...baseOpts, side: 'above', gap: 12 });
     expect(el).toBeTruthy();
   });
+
+  it('adds a dismiss control wired to onDismiss when provided', () => {
+    const onDismiss = vi.fn();
+    const el = renderChartFlagDot({ ...baseOpts, side: 'right', onDismiss, dismissLabel: 'Hide' });
+    const children = (el.props as any).children as any[];
+    const closeButton = children.find((c: any) => c && c.props && c.props.role === 'button');
+    expect(closeButton).toBeTruthy();
+    expect(closeButton.props['aria-label']).toBe('Hide');
+    closeButton.props.onClick({ stopPropagation: () => {} });
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits the dismiss control when onDismiss is absent', () => {
+    const el = renderChartFlagDot({ ...baseOpts, side: 'right' });
+    const children = (el.props as any).children as any[];
+    const closeButton = children.find((c: any) => c && c.props && c.props.role === 'button');
+    expect(closeButton).toBeFalsy();
+  });
 });
 
 describe('ChartFlagShadowFilter', () => {
@@ -316,5 +334,32 @@ describe('renderMinMaxFlagDots', () => {
       index: 0,
     });
     expect(el.type).toBe('circle');
+  });
+
+  it('hides the high bubble when highDismissed is set', () => {
+    const el = renderMinMaxFlagDots({ ...base, cx: 10, cy: 20, index: 1, highDismissed: true });
+    expect(el.type).toBe('circle');
+  });
+
+  it('hides the low bubble when lowDismissed is set', () => {
+    const el = renderMinMaxFlagDots({ ...base, cx: 10, cy: 20, index: 4, lowDismissed: true });
+    expect(el.type).toBe('circle');
+  });
+
+  it('wires the high bubble dismiss control to onDismissHigh', () => {
+    const onDismissHigh = vi.fn();
+    const el = renderMinMaxFlagDots({
+      ...base,
+      cx: 10,
+      cy: 20,
+      index: 1,
+      onDismissHigh,
+      dismissLabel: 'Hide',
+    });
+    const children = (el.props as any).children as any[];
+    const closeButton = children.find((c: any) => c && c.props && c.props.role === 'button');
+    expect(closeButton).toBeTruthy();
+    closeButton.props.onClick({ stopPropagation: () => {} });
+    expect(onDismissHigh).toHaveBeenCalledTimes(1);
   });
 });

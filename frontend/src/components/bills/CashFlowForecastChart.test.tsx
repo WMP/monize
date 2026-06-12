@@ -472,6 +472,41 @@ describe('CashFlowForecastChart', () => {
       expect(labels).toContain('$-150');
     });
 
+    it('temporarily hides a value bubble when its dismiss control is clicked', () => {
+      const forecastData = [
+        { label: 'Day 1', balance: 1000, transactions: [{ amount: 0, name: 'Open' }] },
+        { label: 'Day 2', balance: -150, transactions: [{ amount: -1150, name: 'Rent' }] },
+      ];
+      mockBuildForecast.mockReturnValue(forecastData);
+      mockGetForecastSummary.mockReturnValue({
+        startingBalance: 1000,
+        endingBalance: -150,
+        minBalance: -150,
+        goesNegative: true,
+      });
+      const { container } = render(
+        <CashFlowForecastChart
+          scheduledTransactions={[{} as any]}
+          accounts={[makeAccount()]}
+          isLoading={false}
+        />,
+      );
+      const labels = () =>
+        Array.from(
+          container.querySelectorAll('[data-testid="line-dots"] text'),
+        ).map((node) => node.textContent);
+      expect(labels()).toEqual(expect.arrayContaining(['$1000', '$-150']));
+
+      // The dot mock renders index 0 (high, $1000) first, so the first dismiss
+      // control belongs to the high bubble.
+      const closeControls = container.querySelectorAll('.chart-flag-dismiss');
+      expect(closeControls).toHaveLength(2);
+      fireEvent.click(closeControls[0]);
+
+      expect(labels()).toContain('$-150');
+      expect(labels()).not.toContain('$1000');
+    });
+
     it('formats the bubble labels with the compact flag formatter', () => {
       const forecastData = [
         { label: 'Day 1', balance: 60000, transactions: [{ amount: 0, name: 'Open' }] },

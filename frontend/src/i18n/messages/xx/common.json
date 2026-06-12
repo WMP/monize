@@ -1,4 +1,7 @@
 {
+  "chartFlag": {
+    "dismiss": "[XX-Hide this value-XX]"
+  },
   "appVersion": {
     "releaseNotes": "[XX-View release notes for v{version}-XX]"
   },

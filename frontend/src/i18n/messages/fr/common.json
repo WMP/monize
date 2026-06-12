@@ -1,4 +1,7 @@
 {
+  "chartFlag": {
+    "dismiss": "Masquer cette valeur"
+  },
   "appVersion": {
     "releaseNotes": "Voir les notes de version de la v{version}"
   },

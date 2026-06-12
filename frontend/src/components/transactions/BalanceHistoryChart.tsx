@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { gainLossColor } from '@/lib/format';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
@@ -77,10 +77,17 @@ export function BalanceHistoryChart({
   accountName,
 }: BalanceHistoryChartProps) {
   const t = useTranslations('transactions');
+  const tc = useTranslations('common');
   const chartTitle = t('charts.balanceHistory.title');
   const { formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatCurrencyFlag } =
     useNumberFormat();
   const chartRef = useRef<HTMLDivElement>(null);
+  // High/low value bubbles a user has temporarily dismissed, keyed by the value
+  // they marked so a later data change with a new extreme shows its bubble
+  // again. Intentionally component-local (not persisted), so it resets on
+  // navigation.
+  const [dismissedHigh, setDismissedHigh] = useState<number | null>(null);
+  const [dismissedLow, setDismissedLow] = useState<number | null>(null);
   const downloadFilename = accountName ? `${chartTitle} - ${accountName}` : chartTitle;
 
   const formatCurrency = useCallback(
@@ -160,8 +167,12 @@ export function BalanceHistoryChart({
     );
   }
 
-  const highLabel = flags.show ? formatFlag(chartData[flags.maxIndex].balance) : '';
-  const lowLabel = flags.show ? formatFlag(chartData[flags.minIndex].balance) : '';
+  const highValue = flags.show ? chartData[flags.maxIndex].balance : null;
+  const lowValue = flags.show ? chartData[flags.minIndex].balance : null;
+  const highLabel = highValue !== null ? formatFlag(highValue) : '';
+  const lowLabel = lowValue !== null ? formatFlag(lowValue) : '';
+  const highDismissed = highValue !== null && highValue === dismissedHigh;
+  const lowDismissed = lowValue !== null && lowValue === dismissedLow;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 mb-6 min-h-[420px]">
@@ -237,6 +248,11 @@ export function BalanceHistoryChart({
                   lowColor: chartColors.expense,
                   highLabel,
                   lowLabel,
+                  highDismissed,
+                  lowDismissed,
+                  onDismissHigh: () => setDismissedHigh(highValue),
+                  onDismissLow: () => setDismissedLow(lowValue),
+                  dismissLabel: tc('chartFlag.dismiss'),
                 })
               }
               activeDot={{ r: 6, fill: chartColors.primary }}

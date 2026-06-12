@@ -169,6 +169,14 @@ export interface FlagDotOptions {
    * edge that would clip it.
    */
   gap?: number;
+  /**
+   * When provided, the bubble grows a small "x" control on its right edge
+   * that calls this on click, letting the user temporarily hide the bubble to
+   * see the chart behind it. The dismissal is the caller's state to track.
+   */
+  onDismiss?: () => void;
+  /** Localized title/aria label for the dismiss control. */
+  dismissLabel?: string;
 }
 
 export function renderChartFlagDot({
@@ -179,8 +187,13 @@ export function renderChartFlagDot({
   label,
   side,
   gap = 24,
+  onDismiss,
+  dismissLabel,
 }: FlagDotOptions): ReactElement {
-  const labelWidth = label.length * 7 + 14;
+  // Reserve room on the right of the bubble for the dismiss "x" when present.
+  const hasClose = typeof onDismiss === 'function';
+  const closeZone = hasClose ? 16 : 0;
+  const labelWidth = label.length * 7 + 14 + closeZone;
   const labelHeight = 22;
   const arrowSize = 5;
 
@@ -273,7 +286,7 @@ export function renderChartFlagDot({
       />
       <polygon points={arrowPoints} fill={color} fillOpacity={1} />
       <text
-        x={bubbleX + labelWidth / 2}
+        x={bubbleX + (labelWidth - closeZone) / 2}
         y={bubbleY + labelHeight / 2}
         textAnchor="middle"
         dominantBaseline="central"
@@ -284,6 +297,58 @@ export function renderChartFlagDot({
       >
         {label}
       </text>
+      {hasClose && (
+        <g
+          role="button"
+          aria-label={dismissLabel}
+          className="chart-flag-dismiss"
+          style={{ cursor: 'pointer', pointerEvents: 'all' }}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDismiss!();
+          }}
+        >
+          {dismissLabel ? <title>{dismissLabel}</title> : null}
+          {/* Faint divider separating the value from the dismiss control. */}
+          <line
+            x1={bubbleX + labelWidth - closeZone}
+            y1={bubbleY + 5}
+            x2={bubbleX + labelWidth - closeZone}
+            y2={bubbleY + labelHeight - 5}
+            stroke="#fff"
+            strokeOpacity={0.4}
+            strokeWidth={1}
+          />
+          {/* Transparent hit area so the whole close zone is clickable. */}
+          <rect
+            x={bubbleX + labelWidth - closeZone}
+            y={bubbleY}
+            width={closeZone}
+            height={labelHeight}
+            fill="transparent"
+          />
+          <line
+            x1={bubbleX + labelWidth - closeZone / 2 - 3}
+            y1={bubbleY + labelHeight / 2 - 3}
+            x2={bubbleX + labelWidth - closeZone / 2 + 3}
+            y2={bubbleY + labelHeight / 2 + 3}
+            stroke="#fff"
+            strokeWidth={1.3}
+            strokeLinecap="round"
+            strokeOpacity={1}
+          />
+          <line
+            x1={bubbleX + labelWidth - closeZone / 2 - 3}
+            y1={bubbleY + labelHeight / 2 + 3}
+            x2={bubbleX + labelWidth - closeZone / 2 + 3}
+            y2={bubbleY + labelHeight / 2 - 3}
+            stroke="#fff"
+            strokeWidth={1.3}
+            strokeLinecap="round"
+            strokeOpacity={1}
+          />
+        </g>
+      )}
     </g>
   );
 }
@@ -348,6 +413,14 @@ export interface MinMaxFlagDotOptions {
   highLabel: string;
   /** Pre-formatted label for the minimum point. */
   lowLabel: string;
+  /** When true, the high/low bubble is hidden (the user dismissed it). */
+  highDismissed?: boolean;
+  lowDismissed?: boolean;
+  /** Called when the user clicks the high/low bubble's dismiss control. */
+  onDismissHigh?: () => void;
+  onDismissLow?: () => void;
+  /** Localized title/aria label for the dismiss control. */
+  dismissLabel?: string;
 }
 
 /**
@@ -368,12 +441,18 @@ export function renderMinMaxFlagDots({
   lowColor,
   highLabel,
   lowLabel,
+  highDismissed,
+  lowDismissed,
+  onDismissHigh,
+  onDismissLow,
+  dismissLabel,
 }: MinMaxFlagDotOptions): ReactElement {
   if (cx == null || cy == null || index == null) {
     return <circle cx={0} cy={0} r={0} fill="none" />;
   }
-  const isMax = flags.show && index === flags.maxIndex;
-  const isMin = flags.show && index === flags.minIndex;
+  // A dismissed extreme renders like any other point: an invisible dot.
+  const isMax = flags.show && index === flags.maxIndex && !highDismissed;
+  const isMin = flags.show && index === flags.minIndex && !lowDismissed;
   if (!isMax && !isMin) {
     return <circle key={`dot-${index}`} cx={cx} cy={cy} r={0} fill="none" />;
   }
@@ -385,5 +464,7 @@ export function renderMinMaxFlagDots({
     color: isMax ? highColor : lowColor,
     label: isMax ? highLabel : lowLabel,
     side: isLeftHalf ? 'right' : 'left',
+    onDismiss: isMax ? onDismissHigh : onDismissLow,
+    dismissLabel,
   });
 }

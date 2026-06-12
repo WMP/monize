@@ -124,11 +124,17 @@ export function CashFlowForecastChart({
   isLoading,
 }: CashFlowForecastChartProps) {
   const t = useTranslations('bills');
+  const tc = useTranslations('common');
   const { formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatCurrencyFlag } =
     useNumberFormat();
   const { convertToDefault, defaultCurrency } = useExchangeRates();
   const [selectedPeriod, setSelectedPeriod] = useState<ForecastPeriod>(() => getStoredPeriod());
   const [selectedAccountId, setSelectedAccountId] = useState<string>(() => getStoredAccountId());
+  // High/low value bubbles the user has temporarily dismissed, keyed by the
+  // value they marked so a forecast change with a new extreme shows its bubble
+  // again. Component-local (not persisted), so it resets on navigation.
+  const [dismissedHigh, setDismissedHigh] = useState<number | null>(null);
+  const [dismissedLow, setDismissedLow] = useState<number | null>(null);
 
   // Persist period changes
   useEffect(() => {
@@ -201,8 +207,12 @@ export function CashFlowForecastChart({
     () => computeMinMaxFlagIndices(forecastData.map((dp) => dp.balance)),
     [forecastData],
   );
-  const highLabel = flags.show ? formatFlag(forecastData[flags.maxIndex].balance) : '';
-  const lowLabel = flags.show ? formatFlag(forecastData[flags.minIndex].balance) : '';
+  const highValue = flags.show ? forecastData[flags.maxIndex].balance : null;
+  const lowValue = flags.show ? forecastData[flags.minIndex].balance : null;
+  const highLabel = highValue !== null ? formatFlag(highValue) : '';
+  const lowLabel = lowValue !== null ? formatFlag(lowValue) : '';
+  const highDismissed = highValue !== null && highValue === dismissedHigh;
+  const lowDismissed = lowValue !== null && lowValue === dismissedLow;
 
   const areaGradient = useMemo(
     () => computeBalanceGradient(forecastData.map((point) => point.balance)),
@@ -360,6 +370,11 @@ export function CashFlowForecastChart({
                     lowColor: chartColors.expense,
                     highLabel,
                     lowLabel,
+                    highDismissed,
+                    lowDismissed,
+                    onDismissHigh: () => setDismissedHigh(highValue),
+                    onDismissLow: () => setDismissedLow(lowValue),
+                    dismissLabel: tc('chartFlag.dismiss'),
                   })
                 }
                 activeDot={{ r: 6, fill: chartColors.primary }}
