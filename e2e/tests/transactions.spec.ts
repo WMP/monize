@@ -47,16 +47,23 @@ test.describe('Transactions', () => {
     await createTransaction(api, { accountId: account.id, amount: 73.19, payeeName });
 
     await page.goto('/transactions');
+
+    const dialog = page.getByRole('dialog');
     // Clicking the row opens the edit modal; the amount cell doesn't stop
     // propagation (unlike the payee/category/action cells). first() since the
     // running-balance cell shows the same value for a single transaction.
-    await page
-      .locator('tr', { hasText: payeeName })
-      .getByText(/73\.19/)
-      .first()
-      .click();
+    // The list is client-rendered, so a click that lands before the row's
+    // handler hydrates is a no-op -- retry the click until the dialog opens
+    // rather than clicking once into the void.
+    await expect(async () => {
+      await page
+        .locator('tr', { hasText: payeeName })
+        .getByText(/73\.19/)
+        .first()
+        .click();
+      await expect(dialog).toBeVisible({ timeout: 2000 });
+    }).toPass({ timeout: 30000 });
 
-    const dialog = page.getByRole('dialog');
     await dialog.getByLabel(/amount/i).first().fill('88.88');
     await dialog.getByRole('button', { name: /update transaction/i }).click();
 

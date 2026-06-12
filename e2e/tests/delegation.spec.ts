@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures';
 import { loginUser } from '../helpers/auth';
+import { gotoStable } from '../helpers/nav';
 import { createApiClient, uniqueId } from '../helpers/api';
 import {
   createAccount,
@@ -52,13 +53,16 @@ test.describe('Delegation (shared access)', () => {
       const delegatePage = await delegateContext.newPage();
       await loginUser(delegatePage, email, password);
 
-      // Switch into the owner's context explicitly (deterministic -- avoids
-      // racing the DelegationBanner's auto-switch), then view the shared
-      // account. GET /accounts is @AllowDelegate and returns granted accounts.
+      // Switch into the owner's context explicitly so the server-side context
+      // is deterministic. The DelegationBanner in the browser page also
+      // auto-switches this single-owner delegate, and that path ends in a
+      // window.location.reload() which can abort a concurrent goto with
+      // net::ERR_ABORTED -- gotoStable retries past that transient reload.
+      // GET /accounts is @AllowDelegate and returns granted accounts.
       const delegateApi = createApiClient(delegatePage.request);
       await delegateApi.post('/auth/switch-context', { targetUserId: owner.id });
 
-      await delegatePage.goto('/accounts');
+      await gotoStable(delegatePage, '/accounts');
       await expect(
         delegatePage.locator('tr', { hasText: account.name }),
       ).toBeVisible({ timeout: 15000 });
