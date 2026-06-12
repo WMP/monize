@@ -14,6 +14,8 @@
     "closed": "Zamknięte",
     "editAria": "Edytuj ustawienia konta",
     "collapseAria": "Ukryj informacje o koncie",
+    "showAccountNumber": "Pokaż numer konta",
+    "hideAccountNumber": "Ukryj numer konta",
     "show": "Pokaż informacje o koncie"
   },
   "page": {

@@ -14,6 +14,8 @@
     "closed": "Closed",
     "editAria": "Edit account settings",
     "collapseAria": "Hide account info",
+    "showAccountNumber": "Show account number",
+    "hideAccountNumber": "Hide account number",
     "show": "Show account info"
   },
   "page": {

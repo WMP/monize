@@ -169,6 +169,14 @@ export interface FlagDotOptions {
    * edge that would clip it.
    */
   gap?: number;
+  /**
+   * When provided, the bubble grows a small "x" control on its right edge
+   * that calls this on click, letting the user temporarily hide the bubble to
+   * see the chart behind it. The dismissal is the caller's state to track.
+   */
+  onDismiss?: () => void;
+  /** Localized title/aria label for the dismiss control. */
+  dismissLabel?: string;
 }
 
 export function renderChartFlagDot({
@@ -179,8 +187,13 @@ export function renderChartFlagDot({
   label,
   side,
   gap = 24,
+  onDismiss,
+  dismissLabel,
 }: FlagDotOptions): ReactElement {
-  const labelWidth = label.length * 7 + 14;
+  // Reserve room on the right of the bubble for the dismiss "x" when present.
+  const hasClose = typeof onDismiss === 'function';
+  const closeZone = hasClose ? 16 : 0;
+  const labelWidth = label.length * 7 + 14 + closeZone;
   const labelHeight = 22;
   const arrowSize = 5;
 
@@ -273,7 +286,7 @@ export function renderChartFlagDot({
       />
       <polygon points={arrowPoints} fill={color} fillOpacity={1} />
       <text
-        x={bubbleX + labelWidth / 2}
+        x={bubbleX + (labelWidth - closeZone) / 2}
         y={bubbleY + labelHeight / 2}
         textAnchor="middle"
         dominantBaseline="central"
@@ -284,6 +297,58 @@ export function renderChartFlagDot({
       >
         {label}
       </text>
+      {hasClose && (
+        <g
+          role="button"
+          aria-label={dismissLabel}
+          className="chart-flag-dismiss"
+          style={{ cursor: 'pointer', pointerEvents: 'all' }}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDismiss!();
+          }}
+        >
+          {dismissLabel ? <title>{dismissLabel}</title> : null}
+          {/* Faint divider separating the value from the dismiss control. */}
+          <line
+            x1={bubbleX + labelWidth - closeZone}
+            y1={bubbleY + 5}
+            x2={bubbleX + labelWidth - closeZone}
+            y2={bubbleY + labelHeight - 5}
+            stroke="#fff"
+            strokeOpacity={0.4}
+            strokeWidth={1}
+          />
+          {/* Transparent hit area so the whole close zone is clickable. */}
+          <rect
+            x={bubbleX + labelWidth - closeZone}
+            y={bubbleY}
+            width={closeZone}
+            height={labelHeight}
+            fill="transparent"
+          />
+          <line
+            x1={bubbleX + labelWidth - closeZone / 2 - 3}
+            y1={bubbleY + labelHeight / 2 - 3}
+            x2={bubbleX + labelWidth - closeZone / 2 + 3}
+            y2={bubbleY + labelHeight / 2 + 3}
+            stroke="#fff"
+            strokeWidth={1.3}
+            strokeLinecap="round"
+            strokeOpacity={1}
+          />
+          <line
+            x1={bubbleX + labelWidth - closeZone / 2 - 3}
+            y1={bubbleY + labelHeight / 2 + 3}
+            x2={bubbleX + labelWidth - closeZone / 2 + 3}
+            y2={bubbleY + labelHeight / 2 - 3}
+            stroke="#fff"
+            strokeWidth={1.3}
+            strokeLinecap="round"
+            strokeOpacity={1}
+          />
+        </g>
+      )}
     </g>
   );
 }
@@ -297,4 +362,109 @@ export function ChartFlagShadowFilter(): ReactElement {
       </filter>
     </defs>
   );
+}
+
+export interface MinMaxFlagIndices {
+  /** Index of the first datapoint at the series maximum, or -1 when empty. */
+  maxIndex: number;
+  /** Index of the first datapoint at the series minimum, or -1 when empty. */
+  minIndex: number;
+  /**
+   * Whether to draw the high/low bubbles. False for an empty or flat series,
+   * where the two flags would coincide and convey nothing.
+   */
+  show: boolean;
+}
+
+/**
+ * Locate the highest and lowest points of a chart series so the high/low
+ * bubbles (see {@link renderMinMaxFlagDots}) can be pinned to them. Ties
+ * resolve to the first occurrence, matching the Portfolio Value chart.
+ */
+export function computeMinMaxFlagIndices(
+  values: readonly number[],
+): MinMaxFlagIndices {
+  if (values.length === 0) return { maxIndex: -1, minIndex: -1, show: false };
+  let maxIndex = 0;
+  let minIndex = 0;
+  for (let i = 1; i < values.length; i++) {
+    if (values[i] > values[maxIndex]) maxIndex = i;
+    if (values[i] < values[minIndex]) minIndex = i;
+  }
+  return { maxIndex, minIndex, show: values[maxIndex] !== values[minIndex] };
+}
+
+export interface MinMaxFlagDotOptions {
+  /** Recharts dot x coordinate. */
+  cx?: number;
+  /** Recharts dot y coordinate. */
+  cy?: number;
+  /** Recharts datapoint index. */
+  index?: number;
+  /** High/low indices for the series (see {@link computeMinMaxFlagIndices}). */
+  flags: MinMaxFlagIndices;
+  /** Number of points in the series, used to choose each bubble's side. */
+  pointCount: number;
+  /** Bubble color for the maximum (e.g. chartColors.income, green). */
+  highColor: string;
+  /** Bubble color for the minimum (e.g. chartColors.expense, red). */
+  lowColor: string;
+  /** Pre-formatted label for the maximum point. */
+  highLabel: string;
+  /** Pre-formatted label for the minimum point. */
+  lowLabel: string;
+  /** When true, the high/low bubble is hidden (the user dismissed it). */
+  highDismissed?: boolean;
+  lowDismissed?: boolean;
+  /** Called when the user clicks the high/low bubble's dismiss control. */
+  onDismissHigh?: () => void;
+  onDismissLow?: () => void;
+  /** Localized title/aria label for the dismiss control. */
+  dismissLabel?: string;
+}
+
+/**
+ * Recharts `dot` renderer that pins a high (max, green) and low (min, red)
+ * bubble to a balance/value series. A point on the chart's left half places
+ * its bubble to the right and vice versa, so the callouts stay clear of the
+ * plot's left/right edges and the marker -- the same scheme used by the
+ * Portfolio Value chart. Every other point renders an invisible zero-radius
+ * dot.
+ */
+export function renderMinMaxFlagDots({
+  cx,
+  cy,
+  index,
+  flags,
+  pointCount,
+  highColor,
+  lowColor,
+  highLabel,
+  lowLabel,
+  highDismissed,
+  lowDismissed,
+  onDismissHigh,
+  onDismissLow,
+  dismissLabel,
+}: MinMaxFlagDotOptions): ReactElement {
+  if (cx == null || cy == null || index == null) {
+    return <circle cx={0} cy={0} r={0} fill="none" />;
+  }
+  // A dismissed extreme renders like any other point: an invisible dot.
+  const isMax = flags.show && index === flags.maxIndex && !highDismissed;
+  const isMin = flags.show && index === flags.minIndex && !lowDismissed;
+  if (!isMax && !isMin) {
+    return <circle key={`dot-${index}`} cx={cx} cy={cy} r={0} fill="none" />;
+  }
+  const isLeftHalf = index < pointCount / 2;
+  return renderChartFlagDot({
+    cx,
+    cy,
+    index,
+    color: isMax ? highColor : lowColor,
+    label: isMax ? highLabel : lowLabel,
+    side: isLeftHalf ? 'right' : 'left',
+    onDismiss: isMax ? onDismissHigh : onDismissLow,
+    dismissLabel,
+  });
 }

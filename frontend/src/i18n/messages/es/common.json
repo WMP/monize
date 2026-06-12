@@ -1,4 +1,10 @@
 {
+  "chartFlag": {
+    "dismiss": "Ocultar este valor"
+  },
+  "appVersion": {
+    "releaseNotes": "Ver las notas de la versión v{version}"
+  },
   "save": "Guardar",
   "cancel": "Cancelar",
   "delete": "Eliminar",

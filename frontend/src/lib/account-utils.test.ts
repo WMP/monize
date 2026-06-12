@@ -6,6 +6,7 @@ import {
   isInvestmentBrokerageAccount,
   isInvestmentCashHalf,
   getMainAccountName,
+  maskAccountNumber,
 } from './account-utils';
 import { Account } from '@/types/account';
 
@@ -322,5 +323,35 @@ describe('getMainAccountName', () => {
 
   it('only strips the suffix at the end of the name', () => {
     expect(getMainAccountName('Cash - Reserve')).toBe('Cash - Reserve');
+  });
+});
+
+describe('maskAccountNumber', () => {
+  it('keeps the first and last four digits of a credit-card number', () => {
+    expect(maskAccountNumber('4111111111111234', true)).toBe('4111••••••••1234');
+  });
+
+  it('keeps only the last four digits of a non-credit-card number', () => {
+    expect(maskAccountNumber('12345678', false)).toBe('••••5678');
+  });
+
+  it('preserves separators while masking the digits between the windows', () => {
+    expect(maskAccountNumber('4111 1111 1111 1234', true)).toBe('4111 •••• •••• 1234');
+    expect(maskAccountNumber('1234-5678-9012', false)).toBe('••••-••••-9012');
+  });
+
+  it('masks every digit when the number is too short to reveal a window', () => {
+    // Non-credit-card: revealing the last four would expose all four.
+    expect(maskAccountNumber('1234', false)).toBe('••••');
+    // Credit-card: revealing first and last four would expose all eight.
+    expect(maskAccountNumber('12345678', true)).toBe('••••••••');
+  });
+
+  it('ignores surrounding whitespace', () => {
+    expect(maskAccountNumber('  987654321  ', false)).toBe('•••••4321');
+  });
+
+  it('returns an empty string for an empty value', () => {
+    expect(maskAccountNumber('', false)).toBe('');
   });
 });

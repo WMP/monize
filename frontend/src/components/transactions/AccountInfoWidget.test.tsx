@@ -99,7 +99,7 @@ describe('AccountInfoWidget', () => {
       <AccountInfoWidget
         account={makeAccount({
           accountType: 'CREDIT_CARD',
-          accountNumber: '****1234',
+          accountNumber: '4111111111111234',
           creditLimit: 5000,
           interestRate: 19.99,
           isClosed: true,
@@ -107,10 +107,66 @@ describe('AccountInfoWidget', () => {
         onEdit={vi.fn()} onCollapse={vi.fn()}
       />,
     );
-    expect(screen.getByText('****1234')).toBeInTheDocument();
+    // The credit-card number is masked to its first and last four digits.
+    expect(screen.getByText('4111••••••••1234')).toBeInTheDocument();
+    expect(screen.queryByText('4111111111111234')).not.toBeInTheDocument();
     expect(screen.getByText('CAD 5000.00')).toBeInTheDocument();
     expect(screen.getByText('19.99%')).toBeInTheDocument();
     expect(screen.getByText('Closed')).toBeInTheDocument();
+  });
+
+  it('masks a non-credit-card account number to its last four digits', () => {
+    render(
+      <AccountInfoWidget
+        account={makeAccount({ accountType: 'CHEQUING', accountNumber: '12345678' })}
+        onEdit={vi.fn()}
+        onCollapse={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('••••5678')).toBeInTheDocument();
+    expect(screen.queryByText('12345678')).not.toBeInTheDocument();
+  });
+
+  it('reveals and re-masks the account number via the eye toggle', () => {
+    render(
+      <AccountInfoWidget
+        account={makeAccount({ accountType: 'CREDIT_CARD', accountNumber: '4111111111111234' })}
+        onEdit={vi.fn()}
+        onCollapse={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('4111••••••••1234')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Show account number'));
+    expect(screen.getByText('4111111111111234')).toBeInTheDocument();
+    expect(screen.queryByText('4111••••••••1234')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Hide account number'));
+    expect(screen.getByText('4111••••••••1234')).toBeInTheDocument();
+    expect(screen.queryByText('4111111111111234')).not.toBeInTheDocument();
+  });
+
+  it('re-masks the number when switching to another account', () => {
+    const { rerender } = render(
+      <AccountInfoWidget
+        account={makeAccount({ id: 'a-1', accountNumber: '12345678' })}
+        onEdit={vi.fn()}
+        onCollapse={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Show account number'));
+    expect(screen.getByText('12345678')).toBeInTheDocument();
+
+    // Switching accounts must not leak the previous account's revealed number.
+    rerender(
+      <AccountInfoWidget
+        account={makeAccount({ id: 'a-2', accountNumber: '87654321' })}
+        onEdit={vi.fn()}
+        onCollapse={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('••••4321')).toBeInTheDocument();
+    expect(screen.queryByText('87654321')).not.toBeInTheDocument();
   });
 
   it('shows the institution name and logo when an institution is provided', () => {

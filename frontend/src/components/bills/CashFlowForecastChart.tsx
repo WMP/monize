@@ -18,6 +18,11 @@ import {
 } from 'recharts';
 import { chartColors } from '@/lib/chart-colors';
 import { computeBalanceGradient } from '@/lib/balance-history';
+import {
+  ChartFlagShadowFilter,
+  computeMinMaxFlagIndices,
+  renderMinMaxFlagDots,
+} from '@/components/investments/portfolio-chart-utils';
 import { ScheduledTransaction } from '@/types/scheduled-transaction';
 import { Account } from '@/types/account';
 import { Select } from '@/components/ui/Select';
@@ -119,10 +124,17 @@ export function CashFlowForecastChart({
   isLoading,
 }: CashFlowForecastChartProps) {
   const t = useTranslations('bills');
-  const { formatCurrency: formatCurrencyFull, formatCurrencyAxis } = useNumberFormat();
+  const tc = useTranslations('common');
+  const { formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatCurrencyFlag } =
+    useNumberFormat();
   const { convertToDefault, defaultCurrency } = useExchangeRates();
   const [selectedPeriod, setSelectedPeriod] = useState<ForecastPeriod>(() => getStoredPeriod());
   const [selectedAccountId, setSelectedAccountId] = useState<string>(() => getStoredAccountId());
+  // High/low value bubbles the user has temporarily dismissed, keyed by the
+  // value they marked so a forecast change with a new extreme shows its bubble
+  // again. Component-local (not persisted), so it resets on navigation.
+  const [dismissedHigh, setDismissedHigh] = useState<number | null>(null);
+  const [dismissedLow, setDismissedLow] = useState<number | null>(null);
 
   // Persist period changes
   useEffect(() => {
@@ -167,6 +179,11 @@ export function CashFlowForecastChart({
     [formatCurrencyAxis, chartCurrency],
   );
 
+  const formatFlag = useCallback(
+    (value: number) => formatCurrencyFlag(value, chartCurrency),
+    [formatCurrencyFlag, chartCurrency],
+  );
+
   const forecastData = useMemo(() => {
     return buildForecast(
       accounts, scheduledTransactions, selectedPeriod, selectedAccountId, futureTransactions,
@@ -183,11 +200,19 @@ export function CashFlowForecastChart({
     return forecastData.reduce((sum, dp) => sum + dp.transactions.length, 0);
   }, [forecastData]);
 
-  // Index of the first data point at the minimum balance (for single callout)
-  const minBalanceIndex = useMemo(() => {
-    if (forecastData.length === 0) return -1;
-    return forecastData.findIndex((dp) => dp.balance === summary.minBalance);
-  }, [forecastData, summary.minBalance]);
+  // Highest/lowest forecast points get green/red value bubbles, each placed to
+  // the inside of whichever chart half it falls on so the callouts stay clear
+  // of the plot edges and the dot marker.
+  const flags = useMemo(
+    () => computeMinMaxFlagIndices(forecastData.map((dp) => dp.balance)),
+    [forecastData],
+  );
+  const highValue = flags.show ? forecastData[flags.maxIndex].balance : null;
+  const lowValue = flags.show ? forecastData[flags.minIndex].balance : null;
+  const highLabel = highValue !== null ? formatFlag(highValue) : '';
+  const lowLabel = lowValue !== null ? formatFlag(lowValue) : '';
+  const highDismissed = highValue !== null && highValue === dismissedHigh;
+  const lowDismissed = lowValue !== null && lowValue === dismissedLow;
 
   const areaGradient = useMemo(
     () => computeBalanceGradient(forecastData.map((point) => point.balance)),
@@ -281,17 +306,16 @@ export function CashFlowForecastChart({
       ) : (
         <div className="h-72" style={{ minHeight: 288 }}>
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <AreaChart data={forecastData} margin={{ left: 0, right: 8, top: 5, bottom: 0 }}>
+            {/* top margin leaves headroom for the high-value bubble callout */}
+            <AreaChart data={forecastData} margin={{ left: 0, right: 8, top: 20, bottom: 0 }}>
               <defs>
-                <filter id="minShadow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.3" />
-                </filter>
                 <linearGradient id="forecastBalance" x1="0" y1="0" x2="0" y2="1">
                   <stop offset={0} stopColor={chartColors.primary} stopOpacity={areaGradient.topOpacity} />
                   <stop offset={areaGradient.zeroOffset} stopColor={chartColors.primary} stopOpacity={0} />
                   <stop offset={1} stopColor={chartColors.primary} stopOpacity={areaGradient.bottomOpacity} />
                 </linearGradient>
               </defs>
+              <ChartFlagShadowFilter />
               <CartesianGrid
                 strokeDasharray="3 3"
                 stroke={chartColors.grid}
@@ -335,55 +359,24 @@ export function CashFlowForecastChart({
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#forecastBalance)"
-                dot={(props: any) => {
-                  const { cx, cy } = props;
-                  if (props.index === minBalanceIndex) {
-                    const color = summary.minBalance < 0 ? chartColors.expense : chartColors.warning;
-                    const label = Math.abs(summary.minBalance) >= 1000
-                      ? formatAxis(summary.minBalance)
-                      : formatCurrency(summary.minBalance);
-                    const labelWidth = label.length * 7 + 14;
-                    const labelHeight = 22;
-                    const arrowSize = 5;
-                    const gap = 24;
-                    const bubbleBottom = cy - gap;
-                    const bubbleTop = bubbleBottom - arrowSize - labelHeight;
-                    return (
-                      <g key={`min-${props.index}`}>
-                        <circle cx={cx} cy={cy} r={5} fill={color} stroke="var(--color-white)" strokeWidth={2} />
-                        {/* Connector line from dot to arrow */}
-                        <line x1={cx} y1={cy - 5} x2={cx} y2={bubbleBottom} stroke={color} strokeWidth={1.5} strokeDasharray="3 2" />
-                        {/* Bubble */}
-                        <rect
-                          x={cx - labelWidth / 2}
-                          y={bubbleTop}
-                          width={labelWidth}
-                          height={labelHeight}
-                          rx={5}
-                          fill={color}
-                          filter="url(#minShadow)"
-                        />
-                        {/* Arrow */}
-                        <polygon
-                          points={`${cx - arrowSize},${bubbleTop + labelHeight} ${cx + arrowSize},${bubbleTop + labelHeight} ${cx},${bubbleBottom}`}
-                          fill={color}
-                        />
-                        <text
-                          x={cx}
-                          y={bubbleTop + labelHeight / 2}
-                          textAnchor="middle"
-                          dominantBaseline="central"
-                          fill="var(--color-white)"
-                          fontSize={11}
-                          fontWeight={600}
-                        >
-                          {label}
-                        </text>
-                      </g>
-                    );
-                  }
-                  return <circle key={`dot-${props.index}`} cx={cx} cy={cy} r={0} fill="none" />;
-                }}
+                dot={(props: { cx?: number; cy?: number; index?: number }) =>
+                  renderMinMaxFlagDots({
+                    cx: props.cx,
+                    cy: props.cy,
+                    index: props.index,
+                    flags,
+                    pointCount: forecastData.length,
+                    highColor: chartColors.income,
+                    lowColor: chartColors.expense,
+                    highLabel,
+                    lowLabel,
+                    highDismissed,
+                    lowDismissed,
+                    onDismissHigh: () => setDismissedHigh(highValue),
+                    onDismissLow: () => setDismissedLow(lowValue),
+                    dismissLabel: tc('chartFlag.dismiss'),
+                  })
+                }
                 activeDot={{ r: 6, fill: chartColors.primary }}
               />
             </AreaChart>

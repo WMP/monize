@@ -14,6 +14,8 @@
     "closed": "[XX-Closed-XX]",
     "editAria": "[XX-Edit account settings-XX]",
     "collapseAria": "[XX-Hide account info-XX]",
+    "showAccountNumber": "[XX-Show account number-XX]",
+    "hideAccountNumber": "[XX-Hide account number-XX]",
     "show": "[XX-Show account info-XX]"
   },
   "page": {

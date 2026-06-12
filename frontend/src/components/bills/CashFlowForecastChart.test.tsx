@@ -63,11 +63,13 @@ vi.mock('recharts', () => ({
 
 const mockFormatCurrency = vi.fn((n: number, _code?: string) => `$${n.toFixed(2)}`);
 const mockFormatCurrencyAxis = vi.fn((n: number, _code?: string) => `$${n}`);
+const mockFormatCurrencyFlag = vi.fn((n: number, _code?: string) => `$${n}`);
 
 vi.mock('@/hooks/useNumberFormat', () => ({
   useNumberFormat: () => ({
     formatCurrency: mockFormatCurrency,
     formatCurrencyAxis: mockFormatCurrencyAxis,
+    formatCurrencyFlag: mockFormatCurrencyFlag,
   }),
 }));
 
@@ -442,7 +444,7 @@ describe('CashFlowForecastChart', () => {
   });
 
   describe('chart render-prop and tooltip branches', () => {
-    it('renders the negative (red) min-balance callout bubble', () => {
+    it('marks the highest and lowest forecast points with value bubbles', () => {
       const forecastData = [
         { label: 'Day 1', balance: 1000, transactions: [{ amount: 0, name: 'Open' }] },
         { label: 'Day 2', balance: -150, transactions: [{ amount: -1150, name: 'Rent' }] },
@@ -461,13 +463,51 @@ describe('CashFlowForecastChart', () => {
           isLoading={false}
         />,
       );
-      // The mocked Line invokes the dot render-prop; the min-balance point
-      // (index 1) draws the callout group containing the formatted label text.
+      // The mocked Area invokes the dot render-prop for both points: the high
+      // (1000) and low (-150) each draw a callout group with the formatted
+      // label text.
       const dots = screen.getByTestId('line-dots');
-      expect(dots.querySelector('text')).not.toBeNull();
+      const labels = Array.from(dots.querySelectorAll('text')).map((node) => node.textContent);
+      expect(labels).toContain('$1000');
+      expect(labels).toContain('$-150');
     });
 
-    it('renders the positive (amber) min-balance callout using the axis formatter for large values', () => {
+    it('temporarily hides a value bubble when its dismiss control is clicked', () => {
+      const forecastData = [
+        { label: 'Day 1', balance: 1000, transactions: [{ amount: 0, name: 'Open' }] },
+        { label: 'Day 2', balance: -150, transactions: [{ amount: -1150, name: 'Rent' }] },
+      ];
+      mockBuildForecast.mockReturnValue(forecastData);
+      mockGetForecastSummary.mockReturnValue({
+        startingBalance: 1000,
+        endingBalance: -150,
+        minBalance: -150,
+        goesNegative: true,
+      });
+      const { container } = render(
+        <CashFlowForecastChart
+          scheduledTransactions={[{} as any]}
+          accounts={[makeAccount()]}
+          isLoading={false}
+        />,
+      );
+      const labels = () =>
+        Array.from(
+          container.querySelectorAll('[data-testid="line-dots"] text'),
+        ).map((node) => node.textContent);
+      expect(labels()).toEqual(expect.arrayContaining(['$1000', '$-150']));
+
+      // The dot mock renders index 0 (high, $1000) first, so the first dismiss
+      // control belongs to the high bubble.
+      const closeControls = container.querySelectorAll('.chart-flag-dismiss');
+      expect(closeControls).toHaveLength(2);
+      fireEvent.click(closeControls[0]);
+
+      expect(labels()).toContain('$-150');
+      expect(labels()).not.toContain('$1000');
+    });
+
+    it('formats the bubble labels with the compact flag formatter', () => {
       const forecastData = [
         { label: 'Day 1', balance: 60000, transactions: [{ amount: 0, name: 'Open' }] },
         { label: 'Day 2', balance: 5000, transactions: [{ amount: -55000, name: 'Bill' }] },
@@ -479,6 +519,7 @@ describe('CashFlowForecastChart', () => {
         minBalance: 5000,
         goesNegative: false,
       });
+      mockFormatCurrencyFlag.mockClear();
       render(
         <CashFlowForecastChart
           scheduledTransactions={[{} as any]}
@@ -487,8 +528,8 @@ describe('CashFlowForecastChart', () => {
         />,
       );
       expect(screen.getByTestId('line-dots')).toBeInTheDocument();
-      // A min balance >= 1000 uses formatCurrencyAxis for the bubble label.
-      expect(mockFormatCurrencyAxis).toHaveBeenCalled();
+      // The high/low bubbles are labelled via the compact flag formatter.
+      expect(mockFormatCurrencyFlag).toHaveBeenCalled();
     });
 
     it('shades the area under the line with the zero-anchored balance gradient', () => {
