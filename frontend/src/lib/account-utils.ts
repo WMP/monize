@@ -66,6 +66,40 @@ export const formatAccountType = (type: AccountType, t?: (key: string) => string
   return labels[type] || type;
 };
 
+/** Character used to mask the hidden portion of an account number. */
+const ACCOUNT_MASK_CHAR = '•'; // bullet (•)
+
+/**
+ * Mask an account number for display so only an identifying window stays
+ * visible. Credit cards keep their first four and last four digits (the
+ * standard PAN-truncation pattern, e.g. "4111 •••• •••• 1234"); every other
+ * account type keeps only the last four. Separators such as spaces and dashes
+ * are preserved for readability and are not counted toward the revealed
+ * window. When the number is too short to reveal that window without exposing
+ * all of it, every digit is masked.
+ */
+export function maskAccountNumber(value: string, isCreditCard: boolean): string {
+  const chars = [...value.trim()];
+  const isSignificant = (c: string) => /[a-z0-9]/i.test(c);
+  const length = chars.filter(isSignificant).length;
+
+  const lead = isCreditCard ? 4 : 0;
+  const tail = 4;
+  // Only reveal the lead/tail windows when at least one significant character
+  // stays masked; otherwise the whole number would be exposed.
+  const revealWindows = length > lead + tail;
+
+  return chars
+    .map((char, index) => {
+      if (!isSignificant(char)) return char;
+      // Position of this character among the significant (alphanumeric) ones.
+      const order = chars.slice(0, index).filter(isSignificant).length;
+      const visible = revealWindows && (order < lead || order >= length - tail);
+      return visible ? char : ACCOUNT_MASK_CHAR;
+    })
+    .join('');
+}
+
 /** Check if an account is an investment brokerage sub-type. */
 export const isInvestmentBrokerageAccount = (account: Account): boolean => {
   return account.accountSubType === 'INVESTMENT_BROKERAGE';

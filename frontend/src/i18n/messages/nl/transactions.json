@@ -14,6 +14,8 @@
     "closed": "Gesloten",
     "editAria": "Rekeninginstellingen bewerken",
     "collapseAria": "Rekeninginfo verbergen",
+    "showAccountNumber": "Rekeningnummer tonen",
+    "hideAccountNumber": "Rekeningnummer verbergen",
     "show": "Rekeninginfo tonen"
   },
   "page": {

@@ -1,12 +1,17 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { PencilSquareIcon, ChevronDoubleLeftIcon } from '@heroicons/react/24/outline';
+import {
+  PencilSquareIcon,
+  ChevronDoubleLeftIcon,
+  EyeIcon,
+  EyeSlashIcon,
+} from '@heroicons/react/24/outline';
 import { Account } from '@/types/account';
 import { ScheduledTransaction } from '@/types/scheduled-transaction';
-import { formatAccountType } from '@/lib/account-utils';
+import { formatAccountType, maskAccountNumber } from '@/lib/account-utils';
 import { getOrdinal } from '@/lib/ordinal';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateFormat } from '@/hooks/useDateFormat';
@@ -51,6 +56,19 @@ export function AccountInfoWidget({
   const { formatCurrency } = useNumberFormat();
   const { formatDate } = useDateFormat();
 
+  // The account number is masked by default and only unmasked while the user
+  // holds it open via the eye toggle. The state is intentionally not persisted,
+  // so it re-masks on remount, and resets when switching to another account so
+  // one account's number never leaks onto another. We follow the project's
+  // "info from previous render" pattern rather than resetting in an effect.
+  const [accountNumberVisible, setAccountNumberVisible] = useState(false);
+  const [shownAccountId, setShownAccountId] = useState(account.id);
+  if (shownAccountId !== account.id) {
+    setShownAccountId(account.id);
+    setAccountNumberVisible(false);
+  }
+
+  const isCreditCard = account.accountType === 'CREDIT_CARD';
   const isLiability = ['CREDIT_CARD', 'LOAN', 'MORTGAGE', 'LINE_OF_CREDIT'].includes(
     account.accountType,
   );
@@ -77,13 +95,22 @@ export function AccountInfoWidget({
     return candidates[0] ?? null;
   }, [scheduledTransactions, account.id]);
 
-  const details: Array<{ label: string; value: string; tooltip?: string }> = [];
+  const details: Array<{
+    label: string;
+    value: string;
+    tooltip?: string;
+    maskable?: boolean;
+  }> = [];
   details.push({
     label: t('accountWidget.type'),
     value: formatAccountType(account.accountType, tc),
   });
   if (account.accountNumber) {
-    details.push({ label: t('accountWidget.accountNumber'), value: account.accountNumber });
+    details.push({
+      label: t('accountWidget.accountNumber'),
+      value: account.accountNumber,
+      maskable: true,
+    });
   }
   details.push({ label: t('accountWidget.currency'), value: account.currencyCode });
   if (account.creditLimit != null && Number(account.creditLimit) !== 0) {
@@ -229,9 +256,40 @@ export function AccountInfoWidget({
               {detail.label}
               {detail.tooltip && <InfoTooltip text={detail.tooltip} usePortal />}
             </dt>
-            <dd className="text-gray-900 dark:text-gray-100 text-right truncate">
-              {detail.value}
-            </dd>
+            {detail.maskable ? (
+              <dd className="text-gray-900 dark:text-gray-100 min-w-0 flex items-center justify-end gap-1.5">
+                <span className="truncate tracking-wider">
+                  {accountNumberVisible
+                    ? detail.value
+                    : maskAccountNumber(detail.value, isCreditCard)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAccountNumberVisible((v) => !v)}
+                  aria-label={
+                    accountNumberVisible
+                      ? t('accountWidget.hideAccountNumber')
+                      : t('accountWidget.showAccountNumber')
+                  }
+                  title={
+                    accountNumberVisible
+                      ? t('accountWidget.hideAccountNumber')
+                      : t('accountWidget.showAccountNumber')
+                  }
+                  className="flex-shrink-0 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                >
+                  {accountNumberVisible ? (
+                    <EyeSlashIcon className="h-4 w-4" />
+                  ) : (
+                    <EyeIcon className="h-4 w-4" />
+                  )}
+                </button>
+              </dd>
+            ) : (
+              <dd className="text-gray-900 dark:text-gray-100 text-right truncate">
+                {detail.value}
+              </dd>
+            )}
           </div>
         ))}
       </dl>
