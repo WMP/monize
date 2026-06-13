@@ -1,0 +1,38 @@
+{
+  "page": {
+    "title": "Sugestie odbiorców",
+    "subtitle": "Przejrzyj sugestie kategorii dla odbiorców wygenerowane przez AI i zastosuj te, które akceptujesz."
+  },
+  "loading": "Wczytywanie sugestii...",
+  "empty": {
+    "title": "Brak sugestii do przejrzenia",
+    "description": "Użyj narzędzi Monize MCP w swoim kliencie AI, aby wygenerować sugestie kategorii dla odbiorców, a następnie przejrzyj je tutaj."
+  },
+  "sessionPicker": {
+    "label": "Zestaw sugestii",
+    "untitled": "Sugestie bez tytułu",
+    "itemCount": "{count, plural, one {# odbiorca} few {# odbiorców} many {# odbiorców} other {# odbiorców}}"
+  },
+  "selectedSummary": "Wybrano {selected} z {total}",
+  "applied": "Skategoryzowano {payees, plural, one {# odbiorcę} few {# odbiorców} many {# odbiorców} other {# odbiorców}}, utworzono {categories, plural, one {# kategorię} few {# kategorie} many {# kategorii} other {# kategorii}}.",
+  "discarded": "Sugestie odrzucone.",
+  "actions": {
+    "apply": "Zastosuj wybrane",
+    "discard": "Odrzuć"
+  },
+  "row": {
+    "selectAria": "Wybierz {payee}",
+    "categoryPlaceholder": "Wybierz lub utwórz kategorię...",
+    "confidence": "({percent}% pewności)",
+    "willCreate": "Zostanie utworzona nowa kategoria: {name}"
+  },
+  "discardConfirm": {
+    "title": "Odrzucić sugestie?",
+    "message": "Spowoduje to trwałe usunięcie tego zestawu sugestii. Twoi odbiorcy i kategorie nie zostaną zmienieni."
+  },
+  "errors": {
+    "noneSelected": "Wybierz co najmniej jednego odbiorcę, aby zastosować.",
+    "applyFailed": "Nie udało się zastosować sugestii. Spróbuj ponownie.",
+    "discardFailed": "Nie udało się odrzucić sugestii. Spróbuj ponownie."
+  }
+}

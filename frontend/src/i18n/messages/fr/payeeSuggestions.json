@@ -1,0 +1,38 @@
+{
+  "page": {
+    "title": "Suggestions de bénéficiaires",
+    "subtitle": "Examinez les suggestions de catégories générées par l'IA pour vos bénéficiaires et appliquez celles que vous acceptez."
+  },
+  "loading": "Chargement des suggestions...",
+  "empty": {
+    "title": "Aucune suggestion à examiner",
+    "description": "Utilisez les outils MCP de Monize depuis votre client IA pour générer des suggestions de catégories de bénéficiaires, puis examinez-les ici."
+  },
+  "sessionPicker": {
+    "label": "Ensemble de suggestions",
+    "untitled": "Suggestions sans titre",
+    "itemCount": "{count, plural, one {# bénéficiaire} other {# bénéficiaires}}"
+  },
+  "selectedSummary": "{selected} sur {total} sélectionnés",
+  "applied": "{payees, plural, one {# bénéficiaire} other {# bénéficiaires}} catégorisés, {categories, plural, one {# catégorie} other {# catégories}} créées.",
+  "discarded": "Suggestions supprimées.",
+  "actions": {
+    "apply": "Appliquer la sélection",
+    "discard": "Supprimer"
+  },
+  "row": {
+    "selectAria": "Sélectionner {payee}",
+    "categoryPlaceholder": "Sélectionner ou créer une catégorie...",
+    "confidence": "({percent}% de confiance)",
+    "willCreate": "Une nouvelle catégorie sera créée : {name}"
+  },
+  "discardConfirm": {
+    "title": "Supprimer les suggestions ?",
+    "message": "Cela supprime définitivement cet ensemble de suggestions. Vos bénéficiaires et catégories ne sont pas modifiés."
+  },
+  "errors": {
+    "noneSelected": "Sélectionnez au moins un bénéficiaire à appliquer.",
+    "applyFailed": "Impossible d'appliquer les suggestions. Veuillez réessayer.",
+    "discardFailed": "Impossible de supprimer les suggestions. Veuillez réessayer."
+  }
+}

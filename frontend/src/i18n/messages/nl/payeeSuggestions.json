@@ -1,0 +1,38 @@
+{
+  "page": {
+    "title": "Begunstigde-suggesties",
+    "subtitle": "Bekijk de door AI gegenereerde categoriesuggesties voor je begunstigden en pas de geaccepteerde toe."
+  },
+  "loading": "Suggesties laden...",
+  "empty": {
+    "title": "Geen suggesties om te beoordelen",
+    "description": "Gebruik de Monize MCP-tools vanuit je AI-client om categoriesuggesties voor begunstigden te genereren en bekijk ze hier."
+  },
+  "sessionPicker": {
+    "label": "Suggestieset",
+    "untitled": "Suggesties zonder titel",
+    "itemCount": "{count, plural, one {# begunstigde} other {# begunstigden}}"
+  },
+  "selectedSummary": "{selected} van {total} geselecteerd",
+  "applied": "{payees, plural, one {# begunstigde} other {# begunstigden}} gecategoriseerd, {categories, plural, one {# categorie} other {# categorieën}} aangemaakt.",
+  "discarded": "Suggesties verwijderd.",
+  "actions": {
+    "apply": "Selectie toepassen",
+    "discard": "Verwijderen"
+  },
+  "row": {
+    "selectAria": "{payee} selecteren",
+    "categoryPlaceholder": "Selecteer of maak een categorie...",
+    "confidence": "({percent}% zekerheid)",
+    "willCreate": "Nieuwe categorie wordt aangemaakt: {name}"
+  },
+  "discardConfirm": {
+    "title": "Suggesties verwijderen?",
+    "message": "Hiermee wordt deze set suggesties permanent verwijderd. Je begunstigden en categorieën worden niet gewijzigd."
+  },
+  "errors": {
+    "noneSelected": "Selecteer ten minste één begunstigde om toe te passen.",
+    "applyFailed": "Kan de suggesties niet toepassen. Probeer het opnieuw.",
+    "discardFailed": "Kan de suggesties niet verwijderen. Probeer het opnieuw."
+  }
+}

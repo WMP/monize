@@ -1,0 +1,38 @@
+{
+  "page": {
+    "title": "Payee Suggestions",
+    "subtitle": "Review AI-generated category suggestions for your payees and apply the ones you accept."
+  },
+  "loading": "Loading suggestions...",
+  "empty": {
+    "title": "No suggestions to review",
+    "description": "Use the Monize MCP tools from your AI client to generate payee category suggestions, then review them here."
+  },
+  "sessionPicker": {
+    "label": "Suggestion set",
+    "untitled": "Untitled suggestions",
+    "itemCount": "{count, plural, one {# payee} other {# payees}}"
+  },
+  "selectedSummary": "{selected} of {total} selected",
+  "applied": "Categorized {payees, plural, one {# payee} other {# payees}}, created {categories, plural, one {# category} other {# categories}}.",
+  "discarded": "Suggestions discarded.",
+  "actions": {
+    "apply": "Apply selected",
+    "discard": "Discard"
+  },
+  "row": {
+    "selectAria": "Select {payee}",
+    "categoryPlaceholder": "Select or create a category...",
+    "confidence": "({percent}% confidence)",
+    "willCreate": "Will create new category: {name}"
+  },
+  "discardConfirm": {
+    "title": "Discard suggestions?",
+    "message": "This permanently deletes this set of suggestions. Your payees and categories are not changed."
+  },
+  "errors": {
+    "noneSelected": "Select at least one payee to apply.",
+    "applyFailed": "Could not apply the suggestions. Please try again.",
+    "discardFailed": "Could not discard the suggestions. Please try again."
+  }
+}

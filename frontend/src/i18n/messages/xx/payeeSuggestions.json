@@ -1,0 +1,38 @@
+{
+  "page": {
+    "title": "[XX-Payee Suggestions-XX]",
+    "subtitle": "[XX-Review AI-generated category suggestions for your payees and apply the ones you accept.-XX]"
+  },
+  "loading": "[XX-Loading suggestions...-XX]",
+  "empty": {
+    "title": "[XX-No suggestions to review-XX]",
+    "description": "[XX-Use the Monize MCP tools from your AI client to generate payee category suggestions, then review them here.-XX]"
+  },
+  "sessionPicker": {
+    "label": "[XX-Suggestion set-XX]",
+    "untitled": "[XX-Untitled suggestions-XX]",
+    "itemCount": "[XX-{count, plural, one {# payee} other {# payees}}-XX]"
+  },
+  "selectedSummary": "[XX-{selected} of {total} selected-XX]",
+  "applied": "[XX-Categorized {payees, plural, one {# payee} other {# payees}}, created {categories, plural, one {# category} other {# categories}}.-XX]",
+  "discarded": "[XX-Suggestions discarded.-XX]",
+  "actions": {
+    "apply": "[XX-Apply selected-XX]",
+    "discard": "[XX-Discard-XX]"
+  },
+  "row": {
+    "selectAria": "[XX-Select {payee}-XX]",
+    "categoryPlaceholder": "[XX-Select or create a category...-XX]",
+    "confidence": "[XX-({percent}% confidence)-XX]",
+    "willCreate": "[XX-Will create new category: {name}-XX]"
+  },
+  "discardConfirm": {
+    "title": "[XX-Discard suggestions?-XX]",
+    "message": "[XX-This permanently deletes this set of suggestions. Your payees and categories are not changed.-XX]"
+  },
+  "errors": {
+    "noneSelected": "[XX-Select at least one payee to apply.-XX]",
+    "applyFailed": "[XX-Could not apply the suggestions. Please try again.-XX]",
+    "discardFailed": "[XX-Could not discard the suggestions. Please try again.-XX]"
+  }
+}

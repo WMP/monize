@@ -1,0 +1,38 @@
+{
+  "page": {
+    "title": "Suggerimenti beneficiari",
+    "subtitle": "Esamina i suggerimenti di categoria generati dall'IA per i tuoi beneficiari e applica quelli che accetti."
+  },
+  "loading": "Caricamento dei suggerimenti...",
+  "empty": {
+    "title": "Nessun suggerimento da esaminare",
+    "description": "Usa gli strumenti MCP di Monize dal tuo client IA per generare suggerimenti di categoria per i beneficiari, quindi esaminali qui."
+  },
+  "sessionPicker": {
+    "label": "Insieme di suggerimenti",
+    "untitled": "Suggerimenti senza titolo",
+    "itemCount": "{count, plural, one {# beneficiario} other {# beneficiari}}"
+  },
+  "selectedSummary": "{selected} di {total} selezionati",
+  "applied": "Categorizzati {payees, plural, one {# beneficiario} other {# beneficiari}}, create {categories, plural, one {# categoria} other {# categorie}}.",
+  "discarded": "Suggerimenti scartati.",
+  "actions": {
+    "apply": "Applica selezionati",
+    "discard": "Scarta"
+  },
+  "row": {
+    "selectAria": "Seleziona {payee}",
+    "categoryPlaceholder": "Seleziona o crea una categoria...",
+    "confidence": "({percent}% di confidenza)",
+    "willCreate": "Verrà creata una nuova categoria: {name}"
+  },
+  "discardConfirm": {
+    "title": "Scartare i suggerimenti?",
+    "message": "Questa operazione elimina definitivamente questo insieme di suggerimenti. I tuoi beneficiari e le categorie non vengono modificati."
+  },
+  "errors": {
+    "noneSelected": "Seleziona almeno un beneficiario da applicare.",
+    "applyFailed": "Impossibile applicare i suggerimenti. Riprova.",
+    "discardFailed": "Impossibile scartare i suggerimenti. Riprova."
+  }
+}

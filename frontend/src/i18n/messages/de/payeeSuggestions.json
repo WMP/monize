@@ -1,0 +1,38 @@
+{
+  "page": {
+    "title": "Zahlungsempfänger-Vorschläge",
+    "subtitle": "Überprüfen Sie KI-generierte Kategorievorschläge für Ihre Zahlungsempfänger und übernehmen Sie die akzeptierten."
+  },
+  "loading": "Vorschläge werden geladen...",
+  "empty": {
+    "title": "Keine Vorschläge zur Überprüfung",
+    "description": "Verwenden Sie die Monize-MCP-Tools in Ihrem KI-Client, um Kategorievorschläge für Zahlungsempfänger zu erstellen, und überprüfen Sie sie dann hier."
+  },
+  "sessionPicker": {
+    "label": "Vorschlagssatz",
+    "untitled": "Vorschläge ohne Titel",
+    "itemCount": "{count, plural, one {# Zahlungsempfänger} other {# Zahlungsempfänger}}"
+  },
+  "selectedSummary": "{selected} von {total} ausgewählt",
+  "applied": "{payees, plural, one {# Zahlungsempfänger} other {# Zahlungsempfänger}} kategorisiert, {categories, plural, one {# Kategorie} other {# Kategorien}} erstellt.",
+  "discarded": "Vorschläge verworfen.",
+  "actions": {
+    "apply": "Auswahl übernehmen",
+    "discard": "Verwerfen"
+  },
+  "row": {
+    "selectAria": "{payee} auswählen",
+    "categoryPlaceholder": "Kategorie auswählen oder erstellen...",
+    "confidence": "({percent}% Zuversicht)",
+    "willCreate": "Neue Kategorie wird erstellt: {name}"
+  },
+  "discardConfirm": {
+    "title": "Vorschläge verwerfen?",
+    "message": "Dadurch wird dieser Vorschlagssatz dauerhaft gelöscht. Ihre Zahlungsempfänger und Kategorien werden nicht geändert."
+  },
+  "errors": {
+    "noneSelected": "Wählen Sie mindestens einen Zahlungsempfänger zum Übernehmen aus.",
+    "applyFailed": "Die Vorschläge konnten nicht übernommen werden. Bitte versuchen Sie es erneut.",
+    "discardFailed": "Die Vorschläge konnten nicht verworfen werden. Bitte versuchen Sie es erneut."
+  }
+}

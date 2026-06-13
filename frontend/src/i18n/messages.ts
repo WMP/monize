@@ -29,6 +29,7 @@ const NAMESPACES = [
   "investments",
   "layout",
   "payees",
+  "payeeSuggestions",
   "reconcile",
   "reports",
   "scheduledTransactions",

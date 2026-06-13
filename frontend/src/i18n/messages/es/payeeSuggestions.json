@@ -1,0 +1,38 @@
+{
+  "page": {
+    "title": "Sugerencias de beneficiarios",
+    "subtitle": "Revisa las sugerencias de categorías generadas por IA para tus beneficiarios y aplica las que aceptes."
+  },
+  "loading": "Cargando sugerencias...",
+  "empty": {
+    "title": "No hay sugerencias para revisar",
+    "description": "Usa las herramientas MCP de Monize desde tu cliente de IA para generar sugerencias de categorías de beneficiarios y luego revísalas aquí."
+  },
+  "sessionPicker": {
+    "label": "Conjunto de sugerencias",
+    "untitled": "Sugerencias sin título",
+    "itemCount": "{count, plural, one {# beneficiario} other {# beneficiarios}}"
+  },
+  "selectedSummary": "{selected} de {total} seleccionados",
+  "applied": "Se categorizaron {payees, plural, one {# beneficiario} other {# beneficiarios}}, se crearon {categories, plural, one {# categoría} other {# categorías}}.",
+  "discarded": "Sugerencias descartadas.",
+  "actions": {
+    "apply": "Aplicar seleccionados",
+    "discard": "Descartar"
+  },
+  "row": {
+    "selectAria": "Seleccionar {payee}",
+    "categoryPlaceholder": "Selecciona o crea una categoría...",
+    "confidence": "({percent}% de confianza)",
+    "willCreate": "Se creará una nueva categoría: {name}"
+  },
+  "discardConfirm": {
+    "title": "¿Descartar sugerencias?",
+    "message": "Esto elimina permanentemente este conjunto de sugerencias. Tus beneficiarios y categorías no se modifican."
+  },
+  "errors": {
+    "noneSelected": "Selecciona al menos un beneficiario para aplicar.",
+    "applyFailed": "No se pudieron aplicar las sugerencias. Inténtalo de nuevo.",
+    "discardFailed": "No se pudieron descartar las sugerencias. Inténtalo de nuevo."
+  }
+}
