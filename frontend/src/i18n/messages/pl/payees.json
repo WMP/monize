@@ -119,6 +119,7 @@
     "onlyWithoutCategoryLabel": "Tylko odbiorcy bez domyślnej kategorii",
     "backfillLabel": "{count, plural, one {Skategoryzuj też # istniejącą nieskategoryzowaną transakcję} few {Skategoryzuj też # istniejące nieskategoryzowane transakcje} many {Skategoryzuj też # istniejących nieskategoryzowanych transakcji} other {Skategoryzuj też # istniejących nieskategoryzowanych transakcji}}",
     "backfillHelp": "Stosuje wybraną kategorię do transakcji, które obecnie jej nie mają. Istniejące kategorie, przelewy i transakcje podzielone pozostają bez zmian.",
+    "viewUncategorizedTitle": "Wyświetl {count, plural, one {# nieskategoryzowaną transakcję} few {# nieskategoryzowane transakcje} many {# nieskategoryzowanych transakcji} other {# nieskategoryzowanych transakcji}} dla {name}",
     "previewButton": "Podgląd sugestii",
     "loading": "Wczytywanie...",
     "suggestionsHeader": "Sugestie (znaleziono: {count})",

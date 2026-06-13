@@ -119,6 +119,7 @@
     "onlyWithoutCategoryLabel": "Alleen begunstigden zonder standaardcategorie",
     "backfillLabel": "{count, plural, one {Categoriseer ook # bestaande niet-gecategoriseerde transactie} other {Categoriseer ook # bestaande niet-gecategoriseerde transacties}}",
     "backfillHelp": "Past de gekozen categorie toe op transacties die er nu geen hebben. Bestaande categorieën, overboekingen en gesplitste transacties blijven ongewijzigd.",
+    "viewUncategorizedTitle": "{count, plural, one {# niet-gecategoriseerde transactie} other {# niet-gecategoriseerde transacties}} voor {name} bekijken",
     "previewButton": "Suggesties bekijken",
     "loading": "Laden...",
     "suggestionsHeader": "Suggesties ({count} gevonden)",

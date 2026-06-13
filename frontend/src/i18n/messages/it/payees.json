@@ -119,6 +119,7 @@
     "onlyWithoutCategoryLabel": "Solo beneficiari senza categoria predefinita",
     "backfillLabel": "{count, plural, one {Categorizza anche # transazione esistente senza categoria} other {Categorizza anche # transazioni esistenti senza categoria}}",
     "backfillHelp": "Applica la categoria scelta alle transazioni che attualmente non ne hanno una. Le categorie esistenti, i trasferimenti e le transazioni suddivise restano invariati.",
+    "viewUncategorizedTitle": "Visualizza {count, plural, one {# transazione senza categoria} other {# transazioni senza categoria}} per {name}",
     "previewButton": "Anteprima suggerimenti",
     "loading": "Caricamento...",
     "suggestionsHeader": "Suggerimenti ({count} trovati)",

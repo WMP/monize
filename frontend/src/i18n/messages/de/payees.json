@@ -119,6 +119,7 @@
     "onlyWithoutCategoryLabel": "Nur Zahlungsempfänger ohne Standardkategorie",
     "backfillLabel": "{count, plural, one {Auch # vorhandene nicht kategorisierte Transaktion kategorisieren} other {Auch # vorhandene nicht kategorisierte Transaktionen kategorisieren}}",
     "backfillHelp": "Wendet die gewählte Kategorie auf Transaktionen an, die derzeit keine haben. Vorhandene Kategorien, Überweisungen und aufgeteilte Transaktionen bleiben unverändert.",
+    "viewUncategorizedTitle": "{count, plural, one {# nicht kategorisierte Transaktion} other {# nicht kategorisierte Transaktionen}} für {name} anzeigen",
     "previewButton": "Vorschläge anzeigen",
     "loading": "Wird geladen...",
     "suggestionsHeader": "Vorschläge ({count} gefunden)",

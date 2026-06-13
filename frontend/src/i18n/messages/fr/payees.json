@@ -119,6 +119,7 @@
     "onlyWithoutCategoryLabel": "Uniquement les bénéficiaires sans catégorie par défaut",
     "backfillLabel": "{count, plural, one {Catégoriser aussi # transaction existante sans catégorie} other {Catégoriser aussi # transactions existantes sans catégorie}}",
     "backfillHelp": "Applique la catégorie choisie aux transactions qui n'en ont pas actuellement. Les catégories existantes, les virements et les transactions ventilées restent inchangés.",
+    "viewUncategorizedTitle": "Afficher {count, plural, one {# transaction sans catégorie} other {# transactions sans catégorie}} pour {name}",
     "previewButton": "Aperçu des suggestions",
     "loading": "Chargement...",
     "suggestionsHeader": "Suggestions ({count} trouvée(s))",

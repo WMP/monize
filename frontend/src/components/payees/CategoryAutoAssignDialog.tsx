@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
@@ -38,6 +39,17 @@ export function CategoryAutoAssignDialog({
   const [isApplying, setIsApplying] = useState(false);
   const [hasPreviewLoaded, setHasPreviewLoaded] = useState(false);
   const t = useTranslations('payees');
+  const router = useRouter();
+
+  // Jump to the Transactions page filtered to this payee's uncategorized
+  // transactions so the user can review or fix them directly.
+  const viewUncategorized = useCallback(
+    (payeeId: string) => {
+      onClose();
+      router.push(`/transactions?payeeId=${payeeId}&categoryId=uncategorized`);
+    },
+    [onClose, router],
+  );
 
   // Map a suggested category id to its full "Parent: Child" label so the
   // suggestion shows the subcategory in context; fall back to the bare name.
@@ -309,16 +321,19 @@ export function CategoryAutoAssignDialog({
                                 {suggestion.transactionCount} transactions
                               </span>
                               {suggestion.uncategorizedCount > 0 && (
-                                <span
-                                  className="inline-flex text-xs font-medium rounded-full px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
-                                  title={t('list.uncategorizedTitle', {
+                                <button
+                                  type="button"
+                                  onClick={() => viewUncategorized(suggestion.payeeId)}
+                                  className="inline-flex text-xs font-medium rounded-full px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/60 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                  title={t('categoryAutoAssign.viewUncategorizedTitle', {
                                     count: suggestion.uncategorizedCount,
+                                    name: suggestion.payeeName,
                                   })}
                                 >
                                   {t('list.uncategorizedBadge', {
                                     count: suggestion.uncategorizedCount,
                                   })}
-                                </span>
+                                </button>
                               )}
                             </div>
                           </td>

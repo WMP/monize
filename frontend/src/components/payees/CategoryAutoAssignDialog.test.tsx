@@ -6,6 +6,19 @@ import toast from 'react-hot-toast';
 import { CategorySuggestion } from '@/types/payee';
 import { Category } from '@/types/category';
 
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+    replace: vi.fn(),
+    back: vi.fn(),
+    prefetch: vi.fn(),
+    refresh: vi.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock('@/lib/payees', () => ({
   payeesApi: {
     getCategorySuggestions: vi.fn().mockResolvedValue([]),
@@ -805,6 +818,24 @@ describe('CategoryAutoAssignDialog', () => {
       // payee-1 has 4 uncategorized, payee-2 has 3 -- one badge per row.
       expect(screen.getByText('4 uncategorized')).toBeInTheDocument();
       expect(screen.getByText('3 uncategorized')).toBeInTheDocument();
+    });
+
+    it('navigates to the filtered Transactions page when a badge is clicked', async () => {
+      mockGetCategorySuggestions.mockResolvedValue(withUncategorized);
+      render(<CategoryAutoAssignDialog isOpen={true} onClose={onClose} onSuccess={onSuccess} />);
+
+      fireEvent.click(screen.getByText('Preview Suggestions'));
+
+      await waitFor(() => {
+        expect(screen.getByText('4 uncategorized')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('4 uncategorized'));
+
+      expect(onClose).toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith(
+        '/transactions?payeeId=payee-1&categoryId=uncategorized',
+      );
     });
 
     it('does not show a per-payee badge when a payee has no uncategorized transactions', async () => {

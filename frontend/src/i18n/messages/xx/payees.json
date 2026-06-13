@@ -119,6 +119,7 @@
     "onlyWithoutCategoryLabel": "[XX-Only payees without a default category-XX]",
     "backfillLabel": "[XX-Also categorize {count, plural, one {# existing uncategorized transaction} other {# existing uncategorized transactions}}-XX]",
     "backfillHelp": "[XX-Applies the chosen category to transactions that currently have none. Existing categories, transfers, and split transactions are left unchanged.-XX]",
+    "viewUncategorizedTitle": "[XX-View {count, plural, one {# uncategorized transaction} other {# uncategorized transactions}} for {name}-XX]",
     "previewButton": "[XX-Preview Suggestions-XX]",
     "loading": "[XX-Loading...-XX]",
     "suggestionsHeader": "[XX-Suggestions ({count} found)-XX]",
