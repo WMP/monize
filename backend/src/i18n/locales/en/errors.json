@@ -77,6 +77,15 @@
     "forecastRateLimited": "A forecast was recently generated. Please try again later.",
     "insightNotFound": "Insight not found"
   },
+  "aiSessions": {
+    "noSuggestions": "At least one suggestion is required",
+    "tooManySuggestions": "At most {{ max }} suggestions are allowed per session",
+    "exactlyOneCategory": "Each suggestion must specify exactly one of categoryId or newCategoryName",
+    "payeesNotOwned": "Payee IDs not found or not owned by user: {{ ids }}",
+    "categoriesNotOwned": "Category IDs not found or not owned by user: {{ ids }}",
+    "notFound": "Suggestion session with ID {{ id }} not found",
+    "noItemsToApply": "No items to apply"
+  },
   "auth": {
     "tooManyAttemptsLoginAgain": "Too many verification attempts. Please log in again.",
     "invalidOrExpiredVerificationToken": "Invalid or expired verification token",

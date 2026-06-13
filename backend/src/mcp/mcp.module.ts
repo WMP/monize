@@ -4,6 +4,7 @@ import { AccountsModule } from "../accounts/accounts.module";
 import { TransactionsModule } from "../transactions/transactions.module";
 import { CategoriesModule } from "../categories/categories.module";
 import { PayeesModule } from "../payees/payees.module";
+import { AiSuggestionSessionModule } from "../ai/sessions/ai-suggestion-session.module";
 import { ScheduledTransactionsModule } from "../scheduled-transactions/scheduled-transactions.module";
 import { NetWorthModule } from "../net-worth/net-worth.module";
 import { SecuritiesModule } from "../securities/securities.module";
@@ -19,6 +20,7 @@ import { McpTransactionsTools } from "./tools/transactions.tool";
 import { McpCategoriesTools } from "./tools/categories.tool";
 import { McpPayeesTools } from "./tools/payees.tool";
 import { McpPayeeCategorizationTools } from "./tools/payee-categorization.tool";
+import { McpPayeeSuggestionSessionTools } from "./tools/payee-suggestion-session.tool";
 import { McpReportsTools } from "./tools/reports.tool";
 import { McpInvestmentsTools } from "./tools/investments.tool";
 import { McpNetWorthTools } from "./tools/net-worth.tool";
@@ -43,6 +45,7 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
     forwardRef(() => TransactionsModule),
     forwardRef(() => CategoriesModule),
     PayeesModule,
+    AiSuggestionSessionModule,
     forwardRef(() => ScheduledTransactionsModule),
     forwardRef(() => NetWorthModule),
     SecuritiesModule,
@@ -57,6 +60,7 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
     McpCategoriesTools,
     McpPayeesTools,
     McpPayeeCategorizationTools,
+    McpPayeeSuggestionSessionTools,
     McpReportsTools,
     McpInvestmentsTools,
     McpNetWorthTools,

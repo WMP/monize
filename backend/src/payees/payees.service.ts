@@ -1270,6 +1270,77 @@ export class PayeesService {
   }
 
   /**
+   * Return the subset of the given payee IDs that belong to the user. Used by
+   * the suggestion-session service to validate ownership before persisting an
+   * LLM-produced draft.
+   */
+  async findOwnedIds(userId: string, payeeIds: string[]): Promise<Set<string>> {
+    const unique = [...new Set(payeeIds)];
+    if (unique.length === 0) return new Set();
+    const owned = await this.payeesRepository.find({
+      where: { id: In(unique), userId },
+      select: ["id"],
+    });
+    return new Set(owned.map((p) => p.id));
+  }
+
+  /**
+   * Look up payee names for a set of owned payee IDs. Returns a map of
+   * payeeId -> name for those that exist and belong to the user.
+   */
+  async getNamesByIds(
+    userId: string,
+    payeeIds: string[],
+  ): Promise<Map<string, string>> {
+    const unique = [...new Set(payeeIds)];
+    if (unique.length === 0) return new Map();
+    const payees = await this.payeesRepository.find({
+      where: { id: In(unique), userId },
+      select: ["id", "name"],
+    });
+    return new Map(payees.map((p) => [p.id, p.name]));
+  }
+
+  /**
+   * Fetch up to `perPayee` most-recent transaction descriptions for each of the
+   * given payees in one parameterized query. Used to enrich a suggestion
+   * session for human review without an N+1. Returns a map keyed by payeeId.
+   */
+  async getRecentDescriptionsByPayee(
+    userId: string,
+    payeeIds: string[],
+    perPayee = 8,
+  ): Promise<Map<string, string[]>> {
+    const unique = [...new Set(payeeIds)];
+    const result = new Map<string, string[]>();
+    if (unique.length === 0) return result;
+    const cap = Math.min(Math.max(perPayee, 1), 50);
+
+    const rows = await this.transactionsRepository
+      .createQueryBuilder("t")
+      .where("t.user_id = :userId", { userId })
+      .andWhere("t.payee_id IN (:...payeeIds)", { payeeIds: unique })
+      .andWhere("t.description IS NOT NULL")
+      .andWhere("t.description <> ''")
+      .select(["t.payee_id as payee_id", "t.description as description"])
+      .orderBy("t.payee_id", "ASC")
+      .addOrderBy("t.transaction_date", "DESC")
+      .addOrderBy("t.id", "DESC")
+      .getRawMany();
+
+    for (const row of rows) {
+      const list = result.get(row.payee_id) ?? [];
+      if (list.length >= cap) continue;
+      // De-duplicate identical descriptions while preserving recency order.
+      if (!list.includes(row.description)) {
+        list.push(row.description);
+        result.set(row.payee_id, list);
+      }
+    }
+    return result;
+  }
+
+  /**
    * Flat category list (id, name, parentId, isIncome) for the categorization
    * context tool. Sourced from CategoriesService so the catalog matches the
    * rest of the app.

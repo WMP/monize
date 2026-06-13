@@ -1964,4 +1964,67 @@ describe("PayeesService", () => {
       };
     }
   });
+
+  describe("findOwnedIds", () => {
+    it("returns the subset of payee IDs owned by the user", async () => {
+      payeesRepository.find.mockResolvedValue([
+        { id: "payee-1" },
+        { id: "payee-2" },
+      ]);
+      const result = await service.findOwnedIds(userId, [
+        "payee-1",
+        "payee-2",
+        "payee-3",
+      ]);
+      expect(result).toEqual(new Set(["payee-1", "payee-2"]));
+    });
+
+    it("short-circuits to an empty set for no IDs", async () => {
+      const result = await service.findOwnedIds(userId, []);
+      expect(result.size).toBe(0);
+      expect(payeesRepository.find).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getNamesByIds", () => {
+    it("maps owned payee IDs to names", async () => {
+      payeesRepository.find.mockResolvedValue([
+        { id: "payee-1", name: "Starbucks" },
+      ]);
+      const result = await service.getNamesByIds(userId, ["payee-1"]);
+      expect(result.get("payee-1")).toBe("Starbucks");
+    });
+  });
+
+  describe("getRecentDescriptionsByPayee", () => {
+    it("groups recent distinct descriptions per payee, capped", async () => {
+      const qb = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          { payee_id: "payee-1", description: "COFFEE A" },
+          { payee_id: "payee-1", description: "COFFEE A" },
+          { payee_id: "payee-1", description: "COFFEE B" },
+          { payee_id: "payee-2", description: "STORE X" },
+        ]),
+      };
+      transactionsRepository.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.getRecentDescriptionsByPayee(
+        userId,
+        ["payee-1", "payee-2"],
+        8,
+      );
+      expect(result.get("payee-1")).toEqual(["COFFEE A", "COFFEE B"]);
+      expect(result.get("payee-2")).toEqual(["STORE X"]);
+    });
+
+    it("returns empty map for no payee IDs", async () => {
+      const result = await service.getRecentDescriptionsByPayee(userId, []);
+      expect(result.size).toBe(0);
+    });
+  });
 });

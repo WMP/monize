@@ -1,8 +1,8 @@
 import { FINANCIAL_TOOLS } from "./tool-definitions";
 
 describe("FINANCIAL_TOOLS", () => {
-  it("defines exactly 17 tools", () => {
-    expect(FINANCIAL_TOOLS).toHaveLength(17);
+  it("defines exactly 18 tools", () => {
+    expect(FINANCIAL_TOOLS).toHaveLength(18);
   });
 
   it("has unique tool names", () => {
@@ -26,6 +26,8 @@ describe("FINANCIAL_TOOLS", () => {
     "get_upcoming_bills",
     "get_scheduled_transactions",
     "calculate",
+    "get_payee_categorization_context",
+    "save_payee_category_suggestions",
     "render_chart",
   ];
 

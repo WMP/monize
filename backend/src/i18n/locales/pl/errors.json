@@ -77,6 +77,15 @@
     "forecastRateLimited": "Prognoza została niedawno wygenerowana. Spróbuj ponownie później.",
     "insightNotFound": "Nie znaleziono analizy"
   },
+  "aiSessions": {
+    "noSuggestions": "Wymagana jest co najmniej jedna sugestia",
+    "tooManySuggestions": "Na sesję dozwolonych jest maksymalnie {{ max }} sugestii",
+    "exactlyOneCategory": "Każda sugestia musi zawierać dokładnie jedno z pól categoryId lub newCategoryName",
+    "payeesNotOwned": "Identyfikatory odbiorców nie zostały znalezione lub nie należą do użytkownika: {{ ids }}",
+    "categoriesNotOwned": "Identyfikatory kategorii nie zostały znalezione lub nie należą do użytkownika: {{ ids }}",
+    "notFound": "Nie znaleziono sesji sugestii o identyfikatorze {{ id }}",
+    "noItemsToApply": "Brak elementów do zastosowania"
+  },
   "auth": {
     "tooManyAttemptsLoginAgain": "Zbyt wiele prób weryfikacji. Zaloguj się ponownie.",
     "invalidOrExpiredVerificationToken": "Nieprawidłowy lub wygasły token weryfikacyjny",

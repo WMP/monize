@@ -9,6 +9,7 @@ import { PortfolioService } from "../../securities/portfolio.service";
 import { InvestmentTransactionsService } from "../../securities/investment-transactions.service";
 import { ScheduledTransactionsService } from "../../scheduled-transactions/scheduled-transactions.service";
 import { PayeesService } from "../../payees/payees.service";
+import { AiSuggestionSessionService } from "../sessions/ai-suggestion-session.service";
 
 describe("ToolExecutorService", () => {
   let service: ToolExecutorService;
@@ -21,6 +22,7 @@ describe("ToolExecutorService", () => {
   let categories: Record<string, jest.Mock>;
   let scheduledTransactions: Record<string, jest.Mock>;
   let payees: Record<string, jest.Mock>;
+  let suggestionSessions: Record<string, jest.Mock>;
 
   const userId = "user-1";
 
@@ -235,6 +237,12 @@ describe("ToolExecutorService", () => {
       }),
     };
 
+    suggestionSessions = {
+      savePayeeCategorySuggestions: jest
+        .fn()
+        .mockResolvedValue({ sessionId: "sess-1", savedCount: 2 }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ToolExecutorService,
@@ -253,6 +261,10 @@ describe("ToolExecutorService", () => {
           useValue: scheduledTransactions,
         },
         { provide: PayeesService, useValue: payees },
+        {
+          provide: AiSuggestionSessionService,
+          useValue: suggestionSessions,
+        },
       ],
     }).compile();
 
@@ -812,6 +824,39 @@ describe("ToolExecutorService", () => {
         payeeIds: ["11111111-1111-4111-8111-111111111111"],
         includeCategoryTree: false,
       });
+    });
+
+    it("save_payee_category_suggestions delegates to the session service (draft only)", async () => {
+      const result = await service.execute(
+        userId,
+        "save_payee_category_suggestions",
+        {
+          title: "draft",
+          suggestions: [
+            {
+              payeeId: "11111111-1111-4111-8111-111111111111",
+              categoryId: "22222222-2222-4222-8222-222222222222",
+            },
+            {
+              payeeId: "33333333-3333-4333-8333-333333333333",
+              newCategoryName: "Coffee",
+            },
+          ],
+        },
+      );
+
+      expect(
+        suggestionSessions.savePayeeCategorySuggestions,
+      ).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({
+          title: "draft",
+          suggestions: expect.any(Array),
+        }),
+      );
+      expect(result.data).toEqual({ sessionId: "sess-1", savedCount: 2 });
+      expect(result.sources[0].type).toBe("payee_suggestion_session");
+      expect(result.summary).toContain("No changes have been applied");
     });
 
     it("returns error for unknown tools", async () => {

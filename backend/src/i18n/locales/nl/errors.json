@@ -77,6 +77,15 @@
     "forecastRateLimited": "Er is onlangs een prognose gegenereerd. Probeer het later opnieuw.",
     "insightNotFound": "Inzicht niet gevonden"
   },
+  "aiSessions": {
+    "noSuggestions": "Er is ten minste één suggestie vereist",
+    "tooManySuggestions": "Maximaal {{ max }} suggesties per sessie toegestaan",
+    "exactlyOneCategory": "Elke suggestie moet precies een van categoryId of newCategoryName opgeven",
+    "payeesNotOwned": "Begunstigde-ID's niet gevonden of niet eigendom van gebruiker: {{ ids }}",
+    "categoriesNotOwned": "Categorie-ID's niet gevonden of niet eigendom van gebruiker: {{ ids }}",
+    "notFound": "Suggestiesessie met ID {{ id }} niet gevonden",
+    "noItemsToApply": "Geen items om toe te passen"
+  },
   "auth": {
     "tooManyAttemptsLoginAgain": "Te veel verificatiepogingen. Log opnieuw in.",
     "invalidOrExpiredVerificationToken": "Ongeldig of verlopen verificatietoken",

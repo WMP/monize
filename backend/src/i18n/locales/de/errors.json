@@ -77,6 +77,15 @@
     "forecastRateLimited": "Eine Prognose wurde kürzlich erstellt. Bitte versuchen Sie es später erneut.",
     "insightNotFound": "Insight nicht gefunden"
   },
+  "aiSessions": {
+    "noSuggestions": "Mindestens ein Vorschlag ist erforderlich",
+    "tooManySuggestions": "Pro Sitzung sind höchstens {{ max }} Vorschläge zulässig",
+    "exactlyOneCategory": "Jeder Vorschlag muss genau eines von categoryId oder newCategoryName angeben",
+    "payeesNotOwned": "Zahlungsempfänger-IDs nicht gefunden oder gehören nicht dem Benutzer: {{ ids }}",
+    "categoriesNotOwned": "Kategorie-IDs nicht gefunden oder gehören nicht dem Benutzer: {{ ids }}",
+    "notFound": "Vorschlagssitzung mit der ID {{ id }} nicht gefunden",
+    "noItemsToApply": "Keine Elemente zum Anwenden"
+  },
   "auth": {
     "tooManyAttemptsLoginAgain": "Zu viele Verifikationsversuche. Bitte melden Sie sich erneut an.",
     "invalidOrExpiredVerificationToken": "Ungültiger oder abgelaufener Verifikations-Token",

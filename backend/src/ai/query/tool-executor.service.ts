@@ -17,6 +17,7 @@ import {
   ScheduledTransactionsService,
   LlmScheduledKind,
 } from "../../scheduled-transactions/scheduled-transactions.service";
+import { AiSuggestionSessionService } from "../sessions/ai-suggestion-session.service";
 import { validateToolInput } from "./tool-input-schemas";
 import { executeCalculation, CalculateInput } from "./calculate-tool";
 import { sanitizePromptValue } from "../../common/sanitization.util";
@@ -54,6 +55,7 @@ export class ToolExecutorService {
     private readonly scheduledTransactionsService: ScheduledTransactionsService,
     @Inject(forwardRef(() => PayeesService))
     private readonly payeesService: PayeesService,
+    private readonly suggestionSessionService: AiSuggestionSessionService,
   ) {}
 
   async execute(
@@ -134,6 +136,12 @@ export class ToolExecutorService {
           break;
         case "get_payee_categorization_context":
           result = await this.getPayeeCategorizationContext(
+            userId,
+            validatedInput,
+          );
+          break;
+        case "save_payee_category_suggestions":
+          result = await this.savePayeeCategorySuggestions(
             userId,
             validatedInput,
           );
@@ -765,6 +773,48 @@ export class ToolExecutorService {
         {
           type: "payees",
           description: "Per-payee transaction context for category suggestions",
+        },
+      ],
+    };
+  }
+
+  /**
+   * Persist the LLM's payee-category suggestions as a DRAFT suggestion session.
+   * This is the ONLY write the assistant can make here: it never applies the
+   * changes. Applying is a separate, human-initiated action in the UI. Shared
+   * with the MCP save_payee_category_suggestions tool via the session service.
+   */
+  private async savePayeeCategorySuggestions(
+    userId: string,
+    input: Record<string, unknown>,
+  ): Promise<ToolResult> {
+    const suggestions = (input.suggestions ?? []) as Array<{
+      payeeId: string;
+      categoryId?: string;
+      newCategoryName?: string;
+      reason?: string;
+      confidence?: number;
+    }>;
+
+    const data = await this.suggestionSessionService.savePayeeCategorySuggestions(
+      userId,
+      {
+        sessionId: input.sessionId as string | undefined,
+        title: input.title as string | undefined,
+        suggestions,
+      },
+    );
+
+    return {
+      data,
+      summary: `Saved ${data.savedCount} payee category suggestion${
+        data.savedCount === 1 ? "" : "s"
+      } as a draft for the user to review and apply (session ${data.sessionId}). No changes have been applied.`,
+      sources: [
+        {
+          type: "payee_suggestion_session",
+          description:
+            "Draft payee categorization session (pending human review)",
         },
       ],
     };

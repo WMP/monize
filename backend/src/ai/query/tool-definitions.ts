@@ -505,6 +505,64 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
     },
   },
   {
+    name: "save_payee_category_suggestions",
+    description:
+      "Save your per-payee default-category suggestions as a DRAFT for the user to review and apply. IMPORTANT: this does NOT change anything -- it only stores a draft. The user reviews the draft in the app and applies it themselves; you must never apply changes directly. Call this after gathering context with get_payee_categorization_context. For each payee provide EITHER an existing categoryId OR a newCategoryName (exactly one, not both). Pass an existing sessionId to replace a draft you previously created in this conversation; omit it to start a new draft. Optionally include a short reason and a confidence (0-1) per payee.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sessionId: {
+          type: "string",
+          description:
+            "Optional: existing draft session ID to replace. Omit to create a new draft.",
+        },
+        title: {
+          type: "string",
+          description: "Optional short title for the draft session.",
+        },
+        suggestions: {
+          type: "array",
+          minItems: 1,
+          maxItems: 500,
+          items: {
+            type: "object",
+            properties: {
+              payeeId: {
+                type: "string",
+                description: "The payee to categorize (must belong to the user).",
+              },
+              categoryId: {
+                type: "string",
+                description:
+                  "An existing category to assign. Provide this OR newCategoryName, not both.",
+              },
+              newCategoryName: {
+                type: "string",
+                description:
+                  "Name of a new category to propose. Provide this OR categoryId, not both.",
+              },
+              reason: {
+                type: "string",
+                description:
+                  "Optional short rationale for this suggestion (shown to the user).",
+              },
+              confidence: {
+                type: "number",
+                minimum: 0,
+                maximum: 1,
+                description: "Optional confidence between 0 and 1.",
+              },
+            },
+            required: ["payeeId"],
+          },
+          description:
+            "Per-payee category suggestions. Each item must specify exactly one of categoryId or newCategoryName.",
+        },
+      },
+      required: ["suggestions"],
+    },
+  },
+  {
     name: "render_chart",
     description:
       "Render a chart in the chat so the user can see the data visually. Call this AFTER gathering numbers with another tool (query_transactions, get_spending_by_category, get_net_worth_history, compare_periods, etc.). Choose the chart type that fits the data: 'pie' for category breakdowns with 6 or fewer slices, 'bar' for larger breakdowns or period comparisons, 'line' or 'area' for time series (months or weeks). Pass a compact subset of the data (at most 10-15 data points) and aggregate the long tail into an 'Other' bucket. Values must be positive numbers (use absolute values for expenses). Do not narrate the chart's existence in your reply; just render it and summarize the findings.",

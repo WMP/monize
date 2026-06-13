@@ -32,6 +32,7 @@ import { BudgetsModule } from "../budgets/budgets.module";
 import { SecuritiesModule } from "../securities/securities.module";
 import { ScheduledTransactionsModule } from "../scheduled-transactions/scheduled-transactions.module";
 import { PayeesModule } from "../payees/payees.module";
+import { AiSuggestionSessionModule } from "./sessions/ai-suggestion-session.module";
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { PayeesModule } from "../payees/payees.module";
     SecuritiesModule,
     forwardRef(() => ScheduledTransactionsModule),
     forwardRef(() => PayeesModule),
+    AiSuggestionSessionModule,
   ],
   providers: [
     AiService,

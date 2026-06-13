@@ -77,6 +77,15 @@
     "forecastRateLimited": "Se generó un pronóstico recientemente. Inténtalo de nuevo más tarde.",
     "insightNotFound": "Análisis no encontrado"
   },
+  "aiSessions": {
+    "noSuggestions": "Se requiere al menos una sugerencia",
+    "tooManySuggestions": "Se permiten como máximo {{ max }} sugerencias por sesión",
+    "exactlyOneCategory": "Cada sugerencia debe especificar exactamente uno de categoryId o newCategoryName",
+    "payeesNotOwned": "ID de beneficiarios no encontrados o no pertenecientes al usuario: {{ ids }}",
+    "categoriesNotOwned": "ID de categorías no encontrados o no pertenecientes al usuario: {{ ids }}",
+    "notFound": "Sesión de sugerencias con ID {{ id }} no encontrada",
+    "noItemsToApply": "No hay elementos para aplicar"
+  },
   "auth": {
     "tooManyAttemptsLoginAgain": "Demasiados intentos de verificación. Inicia sesión de nuevo.",
     "invalidOrExpiredVerificationToken": "Token de verificación no válido o caducado",

@@ -77,6 +77,15 @@
     "forecastRateLimited": "Une prévision a été générée récemment. Veuillez réessayer plus tard.",
     "insightNotFound": "Analyse introuvable"
   },
+  "aiSessions": {
+    "noSuggestions": "Au moins une suggestion est requise",
+    "tooManySuggestions": "Au maximum {{ max }} suggestions sont autorisées par session",
+    "exactlyOneCategory": "Chaque suggestion doit indiquer exactement un seul des champs categoryId ou newCategoryName",
+    "payeesNotOwned": "ID de bénéficiaires introuvables ou n'appartenant pas à l'utilisateur : {{ ids }}",
+    "categoriesNotOwned": "ID de catégories introuvables ou n'appartenant pas à l'utilisateur : {{ ids }}",
+    "notFound": "Session de suggestions avec l'ID {{ id }} introuvable",
+    "noItemsToApply": "Aucun élément à appliquer"
+  },
   "auth": {
     "tooManyAttemptsLoginAgain": "Trop de tentatives de vérification. Veuillez vous reconnecter.",
     "invalidOrExpiredVerificationToken": "Jeton de vérification invalide ou expiré",

@@ -171,6 +171,31 @@ export const getPayeeCategorizationContextSchema = z.object({
 });
 
 /**
+ * save_payee_category_suggestions persists the LLM's per-payee category
+ * suggestions as a DRAFT. The tool never applies changes; the user reviews and
+ * applies the draft in the app. Each suggestion must carry exactly one of
+ * categoryId / newCategoryName -- the service rejects ambiguous items, and we
+ * keep the schema permissive here so that the service can return a clear,
+ * domain-specific error rather than a generic zod refinement message.
+ */
+export const savePayeeCategorySuggestionsSchema = z.object({
+  sessionId: z.string().uuid().optional(),
+  title: z.string().max(255).optional(),
+  suggestions: z
+    .array(
+      z.object({
+        payeeId: z.string().uuid(),
+        categoryId: z.string().uuid().optional(),
+        newCategoryName: z.string().min(1).max(100).optional(),
+        reason: z.string().max(500).optional(),
+        confidence: z.number().min(0).max(1).optional(),
+      }),
+    )
+    .min(1)
+    .max(500),
+});
+
+/**
  * render_chart takes a compact, LLM-assembled visualization payload that
  * flows through the SSE stream to the browser. Caps keep the payload small
  * enough that recharts renders cleanly and that a misbehaving model can't
@@ -207,6 +232,7 @@ export const toolInputSchemas: Record<string, z.ZodSchema> = {
   get_scheduled_transactions: getScheduledTransactionsSchema,
   calculate: calculateSchema,
   get_payee_categorization_context: getPayeeCategorizationContextSchema,
+  save_payee_category_suggestions: savePayeeCategorySuggestionsSchema,
   render_chart: renderChartSchema,
 };
 

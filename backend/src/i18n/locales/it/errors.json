@@ -77,6 +77,15 @@
     "forecastRateLimited": "È stata generata di recente una previsione. Riprova più tardi.",
     "insightNotFound": "Analisi non trovata"
   },
+  "aiSessions": {
+    "noSuggestions": "È richiesto almeno un suggerimento",
+    "tooManySuggestions": "Sono consentiti al massimo {{ max }} suggerimenti per sessione",
+    "exactlyOneCategory": "Ogni suggerimento deve specificare esattamente uno tra categoryId o newCategoryName",
+    "payeesNotOwned": "ID beneficiari non trovati o non appartenenti all'utente: {{ ids }}",
+    "categoriesNotOwned": "ID categorie non trovati o non appartenenti all'utente: {{ ids }}",
+    "notFound": "Sessione di suggerimenti con ID {{ id }} non trovata",
+    "noItemsToApply": "Nessun elemento da applicare"
+  },
   "auth": {
     "tooManyAttemptsLoginAgain": "Troppi tentativi di verifica. Accedi di nuovo.",
     "invalidOrExpiredVerificationToken": "Token di verifica non valido o scaduto",

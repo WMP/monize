@@ -5,6 +5,7 @@ import { McpTransactionsTools } from "./tools/transactions.tool";
 import { McpCategoriesTools } from "./tools/categories.tool";
 import { McpPayeesTools } from "./tools/payees.tool";
 import { McpPayeeCategorizationTools } from "./tools/payee-categorization.tool";
+import { McpPayeeSuggestionSessionTools } from "./tools/payee-suggestion-session.tool";
 import { McpReportsTools } from "./tools/reports.tool";
 import { McpInvestmentsTools } from "./tools/investments.tool";
 import { McpNetWorthTools } from "./tools/net-worth.tool";
@@ -38,6 +39,10 @@ describe("McpServerService", () => {
         { provide: McpCategoriesTools, useValue: mockToolProvider },
         { provide: McpPayeesTools, useValue: mockToolProvider },
         { provide: McpPayeeCategorizationTools, useValue: mockToolProvider },
+        {
+          provide: McpPayeeSuggestionSessionTools,
+          useValue: mockToolProvider,
+        },
         { provide: McpReportsTools, useValue: mockToolProvider },
         { provide: McpInvestmentsTools, useValue: mockToolProvider },
         { provide: McpNetWorthTools, useValue: mockToolProvider },
@@ -80,7 +85,7 @@ describe("McpServerService", () => {
   it("should register all tools", () => {
     const resolver = jest.fn();
     service.createServer(resolver);
-    expect(mockToolProvider.register).toHaveBeenCalledTimes(11);
+    expect(mockToolProvider.register).toHaveBeenCalledTimes(12);
   });
 
   it("should register all resources", () => {

@@ -954,6 +954,25 @@ CREATE INDEX idx_ai_insights_user_dismissed ON ai_insights(user_id, is_dismissed
 CREATE INDEX idx_ai_insights_expires ON ai_insights(expires_at);
 CREATE INDEX idx_ai_insights_user_type ON ai_insights(user_id, type);
 
+-- AI suggestion sessions: generic DRAFT -> REVIEW -> APPLY store for AI
+-- suggestions. The external LLM may only create a DRAFT; applying is a human
+-- action via a REST endpoint. Generic by design so other features can reuse it
+-- ('payee_categorization' now, 'broker_import' later). Display fields are
+-- resolved fresh on read, never stored in `items`.
+CREATE TABLE ai_suggestion_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind VARCHAR(40) NOT NULL,            -- 'payee_categorization', 'broker_import'
+    status VARCHAR(20) NOT NULL DEFAULT 'draft',  -- 'draft', 'applied', 'discarded'
+    title VARCHAR(255),
+    items JSONB NOT NULL DEFAULT '[]',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_ai_suggestion_sessions_user ON ai_suggestion_sessions(user_id);
+CREATE INDEX idx_ai_suggestion_sessions_user_kind_status ON ai_suggestion_sessions(user_id, kind, status);
+
 -- Personal Access Tokens (for MCP server and API access)
 CREATE TABLE personal_access_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
