@@ -1,0 +1,109 @@
+# Fork image publisher.
+#
+# Builds the backend and frontend production images and pushes them to this
+# fork's own GitHub Container Registry namespace (ghcr.io/<owner>/monize-*).
+# Unlike the upstream `build-and-push` job in ci.yml, this is self-contained:
+# it derives the owner dynamically (so it works on any fork), is not gated on
+# the full test/security matrix, and does not bump versions, create releases,
+# or sign images. It exists only so a fork can publish runnable images.
+#
+# One-time fork setup:
+#   1. Enable Actions on the fork (Actions tab -> "I understand... enable").
+#   2. The default GITHUB_TOKEN has packages:write, so no secrets are needed.
+#   3. After the first run, the packages are created as private under your
+#      account; make them public in Packages settings if you want to pull
+#      without authenticating.
+name: Build & Push Images (fork)
+
+on:
+  push:
+    branches:
+      - main
+      - 'feat/**'
+      - 'fork/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  images:
+    name: Build & push backend + frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+
+      # GHCR image paths must be lowercase; GitHub logins can contain capitals.
+      - name: Resolve lowercase owner
+        id: owner
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Build metadata
+        id: meta
+        run: |
+          echo "git_sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p "require('./backend/package.json').version")" >> "$GITHUB_OUTPUT"
+          # Sanitize the branch name into a registry-safe tag slug: lowercase,
+          # and replace '/' and any other non-alphanumeric char with '-'.
+          branch_slug=$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')
+          echo "branch_slug=${branch_slug}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${branch_slug}-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push backend
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: backend/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.owner }}/monize-backend:latest
+            ghcr.io/${{ steps.owner.outputs.owner }}/monize-backend:${{ steps.meta.outputs.image_tag }}
+          build-args: |
+            GIT_SHA=${{ steps.meta.outputs.git_sha }}
+            BUILD_DATE=${{ steps.meta.outputs.build_date }}
+            VERSION=${{ steps.meta.outputs.version }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: frontend
+          file: frontend/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.owner }}/monize-frontend:latest
+            ghcr.io/${{ steps.owner.outputs.owner }}/monize-frontend:${{ steps.meta.outputs.image_tag }}
+          build-args: |
+            GIT_SHA=${{ steps.meta.outputs.git_sha }}
+            BUILD_DATE=${{ steps.meta.outputs.build_date }}
+            VERSION=${{ steps.meta.outputs.version }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Summary
+        env:
+          OWNER: ${{ steps.owner.outputs.owner }}
+          TAG: ${{ steps.meta.outputs.image_tag }}
+        run: |
+          {
+            echo "### Images pushed to GHCR"
+            echo ""
+            echo "- \`ghcr.io/${OWNER}/monize-backend:${TAG}\` (and \`:latest\`)"
+            echo "- \`ghcr.io/${OWNER}/monize-frontend:${TAG}\` (and \`:latest\`)"
+          } >> "$GITHUB_STEP_SUMMARY"
