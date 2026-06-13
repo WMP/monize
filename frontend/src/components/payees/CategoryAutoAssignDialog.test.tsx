@@ -792,6 +792,34 @@ describe('CategoryAutoAssignDialog', () => {
       makeSuggestion({ payeeId: 'payee-2', payeeName: 'Gas Station', uncategorizedCount: 3 }),
     ];
 
+    it('shows a per-payee uncategorized badge for payees that have them', async () => {
+      mockGetCategorySuggestions.mockResolvedValue(withUncategorized);
+      render(<CategoryAutoAssignDialog isOpen={true} onClose={onClose} onSuccess={onSuccess} />);
+
+      fireEvent.click(screen.getByText('Preview Suggestions'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Grocery Store')).toBeInTheDocument();
+      });
+
+      // payee-1 has 4 uncategorized, payee-2 has 3 -- one badge per row.
+      expect(screen.getByText('4 uncategorized')).toBeInTheDocument();
+      expect(screen.getByText('3 uncategorized')).toBeInTheDocument();
+    });
+
+    it('does not show a per-payee badge when a payee has no uncategorized transactions', async () => {
+      mockGetCategorySuggestions.mockResolvedValue(sampleSuggestions); // all 0
+      render(<CategoryAutoAssignDialog isOpen={true} onClose={onClose} onSuccess={onSuccess} />);
+
+      fireEvent.click(screen.getByText('Preview Suggestions'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Grocery Store')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText(/uncategorized/)).not.toBeInTheDocument();
+    });
+
     it('does not show the backfill option when no selected payee has uncategorized transactions', async () => {
       mockGetCategorySuggestions.mockResolvedValue(sampleSuggestions); // all uncategorizedCount: 0
       render(<CategoryAutoAssignDialog isOpen={true} onClose={onClose} onSuccess={onSuccess} />);

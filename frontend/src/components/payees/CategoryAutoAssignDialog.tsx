@@ -304,8 +304,22 @@ export function CategoryAutoAssignDialog({
                             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                               {suggestion.payeeName}
                             </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              {suggestion.transactionCount} transactions
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {suggestion.transactionCount} transactions
+                              </span>
+                              {suggestion.uncategorizedCount > 0 && (
+                                <span
+                                  className="inline-flex text-xs font-medium rounded-full px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+                                  title={t('list.uncategorizedTitle', {
+                                    count: suggestion.uncategorizedCount,
+                                  })}
+                                >
+                                  {t('list.uncategorizedBadge', {
+                                    count: suggestion.uncategorizedCount,
+                                  })}
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="px-3 py-2">
