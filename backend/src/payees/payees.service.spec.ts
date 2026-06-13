@@ -13,6 +13,7 @@ import { Transaction } from "../transactions/entities/transaction.entity";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { Category } from "../categories/entities/category.entity";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import { CategoriesService } from "../categories/categories.service";
 
 describe("PayeesService", () => {
   let service: PayeesService;
@@ -60,6 +61,7 @@ describe("PayeesService", () => {
       groupBy: jest.fn().mockReturnThis(),
       addGroupBy: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
       having: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
@@ -83,6 +85,7 @@ describe("PayeesService", () => {
     transactionsRepository = {
       update: jest.fn(),
       count: jest.fn().mockResolvedValue(0),
+      createQueryBuilder: jest.fn(),
     };
 
     scheduledTransactionsRepository = {
@@ -169,6 +172,10 @@ describe("PayeesService", () => {
         {
           provide: ActionHistoryService,
           useValue: { record: jest.fn().mockResolvedValue(null) },
+        },
+        {
+          provide: CategoriesService,
+          useValue: { findAll: jest.fn().mockResolvedValue([]) },
         },
       ],
     }).compile();
@@ -1791,5 +1798,170 @@ describe("PayeesService", () => {
 
       expect(result.aliasAdded).toBe(false);
     });
+  });
+
+  // ─── getCategorizationContext ────────────────────────────────────────
+  describe("getCategorizationContext", () => {
+    const makePayeeQb = (rows: any[]) => ({
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      having: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue(rows),
+    });
+
+    const makeTxQb = (rows: any[]) => ({
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue(rows),
+    });
+
+    it("returns rich per-payee context with collapsed tags and category tree", async () => {
+      const payeeQb = makePayeeQb([
+        {
+          payee_id: "payee-2",
+          payee_name: "Amazon",
+          default_category_id: null,
+          default_category_name: null,
+          transaction_count: "2",
+        },
+      ]);
+      payeesRepository.createQueryBuilder.mockReturnValueOnce(payeeQb);
+
+      const txQb = makeTxQb([
+        {
+          id: "tx-1",
+          payee_id: "payee-2",
+          date: "2026-01-10",
+          amount: "-12.5000",
+          currency_code: "USD",
+          description: "Order",
+          status: "CLEARED",
+          account_name: "Checking",
+          account_type: "CHEQUING",
+          category_name: null,
+          tag_name: "credit-card",
+        },
+        {
+          id: "tx-1",
+          payee_id: "payee-2",
+          date: "2026-01-10",
+          amount: "-12.5000",
+          currency_code: "USD",
+          description: "Order",
+          status: "CLEARED",
+          account_name: "Checking",
+          account_type: "CHEQUING",
+          category_name: null,
+          tag_name: "online",
+        },
+      ]);
+      transactionsRepository.createQueryBuilder.mockReturnValueOnce(txQb);
+
+      (service as any).categoriesService.findAll.mockResolvedValue([
+        { id: "cat-1", name: "Shopping", parentId: null, isIncome: false },
+      ]);
+
+      const result = await service.getCategorizationContext(userId, {});
+
+      expect(result.returnedPayees).toBe(1);
+      expect(result.payees[0].payeeName).toBe("Amazon");
+      expect(result.payees[0].transactionCount).toBe(2);
+      // tag fan-out collapses into one transaction with both tags
+      expect(result.payees[0].transactions).toHaveLength(1);
+      expect(result.payees[0].transactions[0].tags).toEqual([
+        "credit-card",
+        "online",
+      ]);
+      expect(result.payees[0].transactions[0].amount).toBe(-12.5);
+      expect(result.categories).toEqual([
+        { id: "cat-1", name: "Shopping", parentId: null, isIncome: false },
+      ]);
+      // onlyUncategorized default applies a default_category_id IS NULL filter
+      expect(payeeQb.andWhere).toHaveBeenCalledWith(
+        "payee.default_category_id IS NULL",
+      );
+    });
+
+    it("caps transactions per payee and omits category tree when disabled", async () => {
+      const payeeQb = makePayeeQb([
+        {
+          payee_id: "payee-2",
+          payee_name: "Amazon",
+          default_category_id: null,
+          default_category_name: null,
+          transaction_count: "3",
+        },
+      ]);
+      payeesRepository.createQueryBuilder.mockReturnValueOnce(payeeQb);
+
+      const txQb = makeTxQb([
+        mkTx("tx-1"),
+        mkTx("tx-2"),
+        mkTx("tx-3"),
+      ]);
+      transactionsRepository.createQueryBuilder.mockReturnValueOnce(txQb);
+
+      const result = await service.getCategorizationContext(userId, {
+        maxTransactionsPerPayee: 2,
+        includeCategoryTree: false,
+      });
+
+      expect(result.payees[0].transactions).toHaveLength(2);
+      expect(result.categories).toBeUndefined();
+      expect((service as any).categoriesService.findAll).not.toHaveBeenCalled();
+    });
+
+    it("returns empty when payeeIds restriction matches nothing owned", async () => {
+      payeesRepository.find.mockResolvedValueOnce([]);
+
+      const result = await service.getCategorizationContext(userId, {
+        payeeIds: ["11111111-1111-1111-1111-111111111111"],
+      });
+
+      expect(result.returnedPayees).toBe(0);
+      expect(result.payees).toEqual([]);
+      expect(result.categories).toEqual([]);
+      expect(payeesRepository.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it("returns empty payees but still includes category tree when no payees match", async () => {
+      const payeeQb = makePayeeQb([]);
+      payeesRepository.createQueryBuilder.mockReturnValueOnce(payeeQb);
+      (service as any).categoriesService.findAll.mockResolvedValue([
+        { id: "cat-1", name: "Shopping", parentId: null, isIncome: false },
+      ]);
+
+      const result = await service.getCategorizationContext(userId, {});
+
+      expect(result.returnedPayees).toBe(0);
+      expect(result.categories).toHaveLength(1);
+    });
+
+    function mkTx(id: string) {
+      return {
+        id,
+        payee_id: "payee-2",
+        date: "2026-01-10",
+        amount: "-1.0000",
+        currency_code: "USD",
+        description: null,
+        status: "CLEARED",
+        account_name: "Checking",
+        account_type: "CHEQUING",
+        category_name: null,
+        tag_name: null,
+      };
+    }
   });
 });

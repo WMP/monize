@@ -9,6 +9,7 @@ import { PayeesService } from "./payees.service";
 import { PayeeAutoMergeService } from "./payee-auto-merge.service";
 import { PayeesController } from "./payees.controller";
 import { ActionHistoryModule } from "../action-history/action-history.module";
+import { CategoriesModule } from "../categories/categories.module";
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ActionHistoryModule } from "../action-history/action-history.module";
       Category,
     ]),
     ActionHistoryModule,
+    CategoriesModule,
   ],
   providers: [PayeesService, PayeeAutoMergeService],
   controllers: [PayeesController],

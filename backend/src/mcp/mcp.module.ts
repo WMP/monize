@@ -18,6 +18,7 @@ import { McpAccountsTools } from "./tools/accounts.tool";
 import { McpTransactionsTools } from "./tools/transactions.tool";
 import { McpCategoriesTools } from "./tools/categories.tool";
 import { McpPayeesTools } from "./tools/payees.tool";
+import { McpPayeeCategorizationTools } from "./tools/payee-categorization.tool";
 import { McpReportsTools } from "./tools/reports.tool";
 import { McpInvestmentsTools } from "./tools/investments.tool";
 import { McpNetWorthTools } from "./tools/net-worth.tool";
@@ -55,6 +56,7 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
     McpTransactionsTools,
     McpCategoriesTools,
     McpPayeesTools,
+    McpPayeeCategorizationTools,
     McpReportsTools,
     McpInvestmentsTools,
     McpNetWorthTools,

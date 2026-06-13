@@ -5,6 +5,7 @@ import { McpAccountsTools } from "./tools/accounts.tool";
 import { McpTransactionsTools } from "./tools/transactions.tool";
 import { McpCategoriesTools } from "./tools/categories.tool";
 import { McpPayeesTools } from "./tools/payees.tool";
+import { McpPayeeCategorizationTools } from "./tools/payee-categorization.tool";
 import { McpReportsTools } from "./tools/reports.tool";
 import { McpInvestmentsTools } from "./tools/investments.tool";
 import { McpNetWorthTools } from "./tools/net-worth.tool";
@@ -27,6 +28,7 @@ export class McpServerService {
     private readonly transactionsTools: McpTransactionsTools,
     private readonly categoriesTools: McpCategoriesTools,
     private readonly payeesTools: McpPayeesTools,
+    private readonly payeeCategorizationTools: McpPayeeCategorizationTools,
     private readonly reportsTools: McpReportsTools,
     private readonly investmentsTools: McpInvestmentsTools,
     private readonly netWorthTools: McpNetWorthTools,
@@ -94,6 +96,7 @@ export class McpServerService {
     this.transactionsTools.register(server, resolve);
     this.categoriesTools.register(server, resolve);
     this.payeesTools.register(server, resolve);
+    this.payeeCategorizationTools.register(server, resolve);
     this.reportsTools.register(server, resolve);
     this.investmentsTools.register(server, resolve);
     this.netWorthTools.register(server, resolve);

@@ -2,6 +2,7 @@ import { Injectable, Inject, forwardRef, Logger } from "@nestjs/common";
 import { AccountsService } from "../../accounts/accounts.service";
 import { AccountType } from "../../accounts/entities/account.entity";
 import { CategoriesService } from "../../categories/categories.service";
+import { PayeesService } from "../../payees/payees.service";
 import { TransactionAnalyticsService } from "../../transactions/transaction-analytics.service";
 import { NetWorthService } from "../../net-worth/net-worth.service";
 import { BudgetReportsService } from "../../budgets/budget-reports.service";
@@ -51,6 +52,8 @@ export class ToolExecutorService {
     private readonly investmentTransactionsService: InvestmentTransactionsService,
     @Inject(forwardRef(() => ScheduledTransactionsService))
     private readonly scheduledTransactionsService: ScheduledTransactionsService,
+    @Inject(forwardRef(() => PayeesService))
+    private readonly payeesService: PayeesService,
   ) {}
 
   async execute(
@@ -128,6 +131,12 @@ export class ToolExecutorService {
           break;
         case "calculate":
           result = this.calculate(validatedInput);
+          break;
+        case "get_payee_categorization_context":
+          result = await this.getPayeeCategorizationContext(
+            userId,
+            validatedInput,
+          );
           break;
         case "render_chart":
           result = this.renderChart(validatedInput);
@@ -723,6 +732,39 @@ export class ToolExecutorService {
           description: accountNames
             ? `Scheduled ${kindDesc} for ${accountNames.join(", ")}`
             : `All scheduled ${kindDesc}`,
+        },
+      ],
+    };
+  }
+
+  private async getPayeeCategorizationContext(
+    userId: string,
+    input: Record<string, unknown>,
+  ): Promise<ToolResult> {
+    const data = await this.payeesService.getCategorizationContext(userId, {
+      onlyUncategorized: input.onlyUncategorized as boolean | undefined,
+      limit: input.limit as number | undefined,
+      minTransactions: input.minTransactions as number | undefined,
+      maxTransactionsPerPayee: input.maxTransactionsPerPayee as
+        | number
+        | undefined,
+      payeeIds: input.payeeIds as string[] | undefined,
+      includeCategoryTree: input.includeCategoryTree as boolean | undefined,
+    });
+
+    const needingSuggestions = data.payees.filter(
+      (p) => p.defaultCategoryId === null,
+    ).length;
+
+    return {
+      data,
+      summary: `Context for ${data.returnedPayees} payee${
+        data.returnedPayees === 1 ? "" : "s"
+      } (${needingSuggestions} with category suggestions needed).`,
+      sources: [
+        {
+          type: "payees",
+          description: "Per-payee transaction context for category suggestions",
         },
       ],
     };

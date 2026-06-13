@@ -460,6 +460,51 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
     },
   },
   {
+    name: "get_payee_categorization_context",
+    description:
+      "Get rich per-payee transaction context so you can suggest a default category for each payee. Read-only: returns data only and makes no changes. There is no payment-method column on transactions -- the user records payment type via transaction tags and sometimes in the description, and the account (name + type) is also a payment-method signal, so each transaction row surfaces tags, description, and account. Defaults to payees that have no default category yet. Optionally includes the user's category tree (id, name, parentId, isIncome) to map suggestions onto.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        onlyUncategorized: {
+          type: "boolean",
+          description:
+            "Only include payees that have no default category yet. Defaults to true.",
+        },
+        limit: {
+          type: "integer",
+          minimum: 1,
+          maximum: 200,
+          description: "Maximum number of payees to return. Defaults to 50.",
+        },
+        minTransactions: {
+          type: "integer",
+          minimum: 0,
+          description:
+            "Only include payees with at least this many transactions. Defaults to 0.",
+        },
+        maxTransactionsPerPayee: {
+          type: "integer",
+          minimum: 1,
+          maximum: 100,
+          description:
+            "Cap the number of transactions listed per payee (most recent first). Defaults to 25.",
+        },
+        payeeIds: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Restrict to these payee IDs (must belong to the user). Omit to consider all eligible payees.",
+        },
+        includeCategoryTree: {
+          type: "boolean",
+          description:
+            "Include the user's category tree to map suggestions onto. Defaults to true.",
+        },
+      },
+    },
+  },
+  {
     name: "render_chart",
     description:
       "Render a chart in the chat so the user can see the data visually. Call this AFTER gathering numbers with another tool (query_transactions, get_spending_by_category, get_net_worth_history, compare_periods, etc.). Choose the chart type that fits the data: 'pie' for category breakdowns with 6 or fewer slices, 'bar' for larger breakdowns or period comparisons, 'line' or 'area' for time series (months or weeks). Pass a compact subset of the data (at most 10-15 data points) and aggregate the long tail into an 'Other' bucket. Values must be positive numbers (use absolute values for expenses). Do not narrate the chart's existence in your reply; just render it and summarize the findings.",

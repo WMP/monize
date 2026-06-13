@@ -161,6 +161,15 @@ export const calculateSchema = z.object({
   label: z.string().max(200).optional(),
 });
 
+export const getPayeeCategorizationContextSchema = z.object({
+  onlyUncategorized: z.boolean().optional(),
+  limit: positiveIntSchema(1, 200).optional(),
+  minTransactions: positiveIntSchema(0, 1000000).optional(),
+  maxTransactionsPerPayee: positiveIntSchema(1, 100).optional(),
+  payeeIds: z.array(z.string().uuid()).max(200).optional(),
+  includeCategoryTree: z.boolean().optional(),
+});
+
 /**
  * render_chart takes a compact, LLM-assembled visualization payload that
  * flows through the SSE stream to the browser. Caps keep the payload small
@@ -197,6 +206,7 @@ export const toolInputSchemas: Record<string, z.ZodSchema> = {
   get_upcoming_bills: getUpcomingBillsSchema,
   get_scheduled_transactions: getScheduledTransactionsSchema,
   calculate: calculateSchema,
+  get_payee_categorization_context: getPayeeCategorizationContextSchema,
   render_chart: renderChartSchema,
 };
 

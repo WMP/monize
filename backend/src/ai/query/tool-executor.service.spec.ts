@@ -8,6 +8,7 @@ import { BudgetReportsService } from "../../budgets/budget-reports.service";
 import { PortfolioService } from "../../securities/portfolio.service";
 import { InvestmentTransactionsService } from "../../securities/investment-transactions.service";
 import { ScheduledTransactionsService } from "../../scheduled-transactions/scheduled-transactions.service";
+import { PayeesService } from "../../payees/payees.service";
 
 describe("ToolExecutorService", () => {
   let service: ToolExecutorService;
@@ -19,6 +20,7 @@ describe("ToolExecutorService", () => {
   let investmentTransactions: Record<string, jest.Mock>;
   let categories: Record<string, jest.Mock>;
   let scheduledTransactions: Record<string, jest.Mock>;
+  let payees: Record<string, jest.Mock>;
 
   const userId = "user-1";
 
@@ -202,6 +204,37 @@ describe("ToolExecutorService", () => {
       }),
     };
 
+    payees = {
+      getCategorizationContext: jest.fn().mockResolvedValue({
+        payees: [
+          {
+            payeeId: "payee-1",
+            payeeName: "Starbucks",
+            defaultCategoryId: null,
+            defaultCategoryName: null,
+            transactionCount: 4,
+            transactions: [
+              {
+                date: "2026-01-10",
+                amount: -5.5,
+                currencyCode: "USD",
+                description: "Latte",
+                tags: ["credit-card"],
+                accountName: "Checking",
+                accountType: "CHEQUING",
+                categoryName: null,
+                status: "CLEARED",
+              },
+            ],
+          },
+        ],
+        categories: [
+          { id: "cat-1", name: "Coffee", parentId: null, isIncome: false },
+        ],
+        returnedPayees: 1,
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ToolExecutorService,
@@ -219,6 +252,7 @@ describe("ToolExecutorService", () => {
           provide: ScheduledTransactionsService,
           useValue: scheduledTransactions,
         },
+        { provide: PayeesService, useValue: payees },
       ],
     }).compile();
 
@@ -736,6 +770,48 @@ describe("ToolExecutorService", () => {
         data: [{ label: "Food", value: 100 }],
       });
       expect(result.sources).toEqual([]);
+    });
+
+    it("get_payee_categorization_context delegates to payees.getCategorizationContext", async () => {
+      const result = await service.execute(
+        userId,
+        "get_payee_categorization_context",
+        {},
+      );
+
+      expect(payees.getCategorizationContext).toHaveBeenCalledWith(userId, {
+        onlyUncategorized: undefined,
+        limit: undefined,
+        minTransactions: undefined,
+        maxTransactionsPerPayee: undefined,
+        payeeIds: undefined,
+        includeCategoryTree: undefined,
+      });
+      expect(result.sources[0].type).toBe("payees");
+      expect(result.summary).toContain("Context for 1 payee");
+      expect(result.summary).toContain(
+        "1 with category suggestions needed",
+      );
+    });
+
+    it("get_payee_categorization_context passes through validated options", async () => {
+      await service.execute(userId, "get_payee_categorization_context", {
+        onlyUncategorized: false,
+        limit: 10,
+        minTransactions: 2,
+        maxTransactionsPerPayee: 5,
+        payeeIds: ["11111111-1111-4111-8111-111111111111"],
+        includeCategoryTree: false,
+      });
+
+      expect(payees.getCategorizationContext).toHaveBeenCalledWith(userId, {
+        onlyUncategorized: false,
+        limit: 10,
+        minTransactions: 2,
+        maxTransactionsPerPayee: 5,
+        payeeIds: ["11111111-1111-4111-8111-111111111111"],
+        includeCategoryTree: false,
+      });
     });
 
     it("returns error for unknown tools", async () => {

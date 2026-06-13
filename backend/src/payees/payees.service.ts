@@ -18,6 +18,7 @@ import { UpdatePayeeDto } from "./dto/update-payee.dto";
 import { CreatePayeeAliasDto } from "./dto/create-payee-alias.dto";
 import { MergePayeeDto } from "./dto/merge-payee.dto";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import { CategoriesService } from "../categories/categories.service";
 import { toCountMap } from "../common/count-map.util";
 import { matchesAliasPattern } from "./alias-match.util";
 
@@ -45,6 +46,7 @@ export class PayeesService {
     private categoriesRepository: Repository<Category>,
     private dataSource: DataSource,
     private actionHistoryService: ActionHistoryService,
+    private categoriesService: CategoriesService,
   ) {}
 
   async create(userId: string, createPayeeDto: CreatePayeeDto): Promise<Payee> {
@@ -1038,5 +1040,254 @@ export class PayeesService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  /**
+   * Build rich per-payee transaction context so an external LLM can suggest a
+   * default category for each payee. READ-ONLY / data-out only: no LLM call and
+   * no writes happen here. Shared by the AI Assistant tool executor and the MCP
+   * server so both surfaces return the same shape.
+   *
+   * There is no paymentMethod column on transactions. Users record payment type
+   * via transaction tags and sometimes in the description; the account (name +
+   * type) is also a payment-method signal. We therefore surface tags,
+   * description, and account on every transaction row -- that is the whole point.
+   */
+  async getCategorizationContext(
+    userId: string,
+    options: {
+      onlyUncategorized?: boolean;
+      limit?: number;
+      minTransactions?: number;
+      maxTransactionsPerPayee?: number;
+      payeeIds?: string[];
+      includeCategoryTree?: boolean;
+    } = {},
+  ): Promise<{
+    payees: Array<{
+      payeeId: string;
+      payeeName: string;
+      defaultCategoryId: string | null;
+      defaultCategoryName: string | null;
+      transactionCount: number;
+      transactions: Array<{
+        date: string;
+        amount: number;
+        currencyCode: string;
+        description: string | null;
+        tags: string[];
+        accountName: string;
+        accountType: string;
+        categoryName: string | null;
+        status: string;
+      }>;
+    }>;
+    categories?: Array<{
+      id: string;
+      name: string;
+      parentId: string | null;
+      isIncome: boolean;
+    }>;
+    returnedPayees: number;
+  }> {
+    const onlyUncategorized = options.onlyUncategorized ?? true;
+    const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
+    const minTransactions = Math.max(options.minTransactions ?? 0, 0);
+    const maxTransactionsPerPayee = Math.min(
+      Math.max(options.maxTransactionsPerPayee ?? 25, 1),
+      100,
+    );
+    const includeCategoryTree = options.includeCategoryTree ?? true;
+
+    // Restrict to a caller-supplied set of payees, validating ownership. If the
+    // caller passes IDs but none belong to the user, return an empty result
+    // rather than silently widening the scope to all payees.
+    let restrictIds: string[] | undefined;
+    if (options.payeeIds && options.payeeIds.length > 0) {
+      const owned = await this.payeesRepository.find({
+        where: { id: In([...new Set(options.payeeIds)]), userId },
+        select: ["id"],
+      });
+      restrictIds = owned.map((p) => p.id);
+      if (restrictIds.length === 0) {
+        return {
+          payees: [],
+          ...(includeCategoryTree ? { categories: [] } : {}),
+          returnedPayees: 0,
+        };
+      }
+    }
+
+    // Step 1: select candidate payees with their transaction counts. Joining to
+    // transactions lets us filter by minTransactions and order by activity in
+    // a single query (no N+1).
+    const payeeQuery = this.payeesRepository
+      .createQueryBuilder("payee")
+      .leftJoin("payee.defaultCategory", "defaultCategory")
+      .leftJoin(
+        "transactions",
+        "t",
+        "t.payee_id = payee.id AND t.user_id = :userId",
+        { userId },
+      )
+      .where("payee.user_id = :userId", { userId })
+      .andWhere("payee.is_active = true")
+      .groupBy("payee.id")
+      .addGroupBy("defaultCategory.id")
+      .select([
+        "payee.id as payee_id",
+        "payee.name as payee_name",
+        "payee.default_category_id as default_category_id",
+        "defaultCategory.name as default_category_name",
+        "COUNT(t.id) as transaction_count",
+      ])
+      .orderBy("COUNT(t.id)", "DESC")
+      .addOrderBy("payee.name", "ASC")
+      .limit(limit);
+
+    if (onlyUncategorized) {
+      payeeQuery.andWhere("payee.default_category_id IS NULL");
+    }
+    if (restrictIds) {
+      payeeQuery.andWhere("payee.id IN (:...restrictIds)", { restrictIds });
+    }
+    if (minTransactions > 0) {
+      payeeQuery.having("COUNT(t.id) >= :minTransactions", { minTransactions });
+    }
+
+    const payeeRows = await payeeQuery.getRawMany();
+
+    const payeeIds = payeeRows.map((r) => r.payee_id);
+    if (payeeIds.length === 0) {
+      const categories = includeCategoryTree
+        ? await this.getCategorizationCategoryList(userId)
+        : undefined;
+      return {
+        payees: [],
+        ...(categories ? { categories } : {}),
+        returnedPayees: 0,
+      };
+    }
+
+    // Step 2: batch-fetch the most-recent transactions for all selected payees
+    // in one query (payee_id IN (...)), joining tags, account, and category so
+    // every row carries the payment-method signals. We cap per-payee in JS to
+    // keep the query a single round-trip; the volume is bounded by limit *
+    // maxTransactionsPerPayee.
+    const txRows = await this.transactionsRepository
+      .createQueryBuilder("t")
+      .leftJoin("t.account", "account")
+      .leftJoin("t.category", "category")
+      .leftJoin("t.tags", "tag")
+      .where("t.user_id = :userId", { userId })
+      .andWhere("t.payee_id IN (:...payeeIds)", { payeeIds })
+      .select([
+        "t.id as id",
+        "t.payee_id as payee_id",
+        "t.transaction_date as date",
+        "t.amount as amount",
+        "t.currency_code as currency_code",
+        "t.description as description",
+        "t.status as status",
+        "account.name as account_name",
+        "account.account_type as account_type",
+        "category.name as category_name",
+        "tag.name as tag_name",
+      ])
+      .orderBy("t.payee_id", "ASC")
+      .addOrderBy("t.transaction_date", "DESC")
+      .addOrderBy("t.id", "DESC")
+      .getRawMany();
+
+    // Group rows by payee + transaction id, collapsing the tag fan-out (the tag
+    // join multiplies rows when a transaction has several tags).
+    const txByPayee = new Map<
+      string,
+      Map<
+        string,
+        {
+          date: string;
+          amount: number;
+          currencyCode: string;
+          description: string | null;
+          tags: string[];
+          accountName: string;
+          accountType: string;
+          categoryName: string | null;
+          status: string;
+        }
+      >
+    >();
+
+    for (const row of txRows) {
+      let byId = txByPayee.get(row.payee_id);
+      if (!byId) {
+        byId = new Map();
+        txByPayee.set(row.payee_id, byId);
+      }
+      let tx = byId.get(row.id);
+      if (!tx) {
+        // Stop accumulating once this payee already has its cap of distinct
+        // transactions. Rows arrive newest-first, so the first N ids per payee
+        // are the most recent.
+        if (byId.size >= maxTransactionsPerPayee) continue;
+        tx = {
+          date: row.date,
+          amount: Math.round(Number(row.amount) * 10000) / 10000,
+          currencyCode: row.currency_code,
+          description: row.description ?? null,
+          tags: [],
+          accountName: row.account_name ?? "",
+          accountType: row.account_type ?? "",
+          categoryName: row.category_name ?? null,
+          status: row.status,
+        };
+        byId.set(row.id, tx);
+      }
+      if (row.tag_name && !tx.tags.includes(row.tag_name)) {
+        tx.tags.push(row.tag_name);
+      }
+    }
+
+    const payees = payeeRows.map((row) => ({
+      payeeId: row.payee_id,
+      payeeName: row.payee_name,
+      defaultCategoryId: row.default_category_id ?? null,
+      defaultCategoryName: row.default_category_name ?? null,
+      transactionCount: parseInt(row.transaction_count || "0", 10),
+      transactions: Array.from(txByPayee.get(row.payee_id)?.values() ?? []),
+    }));
+
+    const categories = includeCategoryTree
+      ? await this.getCategorizationCategoryList(userId)
+      : undefined;
+
+    return {
+      payees,
+      ...(categories ? { categories } : {}),
+      returnedPayees: payees.length,
+    };
+  }
+
+  /**
+   * Flat category list (id, name, parentId, isIncome) for the categorization
+   * context tool. Sourced from CategoriesService so the catalog matches the
+   * rest of the app.
+   */
+  private async getCategorizationCategoryList(userId: string): Promise<
+    Array<{
+      id: string;
+      name: string;
+      parentId: string | null;
+      isIncome: boolean;
+    }>
+  > {
+    const categories = await this.categoriesService.findAll(userId, false);
+    return categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      parentId: c.parentId,
+      isIncome: c.isIncome,
+    }));
   }
 }
