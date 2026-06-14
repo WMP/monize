@@ -1197,7 +1197,7 @@ export function MonthlyCategoryBreakdownReport() {
                 {/* Summary: totals, balance, optional transfers/overall, and a
                     recap of every category section. */}
                 <tr>
-                  <td colSpan={colSpan} className="px-2 py-1.5 font-semibold bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100">
+                  <td colSpan={colSpan} className="px-3 py-2 font-bold text-sm uppercase tracking-wide border-t-4 border-gray-500 dark:border-gray-400 bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900">
                     <div className="sticky left-0 z-10 inline-block">
                       {t('monthlyCategoryBreakdown.summary')}
                     </div>
