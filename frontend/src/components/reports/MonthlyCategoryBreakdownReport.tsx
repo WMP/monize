@@ -599,6 +599,13 @@ export function MonthlyCategoryBreakdownReport() {
     navigateToTransactions(categoryIds, rangeStart || undefined, rangeEnd || undefined);
   };
 
+  // Drill-down ids for a category row: its real category id, or the
+  // "uncategorized" pseudo-filter (categoryId IS NULL) the transactions list
+  // already understands -- mirroring the transfer-section drilldown. No extra
+  // backend/DB work: the report already aggregates the uncategorized bucket.
+  const rowDrillIds = (row: ProcessedRow): string[] =>
+    row.categoryId ? [row.categoryId] : ['uncategorized'];
+
   // Drill into transfers (optionally for specific accounts) over the full
   // report range or a single month.
   const drillTransfersRange = (accountIds: string[]) => {
@@ -773,33 +780,27 @@ export function MonthlyCategoryBreakdownReport() {
               className="sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/40 pl-5 pr-2 py-1 text-gray-900 dark:text-gray-100 truncate max-w-[220px]"
               title={row.displayName}
             >
-              {row.categoryId ? (
-                <button
-                  type="button"
-                  onClick={() => drillDownRange([row.categoryId!])}
-                  className="block w-full text-left truncate hover:underline"
-                >
-                  {row.displayName}
-                </button>
-              ) : (
-                row.displayName
-              )}
+              <button
+                type="button"
+                onClick={() => drillDownRange(rowDrillIds(row))}
+                className="block w-full text-left truncate hover:underline"
+              >
+                {row.displayName}
+              </button>
             </td>
             {months.map((m) => {
               const value = row.values[m] || 0;
               const cls = deviationClass(value, row.nonZeroAvg, row.nonZeroCount, row.isIncome);
               return (
                 <td key={m} className={`px-2 py-1 text-right ${cls}`}>
-                  {value !== 0 && row.categoryId ? (
+                  {value !== 0 ? (
                     <button
                       type="button"
-                      onClick={() => drillDown(m, [row.categoryId!])}
+                      onClick={() => drillDown(m, rowDrillIds(row))}
                       className="hover:underline"
                     >
                       {formatCell(value, sectionMonthTotal(m), row.isIncome)}
                     </button>
-                  ) : value !== 0 ? (
-                    formatCell(value, sectionMonthTotal(m), row.isIncome)
                   ) : (
                     <span className="text-gray-300 dark:text-gray-600">—</span>
                   )}
@@ -807,17 +808,13 @@ export function MonthlyCategoryBreakdownReport() {
               );
             })}
             <td className="px-2 py-1 text-right font-semibold text-gray-900 dark:text-gray-100">
-              {row.categoryId ? (
-                <button
-                  type="button"
-                  onClick={() => drillDownRange([row.categoryId!])}
-                  className="hover:underline"
-                >
-                  {formatCell(row.total, sectionSum, row.isIncome)}
-                </button>
-              ) : (
-                formatCell(row.total, sectionSum, row.isIncome)
-              )}
+              <button
+                type="button"
+                onClick={() => drillDownRange(rowDrillIds(row))}
+                className="hover:underline"
+              >
+                {formatCell(row.total, sectionSum, row.isIncome)}
+              </button>
             </td>
             <td className="px-2 py-1 text-right text-gray-700 dark:text-gray-300">
               {formatCell(row.avg, sectionAvg, row.isIncome)}

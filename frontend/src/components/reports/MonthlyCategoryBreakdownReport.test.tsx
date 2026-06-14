@@ -224,6 +224,43 @@ describe('MonthlyCategoryBreakdownReport', () => {
     expect(url).toContain('endDate=2025-06-30');
   });
 
+  it('drills down to uncategorized transactions when the Uncategorized row is clicked', async () => {
+    mockGetMonthlyCategoryBreakdown.mockResolvedValue({
+      currency: 'USD',
+      months: ['2025-01', '2025-02', '2025-03'],
+      data: [
+        {
+          categoryId: null,
+          categoryName: 'Uncategorized',
+          parentId: null,
+          parentName: null,
+          parentIsIncome: null,
+          isIncome: false,
+          valuesByMonth: { '2025-01': 50, '2025-02': 0, '2025-03': 70 },
+          depositTotal: 0,
+          withdrawalTotal: 120,
+        },
+      ],
+      transfers: [],
+    });
+    render(<MonthlyCategoryBreakdownReport />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Uncategorized')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Uncategorized'));
+    });
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    const url = mockPush.mock.calls[0][0] as string;
+    expect(url).toContain('/transactions?');
+    // Reuses the existing "uncategorized" pseudo-filter (categoryId IS NULL);
+    // no real category id and no extra backend query.
+    expect(url).toContain('categoryIds=uncategorized');
+  });
+
   it('drills down into every child category when a section header is clicked', async () => {
     mockGetMonthlyCategoryBreakdown.mockResolvedValue(sampleResponse);
     render(<MonthlyCategoryBreakdownReport />);
