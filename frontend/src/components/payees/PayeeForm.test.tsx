@@ -171,6 +171,68 @@ describe('PayeeForm', () => {
       });
     });
 
+    it('preserves the existing default category on a no-change update', async () => {
+      // The category field is not registered with react-hook-form -- it is
+      // driven by the controlled selection state -- so the submitted
+      // defaultCategoryId must come from that state, never from an unregistered
+      // RHF value that can be dropped. Editing without touching the category
+      // must keep it (regression: it was being cleared on a no-op save).
+      const submit = vi.fn().mockResolvedValue(undefined);
+      const payee = { id: 'p1', name: 'Walmart', defaultCategoryId: 'c1', notes: '', transactionCount: 10, uncategorizedCount: 3 } as any;
+      await act(async () => {
+        render(<PayeeForm payee={payee} categories={categories} onSubmit={submit} onCancel={onCancel} />);
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Update Payee'));
+      });
+      expect(submit).toHaveBeenCalledTimes(1);
+      expect(submit.mock.calls[0][0].defaultCategoryId).toBe('c1');
+    });
+
+    it('removes the default category when it is cleared via the combobox', async () => {
+      // Clearing the category must submit a falsy defaultCategoryId (the page
+      // layer turns it into null) and reset the now-meaningless backfill choice.
+      const submit = vi.fn().mockResolvedValue(undefined);
+      const payee = { id: 'p1', name: 'Walmart', defaultCategoryId: 'c1', notes: '', transactionCount: 10, uncategorizedCount: 3 } as any;
+      let container!: HTMLElement;
+      await act(async () => {
+        ({ container } = render(<PayeeForm payee={payee} categories={categories} onSubmit={submit} onCancel={onCancel} />));
+      });
+      // The combobox renders a clear (X) button (tabindex=-1) when it has a value.
+      const clearBtn = container.querySelector('button[tabindex="-1"]') as HTMLButtonElement;
+      expect(clearBtn).toBeTruthy();
+      await act(async () => {
+        fireEvent.mouseDown(clearBtn);
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Update Payee'));
+      });
+      expect(submit).toHaveBeenCalledTimes(1);
+      expect(submit.mock.calls[0][0].defaultCategoryId).toBeFalsy();
+      expect(submit.mock.calls[0][0].applyCategoryToTransactions).toBeUndefined();
+    });
+
+    it('carries the apply mode using the existing category even when it is not re-selected', async () => {
+      // Selecting "all" without re-touching the category must still send both
+      // the apply instruction and the category, so the backend backfill runs
+      // (regression: the apply was dropped when the category was untouched).
+      const submit = vi.fn().mockResolvedValue(undefined);
+      const payee = { id: 'p1', name: 'Walmart', defaultCategoryId: 'c1', notes: '', transactionCount: 10, uncategorizedCount: 3 } as any;
+      await act(async () => {
+        render(<PayeeForm payee={payee} categories={categories} onSubmit={submit} onCancel={onCancel} />);
+      });
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Apply this category to existing transactions'), { target: { value: 'all' } });
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Update Payee'));
+      });
+      expect(submit.mock.calls[0][0]).toMatchObject({
+        defaultCategoryId: 'c1',
+        applyCategoryToTransactions: 'all',
+      });
+    });
+
     it('omits the apply mode when left at the default (none)', async () => {
       const submit = vi.fn().mockResolvedValue(undefined);
       const payee = { id: 'p1', name: 'Walmart', defaultCategoryId: 'c1', notes: '', transactionCount: 10, uncategorizedCount: 3 } as any;

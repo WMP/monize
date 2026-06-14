@@ -465,9 +465,11 @@ describe("PayeesService", () => {
 
       expect(result.name).toBe("New Name");
       expect(result.notes).toBe("Updated notes");
-      expect(
-        mockDataSource.createQueryRunner().manager.save,
-      ).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+        Payee,
+        { id: "payee-1", userId },
+        { name: "New Name", notes: "Updated notes" },
+      );
     });
 
     it("should throw NotFoundException when payee not found", async () => {
@@ -519,9 +521,23 @@ describe("PayeesService", () => {
 
       await service.update(userId, "payee-1", { notes: "Just updating notes" });
 
-      expect(
-        mockDataSource.createQueryRunner().manager.update,
-      ).not.toHaveBeenCalled();
+      // The payee row itself is updated, but the name-change cascade to
+      // transactions and scheduled transactions must not run.
+      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+        Payee,
+        { id: "payee-1", userId },
+        { notes: "Just updating notes" },
+      );
+      expect(mockQueryRunner.manager.update).not.toHaveBeenCalledWith(
+        Transaction,
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(mockQueryRunner.manager.update).not.toHaveBeenCalledWith(
+        ScheduledTransaction,
+        expect.anything(),
+        expect.anything(),
+      );
     });
 
     it("should skip name conflict check when name is unchanged", async () => {
@@ -616,7 +632,12 @@ describe("PayeesService", () => {
       });
 
       expect(result.transactionsCategorized).toBe(0);
-      expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+      // The payee row is updated, but no backfill runs against transactions.
+      expect(mockQueryRunner.manager.update).not.toHaveBeenCalledWith(
+        Transaction,
+        expect.anything(),
+        expect.anything(),
+      );
     });
 
     it("does not apply a category when the payee ends up without one", async () => {
@@ -632,7 +653,12 @@ describe("PayeesService", () => {
       });
 
       expect(result.transactionsCategorized).toBe(0);
-      expect(mockQueryRunner.manager.update).not.toHaveBeenCalled();
+      // Clearing the category writes null to the payee but runs no backfill.
+      expect(mockQueryRunner.manager.update).not.toHaveBeenCalledWith(
+        Transaction,
+        expect.anything(),
+        expect.anything(),
+      );
     });
 
     it("should update defaultCategoryId via explicit mapping", async () => {
@@ -653,12 +679,15 @@ describe("PayeesService", () => {
       });
 
       expect(result.defaultCategoryId).toBe("cat-99");
-      // The stale loaded relation must be cleared so TypeORM save() persists
-      // the new scalar FK instead of re-deriving the old one from the relation.
-      const savedPayee =
-        mockDataSource.createQueryRunner().manager.save.mock.calls[0][0];
-      expect(savedPayee.defaultCategoryId).toBe("cat-99");
-      expect(savedPayee.defaultCategory).toBeNull();
+      // Persist with a column-level update keyed by id+userId so the FK is
+      // written from the scalar. save() on the loaded entity would re-derive
+      // the FK from its hydrated defaultCategory relation and clobber it.
+      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+        Payee,
+        { id: "payee-1", userId },
+        { defaultCategoryId: "cat-99" },
+      );
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
     });
 
     it("should clear defaultCategoryId when set to null", async () => {
@@ -680,12 +709,12 @@ describe("PayeesService", () => {
       });
 
       expect(result.defaultCategoryId).toBeNull();
-      // Verify the relation object is also nulled so TypeORM save() doesn't
-      // re-derive the FK from the stale loaded relation entity
-      const savedPayee =
-        mockDataSource.createQueryRunner().manager.save.mock.calls[0][0];
-      expect(savedPayee.defaultCategoryId).toBeNull();
-      expect(savedPayee.defaultCategory).toBeNull();
+      // Clearing writes null to the FK column directly.
+      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+        Payee,
+        { id: "payee-1", userId },
+        { defaultCategoryId: null },
+      );
     });
   });
 
@@ -1623,9 +1652,11 @@ describe("PayeesService", () => {
       });
 
       expect(result.isActive).toBe(false);
-      expect(
-        mockDataSource.createQueryRunner().manager.save,
-      ).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+        Payee,
+        { id: "payee-1", userId },
+        { isActive: false },
+      );
     });
 
     it("should not modify isActive when not included in DTO", async () => {
