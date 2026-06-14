@@ -387,9 +387,21 @@ export class AuthService {
     const rawEmail = userInfo.email as string | undefined;
     // H7: Normalize email before lookups
     const email = rawEmail?.toLowerCase().trim();
-    // SECURITY: Only trust email if verified by the OIDC provider
+    // SECURITY: Only trust the IdP email if it is verified.
+    // OIDC_REQUIRE_VERIFIED_EMAIL (default true) gates this. Set it to "false"
+    // to drop the requirement: Monize then trusts the IdP-provided email even
+    // without an `email_verified` claim and merges directly into an existing
+    // account matching that email -- including a local password account,
+    // skipping the email-confirmation step (so it works without SMTP). This
+    // lowers security; only disable it when you trust your IdP to verify email
+    // ownership.
     const emailVerified = userInfo.email_verified === true;
-    const trustedEmail = emailVerified ? email : undefined;
+    const requireVerifiedEmail =
+      this.configService
+        .get<string>("OIDC_REQUIRE_VERIFIED_EMAIL")
+        ?.toLowerCase() !== "false";
+    const trustedEmail =
+      emailVerified || !requireVerifiedEmail ? email : undefined;
 
     // Handle name claims - try specific claims first, fall back to 'name'
     const fullName = userInfo.name as string | undefined;
@@ -425,8 +437,8 @@ export class AuthService {
         });
 
         if (existingUser) {
-          if (existingUser.passwordHash) {
-            // SECURITY: Local account requires user confirmation before linking.
+          if (existingUser.passwordHash && requireVerifiedEmail) {
+            // SECURITY: Local account requires user confirmation before merging.
             const linkToken = await this.initiateOidcLink(existingUser, sub);
             this.logger.warn(
               `OIDC link pending confirmation for user ${existingUser.id}`,
@@ -434,7 +446,8 @@ export class AuthService {
             await this.sendOidcLinkEmail(existingUser, linkToken);
             return { user: existingUser, linkPending: true };
           } else {
-            // OIDC-only account -- safe to link directly
+            // OIDC-only account, or OIDC_REQUIRE_VERIFIED_EMAIL=false bypasses
+            // the confirmation step -- merge the OIDC identity in directly.
             existingUser.oidcSubject = sub;
             existingUser.authProvider = "oidc";
             await this.usersRepository.save(existingUser);
@@ -486,7 +499,7 @@ export class AuthService {
               where: { email: trustedEmail },
             });
             if (existingUser) {
-              if (existingUser.passwordHash) {
+              if (existingUser.passwordHash && requireVerifiedEmail) {
                 // SECURITY: Local account requires confirmation
                 const linkToken = await this.initiateOidcLink(
                   existingUser,
@@ -498,7 +511,8 @@ export class AuthService {
                 await this.sendOidcLinkEmail(existingUser, linkToken);
                 return { user: existingUser, linkPending: true };
               } else {
-                // OIDC-only account -- safe to link directly
+                // OIDC-only account, or OIDC_REQUIRE_VERIFIED_EMAIL=false --
+                // merge directly
                 existingUser.oidcSubject = sub;
                 existingUser.authProvider = "oidc";
                 await this.usersRepository.save(existingUser);
