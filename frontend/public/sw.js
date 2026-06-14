@@ -34,6 +34,10 @@ self.addEventListener('activate', function (event) {
 // Fetch: Cache-First for static assets, Network-Only for everything else
 self.addEventListener('fetch', function (event) {
   if (event.request.method !== 'GET') return;
+  // The Cache API only supports http(s) requests. Browser extensions can inject
+  // their own scripts (chrome-extension://, etc.) that the SW would otherwise try
+  // to cache, throwing "Request scheme 'chrome-extension' is unsupported".
+  if (!event.request.url.startsWith('http')) return;
   if (!isStaticAsset(event.request.url)) return;
 
   event.respondWith(
