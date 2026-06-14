@@ -76,6 +76,7 @@ const mockCreatePayee = vi.fn();
 const mockUpdatePayee = vi.fn();
 const mockReactivatePayee = vi.fn();
 const mockCreateAlias = vi.fn();
+const mockApplyCategorySuggestions = vi.fn();
 
 vi.mock('@/lib/payees', () => ({
   payeesApi: {
@@ -84,6 +85,7 @@ vi.mock('@/lib/payees', () => ({
     update: (...args: any[]) => mockUpdatePayee(...args),
     reactivatePayee: (...args: any[]) => mockReactivatePayee(...args),
     createAlias: (...args: any[]) => mockCreateAlias(...args),
+    applyCategorySuggestions: (...args: any[]) => mockApplyCategorySuggestions(...args),
   },
 }));
 
@@ -379,6 +381,30 @@ describe('PayeesPage', () => {
       await waitFor(() => expect(screen.getByText('Auto-Assign Categories')).toBeInTheDocument());
       fireEvent.click(screen.getByText('Auto-Assign Categories'));
       await waitFor(() => expect(screen.getByTestId('auto-assign-dialog')).toBeInTheDocument());
+    });
+  });
+
+  describe('Apply Default Categories', () => {
+    it('renders the Apply Default Categories button', async () => {
+      render(<PayeesPage />);
+      await waitFor(() => expect(screen.getByText('Apply Default Categories')).toBeInTheDocument());
+    });
+
+    it('backfills each payee default category into its uncategorized transactions', async () => {
+      mockGetAllPayees.mockResolvedValue([
+        { id: 'p-1', name: 'Grocery Store', defaultCategoryId: 'cat-1', defaultCategory: { id: 'cat-1', name: 'Food' }, transactionCount: 50, uncategorizedCount: 5, isActive: true },
+        { id: 'p-3', name: 'Amazon', defaultCategoryId: null, defaultCategory: null, transactionCount: 35, uncategorizedCount: 3, isActive: true },
+      ]);
+      mockApplyCategorySuggestions.mockResolvedValue({ updated: 1, transactionsBackfilled: 5 });
+      render(<PayeesPage />);
+      await waitFor(() => expect(screen.getByText('Apply Default Categories')).toBeInTheDocument());
+      await act(async () => { fireEvent.click(screen.getByText('Apply Default Categories')); });
+      await act(async () => { fireEvent.click(screen.getByText('Apply', { exact: true })); });
+      await waitFor(() =>
+        expect(mockApplyCategorySuggestions).toHaveBeenCalledWith([
+          { payeeId: 'p-1', categoryId: 'cat-1', backfillTransactions: true },
+        ]),
+      );
     });
   });
 
