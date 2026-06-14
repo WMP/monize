@@ -1093,7 +1093,9 @@ export function MonthlyCategoryBreakdownReport() {
                     recap of every category section. */}
                 <tr>
                   <td colSpan={colSpan} className="px-2 py-1.5 font-semibold bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100">
-                    {t('monthlyCategoryBreakdown.summary')}
+                    <div className="sticky left-0 z-10 inline-block">
+                      {t('monthlyCategoryBreakdown.summary')}
+                    </div>
                   </td>
                 </tr>
                 {renderSummaryRow(
