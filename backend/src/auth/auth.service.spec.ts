@@ -727,6 +727,55 @@ describe("AuthService", () => {
     });
   });
 
+  describe("findOrCreateOidcUser OIDC_REQUIRE_VERIFIED_EMAIL", () => {
+    const oidcProfile = {
+      sub: "oidc-sub-123",
+      email: "User@Example.com",
+      email_verified: false,
+      name: "Test User",
+    };
+
+    it("by default does not trust an unverified email (falls through to registration, which is gated)", async () => {
+      // No oidcSubject match; email not verified and verification is required,
+      // so the email-merge path is skipped and it reaches the disabled
+      // registration guard.
+      usersRepository.findOne.mockResolvedValueOnce(null);
+      await expect(
+        service.findOrCreateOidcUser(oidcProfile, false),
+      ).rejects.toThrow("New account registration is disabled.");
+    });
+
+    it("with OIDC_REQUIRE_VERIFIED_EMAIL=false merges directly into a matching password account (no confirmation email)", async () => {
+      configService.get.mockImplementation((key: string) => {
+        if (key === "JWT_SECRET")
+          return "test-jwt-secret-minimum-32-chars-long";
+        if (key === "OIDC_REQUIRE_VERIFIED_EMAIL") return "false";
+        return undefined;
+      });
+      const existing: any = {
+        id: "u1",
+        email: "user@example.com",
+        passwordHash: "hash",
+        authProvider: "local",
+      };
+      usersRepository.findOne
+        .mockResolvedValueOnce(null) // by oidcSubject
+        .mockResolvedValueOnce(existing); // by email
+      usersRepository.save.mockImplementation(async (u: any) => u);
+      const sendSpy = jest
+        .spyOn(service as any, "sendOidcLinkEmail")
+        .mockResolvedValue(undefined);
+
+      const result = await service.findOrCreateOidcUser(oidcProfile, false);
+
+      expect(result.linkPending).toBeFalsy();
+      expect(result.user).toBe(existing);
+      expect(existing.oidcSubject).toBe("oidc-sub-123");
+      expect(existing.authProvider).toBe("oidc");
+      expect(sendSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe("sanitizeUser", () => {
     it("strips sensitive fields from user", async () => {
       usersRepository.findOne.mockResolvedValue(null);
