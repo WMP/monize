@@ -177,7 +177,10 @@
       "highcontrast": "Alto contraste",
       "colorblind": "Seguro para daltónicos"
     },
-    "timezoneBrowserOption": "Utilizar fuso horário do browser (detetado automaticamente como {tz})"
+    "timezoneBrowserOption": "Utilizar fuso horário do browser (detetado automaticamente como {tz})",
+    "webMcpLabel": "Ferramentas WebMCP do navegador",
+    "webMcpTooltip": "Quando ativado, agentes de IA em execucao neste separador do navegador (por exemplo, um assistente de IA do navegador) podem descobrir e chamar as ferramentas do Monize atraves da API W3C navigator.modelContext, usando a sua sessao atual.",
+    "webMcpHelp": "Desativado por predefinicao e por dispositivo. Expoe ferramentas de leitura e escrita a qualquer agente de IA neste separador enquanto tiver sessao iniciada; ative apenas num dispositivo de confianca."
   },
   "notifications": {
     "heading": "Notificações",

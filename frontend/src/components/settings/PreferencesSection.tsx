@@ -9,6 +9,7 @@ import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { userSettingsApi } from '@/lib/user-settings';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { useWebMcpStore } from '@/store/webMcpStore';
 import { UserPreferences, UpdatePreferencesData } from '@/types/auth';
 import { getErrorMessage } from '@/lib/errors';
 import { exchangeRatesApi, CurrencyInfo } from '@/lib/exchange-rates';
@@ -85,6 +86,8 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
   const tc = useTranslations('common');
   const dateFormatOptions = getDateFormatOptions(tc);
   const updatePreferencesStore = usePreferencesStore((state) => state.updatePreferences);
+  const webMcpEnabled = useWebMcpStore((state) => state.enabled);
+  const setWebMcpEnabled = useWebMcpStore((state) => state.setEnabled);
 
   const [dateFormat, setDateFormat] = useState(preferences.dateFormat);
   const [numberFormat, setNumberFormat] = useState(preferences.numberFormat);
@@ -302,6 +305,26 @@ export function PreferencesSection({ preferences, onPreferencesUpdated }: Prefer
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {t('recentTransactionsHelp')}
+          </p>
+        </div>
+
+        {/* WebMCP: per-device opt-in (applied immediately, stored locally). */}
+        <div>
+          <div className="flex items-center">
+            <label htmlFor="webMcpEnabled" className="flex items-center gap-2 cursor-pointer">
+              <ToggleSwitch
+                checked={webMcpEnabled}
+                onChange={setWebMcpEnabled}
+                label={t('webMcpLabel')}
+              />
+              <span className="text-sm text-gray-900 dark:text-gray-100">
+                {t('webMcpLabel')}
+              </span>
+            </label>
+            <InfoTooltip text={t('webMcpTooltip')} />
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {t('webMcpHelp')}
           </p>
         </div>
       </div>

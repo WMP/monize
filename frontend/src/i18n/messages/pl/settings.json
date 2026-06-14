@@ -177,7 +177,10 @@
       "highcontrast": "Wysoki kontrast",
       "colorblind": "Bezpieczny dla daltonistów"
     },
-    "timezoneBrowserOption": "Użyj strefy czasowej przeglądarki (wykryto {tz})"
+    "timezoneBrowserOption": "Użyj strefy czasowej przeglądarki (wykryto {tz})",
+    "webMcpLabel": "Narzedzia WebMCP w przegladarce",
+    "webMcpTooltip": "Po wlaczeniu agenci AI dzialajacy w tej karcie przegladarki (np. asystent AI w przegladarce) moga wykrywac i wywolywac narzedzia Monize przez API W3C navigator.modelContext, uzywajac Twojej biezacej sesji.",
+    "webMcpHelp": "Domyslnie wylaczone i ustawiane per urzadzenie. Udostepnia narzedzia odczytu i zapisu kazdemu agentowi AI w tej karcie, gdy jestes zalogowany -- wlaczaj tylko na zaufanym urzadzeniu."
   },
   "notifications": {
     "heading": "Powiadomienia",

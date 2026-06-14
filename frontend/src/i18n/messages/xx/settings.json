@@ -177,7 +177,10 @@
       "highcontrast": "[XX-High contrast-XX]",
       "colorblind": "[XX-Colour-blind safe-XX]"
     },
-    "timezoneBrowserOption": "[XX-Use browser timezone (auto-detected as {tz})-XX]"
+    "timezoneBrowserOption": "[XX-Use browser timezone (auto-detected as {tz})-XX]",
+    "webMcpLabel": "[XX-WebMCP browser tools-XX]",
+    "webMcpTooltip": "[XX-When enabled, AI agents running in this browser tab (e.g. a browser AI assistant) can discover and call Monize tools via the W3C navigator.modelContext API, using your current session.-XX]",
+    "webMcpHelp": "[XX-Off by default and per-device. Exposes read and write tools to any AI agent in this tab while you are signed in -- only enable on a trusted device.-XX]"
   },
   "notifications": {
     "heading": "[XX-Notifications-XX]",

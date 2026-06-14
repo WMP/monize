@@ -6,6 +6,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { PreferencesLoader } from '@/components/providers/PreferencesLoader';
+import { WebMcpProvider } from '@/components/providers/WebMcpProvider';
 import { ServiceWorkerRegistrar } from '@/components/providers/ServiceWorkerRegistrar';
 import { PwaLifecycleHandler } from '@/components/providers/PwaLifecycleHandler';
 import { SwipeShell } from '@/components/layout/SwipeShell';
@@ -65,6 +66,7 @@ export default async function RootLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
             <PreferencesLoader>
+              <WebMcpProvider />
               <SwipeShell httpsHeadersActive={httpsHeadersActive}>
                 {children}
               </SwipeShell>

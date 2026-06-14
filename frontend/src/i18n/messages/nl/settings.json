@@ -177,7 +177,10 @@
       "highcontrast": "Hoog contrast",
       "colorblind": "Kleurenblindveilig"
     },
-    "timezoneBrowserOption": "Browsertijdzone gebruiken (automatisch gedetecteerd als {tz})"
+    "timezoneBrowserOption": "Browsertijdzone gebruiken (automatisch gedetecteerd als {tz})",
+    "webMcpLabel": "WebMCP-browsertools",
+    "webMcpTooltip": "Indien ingeschakeld kunnen AI-agents in dit browsertabblad (bijv. een AI-assistent in de browser) Monize-tools ontdekken en aanroepen via de W3C-API navigator.modelContext, met je huidige sessie.",
+    "webMcpHelp": "Standaard uit en per apparaat. Stelt lees- en schrijftools beschikbaar aan elke AI-agent in dit tabblad zolang je bent ingelogd -- schakel dit alleen in op een vertrouwd apparaat."
   },
   "notifications": {
     "heading": "Meldingen",

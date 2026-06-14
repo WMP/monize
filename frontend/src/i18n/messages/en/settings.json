@@ -177,7 +177,10 @@
       "highcontrast": "High contrast",
       "colorblind": "Colour-blind safe"
     },
-    "timezoneBrowserOption": "Use browser timezone (auto-detected as {tz})"
+    "timezoneBrowserOption": "Use browser timezone (auto-detected as {tz})",
+    "webMcpLabel": "WebMCP browser tools",
+    "webMcpTooltip": "When enabled, AI agents running in this browser tab (e.g. a browser AI assistant) can discover and call Monize tools via the W3C navigator.modelContext API, using your current session.",
+    "webMcpHelp": "Off by default and per-device. Exposes read and write tools to any AI agent in this tab while you are signed in -- only enable on a trusted device."
   },
   "notifications": {
     "heading": "Notifications",

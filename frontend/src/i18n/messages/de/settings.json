@@ -177,7 +177,10 @@
       "highcontrast": "Hoher Kontrast",
       "colorblind": "Farbenblind-sicher"
     },
-    "timezoneBrowserOption": "Browser-Zeitzone verwenden (automatisch erkannt: {tz})"
+    "timezoneBrowserOption": "Browser-Zeitzone verwenden (automatisch erkannt: {tz})",
+    "webMcpLabel": "WebMCP-Browser-Tools",
+    "webMcpTooltip": "Wenn aktiviert, koennen KI-Agenten in diesem Browser-Tab (z. B. ein Browser-KI-Assistent) Monize-Tools ueber die W3C-API navigator.modelContext erkennen und aufrufen -- mit deiner aktuellen Sitzung.",
+    "webMcpHelp": "Standardmaessig aus und pro Geraet. Stellt Lese- und Schreib-Tools jedem KI-Agenten in diesem Tab zur Verfuegung, solange du angemeldet bist -- nur auf einem vertrauenswuerdigen Geraet aktivieren."
   },
   "notifications": {
     "heading": "Benachrichtigungen",
