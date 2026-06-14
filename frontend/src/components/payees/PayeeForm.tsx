@@ -66,26 +66,17 @@ export function PayeeForm({ payee, categories, onSubmit, onCancel, onDirtyChange
   useFormDirtyNotify(isDirty, onDirtyChange);
 
   const handleFormSubmit = useCallback((data: PayeeFormData) => {
-    // The category Combobox is not registered with react-hook-form (it is a
-    // controlled field driven by selectedCategoryId), so data.defaultCategoryId
-    // cannot be trusted -- on an unchanged edit RHF can yield an empty value,
-    // which the page layer then turns into null and silently wipes the payee's
-    // existing default category. Always take the category from the controlled
-    // state, which is seeded from the payee and updated on every selection.
-    const submitData: PayeeFormSubmitData = {
-      ...data,
-      defaultCategoryId: selectedCategoryId || undefined,
-    };
+    const submitData: PayeeFormSubmitData = { ...data };
     if (!payee && pendingAliasesRef.current.length > 0) {
       submitData.pendingAliases = pendingAliasesRef.current;
     }
     // Only carry the backfill instruction when editing an existing payee that
     // ends up with a default category and the user opted into applying it.
-    if (payee && selectedCategoryId && applyMode !== 'none') {
+    if (payee && data.defaultCategoryId && applyMode !== 'none') {
       submitData.applyCategoryToTransactions = applyMode;
     }
     return onSubmit(submitData);
-  }, [payee, onSubmit, applyMode, selectedCategoryId]);
+  }, [payee, onSubmit, applyMode]);
 
   const onFormSubmit = useCallback((e?: React.BaseSyntheticEvent) => {
     handleSubmit(handleFormSubmit)(e);
