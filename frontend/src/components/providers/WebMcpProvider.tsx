@@ -32,7 +32,15 @@ export function WebMcpProvider() {
         const { initializeWebModelContext } = await import('@mcp-b/global');
         if (cancelled) return;
         // Idempotent; sets up navigator.modelContext if not already present.
-        initializeWebModelContext({ nativeModelContextBehavior: 'preserve' });
+        // The MCP-B extension bridges via window.postMessage from within this
+        // same tab, so the connecting origin is the page's own origin. Scope the
+        // tab-server whitelist to exactly that -- never '*', since these tools
+        // execute CRUD against the user's session (a wildcard would let any
+        // origin that can postMessage drive them).
+        initializeWebModelContext({
+          transport: { tabServer: { allowedOrigins: [window.location.origin] } },
+          nativeModelContextBehavior: 'preserve',
+        });
 
         const modelContext = (
           navigator as unknown as {
