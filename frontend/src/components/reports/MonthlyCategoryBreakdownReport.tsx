@@ -1042,8 +1042,8 @@ export function MonthlyCategoryBreakdownReport() {
     accent: string,
     drill?: { range: () => void; month: (m: string) => void },
   ) => (
-    <tr className="font-bold bg-gray-100 dark:bg-gray-900">
-      <td className={`sticky left-0 z-10 bg-gray-100 dark:bg-gray-900 px-2 py-1 ${accent}`}>
+    <tr className="group font-bold bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800">
+      <td className={`sticky left-0 z-10 bg-gray-100 dark:bg-gray-900 group-hover:bg-gray-200 dark:group-hover:bg-gray-800 px-2 py-1 ${accent}`}>
         {drill ? (
           <button type="button" onClick={drill.range} className="text-left hover:underline">
             {label}
@@ -1249,8 +1249,8 @@ export function MonthlyCategoryBreakdownReport() {
                     month: (m) => drillDown(m, model!.expenseCategoryIds),
                   },
                 )}
-                <tr className="font-bold bg-gray-100 dark:bg-gray-900 border-t-2 border-gray-400 dark:border-gray-500">
-                  <td className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-900 px-2 py-1">
+                <tr className="group font-bold bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 border-t-2 border-gray-400 dark:border-gray-500">
+                  <td className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-900 group-hover:bg-gray-200 dark:group-hover:bg-gray-800 px-2 py-1">
                     <button
                       type="button"
                       onClick={() => drillDownRange(model!.allCategoryIds)}
@@ -1304,8 +1304,8 @@ export function MonthlyCategoryBreakdownReport() {
                     },
                   )}
                 {model!.hasTransfers && (
-                  <tr className="font-bold bg-gray-200 dark:bg-gray-800 border-t-2 border-gray-400 dark:border-gray-500">
-                    <td className="sticky left-0 z-10 bg-gray-200 dark:bg-gray-800 px-2 py-1">
+                  <tr className="group font-bold bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 border-t-2 border-gray-400 dark:border-gray-500">
+                    <td className="sticky left-0 z-10 bg-gray-200 dark:bg-gray-800 group-hover:bg-gray-300 dark:group-hover:bg-gray-700 px-2 py-1">
                       {t('monthlyCategoryBreakdown.overallTotal')}
                     </td>
                     {months.map((m) => {
@@ -1343,8 +1343,8 @@ export function MonthlyCategoryBreakdownReport() {
                     ? model!.totalIncomeAvg
                     : model!.totalExpensesAvg;
                   return (
-                    <tr key={`recap-${si}`} className="font-bold bg-gray-50 dark:bg-gray-900">
-                      <td className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900 px-2 py-1 truncate" title={section.title}>
+                    <tr key={`recap-${si}`} className="group font-bold bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <td className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900 group-hover:bg-gray-100 dark:group-hover:bg-gray-800 px-2 py-1 truncate" title={section.title}>
                         {section.allCategoryIds.length > 0 ? (
                           <button
                             type="button"

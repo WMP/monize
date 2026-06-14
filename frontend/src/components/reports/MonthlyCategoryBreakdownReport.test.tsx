@@ -585,4 +585,81 @@ describe('MonthlyCategoryBreakdownReport', () => {
     expect(url).toContain('startDate=2025-01-01');
     expect(url).toContain('endDate=2025-06-30');
   });
+
+  describe('row hover highlighting', () => {
+    // The category column is sticky with its own opaque background, so it must
+    // carry the row's group-hover tint or it paints over the hover highlight
+    // (the whole row, including the name, should highlight together).
+    it('highlights the sticky category column on subcategory and transfer rows', async () => {
+      mockGetMonthlyCategoryBreakdown.mockResolvedValue(transfersResponse);
+      render(<MonthlyCategoryBreakdownReport />);
+
+      await waitFor(() => {
+        expect(screen.getByText('From Chequing')).toBeInTheDocument();
+      });
+
+      // Subcategory name cell.
+      const salaryCell = screen.getByText('Salary').closest('td');
+      expect(salaryCell?.className).toContain('group-hover:bg-gray-50');
+      const salaryRow = salaryCell?.closest('tr');
+      expect(salaryRow?.className).toContain('group');
+      expect(salaryRow?.className).toContain('hover:bg-gray-50');
+
+      // Transfer name cell.
+      const transferCell = screen.getByText('From Chequing').closest('td');
+      expect(transferCell?.className).toContain('group-hover:bg-gray-50');
+      expect(transferCell?.closest('tr')?.className).toContain('group');
+    });
+
+    it('highlights the category column on the Summary total and balance rows', async () => {
+      mockGetMonthlyCategoryBreakdown.mockResolvedValue(transfersResponse);
+      render(<MonthlyCategoryBreakdownReport />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Summary')).toBeInTheDocument();
+      });
+
+      // Balance row (rendered inline in the summary).
+      const balanceCell = screen
+        .getByRole('button', { name: 'Balance' })
+        .closest('td');
+      expect(balanceCell?.className).toContain('group-hover:bg-gray-200');
+      const balanceRow = balanceCell?.closest('tr');
+      expect(balanceRow?.className).toContain('group');
+      expect(balanceRow?.className).toContain('hover:bg-gray-200');
+
+      // Total income summary row (rendered via renderSummaryRow).
+      const incomeCell = screen
+        .getByRole('button', { name: 'Total income' })
+        .closest('td');
+      expect(incomeCell?.className).toContain('group-hover:bg-gray-200');
+      expect(incomeCell?.closest('tr')?.className).toContain('group');
+
+      // Overall total row (only present when there are transfers).
+      const overallCell = screen.getByText('Overall total').closest('td');
+      expect(overallCell?.className).toContain('group-hover:bg-gray-300');
+      expect(overallCell?.closest('tr')?.className).toContain('hover:bg-gray-300');
+    });
+
+    it('highlights the category column on the Summary recap rows', async () => {
+      mockGetMonthlyCategoryBreakdown.mockResolvedValue(sampleResponse);
+      const { container } = render(<MonthlyCategoryBreakdownReport />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
+      });
+
+      // The per-section recap rows at the bottom of the Summary tint their
+      // sticky title cell with the lighter recap hover shade.
+      const recapCells = container.querySelectorAll(
+        'td[class*="group-hover:bg-gray-100"]',
+      );
+      expect(recapCells.length).toBeGreaterThan(0);
+      recapCells.forEach((cell) => {
+        const row = cell.closest('tr');
+        expect(row?.className).toContain('group');
+        expect(row?.className).toContain('hover:bg-gray-100');
+      });
+    });
+  });
 });
