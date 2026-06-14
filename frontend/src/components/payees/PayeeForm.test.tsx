@@ -2,8 +2,14 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@/test/render';
 import { PayeeForm } from './PayeeForm';
 
+// Pass the form's current values straight through so submit handlers receive
+// the real field values (name, defaultCategoryId, notes) rather than an empty
+// object -- needed to exercise the apply-category branching on submit.
 vi.mock('@hookform/resolvers/zod', () => ({
-  zodResolver: () => async () => ({ values: {}, errors: {} }),
+  zodResolver: () => async (values: Record<string, unknown>) => ({
+    values,
+    errors: {},
+  }),
 }));
 
 vi.mock('@/lib/categoryUtils', () => ({
@@ -144,6 +150,38 @@ describe('PayeeForm', () => {
         render(<PayeeForm payee={payee} categories={categories} onSubmit={onSubmit} onCancel={onCancel} />);
       });
       expect(screen.queryByText('Apply this category to existing transactions')).not.toBeInTheDocument();
+    });
+
+    it('passes the chosen apply mode through to onSubmit', async () => {
+      const submit = vi.fn().mockResolvedValue(undefined);
+      const payee = { id: 'p1', name: 'Walmart', defaultCategoryId: 'c1', notes: '', transactionCount: 10, uncategorizedCount: 3 } as any;
+      await act(async () => {
+        render(<PayeeForm payee={payee} categories={categories} onSubmit={submit} onCancel={onCancel} />);
+      });
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Apply this category to existing transactions'), { target: { value: 'all' } });
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Update Payee'));
+      });
+      expect(submit).toHaveBeenCalledTimes(1);
+      expect(submit.mock.calls[0][0]).toMatchObject({
+        defaultCategoryId: 'c1',
+        applyCategoryToTransactions: 'all',
+      });
+    });
+
+    it('omits the apply mode when left at the default (none)', async () => {
+      const submit = vi.fn().mockResolvedValue(undefined);
+      const payee = { id: 'p1', name: 'Walmart', defaultCategoryId: 'c1', notes: '', transactionCount: 10, uncategorizedCount: 3 } as any;
+      await act(async () => {
+        render(<PayeeForm payee={payee} categories={categories} onSubmit={submit} onCancel={onCancel} />);
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Update Payee'));
+      });
+      expect(submit).toHaveBeenCalledTimes(1);
+      expect(submit.mock.calls[0][0].applyCategoryToTransactions).toBeUndefined();
     });
   });
 });
