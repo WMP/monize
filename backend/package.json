@@ -52,7 +52,7 @@
     "he": "^1.2.0",
     "helmet": "^8.1.0",
     "nestjs-i18n": "^10.8.4",
-    "nodemailer": "^8.0.1",
+    "nodemailer": "^8.0.9",
     "oidc-provider": "^9.8.3",
     "openai": "^6.22.0",
     "openid-client": "^6.8.2",
