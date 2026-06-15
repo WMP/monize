@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef, memo } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
 import { useTranslations } from 'next-intl';
 import { CurrencyInfo, CurrencyUsage } from '@/lib/exchange-rates';
-import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { Modal } from '@/components/ui/Modal';
 import { exchangeRatesApi } from '@/lib/exchange-rates';
 import toast from 'react-hot-toast';
 import { createLogger } from '@/lib/logger';
@@ -13,11 +11,80 @@ import { getErrorMessage } from '@/lib/errors';
 
 import { DensityLevel, nextDensity } from '@/hooks/useTableDensity';
 import { SortIcon } from '@/components/ui/SortIcon';
+import { useLongPress, type LongPressRowHandlers } from '@/hooks/useLongPress';
+import { RowActions } from '@/components/ui/row-actions/RowActions';
+import { RowActionSheet } from '@/components/ui/row-actions/RowActionSheet';
+import type { RowAction } from '@/components/ui/row-actions/rowAction';
 
 export type CurrencySortField = 'code' | 'name' | 'symbol' | 'decimals' | 'rate';
 export type SortDirection = 'asc' | 'desc';
 
 const logger = createLogger('CurrencyList');
+
+interface CurrencyActionLabels {
+  edit: string;
+  activate: string;
+  deactivate: string;
+  delete: string;
+}
+
+interface CurrencyActionHandlers {
+  onEdit: (currency: CurrencyInfo) => void;
+  onToggleActive: (currency: CurrencyInfo) => void;
+  onDelete: (currency: CurrencyInfo) => void;
+}
+
+/**
+ * Builds the standard row actions for a currency. Shared by the desktop
+ * `RowActions` cell and the mobile `RowActionSheet`. Delete is desktop-omitted
+ * (only the sheet surfaces it) via `includeDelete`.
+ */
+function buildCurrencyActions(
+  currency: CurrencyInfo,
+  totalUsage: number,
+  isDefault: boolean,
+  labels: CurrencyActionLabels,
+  handlers: CurrencyActionHandlers,
+  opts: { includeDelete: boolean },
+): RowAction[] {
+  const canToggleOrDelete = !isDefault && totalUsage === 0;
+  return [
+    {
+      key: 'edit',
+      label: labels.edit,
+      icon: 'edit',
+      tone: 'primary',
+      onClick: () => handlers.onEdit(currency),
+      hidden: currency.isSystem,
+    },
+    currency.isActive
+      ? {
+          key: 'toggle',
+          label: labels.deactivate,
+          icon: 'deactivate',
+          tone: 'warning',
+          onClick: () => handlers.onToggleActive(currency),
+          hidden: !canToggleOrDelete,
+        }
+      : {
+          key: 'toggle',
+          label: labels.activate,
+          icon: 'activate',
+          tone: 'success',
+          onClick: () => handlers.onToggleActive(currency),
+          hidden: !canToggleOrDelete,
+        },
+    {
+      key: 'delete',
+      label: labels.delete,
+      icon: 'delete',
+      tone: 'delete',
+      destructive: true,
+      onClick: () => handlers.onDelete(currency),
+      hidden: !opts.includeDelete || currency.isSystem || !canToggleOrDelete,
+    },
+  ];
+}
 
 interface CurrencyListProps {
   currencies: CurrencyInfo[];
@@ -44,10 +111,7 @@ interface CurrencyRowProps {
   onEdit: (currency: CurrencyInfo) => void;
   onToggleActive: (currency: CurrencyInfo) => void;
   onDelete: (currency: CurrencyInfo) => void;
-  onLongPressStart: (currency: CurrencyInfo) => void;
-  onLongPressStartTouch: (currency: CurrencyInfo, e: React.TouchEvent) => void;
-  onLongPressEnd: () => void;
-  onTouchMove: (e: React.TouchEvent) => void;
+  getRowHandlers: (currency: CurrencyInfo) => LongPressRowHandlers;
   index: number;
 }
 
@@ -60,30 +124,29 @@ const CurrencyRow = memo(function CurrencyRow({
   cellPadding,
   onEdit,
   onToggleActive,
-  onDelete: _onDelete,
-  onLongPressStart,
-  onLongPressStartTouch,
-  onLongPressEnd,
-  onTouchMove,
+  onDelete,
+  getRowHandlers,
   index,
 }: CurrencyRowProps) {
   const t = useTranslations('currencies');
-  const handleEdit = useCallback(() => onEdit(currency), [onEdit, currency]);
-  const handleToggle = useCallback(() => onToggleActive(currency), [onToggleActive, currency]);
+  const tc = useTranslations('common');
 
   const totalUsage = (usage?.accounts || 0) + (usage?.securities || 0);
   const isDefault = currency.code === defaultCurrency;
 
+  const actions = buildCurrencyActions(
+    currency,
+    totalUsage,
+    isDefault,
+    { edit: tc('actions.edit'), activate: t('list.actions.activate'), deactivate: t('list.actions.deactivate'), delete: tc('actions.delete') },
+    { onEdit, onToggleActive, onDelete },
+    { includeDelete: false },
+  );
+
   return (
     <tr
       className={`hover:bg-gray-100 dark:hover:bg-gray-800 select-none ${density !== 'normal' && index % 2 === 1 ? 'bg-gray-50 dark:bg-table-stripe-dark' : 'bg-white dark:bg-gray-900'}`}
-      onMouseDown={() => onLongPressStart(currency)}
-      onMouseUp={onLongPressEnd}
-      onMouseLeave={onLongPressEnd}
-      onTouchStart={(e) => onLongPressStartTouch(currency, e)}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onLongPressEnd}
-      onTouchCancel={onLongPressEnd}
+      {...getRowHandlers(currency)}
     >
       {/* Code */}
       <td className={`${cellPadding} whitespace-nowrap`}>
@@ -152,32 +215,7 @@ const CurrencyRow = memo(function CurrencyRow({
       </td>
       {/* Actions - hidden on mobile */}
       <td className={`${cellPadding} whitespace-nowrap text-right text-sm font-medium hidden sm:table-cell`}>
-        {!currency.isSystem && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleEdit}
-            className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-1"
-          >
-            {density === 'dense' ? '✎' : t('list.actions.edit')}
-          </Button>
-        )}
-        {!isDefault && totalUsage === 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleToggle}
-            className={`mr-1 ${
-              currency.isActive
-                ? 'text-yellow-600 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-300'
-                : 'text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300'
-            }`}
-          >
-            {density === 'dense'
-              ? currency.isActive ? '⊘' : '✓'
-              : currency.isActive ? t('list.actions.deactivate') : t('list.actions.activate')}
-          </Button>
-        )}
+        <RowActions actions={actions} density={density} />
       </td>
     </tr>
   );
@@ -222,54 +260,12 @@ export function CurrencyList({
     }
   }, [onSort, localSortField]);
 
-  // Long-press handling for context menu on mobile
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
-  const longPressTriggered = useRef(false);
-  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
-  const LONG_PRESS_MOVE_THRESHOLD = 10;
+  // Long-press opens a per-row action sheet on mobile (and via right-click).
   const [contextCurrency, setContextCurrency] = useState<CurrencyInfo | null>(null);
 
-  const handleLongPressStart = useCallback((currency: CurrencyInfo) => {
-    touchStartPos.current = null;
-    longPressTriggered.current = false;
-    longPressTimer.current = setTimeout(() => {
-      longPressTriggered.current = true;
-      setContextCurrency(currency);
-    }, 750);
-  }, []);
-
-  const handleLongPressStartTouch = useCallback((currency: CurrencyInfo, e: React.TouchEvent) => {
-    if (e?.touches?.[0]) {
-      touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    } else {
-      touchStartPos.current = null;
-    }
-    longPressTriggered.current = false;
-    longPressTimer.current = setTimeout(() => {
-      longPressTriggered.current = true;
-      setContextCurrency(currency);
-    }, 750);
-  }, []);
-
-  const handleLongPressEnd = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-    touchStartPos.current = null;
-  }, []);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (touchStartPos.current && longPressTimer.current && e.touches?.[0]) {
-      const deltaX = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
-      const deltaY = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
-      if (deltaX > LONG_PRESS_MOVE_THRESHOLD || deltaY > LONG_PRESS_MOVE_THRESHOLD) {
-        clearTimeout(longPressTimer.current);
-        longPressTimer.current = null;
-        touchStartPos.current = null;
-      }
-    }
-  }, []);
+  const { getRowHandlers } = useLongPress<CurrencyInfo>({
+    onLongPress: setContextCurrency,
+  });
 
   const cellPadding = useMemo(() => {
     switch (density) {
@@ -407,10 +403,7 @@ export function CurrencyList({
                 onEdit={onEdit}
                 onToggleActive={onToggleActive}
                 onDelete={setDeleteCurrency}
-                onLongPressStart={handleLongPressStart}
-                onLongPressStartTouch={handleLongPressStartTouch}
-                onLongPressEnd={handleLongPressEnd}
-                onTouchMove={handleTouchMove}
+                getRowHandlers={getRowHandlers}
                 index={index}
               />
             ))}
@@ -419,67 +412,22 @@ export function CurrencyList({
       </div>
 
       {/* Long-press Context Menu */}
-      <Modal isOpen={!!contextCurrency} onClose={() => setContextCurrency(null)} maxWidth="sm" className="p-0">
-        {contextCurrency && (() => {
-          const contextUsage = usage[contextCurrency.code];
-          const contextTotalUsage = (contextUsage?.accounts || 0) + (contextUsage?.securities || 0);
-          const isContextDefault = contextCurrency.code === defaultCurrency;
-          const canDeactivateOrDelete = !isContextDefault && contextTotalUsage === 0;
-          return (
-          <div>
-            <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">{contextCurrency.code}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{contextCurrency.name}</p>
-            </div>
-            <div className="py-2">
-              {!contextCurrency.isSystem && (
-                <button
-                  onClick={() => { setContextCurrency(null); onEdit(contextCurrency); }}
-                  className="w-full text-left px-5 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
-                >
-                  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  {t('list.contextMenu.editCurrency')}
-                </button>
-              )}
-              {canDeactivateOrDelete && (
-                <button
-                  onClick={() => { setContextCurrency(null); onToggleActive(contextCurrency); }}
-                  className={`w-full text-left px-5 py-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 ${
-                    contextCurrency.isActive
-                      ? 'text-yellow-600 dark:text-yellow-400'
-                      : 'text-green-600 dark:text-green-400'
-                  }`}
-                >
-                  {contextCurrency.isActive ? (
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  )}
-                  {contextCurrency.isActive ? t('list.contextMenu.deactivate') : t('list.contextMenu.activate')}
-                </button>
-              )}
-              {canDeactivateOrDelete && !contextCurrency.isSystem && (
-                <button
-                  onClick={() => { setContextCurrency(null); setDeleteCurrency(contextCurrency); }}
-                  className="w-full text-left px-5 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  {t('list.contextMenu.deleteCurrency')}
-                </button>
-              )}
-            </div>
-          </div>
-          );
-        })()}
-      </Modal>
+      <RowActionSheet
+        isOpen={!!contextCurrency}
+        title={contextCurrency?.code ?? ''}
+        subtitle={contextCurrency?.name}
+        actions={contextCurrency
+          ? buildCurrencyActions(
+              contextCurrency,
+              (usage[contextCurrency.code]?.accounts || 0) + (usage[contextCurrency.code]?.securities || 0),
+              contextCurrency.code === defaultCurrency,
+              { edit: t('list.contextMenu.editCurrency'), activate: t('list.contextMenu.activate'), deactivate: t('list.contextMenu.deactivate'), delete: t('list.contextMenu.deleteCurrency') },
+              { onEdit, onToggleActive, onDelete: setDeleteCurrency },
+              { includeDelete: true },
+            )
+          : []}
+        onClose={() => setContextCurrency(null)}
+      />
 
       <ConfirmDialog
         isOpen={deleteCurrency !== null}

@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
-import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Institution } from '@/types/institution';
 import { institutionsApi } from '@/lib/institutions';
@@ -14,8 +12,27 @@ import { useTableDensity, nextDensity, DensityLevel } from '@/hooks/useTableDens
 import { SortIcon } from '@/components/ui/SortIcon';
 import { safeHttpUrl } from '@/lib/safe-url';
 import { InstitutionLogo } from './InstitutionLogo';
+import { useLongPress } from '@/hooks/useLongPress';
+import { RowActions } from '@/components/ui/row-actions/RowActions';
+import { RowActionSheet } from '@/components/ui/row-actions/RowActionSheet';
+import type { RowAction } from '@/components/ui/row-actions/rowAction';
 
 const logger = createLogger('InstitutionList');
+
+/**
+ * Builds the standard row actions for an institution. Shared by the desktop
+ * `RowActions` cell and the mobile `RowActionSheet`.
+ */
+function buildInstitutionActions(
+  institution: Institution,
+  labels: { edit: string; delete: string },
+  handlers: { onEdit: (institution: Institution) => void; onDeleteClick: (institution: Institution) => void },
+): RowAction[] {
+  return [
+    { key: 'edit', label: labels.edit, icon: 'edit', tone: 'primary', onClick: () => handlers.onEdit(institution) },
+    { key: 'delete', label: labels.delete, icon: 'delete', tone: 'delete', destructive: true, onClick: () => handlers.onDeleteClick(institution) },
+  ];
+}
 
 export type InstitutionSortField = 'name' | 'website' | 'country' | 'accounts';
 
@@ -47,6 +64,11 @@ export function InstitutionList({
   const { cellPadding, headerPadding } = useTableDensity(density);
   const [toDelete, setToDelete] = useState<Institution | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [contextInstitution, setContextInstitution] = useState<Institution | null>(null);
+
+  const { getRowHandlers } = useLongPress<Institution>({
+    onLongPress: setContextInstitution,
+  });
 
   const handleDeleteConfirm = async () => {
     if (!toDelete) return;
@@ -124,7 +146,7 @@ export function InstitutionList({
               {t('list.columns.accounts')}
               {onSort && <SortIcon field="accounts" sortField={sortField} sortDirection={sortDirection} />}
             </th>
-            <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
+            <th className={`${headerPadding} text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden min-[480px]:table-cell`}>
               {t('list.columns.actions')}
             </th>
           </tr>
@@ -133,7 +155,8 @@ export function InstitutionList({
           {institutions.map((institution) => (
             <tr
               key={institution.id}
-              className="hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="hover:bg-gray-50 dark:hover:bg-gray-800 select-none"
+              {...getRowHandlers(institution)}
             >
               <td className={cellPadding}>
                 <div className="flex items-center gap-3 min-w-0">
@@ -173,44 +196,15 @@ export function InstitutionList({
                   {institution.accountCount}
                 </button>
               </td>
-              <td className={`${cellPadding} text-right whitespace-nowrap ${density === 'dense' ? 'space-x-1' : 'space-x-2'}`}>
-                {density === 'dense' ? (
-                  <>
-                    <button
-                      onClick={() => onEdit(institution)}
-                      aria-label={tc('edit')}
-                      title={tc('edit')}
-                      className="inline-flex items-center p-1.5 rounded text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <PencilSquareIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => setToDelete(institution)}
-                      aria-label={tc('delete')}
-                      title={tc('delete')}
-                      className="inline-flex items-center p-1.5 rounded text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onEdit(institution)}
-                    >
-                      {tc('edit')}
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => setToDelete(institution)}
-                    >
-                      {tc('delete')}
-                    </Button>
-                  </>
-                )}
+              <td className={`${cellPadding} text-right whitespace-nowrap hidden min-[480px]:table-cell`} onClick={(e) => e.stopPropagation()}>
+                <RowActions
+                  actions={buildInstitutionActions(
+                    institution,
+                    { edit: tc('actions.edit'), delete: tc('actions.delete') },
+                    { onEdit, onDeleteClick: setToDelete },
+                  )}
+                  density={density}
+                />
               </td>
             </tr>
           ))}
@@ -231,6 +225,20 @@ export function InstitutionList({
         variant="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setToDelete(null)}
+      />
+
+      <RowActionSheet
+        isOpen={contextInstitution !== null}
+        title={contextInstitution?.name ?? ''}
+        subtitle={contextInstitution?.country ?? undefined}
+        actions={contextInstitution
+          ? buildInstitutionActions(
+              contextInstitution,
+              { edit: tc('actions.edit'), delete: tc('actions.delete') },
+              { onEdit, onDeleteClick: setToDelete },
+            )
+          : []}
+        onClose={() => setContextInstitution(null)}
       />
     </div>
   );

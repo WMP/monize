@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef, memo, Fragment } from 'react';
+import { useState, useMemo, useCallback, memo, Fragment } from 'react';
 import { useTranslations } from 'next-intl';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { DateInput } from '@/components/ui/DateInput';
@@ -11,6 +11,39 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { DensityLevel, nextDensity } from '@/hooks/useTableDensity';
 import { Account } from '@/types/account';
 import { getLocalDateString } from '@/lib/utils';
+import { useLongPress, type LongPressRowHandlers } from '@/hooks/useLongPress';
+import { RowActions } from '@/components/ui/row-actions/RowActions';
+import { RowActionSheet } from '@/components/ui/row-actions/RowActionSheet';
+import type { RowAction } from '@/components/ui/row-actions/rowAction';
+
+/**
+ * Builds the standard row actions for an investment transaction. Shared by the
+ * desktop `RowActions` cell and the mobile `RowActionSheet`.
+ */
+function buildInvestmentTxActions(
+  tx: InvestmentTransaction,
+  labels: { edit: string; delete: string },
+  handlers: { onEdit?: (tx: InvestmentTransaction) => void; onDeleteClick: (tx: InvestmentTransaction) => void },
+): RowAction[] {
+  return [
+    {
+      key: 'edit',
+      label: labels.edit,
+      icon: 'edit',
+      tone: 'primary',
+      onClick: () => handlers.onEdit?.(tx),
+      hidden: !handlers.onEdit,
+    },
+    {
+      key: 'delete',
+      label: labels.delete,
+      icon: 'delete',
+      tone: 'delete',
+      destructive: true,
+      onClick: () => handlers.onDeleteClick(tx),
+    },
+  ];
+}
 
 export interface TransactionFilters {
   symbol?: string;
@@ -98,10 +131,7 @@ interface InvestmentTransactionRowProps {
   formatDate: (date: string) => string;
   formatCurrency: (amount: number, currencyCode?: string, fractionDigits?: number) => string;
   formatQuantity: (value: number) => string;
-  onRowClick: (tx: InvestmentTransaction) => void;
-  onLongPressStart: (tx: InvestmentTransaction, e?: React.TouchEvent) => void;
-  onLongPressEnd: () => void;
-  onTouchMove: (e: React.TouchEvent) => void;
+  getRowHandlers: (tx: InvestmentTransaction) => LongPressRowHandlers;
   onEdit?: (tx: InvestmentTransaction) => void;
   onDeleteClick: (tx: InvestmentTransaction) => void;
   hasActions: boolean;
@@ -117,15 +147,13 @@ const InvestmentTransactionRow = memo(function InvestmentTransactionRow({
   formatDate,
   formatCurrency,
   formatQuantity,
-  onRowClick,
-  onLongPressStart,
-  onLongPressEnd,
-  onTouchMove,
+  getRowHandlers,
   onEdit,
   onDeleteClick,
   hasActions,
 }: InvestmentTransactionRowProps) {
   const t = useTranslations('investments');
+  const tc = useTranslations('common');
   const ACTION_LABELS: Record<string, { label: string; shortLabel: string; color: string }> = {
     BUY: { label: t('transactionList.actionBuy'), shortLabel: t('transactionList.actionBuy'), color: ACTION_COLORS.BUY },
     SELL: { label: t('transactionList.actionSell'), shortLabel: t('transactionList.actionSell'), color: ACTION_COLORS.SELL },
@@ -145,17 +173,16 @@ const InvestmentTransactionRow = memo(function InvestmentTransactionRow({
     color: 'text-gray-600 dark:text-gray-400',
   };
 
+  const actions = buildInvestmentTxActions(
+    tx,
+    { edit: tc('actions.edit'), delete: tc('actions.delete') },
+    { onEdit, onDeleteClick },
+  );
+
   return (
     <tr
-      onClick={() => onRowClick(tx)}
-      onMouseDown={() => onLongPressStart(tx)}
-      onMouseUp={onLongPressEnd}
-      onMouseLeave={onLongPressEnd}
-      onTouchStart={(e) => onLongPressStart(tx, e)}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onLongPressEnd}
-      onTouchCancel={onLongPressEnd}
-      className={`group hover:bg-gray-100 dark:hover:bg-gray-800 ${density !== 'normal' && index % 2 === 1 ? 'bg-gray-50 dark:bg-table-stripe-dark' : 'bg-white dark:bg-gray-900'} ${onEdit ? 'cursor-pointer' : ''}`}
+      {...getRowHandlers(tx)}
+      className={`group hover:bg-gray-100 dark:hover:bg-gray-800 select-none ${density !== 'normal' && index % 2 === 1 ? 'bg-gray-50 dark:bg-table-stripe-dark' : 'bg-white dark:bg-gray-900'} ${onEdit ? 'cursor-pointer' : ''}`}
     >
       <td className={`${cellPadding} whitespace-nowrap text-sm text-gray-900 dark:text-gray-100`}>
         {formatDate(tx.transactionDate)}
@@ -202,21 +229,8 @@ const InvestmentTransactionRow = memo(function InvestmentTransactionRow({
         )}
       </td>
       {hasActions && (
-        <td className={`${cellPadding} whitespace-nowrap text-right text-sm space-x-3 hidden min-[480px]:table-cell sticky right-0 ${density !== 'normal' && index % 2 === 1 ? 'bg-gray-50 dark:bg-table-stripe-dark' : 'bg-white dark:bg-gray-900'} group-hover:bg-gray-100 dark:group-hover:bg-gray-800`}>
-          {onEdit && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(tx); }}
-              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-            >
-              {density === 'dense' ? '✎' : t('transactionList.editButton')}
-            </button>
-          )}
-          <button
-            onClick={(e) => { e.stopPropagation(); onDeleteClick(tx); }}
-            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-          >
-            {density === 'dense' ? '✕' : t('transactionList.deleteButton')}
-          </button>
+        <td className={`${cellPadding} whitespace-nowrap text-right text-sm hidden min-[480px]:table-cell sticky right-0 ${density !== 'normal' && index % 2 === 1 ? 'bg-gray-50 dark:bg-table-stripe-dark' : 'bg-white dark:bg-gray-900'} group-hover:bg-gray-100 dark:group-hover:bg-gray-800`} onClick={(e) => e.stopPropagation()}>
+          <RowActions actions={actions} density={density} />
         </td>
       )}
     </tr>
@@ -274,61 +288,19 @@ export function InvestmentTransactionList({
   const [showFilters, setShowFilters] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; transaction: InvestmentTransaction | null }>({ isOpen: false, transaction: null });
 
-  // Long-press handling for delete on mobile
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
-  const longPressTriggered = useRef(false);
-  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
-  const LONG_PRESS_MOVE_THRESHOLD = 10;
-
-  const handleLongPressStart = useCallback((transaction: InvestmentTransaction, e?: React.TouchEvent) => {
-    if (!onDelete) return;
-
-    if (e?.touches?.[0]) {
-      touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    } else {
-      touchStartPos.current = null;
-    }
-
-    longPressTriggered.current = false;
-    longPressTimer.current = setTimeout(() => {
-      longPressTriggered.current = true;
-      setDeleteConfirm({ isOpen: true, transaction });
-    }, 750);
-  }, [onDelete]);
-
-  const handleLongPressEnd = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-    touchStartPos.current = null;
-  }, []);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (touchStartPos.current && longPressTimer.current && e.touches?.[0]) {
-      const deltaX = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
-      const deltaY = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
-      if (deltaX > LONG_PRESS_MOVE_THRESHOLD || deltaY > LONG_PRESS_MOVE_THRESHOLD) {
-        clearTimeout(longPressTimer.current);
-        longPressTimer.current = null;
-        touchStartPos.current = null;
-      }
-    }
-  }, []);
-
-  const handleRowClick = useCallback((transaction: InvestmentTransaction) => {
-    if (longPressTriggered.current) {
-      longPressTriggered.current = false;
-      return;
-    }
-    if (onEdit) {
-      onEdit(transaction);
-    }
-  }, [onEdit]);
+  // Long-press opens a per-row action sheet on mobile (and via right-click).
+  const tc = useTranslations('common');
+  const [contextTx, setContextTx] = useState<InvestmentTransaction | null>(null);
 
   const handleDeleteClick = useCallback((tx: InvestmentTransaction) => {
     setDeleteConfirm({ isOpen: true, transaction: tx });
   }, []);
+
+  const { getRowHandlers } = useLongPress<InvestmentTransaction>({
+    onLongPress: setContextTx,
+    onClick: (transaction) => onEdit?.(transaction),
+    enabled: !!(onDelete || onEdit),
+  });
 
   const handleDeleteConfirm = useCallback(() => {
     if (deleteConfirm.transaction && onDelete) {
@@ -650,10 +622,7 @@ export function InvestmentTransactionList({
                     formatDate={formatDate}
                     formatCurrency={formatCurrency}
                     formatQuantity={formatQuantity}
-                    onRowClick={handleRowClick}
-                    onLongPressStart={handleLongPressStart}
-                    onLongPressEnd={handleLongPressEnd}
-                    onTouchMove={handleTouchMove}
+                    getRowHandlers={getRowHandlers}
                     onEdit={onEdit}
                     onDeleteClick={handleDeleteClick}
                     hasActions={!!(onDelete || onEdit)}
@@ -680,6 +649,20 @@ export function InvestmentTransactionList({
         variant="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
+      />
+
+      <RowActionSheet
+        isOpen={!!contextTx}
+        title={contextTx?.security?.symbol ?? (contextTx ? ACTION_LABEL_MAP[contextTx.action] || contextTx.action : '')}
+        subtitle={contextTx ? formatDate(contextTx.transactionDate) : undefined}
+        actions={contextTx
+          ? buildInvestmentTxActions(
+              contextTx,
+              { edit: tc('actions.edit'), delete: tc('actions.delete') },
+              { onEdit, onDeleteClick: handleDeleteClick },
+            )
+          : []}
+        onClose={() => setContextTx(null)}
       />
     </div>
   );
