@@ -651,6 +651,7 @@ jobs:
           git add backend/package.json backend/package-lock.json frontend/package.json frontend/package-lock.json
           git commit -m "chore: bump version to ${VERSION} [skip ci]"
           git pull --rebase
+          git push
           SHA=$(git rev-parse HEAD)
           TEMP_BRANCH="ci-release-${SHA:0:8}"
           # Push to an unprotected temp branch first so GitHub knows the SHA.
@@ -665,9 +666,6 @@ jobs:
             -f conclusion=success \
             -f "output[title]=PR checklist" \
             -f "output[summary]=Auto-pass: CI release commit (no PR body to inspect)"
-          # Push to main -- required check is now satisfied.
-          git push origin HEAD:refs/heads/main
-          git push origin --delete "${TEMP_BRANCH}" || true
 
       # Resolve the release notes body. Precedence: the `release_notes` input,
       # then a committed docs/release-notes/<version>.md, then GitHub's
