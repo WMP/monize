@@ -15,11 +15,26 @@ import { z } from "zod";
  */
 
 // Monetary and other decimal values arrive as JS numbers at runtime (the
-// entity `numericTransformer` converts PostgreSQL decimals). NaN is allowed so
-// a divide-by-zero percentage (which serializes to JSON null) never fails
-// structured-output validation.
-const num = z.number().or(z.nan());
-const numNull = num.nullable();
+// entity `numericTransformer` converts PostgreSQL decimals). Decimals may be
+// null-equivalent: a divide-by-zero percentage produces NaN at runtime, which
+// `toolResult` normalizes to null (NaN's JSON form) so it both passes
+// structured-output validation and serializes. `num` must therefore accept
+// null. It must NOT use `z.nan()`: the SDK serializes each tool's outputSchema
+// to JSON Schema for `tools/list`, and `z.nan()` is unrepresentable there
+// ("NaN cannot be represented in JSON Schema"), which fails the whole
+// tools/list response and leaves every client showing zero tools.
+const num = z.number().nullable();
+const numNull = num;
+
+// Every output object is loose. Tools return entity payloads that carry fields
+// beyond the modeled subset (timestamps, foreign keys, relations). The SDK
+// serializes each outputSchema to JSON Schema in OUTPUT mode for `tools/list`,
+// where a default (strip) object becomes `additionalProperties: false`; the
+// client then rejects the extra fields with an output-validation error. `.loose()`
+// emits `additionalProperties: {}` so the real payloads validate. (The server
+// side validates with Zod, which strips unknown keys -- the strictness only
+// bites on the client.)
+const looseObject = (shape: z.ZodRawShape) => z.object(shape).loose();
 const str = z.string();
 const strNull = z.string().nullable();
 const bool = z.boolean();
@@ -30,7 +45,7 @@ const bool = z.boolean();
 
 export const getAccountsOutput = {
   items: z.array(
-    z.object({
+    looseObject({
       id: str,
       name: str,
       accountType: str.optional(),
@@ -55,7 +70,7 @@ export const getAccountBalanceOutput = {
 
 export const getAccountBalancesOutput = {
   accounts: z.array(
-    z.object({
+    looseObject({
       name: str,
       type: str,
       balance: num,
@@ -83,7 +98,7 @@ export const getNetWorthOutput = {
 
 export const getNetWorthHistoryOutput = {
   items: z.array(
-    z.object({
+    looseObject({
       month: str,
       assets: num,
       liabilities: num,
@@ -98,7 +113,7 @@ export const getNetWorthHistoryOutput = {
 
 export const searchTransactionsOutput = {
   transactions: z.array(
-    z.object({
+    looseObject({
       id: str,
       splitId: str.optional(),
       date: str,
@@ -123,7 +138,7 @@ export const queryTransactionsOutput = {
   byCurrency: z
     .record(
       z.string(),
-      z.object({
+      looseObject({
         totalIncome: num,
         totalExpenses: num,
         netCashFlow: num,
@@ -136,7 +151,7 @@ export const queryTransactionsOutput = {
 
 export const getSpendingByCategoryOutput = {
   categories: z.array(
-    z.object({
+    looseObject({
       category: str,
       amount: num,
       percentage: num,
@@ -148,7 +163,7 @@ export const getSpendingByCategoryOutput = {
 
 export const getIncomeSummaryOutput = {
   items: z.array(
-    z.object({
+    looseObject({
       label: str,
       amount: num,
       count: num,
@@ -159,12 +174,12 @@ export const getIncomeSummaryOutput = {
 };
 
 export const comparePeriodsOutput = {
-  period1: z.object({ start: str, end: str, total: num }),
-  period2: z.object({ start: str, end: str, total: num }),
+  period1: looseObject({ start: str, end: str, total: num }),
+  period2: looseObject({ start: str, end: str, total: num }),
   totalChange: num,
   totalChangePercent: num,
   comparison: z.array(
-    z.object({
+    looseObject({
       label: str,
       period1Amount: num,
       period2Amount: num,
@@ -176,7 +191,7 @@ export const comparePeriodsOutput = {
 
 export const getTransfersOutput = {
   accounts: z.array(
-    z.object({
+    looseObject({
       accountName: str,
       currency: str,
       inbound: num,
@@ -227,7 +242,7 @@ export const categorizeTransactionOutput = {
 
 export const getCategoriesOutput = {
   categories: z.array(
-    z.object({
+    looseObject({
       id: str,
       name: str,
       parentName: strNull,
@@ -244,7 +259,7 @@ export const getCategoriesOutput = {
 
 export const getPayeesOutput = {
   items: z.array(
-    z.object({
+    looseObject({
       id: str,
       name: str,
       defaultCategoryId: strNull.optional(),
@@ -290,9 +305,9 @@ export const monthlyComparisonOutput = {
 };
 
 export const getAnomaliesOutput = {
-  statistics: z.object({ mean: num, stdDev: num }),
+  statistics: looseObject({ mean: num, stdDev: num }),
   anomalies: z.array(
-    z.object({
+    looseObject({
       type: str,
       severity: str,
       title: str,
@@ -308,7 +323,7 @@ export const getAnomaliesOutput = {
       percentChange: num.optional(),
     }),
   ),
-  counts: z.object({ high: num, medium: num, low: num }),
+  counts: looseObject({ high: num, medium: num, low: num }),
 };
 
 // ---------------------------------------------------------------------------
@@ -326,7 +341,7 @@ export const getPortfolioSummaryOutput = {
   timeWeightedReturn: numNull,
   cagr: numNull,
   holdings: z.array(
-    z.object({
+    looseObject({
       symbol: str,
       name: str,
       securityType: str,
@@ -340,7 +355,7 @@ export const getPortfolioSummaryOutput = {
     }),
   ),
   allocation: z.array(
-    z.object({
+    looseObject({
       name: str,
       symbol: strNull,
       type: str,
@@ -359,7 +374,7 @@ export const queryInvestmentTransactionsOutput = {
   groupedBy: strNull,
   groups: z
     .array(
-      z.object({
+      looseObject({
         key: str,
         transactionCount: num,
         totalQuantity: num,
@@ -369,7 +384,7 @@ export const queryInvestmentTransactionsOutput = {
     )
     .nullable(),
   transactions: z.array(
-    z.object({
+    looseObject({
       transactionDate: str,
       action: str,
       accountName: strNull,
@@ -389,14 +404,14 @@ export const queryInvestmentTransactionsOutput = {
 export const getCapitalGainsOutput = {
   startDate: str,
   endDate: str,
-  totals: z.object({
+  totals: looseObject({
     realizedGain: num,
     unrealizedGain: num,
     totalCapitalGain: num,
   }),
   groupedBy: str,
   entries: z.array(
-    z.object({
+    looseObject({
       month: strNull,
       accountName: strNull,
       symbol: strNull,
@@ -415,7 +430,7 @@ export const getCapitalGainsOutput = {
 
 export const getHoldingDetailsOutput = {
   items: z.array(
-    z.object({
+    looseObject({
       id: str,
       accountId: str,
       securityId: str,
@@ -429,7 +444,7 @@ export const getHoldingDetailsOutput = {
 // scheduled.tool.ts
 // ---------------------------------------------------------------------------
 
-const scheduledItem = z.object({
+const scheduledItem = looseObject({
   id: str,
   name: str,
   accountId: str,
@@ -484,7 +499,7 @@ export const getBudgetStatusOutput = {
   // Success branch (all optional so the not-found error branch validates too).
   budgetName: str.optional(),
   strategy: str.optional(),
-  period: z.object({ start: str, end: str }).optional(),
+  period: looseObject({ start: str, end: str }).optional(),
   totalBudgeted: num.optional(),
   totalSpent: num.optional(),
   totalIncome: num.optional(),
@@ -492,7 +507,7 @@ export const getBudgetStatusOutput = {
   percentUsed: num.optional(),
   overBudgetCategories: z
     .array(
-      z.object({
+      looseObject({
         category: str,
         budgeted: num,
         spent: num,
@@ -502,7 +517,7 @@ export const getBudgetStatusOutput = {
     .optional(),
   nearLimitCategories: z
     .array(
-      z.object({
+      looseObject({
         category: str,
         budgeted: num,
         spent: num,
@@ -522,7 +537,7 @@ export const getBudgetStatusOutput = {
       paceStatus: str,
     })
     .optional(),
-  healthScore: z.object({ score: num, label: str }).optional(),
+  healthScore: looseObject({ score: num, label: str }).optional(),
   // Not-found error branch.
   error: str.optional(),
   availableBudgets: z.array(str).optional(),
