@@ -640,7 +640,7 @@ jobs:
           cd backend  && npm version "$VERSION" --no-git-tag-version --allow-same-version && cd ..
           cd frontend && npm version "$VERSION" --no-git-tag-version --allow-same-version && cd ..
 
-      - name: Commit version bump
+      - name: Commit version bump and create PR checklist check run
         env:
           VERSION: ${{ needs.prepare-release.outputs.version }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
