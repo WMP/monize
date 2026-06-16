@@ -60,6 +60,10 @@
   },
   "ai": {
     "queryStreamFailed": "Під час обробки запиту сталася неочікувана помилка.",
+    "actionSignatureInvalid": "Не вдалося перевірити цю дію.",
+    "actionExpired": "Термін дії цього підтвердження минув. Будь ласка, запитайте ще раз.",
+    "actionWriteLimit": "Досягнуто денний ліміт записів ШІ ({{ limit }} на день). Будь ласка, спробуйте ще раз завтра.",
+    "actionConfirmFailed": "Не вдалося підтвердити цю дію.",
     "providerConfigNotFound": "Конфігурацію постачальника AI не знайдено",
     "maxProvidersExceeded": "Максимум {{ maxProvidersPerUser }} конфігурацій постачальника AI на користувача",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY не налаштовано. Неможливо безпечно зберігати ключі API.",

@@ -201,6 +201,7 @@ export const createTransactionOutput = {
       date: str.optional(),
       payeeName: strNull.optional(),
       categoryId: strNull.optional(),
+      categoryName: strNull.optional(),
       description: strNull.optional(),
       currencyCode: str.optional(),
     })

@@ -3,7 +3,6 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { TransactionsService } from "../../transactions/transactions.service";
 import { TransactionAnalyticsService } from "../../transactions/transaction-analytics.service";
-import { AccountsService } from "../../accounts/accounts.service";
 import {
   UserContextResolver,
   requireScope,
@@ -12,7 +11,6 @@ import {
   safeToolError,
 } from "../mcp-context";
 import { McpWriteLimiter } from "../mcp-write-limiter";
-import { stripHtml } from "../../common/sanitization.util";
 import {
   DEFAULT_TOP_N,
   getDefaultDateRange,
@@ -37,7 +35,6 @@ export class McpTransactionsTools {
   constructor(
     private readonly transactionsService: TransactionsService,
     private readonly analyticsService: TransactionAnalyticsService,
-    private readonly accountsService: AccountsService,
   ) {}
 
   register(server: McpServer, resolve: UserContextResolver) {
@@ -463,9 +460,19 @@ export class McpTransactionsTools {
         }
 
         try {
-          const account = await this.accountsService.findOne(
+          // Shared preview: validates account + category ownership, resolves
+          // names, and sanitizes strings (matches @SanitizeHtml() DTO behavior)
+          // identically to the AI Assistant confirmation flow.
+          const preview = await this.transactionsService.previewCreate(
             ctx.userId,
-            args.accountId,
+            {
+              accountId: args.accountId,
+              amount: args.amount,
+              transactionDate: args.date,
+              payeeName: args.payeeName,
+              categoryId: args.categoryId,
+              description: args.description,
+            },
           );
 
           // Dry-run mode: return preview without persisting
@@ -473,31 +480,31 @@ export class McpTransactionsTools {
             return toolResult({
               dryRun: true,
               preview: {
-                accountId: args.accountId,
-                accountName: account.name,
-                amount: args.amount,
-                date: args.date,
-                payeeName: stripHtml(args.payeeName) || null,
-                categoryId: args.categoryId || null,
-                description: stripHtml(args.description) || null,
-                currencyCode: account.currencyCode,
+                accountId: preview.accountId,
+                accountName: preview.accountName,
+                amount: preview.amount,
+                date: preview.transactionDate,
+                payeeName: preview.payeeName,
+                categoryId: preview.categoryId,
+                categoryName: preview.categoryName,
+                description: preview.description,
+                currencyCode: preview.currencyCode,
               },
               message:
                 "This is a preview. Call again with dryRun=false to create the transaction.",
             });
           }
 
-          // LLM07-F3: Sanitize user-controlled strings (matches @SanitizeHtml() DTO behavior)
           const transaction = await this.transactionsService.create(
             ctx.userId,
             {
-              accountId: args.accountId,
-              amount: args.amount,
-              transactionDate: args.date,
-              payeeName: stripHtml(args.payeeName),
-              categoryId: args.categoryId,
-              description: stripHtml(args.description),
-              currencyCode: account.currencyCode,
+              accountId: preview.accountId,
+              amount: preview.amount,
+              transactionDate: preview.transactionDate,
+              payeeName: preview.payeeName ?? undefined,
+              categoryId: preview.categoryId ?? undefined,
+              description: preview.description ?? undefined,
+              currencyCode: preview.currencyCode,
             },
           );
 

@@ -60,6 +60,10 @@
   },
   "ai": {
     "queryStreamFailed": "处理您的查询时发生意外错误。",
+    "actionSignatureInvalid": "无法验证此操作。",
+    "actionExpired": "此确认已过期。请重新询问。",
+    "actionWriteLimit": "已达到每日 AI 写入上限（每天 {{ limit }} 次）。请明天再试。",
+    "actionConfirmFailed": "无法确认此操作。",
     "providerConfigNotFound": "未找到 AI 提供商配置",
     "maxProvidersExceeded": "每位用户最多可配置 {{ maxProvidersPerUser }} 个 AI 提供商",
     "encryptionKeyNotConfigured": "未配置 AI_ENCRYPTION_KEY。无法安全存储 API 密钥。",

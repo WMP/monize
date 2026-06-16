@@ -60,6 +60,10 @@
   },
   "ai": {
     "queryStreamFailed": "Произошла непредвиденная ошибка при обработке вашего запроса.",
+    "actionSignatureInvalid": "Не удалось проверить это действие.",
+    "actionExpired": "Срок этого подтверждения истёк. Пожалуйста, спросите снова.",
+    "actionWriteLimit": "Достигнут дневной лимит записей ИИ ({{ limit }} в день). Пожалуйста, попробуйте снова завтра.",
+    "actionConfirmFailed": "Не удалось подтвердить это действие.",
     "providerConfigNotFound": "Конфигурация провайдера AI не найдена",
     "maxProvidersExceeded": "Максимальное количество конфигураций провайдера AI на пользователя: {{ maxProvidersPerUser }}",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY не настроен. Невозможно безопасно хранить ключи API.",

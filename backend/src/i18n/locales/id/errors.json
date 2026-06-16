@@ -60,6 +60,10 @@
   },
   "ai": {
     "queryStreamFailed": "Terjadi kesalahan tak terduga saat memproses permintaan Anda.",
+    "actionSignatureInvalid": "Tindakan ini tidak dapat diverifikasi.",
+    "actionExpired": "Konfirmasi ini telah kedaluwarsa. Silakan minta lagi.",
+    "actionWriteLimit": "Batas penulisan AI harian tercapai ({{ limit }} per hari). Silakan coba lagi besok.",
+    "actionConfirmFailed": "Tindakan ini tidak dapat dikonfirmasi.",
     "providerConfigNotFound": "Konfigurasi penyedia AI tidak ditemukan",
     "maxProvidersExceeded": "Maksimum {{ maxProvidersPerUser }} konfigurasi penyedia AI per pengguna",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY belum dikonfigurasi. Tidak dapat menyimpan kunci API dengan aman.",

@@ -6,7 +6,6 @@ describe("McpTransactionsTools", () => {
   let tool: McpTransactionsTools;
   let transactionsService: Record<string, jest.Mock>;
   let analyticsService: Record<string, jest.Mock>;
-  let accountsService: Record<string, jest.Mock>;
   let server: { registerTool: jest.Mock };
   let resolve: jest.MockedFunction<UserContextResolver>;
   const handlers: Record<string, (...args: any[]) => any> = {};
@@ -15,6 +14,7 @@ describe("McpTransactionsTools", () => {
     transactionsService = {
       findAll: jest.fn(),
       getLlmTransactionRows: jest.fn(),
+      previewCreate: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     };
@@ -27,14 +27,9 @@ describe("McpTransactionsTools", () => {
       getLlmPeriodComparison: jest.fn(),
     };
 
-    accountsService = {
-      findOne: jest.fn(),
-    };
-
     tool = new McpTransactionsTools(
       transactionsService as any,
       analyticsService as any,
-      accountsService as any,
     );
 
     server = {
@@ -419,7 +414,17 @@ describe("McpTransactionsTools", () => {
 
     it("should create transaction with account currency", async () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
-      accountsService.findOne.mockResolvedValue({ currencyCode: "USD" });
+      transactionsService.previewCreate.mockResolvedValue({
+        accountId: "a1",
+        accountName: "Checking",
+        amount: -50,
+        transactionDate: "2025-01-15",
+        payeeName: "Store",
+        categoryId: null,
+        categoryName: null,
+        description: null,
+        currencyCode: "USD",
+      });
       transactionsService.create.mockResolvedValue({
         id: "t1",
         transactionDate: "2025-01-15",
@@ -438,7 +443,10 @@ describe("McpTransactionsTools", () => {
         },
         { sessionId: "s1" },
       );
-      expect(accountsService.findOne).toHaveBeenCalledWith("u1", "a1");
+      expect(transactionsService.previewCreate).toHaveBeenCalledWith(
+        "u1",
+        expect.objectContaining({ accountId: "a1", amount: -50 }),
+      );
       expect(transactionsService.create).toHaveBeenCalledWith(
         "u1",
         expect.objectContaining({
@@ -452,8 +460,15 @@ describe("McpTransactionsTools", () => {
 
     it("should return preview in dry-run mode without creating", async () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
-      accountsService.findOne.mockResolvedValue({
-        name: "Checking",
+      transactionsService.previewCreate.mockResolvedValue({
+        accountId: "a1",
+        accountName: "Checking",
+        amount: -75,
+        transactionDate: "2025-02-01",
+        payeeName: "Coffee Shop",
+        categoryId: null,
+        categoryName: null,
+        description: null,
         currencyCode: "USD",
       });
 
@@ -479,14 +494,26 @@ describe("McpTransactionsTools", () => {
       expect(parsed.message).toContain("preview");
     });
 
-    it("should strip HTML from payeeName and description (LLM07-F3)", async () => {
+    it("persists the sanitized preview values (LLM07-F3)", async () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
-      accountsService.findOne.mockResolvedValue({ currencyCode: "USD" });
+      // previewCreate is responsible for stripping HTML; the tool persists
+      // exactly what it returns.
+      transactionsService.previewCreate.mockResolvedValue({
+        accountId: "a1",
+        accountName: "Checking",
+        amount: -50,
+        transactionDate: "2025-01-15",
+        payeeName: "scriptalert('XSS')/script",
+        categoryId: null,
+        categoryName: null,
+        description: "Purchase at bStore/b",
+        currencyCode: "USD",
+      });
       transactionsService.create.mockResolvedValue({
         id: "t1",
         transactionDate: "2025-01-15",
         amount: -50,
-        payeeName: "script alert XSS /script",
+        payeeName: "scriptalert('XSS')/script",
         status: "pending",
       });
 
@@ -511,33 +538,19 @@ describe("McpTransactionsTools", () => {
       );
     });
 
-    it("should strip HTML in dry-run preview (LLM07-F3)", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
-      accountsService.findOne.mockResolvedValue({
-        name: "Checking",
-        currencyCode: "USD",
-      });
-
-      const result = await handlers["create_transaction"](
-        {
-          accountId: "a1",
-          amount: -50,
-          date: "2025-01-15",
-          payeeName: "<img src=x>",
-          description: "Test <script>",
-          dryRun: true,
-        },
-        { sessionId: "s1" },
-      );
-
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.preview.payeeName).toBe("img src=x");
-      expect(parsed.preview.description).toBe("Test script");
-    });
-
     it("should enforce daily write rate limit", async () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "read,write" });
-      accountsService.findOne.mockResolvedValue({ currencyCode: "USD" });
+      transactionsService.previewCreate.mockResolvedValue({
+        accountId: "a1",
+        accountName: "Checking",
+        amount: -10,
+        transactionDate: "2025-01-15",
+        payeeName: null,
+        categoryId: null,
+        categoryName: null,
+        description: null,
+        currencyCode: "USD",
+      });
       transactionsService.create.mockResolvedValue({
         id: "t-new",
         transactionDate: "2025-01-15",
@@ -551,7 +564,6 @@ describe("McpTransactionsTools", () => {
       const freshTool = new McpTransactionsTools(
         transactionsService as any,
         analyticsService as any,
-        accountsService as any,
       );
       const freshHandlers: Record<string, (...args: any[]) => any> = {};
       const freshServer = {
@@ -604,7 +616,6 @@ describe("McpTransactionsTools", () => {
       const freshTool = new McpTransactionsTools(
         transactionsService as any,
         analyticsService as any,
-        accountsService as any,
       );
       const freshHandlers: Record<string, (...args: any[]) => any> = {};
       const freshServer = {

@@ -60,6 +60,10 @@
   },
   "ai": {
     "queryStreamFailed": "Sorgunuz işlenirken beklenmeyen bir hata oluştu.",
+    "actionSignatureInvalid": "Bu işlem doğrulanamadı.",
+    "actionExpired": "Bu onayın süresi doldu. Lütfen tekrar isteyin.",
+    "actionWriteLimit": "Günlük AI yazma sınırına ulaşıldı (günde {{ limit }}). Lütfen yarın tekrar deneyin.",
+    "actionConfirmFailed": "Bu işlem onaylanamadı.",
     "providerConfigNotFound": "Yapay zeka sağlayıcısı yapılandırması bulunamadı",
     "maxProvidersExceeded": "Kullanıcı başına en fazla {{ maxProvidersPerUser }} yapay zeka sağlayıcısı yapılandırması",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY yapılandırılmamış. API anahtarları güvenli şekilde saklanamıyor.",
