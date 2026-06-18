@@ -99,5 +99,29 @@
     "downloadAriaLabel": "下載圖表為 PNG",
     "captureError": "無法擷取圖表影像",
     "downloadError": "下載圖表失敗"
+  },
+  "attachments": {
+    "captureRich": "擷取富文字貼上"
+  },
+  "relay": {
+    "status": {
+      "offline": "助理離線",
+      "listening": "助理正在接聽",
+      "busy": "助理工作中"
+    },
+    "howToConnect": "如何連線",
+    "hideHelp": "隱藏",
+    "helpIntro": "執行您自己的 MCP 代理程式，它將使用您的訂閱來回答此聊天中的提示。",
+    "step1": "建立您的存取權杖",
+    "tokenStep": "首先，在<link>使用者設定 -> API 存取</link>中建立一個 Personal Access Token，然後在下方使用它。",
+    "claudeHeading": "使用 Claude CLI 連線",
+    "step2": "使用 Claude CLI 將代理程式連線到 Monize：",
+    "allowToolsNote": "結束 Claude 並使用此開關重新啟動，使其自動核准每個 Monize 工具呼叫：",
+    "step3": "啟動代理程式迴圈，讓 Claude 接聽來自 Monize 的查詢：",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "或使用 Codex",
+    "codexNote": "將此內容新增到 ~/.codex/config.toml，將 MONIZE_TOKEN 設定為您的權杖，然後執行 codex 並貼上上方的提示。",
+    "copy": "複製",
+    "copied": "已複製到剪貼簿"
   }
 }

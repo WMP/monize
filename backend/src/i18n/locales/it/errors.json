@@ -79,7 +79,8 @@
     "forecastInsufficientHistory": "Cronologia transazioni insufficiente per la previsione. Sono richiesti almeno 2 mesi di dati.",
     "forecastGenerateFailed": "Generazione previsione non riuscita. Riprova.",
     "forecastRateLimited": "È stata generata di recente una previsione. Riprova più tardi.",
-    "insightNotFound": "Analisi non trovata"
+    "insightNotFound": "Analisi non trovata",
+    "relayTimeout": "Il tuo assistente non ha risposto. Assicurati che il tuo agente MCP sia connesso e in ascolto."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Troppi tentativi di verifica. Accedi di nuovo.",

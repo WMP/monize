@@ -99,5 +99,29 @@
     "downloadAriaLabel": "チャートを PNG でダウンロード",
     "captureError": "チャート画像を取得できません",
     "downloadError": "チャートのダウンロードに失敗しました"
+  },
+  "attachments": {
+    "captureRich": "リッチな貼り付けを取り込む"
+  },
+  "relay": {
+    "status": {
+      "offline": "アシスタントはオフライン",
+      "listening": "アシスタントは待機中",
+      "busy": "アシスタントは処理中"
+    },
+    "howToConnect": "接続方法",
+    "hideHelp": "非表示",
+    "helpIntro": "独自の MCP エージェントを実行すると、あなたのサブスクリプションを使ってこのチャットのプロンプトに応答します。",
+    "step1": "アクセストークンを作成する",
+    "tokenStep": "まず、<link>ユーザー設定 -> API アクセス</link> で Personal Access Token を作成し、下で使用してください。",
+    "claudeHeading": "Claude CLI で接続する",
+    "step2": "Claude CLI を使ってエージェントを Monize に接続します:",
+    "allowToolsNote": "Claude を終了し、このスイッチを付けて再起動すると、すべての Monize ツール呼び出しが自動承認されます:",
+    "step3": "エージェントループを開始して、Claude が Monize からのクエリを待機するようにします:",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "または Codex を使う",
+    "codexNote": "これを ~/.codex/config.toml に追加し、MONIZE_TOKEN にトークンを設定してから codex を実行し、上記のプロンプトを貼り付けてください。",
+    "copy": "コピー",
+    "copied": "クリップボードにコピーしました"
   }
 }

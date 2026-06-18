@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl';
 import { aiApi } from '@/lib/ai';
 import { SuggestedQueries } from './SuggestedQueries';
 import { ChatMessage } from './ChatMessage';
+import { RelayStatusBar } from './RelayStatusBar';
+import { htmlTablesToMarkdown } from '@/lib/html-table-to-markdown';
 import type { AiStatus } from '@/types/ai';
 import {
   useAiChatStore,
@@ -26,10 +28,15 @@ export function ChatInterface() {
   const clear = useAiChatStore((s) => s.clear);
 
   const [input, setInput] = useState('');
+  const [captureRich, setCaptureRich] = useState(true);
   const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Relay mode is on when the user's highest-priority active provider is the
+  // MCP relay; the chat then routes prompts to their own agent.
+  const relayActive = !!aiStatus?.relayActive;
 
   useEffect(() => {
     aiApi.getStatus().then((status) => {
@@ -55,9 +62,29 @@ export function ChatInterface() {
       const query = queryText || input;
       if (!query.trim() || isLoading) return;
       setInput('');
-      submit(query);
+      submit(query, { relay: relayActive });
     },
-    [input, isLoading, submit],
+    [input, isLoading, submit, relayActive],
+  );
+
+  // Rich paste: when pasting a table from a web page, drop a readable Markdown
+  // table into the prompt instead of the browser's flattened plain text. Only
+  // intercepts when the clipboard actually has an HTML table; otherwise the
+  // default plain-text paste runs.
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (!captureRich) return;
+      const html = e.clipboardData?.getData('text/html');
+      if (!html) return;
+      const markdown = htmlTablesToMarkdown(html);
+      if (!markdown) return;
+      e.preventDefault();
+      const ta = textareaRef.current;
+      const start = ta?.selectionStart ?? input.length;
+      const end = ta?.selectionEnd ?? input.length;
+      setInput(input.slice(0, start) + markdown + input.slice(end));
+    },
+    [captureRich, input],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -76,7 +103,10 @@ export function ChatInterface() {
     }
   }, [input]);
 
-  const aiNotConfigured = !statusLoading && aiStatus && !aiStatus.configured;
+  // A relay-only user still counts as "configured" (the relay is an active
+  // provider), so this gate stays false for them and the chat input works.
+  const aiNotConfigured =
+    !statusLoading && aiStatus && !aiStatus.configured;
 
   return (
     <div className="flex flex-col h-[calc(100vh-12rem)]">
@@ -244,12 +274,14 @@ export function ChatInterface() {
 
       {/* Input area */}
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-2">
+        <RelayStatusBar enabled={relayActive} />
         <div className="flex gap-2 items-end">
           <textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={aiNotConfigured ? t('chat.inputPlaceholderDisabled') : t('chat.inputPlaceholder')}
             disabled={isLoading || !!aiNotConfigured}
             rows={1}
@@ -298,9 +330,18 @@ export function ChatInterface() {
             </button>
           )}
         </div>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">
-          {t('chat.keyboardHint')}
-        </p>
+        <div className="mt-2 flex items-center justify-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+          <span>{t('chat.keyboardHint')}</span>
+          <label className="inline-flex items-center gap-1 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={captureRich}
+              onChange={(e) => setCaptureRich(e.target.checked)}
+              className="h-3 w-3 rounded border-gray-300 dark:border-gray-600"
+            />
+            {t('attachments.captureRich')}
+          </label>
+        </div>
       </div>
     </div>
   );

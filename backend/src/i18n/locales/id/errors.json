@@ -79,7 +79,8 @@
     "forecastInsufficientHistory": "Riwayat transaksi tidak mencukupi untuk peramalan. Diperlukan minimal 2 bulan data.",
     "forecastGenerateFailed": "Gagal menghasilkan perkiraan. Coba lagi.",
     "forecastRateLimited": "Perkiraan baru saja dibuat. Coba lagi nanti.",
-    "insightNotFound": "Wawasan tidak ditemukan"
+    "insightNotFound": "Wawasan tidak ditemukan",
+    "relayTimeout": "Asisten Anda tidak merespons. Pastikan agen MCP Anda terhubung dan mendengarkan."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Terlalu banyak percobaan verifikasi. Silakan masuk lagi.",

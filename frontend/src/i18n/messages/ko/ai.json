@@ -99,5 +99,29 @@
     "downloadAriaLabel": "PNG로 차트 다운로드",
     "captureError": "차트 이미지를 캡처할 수 없습니다",
     "downloadError": "차트 다운로드에 실패했습니다"
+  },
+  "attachments": {
+    "captureRich": "서식 있는 붙여넣기 캡처"
+  },
+  "relay": {
+    "status": {
+      "offline": "어시스턴트 오프라인",
+      "listening": "어시스턴트 수신 대기 중",
+      "busy": "어시스턴트 작업 중"
+    },
+    "howToConnect": "연결 방법",
+    "hideHelp": "숨기기",
+    "helpIntro": "자체 MCP 에이전트를 실행하면 구독을 사용하여 이 채팅의 프롬프트에 응답합니다.",
+    "step1": "액세스 토큰 만들기",
+    "tokenStep": "먼저 <link>사용자 설정 -> API 액세스</link>에서 Personal Access Token을 만든 다음 아래에서 사용하세요.",
+    "claudeHeading": "Claude CLI로 연결",
+    "step2": "Claude CLI를 사용하여 에이전트를 Monize에 연결하세요:",
+    "allowToolsNote": "Claude를 종료한 후 이 스위치와 함께 다시 시작하면 모든 Monize 도구 호출이 자동으로 승인됩니다:",
+    "step3": "에이전트 루프를 시작하여 Claude가 Monize의 쿼리를 수신하도록 하세요:",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "또는 Codex 사용",
+    "codexNote": "이것을 ~/.codex/config.toml에 추가하고 MONIZE_TOKEN을 토큰으로 설정한 다음 codex를 실행하고 위의 프롬프트를 붙여넣으세요.",
+    "copy": "복사",
+    "copied": "클립보드에 복사됨"
   }
 }

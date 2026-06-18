@@ -99,5 +99,29 @@
     "downloadAriaLabel": "Baixar gráfico como PNG",
     "captureError": "Não foi possível capturar a imagem do gráfico",
     "downloadError": "Falha ao baixar o gráfico"
+  },
+  "attachments": {
+    "captureRich": "Capturar colagem formatada"
+  },
+  "relay": {
+    "status": {
+      "offline": "Assistente off-line",
+      "listening": "Assistente ouvindo",
+      "busy": "Assistente trabalhando"
+    },
+    "howToConnect": "Como conectar",
+    "hideHelp": "Ocultar",
+    "helpIntro": "Execute seu próprio agente MCP e ele responderá aos prompts deste chat usando sua assinatura.",
+    "step1": "Crie seu token de acesso",
+    "tokenStep": "Primeiro, crie um Personal Access Token em <link>Configurações do usuário -> Acesso à API</link> e depois use-o abaixo.",
+    "claudeHeading": "Conectar com a Claude CLI",
+    "step2": "Conecte o agente ao Monize usando a Claude CLI:",
+    "allowToolsNote": "Saia do Claude e reinicie-o com esta opção para que ele aprove automaticamente cada chamada de ferramenta do Monize:",
+    "step3": "Inicie um loop de agente para que o Claude escute as consultas do Monize:",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "Ou use o Codex",
+    "codexNote": "Adicione isto a ~/.codex/config.toml, defina MONIZE_TOKEN com seu token, depois execute codex e cole o prompt acima.",
+    "copy": "Copiar",
+    "copied": "Copiado para a área de transferência"
   }
 }

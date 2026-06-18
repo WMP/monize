@@ -99,5 +99,29 @@
     "downloadAriaLabel": "Pobierz wykres jako PNG",
     "captureError": "Nie udało się przechwycić obrazu wykresu",
     "downloadError": "Nie udało się pobrać wykresu"
+  },
+  "attachments": {
+    "captureRich": "Przechwyć wzbogacone wklejanie"
+  },
+  "relay": {
+    "status": {
+      "offline": "Asystent offline",
+      "listening": "Asystent nasłuchuje",
+      "busy": "Asystent pracuje"
+    },
+    "howToConnect": "Jak się połączyć",
+    "hideHelp": "Ukryj",
+    "helpIntro": "Uruchom własnego agenta MCP, a będzie on odpowiadał na monity z tego czatu, korzystając z Twojej subskrypcji.",
+    "step1": "Utwórz token dostępu",
+    "tokenStep": "Najpierw utwórz Personal Access Token w <link>Ustawienia użytkownika -> Dostęp do API</link>, a następnie użyj go poniżej.",
+    "claudeHeading": "Połącz za pomocą Claude CLI",
+    "step2": "Połącz agenta z Monize za pomocą Claude CLI:",
+    "allowToolsNote": "Zamknij Claude i uruchom go ponownie z tym przełącznikiem, aby automatycznie zatwierdzał każde wywołanie narzędzia Monize:",
+    "step3": "Uruchom pętlę agenta, aby Claude nasłuchiwał zapytań z Monize:",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "Lub użyj Codex",
+    "codexNote": "Dodaj to do ~/.codex/config.toml, ustaw MONIZE_TOKEN na swój token, a następnie uruchom codex i wklej powyższy monit.",
+    "copy": "Kopiuj",
+    "copied": "Skopiowano do schowka"
   }
 }

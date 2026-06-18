@@ -99,5 +99,29 @@
     "downloadAriaLabel": "Grafiği PNG olarak indir",
     "captureError": "Grafik görüntüsü yakalanamadı",
     "downloadError": "Grafik indirilemedi"
+  },
+  "attachments": {
+    "captureRich": "Zengin yapıştırmayı yakala"
+  },
+  "relay": {
+    "status": {
+      "offline": "Asistan çevrimdışı",
+      "listening": "Asistan dinliyor",
+      "busy": "Asistan çalışıyor"
+    },
+    "howToConnect": "Nasıl bağlanılır",
+    "hideHelp": "Gizle",
+    "helpIntro": "Kendi MCP aracınızı çalıştırın; aboneliğinizi kullanarak bu sohbetteki istemleri yanıtlar.",
+    "step1": "Erişim belirtecinizi oluşturun",
+    "tokenStep": "Önce <link>Kullanıcı Ayarları -> API erişimi</link> bölümünde bir Personal Access Token oluşturun, ardından aşağıda kullanın.",
+    "claudeHeading": "Claude CLI ile bağlanın",
+    "step2": "Claude CLI kullanarak aracıyı Monize'e bağlayın:",
+    "allowToolsNote": "Claude'dan çıkın ve her Monize araç çağrısını otomatik onaylaması için bu anahtarla yeniden başlatın:",
+    "step3": "Claude'un Monize'den gelen sorguları dinlemesi için bir aracı döngüsü başlatın:",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "Veya Codex kullanın",
+    "codexNote": "Bunu ~/.codex/config.toml dosyasına ekleyin, MONIZE_TOKEN değerini belirtecinize ayarlayın, ardından codex'i çalıştırın ve yukarıdaki istemi yapıştırın.",
+    "copy": "Kopyala",
+    "copied": "Panoya kopyalandı"
   }
 }

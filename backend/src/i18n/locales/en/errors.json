@@ -79,7 +79,8 @@
     "forecastInsufficientHistory": "Insufficient transaction history for forecasting. At least 2 months of data are required.",
     "forecastGenerateFailed": "Failed to generate forecast. Please try again.",
     "forecastRateLimited": "A forecast was recently generated. Please try again later.",
-    "insightNotFound": "Insight not found"
+    "insightNotFound": "Insight not found",
+    "relayTimeout": "Your assistant did not respond. Make sure your MCP agent is connected and listening."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Too many verification attempts. Please log in again.",

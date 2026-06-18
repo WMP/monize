@@ -585,3 +585,19 @@ export const getBudgetStatusOutput = {
   error: str.optional(),
   availableBudgets: z.array(str).optional(),
 };
+
+// ---------------------------------------------------------------------------
+// relay.tool.ts
+// ---------------------------------------------------------------------------
+
+export const getNextPromptOutput = {
+  hasPrompt: bool,
+  // Present only when hasPrompt is true.
+  promptId: str.optional(),
+  prompt: str.optional(),
+  history: z.array(looseObject({ role: str, content: str })).optional(),
+};
+
+export const postResponseOutput = {
+  delivered: bool,
+};

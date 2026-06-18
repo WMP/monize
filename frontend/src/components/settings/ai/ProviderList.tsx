@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { ProviderTestButton } from './ProviderTestButton';
 import { ProviderConfigForm } from './ProviderConfigForm';
+import { useRelayStatus } from '@/components/ai/useRelayStatus';
 import type { AiProviderConfig, CreateAiProviderConfig, UpdateAiProviderConfig } from '@/types/ai';
 import { AI_PROVIDER_LABELS, AiProviderType } from '@/types/ai';
 import { aiApi } from '@/lib/ai';
@@ -19,6 +20,27 @@ interface ProviderListProps {
   systemDefaultProvider?: string | null;
   systemDefaultModel?: string | null;
   disabled?: boolean;
+}
+
+const RELAY_DOT_CLASS = {
+  listening: 'bg-green-500 animate-pulse',
+  busy: 'bg-amber-500',
+  offline: 'bg-gray-400 dark:bg-gray-600',
+} as const;
+
+/** Live connection state for an MCP Relay provider row. */
+function RelayProviderStatusLine() {
+  const t = useTranslations('ai');
+  const state = useRelayStatus(true);
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        className={`inline-block h-2 w-2 rounded-full ${RELAY_DOT_CLASS[state]}`}
+        aria-hidden="true"
+      />
+      <span>{t(`relay.status.${state}`)}</span>
+    </span>
+  );
 }
 
 export function ProviderList({ configs, encryptionAvailable, onConfigsChanged, hasSystemDefault, systemDefaultProvider, systemDefaultModel, disabled }: ProviderListProps) {
@@ -160,6 +182,7 @@ export function ProviderList({ configs, encryptionAvailable, onConfigsChanged, h
                     </span>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                    {config.provider === 'mcp_relay' && <RelayProviderStatusLine />}
                     {config.model && <span>{t('providerCard.modelLabel', { model: config.model })}</span>}
                     {config.apiKeyMasked && <span>{t('providerCard.keyLabel', { key: config.apiKeyMasked })}</span>}
                     {config.baseUrl && <span className="truncate max-w-xs">{t('providerCard.urlLabel', { url: config.baseUrl })}</span>}
@@ -171,7 +194,9 @@ export function ProviderList({ configs, encryptionAvailable, onConfigsChanged, h
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <ProviderTestButton configId={config.id} disabled={disabled} />
+                  {config.provider !== 'mcp_relay' && (
+                    <ProviderTestButton configId={config.id} disabled={disabled} />
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"

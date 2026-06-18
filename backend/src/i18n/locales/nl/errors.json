@@ -79,7 +79,8 @@
     "forecastInsufficientHistory": "Onvoldoende transactiegeschiedenis voor prognose. Er zijn minimaal 2 maanden aan gegevens vereist.",
     "forecastGenerateFailed": "Prognose genereren mislukt. Probeer het opnieuw.",
     "forecastRateLimited": "Er is onlangs een prognose gegenereerd. Probeer het later opnieuw.",
-    "insightNotFound": "Inzicht niet gevonden"
+    "insightNotFound": "Inzicht niet gevonden",
+    "relayTimeout": "Je assistent heeft niet gereageerd. Zorg ervoor dat je MCP-agent verbonden is en luistert."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Te veel verificatiepogingen. Log opnieuw in.",

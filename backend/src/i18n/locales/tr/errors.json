@@ -79,7 +79,8 @@
     "forecastInsufficientHistory": "Tahmin için yetersiz işlem geçmişi. En az 2 aylık veri gereklidir.",
     "forecastGenerateFailed": "Tahmin oluşturulamadı. Lütfen tekrar deneyin.",
     "forecastRateLimited": "Kısa süre önce bir tahmin oluşturuldu. Lütfen daha sonra tekrar deneyin.",
-    "insightNotFound": "İçgörü bulunamadı"
+    "insightNotFound": "İçgörü bulunamadı",
+    "relayTimeout": "Asistanınız yanıt vermedi. MCP aracınızın bağlı ve dinlemede olduğundan emin olun."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Çok fazla doğrulama denemesi. Lütfen tekrar giriş yapın.",

@@ -619,6 +619,20 @@
     "toasts": {
       "loadFailed": "Impossibile caricare le impostazioni AI",
       "usageLoadFailed": "Impossibile caricare i dati di utilizzo"
+    },
+    "mcpRelay": {
+      "title": "Usa il tuo assistente (relay MCP)",
+      "subtitle": "Rispondi ai prompt della chat con il tuo agente MCP invece di un provider IA lato server.",
+      "toggleLabel": "Usa il relay MCP",
+      "saved": "Impostazione del relay salvata",
+      "saveFailed": "Impossibile salvare l'impostazione del relay",
+      "how": {
+        "intro": "Quando è abilitato, la chat IA non chiama un LLM lato server. Invece:",
+        "step1": "Esegui un agente MCP (es. Claude CLI) sulla tua macchina, autenticato con il tuo abbonamento.",
+        "step2": "L'agente esegue il long-polling su Monize per i prompt che digiti nella chat e vi risponde usando gli strumenti di Monize.",
+        "step3": "Le risposte vengono trasmesse nella chat. Un indicatore di stato mostra se il tuo agente è connesso.",
+        "note": "Non viene eseguito nulla finché il tuo agente non è connesso e in ascolto. La chat mostra le istruzioni di connessione."
+      }
     }
   },
   "sharedAccessPage": {

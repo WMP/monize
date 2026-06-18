@@ -99,5 +99,29 @@
     "downloadAriaLabel": "Download chart as PNG",
     "captureError": "Unable to capture chart image",
     "downloadError": "Failed to download chart"
+  },
+  "attachments": {
+    "captureRich": "Capture rich paste"
+  },
+  "relay": {
+    "status": {
+      "offline": "Assistant offline",
+      "listening": "Assistant listening",
+      "busy": "Assistant working"
+    },
+    "howToConnect": "How to connect",
+    "hideHelp": "Hide",
+    "helpIntro": "Run your own MCP agent and it will answer prompts from this chat using your subscription.",
+    "step1": "Create your access token",
+    "tokenStep": "First, create a Personal Access Token in <link>User Settings -> API access</link>, then use it below.",
+    "claudeHeading": "Connect with Claude CLI",
+    "step2": "Connect the agent to Monize using Claude CLI:",
+    "allowToolsNote": "Exit Claude and restart it with this switch so it auto-approves every Monize tool call:",
+    "step3": "Start an agent loop so Claude listens for queries from Monize:",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "Or use Codex",
+    "codexNote": "Add this to ~/.codex/config.toml, set MONIZE_TOKEN to your token, then run codex and paste the prompt above.",
+    "copy": "Copy",
+    "copied": "Copied to clipboard"
   }
 }

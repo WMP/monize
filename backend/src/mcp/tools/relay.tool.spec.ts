@@ -1,0 +1,89 @@
+import { McpRelayTools } from "./relay.tool";
+import { AiRelayService } from "../../ai/relay/ai-relay.service";
+
+type Handler = (args: any, extra: any) => Promise<any>;
+
+function register(relay: Partial<AiRelayService>, scopes = "read") {
+  const handlers: Record<string, Handler> = {};
+  const server = {
+    registerTool: (name: string, _config: unknown, handler: Handler) => {
+      handlers[name] = handler;
+    },
+  };
+  const resolve = (sessionId?: string) =>
+    sessionId === "no-ctx" ? undefined : { userId: "user-1", scopes };
+  new McpRelayTools(relay as AiRelayService).register(
+    server as any,
+    resolve as any,
+  );
+  return handlers;
+}
+
+const parse = (result: any) => JSON.parse(result.content[0].text);
+
+describe("McpRelayTools", () => {
+  describe("get_next_prompt", () => {
+    it("returns the claimed prompt when one is available", async () => {
+      const claimed = {
+        promptId: "p1",
+        prompt: "hi",
+        history: [],
+      };
+      const handlers = register({
+        waitForPrompt: jest.fn().mockResolvedValue(claimed),
+      });
+      const result = await handlers.get_next_prompt({}, { sessionId: "s" });
+      const body = parse(result);
+      expect(body.hasPrompt).toBe(true);
+      expect(body.promptId).toBe("p1");
+      expect(body.prompt).toBe("hi");
+    });
+
+    it("returns hasPrompt:false when the poll window elapses", async () => {
+      const handlers = register({
+        waitForPrompt: jest.fn().mockResolvedValue(null),
+      });
+      const result = await handlers.get_next_prompt({}, { sessionId: "s" });
+      expect(parse(result)).toEqual({ hasPrompt: false });
+    });
+
+    it("errors without user context", async () => {
+      const handlers = register({});
+      const result = await handlers.get_next_prompt(
+        {},
+        { sessionId: "no-ctx" },
+      );
+      expect(result.isError).toBe(true);
+    });
+
+    it("errors without the read scope", async () => {
+      const handlers = register({}, "reports");
+      const result = await handlers.get_next_prompt({}, { sessionId: "s" });
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("post_response", () => {
+    it("reports delivered:true when the response is routed", async () => {
+      const postResponse = jest.fn().mockReturnValue(true);
+      const handlers = register({ postResponse });
+      const result = await handlers.post_response(
+        { promptId: "p1", text: "answer" },
+        { sessionId: "s" },
+      );
+      expect(parse(result)).toEqual({ delivered: true });
+      expect(postResponse).toHaveBeenCalledWith("user-1", "p1", "answer");
+    });
+
+    it("reports delivered:false for an unknown prompt", async () => {
+      const handlers = register({
+        postResponse: jest.fn().mockReturnValue(false),
+      });
+      const result = await handlers.post_response(
+        { promptId: "p1", text: "answer" },
+        { sessionId: "s" },
+      );
+      expect(parse(result)).toEqual({ delivered: false });
+    });
+  });
+});

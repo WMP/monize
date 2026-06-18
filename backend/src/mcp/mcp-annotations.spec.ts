@@ -8,6 +8,7 @@ import { McpNetWorthTools } from "./tools/net-worth.tool";
 import { McpScheduledTools } from "./tools/scheduled.tool";
 import { McpCalculateTools } from "./tools/calculate.tool";
 import { McpBudgetsTools } from "./tools/budgets.tool";
+import { McpRelayTools } from "./tools/relay.tool";
 
 // Tools that mutate state; everything else must be read-only.
 const WRITE_TOOLS = new Set([
@@ -19,7 +20,7 @@ const WRITE_TOOLS = new Set([
 // Write tools whose repeated calls converge to the same state.
 const IDEMPOTENT_WRITES = new Set(["categorize_transaction"]);
 
-const EXPECTED_TOOL_COUNT = 28;
+const EXPECTED_TOOL_COUNT = 30;
 
 interface ToolProvider {
   register: (server: unknown, resolve?: unknown) => void;
@@ -43,6 +44,7 @@ function collectToolConfigs(): Array<{ name: string; config: any }> {
     new McpScheduledTools({} as any) as unknown as ToolProvider,
     new McpCalculateTools() as unknown as ToolProvider,
     new McpBudgetsTools({} as any) as unknown as ToolProvider,
+    new McpRelayTools({} as any) as unknown as ToolProvider,
   ];
 
   const configs: Array<{ name: string; config: any }> = [];

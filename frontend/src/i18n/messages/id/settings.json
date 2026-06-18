@@ -619,6 +619,20 @@
     "toasts": {
       "loadFailed": "Gagal memuat pengaturan AI",
       "usageLoadFailed": "Gagal memuat data penggunaan"
+    },
+    "mcpRelay": {
+      "title": "Bawa asisten Anda sendiri (relai MCP)",
+      "subtitle": "Jawab perintah obrolan dengan agen MCP Anda sendiri alih-alih penyedia AI sisi server.",
+      "toggleLabel": "Gunakan relai MCP",
+      "saved": "Pengaturan relai disimpan",
+      "saveFailed": "Tidak dapat menyimpan pengaturan relai",
+      "how": {
+        "intro": "Saat diaktifkan, obrolan AI tidak memanggil LLM sisi server. Sebagai gantinya:",
+        "step1": "Anda menjalankan agen MCP (mis. Claude CLI) di mesin Anda sendiri, masuk ke langganan Anda.",
+        "step2": "Agen melakukan long-polling ke Monize untuk perintah yang Anda ketik di obrolan dan menjawabnya menggunakan alat Monize.",
+        "step3": "Jawaban dialirkan kembali ke obrolan. Titik status menunjukkan apakah agen Anda terhubung.",
+        "note": "Tidak ada yang berjalan hingga agen Anda terhubung dan mendengarkan. Obrolan menampilkan instruksi koneksi."
+      }
     }
   },
   "sharedAccessPage": {

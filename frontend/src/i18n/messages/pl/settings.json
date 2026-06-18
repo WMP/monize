@@ -619,6 +619,20 @@
     "toasts": {
       "loadFailed": "Nie udało się wczytać ustawień AI",
       "usageLoadFailed": "Nie udało się wczytać danych o użyciu"
+    },
+    "mcpRelay": {
+      "title": "Użyj własnego asystenta (przekaźnik MCP)",
+      "subtitle": "Odpowiadaj na monity czatu własnym agentem MCP zamiast dostawcy AI po stronie serwera.",
+      "toggleLabel": "Użyj przekaźnika MCP",
+      "saved": "Zapisano ustawienie przekaźnika",
+      "saveFailed": "Nie udało się zapisać ustawienia przekaźnika",
+      "how": {
+        "intro": "Po włączeniu czat AI nie wywołuje modelu LLM po stronie serwera. Zamiast tego:",
+        "step1": "Uruchamiasz agenta MCP (np. Claude CLI) na własnym komputerze, zalogowanego do swojej subskrypcji.",
+        "step2": "Agent wykonuje long-polling do Monize w poszukiwaniu monitów wpisywanych w czacie i odpowiada na nie za pomocą narzędzi Monize.",
+        "step3": "Odpowiedzi są przesyłane strumieniowo z powrotem do czatu. Kropka stanu pokazuje, czy agent jest połączony.",
+        "note": "Nic się nie uruchamia, dopóki agent nie jest połączony i nie nasłuchuje. Czat wyświetla instrukcje połączenia."
+      }
     }
   },
   "sharedAccessPage": {

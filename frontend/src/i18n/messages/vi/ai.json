@@ -99,5 +99,29 @@
     "downloadAriaLabel": "Tải biểu đồ dưới dạng PNG",
     "captureError": "Không thể chụp ảnh biểu đồ",
     "downloadError": "Không thể tải biểu đồ"
+  },
+  "attachments": {
+    "captureRich": "Ghi lại nội dung dán định dạng"
+  },
+  "relay": {
+    "status": {
+      "offline": "Trợ lý ngoại tuyến",
+      "listening": "Trợ lý đang lắng nghe",
+      "busy": "Trợ lý đang làm việc"
+    },
+    "howToConnect": "Cách kết nối",
+    "hideHelp": "Ẩn",
+    "helpIntro": "Chạy tác nhân MCP của riêng bạn và nó sẽ trả lời các lời nhắc từ cuộc trò chuyện này bằng gói đăng ký của bạn.",
+    "step1": "Tạo mã thông báo truy cập của bạn",
+    "tokenStep": "Trước tiên, hãy tạo một Personal Access Token trong <link>Cài đặt người dùng -> Truy cập API</link>, sau đó sử dụng nó bên dưới.",
+    "claudeHeading": "Kết nối bằng Claude CLI",
+    "step2": "Kết nối tác nhân với Monize bằng Claude CLI:",
+    "allowToolsNote": "Thoát Claude và khởi động lại với tùy chọn này để nó tự động phê duyệt mọi lệnh gọi công cụ Monize:",
+    "step3": "Bắt đầu một vòng lặp tác nhân để Claude lắng nghe các truy vấn từ Monize:",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "Hoặc dùng Codex",
+    "codexNote": "Thêm dòng này vào ~/.codex/config.toml, đặt MONIZE_TOKEN thành mã thông báo của bạn, sau đó chạy codex và dán lời nhắc ở trên.",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép vào bảng nhớ tạm"
   }
 }

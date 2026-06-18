@@ -291,6 +291,11 @@ export class AiService {
     config: AiProviderConfig,
     logLabel: string,
   ): Promise<AiConnectionTestResponse> {
+    // Relay has no credentials/endpoint to probe; its live connection state is
+    // shown in the chat and provider row, so there's nothing to test here.
+    if (config.provider === "mcp_relay") {
+      return { available: true };
+    }
     let provider;
     try {
       provider = this.providerFactory.createProvider(config);
@@ -377,6 +382,12 @@ export class AiService {
     const errors: string[] = [];
 
     for (const config of configs) {
+      // mcp_relay is not a callable LLM -- it routes chat to the user's own
+      // agent. Skip it here so non-chat features (insights, forecast) fall
+      // through to the next real provider.
+      if (config.provider === "mcp_relay") {
+        continue;
+      }
       const startTime = Date.now();
       try {
         const provider = this.providerFactory.createProvider(config);
@@ -434,6 +445,7 @@ export class AiService {
   async getStatus(userId: string): Promise<AiStatusResponse> {
     const configs = await this.configRepository.find({
       where: { userId, isActive: true },
+      order: { priority: "ASC" },
     });
 
     const defaultConfig = this.buildDefaultConfig(userId);
@@ -446,6 +458,9 @@ export class AiService {
       hasSystemDefault,
       systemDefaultProvider: hasSystemDefault ? defaultConfig.provider : null,
       systemDefaultModel: hasSystemDefault ? defaultConfig.model : null,
+      // The chat routes to the reverse MCP relay when the highest-priority
+      // active provider is mcp_relay (priority ASC -> [0] is top).
+      relayActive: configs[0]?.provider === "mcp_relay",
     };
   }
 
@@ -453,6 +468,10 @@ export class AiService {
     const configs = await this.getActiveConfigs(userId);
 
     for (const config of configs) {
+      // Relay is not an LLM; never instantiate it as one.
+      if (config.provider === "mcp_relay") {
+        continue;
+      }
       const provider = this.providerFactory.createProvider(config);
       if (provider.supportsToolUse) {
         return provider;

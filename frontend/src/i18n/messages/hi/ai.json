@@ -99,5 +99,29 @@
     "downloadAriaLabel": "चार्ट PNG के रूप में डाउनलोड करें",
     "captureError": "चार्ट छवि कैप्चर करने में असमर्थ",
     "downloadError": "चार्ट डाउनलोड करने में विफल"
+  },
+  "attachments": {
+    "captureRich": "रिच पेस्ट कैप्चर करें"
+  },
+  "relay": {
+    "status": {
+      "offline": "सहायक ऑफ़लाइन",
+      "listening": "सहायक सुन रहा है",
+      "busy": "सहायक काम कर रहा है"
+    },
+    "howToConnect": "कैसे कनेक्ट करें",
+    "hideHelp": "छिपाएं",
+    "helpIntro": "अपना स्वयं का MCP एजेंट चलाएं और यह आपकी सदस्यता का उपयोग करके इस चैट के प्रॉम्प्ट का उत्तर देगा।",
+    "step1": "अपना एक्सेस टोकन बनाएं",
+    "tokenStep": "सबसे पहले, <link>उपयोगकर्ता सेटिंग्स -> API एक्सेस</link> में एक Personal Access Token बनाएं, फिर इसे नीचे उपयोग करें।",
+    "claudeHeading": "Claude CLI से कनेक्ट करें",
+    "step2": "Claude CLI का उपयोग करके एजेंट को Monize से कनेक्ट करें:",
+    "allowToolsNote": "Claude से बाहर निकलें और इस स्विच के साथ इसे पुनः आरंभ करें ताकि यह हर Monize टूल कॉल को स्वतः स्वीकृत कर दे:",
+    "step3": "एक एजेंट लूप शुरू करें ताकि Claude Monize से क्वेरी सुने:",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "या Codex का उपयोग करें",
+    "codexNote": "इसे ~/.codex/config.toml में जोड़ें, MONIZE_TOKEN को अपने टोकन पर सेट करें, फिर codex चलाएं और ऊपर दिया गया प्रॉम्प्ट पेस्ट करें।",
+    "copy": "कॉपी करें",
+    "copied": "क्लिपबोर्ड पर कॉपी किया गया"
   }
 }

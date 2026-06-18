@@ -619,6 +619,20 @@
     "toasts": {
       "loadFailed": "Không thể tải cài đặt AI",
       "usageLoadFailed": "Không thể tải dữ liệu sử dụng"
+    },
+    "mcpRelay": {
+      "title": "Dùng trợ lý của riêng bạn (chuyển tiếp MCP)",
+      "subtitle": "Trả lời các lời nhắc trò chuyện bằng tác nhân MCP của riêng bạn thay vì nhà cung cấp AI phía máy chủ.",
+      "toggleLabel": "Dùng chuyển tiếp MCP",
+      "saved": "Đã lưu cài đặt chuyển tiếp",
+      "saveFailed": "Không thể lưu cài đặt chuyển tiếp",
+      "how": {
+        "intro": "Khi bật, trò chuyện AI không gọi LLM phía máy chủ. Thay vào đó:",
+        "step1": "Bạn chạy một tác nhân MCP (ví dụ Claude CLI) trên máy của riêng bạn, đã đăng nhập vào gói đăng ký của bạn.",
+        "step2": "Tác nhân thực hiện long-polling tới Monize để lấy các lời nhắc bạn nhập trong trò chuyện và trả lời chúng bằng các công cụ của Monize.",
+        "step3": "Câu trả lời được truyền trở lại trò chuyện. Một chấm trạng thái cho biết tác nhân của bạn đã kết nối hay chưa.",
+        "note": "Không có gì chạy cho đến khi tác nhân của bạn được kết nối và lắng nghe. Trò chuyện hiển thị hướng dẫn kết nối."
+      }
     }
   },
   "sharedAccessPage": {

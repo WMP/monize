@@ -99,5 +99,29 @@
     "downloadAriaLabel": "Скачать диаграмму в формате PNG",
     "captureError": "Не удалось захватить изображение диаграммы",
     "downloadError": "Не удалось скачать диаграмму"
+  },
+  "attachments": {
+    "captureRich": "Захватить форматированную вставку"
+  },
+  "relay": {
+    "status": {
+      "offline": "Ассистент офлайн",
+      "listening": "Ассистент ожидает",
+      "busy": "Ассистент работает"
+    },
+    "howToConnect": "Как подключиться",
+    "hideHelp": "Скрыть",
+    "helpIntro": "Запустите собственный агент MCP, и он будет отвечать на запросы из этого чата, используя вашу подписку.",
+    "step1": "Создайте токен доступа",
+    "tokenStep": "Сначала создайте Personal Access Token в <link>Настройки пользователя -> Доступ к API</link>, затем используйте его ниже.",
+    "claudeHeading": "Подключение через Claude CLI",
+    "step2": "Подключите агент к Monize с помощью Claude CLI:",
+    "allowToolsNote": "Закройте Claude и перезапустите его с этим параметром, чтобы он автоматически одобрял каждый вызов инструмента Monize:",
+    "step3": "Запустите цикл агента, чтобы Claude прослушивал запросы от Monize:",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "Или используйте Codex",
+    "codexNote": "Добавьте это в ~/.codex/config.toml, установите MONIZE_TOKEN на ваш токен, затем запустите codex и вставьте указанный выше запрос.",
+    "copy": "Копировать",
+    "copied": "Скопировано в буфер обмена"
   }
 }

@@ -619,6 +619,20 @@
     "toasts": {
       "loadFailed": "載入 AI 設定失敗",
       "usageLoadFailed": "載入使用資料失敗"
+    },
+    "mcpRelay": {
+      "title": "使用您自己的助理（MCP 中繼）",
+      "subtitle": "使用您自己的 MCP 代理程式而非伺服器端 AI 供應商來回答聊天提示。",
+      "toggleLabel": "使用 MCP 中繼",
+      "saved": "已儲存中繼設定",
+      "saveFailed": "無法儲存中繼設定",
+      "how": {
+        "intro": "啟用後，AI 聊天不會呼叫伺服器端 LLM。而是：",
+        "step1": "您在自己的電腦上執行一個 MCP 代理程式（例如 Claude CLI），並登入您的訂閱。",
+        "step2": "代理程式會對 Monize 進行長輪詢以取得您在聊天中輸入的提示，並使用 Monize 工具回答它們。",
+        "step3": "回答會串流回聊天。狀態點顯示您的代理程式是否已連線。",
+        "note": "在您的代理程式連線並接聽之前，不會執行任何內容。聊天會顯示連線指示。"
+      }
     }
   },
   "sharedAccessPage": {

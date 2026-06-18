@@ -79,7 +79,8 @@
     "forecastInsufficientHistory": "予測に必要な取引履歴が不足しています。少なくとも2ヶ月のデータが必要です。",
     "forecastGenerateFailed": "予測の生成に失敗しました。再試行してください。",
     "forecastRateLimited": "最近予測が生成されました。しばらくしてから再試行してください。",
-    "insightNotFound": "インサイトが見つかりません"
+    "insightNotFound": "インサイトが見つかりません",
+    "relayTimeout": "アシスタントが応答しませんでした。MCP エージェントが接続され、待機していることを確認してください。"
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "確認の試行回数が多すぎます。もう一度ログインしてください。",

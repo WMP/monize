@@ -79,7 +79,8 @@
     "forecastInsufficientHistory": "Unzureichende Buchungshistorie für die Prognose. Es werden mindestens 2 Monate Daten benötigt.",
     "forecastGenerateFailed": "Prognose konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
     "forecastRateLimited": "Eine Prognose wurde kürzlich erstellt. Bitte versuchen Sie es später erneut.",
-    "insightNotFound": "Insight nicht gefunden"
+    "insightNotFound": "Insight nicht gefunden",
+    "relayTimeout": "Ihr Assistent hat nicht geantwortet. Stellen Sie sicher, dass Ihr MCP-Agent verbunden ist und zuhört."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Zu viele Verifikationsversuche. Bitte melden Sie sich erneut an.",

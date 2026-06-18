@@ -99,5 +99,29 @@
     "downloadAriaLabel": "Unduh grafik sebagai PNG",
     "captureError": "Tidak dapat mengambil gambar grafik",
     "downloadError": "Gagal mengunduh grafik"
+  },
+  "attachments": {
+    "captureRich": "Tangkap tempel kaya"
+  },
+  "relay": {
+    "status": {
+      "offline": "Asisten offline",
+      "listening": "Asisten mendengarkan",
+      "busy": "Asisten bekerja"
+    },
+    "howToConnect": "Cara menghubungkan",
+    "hideHelp": "Sembunyikan",
+    "helpIntro": "Jalankan agen MCP Anda sendiri dan ia akan menjawab perintah dari obrolan ini menggunakan langganan Anda.",
+    "step1": "Buat token akses Anda",
+    "tokenStep": "Pertama, buat Personal Access Token di <link>Pengaturan Pengguna -> Akses API</link>, lalu gunakan di bawah ini.",
+    "claudeHeading": "Hubungkan dengan Claude CLI",
+    "step2": "Hubungkan agen ke Monize menggunakan Claude CLI:",
+    "allowToolsNote": "Keluar dari Claude dan mulai ulang dengan sakelar ini agar setiap panggilan alat Monize disetujui secara otomatis:",
+    "step3": "Mulai loop agen agar Claude mendengarkan kueri dari Monize:",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "Atau gunakan Codex",
+    "codexNote": "Tambahkan ini ke ~/.codex/config.toml, atur MONIZE_TOKEN ke token Anda, lalu jalankan codex dan tempel perintah di atas.",
+    "copy": "Salin",
+    "copied": "Disalin ke papan klip"
   }
 }

@@ -619,6 +619,20 @@
     "toasts": {
       "loadFailed": "Falha ao carregar as definições de IA",
       "usageLoadFailed": "Falha ao carregar os dados de utilização"
+    },
+    "mcpRelay": {
+      "title": "Use o seu próprio assistente (relé MCP)",
+      "subtitle": "Responda aos pedidos do chat com o seu próprio agente MCP em vez de um fornecedor de IA do lado do servidor.",
+      "toggleLabel": "Usar relé MCP",
+      "saved": "Definição do relé guardada",
+      "saveFailed": "Não foi possível guardar a definição do relé",
+      "how": {
+        "intro": "Quando ativado, o chat de IA não chama um LLM do lado do servidor. Em vez disso:",
+        "step1": "Executa um agente MCP (por ex. Claude CLI) na sua própria máquina, com sessão iniciada na sua subscrição.",
+        "step2": "O agente faz long-polling ao Monize para os pedidos que escreve no chat e responde-lhes usando as ferramentas do Monize.",
+        "step3": "As respostas são transmitidas de volta ao chat. Um ponto de estado mostra se o seu agente está ligado.",
+        "note": "Nada é executado até o seu agente estar ligado e à escuta. O chat mostra as instruções de ligação."
+      }
     }
   },
   "sharedAccessPage": {

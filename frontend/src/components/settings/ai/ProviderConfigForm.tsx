@@ -15,8 +15,16 @@ import type { AiProviderConfig, AiProviderType, CreateAiProviderConfig, UpdateAi
 import { AI_PROVIDER_LABELS, AI_PROVIDER_DEFAULT_MODELS } from '@/types/ai';
 import { aiApi } from '@/lib/ai';
 import { getErrorMessage } from '@/lib/errors';
+import { RelayConnectInstructions } from '@/components/ai/RelayConnectInstructions';
+import { useRelayStatus } from '@/components/ai/useRelayStatus';
 
-const AI_PROVIDER_TYPES = ['anthropic', 'openai', 'ollama', 'ollama-cloud', 'openai-compatible'] as const;
+const AI_PROVIDER_TYPES = ['anthropic', 'openai', 'ollama', 'ollama-cloud', 'openai-compatible', 'mcp_relay'] as const;
+
+const RELAY_DOT_CLASS = {
+  listening: 'bg-green-500 animate-pulse',
+  busy: 'bg-amber-500',
+  offline: 'bg-gray-400 dark:bg-gray-600',
+} as const;
 
 const costField = z
   .string()
@@ -67,6 +75,8 @@ type TestStatus = 'idle' | 'testing' | 'success' | 'error';
 export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: ProviderConfigFormProps) {
   const t = useTranslations('settings.aiProviders.configForm');
   const tc = useTranslations('common');
+  const tRelay = useTranslations('ai');
+  const tMcp = useTranslations('settings.aiSettings.mcpRelay');
   const [error, setError] = useState('');
   const [testStatus, setTestStatus] = useState<TestStatus>('idle');
 
@@ -92,12 +102,17 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
   });
 
   const provider = watch('provider');
+  // The MCP relay is not a callable LLM -- it has no key/model/base URL/cost.
+  // The modal instead explains how to connect the user's own agent and shows
+  // the live connection state.
+  const isRelay = provider === 'mcp_relay';
+  const relayState = useRelayStatus(isRelay);
   // Ollama Cloud intentionally has no Base URL field: the backend pins it
   // to https://ollama.com to close an SSRF vector, so exposing the input
   // would just confuse the user (the value would be silently dropped).
   const needsBaseUrl =
     provider === 'ollama' || provider === 'openai-compatible';
-  const needsApiKey = provider !== 'ollama';
+  const needsApiKey = provider !== 'ollama' && !isRelay;
   const modelSuggestions = AI_PROVIDER_DEFAULT_MODELS[provider] || [];
 
   const parseCost = (value: string | undefined): number | null => {
@@ -187,7 +202,7 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="lg">
+    <Modal isOpen={isOpen} onClose={onClose} maxWidth="4xl">
       <form onSubmit={handleSubmit(onFormSubmit)} className="p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           {editConfig ? t('editTitle') : t('addTitle')}
@@ -211,6 +226,23 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
             maxLength={100}
           />
 
+          {isRelay && (
+            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 space-y-3">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {tMcp('subtitle')}
+              </p>
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${RELAY_DOT_CLASS[relayState]}`}
+                  aria-hidden="true"
+                />
+                <span>{tRelay(`relay.status.${relayState}`)}</span>
+              </div>
+              <RelayConnectInstructions />
+            </div>
+          )}
+
+          {!isRelay && (
           <div>
             <label
               htmlFor="input-model"
@@ -265,6 +297,7 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
               </p>
             )}
           </div>
+          )}
 
           {needsApiKey && (
             <Input
@@ -300,6 +333,7 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
             {t('priorityHelp')}
           </p>
 
+          {!isRelay && (
           <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               {t('costRatesHeading')}
@@ -339,6 +373,7 @@ export function ProviderConfigForm({ isOpen, onClose, onSubmit, editConfig }: Pr
               </p>
             </div>
           </div>
+          )}
 
           {error && (
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>

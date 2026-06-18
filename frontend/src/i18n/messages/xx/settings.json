@@ -619,6 +619,20 @@
     "toasts": {
       "loadFailed": "[XX-Failed to load AI settings-XX]",
       "usageLoadFailed": "[XX-Failed to load usage data-XX]"
+    },
+    "mcpRelay": {
+      "title": "[XX-Bring your own assistant (MCP relay)-XX]",
+      "subtitle": "[XX-Answer chat prompts with your own MCP agent instead of a server-side AI provider.-XX]",
+      "toggleLabel": "[XX-Use MCP relay-XX]",
+      "saved": "[XX-Relay setting saved-XX]",
+      "saveFailed": "[XX-Could not save the relay setting-XX]",
+      "how": {
+        "intro": "[XX-When enabled, the AI chat does not call a server-side LLM. Instead:-XX]",
+        "step1": "[XX-You run an MCP agent (e.g. Claude CLI) on your own machine, signed in to your subscription.-XX]",
+        "step2": "[XX-The agent long-polls Monize for prompts you type in the chat and answers them using the Monize tools.-XX]",
+        "step3": "[XX-Answers stream back into the chat. A status dot shows whether your agent is connected.-XX]",
+        "note": "[XX-Nothing runs until your agent is connected and listening. The chat shows connection instructions.-XX]"
+      }
     }
   },
   "sharedAccessPage": {

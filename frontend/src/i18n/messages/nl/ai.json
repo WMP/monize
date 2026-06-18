@@ -99,5 +99,29 @@
     "downloadAriaLabel": "Grafiek downloaden als PNG",
     "captureError": "Kan grafiekafbeelding niet vastleggen",
     "downloadError": "Grafiek downloaden mislukt"
+  },
+  "attachments": {
+    "captureRich": "Opgemaakt plakken vastleggen"
+  },
+  "relay": {
+    "status": {
+      "offline": "Assistent offline",
+      "listening": "Assistent luistert",
+      "busy": "Assistent werkt"
+    },
+    "howToConnect": "Hoe verbinden",
+    "hideHelp": "Verbergen",
+    "helpIntro": "Voer uw eigen MCP-agent uit en deze beantwoordt prompts uit deze chat met uw abonnement.",
+    "step1": "Maak uw toegangstoken aan",
+    "tokenStep": "Maak eerst een Personal Access Token aan in <link>Gebruikersinstellingen -> API-toegang</link> en gebruik deze hieronder.",
+    "claudeHeading": "Verbinden met Claude CLI",
+    "step2": "Verbind de agent met Monize via Claude CLI:",
+    "allowToolsNote": "Sluit Claude af en start het opnieuw met deze schakelaar, zodat elke Monize-toolaanroep automatisch wordt goedgekeurd:",
+    "step3": "Start een agentlus zodat Claude luistert naar query's van Monize:",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "Of gebruik Codex",
+    "codexNote": "Voeg dit toe aan ~/.codex/config.toml, stel MONIZE_TOKEN in op uw token, voer vervolgens codex uit en plak de bovenstaande prompt.",
+    "copy": "Kopiëren",
+    "copied": "Gekopieerd naar klembord"
   }
 }

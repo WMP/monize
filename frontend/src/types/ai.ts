@@ -1,6 +1,6 @@
 import type { InvestmentAction } from './investment';
 
-export type AiProviderType = 'anthropic' | 'openai' | 'ollama' | 'ollama-cloud' | 'openai-compatible';
+export type AiProviderType = 'anthropic' | 'openai' | 'ollama' | 'ollama-cloud' | 'openai-compatible' | 'mcp_relay';
 
 export interface AiProviderConfig {
   id: string;
@@ -104,6 +104,11 @@ export interface AiStatus {
   hasSystemDefault: boolean;
   systemDefaultProvider: string | null;
   systemDefaultModel: string | null;
+  /**
+   * True when the highest-priority active provider is the MCP relay, so the
+   * chat routes prompts to the user's own agent instead of an LLM.
+   */
+  relayActive: boolean;
 }
 
 export interface AiConnectionTestResult {
@@ -126,6 +131,7 @@ export const AI_PROVIDER_LABELS: Record<AiProviderType, string> = {
   ollama: 'Ollama (Local)',
   'ollama-cloud': 'Ollama Cloud',
   'openai-compatible': 'OpenAI-Compatible',
+  mcp_relay: 'MCP Relay',
 };
 
 export const AI_PROVIDER_DEFAULT_MODELS: Record<AiProviderType, string[]> = {
@@ -143,6 +149,7 @@ export const AI_PROVIDER_DEFAULT_MODELS: Record<AiProviderType, string[]> = {
     'deepseek-v3.1:671b-cloud',
   ],
   'openai-compatible': [],
+  mcp_relay: [],
 };
 
 // Natural Language Query types

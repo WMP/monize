@@ -619,6 +619,20 @@
     "toasts": {
       "loadFailed": "AI ayarları yüklenemedi",
       "usageLoadFailed": "Kullanım verileri yüklenemedi"
+    },
+    "mcpRelay": {
+      "title": "Kendi asistanınızı kullanın (MCP aktarıcı)",
+      "subtitle": "Sohbet istemlerini sunucu tarafı bir yapay zeka sağlayıcısı yerine kendi MCP aracınızla yanıtlayın.",
+      "toggleLabel": "MCP aktarıcı kullan",
+      "saved": "Aktarıcı ayarı kaydedildi",
+      "saveFailed": "Aktarıcı ayarı kaydedilemedi",
+      "how": {
+        "intro": "Etkinleştirildiğinde, yapay zeka sohbeti sunucu tarafı bir LLM çağırmaz. Bunun yerine:",
+        "step1": "Aboneliğinizde oturum açmış bir MCP aracını (ör. Claude CLI) kendi makinenizde çalıştırırsınız.",
+        "step2": "Aracı, sohbete yazdığınız istemler için Monize'e long-polling yapar ve bunları Monize araçlarıyla yanıtlar.",
+        "step3": "Yanıtlar sohbete geri akışla gelir. Bir durum noktası, aracınızın bağlı olup olmadığını gösterir.",
+        "note": "Aracınız bağlanıp dinlemeye başlayana kadar hiçbir şey çalışmaz. Sohbet, bağlantı talimatlarını gösterir."
+      }
     }
   },
   "sharedAccessPage": {

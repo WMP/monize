@@ -79,7 +79,8 @@
     "forecastInsufficientHistory": "交易历史不足，无法进行预测。至少需要 2 个月的数据。",
     "forecastGenerateFailed": "生成预测失败。请重试。",
     "forecastRateLimited": "最近已生成了预测。请稍后再试。",
-    "insightNotFound": "未找到洞察"
+    "insightNotFound": "未找到洞察",
+    "relayTimeout": "您的助手没有响应。请确保您的 MCP 代理已连接并正在监听。"
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "验证尝试次数过多。请重新登录。",

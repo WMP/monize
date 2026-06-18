@@ -543,6 +543,26 @@ const cases: Array<{ name: string; schema: RawShape; raw: unknown }> = [
     schema: schemas.getBudgetStatusOutput,
     raw: { error: "No budget found", availableBudgets: ["Main", "Vacation"] },
   },
+  {
+    name: "getNextPromptOutput (claimed branch)",
+    schema: schemas.getNextPromptOutput,
+    raw: {
+      hasPrompt: true,
+      promptId: "p1",
+      prompt: "Categorise this invoice",
+      history: [{ role: "user", content: "hi" }],
+    },
+  },
+  {
+    name: "getNextPromptOutput (empty branch)",
+    schema: schemas.getNextPromptOutput,
+    raw: { hasPrompt: false },
+  },
+  {
+    name: "postResponseOutput",
+    schema: schemas.postResponseOutput,
+    raw: { delivered: true },
+  },
 ];
 
 describe("tool-output-schemas", () => {

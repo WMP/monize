@@ -99,5 +99,29 @@
     "downloadAriaLabel": "Télécharger le graphique en PNG",
     "captureError": "Impossible de capturer l'image du graphique",
     "downloadError": "Échec du téléchargement du graphique"
+  },
+  "attachments": {
+    "captureRich": "Capturer le collage enrichi"
+  },
+  "relay": {
+    "status": {
+      "offline": "Assistant hors ligne",
+      "listening": "Assistant à l'écoute",
+      "busy": "Assistant en cours"
+    },
+    "howToConnect": "Comment se connecter",
+    "hideHelp": "Masquer",
+    "helpIntro": "Exécutez votre propre agent MCP et il répondra aux invites de ce chat en utilisant votre abonnement.",
+    "step1": "Créez votre jeton d'accès",
+    "tokenStep": "Commencez par créer un Personal Access Token dans <link>Paramètres utilisateur -> Accès API</link>, puis utilisez-le ci-dessous.",
+    "claudeHeading": "Se connecter avec Claude CLI",
+    "step2": "Connectez l'agent à Monize à l'aide de Claude CLI :",
+    "allowToolsNote": "Quittez Claude et redémarrez-le avec cette option afin qu'il approuve automatiquement chaque appel d'outil Monize :",
+    "step3": "Lancez une boucle d'agent pour que Claude écoute les requêtes de Monize :",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "Ou utilisez Codex",
+    "codexNote": "Ajoutez ceci à ~/.codex/config.toml, définissez MONIZE_TOKEN sur votre jeton, puis exécutez codex et collez l'invite ci-dessus.",
+    "copy": "Copier",
+    "copied": "Copié dans le presse-papiers"
   }
 }

@@ -619,6 +619,20 @@
     "toasts": {
       "loadFailed": "Falha ao carregar as configurações de IA",
       "usageLoadFailed": "Falha ao carregar os dados de uso"
+    },
+    "mcpRelay": {
+      "title": "Use seu próprio assistente (retransmissor MCP)",
+      "subtitle": "Responda aos prompts do chat com seu próprio agente MCP em vez de um provedor de IA no servidor.",
+      "toggleLabel": "Usar retransmissor MCP",
+      "saved": "Configuração do retransmissor salva",
+      "saveFailed": "Não foi possível salvar a configuração do retransmissor",
+      "how": {
+        "intro": "Quando ativado, o chat de IA não chama um LLM no servidor. Em vez disso:",
+        "step1": "Você executa um agente MCP (ex.: Claude CLI) na sua própria máquina, conectado à sua assinatura.",
+        "step2": "O agente faz long-polling no Monize buscando os prompts que você digita no chat e os responde usando as ferramentas do Monize.",
+        "step3": "As respostas são transmitidas de volta ao chat. Um ponto de status mostra se seu agente está conectado.",
+        "note": "Nada é executado até seu agente estar conectado e ouvindo. O chat mostra as instruções de conexão."
+      }
     }
   },
   "sharedAccessPage": {

@@ -79,7 +79,8 @@
     "forecastInsufficientHistory": "Niewystarczająca historia transakcji do prognozowania. Wymagane są dane z co najmniej 2 miesięcy.",
     "forecastGenerateFailed": "Nie udało się wygenerować prognozy. Spróbuj ponownie.",
     "forecastRateLimited": "Prognoza została niedawno wygenerowana. Spróbuj ponownie później.",
-    "insightNotFound": "Nie znaleziono analizy"
+    "insightNotFound": "Nie znaleziono analizy",
+    "relayTimeout": "Twój asystent nie odpowiedział. Upewnij się, że agent MCP jest połączony i nasłuchuje."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Zbyt wiele prób weryfikacji. Zaloguj się ponownie.",

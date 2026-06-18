@@ -619,6 +619,20 @@
     "toasts": {
       "loadFailed": "KI-Einstellungen konnten nicht geladen werden",
       "usageLoadFailed": "Nutzungsdaten konnten nicht geladen werden"
+    },
+    "mcpRelay": {
+      "title": "Eigenen Assistenten verwenden (MCP-Relay)",
+      "subtitle": "Beantworten Sie Chat-Eingaben mit Ihrem eigenen MCP-Agenten statt mit einem serverseitigen KI-Anbieter.",
+      "toggleLabel": "MCP-Relay verwenden",
+      "saved": "Relay-Einstellung gespeichert",
+      "saveFailed": "Die Relay-Einstellung konnte nicht gespeichert werden",
+      "how": {
+        "intro": "Wenn aktiviert, ruft der KI-Chat kein serverseitiges LLM auf. Stattdessen:",
+        "step1": "Sie führen einen MCP-Agenten (z. B. Claude CLI) auf Ihrem eigenen Rechner aus, angemeldet bei Ihrem Abonnement.",
+        "step2": "Der Agent fragt Monize per Long-Polling nach Eingaben ab, die Sie im Chat eingeben, und beantwortet sie mit den Monize-Tools.",
+        "step3": "Antworten werden zurück in den Chat gestreamt. Ein Statuspunkt zeigt an, ob Ihr Agent verbunden ist.",
+        "note": "Es läuft nichts, bis Ihr Agent verbunden ist und zuhört. Der Chat zeigt Verbindungsanweisungen an."
+      }
     }
   },
   "sharedAccessPage": {

@@ -78,8 +78,17 @@ export const aiApi = {
     query: string,
     callbacks: StreamCallbacks,
     conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>,
+    opts?: { relay?: boolean },
   ): AbortController => {
     const controller = new AbortController();
+
+    // Relay mode routes the prompt to the user's own MCP agent (their
+    // subscription) instead of a server-side LLM provider. Same SSE event
+    // shape, different endpoint.
+    const path = opts?.relay
+      ? '/api/v1/ai/relay/query/stream'
+      : '/api/v1/ai/query/stream';
+    const body = { query, conversationHistory };
 
     // Open the stream. Re-read the CSRF cookie each call so a retry after
     // token refresh picks up the rotated value. js-cookie URL-decodes the
@@ -88,13 +97,13 @@ export const aiApi = {
     // backend's timing-safe comparison.
     const openStream = (): Promise<Response> => {
       const csrfToken = Cookies.get('csrf_token') || '';
-      return fetch('/api/v1/ai/query/stream', {
+      return fetch(path, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-Token': csrfToken,
         },
-        body: JSON.stringify({ query, conversationHistory }),
+        body: JSON.stringify(body),
         credentials: 'include',
         signal: controller.signal,
       });
@@ -184,6 +193,18 @@ export const aiApi = {
       '/ai/actions/confirm',
       body,
     );
+    return response.data;
+  },
+
+  // Reverse MCP relay: tunnel status for the chat indicator.
+  getRelayStatus: async (): Promise<{
+    state: 'offline' | 'listening' | 'busy';
+    queued: number;
+  }> => {
+    const response = await apiClient.get<{
+      state: 'offline' | 'listening' | 'busy';
+      queued: number;
+    }>('/ai/relay/status');
     return response.data;
   },
 

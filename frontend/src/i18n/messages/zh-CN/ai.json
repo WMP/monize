@@ -99,5 +99,29 @@
     "downloadAriaLabel": "将图表下载为 PNG",
     "captureError": "无法捕获图表图像",
     "downloadError": "下载图表失败"
+  },
+  "attachments": {
+    "captureRich": "捕获富文本粘贴"
+  },
+  "relay": {
+    "status": {
+      "offline": "助手离线",
+      "listening": "助手正在侦听",
+      "busy": "助手工作中"
+    },
+    "howToConnect": "如何连接",
+    "hideHelp": "隐藏",
+    "helpIntro": "运行您自己的 MCP 代理，它将使用您的订阅来回答此聊天中的提示。",
+    "step1": "创建您的访问令牌",
+    "tokenStep": "首先，在<link>用户设置 -> API 访问</link>中创建一个 Personal Access Token，然后在下面使用它。",
+    "claudeHeading": "使用 Claude CLI 连接",
+    "step2": "使用 Claude CLI 将代理连接到 Monize：",
+    "allowToolsNote": "退出 Claude 并使用此开关重新启动，使其自动批准每个 Monize 工具调用：",
+    "step3": "启动代理循环，让 Claude 侦听来自 Monize 的查询：",
+    "loopPrompt": "Loop forever: call get_next_prompt; if hasPrompt is false, call it again; otherwise handle the request with the Monize tools and call post_response with the answer; then repeat.",
+    "codexHeading": "或使用 Codex",
+    "codexNote": "将此内容添加到 ~/.codex/config.toml，将 MONIZE_TOKEN 设置为您的令牌，然后运行 codex 并粘贴上面的提示。",
+    "copy": "复制",
+    "copied": "已复制到剪贴板"
   }
 }

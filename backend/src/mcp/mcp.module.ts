@@ -10,6 +10,7 @@ import { SecuritiesModule } from "../securities/securities.module";
 import { BudgetsModule } from "../budgets/budgets.module";
 import { BuiltInReportsModule } from "../built-in-reports/built-in-reports.module";
 import { OAuthModule } from "../oauth/oauth.module";
+import { AiRelayModule } from "../ai/relay/ai-relay.module";
 
 import { McpServerService } from "./mcp-server.service";
 import { McpHttpController } from "./mcp-http.controller";
@@ -24,6 +25,7 @@ import { McpNetWorthTools } from "./tools/net-worth.tool";
 import { McpScheduledTools } from "./tools/scheduled.tool";
 import { McpCalculateTools } from "./tools/calculate.tool";
 import { McpBudgetsTools } from "./tools/budgets.tool";
+import { McpRelayTools } from "./tools/relay.tool";
 
 import { McpAccountListResource } from "./resources/account-list.resource";
 import { McpCategoryTreeResource } from "./resources/category-tree.resource";
@@ -48,9 +50,11 @@ import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
     forwardRef(() => BudgetsModule),
     BuiltInReportsModule,
     OAuthModule,
+    AiRelayModule,
   ],
   providers: [
     McpServerService,
+    McpRelayTools,
     McpAccountsTools,
     McpTransactionsTools,
     McpCategoriesTools,

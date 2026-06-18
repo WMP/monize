@@ -619,6 +619,20 @@
     "toasts": {
       "loadFailed": "Échec du chargement des paramètres IA",
       "usageLoadFailed": "Échec du chargement des données d'utilisation"
+    },
+    "mcpRelay": {
+      "title": "Utilisez votre propre assistant (relais MCP)",
+      "subtitle": "Répondez aux invites du chat avec votre propre agent MCP plutôt qu'un fournisseur d'IA côté serveur.",
+      "toggleLabel": "Utiliser le relais MCP",
+      "saved": "Paramètre de relais enregistré",
+      "saveFailed": "Impossible d'enregistrer le paramètre de relais",
+      "how": {
+        "intro": "Lorsqu'il est activé, le chat IA n'appelle pas de LLM côté serveur. À la place :",
+        "step1": "Vous exécutez un agent MCP (par ex. Claude CLI) sur votre propre machine, connecté à votre abonnement.",
+        "step2": "L'agent interroge Monize en long-polling pour les invites que vous saisissez dans le chat et y répond avec les outils Monize.",
+        "step3": "Les réponses sont diffusées dans le chat. Un voyant d'état indique si votre agent est connecté.",
+        "note": "Rien ne s'exécute tant que votre agent n'est pas connecté et à l'écoute. Le chat affiche les instructions de connexion."
+      }
     }
   },
   "sharedAccessPage": {

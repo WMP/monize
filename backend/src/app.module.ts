@@ -42,6 +42,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { HealthModule } from "./health/health.module";
 import { AdminModule } from "./admin/admin.module";
 import { AiModule } from "./ai/ai.module";
+import { AiRelayModule } from "./ai/relay/ai-relay.module";
 import { McpModule } from "./mcp/mcp.module";
 import { OAuthModule } from "./oauth/oauth.module";
 import { BudgetsModule } from "./budgets/budgets.module";
@@ -131,6 +132,7 @@ import { I18nModule } from "./i18n/i18n.module";
     NotificationsModule,
     AdminModule,
     AiModule,
+    AiRelayModule,
     McpModule,
     OAuthModule,
     BudgetsModule,

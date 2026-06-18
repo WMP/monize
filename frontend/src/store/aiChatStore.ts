@@ -64,7 +64,10 @@ interface AiChatState {
   // current stream. Lets us reattach if the user returns mid-stream.
   _activeAssistantId: string | null;
 
-  submit: (query: string) => void;
+  submit: (
+    query: string,
+    opts?: { relay?: boolean },
+  ) => void;
   cancel: () => void;
   clear: () => void;
   // Approve a proposed write action: posts it to the confirm endpoint and
@@ -107,9 +110,17 @@ export const useAiChatStore = create<AiChatState>()(
       _abortController: null,
       _activeAssistantId: null,
 
-      submit: (query: string) => {
+      submit: (
+        query: string,
+        opts?: { relay?: boolean },
+      ) => {
         const trimmed = query.trim();
         if (!trimmed || get().isLoading) return;
+
+        // Relay mode (the caller passes relay=true when the user's top provider
+        // is the MCP relay) sends the prompt to the user's own agent instead of
+        // a server-side provider; the same SSE events flow back.
+        const relay = opts?.relay ?? false;
 
         const userMsgId = `user-${Date.now()}`;
         const assistantMsgId = `assistant-${Date.now()}`;
@@ -383,7 +394,7 @@ export const useAiChatStore = create<AiChatState>()(
               });
             }
           },
-          onError: (error) => {
+          onError: (error: Error) => {
             set((state) => {
               const errorMsg = error.message || 'Failed to connect to the AI service.';
               if (!hasStartedContent) {
@@ -411,7 +422,7 @@ export const useAiChatStore = create<AiChatState>()(
               };
             });
           },
-        }, history);
+        }, history, { relay });
 
         set({ _abortController: controller });
       },

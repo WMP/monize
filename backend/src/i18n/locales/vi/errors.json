@@ -79,7 +79,8 @@
     "forecastInsufficientHistory": "Lịch sử giao tác không đủ để dự báo. Cần ít nhất 2 tháng dữ liệu.",
     "forecastGenerateFailed": "Không thể tạo dự báo. Vui lòng thử lại.",
     "forecastRateLimited": "Dự báo vừa được tạo gần đây. Vui lòng thử lại sau.",
-    "insightNotFound": "Không tìm thấy thông tin chi tiết"
+    "insightNotFound": "Không tìm thấy thông tin chi tiết",
+    "relayTimeout": "Trợ lý của bạn không phản hồi. Hãy đảm bảo tác nhân MCP của bạn đang kết nối và lắng nghe."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Quá nhiều lần xác minh thất bại. Vui lòng đăng nhập lại.",

@@ -619,6 +619,20 @@
     "toasts": {
       "loadFailed": "Laden van AI-instellingen mislukt",
       "usageLoadFailed": "Laden van gebruiksgegevens mislukt"
+    },
+    "mcpRelay": {
+      "title": "Gebruik uw eigen assistent (MCP-relay)",
+      "subtitle": "Beantwoord chatprompts met uw eigen MCP-agent in plaats van een AI-provider aan de serverzijde.",
+      "toggleLabel": "MCP-relay gebruiken",
+      "saved": "Relay-instelling opgeslagen",
+      "saveFailed": "De relay-instelling kon niet worden opgeslagen",
+      "how": {
+        "intro": "Indien ingeschakeld roept de AI-chat geen LLM aan de serverzijde aan. In plaats daarvan:",
+        "step1": "U voert een MCP-agent (bijv. Claude CLI) op uw eigen machine uit, aangemeld bij uw abonnement.",
+        "step2": "De agent doet long-polling bij Monize voor prompts die u in de chat typt en beantwoordt ze met de Monize-tools.",
+        "step3": "Antwoorden worden terug naar de chat gestreamd. Een statusstip toont of uw agent verbonden is.",
+        "note": "Er gebeurt niets totdat uw agent verbonden is en luistert. De chat toont verbindingsinstructies."
+      }
     }
   },
   "sharedAccessPage": {
