@@ -254,7 +254,7 @@ export class MsnFinanceService implements QuoteProvider {
     const fromEnv = configService?.get<string>("MSN_API_KEY")?.trim();
     this.apiKey = fromEnv && fromEnv.length > 0 ? fromEnv : null;
     if (!this.apiKey) {
-      this.logger.error(
+      this.logger.warn(
         "MSN_API_KEY env var is not set. The MSN Quotes endpoint requires " +
           "this key — live MSN quotes will fail until it is configured. " +
           "Set MSN_API_KEY in your environment to enable.",
