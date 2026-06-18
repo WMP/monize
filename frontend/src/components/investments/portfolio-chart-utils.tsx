@@ -177,6 +177,18 @@ export interface FlagDotOptions {
   onDismiss?: () => void;
   /** Localized title/aria label for the dismiss control. */
   dismissLabel?: string;
+  /**
+   * When false, omit the pin dot, dashed connector, and arrow -- rendering just
+   * the labelled box. Useful for anchoring the box to a reference line rather
+   * than a single datapoint. Default true.
+   */
+  showDot?: boolean;
+  /**
+   * Vertical placement of the box for the horizontal sides ('left' / 'right'):
+   * 'middle' centers it on cy (default); 'top' puts the box's top edge at cy so
+   * it hangs below the anchor (e.g. flush under a reference line).
+   */
+  boxVerticalAlign?: 'middle' | 'top';
 }
 
 export function renderChartFlagDot({
@@ -189,13 +201,16 @@ export function renderChartFlagDot({
   gap = 24,
   onDismiss,
   dismissLabel,
+  showDot = true,
+  boxVerticalAlign = 'middle',
 }: FlagDotOptions): ReactElement {
   // Reserve room on the right of the bubble for the dismiss "x" when present.
   const hasClose = typeof onDismiss === 'function';
   const closeZone = hasClose ? 16 : 0;
   const labelWidth = label.length * 7 + 14 + closeZone;
   const labelHeight = 22;
-  const arrowSize = 5;
+  // No arrow when the pin dot is suppressed -- the box anchors directly.
+  const arrowSize = showDot ? 5 : 0;
 
   // Bubble centroid + arrow tip geometry. Vertical sides ('above'/'below')
   // anchor the arrow on the top/bottom edge of the bubble; horizontal sides
@@ -226,7 +241,7 @@ export function renderChartFlagDot({
     arrowPoints = `${cx - arrowSize},${arrowTipY + arrowSize} ${cx + arrowSize},${arrowTipY + arrowSize} ${cx},${arrowTipY}`;
   } else if (side === 'right') {
     bubbleX = cx + gap + arrowSize;
-    bubbleY = cy - labelHeight / 2;
+    bubbleY = boxVerticalAlign === 'top' ? cy : cy - labelHeight / 2;
     arrowTipX = cx + gap;
     arrowTipY = cy;
     connectorX1 = cx + 5;
@@ -235,7 +250,7 @@ export function renderChartFlagDot({
   } else {
     // 'left'
     bubbleX = cx - gap - arrowSize - labelWidth;
-    bubbleY = cy - labelHeight / 2;
+    bubbleY = boxVerticalAlign === 'top' ? cy : cy - labelHeight / 2;
     arrowTipX = cx - gap;
     arrowTipY = cy;
     connectorX1 = cx - 5;
@@ -254,26 +269,30 @@ export function renderChartFlagDot({
       strokeOpacity={1}
       opacity={1}
     >
-      <circle
-        cx={cx}
-        cy={cy}
-        r={5}
-        fill={color}
-        fillOpacity={1}
-        stroke="#fff"
-        strokeWidth={2}
-        strokeOpacity={1}
-      />
-      <line
-        x1={connectorX1}
-        y1={connectorY1}
-        x2={arrowTipX}
-        y2={arrowTipY}
-        stroke={color}
-        strokeWidth={1.5}
-        strokeDasharray="3 2"
-        strokeOpacity={1}
-      />
+      {showDot && (
+        <>
+          <circle
+            cx={cx}
+            cy={cy}
+            r={5}
+            fill={color}
+            fillOpacity={1}
+            stroke="#fff"
+            strokeWidth={2}
+            strokeOpacity={1}
+          />
+          <line
+            x1={connectorX1}
+            y1={connectorY1}
+            x2={arrowTipX}
+            y2={arrowTipY}
+            stroke={color}
+            strokeWidth={1.5}
+            strokeDasharray="3 2"
+            strokeOpacity={1}
+          />
+        </>
+      )}
       <rect
         x={bubbleX}
         y={bubbleY}
@@ -284,7 +303,7 @@ export function renderChartFlagDot({
         fillOpacity={1}
         filter="url(#chartFlagShadow)"
       />
-      <polygon points={arrowPoints} fill={color} fillOpacity={1} />
+      {showDot && <polygon points={arrowPoints} fill={color} fillOpacity={1} />}
       <text
         x={bubbleX + (labelWidth - closeZone) / 2}
         y={bubbleY + labelHeight / 2}

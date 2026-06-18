@@ -58,7 +58,10 @@ vi.mock('recharts', () => ({
     }
     return null;
   },
-  ReferenceLine: () => null,
+  ReferenceLine: ({ label }: any) =>
+    typeof label === 'function'
+      ? label({ viewBox: { x: 0, y: 50, width: 600 } })
+      : null,
 }));
 
 const mockGetSecurities = vi.fn();

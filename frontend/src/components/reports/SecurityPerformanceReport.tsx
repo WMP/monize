@@ -16,7 +16,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, startOfYear, startOfMonth, addMonths } from 'date-fns';
 import { chartColors } from '@/lib/chart-colors';
 import { investmentsApi } from '@/lib/investments';
 import { Security, SecurityPrice, InvestmentTransaction, HoldingWithMarketValue } from '@/types/investment';
@@ -29,14 +29,47 @@ import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { aggregateHoldingsBySecurity } from '@/lib/aggregate-holdings';
+import { renderChartFlagDot, ChartFlagShadowFilter } from '@/components/investments/portfolio-chart-utils';
 
 const MAX_PAGES = 50;
+
+// Candidate spacings (in months) for the price chart's time axis, smallest first.
+const TICK_STEP_MONTHS = [1, 2, 3, 6, 12, 24, 60, 120];
+
+// Build evenly-spaced, calendar-aligned tick timestamps for the time axis.
+// Picks the smallest step that keeps the tick count at or below `target`, then
+// anchors ticks to year/month boundaries. This keeps spacing uniform across the
+// whole timeline regardless of how densely the underlying prices are sampled
+// (e.g. sparse early history vs. daily recent prices), so old and new periods
+// get the same horizontal scale.
+function buildTimeAxisTicks(
+  minTs: number,
+  maxTs: number,
+  target = 10,
+): { ticks: number[]; stepMonths: number } {
+  if (!(maxTs > minTs)) return { ticks: [minTs], stepMonths: 1 };
+  const minDate = new Date(minTs);
+  const maxDate = new Date(maxTs);
+  const spanMonths =
+    (maxDate.getFullYear() - minDate.getFullYear()) * 12 +
+    (maxDate.getMonth() - minDate.getMonth());
+  const stepMonths =
+    TICK_STEP_MONTHS.find((s) => spanMonths / s <= target) ??
+    TICK_STEP_MONTHS[TICK_STEP_MONTHS.length - 1];
+  const anchor = stepMonths >= 12 ? startOfYear(minDate) : startOfMonth(minDate);
+  const ticks: number[] = [];
+  for (let cur = anchor; cur.getTime() <= maxTs; cur = addMonths(cur, stepMonths)) {
+    if (cur.getTime() >= minTs) ticks.push(cur.getTime());
+  }
+  return { ticks: ticks.length > 0 ? ticks : [minTs, maxTs], stepMonths };
+}
 
 type TradeSortField = 'date' | 'account' | 'action' | 'shares' | 'price' | 'total';
 type DividendSortField = 'date' | 'account' | 'type' | 'amount';
 
 interface PriceChartPoint {
   date: string;
+  ts: number;
   label: string;
   close: number;
   buyMarker?: number;
@@ -45,11 +78,16 @@ interface PriceChartPoint {
 
 export function SecurityPerformanceReport() {
   const t = useTranslations('reports');
+  const tc = useTranslations('common');
   const { formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatSignedPercent } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
   const [selectedSecurityId, setSelectedSecurityId] = useState<string>('');
   const [viewType, setViewType] = useState<'chart' | 'transactions' | 'dividends'>('chart');
+  // Avg-cost bubble the user has temporarily dismissed, keyed by value (mirrors
+  // the high/low flag bubbles) so it re-shows when a different security's avg
+  // cost differs.
+  const [dismissedAvgCost, setDismissedAvgCost] = useState<number | null>(null);
   const tradeSort = useSortableTable<TradeSortField>(
     'reports.security-performance.trades.sort',
     { field: 'date', direction: 'desc' },
@@ -203,15 +241,39 @@ export function SecurityPerformanceReport() {
       .sort((a, b) => a.priceDate.localeCompare(b.priceDate))
       .map((p) => {
         const txInfo = txByDate.get(p.priceDate);
+        const parsed = parseLocalDate(p.priceDate);
         return {
           date: p.priceDate,
-          label: format(parseLocalDate(p.priceDate), 'MMM d, yyyy'),
+          ts: parsed.getTime(),
+          label: format(parsed, 'MMM d, yyyy'),
           close: Number(p.closePrice),
           buyMarker: txInfo?.buys ? Number(p.closePrice) : undefined,
           sellMarker: txInfo?.sells ? Number(p.closePrice) : undefined,
         };
       });
   }, [prices, transactions]);
+
+  // Time-axis ticks: evenly spaced in real time (not by data index), so the
+  // horizontal scale is consistent across the whole timeline. Without this the
+  // categorical axis gives every price point equal width, stretching out
+  // densely-sampled recent dates relative to sparse early history.
+  const xAxis = useMemo(() => {
+    if (chartData.length === 0) {
+      return {
+        ticks: [] as number[],
+        domain: ['dataMin', 'dataMax'] as [string, string],
+        tickFormat: 'MMM yyyy',
+      };
+    }
+    const minTs = chartData[0].ts;
+    const maxTs = chartData[chartData.length - 1].ts;
+    const { ticks, stepMonths } = buildTimeAxisTicks(minTs, maxTs);
+    return {
+      ticks,
+      domain: [minTs, maxTs] as [number, number],
+      tickFormat: stepMonths >= 12 ? 'yyyy' : 'MMM yyyy',
+    };
+  }, [chartData]);
 
   // Dividend history
   const dividendTx = useMemo(() => {
@@ -527,12 +589,16 @@ export function SecurityPerformanceReport() {
                           <stop offset="95%" stopColor={chartColors.primary} stopOpacity={0} />
                         </linearGradient>
                       </defs>
+                      <ChartFlagShadowFilter />
                       <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                       <XAxis
-                        dataKey="label"
+                        dataKey="ts"
+                        type="number"
+                        scale="time"
+                        domain={xAxis.domain}
+                        ticks={xAxis.ticks}
+                        tickFormatter={(ts: number) => format(ts, xAxis.tickFormat)}
                         tick={{ fontSize: 11 }}
-                        interval="preserveStartEnd"
-                        tickCount={8}
                       />
                       <YAxis
                         tickFormatter={(v: number) => formatCurrencyAxis(v, displayCurrency)}
@@ -586,7 +652,41 @@ export function SecurityPerformanceReport() {
                           y={stats.averageCost}
                           stroke={chartColors.warning}
                           strokeDasharray="4 4"
-                          label={{ value: t('securityPerformance.avgCostRefLine'), position: 'right', fill: chartColors.warning, fontSize: 11 }}
+                          // extendDomain widens the y-axis so the avg-cost line is
+                          // always visible, even when the cost basis sits outside the
+                          // displayed price range. zIndex 700 lifts the line and its
+                          // flag label above the buy/sell marker dots (zIndex 600).
+                          ifOverflow="extendDomain"
+                          zIndex={700}
+                          {...(stats.averageCost === dismissedAvgCost
+                            ? {}
+                            : {
+                                // The flag box hangs flush under the line (its top
+                                // edge at the line). Positioned from the label's
+                                // viewBox, which Recharts derives from the real axis
+                                // scale -- so it stays attached to the line exactly.
+                                label: (labelProps: {
+                                  viewBox?: { x?: number; y?: number; width?: number };
+                                }) => {
+                                  const vb = labelProps.viewBox ?? {};
+                                  const x = vb.x ?? 0;
+                                  const y = vb.y ?? 0;
+                                  const width = vb.width ?? 0;
+                                  return renderChartFlagDot({
+                                    cx: x + width,
+                                    cy: y,
+                                    index: 0,
+                                    color: chartColors.warning,
+                                    label: `${t('securityPerformance.avgCostRefLine')}: ${formatCurrencyFull(stats.averageCost, displayCurrency)}`,
+                                    side: 'left',
+                                    gap: 6,
+                                    showDot: false,
+                                    boxVerticalAlign: 'top',
+                                    onDismiss: () => setDismissedAvgCost(stats.averageCost),
+                                    dismissLabel: tc('chartFlag.dismiss'),
+                                  });
+                                },
+                              })}
                         />
                       )}
                     </AreaChart>
