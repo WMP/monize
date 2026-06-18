@@ -123,7 +123,7 @@ jobs:
 
           {
             echo "tags<<EOF"
-            printf '%s' "$tags"
+            printf '%s\n' "$tags"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
           echo "git_sha=$sha_full" >> "$GITHUB_OUTPUT"
