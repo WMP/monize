@@ -605,6 +605,29 @@ CREATE TABLE user_preferences (
       CHECK (recent_transactions_limit BETWEEN 1 AND 20)
 );
 
+-- Attachments (generic file storage: receipts, invoices, screenshots, PDFs).
+-- Polymorphic by (entity_type, entity_id) so the same table backs AI-chat
+-- uploads today and can back transaction attachments later without a schema
+-- change. Bytes default to Postgres BYTEA (storage_driver='db', like logo
+-- storage); storage_driver/storage_key leave room for local-file or S3 backends
+-- where the bytes live elsewhere and 'data' is null.
+CREATE TABLE attachments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    entity_type VARCHAR(40) NOT NULL, -- e.g. 'ai_chat', 'transaction'
+    entity_id UUID, -- linked record, when applicable
+    file_name VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(150) NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    storage_driver VARCHAR(20) NOT NULL DEFAULT 'db', -- 'db' | 'local' | 's3'
+    storage_key VARCHAR(500), -- path/key for external stores; null for 'db'
+    data BYTEA, -- bytes when storage_driver = 'db'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT attachments_size_bytes_check CHECK (size_bytes >= 0)
+);
+CREATE INDEX idx_attachments_user ON attachments(user_id);
+CREATE INDEX idx_attachments_entity ON attachments(entity_type, entity_id);
+
 -- Auto Backup Settings (per-user configuration for automatic backups to a folder)
 CREATE TABLE auto_backup_settings (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
