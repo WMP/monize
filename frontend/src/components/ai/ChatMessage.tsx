@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { AssistantMarkdown } from './AssistantMarkdown';
 import { ResultChart } from './ResultChart';
@@ -165,7 +165,10 @@ function ToolDetails({ tool }: { tool: ToolInfo }) {
   );
 }
 
-export function ChatMessage({
+// Memoized: the input box and the rest of ChatInterface re-render on every
+// keystroke, but a message only changes when its own (store-stable) props do.
+// Without this, typing re-parses every message's markdown and the box lags.
+export const ChatMessage = memo(function ChatMessage({
   id,
   role,
   content,
@@ -271,4 +274,4 @@ export function ChatMessage({
       </div>
     </div>
   );
-}
+});
