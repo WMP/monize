@@ -20,7 +20,7 @@ const WRITE_TOOLS = new Set([
 // Write tools whose repeated calls converge to the same state.
 const IDEMPOTENT_WRITES = new Set(["categorize_transaction"]);
 
-const EXPECTED_TOOL_COUNT = 30;
+const EXPECTED_TOOL_COUNT = 31;
 
 interface ToolProvider {
   register: (server: unknown, resolve?: unknown) => void;
@@ -31,11 +31,22 @@ function collectToolConfigs(): Array<{ name: string; config: any }> {
   // register(), so empty mocks are sufficient to capture the tool configs.
   const providers: ToolProvider[] = [
     new McpAccountsTools({} as any) as unknown as ToolProvider,
-    new McpTransactionsTools({} as any, {} as any) as unknown as ToolProvider,
+    new McpTransactionsTools(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    ) as unknown as ToolProvider,
     new McpCategoriesTools({} as any) as unknown as ToolProvider,
-    new McpPayeesTools({} as any) as unknown as ToolProvider,
+    new McpPayeesTools(
+      {} as any,
+      {} as any,
+      {} as any,
+    ) as unknown as ToolProvider,
     new McpReportsTools({} as any) as unknown as ToolProvider,
     new McpInvestmentsTools(
+      {} as any,
+      {} as any,
       {} as any,
       {} as any,
       {} as any,

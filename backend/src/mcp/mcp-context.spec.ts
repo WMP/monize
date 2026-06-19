@@ -188,13 +188,25 @@ describe("mcp-context", () => {
     it("returns 'accepted' when the user accepts the elicitation", async () => {
       const elicit = jest.fn().mockResolvedValue({ action: "accept" });
       const server = fakeServer({ capabilities: caps, elicit });
-      await expect(confirmWrite(server, "Confirm?")).resolves.toBe("accepted");
+      await expect(confirmWrite(server, "Confirm?", "req-1")).resolves.toBe(
+        "accepted",
+      );
       expect(elicit).toHaveBeenCalledWith(
         {
           message: "Confirm?",
           requestedSchema: { type: "object", properties: {} },
         },
-        { timeout: expect.any(Number) },
+        { timeout: expect.any(Number), relatedRequestId: "req-1" },
+      );
+    });
+
+    it("threads the tool call's request id so the elicitation rides its POST SSE stream", async () => {
+      const elicit = jest.fn().mockResolvedValue({ action: "accept" });
+      const server = fakeServer({ capabilities: caps, elicit });
+      await confirmWrite(server, "Confirm?", 42);
+      expect(elicit).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ relatedRequestId: 42 }),
       );
     });
 
@@ -203,23 +215,23 @@ describe("mcp-context", () => {
         capabilities: caps,
         elicit: jest.fn().mockResolvedValue({ action: "decline" }),
       });
-      await expect(confirmWrite(declineServer, "Confirm?")).resolves.toBe(
-        "declined",
-      );
+      await expect(
+        confirmWrite(declineServer, "Confirm?", "req-1"),
+      ).resolves.toBe("declined");
 
       const cancelServer = fakeServer({
         capabilities: caps,
         elicit: jest.fn().mockResolvedValue({ action: "cancel" }),
       });
-      await expect(confirmWrite(cancelServer, "Confirm?")).resolves.toBe(
-        "declined",
-      );
+      await expect(
+        confirmWrite(cancelServer, "Confirm?", "req-1"),
+      ).resolves.toBe("declined");
     });
 
     it("returns 'unsupported' without eliciting when the client lacks the capability", async () => {
       const elicit = jest.fn();
       const server = fakeServer({ capabilities: {}, elicit });
-      await expect(confirmWrite(server, "Confirm?")).resolves.toBe(
+      await expect(confirmWrite(server, "Confirm?", "req-1")).resolves.toBe(
         "unsupported",
       );
       expect(elicit).not.toHaveBeenCalled();
@@ -227,7 +239,7 @@ describe("mcp-context", () => {
 
     it("returns 'unsupported' when capabilities are undefined", async () => {
       const server = fakeServer({ capabilities: undefined });
-      await expect(confirmWrite(server, "Confirm?")).resolves.toBe(
+      await expect(confirmWrite(server, "Confirm?", "req-1")).resolves.toBe(
         "unsupported",
       );
     });
@@ -235,7 +247,9 @@ describe("mcp-context", () => {
     it("returns 'declined' (never silently proceeds) when a supported dialog errors or times out", async () => {
       const elicit = jest.fn().mockRejectedValue(new Error("timed out"));
       const server = fakeServer({ capabilities: caps, elicit });
-      await expect(confirmWrite(server, "Confirm?")).resolves.toBe("declined");
+      await expect(confirmWrite(server, "Confirm?", "req-1")).resolves.toBe(
+        "declined",
+      );
     });
   });
 });

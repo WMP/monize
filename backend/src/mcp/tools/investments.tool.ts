@@ -9,6 +9,9 @@ import {
   LlmInvestmentTxGroupBy,
 } from "../../securities/investment-transactions.service";
 import { InvestmentAction } from "../../securities/entities/investment-transaction.entity";
+import { AiRelayService } from "../../ai/relay/ai-relay.service";
+import { AiActionBuilderService } from "../../ai/actions/ai-action-builder.service";
+import { RELAY_PREVIEW_SHOWN } from "../mcp-relay-confirm";
 import {
   UserContextResolver,
   requireScope,
@@ -35,6 +38,8 @@ export class McpInvestmentsTools {
     private readonly portfolioService: PortfolioService,
     private readonly holdingsService: HoldingsService,
     private readonly investmentTransactionsService: InvestmentTransactionsService,
+    private readonly relayService: AiRelayService,
+    private readonly actionBuilder: AiActionBuilderService,
   ) {}
 
   register(server: McpServer, resolve: UserContextResolver) {
@@ -366,6 +371,17 @@ export class McpInvestmentsTools {
             });
           }
 
+          // Relay path: confirm in the web chat via the approve/reject card
+          // rather than an elicitation in the agent's MCP client.
+          const pendingAction =
+            this.actionBuilder.buildCreateInvestmentTransaction(
+              ctx.userId,
+              preview,
+            );
+          if (this.relayService.emitPendingAction(ctx.userId, pendingAction)) {
+            return toolResult(RELAY_PREVIEW_SHOWN);
+          }
+
           // Ask the client to confirm before persisting (AI Assistant parity).
           const confirmLines = [
             "Create this investment transaction?",
@@ -395,6 +411,7 @@ export class McpInvestmentsTools {
           const confirmation = await confirmWrite(
             server,
             confirmLines.join("\n"),
+            extra.requestId,
           );
           if (confirmation === "declined") {
             return toolError(

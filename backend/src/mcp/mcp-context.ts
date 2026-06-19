@@ -1,5 +1,6 @@
 import { sanitizeToolResultStrings } from "../common/sanitization.util";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { RequestId } from "@modelcontextprotocol/sdk/types.js";
 
 export interface McpUserContext {
   userId: string;
@@ -132,16 +133,29 @@ const CONFIRM_TIMEOUT_MS = 5 * 60 * 1000;
  *  - "unsupported": the client advertises no form-elicitation capability, so no
  *    dialog can be shown and the caller falls back to its normal behavior. The
  *    client still gates every tool call with its own approval prompt, so this
- *    is not a consent bypass.
+ *    is not a consent bypass. Claude Desktop currently lands here: it does not
+ *    advertise the elicitation capability (and returns -32601 for
+ *    elicitation/create), so writes proceed under its own per-tool approval
+ *    rather than an MCP-native confirm dialog.
  *
  * We pre-check the capability (rather than relying solely on the thrown
  * "client does not support elicitation" error) so that only a genuine lack of
  * capability falls through to the write -- a dismissed or timed-out dialog on a
  * capable client must abort.
+ *
+ * `relatedRequestId` MUST be the in-flight tool call's request id (from the
+ * handler's `extra.requestId`). Over the Streamable HTTP transport, a
+ * server-to-client request with no related request id is routed to the
+ * standalone GET SSE stream, which a tool-calling client (Claude Desktop, IDE
+ * agents) does not keep open during a `tools/call` -- so the elicitation is
+ * silently dropped and never shown, then times out as a decline. Threading the
+ * tool call's id sends the elicitation back over that call's own POST SSE
+ * stream, where the client is listening.
  */
 export async function confirmWrite(
   server: McpServer,
   message: string,
+  relatedRequestId: RequestId,
 ): Promise<WriteConfirmation> {
   const capabilities = server.server.getClientCapabilities();
   if (!capabilities?.elicitation?.form) {
@@ -154,7 +168,7 @@ export async function confirmWrite(
         // No fields to collect -- the accept/decline/cancel action is the answer.
         requestedSchema: { type: "object", properties: {} },
       },
-      { timeout: CONFIRM_TIMEOUT_MS },
+      { timeout: CONFIRM_TIMEOUT_MS, relatedRequestId },
     );
     return result.action === "accept" ? "accepted" : "declined";
   } catch {

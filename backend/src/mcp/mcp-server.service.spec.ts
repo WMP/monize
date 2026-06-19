@@ -19,6 +19,7 @@ import { McpFinancialReviewPrompt } from "./prompts/financial-review.prompt";
 import { McpBudgetCheckPrompt } from "./prompts/budget-check.prompt";
 import { McpTransactionLookupPrompt } from "./prompts/transaction-lookup.prompt";
 import { McpSpendingAnalysisPrompt } from "./prompts/spending-analysis.prompt";
+import { AiRelayService } from "../ai/relay/ai-relay.service";
 
 describe("McpServerService", () => {
   let service: McpServerService;
@@ -44,6 +45,10 @@ describe("McpServerService", () => {
         { provide: McpCalculateTools, useValue: mockToolProvider },
         { provide: McpBudgetsTools, useValue: mockToolProvider },
         { provide: McpRelayTools, useValue: mockToolProvider },
+        {
+          provide: AiRelayService,
+          useValue: { reportToolActivity: jest.fn() },
+        },
         { provide: McpAccountListResource, useValue: mockResourceProvider },
         { provide: McpCategoryTreeResource, useValue: mockResourceProvider },
         {

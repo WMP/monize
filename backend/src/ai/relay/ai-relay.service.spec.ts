@@ -86,6 +86,113 @@ describe("AiRelayService", () => {
     await expect(pending).resolves.toEqual({ text: "a" });
   });
 
+  describe("emitPendingAction", () => {
+    const action = {
+      actionId: "act-1",
+      type: "create_transaction",
+      expiresAt: Date.now() + 1000,
+      descriptor: { type: "create_transaction" },
+      signature: "sig",
+      preview: {},
+    } as any;
+
+    it("returns false when the user has no in-flight prompt", () => {
+      expect(service.emitPendingAction(USER, action)).toBe(false);
+    });
+
+    it("emits a pending_action event on the in-flight prompt's stream", async () => {
+      const emit = jest.fn();
+      service.enqueuePrompt(USER, "add a transaction", [], emit);
+      await service.waitForPrompt(USER);
+
+      expect(service.emitPendingAction(USER, action)).toBe(true);
+      expect(emit).toHaveBeenCalledWith({ type: "pending_action", action });
+    });
+
+    it("does not target another user's in-flight prompt", async () => {
+      const emit = jest.fn();
+      service.enqueuePrompt(USER, "q", [], emit);
+      await service.waitForPrompt(USER);
+
+      expect(service.emitPendingAction(OTHER, action)).toBe(false);
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it("returns false when the in-flight prompt has no emit channel", async () => {
+      service.enqueuePrompt(USER, "q", []);
+      await service.waitForPrompt(USER);
+      expect(service.emitPendingAction(USER, action)).toBe(false);
+    });
+  });
+
+  describe("reportProgress", () => {
+    it("returns false when the user has no in-flight prompt", () => {
+      expect(service.reportProgress(USER, "missing", "working...")).toBe(false);
+    });
+
+    it("streams an assistant_text event on the in-flight prompt", async () => {
+      const emit = jest.fn();
+      service.enqueuePrompt(USER, "buy XBAL", [], emit);
+      const claimed = await service.waitForPrompt(USER);
+
+      expect(
+        service.reportProgress(USER, claimed!.promptId, "looking up category"),
+      ).toBe(true);
+      expect(emit).toHaveBeenCalledWith({
+        type: "assistant_text",
+        text: "looking up category\n",
+      });
+    });
+
+    it("does not target another user's prompt", async () => {
+      const emit = jest.fn();
+      service.enqueuePrompt(USER, "q", [], emit);
+      const claimed = await service.waitForPrompt(USER);
+
+      expect(service.reportProgress(OTHER, claimed!.promptId, "x")).toBe(false);
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it("returns false once the prompt has been answered", async () => {
+      const emit = jest.fn();
+      service.enqueuePrompt(USER, "q", [], emit);
+      const claimed = await service.waitForPrompt(USER);
+      service.postResponse(USER, claimed!.promptId, "done");
+
+      expect(service.reportProgress(USER, claimed!.promptId, "late")).toBe(
+        false,
+      );
+    });
+  });
+
+  describe("reportToolActivity", () => {
+    it("streams tool_start and tool_result on the in-flight prompt", async () => {
+      const emit = jest.fn();
+      service.enqueuePrompt(USER, "q", [], emit);
+      await service.waitForPrompt(USER);
+
+      service.reportToolActivity(USER, "get_categories", "start");
+      service.reportToolActivity(USER, "get_categories", "result", false);
+
+      expect(emit).toHaveBeenNthCalledWith(1, {
+        type: "tool_start",
+        name: "get_categories",
+      });
+      expect(emit).toHaveBeenNthCalledWith(2, {
+        type: "tool_result",
+        name: "get_categories",
+        isError: false,
+      });
+    });
+
+    it("is a no-op when the user has no in-flight prompt", () => {
+      // No throw, nothing emitted (no prompt to target).
+      expect(() =>
+        service.reportToolActivity(USER, "get_categories", "start"),
+      ).not.toThrow();
+    });
+  });
+
   describe("status", () => {
     it("is offline before any agent polls", () => {
       expect(service.getStatus(USER)).toEqual({ state: "offline", queued: 0 });

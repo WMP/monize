@@ -86,4 +86,41 @@ describe("McpRelayTools", () => {
       expect(parse(result)).toEqual({ delivered: false });
     });
   });
+
+  describe("report_progress", () => {
+    it("streams the update and reports delivered:true", async () => {
+      const reportProgress = jest.fn().mockReturnValue(true);
+      const handlers = register({ reportProgress });
+      const result = await handlers.report_progress(
+        { promptId: "p1", text: "looking up category" },
+        { sessionId: "s" },
+      );
+      expect(parse(result)).toEqual({ delivered: true });
+      expect(reportProgress).toHaveBeenCalledWith(
+        "user-1",
+        "p1",
+        "looking up category",
+      );
+    });
+
+    it("reports delivered:false when the prompt is no longer active", async () => {
+      const handlers = register({
+        reportProgress: jest.fn().mockReturnValue(false),
+      });
+      const result = await handlers.report_progress(
+        { promptId: "p1", text: "late update" },
+        { sessionId: "s" },
+      );
+      expect(parse(result)).toEqual({ delivered: false });
+    });
+
+    it("requires read scope", async () => {
+      const handlers = register({}, "reports");
+      const result = await handlers.report_progress(
+        { promptId: "p1", text: "x" },
+        { sessionId: "s" },
+      );
+      expect(result.isError).toBe(true);
+    });
+  });
 });

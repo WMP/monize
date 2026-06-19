@@ -12,6 +12,7 @@ import {
 import {
   getNextPromptOutput,
   postResponseOutput,
+  reportProgressOutput,
 } from "../tool-output-schemas";
 import { READ_ONLY } from "../mcp-annotations";
 
@@ -24,8 +25,8 @@ import { READ_ONLY } from "../mcp-annotations";
  *
  * Usage pattern the agent is told to follow: loop forever -- call
  * `get_next_prompt`; if `hasPrompt` is false, call it again; otherwise handle
- * the request with the Monize tools, then call `post_response` with the answer,
- * then loop.
+ * the request with the Monize tools, narrating progress with `report_progress`
+ * as it goes, then call `post_response` with the final answer, then loop.
  */
 @Injectable()
 export class McpRelayTools {
@@ -38,7 +39,7 @@ export class McpRelayTools {
         title: "Wait for the next chat prompt",
         annotations: READ_ONLY,
         description:
-          "Long-poll for the next prompt a user typed in the Monize web chat. Returns { hasPrompt: false } if none arrives within the poll window -- in that case call this tool again immediately to keep listening. When hasPrompt is true, handle the request using the other Monize tools, then call post_response with promptId and your answer. 'history' is the prior conversation, oldest first.",
+          "Long-poll for the next prompt a user typed in the Monize web chat. Returns { hasPrompt: false } if none arrives within the poll window -- in that case call this tool again immediately to keep listening. When hasPrompt is true, handle the request using the other Monize tools, calling report_progress with short status updates as you work (before a lookup, or when sending a confirmation card), then call post_response with promptId and your final answer. 'history' is the prior conversation, oldest first.",
         inputSchema: {},
         outputSchema: getNextPromptOutput,
       },
@@ -92,6 +93,44 @@ export class McpRelayTools {
 
         try {
           const delivered = this.relayService.postResponse(
+            ctx.userId,
+            args.promptId,
+            args.text,
+          );
+          return toolResult({ delivered });
+        } catch (err: unknown) {
+          return safeToolError(err);
+        }
+      },
+    );
+
+    server.registerTool(
+      "report_progress",
+      {
+        title: "Stream a progress update",
+        annotations: READ_ONLY,
+        description:
+          "Stream a short, human-readable progress update to the Monize web chat while you work on a prompt from get_next_prompt. Shown live to the user as the assistant's running narration (e.g. 'Looking up the sporting goods category...' or 'Dry run looks good, sending the confirmation card.'). Call it whenever you start a lookup or make a decision, before the relevant tool call. Pass the promptId you are handling and one concise sentence. This does not answer the prompt -- still call post_response with the final answer when done. Returns { delivered: false } if the prompt is no longer active (already answered or timed out); if so, stop sending updates for it.",
+        inputSchema: {
+          promptId: z
+            .string()
+            .uuid()
+            .describe("The promptId from get_next_prompt"),
+          text: z
+            .string()
+            .max(2000)
+            .describe("A short status update to show the user"),
+        },
+        outputSchema: reportProgressOutput,
+      },
+      async (args, extra) => {
+        const ctx = resolve(extra.sessionId);
+        if (!ctx) return toolError("No user context");
+        const check = requireScope(ctx.scopes, "read");
+        if (check.error) return check.result;
+
+        try {
+          const delivered = this.relayService.reportProgress(
             ctx.userId,
             args.promptId,
             args.text,
