@@ -95,7 +95,16 @@
       "REINVEST": "Herinvesteren",
       "ADD_SHARES": "Aandelen toevoegen",
       "REMOVE_SHARES": "Aandelen verwijderen"
-    }
+    },
+    "createSecurityTitle": "Dit effect aanmaken?",
+    "createdSecurity": "Effect aangemaakt",
+    "viewSecurities": "Effecten bekijken",
+    "symbol": "Symbool",
+    "securityType": "Type",
+    "exchange": "Beurs",
+    "currency": "Valuta",
+    "favourite": "Favoriet",
+    "favouriteYes": "Vastgezet op dashboard"
   },
   "table": {
     "downloadTitle": "Tabel downloaden als CSV",

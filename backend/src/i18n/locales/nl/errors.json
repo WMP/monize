@@ -363,7 +363,11 @@
     "symbolLength": "Symbool moet tussen 1 en 20 tekens lang zijn",
     "symbolCharacters": "Symbool mag alleen letters, cijfers, punten of koppeltekens bevatten",
     "ambiguousSecurity": "\"{{ query }}\" komt overeen met meerdere effecten: {{ list }}. Gebruik het exacte tickersymbool.",
-    "securityNotFoundByQuery": "Geen effect komt overeen met \"{{ query }}\". Voeg het effect eerst toe of controleer het tickersymbool."
+    "securityNotFoundByQuery": "Geen effect komt overeen met \"{{ query }}\". Voeg het effect eerst toe of controleer het tickersymbool.",
+    "lookupQueryRequired": "Geef een tickersymbool of effectnaam op om op te zoeken.",
+    "lookupNotFound": "Geen effect gevonden dat overeenkomt met \"{{ query }}\". Controleer het symbool of de naam, of geef een beurs op.",
+    "lookupAmbiguous": "\"{{ query }}\" komt overeen met meerdere effecten: {{ list }}. Voer opnieuw uit en geef een beurs op.",
+    "lookupNoCurrency": "Kan de valuta voor \"{{ symbol }}\" niet bepalen. Voeg het effect in plaats daarvan handmatig toe."
   },
   "tags": {
     "notFound": "Label met ID {{ id }} niet gevonden",

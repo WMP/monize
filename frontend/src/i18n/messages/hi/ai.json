@@ -95,7 +95,16 @@
       "REINVEST": "पुनर्निवेश",
       "ADD_SHARES": "शेयर जोड़ें",
       "REMOVE_SHARES": "शेयर हटाएं"
-    }
+    },
+    "createSecurityTitle": "यह प्रतिभूति बनाएँ?",
+    "createdSecurity": "प्रतिभूति बनाई गई",
+    "viewSecurities": "प्रतिभूतियाँ देखें",
+    "symbol": "प्रतीक",
+    "securityType": "प्रकार",
+    "exchange": "एक्सचेंज",
+    "currency": "मुद्रा",
+    "favourite": "पसंदीदा",
+    "favouriteYes": "डैशबोर्ड पर पिन किया गया"
   },
   "table": {
     "downloadTitle": "तालिका CSV के रूप में डाउनलोड करें",

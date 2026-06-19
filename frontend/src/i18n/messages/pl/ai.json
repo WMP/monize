@@ -95,7 +95,16 @@
       "REINVEST": "Reinwestycja",
       "ADD_SHARES": "Dodaj udziały",
       "REMOVE_SHARES": "Usuń udziały"
-    }
+    },
+    "createSecurityTitle": "Utworzyć ten papier wartościowy?",
+    "createdSecurity": "Utworzono papier wartościowy",
+    "viewSecurities": "Wyświetl papiery wartościowe",
+    "symbol": "Symbol",
+    "securityType": "Typ",
+    "exchange": "Giełda",
+    "currency": "Waluta",
+    "favourite": "Ulubiony",
+    "favouriteYes": "Przypięto do pulpitu"
   },
   "table": {
     "downloadTitle": "Pobierz tabelę jako CSV",

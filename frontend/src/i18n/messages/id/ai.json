@@ -95,7 +95,16 @@
       "REINVEST": "Reinvestasi",
       "ADD_SHARES": "Tambah Lembar",
       "REMOVE_SHARES": "Hapus Lembar"
-    }
+    },
+    "createSecurityTitle": "Buat sekuritas ini?",
+    "createdSecurity": "Sekuritas dibuat",
+    "viewSecurities": "Lihat sekuritas",
+    "symbol": "Simbol",
+    "securityType": "Tipe",
+    "exchange": "Bursa",
+    "currency": "Mata uang",
+    "favourite": "Favorit",
+    "favouriteYes": "Disematkan ke dasbor"
   },
   "table": {
     "downloadTitle": "Unduh tabel sebagai CSV",

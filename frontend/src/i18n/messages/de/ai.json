@@ -95,7 +95,16 @@
       "REINVEST": "Reinvestition",
       "ADD_SHARES": "Anteile hinzufügen",
       "REMOVE_SHARES": "Anteile entfernen"
-    }
+    },
+    "createSecurityTitle": "Dieses Wertpapier erstellen?",
+    "createdSecurity": "Wertpapier erstellt",
+    "viewSecurities": "Wertpapiere anzeigen",
+    "symbol": "Symbol",
+    "securityType": "Typ",
+    "exchange": "Börse",
+    "currency": "Währung",
+    "favourite": "Favorit",
+    "favouriteYes": "An Dashboard angeheftet"
   },
   "table": {
     "downloadTitle": "Tabelle als CSV herunterladen",

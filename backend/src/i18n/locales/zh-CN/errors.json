@@ -363,7 +363,11 @@
     "symbolLength": "代码长度必须在 1 到 20 个字符之间",
     "symbolCharacters": "代码只能包含字母、数字、点或连字符",
     "ambiguousSecurity": "\"{{ query }}\" 匹配多个证券：{{ list }}。请使用准确的股票代码。",
-    "securityNotFoundByQuery": "没有证券与 \"{{ query }}\" 匹配。请先添加该证券或检查股票代码。"
+    "securityNotFoundByQuery": "没有证券与 \"{{ query }}\" 匹配。请先添加该证券或检查股票代码。",
+    "lookupQueryRequired": "请输入要查询的股票代码或证券名称。",
+    "lookupNotFound": "未找到与\"{{ query }}\"匹配的证券。请检查代码或名称，或指定一个交易所。",
+    "lookupAmbiguous": "\"{{ query }}\"匹配到多个证券：{{ list }}。请指定交易所后重新运行。",
+    "lookupNoCurrency": "无法确定\"{{ symbol }}\"的货币。请改为手动添加该证券。"
   },
   "tags": {
     "notFound": "未找到 ID 为 {{ id }} 的标签",

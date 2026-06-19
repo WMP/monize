@@ -95,7 +95,16 @@
       "REINVEST": "再投資",
       "ADD_SHARES": "增加股數",
       "REMOVE_SHARES": "減少股數"
-    }
+    },
+    "createSecurityTitle": "建立此證券？",
+    "createdSecurity": "證券已建立",
+    "viewSecurities": "檢視證券",
+    "symbol": "代碼",
+    "securityType": "類型",
+    "exchange": "交易所",
+    "currency": "貨幣",
+    "favourite": "我的最愛",
+    "favouriteYes": "已釘選到儀表板"
   },
   "table": {
     "downloadTitle": "下載表格為 CSV",

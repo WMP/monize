@@ -95,7 +95,16 @@
       "REINVEST": "Реінвестування",
       "ADD_SHARES": "Додати акції",
       "REMOVE_SHARES": "Видалити акції"
-    }
+    },
+    "createSecurityTitle": "Створити цей цінний папір?",
+    "createdSecurity": "Цінний папір створено",
+    "viewSecurities": "Переглянути цінні папери",
+    "symbol": "Символ",
+    "securityType": "Тип",
+    "exchange": "Біржа",
+    "currency": "Валюта",
+    "favourite": "Уподобане",
+    "favouriteYes": "Закріплено на панелі"
   },
   "table": {
     "downloadTitle": "Завантажити таблицю як CSV",

@@ -95,7 +95,16 @@
       "REINVEST": "Реинвестирование",
       "ADD_SHARES": "Добавить акции",
       "REMOVE_SHARES": "Удалить акции"
-    }
+    },
+    "createSecurityTitle": "Создать эту ценную бумагу?",
+    "createdSecurity": "Ценная бумага создана",
+    "viewSecurities": "Показать ценные бумаги",
+    "symbol": "Символ",
+    "securityType": "Тип",
+    "exchange": "Биржа",
+    "currency": "Валюта",
+    "favourite": "Избранное",
+    "favouriteYes": "Закреплено на панели"
   },
   "table": {
     "downloadTitle": "Скачать таблицу в формате CSV",

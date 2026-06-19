@@ -95,7 +95,16 @@
       "REINVEST": "Reinvestir",
       "ADD_SHARES": "Adicionar Ações",
       "REMOVE_SHARES": "Remover Ações"
-    }
+    },
+    "createSecurityTitle": "Criar este título?",
+    "createdSecurity": "Título criado",
+    "viewSecurities": "Ver títulos",
+    "symbol": "Símbolo",
+    "securityType": "Tipo",
+    "exchange": "Bolsa",
+    "currency": "Moeda",
+    "favourite": "Favorito",
+    "favouriteYes": "Fixado no painel"
   },
   "table": {
     "downloadTitle": "Transferir tabela como CSV",

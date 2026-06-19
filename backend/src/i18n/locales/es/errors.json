@@ -363,7 +363,11 @@
     "symbolLength": "El símbolo debe tener entre 1 y 20 caracteres",
     "symbolCharacters": "El símbolo solo puede contener letras, dígitos, puntos o guiones",
     "ambiguousSecurity": "\"{{ query }}\" coincide con varios valores: {{ list }}. Use el símbolo exacto.",
-    "securityNotFoundByQuery": "Ningún valor coincide con \"{{ query }}\". Agregue el valor primero o verifique el símbolo."
+    "securityNotFoundByQuery": "Ningún valor coincide con \"{{ query }}\". Agregue el valor primero o verifique el símbolo.",
+    "lookupQueryRequired": "Proporcione un símbolo bursátil o el nombre de un valor para buscar.",
+    "lookupNotFound": "No se encontró ningún valor que coincida con \"{{ query }}\". Comprueba el símbolo o el nombre, o especifica un mercado.",
+    "lookupAmbiguous": "\"{{ query }}\" coincide con varios valores: {{ list }}. Vuelve a ejecutar la búsqueda especificando un mercado.",
+    "lookupNoCurrency": "No se pudo determinar la moneda de \"{{ symbol }}\". Añade el valor manualmente en su lugar."
   },
   "tags": {
     "notFound": "Etiqueta con ID {{ id }} no encontrada",

@@ -363,7 +363,11 @@
     "symbolLength": "Symbol musi mieć od 1 do 20 znaków",
     "symbolCharacters": "Symbol może zawierać tylko litery, cyfry, kropki lub myślniki",
     "ambiguousSecurity": "\"{{ query }}\" pasuje do wielu papierów wartościowych: {{ list }}. Użyj dokładnego symbolu giełdowego.",
-    "securityNotFoundByQuery": "Żaden papier wartościowy nie pasuje do \"{{ query }}\". Najpierw dodaj papier wartościowy lub sprawdź symbol giełdowy."
+    "securityNotFoundByQuery": "Żaden papier wartościowy nie pasuje do \"{{ query }}\". Najpierw dodaj papier wartościowy lub sprawdź symbol giełdowy.",
+    "lookupQueryRequired": "Podaj symbol giełdowy lub nazwę papieru wartościowego do wyszukania.",
+    "lookupNotFound": "Nie znaleziono papieru wartościowego pasującego do \"{{ query }}\". Sprawdź symbol lub nazwę albo określ giełdę.",
+    "lookupAmbiguous": "\"{{ query }}\" pasuje do wielu papierów wartościowych: {{ list }}. Uruchom ponownie, podając giełdę.",
+    "lookupNoCurrency": "Nie można ustalić waluty dla \"{{ symbol }}\". Zamiast tego dodaj papier wartościowy ręcznie."
   },
   "tags": {
     "notFound": "Nie znaleziono tagu o ID {{ id }}",

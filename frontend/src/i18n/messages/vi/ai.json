@@ -95,7 +95,16 @@
       "REINVEST": "Tái đầu tư",
       "ADD_SHARES": "Thêm cổ phiếu",
       "REMOVE_SHARES": "Xóa cổ phiếu"
-    }
+    },
+    "createSecurityTitle": "Tạo chứng khoán này?",
+    "createdSecurity": "Đã tạo chứng khoán",
+    "viewSecurities": "Xem chứng khoán",
+    "symbol": "Mã",
+    "securityType": "Loại",
+    "exchange": "Sàn giao dịch",
+    "currency": "Tiền tệ",
+    "favourite": "Yêu thích",
+    "favouriteYes": "Đã ghim vào bảng điều khiển"
   },
   "table": {
     "downloadTitle": "Tải bảng dưới dạng CSV",

@@ -363,7 +363,11 @@
     "symbolLength": "Il simbolo deve contenere tra 1 e 20 caratteri",
     "symbolCharacters": "Il simbolo deve contenere solo lettere, cifre, punti o trattini",
     "ambiguousSecurity": "\"{{ query }}\" corrisponde a più titoli: {{ list }}. Usa il simbolo ticker esatto.",
-    "securityNotFoundByQuery": "Nessun titolo corrisponde a \"{{ query }}\". Aggiungi prima il titolo o verifica il simbolo ticker."
+    "securityNotFoundByQuery": "Nessun titolo corrisponde a \"{{ query }}\". Aggiungi prima il titolo o verifica il simbolo ticker.",
+    "lookupQueryRequired": "Inserisci un simbolo ticker o il nome di un titolo da cercare.",
+    "lookupNotFound": "Nessun titolo trovato corrispondente a \"{{ query }}\". Controlla il simbolo o il nome, oppure specifica una borsa.",
+    "lookupAmbiguous": "\"{{ query }}\" corrisponde a più titoli: {{ list }}. Esegui di nuovo specificando una borsa.",
+    "lookupNoCurrency": "Impossibile determinare la valuta per \"{{ symbol }}\". Aggiungi il titolo manualmente."
   },
   "tags": {
     "notFound": "Etichetta con ID {{ id }} non trovata",

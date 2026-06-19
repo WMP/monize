@@ -95,7 +95,16 @@
       "REINVEST": "재투자",
       "ADD_SHARES": "주식수 추가",
       "REMOVE_SHARES": "주식수 제거"
-    }
+    },
+    "createSecurityTitle": "이 증권을 생성하시겠습니까?",
+    "createdSecurity": "증권이 생성되었습니다",
+    "viewSecurities": "증권 보기",
+    "symbol": "심볼",
+    "securityType": "유형",
+    "exchange": "거래소",
+    "currency": "통화",
+    "favourite": "즐겨찾기",
+    "favouriteYes": "대시보드에 고정됨"
   },
   "table": {
     "downloadTitle": "CSV로 표 다운로드",

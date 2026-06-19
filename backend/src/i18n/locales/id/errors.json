@@ -363,7 +363,11 @@
     "symbolLength": "Simbol harus antara 1 dan 20 karakter",
     "symbolCharacters": "Simbol hanya boleh mengandung huruf, angka, titik, atau tanda hubung",
     "ambiguousSecurity": "\"{{ query }}\" cocok dengan beberapa sekuritas: {{ list }}. Gunakan simbol ticker yang tepat.",
-    "securityNotFoundByQuery": "Tidak ada sekuritas yang cocok dengan \"{{ query }}\". Tambahkan sekuritas terlebih dahulu atau periksa simbol ticker."
+    "securityNotFoundByQuery": "Tidak ada sekuritas yang cocok dengan \"{{ query }}\". Tambahkan sekuritas terlebih dahulu atau periksa simbol ticker.",
+    "lookupQueryRequired": "Masukkan simbol ticker atau nama sekuritas untuk dicari.",
+    "lookupNotFound": "Tidak ada sekuritas yang cocok dengan \"{{ query }}\". Periksa simbol atau nama, atau tentukan bursa.",
+    "lookupAmbiguous": "\"{{ query }}\" cocok dengan beberapa sekuritas: {{ list }}. Jalankan lagi dengan menentukan bursa.",
+    "lookupNoCurrency": "Tidak dapat menentukan mata uang untuk \"{{ symbol }}\". Tambahkan sekuritas secara manual sebagai gantinya."
   },
   "tags": {
     "notFound": "Tag dengan ID {{ id }} tidak ditemukan",

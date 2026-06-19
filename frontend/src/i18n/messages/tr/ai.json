@@ -95,7 +95,16 @@
       "REINVEST": "Yeniden Yatır",
       "ADD_SHARES": "Hisse Ekle",
       "REMOVE_SHARES": "Hisse Çıkar"
-    }
+    },
+    "createSecurityTitle": "Bu menkul kıymet oluşturulsun mu?",
+    "createdSecurity": "Menkul kıymet oluşturuldu",
+    "viewSecurities": "Menkul kıymetleri görüntüle",
+    "symbol": "Sembol",
+    "securityType": "Tür",
+    "exchange": "Borsa",
+    "currency": "Para birimi",
+    "favourite": "Favori",
+    "favouriteYes": "Panoya sabitlendi"
   },
   "table": {
     "downloadTitle": "Tabloyu CSV olarak indir",

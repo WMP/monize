@@ -95,7 +95,16 @@
       "REINVEST": "再投资",
       "ADD_SHARES": "增加股份",
       "REMOVE_SHARES": "减少股份"
-    }
+    },
+    "createSecurityTitle": "创建此证券？",
+    "createdSecurity": "证券已创建",
+    "viewSecurities": "查看证券",
+    "symbol": "代码",
+    "securityType": "类型",
+    "exchange": "交易所",
+    "currency": "货币",
+    "favourite": "收藏",
+    "favouriteYes": "已固定到仪表板"
   },
   "table": {
     "downloadTitle": "将表格下载为 CSV",

@@ -363,7 +363,11 @@
     "symbolLength": "代碼必須介於 1 到 20 個字元之間",
     "symbolCharacters": "代碼只能包含字母、數字、點或連字號",
     "ambiguousSecurity": "\"{{ query }}\" 符合多個證券：{{ list }}。請使用準確的股票代碼。",
-    "securityNotFoundByQuery": "沒有證券符合 \"{{ query }}\"。請先新增該證券或檢查股票代碼。"
+    "securityNotFoundByQuery": "沒有證券符合 \"{{ query }}\"。請先新增該證券或檢查股票代碼。",
+    "lookupQueryRequired": "請輸入要查詢的股票代碼或證券名稱。",
+    "lookupNotFound": "找不到與「{{ query }}」相符的證券。請檢查代碼或名稱，或指定一個交易所。",
+    "lookupAmbiguous": "「{{ query }}」符合多個證券：{{ list }}。請指定交易所後重新執行。",
+    "lookupNoCurrency": "無法確定「{{ symbol }}」的貨幣。請改為手動新增該證券。"
   },
   "tags": {
     "notFound": "找不到 ID 為 {{ id }} 的標籤",

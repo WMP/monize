@@ -95,7 +95,16 @@
       "REINVEST": "再投資",
       "ADD_SHARES": "株数追加",
       "REMOVE_SHARES": "株数削除"
-    }
+    },
+    "createSecurityTitle": "この証券を作成しますか？",
+    "createdSecurity": "証券を作成しました",
+    "viewSecurities": "証券を表示",
+    "symbol": "シンボル",
+    "securityType": "種類",
+    "exchange": "取引所",
+    "currency": "通貨",
+    "favourite": "お気に入り",
+    "favouriteYes": "ダッシュボードに固定"
   },
   "table": {
     "downloadTitle": "テーブルを CSV でダウンロード",

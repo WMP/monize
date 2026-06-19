@@ -363,7 +363,11 @@
     "symbolLength": "Le symbole doit comporter entre 1 et 20 caractères",
     "symbolCharacters": "Le symbole ne doit contenir que des lettres, chiffres, points ou tirets",
     "ambiguousSecurity": "\"{{ query }}\" correspond à plusieurs titres : {{ list }}. Utilisez le symbole exact.",
-    "securityNotFoundByQuery": "Aucun titre ne correspond à \"{{ query }}\". Ajoutez d'abord le titre ou vérifiez le symbole."
+    "securityNotFoundByQuery": "Aucun titre ne correspond à \"{{ query }}\". Ajoutez d'abord le titre ou vérifiez le symbole.",
+    "lookupQueryRequired": "Indiquez un symbole boursier ou le nom d'un titre à rechercher.",
+    "lookupNotFound": "Aucun titre ne correspond à « {{ query }} ». Vérifiez le symbole ou le nom, ou précisez une place boursière.",
+    "lookupAmbiguous": "« {{ query }} » correspond à plusieurs titres : {{ list }}. Relancez la recherche en précisant une place boursière.",
+    "lookupNoCurrency": "Impossible de déterminer la devise de « {{ symbol }} ». Ajoutez le titre manuellement à la place."
   },
   "tags": {
     "notFound": "Étiquette avec l'ID {{ id }} introuvable",

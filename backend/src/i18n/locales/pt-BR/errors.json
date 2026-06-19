@@ -363,7 +363,11 @@
     "symbolLength": "O símbolo deve ter entre 1 e 20 caracteres",
     "symbolCharacters": "O símbolo deve conter apenas letras, dígitos, pontos ou hífens",
     "ambiguousSecurity": "\"{{ query }}\" corresponde a vários títulos: {{ list }}. Use o símbolo exato.",
-    "securityNotFoundByQuery": "Nenhum título corresponde a \"{{ query }}\". Adicione o título primeiro ou verifique o símbolo."
+    "securityNotFoundByQuery": "Nenhum título corresponde a \"{{ query }}\". Adicione o título primeiro ou verifique o símbolo.",
+    "lookupQueryRequired": "Forneça um símbolo de cotação ou o nome de um ativo para pesquisar.",
+    "lookupNotFound": "Nenhum ativo encontrado correspondente a \"{{ query }}\". Verifique o símbolo ou o nome, ou especifique uma bolsa.",
+    "lookupAmbiguous": "\"{{ query }}\" corresponde a vários ativos: {{ list }}. Execute novamente especificando uma bolsa.",
+    "lookupNoCurrency": "Não foi possível determinar a moeda de \"{{ symbol }}\". Adicione o ativo manualmente."
   },
   "tags": {
     "notFound": "Etiqueta com ID {{ id }} não encontrada",

@@ -363,7 +363,11 @@
     "symbolLength": "Symbol muss zwischen 1 und 20 Zeichen lang sein",
     "symbolCharacters": "Symbol darf nur Buchstaben, Ziffern, Punkte oder Bindestriche enthalten",
     "ambiguousSecurity": "\"{{ query }}\" entspricht mehreren Wertpapieren: {{ list }}. Verwenden Sie das genaue Tickersymbol.",
-    "securityNotFoundByQuery": "Kein Wertpapier entspricht \"{{ query }}\". Fügen Sie das Wertpapier zuerst hinzu oder überprüfen Sie das Tickersymbol."
+    "securityNotFoundByQuery": "Kein Wertpapier entspricht \"{{ query }}\". Fügen Sie das Wertpapier zuerst hinzu oder überprüfen Sie das Tickersymbol.",
+    "lookupQueryRequired": "Geben Sie ein Tickersymbol oder einen Wertpapiernamen zum Nachschlagen ein.",
+    "lookupNotFound": "Kein Wertpapier gefunden, das auf \"{{ query }}\" passt. Überprüfen Sie das Symbol oder den Namen oder geben Sie eine Börse an.",
+    "lookupAmbiguous": "\"{{ query }}\" passt auf mehrere Wertpapiere: {{ list }}. Führen Sie die Suche erneut mit Angabe einer Börse aus.",
+    "lookupNoCurrency": "Die Währung für \"{{ symbol }}\" konnte nicht ermittelt werden. Fügen Sie das Wertpapier stattdessen manuell hinzu."
   },
   "tags": {
     "notFound": "Etikett mit ID {{ id }} nicht gefunden",

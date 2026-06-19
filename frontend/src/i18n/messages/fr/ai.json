@@ -95,7 +95,16 @@
       "REINVEST": "Réinvestissement",
       "ADD_SHARES": "Ajouter des actions",
       "REMOVE_SHARES": "Retirer des actions"
-    }
+    },
+    "createSecurityTitle": "Créer ce titre ?",
+    "createdSecurity": "Titre créé",
+    "viewSecurities": "Voir les titres",
+    "symbol": "Symbole",
+    "securityType": "Type",
+    "exchange": "Place boursière",
+    "currency": "Devise",
+    "favourite": "Favori",
+    "favouriteYes": "Épinglé au tableau de bord"
   },
   "table": {
     "downloadTitle": "Télécharger le tableau en CSV",
