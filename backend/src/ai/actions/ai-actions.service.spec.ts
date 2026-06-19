@@ -6,6 +6,7 @@ import { AiWriteLimiter, AI_DAILY_WRITE_LIMIT } from "./ai-write-limiter";
 import {
   CategorizeTransactionDescriptor,
   CreatePayeeDescriptor,
+  CreateSecurityDescriptor,
   CreateTransactionDescriptor,
   CreateInvestmentTransactionDescriptor,
   CreateTransactionsDescriptor,
@@ -31,6 +32,7 @@ describe("AiActionsService", () => {
   let transactions: Record<string, jest.Mock>;
   let payees: Record<string, jest.Mock>;
   let investments: Record<string, jest.Mock>;
+  let securities: Record<string, jest.Mock>;
 
   beforeEach(() => {
     const config = {
@@ -52,10 +54,14 @@ describe("AiActionsService", () => {
       create: jest.fn().mockResolvedValue({ id: "inv-tx-new" }),
       createBulk: jest.fn(),
     };
+    securities = {
+      create: jest.fn().mockResolvedValue({ id: "sec-new" }),
+    };
     service = new AiActionsService(
       transactions as never,
       payees as never,
       investments as never,
+      securities as never,
       signing,
       limiter,
     );
@@ -186,6 +192,35 @@ describe("AiActionsService", () => {
       expect.objectContaining({ name: "Acme", defaultCategoryId: CAT }),
     );
     expect(result).toEqual({ type: "create_payee", id: "payee-new" });
+  });
+
+  it("creates a security on a valid confirmation", async () => {
+    const descriptor: CreateSecurityDescriptor = {
+      type: "create_security",
+      userId: USER,
+      actionId: "act-sec",
+      expiresAt: Date.now() + 60_000,
+      symbol: "AAPL",
+      name: "Apple Inc.",
+      securityType: "STOCK",
+      exchange: "NASDAQ",
+      currencyCode: "USD",
+      isFavourite: false,
+      quoteProvider: "yahoo",
+      msnInstrumentId: null,
+    };
+    const result = await service.confirm(USER, dtoFor(descriptor));
+    expect(securities.create).toHaveBeenCalledWith(
+      USER,
+      expect.objectContaining({
+        symbol: "AAPL",
+        name: "Apple Inc.",
+        securityType: "STOCK",
+        exchange: "NASDAQ",
+        currencyCode: "USD",
+      }),
+    );
+    expect(result).toEqual({ type: "create_security", id: "sec-new" });
   });
 
   it("creates an investment transaction on a valid confirmation", async () => {

@@ -173,6 +173,7 @@ export type AiActionType =
   | 'create_transaction'
   | 'categorize_transaction'
   | 'create_payee'
+  | 'create_security'
   | 'create_investment_transaction'
   | 'create_transactions'
   | 'create_investment_transactions';
@@ -210,6 +211,11 @@ export interface PendingActionPreview {
   cashAccountName?: string | null;
   cashCurrency?: string | null;
   cashAmount?: number | null;
+  // create_security display fields (symbol/securityName/securityCurrency above
+  // are reused for the ticker, full name, and currency).
+  securityType?: string | null;
+  exchange?: string | null;
+  isFavourite?: boolean;
   /**
    * Per-row previews for the bulk actions (`create_transactions`,
    * `create_investment_transactions`). Every pasted row in order -- both the

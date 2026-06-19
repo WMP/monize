@@ -235,6 +235,41 @@ const cases: Array<{ name: string; schema: RawShape; raw: unknown }> = [
     },
   },
   {
+    name: "createSecurityOutput (created branch)",
+    schema: schemas.createSecurityOutput,
+    raw: {
+      id: "sec1",
+      symbol: "AAPL",
+      name: "Apple Inc.",
+      securityType: "STOCK",
+      exchange: "NASDAQ",
+      currencyCode: "USD",
+      isFavourite: false,
+    },
+  },
+  {
+    name: "createSecurityOutput (dry-run branch)",
+    schema: schemas.createSecurityOutput,
+    raw: {
+      dryRun: true,
+      preview: {
+        symbol: "AAPL",
+        name: "Apple Inc.",
+        securityType: "STOCK",
+        exchange: "NASDAQ",
+        currencyCode: "USD",
+        isFavourite: false,
+        quoteProvider: "yahoo",
+      },
+      message: "This is a preview.",
+    },
+  },
+  {
+    name: "createSecurityOutput (relay branch)",
+    schema: schemas.createSecurityOutput,
+    raw: { status: "preview_shown" },
+  },
+  {
     name: "createInvestmentTransactionOutput (created branch)",
     schema: schemas.createInvestmentTransactionOutput,
     raw: {

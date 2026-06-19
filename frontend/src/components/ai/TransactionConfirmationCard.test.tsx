@@ -247,4 +247,68 @@ describe('TransactionConfirmationCard', () => {
       screen.getByRole('link', { name: 'View investments' }),
     ).toHaveAttribute('href', '/investments');
   });
+
+  function makeSecurityAction(
+    previewOverrides: Partial<PendingAction['preview']> = {},
+    overrides: Partial<PendingAction> = {},
+  ): PendingAction {
+    return makeAction({
+      type: 'create_security',
+      descriptor: { type: 'create_security' },
+      preview: {
+        symbol: 'AAPL',
+        securityName: 'Apple Inc.',
+        securityType: 'STOCK',
+        exchange: 'NASDAQ',
+        securityCurrency: 'USD',
+        isFavourite: false,
+        ...previewOverrides,
+      },
+      ...overrides,
+    });
+  }
+
+  it('renders a security preview with symbol, type, exchange, and currency', () => {
+    render(
+      <TransactionConfirmationCard
+        action={makeSecurityAction()}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Create this security?')).toBeInTheDocument();
+    expect(screen.getByText('AAPL')).toBeInTheDocument();
+    expect(screen.getByText('Apple Inc.')).toBeInTheDocument();
+    expect(screen.getByText('STOCK')).toBeInTheDocument();
+    expect(screen.getByText('NASDAQ')).toBeInTheDocument();
+    expect(screen.getByText('USD')).toBeInTheDocument();
+    // Not pinned, so no favourite row.
+    expect(screen.queryByText('Favourite')).toBeNull();
+  });
+
+  it('shows the favourite row when the security is pinned', () => {
+    render(
+      <TransactionConfirmationCard
+        action={makeSecurityAction({ isFavourite: true })}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Favourite')).toBeInTheDocument();
+    expect(screen.getByText('Pinned to dashboard')).toBeInTheDocument();
+  });
+
+  it('shows a view-securities link once a security is created', () => {
+    render(
+      <TransactionConfirmationCard
+        action={makeSecurityAction({}, { status: 'confirmed', resultId: 'sec-1' })}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Security created')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'View securities' }),
+    ).toHaveAttribute('href', '/securities');
+  });
 });

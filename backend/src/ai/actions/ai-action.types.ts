@@ -21,6 +21,7 @@ export type AiActionType =
   | "create_transaction"
   | "categorize_transaction"
   | "create_payee"
+  | "create_security"
   | "create_investment_transaction"
   | "create_transactions"
   | "create_investment_transactions";
@@ -29,6 +30,7 @@ export const AI_ACTION_TYPES: AiActionType[] = [
   "create_transaction",
   "categorize_transaction",
   "create_payee",
+  "create_security",
   "create_investment_transaction",
   "create_transactions",
   "create_investment_transactions",
@@ -82,6 +84,22 @@ export interface CreatePayeeDescriptor extends BaseDescriptor {
   type: "create_payee";
   name: string;
   defaultCategoryId: string | null;
+}
+
+export interface CreateSecurityDescriptor extends BaseDescriptor {
+  type: "create_security";
+  /** Ticker symbol resolved by the quote-provider lookup. */
+  symbol: string;
+  name: string;
+  /** Constrained to the known security-type list, or null when unclassified. */
+  securityType: string | null;
+  /** Constrained to the known exchange list, or null when not exchange-listed. */
+  exchange: string | null;
+  currencyCode: string;
+  isFavourite: boolean;
+  /** Per-security quote-source override carried from the lookup; null = user default. */
+  quoteProvider: "yahoo" | "msn" | null;
+  msnInstrumentId: string | null;
 }
 
 export interface CreateInvestmentTransactionDescriptor extends BaseDescriptor {
@@ -152,6 +170,7 @@ export type AiActionDescriptor =
   | CreateTransactionDescriptor
   | CategorizeTransactionDescriptor
   | CreatePayeeDescriptor
+  | CreateSecurityDescriptor
   | CreateInvestmentTransactionDescriptor
   | CreateTransactionsDescriptor
   | CreateInvestmentTransactionsDescriptor;
@@ -186,6 +205,11 @@ export interface AiActionPreview {
   cashAccountName?: string | null;
   cashCurrency?: string | null;
   cashAmount?: number | null;
+  // create_security display fields (symbol/securityName/securityCurrency above
+  // are reused for the ticker, full name, and currency).
+  securityType?: string | null;
+  exchange?: string | null;
+  isFavourite?: boolean;
   /**
    * Per-row previews for the bulk actions (`create_transactions`,
    * `create_investment_transactions`). Carries every pasted row in order --

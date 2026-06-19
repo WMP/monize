@@ -5,6 +5,10 @@ import {
   positiveIntSchema,
 } from "../../common/tool-schemas";
 import { MAX_BULK_ACTION_ROWS } from "../actions/ai-action.types";
+import {
+  SECURITY_EXCHANGES,
+  SECURITY_TYPES,
+} from "../../securities/security-enums";
 
 /**
  * LLM07-F1: Zod schemas for validating AI tool inputs server-side.
@@ -228,6 +232,13 @@ export const createPayeeSchema = z.object({
   defaultCategoryName: z.string().max(100).optional(),
 });
 
+export const createSecuritySchema = z.object({
+  query: z.string().min(1).max(100),
+  exchange: z.enum(SECURITY_EXCHANGES).optional(),
+  securityType: z.enum(SECURITY_TYPES).optional(),
+  isFavourite: z.boolean().optional(),
+});
+
 /**
  * A non-negative share/price/commission quantity. Bounded the same way the
  * money amount is; per-field decimal precision is enforced downstream by the
@@ -286,6 +297,7 @@ export const toolInputSchemas: Record<string, z.ZodSchema> = {
   create_transaction: createTransactionSchema,
   categorize_transaction: categorizeTransactionSchema,
   create_payee: createPayeeSchema,
+  create_security: createSecuritySchema,
   create_investment_transaction: createInvestmentTransactionSchema,
   create_transactions: createTransactionsSchema,
   create_investment_transactions: createInvestmentTransactionsSchema,

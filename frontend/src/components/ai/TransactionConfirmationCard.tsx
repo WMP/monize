@@ -40,7 +40,9 @@ export function TransactionConfirmationCard({
         ? t('confirmAction.categorizeTitle')
         : type === 'create_investment_transaction'
           ? t('confirmAction.createInvestmentTransactionTitle')
-          : t('confirmAction.createPayeeTitle');
+          : type === 'create_security'
+            ? t('confirmAction.createSecurityTitle')
+            : t('confirmAction.createPayeeTitle');
 
   const none = t('confirmAction.none');
   const rows: Array<{ label: string; value: string }> = [];
@@ -147,6 +149,29 @@ export function TransactionConfirmationCard({
         label: t('confirmAction.description'),
         value: preview.description,
       });
+  } else if (type === 'create_security') {
+    if (preview.symbol)
+      rows.push({ label: t('confirmAction.symbol'), value: preview.symbol });
+    if (preview.securityName)
+      rows.push({ label: t('confirmAction.name'), value: preview.securityName });
+    rows.push({
+      label: t('confirmAction.securityType'),
+      value: preview.securityType || none,
+    });
+    rows.push({
+      label: t('confirmAction.exchange'),
+      value: preview.exchange || none,
+    });
+    if (preview.securityCurrency)
+      rows.push({
+        label: t('confirmAction.currency'),
+        value: preview.securityCurrency,
+      });
+    if (preview.isFavourite)
+      rows.push({
+        label: t('confirmAction.favourite'),
+        value: t('confirmAction.favouriteYes'),
+      });
   } else {
     rows.push({
       label: t('confirmAction.name'),
@@ -161,12 +186,15 @@ export function TransactionConfirmationCard({
   const isInvestmentResult = type === 'create_investment_transaction';
   const isTransactionResult =
     type === 'create_transaction' || type === 'categorize_transaction';
+  const isSecurityResult = type === 'create_security';
   // The created/updated record's home, surfaced as a "view" link on success.
   const viewLink = isInvestmentResult
     ? { href: '/investments', label: t('confirmAction.viewInvestments') }
-    : isTransactionResult
-      ? { href: '/transactions', label: t('confirmAction.viewTransaction') }
-      : null;
+    : isSecurityResult
+      ? { href: '/securities', label: t('confirmAction.viewSecurities') }
+      : isTransactionResult
+        ? { href: '/transactions', label: t('confirmAction.viewTransaction') }
+        : null;
   const successMessage =
     type === 'create_transaction'
       ? t('confirmAction.createdTransaction')
@@ -174,7 +202,9 @@ export function TransactionConfirmationCard({
         ? t('confirmAction.categorized')
         : type === 'create_investment_transaction'
           ? t('confirmAction.createdInvestmentTransaction')
-          : t('confirmAction.createdPayee');
+          : type === 'create_security'
+            ? t('confirmAction.createdSecurity')
+            : t('confirmAction.createdPayee');
 
   return (
     <div className="rounded-lg border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-900/20 overflow-hidden">

@@ -7,6 +7,7 @@ describe("McpInvestmentsTools", () => {
   let portfolioService: Record<string, jest.Mock>;
   let holdingsService: Record<string, jest.Mock>;
   let investmentTransactionsService: Record<string, jest.Mock>;
+  let securitiesService: Record<string, jest.Mock>;
   let server: {
     registerTool: jest.Mock;
     server: { getClientCapabilities: jest.Mock; elicitInput: jest.Mock };
@@ -36,16 +37,23 @@ describe("McpInvestmentsTools", () => {
 
     // Default: not serving a relayed prompt, so the tool uses its normal
     // (direct MCP-client) confirmation path and the existing assertions hold.
+    securitiesService = {
+      previewCreateSecurity: jest.fn(),
+      create: jest.fn(),
+    };
+
     relayService = { emitPendingAction: jest.fn().mockReturnValue(false) };
     const actionBuilder = {
       buildCreateInvestmentTransaction: jest.fn().mockReturnValue({}),
       buildCreateInvestmentTransactions: jest.fn().mockReturnValue({}),
+      buildCreateSecurity: jest.fn().mockReturnValue({}),
     };
 
     tool = new McpInvestmentsTools(
       portfolioService as any,
       holdingsService as any,
       investmentTransactionsService as any,
+      securitiesService as any,
       relayService as any,
       actionBuilder as any,
     );
@@ -68,8 +76,8 @@ describe("McpInvestmentsTools", () => {
     tool.register(server as any, resolve);
   });
 
-  it("should register 6 tools", () => {
-    expect(server.registerTool).toHaveBeenCalledTimes(6);
+  it("should register 7 tools", () => {
+    expect(server.registerTool).toHaveBeenCalledTimes(7);
   });
 
   describe("get_portfolio_summary", () => {
@@ -367,6 +375,126 @@ describe("McpInvestmentsTools", () => {
         { sessionId: "s1" },
       );
       expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("create_security", () => {
+    const securityPreview = {
+      symbol: "AAPL",
+      name: "Apple Inc.",
+      securityType: "STOCK",
+      exchange: "NASDAQ",
+      currencyCode: "USD",
+      isFavourite: false,
+      quoteProvider: "yahoo" as const,
+      msnInstrumentId: null,
+    };
+
+    const securityArgs = { query: "AAPL" };
+
+    it("returns error when no user context", async () => {
+      resolve.mockReturnValue(undefined);
+      const result = await handlers["create_security"](securityArgs, {
+        sessionId: "s1",
+      });
+      expect(result.isError).toBe(true);
+    });
+
+    it("requires the write scope", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      const result = await handlers["create_security"](securityArgs, {
+        sessionId: "s1",
+      });
+      expect(result.isError).toBe(true);
+      expect(securitiesService.previewCreateSecurity).not.toHaveBeenCalled();
+    });
+
+    it("returns a preview without persisting on dryRun", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      securitiesService.previewCreateSecurity.mockResolvedValue(
+        securityPreview,
+      );
+
+      const result = await handlers["create_security"](
+        { ...securityArgs, dryRun: true },
+        { sessionId: "s1" },
+      );
+
+      expect(securitiesService.previewCreateSecurity).toHaveBeenCalledWith(
+        "u1",
+        expect.objectContaining({ query: "AAPL" }),
+      );
+      expect(securitiesService.create).not.toHaveBeenCalled();
+      expect(elicitInput).not.toHaveBeenCalled();
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.dryRun).toBe(true);
+      expect(parsed.preview.symbol).toBe("AAPL");
+      expect(parsed.preview.exchange).toBe("NASDAQ");
+    });
+
+    it("creates when the client cannot elicit (proceeds)", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      securitiesService.previewCreateSecurity.mockResolvedValue(
+        securityPreview,
+      );
+      securitiesService.create.mockResolvedValue({
+        id: "sec-1",
+        symbol: "AAPL",
+        name: "Apple Inc.",
+        securityType: "STOCK",
+        exchange: "NASDAQ",
+        currencyCode: "USD",
+        isFavourite: false,
+      });
+
+      const result = await handlers["create_security"](securityArgs, {
+        sessionId: "s1",
+      });
+
+      expect(securitiesService.create).toHaveBeenCalledWith(
+        "u1",
+        expect.objectContaining({
+          symbol: "AAPL",
+          name: "Apple Inc.",
+          securityType: "STOCK",
+          exchange: "NASDAQ",
+          currencyCode: "USD",
+        }),
+      );
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.id).toBe("sec-1");
+      expect(parsed.symbol).toBe("AAPL");
+    });
+
+    it("surfaces a 4xx lookup failure to the caller", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      securitiesService.previewCreateSecurity.mockRejectedValue(
+        new BadRequestException('No security found matching "ZZZZ".'),
+      );
+
+      const result = await handlers["create_security"](
+        { query: "ZZZZ" },
+        { sessionId: "s1" },
+      );
+
+      expect(result.isError).toBe(true);
+      expect(securitiesService.create).not.toHaveBeenCalled();
+    });
+
+    it("shows the web-chat card via relay instead of persisting", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      securitiesService.previewCreateSecurity.mockResolvedValue(
+        securityPreview,
+      );
+      relayService.emitPendingAction.mockReturnValue(true);
+
+      const result = await handlers["create_security"](securityArgs, {
+        sessionId: "s1",
+      });
+
+      expect(relayService.emitPendingAction).toHaveBeenCalled();
+      expect(securitiesService.create).not.toHaveBeenCalled();
+      expect(result.isError).toBeUndefined();
     });
   });
 

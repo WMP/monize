@@ -7,6 +7,7 @@ import { TransactionAnalyticsService } from "../../transactions/transaction-anal
 import { NetWorthService } from "../../net-worth/net-worth.service";
 import { BudgetReportsService } from "../../budgets/budget-reports.service";
 import { PortfolioService } from "../../securities/portfolio.service";
+import { SecuritiesService } from "../../securities/securities.service";
 import { InvestmentTransactionsService } from "../../securities/investment-transactions.service";
 import { ScheduledTransactionsService } from "../../scheduled-transactions/scheduled-transactions.service";
 import { TransactionsService } from "../../transactions/transactions.service";
@@ -26,6 +27,7 @@ describe("ToolExecutorService", () => {
   let scheduledTransactions: Record<string, jest.Mock>;
   let transactions: Record<string, jest.Mock>;
   let payees: Record<string, jest.Mock>;
+  let securities: Record<string, jest.Mock>;
   let signing: Record<string, jest.Mock>;
 
   const userId = "user-1";
@@ -283,6 +285,19 @@ describe("ToolExecutorService", () => {
       }),
     };
 
+    securities = {
+      previewCreateSecurity: jest.fn().mockResolvedValue({
+        symbol: "AAPL",
+        name: "Apple Inc.",
+        securityType: "STOCK",
+        exchange: "NASDAQ",
+        currencyCode: "USD",
+        isFavourite: false,
+        quoteProvider: "yahoo",
+        msnInstrumentId: null,
+      }),
+    };
+
     signing = {
       sign: jest.fn().mockReturnValue("signature-abc"),
     };
@@ -296,6 +311,7 @@ describe("ToolExecutorService", () => {
         { provide: NetWorthService, useValue: netWorth },
         { provide: BudgetReportsService, useValue: budgetReports },
         { provide: PortfolioService, useValue: portfolio },
+        { provide: SecuritiesService, useValue: securities },
         {
           provide: InvestmentTransactionsService,
           useValue: investmentTransactions,
@@ -1101,6 +1117,48 @@ describe("ToolExecutorService", () => {
         name: "Acme",
         categoryName: "Dining",
       });
+    });
+  });
+
+  describe("create_security (human-in-the-loop)", () => {
+    it("looks the security up and returns a signed pending action", async () => {
+      const result = await service.execute(userId, "create_security", {
+        query: "AAPL",
+      });
+
+      expect(securities.previewCreateSecurity).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({ query: "AAPL" }),
+      );
+      expect(result.pendingAction?.type).toBe("create_security");
+      expect(result.pendingAction?.signature).toBe("signature-abc");
+      expect(result.pendingAction?.descriptor).toMatchObject({
+        type: "create_security",
+        symbol: "AAPL",
+        name: "Apple Inc.",
+        exchange: "NASDAQ",
+        currencyCode: "USD",
+      });
+      expect(result.pendingAction?.preview).toMatchObject({
+        symbol: "AAPL",
+        securityName: "Apple Inc.",
+        securityType: "STOCK",
+        exchange: "NASDAQ",
+        securityCurrency: "USD",
+      });
+    });
+
+    it("surfaces a 4xx lookup failure as a tool error without a pending action", async () => {
+      securities.previewCreateSecurity.mockRejectedValueOnce(
+        new BadRequestException('No security found matching "ZZZZ".'),
+      );
+
+      const result = await service.execute(userId, "create_security", {
+        query: "ZZZZ",
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.pendingAction).toBeUndefined();
     });
   });
 

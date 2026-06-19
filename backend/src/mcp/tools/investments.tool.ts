@@ -3,12 +3,17 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { PortfolioService } from "../../securities/portfolio.service";
 import { HoldingsService } from "../../securities/holdings.service";
+import { SecuritiesService } from "../../securities/securities.service";
 import {
   InvestmentTransactionsService,
   LlmCapitalGainsGroupBy,
   LlmInvestmentTxGroupBy,
 } from "../../securities/investment-transactions.service";
 import { InvestmentAction } from "../../securities/entities/investment-transaction.entity";
+import {
+  SECURITY_EXCHANGES,
+  SECURITY_TYPES,
+} from "../../securities/security-enums";
 import { AiRelayService } from "../../ai/relay/ai-relay.service";
 import {
   AiActionBuilderService,
@@ -35,6 +40,7 @@ import {
   queryInvestmentTransactionsOutput,
   getCapitalGainsOutput,
   getHoldingDetailsOutput,
+  createSecurityOutput,
   createInvestmentTransactionOutput,
   createInvestmentTransactionsOutput,
 } from "../tool-output-schemas";
@@ -48,6 +54,7 @@ export class McpInvestmentsTools {
     private readonly portfolioService: PortfolioService,
     private readonly holdingsService: HoldingsService,
     private readonly investmentTransactionsService: InvestmentTransactionsService,
+    private readonly securitiesService: SecuritiesService,
     private readonly relayService: AiRelayService,
     private readonly actionBuilder: AiActionBuilderService,
   ) {}
@@ -250,6 +257,158 @@ export class McpInvestmentsTools {
             args.accountId,
           );
           return toolResult(holdings);
+        } catch (err: unknown) {
+          return safeToolError(err);
+        }
+      },
+    );
+
+    server.registerTool(
+      "create_security",
+      {
+        title: "Create security",
+        annotations: CREATE,
+        description:
+          "Add a new security (stock, ETF, mutual fund, etc.) to the user's security list. The security is looked up and validated by ticker symbol or name against the user's configured price provider, which fills in the official symbol, name, exchange, type, and currency -- do not invent those. Pass the optional `exchange` only to disambiguate a symbol that trades on several exchanges; an ambiguous lookup returns an error listing the candidates. `exchange` and `securityType` MUST come from the enumerated lists -- never guess a value outside them. Set dryRun=true to preview the resolved security without saving. When dryRun is false, the user is asked to confirm before it is saved (clients that support it show a confirmation dialog). Uses the same shared lookup/validation logic as the AI Assistant's create_security tool. Creates one security per call.",
+        inputSchema: {
+          query: z
+            .string()
+            .min(1)
+            .max(100)
+            .describe(
+              "Ticker symbol (e.g. 'AAPL') or security name to look up and validate.",
+            ),
+          exchange: z
+            .enum(SECURITY_EXCHANGES)
+            .optional()
+            .describe(
+              "Optional exchange to disambiguate the lookup when a symbol trades on more than one exchange. Must be one of the enumerated values; omit to let the lookup choose.",
+            ),
+          securityType: z
+            .enum(SECURITY_TYPES)
+            .optional()
+            .describe(
+              "Optional security type override. Must be one of the enumerated values; omit to use the looked-up type.",
+            ),
+          isFavourite: z
+            .boolean()
+            .optional()
+            .describe(
+              "Pin the new security to the dashboard Favourite Securities widget. Defaults to false.",
+            ),
+          dryRun: z
+            .boolean()
+            .optional()
+            .default(false)
+            .describe(
+              "If true, validate and return a preview without creating the security.",
+            ),
+        },
+        outputSchema: createSecurityOutput,
+      },
+      async (args, extra) => {
+        const ctx = resolve(extra.sessionId);
+        if (!ctx) return toolError("No user context");
+        const check = requireScope(ctx.scopes, "write");
+        if (check.error) return check.result;
+
+        const limitCheck = this.writeLimiter.checkLimit(ctx.userId);
+        if (!limitCheck.allowed) {
+          return toolError(
+            `Daily write limit reached (${limitCheck.limit} operations per day). Try again tomorrow.`,
+          );
+        }
+
+        try {
+          // Shared lookup/validation: resolves the symbol/name against the
+          // user's quote provider, fills exchange/type/currency, and enforces
+          // the per-user unique symbol -- identical to the AI Assistant flow.
+          const preview = await this.securitiesService.previewCreateSecurity(
+            ctx.userId,
+            {
+              query: args.query,
+              exchange: args.exchange,
+              securityType: args.securityType,
+              isFavourite: args.isFavourite,
+            },
+          );
+
+          if (args.dryRun) {
+            return toolResult({
+              dryRun: true,
+              preview: {
+                symbol: preview.symbol,
+                name: preview.name,
+                securityType: preview.securityType,
+                exchange: preview.exchange,
+                currencyCode: preview.currencyCode,
+                isFavourite: preview.isFavourite,
+                quoteProvider: preview.quoteProvider,
+              },
+              message:
+                "This is a preview. Call again with dryRun=false to create the security.",
+            });
+          }
+
+          // Relay path: confirm in the web chat via the approve/reject card
+          // rather than an elicitation in the agent's MCP client.
+          const pendingAction = this.actionBuilder.buildCreateSecurity(
+            ctx.userId,
+            preview,
+          );
+          if (this.relayService.emitPendingAction(ctx.userId, pendingAction)) {
+            return toolResult(RELAY_PREVIEW_SHOWN);
+          }
+
+          // Ask the client to confirm before persisting (AI Assistant parity).
+          const confirmLines = [
+            "Create this security?",
+            `Symbol: ${preview.symbol}`,
+            `Name: ${preview.name}`,
+          ];
+          if (preview.securityType) {
+            confirmLines.push(`Type: ${preview.securityType}`);
+          }
+          if (preview.exchange) {
+            confirmLines.push(`Exchange: ${preview.exchange}`);
+          }
+          confirmLines.push(`Currency: ${preview.currencyCode}`);
+          if (preview.isFavourite) {
+            confirmLines.push("Pinned to favourites: yes");
+          }
+          const confirmation = await confirmWrite(
+            server,
+            confirmLines.join("\n"),
+            extra.requestId,
+          );
+          if (confirmation === "declined") {
+            return toolError(
+              "Cancelled: the confirmation was declined, so no security was created. Do not retry unless the user asks again.",
+            );
+          }
+
+          const security = await this.securitiesService.create(ctx.userId, {
+            symbol: preview.symbol,
+            name: preview.name,
+            securityType: preview.securityType ?? undefined,
+            exchange: preview.exchange ?? undefined,
+            currencyCode: preview.currencyCode,
+            isFavourite: preview.isFavourite,
+            quoteProvider: preview.quoteProvider ?? undefined,
+            msnInstrumentId: preview.msnInstrumentId ?? undefined,
+          });
+
+          this.writeLimiter.record(ctx.userId, "create_security");
+
+          return toolResult({
+            id: security.id,
+            symbol: security.symbol,
+            name: security.name,
+            securityType: security.securityType,
+            exchange: security.exchange,
+            currencyCode: security.currencyCode,
+            isFavourite: security.isFavourite,
+          });
         } catch (err: unknown) {
           return safeToolError(err);
         }

@@ -25,6 +25,7 @@ import { TransactionAnalyticsService } from "../../transactions/transaction-anal
 import { NetWorthService } from "../../net-worth/net-worth.service";
 import { BudgetReportsService } from "../../budgets/budget-reports.service";
 import { PortfolioService } from "../../securities/portfolio.service";
+import { SecuritiesService } from "../../securities/securities.service";
 import {
   InvestmentTransactionsService,
   LlmCapitalGainsGroupBy,
@@ -82,6 +83,7 @@ export class ToolExecutorService {
     @Inject(forwardRef(() => BudgetReportsService))
     private readonly budgetReportsService: BudgetReportsService,
     private readonly portfolioService: PortfolioService,
+    private readonly securitiesService: SecuritiesService,
     private readonly investmentTransactionsService: InvestmentTransactionsService,
     @Inject(forwardRef(() => ScheduledTransactionsService))
     private readonly scheduledTransactionsService: ScheduledTransactionsService,
@@ -185,6 +187,9 @@ export class ToolExecutorService {
           break;
         case "create_payee":
           result = await this.createPayeeAction(userId, validatedInput);
+          break;
+        case "create_security":
+          result = await this.createSecurityAction(userId, validatedInput);
           break;
         case "create_investment_transaction":
           result = await this.createInvestmentTransactionAction(
@@ -515,6 +520,43 @@ export class ToolExecutorService {
     return {
       data: PENDING_ACTION_TOOL_RESULT,
       summary: `Prepared to create payee "${preview.name}". Awaiting user confirmation.`,
+      sources: [],
+      pendingAction,
+    };
+  }
+
+  private async createSecurityAction(
+    userId: string,
+    input: Record<string, unknown>,
+  ): Promise<ToolResult> {
+    const query = input.query as string;
+    const exchange = input.exchange as string | undefined;
+    const securityType = input.securityType as string | undefined;
+    const isFavourite = input.isFavourite as boolean | undefined;
+
+    let preview;
+    try {
+      preview = await this.securitiesService.previewCreateSecurity(userId, {
+        query,
+        exchange,
+        securityType,
+        isFavourite,
+      });
+    } catch (err) {
+      return this.toolErrorFromException(
+        err,
+        "Could not prepare the security.",
+      );
+    }
+
+    const pendingAction = this.actionBuilder.buildCreateSecurity(
+      userId,
+      preview,
+    );
+
+    return {
+      data: PENDING_ACTION_TOOL_RESULT,
+      summary: `Prepared to create security ${preview.symbol} (${preview.name})${preview.exchange ? ` on ${preview.exchange}` : ""}. Awaiting user confirmation.`,
       sources: [],
       pendingAction,
     };

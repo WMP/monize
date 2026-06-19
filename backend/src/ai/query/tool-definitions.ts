@@ -1,4 +1,8 @@
 import { AiToolDefinition } from "../providers/ai-provider.interface";
+import {
+  SECURITY_EXCHANGES,
+  SECURITY_TYPES,
+} from "../../securities/security-enums";
 
 export const FINANCIAL_TOOLS: AiToolDefinition[] = [
   {
@@ -634,6 +638,39 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
         },
       },
       required: ["name"],
+    },
+  },
+  {
+    name: "create_security",
+    description:
+      "Propose adding a new security (stock, ETF, mutual fund, etc.) to the user's security list so it can later be traded or held. This does NOT create anything immediately: it shows the user a confirmation card they must explicitly approve before the security is saved. Use it only when the user clearly asks to add a security in their latest message. The security is looked up and validated automatically by ticker symbol or name against the user's configured price provider, which fills in the official symbol, name, exchange, type, and currency -- do not invent those. Provide the optional `exchange` only to disambiguate a symbol that trades on several exchanges (e.g. a dual-listed ticker); if the lookup is ambiguous the tool returns an error listing the candidates so you can re-call with an exchange. Only ever pass `exchange`/`securityType` values from the enumerated lists below; never guess a value outside them. One security per call -- call the tool again for each additional security. After calling this tool, briefly tell the user to review and approve the card; never claim the security was created.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "Ticker symbol (e.g. 'AAPL') or security name (e.g. 'Apple Inc.') to look up and validate. Required.",
+        },
+        exchange: {
+          type: "string",
+          enum: [...SECURITY_EXCHANGES],
+          description:
+            "Optional stock exchange used to disambiguate the lookup when a symbol trades on more than one exchange. MUST be exactly one of the listed values; omit it to let the lookup choose the best match. Do not guess an exchange not in this list.",
+        },
+        securityType: {
+          type: "string",
+          enum: [...SECURITY_TYPES],
+          description:
+            "Optional security type override. MUST be exactly one of the listed values (UPPER_SNAKE_CASE). Omit it to use the type the lookup determines. Do not guess a type not in this list.",
+        },
+        isFavourite: {
+          type: "boolean",
+          description:
+            "Optional: pin the new security to the dashboard Favourite Securities widget. Defaults to false.",
+        },
+      },
+      required: ["query"],
     },
   },
   {

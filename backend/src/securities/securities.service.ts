@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  BadRequestException,
 } from "@nestjs/common";
 import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -15,6 +16,7 @@ import { CreateSecurityDto } from "./dto/create-security.dto";
 import { UpdateSecurityDto } from "./dto/update-security.dto";
 import { SecurityPriceService } from "./security-price.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
+import { SecurityLookupResult } from "./providers/quote-provider.interface";
 
 export interface FavouriteSecurityQuote {
   securityId: string;
@@ -36,6 +38,25 @@ export interface FavouriteSecurityQuote {
 export interface SecurityMatchResult {
   match: Security | null;
   candidates: Security[];
+}
+
+/**
+ * Resolved, validated security a `create_security` proposal will persist. The
+ * symbol/name/exchange/securityType/currency are filled from the user's
+ * configured quote provider (Yahoo/MSN) so the AI does not invent them; an
+ * AI-supplied `exchange`/`securityType` (constrained to the known lists)
+ * overrides the looked-up value when given. Display-only on the confirmation
+ * card and turned into a signed descriptor by the action builder.
+ */
+export interface CreateSecurityPreview {
+  symbol: string;
+  name: string;
+  securityType: string | null;
+  exchange: string | null;
+  currencyCode: string;
+  isFavourite: boolean;
+  quoteProvider: "yahoo" | "msn" | null;
+  msnInstrumentId: string | null;
 }
 
 @Injectable()
@@ -493,5 +514,121 @@ export class SecuritiesService {
       return { match: partial[0], candidates: [] };
     }
     return { match: null, candidates: partial };
+  }
+
+  /**
+   * Resolve and validate a new security from a free-text reference (ticker
+   * symbol or name) via the user's configured quote provider, returning the
+   * fully-populated values a confirmation card / signed descriptor needs. Does
+   * not persist anything.
+   *
+   * Shared by the AI Assistant `create_security` tool and the MCP server so both
+   * surfaces look securities up, validate, and pre-fill them identically:
+   *   - The provider lookup supplies symbol, name, exchange, security type, and
+   *     currency so the AI never guesses them. An `exchange` (used to
+   *     disambiguate the lookup) or `securityType` the caller passes -- both
+   *     constrained to the known lists -- overrides the looked-up value.
+   *   - When the reference matches several distinct tickers and no exchange was
+   *     given, it throws a 4xx listing the candidates so the caller can re-run
+   *     with an exchange rather than picking one blindly.
+   *   - The per-user unique `(userId, symbol)` constraint is checked up front so
+   *     a duplicate fails at preview with the same message the real write uses.
+   */
+  async previewCreateSecurity(
+    userId: string,
+    input: {
+      query: string;
+      exchange?: string;
+      securityType?: string;
+      isFavourite?: boolean;
+    },
+  ): Promise<CreateSecurityPreview> {
+    const query = (input.query ?? "").trim();
+    if (!query) {
+      throw new BadRequestException(
+        tr(
+          "errors.securities.lookupQueryRequired",
+          "Provide a ticker symbol or security name to look up.",
+        ),
+      );
+    }
+
+    const candidates: SecurityLookupResult[] =
+      await this.securityPriceService.lookupSecurityCandidates(
+        userId,
+        query,
+        input.exchange ? [input.exchange] : undefined,
+      );
+
+    if (candidates.length === 0) {
+      throw new BadRequestException(
+        tr(
+          "errors.securities.lookupNotFound",
+          `No security found matching "${query}". Check the symbol or name, or specify an exchange.`,
+          { query },
+        ),
+      );
+    }
+
+    // Without an explicit exchange, a reference that resolves to several
+    // different tickers is ambiguous -- surface the options instead of guessing.
+    const distinctSymbols = new Set(
+      candidates.map((c) => c.symbol.toUpperCase()),
+    );
+    if (!input.exchange && distinctSymbols.size > 1) {
+      const list = candidates
+        .slice(0, 5)
+        .map(
+          (c) =>
+            `${c.symbol} (${c.name}${c.exchange ? `, ${c.exchange}` : ""})`,
+        )
+        .join("; ");
+      throw new BadRequestException(
+        tr(
+          "errors.securities.lookupAmbiguous",
+          `"${query}" matches multiple securities: ${list}. Re-run specifying an exchange.`,
+          { query, list },
+        ),
+      );
+    }
+
+    const lookup = candidates[0];
+
+    const currencyCode = lookup.currencyCode?.trim();
+    if (!currencyCode) {
+      throw new BadRequestException(
+        tr(
+          "errors.securities.lookupNoCurrency",
+          `Could not determine the currency for "${lookup.symbol}". Add the security manually instead.`,
+          { symbol: lookup.symbol },
+        ),
+      );
+    }
+
+    // Enforce the per-user unique symbol up front so a duplicate is reported at
+    // preview time with the same message the REST/confirm write would throw.
+    const existing = await this.securitiesRepository.findOne({
+      where: { symbol: lookup.symbol, userId },
+    });
+    if (existing) {
+      throw new ConflictException(
+        tr(
+          "errors.securities.symbolAlreadyExists",
+          `Security with symbol ${lookup.symbol} already exists`,
+          { symbol: lookup.symbol },
+        ),
+      );
+    }
+
+    return {
+      symbol: lookup.symbol,
+      name: lookup.name,
+      securityType: input.securityType ?? lookup.securityType ?? null,
+      exchange: input.exchange ?? lookup.exchange ?? null,
+      currencyCode: currencyCode.toUpperCase(),
+      isFavourite: input.isFavourite ?? false,
+      quoteProvider: lookup.provider ?? null,
+      msnInstrumentId: lookup.msnInstrumentId ?? null,
+    };
   }
 }

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import {
+  BadRequestException,
   ConflictException,
   NotFoundException,
   ForbiddenException,
@@ -73,6 +74,7 @@ describe("SecuritiesService", () => {
 
     mockSecurityPriceService = {
       backfillSecurity: jest.fn().mockResolvedValue(undefined),
+      lookupSecurityCandidates: jest.fn().mockResolvedValue([]),
     };
 
     mockActionHistoryService = {
@@ -106,6 +108,115 @@ describe("SecuritiesService", () => {
     }).compile();
 
     service = module.get<SecuritiesService>(SecuritiesService);
+  });
+
+  describe("previewCreateSecurity", () => {
+    const lookupResult = {
+      symbol: "AAPL",
+      name: "Apple Inc.",
+      exchange: "NASDAQ",
+      securityType: "STOCK",
+      currencyCode: "USD",
+      provider: "yahoo" as const,
+      msnInstrumentId: null,
+    };
+
+    it("resolves a security via the provider lookup and fills every field", async () => {
+      mockSecurityPriceService.lookupSecurityCandidates.mockResolvedValue([
+        lookupResult,
+      ]);
+      securitiesRepository.findOne.mockResolvedValue(null);
+
+      const preview = await service.previewCreateSecurity("user-1", {
+        query: "AAPL",
+      });
+
+      expect(
+        mockSecurityPriceService.lookupSecurityCandidates,
+      ).toHaveBeenCalledWith("user-1", "AAPL", undefined);
+      expect(preview).toEqual({
+        symbol: "AAPL",
+        name: "Apple Inc.",
+        securityType: "STOCK",
+        exchange: "NASDAQ",
+        currencyCode: "USD",
+        isFavourite: false,
+        quoteProvider: "yahoo",
+        msnInstrumentId: null,
+      });
+    });
+
+    it("lets the caller override exchange/type and pin as favourite", async () => {
+      mockSecurityPriceService.lookupSecurityCandidates.mockResolvedValue([
+        lookupResult,
+      ]);
+      securitiesRepository.findOne.mockResolvedValue(null);
+
+      const preview = await service.previewCreateSecurity("user-1", {
+        query: "AAPL",
+        exchange: "NYSE",
+        securityType: "ETF",
+        isFavourite: true,
+      });
+
+      expect(
+        mockSecurityPriceService.lookupSecurityCandidates,
+      ).toHaveBeenCalledWith("user-1", "AAPL", ["NYSE"]);
+      expect(preview.exchange).toBe("NYSE");
+      expect(preview.securityType).toBe("ETF");
+      expect(preview.isFavourite).toBe(true);
+    });
+
+    it("throws when the query is blank", async () => {
+      await expect(
+        service.previewCreateSecurity("user-1", { query: "  " }),
+      ).rejects.toThrow(BadRequestException);
+      expect(
+        mockSecurityPriceService.lookupSecurityCandidates,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("throws when no security is found", async () => {
+      mockSecurityPriceService.lookupSecurityCandidates.mockResolvedValue([]);
+
+      await expect(
+        service.previewCreateSecurity("user-1", { query: "ZZZZ" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws an ambiguity error when several tickers match and no exchange is given", async () => {
+      mockSecurityPriceService.lookupSecurityCandidates.mockResolvedValue([
+        { ...lookupResult, symbol: "SHOP", exchange: "TSX" },
+        { ...lookupResult, symbol: "SHOP", name: "Shopify", exchange: "NYSE" },
+        { ...lookupResult, symbol: "SHOPX", name: "Other", exchange: "NASDAQ" },
+      ]);
+
+      await expect(
+        service.previewCreateSecurity("user-1", { query: "shopify" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws when the duplicate symbol already exists", async () => {
+      mockSecurityPriceService.lookupSecurityCandidates.mockResolvedValue([
+        lookupResult,
+      ]);
+      securitiesRepository.findOne.mockResolvedValue(mockSecurity);
+
+      await expect(
+        service.previewCreateSecurity("user-1", { query: "AAPL" }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it("throws when the provider cannot supply a currency", async () => {
+      mockSecurityPriceService.lookupSecurityCandidates.mockResolvedValue([
+        { ...lookupResult, currencyCode: null },
+      ]);
+      securitiesRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.previewCreateSecurity("user-1", { query: "AAPL" }),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe("create", () => {

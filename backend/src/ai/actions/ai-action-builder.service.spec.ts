@@ -106,6 +106,44 @@ describe("AiActionBuilderService", () => {
     });
   });
 
+  it("builds a create_security action from a preview", () => {
+    const preview = {
+      symbol: "AAPL",
+      name: "Apple Inc.",
+      securityType: "STOCK",
+      exchange: "NASDAQ",
+      currencyCode: "USD",
+      isFavourite: true,
+      quoteProvider: "yahoo" as const,
+      msnInstrumentId: null,
+    };
+
+    const action = builder.buildCreateSecurity("u1", preview);
+
+    expect(action.type).toBe("create_security");
+    expect(action.descriptor).toMatchObject({
+      type: "create_security",
+      userId: "u1",
+      symbol: "AAPL",
+      name: "Apple Inc.",
+      securityType: "STOCK",
+      exchange: "NASDAQ",
+      currencyCode: "USD",
+      isFavourite: true,
+      quoteProvider: "yahoo",
+    });
+    // The descriptor (not the preview) is what gets signed.
+    expect(signing.sign).toHaveBeenCalledWith(action.descriptor);
+    expect(action.preview).toMatchObject({
+      symbol: "AAPL",
+      securityName: "Apple Inc.",
+      securityType: "STOCK",
+      exchange: "NASDAQ",
+      securityCurrency: "USD",
+      isFavourite: true,
+    });
+  });
+
   it("builds a create_investment_transaction action", () => {
     const preview: CreateInvestmentTransactionPreview = {
       accountId: "acc1",

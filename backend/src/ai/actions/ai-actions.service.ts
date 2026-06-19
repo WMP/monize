@@ -10,10 +10,12 @@ import { validateOrReject } from "class-validator";
 import { TransactionsService } from "../../transactions/transactions.service";
 import { PayeesService } from "../../payees/payees.service";
 import { InvestmentTransactionsService } from "../../securities/investment-transactions.service";
+import { SecuritiesService } from "../../securities/securities.service";
 import { CreateTransactionDto } from "../../transactions/dto/create-transaction.dto";
 import { UpdateTransactionDto } from "../../transactions/dto/update-transaction.dto";
 import { CreatePayeeDto } from "../../payees/dto/create-payee.dto";
 import { CreateInvestmentTransactionDto } from "../../securities/dto/create-investment-transaction.dto";
+import { CreateSecurityDto } from "../../securities/dto/create-security.dto";
 import { tr } from "../../i18n/translate";
 import { AiActionSigningService } from "./ai-action-signing.service";
 import { AiWriteLimiter } from "./ai-write-limiter";
@@ -22,6 +24,7 @@ import {
   AiActionDescriptor,
   CategorizeTransactionDescriptor,
   CreatePayeeDescriptor,
+  CreateSecurityDescriptor,
   CreateTransactionDescriptor,
   CreateInvestmentTransactionDescriptor,
   CreateTransactionsDescriptor,
@@ -55,6 +58,7 @@ export class AiActionsService {
     @Inject(forwardRef(() => PayeesService))
     private readonly payeesService: PayeesService,
     private readonly investmentTransactionsService: InvestmentTransactionsService,
+    private readonly securitiesService: SecuritiesService,
     private readonly signingService: AiActionSigningService,
     private readonly writeLimiter: AiWriteLimiter,
   ) {}
@@ -175,6 +179,8 @@ export class AiActionsService {
         return this.executeCategorize(userId, descriptor);
       case "create_payee":
         return this.executeCreatePayee(userId, descriptor);
+      case "create_security":
+        return this.executeCreateSecurity(userId, descriptor);
       case "create_investment_transaction":
         return this.executeCreateInvestmentTransaction(userId, descriptor);
       case "create_transactions":
@@ -229,6 +235,24 @@ export class AiActionsService {
     });
     const payee = await this.payeesService.create(userId, dto);
     return { type: "create_payee", id: payee.id };
+  }
+
+  private async executeCreateSecurity(
+    userId: string,
+    descriptor: CreateSecurityDescriptor,
+  ): Promise<ConfirmActionResult> {
+    const dto = await this.toValidatedDto(CreateSecurityDto, {
+      symbol: descriptor.symbol,
+      name: descriptor.name,
+      securityType: descriptor.securityType ?? undefined,
+      exchange: descriptor.exchange ?? undefined,
+      currencyCode: descriptor.currencyCode,
+      isFavourite: descriptor.isFavourite,
+      quoteProvider: descriptor.quoteProvider ?? undefined,
+      msnInstrumentId: descriptor.msnInstrumentId ?? undefined,
+    });
+    const security = await this.securitiesService.create(userId, dto);
+    return { type: "create_security", id: security.id };
   }
 
   private async executeCreateInvestmentTransaction(

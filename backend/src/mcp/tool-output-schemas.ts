@@ -478,6 +478,33 @@ export const getHoldingDetailsOutput = {
   ),
 };
 
+export const createSecurityOutput = {
+  // Dry-run preview branch.
+  dryRun: bool.optional(),
+  preview: z
+    .object({
+      symbol: str.optional(),
+      name: str.optional(),
+      securityType: strNull.optional(),
+      exchange: strNull.optional(),
+      currencyCode: str.optional(),
+      isFavourite: bool.optional(),
+      quoteProvider: strNull.optional(),
+    })
+    .optional(),
+  message: str.optional(),
+  // Created-security branch.
+  id: str.optional(),
+  symbol: str.optional(),
+  name: str.optional(),
+  securityType: strNull.optional(),
+  exchange: strNull.optional(),
+  currencyCode: str.optional(),
+  isFavourite: bool.optional(),
+  // Relay branch: a confirmation card was shown in the web chat instead.
+  status: str.optional(),
+};
+
 export const createInvestmentTransactionOutput = {
   // Dry-run preview branch.
   dryRun: bool.optional(),

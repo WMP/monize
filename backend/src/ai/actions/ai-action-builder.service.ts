@@ -10,6 +10,7 @@ import {
   CreateInvestmentTransactionDescriptor,
   CreateInvestmentTransactionsDescriptor,
   CreatePayeeDescriptor,
+  CreateSecurityDescriptor,
   CreateTransactionDescriptor,
   CreateTransactionsDescriptor,
   PendingAiAction,
@@ -20,6 +21,7 @@ import {
 } from "../../transactions/transactions.service";
 import { CreatePayeePreview } from "../../payees/payees.service";
 import { CreateInvestmentTransactionPreview } from "../../securities/investment-transactions.service";
+import { CreateSecurityPreview } from "../../securities/securities.service";
 
 /**
  * Map a resolved cash-transaction preview to the display row shown on the bulk
@@ -180,6 +182,42 @@ export class AiActionBuilderService {
       preview: {
         name: preview.name,
         categoryName: preview.defaultCategoryName,
+      },
+    };
+  }
+
+  buildCreateSecurity(
+    userId: string,
+    preview: CreateSecurityPreview,
+  ): PendingAiAction {
+    const { actionId, expiresAt } = this.newEnvelope();
+    const descriptor: CreateSecurityDescriptor = {
+      type: "create_security",
+      userId,
+      actionId,
+      expiresAt,
+      symbol: preview.symbol,
+      name: preview.name,
+      securityType: preview.securityType,
+      exchange: preview.exchange,
+      currencyCode: preview.currencyCode,
+      isFavourite: preview.isFavourite,
+      quoteProvider: preview.quoteProvider,
+      msnInstrumentId: preview.msnInstrumentId,
+    };
+    return {
+      actionId,
+      type: "create_security",
+      expiresAt,
+      descriptor,
+      signature: this.signingService.sign(descriptor),
+      preview: {
+        symbol: preview.symbol,
+        securityName: preview.name,
+        securityType: preview.securityType,
+        exchange: preview.exchange,
+        securityCurrency: preview.currencyCode,
+        isFavourite: preview.isFavourite,
       },
     };
   }
