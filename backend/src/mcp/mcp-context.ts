@@ -133,7 +133,10 @@ const CONFIRM_TIMEOUT_MS = 5 * 60 * 1000;
  *  - "unsupported": the client advertises no form-elicitation capability, so no
  *    dialog can be shown and the caller falls back to its normal behavior. The
  *    client still gates every tool call with its own approval prompt, so this
- *    is not a consent bypass.
+ *    is not a consent bypass. Claude Desktop currently lands here: it does not
+ *    advertise the elicitation capability (and returns -32601 for
+ *    elicitation/create), so writes proceed under its own per-tool approval
+ *    rather than an MCP-native confirm dialog.
  *
  * We pre-check the capability (rather than relying solely on the thrown
  * "client does not support elicitation" error) so that only a genuine lack of
