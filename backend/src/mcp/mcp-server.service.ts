@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { UserContextResolver } from "./mcp-context";
+import { AiRelayService } from "../ai/relay/ai-relay.service";
+import { installRelayToolActivity } from "./mcp-relay-tool-activity";
 import { McpAccountsTools } from "./tools/accounts.tool";
 import { McpTransactionsTools } from "./tools/transactions.tool";
 import { McpCategoriesTools } from "./tools/categories.tool";
@@ -41,6 +43,7 @@ export class McpServerService {
     private readonly calculateTools: McpCalculateTools,
     private readonly budgetsTools: McpBudgetsTools,
     private readonly relayTools: McpRelayTools,
+    private readonly relayService: AiRelayService,
     private readonly accountListResource: McpAccountListResource,
     private readonly categoryTreeResource: McpCategoryTreeResource,
     private readonly recentTransactionsResource: McpRecentTransactionsResource,
@@ -97,6 +100,10 @@ export class McpServerService {
         },
       },
     );
+
+    // Stream the agent's tool calls to the web chat as live progress when this
+    // session is serving a relayed prompt. Must run before the tools register.
+    installRelayToolActivity(server, resolve, this.relayService);
 
     this.accountsTools.register(server, resolve);
     this.transactionsTools.register(server, resolve);

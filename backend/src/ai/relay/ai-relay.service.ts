@@ -188,6 +188,47 @@ export class AiRelayService {
   }
 
   /**
+   * Emit an interim SSE event to the browser parked on this user's in-flight
+   * relay prompt. Returns true if delivered, false if the user has no active
+   * prompt (or its stream is gone). Shared by the progress, tool-activity, and
+   * pending-action emitters.
+   */
+  private emitToInFlight(userId: string, event: RelayServerEvent): boolean {
+    for (const record of this.inFlight.values()) {
+      if (record.userId !== userId) {
+        continue;
+      }
+      const { prompt } = record;
+      if (prompt.settled || !prompt.emit) {
+        return false;
+      }
+      prompt.emit(event);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Stream the agent's tool activity to the browser as `tool_start` /
+   * `tool_result` events -- the same channel the native AI Assistant uses to
+   * show "Looking up ..." chips. Called by the MCP server's per-call wrapper for
+   * every Monize tool the agent invokes while handling a relayed prompt, so the
+   * user sees real-time progress without the agent having to narrate explicitly.
+   */
+  reportToolActivity(
+    userId: string,
+    toolName: string,
+    phase: "start" | "result",
+    isError = false,
+  ): void {
+    const event: RelayServerEvent =
+      phase === "start"
+        ? { type: "tool_start", name: toolName }
+        : { type: "tool_result", name: toolName, isError };
+    this.emitToInFlight(userId, event);
+  }
+
+  /**
    * Push a write-confirmation card to the browser parked on this user's
    * in-flight relay prompt. Called by the MCP write tools when they detect they
    * are serving a relayed prompt: instead of an MCP-client elicitation (which
@@ -200,18 +241,7 @@ export class AiRelayService {
    * the caller falls back to its normal (direct MCP-client) confirmation.
    */
   emitPendingAction(userId: string, action: PendingAiAction): boolean {
-    for (const record of this.inFlight.values()) {
-      if (record.userId !== userId) {
-        continue;
-      }
-      const { prompt } = record;
-      if (prompt.settled || !prompt.emit) {
-        return false;
-      }
-      prompt.emit({ type: "pending_action", action });
-      return true;
-    }
-    return false;
+    return this.emitToInFlight(userId, { type: "pending_action", action });
   }
 
   /** Tunnel status for the chat indicator. */

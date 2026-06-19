@@ -165,6 +165,34 @@ describe("AiRelayService", () => {
     });
   });
 
+  describe("reportToolActivity", () => {
+    it("streams tool_start and tool_result on the in-flight prompt", async () => {
+      const emit = jest.fn();
+      service.enqueuePrompt(USER, "q", [], emit);
+      await service.waitForPrompt(USER);
+
+      service.reportToolActivity(USER, "get_categories", "start");
+      service.reportToolActivity(USER, "get_categories", "result", false);
+
+      expect(emit).toHaveBeenNthCalledWith(1, {
+        type: "tool_start",
+        name: "get_categories",
+      });
+      expect(emit).toHaveBeenNthCalledWith(2, {
+        type: "tool_result",
+        name: "get_categories",
+        isError: false,
+      });
+    });
+
+    it("is a no-op when the user has no in-flight prompt", () => {
+      // No throw, nothing emitted (no prompt to target).
+      expect(() =>
+        service.reportToolActivity(USER, "get_categories", "start"),
+      ).not.toThrow();
+    });
+  });
+
   describe("status", () => {
     it("is offline before any agent polls", () => {
       expect(service.getStatus(USER)).toEqual({ state: "offline", queued: 0 });
