@@ -104,7 +104,15 @@
     "exchange": "거래소",
     "currency": "통화",
     "favourite": "즐겨찾기",
-    "favouriteYes": "대시보드에 고정됨"
+    "favouriteYes": "대시보드에 고정됨",
+    "updateTransactionTitle": "이 거래를 수정하시겠습니까?",
+    "deleteTransactionTitle": "이 거래를 삭제하시겠습니까?",
+    "updatedTransaction": "거래가 수정되었습니다",
+    "deletedTransaction": "거래가 삭제되었습니다",
+    "updateInvestmentTransactionTitle": "이 투자 거래를 수정하시겠습니까?",
+    "deleteInvestmentTransactionTitle": "이 투자 거래를 삭제하시겠습니까?",
+    "updatedInvestmentTransaction": "투자 거래가 수정되었습니다",
+    "deletedInvestmentTransaction": "투자 거래가 삭제되었습니다"
   },
   "table": {
     "downloadTitle": "CSV로 표 다운로드",

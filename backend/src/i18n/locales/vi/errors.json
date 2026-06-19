@@ -367,7 +367,8 @@
     "lookupQueryRequired": "Nhập mã chứng khoán hoặc tên chứng khoán để tra cứu.",
     "lookupNotFound": "Không tìm thấy chứng khoán nào khớp với \"{{ query }}\". Kiểm tra mã hoặc tên, hoặc chỉ định một sàn giao dịch.",
     "lookupAmbiguous": "\"{{ query }}\" khớp với nhiều chứng khoán: {{ list }}. Chạy lại và chỉ định một sàn giao dịch.",
-    "lookupNoCurrency": "Không thể xác định loại tiền tệ cho \"{{ symbol }}\". Thay vào đó hãy thêm chứng khoán theo cách thủ công."
+    "lookupNoCurrency": "Không thể xác định loại tiền tệ cho \"{{ symbol }}\". Thay vào đó hãy thêm chứng khoán theo cách thủ công.",
+    "noUpdateFields": "Hãy cung cấp ít nhất một trường để thay đổi."
   },
   "tags": {
     "notFound": "Không tìm thấy thẻ với ID {{ id }}",
@@ -407,7 +408,10 @@
     "notATransfer": "Giao tác không phải là chuyển tiền",
     "notFoundById": "Không tìm thấy giao tác với ID {{ id }}",
     "bulkUpdateNoFields": "Phải cung cấp ít nhất một trường cập nhật",
-    "payeeNotFound": "Không tìm thấy người nhận"
+    "payeeNotFound": "Không tìm thấy người nhận",
+    "cannotEditTransfer": "Không thể chỉnh sửa khoản chuyển khoản tại đây. Hãy chỉnh sửa khoản chuyển khoản từ màn hình Giao dịch.",
+    "cannotEditSplit": "Không thể chỉnh sửa giao dịch chia nhỏ tại đây. Hãy chỉnh sửa phần chia nhỏ từ màn hình Giao dịch.",
+    "noUpdateFields": "Hãy cung cấp ít nhất một trường để thay đổi."
   },
   "users": {
     "userNotFound": "Không tìm thấy người dùng",

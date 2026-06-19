@@ -367,7 +367,8 @@
     "lookupQueryRequired": "請輸入要查詢的股票代碼或證券名稱。",
     "lookupNotFound": "找不到與「{{ query }}」相符的證券。請檢查代碼或名稱，或指定一個交易所。",
     "lookupAmbiguous": "「{{ query }}」符合多個證券：{{ list }}。請指定交易所後重新執行。",
-    "lookupNoCurrency": "無法確定「{{ symbol }}」的貨幣。請改為手動新增該證券。"
+    "lookupNoCurrency": "無法確定「{{ symbol }}」的貨幣。請改為手動新增該證券。",
+    "noUpdateFields": "請至少提供一個要變更的欄位。"
   },
   "tags": {
     "notFound": "找不到 ID 為 {{ id }} 的標籤",
@@ -407,7 +408,10 @@
     "notATransfer": "交易不是轉帳",
     "notFoundById": "找不到 ID 為 {{ id }} 的交易",
     "bulkUpdateNoFields": "至少需要提供一個更新欄位",
-    "payeeNotFound": "找不到收款人"
+    "payeeNotFound": "找不到收款人",
+    "cannotEditTransfer": "無法在此處編輯轉帳。請在交易頁面中編輯該轉帳。",
+    "cannotEditSplit": "無法在此處編輯拆分交易。請在交易頁面中編輯該拆分。",
+    "noUpdateFields": "請至少提供一個要變更的欄位。"
   },
   "users": {
     "userNotFound": "找不到使用者",

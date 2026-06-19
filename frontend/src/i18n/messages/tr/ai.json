@@ -104,7 +104,15 @@
     "exchange": "Borsa",
     "currency": "Para birimi",
     "favourite": "Favori",
-    "favouriteYes": "Panoya sabitlendi"
+    "favouriteYes": "Panoya sabitlendi",
+    "updateTransactionTitle": "Bu işlem düzenlensin mi?",
+    "deleteTransactionTitle": "Bu işlem silinsin mi?",
+    "updatedTransaction": "İşlem güncellendi",
+    "deletedTransaction": "İşlem silindi",
+    "updateInvestmentTransactionTitle": "Bu yatırım işlemi düzenlensin mi?",
+    "deleteInvestmentTransactionTitle": "Bu yatırım işlemi silinsin mi?",
+    "updatedInvestmentTransaction": "Yatırım işlemi güncellendi",
+    "deletedInvestmentTransaction": "Yatırım işlemi silindi"
   },
   "table": {
     "downloadTitle": "Tabloyu CSV olarak indir",

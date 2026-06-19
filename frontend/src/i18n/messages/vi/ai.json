@@ -104,7 +104,15 @@
     "exchange": "Sàn giao dịch",
     "currency": "Tiền tệ",
     "favourite": "Yêu thích",
-    "favouriteYes": "Đã ghim vào bảng điều khiển"
+    "favouriteYes": "Đã ghim vào bảng điều khiển",
+    "updateTransactionTitle": "Chỉnh sửa giao dịch này?",
+    "deleteTransactionTitle": "Xóa giao dịch này?",
+    "updatedTransaction": "Đã cập nhật giao dịch",
+    "deletedTransaction": "Đã xóa giao dịch",
+    "updateInvestmentTransactionTitle": "Chỉnh sửa giao dịch đầu tư này?",
+    "deleteInvestmentTransactionTitle": "Xóa giao dịch đầu tư này?",
+    "updatedInvestmentTransaction": "Đã cập nhật giao dịch đầu tư",
+    "deletedInvestmentTransaction": "Đã xóa giao dịch đầu tư"
   },
   "table": {
     "downloadTitle": "Tải bảng dưới dạng CSV",

@@ -104,7 +104,15 @@
     "exchange": "Біржа",
     "currency": "Валюта",
     "favourite": "Уподобане",
-    "favouriteYes": "Закріплено на панелі"
+    "favouriteYes": "Закріплено на панелі",
+    "updateTransactionTitle": "Змінити цю транзакцію?",
+    "deleteTransactionTitle": "Видалити цю транзакцію?",
+    "updatedTransaction": "Транзакцію оновлено",
+    "deletedTransaction": "Транзакцію видалено",
+    "updateInvestmentTransactionTitle": "Змінити цю інвестиційну операцію?",
+    "deleteInvestmentTransactionTitle": "Видалити цю інвестиційну операцію?",
+    "updatedInvestmentTransaction": "Інвестиційну операцію оновлено",
+    "deletedInvestmentTransaction": "Інвестиційну операцію видалено"
   },
   "table": {
     "downloadTitle": "Завантажити таблицю як CSV",

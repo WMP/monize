@@ -367,7 +367,8 @@
     "lookupQueryRequired": "Podaj symbol giełdowy lub nazwę papieru wartościowego do wyszukania.",
     "lookupNotFound": "Nie znaleziono papieru wartościowego pasującego do \"{{ query }}\". Sprawdź symbol lub nazwę albo określ giełdę.",
     "lookupAmbiguous": "\"{{ query }}\" pasuje do wielu papierów wartościowych: {{ list }}. Uruchom ponownie, podając giełdę.",
-    "lookupNoCurrency": "Nie można ustalić waluty dla \"{{ symbol }}\". Zamiast tego dodaj papier wartościowy ręcznie."
+    "lookupNoCurrency": "Nie można ustalić waluty dla \"{{ symbol }}\". Zamiast tego dodaj papier wartościowy ręcznie.",
+    "noUpdateFields": "Podaj co najmniej jedno pole do zmiany."
   },
   "tags": {
     "notFound": "Nie znaleziono tagu o ID {{ id }}",
@@ -407,7 +408,10 @@
     "notATransfer": "Transakcja nie jest przelewem",
     "notFoundById": "Nie znaleziono transakcji o ID {{ id }}",
     "bulkUpdateNoFields": "Należy podać co najmniej jedno pole do aktualizacji",
-    "payeeNotFound": "Nie znaleziono odbiorcy"
+    "payeeNotFound": "Nie znaleziono odbiorcy",
+    "cannotEditTransfer": "Przelewów nie można tutaj edytować. Edytuj przelew na ekranie Transakcje.",
+    "cannotEditSplit": "Transakcji podzielonych nie można tutaj edytować. Edytuj podział na ekranie Transakcje.",
+    "noUpdateFields": "Podaj co najmniej jedno pole do zmiany."
   },
   "users": {
     "userNotFound": "Nie znaleziono użytkownika",

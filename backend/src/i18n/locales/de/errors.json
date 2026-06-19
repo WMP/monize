@@ -367,7 +367,8 @@
     "lookupQueryRequired": "Geben Sie ein Tickersymbol oder einen Wertpapiernamen zum Nachschlagen ein.",
     "lookupNotFound": "Kein Wertpapier gefunden, das auf \"{{ query }}\" passt. Überprüfen Sie das Symbol oder den Namen oder geben Sie eine Börse an.",
     "lookupAmbiguous": "\"{{ query }}\" passt auf mehrere Wertpapiere: {{ list }}. Führen Sie die Suche erneut mit Angabe einer Börse aus.",
-    "lookupNoCurrency": "Die Währung für \"{{ symbol }}\" konnte nicht ermittelt werden. Fügen Sie das Wertpapier stattdessen manuell hinzu."
+    "lookupNoCurrency": "Die Währung für \"{{ symbol }}\" konnte nicht ermittelt werden. Fügen Sie das Wertpapier stattdessen manuell hinzu.",
+    "noUpdateFields": "Geben Sie mindestens ein zu änderndes Feld an."
   },
   "tags": {
     "notFound": "Etikett mit ID {{ id }} nicht gefunden",
@@ -407,7 +408,10 @@
     "notATransfer": "Buchung ist keine Überweisung",
     "notFoundById": "Buchung mit ID {{ id }} nicht gefunden",
     "bulkUpdateNoFields": "Mindestens ein Aktualisierungsfeld muss angegeben werden",
-    "payeeNotFound": "Zahlungsempfänger nicht gefunden"
+    "payeeNotFound": "Zahlungsempfänger nicht gefunden",
+    "cannotEditTransfer": "Umbuchungen können hier nicht bearbeitet werden. Bearbeiten Sie die Umbuchung im Transaktionsbildschirm.",
+    "cannotEditSplit": "Aufgeteilte Transaktionen können hier nicht bearbeitet werden. Bearbeiten Sie die Aufteilung im Transaktionsbildschirm.",
+    "noUpdateFields": "Geben Sie mindestens ein zu änderndes Feld an."
   },
   "users": {
     "userNotFound": "Benutzer nicht gefunden",

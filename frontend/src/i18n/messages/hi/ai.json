@@ -104,7 +104,15 @@
     "exchange": "एक्सचेंज",
     "currency": "मुद्रा",
     "favourite": "पसंदीदा",
-    "favouriteYes": "डैशबोर्ड पर पिन किया गया"
+    "favouriteYes": "डैशबोर्ड पर पिन किया गया",
+    "updateTransactionTitle": "यह लेन-देन संपादित करें?",
+    "deleteTransactionTitle": "यह लेन-देन हटाएं?",
+    "updatedTransaction": "लेन-देन अपडेट किया गया",
+    "deletedTransaction": "लेन-देन हटाया गया",
+    "updateInvestmentTransactionTitle": "यह निवेश लेनदेन संपादित करें?",
+    "deleteInvestmentTransactionTitle": "यह निवेश लेनदेन हटाएं?",
+    "updatedInvestmentTransaction": "निवेश लेनदेन अपडेट किया गया",
+    "deletedInvestmentTransaction": "निवेश लेनदेन हटाया गया"
   },
   "table": {
     "downloadTitle": "तालिका CSV के रूप में डाउनलोड करें",

@@ -104,7 +104,15 @@
     "exchange": "Биржа",
     "currency": "Валюта",
     "favourite": "Избранное",
-    "favouriteYes": "Закреплено на панели"
+    "favouriteYes": "Закреплено на панели",
+    "updateTransactionTitle": "Изменить эту транзакцию?",
+    "deleteTransactionTitle": "Удалить эту транзакцию?",
+    "updatedTransaction": "Транзакция обновлена",
+    "deletedTransaction": "Транзакция удалена",
+    "updateInvestmentTransactionTitle": "Изменить эту инвестиционную операцию?",
+    "deleteInvestmentTransactionTitle": "Удалить эту инвестиционную операцию?",
+    "updatedInvestmentTransaction": "Инвестиционная операция обновлена",
+    "deletedInvestmentTransaction": "Инвестиционная операция удалена"
   },
   "table": {
     "downloadTitle": "Скачать таблицу в формате CSV",

@@ -104,7 +104,15 @@
     "exchange": "Place boursière",
     "currency": "Devise",
     "favourite": "Favori",
-    "favouriteYes": "Épinglé au tableau de bord"
+    "favouriteYes": "Épinglé au tableau de bord",
+    "updateTransactionTitle": "Modifier cette transaction ?",
+    "deleteTransactionTitle": "Supprimer cette transaction ?",
+    "updatedTransaction": "Transaction mise à jour",
+    "deletedTransaction": "Transaction supprimée",
+    "updateInvestmentTransactionTitle": "Modifier cette transaction de placement ?",
+    "deleteInvestmentTransactionTitle": "Supprimer cette transaction de placement ?",
+    "updatedInvestmentTransaction": "Transaction de placement mise à jour",
+    "deletedInvestmentTransaction": "Transaction de placement supprimée"
   },
   "table": {
     "downloadTitle": "Télécharger le tableau en CSV",

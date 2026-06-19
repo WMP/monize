@@ -104,7 +104,15 @@
     "exchange": "Bursa",
     "currency": "Mata uang",
     "favourite": "Favorit",
-    "favouriteYes": "Disematkan ke dasbor"
+    "favouriteYes": "Disematkan ke dasbor",
+    "updateTransactionTitle": "Edit transaksi ini?",
+    "deleteTransactionTitle": "Hapus transaksi ini?",
+    "updatedTransaction": "Transaksi diperbarui",
+    "deletedTransaction": "Transaksi dihapus",
+    "updateInvestmentTransactionTitle": "Edit transaksi investasi ini?",
+    "deleteInvestmentTransactionTitle": "Hapus transaksi investasi ini?",
+    "updatedInvestmentTransaction": "Transaksi investasi diperbarui",
+    "deletedInvestmentTransaction": "Transaksi investasi dihapus"
   },
   "table": {
     "downloadTitle": "Unduh tabel sebagai CSV",

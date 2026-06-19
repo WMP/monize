@@ -104,7 +104,15 @@
     "exchange": "Giełda",
     "currency": "Waluta",
     "favourite": "Ulubiony",
-    "favouriteYes": "Przypięto do pulpitu"
+    "favouriteYes": "Przypięto do pulpitu",
+    "updateTransactionTitle": "Edytować tę transakcję?",
+    "deleteTransactionTitle": "Usunąć tę transakcję?",
+    "updatedTransaction": "Transakcja zaktualizowana",
+    "deletedTransaction": "Transakcja usunięta",
+    "updateInvestmentTransactionTitle": "Edytować tę transakcję inwestycyjną?",
+    "deleteInvestmentTransactionTitle": "Usunąć tę transakcję inwestycyjną?",
+    "updatedInvestmentTransaction": "Transakcja inwestycyjna zaktualizowana",
+    "deletedInvestmentTransaction": "Transakcja inwestycyjna usunięta"
   },
   "table": {
     "downloadTitle": "Pobierz tabelę jako CSV",

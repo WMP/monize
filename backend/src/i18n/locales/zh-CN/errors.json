@@ -367,7 +367,8 @@
     "lookupQueryRequired": "请输入要查询的股票代码或证券名称。",
     "lookupNotFound": "未找到与\"{{ query }}\"匹配的证券。请检查代码或名称，或指定一个交易所。",
     "lookupAmbiguous": "\"{{ query }}\"匹配到多个证券：{{ list }}。请指定交易所后重新运行。",
-    "lookupNoCurrency": "无法确定\"{{ symbol }}\"的货币。请改为手动添加该证券。"
+    "lookupNoCurrency": "无法确定\"{{ symbol }}\"的货币。请改为手动添加该证券。",
+    "noUpdateFields": "请至少提供一个要更改的字段。"
   },
   "tags": {
     "notFound": "未找到 ID 为 {{ id }} 的标签",
@@ -407,7 +408,10 @@
     "notATransfer": "交易不是转账",
     "notFoundById": "未找到 ID 为 {{ id }} 的交易",
     "bulkUpdateNoFields": "至少需要提供一个更新字段",
-    "payeeNotFound": "未找到收款人"
+    "payeeNotFound": "未找到收款人",
+    "cannotEditTransfer": "无法在此处编辑转账。请在交易页面中编辑该转账。",
+    "cannotEditSplit": "无法在此处编辑拆分交易。请在交易页面中编辑该拆分。",
+    "noUpdateFields": "请至少提供一个要更改的字段。"
   },
   "users": {
     "userNotFound": "未找到用户",

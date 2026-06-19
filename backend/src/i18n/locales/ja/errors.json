@@ -367,7 +367,8 @@
     "lookupQueryRequired": "検索するティッカーシンボルまたは証券名を入力してください。",
     "lookupNotFound": "「{{ query }}」に一致する証券が見つかりませんでした。シンボルまたは名前を確認するか、取引所を指定してください。",
     "lookupAmbiguous": "「{{ query }}」は複数の証券に一致します: {{ list }}。取引所を指定して再実行してください。",
-    "lookupNoCurrency": "「{{ symbol }}」の通貨を特定できませんでした。代わりに証券を手動で追加してください。"
+    "lookupNoCurrency": "「{{ symbol }}」の通貨を特定できませんでした。代わりに証券を手動で追加してください。",
+    "noUpdateFields": "変更するフィールドを少なくとも1つ指定してください。"
   },
   "tags": {
     "notFound": "ID {{ id }} のタグが見つかりません",
@@ -407,7 +408,10 @@
     "notATransfer": "取引は振替ではありません",
     "notFoundById": "ID {{ id }} の取引が見つかりません",
     "bulkUpdateNoFields": "少なくとも1つの更新フィールドが必要です",
-    "payeeNotFound": "支払先が見つかりません"
+    "payeeNotFound": "支払先が見つかりません",
+    "cannotEditTransfer": "振替はここでは編集できません。取引画面から振替を編集してください。",
+    "cannotEditSplit": "分割取引はここでは編集できません。取引画面から分割を編集してください。",
+    "noUpdateFields": "変更するフィールドを少なくとも1つ指定してください。"
   },
   "users": {
     "userNotFound": "ユーザーが見つかりません",

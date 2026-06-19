@@ -104,7 +104,15 @@
     "exchange": "Beurs",
     "currency": "Valuta",
     "favourite": "Favoriet",
-    "favouriteYes": "Vastgezet op dashboard"
+    "favouriteYes": "Vastgezet op dashboard",
+    "updateTransactionTitle": "Deze transactie bewerken?",
+    "deleteTransactionTitle": "Deze transactie verwijderen?",
+    "updatedTransaction": "Transactie bijgewerkt",
+    "deletedTransaction": "Transactie verwijderd",
+    "updateInvestmentTransactionTitle": "Deze beleggingstransactie bewerken?",
+    "deleteInvestmentTransactionTitle": "Deze beleggingstransactie verwijderen?",
+    "updatedInvestmentTransaction": "Beleggingstransactie bijgewerkt",
+    "deletedInvestmentTransaction": "Beleggingstransactie verwijderd"
   },
   "table": {
     "downloadTitle": "Tabel downloaden als CSV",

@@ -104,7 +104,15 @@
     "exchange": "取引所",
     "currency": "通貨",
     "favourite": "お気に入り",
-    "favouriteYes": "ダッシュボードに固定"
+    "favouriteYes": "ダッシュボードに固定",
+    "updateTransactionTitle": "この取引を編集しますか？",
+    "deleteTransactionTitle": "この取引を削除しますか？",
+    "updatedTransaction": "取引を更新しました",
+    "deletedTransaction": "取引を削除しました",
+    "updateInvestmentTransactionTitle": "この投資取引を編集しますか？",
+    "deleteInvestmentTransactionTitle": "この投資取引を削除しますか？",
+    "updatedInvestmentTransaction": "投資取引を更新しました",
+    "deletedInvestmentTransaction": "投資取引を削除しました"
   },
   "table": {
     "downloadTitle": "テーブルを CSV でダウンロード",

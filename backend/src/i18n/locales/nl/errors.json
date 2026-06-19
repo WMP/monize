@@ -367,7 +367,8 @@
     "lookupQueryRequired": "Geef een tickersymbool of effectnaam op om op te zoeken.",
     "lookupNotFound": "Geen effect gevonden dat overeenkomt met \"{{ query }}\". Controleer het symbool of de naam, of geef een beurs op.",
     "lookupAmbiguous": "\"{{ query }}\" komt overeen met meerdere effecten: {{ list }}. Voer opnieuw uit en geef een beurs op.",
-    "lookupNoCurrency": "Kan de valuta voor \"{{ symbol }}\" niet bepalen. Voeg het effect in plaats daarvan handmatig toe."
+    "lookupNoCurrency": "Kan de valuta voor \"{{ symbol }}\" niet bepalen. Voeg het effect in plaats daarvan handmatig toe.",
+    "noUpdateFields": "Geef ten minste één veld op om te wijzigen."
   },
   "tags": {
     "notFound": "Label met ID {{ id }} niet gevonden",
@@ -407,7 +408,10 @@
     "notATransfer": "Transactie is geen overboeking",
     "notFoundById": "Transactie met ID {{ id }} niet gevonden",
     "bulkUpdateNoFields": "Er moet minimaal één bijwerkveld worden opgegeven",
-    "payeeNotFound": "Begunstigde niet gevonden"
+    "payeeNotFound": "Begunstigde niet gevonden",
+    "cannotEditTransfer": "Overboekingen kunnen hier niet worden bewerkt. Bewerk de overboeking via het scherm Transacties.",
+    "cannotEditSplit": "Gesplitste transacties kunnen hier niet worden bewerkt. Bewerk de splitsing via het scherm Transacties.",
+    "noUpdateFields": "Geef ten minste één veld op om te wijzigen."
   },
   "users": {
     "userNotFound": "Gebruiker niet gevonden",

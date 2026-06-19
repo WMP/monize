@@ -104,7 +104,15 @@
     "exchange": "Bolsa",
     "currency": "Moeda",
     "favourite": "Favorito",
-    "favouriteYes": "Fixado no painel"
+    "favouriteYes": "Fixado no painel",
+    "updateTransactionTitle": "Editar esta transação?",
+    "deleteTransactionTitle": "Excluir esta transação?",
+    "updatedTransaction": "Transação atualizada",
+    "deletedTransaction": "Transação excluída",
+    "updateInvestmentTransactionTitle": "Editar esta transação de investimento?",
+    "deleteInvestmentTransactionTitle": "Excluir esta transação de investimento?",
+    "updatedInvestmentTransaction": "Transação de investimento atualizada",
+    "deletedInvestmentTransaction": "Transação de investimento excluída"
   },
   "table": {
     "downloadTitle": "Baixar tabela como CSV",

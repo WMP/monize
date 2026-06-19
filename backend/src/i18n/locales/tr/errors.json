@@ -367,7 +367,8 @@
     "lookupQueryRequired": "Aranacak bir hisse sembolü veya menkul kıymet adı girin.",
     "lookupNotFound": "\"{{ query }}\" ile eşleşen menkul kıymet bulunamadı. Sembolü veya adı kontrol edin ya da bir borsa belirtin.",
     "lookupAmbiguous": "\"{{ query }}\" birden fazla menkul kıymetle eşleşiyor: {{ list }}. Bir borsa belirterek yeniden çalıştırın.",
-    "lookupNoCurrency": "\"{{ symbol }}\" için para birimi belirlenemedi. Bunun yerine menkul kıymeti elle ekleyin."
+    "lookupNoCurrency": "\"{{ symbol }}\" için para birimi belirlenemedi. Bunun yerine menkul kıymeti elle ekleyin.",
+    "noUpdateFields": "Değiştirmek için en az bir alan girin."
   },
   "tags": {
     "notFound": "{{ id }} kimliğine sahip etiket bulunamadı",
@@ -407,7 +408,10 @@
     "notATransfer": "İşlem bir transfer değil",
     "notFoundById": "{{ id }} kimliğine sahip işlem bulunamadı",
     "bulkUpdateNoFields": "En az bir güncelleme alanı sağlanmalıdır",
-    "payeeNotFound": "Alacaklı bulunamadı"
+    "payeeNotFound": "Alacaklı bulunamadı",
+    "cannotEditTransfer": "Transferler burada düzenlenemez. Transferi İşlemler ekranından düzenleyin.",
+    "cannotEditSplit": "Bölünmüş işlemler burada düzenlenemez. Bölmeyi İşlemler ekranından düzenleyin.",
+    "noUpdateFields": "Değiştirmek için en az bir alan girin."
   },
   "users": {
     "userNotFound": "Kullanıcı bulunamadı",

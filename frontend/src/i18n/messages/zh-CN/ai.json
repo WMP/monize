@@ -104,7 +104,15 @@
     "exchange": "交易所",
     "currency": "货币",
     "favourite": "收藏",
-    "favouriteYes": "已固定到仪表板"
+    "favouriteYes": "已固定到仪表板",
+    "updateTransactionTitle": "编辑此交易？",
+    "deleteTransactionTitle": "删除此交易？",
+    "updatedTransaction": "交易已更新",
+    "deletedTransaction": "交易已删除",
+    "updateInvestmentTransactionTitle": "编辑此投资交易？",
+    "deleteInvestmentTransactionTitle": "删除此投资交易？",
+    "updatedInvestmentTransaction": "投资交易已更新",
+    "deletedInvestmentTransaction": "投资交易已删除"
   },
   "table": {
     "downloadTitle": "将表格下载为 CSV",

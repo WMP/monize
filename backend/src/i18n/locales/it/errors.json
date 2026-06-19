@@ -367,7 +367,8 @@
     "lookupQueryRequired": "Inserisci un simbolo ticker o il nome di un titolo da cercare.",
     "lookupNotFound": "Nessun titolo trovato corrispondente a \"{{ query }}\". Controlla il simbolo o il nome, oppure specifica una borsa.",
     "lookupAmbiguous": "\"{{ query }}\" corrisponde a più titoli: {{ list }}. Esegui di nuovo specificando una borsa.",
-    "lookupNoCurrency": "Impossibile determinare la valuta per \"{{ symbol }}\". Aggiungi il titolo manualmente."
+    "lookupNoCurrency": "Impossibile determinare la valuta per \"{{ symbol }}\". Aggiungi il titolo manualmente.",
+    "noUpdateFields": "Fornisci almeno un campo da modificare."
   },
   "tags": {
     "notFound": "Etichetta con ID {{ id }} non trovata",
@@ -407,7 +408,10 @@
     "notATransfer": "La transazione non è un trasferimento",
     "notFoundById": "Transazione con ID {{ id }} non trovata",
     "bulkUpdateNoFields": "Deve essere fornito almeno un campo di aggiornamento",
-    "payeeNotFound": "Beneficiario non trovato"
+    "payeeNotFound": "Beneficiario non trovato",
+    "cannotEditTransfer": "I trasferimenti non possono essere modificati qui. Modifica il trasferimento dalla schermata Transazioni.",
+    "cannotEditSplit": "Le transazioni suddivise non possono essere modificate qui. Modifica la suddivisione dalla schermata Transazioni.",
+    "noUpdateFields": "Fornisci almeno un campo da modificare."
   },
   "users": {
     "userNotFound": "Utente non trovato",

@@ -104,7 +104,15 @@
     "exchange": "交易所",
     "currency": "貨幣",
     "favourite": "我的最愛",
-    "favouriteYes": "已釘選到儀表板"
+    "favouriteYes": "已釘選到儀表板",
+    "updateTransactionTitle": "編輯此交易？",
+    "deleteTransactionTitle": "刪除此交易？",
+    "updatedTransaction": "交易已更新",
+    "deletedTransaction": "交易已刪除",
+    "updateInvestmentTransactionTitle": "編輯此投資交易？",
+    "deleteInvestmentTransactionTitle": "刪除此投資交易？",
+    "updatedInvestmentTransaction": "投資交易已更新",
+    "deletedInvestmentTransaction": "投資交易已刪除"
   },
   "table": {
     "downloadTitle": "下載表格為 CSV",
