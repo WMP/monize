@@ -5,12 +5,20 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
-  # build-and-push only fires on workflow_dispatch so merging to main doesn't
-  # publish a new image set on every PR. Trigger from the Actions tab (or
-  # `gh workflow run "CI Pipeline" --ref main`) when you actually want a
-  # release: it bumps the version, builds/signs/scans/pushes the images, and
-  # cuts a GitHub release. The inputs below choose the version bump and let you
-  # supply your own release notes (see docs/release-notes/README.md).
+  # Two publish paths share this file:
+  #
+  #   * Preview (push to main): every merge to main builds + pushes a
+  #     lightweight `:<next-patch>-preview` image (e.g.
+  #     monize-frontend:1.11.2-preview) so merged-but-unreleased work is pullable
+  #     without cutting a formal release (issue #727). No version bump, no GitHub
+  #     release, no cosign/SBOM -- it just moves the `<next-patch>-preview` tag.
+  #
+  #   * Release (workflow_dispatch): the formal release. Trigger from the
+  #     Actions tab (or `gh workflow run "CI Pipeline" --ref main`) when you
+  #     actually want a release: it bumps the version, builds/signs/scans/pushes
+  #     the versioned + `:latest` images, and cuts a GitHub release. The inputs
+  #     below choose the version bump and let you supply your own release notes
+  #     (see docs/release-notes/README.md).
   workflow_dispatch:
     inputs:
       release_type:
@@ -707,6 +715,191 @@ jobs:
               --title "v${VERSION}" \
               --generate-notes
           fi
+
+  # ---------------------------------------------------------------------------
+  # Preview publish (push to main)
+  #
+  # Every merge to main publishes a lightweight preview image so the current
+  # main is pullable before a formal release (issue #727). It reuses the same
+  # full test/security gate as the release path (those jobs already run on every
+  # push to main, so this adds only the build), but stays deliberately light on
+  # the publish side: no version-bump commit, no GitHub release, no
+  # cosign/SBOM/provenance. It only moves a single `<next-patch>-preview` tag.
+  # ---------------------------------------------------------------------------
+
+  # Resolve the preview version ONCE so the parallel backend/frontend preview
+  # builds stamp identical values. The preview tag is the *next* patch release
+  # with a `-preview` suffix (e.g. current 1.11.1 -> 1.11.2-preview), so all the
+  # merges in a release cycle share one moving tag that is superseded by the
+  # real `1.11.2` image when that release is cut. No commit happens here.
+  prepare-preview:
+    name: Prepare Preview
+    runs-on: ubuntu-latest
+    # Preview path: runs on a push to main (a merge), never on the manual
+    # release dispatch (which the prepare-release/build-and-push path handles).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      [
+        backend-lint,
+        backend-unit-tests,
+        backend-integration-tests,
+        frontend-lint,
+        frontend-unit-tests,
+        npm-audit,
+        bearer-scan,
+        dockerfile-lint,
+        license-check,
+        schema-drift,
+        zizmor-scan,
+        env-doc-check,
+        e2e-tests,
+      ]
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      build_date: ${{ steps.meta.outputs.build_date }}
+      git_sha: ${{ steps.meta.outputs.git_sha }}
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      # Compute <next-patch>-preview off the last published version in
+      # backend/package.json. The release job commits the version bump only
+      # after a release, so package.json always holds the previously published
+      # version -- patch+1 is therefore the next release this preview targets.
+      - name: Resolve preview version
+        id: version
+        run: |
+          CURRENT=$(node -p "require('./backend/package.json').version")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))-preview"
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved preview version: $CURRENT -> $NEW_VERSION"
+
+      - name: Set build metadata
+        id: meta
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          echo "git_sha=$GIT_SHA" >> "$GITHUB_OUTPUT"
+          echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+
+  # Build + push the two preview images IN PARALLEL (one matrix leg per image).
+  # Unlike the release build-and-push, this deliberately skips cosign signing,
+  # SBOM/provenance attestation and the Trivy gate: a preview is a convenience
+  # image, not a signed release. It pushes only the moving `<next-patch>-preview`
+  # tag and never touches `:latest`.
+  build-preview:
+    name: Build & Push Preview (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    needs: prepare-preview
+    permissions:
+      contents: read
+      packages: write # to push the preview images to GHCR
+    strategy:
+      # Build both images even if one fails, so we get whatever succeeded.
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            image: ghcr.io/kenlasko/monize-backend
+            context: .
+            file: backend/Dockerfile
+            workdir: backend
+            title: Monize Backend
+            description: Backend for Monize, a self-hosted personal finance app
+          - name: frontend
+            image: ghcr.io/kenlasko/monize-frontend
+            context: frontend
+            file: frontend/Dockerfile
+            workdir: frontend
+            title: Monize Frontend
+            description: Frontend for Monize, a self-hosted personal finance app
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      # Stamp the preview version into this image's package.json so the built
+      # artifact reports e.g. 1.11.2-preview. Not committed -- preview never
+      # bumps the repo version.
+      - name: Stamp version
+        env:
+          VERSION: ${{ needs.prepare-preview.outputs.version }}
+          WORKDIR: ${{ matrix.workdir }}
+        run: cd "$WORKDIR" && npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Log in to GHCR
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Build and push image
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          target: production
+          push: true
+          platforms: linux/amd64,linux/arm64
+          # Plain image: no provenance/SBOM attestation manifest (unlike the
+          # signed release), keeping the preview build fast and the registry
+          # listing clean.
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ matrix.image }}:${{ needs.prepare-preview.outputs.version }}
+          build-args: |
+            GIT_SHA=${{ needs.prepare-preview.outputs.git_sha }}
+            BUILD_DATE=${{ needs.prepare-preview.outputs.build_date }}
+            VERSION=${{ needs.prepare-preview.outputs.version }}
+          annotations: |
+            index:org.opencontainers.image.title=${{ matrix.title }}
+            index:org.opencontainers.image.description=${{ matrix.description }}
+            index:org.opencontainers.image.source=https://github.com/kenlasko/monize
+            index:org.opencontainers.image.url=https://github.com/kenlasko/monize
+            index:org.opencontainers.image.authors=ken.lasko@gmail.com
+            index:org.opencontainers.image.vendor=Ken Lasko
+            index:org.opencontainers.image.revision=${{ needs.prepare-preview.outputs.git_sha }}
+            index:org.opencontainers.image.created=${{ needs.prepare-preview.outputs.build_date }}
+            index:org.opencontainers.image.version=${{ needs.prepare-preview.outputs.version }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+      - name: Summary
+        if: success()
+        env:
+          NAME: ${{ matrix.name }}
+          IMAGE: ${{ matrix.image }}
+          VERSION: ${{ needs.prepare-preview.outputs.version }}
+        run: |
+          {
+            echo "### ${NAME} preview image pushed"
+            echo ""
+            echo '```'
+            echo "${IMAGE}:${VERSION}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # Pre-download and cache the Playwright browsers ONCE, before the sharded
   # test jobs run. The shards then restore from this cache (guaranteed hit) and
