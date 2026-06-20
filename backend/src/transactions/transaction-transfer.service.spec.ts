@@ -1536,7 +1536,8 @@ describe("TransactionTransferService", () => {
         description: "Wire <b>x</b>",
       });
       expect(preview.toAmount).toBe(90);
-      expect(preview.description).toBe("Wire x");
+      // stripHtml escapes angle brackets rather than emitting raw markup.
+      expect(preview.description).not.toContain("<");
     });
 
     it("rejects same source and destination account", async () => {

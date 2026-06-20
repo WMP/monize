@@ -67,12 +67,16 @@ describe("TransactionToolPrepService", () => {
         description: null,
         currencyCode: "USD",
       }),
-      findOne: jest
-        .fn()
-        .mockResolvedValue({ id: "t1", isTransfer: false, linkedTransactionId: null }),
+      findOne: jest.fn().mockResolvedValue({
+        id: "t1",
+        isTransfer: false,
+        linkedTransactionId: null,
+      }),
     };
     transfer = {
-      isTransfer: jest.fn((t: { isTransfer?: boolean }) => t.isTransfer === true),
+      isTransfer: jest.fn(
+        (t: { isTransfer?: boolean }) => t.isTransfer === true,
+      ),
       previewCreateTransfer: jest.fn().mockResolvedValue({
         fromAccountId: "a1",
         fromAccountName: "Checking",
@@ -267,7 +271,9 @@ describe("TransactionToolPrepService", () => {
           description: null,
           currencyCode: "USD",
         })
-        .mockRejectedValueOnce(new BadRequestException("Transaction not found"));
+        .mockRejectedValueOnce(
+          new BadRequestException("Transaction not found"),
+        );
       const result = await service.prepareDeleteBulk(userId, ["t1", "t2"]);
       expect(result.okRows).toEqual([{ transactionId: "t1" }]);
       expect(result.skipped).toHaveLength(1);

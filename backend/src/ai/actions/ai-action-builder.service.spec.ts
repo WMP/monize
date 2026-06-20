@@ -479,10 +479,7 @@ describe("AiActionBuilderService", () => {
 
   it("builds a signed batch_actions envelope carrying rows and preview rows", () => {
     const rows = [{ transactionId: "t1" }, { transactionId: "t2" }];
-    const previewRows = [
-      { status: "ok" as const },
-      { status: "ok" as const },
-    ];
+    const previewRows = [{ status: "ok" as const }, { status: "ok" as const }];
     const action = builder.buildBatchActions(
       "user-1",
       "delete",

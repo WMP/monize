@@ -64,6 +64,7 @@
     "actionExpired": "Deze bevestiging is verlopen. Vraag het opnieuw.",
     "actionWriteLimit": "Dagelijkse AI-schrijflimiet bereikt ({{ limit }} per dag). Probeer het morgen opnieuw.",
     "actionConfirmFailed": "Deze actie kon niet worden bevestigd.",
+    "transferInBulkUpdate": "Overboekingen kunnen niet in een bulkbewerking worden bewerkt. Bewerk de overboeking afzonderlijk.",
     "providerConfigNotFound": "AI-providerconfiguratie niet gevonden",
     "maxProvidersExceeded": "Maximaal {{ maxProvidersPerUser }} AI-providerconfiguraties per gebruiker",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY is niet geconfigureerd. Kan API-sleutels niet veilig opslaan.",

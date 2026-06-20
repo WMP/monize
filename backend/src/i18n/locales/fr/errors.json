@@ -64,6 +64,7 @@
     "actionExpired": "Cette confirmation a expiré. Veuillez demander à nouveau.",
     "actionWriteLimit": "Limite quotidienne d'écriture IA atteinte ({{ limit }} par jour). Veuillez réessayer demain.",
     "actionConfirmFailed": "Cette action n'a pas pu être confirmée.",
+    "transferInBulkUpdate": "Les virements ne peuvent pas être modifiés dans une mise à jour groupée. Modifiez le virement séparément.",
     "providerConfigNotFound": "Configuration du fournisseur IA introuvable",
     "maxProvidersExceeded": "Maximum de {{ maxProvidersPerUser }} configurations de fournisseurs IA par utilisateur",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY n'est pas configuré. Impossible de stocker les clés API de manière sécurisée.",

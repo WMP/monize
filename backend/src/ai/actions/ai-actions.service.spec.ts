@@ -51,6 +51,14 @@ describe("AiActionsService", () => {
       update: jest.fn().mockResolvedValue({ id: TX }),
       remove: jest.fn().mockResolvedValue(undefined),
       createBulk: jest.fn(),
+      createTransfer: jest.fn().mockResolvedValue({
+        fromTransaction: { id: "tf-1" },
+        toTransaction: { id: "tf-2" },
+      }),
+      updateTransfer: jest.fn().mockResolvedValue({
+        fromTransaction: { id: TX },
+        toTransaction: { id: "tf-2" },
+      }),
     };
     payees = {
       create: jest.fn().mockResolvedValue({ id: "payee-new" }),
@@ -572,6 +580,112 @@ describe("AiActionsService", () => {
         ids: ["inv-1", "inv-2"],
         count: 2,
       });
+    });
+  });
+
+  const ACC2 = "66666666-6666-4666-8666-666666666666";
+
+  describe("transfer and batch actions", () => {
+    function createTransferDescriptor() {
+      const d: import("./ai-action.types").CreateTransferDescriptor = {
+        type: "create_transfer",
+        userId: USER,
+        actionId: "act-xfer",
+        expiresAt: Date.now() + 60_000,
+        fromAccountId: ACC,
+        toAccountId: ACC2,
+        amount: 100,
+        transactionDate: "2026-01-15",
+        fromCurrencyCode: "USD",
+        toCurrencyCode: "USD",
+        exchangeRate: 1,
+        toAmount: 100,
+        description: null,
+      };
+      return d;
+    }
+
+    it("executes create_transfer via transactionsService.createTransfer", async () => {
+      const descriptor = createTransferDescriptor();
+      const result = await service.confirm(USER, dtoFor(descriptor));
+      expect(transactions.createTransfer).toHaveBeenCalledWith(
+        USER,
+        expect.objectContaining({
+          fromAccountId: ACC,
+          toAccountId: ACC2,
+          amount: 100,
+        }),
+      );
+      expect(result.type).toBe("create_transfer");
+      expect(result.id).toBe("tf-1");
+    });
+
+    it("executes update_transfer via transactionsService.updateTransfer", async () => {
+      const descriptor: import("./ai-action.types").UpdateTransferDescriptor = {
+        type: "update_transfer",
+        userId: USER,
+        actionId: "act-xfer-up",
+        expiresAt: Date.now() + 60_000,
+        transactionId: TX,
+        fromAccountId: ACC,
+        toAccountId: ACC2,
+        amount: 200,
+        transactionDate: "2026-02-01",
+        exchangeRate: 1,
+        toAmount: 200,
+        description: null,
+      };
+      const result = await service.confirm(USER, dtoFor(descriptor));
+      expect(transactions.updateTransfer).toHaveBeenCalledWith(
+        USER,
+        TX,
+        expect.objectContaining({ amount: 200 }),
+      );
+      expect(result.type).toBe("update_transfer");
+    });
+
+    it("executes batch_actions(delete) best-effort, collecting skips", async () => {
+      transactions.remove
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error("nope"));
+      const descriptor: import("./ai-action.types").BatchActionsDescriptor = {
+        type: "batch_actions",
+        userId: USER,
+        actionId: "act-batch",
+        expiresAt: Date.now() + 60_000,
+        operation: "delete",
+        rows: [{ transactionId: TX }, { transactionId: ACC2 }],
+      };
+      const result = await service.confirm(USER, dtoFor(descriptor));
+      expect(result.type).toBe("batch_actions");
+      expect(result.count).toBe(1);
+      expect(result.skipped).toHaveLength(1);
+    });
+
+    it("executes batch_actions(create_transfer) for each row", async () => {
+      const descriptor: import("./ai-action.types").BatchActionsDescriptor = {
+        type: "batch_actions",
+        userId: USER,
+        actionId: "act-batch-xfer",
+        expiresAt: Date.now() + 60_000,
+        operation: "create_transfer",
+        rows: [
+          {
+            fromAccountId: ACC,
+            toAccountId: ACC2,
+            amount: 50,
+            transactionDate: "2026-01-15",
+            fromCurrencyCode: "USD",
+            toCurrencyCode: "USD",
+            exchangeRate: 1,
+            toAmount: 50,
+            description: null,
+          },
+        ],
+      };
+      const result = await service.confirm(USER, dtoFor(descriptor));
+      expect(transactions.createTransfer).toHaveBeenCalledTimes(1);
+      expect(result.count).toBe(1);
     });
   });
 });
