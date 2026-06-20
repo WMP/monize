@@ -112,7 +112,20 @@
     "updateInvestmentTransactionTitle": "Bu yatırım işlemi düzenlensin mi?",
     "deleteInvestmentTransactionTitle": "Bu yatırım işlemi silinsin mi?",
     "updatedInvestmentTransaction": "Yatırım işlemi güncellendi",
-    "deletedInvestmentTransaction": "Yatırım işlemi silindi"
+    "deletedInvestmentTransaction": "Yatırım işlemi silindi",
+    "createTransferTitle": "Bu transfer oluşturulsun mu?",
+    "updateTransferTitle": "Bu transfer düzenlensin mi?",
+    "createdTransfer": "Transfer oluşturuldu",
+    "updatedTransfer": "Transfer güncellendi",
+    "fromAccount": "Nereden",
+    "toAccount": "Nereye",
+    "toAmount": "Hedef tutar",
+    "updateTransactionsTitle": "Bu işlemler düzenlensin mi?",
+    "deleteTransactionsTitle": "Bu işlemler silinsin mi?",
+    "createTransfersTitle": "Bu transferler oluşturulsun mu?",
+    "updatedTransactions": "{count, plural, =0 {İşlem güncellenmedi} one {# işlem güncellendi} other {# işlem güncellendi}}",
+    "deletedTransactions": "{count, plural, =0 {İşlem silinmedi} one {# işlem silindi} other {# işlem silindi}}",
+    "createdTransfers": "{count, plural, =0 {Transfer oluşturulmadı} one {# transfer oluşturuldu} other {# transfer oluşturuldu}}"
   },
   "table": {
     "downloadTitle": "Tabloyu CSV olarak indir",

@@ -112,7 +112,20 @@
     "updateInvestmentTransactionTitle": "Chỉnh sửa giao dịch đầu tư này?",
     "deleteInvestmentTransactionTitle": "Xóa giao dịch đầu tư này?",
     "updatedInvestmentTransaction": "Đã cập nhật giao dịch đầu tư",
-    "deletedInvestmentTransaction": "Đã xóa giao dịch đầu tư"
+    "deletedInvestmentTransaction": "Đã xóa giao dịch đầu tư",
+    "createTransferTitle": "Tạo chuyển khoản này?",
+    "updateTransferTitle": "Chỉnh sửa chuyển khoản này?",
+    "createdTransfer": "Đã tạo chuyển khoản",
+    "updatedTransfer": "Đã cập nhật chuyển khoản",
+    "fromAccount": "Từ",
+    "toAccount": "Đến",
+    "toAmount": "Số tiền nhận",
+    "updateTransactionsTitle": "Chỉnh sửa các giao dịch này?",
+    "deleteTransactionsTitle": "Xóa các giao dịch này?",
+    "createTransfersTitle": "Tạo các chuyển khoản này?",
+    "updatedTransactions": "{count, plural, =0 {Không có giao dịch nào được cập nhật} other {Đã cập nhật # giao dịch}}",
+    "deletedTransactions": "{count, plural, =0 {Không có giao dịch nào được xóa} other {Đã xóa # giao dịch}}",
+    "createdTransfers": "{count, plural, =0 {Không có khoản chuyển nào được tạo} other {Đã tạo # chuyển khoản}}"
   },
   "table": {
     "downloadTitle": "Tải bảng dưới dạng CSV",

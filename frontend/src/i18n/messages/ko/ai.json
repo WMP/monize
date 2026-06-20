@@ -112,7 +112,20 @@
     "updateInvestmentTransactionTitle": "이 투자 거래를 수정하시겠습니까?",
     "deleteInvestmentTransactionTitle": "이 투자 거래를 삭제하시겠습니까?",
     "updatedInvestmentTransaction": "투자 거래가 수정되었습니다",
-    "deletedInvestmentTransaction": "투자 거래가 삭제되었습니다"
+    "deletedInvestmentTransaction": "투자 거래가 삭제되었습니다",
+    "createTransferTitle": "이 이체를 생성하시겠습니까?",
+    "updateTransferTitle": "이 이체를 수정하시겠습니까?",
+    "createdTransfer": "이체가 생성되었습니다",
+    "updatedTransfer": "이체가 수정되었습니다",
+    "fromAccount": "보내는 계좌",
+    "toAccount": "받는 계좌",
+    "toAmount": "받는 금액",
+    "updateTransactionsTitle": "이 거래들을 수정하시겠습니까?",
+    "deleteTransactionsTitle": "이 거래들을 삭제하시겠습니까?",
+    "createTransfersTitle": "이 이체들을 생성하시겠습니까?",
+    "updatedTransactions": "{count, plural, =0 {업데이트된 거래가 없습니다} other {# 건의 거래가 수정되었습니다}}",
+    "deletedTransactions": "{count, plural, =0 {삭제된 거래가 없습니다} other {# 건의 거래가 삭제되었습니다}}",
+    "createdTransfers": "{count, plural, =0 {생성된 이체가 없습니다} other {# 건의 이체가 생성되었습니다}}"
   },
   "table": {
     "downloadTitle": "CSV로 표 다운로드",

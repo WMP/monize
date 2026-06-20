@@ -112,7 +112,20 @@
     "updateInvestmentTransactionTitle": "編輯此投資交易？",
     "deleteInvestmentTransactionTitle": "刪除此投資交易？",
     "updatedInvestmentTransaction": "投資交易已更新",
-    "deletedInvestmentTransaction": "投資交易已刪除"
+    "deletedInvestmentTransaction": "投資交易已刪除",
+    "createTransferTitle": "建立此轉帳？",
+    "updateTransferTitle": "編輯此轉帳？",
+    "createdTransfer": "轉帳已建立",
+    "updatedTransfer": "轉帳已更新",
+    "fromAccount": "轉出",
+    "toAccount": "轉入",
+    "toAmount": "入帳金額",
+    "updateTransactionsTitle": "編輯這些交易？",
+    "deleteTransactionsTitle": "刪除這些交易？",
+    "createTransfersTitle": "建立這些轉帳？",
+    "updatedTransactions": "{count, plural, =0 {未更新交易} other {已更新 # 筆交易}}",
+    "deletedTransactions": "{count, plural, =0 {未刪除交易} other {已刪除 # 筆交易}}",
+    "createdTransfers": "{count, plural, =0 {未建立轉帳} other {已建立 # 筆轉帳}}"
   },
   "table": {
     "downloadTitle": "下載表格為 CSV",

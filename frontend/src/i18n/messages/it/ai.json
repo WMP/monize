@@ -112,7 +112,20 @@
     "updateInvestmentTransactionTitle": "Modificare questa transazione di investimento?",
     "deleteInvestmentTransactionTitle": "Eliminare questa transazione di investimento?",
     "updatedInvestmentTransaction": "Transazione di investimento aggiornata",
-    "deletedInvestmentTransaction": "Transazione di investimento eliminata"
+    "deletedInvestmentTransaction": "Transazione di investimento eliminata",
+    "createTransferTitle": "Creare questo trasferimento?",
+    "updateTransferTitle": "Modificare questo trasferimento?",
+    "createdTransfer": "Trasferimento creato",
+    "updatedTransfer": "Trasferimento aggiornato",
+    "fromAccount": "Da",
+    "toAccount": "A",
+    "toAmount": "Importo di destinazione",
+    "updateTransactionsTitle": "Modificare queste transazioni?",
+    "deleteTransactionsTitle": "Eliminare queste transazioni?",
+    "createTransfersTitle": "Creare questi trasferimenti?",
+    "updatedTransactions": "{count, plural, =0 {Nessuna transazione aggiornata} one {# transazione aggiornata} other {# transazioni aggiornate}}",
+    "deletedTransactions": "{count, plural, =0 {Nessuna transazione eliminata} one {# transazione eliminata} other {# transazioni eliminate}}",
+    "createdTransfers": "{count, plural, =0 {Nessun trasferimento creato} one {# trasferimento creato} other {# trasferimenti creati}}"
   },
   "table": {
     "downloadTitle": "Scarica tabella come CSV",

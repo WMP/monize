@@ -112,7 +112,20 @@
     "updateInvestmentTransactionTitle": "Изменить эту инвестиционную операцию?",
     "deleteInvestmentTransactionTitle": "Удалить эту инвестиционную операцию?",
     "updatedInvestmentTransaction": "Инвестиционная операция обновлена",
-    "deletedInvestmentTransaction": "Инвестиционная операция удалена"
+    "deletedInvestmentTransaction": "Инвестиционная операция удалена",
+    "createTransferTitle": "Создать этот перевод?",
+    "updateTransferTitle": "Изменить этот перевод?",
+    "createdTransfer": "Перевод создан",
+    "updatedTransfer": "Перевод обновлён",
+    "fromAccount": "Откуда",
+    "toAccount": "Куда",
+    "toAmount": "Сумма зачисления",
+    "updateTransactionsTitle": "Изменить эти транзакции?",
+    "deleteTransactionsTitle": "Удалить эти транзакции?",
+    "createTransfersTitle": "Создать эти переводы?",
+    "updatedTransactions": "{count, plural, =0 {Транзакции не обновлены} one {Обновлена # транзакция} other {Обновлено # транзакций}}",
+    "deletedTransactions": "{count, plural, =0 {Транзакции не удалены} one {Удалена # транзакция} other {Удалено # транзакций}}",
+    "createdTransfers": "{count, plural, =0 {Переводы не созданы} one {Создан # перевод} other {Создано # переводов}}"
   },
   "table": {
     "downloadTitle": "Скачать таблицу в формате CSV",

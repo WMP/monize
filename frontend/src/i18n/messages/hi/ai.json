@@ -112,7 +112,20 @@
     "updateInvestmentTransactionTitle": "यह निवेश लेनदेन संपादित करें?",
     "deleteInvestmentTransactionTitle": "यह निवेश लेनदेन हटाएं?",
     "updatedInvestmentTransaction": "निवेश लेनदेन अपडेट किया गया",
-    "deletedInvestmentTransaction": "निवेश लेनदेन हटाया गया"
+    "deletedInvestmentTransaction": "निवेश लेनदेन हटाया गया",
+    "createTransferTitle": "यह ट्रांसफर बनाएं?",
+    "updateTransferTitle": "यह ट्रांसफर संपादित करें?",
+    "createdTransfer": "ट्रांसफर बनाया गया",
+    "updatedTransfer": "ट्रांसफर अपडेट किया गया",
+    "fromAccount": "से",
+    "toAccount": "को",
+    "toAmount": "गंतव्य राशि",
+    "updateTransactionsTitle": "ये लेन-देन संपादित करें?",
+    "deleteTransactionsTitle": "ये लेन-देन हटाएं?",
+    "createTransfersTitle": "ये ट्रांसफर बनाएं?",
+    "updatedTransactions": "{count, plural, =0 {कोई लेन-देन अपडेट नहीं किया गया} one {# लेन-देन अपडेट किया गया} other {# लेन-देन अपडेट किए गए}}",
+    "deletedTransactions": "{count, plural, =0 {कोई लेन-देन नहीं हटाया गया} one {# लेन-देन हटाया गया} other {# लेन-देन हटाए गए}}",
+    "createdTransfers": "{count, plural, =0 {कोई ट्रांसफर नहीं बनाया गया} one {# ट्रांसफर बनाया गया} other {# ट्रांसफर बनाए गए}}"
   },
   "table": {
     "downloadTitle": "तालिका CSV के रूप में डाउनलोड करें",
