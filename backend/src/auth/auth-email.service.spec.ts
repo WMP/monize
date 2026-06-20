@@ -332,7 +332,8 @@ describe("AuthEmailService", () => {
       usersRepository.findOne.mockResolvedValue(user);
       usersRepository.save.mockResolvedValue(user);
 
-      const result = await service.generateVerificationToken("test@example.com");
+      const result =
+        await service.generateVerificationToken("test@example.com");
 
       expect(result).not.toBeNull();
       expect(result!.user).toBe(user);
@@ -354,7 +355,8 @@ describe("AuthEmailService", () => {
     it("returns null when the user is not found", async () => {
       usersRepository.findOne.mockResolvedValue(null);
 
-      const result = await service.generateVerificationToken("nobody@example.com");
+      const result =
+        await service.generateVerificationToken("nobody@example.com");
 
       expect(result).toBeNull();
       expect(usersRepository.save).not.toHaveBeenCalled();
@@ -366,7 +368,8 @@ describe("AuthEmailService", () => {
         emailVerified: true,
       });
 
-      const result = await service.generateVerificationToken("test@example.com");
+      const result =
+        await service.generateVerificationToken("test@example.com");
 
       expect(result).toBeNull();
       expect(usersRepository.save).not.toHaveBeenCalled();
@@ -386,7 +389,9 @@ describe("AuthEmailService", () => {
       mockWhere = jest.fn().mockReturnValue({ andWhere: mockAndWhere });
       mockSet = jest.fn().mockReturnValue({ where: mockWhere });
       mockUpdate = jest.fn().mockReturnValue({ set: mockSet });
-      usersRepository.createQueryBuilder.mockReturnValue({ update: mockUpdate });
+      usersRepository.createQueryBuilder.mockReturnValue({
+        update: mockUpdate,
+      });
     });
 
     it("marks the account verified and clears the token on a valid token", async () => {
@@ -440,7 +445,9 @@ describe("AuthEmailService", () => {
       const realDateNow = Date.now;
       Date.now = jest.fn().mockReturnValue(realDateNow() + 60 * 60 * 1000 + 1);
       try {
-        expect(service.checkVerificationEmailLimit("v2@example.com")).toBe(true);
+        expect(service.checkVerificationEmailLimit("v2@example.com")).toBe(
+          true,
+        );
       } finally {
         Date.now = realDateNow;
       }
@@ -451,7 +458,9 @@ describe("AuthEmailService", () => {
       service.checkVerificationEmailLimit("a@example.com");
       service.checkVerificationEmailLimit("A@EXAMPLE.COM");
       expect(service.checkVerificationEmailLimit("a@example.com")).toBe(false);
-      expect(service.checkVerificationEmailLimit("other@example.com")).toBe(true);
+      expect(service.checkVerificationEmailLimit("other@example.com")).toBe(
+        true,
+      );
     });
   });
 

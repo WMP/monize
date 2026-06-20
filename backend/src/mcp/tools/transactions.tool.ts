@@ -3,6 +3,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { TransactionsService } from "../../transactions/transactions.service";
 import { PayeesService } from "../../payees/payees.service";
+import { AccountsService } from "../../accounts/accounts.service";
 import { TransactionAnalyticsService } from "../../transactions/transaction-analytics.service";
 import {
   TransactionToolPrepService,
@@ -29,12 +30,10 @@ import {
   resolveComparePeriods,
 } from "../../common/tool-schemas";
 import {
-  searchTransactionsOutput,
-  queryTransactionsOutput,
+  listTransactionsOutput,
   getSpendingByCategoryOutput,
   getIncomeSummaryOutput,
   comparePeriodsOutput,
-  getTransfersOutput,
   manageTransactionsOutput,
 } from "../tool-output-schemas";
 import { READ_ONLY, WRITE } from "../mcp-annotations";
@@ -72,99 +71,23 @@ export class McpTransactionsTools {
     private readonly relayService: AiRelayService,
     private readonly actionBuilder: AiActionBuilderService,
     private readonly prepService: TransactionToolPrepService,
+    private readonly accountsService: AccountsService,
   ) {}
 
   register(server: McpServer, resolve: UserContextResolver) {
     server.registerTool(
-      "search_transactions",
+      "list_transactions",
       {
-        title: "Search transactions",
-        annotations: READ_ONLY,
-        description: "Search and filter transactions",
-        inputSchema: {
-          query: z.string().max(200).optional().describe("Search text"),
-          accountId: z
-            .string()
-            .uuid()
-            .optional()
-            .describe("Filter by account ID"),
-          categoryId: z
-            .string()
-            .uuid()
-            .optional()
-            .describe("Filter by category ID"),
-          payeeId: z.string().uuid().optional().describe("Filter by payee ID"),
-          startDate: z
-            .string()
-            .max(10)
-            .optional()
-            .describe("Start date (YYYY-MM-DD)"),
-          endDate: z
-            .string()
-            .max(10)
-            .optional()
-            .describe("End date (YYYY-MM-DD)"),
-          minAmount: z
-            .number()
-            .min(-999999999999)
-            .max(999999999999)
-            .optional()
-            .describe("Minimum amount"),
-          maxAmount: z
-            .number()
-            .min(-999999999999)
-            .max(999999999999)
-            .optional()
-            .describe("Maximum amount"),
-          limit: z
-            .number()
-            .min(1)
-            .max(100)
-            .optional()
-            .default(50)
-            .describe("Max results (default 50, max 100)"),
-        },
-        outputSchema: searchTransactionsOutput,
-      },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "read");
-        if (check.error) return check.result;
-
-        try {
-          // Split-expansion + amount filtering live on the domain service so
-          // this tool stays a thin adapter and any AI Assistant equivalent
-          // returns the same shape.
-          const result = await this.transactionsService.getLlmTransactionRows(
-            ctx.userId,
-            {
-              accountId: args.accountId,
-              categoryId: args.categoryId,
-              payeeId: args.payeeId,
-              startDate: args.startDate,
-              endDate: args.endDate,
-              query: args.query,
-              minAmount: args.minAmount,
-              maxAmount: args.maxAmount,
-              limit: args.limit,
-            },
-          );
-          return toolResult(result);
-        } catch (err: unknown) {
-          return safeToolError(err);
-        }
-      },
-    );
-
-    server.registerTool(
-      "query_transactions",
-      {
-        title: "Query transaction totals",
+        title: "List transactions",
         annotations: READ_ONLY,
         description:
-          "Search and aggregate transaction data. Returns totals, counts, and optional grouped breakdowns (category, payee, year, month, week) - never individual transaction details. Returns the same shape as the AI Assistant's query_transactions tool.",
+          "List and aggregate the user's cash transactions. Accepts NAMES for accounts, categories, and payees -- they are resolved internally, so you do NOT need to call get_accounts/get_categories/get_payees first. Returns a rich summary by default: income/expense/net totals, per-currency totals, an optional grouped breakdown (groupBy: category/payee/year/month/week), and an optional per-account transfer rollup (transfersOnly). Set includeTransactions=true ONLY when the user wants the individual rows -- it adds the raw transaction list (which costs many tokens); otherwise the summary alone answers spending/income/total questions. Transfers between the user's own accounts are excluded from the income/expense totals (use transfersOnly to see them). Returns the same shape as the AI Assistant's list_transactions tool.",
         inputSchema: {
+          searchText: z
+            .string()
+            .max(200)
+            .optional()
+            .describe("Search payee names or transaction descriptions"),
           startDate: z
             .string()
             .max(10)
@@ -175,31 +98,70 @@ export class McpTransactionsTools {
             .max(10)
             .optional()
             .describe("End date (YYYY-MM-DD). Defaults to today."),
-          accountIds: z
-            .array(z.string().uuid())
+          accountNames: z
+            .array(z.string().max(100))
             .max(50)
             .optional()
-            .describe("Optional account IDs to filter to"),
-          categoryIds: z
-            .array(z.string().uuid())
+            .describe("Optional account names to filter to"),
+          categoryNames: z
+            .array(z.string().max(100))
             .max(100)
             .optional()
-            .describe("Optional category IDs to filter to"),
-          searchText: z
-            .string()
-            .max(200)
+            .describe(
+              'Optional category names to filter to ("Parent: Child" for a subcategory)',
+            ),
+          payeeNames: z
+            .array(z.string().max(100))
+            .max(100)
             .optional()
-            .describe("Search payee names or transaction descriptions"),
-          groupBy: z
-            .enum(["category", "payee", "year", "month", "week"])
+            .describe("Optional payee names to filter to"),
+          minAmount: z
+            .number()
+            .min(-999999999999)
+            .max(999999999999)
             .optional()
-            .describe("How to group results for breakdown"),
+            .describe("Minimum signed amount"),
+          maxAmount: z
+            .number()
+            .min(-999999999999)
+            .max(999999999999)
+            .optional()
+            .describe("Maximum signed amount"),
           direction: z
             .enum(["expenses", "income", "both"])
             .optional()
-            .describe("Filter by direction"),
+            .describe("Filter the grouped breakdown by direction"),
+          groupBy: z
+            .enum(["category", "payee", "year", "month", "week", "none"])
+            .optional()
+            .describe(
+              "How to group the breakdown (default 'none' = totals only, no breakdown)",
+            ),
+          transfersOnly: z
+            .boolean()
+            .optional()
+            .describe(
+              "When true, also compute the per-account transfer rollup (inbound/outbound/net)",
+            ),
+          includeTransactions: z
+            .boolean()
+            .optional()
+            .default(false)
+            .describe(
+              "When true, also include the raw transaction list (costs more tokens). Default false -- the summary alone usually suffices.",
+            ),
+          limit: z
+            .number()
+            .int()
+            .min(1)
+            .max(100)
+            .optional()
+            .default(50)
+            .describe(
+              "Max raw rows when includeTransactions is true (max 100)",
+            ),
         },
-        outputSchema: queryTransactionsOutput,
+        outputSchema: listTransactionsOutput,
       },
       async (args, extra) => {
         const ctx = resolve(extra.sessionId);
@@ -209,19 +171,59 @@ export class McpTransactionsTools {
 
         try {
           const defaults = getDefaultDateRange();
-          const data = await this.analyticsService.getLlmQueryTransactions(
+          const startDate = args.startDate ?? defaults.startDate;
+          const endDate = args.endDate ?? defaults.endDate;
+
+          const resolved = await this.resolveListFilters(ctx.userId, {
+            accountNames: args.accountNames,
+            categoryNames: args.categoryNames,
+            payeeNames: args.payeeNames,
+          });
+          if (resolved.error) return toolError(resolved.error);
+
+          const data = await this.analyticsService.getLlmListTransactions(
             ctx.userId,
             {
-              startDate: args.startDate ?? defaults.startDate,
-              endDate: args.endDate ?? defaults.endDate,
-              accountIds: args.accountIds,
-              categoryIds: args.categoryIds,
+              startDate,
+              endDate,
+              accountIds: resolved.accountIds,
+              categoryIds: resolved.categoryIds,
+              payeeIds: resolved.payeeIds,
               searchText: args.searchText,
-              groupBy: args.groupBy,
+              minAmount: args.minAmount,
+              maxAmount: args.maxAmount,
               direction: args.direction,
+              groupBy: args.groupBy,
+              transfersOnly: args.transfersOnly,
             },
           );
-          return toolResult(data);
+
+          if (!args.includeTransactions) {
+            return toolResult(data);
+          }
+
+          const rows = await this.transactionsService.getLlmTransactionRows(
+            ctx.userId,
+            {
+              accountId: resolved.accountIds?.[0],
+              categoryId: resolved.categoryIds?.[0],
+              payeeId: resolved.payeeIds?.[0],
+              startDate,
+              endDate,
+              query: args.searchText,
+              minAmount: args.minAmount,
+              maxAmount: args.maxAmount,
+              limit: args.limit,
+            },
+          );
+
+          return toolResult({
+            ...data,
+            transactions: rows.transactions,
+            total: rows.total,
+            hasMore: rows.hasMore,
+            truncatedTransactionList: rows.hasMore,
+          });
         } catch (err: unknown) {
           return safeToolError(err);
         }
@@ -402,55 +404,6 @@ export class McpTransactionsTools {
     );
 
     server.registerTool(
-      "get_transfers",
-      {
-        title: "Get transfers",
-        annotations: READ_ONLY,
-        description:
-          "Get transfer activity between the user's own accounts for a date range. Returns per-account inbound, outbound, net, and count. Transfers are deliberately excluded from other transaction queries because they net to zero across accounts. Returns the same shape as the AI Assistant's get_transfers tool.",
-        inputSchema: {
-          startDate: z
-            .string()
-            .max(10)
-            .optional()
-            .describe("Start date (YYYY-MM-DD). Defaults to 30 days ago."),
-          endDate: z
-            .string()
-            .max(10)
-            .optional()
-            .describe("End date (YYYY-MM-DD). Defaults to today."),
-          accountIds: z
-            .array(z.string().uuid())
-            .max(50)
-            .optional()
-            .describe(
-              "Optional account IDs to filter to. Omit to cover all accounts.",
-            ),
-        },
-        outputSchema: getTransfersOutput,
-      },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "read");
-        if (check.error) return check.result;
-
-        try {
-          const defaults = getDefaultDateRange();
-          const result = await this.analyticsService.getTransfersByAccount(
-            ctx.userId,
-            args.startDate ?? defaults.startDate,
-            args.endDate ?? defaults.endDate,
-            args.accountIds,
-          );
-          return toolResult(result);
-        } catch (err: unknown) {
-          return safeToolError(err);
-        }
-      },
-    );
-
-    server.registerTool(
       "manage_transactions",
       {
         title: "Manage transactions",
@@ -610,6 +563,86 @@ export class McpTransactionsTools {
         }
       },
     );
+  }
+
+  // -------------------------------------------------------------------------
+  // list_transactions helpers
+  // -------------------------------------------------------------------------
+
+  /**
+   * Resolve the name-based filters of `list_transactions` into IDs. Accounts
+   * resolve via the shared `AccountsService` name map, categories via the
+   * analytics category resolver (expands to descendants, supports
+   * "Parent: Child"), and payees via the payees lookup. Any name that cannot be
+   * resolved is reported as a hard error rather than silently dropped -- a
+   * mistyped filter must not widen the result to "all transactions".
+   */
+  private async resolveListFilters(
+    userId: string,
+    names: {
+      accountNames?: string[];
+      categoryNames?: string[];
+      payeeNames?: string[];
+    },
+  ): Promise<{
+    accountIds?: string[];
+    categoryIds?: string[];
+    payeeIds?: string[];
+    error?: string;
+  }> {
+    let accountIds: string[] | undefined;
+    if (names.accountNames && names.accountNames.length > 0) {
+      const accounts = await this.accountsService.findAll(userId, true);
+      const nameMap = new Map(
+        accounts.map((a) => [a.name.toLowerCase(), a.id]),
+      );
+      const ids: string[] = [];
+      const unresolved: string[] = [];
+      for (const name of names.accountNames) {
+        const id = nameMap.get(name.toLowerCase());
+        if (id) ids.push(id);
+        else unresolved.push(name);
+      }
+      if (unresolved.length > 0) {
+        return {
+          error: `Unknown account${unresolved.length === 1 ? "" : "s"}: ${unresolved.join(", ")}. Use exact names from the user's account list.`,
+        };
+      }
+      accountIds = ids;
+    }
+
+    let categoryIds: string[] | undefined;
+    if (names.categoryNames && names.categoryNames.length > 0) {
+      const resolved = await this.analyticsService.resolveLlmCategoryIds(
+        userId,
+        names.categoryNames,
+      );
+      if (resolved.unresolved.length > 0) {
+        return {
+          error: `Unknown categor${resolved.unresolved.length === 1 ? "y" : "ies"}: ${resolved.unresolved.join(", ")}. Call get_categories to look up valid names; subcategories can be referenced as "Parent: Child".`,
+        };
+      }
+      categoryIds = resolved.categoryIds;
+    }
+
+    let payeeIds: string[] | undefined;
+    if (names.payeeNames && names.payeeNames.length > 0) {
+      const ids: string[] = [];
+      const unresolved: string[] = [];
+      for (const name of names.payeeNames) {
+        const payee = await this.payeesService.findByName(userId, name);
+        if (payee) ids.push(payee.id);
+        else unresolved.push(name);
+      }
+      if (unresolved.length > 0) {
+        return {
+          error: `Unknown payee${unresolved.length === 1 ? "" : "s"}: ${unresolved.join(", ")}. Call get_payees to look up valid names.`,
+        };
+      }
+      payeeIds = ids;
+    }
+
+    return { accountIds, categoryIds, payeeIds };
   }
 
   // -------------------------------------------------------------------------

@@ -123,8 +123,12 @@
     "updateTransactionsTitle": "Modifier ces transactions ?",
     "deleteTransactionsTitle": "Supprimer ces transactions ?",
     "createTransfersTitle": "Créer ces virements ?",
+    "updateInvestmentTransactionsTitle": "Modifier ces transactions de placement ?",
+    "deleteInvestmentTransactionsTitle": "Supprimer ces transactions de placement ?",
     "updatedTransactions": "{count, plural, =0 {Aucune transaction mise à jour} one {# transaction mise à jour} other {# transactions mises à jour}}",
     "deletedTransactions": "{count, plural, =0 {Aucune transaction supprimée} one {# transaction supprimée} other {# transactions supprimées}}",
+    "updatedInvestmentTransactions": "{count, plural, =0 {Aucune transaction de placement mise à jour} one {# transaction de placement mise à jour} other {# transactions de placement mises à jour}}",
+    "deletedInvestmentTransactions": "{count, plural, =0 {Aucune transaction de placement supprimée} one {# transaction de placement supprimée} other {# transactions de placement supprimées}}",
     "createdTransfers": "{count, plural, =0 {Aucun virement créé} one {# virement créé} other {# virements créés}}"
   },
   "table": {

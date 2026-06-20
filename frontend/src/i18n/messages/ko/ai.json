@@ -123,8 +123,12 @@
     "updateTransactionsTitle": "이 거래들을 수정하시겠습니까?",
     "deleteTransactionsTitle": "이 거래들을 삭제하시겠습니까?",
     "createTransfersTitle": "이 이체들을 생성하시겠습니까?",
+    "updateInvestmentTransactionsTitle": "이 투자 거래들을 수정하시겠습니까?",
+    "deleteInvestmentTransactionsTitle": "이 투자 거래들을 삭제하시겠습니까?",
     "updatedTransactions": "{count, plural, =0 {업데이트된 거래가 없습니다} other {# 건의 거래가 수정되었습니다}}",
     "deletedTransactions": "{count, plural, =0 {삭제된 거래가 없습니다} other {# 건의 거래가 삭제되었습니다}}",
+    "updatedInvestmentTransactions": "{count, plural, =0 {수정된 투자 거래가 없습니다} other {# 건의 투자 거래가 수정되었습니다}}",
+    "deletedInvestmentTransactions": "{count, plural, =0 {삭제된 투자 거래가 없습니다} other {# 건의 투자 거래가 삭제되었습니다}}",
     "createdTransfers": "{count, plural, =0 {생성된 이체가 없습니다} other {# 건의 이체가 생성되었습니다}}"
   },
   "table": {

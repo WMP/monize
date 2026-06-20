@@ -351,9 +351,7 @@ describe("AuthController", () => {
       expect(emailService.sendMail).toHaveBeenCalledWith(
         "verify@example.com",
         "Verify your Monize email",
-        expect.stringContaining(
-          "/verify-email?token=raw-verify-token",
-        ),
+        expect.stringContaining("/verify-email?token=raw-verify-token"),
       );
       expect(res.cookie).not.toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith({ verificationRequired: true });

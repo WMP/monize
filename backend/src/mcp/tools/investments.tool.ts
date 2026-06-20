@@ -4,10 +4,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { PortfolioService } from "../../securities/portfolio.service";
 import { HoldingsService } from "../../securities/holdings.service";
 import { SecuritiesService } from "../../securities/securities.service";
+import { AccountsService } from "../../accounts/accounts.service";
 import {
   InvestmentTransactionsService,
   LlmCapitalGainsGroupBy,
   LlmInvestmentTxGroupBy,
+  InvestmentCreateRowInput,
+  InvestmentUpdateRowInput,
 } from "../../securities/investment-transactions.service";
 import { InvestmentAction } from "../../securities/entities/investment-transaction.entity";
 import {
@@ -15,16 +18,11 @@ import {
   SECURITY_TYPES,
 } from "../../securities/security-enums";
 import { AiRelayService } from "../../ai/relay/ai-relay.service";
+import { AiActionBuilderService } from "../../ai/actions/ai-action-builder.service";
 import {
-  AiActionBuilderService,
-  investmentPreviewRow,
-} from "../../ai/actions/ai-action-builder.service";
-import {
-  AiActionPreviewRow,
+  PendingAiAction,
   MAX_BULK_ACTION_ROWS,
 } from "../../ai/actions/ai-action.types";
-import { BulkCreateSkip, bulkSkipReason } from "../../common/bulk-create.types";
-import { CreateInvestmentTransactionPreview } from "../../securities/investment-transactions.service";
 import { RELAY_PREVIEW_SHOWN } from "../mcp-relay-confirm";
 import {
   UserContextResolver,
@@ -42,12 +40,27 @@ import {
   getHoldingDetailsOutput,
   createSecurityOutput,
   lookupSecuritiesOutput,
-  createInvestmentTransactionOutput,
-  createInvestmentTransactionsOutput,
-  updateInvestmentTransactionOutput,
-  deleteInvestmentTransactionOutput,
+  manageInvestmentTransactionsOutput,
 } from "../tool-output-schemas";
-import { READ_ONLY, CREATE, UPDATE, DELETE } from "../mcp-annotations";
+import { READ_ONLY, CREATE, WRITE } from "../mcp-annotations";
+
+type ManageInvOperation = "create" | "update" | "delete";
+type ApprovalMode = "bulk" | "individual";
+
+interface ManageInvItem {
+  // create
+  accountName?: string;
+  fundingAccountName?: string;
+  security?: string;
+  action?: InvestmentAction;
+  date?: string;
+  quantity?: number;
+  price?: number;
+  commission?: number;
+  description?: string;
+  // update / delete
+  transactionId?: string;
+}
 
 @Injectable()
 export class McpInvestmentsTools {
@@ -60,6 +73,7 @@ export class McpInvestmentsTools {
     private readonly securitiesService: SecuritiesService,
     private readonly relayService: AiRelayService,
     private readonly actionBuilder: AiActionBuilderService,
+    private readonly accountsService: AccountsService,
   ) {}
 
   register(server: McpServer, resolve: UserContextResolver) {
@@ -479,261 +493,99 @@ export class McpInvestmentsTools {
     );
 
     server.registerTool(
-      "create_investment_transaction",
+      "manage_investment_transactions",
       {
-        title: "Create investment transaction",
-        annotations: CREATE,
+        title: "Manage investment transactions",
+        annotations: WRITE,
         description:
-          "Create a brokerage/investment-account transaction of any type (BUY, SELL, DIVIDEND, INTEREST, CAPITAL_GAIN, SPLIT, TRANSFER_IN, TRANSFER_OUT, REINVEST, ADD_SHARES, REMOVE_SHARES). The security is matched automatically by ticker symbol or name; an ambiguous or unknown reference returns an error. Buys debit and sells/dividends/interest/capital gains credit the brokerage's linked cash account automatically -- do not also create a separate cash transaction. Set dryRun=true to preview (validates and resolves the security, computes the total and cash impact) without saving. When dryRun is false, the user is asked to confirm before the transaction is saved (clients that support it show a confirmation dialog). Uses the same shared logic as the AI Assistant's create_investment_transaction tool.",
+          "Create, update, or delete the user's brokerage/investment-account transactions (BUY, SELL, DIVIDEND, INTEREST, CAPITAL_GAIN, SPLIT, TRANSFER_IN, TRANSFER_OUT, REINVEST, ADD_SHARES, REMOVE_SHARES). Accepts NAMES for account, funding account, and security -- they are resolved internally, so you do NOT need to call get_accounts/lookup_securities first. operation = 'create' | 'update' | 'delete' with an items array (1-25 rows). " +
+          "create: { accountName, action, date, security?, quantity?, price?, commission?, fundingAccountName?, description? } -- security is required for BUY, SELL, SPLIT, REINVEST, ADD_SHARES, REMOVE_SHARES (matched by ticker or name). Buys debit and sells/dividends/interest/capital gains credit the brokerage's linked cash account automatically -- do not also create a separate cash transaction; fundingAccountName overrides which cash account is used. " +
+          "update: { transactionId, action?, date?, security?, quantity?, price?, commission?, description? } -- provide only the fields to change (>=1); omitted fields keep their current value; the total and cash impact are recomputed. " +
+          "delete: { transactionId } -- deleting one leg of a security transfer removes the paired leg too and reverses any linked cash impact. " +
+          "approvalMode = 'bulk' (default; one confirmation for the whole batch) or 'individual' (one confirmation per item); ignored for a single item. The user is asked to confirm before anything is saved (web chat card via relay, or an MCP confirmation dialog).",
         inputSchema: {
-          accountId: z.string().uuid().describe("Investment account ID"),
-          action: z
-            .nativeEnum(InvestmentAction)
-            .describe("Transaction type (e.g. BUY, SELL, DIVIDEND)"),
-          date: z.string().max(10).describe("Transaction date (YYYY-MM-DD)"),
-          security: z
-            .string()
-            .min(1)
-            .max(100)
-            .optional()
-            .describe(
-              "Security ticker symbol or name. Required for BUY, SELL, SPLIT, REINVEST, ADD_SHARES, REMOVE_SHARES. Matched to one of the user's securities.",
-            ),
-          quantity: z
-            .number()
-            .min(0)
-            .max(999999999999)
-            .optional()
-            .describe(
-              "Number of shares (8 dp). For SPLIT, the split ratio (>0).",
-            ),
-          price: z
-            .number()
-            .min(0)
-            .max(999999999999)
-            .optional()
-            .describe(
-              "Price per share (6 dp). For DIVIDEND/INTEREST/CAPITAL_GAIN with no quantity, the total cash amount.",
-            ),
-          commission: z
-            .number()
-            .min(0)
-            .max(999999999999)
-            .optional()
-            .describe("Commission or fee (4 dp). Defaults to 0."),
-          fundingAccountId: z
-            .string()
-            .uuid()
-            .optional()
-            .describe(
-              "Optional cash account that funds a buy or receives a sell's proceeds. Omit to use the brokerage's own linked cash account.",
-            ),
-          description: z
-            .string()
-            .max(500)
-            .optional()
-            .describe("Description or memo"),
-          dryRun: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe(
-              "If true, validate and return a preview without creating the transaction",
-            ),
-        },
-        outputSchema: createInvestmentTransactionOutput,
-      },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "write");
-        if (check.error) return check.result;
-
-        const limitCheck = this.writeLimiter.checkLimit(ctx.userId);
-        if (!limitCheck.allowed) {
-          return toolError(
-            `Daily write limit reached (${limitCheck.limit} operations per day). Try again tomorrow.`,
-          );
-        }
-
-        try {
-          // Shared preview: validates the account + action, matches the
-          // security by symbol/name, computes the total/FX/cash impact, and
-          // sanitizes strings -- identical to the AI Assistant flow.
-          const preview =
-            await this.investmentTransactionsService.previewCreateInvestmentTransaction(
-              ctx.userId,
-              {
-                accountId: args.accountId,
-                action: args.action,
-                transactionDate: args.date,
-                securityQuery: args.security,
-                quantity: args.quantity,
-                price: args.price,
-                commission: args.commission,
-                fundingAccountId: args.fundingAccountId,
-                description: args.description,
-              },
-            );
-
-          if (args.dryRun) {
-            return toolResult({
-              dryRun: true,
-              preview: {
-                accountId: preview.accountId,
-                accountName: preview.accountName,
-                action: preview.action,
-                date: preview.transactionDate,
-                securityId: preview.securityId,
-                symbol: preview.symbol,
-                securityName: preview.securityName,
-                securityCurrency: preview.securityCurrency,
-                quantity: preview.quantity,
-                price: preview.price,
-                commission: preview.commission,
-                totalAmount: preview.totalAmount,
-                exchangeRate: preview.exchangeRate,
-                cashAccountName: preview.cashAccountName,
-                cashCurrency: preview.cashCurrency,
-                cashAmount: preview.cashAmount,
-                description: preview.description,
-              },
-              message:
-                "This is a preview. Call again with dryRun=false to create the transaction.",
-            });
-          }
-
-          // Relay path: confirm in the web chat via the approve/reject card
-          // rather than an elicitation in the agent's MCP client.
-          const pendingAction =
-            this.actionBuilder.buildCreateInvestmentTransaction(
-              ctx.userId,
-              preview,
-            );
-          if (this.relayService.emitPendingAction(ctx.userId, pendingAction)) {
-            return toolResult(RELAY_PREVIEW_SHOWN);
-          }
-
-          // Ask the client to confirm before persisting (AI Assistant parity).
-          const confirmLines = [
-            "Create this investment transaction?",
-            `Account: ${preview.accountName}`,
-            `Type: ${preview.action}`,
-            `Date: ${preview.transactionDate}`,
-          ];
-          if (preview.symbol) {
-            confirmLines.push(
-              `Security: ${preview.symbol}${preview.securityName ? ` (${preview.securityName})` : ""}`,
-            );
-          }
-          if (preview.quantity !== null) {
-            confirmLines.push(`Quantity: ${preview.quantity}`);
-          }
-          if (preview.price !== null) {
-            confirmLines.push(`Price: ${preview.price}`);
-          }
-          if (preview.commission) {
-            confirmLines.push(`Commission: ${preview.commission}`);
-          }
-          if (preview.cashAccountName && preview.cashAmount !== null) {
-            confirmLines.push(
-              `Cash: ${preview.cashAmount} ${preview.cashCurrency} in ${preview.cashAccountName}`,
-            );
-          }
-          const confirmation = await confirmWrite(
-            server,
-            confirmLines.join("\n"),
-            extra.requestId,
-          );
-          if (confirmation === "declined") {
-            return toolError(
-              "Cancelled: the confirmation was declined, so no investment transaction was created. Do not retry unless the user asks again.",
-            );
-          }
-
-          const transaction = await this.investmentTransactionsService.create(
-            ctx.userId,
-            {
-              accountId: preview.accountId,
-              action: preview.action,
-              transactionDate: preview.transactionDate,
-              securityId: preview.securityId ?? undefined,
-              fundingAccountId: preview.fundingAccountId ?? undefined,
-              quantity: preview.quantity ?? undefined,
-              price: preview.price ?? undefined,
-              commission: preview.commission,
-              exchangeRate: preview.exchangeRate,
-              description: preview.description ?? undefined,
-            },
-          );
-
-          this.writeLimiter.record(ctx.userId, "create_investment_transaction");
-
-          return toolResult({
-            id: transaction.id,
-            action: transaction.action,
-            date: transaction.transactionDate,
-            symbol: preview.symbol,
-            quantity:
-              transaction.quantity !== null
-                ? Number(transaction.quantity)
-                : null,
-            price:
-              transaction.price !== null ? Number(transaction.price) : null,
-            totalAmount: Number(transaction.totalAmount),
-          });
-        } catch (err: unknown) {
-          return safeToolError(err);
-        }
-      },
-    );
-
-    server.registerTool(
-      "create_investment_transactions",
-      {
-        title: "Create investment transactions (bulk)",
-        annotations: CREATE,
-        description:
-          "Create SEVERAL brokerage/investment-account transactions at once from a list or pasted table of trades (max 25 rows). Each security is matched automatically by ticker symbol or name. Best-effort: rows that fail to resolve or save are reported in `skipped` and do not abort the rest. Set dryRun=true to preview every row (and see which would be skipped) without saving. When dryRun is false the user confirms once for the whole batch (web chat card via relay, or an MCP confirmation dialog). For a single transaction, use create_investment_transaction. Shares the bulk logic with the AI Assistant's create_investment_transactions tool.",
-        inputSchema: {
-          rows: z
+          operation: z
+            .enum(["create", "update", "delete"])
+            .describe("The operation to perform on every item."),
+          items: z
             .array(
               z.object({
-                accountId: z.string().uuid().describe("Investment account ID"),
-                action: z
-                  .nativeEnum(InvestmentAction)
-                  .describe("Transaction type (e.g. BUY, SELL, DIVIDEND)"),
-                date: z
+                accountName: z
                   .string()
-                  .max(10)
-                  .describe("Transaction date (YYYY-MM-DD)"),
+                  .max(100)
+                  .optional()
+                  .describe("create: investment/brokerage account name."),
+                fundingAccountName: z
+                  .string()
+                  .max(100)
+                  .optional()
+                  .describe(
+                    "create: optional cash account that funds a buy or receives a sell's proceeds. Omit to use the brokerage's own linked cash account.",
+                  ),
                 security: z
                   .string()
                   .min(1)
                   .max(100)
                   .optional()
                   .describe(
-                    "Security ticker symbol or name. Required for BUY, SELL, SPLIT, REINVEST, ADD_SHARES, REMOVE_SHARES.",
+                    "create/update: security ticker symbol or name. Required (create) for BUY, SELL, SPLIT, REINVEST, ADD_SHARES, REMOVE_SHARES. Matched to one of the user's securities.",
                   ),
-                quantity: z.number().min(0).max(999999999999).optional(),
-                price: z.number().min(0).max(999999999999).optional(),
-                commission: z.number().min(0).max(999999999999).optional(),
-                fundingAccountId: z.string().uuid().optional(),
-                description: z.string().max(500).optional(),
+                action: z
+                  .nativeEnum(InvestmentAction)
+                  .optional()
+                  .describe(
+                    "create: transaction type. update: new type (omit to keep).",
+                  ),
+                date: z
+                  .string()
+                  .max(10)
+                  .optional()
+                  .describe("Transaction date (YYYY-MM-DD)."),
+                quantity: z
+                  .number()
+                  .min(0)
+                  .max(999999999999)
+                  .optional()
+                  .describe(
+                    "Number of shares (8 dp). For SPLIT, the split ratio (>0).",
+                  ),
+                price: z
+                  .number()
+                  .min(0)
+                  .max(999999999999)
+                  .optional()
+                  .describe(
+                    "Price per share (6 dp). For DIVIDEND/INTEREST/CAPITAL_GAIN with no quantity, the total cash amount.",
+                  ),
+                commission: z
+                  .number()
+                  .min(0)
+                  .max(999999999999)
+                  .optional()
+                  .describe("Commission or fee (4 dp). Defaults to 0."),
+                description: z
+                  .string()
+                  .max(500)
+                  .optional()
+                  .describe("Optional description or memo."),
+                transactionId: z
+                  .string()
+                  .uuid()
+                  .optional()
+                  .describe("update/delete: investment transaction ID."),
               }),
             )
             .min(1)
             .max(MAX_BULK_ACTION_ROWS)
-            .describe("The investment transactions to create (1-25 rows)."),
-          dryRun: z
-            .boolean()
+            .describe("The rows to act on (1-25)."),
+          approvalMode: z
+            .enum(["bulk", "individual"])
             .optional()
-            .default(false)
             .describe(
-              "If true, validate and return a per-row preview without creating anything.",
+              "How multi-item batches are approved: 'bulk' (default) one card for all; 'individual' one card per item. Ignored for a single item.",
             ),
         },
-        outputSchema: createInvestmentTransactionsOutput,
+        outputSchema: manageInvestmentTransactionsOutput,
       },
       async (args, extra) => {
         const ctx = resolve(extra.sessionId);
@@ -741,457 +593,625 @@ export class McpInvestmentsTools {
         const check = requireScope(ctx.scopes, "write");
         if (check.error) return check.result;
 
+        const operation = args.operation as ManageInvOperation;
+        const items = args.items as ManageInvItem[];
+        const approvalMode = (args.approvalMode ?? "bulk") as ApprovalMode;
+
         try {
-          // Best-effort preview of every row, preserving input order.
-          const okPreviews: CreateInvestmentTransactionPreview[] = [];
-          const okOriginalIndex: number[] = [];
-          const previewRows: AiActionPreviewRow[] = [];
-          const skipped: BulkCreateSkip[] = [];
-          for (let i = 0; i < args.rows.length; i++) {
-            const row = args.rows[i];
-            try {
-              const preview =
-                await this.investmentTransactionsService.previewCreateInvestmentTransaction(
-                  ctx.userId,
-                  {
-                    accountId: row.accountId,
-                    action: row.action,
-                    transactionDate: row.date,
-                    securityQuery: row.security,
-                    quantity: row.quantity,
-                    price: row.price,
-                    commission: row.commission,
-                    fundingAccountId: row.fundingAccountId,
-                    description: row.description,
-                  },
-                );
-              okPreviews.push(preview);
-              okOriginalIndex.push(i);
-              previewRows.push(investmentPreviewRow(preview));
-            } catch (err) {
-              const reason = bulkSkipReason(err);
-              skipped.push({ index: i, reason });
-              previewRows.push({
-                status: "error",
-                investmentAction: row.action,
-                transactionDate: row.date,
-                symbol: row.security ?? null,
-                quantity: row.quantity ?? null,
-                price: row.price ?? null,
-                error: reason,
-              });
-            }
-          }
-
-          if (args.dryRun) {
-            return toolResult({
-              dryRun: true,
-              preview: { rows: previewRows, skipped },
-              message:
-                "This is a preview. Call again with dryRun=false to create the transactions.",
-            });
-          }
-
-          if (okPreviews.length === 0) {
-            return toolError(
-              "None of the investment transactions could be prepared. Check the account, security, action, and date for each row.",
-            );
-          }
-
-          const limitCheck = this.writeLimiter.checkLimit(ctx.userId);
-          if (limitCheck.currentCount + okPreviews.length > limitCheck.limit) {
-            return toolError(
-              `Daily write limit reached (${limitCheck.limit} operations per day). Try again tomorrow.`,
-            );
-          }
-
-          // Relay first: show one approve/reject card in the web chat.
-          const pendingAction =
-            this.actionBuilder.buildCreateInvestmentTransactions(
+          if (operation === "create") {
+            return await this.manageInvCreate(
+              server,
               ctx.userId,
-              okPreviews,
-              previewRows,
+              items,
+              approvalMode,
+              extra.requestId,
             );
-          if (this.relayService.emitPendingAction(ctx.userId, pendingAction)) {
-            return toolResult(RELAY_PREVIEW_SHOWN);
           }
-
-          const skippedNote = skipped.length
-            ? ` (${skipped.length} row(s) could not be prepared and will be skipped)`
-            : "";
-          const confirmation = await confirmWrite(
+          if (operation === "update") {
+            return await this.manageInvUpdate(
+              server,
+              ctx.userId,
+              items,
+              approvalMode,
+              extra.requestId,
+            );
+          }
+          return await this.manageInvDelete(
             server,
-            `Create ${okPreviews.length} investment transaction(s)?${skippedNote}`,
+            ctx.userId,
+            items,
+            approvalMode,
             extra.requestId,
           );
-          if (confirmation === "declined") {
-            return toolError(
-              "Cancelled: the confirmation was declined, so no investment transactions were created. Do not retry unless the user asks again.",
-            );
-          }
-
-          const result = await this.investmentTransactionsService.createBulk(
-            ctx.userId,
-            okPreviews.map((preview) => ({
-              accountId: preview.accountId,
-              action: preview.action,
-              transactionDate: preview.transactionDate,
-              securityId: preview.securityId ?? undefined,
-              fundingAccountId: preview.fundingAccountId ?? undefined,
-              quantity: preview.quantity ?? undefined,
-              price: preview.price ?? undefined,
-              commission: preview.commission,
-              exchangeRate: preview.exchangeRate,
-              description: preview.description ?? undefined,
-            })),
-          );
-          // Map createBulk's skip indices (relative to okPreviews) back to the
-          // caller's original row indices.
-          for (const s of result.skipped) {
-            skipped.push({
-              index: okOriginalIndex[s.index],
-              reason: s.reason,
-            });
-          }
-          for (let i = 0; i < result.created.length; i++) {
-            this.writeLimiter.record(
-              ctx.userId,
-              "create_investment_transaction",
-            );
-          }
-
-          return toolResult({
-            created: result.created.map((t) => ({
-              id: t.id,
-              action: t.action,
-              date: t.transactionDate,
-              totalAmount: Number(t.totalAmount),
-            })),
-            ids: result.created.map((t) => t.id),
-            count: result.created.length,
-            skipped,
-          });
         } catch (err: unknown) {
           return safeToolError(err);
         }
       },
     );
+  }
 
-    server.registerTool(
-      "update_investment_transaction",
-      {
-        title: "Update investment transaction",
-        annotations: UPDATE,
-        description:
-          "Edit an existing brokerage/investment-account transaction. Pass only the fields to change; omitted fields keep their current value. A changed security is matched automatically by ticker symbol or name. The total and cash impact are recomputed from the resulting state. Set dryRun=true to preview without saving. When dryRun is false, the user is asked to confirm before the change is saved (clients that support it show a confirmation dialog). Shares the edit logic with the AI Assistant's update_investment_transaction tool.",
-        inputSchema: {
-          transactionId: z
-            .string()
-            .uuid()
-            .describe("ID of the investment transaction to edit"),
-          action: z
-            .nativeEnum(InvestmentAction)
-            .optional()
-            .describe("New transaction type (e.g. BUY, SELL). Omit to keep."),
-          date: z
-            .string()
-            .max(10)
-            .optional()
-            .describe("New transaction date (YYYY-MM-DD). Omit to keep."),
-          security: z
-            .string()
-            .min(1)
-            .max(100)
-            .optional()
-            .describe(
-              "New security ticker symbol or name. Omit to keep the current security.",
-            ),
-          quantity: z
-            .number()
-            .min(0)
-            .max(999999999999)
-            .optional()
-            .describe(
-              "New number of shares (8 dp). For SPLIT, the split ratio (>0). Omit to keep.",
-            ),
-          price: z
-            .number()
-            .min(0)
-            .max(999999999999)
-            .optional()
-            .describe(
-              "New price per share (6 dp). For DIVIDEND/INTEREST/CAPITAL_GAIN with no quantity, the total cash amount. Omit to keep.",
-            ),
-          commission: z
-            .number()
-            .min(0)
-            .max(999999999999)
-            .optional()
-            .describe("New commission or fee (4 dp). Omit to keep."),
-          description: z
-            .string()
-            .max(500)
-            .optional()
-            .describe("New description or memo. Omit to keep."),
-          dryRun: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe(
-              "If true, validate and return a preview of the resulting transaction without saving.",
-            ),
+  // -------------------------------------------------------------------------
+  // manage_investment_transactions helpers
+  // -------------------------------------------------------------------------
+
+  private toInvCreateRow(item: ManageInvItem): InvestmentCreateRowInput {
+    return {
+      accountName: item.accountName as string,
+      action: item.action as InvestmentAction,
+      date: item.date as string,
+      securityQuery: item.security,
+      quantity: item.quantity,
+      price: item.price,
+      commission: item.commission,
+      fundingAccountName: item.fundingAccountName,
+      description: item.description,
+    };
+  }
+
+  private toInvUpdateRow(item: ManageInvItem): InvestmentUpdateRowInput {
+    return {
+      transactionId: item.transactionId as string,
+      action: item.action,
+      date: item.date,
+      securityQuery: item.security,
+      quantity: item.quantity,
+      price: item.price,
+      commission: item.commission,
+      description: item.description,
+    };
+  }
+
+  /**
+   * Reserve N writes against the daily cap or return an error result. Returns
+   * undefined when allowed.
+   */
+  private checkWriteBudget(userId: string, count: number) {
+    const limitCheck = this.writeLimiter.checkLimit(userId);
+    if (limitCheck.currentCount + count > limitCheck.limit) {
+      return toolError(
+        `Daily write limit reached (${limitCheck.limit} operations per day). Try again tomorrow.`,
+      );
+    }
+    return undefined;
+  }
+
+  private async manageInvCreate(
+    server: McpServer,
+    userId: string,
+    items: ManageInvItem[],
+    approvalMode: ApprovalMode,
+    requestId: unknown,
+  ) {
+    const single = items.length === 1;
+
+    if (single) {
+      const preview =
+        await this.investmentTransactionsService.prepareCreateInvestmentSingle(
+          userId,
+          this.toInvCreateRow(items[0]),
+        );
+      const budget = this.checkWriteBudget(userId, 1);
+      if (budget) return budget;
+      const action = this.actionBuilder.buildCreateInvestmentTransaction(
+        userId,
+        preview,
+      );
+      if (this.relayService.emitPendingAction(userId, action)) {
+        return toolResult(RELAY_PREVIEW_SHOWN);
+      }
+      const confirmation = await confirmWrite(
+        server,
+        this.createConfirmLines(preview).join("\n"),
+        requestId as never,
+      );
+      if (confirmation === "declined") {
+        return toolError(
+          "Cancelled: the confirmation was declined, so no investment transaction was created.",
+        );
+      }
+      const tx = await this.investmentTransactionsService.create(userId, {
+        accountId: preview.accountId,
+        action: preview.action,
+        transactionDate: preview.transactionDate,
+        securityId: preview.securityId ?? undefined,
+        fundingAccountId: preview.fundingAccountId ?? undefined,
+        quantity: preview.quantity ?? undefined,
+        price: preview.price ?? undefined,
+        commission: preview.commission,
+        exchangeRate: preview.exchangeRate,
+        description: preview.description ?? undefined,
+      });
+      this.writeLimiter.record(userId, "create_investment_transaction");
+      return toolResult({ id: tx.id, date: tx.transactionDate, count: 1 });
+    }
+
+    const bulk =
+      await this.investmentTransactionsService.prepareCreateInvestmentBulk(
+        userId,
+        items.map((i) => this.toInvCreateRow(i)),
+      );
+    if (bulk.okPreviews.length === 0) {
+      return toolError(
+        "None of the investment transactions could be prepared. Check the account, security, action, and date for each row.",
+      );
+    }
+    const budget = this.checkWriteBudget(userId, bulk.okPreviews.length);
+    if (budget) return budget;
+
+    if (approvalMode === "individual") {
+      const cards = bulk.okPreviews.map((p) =>
+        this.actionBuilder.buildCreateInvestmentTransaction(userId, p),
+      );
+      return this.runInvIndividual(
+        server,
+        userId,
+        cards,
+        requestId,
+        bulk.skipped,
+      );
+    }
+
+    // bulk mode: one card carrying every row.
+    const action = this.actionBuilder.buildCreateInvestmentTransactions(
+      userId,
+      bulk.okPreviews,
+      bulk.previewRows,
+    );
+    if (this.relayService.emitPendingAction(userId, action)) {
+      return toolResult(RELAY_PREVIEW_SHOWN);
+    }
+    const confirmation = await confirmWrite(
+      server,
+      `Create ${bulk.okPreviews.length} investment transaction(s)?${bulk.skipped.length ? ` (${bulk.skipped.length} skipped)` : ""}`,
+      requestId as never,
+    );
+    if (confirmation === "declined") {
+      return toolError(
+        "Cancelled: the confirmation was declined, so nothing was created.",
+      );
+    }
+    const result = await this.investmentTransactionsService.createBulk(
+      userId,
+      bulk.okPreviews.map((preview) => ({
+        accountId: preview.accountId,
+        action: preview.action,
+        transactionDate: preview.transactionDate,
+        securityId: preview.securityId ?? undefined,
+        fundingAccountId: preview.fundingAccountId ?? undefined,
+        quantity: preview.quantity ?? undefined,
+        price: preview.price ?? undefined,
+        commission: preview.commission,
+        exchangeRate: preview.exchangeRate,
+        description: preview.description ?? undefined,
+      })),
+    );
+    const skipped = [...bulk.skipped];
+    for (const s of result.skipped) {
+      skipped.push({ index: bulk.okIndex[s.index], reason: s.reason });
+    }
+    for (let i = 0; i < result.created.length; i++) {
+      this.writeLimiter.record(userId, "create_investment_transaction");
+    }
+    return toolResult({
+      ids: result.created.map((t) => t.id),
+      count: result.created.length,
+      skipped,
+    });
+  }
+
+  private async manageInvUpdate(
+    server: McpServer,
+    userId: string,
+    items: ManageInvItem[],
+    approvalMode: ApprovalMode,
+    requestId: unknown,
+  ) {
+    const single = items.length === 1;
+
+    if (single) {
+      const preview =
+        await this.investmentTransactionsService.previewUpdateInvestmentTransaction(
+          userId,
+          items[0].transactionId as string,
+          this.toInvUpdateRow(items[0]),
+        );
+      const budget = this.checkWriteBudget(userId, 1);
+      if (budget) return budget;
+      const action = this.actionBuilder.buildUpdateInvestmentTransaction(
+        userId,
+        preview,
+      );
+      if (this.relayService.emitPendingAction(userId, action)) {
+        return toolResult(RELAY_PREVIEW_SHOWN);
+      }
+      const confirmation = await confirmWrite(
+        server,
+        [
+          "Apply this investment transaction edit?",
+          ...this.editLines(preview),
+        ].join("\n"),
+        requestId as never,
+      );
+      if (confirmation === "declined") {
+        return toolError(
+          "Cancelled: the confirmation was declined, so the investment transaction was not changed.",
+        );
+      }
+      const tx = await this.investmentTransactionsService.update(
+        userId,
+        preview.transactionId,
+        {
+          action: preview.action,
+          transactionDate: preview.transactionDate,
+          securityId: preview.securityId ?? undefined,
+          fundingAccountId: preview.fundingAccountId ?? undefined,
+          quantity: preview.quantity ?? undefined,
+          price: preview.price ?? undefined,
+          commission: preview.commission,
+          exchangeRate: preview.exchangeRate,
+          description: preview.description ?? undefined,
         },
-        outputSchema: updateInvestmentTransactionOutput,
-      },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "write");
-        if (check.error) return check.result;
+      );
+      this.writeLimiter.record(userId, "update_investment_transaction");
+      return toolResult({ id: tx.id, count: 1 });
+    }
 
-        const limitCheck = this.writeLimiter.checkLimit(ctx.userId);
-        if (!limitCheck.allowed) {
-          return toolError(
-            `Daily write limit reached (${limitCheck.limit} operations per day). Try again tomorrow.`,
-          );
-        }
-
+    if (approvalMode === "individual") {
+      const cards: PendingAiAction[] = [];
+      const skipped: { index: number; reason: string }[] = [];
+      for (let i = 0; i < items.length; i++) {
         try {
           const preview =
             await this.investmentTransactionsService.previewUpdateInvestmentTransaction(
-              ctx.userId,
-              args.transactionId,
-              {
-                action: args.action,
-                transactionDate: args.date,
-                securityQuery: args.security,
-                quantity: args.quantity,
-                price: args.price,
-                commission: args.commission,
-                description: args.description,
-              },
+              userId,
+              items[i].transactionId as string,
+              this.toInvUpdateRow(items[i]),
             );
-
-          if (args.dryRun) {
-            return toolResult({
-              dryRun: true,
-              preview: {
-                transactionId: preview.transactionId,
-                accountId: preview.accountId,
-                accountName: preview.accountName,
-                action: preview.action,
-                date: preview.transactionDate,
-                securityId: preview.securityId,
-                symbol: preview.symbol,
-                securityName: preview.securityName,
-                securityCurrency: preview.securityCurrency,
-                quantity: preview.quantity,
-                price: preview.price,
-                commission: preview.commission,
-                totalAmount: preview.totalAmount,
-                exchangeRate: preview.exchangeRate,
-                cashAccountName: preview.cashAccountName,
-                cashCurrency: preview.cashCurrency,
-                cashAmount: preview.cashAmount,
-                description: preview.description,
-              },
-              message:
-                "This is a preview. Call again with dryRun=false to apply the change.",
-            });
-          }
-
-          const pendingAction =
+          cards.push(
             this.actionBuilder.buildUpdateInvestmentTransaction(
-              ctx.userId,
+              userId,
               preview,
-            );
-          if (this.relayService.emitPendingAction(ctx.userId, pendingAction)) {
-            return toolResult(RELAY_PREVIEW_SHOWN);
-          }
-
-          const confirmLines = [
-            "Apply this investment transaction edit?",
-            `Account: ${preview.accountName}`,
-            `Type: ${preview.action}`,
-            `Date: ${preview.transactionDate}`,
-          ];
-          if (preview.symbol) {
-            confirmLines.push(
-              `Security: ${preview.symbol}${preview.securityName ? ` (${preview.securityName})` : ""}`,
-            );
-          }
-          if (preview.quantity !== null) {
-            confirmLines.push(`Quantity: ${preview.quantity}`);
-          }
-          if (preview.price !== null) {
-            confirmLines.push(`Price: ${preview.price}`);
-          }
-          if (preview.commission) {
-            confirmLines.push(`Commission: ${preview.commission}`);
-          }
-          if (preview.cashAccountName && preview.cashAmount !== null) {
-            confirmLines.push(
-              `Cash: ${preview.cashAmount} ${preview.cashCurrency} in ${preview.cashAccountName}`,
-            );
-          }
-          const confirmation = await confirmWrite(
-            server,
-            confirmLines.join("\n"),
-            extra.requestId,
-          );
-          if (confirmation === "declined") {
-            return toolError(
-              "Cancelled: the confirmation was declined, so the investment transaction was not changed. Do not retry unless the user asks again.",
-            );
-          }
-
-          const transaction = await this.investmentTransactionsService.update(
-            ctx.userId,
-            args.transactionId,
-            {
-              action: preview.action,
-              transactionDate: preview.transactionDate,
-              securityId: preview.securityId ?? undefined,
-              fundingAccountId: preview.fundingAccountId ?? undefined,
-              quantity: preview.quantity ?? undefined,
-              price: preview.price ?? undefined,
-              commission: preview.commission,
-              exchangeRate: preview.exchangeRate,
-              description: preview.description ?? undefined,
-            },
-          );
-
-          this.writeLimiter.record(ctx.userId, "update_investment_transaction");
-
-          return toolResult({
-            id: transaction.id,
-            action: transaction.action,
-            date: transaction.transactionDate,
-            symbol: preview.symbol,
-            quantity:
-              transaction.quantity !== null
-                ? Number(transaction.quantity)
-                : null,
-            price:
-              transaction.price !== null ? Number(transaction.price) : null,
-            totalAmount: Number(transaction.totalAmount),
-          });
-        } catch (err: unknown) {
-          return safeToolError(err);
-        }
-      },
-    );
-
-    server.registerTool(
-      "delete_investment_transaction",
-      {
-        title: "Delete investment transaction",
-        annotations: DELETE,
-        description:
-          "Delete an existing brokerage/investment-account transaction. Deleting one leg of a security transfer removes the paired leg too, and any linked cash impact is reversed. Set dryRun=true to preview what would be deleted without removing it. When dryRun is false, the user is asked to confirm before the transaction is removed (clients that support it show a confirmation dialog). Shares the delete logic with the AI Assistant's delete_investment_transaction tool.",
-        inputSchema: {
-          transactionId: z
-            .string()
-            .uuid()
-            .describe("ID of the investment transaction to delete"),
-          dryRun: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe(
-              "If true, return a preview of the transaction without deleting it.",
             ),
-        },
-        outputSchema: deleteInvestmentTransactionOutput,
-      },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "write");
-        if (check.error) return check.result;
-
-        const limitCheck = this.writeLimiter.checkLimit(ctx.userId);
-        if (!limitCheck.allowed) {
-          return toolError(
-            `Daily write limit reached (${limitCheck.limit} operations per day). Try again tomorrow.`,
           );
+        } catch (err) {
+          skipped.push({ index: i, reason: this.reason(err) });
         }
+      }
+      if (cards.length === 0)
+        return toolError(
+          "None of the investment transaction edits could be prepared.",
+        );
+      const budget = this.checkWriteBudget(userId, cards.length);
+      if (budget) return budget;
+      return this.runInvIndividual(server, userId, cards, requestId, skipped);
+    }
 
+    const bulk =
+      await this.investmentTransactionsService.prepareUpdateInvestmentBulk(
+        userId,
+        items.map((i) => this.toInvUpdateRow(i)),
+      );
+    if (bulk.okRows.length === 0)
+      return toolError(
+        "None of the investment transaction edits could be prepared.",
+      );
+    const budget = this.checkWriteBudget(userId, bulk.okRows.length);
+    if (budget) return budget;
+    const action = this.actionBuilder.buildBatchUpdateInvestmentTransactions(
+      userId,
+      bulk.okRows,
+      bulk.previewRows,
+    );
+    if (this.relayService.emitPendingAction(userId, action)) {
+      return toolResult(RELAY_PREVIEW_SHOWN);
+    }
+    const confirmation = await confirmWrite(
+      server,
+      `Apply ${bulk.okRows.length} investment transaction edit(s)?${bulk.skipped.length ? ` (${bulk.skipped.length} skipped)` : ""}`,
+      requestId as never,
+    );
+    if (confirmation === "declined")
+      return toolError(
+        "Cancelled: the confirmation was declined, so nothing was changed.",
+      );
+    const ids: string[] = [];
+    for (const row of bulk.okRows) {
+      const tx = await this.investmentTransactionsService.update(
+        userId,
+        row.transactionId,
+        {
+          action: row.action,
+          transactionDate: row.transactionDate,
+          securityId: row.securityId ?? undefined,
+          fundingAccountId: row.fundingAccountId ?? undefined,
+          quantity: row.quantity ?? undefined,
+          price: row.price ?? undefined,
+          commission: row.commission,
+          exchangeRate: row.exchangeRate,
+          description: row.description ?? undefined,
+        },
+      );
+      ids.push(tx.id);
+      this.writeLimiter.record(userId, "update_investment_transaction");
+    }
+    return toolResult({ ids, count: ids.length, skipped: bulk.skipped });
+  }
+
+  private async manageInvDelete(
+    server: McpServer,
+    userId: string,
+    items: ManageInvItem[],
+    approvalMode: ApprovalMode,
+    requestId: unknown,
+  ) {
+    const single = items.length === 1;
+
+    if (single) {
+      const preview =
+        await this.investmentTransactionsService.previewDeleteInvestmentTransaction(
+          userId,
+          items[0].transactionId as string,
+        );
+      const budget = this.checkWriteBudget(userId, 1);
+      if (budget) return budget;
+      const action = this.actionBuilder.buildDeleteInvestmentTransaction(
+        userId,
+        preview,
+      );
+      if (this.relayService.emitPendingAction(userId, action)) {
+        return toolResult(RELAY_PREVIEW_SHOWN);
+      }
+      const confirmation = await confirmWrite(
+        server,
+        [
+          "Delete this investment transaction?",
+          `Account: ${preview.accountName}`,
+          `Type: ${preview.action}`,
+          `Date: ${preview.transactionDate}`,
+        ].join("\n"),
+        requestId as never,
+      );
+      if (confirmation === "declined") {
+        return toolError(
+          "Cancelled: the confirmation was declined, so the investment transaction was not deleted.",
+        );
+      }
+      await this.investmentTransactionsService.remove(
+        userId,
+        preview.transactionId,
+      );
+      this.writeLimiter.record(userId, "delete_investment_transaction");
+      return toolResult({ id: preview.transactionId, deleted: true, count: 1 });
+    }
+
+    if (approvalMode === "individual") {
+      const cards: PendingAiAction[] = [];
+      const skipped: { index: number; reason: string }[] = [];
+      for (let i = 0; i < items.length; i++) {
         try {
           const preview =
             await this.investmentTransactionsService.previewDeleteInvestmentTransaction(
-              ctx.userId,
-              args.transactionId,
+              userId,
+              items[i].transactionId as string,
             );
-
-          if (args.dryRun) {
-            return toolResult({
-              dryRun: true,
-              preview: {
-                transactionId: preview.transactionId,
-                accountName: preview.accountName,
-                action: preview.action,
-                date: preview.transactionDate,
-                symbol: preview.symbol,
-                securityName: preview.securityName,
-                securityCurrency: preview.securityCurrency,
-                quantity: preview.quantity,
-                price: preview.price,
-                commission: preview.commission,
-                totalAmount: preview.totalAmount,
-                description: preview.description,
-              },
-              message:
-                "This is a preview. Call again with dryRun=false to delete the transaction.",
-            });
-          }
-
-          const pendingAction =
+          cards.push(
             this.actionBuilder.buildDeleteInvestmentTransaction(
-              ctx.userId,
+              userId,
               preview,
-            );
-          if (this.relayService.emitPendingAction(ctx.userId, pendingAction)) {
-            return toolResult(RELAY_PREVIEW_SHOWN);
-          }
-
-          const confirmLines = [
-            "Delete this investment transaction?",
-            `Account: ${preview.accountName}`,
-            `Type: ${preview.action}`,
-            `Date: ${preview.transactionDate}`,
-          ];
-          if (preview.symbol) {
-            confirmLines.push(
-              `Security: ${preview.symbol}${preview.securityName ? ` (${preview.securityName})` : ""}`,
-            );
-          }
-          const confirmation = await confirmWrite(
-            server,
-            confirmLines.join("\n"),
-            extra.requestId,
+            ),
           );
-          if (confirmation === "declined") {
-            return toolError(
-              "Cancelled: the confirmation was declined, so the investment transaction was not deleted. Do not retry unless the user asks again.",
-            );
-          }
-
-          await this.investmentTransactionsService.remove(
-            ctx.userId,
-            args.transactionId,
-          );
-
-          this.writeLimiter.record(ctx.userId, "delete_investment_transaction");
-
-          return toolResult({
-            id: args.transactionId,
-            deleted: true,
-          });
-        } catch (err: unknown) {
-          return safeToolError(err);
+        } catch (err) {
+          skipped.push({ index: i, reason: this.reason(err) });
         }
-      },
+      }
+      if (cards.length === 0)
+        return toolError(
+          "None of the investment transactions could be prepared.",
+        );
+      const budget = this.checkWriteBudget(userId, cards.length);
+      if (budget) return budget;
+      return this.runInvIndividual(server, userId, cards, requestId, skipped);
+    }
+
+    const bulk =
+      await this.investmentTransactionsService.prepareDeleteInvestmentBulk(
+        userId,
+        items.map((i) => i.transactionId as string),
+      );
+    if (bulk.okRows.length === 0)
+      return toolError(
+        "None of the investment transactions could be prepared.",
+      );
+    const budget = this.checkWriteBudget(userId, bulk.okRows.length);
+    if (budget) return budget;
+    const action = this.actionBuilder.buildBatchDeleteInvestmentTransactions(
+      userId,
+      bulk.okRows,
+      bulk.previewRows,
     );
+    if (this.relayService.emitPendingAction(userId, action)) {
+      return toolResult(RELAY_PREVIEW_SHOWN);
+    }
+    const confirmation = await confirmWrite(
+      server,
+      `Delete ${bulk.okRows.length} investment transaction(s)?${bulk.skipped.length ? ` (${bulk.skipped.length} skipped)` : ""}`,
+      requestId as never,
+    );
+    if (confirmation === "declined")
+      return toolError(
+        "Cancelled: the confirmation was declined, so nothing was deleted.",
+      );
+    const ids: string[] = [];
+    for (const row of bulk.okRows) {
+      await this.investmentTransactionsService.remove(
+        userId,
+        row.transactionId,
+      );
+      ids.push(row.transactionId);
+      this.writeLimiter.record(userId, "delete_investment_transaction");
+    }
+    return toolResult({ ids, count: ids.length, skipped: bulk.skipped });
+  }
+
+  /**
+   * Individual mode: relay path emits every card to the web chat; otherwise
+   * confirm + commit each card in turn.
+   */
+  private async runInvIndividual(
+    server: McpServer,
+    userId: string,
+    cards: PendingAiAction[],
+    requestId: unknown,
+    skipped: { index: number; reason: string }[],
+  ) {
+    if (this.relayService.emitPendingAction(userId, cards[0])) {
+      for (let i = 1; i < cards.length; i++) {
+        this.relayService.emitPendingAction(userId, cards[i]);
+      }
+      return toolResult(RELAY_PREVIEW_SHOWN);
+    }
+    const ids: string[] = [];
+    for (const card of cards) {
+      const confirmation = await confirmWrite(
+        server,
+        this.confirmLineFor(card),
+        requestId as never,
+      );
+      if (confirmation === "declined") continue;
+      const id = await this.commitCard(userId, card);
+      if (id) ids.push(id);
+    }
+    return toolResult({ ids, count: ids.length, skipped });
+  }
+
+  /** Commit one signed investment card directly (non-relay individual mode). */
+  private async commitCard(
+    userId: string,
+    card: PendingAiAction,
+  ): Promise<string | null> {
+    const d = card.descriptor;
+    switch (d.type) {
+      case "create_investment_transaction": {
+        const tx = await this.investmentTransactionsService.create(userId, {
+          accountId: d.accountId,
+          action: d.action,
+          transactionDate: d.transactionDate,
+          securityId: d.securityId ?? undefined,
+          fundingAccountId: d.fundingAccountId ?? undefined,
+          quantity: d.quantity ?? undefined,
+          price: d.price ?? undefined,
+          commission: d.commission,
+          exchangeRate: d.exchangeRate,
+          description: d.description ?? undefined,
+        });
+        this.writeLimiter.record(userId, "create_investment_transaction");
+        return tx.id;
+      }
+      case "update_investment_transaction": {
+        const tx = await this.investmentTransactionsService.update(
+          userId,
+          d.transactionId,
+          {
+            action: d.action,
+            transactionDate: d.transactionDate,
+            securityId: d.securityId ?? undefined,
+            fundingAccountId: d.fundingAccountId ?? undefined,
+            quantity: d.quantity ?? undefined,
+            price: d.price ?? undefined,
+            commission: d.commission,
+            exchangeRate: d.exchangeRate,
+            description: d.description ?? undefined,
+          },
+        );
+        this.writeLimiter.record(userId, "update_investment_transaction");
+        return tx.id;
+      }
+      case "delete_investment_transaction": {
+        await this.investmentTransactionsService.remove(
+          userId,
+          d.transactionId,
+        );
+        this.writeLimiter.record(userId, "delete_investment_transaction");
+        return d.transactionId;
+      }
+      default:
+        return null;
+    }
+  }
+
+  private confirmLineFor(card: PendingAiAction): string {
+    const p = card.preview;
+    const sec = p.symbol ? `\nSecurity: ${p.symbol}` : "";
+    switch (card.type) {
+      case "delete_investment_transaction":
+        return `Delete this investment transaction?\nAccount: ${p.accountName}\nType: ${p.investmentAction}\nDate: ${p.transactionDate}${sec}`;
+      case "update_investment_transaction":
+        return `Apply this investment transaction edit?\nAccount: ${p.accountName}\nType: ${p.investmentAction}\nDate: ${p.transactionDate}${sec}`;
+      default:
+        return `Create this investment transaction?\nAccount: ${p.accountName}\nType: ${p.investmentAction}\nDate: ${p.transactionDate}${sec}`;
+    }
+  }
+
+  private createConfirmLines(preview: {
+    accountName: string;
+    action: InvestmentAction;
+    transactionDate: string;
+    symbol: string | null;
+    securityName: string | null;
+    quantity: number | null;
+    price: number | null;
+    commission: number;
+    cashAccountName: string | null;
+    cashCurrency: string | null;
+    cashAmount: number | null;
+  }): string[] {
+    return ["Create this investment transaction?", ...this.editLines(preview)];
+  }
+
+  /** The security/quantity/price/cash detail lines shared by create + update. */
+  private editLines(preview: {
+    accountName: string;
+    action: InvestmentAction;
+    transactionDate: string;
+    symbol: string | null;
+    securityName: string | null;
+    quantity: number | null;
+    price: number | null;
+    commission: number;
+    cashAccountName: string | null;
+    cashCurrency: string | null;
+    cashAmount: number | null;
+  }): string[] {
+    const lines: string[] = [
+      `Account: ${preview.accountName}`,
+      `Type: ${preview.action}`,
+      `Date: ${preview.transactionDate}`,
+    ];
+    if (preview.symbol) {
+      lines.push(
+        `Security: ${preview.symbol}${preview.securityName ? ` (${preview.securityName})` : ""}`,
+      );
+    }
+    if (preview.quantity !== null) lines.push(`Quantity: ${preview.quantity}`);
+    if (preview.price !== null) lines.push(`Price: ${preview.price}`);
+    if (preview.commission) lines.push(`Commission: ${preview.commission}`);
+    if (preview.cashAccountName && preview.cashAmount !== null) {
+      lines.push(
+        `Cash: ${preview.cashAmount} ${preview.cashCurrency} in ${preview.cashAccountName}`,
+      );
+    }
+    return lines;
+  }
+
+  private reason(err: unknown): string {
+    if (
+      err &&
+      typeof err === "object" &&
+      "message" in err &&
+      typeof (err as { message?: unknown }).message === "string"
+    ) {
+      return (err as { message: string }).message;
+    }
+    return "Could not be prepared.";
   }
 }

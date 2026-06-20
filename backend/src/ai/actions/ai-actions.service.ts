@@ -40,6 +40,8 @@ import {
   BatchUpdateTransactionRow,
   BatchDeleteTransactionRow,
   BatchCreateTransferRow,
+  BatchUpdateInvestmentTransactionRow,
+  BatchDeleteInvestmentTransactionRow,
   TransactionRowDescriptor,
   MAX_BULK_ACTION_ROWS,
 } from "./ai-action.types";
@@ -390,6 +392,37 @@ export class AiActionsService {
           createPayeeIfMissing: r.createPayee === true,
         });
         return transaction.id;
+      }
+      case "update_investment": {
+        const r = row as BatchUpdateInvestmentTransactionRow;
+        // accountId is omitted: the edit keeps the transaction on its account
+        // (matching the singular executor), so update() never takes the move
+        // path.
+        const dto = await this.toValidatedDto(UpdateInvestmentTransactionDto, {
+          action: r.action,
+          transactionDate: r.transactionDate,
+          securityId: r.securityId ?? undefined,
+          fundingAccountId: r.fundingAccountId ?? undefined,
+          quantity: r.quantity ?? undefined,
+          price: r.price ?? undefined,
+          commission: r.commission,
+          exchangeRate: r.exchangeRate,
+          description: r.description ?? undefined,
+        });
+        const transaction = await this.investmentTransactionsService.update(
+          userId,
+          r.transactionId,
+          dto,
+        );
+        return transaction.id;
+      }
+      case "delete_investment": {
+        const r = row as BatchDeleteInvestmentTransactionRow;
+        await this.investmentTransactionsService.remove(
+          userId,
+          r.transactionId,
+        );
+        return r.transactionId;
       }
     }
   }

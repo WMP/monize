@@ -269,6 +269,104 @@ describe('BulkConfirmationCard', () => {
         screen.getByText(/Brand New Label \(new payee\)/),
       ).toBeInTheDocument();
     });
+
+    it('renders an investment update batch with investment rows and edit copy', () => {
+      const { rerender } = render(
+        <BulkConfirmationCard
+          action={makeAction({
+            type: 'batch_actions',
+            descriptor: { type: 'batch_actions', operation: 'update_investment' },
+            preview: {
+              rows: [
+                {
+                  status: 'ok',
+                  investmentAction: 'SELL',
+                  symbol: 'VTI',
+                  transactionDate: '2026-02-01',
+                  quantity: 5,
+                  price: 210,
+                  totalAmount: 1050,
+                  securityCurrency: 'USD',
+                },
+              ],
+            },
+          })}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByText('Apply these investment transaction edits?'),
+      ).toBeInTheDocument();
+      // Rendered with the investment row layout (action + symbol).
+      expect(screen.getByText(/Sell VTI/)).toBeInTheDocument();
+      // Success copy + the investments view link.
+      rerender(
+        <BulkConfirmationCard
+          action={makeAction({
+            type: 'batch_actions',
+            descriptor: { type: 'batch_actions', operation: 'update_investment' },
+            status: 'confirmed',
+            resultCount: 1,
+            preview: { rows: [] },
+          })}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByText(/1 investment transaction updated/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'View investments' }),
+      ).toBeInTheDocument();
+    });
+
+    it('renders an investment delete batch with the delete title and success copy', () => {
+      const { rerender } = render(
+        <BulkConfirmationCard
+          action={makeAction({
+            type: 'batch_actions',
+            descriptor: { type: 'batch_actions', operation: 'delete_investment' },
+            preview: {
+              rows: [
+                {
+                  status: 'ok',
+                  investmentAction: 'BUY',
+                  symbol: 'VTI',
+                  transactionDate: '2026-02-01',
+                  quantity: 10,
+                  totalAmount: 2000,
+                  securityCurrency: 'USD',
+                },
+              ],
+            },
+          })}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByText('Delete these investment transactions?'),
+      ).toBeInTheDocument();
+
+      rerender(
+        <BulkConfirmationCard
+          action={makeAction({
+            type: 'batch_actions',
+            descriptor: { type: 'batch_actions', operation: 'delete_investment' },
+            status: 'confirmed',
+            resultCount: 2,
+            preview: { rows: [] },
+          })}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByText(/2 investment transactions deleted/),
+      ).toBeInTheDocument();
+    });
   });
 
   it('shows retry on error and an expired notice', () => {

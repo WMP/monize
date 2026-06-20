@@ -2682,7 +2682,7 @@ describe("AccountsService", () => {
     });
   });
 
-  describe("getLlmBalances filters", () => {
+  describe("getLlmAccounts", () => {
     const allAccounts = [
       {
         id: "a1",
@@ -2693,6 +2693,11 @@ describe("AccountsService", () => {
         currencyCode: "USD",
         currentBalance: 100,
         futureTransactionsSum: 0,
+        creditLimit: null,
+        interestRate: null,
+        excludeFromNetWorth: false,
+        institutionId: "inst-1",
+        accountNumber: "1234",
         isClosed: false,
       },
       {
@@ -2704,6 +2709,11 @@ describe("AccountsService", () => {
         currencyCode: "USD",
         currentBalance: 200,
         futureTransactionsSum: 0,
+        creditLimit: 5000,
+        interestRate: 1.25,
+        excludeFromNetWorth: true,
+        institutionId: null,
+        accountNumber: null,
         isClosed: true,
       },
       {
@@ -2715,6 +2725,11 @@ describe("AccountsService", () => {
         currencyCode: "USD",
         currentBalance: 500,
         futureTransactionsSum: 0,
+        creditLimit: null,
+        interestRate: null,
+        excludeFromNetWorth: false,
+        institutionId: null,
+        accountNumber: null,
         isClosed: false,
       },
     ];
@@ -2733,48 +2748,127 @@ describe("AccountsService", () => {
       ).getAccountMarketValues = jest
         .fn()
         .mockResolvedValue(new Map([["a3", 750]]));
+      institutionsRepository.find = jest
+        .fn()
+        .mockResolvedValue([{ id: "inst-1", name: "Big Bank" }]);
     });
 
-    it("status=open filters closed", async () => {
-      const r = await service.getLlmBalances("user-1");
+    it("status defaults to open and filters closed accounts", async () => {
+      const r = await service.getLlmAccounts("user-1");
       expect(r.accounts.find((a) => a.name === "Savings")).toBeUndefined();
+      expect(r.totalAccounts).toBe(2);
     });
 
     it("status=closed only returns closed", async () => {
-      const r = await service.getLlmBalances("user-1", undefined, "closed");
+      const r = await service.getLlmAccounts("user-1", { status: "closed" });
       expect(r.accounts.length).toBe(1);
       expect(r.accounts[0].name).toBe("Savings");
+      expect(r.totalAccounts).toBe(1);
     });
 
     it("status=all returns everything", async () => {
-      const r = await service.getLlmBalances("user-1", undefined, "all");
+      const r = await service.getLlmAccounts("user-1", { status: "all" });
       expect(r.accounts.length).toBe(3);
+      expect(r.totalAccounts).toBe(3);
     });
 
     it("filters by accountTypes", async () => {
-      const r = await service.getLlmBalances("user-1", undefined, "all", [
-        AccountType.CHEQUING,
-      ]);
+      const r = await service.getLlmAccounts("user-1", {
+        status: "all",
+        accountTypes: [AccountType.CHEQUING],
+      });
       expect(r.accounts.length).toBe(1);
       expect(r.accounts[0].name).toBe("Checking");
     });
 
     it("filters by accountNames (case-insensitive)", async () => {
-      const r = await service.getLlmBalances("user-1", ["checking"], "all");
+      const r = await service.getLlmAccounts("user-1", {
+        status: "all",
+        accountNames: ["checking"],
+      });
       expect(r.accounts.length).toBe(1);
       expect(r.accounts[0].name).toBe("Checking");
     });
 
-    it("uses market value for brokerage accounts", async () => {
-      const r = await service.getLlmBalances("user-1", ["Brokerage"], "all");
-      expect(r.accounts[0].balance).toBe(750);
+    it("filters by accountIds", async () => {
+      const r = await service.getLlmAccounts("user-1", {
+        status: "all",
+        accountIds: ["a2"],
+      });
+      expect(r.accounts.length).toBe(1);
+      expect(r.accounts[0].id).toBe("a2");
     });
 
-    it("falls back to 0 when monthly net worth empty", async () => {
+    it("filters by nameQuery substring (case-insensitive)", async () => {
+      const r = await service.getLlmAccounts("user-1", {
+        status: "all",
+        nameQuery: "ING",
+      });
+      const names = r.accounts.map((a) => a.name).sort();
+      expect(names).toEqual(["Checking", "Savings"]);
+    });
+
+    it("uses market value for brokerage accounts and currentBalance for others", async () => {
+      const r = await service.getLlmAccounts("user-1", { status: "all" });
+      const brokerage = r.accounts.find((a) => a.name === "Brokerage")!;
+      const checking = r.accounts.find((a) => a.name === "Checking")!;
+      expect(brokerage.balance).toBe(750);
+      expect(brokerage.currentBalance).toBe(500);
+      expect(checking.balance).toBe(100);
+    });
+
+    it("exposes full per-account detail incl. null credit/interest/institution", async () => {
+      const r = await service.getLlmAccounts("user-1", { status: "all" });
+      const checking = r.accounts.find((a) => a.name === "Checking")!;
+      const brokerage = r.accounts.find((a) => a.name === "Brokerage")!;
+      const savings = r.accounts.find((a) => a.name === "Savings")!;
+
+      expect(checking.creditLimit).toBeNull();
+      expect(checking.interestRate).toBeNull();
+      expect(checking.institutionName).toBe("Big Bank");
+      expect(checking.accountNumber).toBe("1234");
+      expect(checking.excludeFromNetWorth).toBe(false);
+
+      expect(savings.creditLimit).toBe(5000);
+      expect(savings.interestRate).toBe(1.25);
+      expect(savings.excludeFromNetWorth).toBe(true);
+      expect(savings.institutionName).toBeNull();
+      expect(savings.accountNumber).toBeNull();
+
+      expect(brokerage.subType).toBe(AccountSubType.INVESTMENT_BROKERAGE);
+      expect(brokerage.institutionName).toBeNull();
+    });
+
+    it("skips the institution lookup when no account references one", async () => {
+      const r = await service.getLlmAccounts("user-1", {
+        status: "all",
+        accountIds: ["a3"],
+      });
+      expect(institutionsRepository.find).not.toHaveBeenCalled();
+      expect(r.accounts[0].institutionName).toBeNull();
+    });
+
+    it("returns null institutionName when the institution is not found", async () => {
+      institutionsRepository.find = jest.fn().mockResolvedValue([]);
+      const r = await service.getLlmAccounts("user-1", {
+        status: "all",
+        accountIds: ["a1"],
+      });
+      expect(r.accounts[0].institutionName).toBeNull();
+    });
+
+    it("returns totals from the latest net worth snapshot", async () => {
+      const r = await service.getLlmAccounts("user-1", { status: "all" });
+      expect(r.totalAssets).toBe(800);
+      expect(r.totalLiabilities).toBe(0);
+      expect(r.netWorth).toBe(800);
+    });
+
+    it("falls back to 0 totals when the net worth snapshot is null", async () => {
       (
         netWorthService as unknown as Record<string, jest.Mock>
       ).getLatestNetWorth = jest.fn().mockResolvedValue(null);
-      const r = await service.getLlmBalances("user-1");
+      const r = await service.getLlmAccounts("user-1");
       expect(r.totalAssets).toBe(0);
       expect(r.totalLiabilities).toBe(0);
       expect(r.netWorth).toBe(0);

@@ -123,8 +123,12 @@
     "updateTransactionsTitle": "Deze transacties bewerken?",
     "deleteTransactionsTitle": "Deze transacties verwijderen?",
     "createTransfersTitle": "Deze overboekingen aanmaken?",
+    "updateInvestmentTransactionsTitle": "Deze beleggingstransacties bewerken?",
+    "deleteInvestmentTransactionsTitle": "Deze beleggingstransacties verwijderen?",
     "updatedTransactions": "{count, plural, =0 {Geen transacties bijgewerkt} one {# transactie bijgewerkt} other {# transacties bijgewerkt}}",
     "deletedTransactions": "{count, plural, =0 {Geen transacties verwijderd} one {# transactie verwijderd} other {# transacties verwijderd}}",
+    "updatedInvestmentTransactions": "{count, plural, =0 {Geen beleggingstransacties bijgewerkt} one {# beleggingstransactie bijgewerkt} other {# beleggingstransacties bijgewerkt}}",
+    "deletedInvestmentTransactions": "{count, plural, =0 {Geen beleggingstransacties verwijderd} one {# beleggingstransactie verwijderd} other {# beleggingstransacties verwijderd}}",
     "createdTransfers": "{count, plural, =0 {Geen overboekingen aangemaakt} one {# overboeking aangemaakt} other {# overboekingen aangemaakt}}"
   },
   "table": {

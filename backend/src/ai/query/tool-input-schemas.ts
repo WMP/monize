@@ -21,14 +21,22 @@ import {
  * the internal AI query engine share the same validation rules.
  */
 
-export const queryTransactionsSchema = z.object({
+export const listTransactionsSchema = z.object({
+  searchText: z.string().max(200).optional(),
   startDate: isoDateSchema.optional(),
   endDate: isoDateSchema.optional(),
-  categoryNames: z.array(z.string().max(100)).optional(),
-  accountNames: z.array(z.string().max(100)).optional(),
-  searchText: z.string().max(200).optional(),
-  groupBy: z.enum(["category", "payee", "year", "month", "week"]).optional(),
+  accountNames: z.array(z.string().max(100)).max(50).optional(),
+  categoryNames: z.array(z.string().max(100)).max(100).optional(),
+  payeeNames: z.array(z.string().max(100)).max(100).optional(),
+  minAmount: z.number().min(-999999999999).max(999999999999).optional(),
+  maxAmount: z.number().min(-999999999999).max(999999999999).optional(),
   direction: directionSchema.optional(),
+  groupBy: z
+    .enum(["category", "payee", "year", "month", "week", "none"])
+    .optional(),
+  transfersOnly: z.boolean().optional(),
+  includeTransactions: z.boolean().optional(),
+  limit: positiveIntSchema(1, 100).optional(),
 });
 
 const accountTypeSchema = z.preprocess(
@@ -47,8 +55,10 @@ const accountTypeSchema = z.preprocess(
   ]),
 );
 
-export const getAccountBalancesSchema = z.object({
+export const listAccountsSchema = z.object({
   accountNames: z.array(z.string().max(100)).optional(),
+  accountIds: z.array(z.string().uuid()).optional(),
+  nameQuery: z.string().max(100).optional(),
   status: z.enum(["open", "closed", "all"]).optional(),
   accountTypes: z.array(accountTypeSchema).max(10).optional(),
 });
@@ -124,12 +134,6 @@ export const getCapitalGainsSchema = z.object({
   groupBy: z.enum(["month", "security", "account"]).optional(),
 });
 
-export const getTransfersSchema = z.object({
-  startDate: isoDateSchema.optional(),
-  endDate: isoDateSchema.optional(),
-  accountNames: z.array(z.string().max(100)).optional(),
-});
-
 export const getBudgetStatusSchema = z.object({
   period: z.string().max(20).optional(),
   budgetName: z.string().max(100).optional(),
@@ -152,12 +156,6 @@ export const getUpcomingBillsSchema = z.object({
   days: positiveIntSchema(1, 365).optional(),
   kind: scheduledKindSchema.optional(),
   accountNames: z.array(z.string().max(100)).max(50).optional(),
-});
-
-export const getScheduledTransactionsSchema = z.object({
-  kind: scheduledKindSchema.optional(),
-  accountNames: z.array(z.string().max(100)).max(50).optional(),
-  isActive: z.boolean().optional(),
 });
 
 export const calculateSchema = z.object({
@@ -200,17 +198,6 @@ const amountSchema = z
     (n) => Math.abs(n * 10000 - Math.round(n * 10000)) < 1e-6,
     "amount supports at most 4 decimal places",
   );
-
-export const searchTransactionsSchema = z.object({
-  searchText: z.string().max(200).optional(),
-  startDate: isoDateSchema.optional(),
-  endDate: isoDateSchema.optional(),
-  accountName: z.string().max(100).optional(),
-  categoryName: z.string().max(100).optional(),
-  minAmount: z.number().min(-999999999999).max(999999999999).optional(),
-  maxAmount: z.number().min(-999999999999).max(999999999999).optional(),
-  limit: positiveIntSchema(1, 25).optional(),
-});
 
 export const createTransactionSchema = z.object({
   accountName: z.string().min(1).max(100),
@@ -259,18 +246,6 @@ export const createSecuritySchema = z.object({
  */
 const nonNegativeAmountSchema = z.number().finite().min(0).max(999999999999);
 
-export const createInvestmentTransactionSchema = z.object({
-  accountName: z.string().min(1).max(100),
-  action: investmentActionSchema,
-  date: isoDateSchema,
-  security: z.string().min(1).max(100).optional(),
-  quantity: nonNegativeAmountSchema.optional(),
-  price: nonNegativeAmountSchema.optional(),
-  commission: nonNegativeAmountSchema.optional(),
-  fundingAccountName: z.string().min(1).max(100).optional(),
-  description: z.string().max(500).optional(),
-});
-
 /**
  * Bulk variants: an array of the singular row schema, capped at
  * MAX_BULK_ACTION_ROWS so a pasted table cannot blow past the provider's
@@ -281,12 +256,94 @@ export const createTransactionsSchema = z.object({
   rows: z.array(createTransactionSchema).min(1).max(MAX_BULK_ACTION_ROWS),
 });
 
-export const createInvestmentTransactionsSchema = z.object({
-  rows: z
-    .array(createInvestmentTransactionSchema)
-    .min(1)
-    .max(MAX_BULK_ACTION_ROWS),
-});
+/**
+ * Unified `manage_investment_transactions` input. A single schema validated
+ * per-operation via superRefine, mirroring `manageTransactionsSchema`: create
+ * rows need accountName + action + date; update rows require the target id plus
+ * at least one mutable field; delete rows need only the target id. `items` is
+ * 1..MAX_BULK_ACTION_ROWS.
+ */
+const manageInvestmentItemSchema = z
+  .object({
+    accountName: z.string().min(1).max(100).optional(),
+    fundingAccountName: z.string().min(1).max(100).optional(),
+    security: z.string().min(1).max(100).optional(),
+    action: investmentActionSchema.optional(),
+    date: isoDateSchema.optional(),
+    quantity: nonNegativeAmountSchema.optional(),
+    price: nonNegativeAmountSchema.optional(),
+    commission: nonNegativeAmountSchema.optional(),
+    description: z.string().max(500).optional(),
+    transactionId: z.string().uuid().optional(),
+  })
+  .passthrough();
+
+export const manageInvestmentTransactionsSchema = z
+  .object({
+    operation: z.enum(["create", "update", "delete"]),
+    items: z.array(manageInvestmentItemSchema).min(1).max(MAX_BULK_ACTION_ROWS),
+    approvalMode: z.enum(["bulk", "individual"]).optional(),
+  })
+  .superRefine((value, ctx) => {
+    value.items.forEach((item, index) => {
+      const path = (field: string) => ["items", index, field];
+      if (value.operation === "create") {
+        if (!item.accountName) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: path("accountName"),
+            message: "accountName is required.",
+          });
+        }
+        if (item.action === undefined) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: path("action"),
+            message: "action is required.",
+          });
+        }
+        if (item.date === undefined) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: path("date"),
+            message: "date is required.",
+          });
+        }
+      } else if (value.operation === "update") {
+        if (!item.transactionId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: path("transactionId"),
+            message: "transactionId is required.",
+          });
+        }
+        const hasChange =
+          item.action !== undefined ||
+          item.date !== undefined ||
+          item.security !== undefined ||
+          item.quantity !== undefined ||
+          item.price !== undefined ||
+          item.commission !== undefined ||
+          item.description !== undefined;
+        if (!hasChange) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: path("transactionId"),
+            message:
+              "Provide at least one field to change (action, date, security, quantity, price, commission, or description).",
+          });
+        }
+      } else {
+        if (!item.transactionId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: path("transactionId"),
+            message: "transactionId is required.",
+          });
+        }
+      }
+    });
+  });
 
 /**
  * Edit/delete schemas. Edits require at least one field to change (enforced via
@@ -443,39 +500,9 @@ export const manageTransactionsSchema = z
     });
   });
 
-export const updateInvestmentTransactionSchema = z
-  .object({
-    transactionId: z.string().uuid(),
-    action: investmentActionSchema.optional(),
-    date: isoDateSchema.optional(),
-    security: z.string().min(1).max(100).optional(),
-    quantity: nonNegativeAmountSchema.optional(),
-    price: nonNegativeAmountSchema.optional(),
-    commission: nonNegativeAmountSchema.optional(),
-    description: z.string().max(500).optional(),
-  })
-  .refine(
-    (v) =>
-      v.action !== undefined ||
-      v.date !== undefined ||
-      v.security !== undefined ||
-      v.quantity !== undefined ||
-      v.price !== undefined ||
-      v.commission !== undefined ||
-      v.description !== undefined,
-    {
-      message:
-        "Provide at least one field to change (action, date, security, quantity, price, commission, or description).",
-    },
-  );
-
-export const deleteInvestmentTransactionSchema = z.object({
-  transactionId: z.string().uuid(),
-});
-
 export const toolInputSchemas: Record<string, z.ZodSchema> = {
-  query_transactions: queryTransactionsSchema,
-  get_account_balances: getAccountBalancesSchema,
+  list_transactions: listTransactionsSchema,
+  list_accounts: listAccountsSchema,
   get_categories: getCategoriesSchema,
   get_spending_by_category: getSpendingByCategorySchema,
   get_income_summary: getIncomeSummarySchema,
@@ -484,21 +511,15 @@ export const toolInputSchemas: Record<string, z.ZodSchema> = {
   get_portfolio_summary: getPortfolioSummarySchema,
   query_investment_transactions: queryInvestmentTransactionsSchema,
   get_capital_gains: getCapitalGainsSchema,
-  get_transfers: getTransfersSchema,
   get_budget_status: getBudgetStatusSchema,
   get_upcoming_bills: getUpcomingBillsSchema,
-  get_scheduled_transactions: getScheduledTransactionsSchema,
   calculate: calculateSchema,
   render_chart: renderChartSchema,
-  search_transactions: searchTransactionsSchema,
   manage_transactions: manageTransactionsSchema,
   create_payee: createPayeeSchema,
   create_security: createSecuritySchema,
   lookup_securities: lookupSecuritiesSchema,
-  create_investment_transaction: createInvestmentTransactionSchema,
-  create_investment_transactions: createInvestmentTransactionsSchema,
-  update_investment_transaction: updateInvestmentTransactionSchema,
-  delete_investment_transaction: deleteInvestmentTransactionSchema,
+  manage_investment_transactions: manageInvestmentTransactionsSchema,
 };
 
 /**

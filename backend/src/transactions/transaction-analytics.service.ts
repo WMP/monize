@@ -44,6 +44,13 @@ export const MIN_AGGREGATION_COUNT = 3;
 export type LlmQueryDirection = "expenses" | "income" | "both";
 export type LlmQueryGroupBy = "category" | "payee" | "year" | "month" | "week";
 
+/**
+ * Group-by options for the unified `list_transactions` tool. Adds a "none"
+ * sentinel on top of {@link LlmQueryGroupBy} so a caller can ask for totals
+ * without any grouped breakdown.
+ */
+export type LlmListGroupBy = LlmQueryGroupBy | "none";
+
 export interface LlmQueryTransactionsInput {
   startDate: string;
   endDate: string;
@@ -69,6 +76,45 @@ export interface LlmQueryTransactionsResult {
     }
   >;
   breakdown?: unknown;
+}
+
+/**
+ * Input for the unified `list_transactions` summary. Folds the filters of
+ * `search_transactions` (search/amount/payee), the grouped breakdown of
+ * `query_transactions`, and the per-account transfer rollup of `get_transfers`
+ * into one shape. Callers resolve account/category/payee names to IDs first.
+ */
+export interface LlmListTransactionsInput {
+  startDate: string;
+  endDate: string;
+  accountIds?: string[];
+  categoryIds?: string[];
+  payeeIds?: string[];
+  searchText?: string;
+  minAmount?: number;
+  maxAmount?: number;
+  direction?: LlmQueryDirection;
+  groupBy?: LlmListGroupBy;
+  transfersOnly?: boolean;
+}
+
+export interface LlmListTransactionsResult {
+  totalIncome: number;
+  totalExpenses: number;
+  netCashFlow: number;
+  transactionCount: number;
+  byCurrency?: Record<
+    string,
+    {
+      totalIncome: number;
+      totalExpenses: number;
+      netCashFlow: number;
+      transactionCount: number;
+    }
+  >;
+  groupedBy: LlmListGroupBy;
+  breakdown?: unknown;
+  transfers?: TransfersByAccountResult;
 }
 
 export interface LlmSpendingByCategoryResult {
@@ -752,6 +798,83 @@ export class TransactionAnalyticsService {
     return result;
   }
 
+  /**
+   * Unified transaction summary for the `list_transactions` tool. Composes the
+   * existing building blocks: the income/expense/net + per-currency totals from
+   * {@link getSummary} (transfers and investment-linked rows excluded so the
+   * totals answer "how much did I spend/earn"), an optional grouped breakdown
+   * via {@link getLlmGroupedBreakdown} when `groupBy` is a real grouping (not
+   * "none"), and an optional per-account transfer rollup via
+   * {@link getTransfersByAccount} when `transfersOnly` is set.
+   *
+   * The RAW transaction list is NOT produced here -- tool adapters fetch it
+   * separately via `TransactionsService.getLlmTransactionRows` only when asked.
+   *
+   * Callers resolve account/category/payee names to IDs before calling. Shared
+   * by the AI Assistant tool executor and the MCP server so both surfaces
+   * return the same shape.
+   */
+  async getLlmListTransactions(
+    userId: string,
+    input: LlmListTransactionsInput,
+  ): Promise<LlmListTransactionsResult> {
+    const safeSearch = sanitizeLikePattern(input.searchText);
+    const groupBy: LlmListGroupBy = input.groupBy ?? "none";
+
+    const summary = await this.getSummary(
+      userId,
+      input.accountIds,
+      input.startDate,
+      input.endDate,
+      input.categoryIds,
+      input.payeeIds,
+      safeSearch,
+      input.minAmount,
+      input.maxAmount,
+      true,
+      true,
+    );
+
+    const result: LlmListTransactionsResult = {
+      totalIncome: summary.totalIncome,
+      totalExpenses: summary.totalExpenses,
+      netCashFlow: summary.netCashFlow,
+      transactionCount: summary.transactionCount,
+      groupedBy: groupBy,
+    };
+
+    if (Object.keys(summary.byCurrency).length > 1) {
+      result.byCurrency = summary.byCurrency;
+    }
+
+    if (groupBy !== "none") {
+      result.breakdown = await this.getLlmGroupedBreakdown(
+        userId,
+        input.startDate,
+        input.endDate,
+        groupBy,
+        input.direction,
+        input.accountIds,
+        input.categoryIds,
+        safeSearch,
+        input.payeeIds,
+        input.minAmount,
+        input.maxAmount,
+      );
+    }
+
+    if (input.transfersOnly) {
+      result.transfers = await this.getTransfersByAccount(
+        userId,
+        input.startDate,
+        input.endDate,
+        input.accountIds,
+      );
+    }
+
+    return result;
+  }
+
   private async getLlmGroupedBreakdown(
     userId: string,
     startDate: string,
@@ -761,6 +884,9 @@ export class TransactionAnalyticsService {
     accountIds?: string[],
     categoryIds?: string[],
     safeSearchText?: string,
+    payeeIds?: string[],
+    minAmount?: number,
+    maxAmount?: number,
   ): Promise<unknown> {
     const qb = this.transactionsRepository
       .createQueryBuilder("t")
@@ -790,6 +916,18 @@ export class TransactionAnalyticsService {
         "COALESCE(ts.categoryId, t.categoryId) IN (:...categoryIds)",
         { categoryIds },
       );
+    }
+
+    if (payeeIds && payeeIds.length > 0) {
+      qb.andWhere("t.payeeId IN (:...payeeIds)", { payeeIds });
+    }
+
+    if (minAmount !== undefined) {
+      qb.andWhere(`${SPLIT_AMOUNT} >= :minAmount`, { minAmount });
+    }
+
+    if (maxAmount !== undefined) {
+      qb.andWhere(`${SPLIT_AMOUNT} <= :maxAmount`, { maxAmount });
     }
 
     if (safeSearchText) {

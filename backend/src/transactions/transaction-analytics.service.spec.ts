@@ -1738,6 +1738,247 @@ describe("TransactionAnalyticsService", () => {
     });
   });
 
+  describe("getLlmListTransactions", () => {
+    it("returns totals and groupedBy 'none' without a breakdown when groupBy is omitted", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        {
+          currencyCode: "USD",
+          totalIncome: "1000",
+          totalExpenses: "200",
+          transactionCount: "5",
+        },
+      ]);
+
+      const result = await service.getLlmListTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+      });
+
+      expect(result.totalIncome).toBe(1000);
+      expect(result.totalExpenses).toBe(200);
+      expect(result.netCashFlow).toBe(800);
+      expect(result.transactionCount).toBe(5);
+      expect(result.groupedBy).toBe("none");
+      expect(result.breakdown).toBeUndefined();
+      expect(result.transfers).toBeUndefined();
+      expect(result.byCurrency).toBeUndefined();
+    });
+
+    it("does not compute a breakdown when groupBy is explicitly 'none'", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([]);
+
+      const result = await service.getLlmListTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        groupBy: "none",
+      });
+
+      expect(result.groupedBy).toBe("none");
+      expect(result.breakdown).toBeUndefined();
+      // Only the summary query runs, not a second breakdown query.
+      expect(transactionsRepository.createQueryBuilder).toHaveBeenCalledTimes(
+        1,
+      );
+    });
+
+    it("includes a breakdown when groupBy is a real grouping", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([
+          {
+            currencyCode: "USD",
+            totalIncome: "1000",
+            totalExpenses: "200",
+            transactionCount: "5",
+          },
+        ])
+        .mockResolvedValueOnce([{ label: "Food", total: "150", count: "10" }]);
+
+      const result = await service.getLlmListTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        groupBy: "category",
+      });
+
+      expect(result.groupedBy).toBe("category");
+      expect(result.breakdown).toBeDefined();
+    });
+
+    it("includes the transfer rollup when transfersOnly is true", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([]) // summary
+        .mockResolvedValueOnce([
+          {
+            accountName: "Savings",
+            currencyCode: "USD",
+            inbound: "1500",
+            outbound: "0",
+            count: "3",
+          },
+        ]); // transfers
+
+      const result = await service.getLlmListTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        transfersOnly: true,
+      });
+
+      expect(result.transfers).toBeDefined();
+      expect(result.transfers?.totalInbound).toBe(1500);
+      expect(result.transfers?.accounts).toHaveLength(1);
+    });
+
+    it("omits the transfer rollup when transfersOnly is false", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([]);
+
+      const result = await service.getLlmListTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        transfersOnly: false,
+      });
+
+      expect(result.transfers).toBeUndefined();
+    });
+
+    it("computes both a breakdown and the transfer rollup together", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([]) // summary
+        .mockResolvedValueOnce([{ label: "Food", total: "100", count: "5" }]) // breakdown
+        .mockResolvedValueOnce([]); // transfers
+
+      const result = await service.getLlmListTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        groupBy: "category",
+        transfersOnly: true,
+      });
+
+      expect(result.breakdown).toBeDefined();
+      expect(result.transfers).toBeDefined();
+    });
+
+    it("exposes byCurrency when multiple currencies are present", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        {
+          currencyCode: "USD",
+          totalIncome: "1000",
+          totalExpenses: "200",
+          transactionCount: "5",
+        },
+        {
+          currencyCode: "EUR",
+          totalIncome: "500",
+          totalExpenses: "100",
+          transactionCount: "3",
+        },
+      ]);
+
+      const result = await service.getLlmListTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+      });
+
+      expect(result.byCurrency).toBeDefined();
+      expect(Object.keys(result.byCurrency || {})).toEqual(
+        expect.arrayContaining(["USD", "EUR"]),
+      );
+    });
+
+    it("forwards payee, amount, and search filters to the summary query", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([]);
+
+      await service.getLlmListTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        payeeIds: ["payee-1"],
+        minAmount: -100,
+        maxAmount: -10,
+        searchText: "coffee",
+      });
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        "transaction.payeeId IN (:...payeeIds)",
+        { payeeIds: ["payee-1"] },
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        "transaction.amount >= :amountFrom",
+        { amountFrom: -100 },
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        "transaction.amount <= :amountTo",
+        { amountTo: -10 },
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        buildTransactionSearchClause({
+          transaction: "transaction",
+          splits: "splits",
+        }),
+        { search: "%coffee%" },
+      );
+    });
+
+    it("forwards payee/amount filters into the grouped breakdown query", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([]) // summary
+        .mockResolvedValueOnce([]); // breakdown
+
+      await service.getLlmListTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        groupBy: "month",
+        payeeIds: ["payee-1"],
+        minAmount: -200,
+        maxAmount: -5,
+      });
+
+      const calls = (mockQueryBuilder.andWhere.mock.calls as any[][]).map(
+        (c) => c[0],
+      );
+      expect(calls).toContain("t.payeeId IN (:...payeeIds)");
+      expect(
+        calls.some((c) => typeof c === "string" && c.includes(":minAmount")),
+      ).toBe(true);
+      expect(
+        calls.some((c) => typeof c === "string" && c.includes(":maxAmount")),
+      ).toBe(true);
+    });
+
+    it("applies the expenses direction to the breakdown query", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      await service.getLlmListTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        groupBy: "category",
+        direction: "expenses",
+      });
+
+      const calls = (mockQueryBuilder.andWhere.mock.calls as any[][])
+        .map((c) => c[0])
+        .join(" | ");
+      expect(calls).toMatch(/< 0/);
+    });
+
+    it("applies the income direction to the breakdown query", async () => {
+      mockQueryBuilder.getRawMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      await service.getLlmListTransactions(userId, {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+        groupBy: "category",
+        direction: "income",
+      });
+
+      const calls = (mockQueryBuilder.andWhere.mock.calls as any[][])
+        .map((c) => c[0])
+        .join(" | ");
+      expect(calls).toMatch(/> 0/);
+    });
+  });
+
   describe("getLlmGroupedBreakdown (via getLlmQueryTransactions)", () => {
     async function runWithGroupBy(groupBy: string, rows: any[]) {
       mockQueryBuilder.getRawMany

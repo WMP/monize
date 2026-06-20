@@ -6,6 +6,7 @@ describe("McpTransactionsTools", () => {
   let transactionsService: Record<string, jest.Mock>;
   let payeesService: Record<string, jest.Mock>;
   let analyticsService: Record<string, jest.Mock>;
+  let accountsService: Record<string, jest.Mock>;
   let server: {
     registerTool: jest.Mock;
     server: { getClientCapabilities: jest.Mock; elicitInput: jest.Mock };
@@ -45,14 +46,23 @@ describe("McpTransactionsTools", () => {
 
     payeesService = {
       findOrCreate: jest.fn().mockResolvedValue({ id: "new-payee-id" }),
+      findByName: jest.fn(),
     };
 
     analyticsService = {
       getTransfersByAccount: jest.fn(),
       getLlmQueryTransactions: jest.fn(),
+      getLlmListTransactions: jest.fn(),
       getLlmSpendingByCategory: jest.fn(),
       getLlmIncomeSummary: jest.fn(),
       getLlmPeriodComparison: jest.fn(),
+      resolveLlmCategoryIds: jest
+        .fn()
+        .mockResolvedValue({ categoryIds: [], unresolved: [] }),
+    };
+
+    accountsService = {
+      findAll: jest.fn().mockResolvedValue([]),
     };
 
     // Default: not serving a relayed prompt, so the tool uses its normal
@@ -106,6 +116,7 @@ describe("McpTransactionsTools", () => {
       relayService as any,
       actionBuilder as any,
       prepService as any,
+      accountsService as any,
     );
 
     elicitInput = jest.fn();
@@ -126,53 +137,231 @@ describe("McpTransactionsTools", () => {
     tool.register(server as any, resolve);
   });
 
-  it("should register 7 tools", () => {
-    expect(server.registerTool).toHaveBeenCalledTimes(7);
+  it("should register 5 tools", () => {
+    expect(server.registerTool).toHaveBeenCalledTimes(5);
   });
 
-  describe("query_transactions", () => {
-    it("delegates to analyticsService.getLlmQueryTransactions", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      analyticsService.getLlmQueryTransactions.mockResolvedValue({
-        totalIncome: 0,
-        totalExpenses: 0,
-        netCashFlow: 0,
-        transactionCount: 0,
-      });
+  describe("list_transactions", () => {
+    const summary = {
+      totalIncome: 1000,
+      totalExpenses: 200,
+      netCashFlow: 800,
+      transactionCount: 5,
+      groupedBy: "none",
+    };
 
-      await handlers["query_transactions"](
-        { startDate: "2026-01-01", endDate: "2026-01-31", groupBy: "category" },
+    it("returns error when no user context", async () => {
+      resolve.mockReturnValue(undefined);
+      const result = await handlers["list_transactions"](
+        {},
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
+
+    it("requires read scope", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
+      const result = await handlers["list_transactions"](
+        {},
+        { sessionId: "s1" },
+      );
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns the summary only and omits transactions when includeTransactions is false", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      analyticsService.getLlmListTransactions.mockResolvedValue(summary);
+
+      const result = await handlers["list_transactions"](
+        { startDate: "2026-01-01", endDate: "2026-01-31" },
         { sessionId: "s1" },
       );
 
-      expect(analyticsService.getLlmQueryTransactions).toHaveBeenCalledWith(
+      expect(analyticsService.getLlmListTransactions).toHaveBeenCalledWith(
         "u1",
         expect.objectContaining({
           startDate: "2026-01-01",
           endDate: "2026-01-31",
-          groupBy: "category",
         }),
       );
+      expect(transactionsService.getLlmTransactionRows).not.toHaveBeenCalled();
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.totalIncome).toBe(1000);
+      expect(parsed.transactions).toBeUndefined();
     });
 
-    it("fills in default dates when startDate/endDate are omitted", async () => {
+    it("fills in default dates when omitted", async () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      analyticsService.getLlmQueryTransactions.mockResolvedValue({
-        totalIncome: 0,
-        totalExpenses: 0,
-        netCashFlow: 0,
-        transactionCount: 0,
-      });
+      analyticsService.getLlmListTransactions.mockResolvedValue(summary);
 
-      await handlers["query_transactions"]({}, { sessionId: "s1" });
+      await handlers["list_transactions"]({}, { sessionId: "s1" });
 
-      expect(analyticsService.getLlmQueryTransactions).toHaveBeenCalledWith(
+      expect(analyticsService.getLlmListTransactions).toHaveBeenCalledWith(
         "u1",
         expect.objectContaining({
           startDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
           endDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
         }),
       );
+    });
+
+    it("attaches the raw transaction list when includeTransactions is true", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      analyticsService.getLlmListTransactions.mockResolvedValue(summary);
+      transactionsService.getLlmTransactionRows.mockResolvedValue({
+        transactions: [
+          {
+            id: "t1",
+            date: "2026-01-15",
+            payeeName: "Store",
+            amount: -50,
+            status: "cleared",
+          },
+        ],
+        total: 1,
+        hasMore: true,
+      });
+
+      const result = await handlers["list_transactions"](
+        {
+          startDate: "2026-01-01",
+          endDate: "2026-01-31",
+          includeTransactions: true,
+          limit: 10,
+        },
+        { sessionId: "s1" },
+      );
+
+      expect(transactionsService.getLlmTransactionRows).toHaveBeenCalledWith(
+        "u1",
+        expect.objectContaining({
+          startDate: "2026-01-01",
+          endDate: "2026-01-31",
+          limit: 10,
+        }),
+      );
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.transactions).toHaveLength(1);
+      expect(parsed.total).toBe(1);
+      expect(parsed.hasMore).toBe(true);
+      expect(parsed.truncatedTransactionList).toBe(true);
+    });
+
+    it("resolves account, category, and payee names to IDs", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      accountsService.findAll.mockResolvedValue([
+        { id: "acc-1", name: "Checking" },
+      ]);
+      analyticsService.resolveLlmCategoryIds.mockResolvedValue({
+        categoryIds: ["cat-1"],
+        unresolved: [],
+      });
+      payeesService.findByName.mockResolvedValue({ id: "payee-1" });
+      analyticsService.getLlmListTransactions.mockResolvedValue(summary);
+
+      await handlers["list_transactions"](
+        {
+          startDate: "2026-01-01",
+          endDate: "2026-01-31",
+          accountNames: ["Checking"],
+          categoryNames: ["Food"],
+          payeeNames: ["Costco"],
+        },
+        { sessionId: "s1" },
+      );
+
+      expect(analyticsService.getLlmListTransactions).toHaveBeenCalledWith(
+        "u1",
+        expect.objectContaining({
+          accountIds: ["acc-1"],
+          categoryIds: ["cat-1"],
+          payeeIds: ["payee-1"],
+        }),
+      );
+    });
+
+    it("errors on an unknown account name", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      accountsService.findAll.mockResolvedValue([
+        { id: "acc-1", name: "Checking" },
+      ]);
+
+      const result = await handlers["list_transactions"](
+        { accountNames: ["Ghost"] },
+        { sessionId: "s1" },
+      );
+
+      expect(result.isError).toBe(true);
+      expect(analyticsService.getLlmListTransactions).not.toHaveBeenCalled();
+      expect(result.content[0].text).toContain("Ghost");
+    });
+
+    it("errors on an unknown category name", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      analyticsService.resolveLlmCategoryIds.mockResolvedValue({
+        categoryIds: [],
+        unresolved: ["Bogus"],
+      });
+
+      const result = await handlers["list_transactions"](
+        { categoryNames: ["Bogus"] },
+        { sessionId: "s1" },
+      );
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("Bogus");
+    });
+
+    it("errors on an unknown payee name", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      payeesService.findByName.mockResolvedValue(null);
+
+      const result = await handlers["list_transactions"](
+        { payeeNames: ["Nobody"] },
+        { sessionId: "s1" },
+      );
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("Nobody");
+    });
+
+    it("passes transfersOnly through to the summary", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      analyticsService.getLlmListTransactions.mockResolvedValue({
+        ...summary,
+        transfers: {
+          accounts: [],
+          totalInbound: 0,
+          totalOutbound: 0,
+          transferCount: 0,
+        },
+      });
+
+      const result = await handlers["list_transactions"](
+        { transfersOnly: true },
+        { sessionId: "s1" },
+      );
+
+      expect(analyticsService.getLlmListTransactions).toHaveBeenCalledWith(
+        "u1",
+        expect.objectContaining({ transfersOnly: true }),
+      );
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.transfers).toBeDefined();
+    });
+
+    it("returns safeToolError when the analytics service throws", async () => {
+      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+      analyticsService.getLlmListTransactions.mockRejectedValue(
+        new Error("boom"),
+      );
+
+      const result = await handlers["list_transactions"](
+        { startDate: "2026-01-01", endDate: "2026-01-31" },
+        { sessionId: "s1" },
+      );
+
+      expect(result.isError).toBe(true);
     });
   });
 
@@ -306,182 +495,6 @@ describe("McpTransactionsTools", () => {
           period2Start: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
           period2End: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
         }),
-      );
-    });
-  });
-
-  describe("get_transfers", () => {
-    it("delegates to shared analytics service", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      analyticsService.getTransfersByAccount.mockResolvedValue({
-        accounts: [
-          {
-            accountName: "Savings",
-            currency: "USD",
-            inbound: 1500,
-            outbound: 0,
-            net: 1500,
-            transferCount: 3,
-          },
-        ],
-        totalInbound: 1500,
-        totalOutbound: 0,
-        transferCount: 3,
-      });
-
-      const result = await handlers["get_transfers"](
-        { startDate: "2026-01-01", endDate: "2026-01-31" },
-        { sessionId: "s1" },
-      );
-
-      expect(analyticsService.getTransfersByAccount).toHaveBeenCalledWith(
-        "u1",
-        "2026-01-01",
-        "2026-01-31",
-        undefined,
-      );
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.totalInbound).toBe(1500);
-      expect(parsed.accounts).toHaveLength(1);
-    });
-
-    it("requires read scope", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
-      const result = await handlers["get_transfers"](
-        { startDate: "2026-01-01", endDate: "2026-01-31" },
-        { sessionId: "s1" },
-      );
-      expect(result.isError).toBe(true);
-    });
-
-    it("passes accountIds filter through", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      analyticsService.getTransfersByAccount.mockResolvedValue({
-        accounts: [],
-        totalInbound: 0,
-        totalOutbound: 0,
-        transferCount: 0,
-      });
-
-      await handlers["get_transfers"](
-        {
-          startDate: "2026-01-01",
-          endDate: "2026-01-31",
-          accountIds: ["00000000-0000-0000-0000-000000000001"],
-        },
-        { sessionId: "s1" },
-      );
-      expect(analyticsService.getTransfersByAccount).toHaveBeenCalledWith(
-        "u1",
-        "2026-01-01",
-        "2026-01-31",
-        ["00000000-0000-0000-0000-000000000001"],
-      );
-    });
-
-    it("fills in default dates when omitted", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      analyticsService.getTransfersByAccount.mockResolvedValue({
-        accounts: [],
-        totalInbound: 0,
-        totalOutbound: 0,
-        transferCount: 0,
-      });
-
-      await handlers["get_transfers"]({}, { sessionId: "s1" });
-
-      expect(analyticsService.getTransfersByAccount).toHaveBeenCalledWith(
-        "u1",
-        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-        undefined,
-      );
-    });
-  });
-
-  describe("search_transactions", () => {
-    it("should return error when no user context", async () => {
-      resolve.mockReturnValue(undefined);
-      const result = await handlers["search_transactions"](
-        {},
-        { sessionId: "s1" },
-      );
-      expect(result.isError).toBe(true);
-    });
-
-    it("should require read scope", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "write" });
-      const result = await handlers["search_transactions"](
-        {},
-        { sessionId: "s1" },
-      );
-      expect(result.isError).toBe(true);
-    });
-
-    it("returns the rows the domain service produces", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      transactionsService.getLlmTransactionRows.mockResolvedValue({
-        transactions: [
-          {
-            id: "t1",
-            date: "2025-01-15",
-            payeeName: "Store",
-            categoryName: "Food",
-            amount: -50,
-            accountName: "Checking",
-            description: "Groceries",
-            status: "cleared",
-          },
-        ],
-        total: 1,
-        hasMore: false,
-      });
-
-      const result = await handlers["search_transactions"](
-        { query: "store", limit: 10 },
-        { sessionId: "s1" },
-      );
-      const parsed = JSON.parse(result.content[0].text);
-      expect(parsed.transactions).toHaveLength(1);
-      expect(parsed.transactions[0].payeeName).toBe("Store");
-      expect(parsed.total).toBe(1);
-    });
-
-    it("delegates the filter args to the domain service (thin adapter)", async () => {
-      resolve.mockReturnValue({ userId: "u1", scopes: "read" });
-      transactionsService.getLlmTransactionRows.mockResolvedValue({
-        transactions: [],
-        total: 0,
-        hasMore: false,
-      });
-
-      await handlers["search_transactions"](
-        {
-          query: "q",
-          accountId: "a1",
-          categoryId: "c1",
-          payeeId: "p1",
-          startDate: "2025-01-01",
-          endDate: "2025-01-31",
-          minAmount: -150,
-          maxAmount: -10,
-          limit: 999,
-        },
-        { sessionId: "s1" },
-      );
-      expect(transactionsService.getLlmTransactionRows).toHaveBeenCalledWith(
-        "u1",
-        {
-          query: "q",
-          accountId: "a1",
-          categoryId: "c1",
-          payeeId: "p1",
-          startDate: "2025-01-01",
-          endDate: "2025-01-31",
-          minAmount: -150,
-          maxAmount: -10,
-          limit: 999,
-        },
       );
     });
   });

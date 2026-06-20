@@ -43,58 +43,40 @@ const bool = z.boolean();
 // accounts.tool.ts
 // ---------------------------------------------------------------------------
 
-export const getAccountsOutput = {
-  items: z.array(
+/**
+ * Unified `list_accounts` tool output. Replaces get_accounts /
+ * get_account_balance / get_account_balances: every account detail plus a
+ * rollup summary (assets, liabilities, net worth, account count). Tolerant so
+ * extra entity fields and the optional/nullable columns all validate.
+ */
+export const listAccountsOutput = {
+  accounts: z.array(
     looseObject({
       id: str,
       name: str,
-      accountType: str.optional(),
-      currencyCode: str.optional(),
-      currentBalance: numNull.optional(),
-      openingBalance: numNull.optional(),
-      creditLimit: numNull.optional(),
-      isClosed: bool.optional(),
-      futureTransactionsSum: numNull.optional(),
-    }),
-  ),
-};
-
-export const getAccountBalanceOutput = {
-  id: str,
-  name: str,
-  type: str,
-  currentBalance: numNull,
-  creditLimit: numNull,
-  currencyCode: str,
-};
-
-export const getAccountBalancesOutput = {
-  accounts: z.array(
-    looseObject({
-      name: str,
       type: str,
+      subType: strNull.optional(),
       balance: num,
+      currentBalance: numNull.optional(),
+      creditLimit: numNull.optional(),
+      interestRate: numNull.optional(),
       currency: str,
       isClosed: bool,
+      excludeFromNetWorth: bool.optional(),
+      institutionName: strNull.optional(),
+      accountNumber: strNull.optional(),
     }),
   ),
   totalAssets: num,
   totalLiabilities: num,
   netWorth: num,
   totalAccounts: num,
+  accountCount: num.optional(),
 };
 
 // ---------------------------------------------------------------------------
 // net-worth.tool.ts
 // ---------------------------------------------------------------------------
-
-export const getNetWorthOutput = {
-  totalAccounts: num,
-  totalBalance: num,
-  totalAssets: num,
-  totalLiabilities: num,
-  netWorth: num,
-};
 
 export const getNetWorthHistoryOutput = {
   items: z.array(
@@ -110,44 +92,6 @@ export const getNetWorthHistoryOutput = {
 // ---------------------------------------------------------------------------
 // transactions.tool.ts
 // ---------------------------------------------------------------------------
-
-export const searchTransactionsOutput = {
-  transactions: z.array(
-    looseObject({
-      id: str,
-      splitId: str.optional(),
-      date: str,
-      payeeName: strNull,
-      categoryName: str.optional(),
-      amount: num,
-      accountName: str.optional(),
-      description: strNull,
-      status: str,
-      isSplit: bool.optional(),
-    }),
-  ),
-  total: num,
-  hasMore: bool,
-};
-
-export const queryTransactionsOutput = {
-  totalIncome: num,
-  totalExpenses: num,
-  netCashFlow: num,
-  transactionCount: num,
-  byCurrency: z
-    .record(
-      z.string(),
-      looseObject({
-        totalIncome: num,
-        totalExpenses: num,
-        netCashFlow: num,
-        transactionCount: num,
-      }),
-    )
-    .optional(),
-  breakdown: z.unknown().optional(),
-};
 
 export const getSpendingByCategoryOutput = {
   categories: z.array(
@@ -189,22 +133,6 @@ export const comparePeriodsOutput = {
   ),
 };
 
-export const getTransfersOutput = {
-  accounts: z.array(
-    looseObject({
-      accountName: str,
-      currency: str,
-      inbound: num,
-      outbound: num,
-      net: num,
-      transferCount: num,
-    }),
-  ),
-  totalInbound: num,
-  totalOutbound: num,
-  transferCount: num,
-};
-
 const bulkSkippedRow = looseObject({ index: num, reason: str });
 
 export const createTransactionsOutput = {
@@ -227,7 +155,39 @@ export const createTransactionsOutput = {
   status: str.optional(),
 };
 
-export const createInvestmentTransactionsOutput = createTransactionsOutput;
+/**
+ * Unified `list_transactions` tool output. Replaces search_transactions /
+ * query_transactions / get_transfers: a rich summary (income/expense/net,
+ * per-currency totals, optional grouped breakdown, optional transfer rollup)
+ * plus an optional raw transaction list that is only included when explicitly
+ * requested. Tolerant so every branch validates.
+ */
+export const listTransactionsOutput = {
+  totalIncome: num.optional(),
+  totalExpenses: num.optional(),
+  netCashFlow: num.optional(),
+  transactionCount: num.optional(),
+  byCurrency: z
+    .record(
+      z.string(),
+      looseObject({
+        totalIncome: num,
+        totalExpenses: num,
+        netCashFlow: num,
+        transactionCount: num,
+      }),
+    )
+    .optional(),
+  groupedBy: strNull.optional(),
+  breakdown: z.unknown().optional(),
+  // get_transfers rollup branch (transfersOnly).
+  transfers: z.object({}).loose().optional(),
+  // Raw transaction list branch (includeTransactions).
+  transactions: z.array(looseObject({})).optional(),
+  total: num.optional(),
+  hasMore: bool.optional(),
+  truncatedTransactionList: bool.optional(),
+};
 
 /**
  * Tolerant output for the unified `manage_transactions` tool. The tool has many
@@ -512,32 +472,17 @@ export const createSecurityOutput = {
   status: str.optional(),
 };
 
-export const createInvestmentTransactionOutput = {
-  // Dry-run preview branch.
-  dryRun: bool.optional(),
-  preview: z
-    .object({
-      accountId: str.optional(),
-      accountName: str.optional(),
-      action: str.optional(),
-      date: str.optional(),
-      securityId: strNull.optional(),
-      symbol: strNull.optional(),
-      securityName: strNull.optional(),
-      securityCurrency: strNull.optional(),
-      quantity: numNull.optional(),
-      price: numNull.optional(),
-      commission: num.optional(),
-      totalAmount: num.optional(),
-      exchangeRate: num.optional(),
-      cashAccountName: strNull.optional(),
-      cashCurrency: strNull.optional(),
-      cashAmount: numNull.optional(),
-      description: strNull.optional(),
-    })
-    .optional(),
+/**
+ * Tolerant output for the unified `manage_investment_transactions` tool. Like
+ * manage_transactions it has many result branches (single created/updated/
+ * deleted preview, bulk one-card, individual per-item cards, and the relay
+ * branch), so ALL fields are optional and the object is loose.
+ */
+export const manageInvestmentTransactionsOutput = {
+  operation: str.optional(),
+  preview: z.object({}).loose().optional(),
+  previews: z.array(looseObject({})).optional(),
   message: str.optional(),
-  // Created-transaction branch.
   id: str.optional(),
   action: str.optional(),
   date: str.optional(),
@@ -545,71 +490,12 @@ export const createInvestmentTransactionOutput = {
   quantity: numNull.optional(),
   price: numNull.optional(),
   totalAmount: num.optional(),
-  // Relay branch: a confirmation card was shown in the web chat instead.
-  status: str.optional(),
-};
-
-export const updateInvestmentTransactionOutput = {
-  // Dry-run preview branch.
-  dryRun: bool.optional(),
-  preview: z
-    .object({
-      transactionId: str.optional(),
-      accountId: str.optional(),
-      accountName: str.optional(),
-      action: str.optional(),
-      date: str.optional(),
-      securityId: strNull.optional(),
-      symbol: strNull.optional(),
-      securityName: strNull.optional(),
-      securityCurrency: strNull.optional(),
-      quantity: numNull.optional(),
-      price: numNull.optional(),
-      commission: num.optional(),
-      totalAmount: num.optional(),
-      exchangeRate: num.optional(),
-      cashAccountName: strNull.optional(),
-      cashCurrency: strNull.optional(),
-      cashAmount: numNull.optional(),
-      description: strNull.optional(),
-    })
-    .optional(),
-  message: str.optional(),
-  // Updated-transaction branch.
-  id: str.optional(),
-  action: str.optional(),
-  date: str.optional(),
-  symbol: strNull.optional(),
-  quantity: numNull.optional(),
-  price: numNull.optional(),
-  totalAmount: num.optional(),
-  // Relay branch: a confirmation card was shown in the web chat instead.
-  status: str.optional(),
-};
-
-export const deleteInvestmentTransactionOutput = {
-  // Dry-run preview branch.
-  dryRun: bool.optional(),
-  preview: z
-    .object({
-      transactionId: str.optional(),
-      accountName: str.optional(),
-      action: str.optional(),
-      date: str.optional(),
-      symbol: strNull.optional(),
-      securityName: strNull.optional(),
-      securityCurrency: strNull.optional(),
-      quantity: numNull.optional(),
-      price: numNull.optional(),
-      commission: num.optional(),
-      totalAmount: num.optional(),
-      description: strNull.optional(),
-    })
-    .optional(),
-  message: str.optional(),
-  // Deleted branch.
-  id: str.optional(),
   deleted: bool.optional(),
+  created: z.array(looseObject({})).optional(),
+  results: z.array(looseObject({})).optional(),
+  ids: z.array(str).optional(),
+  count: num.optional(),
+  skipped: z.array(bulkSkippedRow).optional(),
   // Relay branch: a confirmation card was shown in the web chat instead.
   status: str.optional(),
 };
@@ -642,15 +528,6 @@ export const getUpcomingBillsOutput = {
   overdueCount: num,
   totalUpcomingBills: num,
   totalUpcomingDeposits: num,
-  items: z.array(scheduledItem),
-};
-
-export const getScheduledTransactionsOutput = {
-  totalCount: num,
-  activeCount: num,
-  autoPostCount: num,
-  billCount: num,
-  depositCount: num,
   items: z.array(scheduledItem),
 };
 

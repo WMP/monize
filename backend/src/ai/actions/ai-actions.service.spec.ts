@@ -788,5 +788,92 @@ describe("AiActionsService", () => {
         expect.objectContaining({ payeeId: PAYEE2 }),
       );
     });
+
+    it("executes batch_actions(update_investment) via investmentTransactions.update (no accountId forwarded)", async () => {
+      const descriptor: import("./ai-action.types").BatchActionsDescriptor = {
+        type: "batch_actions",
+        userId: USER,
+        actionId: "act-batch-inv-up",
+        expiresAt: Date.now() + 60_000,
+        operation: "update_investment",
+        rows: [
+          {
+            transactionId: TX,
+            accountId: ACC,
+            action: InvestmentAction.SELL,
+            transactionDate: "2026-02-01",
+            securityId: SEC,
+            fundingAccountId: null,
+            quantity: 5,
+            price: 160,
+            commission: 0,
+            exchangeRate: 1,
+            description: null,
+          },
+        ],
+      };
+      const result = await service.confirm(USER, dtoFor(descriptor));
+      expect(investments.update).toHaveBeenCalledWith(
+        USER,
+        TX,
+        expect.objectContaining({
+          action: InvestmentAction.SELL,
+          securityId: SEC,
+          quantity: 5,
+        }),
+      );
+      expect(investments.update.mock.calls[0][2].accountId).toBeUndefined();
+      expect(result.type).toBe("batch_actions");
+      expect(result.count).toBe(1);
+      expect(result.ids).toEqual([TX]);
+    });
+
+    it("executes batch_actions(delete_investment) via investmentTransactions.remove, collecting skips", async () => {
+      investments.remove
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error("nope"));
+      const descriptor: import("./ai-action.types").BatchActionsDescriptor = {
+        type: "batch_actions",
+        userId: USER,
+        actionId: "act-batch-inv-del",
+        expiresAt: Date.now() + 60_000,
+        operation: "delete_investment",
+        rows: [{ transactionId: TX }, { transactionId: SEC }],
+      };
+      const result = await service.confirm(USER, dtoFor(descriptor));
+      expect(investments.remove).toHaveBeenCalledWith(USER, TX);
+      expect(result.type).toBe("batch_actions");
+      expect(result.count).toBe(1);
+      expect(result.skipped).toHaveLength(1);
+    });
+
+    it("batch_actions(update_investment) skips a row whose update fails", async () => {
+      investments.update.mockRejectedValueOnce(new Error("boom"));
+      const descriptor: import("./ai-action.types").BatchActionsDescriptor = {
+        type: "batch_actions",
+        userId: USER,
+        actionId: "act-batch-inv-up-skip",
+        expiresAt: Date.now() + 60_000,
+        operation: "update_investment",
+        rows: [
+          {
+            transactionId: TX,
+            accountId: ACC,
+            action: InvestmentAction.BUY,
+            transactionDate: "2026-02-01",
+            securityId: SEC,
+            fundingAccountId: null,
+            quantity: 1,
+            price: 10,
+            commission: 0,
+            exchangeRate: 1,
+            description: null,
+          },
+        ],
+      };
+      const result = await service.confirm(USER, dtoFor(descriptor));
+      expect(result.count).toBe(0);
+      expect(result.skipped).toHaveLength(1);
+    });
   });
 });

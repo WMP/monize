@@ -249,8 +249,7 @@ export class BuiltInReportsController {
 
   @Get("monthly-category-breakdown")
   @ApiOperation({
-    summary:
-      "Get expense and income amounts broken down by category and month",
+    summary: "Get expense and income amounts broken down by category and month",
   })
   @ApiResponse({ status: 200, type: MonthlyCategoryBreakdownResponse })
   getMonthlyCategoryBreakdown(

@@ -123,8 +123,12 @@
     "updateTransactionsTitle": "Modificare queste transazioni?",
     "deleteTransactionsTitle": "Eliminare queste transazioni?",
     "createTransfersTitle": "Creare questi trasferimenti?",
+    "updateInvestmentTransactionsTitle": "Modificare queste transazioni di investimento?",
+    "deleteInvestmentTransactionsTitle": "Eliminare queste transazioni di investimento?",
     "updatedTransactions": "{count, plural, =0 {Nessuna transazione aggiornata} one {# transazione aggiornata} other {# transazioni aggiornate}}",
     "deletedTransactions": "{count, plural, =0 {Nessuna transazione eliminata} one {# transazione eliminata} other {# transazioni eliminate}}",
+    "updatedInvestmentTransactions": "{count, plural, =0 {Nessuna transazione di investimento aggiornata} one {# transazione di investimento aggiornata} other {# transazioni di investimento aggiornate}}",
+    "deletedInvestmentTransactions": "{count, plural, =0 {Nessuna transazione di investimento eliminata} one {# transazione di investimento eliminata} other {# transazioni di investimento eliminate}}",
     "createdTransfers": "{count, plural, =0 {Nessun trasferimento creato} one {# trasferimento creato} other {# trasferimenti creati}}"
   },
   "table": {

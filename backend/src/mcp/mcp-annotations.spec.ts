@@ -15,24 +15,19 @@ const WRITE_TOOLS = new Set([
   "manage_transactions",
   "create_payee",
   "create_security",
-  "create_investment_transaction",
-  "create_investment_transactions",
-  "update_investment_transaction",
-  "delete_investment_transaction",
+  "manage_investment_transactions",
 ]);
 // Write tools whose repeated calls converge to the same state.
-const IDEMPOTENT_WRITES = new Set([
-  "update_investment_transaction",
-  "delete_investment_transaction",
-]);
-// Write tools that remove data (destructiveHint: true). manage_transactions can
-// delete, so it is destructive (and non-idempotent because it can also create).
+const IDEMPOTENT_WRITES = new Set<string>([]);
+// Write tools that remove data (destructiveHint: true). manage_transactions and
+// manage_investment_transactions can delete, so they are destructive (and
+// non-idempotent because they can also create).
 const DESTRUCTIVE_TOOLS = new Set([
   "manage_transactions",
-  "delete_investment_transaction",
+  "manage_investment_transactions",
 ]);
 
-const EXPECTED_TOOL_COUNT = 35;
+const EXPECTED_TOOL_COUNT = 26;
 
 interface ToolProvider {
   register: (server: unknown, resolve?: unknown) => void;
@@ -44,6 +39,7 @@ function collectToolConfigs(): Array<{ name: string; config: any }> {
   const providers: ToolProvider[] = [
     new McpAccountsTools({} as any) as unknown as ToolProvider,
     new McpTransactionsTools(
+      {} as any,
       {} as any,
       {} as any,
       {} as any,
@@ -65,8 +61,9 @@ function collectToolConfigs(): Array<{ name: string; config: any }> {
       {} as any,
       {} as any,
       {} as any,
+      {} as any,
     ) as unknown as ToolProvider,
-    new McpNetWorthTools({} as any, {} as any) as unknown as ToolProvider,
+    new McpNetWorthTools({} as any) as unknown as ToolProvider,
     new McpScheduledTools({} as any) as unknown as ToolProvider,
     new McpCalculateTools() as unknown as ToolProvider,
     new McpBudgetsTools({} as any) as unknown as ToolProvider,

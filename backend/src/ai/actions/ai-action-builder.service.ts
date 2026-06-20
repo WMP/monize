@@ -8,6 +8,8 @@ import {
   AiActionPreviewRow,
   BatchActionRow,
   BatchActionsDescriptor,
+  BatchUpdateInvestmentTransactionRow,
+  BatchDeleteInvestmentTransactionRow,
   CategorizeTransactionDescriptor,
   CreateInvestmentTransactionDescriptor,
   CreateInvestmentTransactionsDescriptor,
@@ -660,5 +662,38 @@ export class AiActionBuilderService {
       signature: this.signingService.sign(descriptor),
       preview: { rows: previewRows },
     };
+  }
+
+  /**
+   * Build the one-card bulk envelope for investment edits. Thin wrapper over
+   * `buildBatchActions` with the `update_investment` operation -- the
+   * confirm-side `executeBatchRow` maps each row through the same
+   * `InvestmentTransactionsService.update` the single editor uses.
+   */
+  buildBatchUpdateInvestmentTransactions(
+    userId: string,
+    rows: BatchUpdateInvestmentTransactionRow[],
+    previewRows: AiActionPreviewRow[],
+  ): PendingAiAction {
+    return this.buildBatchActions(
+      userId,
+      "update_investment",
+      rows,
+      previewRows,
+    );
+  }
+
+  /** Build the one-card bulk envelope for investment deletions. */
+  buildBatchDeleteInvestmentTransactions(
+    userId: string,
+    rows: BatchDeleteInvestmentTransactionRow[],
+    previewRows: AiActionPreviewRow[],
+  ): PendingAiAction {
+    return this.buildBatchActions(
+      userId,
+      "delete_investment",
+      rows,
+      previewRows,
+    );
   }
 }

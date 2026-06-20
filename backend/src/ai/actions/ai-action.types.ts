@@ -307,21 +307,57 @@ export interface BatchCreateTransferRow {
   createPayee: boolean;
 }
 
+/**
+ * One resolved investment-transaction edit inside a generic `batch_actions`
+ * envelope (operation `update_investment`). Carries the full resolved resulting
+ * state -- exactly what the singular `UpdateInvestmentTransactionDescriptor`
+ * holds minus the per-action envelope -- so confirm applies an idempotent
+ * overwrite of the identified transaction.
+ */
+export interface BatchUpdateInvestmentTransactionRow {
+  transactionId: string;
+  accountId: string;
+  action: InvestmentAction;
+  transactionDate: string;
+  securityId: string | null;
+  fundingAccountId: string | null;
+  quantity: number | null;
+  price: number | null;
+  commission: number;
+  exchangeRate: number;
+  description: string | null;
+}
+
+/** One investment-transaction deletion inside a `batch_actions` envelope. */
+export interface BatchDeleteInvestmentTransactionRow {
+  transactionId: string;
+}
+
 export type BatchActionRow =
   | TransactionRowDescriptor
   | BatchUpdateTransactionRow
   | BatchDeleteTransactionRow
-  | BatchCreateTransferRow;
+  | BatchCreateTransferRow
+  | BatchUpdateInvestmentTransactionRow
+  | BatchDeleteInvestmentTransactionRow;
 
 /**
  * Generic homogeneous bulk envelope executed as one unit. `operation` selects
  * the per-row shape (standard create reuses `TransactionRowDescriptor`). Used by
  * the unified `manage_transactions` tool for bulk update/delete/transfer-create
- * (standard bulk create keeps its dedicated `create_transactions` descriptor).
+ * and by `manage_investment_transactions` for bulk investment update/delete
+ * (standard bulk create keeps its dedicated `create_transactions` /
+ * `create_investment_transactions` descriptors).
  */
 export interface BatchActionsDescriptor extends BaseDescriptor {
   type: "batch_actions";
-  operation: "create" | "update" | "delete" | "create_transfer";
+  operation:
+    | "create"
+    | "update"
+    | "delete"
+    | "create_transfer"
+    | "update_investment"
+    | "delete_investment";
   /** Order is load-bearing: covered by the signature and preserved on confirm. */
   rows: BatchActionRow[];
 }

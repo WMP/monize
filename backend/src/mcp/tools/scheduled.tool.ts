@@ -9,10 +9,7 @@ import {
   toolError,
   safeToolError,
 } from "../mcp-context";
-import {
-  getUpcomingBillsOutput,
-  getScheduledTransactionsOutput,
-} from "../tool-output-schemas";
+import { getUpcomingBillsOutput } from "../tool-output-schemas";
 import { READ_ONLY } from "../mcp-annotations";
 
 const SCHEDULED_KIND_VALUES = [
@@ -76,56 +73,6 @@ export class McpScheduledTools {
               },
             );
           return toolResult(upcoming);
-        } catch (err: unknown) {
-          return safeToolError(err);
-        }
-      },
-    );
-
-    server.registerTool(
-      "get_scheduled_transactions",
-      {
-        title: "List scheduled transactions",
-        annotations: READ_ONLY,
-        description:
-          "List all scheduled/recurring transactions (bills, deposits, transfers, investments). Returns rollup counts plus a curated per-item payload. Returns the same shape as the AI Assistant's get_scheduled_transactions tool.",
-        inputSchema: {
-          kind: z
-            .enum(SCHEDULED_KIND_VALUES)
-            .optional()
-            .describe(
-              "Narrow to a single kind: 'bill', 'deposit', 'transfer', 'investment'. Omit or pass 'all' for everything.",
-            ),
-          accountIds: z
-            .array(z.string().uuid())
-            .max(50)
-            .optional()
-            .describe("Optional account IDs to filter to."),
-          isActive: z
-            .boolean()
-            .optional()
-            .describe(
-              "Filter by active status. Omit to include both active and paused schedules.",
-            ),
-        },
-        outputSchema: getScheduledTransactionsOutput,
-      },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "read");
-        if (check.error) return check.result;
-
-        try {
-          const scheduled = await this.scheduledService.getLlmScheduledList(
-            ctx.userId,
-            {
-              kind: args.kind,
-              accountIds: args.accountIds,
-              isActive: args.isActive,
-            },
-          );
-          return toolResult(scheduled);
         } catch (err: unknown) {
           return safeToolError(err);
         }

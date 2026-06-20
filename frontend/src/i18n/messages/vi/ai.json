@@ -123,8 +123,12 @@
     "updateTransactionsTitle": "Chỉnh sửa các giao dịch này?",
     "deleteTransactionsTitle": "Xóa các giao dịch này?",
     "createTransfersTitle": "Tạo các chuyển khoản này?",
+    "updateInvestmentTransactionsTitle": "Chỉnh sửa các giao dịch đầu tư này?",
+    "deleteInvestmentTransactionsTitle": "Xóa các giao dịch đầu tư này?",
     "updatedTransactions": "{count, plural, =0 {Không có giao dịch nào được cập nhật} other {Đã cập nhật # giao dịch}}",
     "deletedTransactions": "{count, plural, =0 {Không có giao dịch nào được xóa} other {Đã xóa # giao dịch}}",
+    "updatedInvestmentTransactions": "{count, plural, =0 {Không có giao dịch đầu tư nào được cập nhật} other {Đã cập nhật # giao dịch đầu tư}}",
+    "deletedInvestmentTransactions": "{count, plural, =0 {Không có giao dịch đầu tư nào được xóa} other {Đã xóa # giao dịch đầu tư}}",
     "createdTransfers": "{count, plural, =0 {Không có khoản chuyển nào được tạo} other {Đã tạo # chuyển khoản}}"
   },
   "table": {

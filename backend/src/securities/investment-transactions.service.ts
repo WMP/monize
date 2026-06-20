@@ -55,6 +55,11 @@ import {
   computeInvestmentCashImpact,
   isInvestmentActionAllowedInSplit,
 } from "./cash-impact.util";
+import {
+  AiActionPreviewRow,
+  BatchUpdateInvestmentTransactionRow,
+  BatchDeleteInvestmentTransactionRow,
+} from "../ai/actions/ai-action.types";
 
 export type LlmInvestmentTxGroupBy = "account" | "date" | "security" | "action";
 
@@ -210,6 +215,64 @@ export interface CreateInvestmentTransactionPreview {
  */
 export interface UpdateInvestmentTransactionPreview extends CreateInvestmentTransactionPreview {
   transactionId: string;
+}
+
+/**
+ * One create row for the unified `manage_investment_transactions` tool, carrying
+ * NAMES (resolved internally) so neither tool surface has to look up account or
+ * security IDs first.
+ */
+export interface InvestmentCreateRowInput {
+  accountName: string;
+  action: InvestmentAction;
+  date: string;
+  securityQuery?: string;
+  quantity?: number;
+  price?: number;
+  commission?: number;
+  fundingAccountName?: string;
+  description?: string;
+}
+
+/** One edit row for `manage_investment_transactions` (id + optional fields). */
+export interface InvestmentUpdateRowInput {
+  transactionId: string;
+  action?: InvestmentAction;
+  date?: string;
+  securityQuery?: string;
+  quantity?: number;
+  price?: number;
+  commission?: number;
+  description?: string;
+}
+
+/**
+ * Bulk preview of investment creates: the resolved previews that will be
+ * created (`okPreviews`, mapped into the signed descriptor in order) plus the
+ * full display table (`previewRows`, every row valid or flagged) and the
+ * best-effort `skipped` reasons.
+ */
+export interface PrepareInvestmentCreateBulkResult {
+  okPreviews: CreateInvestmentTransactionPreview[];
+  okIndex: number[];
+  previewRows: AiActionPreviewRow[];
+  skipped: BulkCreateSkip[];
+}
+
+/** Bulk preview of investment edits mapped to batch rows + a display table. */
+export interface PrepareInvestmentUpdateBulkResult {
+  okRows: BatchUpdateInvestmentTransactionRow[];
+  okIndex: number[];
+  previewRows: AiActionPreviewRow[];
+  skipped: BulkCreateSkip[];
+}
+
+/** Bulk preview of investment deletions mapped to batch rows + a display table. */
+export interface PrepareInvestmentDeleteBulkResult {
+  okRows: BatchDeleteInvestmentTransactionRow[];
+  okIndex: number[];
+  previewRows: AiActionPreviewRow[];
+  skipped: BulkCreateSkip[];
 }
 
 /** Display-only preview of a proposed investment-transaction deletion. */
@@ -994,6 +1057,280 @@ export class InvestmentTransactionsService {
       totalAmount: Number(existing.totalAmount ?? 0),
       description: existing.description ?? null,
     };
+  }
+
+  /**
+   * Map a resolved investment-transaction preview to the display row shown on a
+   * bulk confirmation card. Inlined here (rather than reusing the builder's
+   * `investmentPreviewRow`) to avoid a module cycle between this domain service
+   * and `ai-action-builder.service`.
+   */
+  private toInvestmentPreviewRow(
+    preview: CreateInvestmentTransactionPreview,
+  ): AiActionPreviewRow {
+    return {
+      status: "ok",
+      accountName: preview.accountName,
+      investmentAction: preview.action,
+      transactionDate: preview.transactionDate,
+      symbol: preview.symbol,
+      securityName: preview.securityName,
+      securityCurrency: preview.securityCurrency,
+      quantity: preview.quantity,
+      price: preview.price,
+      commission: preview.commission,
+      totalAmount: preview.totalAmount,
+      cashAccountName: preview.cashAccountName,
+      cashCurrency: preview.cashCurrency,
+      cashAmount: preview.cashAmount,
+      description: preview.description,
+    };
+  }
+
+  /** Pull a user-facing 4xx reason from a preview failure, else a fallback. */
+  private investmentBulkSkipReason(err: unknown): string {
+    if (
+      err instanceof BadRequestException ||
+      err instanceof NotFoundException
+    ) {
+      return err.message;
+    }
+    this.logger.warn(
+      `investment bulk row preview failed: ${
+        err instanceof Error ? err.message : err
+      }`,
+    );
+    return bulkSkipReason(err);
+  }
+
+  /**
+   * Resolve + preview a single investment create row (NAMES resolved
+   * internally), throwing on failure -- the single-card path. Shared by both
+   * tool surfaces so they stay thin adapters.
+   */
+  async prepareCreateInvestmentSingle(
+    userId: string,
+    row: InvestmentCreateRowInput,
+  ): Promise<CreateInvestmentTransactionPreview> {
+    const account = await this.accountsService.resolveByName(
+      userId,
+      row.accountName,
+    );
+    if (!account) {
+      throw new NotFoundException(
+        `Unknown account: ${row.accountName}. Use an exact name from the user's account list.`,
+      );
+    }
+    let fundingAccountId: string | undefined;
+    if (row.fundingAccountName) {
+      const funding = await this.accountsService.resolveByName(
+        userId,
+        row.fundingAccountName,
+      );
+      if (!funding) {
+        throw new NotFoundException(
+          `Unknown funding account: ${row.fundingAccountName}. Use an exact name from the user's account list.`,
+        );
+      }
+      fundingAccountId = funding.id;
+    }
+    return this.previewCreateInvestmentTransaction(userId, {
+      accountId: account.id,
+      action: row.action,
+      transactionDate: row.date,
+      securityQuery: row.securityQuery,
+      quantity: row.quantity,
+      price: row.price,
+      commission: row.commission,
+      fundingAccountId,
+      description: row.description,
+    });
+  }
+
+  /**
+   * Resolve + preview each investment create row best-effort: rows that fail to
+   * resolve (unknown account/security) or validate are collected into `skipped`
+   * and flagged in `previewRows` rather than aborting the batch. Mirrors the
+   * cash `TransactionToolPrepService.prepareCreate`.
+   */
+  async prepareCreateInvestmentBulk(
+    userId: string,
+    rows: InvestmentCreateRowInput[],
+  ): Promise<PrepareInvestmentCreateBulkResult> {
+    const okPreviews: CreateInvestmentTransactionPreview[] = [];
+    const okIndex: number[] = [];
+    const previewRows: AiActionPreviewRow[] = [];
+    const skipped: BulkCreateSkip[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const base: AiActionPreviewRow = {
+        status: "error",
+        accountName: row.accountName,
+        investmentAction: row.action,
+        transactionDate: row.date,
+        symbol: row.securityQuery ?? null,
+        quantity: row.quantity ?? null,
+        price: row.price ?? null,
+        commission: row.commission ?? 0,
+        description: row.description ?? null,
+      };
+
+      const account = await this.accountsService.resolveByName(
+        userId,
+        row.accountName,
+      );
+      if (!account) {
+        const reason = `Unknown account: ${row.accountName}`;
+        skipped.push({ index: i, reason });
+        previewRows.push({ ...base, error: reason });
+        continue;
+      }
+
+      let fundingAccountId: string | undefined;
+      if (row.fundingAccountName) {
+        const funding = await this.accountsService.resolveByName(
+          userId,
+          row.fundingAccountName,
+        );
+        if (!funding) {
+          const reason = `Unknown funding account: ${row.fundingAccountName}`;
+          skipped.push({ index: i, reason });
+          previewRows.push({ ...base, error: reason });
+          continue;
+        }
+        fundingAccountId = funding.id;
+      }
+
+      try {
+        const preview = await this.previewCreateInvestmentTransaction(userId, {
+          accountId: account.id,
+          action: row.action,
+          transactionDate: row.date,
+          securityQuery: row.securityQuery,
+          quantity: row.quantity,
+          price: row.price,
+          commission: row.commission,
+          fundingAccountId,
+          description: row.description,
+        });
+        okPreviews.push(preview);
+        okIndex.push(i);
+        previewRows.push(this.toInvestmentPreviewRow(preview));
+      } catch (err) {
+        const reason = this.investmentBulkSkipReason(err);
+        skipped.push({ index: i, reason });
+        previewRows.push({ ...base, error: reason });
+      }
+    }
+
+    return { okPreviews, okIndex, previewRows, skipped };
+  }
+
+  /**
+   * Resolve + preview each investment edit best-effort, mapping the resulting
+   * resolved state to a `BatchUpdateInvestmentTransactionRow` and a display row.
+   * Mirrors the cash `TransactionToolPrepService.prepareUpdateBulk`.
+   */
+  async prepareUpdateInvestmentBulk(
+    userId: string,
+    rows: InvestmentUpdateRowInput[],
+  ): Promise<PrepareInvestmentUpdateBulkResult> {
+    const okRows: BatchUpdateInvestmentTransactionRow[] = [];
+    const okIndex: number[] = [];
+    const previewRows: AiActionPreviewRow[] = [];
+    const skipped: BulkCreateSkip[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      try {
+        const preview = await this.previewUpdateInvestmentTransaction(
+          userId,
+          row.transactionId,
+          {
+            action: row.action,
+            transactionDate: row.date,
+            securityQuery: row.securityQuery,
+            quantity: row.quantity,
+            price: row.price,
+            commission: row.commission,
+            description: row.description,
+          },
+        );
+        okRows.push({
+          transactionId: preview.transactionId,
+          accountId: preview.accountId,
+          action: preview.action,
+          transactionDate: preview.transactionDate,
+          securityId: preview.securityId,
+          fundingAccountId: preview.fundingAccountId,
+          quantity: preview.quantity,
+          price: preview.price,
+          commission: preview.commission,
+          exchangeRate: preview.exchangeRate,
+          description: preview.description,
+        });
+        okIndex.push(i);
+        previewRows.push(this.toInvestmentPreviewRow(preview));
+      } catch (err) {
+        const reason = this.investmentBulkSkipReason(err);
+        skipped.push({ index: i, reason });
+        previewRows.push({
+          status: "error",
+          transactionDate: row.date ?? undefined,
+          symbol: row.securityQuery ?? null,
+          error: reason,
+        });
+      }
+    }
+
+    return { okRows, okIndex, previewRows, skipped };
+  }
+
+  /**
+   * Preview each investment deletion best-effort, mapping to a batch delete row
+   * and a display row. Mirrors `TransactionToolPrepService.prepareDeleteBulk`.
+   */
+  async prepareDeleteInvestmentBulk(
+    userId: string,
+    transactionIds: string[],
+  ): Promise<PrepareInvestmentDeleteBulkResult> {
+    const okRows: BatchDeleteInvestmentTransactionRow[] = [];
+    const okIndex: number[] = [];
+    const previewRows: AiActionPreviewRow[] = [];
+    const skipped: BulkCreateSkip[] = [];
+
+    for (let i = 0; i < transactionIds.length; i++) {
+      const transactionId = transactionIds[i];
+      try {
+        const preview = await this.previewDeleteInvestmentTransaction(
+          userId,
+          transactionId,
+        );
+        okRows.push({ transactionId });
+        okIndex.push(i);
+        previewRows.push({
+          status: "ok",
+          accountName: preview.accountName,
+          investmentAction: preview.action,
+          transactionDate: preview.transactionDate,
+          symbol: preview.symbol,
+          securityName: preview.securityName,
+          securityCurrency: preview.securityCurrency,
+          quantity: preview.quantity,
+          price: preview.price,
+          commission: preview.commission,
+          totalAmount: preview.totalAmount,
+          description: preview.description,
+        });
+      } catch (err) {
+        const reason = this.investmentBulkSkipReason(err);
+        skipped.push({ index: i, reason });
+        previewRows.push({ status: "error", error: reason });
+      }
+    }
+
+    return { okRows, okIndex, previewRows, skipped };
   }
 
   /**

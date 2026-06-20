@@ -2,7 +2,6 @@ import { Injectable } from "@nestjs/common";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { NetWorthService } from "../../net-worth/net-worth.service";
-import { AccountsService } from "../../accounts/accounts.service";
 import {
   UserContextResolver,
   requireScope,
@@ -11,44 +10,14 @@ import {
   safeToolError,
 } from "../mcp-context";
 import { formatDateYMD } from "../../common/date-utils";
-import {
-  getNetWorthOutput,
-  getNetWorthHistoryOutput,
-} from "../tool-output-schemas";
+import { getNetWorthHistoryOutput } from "../tool-output-schemas";
 import { READ_ONLY } from "../mcp-annotations";
 
 @Injectable()
 export class McpNetWorthTools {
-  constructor(
-    private readonly netWorthService: NetWorthService,
-    private readonly accountsService: AccountsService,
-  ) {}
+  constructor(private readonly netWorthService: NetWorthService) {}
 
   register(server: McpServer, resolve: UserContextResolver) {
-    server.registerTool(
-      "get_net_worth",
-      {
-        title: "Get net worth",
-        annotations: READ_ONLY,
-        description: "Get current net worth breakdown by account",
-        inputSchema: {},
-        outputSchema: getNetWorthOutput,
-      },
-      async (_args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "read");
-        if (check.error) return check.result;
-
-        try {
-          const summary = await this.accountsService.getSummary(ctx.userId);
-          return toolResult(summary);
-        } catch (err: unknown) {
-          return safeToolError(err);
-        }
-      },
-    );
-
     server.registerTool(
       "get_net_worth_history",
       {

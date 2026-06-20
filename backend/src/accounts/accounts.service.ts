@@ -1025,34 +1025,65 @@ export class AccountsService {
   }
 
   /**
-   * Account balances shaped for LLM tools. Shared by the AI Assistant's
-   * `get_account_balances` tool and the MCP server's matching tool so both
-   * surfaces return the same data.
+   * Accounts shaped for LLM tools. Shared by the AI Assistant's `list_accounts`
+   * tool and the MCP server's matching tool so both surfaces return the same
+   * data. Supersedes the former `getLlmBalances` (and the old per-account
+   * lookup tools): it returns full per-account details plus the assets /
+   * liabilities / net-worth / count summary, with rich filtering.
+   *
+   * Filters (all optional, AND-combined):
+   *   - status: "open" (default) | "closed" | "all"
+   *   - accountTypes: restrict to specific AccountType values
+   *   - accountNames: exact, case-insensitive name match
+   *   - accountIds: exact account UUID match
+   *   - nameQuery: case-insensitive substring match on the account name
    *
    * Per-account balance mirrors the Account List UI: brokerage accounts show
    * market value of holdings; every other account shows
-   * currentBalance + futureTransactionsSum. Totals come from the same source
-   * as the dashboard Net Worth widget (getMonthlyNetWorth), so all three
-   * surfaces agree.
+   * currentBalance + futureTransactionsSum. The totals (totalAssets,
+   * totalLiabilities, netWorth) stay GLOBAL -- derived from the latest net-worth
+   * snapshot, the same source as the dashboard Net Worth widget -- so every
+   * surface agrees regardless of the filters applied. totalAccounts is the
+   * number of accounts returned AFTER filtering.
    */
-  async getLlmBalances(
+  async getLlmAccounts(
     userId: string,
-    accountNames?: string[],
-    status: "open" | "closed" | "all" = "open",
-    accountTypes?: AccountType[],
+    opts?: {
+      accountNames?: string[];
+      accountIds?: string[];
+      nameQuery?: string;
+      status?: "open" | "closed" | "all";
+      accountTypes?: AccountType[];
+    },
   ): Promise<{
     accounts: Array<{
+      id: string;
       name: string;
       type: AccountType;
+      subType: string | null;
       balance: number;
+      currentBalance: number;
+      creditLimit: number | null;
+      interestRate: number | null;
       currency: string;
       isClosed: boolean;
+      excludeFromNetWorth: boolean;
+      institutionName: string | null;
+      accountNumber: string | null;
     }>;
     totalAssets: number;
     totalLiabilities: number;
     netWorth: number;
     totalAccounts: number;
   }> {
+    const {
+      accountNames,
+      accountIds,
+      nameQuery,
+      status = "open",
+      accountTypes,
+    } = opts ?? {};
+
     // findAll(userId, true) returns every account; we then narrow by status
     // so "open" / "closed" / "all" all go through a single query path.
     const allAccounts = await this.findAll(userId, true);
@@ -1076,17 +1107,56 @@ export class AccountsService {
       accounts = accounts.filter((a) => lowerNames.has(a.name.toLowerCase()));
     }
 
+    if (accountIds && accountIds.length > 0) {
+      const idSet = new Set(accountIds);
+      accounts = accounts.filter((a) => idSet.has(a.id));
+    }
+
+    if (nameQuery && nameQuery.trim().length > 0) {
+      const needle = nameQuery.trim().toLowerCase();
+      accounts = accounts.filter((a) => a.name.toLowerCase().includes(needle));
+    }
+
+    // Resolve institution names for the filtered set in a single batch query
+    // rather than relying on a relation findAll does not load. Skip the query
+    // entirely when none of the remaining accounts reference an institution.
+    const institutionIds = Array.from(
+      new Set(
+        accounts.map((a) => a.institutionId).filter((id): id is string => !!id),
+      ),
+    );
+    const institutionNameMap = new Map<string, string>();
+    if (institutionIds.length > 0) {
+      const institutions = await this.institutionsRepository.find({
+        where: { id: In(institutionIds), userId },
+        select: { id: true, name: true },
+      });
+      for (const inst of institutions) {
+        institutionNameMap.set(inst.id, inst.name);
+      }
+    }
+
     const accountList = accounts.map((a) => {
       const balance =
         a.accountSubType === AccountSubType.INVESTMENT_BROKERAGE
           ? (marketValues.get(a.id) ?? 0)
           : Number(a.currentBalance) + Number(a.futureTransactionsSum ?? 0);
       return {
+        id: a.id,
         name: a.name,
         type: a.accountType,
+        subType: a.accountSubType ?? null,
         balance: roundMoney(balance),
+        currentBalance: roundMoney(Number(a.currentBalance)),
+        creditLimit: a.creditLimit ?? null,
+        interestRate: a.interestRate ?? null,
         currency: a.currencyCode,
         isClosed: a.isClosed,
+        excludeFromNetWorth: a.excludeFromNetWorth,
+        institutionName: a.institutionId
+          ? (institutionNameMap.get(a.institutionId) ?? null)
+          : null,
+        accountNumber: a.accountNumber ?? null,
       };
     });
 
@@ -1097,7 +1167,7 @@ export class AccountsService {
       totalAssets: roundMoney(latest?.assets ?? 0),
       totalLiabilities: roundMoney(latest?.liabilities ?? 0),
       netWorth: roundMoney(latest?.netWorth ?? 0),
-      totalAccounts: allAccounts.length,
+      totalAccounts: accountList.length,
     };
   }
 

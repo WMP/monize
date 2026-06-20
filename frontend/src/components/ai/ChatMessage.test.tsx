@@ -157,11 +157,11 @@ describe('ChatMessage', () => {
           content="Here are your results."
           toolsUsed={[
             {
-              name: 'query_transactions',
+              name: 'list_transactions',
               summary: 'Found 45 transactions',
             },
             {
-              name: 'get_account_balances',
+              name: 'list_accounts',
               summary: '3 accounts found',
             },
           ]}
@@ -169,7 +169,7 @@ describe('ChatMessage', () => {
       );
 
       expect(screen.getByText('Transactions')).toBeInTheDocument();
-      expect(screen.getByText('Account Balances')).toBeInTheDocument();
+      expect(screen.getByText('Accounts')).toBeInTheDocument();
     });
 
     it('falls back to raw tool name for unknown tools', () => {
@@ -191,7 +191,7 @@ describe('ChatMessage', () => {
         <ChatMessage
           role="assistant"
           content="ok"
-          toolsUsed={[{ name: 'query_transactions', summary: 'Found 1' }]}
+          toolsUsed={[{ name: 'list_transactions', summary: 'Found 1' }]}
         />,
       );
       expect(screen.getByLabelText('Tool succeeded')).toBeInTheDocument();
@@ -205,8 +205,8 @@ describe('ChatMessage', () => {
           content="ok"
           toolsUsed={[
             {
-              name: 'query_transactions',
-              summary: 'Invalid input for query_transactions: ...',
+              name: 'list_transactions',
+              summary: 'Invalid input for list_transactions: ...',
               isError: true,
             },
           ]}
@@ -221,8 +221,8 @@ describe('ChatMessage', () => {
 
     it('renders all known tool labels correctly', () => {
       const tools = [
-        { name: 'query_transactions', expected: 'Transactions' },
-        { name: 'get_account_balances', expected: 'Account Balances' },
+        { name: 'list_transactions', expected: 'Transactions' },
+        { name: 'list_accounts', expected: 'Accounts' },
         { name: 'get_spending_by_category', expected: 'Spending by Category' },
         { name: 'get_income_summary', expected: 'Income Summary' },
         { name: 'get_net_worth_history', expected: 'Net Worth History' },
@@ -252,9 +252,7 @@ describe('ChatMessage', () => {
 
       // Should not have any badge elements
       expect(screen.queryByText('Transactions')).not.toBeInTheDocument();
-      expect(
-        screen.queryByText('Account Balances'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText('Accounts')).not.toBeInTheDocument();
     });
 
     it('does not show tool badges for user messages', () => {
@@ -263,7 +261,7 @@ describe('ChatMessage', () => {
           role="user"
           content="My query"
           toolsUsed={[
-            { name: 'query_transactions', summary: 'test' },
+            { name: 'list_transactions', summary: 'test' },
           ]}
         />,
       );

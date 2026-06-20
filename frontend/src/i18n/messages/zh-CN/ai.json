@@ -123,8 +123,12 @@
     "updateTransactionsTitle": "编辑这些交易？",
     "deleteTransactionsTitle": "删除这些交易？",
     "createTransfersTitle": "创建这些转账？",
+    "updateInvestmentTransactionsTitle": "编辑这些投资交易？",
+    "deleteInvestmentTransactionsTitle": "删除这些投资交易？",
     "updatedTransactions": "{count, plural, =0 {未更新交易} other {已更新 # 笔交易}}",
     "deletedTransactions": "{count, plural, =0 {未删除交易} other {已删除 # 笔交易}}",
+    "updatedInvestmentTransactions": "{count, plural, =0 {未更新投资交易} other {已更新 # 笔投资交易}}",
+    "deletedInvestmentTransactions": "{count, plural, =0 {未删除投资交易} other {已删除 # 笔投资交易}}",
     "createdTransfers": "{count, plural, =0 {未创建转账} other {已创建 # 笔转账}}"
   },
   "table": {

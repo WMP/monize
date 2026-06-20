@@ -43,8 +43,8 @@ interface ChatMessageProps {
 }
 
 const TOOL_LABELS: Record<string, string> = {
-  query_transactions: 'Transactions',
-  get_account_balances: 'Account Balances',
+  list_transactions: 'Transactions',
+  list_accounts: 'Accounts',
   get_spending_by_category: 'Spending by Category',
   get_income_summary: 'Income Summary',
   get_net_worth_history: 'Net Worth History',
@@ -52,7 +52,6 @@ const TOOL_LABELS: Record<string, string> = {
   get_budget_status: 'Budget Status',
   calculate: 'Calculation',
   render_chart: 'Chart',
-  search_transactions: 'Transaction Search',
   create_transaction: 'Create Transaction',
   categorize_transaction: 'Categorize Transaction',
   create_payee: 'Create Payee',

@@ -8,21 +8,14 @@ import {
 import { AccountsService } from "../../accounts/accounts.service";
 import { TransactionsService } from "../../transactions/transactions.service";
 import { PayeesService } from "../../payees/payees.service";
-import {
-  AiActionBuilderService,
-  investmentPreviewRow,
-} from "../actions/ai-action-builder.service";
-import {
-  AiActionPreviewRow,
-  PendingAiAction,
-} from "../actions/ai-action.types";
+import { AiActionBuilderService } from "../actions/ai-action-builder.service";
+import { PendingAiAction } from "../actions/ai-action.types";
 import {
   TransactionToolPrepService,
   CreateRowInput,
   TransferRowInput,
   UpdateRowInput,
 } from "../../transactions/transaction-tool-prep.service";
-import { CreateInvestmentTransactionPreview } from "../../securities/investment-transactions.service";
 import { AccountType } from "../../accounts/entities/account.entity";
 import { CategoriesService } from "../../categories/categories.service";
 import { TransactionAnalyticsService } from "../../transactions/transaction-analytics.service";
@@ -32,6 +25,8 @@ import { PortfolioService } from "../../securities/portfolio.service";
 import { SecuritiesService } from "../../securities/securities.service";
 import {
   InvestmentTransactionsService,
+  InvestmentCreateRowInput,
+  InvestmentUpdateRowInput,
   LlmCapitalGainsGroupBy,
   LlmInvestmentTxGroupBy,
 } from "../../securities/investment-transactions.service";
@@ -131,11 +126,11 @@ export class ToolExecutorService {
     try {
       let result: ToolResult;
       switch (toolName) {
-        case "query_transactions":
-          result = await this.queryTransactions(userId, validatedInput);
+        case "list_transactions":
+          result = await this.listTransactions(userId, validatedInput);
           break;
-        case "get_account_balances":
-          result = await this.getAccountBalances(userId, validatedInput);
+        case "list_accounts":
+          result = await this.listAccounts(userId, validatedInput);
           break;
         case "get_categories":
           result = await this.getCategories(userId, validatedInput);
@@ -164,26 +159,17 @@ export class ToolExecutorService {
         case "get_capital_gains":
           result = await this.getCapitalGains(userId, validatedInput);
           break;
-        case "get_transfers":
-          result = await this.getTransfers(userId, validatedInput);
-          break;
         case "get_budget_status":
           result = await this.getBudgetStatus(userId, validatedInput);
           break;
         case "get_upcoming_bills":
           result = await this.getUpcomingBills(userId, validatedInput);
           break;
-        case "get_scheduled_transactions":
-          result = await this.getScheduledTransactions(userId, validatedInput);
-          break;
         case "calculate":
           result = this.calculate(validatedInput);
           break;
         case "render_chart":
           result = this.renderChart(validatedInput);
-          break;
-        case "search_transactions":
-          result = await this.searchTransactions(userId, validatedInput);
           break;
         case "manage_transactions":
           result = await this.manageTransactions(userId, validatedInput);
@@ -197,26 +183,8 @@ export class ToolExecutorService {
         case "lookup_securities":
           result = await this.lookupSecuritiesAction(userId, validatedInput);
           break;
-        case "create_investment_transaction":
-          result = await this.createInvestmentTransactionAction(
-            userId,
-            validatedInput,
-          );
-          break;
-        case "create_investment_transactions":
-          result = await this.createInvestmentTransactionsAction(
-            userId,
-            validatedInput,
-          );
-          break;
-        case "update_investment_transaction":
-          result = await this.updateInvestmentTransactionAction(
-            userId,
-            validatedInput,
-          );
-          break;
-        case "delete_investment_transaction":
-          result = await this.deleteInvestmentTransactionAction(
+        case "manage_investment_transactions":
+          result = await this.manageInvestmentTransactions(
             userId,
             validatedInput,
           );
@@ -316,61 +284,144 @@ export class ToolExecutorService {
     return this.toolError(fallback);
   }
 
-  private async searchTransactions(
+  /**
+   * Unified transaction list/aggregate tool. Replaces search_transactions,
+   * query_transactions, and get_transfers: resolves account/category/payee
+   * NAMES to ids, returns a rich summary (+ optional grouped breakdown and
+   * transfer rollup), and only attaches the raw transaction rows when the
+   * caller sets includeTransactions.
+   */
+  private async listTransactions(
     userId: string,
     input: Record<string, unknown>,
   ): Promise<ToolResult> {
+    const defaults = getDefaultDateRange();
+    const startDate = (input.startDate as string) ?? defaults.startDate;
+    const endDate = (input.endDate as string) ?? defaults.endDate;
+    const accountNames = input.accountNames as string[] | undefined;
+    const categoryNames = input.categoryNames as string[] | undefined;
+    const payeeNames = input.payeeNames as string[] | undefined;
     const searchText = input.searchText as string | undefined;
-    const startDate = input.startDate as string | undefined;
-    const endDate = input.endDate as string | undefined;
-    const accountName = input.accountName as string | undefined;
-    const categoryName = input.categoryName as string | undefined;
     const minAmount = input.minAmount as number | undefined;
     const maxAmount = input.maxAmount as number | undefined;
-    const limit = Math.min((input.limit as number | undefined) ?? 25, 25);
+    const direction = input.direction as
+      | "expenses"
+      | "income"
+      | "both"
+      | undefined;
+    const groupBy = input.groupBy as
+      | "category"
+      | "payee"
+      | "year"
+      | "month"
+      | "week"
+      | "none"
+      | undefined;
+    const transfersOnly = input.transfersOnly as boolean | undefined;
+    const includeTransactions =
+      (input.includeTransactions as boolean | undefined) ?? false;
+    const limit = Math.min((input.limit as number | undefined) ?? 50, 100);
 
-    let accountId: string | undefined;
-    if (accountName) {
-      const account = await this.resolveAccountByName(userId, accountName);
-      if (!account) {
+    const accountIds = await this.resolveAccountIds(userId, accountNames);
+
+    let categoryIds: string[] | undefined;
+    if (categoryNames && categoryNames.length > 0) {
+      const resolved = await this.analyticsService.resolveLlmCategoryIds(
+        userId,
+        categoryNames,
+      );
+      if (resolved.unresolved.length > 0) {
         return this.toolError(
-          `Unknown account: ${accountName}. Use an exact name from the user's account list.`,
+          `Unknown categor${resolved.unresolved.length === 1 ? "y" : "ies"}: ${resolved.unresolved.join(", ")}. Call get_categories to look up valid names; subcategories can be referenced as "Parent: Child".`,
         );
       }
-      accountId = account.id;
+      categoryIds = resolved.categoryIds;
     }
 
-    let categoryId: string | undefined;
-    if (categoryName) {
-      const resolved = await this.resolveSingleCategoryId(userId, categoryName);
-      if (!resolved) {
+    let payeeIds: string[] | undefined;
+    if (payeeNames && payeeNames.length > 0) {
+      const ids: string[] = [];
+      const unresolved: string[] = [];
+      for (const name of payeeNames) {
+        const payee = await this.payeesService.findByName(userId, name);
+        if (payee) ids.push(payee.id);
+        else unresolved.push(name);
+      }
+      if (unresolved.length > 0) {
         return this.toolError(
-          `Unknown category: ${categoryName}. Call get_categories to look up valid names; subcategories can be referenced as "Parent: Child".`,
+          `Unknown payee${unresolved.length === 1 ? "" : "s"}: ${unresolved.join(", ")}. Call get_payees to look up valid names.`,
         );
       }
-      categoryId = resolved;
+      payeeIds = ids;
     }
 
-    const data = await this.transactionsService.getLlmTransactionRows(userId, {
-      accountId,
-      categoryId,
+    const data = await this.analyticsService.getLlmListTransactions(userId, {
       startDate,
       endDate,
-      query: searchText,
+      accountIds,
+      categoryIds,
+      payeeIds,
+      searchText,
       minAmount,
       maxAmount,
-      limit,
+      direction,
+      groupBy,
+      transfersOnly,
     });
 
+    let merged: Record<string, unknown> = data as unknown as Record<
+      string,
+      unknown
+    >;
+    if (includeTransactions) {
+      const rows = await this.transactionsService.getLlmTransactionRows(
+        userId,
+        {
+          accountId: accountIds?.[0],
+          categoryId: categoryIds?.[0],
+          payeeId: payeeIds?.[0],
+          startDate,
+          endDate,
+          query: searchText,
+          minAmount,
+          maxAmount,
+          limit,
+        },
+      );
+      merged = {
+        ...merged,
+        transactions: rows.transactions,
+        total: rows.total,
+        hasMore: rows.hasMore,
+        truncatedTransactionList: rows.hasMore,
+      };
+    }
+
+    const summaryParts = [
+      `${data.transactionCount} transactions from ${startDate} to ${endDate}. Income: ${data.totalIncome.toFixed(2)}, Expenses: ${data.totalExpenses.toFixed(2)}, Net: ${data.netCashFlow.toFixed(2)}`,
+    ];
+    if (data.groupedBy !== "none") {
+      summaryParts.push(`Grouped by ${data.groupedBy}.`);
+    }
+    if (data.transfers) {
+      summaryParts.push(
+        `Transfers: inbound ${data.transfers.totalInbound.toFixed(2)}, outbound ${data.transfers.totalOutbound.toFixed(2)}.`,
+      );
+    }
+    if (includeTransactions) {
+      summaryParts.push(
+        `Included ${(merged.transactions as unknown[]).length} raw row${(merged.transactions as unknown[]).length === 1 ? "" : "s"}${merged.hasMore ? " (more available)" : ""}.`,
+      );
+    }
+
     return {
-      data,
-      summary: `Found ${data.transactions.length} transaction${
-        data.transactions.length === 1 ? "" : "s"
-      }${data.hasMore ? " (more available; narrow the search)" : ""}.`,
+      data: merged,
+      summary: summaryParts.join(" "),
       sources: [
         {
           type: "transactions",
-          description: "Transaction search results",
+          description: `Transaction summary${categoryNames ? ` for ${categoryNames.join(", ")}` : ""}${accountNames ? ` in ${accountNames.join(", ")}` : ""}`,
+          dateRange: `${startDate} to ${endDate}`,
         },
       ],
     };
@@ -855,395 +906,364 @@ export class ToolExecutorService {
     };
   }
 
-  private async createInvestmentTransactionAction(
-    userId: string,
-    input: Record<string, unknown>,
-  ): Promise<ToolResult> {
-    const accountName = input.accountName as string;
-    const action = input.action as InvestmentAction;
-    const date = input.date as string;
-    const securityQuery = input.security as string | undefined;
-    const quantity = input.quantity as number | undefined;
-    const price = input.price as number | undefined;
-    const commission = input.commission as number | undefined;
-    const fundingAccountName = input.fundingAccountName as string | undefined;
-    const description = input.description as string | undefined;
-
-    const account = await this.resolveAccountByName(userId, accountName);
-    if (!account) {
-      return this.toolError(
-        `Unknown account: ${accountName}. Use an exact name from the user's account list.`,
-      );
-    }
-
-    let fundingAccountId: string | undefined;
-    if (fundingAccountName) {
-      const funding = await this.resolveAccountByName(
-        userId,
-        fundingAccountName,
-      );
-      if (!funding) {
-        return this.toolError(
-          `Unknown funding account: ${fundingAccountName}. Use an exact name from the user's account list.`,
-        );
-      }
-      fundingAccountId = funding.id;
-    }
-
-    let preview;
-    try {
-      preview =
-        await this.investmentTransactionsService.previewCreateInvestmentTransaction(
-          userId,
-          {
-            accountId: account.id,
-            action,
-            transactionDate: date,
-            securityQuery,
-            quantity,
-            price,
-            commission,
-            fundingAccountId,
-            description,
-          },
-        );
-    } catch (err) {
-      return this.toolErrorFromException(
-        err,
-        "Could not prepare the investment transaction.",
-      );
-    }
-
-    const pendingAction = this.actionBuilder.buildCreateInvestmentTransaction(
-      userId,
-      preview,
-    );
-
-    const securityLabel = preview.symbol
-      ? ` of ${preview.symbol}`
-      : preview.securityName
-        ? ` of ${preview.securityName}`
-        : "";
+  private toInvestmentCreateRow(
+    item: Record<string, unknown>,
+  ): InvestmentCreateRowInput {
     return {
-      data: PENDING_ACTION_TOOL_RESULT,
-      summary: `Prepared a ${preview.action} investment transaction${securityLabel} in ${preview.accountName} dated ${preview.transactionDate}. Awaiting user confirmation.`,
-      sources: [],
-      pendingAction,
+      accountName: item.accountName as string,
+      action: item.action as InvestmentAction,
+      date: item.date as string,
+      securityQuery: item.security as string | undefined,
+      quantity: item.quantity as number | undefined,
+      price: item.price as number | undefined,
+      commission: item.commission as number | undefined,
+      fundingAccountName: item.fundingAccountName as string | undefined,
+      description: item.description as string | undefined,
     };
   }
 
-  private async updateInvestmentTransactionAction(
-    userId: string,
-    input: Record<string, unknown>,
-  ): Promise<ToolResult> {
-    const transactionId = input.transactionId as string;
-    const action = input.action as InvestmentAction | undefined;
-    const date = input.date as string | undefined;
-    const securityQuery = input.security as string | undefined;
-    const quantity = input.quantity as number | undefined;
-    const price = input.price as number | undefined;
-    const commission = input.commission as number | undefined;
-    const description = input.description as string | undefined;
-
-    let preview;
-    try {
-      preview =
-        await this.investmentTransactionsService.previewUpdateInvestmentTransaction(
-          userId,
-          transactionId,
-          {
-            action,
-            transactionDate: date,
-            securityQuery,
-            quantity,
-            price,
-            commission,
-            description,
-          },
-        );
-    } catch (err) {
-      return this.toolErrorFromException(
-        err,
-        "Could not prepare the investment transaction edit.",
-      );
-    }
-
-    const pendingAction = this.actionBuilder.buildUpdateInvestmentTransaction(
-      userId,
-      preview,
-    );
-
-    const securityLabel = preview.symbol
-      ? ` of ${preview.symbol}`
-      : preview.securityName
-        ? ` of ${preview.securityName}`
-        : "";
+  private toInvestmentUpdateRow(
+    item: Record<string, unknown>,
+  ): InvestmentUpdateRowInput {
     return {
-      data: PENDING_ACTION_TOOL_RESULT,
-      summary: `Prepared an update to a ${preview.action} investment transaction${securityLabel} in ${preview.accountName} dated ${preview.transactionDate}. Awaiting user confirmation.`,
-      sources: [],
-      pendingAction,
+      transactionId: item.transactionId as string,
+      action: item.action as InvestmentAction | undefined,
+      date: item.date as string | undefined,
+      securityQuery: item.security as string | undefined,
+      quantity: item.quantity as number | undefined,
+      price: item.price as number | undefined,
+      commission: item.commission as number | undefined,
+      description: item.description as string | undefined,
     };
   }
 
-  private async deleteInvestmentTransactionAction(
-    userId: string,
-    input: Record<string, unknown>,
-  ): Promise<ToolResult> {
-    const transactionId = input.transactionId as string;
-
-    let preview;
-    try {
-      preview =
-        await this.investmentTransactionsService.previewDeleteInvestmentTransaction(
-          userId,
-          transactionId,
-        );
-    } catch (err) {
-      return this.toolErrorFromException(
-        err,
-        "Could not prepare the investment transaction deletion.",
-      );
-    }
-
-    const pendingAction = this.actionBuilder.buildDeleteInvestmentTransaction(
-      userId,
-      preview,
-    );
-
-    const securityLabel = preview.symbol
+  private investmentSecurityLabel(preview: {
+    symbol?: string | null;
+    securityName?: string | null;
+  }): string {
+    return preview.symbol
       ? ` of ${preview.symbol}`
       : preview.securityName
         ? ` of ${preview.securityName}`
         : "";
-    return {
-      data: PENDING_ACTION_TOOL_RESULT,
-      summary: `Prepared to delete a ${preview.action} investment transaction${securityLabel} in ${preview.accountName} dated ${preview.transactionDate}. Awaiting user confirmation.`,
-      sources: [],
-      pendingAction,
-    };
   }
 
   /**
-   * Extract a user-facing reason from a row preview failure for the bulk card.
-   * 4xx messages are passed through; anything else collapses to the fallback so
-   * internal details never reach the card.
+   * Unified investment-transaction write handler. Mirrors manageTransactions:
+   * resolves names + builds previews via the shared investment prep methods,
+   * then emits the right pending action(s) per operation/approvalMode (single ->
+   * one card; bulk + bulk mode -> one batch card; bulk + individual -> an array
+   * of single cards).
    */
-  private previewErrorReason(err: unknown, fallback: string): string {
-    if (err instanceof HttpException) {
-      const status = err.getStatus();
-      if (status >= 400 && status < 500) {
-        return err.message;
-      }
-    }
-    this.logger.warn(
-      `bulk row preview failed: ${err instanceof Error ? err.message : err}`,
-    );
-    return fallback;
-  }
-
-  private async createInvestmentTransactionsAction(
+  private async manageInvestmentTransactions(
     userId: string,
     input: Record<string, unknown>,
   ): Promise<ToolResult> {
-    const rows = (input.rows as Array<Record<string, unknown>>) ?? [];
-    const previewRows: AiActionPreviewRow[] = [];
-    const okPreviews: CreateInvestmentTransactionPreview[] = [];
+    const operation = input.operation as "create" | "update" | "delete";
+    const items = (input.items as Array<Record<string, unknown>>) ?? [];
+    const approvalMode =
+      (input.approvalMode as "bulk" | "individual" | undefined) ?? "bulk";
+    const single = items.length === 1;
 
-    for (const row of rows) {
-      const accountName = row.accountName as string;
-      const action = row.action as InvestmentAction;
-      const date = row.date as string;
-      const securityQuery = row.security as string | undefined;
-      const quantity = row.quantity as number | undefined;
-      const price = row.price as number | undefined;
-      const commission = row.commission as number | undefined;
-      const fundingAccountName = row.fundingAccountName as string | undefined;
-      const description = row.description as string | undefined;
+    if (operation === "create") {
+      return this.manageInvestmentCreate(userId, items, single, approvalMode);
+    }
+    if (operation === "update") {
+      return this.manageInvestmentUpdate(userId, items, single, approvalMode);
+    }
+    return this.manageInvestmentDelete(userId, items, single, approvalMode);
+  }
 
-      const base: AiActionPreviewRow = {
-        status: "error",
-        accountName,
-        investmentAction: action,
-        transactionDate: date,
-        symbol: securityQuery ?? null,
-        quantity: quantity ?? null,
-        price: price ?? null,
-        commission: commission ?? 0,
-        description: description ?? null,
-      };
-
-      const account = await this.resolveAccountByName(userId, accountName);
-      if (!account) {
-        previewRows.push({ ...base, error: `Unknown account: ${accountName}` });
-        continue;
-      }
-
-      let fundingAccountId: string | undefined;
-      if (fundingAccountName) {
-        const funding = await this.resolveAccountByName(
-          userId,
-          fundingAccountName,
-        );
-        if (!funding) {
-          previewRows.push({
-            ...base,
-            error: `Unknown funding account: ${fundingAccountName}`,
-          });
-          continue;
-        }
-        fundingAccountId = funding.id;
-      }
-
+  private async manageInvestmentCreate(
+    userId: string,
+    items: Array<Record<string, unknown>>,
+    single: boolean,
+    approvalMode: "bulk" | "individual",
+  ): Promise<ToolResult> {
+    if (single) {
       try {
         const preview =
-          await this.investmentTransactionsService.previewCreateInvestmentTransaction(
+          await this.investmentTransactionsService.prepareCreateInvestmentSingle(
             userId,
-            {
-              accountId: account.id,
-              action,
-              transactionDate: date,
-              securityQuery,
-              quantity,
-              price,
-              commission,
-              fundingAccountId,
-              description,
-            },
+            this.toInvestmentCreateRow(items[0]),
           );
-        okPreviews.push(preview);
-        previewRows.push(investmentPreviewRow(preview));
+        const pendingAction =
+          this.actionBuilder.buildCreateInvestmentTransaction(userId, preview);
+        return {
+          data: PENDING_ACTION_TOOL_RESULT,
+          summary: `Prepared a ${preview.action} investment transaction${this.investmentSecurityLabel(preview)} in ${preview.accountName} dated ${preview.transactionDate}. Awaiting user confirmation.`,
+          sources: [],
+          pendingAction,
+        };
       } catch (err) {
-        previewRows.push({
-          ...base,
-          error: this.previewErrorReason(
-            err,
-            "Could not prepare this investment transaction.",
-          ),
-        });
+        return this.toolErrorFromException(
+          err,
+          "Could not prepare the investment transaction.",
+        );
       }
     }
 
-    if (okPreviews.length === 0) {
+    const bulk =
+      await this.investmentTransactionsService.prepareCreateInvestmentBulk(
+        userId,
+        items.map((i) => this.toInvestmentCreateRow(i)),
+      );
+    if (bulk.okPreviews.length === 0) {
       return this.toolError(
         "None of the investment transactions could be prepared. Check the account, security, action, and date for each row and try again.",
       );
     }
 
+    if (approvalMode === "individual") {
+      const pendingActions: PendingAiAction[] = bulk.okPreviews.map((p) =>
+        this.actionBuilder.buildCreateInvestmentTransaction(userId, p),
+      );
+      return {
+        data: PENDING_ACTION_TOOL_RESULT,
+        summary: `Prepared ${pendingActions.length} individual investment card${pendingActions.length === 1 ? "" : "s"}${bulk.skipped.length ? ` (${bulk.skipped.length} skipped)` : ""}. Awaiting user confirmation.`,
+        sources: [],
+        pendingActions,
+      };
+    }
+
     const pendingAction = this.actionBuilder.buildCreateInvestmentTransactions(
       userId,
-      okPreviews,
-      previewRows,
+      bulk.okPreviews,
+      bulk.previewRows,
     );
-    const skippedCount = previewRows.length - okPreviews.length;
     return {
       data: PENDING_ACTION_TOOL_RESULT,
-      summary: `Prepared ${okPreviews.length} investment transaction${okPreviews.length === 1 ? "" : "s"}${skippedCount ? ` (${skippedCount} skipped)` : ""}. Awaiting user confirmation.`,
+      summary: `Prepared ${bulk.okPreviews.length} investment transaction${bulk.okPreviews.length === 1 ? "" : "s"}${bulk.skipped.length ? ` (${bulk.skipped.length} skipped)` : ""}. Awaiting user confirmation.`,
       sources: [],
       pendingAction,
     };
   }
 
-  private async queryTransactions(
+  private async manageInvestmentUpdate(
     userId: string,
-    input: Record<string, unknown>,
+    items: Array<Record<string, unknown>>,
+    single: boolean,
+    approvalMode: "bulk" | "individual",
   ): Promise<ToolResult> {
-    const defaults = getDefaultDateRange();
-    const startDate = (input.startDate as string) ?? defaults.startDate;
-    const endDate = (input.endDate as string) ?? defaults.endDate;
-    const categoryNames = input.categoryNames as string[] | undefined;
-    const accountNames = input.accountNames as string[] | undefined;
-    const searchText = input.searchText as string | undefined;
-    const groupBy = input.groupBy as
-      | "category"
-      | "payee"
-      | "year"
-      | "month"
-      | "week"
-      | undefined;
-    const direction = input.direction as
-      | "expenses"
-      | "income"
-      | "both"
-      | undefined;
-
-    const accountIds = await this.resolveAccountIds(userId, accountNames);
-    let categoryIds: string[] | undefined;
-    if (categoryNames && categoryNames.length > 0) {
-      const resolved = await this.analyticsService.resolveLlmCategoryIds(
-        userId,
-        categoryNames,
-      );
-      if (resolved.unresolved.length > 0) {
-        // Fail loudly instead of silently dropping the filter -- otherwise
-        // the user sees "all transactions" when they asked for a specific
-        // (mistyped or subcategory-shaped) category.
-        const list = resolved.unresolved.join(", ");
+    if (single) {
+      const row = this.toInvestmentUpdateRow(items[0]);
+      try {
+        const preview =
+          await this.investmentTransactionsService.previewUpdateInvestmentTransaction(
+            userId,
+            row.transactionId,
+            {
+              action: row.action,
+              transactionDate: row.date,
+              securityQuery: row.securityQuery,
+              quantity: row.quantity,
+              price: row.price,
+              commission: row.commission,
+              description: row.description,
+            },
+          );
+        const pendingAction =
+          this.actionBuilder.buildUpdateInvestmentTransaction(userId, preview);
         return {
-          data: {
-            error: `Unknown categor${resolved.unresolved.length === 1 ? "y" : "ies"}: ${list}. Call get_categories to look up valid names; subcategories can be referenced as "Parent: Child".`,
-            unresolvedCategoryNames: resolved.unresolved,
-          },
-          summary: `Could not resolve categor${resolved.unresolved.length === 1 ? "y" : "ies"}: ${list}.`,
+          data: PENDING_ACTION_TOOL_RESULT,
+          summary: `Prepared an update to a ${preview.action} investment transaction${this.investmentSecurityLabel(preview)} in ${preview.accountName} dated ${preview.transactionDate}. Awaiting user confirmation.`,
           sources: [],
-          isError: true,
+          pendingAction,
         };
+      } catch (err) {
+        return this.toolErrorFromException(
+          err,
+          "Could not prepare the investment transaction edit.",
+        );
       }
-      categoryIds = resolved.categoryIds;
     }
 
-    const data = await this.analyticsService.getLlmQueryTransactions(userId, {
-      startDate,
-      endDate,
-      accountIds,
-      categoryIds,
-      searchText,
-      groupBy,
-      direction,
-    });
+    if (approvalMode === "individual") {
+      const pendingActions: PendingAiAction[] = [];
+      let skipped = 0;
+      for (const item of items) {
+        const row = this.toInvestmentUpdateRow(item);
+        try {
+          const preview =
+            await this.investmentTransactionsService.previewUpdateInvestmentTransaction(
+              userId,
+              row.transactionId,
+              {
+                action: row.action,
+                transactionDate: row.date,
+                securityQuery: row.securityQuery,
+                quantity: row.quantity,
+                price: row.price,
+                commission: row.commission,
+                description: row.description,
+              },
+            );
+          pendingActions.push(
+            this.actionBuilder.buildUpdateInvestmentTransaction(
+              userId,
+              preview,
+            ),
+          );
+        } catch {
+          skipped++;
+        }
+      }
+      if (pendingActions.length === 0) {
+        return this.toolError(
+          "None of the investment transaction edits could be prepared. Check each transactionId and the fields to change.",
+        );
+      }
+      return {
+        data: PENDING_ACTION_TOOL_RESULT,
+        summary: `Prepared ${pendingActions.length} individual investment edit card${pendingActions.length === 1 ? "" : "s"}${skipped ? ` (${skipped} skipped)` : ""}. Awaiting user confirmation.`,
+        sources: [],
+        pendingActions,
+      };
+    }
 
+    const bulk =
+      await this.investmentTransactionsService.prepareUpdateInvestmentBulk(
+        userId,
+        items.map((i) => this.toInvestmentUpdateRow(i)),
+      );
+    if (bulk.okRows.length === 0) {
+      return this.toolError(
+        "None of the investment transaction edits could be prepared. Check each transactionId and the fields to change.",
+      );
+    }
+    const pendingAction =
+      this.actionBuilder.buildBatchUpdateInvestmentTransactions(
+        userId,
+        bulk.okRows,
+        bulk.previewRows,
+      );
     return {
-      data,
-      summary: `Found ${data.transactionCount} transactions from ${startDate} to ${endDate}. Income: ${data.totalIncome.toFixed(2)}, Expenses: ${data.totalExpenses.toFixed(2)}, Net: ${data.netCashFlow.toFixed(2)}`,
-      sources: [
-        {
-          type: "transactions",
-          description: `Transaction summary${categoryNames ? ` for ${categoryNames.join(", ")}` : ""}${accountNames ? ` in ${accountNames.join(", ")}` : ""}`,
-          dateRange: `${startDate} to ${endDate}`,
-        },
-      ],
+      data: PENDING_ACTION_TOOL_RESULT,
+      summary: `Prepared ${bulk.okRows.length} investment transaction edit${bulk.okRows.length === 1 ? "" : "s"}${bulk.skipped.length ? ` (${bulk.skipped.length} skipped)` : ""}. Awaiting user confirmation.`,
+      sources: [],
+      pendingAction,
     };
   }
 
-  private async getAccountBalances(
+  private async manageInvestmentDelete(
+    userId: string,
+    items: Array<Record<string, unknown>>,
+    single: boolean,
+    approvalMode: "bulk" | "individual",
+  ): Promise<ToolResult> {
+    if (single) {
+      try {
+        const preview =
+          await this.investmentTransactionsService.previewDeleteInvestmentTransaction(
+            userId,
+            items[0].transactionId as string,
+          );
+        const pendingAction =
+          this.actionBuilder.buildDeleteInvestmentTransaction(userId, preview);
+        return {
+          data: PENDING_ACTION_TOOL_RESULT,
+          summary: `Prepared to delete a ${preview.action} investment transaction${this.investmentSecurityLabel(preview)} in ${preview.accountName} dated ${preview.transactionDate}. Awaiting user confirmation.`,
+          sources: [],
+          pendingAction,
+        };
+      } catch (err) {
+        return this.toolErrorFromException(
+          err,
+          "Could not prepare the investment transaction deletion.",
+        );
+      }
+    }
+
+    if (approvalMode === "individual") {
+      const pendingActions: PendingAiAction[] = [];
+      let skipped = 0;
+      for (const item of items) {
+        try {
+          const preview =
+            await this.investmentTransactionsService.previewDeleteInvestmentTransaction(
+              userId,
+              item.transactionId as string,
+            );
+          pendingActions.push(
+            this.actionBuilder.buildDeleteInvestmentTransaction(
+              userId,
+              preview,
+            ),
+          );
+        } catch {
+          skipped++;
+        }
+      }
+      if (pendingActions.length === 0) {
+        return this.toolError(
+          "None of the investment transactions could be prepared for deletion. Check each transactionId.",
+        );
+      }
+      return {
+        data: PENDING_ACTION_TOOL_RESULT,
+        summary: `Prepared ${pendingActions.length} individual investment delete card${pendingActions.length === 1 ? "" : "s"}${skipped ? ` (${skipped} skipped)` : ""}. Awaiting user confirmation.`,
+        sources: [],
+        pendingActions,
+      };
+    }
+
+    const bulk =
+      await this.investmentTransactionsService.prepareDeleteInvestmentBulk(
+        userId,
+        items.map((i) => i.transactionId as string),
+      );
+    if (bulk.okRows.length === 0) {
+      return this.toolError(
+        "None of the investment transactions could be prepared for deletion. Check each transactionId.",
+      );
+    }
+    const pendingAction =
+      this.actionBuilder.buildBatchDeleteInvestmentTransactions(
+        userId,
+        bulk.okRows,
+        bulk.previewRows,
+      );
+    return {
+      data: PENDING_ACTION_TOOL_RESULT,
+      summary: `Prepared to delete ${bulk.okRows.length} investment transaction${bulk.okRows.length === 1 ? "" : "s"}${bulk.skipped.length ? ` (${bulk.skipped.length} skipped)` : ""}. Awaiting user confirmation.`,
+      sources: [],
+      pendingAction,
+    };
+  }
+
+  private async listAccounts(
     userId: string,
     input: Record<string, unknown>,
   ): Promise<ToolResult> {
     const accountNames = input.accountNames as string[] | undefined;
+    const accountIds = input.accountIds as string[] | undefined;
+    const nameQuery = input.nameQuery as string | undefined;
     const status =
       (input.status as "open" | "closed" | "all" | undefined) ?? "open";
     const accountTypes = input.accountTypes as AccountType[] | undefined;
 
-    const data = await this.accountsService.getLlmBalances(
-      userId,
+    const data = await this.accountsService.getLlmAccounts(userId, {
       accountNames,
+      accountIds,
+      nameQuery,
       status,
       accountTypes,
-    );
+    });
 
     const filterDescParts: string[] = [];
     if (accountNames?.length) filterDescParts.push(accountNames.join(", "));
+    if (nameQuery) filterDescParts.push(`"${nameQuery}"`);
     if (accountTypes?.length) filterDescParts.push(accountTypes.join(", "));
     const descriptionBase =
       filterDescParts.length > 0
-        ? `Balances for ${filterDescParts.join("; ")}`
-        : "All account balances";
+        ? `Accounts for ${filterDescParts.join("; ")}`
+        : "All accounts";
     const description =
       status === "open" ? descriptionBase : `${descriptionBase} (${status})`;
 
     return {
       data,
-      summary: `${data.accounts.length} accounts. Net worth: ${data.netWorth.toFixed(2)}, Assets: ${data.totalAssets.toFixed(2)}, Liabilities: ${data.totalLiabilities.toFixed(2)}`,
+      summary: `${data.totalAccounts} accounts. Net worth: ${data.netWorth.toFixed(2)}, Assets: ${data.totalAssets.toFixed(2)}, Liabilities: ${data.totalLiabilities.toFixed(2)}`,
       sources: [
         {
           type: "accounts",
@@ -1543,38 +1563,6 @@ export class ToolExecutorService {
     };
   }
 
-  private async getTransfers(
-    userId: string,
-    input: Record<string, unknown>,
-  ): Promise<ToolResult> {
-    const defaults = getDefaultDateRange();
-    const startDate = (input.startDate as string) ?? defaults.startDate;
-    const endDate = (input.endDate as string) ?? defaults.endDate;
-    const accountNames = input.accountNames as string[] | undefined;
-    const accountIds = await this.resolveAccountIds(userId, accountNames);
-
-    const data = await this.analyticsService.getTransfersByAccount(
-      userId,
-      startDate,
-      endDate,
-      accountIds,
-    );
-
-    return {
-      data,
-      summary: `${data.transferCount} transfer transactions across ${data.accounts.length} account${data.accounts.length === 1 ? "" : "s"} from ${startDate} to ${endDate}. Inbound: ${data.totalInbound.toFixed(2)}, Outbound: ${data.totalOutbound.toFixed(2)}.`,
-      sources: [
-        {
-          type: "transfers",
-          description: accountNames
-            ? `Transfer activity for ${accountNames.join(", ")}`
-            : "Transfer activity across all accounts",
-          dateRange: `${startDate} to ${endDate}`,
-        },
-      ],
-    };
-  }
-
   private async getBudgetStatus(
     userId: string,
     input: Record<string, unknown>,
@@ -1662,38 +1650,6 @@ export class ToolExecutorService {
             ? `Upcoming ${kindDesc} for ${accountNames.join(", ")}`
             : `Upcoming ${kindDesc}`,
           dateRange: `next ${days} day${days === 1 ? "" : "s"}`,
-        },
-      ],
-    };
-  }
-
-  private async getScheduledTransactions(
-    userId: string,
-    input: Record<string, unknown>,
-  ): Promise<ToolResult> {
-    const kind = input.kind as LlmScheduledKind | "all" | undefined;
-    const accountNames = input.accountNames as string[] | undefined;
-    const isActive = input.isActive as boolean | undefined;
-    const accountIds = await this.resolveAccountIds(userId, accountNames);
-
-    const data = await this.scheduledTransactionsService.getLlmScheduledList(
-      userId,
-      { kind, accountIds, isActive },
-    );
-
-    const kindDesc =
-      !kind || kind === "all" ? "scheduled transactions" : `scheduled ${kind}s`;
-    const statusDesc =
-      isActive === true ? " active" : isActive === false ? " paused" : "";
-    return {
-      data,
-      summary: `${data.totalCount}${statusDesc} ${kindDesc} (${data.activeCount} active, ${data.autoPostCount} auto-posting, ${data.billCount} bills, ${data.depositCount} deposits).`,
-      sources: [
-        {
-          type: "scheduled_transactions",
-          description: accountNames
-            ? `Scheduled ${kindDesc} for ${accountNames.join(", ")}`
-            : `All scheduled ${kindDesc}`,
         },
       ],
     };

@@ -234,6 +234,7 @@ describe("InvestmentTransactionsService", () => {
       findByIds: jest.fn().mockResolvedValue([]),
       updateBalance: jest.fn().mockResolvedValue(undefined),
       resetBrokerageBalances: jest.fn().mockResolvedValue(2),
+      resolveByName: jest.fn(),
     };
 
     transactionsService = {};
@@ -5764,6 +5765,226 @@ describe("InvestmentTransactionsService", () => {
         price: 150,
         commission: 9.99,
         totalAmount: 1509.99,
+      });
+    });
+  });
+
+  describe("manage_investment_transactions bulk prep", () => {
+    const okPreview = {
+      accountId,
+      accountName: "Brokerage Account",
+      accountCurrency: "USD",
+      action: InvestmentAction.BUY,
+      transactionDate: "2026-01-15",
+      securityId,
+      symbol: "AAPL",
+      securityName: "Apple Inc.",
+      securityCurrency: "USD",
+      quantity: 10,
+      price: 150,
+      commission: 0,
+      totalAmount: 1500,
+      exchangeRate: 1,
+      fundingAccountId: null,
+      cashAccountName: "Cash Account",
+      cashCurrency: "USD",
+      cashAmount: -1500,
+      description: null,
+    };
+
+    describe("prepareCreateInvestmentSingle", () => {
+      it("resolves the account name and previews the row", async () => {
+        accountsService.resolveByName.mockResolvedValue({
+          id: accountId,
+          name: "Brokerage Account",
+          currencyCode: "USD",
+        });
+        const spy = jest
+          .spyOn(service, "previewCreateInvestmentTransaction")
+          .mockResolvedValue(okPreview as never);
+
+        const preview = await service.prepareCreateInvestmentSingle(userId, {
+          accountName: "Brokerage Account",
+          action: InvestmentAction.BUY,
+          date: "2026-01-15",
+          securityQuery: "AAPL",
+          quantity: 10,
+          price: 150,
+        });
+
+        expect(spy).toHaveBeenCalledWith(
+          userId,
+          expect.objectContaining({ accountId, securityQuery: "AAPL" }),
+        );
+        expect(preview.symbol).toBe("AAPL");
+      });
+
+      it("throws when the account name is unknown", async () => {
+        accountsService.resolveByName.mockResolvedValue(undefined);
+        await expect(
+          service.prepareCreateInvestmentSingle(userId, {
+            accountName: "Nope",
+            action: InvestmentAction.BUY,
+            date: "2026-01-15",
+          }),
+        ).rejects.toBeInstanceOf(NotFoundException);
+      });
+
+      it("throws when an explicit funding account name is unknown", async () => {
+        accountsService.resolveByName
+          .mockResolvedValueOnce({
+            id: accountId,
+            name: "Brokerage Account",
+            currencyCode: "USD",
+          })
+          .mockResolvedValueOnce(undefined);
+        await expect(
+          service.prepareCreateInvestmentSingle(userId, {
+            accountName: "Brokerage Account",
+            action: InvestmentAction.BUY,
+            date: "2026-01-15",
+            fundingAccountName: "Ghost Cash",
+          }),
+        ).rejects.toBeInstanceOf(NotFoundException);
+      });
+    });
+
+    describe("prepareCreateInvestmentBulk", () => {
+      it("collects ok rows and skips unknown account / failed preview rows", async () => {
+        accountsService.resolveByName.mockImplementation(
+          (_uid: string, name: string) =>
+            name === "Brokerage Account"
+              ? Promise.resolve({
+                  id: accountId,
+                  name: "Brokerage Account",
+                  currencyCode: "USD",
+                })
+              : Promise.resolve(undefined),
+        );
+        jest
+          .spyOn(service, "previewCreateInvestmentTransaction")
+          .mockResolvedValueOnce(okPreview as never)
+          .mockRejectedValueOnce(new BadRequestException("Oversell"));
+
+        const result = await service.prepareCreateInvestmentBulk(userId, [
+          {
+            accountName: "Brokerage Account",
+            action: InvestmentAction.BUY,
+            date: "2026-01-15",
+            securityQuery: "AAPL",
+            quantity: 10,
+            price: 150,
+          },
+          {
+            accountName: "Brokerage Account",
+            action: InvestmentAction.SELL,
+            date: "2026-01-16",
+            securityQuery: "AAPL",
+            quantity: 999,
+            price: 150,
+          },
+          {
+            accountName: "Ghost",
+            action: InvestmentAction.BUY,
+            date: "2026-01-17",
+            securityQuery: "AAPL",
+          },
+        ]);
+
+        expect(result.okPreviews).toHaveLength(1);
+        expect(result.okIndex).toEqual([0]);
+        expect(result.previewRows).toHaveLength(3);
+        expect(result.previewRows[0].status).toBe("ok");
+        expect(result.previewRows[1].status).toBe("error");
+        expect(result.previewRows[1].error).toBe("Oversell");
+        expect(result.previewRows[2].error).toContain("Unknown account");
+        expect(result.skipped.map((s) => s.index)).toEqual([1, 2]);
+      });
+
+      it("skips a row whose funding account name is unknown", async () => {
+        accountsService.resolveByName
+          .mockResolvedValueOnce({
+            id: accountId,
+            name: "Brokerage Account",
+            currencyCode: "USD",
+          })
+          .mockResolvedValueOnce(undefined);
+        const result = await service.prepareCreateInvestmentBulk(userId, [
+          {
+            accountName: "Brokerage Account",
+            action: InvestmentAction.BUY,
+            date: "2026-01-15",
+            securityQuery: "AAPL",
+            fundingAccountName: "Ghost Cash",
+          },
+        ]);
+        expect(result.okPreviews).toHaveLength(0);
+        expect(result.previewRows[0].error).toContain(
+          "Unknown funding account",
+        );
+      });
+    });
+
+    describe("prepareUpdateInvestmentBulk", () => {
+      it("maps ok edits to batch rows and skips failures", async () => {
+        jest
+          .spyOn(service, "previewUpdateInvestmentTransaction")
+          .mockResolvedValueOnce({
+            ...okPreview,
+            transactionId,
+            action: InvestmentAction.SELL,
+          } as never)
+          .mockRejectedValueOnce(new NotFoundException("not found"));
+
+        const result = await service.prepareUpdateInvestmentBulk(userId, [
+          { transactionId, action: InvestmentAction.SELL },
+          { transactionId: "missing", quantity: 1 },
+        ]);
+
+        expect(result.okRows).toHaveLength(1);
+        expect(result.okRows[0]).toMatchObject({
+          transactionId,
+          action: InvestmentAction.SELL,
+          securityId,
+          exchangeRate: 1,
+        });
+        expect(result.okIndex).toEqual([0]);
+        expect(result.skipped).toEqual([{ index: 1, reason: "not found" }]);
+        expect(result.previewRows[1].status).toBe("error");
+      });
+    });
+
+    describe("prepareDeleteInvestmentBulk", () => {
+      it("maps ok deletions to batch rows and skips failures", async () => {
+        jest
+          .spyOn(service, "previewDeleteInvestmentTransaction")
+          .mockResolvedValueOnce({
+            transactionId,
+            accountName: "Brokerage Account",
+            action: InvestmentAction.BUY,
+            transactionDate: "2026-01-15",
+            symbol: "AAPL",
+            securityName: "Apple Inc.",
+            securityCurrency: "USD",
+            quantity: 10,
+            price: 150,
+            commission: 0,
+            totalAmount: 1500,
+            description: null,
+          } as never)
+          .mockRejectedValueOnce(new NotFoundException("gone"));
+
+        const result = await service.prepareDeleteInvestmentBulk(userId, [
+          transactionId,
+          "missing",
+        ]);
+
+        expect(result.okRows).toEqual([{ transactionId }]);
+        expect(result.okIndex).toEqual([0]);
+        expect(result.previewRows[0].status).toBe("ok");
+        expect(result.previewRows[0].symbol).toBe("AAPL");
+        expect(result.previewRows[1].status).toBe("error");
+        expect(result.skipped).toEqual([{ index: 1, reason: "gone" }]);
       });
     });
   });

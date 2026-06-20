@@ -6,12 +6,16 @@ import {
 
 export const FINANCIAL_TOOLS: AiToolDefinition[] = [
   {
-    name: "query_transactions",
+    name: "list_transactions",
     description:
-      "Search and aggregate transaction data. Returns totals, counts, and breakdowns — never individual transaction details. Use this for questions about spending, income, or transaction patterns.",
+      "List and aggregate the user's cash transactions. Accepts NAMES for accounts, categories, and payees (resolved internally; no need to call list_accounts/get_categories/get_payees first). Returns a rich summary by default: income/expense/net totals, per-currency totals, an optional grouped breakdown (groupBy), and an optional per-account transfer rollup (transfersOnly). Set includeTransactions=true ONLY when the user explicitly wants the individual transaction rows (this costs many more tokens); otherwise the summary alone answers spending, income, and total questions. Transfers between the user's own accounts are excluded from income/expense totals. This single tool replaces the former search_transactions, query_transactions, and get_transfers tools.",
     inputSchema: {
       type: "object",
       properties: {
+        searchText: {
+          type: "string",
+          description: "Search payee names or transaction descriptions.",
+        },
         startDate: {
           type: "string",
           description:
@@ -22,26 +26,31 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
           description:
             "End date in YYYY-MM-DD format. Omit to default to today.",
         },
-        categoryNames: {
-          type: "array",
-          items: { type: "string" },
-          description:
-            'Filter by category names (e.g., ["Groceries", "Dining Out"]). Use exact names from the user\'s category list. To target a subcategory unambiguously, use "Parent: Child" notation (e.g., "Food: Dining Out"). If any name cannot be resolved the tool returns an error -- call get_categories first if unsure.',
-        },
         accountNames: {
           type: "array",
           items: { type: "string" },
           description:
             "Filter by account names. Use exact names from the user's account list.",
         },
-        searchText: {
-          type: "string",
-          description: "Search payee names or transaction descriptions",
+        categoryNames: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            'Filter by category names. Use exact names from the user\'s category list; use "Parent: Child" for a subcategory. If any name cannot be resolved the tool returns an error.',
         },
-        groupBy: {
-          type: "string",
-          enum: ["category", "payee", "year", "month", "week"],
-          description: "How to group results for breakdown",
+        payeeNames: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Filter by payee names. Use exact names from the user's payee list. If any name cannot be resolved the tool returns an error.",
+        },
+        minAmount: {
+          type: "number",
+          description: "Minimum signed amount (negative for expenses).",
+        },
+        maxAmount: {
+          type: "number",
+          description: "Maximum signed amount.",
         },
         direction: {
           type: "string",
@@ -49,20 +58,54 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
           description:
             "Filter by direction. Must be EXACTLY one of: 'expenses' (outflows/spending), 'income' (inflows/earnings), or 'both' (default). Do not use 'expense', 'all', 'debit', or any variation.",
         },
+        groupBy: {
+          type: "string",
+          enum: ["category", "payee", "year", "month", "week", "none"],
+          description:
+            "How to group the breakdown. 'none' (default) returns totals only with no breakdown.",
+        },
+        transfersOnly: {
+          type: "boolean",
+          description:
+            "When true, also compute the per-account transfer rollup (inbound, outbound, net) for money moved between the user's own accounts. Use for questions like 'how much did I move into savings'.",
+        },
+        includeTransactions: {
+          type: "boolean",
+          description:
+            "When true, also include the raw individual transaction list (with IDs) in addition to the summary. Costs many more tokens; default false. Set true only when the user asks to see specific transactions or you need a transaction ID to act on it.",
+        },
+        limit: {
+          type: "integer",
+          minimum: 1,
+          maximum: 100,
+          description:
+            "Maximum number of raw transaction rows to return when includeTransactions is true (1-100). Defaults to 50.",
+        },
       },
     },
   },
   {
-    name: "get_account_balances",
+    name: "list_accounts",
     description:
-      "Get current account balances, total assets, total liabilities, and net worth. Use this for questions about how much money the user has.",
+      "List the user's accounts with full details and an overall summary. Returns, for each account: id, name, type, sub-type, balance (brokerage accounts show market value; every other account shows currentBalance + future transactions), raw currentBalance, credit limit, interest rate, currency, closed status, exclude-from-net-worth flag, institution name, and account number. Also returns a summary: total assets, total liabilities, net worth (all matching the dashboard Net Worth widget), and totalAccounts (the count AFTER filtering). Use this for any question about which accounts the user has or how much money is in them, and to resolve an account name to its ID when another tool needs one. This single tool replaces the former get_accounts, get_account_balance, and get_account_balances tools.",
     inputSchema: {
       type: "object",
       properties: {
         accountNames: {
           type: "array",
           items: { type: "string" },
-          description: "Optional: filter to specific account names",
+          description:
+            "Optional: filter to specific account names (exact, case-insensitive)",
+        },
+        accountIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional: filter to specific account IDs (UUIDs)",
+        },
+        nameQuery: {
+          type: "string",
+          description:
+            "Optional: case-insensitive substring match on the account name",
         },
         status: {
           type: "string",
@@ -334,31 +377,6 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
     },
   },
   {
-    name: "get_transfers",
-    description:
-      "Get transfer activity between the user's own accounts for a date range. Returns per-account inbound (money received from another account), outbound (money sent to another account), net movement, and transfer count. Transfers are deliberately excluded from spending and income tools because they net to zero across accounts; use this tool for questions like 'how much did I move into my savings', 'what went out of chequing to other accounts', or 'what are my transfers between accounts'.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        startDate: {
-          type: "string",
-          description:
-            "Start date (YYYY-MM-DD). Omit to default to 30 days ago.",
-        },
-        endDate: {
-          type: "string",
-          description: "End date (YYYY-MM-DD). Omit to default to today.",
-        },
-        accountNames: {
-          type: "array",
-          items: { type: "string" },
-          description:
-            "Optional: filter to specific account names. Use exact names from the user's account list.",
-        },
-      },
-    },
-  },
-  {
     name: "get_upcoming_bills",
     description:
       "Get upcoming scheduled bills and deposits due within a date window. Each item is classified as bill (scheduled outflow), deposit (scheduled inflow), transfer, or investment, and includes a daysUntilDue value (negative when overdue). Returns rollup totals for upcoming bills and deposits plus the per-item list. Use for questions like 'what bills are coming up', 'when is rent due', or 'what deposits am I expecting this month'.",
@@ -383,33 +401,6 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
           items: { type: "string" },
           description:
             "Optional: filter to specific account names. Use exact names from the user's account list.",
-        },
-      },
-    },
-  },
-  {
-    name: "get_scheduled_transactions",
-    description:
-      "List all scheduled/recurring transactions (bills, deposits, transfers, investments), regardless of whether they're due soon. Returns rollup counts plus a curated per-item payload with kind, frequency, next due date, account, and amount. Use for questions like 'what recurring bills do I have', 'list all my scheduled deposits', or 'which schedules are paused'.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        kind: {
-          type: "string",
-          enum: ["bill", "deposit", "transfer", "investment", "all"],
-          description:
-            "Narrow to a single kind: 'bill' (scheduled outflow), 'deposit' (scheduled inflow), 'transfer' (between own accounts), or 'investment'. Omit or pass 'all' to include everything.",
-        },
-        accountNames: {
-          type: "array",
-          items: { type: "string" },
-          description:
-            "Optional: filter to specific account names. Use exact names from the user's account list.",
-        },
-        isActive: {
-          type: "boolean",
-          description:
-            "Filter by active status. true = only active schedules, false = only paused. Omit to include both.",
         },
       },
     },
@@ -506,53 +497,6 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
         },
       },
       required: ["type", "title", "data"],
-    },
-  },
-  {
-    name: "search_transactions",
-    description:
-      "Find individual transactions and return their IDs along with date, payee, amount, category, and account. Use this ONLY when you need a specific transaction's ID to act on it (for example before an update or delete via manage_transactions), or when the user explicitly asks to see specific transactions. For totals, breakdowns, and spending questions use query_transactions instead. Returns a small capped list.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        searchText: {
-          type: "string",
-          description: "Match payee names or transaction descriptions.",
-        },
-        startDate: {
-          type: "string",
-          description: "Start date (YYYY-MM-DD).",
-        },
-        endDate: {
-          type: "string",
-          description: "End date (YYYY-MM-DD).",
-        },
-        accountName: {
-          type: "string",
-          description:
-            "Filter to a single account. Use an exact name from the user's account list.",
-        },
-        categoryName: {
-          type: "string",
-          description:
-            'Filter to a single category. Use an exact name from the user\'s category list ("Parent: Child" for a subcategory).',
-        },
-        minAmount: {
-          type: "number",
-          description: "Minimum signed amount (negative for expenses).",
-        },
-        maxAmount: {
-          type: "number",
-          description: "Maximum signed amount.",
-        },
-        limit: {
-          type: "integer",
-          minimum: 1,
-          maximum: 25,
-          description:
-            "Maximum number of rows to return (1-25). Defaults to 25.",
-        },
-      },
     },
   },
   {
@@ -740,90 +684,35 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
     },
   },
   {
-    name: "create_investment_transaction",
+    name: "manage_investment_transactions",
     description:
-      "Propose creating a brokerage/investment-account transaction (any type: buy, sell, dividend, interest, capital gain, stock split, transfer in/out, dividend reinvestment, or share add/remove). This does NOT create anything immediately: it shows the user a confirmation card they must explicitly approve. Use it only when the user clearly asks to record an investment transaction in their latest message. The security is matched automatically by ticker symbol or by name; if the reference is ambiguous or unknown the tool returns an error listing candidates. Buys debit, and sells/dividends/interest/capital gains credit, the brokerage's linked cash account automatically -- do not also record a separate cash transaction. After calling this tool, briefly tell the user to review and approve the card; never claim the transaction was created.",
+      "Create, update, or delete the user's brokerage/investment-account transactions (any type: buy, sell, dividend, interest, capital gain, stock split, transfer in/out, dividend reinvestment, or share add/remove). This does NOT change anything immediately: it shows the user one or more confirmation cards they must explicitly approve before anything is saved. Use it only when the user clearly asks to record, edit, or delete an investment transaction in their latest message. Accepts NAMES for account, funding account, and security -- they are resolved internally (security matched by ticker symbol or name), so you do NOT need to look up IDs first. " +
+      "operation = 'create' | 'update' | 'delete'. Provide an 'items' array (1-25 rows). " +
+      "create: { accountName, action, date, security?, quantity?, price?, commission?, fundingAccountName?, description? } -- security is required for BUY, SELL, SPLIT, REINVEST, ADD_SHARES, and REMOVE_SHARES; optional for cash-only INTEREST. price is the per-share price, or the total cash for a DIVIDEND/INTEREST/CAPITAL_GAIN with no quantity. Buys debit, and sells/dividends/interest/capital gains credit, the brokerage's linked cash account automatically -- do not also record a separate cash transaction; fundingAccountName overrides which cash account is used. " +
+      "update: { transactionId, action?, date?, security?, quantity?, price?, commission?, description? } -- provide only the fields to change (at least one); omitted fields keep their current value; the total and cash impact are recomputed. First call query_investment_transactions to obtain the transactionId. " +
+      "delete: { transactionId } -- deleting one leg of a security transfer removes the paired leg too and reverses any linked cash impact. First call query_investment_transactions to obtain the transactionId. " +
+      "approvalMode = 'bulk' (default) shows one card for the whole batch; 'individual' shows one card per item the user approves separately. Ignored for a single item. Maximum 25 items per call; if the user pastes more, process the first 25 and tell them to send the rest. After calling this tool, briefly tell the user to review and approve the card(s); never claim the change was applied.",
     inputSchema: {
       type: "object",
       properties: {
-        accountName: {
+        operation: {
           type: "string",
-          description:
-            "Investment/brokerage account for the transaction. Use an exact name from the user's account list.",
+          enum: ["create", "update", "delete"],
+          description: "The operation to perform on every item.",
         },
-        action: {
-          type: "string",
-          enum: [
-            "BUY",
-            "SELL",
-            "DIVIDEND",
-            "INTEREST",
-            "CAPITAL_GAIN",
-            "SPLIT",
-            "TRANSFER_IN",
-            "TRANSFER_OUT",
-            "REINVEST",
-            "ADD_SHARES",
-            "REMOVE_SHARES",
-          ],
-          description:
-            "Transaction type. Values must be UPPER_SNAKE_CASE exactly as listed.",
-        },
-        date: {
-          type: "string",
-          description: "Transaction date (YYYY-MM-DD).",
-        },
-        security: {
-          type: "string",
-          description:
-            "Security ticker symbol (e.g. 'AAPL') or name (e.g. 'Apple Inc.'). Required for BUY, SELL, SPLIT, REINVEST, ADD_SHARES, and REMOVE_SHARES; optional for cash-only INTEREST. Matched automatically to one of the user's securities.",
-        },
-        quantity: {
-          type: "number",
-          description:
-            "Number of shares (up to 8 decimal places). For a SPLIT, the post-split-to-pre-split ratio (e.g. 2 for a 2-for-1 split); must be greater than zero.",
-        },
-        price: {
-          type: "number",
-          description:
-            "Price per share (up to 6 decimal places). For DIVIDEND/INTEREST/CAPITAL_GAIN with no quantity, the total cash amount.",
-        },
-        commission: {
-          type: "number",
-          description:
-            "Commission or fee (up to 4 decimal places). Defaults to 0.",
-        },
-        fundingAccountName: {
-          type: "string",
-          description:
-            "Optional cash account that funds a buy or receives a sell's proceeds. Use an exact account name. Omit to use the brokerage account's own linked cash account.",
-        },
-        description: {
-          type: "string",
-          description: "Optional description or memo.",
-        },
-      },
-      required: ["accountName", "action", "date"],
-    },
-  },
-  {
-    name: "create_investment_transactions",
-    description:
-      "Propose creating SEVERAL brokerage/investment-account transactions at once from a list or pasted table (e.g. the user copies a table of trades from a brokerage webpage). This does NOT create anything immediately: it shows the user ONE confirmation card listing every row, which they review and approve with a single click. Parse the pasted data into the rows array, one entry per trade; do not fabricate rows. Each security is matched automatically by ticker symbol or name. Buys debit, and sells/dividends/interest/capital gains credit, the brokerage's linked cash account automatically. Maximum 25 rows per call -- if the user pastes more, process the first 25 and tell them to send the rest separately. After calling this tool, briefly tell the user to review and approve the card; never claim the transactions were created. For a single transaction, use create_investment_transaction instead.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        rows: {
+        items: {
           type: "array",
+          minItems: 1,
+          maxItems: 25,
           description:
-            "The investment transactions to propose, one entry per row (1-25 entries).",
+            "The rows to act on (1-25). Row shape depends on operation; see the tool description.",
           items: {
             type: "object",
             properties: {
               accountName: {
                 type: "string",
                 description:
-                  "Investment/brokerage account. Use an exact name from the user's account list.",
+                  "create: investment/brokerage account. Exact name from the user's account list.",
               },
               action: {
                 type: "string",
@@ -841,7 +730,7 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
                   "REMOVE_SHARES",
                 ],
                 description:
-                  "Transaction type. Values must be UPPER_SNAKE_CASE exactly as listed.",
+                  "create: transaction type (UPPER_SNAKE_CASE). update: new type (omit to keep).",
               },
               date: {
                 type: "string",
@@ -850,114 +739,48 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
               security: {
                 type: "string",
                 description:
-                  "Security ticker symbol or name. Required for BUY, SELL, SPLIT, REINVEST, ADD_SHARES, and REMOVE_SHARES; optional for cash-only INTEREST.",
+                  "Security ticker symbol or name. create: required for BUY, SELL, SPLIT, REINVEST, ADD_SHARES, REMOVE_SHARES. Matched automatically to one of the user's securities.",
               },
               quantity: {
                 type: "number",
                 description:
-                  "Number of shares (up to 8 decimal places). For a SPLIT, the post-split-to-pre-split ratio.",
+                  "Number of shares (up to 8 decimals). For a SPLIT, the post-split-to-pre-split ratio (>0).",
               },
               price: {
                 type: "number",
                 description:
-                  "Price per share (up to 6 decimal places). For DIVIDEND/INTEREST/CAPITAL_GAIN with no quantity, the total cash amount.",
+                  "Price per share (up to 6 decimals). For DIVIDEND/INTEREST/CAPITAL_GAIN with no quantity, the total cash amount.",
               },
               commission: {
                 type: "number",
                 description:
-                  "Commission or fee (up to 4 decimal places). Defaults to 0.",
+                  "Commission or fee (up to 4 decimals). Defaults to 0.",
               },
               fundingAccountName: {
                 type: "string",
                 description:
-                  "Optional cash account that funds a buy or receives a sell's proceeds. Omit to use the brokerage's own linked cash account.",
+                  "create: optional cash account that funds a buy or receives a sell's proceeds. Omit to use the brokerage's own linked cash account.",
               },
               description: {
                 type: "string",
                 description: "Optional description or memo.",
               },
+              transactionId: {
+                type: "string",
+                description:
+                  "update/delete: ID of the investment transaction, obtained from query_investment_transactions.",
+              },
             },
-            required: ["accountName", "action", "date"],
           },
         },
-      },
-      required: ["rows"],
-    },
-  },
-  {
-    name: "update_investment_transaction",
-    description:
-      "Propose editing an existing brokerage/investment-account transaction. This does NOT change anything immediately: it shows the user a confirmation card they must explicitly approve before the change is saved. First call query_investment_transactions or search the investments to obtain the transactionId. Provide ONLY the fields you want to change -- omitted fields keep their current value. The security, when changed, is matched automatically by ticker symbol or name. The total and cash impact are recomputed from the resulting state. After calling this tool, briefly tell the user to review and approve the card; never claim the change was applied. To delete one, use delete_investment_transaction instead.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        transactionId: {
+        approvalMode: {
           type: "string",
-          description: "ID of the investment transaction to edit.",
-        },
-        action: {
-          type: "string",
-          enum: [
-            "BUY",
-            "SELL",
-            "DIVIDEND",
-            "INTEREST",
-            "CAPITAL_GAIN",
-            "SPLIT",
-            "TRANSFER_IN",
-            "TRANSFER_OUT",
-            "REINVEST",
-            "ADD_SHARES",
-            "REMOVE_SHARES",
-          ],
+          enum: ["bulk", "individual"],
           description:
-            "New transaction type. Values must be UPPER_SNAKE_CASE exactly as listed. Omit to keep.",
-        },
-        date: {
-          type: "string",
-          description: "New transaction date (YYYY-MM-DD). Omit to keep.",
-        },
-        security: {
-          type: "string",
-          description:
-            "New security ticker symbol or name. Matched automatically to one of the user's securities. Omit to keep the current security.",
-        },
-        quantity: {
-          type: "number",
-          description:
-            "New number of shares (up to 8 decimal places). For a SPLIT, the post-split-to-pre-split ratio. Omit to keep.",
-        },
-        price: {
-          type: "number",
-          description:
-            "New price per share (up to 6 decimal places). For DIVIDEND/INTEREST/CAPITAL_GAIN with no quantity, the total cash amount. Omit to keep.",
-        },
-        commission: {
-          type: "number",
-          description:
-            "New commission or fee (up to 4 decimal places). Omit to keep.",
-        },
-        description: {
-          type: "string",
-          description: "New description or memo. Omit to keep.",
+            "How multi-item batches are approved: 'bulk' (default) = one card for all items; 'individual' = one card per item. Ignored when there is a single item.",
         },
       },
-      required: ["transactionId"],
-    },
-  },
-  {
-    name: "delete_investment_transaction",
-    description:
-      "Propose deleting an existing brokerage/investment-account transaction. This does NOT delete anything immediately: it shows the user a confirmation card they must explicitly approve before the transaction is removed. First call query_investment_transactions to obtain the transactionId. Deleting one leg of a security transfer removes the paired leg too, and any linked cash impact is reversed. After calling this tool, briefly tell the user to review and approve the card; never claim the transaction was deleted.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        transactionId: {
-          type: "string",
-          description: "ID of the investment transaction to delete.",
-        },
-      },
-      required: ["transactionId"],
+      required: ["operation", "items"],
     },
   },
 ];

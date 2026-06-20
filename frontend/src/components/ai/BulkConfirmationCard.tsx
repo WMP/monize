@@ -28,28 +28,38 @@ export function BulkConfirmationCard({
   const { formatCurrency, formatCurrencyPrecise, formatQuantity } =
     useNumberFormat();
   const { preview, type, status } = action;
-  const isInvestment = type === 'create_investment_transactions';
   // The generic batch envelope carries the operation on the (verbatim)
   // descriptor; standard create-bulk uses the dedicated create_transactions type.
   const batchOp =
     type === 'batch_actions'
       ? (action.descriptor as { operation?: string }).operation
       : undefined;
+  // Investment rows: the dedicated bulk-create type, or a batch_actions envelope
+  // carrying investment edits/deletions.
+  const isInvestment =
+    type === 'create_investment_transactions' ||
+    batchOp === 'update_investment' ||
+    batchOp === 'delete_investment';
   const isTransfer = batchOp === 'create_transfer';
 
   const rows = preview.rows ?? [];
   const validCount = rows.filter((r) => r.status === 'ok').length;
   const flaggedCount = rows.length - validCount;
 
-  const title = isInvestment
-    ? t('confirmAction.createInvestmentTransactionsTitle')
-    : batchOp === 'update'
-      ? t('confirmAction.updateTransactionsTitle')
-      : batchOp === 'delete'
-        ? t('confirmAction.deleteTransactionsTitle')
-        : isTransfer
-          ? t('confirmAction.createTransfersTitle')
-          : t('confirmAction.createTransactionsTitle');
+  const title =
+    batchOp === 'update_investment'
+      ? t('confirmAction.updateInvestmentTransactionsTitle')
+      : batchOp === 'delete_investment'
+        ? t('confirmAction.deleteInvestmentTransactionsTitle')
+        : type === 'create_investment_transactions'
+          ? t('confirmAction.createInvestmentTransactionsTitle')
+          : batchOp === 'update'
+            ? t('confirmAction.updateTransactionsTitle')
+            : batchOp === 'delete'
+              ? t('confirmAction.deleteTransactionsTitle')
+              : isTransfer
+                ? t('confirmAction.createTransfersTitle')
+                : t('confirmAction.createTransactionsTitle');
 
   const viewLink = isInvestment
     ? { href: '/investments', label: t('confirmAction.viewInvestments') }
@@ -58,15 +68,26 @@ export function BulkConfirmationCard({
   // On success, prefer the server's actual affected count; fall back to the
   // number of valid rows the card displayed.
   const createdCount = action.resultCount ?? validCount;
-  const successMessage = isInvestment
-    ? t('confirmAction.createdInvestmentTransactions', { count: createdCount })
-    : batchOp === 'update'
-      ? t('confirmAction.updatedTransactions', { count: createdCount })
-      : batchOp === 'delete'
-        ? t('confirmAction.deletedTransactions', { count: createdCount })
-        : isTransfer
-          ? t('confirmAction.createdTransfers', { count: createdCount })
-          : t('confirmAction.createdTransactions', { count: createdCount });
+  const successMessage =
+    batchOp === 'update_investment'
+      ? t('confirmAction.updatedInvestmentTransactions', { count: createdCount })
+      : batchOp === 'delete_investment'
+        ? t('confirmAction.deletedInvestmentTransactions', {
+            count: createdCount,
+          })
+        : type === 'create_investment_transactions'
+          ? t('confirmAction.createdInvestmentTransactions', {
+              count: createdCount,
+            })
+          : batchOp === 'update'
+            ? t('confirmAction.updatedTransactions', { count: createdCount })
+            : batchOp === 'delete'
+              ? t('confirmAction.deletedTransactions', { count: createdCount })
+              : isTransfer
+                ? t('confirmAction.createdTransfers', { count: createdCount })
+                : t('confirmAction.createdTransactions', {
+                    count: createdCount,
+                  });
   const skippedAtConfirm = action.resultSkipped?.length ?? 0;
 
   function describeRow(row: PendingActionPreviewRow): {

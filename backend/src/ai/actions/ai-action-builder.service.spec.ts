@@ -542,6 +542,54 @@ describe("AiActionBuilderService", () => {
     expect(action.preview.rows).toHaveLength(2);
   });
 
+  it("builds a batch_actions(update_investment) envelope via the investment sibling builder", () => {
+    const rows = [
+      {
+        transactionId: "it1",
+        accountId: "a1",
+        action: "SELL",
+        transactionDate: "2026-02-01",
+        securityId: "s1",
+        fundingAccountId: null,
+        quantity: 5,
+        price: 160,
+        commission: 0,
+        exchangeRate: 1,
+        description: null,
+      },
+    ];
+    const previewRows = [{ status: "ok" as const, symbol: "VTI" }];
+    const action = builder.buildBatchUpdateInvestmentTransactions(
+      "user-1",
+      rows as never,
+      previewRows,
+    );
+    expect(action.type).toBe("batch_actions");
+    expect(action.signature).toBe("sig-123");
+    expect(action.descriptor).toMatchObject({
+      type: "batch_actions",
+      operation: "update_investment",
+      rows,
+    });
+    expect(action.preview.rows).toHaveLength(1);
+  });
+
+  it("builds a batch_actions(delete_investment) envelope via the investment sibling builder", () => {
+    const rows = [{ transactionId: "it1" }, { transactionId: "it2" }];
+    const previewRows = [{ status: "ok" as const }, { status: "ok" as const }];
+    const action = builder.buildBatchDeleteInvestmentTransactions(
+      "user-1",
+      rows as never,
+      previewRows,
+    );
+    expect(action.descriptor).toMatchObject({
+      type: "batch_actions",
+      operation: "delete_investment",
+      rows,
+    });
+    expect(action.preview.rows).toHaveLength(2);
+  });
+
   it("transferPreviewRow maps a transfer preview to a display row", () => {
     const {
       transferPreviewRow,

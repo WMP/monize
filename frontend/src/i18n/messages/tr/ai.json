@@ -123,8 +123,12 @@
     "updateTransactionsTitle": "Bu işlemler düzenlensin mi?",
     "deleteTransactionsTitle": "Bu işlemler silinsin mi?",
     "createTransfersTitle": "Bu transferler oluşturulsun mu?",
+    "updateInvestmentTransactionsTitle": "Bu yatırım işlemleri düzenlensin mi?",
+    "deleteInvestmentTransactionsTitle": "Bu yatırım işlemleri silinsin mi?",
     "updatedTransactions": "{count, plural, =0 {İşlem güncellenmedi} one {# işlem güncellendi} other {# işlem güncellendi}}",
     "deletedTransactions": "{count, plural, =0 {İşlem silinmedi} one {# işlem silindi} other {# işlem silindi}}",
+    "updatedInvestmentTransactions": "{count, plural, =0 {Yatırım işlemi güncellenmedi} one {# yatırım işlemi güncellendi} other {# yatırım işlemi güncellendi}}",
+    "deletedInvestmentTransactions": "{count, plural, =0 {Yatırım işlemi silinmedi} one {# yatırım işlemi silindi} other {# yatırım işlemi silindi}}",
     "createdTransfers": "{count, plural, =0 {Transfer oluşturulmadı} one {# transfer oluşturuldu} other {# transfer oluşturuldu}}"
   },
   "table": {

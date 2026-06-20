@@ -1,7 +1,7 @@
 import {
   validateToolInput,
-  queryTransactionsSchema,
-  getAccountBalancesSchema,
+  listTransactionsSchema,
+  listAccountsSchema,
   getCategoriesSchema,
   getSpendingByCategorySchema,
   getIncomeSummarySchema,
@@ -9,21 +9,18 @@ import {
   comparePeriodsSchema,
   getPortfolioSummarySchema,
   queryInvestmentTransactionsSchema,
-  getTransfersSchema,
   getBudgetStatusSchema,
   getUpcomingBillsSchema,
-  getScheduledTransactionsSchema,
   calculateSchema,
   renderChartSchema,
-  createInvestmentTransactionSchema,
+  manageInvestmentTransactionsSchema,
   createTransactionsSchema,
-  createInvestmentTransactionsSchema,
 } from "./tool-input-schemas";
 
 describe("tool-input-schemas", () => {
   describe("validateToolInput()", () => {
-    it("returns success with data for valid query_transactions input", () => {
-      const result = validateToolInput("query_transactions", {
+    it("returns success with data for valid list_transactions input", () => {
+      const result = validateToolInput("list_transactions", {
         startDate: "2026-01-01",
         endDate: "2026-01-31",
       });
@@ -46,7 +43,7 @@ describe("tool-input-schemas", () => {
     });
 
     it("returns error for invalid date format", () => {
-      const result = validateToolInput("query_transactions", {
+      const result = validateToolInput("list_transactions", {
         startDate: "January 1, 2026",
         endDate: "2026-01-31",
       });
@@ -59,7 +56,7 @@ describe("tool-input-schemas", () => {
     });
 
     it("accepts empty input (dates are optional; handler applies defaults)", () => {
-      const result = validateToolInput("query_transactions", {});
+      const result = validateToolInput("list_transactions", {});
 
       expect(result.success).toBe(true);
       if (result.success) {
@@ -69,7 +66,7 @@ describe("tool-input-schemas", () => {
     });
 
     it("returns error for invalid groupBy value", () => {
-      const result = validateToolInput("query_transactions", {
+      const result = validateToolInput("list_transactions", {
         startDate: "2026-01-01",
         endDate: "2026-01-31",
         groupBy: "invalid_group",
@@ -82,7 +79,7 @@ describe("tool-input-schemas", () => {
     });
 
     it("strips extra fields via Zod parsing", () => {
-      const result = validateToolInput("query_transactions", {
+      const result = validateToolInput("list_transactions", {
         startDate: "2026-01-01",
         endDate: "2026-01-31",
         maliciousField: "evil",
@@ -96,23 +93,37 @@ describe("tool-input-schemas", () => {
     });
   });
 
-  describe("queryTransactionsSchema", () => {
+  describe("listTransactionsSchema", () => {
     it("accepts all optional fields", () => {
-      const result = queryTransactionsSchema.safeParse({
+      const result = listTransactionsSchema.safeParse({
         startDate: "2026-01-01",
         endDate: "2026-01-31",
         categoryNames: ["Groceries", "Dining"],
         accountNames: ["Checking"],
+        payeeNames: ["Walmart"],
         searchText: "walmart",
         groupBy: "category",
         direction: "expenses",
+        transfersOnly: true,
+        includeTransactions: true,
+        limit: 25,
       });
 
       expect(result.success).toBe(true);
     });
 
+    it("accepts the 'none' groupBy value", () => {
+      const result = listTransactionsSchema.safeParse({ groupBy: "none" });
+      expect(result.success).toBe(true);
+    });
+
+    it("accepts empty input (all fields optional)", () => {
+      const result = listTransactionsSchema.safeParse({});
+      expect(result.success).toBe(true);
+    });
+
     it("rejects searchText over 200 chars", () => {
-      const result = queryTransactionsSchema.safeParse({
+      const result = listTransactionsSchema.safeParse({
         startDate: "2026-01-01",
         endDate: "2026-01-31",
         searchText: "a".repeat(201),
@@ -122,12 +133,17 @@ describe("tool-input-schemas", () => {
     });
 
     it("rejects truly unknown direction enum value", () => {
-      const result = queryTransactionsSchema.safeParse({
+      const result = listTransactionsSchema.safeParse({
         startDate: "2026-01-01",
         endDate: "2026-01-31",
         direction: "sideways",
       });
 
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects limit over 100", () => {
+      const result = listTransactionsSchema.safeParse({ limit: 101 });
       expect(result.success).toBe(false);
     });
 
@@ -144,7 +160,7 @@ describe("tool-input-schemas", () => {
         ["any", "both"],
       ];
       for (const [input, expected] of cases) {
-        const result = queryTransactionsSchema.safeParse({
+        const result = listTransactionsSchema.safeParse({
           startDate: "2026-01-01",
           endDate: "2026-01-31",
           direction: input,
@@ -157,21 +173,36 @@ describe("tool-input-schemas", () => {
     });
   });
 
-  describe("getAccountBalancesSchema", () => {
+  describe("listAccountsSchema", () => {
     it("accepts empty input", () => {
-      const result = getAccountBalancesSchema.safeParse({});
+      const result = listAccountsSchema.safeParse({});
       expect(result.success).toBe(true);
     });
 
     it("accepts accountNames filter", () => {
-      const result = getAccountBalancesSchema.safeParse({
+      const result = listAccountsSchema.safeParse({
         accountNames: ["Checking", "Savings"],
       });
       expect(result.success).toBe(true);
     });
 
+    it("accepts accountIds (UUIDs) and nameQuery filters", () => {
+      const result = listAccountsSchema.safeParse({
+        accountIds: ["11111111-1111-4111-8111-111111111111"],
+        nameQuery: "sav",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects accountIds that are not UUIDs", () => {
+      const result = listAccountsSchema.safeParse({
+        accountIds: ["not-a-uuid"],
+      });
+      expect(result.success).toBe(false);
+    });
+
     it("rejects accountNames with items over 100 chars", () => {
-      const result = getAccountBalancesSchema.safeParse({
+      const result = listAccountsSchema.safeParse({
         accountNames: ["a".repeat(101)],
       });
       expect(result.success).toBe(false);
@@ -179,25 +210,25 @@ describe("tool-input-schemas", () => {
 
     it("accepts the three status values", () => {
       for (const status of ["open", "closed", "all"]) {
-        const result = getAccountBalancesSchema.safeParse({ status });
+        const result = listAccountsSchema.safeParse({ status });
         expect(result.success).toBe(true);
       }
     });
 
     it("rejects unknown status values", () => {
-      const result = getAccountBalancesSchema.safeParse({ status: "archived" });
+      const result = listAccountsSchema.safeParse({ status: "archived" });
       expect(result.success).toBe(false);
     });
 
     it("accepts accountTypes filter", () => {
-      const result = getAccountBalancesSchema.safeParse({
+      const result = listAccountsSchema.safeParse({
         accountTypes: ["CHEQUING", "SAVINGS"],
       });
       expect(result.success).toBe(true);
     });
 
     it("uppercases accountTypes inputs via preprocess", () => {
-      const result = getAccountBalancesSchema.safeParse({
+      const result = listAccountsSchema.safeParse({
         accountTypes: ["chequing", " savings "],
       });
       expect(result.success).toBe(true);
@@ -207,7 +238,7 @@ describe("tool-input-schemas", () => {
     });
 
     it("rejects an unknown account type", () => {
-      const result = getAccountBalancesSchema.safeParse({
+      const result = listAccountsSchema.safeParse({
         accountTypes: ["NOT_REAL"],
       });
       expect(result.success).toBe(false);
@@ -493,8 +524,8 @@ describe("tool-input-schemas", () => {
     });
   });
 
-  describe("createInvestmentTransactionSchema", () => {
-    const valid = {
+  describe("manageInvestmentTransactionsSchema", () => {
+    const createItem = {
       accountName: "Brokerage",
       action: "BUY",
       date: "2026-01-15",
@@ -504,131 +535,147 @@ describe("tool-input-schemas", () => {
       commission: 9.99,
     };
 
-    it("accepts a full valid BUY", () => {
-      const result = createInvestmentTransactionSchema.safeParse(valid);
+    it("accepts a valid single create", () => {
+      const result = manageInvestmentTransactionsSchema.safeParse({
+        operation: "create",
+        items: [createItem],
+      });
       expect(result.success).toBe(true);
     });
 
-    it("accepts the minimal required fields (cash-only action)", () => {
-      const result = createInvestmentTransactionSchema.safeParse({
-        accountName: "Brokerage",
-        action: "INTEREST",
-        date: "2026-01-15",
+    it("accepts a minimal cash-only create (INTEREST)", () => {
+      const result = manageInvestmentTransactionsSchema.safeParse({
+        operation: "create",
+        items: [
+          { accountName: "Brokerage", action: "INTEREST", date: "2026-01-15" },
+        ],
       });
       expect(result.success).toBe(true);
     });
 
     it("uppercases the action via preprocess", () => {
-      const result = createInvestmentTransactionSchema.safeParse({
-        ...valid,
-        action: " buy ",
+      const result = manageInvestmentTransactionsSchema.safeParse({
+        operation: "create",
+        items: [{ ...createItem, action: " buy " }],
       });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.action).toBe("BUY");
+        expect(result.data.items[0].action).toBe("BUY");
       }
     });
 
-    it("accepts every investment action", () => {
-      for (const action of [
-        "BUY",
-        "SELL",
-        "DIVIDEND",
-        "INTEREST",
-        "CAPITAL_GAIN",
-        "SPLIT",
-        "TRANSFER_IN",
-        "TRANSFER_OUT",
-        "REINVEST",
-        "ADD_SHARES",
-        "REMOVE_SHARES",
-      ]) {
-        const result = createInvestmentTransactionSchema.safeParse({
-          ...valid,
-          action,
-        });
-        expect(result.success).toBe(true);
-      }
+    it("requires accountName/action/date on create rows", () => {
+      const missingAccount = manageInvestmentTransactionsSchema.safeParse({
+        operation: "create",
+        items: [{ action: "BUY", date: "2026-01-15" }],
+      });
+      expect(missingAccount.success).toBe(false);
+
+      const missingAction = manageInvestmentTransactionsSchema.safeParse({
+        operation: "create",
+        items: [{ accountName: "Brokerage", date: "2026-01-15" }],
+      });
+      expect(missingAction.success).toBe(false);
+
+      const missingDate = manageInvestmentTransactionsSchema.safeParse({
+        operation: "create",
+        items: [{ accountName: "Brokerage", action: "BUY" }],
+      });
+      expect(missingDate.success).toBe(false);
     });
 
-    it("rejects an unknown action", () => {
-      const result = createInvestmentTransactionSchema.safeParse({
-        ...valid,
-        action: "PURCHASE",
+    it("accepts a valid update with at least one change", () => {
+      const result = manageInvestmentTransactionsSchema.safeParse({
+        operation: "update",
+        items: [
+          {
+            transactionId: "11111111-1111-4111-8111-111111111111",
+            quantity: 20,
+          },
+        ],
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("requires transactionId on update rows", () => {
+      const result = manageInvestmentTransactionsSchema.safeParse({
+        operation: "update",
+        items: [{ quantity: 20 }],
       });
       expect(result.success).toBe(false);
     });
 
-    it("rejects a missing account name", () => {
-      const result = createInvestmentTransactionSchema.safeParse({
-        action: "BUY",
-        date: "2026-01-15",
+    it("rejects an update row with no fields to change", () => {
+      const result = manageInvestmentTransactionsSchema.safeParse({
+        operation: "update",
+        items: [{ transactionId: "11111111-1111-4111-8111-111111111111" }],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("accepts a valid delete with only transactionId", () => {
+      const result = manageInvestmentTransactionsSchema.safeParse({
+        operation: "delete",
+        items: [{ transactionId: "11111111-1111-4111-8111-111111111111" }],
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("requires transactionId on delete rows", () => {
+      const result = manageInvestmentTransactionsSchema.safeParse({
+        operation: "delete",
+        items: [{}],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects an unknown action", () => {
+      const result = manageInvestmentTransactionsSchema.safeParse({
+        operation: "create",
+        items: [{ ...createItem, action: "PURCHASE" }],
       });
       expect(result.success).toBe(false);
     });
 
     it("rejects a negative quantity", () => {
-      const result = createInvestmentTransactionSchema.safeParse({
-        ...valid,
-        quantity: -1,
+      const result = manageInvestmentTransactionsSchema.safeParse({
+        operation: "create",
+        items: [{ ...createItem, quantity: -1 }],
       });
       expect(result.success).toBe(false);
     });
 
-    it("rejects an invalid date", () => {
-      const result = createInvestmentTransactionSchema.safeParse({
-        ...valid,
-        date: "15-01-2026",
+    it("rejects an empty items batch and a batch over 25 rows", () => {
+      expect(
+        manageInvestmentTransactionsSchema.safeParse({
+          operation: "create",
+          items: [],
+        }).success,
+      ).toBe(false);
+      const rows26 = Array.from({ length: 26 }, () => ({ ...createItem }));
+      expect(
+        manageInvestmentTransactionsSchema.safeParse({
+          operation: "create",
+          items: rows26,
+        }).success,
+      ).toBe(false);
+    });
+
+    it("accepts an optional approvalMode", () => {
+      const result = manageInvestmentTransactionsSchema.safeParse({
+        operation: "create",
+        items: [createItem],
+        approvalMode: "individual",
       });
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
     });
 
     it("routes through validateToolInput", () => {
-      const result = validateToolInput("create_investment_transaction", valid);
-      expect(result.success).toBe(true);
-    });
-  });
-
-  describe("getTransfersSchema", () => {
-    it("accepts valid input with only required fields", () => {
-      const result = getTransfersSchema.safeParse({
-        startDate: "2026-01-01",
-        endDate: "2026-01-31",
+      const result = validateToolInput("manage_investment_transactions", {
+        operation: "create",
+        items: [createItem],
       });
       expect(result.success).toBe(true);
-    });
-
-    it("accepts optional accountNames filter", () => {
-      const result = getTransfersSchema.safeParse({
-        startDate: "2026-01-01",
-        endDate: "2026-01-31",
-        accountNames: ["Chequing", "Savings"],
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it("accepts missing date fields (handler applies defaults)", () => {
-      const result = getTransfersSchema.safeParse({
-        accountNames: ["Chequing"],
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it("rejects invalid date format", () => {
-      const result = getTransfersSchema.safeParse({
-        startDate: "not-a-date",
-        endDate: "2026-01-31",
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects account names over 100 chars", () => {
-      const result = getTransfersSchema.safeParse({
-        startDate: "2026-01-01",
-        endDate: "2026-01-31",
-        accountNames: ["a".repeat(101)],
-      });
-      expect(result.success).toBe(false);
     });
   });
 
@@ -698,43 +745,6 @@ describe("tool-input-schemas", () => {
     it("accepts accountNames filter", () => {
       const result = getUpcomingBillsSchema.safeParse({
         accountNames: ["Checking"],
-      });
-      expect(result.success).toBe(true);
-    });
-  });
-
-  describe("getScheduledTransactionsSchema", () => {
-    it("accepts empty input", () => {
-      const result = getScheduledTransactionsSchema.safeParse({});
-      expect(result.success).toBe(true);
-    });
-
-    it("accepts kind, accountNames, and isActive", () => {
-      const result = getScheduledTransactionsSchema.safeParse({
-        kind: "deposit",
-        accountNames: ["Savings"],
-        isActive: true,
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it("rejects unknown kind", () => {
-      const result = getScheduledTransactionsSchema.safeParse({
-        kind: "subscription",
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects non-boolean isActive", () => {
-      const result = getScheduledTransactionsSchema.safeParse({
-        isActive: "yes",
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it("routes through validateToolInput", () => {
-      const result = validateToolInput("get_scheduled_transactions", {
-        kind: "bill",
       });
       expect(result.success).toBe(true);
     });
@@ -943,11 +953,6 @@ describe("tool-input-schemas", () => {
 
   describe("bulk schemas", () => {
     const txRow = { accountName: "Checking", amount: -10, date: "2026-01-15" };
-    const invRow = {
-      accountName: "Brokerage",
-      action: "BUY",
-      date: "2026-01-15",
-    };
 
     it("accepts 1 to 25 rows", () => {
       expect(
@@ -957,11 +962,6 @@ describe("tool-input-schemas", () => {
       expect(createTransactionsSchema.safeParse({ rows: rows25 }).success).toBe(
         true,
       );
-      const invRows25 = Array.from({ length: 25 }, () => ({ ...invRow }));
-      expect(
-        createInvestmentTransactionsSchema.safeParse({ rows: invRows25 })
-          .success,
-      ).toBe(true);
     });
 
     it("rejects an empty batch and a batch over 25 rows", () => {

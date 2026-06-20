@@ -123,8 +123,12 @@
     "updateTransactionsTitle": "Змінити ці транзакції?",
     "deleteTransactionsTitle": "Видалити ці транзакції?",
     "createTransfersTitle": "Створити ці перекази?",
+    "updateInvestmentTransactionsTitle": "Змінити ці інвестиційні операції?",
+    "deleteInvestmentTransactionsTitle": "Видалити ці інвестиційні операції?",
     "updatedTransactions": "{count, plural, =0 {Транзакції не оновлено} one {Оновлено # транзакцію} other {Оновлено # транзакцій}}",
     "deletedTransactions": "{count, plural, =0 {Транзакції не видалено} one {Видалено # транзакцію} other {Видалено # транзакцій}}",
+    "updatedInvestmentTransactions": "{count, plural, =0 {Інвестиційні операції не оновлено} one {Оновлено # інвестиційну операцію} other {Оновлено # інвестиційних операцій}}",
+    "deletedInvestmentTransactions": "{count, plural, =0 {Інвестиційні операції не видалено} one {Видалено # інвестиційну операцію} other {Видалено # інвестиційних операцій}}",
     "createdTransfers": "{count, plural, =0 {Перекази не створено} one {Створено # переказ} other {Створено # переказів}}"
   },
   "table": {

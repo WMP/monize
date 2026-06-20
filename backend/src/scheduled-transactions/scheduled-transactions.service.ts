@@ -78,15 +78,6 @@ export interface LlmUpcomingScheduledResult {
   items: LlmScheduledItem[];
 }
 
-export interface LlmScheduledListResult {
-  totalCount: number;
-  activeCount: number;
-  autoPostCount: number;
-  billCount: number;
-  depositCount: number;
-  items: LlmScheduledItem[];
-}
-
 export interface LlmScheduledFilter {
   kind?: LlmScheduledKind | "all";
   accountIds?: string[];
@@ -807,31 +798,6 @@ export class ScheduledTransactionsService {
       overdueCount: items.filter((i) => i.daysUntilDue < 0).length,
       totalUpcomingBills: sumMoney(billAmounts),
       totalUpcomingDeposits: sumMoney(depositAmounts),
-      items,
-    };
-  }
-
-  /**
-   * Curated list of all scheduled transactions (bills, deposits, transfers,
-   * investments) shaped for LLM consumption. Used by the AI Assistant and
-   * MCP `get_scheduled_transactions` tools so both return the same payload.
-   */
-  async getLlmScheduledList(
-    userId: string,
-    filter: LlmScheduledFilter = {},
-  ): Promise<LlmScheduledListResult> {
-    const rows = await this.findAll(userId);
-    const today = todayYMD();
-    const items = rows
-      .map((r) => toLlmScheduledItem(r, today))
-      .filter((item) => matchesScheduledFilter(item, filter));
-
-    return {
-      totalCount: items.length,
-      activeCount: items.filter((i) => i.isActive).length,
-      autoPostCount: items.filter((i) => i.autoPost).length,
-      billCount: items.filter((i) => i.kind === "bill").length,
-      depositCount: items.filter((i) => i.kind === "deposit").length,
       items,
     };
   }
