@@ -527,6 +527,34 @@ describe('aiChatStore', () => {
       });
     });
 
+    it('accumulates multiple pending_action events into separate cards (individual approval)', () => {
+      useAiChatStore.getState().submit('add several transactions');
+      capturedCallbacks?.onEvent({ type: 'pending_action', action });
+      capturedCallbacks?.onEvent({
+        type: 'pending_action',
+        action: { ...action, actionId: 'a2' },
+      });
+      capturedCallbacks?.onEvent({
+        type: 'content',
+        text: 'Review the cards.',
+      });
+      capturedCallbacks?.onEvent({
+        type: 'done',
+        usage: { inputTokens: 1, outputTokens: 1, toolCalls: 1 },
+      });
+      const assistant = useAiChatStore
+        .getState()
+        .messages.find((m) => m.role === 'assistant')!;
+      expect(assistant.pendingActions).toHaveLength(2);
+      expect(assistant.pendingActions!.map((a) => a.actionId)).toEqual([
+        'a1',
+        'a2',
+      ]);
+      expect(
+        assistant.pendingActions!.every((a) => a.status === 'pending'),
+      ).toBe(true);
+    });
+
     it('confirmAction posts the descriptor and marks the card confirmed', async () => {
       mockConfirmAction.mockResolvedValueOnce({
         type: 'create_transaction',

@@ -112,7 +112,20 @@
     "updateInvestmentTransactionTitle": "Modifier cette transaction de placement ?",
     "deleteInvestmentTransactionTitle": "Supprimer cette transaction de placement ?",
     "updatedInvestmentTransaction": "Transaction de placement mise à jour",
-    "deletedInvestmentTransaction": "Transaction de placement supprimée"
+    "deletedInvestmentTransaction": "Transaction de placement supprimée",
+    "createTransferTitle": "Créer ce virement ?",
+    "updateTransferTitle": "Modifier ce virement ?",
+    "createdTransfer": "Virement créé",
+    "updatedTransfer": "Virement mis à jour",
+    "fromAccount": "De",
+    "toAccount": "À",
+    "toAmount": "Montant de destination",
+    "updateTransactionsTitle": "Modifier ces transactions ?",
+    "deleteTransactionsTitle": "Supprimer ces transactions ?",
+    "createTransfersTitle": "Créer ces virements ?",
+    "updatedTransactions": "{count, plural, =0 {Aucune transaction mise à jour} one {# transaction mise à jour} other {# transactions mises à jour}}",
+    "deletedTransactions": "{count, plural, =0 {Aucune transaction supprimée} one {# transaction supprimée} other {# transactions supprimées}}",
+    "createdTransfers": "{count, plural, =0 {Aucun virement créé} one {# virement créé} other {# virements créés}}"
   },
   "table": {
     "downloadTitle": "Télécharger le tableau en CSV",

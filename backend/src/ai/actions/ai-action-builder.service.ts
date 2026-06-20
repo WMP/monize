@@ -6,6 +6,8 @@ import {
 } from "./ai-action-signing.service";
 import {
   AiActionPreviewRow,
+  BatchActionRow,
+  BatchActionsDescriptor,
   CategorizeTransactionDescriptor,
   CreateInvestmentTransactionDescriptor,
   CreateInvestmentTransactionsDescriptor,
@@ -13,7 +15,9 @@ import {
   CreateSecurityDescriptor,
   CreateTransactionDescriptor,
   CreateTransactionsDescriptor,
+  CreateTransferDescriptor,
   UpdateTransactionDescriptor,
+  UpdateTransferDescriptor,
   DeleteTransactionDescriptor,
   UpdateInvestmentTransactionDescriptor,
   DeleteInvestmentTransactionDescriptor,
@@ -25,6 +29,10 @@ import {
   UpdateTransactionPreview,
   DeleteTransactionPreview,
 } from "../../transactions/transactions.service";
+import {
+  CreateTransferPreview,
+  UpdateTransferPreview,
+} from "../../transactions/transaction-transfer.service";
 import { CreatePayeePreview } from "../../payees/payees.service";
 import {
   CreateInvestmentTransactionPreview,
@@ -74,6 +82,30 @@ export function investmentPreviewRow(
     cashCurrency: preview.cashCurrency,
     cashAmount: preview.cashAmount,
     description: preview.description,
+  };
+}
+
+/**
+ * Map a resolved transfer preview to a bulk-card display row. The "from" leg
+ * reuses accountName/amount/currencyCode; the destination leg is carried in the
+ * transfer-specific fields. Shared by both tool surfaces.
+ */
+export function transferPreviewRow(
+  preview: CreateTransferPreview | UpdateTransferPreview,
+): AiActionPreviewRow {
+  return {
+    status: "ok",
+    accountName: preview.fromAccountName,
+    fromAccountName: preview.fromAccountName,
+    amount: preview.amount,
+    currencyCode: preview.fromCurrencyCode,
+    toAccountName: preview.toAccountName,
+    toAmount: preview.toAmount,
+    toCurrencyCode: preview.toCurrencyCode,
+    transactionDate: preview.transactionDate,
+    description: preview.description,
+    payeeName: preview.payeeName,
+    payeeWillBeCreated: preview.payeeWillBeCreated,
   };
 }
 
@@ -500,6 +532,129 @@ export class AiActionBuilderService {
     return {
       actionId,
       type: "create_investment_transactions",
+      expiresAt,
+      descriptor,
+      signature: this.signingService.sign(descriptor),
+      preview: { rows: previewRows },
+    };
+  }
+
+  buildCreateTransfer(
+    userId: string,
+    preview: CreateTransferPreview,
+  ): PendingAiAction {
+    const { actionId, expiresAt } = this.newEnvelope();
+    const descriptor: CreateTransferDescriptor = {
+      type: "create_transfer",
+      userId,
+      actionId,
+      expiresAt,
+      fromAccountId: preview.fromAccountId,
+      toAccountId: preview.toAccountId,
+      amount: preview.amount,
+      transactionDate: preview.transactionDate,
+      fromCurrencyCode: preview.fromCurrencyCode,
+      toCurrencyCode: preview.toCurrencyCode,
+      exchangeRate: preview.exchangeRate,
+      toAmount: preview.toAmount,
+      description: preview.description,
+      payeeId: preview.payeeId,
+      payeeName: preview.payeeName,
+      createPayee: preview.payeeWillBeCreated,
+    };
+    return {
+      actionId,
+      type: "create_transfer",
+      expiresAt,
+      descriptor,
+      signature: this.signingService.sign(descriptor),
+      preview: {
+        fromAccountName: preview.fromAccountName,
+        accountName: preview.fromAccountName,
+        amount: preview.amount,
+        currencyCode: preview.fromCurrencyCode,
+        toAccountName: preview.toAccountName,
+        toAmount: preview.toAmount,
+        toCurrencyCode: preview.toCurrencyCode,
+        transactionDate: preview.transactionDate,
+        description: preview.description,
+        payeeName: preview.payeeName,
+        payeeWillBeCreated: preview.payeeWillBeCreated,
+      },
+    };
+  }
+
+  buildUpdateTransfer(
+    userId: string,
+    preview: UpdateTransferPreview,
+  ): PendingAiAction {
+    const { actionId, expiresAt } = this.newEnvelope();
+    const descriptor: UpdateTransferDescriptor = {
+      type: "update_transfer",
+      userId,
+      actionId,
+      expiresAt,
+      transactionId: preview.transactionId,
+      fromAccountId: preview.fromAccountId,
+      toAccountId: preview.toAccountId,
+      amount: preview.amount,
+      transactionDate: preview.transactionDate,
+      exchangeRate: preview.exchangeRate,
+      toAmount: preview.toAmount,
+      description: preview.description,
+      payeeId: preview.payeeId,
+      payeeName: preview.payeeName,
+      createPayee: preview.payeeWillBeCreated,
+    };
+    return {
+      actionId,
+      type: "update_transfer",
+      expiresAt,
+      descriptor,
+      signature: this.signingService.sign(descriptor),
+      preview: {
+        fromAccountName: preview.fromAccountName,
+        accountName: preview.fromAccountName,
+        amount: preview.amount,
+        currencyCode: preview.fromCurrencyCode,
+        toAccountName: preview.toAccountName,
+        toAmount: preview.toAmount,
+        toCurrencyCode: preview.toCurrencyCode,
+        transactionDate: preview.transactionDate,
+        description: preview.description,
+        payeeName: preview.payeeName,
+        payeeWillBeCreated: preview.payeeWillBeCreated,
+      },
+    };
+  }
+
+  /**
+   * Build the signed envelope for a generic bulk action. Maps already-resolved
+   * previews into per-row descriptors (no per-row signature -- the whole
+   * envelope is signed once) and carries the display-only `previewRows`.
+   *
+   * Standard bulk *create* keeps using `buildCreateTransactions` (its dedicated
+   * `create_transactions` descriptor/executor are unchanged for backward
+   * compatibility); this path serves bulk update, delete, and transfer-create.
+   */
+  buildBatchActions(
+    userId: string,
+    operation: BatchActionsDescriptor["operation"],
+    rows: BatchActionRow[],
+    previewRows: AiActionPreviewRow[],
+  ): PendingAiAction {
+    const { actionId, expiresAt } = this.newEnvelope();
+    const descriptor: BatchActionsDescriptor = {
+      type: "batch_actions",
+      userId,
+      actionId,
+      expiresAt,
+      operation,
+      rows,
+    };
+    return {
+      actionId,
+      type: "batch_actions",
       expiresAt,
       descriptor,
       signature: this.signingService.sign(descriptor),

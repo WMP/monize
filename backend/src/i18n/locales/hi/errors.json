@@ -64,6 +64,7 @@
     "actionExpired": "यह पुष्टि समाप्त हो गई है। कृपया फिर से पूछें।",
     "actionWriteLimit": "दैनिक AI लेखन सीमा पूरी हो गई (प्रति दिन {{ limit }})। कृपया कल पुनः प्रयास करें।",
     "actionConfirmFailed": "इस कार्रवाई की पुष्टि नहीं की जा सकी।",
+    "transferInBulkUpdate": "ट्रांसफर को बल्क अपडेट में संपादित नहीं किया जा सकता। ट्रांसफर को अलग से संपादित करें।",
     "providerConfigNotFound": "AI प्रदाता कॉन्फ़िगरेशन नहीं मिला",
     "maxProvidersExceeded": "प्रति उपयोगकर्ता अधिकतम {{ maxProvidersPerUser }} AI प्रदाता कॉन्फ़िगरेशन",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY कॉन्फ़िगर नहीं है। API कुंजियाँ सुरक्षित रूप से संग्रहीत नहीं की जा सकतीं।",

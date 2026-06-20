@@ -955,6 +955,94 @@ describe("TransactionsService", () => {
         } as any),
       ).rejects.toThrow("Category not found");
     });
+
+    it("finds or creates a payee from a free-text name when createPayeeIfMissing is set", async () => {
+      transactionsRepository.findOne.mockResolvedValue({ ...mockTx });
+      payeesService.findOrCreate.mockResolvedValue({
+        id: "payee-new",
+        name: "Corner Store",
+      });
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce({ ...mockTx });
+
+      await service.update(
+        "user-1",
+        "tx-1",
+        { payeeName: "  Corner Store  " } as any,
+        { createPayeeIfMissing: true },
+      );
+
+      expect(payeesService.findOrCreate).toHaveBeenCalledWith(
+        "user-1",
+        "Corner Store",
+      );
+      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+        Transaction,
+        "tx-1",
+        expect.objectContaining({
+          payeeId: "payee-new",
+          payeeName: "Corner Store",
+        }),
+      );
+    });
+
+    it("does not create a payee for a blank free-text name even with createPayeeIfMissing", async () => {
+      transactionsRepository.findOne.mockResolvedValue({ ...mockTx });
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce({ ...mockTx });
+
+      await service.update("user-1", "tx-1", { payeeName: "   " } as any, {
+        createPayeeIfMissing: true,
+      });
+
+      expect(payeesService.findOrCreate).not.toHaveBeenCalled();
+    });
+
+    it("nulls out nullable fields supplied as null and rewrites created_at", async () => {
+      transactionsRepository.findOne.mockResolvedValue({ ...mockTx });
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce({ ...mockTx });
+
+      await service.update("user-1", "tx-1", {
+        payeeId: null,
+        payeeName: null,
+        categoryId: null,
+        description: null,
+        referenceNumber: null,
+        createdAt: "2026-01-10T08:30:00.000Z",
+      } as any);
+
+      expect(mockQueryRunner.manager.update).toHaveBeenCalledWith(
+        Transaction,
+        "tx-1",
+        expect.objectContaining({
+          payeeId: null,
+          payeeName: null,
+          categoryId: null,
+          description: null,
+          referenceNumber: null,
+        }),
+      );
+      const createdAtCalls = mockQueryRunner.query.mock.calls.filter(
+        (c: any[]) =>
+          typeof c[0] === "string" && c[0].includes("SET created_at"),
+      );
+      expect(createdAtCalls).toHaveLength(1);
+      expect(createdAtCalls[0][1]).toEqual([
+        expect.stringContaining("2026-01-10 08:30:00"),
+        "tx-1",
+      ]);
+    });
+
+    it("rolls back and rethrows when the update transaction fails", async () => {
+      transactionsRepository.findOne.mockResolvedValue({ ...mockTx });
+      mockQueryRunner.manager.update.mockRejectedValueOnce(
+        new Error("db exploded"),
+      );
+
+      await expect(
+        service.update("user-1", "tx-1", { amount: -80 } as any),
+      ).rejects.toThrow("db exploded");
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
+    });
   });
 
   describe("remove", () => {
@@ -1362,6 +1450,46 @@ describe("TransactionsService", () => {
       await expect(service.removeTransfer("user-1", "tx-1")).rejects.toThrow(
         "Transaction is not a transfer",
       );
+    });
+  });
+
+  describe("removeAny", () => {
+    it("routes a transfer leg to removeTransfer (cascades both legs)", async () => {
+      transactionsRepository.findOne.mockResolvedValue({
+        id: "tx-from",
+        userId: "user-1",
+        isTransfer: true,
+        linkedTransactionId: "tx-to",
+        splits: [],
+      });
+      const removeTransferSpy = jest
+        .spyOn(service, "removeTransfer")
+        .mockResolvedValue(undefined);
+      const removeSpy = jest.spyOn(service, "remove").mockResolvedValue();
+
+      await service.removeAny("user-1", "tx-from");
+
+      expect(removeTransferSpy).toHaveBeenCalledWith("user-1", "tx-from");
+      expect(removeSpy).not.toHaveBeenCalled();
+    });
+
+    it("routes a plain transaction to remove", async () => {
+      transactionsRepository.findOne.mockResolvedValue({
+        id: "tx-1",
+        userId: "user-1",
+        isTransfer: false,
+        linkedTransactionId: null,
+        splits: [],
+      });
+      const removeTransferSpy = jest
+        .spyOn(service, "removeTransfer")
+        .mockResolvedValue(undefined);
+      const removeSpy = jest.spyOn(service, "remove").mockResolvedValue();
+
+      await service.removeAny("user-1", "tx-1");
+
+      expect(removeSpy).toHaveBeenCalledWith("user-1", "tx-1");
+      expect(removeTransferSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -5812,6 +5940,61 @@ describe("TransactionsService", () => {
       expect(preview.payeeMatched).toBe(true);
       expect(preview.payeeName).toBe("Whole Foods Market");
       expect(preview.payeeWillBeCreated).toBe(false);
+    });
+
+    it("flags an unmatched new payee name for creation by default", async () => {
+      transactionsRepository.findOne.mockResolvedValueOnce({ ...baseTx });
+      payeesService.resolveByName.mockResolvedValueOnce(null);
+
+      const preview = await service.previewUpdate("user-1", "tx-1", {
+        payeeName: "Brand New Vendor",
+      });
+
+      expect(preview.payeeId).toBeNull();
+      expect(preview.payeeMatched).toBe(false);
+      expect(preview.payeeName).toBe("Brand New Vendor");
+      expect(preview.payeeWillBeCreated).toBe(true);
+    });
+
+    it("keeps an unmatched new payee name as free text when createPayeeIfMissing is false", async () => {
+      transactionsRepository.findOne.mockResolvedValueOnce({ ...baseTx });
+      payeesService.resolveByName.mockResolvedValueOnce(null);
+
+      const preview = await service.previewUpdate("user-1", "tx-1", {
+        payeeName: "Brand New Vendor",
+        createPayeeIfMissing: false,
+      });
+
+      expect(preview.payeeWillBeCreated).toBe(false);
+      expect(preview.payeeName).toBe("Brand New Vendor");
+    });
+
+    it("clears the description to null when an empty string is supplied", async () => {
+      transactionsRepository.findOne.mockResolvedValueOnce({ ...baseTx });
+
+      const preview = await service.previewUpdate("user-1", "tx-1", {
+        description: "",
+      });
+
+      expect(preview.description).toBeNull();
+    });
+
+    it("falls back to null names when the stored transaction lacks category and description", async () => {
+      transactionsRepository.findOne.mockResolvedValueOnce({
+        ...baseTx,
+        categoryId: null,
+        category: null,
+        description: null,
+        payeeId: null,
+      });
+
+      const preview = await service.previewUpdate("user-1", "tx-1", {
+        amount: -99,
+      });
+
+      expect(preview.categoryName).toBeNull();
+      expect(preview.description).toBeNull();
+      expect(preview.payeeMatched).toBe(false);
     });
 
     it("rejects editing a transfer", async () => {

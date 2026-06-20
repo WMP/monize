@@ -2897,4 +2897,31 @@ describe("AccountsService", () => {
       // Should not throw
     });
   });
+
+  describe("resolveByName", () => {
+    it("returns the open account matching the name case-insensitively", async () => {
+      jest.spyOn(service, "findAll").mockResolvedValue([
+        { id: "a1", name: "Checking", currencyCode: "USD" },
+        { id: "a2", name: "Savings", currencyCode: "CAD" },
+      ] as never);
+
+      const result = await service.resolveByName("user-1", "checking");
+      expect(service.findAll).toHaveBeenCalledWith("user-1", false);
+      expect(result).toEqual({
+        id: "a1",
+        name: "Checking",
+        currencyCode: "USD",
+      });
+    });
+
+    it("returns undefined when no open account matches", async () => {
+      jest
+        .spyOn(service, "findAll")
+        .mockResolvedValue([
+          { id: "a1", name: "Checking", currencyCode: "USD" },
+        ] as never);
+      const result = await service.resolveByName("user-1", "Nope");
+      expect(result).toBeUndefined();
+    });
+  });
 });

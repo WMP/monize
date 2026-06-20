@@ -2,18 +2,17 @@ import { Injectable } from "@nestjs/common";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { TransactionsService } from "../../transactions/transactions.service";
+import { PayeesService } from "../../payees/payees.service";
 import { TransactionAnalyticsService } from "../../transactions/transaction-analytics.service";
+import {
+  TransactionToolPrepService,
+  CreateRowInput,
+  TransferRowInput,
+  UpdateRowInput,
+} from "../../transactions/transaction-tool-prep.service";
 import { AiRelayService } from "../../ai/relay/ai-relay.service";
-import {
-  AiActionBuilderService,
-  transactionPreviewRow,
-} from "../../ai/actions/ai-action-builder.service";
-import {
-  AiActionPreviewRow,
-  MAX_BULK_ACTION_ROWS,
-} from "../../ai/actions/ai-action.types";
-import { BulkCreateSkip, bulkSkipReason } from "../../common/bulk-create.types";
-import { CreateTransactionPreview } from "../../transactions/transactions.service";
+import { AiActionBuilderService } from "../../ai/actions/ai-action-builder.service";
+import { PendingAiAction } from "../../ai/actions/ai-action.types";
 import { RELAY_PREVIEW_SHOWN } from "../mcp-relay-confirm";
 import {
   UserContextResolver,
@@ -36,13 +35,31 @@ import {
   getIncomeSummaryOutput,
   comparePeriodsOutput,
   getTransfersOutput,
-  createTransactionOutput,
-  createTransactionsOutput,
-  categorizeTransactionOutput,
-  updateTransactionOutput,
-  deleteTransactionOutput,
+  manageTransactionsOutput,
 } from "../tool-output-schemas";
-import { READ_ONLY, CREATE, UPDATE, DELETE } from "../mcp-annotations";
+import { READ_ONLY, WRITE } from "../mcp-annotations";
+
+type ManageOperation = "create" | "update" | "delete";
+type ApprovalMode = "bulk" | "individual";
+
+interface ManageItem {
+  // create (standard)
+  accountName?: string;
+  // create (transfer)
+  fromAccountName?: string;
+  toAccountName?: string;
+  // update / delete
+  transactionId?: string;
+  // shared
+  amount?: number;
+  date?: string;
+  payeeName?: string;
+  categoryName?: string;
+  description?: string;
+  createPayeeIfMissing?: boolean;
+  exchangeRate?: number;
+  toAmount?: number;
+}
 
 @Injectable()
 export class McpTransactionsTools {
@@ -50,9 +67,11 @@ export class McpTransactionsTools {
 
   constructor(
     private readonly transactionsService: TransactionsService,
+    private readonly payeesService: PayeesService,
     private readonly analyticsService: TransactionAnalyticsService,
     private readonly relayService: AiRelayService,
     private readonly actionBuilder: AiActionBuilderService,
+    private readonly prepService: TransactionToolPrepService,
   ) {}
 
   register(server: McpServer, resolve: UserContextResolver) {
@@ -432,522 +451,120 @@ export class McpTransactionsTools {
     );
 
     server.registerTool(
-      "create_transaction",
+      "manage_transactions",
       {
-        title: "Create transaction",
-        annotations: CREATE,
+        title: "Manage transactions",
+        annotations: WRITE,
         description:
-          "Create a new transaction. The payee name is matched to an existing payee (by name, case-insensitive, or alias) and the transaction is linked to it, inheriting its default category when no category is given. If no payee matches, a new payee is created by default; set createPayeeIfMissing=false to instead record the name as free text without creating a payee (e.g. for a one-time payee). Set dryRun=true to preview (the preview reports payeeMatched and payeeWillBeCreated) without saving. When dryRun is false, the user is asked to confirm before the transaction is saved (clients that support it show a confirmation dialog).",
+          "Create, update, or delete the user's cash transactions (including transfers between their own accounts). Accepts NAMES for account, category, and payee -- they are resolved internally, so you do NOT need to call get_accounts/get_categories first. operation = 'create' | 'update' | 'delete' with an items array (1-25 rows). " +
+          "create (standard): { accountName, amount, date, payeeName?, categoryName?, description?, createPayeeIfMissing? } (amount positive=income, negative=expense). " +
+          "create (transfer): { fromAccountName, toAccountName, amount, date, description?, payeeName?, createPayeeIfMissing?, exchangeRate?, toAmount? } -- an item is a transfer when toAccountName is present; payeeName is an optional custom label matched to an existing payee (or created if missing, like a normal transaction) and applied to both legs (omit to auto-generate 'Transfer to/from <account>'). " +
+          "update: { transactionId, amount?, date?, payeeName?, categoryName?, description?, createPayeeIfMissing? } (>=1 field; a category-only change is transactionId + categoryName; transfers auto-detected; payeeName sets the transfer's custom label, matched to an existing payee or created if missing). " +
+          "delete: { transactionId } (removes linked transfer legs / split children too). " +
+          "approvalMode = 'bulk' (default; one confirmation for the whole batch) or 'individual' (one confirmation per item); ignored for a single item. Set dryRun=true to preview every item without saving. The user is asked to confirm before anything is saved (web chat card via relay, or an MCP confirmation dialog).",
         inputSchema: {
-          accountId: z.string().uuid().describe("Account ID"),
-          amount: z
-            .number()
-            .min(-999999999999)
-            .max(999999999999)
-            .describe("Amount (positive for income, negative for expenses)"),
-          date: z.string().max(10).describe("Transaction date (YYYY-MM-DD)"),
-          payeeName: z
-            .string()
-            .max(100)
-            .optional()
-            .describe(
-              "Payee name. Matched to an existing payee when one exists; otherwise recorded as a new free-text name.",
-            ),
-          categoryId: z.string().uuid().optional().describe("Category ID"),
-          description: z
-            .string()
-            .max(500)
-            .optional()
-            .describe("Description or memo"),
-          createPayeeIfMissing: z
-            .boolean()
-            .optional()
-            .default(true)
-            .describe(
-              "When the payee name matches no existing payee, create a new payee (true, the default) or record the name as free text without creating a payee (false). Ignored when the name matches an existing payee.",
-            ),
-          dryRun: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe(
-              "If true, validate and return a preview without creating the transaction",
-            ),
-        },
-        outputSchema: createTransactionOutput,
-      },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "write");
-        if (check.error) return check.result;
-
-        // Rate limit check
-        const limitCheck = this.writeLimiter.checkLimit(ctx.userId);
-        if (!limitCheck.allowed) {
-          return toolError(
-            `Daily write limit reached (${limitCheck.limit} operations per day). Try again tomorrow.`,
-          );
-        }
-
-        try {
-          // Default to creating a payee for an unmatched name (the SDK applies
-          // the same schema default; this keeps direct callers/tests consistent).
-          const createPayeeIfMissing = args.createPayeeIfMissing ?? true;
-
-          // Shared preview: validates account + category ownership, resolves
-          // names, and sanitizes strings (matches @SanitizeHtml() DTO behavior)
-          // identically to the AI Assistant confirmation flow.
-          const preview = await this.transactionsService.previewCreate(
-            ctx.userId,
-            {
-              accountId: args.accountId,
-              amount: args.amount,
-              transactionDate: args.date,
-              payeeName: args.payeeName,
-              categoryId: args.categoryId,
-              description: args.description,
-              createPayeeIfMissing,
-            },
-          );
-
-          // Surface whether the payee resolved to an existing record and, when
-          // it did not, whether a new payee will be created or the name kept as
-          // free text -- so the model can describe what will happen.
-          const payeeMessage =
-            preview.payeeName && !preview.payeeMatched
-              ? preview.payeeWillBeCreated
-                ? ` No existing payee matches "${preview.payeeName}" -- a new payee will be created and linked. Pass createPayeeIfMissing=false to keep it as a free-text name instead.`
-                : ` No existing payee matches "${preview.payeeName}" -- it will be recorded as a free-text name (no payee created).`
-              : "";
-
-          // Dry-run mode: return preview without persisting
-          if (args.dryRun) {
-            return toolResult({
-              dryRun: true,
-              preview: {
-                accountId: preview.accountId,
-                accountName: preview.accountName,
-                amount: preview.amount,
-                date: preview.transactionDate,
-                payeeId: preview.payeeId,
-                payeeName: preview.payeeName,
-                payeeMatched: preview.payeeMatched,
-                payeeWillBeCreated: preview.payeeWillBeCreated,
-                categoryId: preview.categoryId,
-                categoryName: preview.categoryName,
-                description: preview.description,
-                currencyCode: preview.currencyCode,
-              },
-              message:
-                "This is a preview. Call again with dryRun=false to create the transaction." +
-                payeeMessage,
-            });
-          }
-
-          // When this call is serving a prompt the user typed in the Monize web
-          // chat (reverse relay), confirm there with the same approve/reject
-          // card the native AI Assistant uses, instead of an elicitation in the
-          // agent's MCP client. The browser commits on approval; nothing is
-          // written here.
-          const pendingAction = this.actionBuilder.buildCreateTransaction(
-            ctx.userId,
-            preview,
-          );
-          if (this.relayService.emitPendingAction(ctx.userId, pendingAction)) {
-            return toolResult(RELAY_PREVIEW_SHOWN);
-          }
-
-          // Ask the client to confirm before persisting (AI Assistant parity).
-          // Falls through to the write only when the client cannot show a dialog.
-          const confirmLines = [
-            "Create this transaction?",
-            `Account: ${preview.accountName}`,
-            `Amount: ${preview.amount} ${preview.currencyCode}`,
-            `Date: ${preview.transactionDate}`,
-          ];
-          if (preview.payeeName) {
-            const payeeSuffix = preview.payeeMatched
-              ? ""
-              : preview.payeeWillBeCreated
-                ? " (new payee)"
-                : " (free text)";
-            confirmLines.push(`Payee: ${preview.payeeName}${payeeSuffix}`);
-          }
-          if (preview.categoryName) {
-            confirmLines.push(`Category: ${preview.categoryName}`);
-          }
-          const confirmation = await confirmWrite(
-            server,
-            confirmLines.join("\n"),
-            extra.requestId,
-          );
-          if (confirmation === "declined") {
-            return toolError(
-              "Cancelled: the confirmation was declined, so no transaction was created. Do not retry unless the user asks again.",
-            );
-          }
-
-          const transaction = await this.transactionsService.create(
-            ctx.userId,
-            {
-              accountId: preview.accountId,
-              amount: preview.amount,
-              transactionDate: preview.transactionDate,
-              payeeId: preview.payeeId ?? undefined,
-              payeeName: preview.payeeName ?? undefined,
-              categoryId: preview.categoryId ?? undefined,
-              description: preview.description ?? undefined,
-              currencyCode: preview.currencyCode,
-            },
-            { createPayeeIfMissing },
-          );
-
-          this.writeLimiter.record(ctx.userId, "create_transaction");
-
-          return toolResult({
-            id: transaction.id,
-            date: transaction.transactionDate,
-            // amount is a decimal column with no numeric transformer, so the
-            // entity carries it as a string; coerce to a number so it satisfies
-            // the tool's output schema (and matches the dry-run preview).
-            amount: Number(transaction.amount),
-            payeeId: transaction.payeeId,
-            payeeName: transaction.payeeName,
-            payeeMatched: preview.payeeMatched,
-            // True when an unmatched name resulted in a newly linked payee.
-            payeeCreated: !preview.payeeMatched && Boolean(transaction.payeeId),
-            status: transaction.status,
-          });
-        } catch (err: unknown) {
-          return safeToolError(err);
-        }
-      },
-    );
-
-    server.registerTool(
-      "create_transactions",
-      {
-        title: "Create transactions (bulk)",
-        annotations: CREATE,
-        description:
-          "Create SEVERAL transactions at once from a list or pasted table (max 25 rows). Amount is positive for income, negative for expenses. Each payee name is matched to an existing payee or, per createPayeeIfMissing, created or kept as free text. Best-effort: rows that fail are reported in `skipped` and do not abort the rest. Set dryRun=true to preview every row without saving. When dryRun is false the user confirms once for the whole batch (web chat card via relay, or an MCP confirmation dialog). For a single transaction, use create_transaction. Shares the bulk logic with the AI Assistant's create_transactions tool.",
-        inputSchema: {
-          rows: z
+          operation: z
+            .enum(["create", "update", "delete"])
+            .describe("The operation to perform on every item."),
+          items: z
             .array(
               z.object({
-                accountId: z.string().uuid().describe("Account ID"),
+                accountName: z
+                  .string()
+                  .max(100)
+                  .optional()
+                  .describe("create (standard): account name."),
+                fromAccountName: z
+                  .string()
+                  .max(100)
+                  .optional()
+                  .describe("create (transfer): source account name."),
+                toAccountName: z
+                  .string()
+                  .max(100)
+                  .optional()
+                  .describe(
+                    "create (transfer): destination account name (presence makes the item a transfer).",
+                  ),
+                transactionId: z
+                  .string()
+                  .uuid()
+                  .optional()
+                  .describe("update/delete: transaction ID."),
                 amount: z
                   .number()
                   .min(-999999999999)
                   .max(999999999999)
+                  .optional()
                   .describe(
-                    "Amount (positive for income, negative for expenses)",
+                    "Signed amount (standard create/update) or positive transfer amount.",
                   ),
                 date: z
                   .string()
                   .max(10)
-                  .describe("Transaction date (YYYY-MM-DD)"),
+                  .optional()
+                  .describe("Transaction date (YYYY-MM-DD)."),
                 payeeName: z
                   .string()
                   .max(100)
                   .optional()
-                  .describe("Payee name"),
-                categoryId: z
+                  .describe(
+                    "Optional payee name (standard create/update; or a custom transfer label for create/update transfer). Matched to an existing payee when one exists, otherwise handled per createPayeeIfMissing. Omit (transfer) to auto-generate 'Transfer to/from <account>'.",
+                  ),
+                categoryName: z
                   .string()
-                  .uuid()
+                  .max(100)
                   .optional()
-                  .describe("Category ID"),
-                description: z.string().max(500).optional(),
-                createPayeeIfMissing: z.boolean().optional().default(true),
+                  .describe(
+                    'Optional category name (standard create/update; "Parent: Child" for a subcategory).',
+                  ),
+                description: z
+                  .string()
+                  .max(500)
+                  .optional()
+                  .describe("Optional description or memo."),
+                createPayeeIfMissing: z
+                  .boolean()
+                  .optional()
+                  .describe(
+                    "When the payee name matches no existing payee, create a new payee (default true) or keep as free text (false). Applies to standard and transfer create/update.",
+                  ),
+                exchangeRate: z
+                  .number()
+                  .min(0)
+                  .max(1_000_000)
+                  .optional()
+                  .describe(
+                    "create (transfer): exchange rate for a cross-currency transfer.",
+                  ),
+                toAmount: z
+                  .number()
+                  .min(-999999999999)
+                  .max(999999999999)
+                  .optional()
+                  .describe(
+                    "create (transfer): explicit destination amount (overrides exchangeRate).",
+                  ),
               }),
             )
             .min(1)
-            .max(MAX_BULK_ACTION_ROWS)
-            .describe("The transactions to create (1-25 rows)."),
-          dryRun: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe(
-              "If true, validate and return a per-row preview without creating anything.",
-            ),
-        },
-        outputSchema: createTransactionsOutput,
-      },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "write");
-        if (check.error) return check.result;
-
-        try {
-          const okPreviews: CreateTransactionPreview[] = [];
-          const okOriginalIndex: number[] = [];
-          const okCreatePayee: boolean[] = [];
-          const previewRows: AiActionPreviewRow[] = [];
-          const skipped: BulkCreateSkip[] = [];
-          for (let i = 0; i < args.rows.length; i++) {
-            const row = args.rows[i];
-            const createPayeeIfMissing = row.createPayeeIfMissing ?? true;
-            try {
-              const preview = await this.transactionsService.previewCreate(
-                ctx.userId,
-                {
-                  accountId: row.accountId,
-                  amount: row.amount,
-                  transactionDate: row.date,
-                  payeeName: row.payeeName,
-                  categoryId: row.categoryId,
-                  description: row.description,
-                  createPayeeIfMissing,
-                },
-              );
-              okPreviews.push(preview);
-              okOriginalIndex.push(i);
-              okCreatePayee.push(createPayeeIfMissing);
-              previewRows.push(transactionPreviewRow(preview));
-            } catch (err) {
-              const reason = bulkSkipReason(err);
-              skipped.push({ index: i, reason });
-              previewRows.push({
-                status: "error",
-                amount: row.amount,
-                transactionDate: row.date,
-                payeeName: row.payeeName ?? null,
-                description: row.description ?? null,
-                error: reason,
-              });
-            }
-          }
-
-          if (args.dryRun) {
-            return toolResult({
-              dryRun: true,
-              preview: { rows: previewRows, skipped },
-              message:
-                "This is a preview. Call again with dryRun=false to create the transactions.",
-            });
-          }
-
-          if (okPreviews.length === 0) {
-            return toolError(
-              "None of the transactions could be prepared. Check the account, category, and date for each row.",
-            );
-          }
-
-          const limitCheck = this.writeLimiter.checkLimit(ctx.userId);
-          if (limitCheck.currentCount + okPreviews.length > limitCheck.limit) {
-            return toolError(
-              `Daily write limit reached (${limitCheck.limit} operations per day). Try again tomorrow.`,
-            );
-          }
-
-          // Relay first: show one approve/reject card in the web chat.
-          const pendingAction = this.actionBuilder.buildCreateTransactions(
-            ctx.userId,
-            okPreviews,
-            previewRows,
-          );
-          if (this.relayService.emitPendingAction(ctx.userId, pendingAction)) {
-            return toolResult(RELAY_PREVIEW_SHOWN);
-          }
-
-          const skippedNote = skipped.length
-            ? ` (${skipped.length} row(s) could not be prepared and will be skipped)`
-            : "";
-          const confirmation = await confirmWrite(
-            server,
-            `Create ${okPreviews.length} transaction(s)?${skippedNote}`,
-            extra.requestId,
-          );
-          if (confirmation === "declined") {
-            return toolError(
-              "Cancelled: the confirmation was declined, so no transactions were created. Do not retry unless the user asks again.",
-            );
-          }
-
-          const result = await this.transactionsService.createBulk(
-            ctx.userId,
-            okPreviews.map((preview, i) => ({
-              dto: {
-                accountId: preview.accountId,
-                amount: preview.amount,
-                transactionDate: preview.transactionDate,
-                payeeId: preview.payeeId ?? undefined,
-                payeeName: preview.payeeName ?? undefined,
-                categoryId: preview.categoryId ?? undefined,
-                description: preview.description ?? undefined,
-                currencyCode: preview.currencyCode,
-              },
-              createPayeeIfMissing: okCreatePayee[i],
-            })),
-          );
-          for (const s of result.skipped) {
-            skipped.push({
-              index: okOriginalIndex[s.index],
-              reason: s.reason,
-            });
-          }
-          for (let i = 0; i < result.created.length; i++) {
-            this.writeLimiter.record(ctx.userId, "create_transaction");
-          }
-
-          return toolResult({
-            created: result.created.map((t) => ({
-              id: t.id,
-              date: t.transactionDate,
-              amount: Number(t.amount),
-            })),
-            ids: result.created.map((t) => t.id),
-            count: result.created.length,
-            skipped,
-          });
-        } catch (err: unknown) {
-          return safeToolError(err);
-        }
-      },
-    );
-
-    server.registerTool(
-      "categorize_transaction",
-      {
-        title: "Categorize transaction",
-        annotations: UPDATE,
-        description:
-          "Assign a category to a transaction. The user is asked to confirm before the change is saved (clients that support it show a confirmation dialog).",
-        inputSchema: {
-          transactionId: z.string().uuid().describe("Transaction ID"),
-          categoryId: z.string().uuid().describe("Category ID"),
-        },
-        outputSchema: categorizeTransactionOutput,
-      },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "write");
-        if (check.error) return check.result;
-
-        // Rate limit check
-        const limitCheck = this.writeLimiter.checkLimit(ctx.userId);
-        if (!limitCheck.allowed) {
-          return toolError(
-            `Daily write limit reached (${limitCheck.limit} operations per day). Try again tomorrow.`,
-          );
-        }
-
-        try {
-          // Resolve friendly details (and validate ownership) so the client's
-          // confirmation dialog shows what is changing, mirroring the AI
-          // Assistant card.
-          const preview = await this.transactionsService.previewCategorize(
-            ctx.userId,
-            args.transactionId,
-            args.categoryId,
-          );
-          // Relay path: show the approve/reject card in the web chat (see
-          // create_transaction). Nothing is written here on success.
-          const pendingAction = this.actionBuilder.buildCategorizeTransaction(
-            ctx.userId,
-            preview,
-          );
-          if (this.relayService.emitPendingAction(ctx.userId, pendingAction)) {
-            return toolResult(RELAY_PREVIEW_SHOWN);
-          }
-
-          const confirmLines = [
-            "Apply this category change?",
-            preview.payeeName ? `Payee: ${preview.payeeName}` : null,
-            `Amount: ${preview.amount}`,
-            `Date: ${preview.transactionDate}`,
-            `Category: ${preview.currentCategoryName ?? "Uncategorized"} -> ${preview.newCategoryName}`,
-          ].filter((line): line is string => line !== null);
-          const confirmation = await confirmWrite(
-            server,
-            confirmLines.join("\n"),
-            extra.requestId,
-          );
-          if (confirmation === "declined") {
-            return toolError(
-              "Cancelled: the confirmation was declined, so the category was not changed. Do not retry unless the user asks again.",
-            );
-          }
-
-          const transaction = await this.transactionsService.update(
-            ctx.userId,
-            args.transactionId,
-            { categoryId: args.categoryId },
-          );
-
-          this.writeLimiter.record(ctx.userId, "categorize_transaction");
-
-          return toolResult({
-            id: transaction.id,
-            categoryId: transaction.categoryId,
-            message: "Transaction categorized successfully",
-          });
-        } catch (err: unknown) {
-          return safeToolError(err);
-        }
-      },
-    );
-
-    server.registerTool(
-      "update_transaction",
-      {
-        title: "Update transaction",
-        annotations: UPDATE,
-        description:
-          "Edit an existing transaction. Pass only the fields to change; omitted fields keep their current value. Amount is positive for income, negative for expenses. A changed payee name is matched to an existing payee, otherwise created (createPayeeIfMissing=true, default) or kept as free text (false). Transfers and split transactions cannot be edited here. Set dryRun=true to preview the resulting state without saving. When dryRun is false, the user is asked to confirm before the change is saved (clients that support it show a confirmation dialog). Shares the edit logic with the AI Assistant's update_transaction tool.",
-        inputSchema: {
-          transactionId: z
-            .string()
-            .uuid()
-            .describe("ID of the transaction to edit"),
-          amount: z
-            .number()
-            .min(-999999999999)
-            .max(999999999999)
+            .max(25)
+            .describe("The rows to act on (1-25)."),
+          approvalMode: z
+            .enum(["bulk", "individual"])
             .optional()
             .describe(
-              "New amount (positive for income, negative for expenses). Omit to keep.",
-            ),
-          date: z
-            .string()
-            .max(10)
-            .optional()
-            .describe("New transaction date (YYYY-MM-DD). Omit to keep."),
-          payeeName: z
-            .string()
-            .max(100)
-            .optional()
-            .describe("New payee name. Omit to keep the current payee."),
-          categoryId: z
-            .string()
-            .uuid()
-            .optional()
-            .describe("New category ID. Omit to keep the current category."),
-          description: z
-            .string()
-            .max(500)
-            .optional()
-            .describe("New description or memo. Omit to keep."),
-          createPayeeIfMissing: z
-            .boolean()
-            .optional()
-            .default(true)
-            .describe(
-              "When a new payee name matches no existing payee, create a new payee (true, default) or record it as free text (false). Ignored when the name matches or no payee change is requested.",
+              "How multi-item batches are approved: 'bulk' (default) one card for all; 'individual' one card per item. Ignored for a single item.",
             ),
           dryRun: z
             .boolean()
             .optional()
             .default(false)
             .describe(
-              "If true, validate and return a preview of the resulting transaction without saving.",
+              "If true, validate and return a per-item preview without saving anything.",
             ),
         },
-        outputSchema: updateTransactionOutput,
+        outputSchema: manageTransactionsOutput,
       },
       async (args, extra) => {
         const ctx = resolve(extra.sessionId);
@@ -955,218 +572,799 @@ export class McpTransactionsTools {
         const check = requireScope(ctx.scopes, "write");
         if (check.error) return check.result;
 
-        const limitCheck = this.writeLimiter.checkLimit(ctx.userId);
-        if (!limitCheck.allowed) {
-          return toolError(
-            `Daily write limit reached (${limitCheck.limit} operations per day). Try again tomorrow.`,
-          );
-        }
+        const operation = args.operation as ManageOperation;
+        const items = args.items as ManageItem[];
+        const approvalMode = (args.approvalMode ?? "bulk") as ApprovalMode;
 
         try {
-          const createPayeeIfMissing = args.createPayeeIfMissing ?? true;
-
-          const preview = await this.transactionsService.previewUpdate(
-            ctx.userId,
-            args.transactionId,
-            {
-              amount: args.amount,
-              transactionDate: args.date,
-              payeeName: args.payeeName,
-              categoryId: args.categoryId,
-              description: args.description,
-              createPayeeIfMissing,
-            },
-          );
-
           if (args.dryRun) {
-            return toolResult({
-              dryRun: true,
-              preview: {
-                transactionId: preview.transactionId,
-                accountId: preview.accountId,
-                accountName: preview.accountName,
-                amount: preview.amount,
-                date: preview.transactionDate,
-                payeeId: preview.payeeId,
-                payeeName: preview.payeeName,
-                payeeMatched: preview.payeeMatched,
-                payeeWillBeCreated: preview.payeeWillBeCreated,
-                categoryId: preview.categoryId,
-                categoryName: preview.categoryName,
-                description: preview.description,
-                currencyCode: preview.currencyCode,
-              },
-              message:
-                "This is a preview. Call again with dryRun=false to apply the change.",
-            });
+            return this.manageDryRun(ctx.userId, operation, items);
           }
-
-          const pendingAction = this.actionBuilder.buildUpdateTransaction(
-            ctx.userId,
-            preview,
-          );
-          if (this.relayService.emitPendingAction(ctx.userId, pendingAction)) {
-            return toolResult(RELAY_PREVIEW_SHOWN);
-          }
-
-          const confirmLines = [
-            "Apply this transaction edit?",
-            `Account: ${preview.accountName}`,
-            `Amount: ${preview.amount} ${preview.currencyCode}`,
-            `Date: ${preview.transactionDate}`,
-          ];
-          if (preview.payeeName) {
-            const payeeSuffix = preview.payeeMatched
-              ? ""
-              : preview.payeeWillBeCreated
-                ? " (new payee)"
-                : " (free text)";
-            confirmLines.push(`Payee: ${preview.payeeName}${payeeSuffix}`);
-          }
-          if (preview.categoryName) {
-            confirmLines.push(`Category: ${preview.categoryName}`);
-          }
-          const confirmation = await confirmWrite(
-            server,
-            confirmLines.join("\n"),
-            extra.requestId,
-          );
-          if (confirmation === "declined") {
-            return toolError(
-              "Cancelled: the confirmation was declined, so the transaction was not changed. Do not retry unless the user asks again.",
+          if (operation === "create") {
+            return await this.manageCreate(
+              server,
+              ctx.userId,
+              items,
+              approvalMode,
+              extra.requestId,
             );
           }
-
-          const transaction = await this.transactionsService.update(
+          if (operation === "update") {
+            return await this.manageUpdate(
+              server,
+              ctx.userId,
+              items,
+              approvalMode,
+              extra.requestId,
+            );
+          }
+          return await this.manageDelete(
+            server,
             ctx.userId,
-            args.transactionId,
-            {
-              amount: preview.amount,
-              transactionDate: preview.transactionDate,
-              payeeId: preview.payeeId ?? undefined,
-              payeeName: preview.payeeName ?? undefined,
-              categoryId: preview.categoryId ?? undefined,
-              description: preview.description ?? undefined,
-              currencyCode: preview.currencyCode,
-            },
-            { createPayeeIfMissing },
+            items,
+            approvalMode,
+            extra.requestId,
           );
-
-          this.writeLimiter.record(ctx.userId, "update_transaction");
-
-          return toolResult({
-            id: transaction.id,
-            date: transaction.transactionDate,
-            amount: Number(transaction.amount),
-            payeeId: transaction.payeeId,
-            payeeName: transaction.payeeName,
-            categoryId: transaction.categoryId,
-          });
         } catch (err: unknown) {
           return safeToolError(err);
         }
       },
     );
+  }
 
-    server.registerTool(
-      "delete_transaction",
-      {
-        title: "Delete transaction",
-        annotations: DELETE,
-        description:
-          "Delete an existing transaction. Deleting a transfer or split transaction removes its linked legs/children too. Set dryRun=true to preview what would be deleted without removing it. When dryRun is false, the user is asked to confirm before the transaction is removed (clients that support it show a confirmation dialog). Shares the delete logic with the AI Assistant's delete_transaction tool.",
-        inputSchema: {
-          transactionId: z
-            .string()
-            .uuid()
-            .describe("ID of the transaction to delete"),
-          dryRun: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe(
-              "If true, return a preview of the transaction without deleting it.",
-            ),
+  // -------------------------------------------------------------------------
+  // manage_transactions helpers
+  // -------------------------------------------------------------------------
+
+  private isTransferItem(item: ManageItem): boolean {
+    return item.toAccountName !== undefined;
+  }
+
+  private toCreateRow(item: ManageItem): CreateRowInput {
+    return {
+      accountName: item.accountName as string,
+      amount: item.amount as number,
+      date: item.date as string,
+      payeeName: item.payeeName,
+      categoryName: item.categoryName,
+      description: item.description,
+      createPayeeIfMissing: item.createPayeeIfMissing,
+    };
+  }
+
+  private toTransferRow(item: ManageItem): TransferRowInput {
+    return {
+      fromAccountName: item.fromAccountName as string,
+      toAccountName: item.toAccountName as string,
+      amount: item.amount as number,
+      date: item.date as string,
+      description: item.description,
+      payeeName: item.payeeName,
+      createPayeeIfMissing: item.createPayeeIfMissing,
+      exchangeRate: item.exchangeRate,
+      toAmount: item.toAmount,
+    };
+  }
+
+  /**
+   * Resolve the final payee id for a transfer preview/descriptor, mirroring the
+   * normal cash-transaction flow: use the matched id, otherwise find-or-create
+   * from the custom label when opted in. Returns undefined when no payee should
+   * be linked.
+   */
+  private async resolveTransferPayeeId(
+    userId: string,
+    src: {
+      payeeId: string | null;
+      payeeName: string | null;
+      payeeWillBeCreated?: boolean;
+      createPayee?: boolean;
+    },
+  ): Promise<string | undefined> {
+    let payeeId = src.payeeId ?? undefined;
+    const shouldCreate = src.payeeWillBeCreated ?? src.createPayee ?? false;
+    if (!payeeId && shouldCreate && src.payeeName) {
+      const payee = await this.payeesService.findOrCreate(
+        userId,
+        src.payeeName,
+      );
+      payeeId = payee.id;
+    }
+    return payeeId;
+  }
+
+  private toUpdateRow(item: ManageItem): UpdateRowInput {
+    return {
+      transactionId: item.transactionId as string,
+      amount: item.amount,
+      date: item.date,
+      payeeName: item.payeeName,
+      categoryName: item.categoryName,
+      description: item.description,
+      createPayeeIfMissing: item.createPayeeIfMissing,
+    };
+  }
+
+  /**
+   * Reserve N writes against the daily cap or return an error result. Returns
+   * undefined when allowed.
+   */
+  private checkWriteBudget(userId: string, count: number) {
+    const limitCheck = this.writeLimiter.checkLimit(userId);
+    if (limitCheck.currentCount + count > limitCheck.limit) {
+      return toolError(
+        `Daily write limit reached (${limitCheck.limit} operations per day). Try again tomorrow.`,
+      );
+    }
+    return undefined;
+  }
+
+  /** Dry-run preview for every item without writing. */
+  private async manageDryRun(
+    userId: string,
+    operation: ManageOperation,
+    items: ManageItem[],
+  ) {
+    if (operation === "create") {
+      const std = await this.prepService.prepareCreate(
+        userId,
+        items
+          .filter((i) => !this.isTransferItem(i))
+          .map((i) => this.toCreateRow(i)),
+      );
+      const xfer = await this.prepService.prepareCreateTransfer(
+        userId,
+        items
+          .filter((i) => this.isTransferItem(i))
+          .map((i) => this.toTransferRow(i)),
+      );
+      return toolResult({
+        dryRun: true,
+        operation,
+        previews: [...std.previewRows, ...xfer.previewRows],
+        skipped: [...std.skipped, ...xfer.skipped],
+        message:
+          "This is a preview. Call again with dryRun=false to apply the changes.",
+      });
+    }
+    if (operation === "update") {
+      const bulk = await this.prepService.prepareUpdateBulk(
+        userId,
+        items.map((i) => this.toUpdateRow(i)),
+      );
+      return toolResult({
+        dryRun: true,
+        operation,
+        previews: bulk.previewRows,
+        skipped: bulk.skipped,
+        message:
+          "This is a preview. Call again with dryRun=false to apply the changes.",
+      });
+    }
+    const bulk = await this.prepService.prepareDeleteBulk(
+      userId,
+      items.map((i) => i.transactionId as string),
+    );
+    return toolResult({
+      dryRun: true,
+      operation,
+      previews: bulk.previewRows,
+      skipped: bulk.skipped,
+      message:
+        "This is a preview. Call again with dryRun=false to delete the transactions.",
+    });
+  }
+
+  /**
+   * Relay-first then confirmWrite for a single signed card. Returns the relay
+   * result when handled there, otherwise the elicitation outcome.
+   */
+  private async emitOrConfirm(
+    server: McpServer,
+    userId: string,
+    pendingAction: PendingAiAction,
+    confirmMessage: string,
+    requestId: unknown,
+  ): Promise<"relay" | "accepted" | "declined"> {
+    if (this.relayService.emitPendingAction(userId, pendingAction)) {
+      return "relay";
+    }
+    const confirmation = await confirmWrite(
+      server,
+      confirmMessage,
+      requestId as never,
+    );
+    return confirmation === "declined" ? "declined" : "accepted";
+  }
+
+  private async manageCreate(
+    server: McpServer,
+    userId: string,
+    items: ManageItem[],
+    approvalMode: ApprovalMode,
+    requestId: unknown,
+  ) {
+    const single = items.length === 1;
+    const standardItems = items.filter((i) => !this.isTransferItem(i));
+    const transferItems = items.filter((i) => this.isTransferItem(i));
+
+    const std = await this.prepService.prepareCreate(
+      userId,
+      standardItems.map((i) => this.toCreateRow(i)),
+    );
+    const xfer = await this.prepService.prepareCreateTransfer(
+      userId,
+      transferItems.map((i) => this.toTransferRow(i)),
+    );
+
+    const okCount = std.okPreviews.length + xfer.okPreviews.length;
+    if (okCount === 0) {
+      return toolError(
+        "None of the transactions could be prepared. Check the account, category, and date for each row.",
+      );
+    }
+
+    const budget = this.checkWriteBudget(userId, okCount);
+    if (budget) return budget;
+
+    if (single) {
+      if (std.okPreviews.length === 1) {
+        const preview = std.okPreviews[0];
+        const action = this.actionBuilder.buildCreateTransaction(
+          userId,
+          preview,
+        );
+        const outcome = await this.emitOrConfirm(
+          server,
+          userId,
+          action,
+          `Create this transaction?\nAccount: ${preview.accountName}\nAmount: ${preview.amount} ${preview.currencyCode}\nDate: ${preview.transactionDate}`,
+          requestId,
+        );
+        if (outcome === "relay") return toolResult(RELAY_PREVIEW_SHOWN);
+        if (outcome === "declined")
+          return toolError(
+            "Cancelled: the confirmation was declined, so no transaction was created.",
+          );
+        const tx = await this.transactionsService.create(
+          userId,
+          {
+            accountId: preview.accountId,
+            amount: preview.amount,
+            transactionDate: preview.transactionDate,
+            payeeId: preview.payeeId ?? undefined,
+            payeeName: preview.payeeName ?? undefined,
+            categoryId: preview.categoryId ?? undefined,
+            description: preview.description ?? undefined,
+            currencyCode: preview.currencyCode,
+          },
+          { createPayeeIfMissing: std.okCreatePayee[0] },
+        );
+        this.writeLimiter.record(userId, "create_transaction");
+        return toolResult({ id: tx.id, date: tx.transactionDate, count: 1 });
+      }
+      // single transfer
+      const preview = xfer.okPreviews[0];
+      const action = this.actionBuilder.buildCreateTransfer(userId, preview);
+      const outcome = await this.emitOrConfirm(
+        server,
+        userId,
+        action,
+        `Create this transfer?\nFrom: ${preview.fromAccountName}\nTo: ${preview.toAccountName}\nAmount: ${preview.amount} ${preview.fromCurrencyCode}\nDate: ${preview.transactionDate}`,
+        requestId,
+      );
+      if (outcome === "relay") return toolResult(RELAY_PREVIEW_SHOWN);
+      if (outcome === "declined")
+        return toolError(
+          "Cancelled: the confirmation was declined, so no transfer was created.",
+        );
+      const payeeId = await this.resolveTransferPayeeId(userId, preview);
+      const result = await this.transactionsService.createTransfer(userId, {
+        fromAccountId: preview.fromAccountId,
+        toAccountId: preview.toAccountId,
+        transactionDate: preview.transactionDate,
+        amount: preview.amount,
+        fromCurrencyCode: preview.fromCurrencyCode,
+        toCurrencyCode: preview.toCurrencyCode,
+        exchangeRate: preview.exchangeRate,
+        toAmount: preview.toAmount,
+        description: preview.description ?? undefined,
+        payeeId,
+        payeeName: preview.payeeName ?? undefined,
+      });
+      this.writeLimiter.record(userId, "create_transfer");
+      return toolResult({ id: result.fromTransaction.id, count: 1 });
+    }
+
+    if (approvalMode === "individual") {
+      const cards: PendingAiAction[] = [
+        ...std.okPreviews.map((p) =>
+          this.actionBuilder.buildCreateTransaction(userId, p),
+        ),
+        ...xfer.okPreviews.map((p) =>
+          this.actionBuilder.buildCreateTransfer(userId, p),
+        ),
+      ];
+      return this.runIndividual(server, userId, cards, requestId, [
+        ...std.skipped,
+        ...xfer.skipped,
+      ]);
+    }
+
+    // bulk mode: one card per kind that has ok rows.
+    const cards: PendingAiAction[] = [];
+    if (std.okPreviews.length > 0) {
+      cards.push(
+        this.actionBuilder.buildCreateTransactions(
+          userId,
+          std.okPreviews,
+          std.previewRows,
+        ),
+      );
+    }
+    if (xfer.okPreviews.length > 0) {
+      cards.push(
+        this.actionBuilder.buildBatchActions(
+          userId,
+          "create_transfer",
+          xfer.okPreviews.map((p) => this.prepService.transferToBatchRow(p)),
+          xfer.previewRows,
+        ),
+      );
+    }
+    // Relay: emit each card to the web chat.
+    if (this.relayService.emitPendingAction(userId, cards[0])) {
+      for (let i = 1; i < cards.length; i++) {
+        this.relayService.emitPendingAction(userId, cards[i]);
+      }
+      return toolResult(RELAY_PREVIEW_SHOWN);
+    }
+    const skipped = [...std.skipped, ...xfer.skipped];
+    const confirmation = await confirmWrite(
+      server,
+      `Create ${okCount} transaction(s)?${skipped.length ? ` (${skipped.length} skipped)` : ""}`,
+      requestId as never,
+    );
+    if (confirmation === "declined") {
+      return toolError(
+        "Cancelled: the confirmation was declined, so nothing was created.",
+      );
+    }
+    const ids: string[] = [];
+    for (let i = 0; i < std.okPreviews.length; i++) {
+      const preview = std.okPreviews[i];
+      const tx = await this.transactionsService.create(
+        userId,
+        {
+          accountId: preview.accountId,
+          amount: preview.amount,
+          transactionDate: preview.transactionDate,
+          payeeId: preview.payeeId ?? undefined,
+          payeeName: preview.payeeName ?? undefined,
+          categoryId: preview.categoryId ?? undefined,
+          description: preview.description ?? undefined,
+          currencyCode: preview.currencyCode,
         },
-        outputSchema: deleteTransactionOutput,
-      },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "write");
-        if (check.error) return check.result;
+        { createPayeeIfMissing: std.okCreatePayee[i] },
+      );
+      ids.push(tx.id);
+      this.writeLimiter.record(userId, "create_transaction");
+    }
+    for (const preview of xfer.okPreviews) {
+      const payeeId = await this.resolveTransferPayeeId(userId, preview);
+      const result = await this.transactionsService.createTransfer(userId, {
+        fromAccountId: preview.fromAccountId,
+        toAccountId: preview.toAccountId,
+        transactionDate: preview.transactionDate,
+        amount: preview.amount,
+        fromCurrencyCode: preview.fromCurrencyCode,
+        toCurrencyCode: preview.toCurrencyCode,
+        exchangeRate: preview.exchangeRate,
+        toAmount: preview.toAmount,
+        description: preview.description ?? undefined,
+        payeeId,
+        payeeName: preview.payeeName ?? undefined,
+      });
+      ids.push(result.fromTransaction.id);
+      this.writeLimiter.record(userId, "create_transfer");
+    }
+    return toolResult({ ids, count: ids.length, skipped });
+  }
 
-        const limitCheck = this.writeLimiter.checkLimit(ctx.userId);
-        if (!limitCheck.allowed) {
+  private async manageUpdate(
+    server: McpServer,
+    userId: string,
+    items: ManageItem[],
+    approvalMode: ApprovalMode,
+    requestId: unknown,
+  ) {
+    const single = items.length === 1;
+
+    if (single) {
+      const result = await this.prepService.prepareUpdate(
+        userId,
+        this.toUpdateRow(items[0]),
+      );
+      const budget = this.checkWriteBudget(userId, 1);
+      if (budget) return budget;
+      if (result.kind === "transfer") {
+        const preview = result.preview;
+        const action = this.actionBuilder.buildUpdateTransfer(userId, preview);
+        const outcome = await this.emitOrConfirm(
+          server,
+          userId,
+          action,
+          `Apply this transfer edit?\nFrom: ${preview.fromAccountName}\nTo: ${preview.toAccountName}\nAmount: ${preview.amount} ${preview.fromCurrencyCode}\nDate: ${preview.transactionDate}`,
+          requestId,
+        );
+        if (outcome === "relay") return toolResult(RELAY_PREVIEW_SHOWN);
+        if (outcome === "declined")
           return toolError(
-            `Daily write limit reached (${limitCheck.limit} operations per day). Try again tomorrow.`,
+            "Cancelled: the confirmation was declined, so the transfer was not changed.",
           );
-        }
+        const payeeId = await this.resolveTransferPayeeId(userId, preview);
+        const r = await this.transactionsService.updateTransfer(
+          userId,
+          preview.transactionId,
+          {
+            amount: preview.amount,
+            transactionDate: preview.transactionDate,
+            exchangeRate: preview.exchangeRate,
+            toAmount: preview.toAmount,
+            description: preview.description ?? undefined,
+            payeeId,
+            payeeName: preview.payeeName ?? undefined,
+          },
+        );
+        this.writeLimiter.record(userId, "update_transfer");
+        return toolResult({ id: r.fromTransaction.id, count: 1 });
+      }
+      const preview = result.preview;
+      const action = this.actionBuilder.buildUpdateTransaction(userId, preview);
+      const outcome = await this.emitOrConfirm(
+        server,
+        userId,
+        action,
+        `Apply this transaction edit?\nAccount: ${preview.accountName}\nAmount: ${preview.amount} ${preview.currencyCode}\nDate: ${preview.transactionDate}`,
+        requestId,
+      );
+      if (outcome === "relay") return toolResult(RELAY_PREVIEW_SHOWN);
+      if (outcome === "declined")
+        return toolError(
+          "Cancelled: the confirmation was declined, so the transaction was not changed.",
+        );
+      const tx = await this.transactionsService.update(
+        userId,
+        preview.transactionId,
+        {
+          amount: preview.amount,
+          transactionDate: preview.transactionDate,
+          payeeId: preview.payeeId ?? undefined,
+          payeeName: preview.payeeName ?? undefined,
+          categoryId: preview.categoryId ?? undefined,
+          description: preview.description ?? undefined,
+          currencyCode: preview.currencyCode,
+        },
+        { createPayeeIfMissing: result.createPayee },
+      );
+      this.writeLimiter.record(userId, "update_transaction");
+      return toolResult({ id: tx.id, count: 1 });
+    }
 
+    if (approvalMode === "individual") {
+      const cards: PendingAiAction[] = [];
+      const skipped: { index: number; reason: string }[] = [];
+      for (let i = 0; i < items.length; i++) {
         try {
-          const preview = await this.transactionsService.previewDelete(
-            ctx.userId,
-            args.transactionId,
+          const result = await this.prepService.prepareUpdate(
+            userId,
+            this.toUpdateRow(items[i]),
           );
-
-          if (args.dryRun) {
-            return toolResult({
-              dryRun: true,
-              preview: {
-                transactionId: preview.transactionId,
-                accountName: preview.accountName,
-                amount: preview.amount,
-                date: preview.transactionDate,
-                payeeName: preview.payeeName,
-                categoryName: preview.categoryName,
-                description: preview.description,
-                currencyCode: preview.currencyCode,
-              },
-              message:
-                "This is a preview. Call again with dryRun=false to delete the transaction.",
-            });
-          }
-
-          const pendingAction = this.actionBuilder.buildDeleteTransaction(
-            ctx.userId,
-            preview,
+          cards.push(
+            result.kind === "transfer"
+              ? this.actionBuilder.buildUpdateTransfer(userId, result.preview)
+              : this.actionBuilder.buildUpdateTransaction(
+                  userId,
+                  result.preview,
+                ),
           );
-          if (this.relayService.emitPendingAction(ctx.userId, pendingAction)) {
-            return toolResult(RELAY_PREVIEW_SHOWN);
-          }
-
-          const confirmLines = [
-            "Delete this transaction?",
-            `Account: ${preview.accountName}`,
-            `Amount: ${preview.amount} ${preview.currencyCode}`,
-            `Date: ${preview.transactionDate}`,
-          ];
-          if (preview.payeeName) {
-            confirmLines.push(`Payee: ${preview.payeeName}`);
-          }
-          const confirmation = await confirmWrite(
-            server,
-            confirmLines.join("\n"),
-            extra.requestId,
-          );
-          if (confirmation === "declined") {
-            return toolError(
-              "Cancelled: the confirmation was declined, so the transaction was not deleted. Do not retry unless the user asks again.",
-            );
-          }
-
-          await this.transactionsService.remove(ctx.userId, args.transactionId);
-
-          this.writeLimiter.record(ctx.userId, "delete_transaction");
-
-          return toolResult({
-            id: args.transactionId,
-            deleted: true,
-          });
-        } catch (err: unknown) {
-          return safeToolError(err);
+        } catch (err) {
+          skipped.push({ index: i, reason: this.reason(err) });
         }
-      },
+      }
+      if (cards.length === 0)
+        return toolError("None of the transaction edits could be prepared.");
+      const budget = this.checkWriteBudget(userId, cards.length);
+      if (budget) return budget;
+      return this.runIndividual(server, userId, cards, requestId, skipped);
+    }
+
+    // bulk mode
+    const bulk = await this.prepService.prepareUpdateBulk(
+      userId,
+      items.map((i) => this.toUpdateRow(i)),
     );
+    if (bulk.okRows.length === 0)
+      return toolError("None of the transaction edits could be prepared.");
+    const budget = this.checkWriteBudget(userId, bulk.okRows.length);
+    if (budget) return budget;
+    const action = this.actionBuilder.buildBatchActions(
+      userId,
+      "update",
+      bulk.okRows,
+      bulk.previewRows,
+    );
+    if (this.relayService.emitPendingAction(userId, action)) {
+      return toolResult(RELAY_PREVIEW_SHOWN);
+    }
+    const confirmation = await confirmWrite(
+      server,
+      `Apply ${bulk.okRows.length} transaction edit(s)?${bulk.skipped.length ? ` (${bulk.skipped.length} skipped)` : ""}`,
+      requestId as never,
+    );
+    if (confirmation === "declined")
+      return toolError(
+        "Cancelled: the confirmation was declined, so nothing was changed.",
+      );
+    const ids: string[] = [];
+    for (const row of bulk.okRows) {
+      const tx = await this.transactionsService.update(
+        userId,
+        row.transactionId,
+        {
+          amount: row.amount,
+          transactionDate: row.transactionDate,
+          payeeId: row.payeeId ?? undefined,
+          payeeName: row.payeeName ?? undefined,
+          categoryId: row.categoryId ?? undefined,
+          description: row.description ?? undefined,
+          currencyCode: row.currencyCode,
+        },
+        { createPayeeIfMissing: row.createPayee === true },
+      );
+      ids.push(tx.id);
+      this.writeLimiter.record(userId, "update_transaction");
+    }
+    return toolResult({ ids, count: ids.length, skipped: bulk.skipped });
+  }
+
+  private async manageDelete(
+    server: McpServer,
+    userId: string,
+    items: ManageItem[],
+    approvalMode: ApprovalMode,
+    requestId: unknown,
+  ) {
+    const single = items.length === 1;
+
+    if (single) {
+      const preview = await this.prepService.prepareDelete(
+        userId,
+        items[0].transactionId as string,
+      );
+      const budget = this.checkWriteBudget(userId, 1);
+      if (budget) return budget;
+      const action = this.actionBuilder.buildDeleteTransaction(userId, preview);
+      const outcome = await this.emitOrConfirm(
+        server,
+        userId,
+        action,
+        `Delete this transaction?\nAccount: ${preview.accountName}\nAmount: ${preview.amount} ${preview.currencyCode}\nDate: ${preview.transactionDate}`,
+        requestId,
+      );
+      if (outcome === "relay") return toolResult(RELAY_PREVIEW_SHOWN);
+      if (outcome === "declined")
+        return toolError(
+          "Cancelled: the confirmation was declined, so the transaction was not deleted.",
+        );
+      await this.transactionsService.removeAny(userId, preview.transactionId);
+      this.writeLimiter.record(userId, "delete_transaction");
+      return toolResult({ id: preview.transactionId, deleted: true, count: 1 });
+    }
+
+    if (approvalMode === "individual") {
+      const cards: PendingAiAction[] = [];
+      const skipped: { index: number; reason: string }[] = [];
+      for (let i = 0; i < items.length; i++) {
+        try {
+          const preview = await this.prepService.prepareDelete(
+            userId,
+            items[i].transactionId as string,
+          );
+          cards.push(
+            this.actionBuilder.buildDeleteTransaction(userId, preview),
+          );
+        } catch (err) {
+          skipped.push({ index: i, reason: this.reason(err) });
+        }
+      }
+      if (cards.length === 0)
+        return toolError("None of the transactions could be prepared.");
+      const budget = this.checkWriteBudget(userId, cards.length);
+      if (budget) return budget;
+      return this.runIndividual(server, userId, cards, requestId, skipped);
+    }
+
+    const bulk = await this.prepService.prepareDeleteBulk(
+      userId,
+      items.map((i) => i.transactionId as string),
+    );
+    if (bulk.okRows.length === 0)
+      return toolError("None of the transactions could be prepared.");
+    const budget = this.checkWriteBudget(userId, bulk.okRows.length);
+    if (budget) return budget;
+    const action = this.actionBuilder.buildBatchActions(
+      userId,
+      "delete",
+      bulk.okRows,
+      bulk.previewRows,
+    );
+    if (this.relayService.emitPendingAction(userId, action)) {
+      return toolResult(RELAY_PREVIEW_SHOWN);
+    }
+    const confirmation = await confirmWrite(
+      server,
+      `Delete ${bulk.okRows.length} transaction(s)?${bulk.skipped.length ? ` (${bulk.skipped.length} skipped)` : ""}`,
+      requestId as never,
+    );
+    if (confirmation === "declined")
+      return toolError(
+        "Cancelled: the confirmation was declined, so nothing was deleted.",
+      );
+    const ids: string[] = [];
+    for (const row of bulk.okRows) {
+      await this.transactionsService.removeAny(userId, row.transactionId);
+      ids.push(row.transactionId);
+      this.writeLimiter.record(userId, "delete_transaction");
+    }
+    return toolResult({ ids, count: ids.length, skipped: bulk.skipped });
+  }
+
+  /**
+   * Individual mode: emit/confirm one card per item. Relay path emits every
+   * card to the web chat; non-relay confirms+writes each one in turn.
+   */
+  private async runIndividual(
+    server: McpServer,
+    userId: string,
+    cards: PendingAiAction[],
+    requestId: unknown,
+    skipped: { index: number; reason: string }[],
+  ) {
+    // Relay path: emit each card; the browser confirms+commits each.
+    if (this.relayService.emitPendingAction(userId, cards[0])) {
+      for (let i = 1; i < cards.length; i++) {
+        this.relayService.emitPendingAction(userId, cards[i]);
+      }
+      return toolResult(RELAY_PREVIEW_SHOWN);
+    }
+    const ids: string[] = [];
+    for (const card of cards) {
+      const confirmation = await confirmWrite(
+        server,
+        this.confirmLineFor(card),
+        requestId as never,
+      );
+      if (confirmation === "declined") continue;
+      const id = await this.commitCard(userId, card);
+      if (id) ids.push(id);
+    }
+    return toolResult({ ids, count: ids.length, skipped });
+  }
+
+  private confirmLineFor(card: PendingAiAction): string {
+    const p = card.preview;
+    switch (card.type) {
+      case "create_transfer":
+      case "update_transfer":
+        return `${card.type === "create_transfer" ? "Create" : "Edit"} transfer?\nFrom: ${p.fromAccountName}\nTo: ${p.toAccountName}\nAmount: ${p.amount} ${p.currencyCode}`;
+      case "delete_transaction":
+        return `Delete this transaction?\nAccount: ${p.accountName}`;
+      case "update_transaction":
+        return `Apply this transaction edit?\nAccount: ${p.accountName}\nAmount: ${p.amount} ${p.currencyCode}`;
+      default:
+        return `Create this transaction?\nAccount: ${p.accountName}\nAmount: ${p.amount} ${p.currencyCode}`;
+    }
+  }
+
+  /** Commit one signed card directly (non-relay individual mode). */
+  private async commitCard(
+    userId: string,
+    card: PendingAiAction,
+  ): Promise<string | null> {
+    const d = card.descriptor;
+    switch (d.type) {
+      case "create_transaction": {
+        const tx = await this.transactionsService.create(
+          userId,
+          {
+            accountId: d.accountId,
+            amount: d.amount,
+            transactionDate: d.transactionDate,
+            payeeId: d.payeeId ?? undefined,
+            payeeName: d.payeeName ?? undefined,
+            categoryId: d.categoryId ?? undefined,
+            description: d.description ?? undefined,
+            currencyCode: d.currencyCode,
+          },
+          { createPayeeIfMissing: d.createPayee === true },
+        );
+        this.writeLimiter.record(userId, "create_transaction");
+        return tx.id;
+      }
+      case "create_transfer": {
+        const payeeId = await this.resolveTransferPayeeId(userId, d);
+        const r = await this.transactionsService.createTransfer(userId, {
+          fromAccountId: d.fromAccountId,
+          toAccountId: d.toAccountId,
+          transactionDate: d.transactionDate,
+          amount: d.amount,
+          fromCurrencyCode: d.fromCurrencyCode,
+          toCurrencyCode: d.toCurrencyCode,
+          exchangeRate: d.exchangeRate,
+          toAmount: d.toAmount,
+          description: d.description ?? undefined,
+          payeeId,
+          payeeName: d.payeeName ?? undefined,
+        });
+        this.writeLimiter.record(userId, "create_transfer");
+        return r.fromTransaction.id;
+      }
+      case "update_transaction": {
+        const tx = await this.transactionsService.update(
+          userId,
+          d.transactionId,
+          {
+            amount: d.amount,
+            transactionDate: d.transactionDate,
+            payeeId: d.payeeId ?? undefined,
+            payeeName: d.payeeName ?? undefined,
+            categoryId: d.categoryId ?? undefined,
+            description: d.description ?? undefined,
+            currencyCode: d.currencyCode,
+          },
+          { createPayeeIfMissing: d.createPayee === true },
+        );
+        this.writeLimiter.record(userId, "update_transaction");
+        return tx.id;
+      }
+      case "update_transfer": {
+        const payeeId = await this.resolveTransferPayeeId(userId, d);
+        const r = await this.transactionsService.updateTransfer(
+          userId,
+          d.transactionId,
+          {
+            amount: d.amount,
+            transactionDate: d.transactionDate,
+            exchangeRate: d.exchangeRate,
+            toAmount: d.toAmount,
+            description: d.description ?? undefined,
+            payeeId,
+            payeeName: d.payeeName ?? undefined,
+          },
+        );
+        this.writeLimiter.record(userId, "update_transfer");
+        return r.fromTransaction.id;
+      }
+      case "delete_transaction": {
+        await this.transactionsService.removeAny(userId, d.transactionId);
+        this.writeLimiter.record(userId, "delete_transaction");
+        return d.transactionId;
+      }
+      default:
+        return null;
+    }
+  }
+
+  private reason(err: unknown): string {
+    if (
+      err &&
+      typeof err === "object" &&
+      "message" in err &&
+      typeof (err as { message?: unknown }).message === "string"
+    ) {
+      return (err as { message: string }).message;
+    }
+    return "Could not be prepared.";
   }
 }

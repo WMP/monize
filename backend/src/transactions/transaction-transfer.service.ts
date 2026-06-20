@@ -12,16 +12,66 @@ import { TransactionSplit } from "./entities/transaction-split.entity";
 import { CreateTransferDto } from "./dto/create-transfer.dto";
 import { UpdateTransferDto } from "./dto/update-transfer.dto";
 import { AccountsService } from "../accounts/accounts.service";
+import { PayeesService } from "../payees/payees.service";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { isTransactionInFuture } from "../common/date-utils";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { formatCurrency } from "../common/format-currency.util";
 import { roundMoney } from "../common/round.util";
+import { stripHtml } from "../common/sanitization.util";
 import { tr } from "../i18n/translate";
 
 export interface TransferResult {
   fromTransaction: Transaction;
   toTransaction: Transaction;
+}
+
+/**
+ * Resolved, sanitized preview of a transfer the assistant proposes to create.
+ * Carries the resulting state of both legs (resolved account ids/names, derived
+ * currencies, and the computed destination amount) so the signed descriptor can
+ * reproduce it on confirm. Shared by the AI Assistant tool executor and the MCP
+ * tool via the transaction-tool prep service.
+ */
+export interface CreateTransferPreview {
+  fromAccountId: string;
+  fromAccountName: string;
+  fromCurrencyCode: string;
+  toAccountId: string;
+  toAccountName: string;
+  toCurrencyCode: string;
+  amount: number;
+  toAmount: number;
+  exchangeRate: number;
+  transactionDate: string;
+  description: string | null;
+  /** Existing payee the custom label resolved to, or null to record free text. */
+  payeeId: string | null;
+  payeeName: string | null;
+  /** True when the custom label matched an existing payee. */
+  payeeMatched: boolean;
+  /** True when approving will create a new payee from an unmatched label. */
+  payeeWillBeCreated: boolean;
+}
+
+/** Resolved, sanitized preview of an edit the assistant proposes to a transfer. */
+export interface UpdateTransferPreview {
+  transactionId: string;
+  fromAccountId: string;
+  fromAccountName: string;
+  fromCurrencyCode: string;
+  toAccountId: string;
+  toAccountName: string;
+  toCurrencyCode: string;
+  amount: number;
+  toAmount: number;
+  exchangeRate: number;
+  transactionDate: string;
+  description: string | null;
+  payeeId: string | null;
+  payeeName: string | null;
+  payeeMatched: boolean;
+  payeeWillBeCreated: boolean;
 }
 
 @Injectable()
@@ -35,6 +85,7 @@ export class TransactionTransferService {
     private splitsRepository: Repository<TransactionSplit>,
     @Inject(forwardRef(() => AccountsService))
     private accountsService: AccountsService,
+    private payeesService: PayeesService,
     @Inject(forwardRef(() => NetWorthService))
     private netWorthService: NetWorthService,
     private dataSource: DataSource,
@@ -230,6 +281,211 @@ export class TransactionTransferService {
       );
       return null;
     }
+  }
+
+  /**
+   * Detect whether a loaded transaction is a transfer leg. Usable by the prep
+   * service to route an update/delete to the transfer-aware flow.
+   */
+  isTransfer(transaction: Transaction): boolean {
+    return transaction.isTransfer === true;
+  }
+
+  /**
+   * Validate and resolve a proposed transfer WITHOUT persisting it. Resolves the
+   * from/to accounts (by id), derives their currencies, computes the destination
+   * amount from an explicit toAmount or the exchange rate (via roundMoney), and
+   * sanitizes the description. Mirrors the resulting state createTransfer writes.
+   */
+  async previewCreateTransfer(
+    userId: string,
+    input: {
+      fromAccountId: string;
+      toAccountId: string;
+      amount: number;
+      transactionDate: string;
+      exchangeRate?: number;
+      toAmount?: number;
+      description?: string;
+      payeeName?: string;
+      /** Auto-create a payee for an unmatched custom label. Defaults to true. */
+      createPayeeIfMissing?: boolean;
+    },
+  ): Promise<CreateTransferPreview> {
+    if (input.fromAccountId === input.toAccountId) {
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.transferSameAccount",
+          "Source and destination accounts must be different",
+        ),
+      );
+    }
+    if (input.amount < 0) {
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.transferAmountNegative",
+          "Transfer amount must not be negative",
+        ),
+      );
+    }
+
+    const fromAccount = await this.accountsService.findOne(
+      userId,
+      input.fromAccountId,
+    );
+    const toAccount = await this.accountsService.findOne(
+      userId,
+      input.toAccountId,
+    );
+
+    const exchangeRate = input.exchangeRate ?? 1;
+    const toAmount =
+      input.toAmount !== undefined
+        ? roundMoney(input.toAmount)
+        : roundMoney(input.amount * exchangeRate);
+
+    // Resolve the custom label to an existing payee exactly like a normal cash
+    // transaction (previewCreate): on a match link the payee and adopt its
+    // canonical name; an unmatched name becomes a new payee on confirm unless
+    // the caller opted out. Transfers have no category, so the matched payee's
+    // default category is deliberately NOT inherited.
+    const inputPayeeName = stripHtml(input.payeeName) || null;
+    let payeeId: string | null = null;
+    let payeeName: string | null = inputPayeeName;
+    let payeeMatched = false;
+    if (inputPayeeName) {
+      const payee = await this.payeesService.resolveByName(
+        userId,
+        inputPayeeName,
+      );
+      if (payee) {
+        payeeId = payee.id;
+        payeeMatched = true;
+        payeeName = payee.name;
+      }
+    }
+    const payeeWillBeCreated =
+      !!payeeName && !payeeMatched && input.createPayeeIfMissing !== false;
+
+    return {
+      fromAccountId: fromAccount.id,
+      fromAccountName: fromAccount.name,
+      fromCurrencyCode: fromAccount.currencyCode,
+      toAccountId: toAccount.id,
+      toAccountName: toAccount.name,
+      toCurrencyCode: toAccount.currencyCode,
+      amount: roundMoney(input.amount),
+      toAmount,
+      exchangeRate,
+      transactionDate: input.transactionDate,
+      description: stripHtml(input.description) || null,
+      payeeId,
+      payeeName,
+      payeeMatched,
+      payeeWillBeCreated,
+    };
+  }
+
+  /**
+   * Validate and resolve a proposed edit to an existing transfer WITHOUT
+   * persisting it. Loads the transaction (requiring it to be a transfer),
+   * determines the canonical from/to legs (the from leg has the negative
+   * amount, mirroring updateTransfer), and returns the resulting state.
+   */
+  async previewUpdateTransfer(
+    userId: string,
+    transactionId: string,
+    input: {
+      amount?: number;
+      transactionDate?: string;
+      description?: string;
+      payeeName?: string;
+      /** Auto-create a payee for an unmatched custom label. Defaults to true. */
+      createPayeeIfMissing?: boolean;
+    },
+    findOne: (userId: string, id: string) => Promise<Transaction>,
+  ): Promise<UpdateTransferPreview> {
+    const transaction = await findOne(userId, transactionId);
+
+    if (!transaction.isTransfer || !transaction.linkedTransactionId) {
+      throw new BadRequestException(
+        tr("errors.transactions.notATransfer", "Transaction is not a transfer"),
+      );
+    }
+
+    const linkedTransaction = await findOne(
+      userId,
+      transaction.linkedTransactionId,
+    );
+
+    const isFromTransaction = Number(transaction.amount) < 0;
+    const fromTransaction = isFromTransaction ? transaction : linkedTransaction;
+    const toTransaction = isFromTransaction ? linkedTransaction : transaction;
+
+    const oldFromAmount = Math.abs(Number(fromTransaction.amount));
+    const oldToAmount = Number(toTransaction.amount);
+    const exchangeRate = Number(toTransaction.exchangeRate) || 1;
+
+    const newAmount =
+      input.amount !== undefined ? roundMoney(input.amount) : oldFromAmount;
+    // When only the amount changes, scale the destination leg by the stored
+    // exchange rate; when nothing money-related changes, keep the stored toAmount.
+    const newToAmount =
+      input.amount !== undefined
+        ? roundMoney(newAmount * exchangeRate)
+        : roundMoney(oldToAmount);
+
+    const newDate = input.transactionDate ?? fromTransaction.transactionDate;
+    const description =
+      input.description !== undefined
+        ? stripHtml(input.description) || null
+        : (fromTransaction.description ?? null);
+
+    // Re-resolve the payee only when a new label is provided, mirroring
+    // previewUpdate for a normal transaction. When the label is unchanged, keep
+    // the canonical from-leg payee link untouched (matched, no new creation).
+    let payeeId: string | null = fromTransaction.payeeId ?? null;
+    let payeeName: string | null = fromTransaction.payeeName ?? null;
+    let payeeMatched = true;
+    let payeeWillBeCreated = false;
+    if (input.payeeName !== undefined) {
+      const inputPayeeName = stripHtml(input.payeeName) || null;
+      payeeId = null;
+      payeeName = inputPayeeName;
+      payeeMatched = false;
+      if (inputPayeeName) {
+        const payee = await this.payeesService.resolveByName(
+          userId,
+          inputPayeeName,
+        );
+        if (payee) {
+          payeeId = payee.id;
+          payeeMatched = true;
+          payeeName = payee.name;
+        }
+      }
+      payeeWillBeCreated =
+        !!payeeName && !payeeMatched && input.createPayeeIfMissing !== false;
+    }
+
+    return {
+      transactionId,
+      fromAccountId: fromTransaction.accountId,
+      fromAccountName: fromTransaction.account?.name ?? "",
+      fromCurrencyCode: fromTransaction.currencyCode,
+      toAccountId: toTransaction.accountId,
+      toAccountName: toTransaction.account?.name ?? "",
+      toCurrencyCode: toTransaction.currencyCode,
+      amount: newAmount,
+      toAmount: newToAmount,
+      exchangeRate,
+      transactionDate: newDate,
+      description,
+      payeeId,
+      payeeName,
+      payeeMatched,
+      payeeWillBeCreated,
+    };
   }
 
   async removeTransfer(

@@ -112,7 +112,20 @@
     "updateInvestmentTransactionTitle": "编辑此投资交易？",
     "deleteInvestmentTransactionTitle": "删除此投资交易？",
     "updatedInvestmentTransaction": "投资交易已更新",
-    "deletedInvestmentTransaction": "投资交易已删除"
+    "deletedInvestmentTransaction": "投资交易已删除",
+    "createTransferTitle": "创建此转账？",
+    "updateTransferTitle": "编辑此转账？",
+    "createdTransfer": "转账已创建",
+    "updatedTransfer": "转账已更新",
+    "fromAccount": "转出",
+    "toAccount": "转入",
+    "toAmount": "到账金额",
+    "updateTransactionsTitle": "编辑这些交易？",
+    "deleteTransactionsTitle": "删除这些交易？",
+    "createTransfersTitle": "创建这些转账？",
+    "updatedTransactions": "{count, plural, =0 {未更新交易} other {已更新 # 笔交易}}",
+    "deletedTransactions": "{count, plural, =0 {未删除交易} other {已删除 # 笔交易}}",
+    "createdTransfers": "{count, plural, =0 {未创建转账} other {已创建 # 笔转账}}"
   },
   "table": {
     "downloadTitle": "将表格下载为 CSV",

@@ -320,6 +320,129 @@ export const deleteTransactionSchema = z.object({
   transactionId: z.string().uuid(),
 });
 
+/**
+ * Unified `manage_transactions` input. A single schema validated per-operation
+ * via superRefine: create rows are a standard transaction unless `toAccountName`
+ * is present (then a transfer), update rows require >=1 mutable field, and delete
+ * rows need only the target id. `items` is 1..MAX_BULK_ACTION_ROWS so a pasted
+ * table cannot blow past the provider's tool-call output-token budget.
+ */
+const manageTransactionItemSchema = z
+  .object({
+    // create (standard)
+    accountName: z.string().min(1).max(100).optional(),
+    // create (transfer)
+    fromAccountName: z.string().min(1).max(100).optional(),
+    toAccountName: z.string().min(1).max(100).optional(),
+    // update / delete
+    transactionId: z.string().uuid().optional(),
+    // shared
+    amount: amountSchema.optional(),
+    date: isoDateSchema.optional(),
+    payeeName: z.string().max(100).optional(),
+    categoryName: z.string().max(100).optional(),
+    description: z.string().max(500).optional(),
+    createPayeeIfMissing: z.boolean().optional(),
+    exchangeRate: z.number().finite().min(0).max(1_000_000).optional(),
+    toAmount: amountSchema.optional(),
+  })
+  .passthrough();
+
+export const manageTransactionsSchema = z
+  .object({
+    operation: z.enum(["create", "update", "delete"]),
+    items: z
+      .array(manageTransactionItemSchema)
+      .min(1)
+      .max(MAX_BULK_ACTION_ROWS),
+    approvalMode: z.enum(["bulk", "individual"]).optional(),
+  })
+  .superRefine((value, ctx) => {
+    value.items.forEach((item, index) => {
+      const path = (field: string) => ["items", index, field];
+      if (value.operation === "create") {
+        const isTransfer = item.toAccountName !== undefined;
+        if (isTransfer) {
+          if (!item.fromAccountName) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: path("fromAccountName"),
+              message: "fromAccountName is required for a transfer.",
+            });
+          }
+          if (item.amount === undefined) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: path("amount"),
+              message: "amount is required.",
+            });
+          }
+          if (item.date === undefined) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: path("date"),
+              message: "date is required.",
+            });
+          }
+        } else {
+          if (!item.accountName) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: path("accountName"),
+              message:
+                "accountName is required (or provide toAccountName for a transfer).",
+            });
+          }
+          if (item.amount === undefined) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: path("amount"),
+              message: "amount is required.",
+            });
+          }
+          if (item.date === undefined) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: path("date"),
+              message: "date is required.",
+            });
+          }
+        }
+      } else if (value.operation === "update") {
+        if (!item.transactionId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: path("transactionId"),
+            message: "transactionId is required.",
+          });
+        }
+        const hasChange =
+          item.amount !== undefined ||
+          item.date !== undefined ||
+          item.payeeName !== undefined ||
+          item.categoryName !== undefined ||
+          item.description !== undefined;
+        if (!hasChange) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: path("transactionId"),
+            message:
+              "Provide at least one field to change (amount, date, payeeName, categoryName, or description).",
+          });
+        }
+      } else {
+        // delete
+        if (!item.transactionId) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: path("transactionId"),
+            message: "transactionId is required.",
+          });
+        }
+      }
+    });
+  });
+
 export const updateInvestmentTransactionSchema = z
   .object({
     transactionId: z.string().uuid(),
@@ -368,16 +491,12 @@ export const toolInputSchemas: Record<string, z.ZodSchema> = {
   calculate: calculateSchema,
   render_chart: renderChartSchema,
   search_transactions: searchTransactionsSchema,
-  create_transaction: createTransactionSchema,
-  categorize_transaction: categorizeTransactionSchema,
+  manage_transactions: manageTransactionsSchema,
   create_payee: createPayeeSchema,
   create_security: createSecuritySchema,
   lookup_securities: lookupSecuritiesSchema,
   create_investment_transaction: createInvestmentTransactionSchema,
-  create_transactions: createTransactionsSchema,
   create_investment_transactions: createInvestmentTransactionsSchema,
-  update_transaction: updateTransactionSchema,
-  delete_transaction: deleteTransactionSchema,
   update_investment_transaction: updateInvestmentTransactionSchema,
   delete_investment_transaction: deleteInvestmentTransactionSchema,
 };

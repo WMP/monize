@@ -6,6 +6,7 @@ import { TransactionTransferService } from "./transaction-transfer.service";
 import { Transaction, TransactionStatus } from "./entities/transaction.entity";
 import { TransactionSplit } from "./entities/transaction-split.entity";
 import { AccountsService } from "../accounts/accounts.service";
+import { PayeesService } from "../payees/payees.service";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { isTransactionInFuture } from "../common/date-utils";
@@ -22,6 +23,7 @@ describe("TransactionTransferService", () => {
   let transactionsRepository: Record<string, jest.Mock>;
   let splitsRepository: Record<string, jest.Mock>;
   let accountsService: Record<string, jest.Mock>;
+  let payeesService: Record<string, jest.Mock>;
   let netWorthService: Record<string, jest.Mock>;
   let mockQueryRunner: Record<string, any>;
   let mockDataSource: Record<string, jest.Mock>;
@@ -96,6 +98,13 @@ describe("TransactionTransferService", () => {
       recalculateCurrentBalance: jest.fn().mockResolvedValue(undefined),
     };
 
+    // Default: no payee matches a custom label (free-text / will-be-created
+    // paths). Tests that exercise the match path override resolveByName.
+    payeesService = {
+      resolveByName: jest.fn().mockResolvedValue(null),
+      findOrCreate: jest.fn(),
+    };
+
     netWorthService = {
       recalculateAccount: jest.fn().mockResolvedValue(undefined),
       triggerDebouncedRecalc: jest.fn(),
@@ -160,6 +169,7 @@ describe("TransactionTransferService", () => {
           useValue: splitsRepository,
         },
         { provide: AccountsService, useValue: accountsService },
+        { provide: PayeesService, useValue: payeesService },
         { provide: NetWorthService, useValue: netWorthService },
         { provide: DataSource, useValue: mockDataSource },
         {
@@ -605,6 +615,71 @@ describe("TransactionTransferService", () => {
         "user-1",
       );
     });
+
+    it("recalculates balances instead of adjusting them when removing a future-dated split-linked transfer", async () => {
+      mockedIsTransactionInFuture.mockReturnValue(true);
+
+      const tx = {
+        id: "linked-from-split",
+        isTransfer: true,
+        linkedTransactionId: "parent-tx",
+        accountId: "account-2",
+        amount: 50,
+        transactionDate: "2099-01-01",
+      };
+
+      const targetSplit = {
+        id: "target-split",
+        transactionId: "parent-tx",
+        linkedTransactionId: "linked-from-split",
+      };
+      // A second split links to a different leg, exercising the linked-leg
+      // future recalc branch (line 627).
+      const otherSplit = {
+        id: "other-split",
+        transactionId: "parent-tx",
+        linkedTransactionId: "other-leg",
+      };
+
+      mockFindOne.mockResolvedValue(tx);
+      splitsRepository.findOne.mockResolvedValue(targetSplit);
+      transactionsRepository.findOne.mockImplementation((opts: any) => {
+        const id = opts?.where?.id;
+        if (id === "parent-tx")
+          return Promise.resolve({
+            id: "parent-tx",
+            accountId: "account-1",
+            amount: -100,
+            transactionDate: "2099-01-01",
+          });
+        if (id === "other-leg")
+          return Promise.resolve({
+            id: "other-leg",
+            accountId: "account-3",
+            amount: 25,
+            transactionDate: "2099-01-01",
+          });
+        return Promise.resolve(null);
+      });
+      splitsRepository.find.mockResolvedValue([targetSplit, otherSplit]);
+
+      await service.removeTransfer("user-1", "linked-from-split", mockFindOne);
+
+      // Future-dated: balances are recalculated, never adjusted.
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      expect(accountsService.recalculateCurrentBalance).toHaveBeenCalledWith(
+        "account-3",
+        expect.anything(),
+      );
+      expect(accountsService.recalculateCurrentBalance).toHaveBeenCalledWith(
+        "account-1",
+        expect.anything(),
+      );
+      expect(accountsService.recalculateCurrentBalance).toHaveBeenCalledWith(
+        "account-2",
+        expect.anything(),
+      );
+    });
   });
 
   describe("updateTransfer", () => {
@@ -732,6 +807,56 @@ describe("TransactionTransferService", () => {
           description: "Updated description",
           referenceNumber: "REF-123",
         }),
+      );
+    });
+
+    it("rewrites created_at on both legs via raw query when createdAt is provided", async () => {
+      mockFindOne
+        .mockResolvedValueOnce(fromTransaction)
+        .mockResolvedValueOnce(toTransaction)
+        .mockResolvedValueOnce(fromTransaction)
+        .mockResolvedValueOnce(toTransaction);
+
+      await service.updateTransfer(
+        "user-1",
+        "from-tx",
+        { createdAt: "2026-01-10T12:34:56.000Z" } as any,
+        mockFindOne,
+      );
+
+      const createdAtCalls = mockQueryRunner.query.mock.calls.filter(
+        (c: any[]) =>
+          typeof c[0] === "string" && c[0].includes("SET created_at"),
+      );
+      expect(createdAtCalls).toHaveLength(2);
+      expect(createdAtCalls[0][1]).toEqual([
+        expect.stringContaining("2026-01-10 12:34:56"),
+        "from-tx",
+      ]);
+      expect(createdAtCalls[1][1][1]).toBe("to-tx");
+    });
+
+    it("updates the source and destination currency codes when provided", async () => {
+      mockFindOne
+        .mockResolvedValueOnce(fromTransaction)
+        .mockResolvedValueOnce(toTransaction)
+        .mockResolvedValueOnce(fromTransaction)
+        .mockResolvedValueOnce(toTransaction);
+
+      await service.updateTransfer(
+        "user-1",
+        "from-tx",
+        { fromCurrencyCode: "EUR", toCurrencyCode: "GBP" },
+        mockFindOne,
+      );
+
+      expect(transactionsRepository.update).toHaveBeenCalledWith(
+        "from-tx",
+        expect.objectContaining({ currencyCode: "EUR" }),
+      );
+      expect(transactionsRepository.update).toHaveBeenCalledWith(
+        "to-tx",
+        expect.objectContaining({ currencyCode: "GBP" }),
       );
     });
 
@@ -1489,6 +1614,287 @@ describe("TransactionTransferService", () => {
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
       expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
       expect(mockQueryRunner.release).toHaveBeenCalled();
+    });
+  });
+
+  describe("isTransfer", () => {
+    it("returns true for a transfer leg", () => {
+      expect(service.isTransfer({ isTransfer: true } as any)).toBe(true);
+    });
+    it("returns false for a normal transaction", () => {
+      expect(service.isTransfer({ isTransfer: false } as any)).toBe(false);
+    });
+  });
+
+  describe("previewCreateTransfer", () => {
+    it("resolves accounts, derives currencies, and computes toAmount from exchangeRate", async () => {
+      const preview = await service.previewCreateTransfer("user-1", {
+        fromAccountId: "from-account",
+        toAccountId: "to-account",
+        amount: 100,
+        transactionDate: "2026-01-15",
+        exchangeRate: 1.25,
+      });
+      expect(preview).toMatchObject({
+        fromAccountId: "from-account",
+        fromAccountName: "Checking",
+        fromCurrencyCode: "USD",
+        toAccountId: "to-account",
+        toAccountName: "Savings",
+        toCurrencyCode: "USD",
+        amount: 100,
+        toAmount: 125,
+        exchangeRate: 1.25,
+        transactionDate: "2026-01-15",
+        description: null,
+        payeeName: null,
+      });
+    });
+
+    it("uses an explicit toAmount over the exchange rate and strips html from description", async () => {
+      const preview = await service.previewCreateTransfer("user-1", {
+        fromAccountId: "from-account",
+        toAccountId: "to-account",
+        amount: 100,
+        transactionDate: "2026-01-15",
+        exchangeRate: 2,
+        toAmount: 90,
+        description: "Wire <b>x</b>",
+      });
+      expect(preview.toAmount).toBe(90);
+      // stripHtml escapes angle brackets rather than emitting raw markup.
+      expect(preview.description).not.toContain("<");
+    });
+
+    it("sets a custom payeeName, sanitized", async () => {
+      const preview = await service.previewCreateTransfer("user-1", {
+        fromAccountId: "from-account",
+        toAccountId: "to-account",
+        amount: 100,
+        transactionDate: "2026-01-15",
+        payeeName: "Rent <b>split</b>",
+      });
+      expect(preview.payeeName).toBeTruthy();
+      expect(preview.payeeName).not.toContain("<");
+    });
+
+    it("defaults payeeName to null when omitted", async () => {
+      const preview = await service.previewCreateTransfer("user-1", {
+        fromAccountId: "from-account",
+        toAccountId: "to-account",
+        amount: 100,
+        transactionDate: "2026-01-15",
+      });
+      expect(preview.payeeName).toBeNull();
+      expect(preview.payeeId).toBeNull();
+      expect(preview.payeeMatched).toBe(false);
+      expect(preview.payeeWillBeCreated).toBe(false);
+    });
+
+    it("links payeeId and adopts the canonical name when the label matches an existing payee", async () => {
+      payeesService.resolveByName.mockResolvedValue({
+        id: "payee-1",
+        name: "Buon Gusto Restaurant",
+        defaultCategoryId: "cat-1",
+      });
+      const preview = await service.previewCreateTransfer("user-1", {
+        fromAccountId: "from-account",
+        toAccountId: "to-account",
+        amount: 100,
+        transactionDate: "2026-01-15",
+        payeeName: "Buon Gusto",
+      });
+      expect(payeesService.resolveByName).toHaveBeenCalledWith(
+        "user-1",
+        "Buon Gusto",
+      );
+      expect(preview.payeeId).toBe("payee-1");
+      expect(preview.payeeName).toBe("Buon Gusto Restaurant");
+      expect(preview.payeeMatched).toBe(true);
+      expect(preview.payeeWillBeCreated).toBe(false);
+    });
+
+    it("flags an unmatched label for creation by default", async () => {
+      const preview = await service.previewCreateTransfer("user-1", {
+        fromAccountId: "from-account",
+        toAccountId: "to-account",
+        amount: 100,
+        transactionDate: "2026-01-15",
+        payeeName: "Brand New Label",
+      });
+      expect(preview.payeeId).toBeNull();
+      expect(preview.payeeMatched).toBe(false);
+      expect(preview.payeeWillBeCreated).toBe(true);
+      expect(preview.payeeName).toBe("Brand New Label");
+    });
+
+    it("keeps an unmatched label as free text when createPayeeIfMissing is false", async () => {
+      const preview = await service.previewCreateTransfer("user-1", {
+        fromAccountId: "from-account",
+        toAccountId: "to-account",
+        amount: 100,
+        transactionDate: "2026-01-15",
+        payeeName: "Brand New Label",
+        createPayeeIfMissing: false,
+      });
+      expect(preview.payeeId).toBeNull();
+      expect(preview.payeeMatched).toBe(false);
+      expect(preview.payeeWillBeCreated).toBe(false);
+      expect(preview.payeeName).toBe("Brand New Label");
+    });
+
+    it("rejects same source and destination account", async () => {
+      await expect(
+        service.previewCreateTransfer("user-1", {
+          fromAccountId: "from-account",
+          toAccountId: "from-account",
+          amount: 100,
+          transactionDate: "2026-01-15",
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects a negative amount", async () => {
+      await expect(
+        service.previewCreateTransfer("user-1", {
+          fromAccountId: "from-account",
+          toAccountId: "to-account",
+          amount: -1,
+          transactionDate: "2026-01-15",
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe("previewUpdateTransfer", () => {
+    const fromLeg = {
+      id: "from-tx",
+      accountId: "from-account",
+      account: { name: "Checking" },
+      amount: -100,
+      currencyCode: "USD",
+      exchangeRate: 1,
+      transactionDate: "2026-01-15",
+      description: "old",
+      payeeName: "Transfer to Savings",
+      isTransfer: true,
+      linkedTransactionId: "to-tx",
+    };
+    const toLeg = {
+      id: "to-tx",
+      accountId: "to-account",
+      account: { name: "Savings" },
+      amount: 100,
+      currencyCode: "USD",
+      exchangeRate: 1,
+      transactionDate: "2026-01-15",
+      description: "old",
+      payeeName: "Transfer from Checking",
+      isTransfer: true,
+      linkedTransactionId: "from-tx",
+    };
+
+    it("determines canonical from/to legs and returns the resulting state", async () => {
+      const findOne = jest.fn(async (_uid: string, id: string) =>
+        id === "from-tx" ? fromLeg : toLeg,
+      );
+      const preview = await service.previewUpdateTransfer(
+        "user-1",
+        "from-tx",
+        { amount: 200 },
+        findOne as any,
+      );
+      expect(preview).toMatchObject({
+        transactionId: "from-tx",
+        fromAccountId: "from-account",
+        fromAccountName: "Checking",
+        toAccountId: "to-account",
+        toAccountName: "Savings",
+        amount: 200,
+        toAmount: 200,
+      });
+    });
+
+    it("keeps the existing from-leg payee link untouched when omitted", async () => {
+      const findOne = jest.fn(async (_uid: string, id: string) =>
+        id === "from-tx" ? { ...fromLeg, payeeId: "existing-payee" } : toLeg,
+      );
+      const preview = await service.previewUpdateTransfer(
+        "user-1",
+        "from-tx",
+        { amount: 200 },
+        findOne as any,
+      );
+      expect(preview.payeeName).toBe("Transfer to Savings");
+      expect(preview.payeeId).toBe("existing-payee");
+      expect(preview.payeeMatched).toBe(true);
+      expect(preview.payeeWillBeCreated).toBe(false);
+      expect(payeesService.resolveByName).not.toHaveBeenCalled();
+    });
+
+    it("sets a custom payeeName, sanitized, and flags creation for an unmatched label", async () => {
+      const findOne = jest.fn(async (_uid: string, id: string) =>
+        id === "from-tx" ? fromLeg : toLeg,
+      );
+      const preview = await service.previewUpdateTransfer(
+        "user-1",
+        "from-tx",
+        { payeeName: "Shared rent <i>x</i>" },
+        findOne as any,
+      );
+      expect(preview.payeeName).toBeTruthy();
+      expect(preview.payeeName).not.toContain("<");
+      expect(preview.payeeId).toBeNull();
+      expect(preview.payeeMatched).toBe(false);
+      expect(preview.payeeWillBeCreated).toBe(true);
+    });
+
+    it("links payeeId when a new label matches an existing payee", async () => {
+      payeesService.resolveByName.mockResolvedValue({
+        id: "payee-9",
+        name: "Landlord LLC",
+        defaultCategoryId: null,
+      });
+      const findOne = jest.fn(async (_uid: string, id: string) =>
+        id === "from-tx" ? fromLeg : toLeg,
+      );
+      const preview = await service.previewUpdateTransfer(
+        "user-1",
+        "from-tx",
+        { payeeName: "Landlord" },
+        findOne as any,
+      );
+      expect(preview.payeeId).toBe("payee-9");
+      expect(preview.payeeName).toBe("Landlord LLC");
+      expect(preview.payeeMatched).toBe(true);
+      expect(preview.payeeWillBeCreated).toBe(false);
+    });
+
+    it("keeps an unmatched new label as free text when createPayeeIfMissing is false", async () => {
+      const findOne = jest.fn(async (_uid: string, id: string) =>
+        id === "from-tx" ? fromLeg : toLeg,
+      );
+      const preview = await service.previewUpdateTransfer(
+        "user-1",
+        "from-tx",
+        { payeeName: "Freeform", createPayeeIfMissing: false },
+        findOne as any,
+      );
+      expect(preview.payeeId).toBeNull();
+      expect(preview.payeeMatched).toBe(false);
+      expect(preview.payeeWillBeCreated).toBe(false);
+      expect(preview.payeeName).toBe("Freeform");
+    });
+
+    it("throws notATransfer when the target is not a transfer", async () => {
+      const findOne = jest.fn(async () => ({
+        id: "x",
+        isTransfer: false,
+        linkedTransactionId: null,
+      }));
+      await expect(
+        service.previewUpdateTransfer("user-1", "x", {}, findOne as any),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

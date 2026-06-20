@@ -205,37 +205,6 @@ export const getTransfersOutput = {
   transferCount: num,
 };
 
-export const createTransactionOutput = {
-  // Dry-run preview branch.
-  dryRun: bool.optional(),
-  preview: z
-    .object({
-      accountId: str.optional(),
-      accountName: str.optional(),
-      amount: num.optional(),
-      date: str.optional(),
-      payeeId: strNull.optional(),
-      payeeName: strNull.optional(),
-      payeeMatched: bool.optional(),
-      payeeWillBeCreated: bool.optional(),
-      categoryId: strNull.optional(),
-      categoryName: strNull.optional(),
-      description: strNull.optional(),
-      currencyCode: str.optional(),
-    })
-    .optional(),
-  message: str.optional(),
-  // Created-transaction branch.
-  id: str.optional(),
-  date: str.optional(),
-  amount: num.optional(),
-  payeeId: strNull.optional(),
-  payeeName: strNull.optional(),
-  payeeMatched: bool.optional(),
-  payeeCreated: bool.optional(),
-  status: str.optional(),
-};
-
 const bulkSkippedRow = looseObject({ index: num, reason: str });
 
 export const createTransactionsOutput = {
@@ -260,66 +229,33 @@ export const createTransactionsOutput = {
 
 export const createInvestmentTransactionsOutput = createTransactionsOutput;
 
-export const categorizeTransactionOutput = {
-  // Applied branch (direct MCP client).
-  id: str.optional(),
-  categoryId: strNull.optional(),
-  message: str.optional(),
-  // Relay branch: a confirmation card was shown in the web chat instead.
-  status: str.optional(),
-};
-
-export const updateTransactionOutput = {
-  // Dry-run preview branch.
+/**
+ * Tolerant output for the unified `manage_transactions` tool. The tool has many
+ * result branches (dry-run preview, single created/updated/deleted, per-item
+ * results in individual mode, bulk count/skipped, and the relay branch), so ALL
+ * fields are optional and the object is loose.
+ */
+export const manageTransactionsOutput = {
+  // Dry-run preview branch (per-item previews + skipped rows).
   dryRun: bool.optional(),
-  preview: z
-    .object({
-      transactionId: str.optional(),
-      accountId: str.optional(),
-      accountName: str.optional(),
-      amount: num.optional(),
-      date: str.optional(),
-      payeeId: strNull.optional(),
-      payeeName: strNull.optional(),
-      payeeMatched: bool.optional(),
-      payeeWillBeCreated: bool.optional(),
-      categoryId: strNull.optional(),
-      categoryName: strNull.optional(),
-      description: strNull.optional(),
-      currencyCode: str.optional(),
-    })
-    .optional(),
+  operation: str.optional(),
+  preview: z.object({}).loose().optional(),
+  previews: z.array(looseObject({})).optional(),
   message: str.optional(),
-  // Updated-transaction branch.
+  // Single created/updated/deleted branch.
   id: str.optional(),
   date: str.optional(),
   amount: num.optional(),
   payeeId: strNull.optional(),
   payeeName: strNull.optional(),
   categoryId: strNull.optional(),
-  // Relay branch: a confirmation card was shown in the web chat instead.
-  status: str.optional(),
-};
-
-export const deleteTransactionOutput = {
-  // Dry-run preview branch.
-  dryRun: bool.optional(),
-  preview: z
-    .object({
-      transactionId: str.optional(),
-      accountName: str.optional(),
-      amount: num.optional(),
-      date: str.optional(),
-      payeeName: strNull.optional(),
-      categoryName: strNull.optional(),
-      description: strNull.optional(),
-      currencyCode: str.optional(),
-    })
-    .optional(),
-  message: str.optional(),
-  // Deleted branch.
-  id: str.optional(),
   deleted: bool.optional(),
+  // Bulk / individual branches.
+  created: z.array(looseObject({})).optional(),
+  results: z.array(looseObject({})).optional(),
+  ids: z.array(str).optional(),
+  count: num.optional(),
+  skipped: z.array(bulkSkippedRow).optional(),
   // Relay branch: a confirmation card was shown in the web chat instead.
   status: str.optional(),
 };

@@ -2287,6 +2287,20 @@ export class TransactionsService {
     );
   }
 
+  /**
+   * Delete a transaction, routing transfers to removeTransfer so both linked
+   * legs are removed (plain remove() only deletes the single row). Used by the
+   * AI Assistant / MCP manage_transactions delete path, where the caller does
+   * not know up front whether the target is a transfer.
+   */
+  async removeAny(userId: string, transactionId: string): Promise<void> {
+    const transaction = await this.findOne(userId, transactionId);
+    if (transaction.isTransfer && transaction.linkedTransactionId) {
+      return this.removeTransfer(userId, transactionId);
+    }
+    return this.remove(userId, transactionId);
+  }
+
   async updateTransfer(
     userId: string,
     transactionId: string,

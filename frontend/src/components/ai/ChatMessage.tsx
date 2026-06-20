@@ -238,7 +238,8 @@ export const ChatMessage = memo(function ChatMessage({
             {pendingActions.map((action) => {
               const isBulk =
                 action.type === 'create_transactions' ||
-                action.type === 'create_investment_transactions';
+                action.type === 'create_investment_transactions' ||
+                action.type === 'batch_actions';
               const Card = isBulk
                 ? BulkConfirmationCard
                 : TransactionConfirmationCard;

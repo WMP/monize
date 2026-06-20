@@ -14,6 +14,7 @@ import { assessInjectionRisk } from "../context/prompt-injection-detector";
 import { QUERY_SAFETY_REMINDER } from "../context/prompt-templates";
 import { sanitizeToolResultStrings } from "../../common/sanitization.util";
 import { MAX_HISTORY_MESSAGES } from "./dto/ai-query.dto";
+import { PendingAiAction } from "../actions/ai-action.types";
 
 const MAX_ITERATIONS = 5;
 
@@ -208,9 +209,11 @@ export class AiQueryService {
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
     let totalToolCalls = 0;
-    // Human-in-the-loop write tools may only surface one confirmation card per
-    // response, so a single turn can't queue up multiple pending writes.
-    let pendingActionsEmitted = 0;
+    // A single proposing tool result may emit MANY confirmation cards (e.g.
+    // individual-mode bulk manage_transactions), but only ONE proposing tool
+    // call is allowed per response so the model can't queue up independent
+    // proposals across tool calls.
+    let proposingToolResults = 0;
 
     for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
       this.logger.log(
@@ -453,23 +456,31 @@ export class AiQueryService {
           };
         }
 
-        // Human-in-the-loop write tools: emit the signed action so the frontend
-        // can render a confirmation card. The model never sees the signature --
-        // result.data holds the LLM-safe status. Cap to one proposal per turn.
+        // Human-in-the-loop write tools: emit the signed action(s) so the
+        // frontend can render confirmation card(s). The model never sees the
+        // signature -- result.data holds the LLM-safe status. A single tool
+        // result may carry many cards (individual-mode bulk), but only one
+        // proposing tool call is allowed per response.
         let llmFacingData = result.data;
-        if (result.pendingAction) {
-          if (pendingActionsEmitted >= 1) {
+        const proposed: PendingAiAction[] = [
+          ...(result.pendingAction ? [result.pendingAction] : []),
+          ...(result.pendingActions ?? []),
+        ];
+        if (proposed.length > 0) {
+          if (proposingToolResults >= 1) {
             llmFacingData = {
               status: "not_proposed",
               message:
-                "Only one action can be proposed per response. Ask the user to confirm the pending card before proposing another.",
+                "Another action has already been proposed in this response. Ask the user to confirm the pending card(s) before proposing more.",
             };
           } else {
-            pendingActionsEmitted++;
-            yield {
-              type: "pending_action",
-              action: result.pendingAction,
-            };
+            proposingToolResults++;
+            for (const action of proposed) {
+              yield {
+                type: "pending_action",
+                action,
+              };
+            }
           }
         }
 

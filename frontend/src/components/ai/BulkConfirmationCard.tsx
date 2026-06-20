@@ -29,6 +29,13 @@ export function BulkConfirmationCard({
     useNumberFormat();
   const { preview, type, status } = action;
   const isInvestment = type === 'create_investment_transactions';
+  // The generic batch envelope carries the operation on the (verbatim)
+  // descriptor; standard create-bulk uses the dedicated create_transactions type.
+  const batchOp =
+    type === 'batch_actions'
+      ? (action.descriptor as { operation?: string }).operation
+      : undefined;
+  const isTransfer = batchOp === 'create_transfer';
 
   const rows = preview.rows ?? [];
   const validCount = rows.filter((r) => r.status === 'ok').length;
@@ -36,18 +43,30 @@ export function BulkConfirmationCard({
 
   const title = isInvestment
     ? t('confirmAction.createInvestmentTransactionsTitle')
-    : t('confirmAction.createTransactionsTitle');
+    : batchOp === 'update'
+      ? t('confirmAction.updateTransactionsTitle')
+      : batchOp === 'delete'
+        ? t('confirmAction.deleteTransactionsTitle')
+        : isTransfer
+          ? t('confirmAction.createTransfersTitle')
+          : t('confirmAction.createTransactionsTitle');
 
   const viewLink = isInvestment
     ? { href: '/investments', label: t('confirmAction.viewInvestments') }
     : { href: '/transactions', label: t('confirmAction.viewTransaction') };
 
-  // On success, prefer the server's actual created count; fall back to the
+  // On success, prefer the server's actual affected count; fall back to the
   // number of valid rows the card displayed.
   const createdCount = action.resultCount ?? validCount;
   const successMessage = isInvestment
     ? t('confirmAction.createdInvestmentTransactions', { count: createdCount })
-    : t('confirmAction.createdTransactions', { count: createdCount });
+    : batchOp === 'update'
+      ? t('confirmAction.updatedTransactions', { count: createdCount })
+      : batchOp === 'delete'
+        ? t('confirmAction.deletedTransactions', { count: createdCount })
+        : isTransfer
+          ? t('confirmAction.createdTransfers', { count: createdCount })
+          : t('confirmAction.createdTransactions', { count: createdCount });
   const skippedAtConfirm = action.resultSkipped?.length ?? 0;
 
   function describeRow(row: PendingActionPreviewRow): {
@@ -80,6 +99,32 @@ export function BulkConfirmationCard({
           formatCurrency(row.totalAmount, row.securityCurrency ?? undefined),
         );
       }
+      return { primary, secondary: parts.join(' · ') };
+    }
+    if (isTransfer) {
+      const route = [row.fromAccountName, row.toAccountName]
+        .filter(Boolean)
+        .join(' → ');
+      const primary = [date, route].filter(Boolean).join(' · ');
+      const parts: string[] = [];
+      if (row.amount !== undefined) {
+        parts.push(formatCurrency(row.amount, row.currencyCode));
+      }
+      if (
+        row.toAmount !== undefined &&
+        row.toAmount !== null &&
+        (row.toCurrencyCode !== row.currencyCode || row.toAmount !== row.amount)
+      ) {
+        parts.push(
+          `→ ${formatCurrency(row.toAmount, row.toCurrencyCode ?? undefined)}`,
+        );
+      }
+      if (row.payeeName)
+        parts.push(
+          row.payeeWillBeCreated
+            ? `${row.payeeName} ${t('confirmAction.newPayee')}`
+            : row.payeeName,
+        );
       return { primary, secondary: parts.join(' · ') };
     }
     const payee = row.payeeName || row.accountName || '';

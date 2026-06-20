@@ -511,7 +511,7 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
   {
     name: "search_transactions",
     description:
-      "Find individual transactions and return their IDs along with date, payee, amount, category, and account. Use this ONLY when you need a specific transaction's ID to act on it (for example before categorize_transaction), or when the user explicitly asks to see specific transactions. For totals, breakdowns, and spending questions use query_transactions instead. Returns a small capped list.",
+      "Find individual transactions and return their IDs along with date, payee, amount, category, and account. Use this ONLY when you need a specific transaction's ID to act on it (for example before an update or delete via manage_transactions), or when the user explicitly asks to see specific transactions. For totals, breakdowns, and spending questions use query_transactions instead. Returns a small capped list.",
     inputSchema: {
       type: "object",
       properties: {
@@ -556,68 +556,101 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
     },
   },
   {
-    name: "create_transaction",
+    name: "manage_transactions",
     description:
-      "Propose creating a new transaction. This does NOT create anything immediately: it shows the user a confirmation card they must explicitly approve before the transaction is saved. Use it only when the user clearly asks to add or record a transaction in their latest message. Amount is positive for income and negative for expenses. A payee name is matched to an existing payee (by name or alias) and linked. If no payee matches, by default a new payee is created on approval; set createPayeeIfMissing to false (e.g. when the user says it is a one-time payee) to instead record the name as free text without creating a payee. After calling this tool, briefly tell the user to review and approve the card; never claim the transaction was created.",
+      "Create, update, or delete the user's cash transactions (including transfers between their own accounts). This does NOT change anything immediately: it shows the user one or more confirmation cards they must explicitly approve before anything is saved. Use it only when the user clearly asks to add, edit, categorize, transfer, or delete a transaction in their latest message. Accepts NAMES for account, category, and payee -- they are resolved internally, so you do NOT need to look up IDs first. " +
+      "operation = 'create' | 'update' | 'delete'. Provide an 'items' array (1-25 rows). " +
+      "create (standard): { accountName, amount, date, payeeName?, categoryName?, description?, createPayeeIfMissing? } -- amount is positive for income, negative for expenses. " +
+      "create (transfer): { fromAccountName, toAccountName, amount, date, description?, payeeName?, createPayeeIfMissing?, exchangeRate?, toAmount? } -- an item is a transfer when toAccountName is present; amount is the positive transfer amount (exchangeRate/toAmount only for cross-currency); payeeName is an optional custom label for the transfer, matched to an existing payee (or created if missing, like a normal transaction) and applied to both legs (omit to auto-generate 'Transfer to/from <account>'). " +
+      "update: { transactionId, amount?, date?, payeeName?, categoryName?, description?, createPayeeIfMissing? } -- provide only the fields to change (at least one); a category-only change is just transactionId + categoryName. First call search_transactions to obtain the transactionId. Transfers are auto-detected and edited correctly; for a transfer, payeeName sets its custom label (matched to an existing payee or created if missing, like a normal transaction). " +
+      "delete: { transactionId } -- removes the transaction (and any linked transfer legs / split children). First call search_transactions to obtain the transactionId. " +
+      "approvalMode = 'bulk' (default) shows one card for the whole batch; 'individual' shows one card per item the user approves separately. Ignored for a single item. Maximum 25 items per call; if the user pastes more, process the first 25 and tell them to send the rest. After calling this tool, briefly tell the user to review and approve the card(s); never claim the change was applied.",
     inputSchema: {
       type: "object",
       properties: {
-        accountName: {
+        operation: {
           type: "string",
-          description:
-            "Account for the transaction. Use an exact name from the user's account list.",
+          enum: ["create", "update", "delete"],
+          description: "The operation to perform on every item.",
         },
-        amount: {
-          type: "number",
+        items: {
+          type: "array",
+          minItems: 1,
+          maxItems: 25,
           description:
-            "Signed amount: positive for income/inflow, negative for an expense/outflow. Up to 4 decimal places.",
+            "The rows to act on (1-25). Row shape depends on operation; see the tool description.",
+          items: {
+            type: "object",
+            properties: {
+              accountName: {
+                type: "string",
+                description:
+                  "create (standard): account for the transaction. Exact name from the user's account list.",
+              },
+              fromAccountName: {
+                type: "string",
+                description:
+                  "create (transfer): source account. Presence of toAccountName makes the item a transfer.",
+              },
+              toAccountName: {
+                type: "string",
+                description:
+                  "create (transfer): destination account. Exact name from the user's account list.",
+              },
+              transactionId: {
+                type: "string",
+                description:
+                  "update/delete: ID of the transaction, obtained from search_transactions.",
+              },
+              amount: {
+                type: "number",
+                description:
+                  "Signed amount for standard create/update (positive=income, negative=expense); positive transfer amount for a transfer. Up to 4 decimal places.",
+              },
+              date: {
+                type: "string",
+                description: "Transaction date (YYYY-MM-DD).",
+              },
+              payeeName: {
+                type: "string",
+                description:
+                  "Optional payee name (standard create/update; matched to an existing payee when one exists, otherwise handled per createPayeeIfMissing). For a transfer (create/update), this is a custom label applied to both legs that is matched to an existing payee when one exists, otherwise handled per createPayeeIfMissing (omit to auto-generate 'Transfer to/from <account>').",
+              },
+              categoryName: {
+                type: "string",
+                description:
+                  'Optional category (standard create/update). Exact name from the user\'s category list ("Parent: Child" for a subcategory).',
+              },
+              description: {
+                type: "string",
+                description: "Optional description or memo.",
+              },
+              createPayeeIfMissing: {
+                type: "boolean",
+                description:
+                  "When the payee name matches no existing payee, create a new payee on approval (true, default) or record the name as free text (false). Applies to standard and transfer create/update.",
+              },
+              exchangeRate: {
+                type: "number",
+                description:
+                  "create (transfer): exchange rate for a cross-currency transfer. Omit for same-currency.",
+              },
+              toAmount: {
+                type: "number",
+                description:
+                  "create (transfer): explicit destination amount for a cross-currency transfer. Overrides exchangeRate.",
+              },
+            },
+          },
         },
-        date: {
+        approvalMode: {
           type: "string",
-          description: "Transaction date (YYYY-MM-DD).",
-        },
-        payeeName: {
-          type: "string",
+          enum: ["bulk", "individual"],
           description:
-            "Optional payee name. Matched to an existing payee (by name or alias) when one exists; otherwise handled per createPayeeIfMissing.",
-        },
-        categoryName: {
-          type: "string",
-          description:
-            'Optional category. Use an exact name from the user\'s category list ("Parent: Child" for a subcategory).',
-        },
-        description: {
-          type: "string",
-          description: "Optional description or memo.",
-        },
-        createPayeeIfMissing: {
-          type: "boolean",
-          description:
-            "When the payee name matches no existing payee, whether to create a new payee on approval (true, the default) or record the name as free text without creating a payee (false). Set false for a one-time payee. Ignored when the name matches an existing payee.",
+            "How multi-item batches are approved: 'bulk' (default) = one card for all items; 'individual' = one card per item. Ignored when there is a single item.",
         },
       },
-      required: ["accountName", "amount", "date"],
-    },
-  },
-  {
-    name: "categorize_transaction",
-    description:
-      "Propose assigning a category to an existing transaction. This does NOT change anything immediately: it shows the user a confirmation card they must approve. First call search_transactions to obtain the transactionId. After calling this tool, briefly tell the user to review and approve the card; never claim the change was applied.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        transactionId: {
-          type: "string",
-          description:
-            "ID of the transaction to categorize, obtained from search_transactions.",
-        },
-        categoryName: {
-          type: "string",
-          description:
-            'Category to assign. Use an exact name from the user\'s category list ("Parent: Child" for a subcategory).',
-        },
-      },
-      required: ["transactionId", "categoryName"],
+      required: ["operation", "items"],
     },
   },
   {
@@ -774,61 +807,6 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
     },
   },
   {
-    name: "create_transactions",
-    description:
-      "Propose creating SEVERAL cash transactions at once from a list or pasted table (e.g. the user pastes rows of transactions). This does NOT create anything immediately: it shows the user ONE confirmation card listing every row, which they review and approve with a single click. Parse the pasted data into the rows array, one entry per transaction; do not fabricate rows. Amount is positive for income and negative for expenses. Maximum 25 rows per call -- if the user pastes more, process the first 25 and tell them to send the rest separately. After calling this tool, briefly tell the user to review and approve the card; never claim the transactions were created. For a single transaction, use create_transaction instead.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        rows: {
-          type: "array",
-          description:
-            "The transactions to propose, one entry per row (1-25 entries).",
-          items: {
-            type: "object",
-            properties: {
-              accountName: {
-                type: "string",
-                description:
-                  "Account for the transaction. Use an exact name from the user's account list.",
-              },
-              amount: {
-                type: "number",
-                description:
-                  "Signed amount: positive for income/inflow, negative for an expense/outflow. Up to 4 decimal places.",
-              },
-              date: {
-                type: "string",
-                description: "Transaction date (YYYY-MM-DD).",
-              },
-              payeeName: {
-                type: "string",
-                description:
-                  "Optional payee name. Matched to an existing payee when one exists; otherwise handled per createPayeeIfMissing.",
-              },
-              categoryName: {
-                type: "string",
-                description:
-                  'Optional category. Use an exact name from the user\'s category list ("Parent: Child" for a subcategory).',
-              },
-              description: {
-                type: "string",
-                description: "Optional description or memo.",
-              },
-              createPayeeIfMissing: {
-                type: "boolean",
-                description:
-                  "When the payee name matches no existing payee, create a new payee on approval (true, default) or record the name as free text (false).",
-              },
-            },
-            required: ["accountName", "amount", "date"],
-          },
-        },
-      },
-      required: ["rows"],
-    },
-  },
-  {
     name: "create_investment_transactions",
     description:
       "Propose creating SEVERAL brokerage/investment-account transactions at once from a list or pasted table (e.g. the user copies a table of trades from a brokerage webpage). This does NOT create anything immediately: it shows the user ONE confirmation card listing every row, which they review and approve with a single click. Parse the pasted data into the rows array, one entry per trade; do not fabricate rows. Each security is matched automatically by ticker symbol or name. Buys debit, and sells/dividends/interest/capital gains credit, the brokerage's linked cash account automatically. Maximum 25 rows per call -- if the user pastes more, process the first 25 and tell them to send the rest separately. After calling this tool, briefly tell the user to review and approve the card; never claim the transactions were created. For a single transaction, use create_investment_transaction instead.",
@@ -904,66 +882,6 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
         },
       },
       required: ["rows"],
-    },
-  },
-  {
-    name: "update_transaction",
-    description:
-      "Propose editing an existing transaction. This does NOT change anything immediately: it shows the user a confirmation card they must explicitly approve before the change is saved. First call search_transactions to obtain the transactionId. Provide ONLY the fields you want to change -- omitted fields keep their current value. Amount is positive for income and negative for expenses. Transfers and split transactions cannot be edited here (the tool returns an error pointing the user to the Transactions screen). After calling this tool, briefly tell the user to review and approve the card; never claim the change was applied. To delete a transaction, use delete_transaction instead.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        transactionId: {
-          type: "string",
-          description:
-            "ID of the transaction to edit, obtained from search_transactions.",
-        },
-        amount: {
-          type: "number",
-          description:
-            "New signed amount: positive for income/inflow, negative for an expense/outflow. Up to 4 decimal places. Omit to keep the current amount.",
-        },
-        date: {
-          type: "string",
-          description: "New transaction date (YYYY-MM-DD). Omit to keep.",
-        },
-        payeeName: {
-          type: "string",
-          description:
-            "New payee name. Matched to an existing payee when one exists; otherwise handled per createPayeeIfMissing. Omit to keep the current payee.",
-        },
-        categoryName: {
-          type: "string",
-          description:
-            'New category. Use an exact name from the user\'s category list ("Parent: Child" for a subcategory). Omit to keep the current category.',
-        },
-        description: {
-          type: "string",
-          description: "New description or memo. Omit to keep.",
-        },
-        createPayeeIfMissing: {
-          type: "boolean",
-          description:
-            "When a new payee name matches no existing payee, create a new payee on approval (true, the default) or record the name as free text (false). Ignored when the name matches an existing payee or no payee change is requested.",
-        },
-      },
-      required: ["transactionId"],
-    },
-  },
-  {
-    name: "delete_transaction",
-    description:
-      "Propose deleting an existing transaction. This does NOT delete anything immediately: it shows the user a confirmation card they must explicitly approve before the transaction is removed. First call search_transactions to obtain the transactionId. Deleting a transfer or split transaction removes its linked legs/children too. After calling this tool, briefly tell the user to review and approve the card; never claim the transaction was deleted.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        transactionId: {
-          type: "string",
-          description:
-            "ID of the transaction to delete, obtained from search_transactions.",
-        },
-      },
-      required: ["transactionId"],
     },
   },
   {

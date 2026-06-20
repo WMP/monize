@@ -112,7 +112,20 @@
     "updateInvestmentTransactionTitle": "この投資取引を編集しますか？",
     "deleteInvestmentTransactionTitle": "この投資取引を削除しますか？",
     "updatedInvestmentTransaction": "投資取引を更新しました",
-    "deletedInvestmentTransaction": "投資取引を削除しました"
+    "deletedInvestmentTransaction": "投資取引を削除しました",
+    "createTransferTitle": "この振替を作成しますか？",
+    "updateTransferTitle": "この振替を編集しますか？",
+    "createdTransfer": "振替を作成しました",
+    "updatedTransfer": "振替を更新しました",
+    "fromAccount": "振替元",
+    "toAccount": "振替先",
+    "toAmount": "振替先金額",
+    "updateTransactionsTitle": "これらの取引を編集しますか？",
+    "deleteTransactionsTitle": "これらの取引を削除しますか？",
+    "createTransfersTitle": "これらの振替を作成しますか？",
+    "updatedTransactions": "{count, plural, =0 {取引は更新されませんでした} other {# 件の取引を更新しました}}",
+    "deletedTransactions": "{count, plural, =0 {取引は削除されませんでした} other {# 件の取引を削除しました}}",
+    "createdTransfers": "{count, plural, =0 {振替は作成されませんでした} other {# 件の振替を作成しました}}"
   },
   "table": {
     "downloadTitle": "テーブルを CSV でダウンロード",

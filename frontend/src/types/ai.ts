@@ -180,7 +180,13 @@ export type AiActionType =
   | 'update_transaction'
   | 'delete_transaction'
   | 'update_investment_transaction'
-  | 'delete_investment_transaction';
+  | 'delete_investment_transaction'
+  | 'create_transfer'
+  | 'update_transfer'
+  // Generic bulk envelope for update/delete/transfer-create batches proposed by
+  // the unified manage_transactions tool. The descriptor carries an `operation`
+  // discriminator the bulk card reads to pick its title and row layout.
+  | 'batch_actions';
 
 export type PendingActionStatus =
   | 'pending'
@@ -195,6 +201,12 @@ export interface PendingActionPreview {
   amount?: number;
   currencyCode?: string;
   transactionDate?: string;
+  // Transfer display fields (create_transfer / update_transfer): the "from" leg
+  // reuses accountName/amount/currencyCode above; these carry the "to" leg.
+  fromAccountName?: string;
+  toAccountName?: string;
+  toAmount?: number | null;
+  toCurrencyCode?: string | null;
   payeeName?: string | null;
   /** True when approving a create_transaction will also create a new payee. */
   payeeWillBeCreated?: boolean;
@@ -236,6 +248,11 @@ export interface PendingActionPreviewRow {
   amount?: number;
   currencyCode?: string;
   transactionDate?: string;
+  // Transfer row fields (batch_actions with operation === 'create_transfer').
+  fromAccountName?: string;
+  toAccountName?: string;
+  toAmount?: number | null;
+  toCurrencyCode?: string | null;
   payeeName?: string | null;
   payeeWillBeCreated?: boolean;
   categoryName?: string | null;

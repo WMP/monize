@@ -133,6 +133,144 @@ describe('BulkConfirmationCard', () => {
     expect(screen.getByText(/Buy AAPL/)).toBeInTheDocument();
   });
 
+  describe('batch_actions envelope', () => {
+    it('renders an update batch with the edit title and success copy', () => {
+      const { rerender } = render(
+        <BulkConfirmationCard
+          action={makeAction({
+            type: 'batch_actions',
+            descriptor: { type: 'batch_actions', operation: 'update' },
+          })}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByText('Apply these transaction edits?'),
+      ).toBeInTheDocument();
+
+      rerender(
+        <BulkConfirmationCard
+          action={makeAction({
+            type: 'batch_actions',
+            descriptor: { type: 'batch_actions', operation: 'update' },
+            status: 'confirmed',
+            resultCount: 1,
+          })}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(screen.getByText(/1 transaction updated/)).toBeInTheDocument();
+    });
+
+    it('renders a delete batch with the delete title', () => {
+      render(
+        <BulkConfirmationCard
+          action={makeAction({
+            type: 'batch_actions',
+            descriptor: { type: 'batch_actions', operation: 'delete' },
+          })}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByText('Delete these transactions?'),
+      ).toBeInTheDocument();
+    });
+
+    it('renders a transfer batch with From → To rows and transfer title', () => {
+      render(
+        <BulkConfirmationCard
+          action={makeAction({
+            type: 'batch_actions',
+            descriptor: { type: 'batch_actions', operation: 'create_transfer' },
+            preview: {
+              rows: [
+                {
+                  status: 'ok',
+                  fromAccountName: 'Checking',
+                  toAccountName: 'Savings',
+                  amount: 200,
+                  currencyCode: 'USD',
+                  toAmount: 200,
+                  toCurrencyCode: 'USD',
+                  transactionDate: '2026-03-01',
+                },
+              ],
+            },
+          })}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(screen.getByText('Create these transfers?')).toBeInTheDocument();
+      expect(screen.getByText(/Checking → Savings/)).toBeInTheDocument();
+    });
+
+    it('appends a custom payee to a transfer row secondary line', () => {
+      render(
+        <BulkConfirmationCard
+          action={makeAction({
+            type: 'batch_actions',
+            descriptor: { type: 'batch_actions', operation: 'create_transfer' },
+            preview: {
+              rows: [
+                {
+                  status: 'ok',
+                  fromAccountName: 'Checking',
+                  toAccountName: 'Savings',
+                  amount: 200,
+                  currencyCode: 'USD',
+                  toAmount: 200,
+                  toCurrencyCode: 'USD',
+                  transactionDate: '2026-03-01',
+                  payeeName: 'Shared rent',
+                },
+              ],
+            },
+          })}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(screen.getByText(/Shared rent/)).toBeInTheDocument();
+    });
+
+    it('appends the new-payee marker to a transfer row whose label will be created', () => {
+      render(
+        <BulkConfirmationCard
+          action={makeAction({
+            type: 'batch_actions',
+            descriptor: { type: 'batch_actions', operation: 'create_transfer' },
+            preview: {
+              rows: [
+                {
+                  status: 'ok',
+                  fromAccountName: 'Checking',
+                  toAccountName: 'Savings',
+                  amount: 200,
+                  currencyCode: 'USD',
+                  toAmount: 200,
+                  toCurrencyCode: 'USD',
+                  transactionDate: '2026-03-01',
+                  payeeName: 'Brand New Label',
+                  payeeWillBeCreated: true,
+                },
+              ],
+            },
+          })}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByText(/Brand New Label \(new payee\)/),
+      ).toBeInTheDocument();
+    });
+  });
+
   it('shows retry on error and an expired notice', () => {
     const onConfirm = vi.fn();
     const { rerender } = render(

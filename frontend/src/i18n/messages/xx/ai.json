@@ -112,7 +112,20 @@
       "REINVEST": "[XX-Reinvest-XX]",
       "ADD_SHARES": "[XX-Add shares-XX]",
       "REMOVE_SHARES": "[XX-Remove shares-XX]"
-    }
+    },
+    "createTransferTitle": "[XX-Create this transfer?-XX]",
+    "updateTransferTitle": "[XX-Apply this transfer edit?-XX]",
+    "createdTransfer": "[XX-Transfer created-XX]",
+    "updatedTransfer": "[XX-Transfer updated-XX]",
+    "fromAccount": "[XX-From-XX]",
+    "toAccount": "[XX-To-XX]",
+    "toAmount": "[XX-To amount-XX]",
+    "updateTransactionsTitle": "[XX-Apply these transaction edits?-XX]",
+    "deleteTransactionsTitle": "[XX-Delete these transactions?-XX]",
+    "createTransfersTitle": "[XX-Create these transfers?-XX]",
+    "updatedTransactions": "[XX-{count, plural, =0 {No transactions updated} one {# transaction updated} other {# transactions updated}}-XX]",
+    "deletedTransactions": "[XX-{count, plural, =0 {No transactions deleted} one {# transaction deleted} other {# transactions deleted}}-XX]",
+    "createdTransfers": "[XX-{count, plural, =0 {No transfers created} one {# transfer created} other {# transfers created}}-XX]"
   },
   "table": {
     "downloadTitle": "[XX-Download table as CSV-XX]",

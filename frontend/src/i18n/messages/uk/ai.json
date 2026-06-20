@@ -112,7 +112,20 @@
     "updateInvestmentTransactionTitle": "Змінити цю інвестиційну операцію?",
     "deleteInvestmentTransactionTitle": "Видалити цю інвестиційну операцію?",
     "updatedInvestmentTransaction": "Інвестиційну операцію оновлено",
-    "deletedInvestmentTransaction": "Інвестиційну операцію видалено"
+    "deletedInvestmentTransaction": "Інвестиційну операцію видалено",
+    "createTransferTitle": "Створити цей переказ?",
+    "updateTransferTitle": "Змінити цей переказ?",
+    "createdTransfer": "Переказ створено",
+    "updatedTransfer": "Переказ оновлено",
+    "fromAccount": "Звідки",
+    "toAccount": "Куди",
+    "toAmount": "Сума зарахування",
+    "updateTransactionsTitle": "Змінити ці транзакції?",
+    "deleteTransactionsTitle": "Видалити ці транзакції?",
+    "createTransfersTitle": "Створити ці перекази?",
+    "updatedTransactions": "{count, plural, =0 {Транзакції не оновлено} one {Оновлено # транзакцію} other {Оновлено # транзакцій}}",
+    "deletedTransactions": "{count, plural, =0 {Транзакції не видалено} one {Видалено # транзакцію} other {Видалено # транзакцій}}",
+    "createdTransfers": "{count, plural, =0 {Перекази не створено} one {Створено # переказ} other {Створено # переказів}}"
   },
   "table": {
     "downloadTitle": "Завантажити таблицю як CSV",

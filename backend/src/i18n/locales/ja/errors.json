@@ -64,6 +64,7 @@
     "actionExpired": "この確認は期限切れです。もう一度依頼してください。",
     "actionWriteLimit": "1日のAI書き込み上限に達しました（1日あたり{{ limit }}件）。明日もう一度お試しください。",
     "actionConfirmFailed": "この操作を確認できませんでした。",
+    "transferInBulkUpdate": "振替は一括更新では編集できません。振替は個別に編集してください。",
     "providerConfigNotFound": "AIプロバイダーの設定が見つかりません",
     "maxProvidersExceeded": "ユーザーあたり最大 {{ maxProvidersPerUser }} 件のAIプロバイダー設定",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY が設定されていません。APIキーを安全に保存できません。",

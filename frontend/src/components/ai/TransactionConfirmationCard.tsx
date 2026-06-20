@@ -43,6 +43,8 @@ export function TransactionConfirmationCard({
     type === 'create_investment_transaction' ||
     type === 'update_investment_transaction' ||
     type === 'delete_investment_transaction';
+  const isTransferType =
+    type === 'create_transfer' || type === 'update_transfer';
 
   const titleByType: Partial<Record<typeof type, string>> = {
     create_transaction: t('confirmAction.createTransactionTitle'),
@@ -60,6 +62,8 @@ export function TransactionConfirmationCard({
     ),
     create_security: t('confirmAction.createSecurityTitle'),
     create_payee: t('confirmAction.createPayeeTitle'),
+    create_transfer: t('confirmAction.createTransferTitle'),
+    update_transfer: t('confirmAction.updateTransferTitle'),
   };
   const title = titleByType[type] ?? t('confirmAction.createPayeeTitle');
 
@@ -168,6 +172,51 @@ export function TransactionConfirmationCard({
         label: t('confirmAction.description'),
         value: preview.description,
       });
+  } else if (isTransferType) {
+    if (preview.fromAccountName)
+      rows.push({
+        label: t('confirmAction.fromAccount'),
+        value: preview.fromAccountName,
+      });
+    if (preview.toAccountName)
+      rows.push({
+        label: t('confirmAction.toAccount'),
+        value: preview.toAccountName,
+      });
+    if (preview.amount !== undefined)
+      rows.push({
+        label: t('confirmAction.amount'),
+        value: formatCurrency(preview.amount, preview.currencyCode),
+      });
+    // Only surface the destination amount for a cross-currency transfer, where
+    // it differs from the source amount/currency.
+    if (
+      preview.toAmount !== undefined &&
+      preview.toAmount !== null &&
+      (preview.toCurrencyCode !== preview.currencyCode ||
+        preview.toAmount !== preview.amount)
+    )
+      rows.push({
+        label: t('confirmAction.toAmount'),
+        value: formatCurrency(
+          preview.toAmount,
+          preview.toCurrencyCode ?? undefined,
+        ),
+      });
+    if (preview.transactionDate)
+      rows.push({ label: t('confirmAction.date'), value: preview.transactionDate });
+    if (preview.payeeName)
+      rows.push({
+        label: t('confirmAction.payee'),
+        value: preview.payeeWillBeCreated
+          ? `${preview.payeeName} ${t('confirmAction.newPayee')}`
+          : preview.payeeName,
+      });
+    if (preview.description)
+      rows.push({
+        label: t('confirmAction.description'),
+        value: preview.description,
+      });
   } else if (type === 'create_security') {
     if (preview.symbol)
       rows.push({ label: t('confirmAction.symbol'), value: preview.symbol });
@@ -213,7 +262,7 @@ export function TransactionConfirmationCard({
       ? { href: '/investments', label: t('confirmAction.viewInvestments') }
       : isSecurityResult
         ? { href: '/securities', label: t('confirmAction.viewSecurities') }
-        : isCashTxType || type === 'categorize_transaction'
+        : isCashTxType || isTransferType || type === 'categorize_transaction'
           ? { href: '/transactions', label: t('confirmAction.viewTransaction') }
           : null;
   const successByType: Partial<Record<typeof type, string>> = {
@@ -232,6 +281,8 @@ export function TransactionConfirmationCard({
     ),
     create_security: t('confirmAction.createdSecurity'),
     create_payee: t('confirmAction.createdPayee'),
+    create_transfer: t('confirmAction.createdTransfer'),
+    update_transfer: t('confirmAction.updatedTransfer'),
   };
   const successMessage =
     successByType[type] ?? t('confirmAction.createdPayee');

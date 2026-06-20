@@ -64,6 +64,7 @@
     "actionExpired": "Questa conferma è scaduta. Riprova a chiedere.",
     "actionWriteLimit": "Limite giornaliero di scrittura IA raggiunto ({{ limit }} al giorno). Riprova domani.",
     "actionConfirmFailed": "Impossibile confermare questa azione.",
+    "transferInBulkUpdate": "I trasferimenti non possono essere modificati in un aggiornamento collettivo. Modifica il trasferimento singolarmente.",
     "providerConfigNotFound": "Configurazione provider AI non trovata",
     "maxProvidersExceeded": "Massimo {{ maxProvidersPerUser }} configurazioni di provider AI per utente",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY non è configurata. Impossibile archiviare le chiavi API in modo sicuro.",

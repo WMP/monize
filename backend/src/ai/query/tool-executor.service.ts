@@ -11,13 +11,17 @@ import { PayeesService } from "../../payees/payees.service";
 import {
   AiActionBuilderService,
   investmentPreviewRow,
-  transactionPreviewRow,
 } from "../actions/ai-action-builder.service";
 import {
   AiActionPreviewRow,
   PendingAiAction,
 } from "../actions/ai-action.types";
-import { CreateTransactionPreview } from "../../transactions/transactions.service";
+import {
+  TransactionToolPrepService,
+  CreateRowInput,
+  TransferRowInput,
+  UpdateRowInput,
+} from "../../transactions/transaction-tool-prep.service";
 import { CreateInvestmentTransactionPreview } from "../../securities/investment-transactions.service";
 import { AccountType } from "../../accounts/entities/account.entity";
 import { CategoriesService } from "../../categories/categories.service";
@@ -54,6 +58,9 @@ interface ToolResult {
   // preview the query service emits as a `pending_action` SSE event. Never fed
   // back to the model -- `data` carries the LLM-safe status instead.
   pendingAction?: PendingAiAction;
+  // A single proposing tool result may carry MANY cards (e.g. individual-mode
+  // bulk). The query service emits each entry as its own `pending_action` event.
+  pendingActions?: PendingAiAction[];
 }
 
 /**
@@ -91,6 +98,8 @@ export class ToolExecutorService {
     private readonly transactionsService: TransactionsService,
     @Inject(forwardRef(() => PayeesService))
     private readonly payeesService: PayeesService,
+    @Inject(forwardRef(() => TransactionToolPrepService))
+    private readonly prepService: TransactionToolPrepService,
     private readonly actionBuilder: AiActionBuilderService,
   ) {}
 
@@ -176,14 +185,8 @@ export class ToolExecutorService {
         case "search_transactions":
           result = await this.searchTransactions(userId, validatedInput);
           break;
-        case "create_transaction":
-          result = await this.createTransactionAction(userId, validatedInput);
-          break;
-        case "categorize_transaction":
-          result = await this.categorizeTransactionAction(
-            userId,
-            validatedInput,
-          );
+        case "manage_transactions":
+          result = await this.manageTransactions(userId, validatedInput);
           break;
         case "create_payee":
           result = await this.createPayeeAction(userId, validatedInput);
@@ -200,20 +203,11 @@ export class ToolExecutorService {
             validatedInput,
           );
           break;
-        case "create_transactions":
-          result = await this.createTransactionsAction(userId, validatedInput);
-          break;
         case "create_investment_transactions":
           result = await this.createInvestmentTransactionsAction(
             userId,
             validatedInput,
           );
-          break;
-        case "update_transaction":
-          result = await this.updateTransactionAction(userId, validatedInput);
-          break;
-        case "delete_transaction":
-          result = await this.deleteTransactionAction(userId, validatedInput);
           break;
         case "update_investment_transaction":
           result = await this.updateInvestmentTransactionAction(
@@ -270,19 +264,14 @@ export class ToolExecutorService {
 
   /**
    * Resolve a single account name to its id + currency. Returns undefined when
-   * the name does not match any of the user's accounts.
+   * the name does not match any of the user's open accounts. Thin wrapper over
+   * the shared AccountsService.resolveByName.
    */
   private async resolveAccountByName(
     userId: string,
     accountName: string,
   ): Promise<{ id: string; name: string; currencyCode: string } | undefined> {
-    const accounts = await this.accountsService.findAll(userId, false);
-    const match = accounts.find(
-      (a) => a.name.toLowerCase() === accountName.toLowerCase(),
-    );
-    return match
-      ? { id: match.id, name: match.name, currencyCode: match.currencyCode }
-      : undefined;
+    return this.accountsService.resolveByName(userId, accountName);
   }
 
   /**
@@ -387,119 +376,369 @@ export class ToolExecutorService {
     };
   }
 
-  private async createTransactionAction(
+  /**
+   * Unified cash-transaction write handler. Resolves names + builds previews via
+   * the shared prep service, then emits the right pending action(s) per
+   * operation/approvalMode: a single item -> one single descriptor; bulk + bulk
+   * mode -> one create_transactions (standard create) or batch_actions
+   * (update/delete/transfer); bulk + individual mode -> an ARRAY of single
+   * descriptors (one card per ok row).
+   */
+  private async manageTransactions(
     userId: string,
     input: Record<string, unknown>,
   ): Promise<ToolResult> {
-    const accountName = input.accountName as string;
-    const amount = input.amount as number;
-    const date = input.date as string;
-    const payeeName = input.payeeName as string | undefined;
-    const categoryName = input.categoryName as string | undefined;
-    const description = input.description as string | undefined;
-    // Default to creating a payee for an unmatched name; the user can opt out
-    // ("don't create a payee for this one-time transaction") to keep it free text.
-    const createPayeeIfMissing =
-      (input.createPayeeIfMissing as boolean | undefined) ?? true;
+    const operation = input.operation as "create" | "update" | "delete";
+    const items = (input.items as Array<Record<string, unknown>>) ?? [];
+    const approvalMode =
+      (input.approvalMode as "bulk" | "individual" | undefined) ?? "bulk";
+    const single = items.length === 1;
 
-    const account = await this.resolveAccountByName(userId, accountName);
-    if (!account) {
-      return this.toolError(
-        `Unknown account: ${accountName}. Use an exact name from the user's account list.`,
-      );
+    if (operation === "create") {
+      return this.manageCreate(userId, items, single, approvalMode);
     }
+    if (operation === "update") {
+      return this.manageUpdate(userId, items, single, approvalMode);
+    }
+    return this.manageDelete(userId, items, single, approvalMode);
+  }
 
-    let categoryId: string | undefined;
-    if (categoryName) {
-      const resolved = await this.resolveSingleCategoryId(userId, categoryName);
-      if (!resolved) {
-        return this.toolError(
-          `Unknown category: ${categoryName}. Call get_categories to look up valid names; subcategories can be referenced as "Parent: Child".`,
+  private isTransferRow(item: Record<string, unknown>): boolean {
+    return item.toAccountName !== undefined;
+  }
+
+  private toCreateRow(item: Record<string, unknown>): CreateRowInput {
+    return {
+      accountName: item.accountName as string,
+      amount: item.amount as number,
+      date: item.date as string,
+      payeeName: item.payeeName as string | undefined,
+      categoryName: item.categoryName as string | undefined,
+      description: item.description as string | undefined,
+      createPayeeIfMissing: item.createPayeeIfMissing as boolean | undefined,
+    };
+  }
+
+  private toTransferRow(item: Record<string, unknown>): TransferRowInput {
+    return {
+      fromAccountName: item.fromAccountName as string,
+      toAccountName: item.toAccountName as string,
+      amount: item.amount as number,
+      date: item.date as string,
+      description: item.description as string | undefined,
+      payeeName: item.payeeName as string | undefined,
+      createPayeeIfMissing: item.createPayeeIfMissing as boolean | undefined,
+      exchangeRate: item.exchangeRate as number | undefined,
+      toAmount: item.toAmount as number | undefined,
+    };
+  }
+
+  private toUpdateRow(item: Record<string, unknown>): UpdateRowInput {
+    return {
+      transactionId: item.transactionId as string,
+      amount: item.amount as number | undefined,
+      date: item.date as string | undefined,
+      payeeName: item.payeeName as string | undefined,
+      categoryName: item.categoryName as string | undefined,
+      description: item.description as string | undefined,
+      createPayeeIfMissing: item.createPayeeIfMissing as boolean | undefined,
+    };
+  }
+
+  private async manageCreate(
+    userId: string,
+    items: Array<Record<string, unknown>>,
+    single: boolean,
+    approvalMode: "bulk" | "individual",
+  ): Promise<ToolResult> {
+    if (single) {
+      const item = items[0];
+      try {
+        if (this.isTransferRow(item)) {
+          const preview = await this.prepService.prepareCreateTransferSingle(
+            userId,
+            this.toTransferRow(item),
+          );
+          const pendingAction = this.actionBuilder.buildCreateTransfer(
+            userId,
+            preview,
+          );
+          return {
+            data: PENDING_ACTION_TOOL_RESULT,
+            summary: `Prepared a transfer of ${preview.amount} ${preview.fromCurrencyCode} from ${preview.fromAccountName} to ${preview.toAccountName} dated ${preview.transactionDate}. Awaiting user confirmation.`,
+            sources: [],
+            pendingAction,
+          };
+        }
+        const { preview } = await this.prepService.prepareCreateSingle(
+          userId,
+          this.toCreateRow(item),
+        );
+        const pendingAction = this.actionBuilder.buildCreateTransaction(
+          userId,
+          preview,
+        );
+        return {
+          data: PENDING_ACTION_TOOL_RESULT,
+          summary: `Prepared a transaction for ${preview.accountName} (${preview.amount} ${preview.currencyCode}) dated ${preview.transactionDate}.${preview.payeeWillBeCreated ? ` A new payee "${preview.payeeName}" will be created on approval.` : ""} Awaiting user confirmation.`,
+          sources: [],
+          pendingAction,
+        };
+      } catch (err) {
+        return this.toolErrorFromException(
+          err,
+          "Could not prepare the transaction.",
         );
       }
-      categoryId = resolved;
     }
 
-    let preview;
-    try {
-      preview = await this.transactionsService.previewCreate(userId, {
-        accountId: account.id,
-        amount,
-        transactionDate: date,
-        payeeName,
-        categoryId,
-        description,
-        createPayeeIfMissing,
-      });
-    } catch (err) {
-      return this.toolErrorFromException(
-        err,
-        "Could not prepare the transaction.",
+    // Bulk create. Standard and transfer rows are split; each builds the right
+    // card(s). A batch may mix the two when in individual mode; in bulk mode the
+    // standard rows go to a create_transactions card and the transfer rows to a
+    // batch_actions(create_transfer) card.
+    const standardItems = items.filter((i) => !this.isTransferRow(i));
+    const transferItems = items.filter((i) => this.isTransferRow(i));
+
+    const std = await this.prepService.prepareCreate(
+      userId,
+      standardItems.map((i) => this.toCreateRow(i)),
+    );
+    const xfer = await this.prepService.prepareCreateTransfer(
+      userId,
+      transferItems.map((i) => this.toTransferRow(i)),
+    );
+
+    const okCount = std.okPreviews.length + xfer.okPreviews.length;
+    if (okCount === 0) {
+      return this.toolError(
+        "None of the transactions could be prepared. Check the account, category, and date for each row and try again.",
       );
     }
 
-    const pendingAction = this.actionBuilder.buildCreateTransaction(
-      userId,
-      preview,
-    );
+    if (approvalMode === "individual") {
+      const pendingActions: PendingAiAction[] = [
+        ...std.okPreviews.map((p) =>
+          this.actionBuilder.buildCreateTransaction(userId, p),
+        ),
+        ...xfer.okPreviews.map((p) =>
+          this.actionBuilder.buildCreateTransfer(userId, p),
+        ),
+      ];
+      const skipped = std.skipped.length + xfer.skipped.length;
+      return {
+        data: PENDING_ACTION_TOOL_RESULT,
+        summary: `Prepared ${pendingActions.length} individual card${pendingActions.length === 1 ? "" : "s"}${skipped ? ` (${skipped} skipped)` : ""}. Awaiting user confirmation.`,
+        sources: [],
+        pendingActions,
+      };
+    }
 
-    // When the name does not match an existing payee, tell the model whether a
-    // new payee will be created (default) or it will be stored as free text so
-    // it can describe the card accurately without leaking the signature.
-    const data =
-      preview.payeeName && !preview.payeeMatched
-        ? {
-            ...PENDING_ACTION_TOOL_RESULT,
-            payeeNote: preview.payeeWillBeCreated
-              ? `"${preview.payeeName}" is not an existing payee; a new payee will be created and linked when the user approves the card.`
-              : `"${preview.payeeName}" is not an existing payee; it will be recorded as a free-text payee name (no payee record created) because createPayeeIfMissing was disabled.`,
-          }
-        : PENDING_ACTION_TOOL_RESULT;
-
+    // Bulk mode: one card per kind that has ok rows.
+    const pendingActions: PendingAiAction[] = [];
+    if (std.okPreviews.length > 0) {
+      pendingActions.push(
+        this.actionBuilder.buildCreateTransactions(
+          userId,
+          std.okPreviews,
+          std.previewRows,
+        ),
+      );
+    }
+    if (xfer.okPreviews.length > 0) {
+      pendingActions.push(
+        this.actionBuilder.buildBatchActions(
+          userId,
+          "create_transfer",
+          xfer.okPreviews.map((p) => this.prepService.transferToBatchRow(p)),
+          xfer.previewRows,
+        ),
+      );
+    }
+    const skipped = std.skipped.length + xfer.skipped.length;
     return {
-      data,
-      summary: `Prepared a transaction for ${preview.accountName} (${preview.amount} ${preview.currencyCode}) dated ${preview.transactionDate}.${preview.payeeWillBeCreated ? ` A new payee "${preview.payeeName}" will be created on approval.` : ""} Awaiting user confirmation.`,
+      data: PENDING_ACTION_TOOL_RESULT,
+      summary: `Prepared ${okCount} transaction${okCount === 1 ? "" : "s"}${skipped ? ` (${skipped} skipped)` : ""}. Awaiting user confirmation.`,
+      sources: [],
+      pendingActions,
+    };
+  }
+
+  private async manageUpdate(
+    userId: string,
+    items: Array<Record<string, unknown>>,
+    single: boolean,
+    approvalMode: "bulk" | "individual",
+  ): Promise<ToolResult> {
+    if (single) {
+      try {
+        const result = await this.prepService.prepareUpdate(
+          userId,
+          this.toUpdateRow(items[0]),
+        );
+        if (result.kind === "transfer") {
+          const pendingAction = this.actionBuilder.buildUpdateTransfer(
+            userId,
+            result.preview,
+          );
+          return {
+            data: PENDING_ACTION_TOOL_RESULT,
+            summary: `Prepared an update to the transfer (${result.preview.amount} ${result.preview.fromCurrencyCode}) from ${result.preview.fromAccountName} to ${result.preview.toAccountName}. Awaiting user confirmation.`,
+            sources: [],
+            pendingAction,
+          };
+        }
+        const pendingAction = this.actionBuilder.buildUpdateTransaction(
+          userId,
+          result.preview,
+        );
+        return {
+          data: PENDING_ACTION_TOOL_RESULT,
+          summary: `Prepared an update to the transaction in ${result.preview.accountName} (${result.preview.amount} ${result.preview.currencyCode}) dated ${result.preview.transactionDate}.${result.preview.payeeWillBeCreated ? ` A new payee "${result.preview.payeeName}" will be created on approval.` : ""} Awaiting user confirmation.`,
+          sources: [],
+          pendingAction,
+        };
+      } catch (err) {
+        return this.toolErrorFromException(
+          err,
+          "Could not prepare the transaction edit.",
+        );
+      }
+    }
+
+    if (approvalMode === "individual") {
+      const pendingActions: PendingAiAction[] = [];
+      let skipped = 0;
+      for (const item of items) {
+        try {
+          const result = await this.prepService.prepareUpdate(
+            userId,
+            this.toUpdateRow(item),
+          );
+          pendingActions.push(
+            result.kind === "transfer"
+              ? this.actionBuilder.buildUpdateTransfer(userId, result.preview)
+              : this.actionBuilder.buildUpdateTransaction(
+                  userId,
+                  result.preview,
+                ),
+          );
+        } catch {
+          skipped++;
+        }
+      }
+      if (pendingActions.length === 0) {
+        return this.toolError(
+          "None of the transaction edits could be prepared. Check each transactionId and the fields to change.",
+        );
+      }
+      return {
+        data: PENDING_ACTION_TOOL_RESULT,
+        summary: `Prepared ${pendingActions.length} individual edit card${pendingActions.length === 1 ? "" : "s"}${skipped ? ` (${skipped} skipped)` : ""}. Awaiting user confirmation.`,
+        sources: [],
+        pendingActions,
+      };
+    }
+
+    const bulk = await this.prepService.prepareUpdateBulk(
+      userId,
+      items.map((i) => this.toUpdateRow(i)),
+    );
+    if (bulk.okRows.length === 0) {
+      return this.toolError(
+        "None of the transaction edits could be prepared. Check each transactionId and the fields to change.",
+      );
+    }
+    const pendingAction = this.actionBuilder.buildBatchActions(
+      userId,
+      "update",
+      bulk.okRows,
+      bulk.previewRows,
+    );
+    return {
+      data: PENDING_ACTION_TOOL_RESULT,
+      summary: `Prepared ${bulk.okRows.length} transaction edit${bulk.okRows.length === 1 ? "" : "s"}${bulk.skipped.length ? ` (${bulk.skipped.length} skipped)` : ""}. Awaiting user confirmation.`,
       sources: [],
       pendingAction,
     };
   }
 
-  private async categorizeTransactionAction(
+  private async manageDelete(
     userId: string,
-    input: Record<string, unknown>,
+    items: Array<Record<string, unknown>>,
+    single: boolean,
+    approvalMode: "bulk" | "individual",
   ): Promise<ToolResult> {
-    const transactionId = input.transactionId as string;
-    const categoryName = input.categoryName as string;
-
-    const categoryId = await this.resolveSingleCategoryId(userId, categoryName);
-    if (!categoryId) {
-      return this.toolError(
-        `Unknown category: ${categoryName}. Call get_categories to look up valid names; subcategories can be referenced as "Parent: Child".`,
-      );
+    if (single) {
+      try {
+        const preview = await this.prepService.prepareDelete(
+          userId,
+          items[0].transactionId as string,
+        );
+        const pendingAction = this.actionBuilder.buildDeleteTransaction(
+          userId,
+          preview,
+        );
+        return {
+          data: PENDING_ACTION_TOOL_RESULT,
+          summary: `Prepared to delete the transaction in ${preview.accountName} (${preview.amount} ${preview.currencyCode}) dated ${preview.transactionDate}${preview.payeeName ? ` for ${preview.payeeName}` : ""}. Awaiting user confirmation.`,
+          sources: [],
+          pendingAction,
+        };
+      } catch (err) {
+        return this.toolErrorFromException(
+          err,
+          "Could not prepare the transaction deletion.",
+        );
+      }
     }
 
-    let preview;
-    try {
-      preview = await this.transactionsService.previewCategorize(
-        userId,
-        transactionId,
-        categoryId,
-      );
-    } catch (err) {
-      return this.toolErrorFromException(
-        err,
-        "Could not prepare the categorization.",
-      );
+    if (approvalMode === "individual") {
+      const pendingActions: PendingAiAction[] = [];
+      let skipped = 0;
+      for (const item of items) {
+        try {
+          const preview = await this.prepService.prepareDelete(
+            userId,
+            item.transactionId as string,
+          );
+          pendingActions.push(
+            this.actionBuilder.buildDeleteTransaction(userId, preview),
+          );
+        } catch {
+          skipped++;
+        }
+      }
+      if (pendingActions.length === 0) {
+        return this.toolError(
+          "None of the transactions could be prepared for deletion. Check each transactionId.",
+        );
+      }
+      return {
+        data: PENDING_ACTION_TOOL_RESULT,
+        summary: `Prepared ${pendingActions.length} individual delete card${pendingActions.length === 1 ? "" : "s"}${skipped ? ` (${skipped} skipped)` : ""}. Awaiting user confirmation.`,
+        sources: [],
+        pendingActions,
+      };
     }
 
-    const pendingAction = this.actionBuilder.buildCategorizeTransaction(
+    const bulk = await this.prepService.prepareDeleteBulk(
       userId,
-      preview,
+      items.map((i) => i.transactionId as string),
     );
-
+    if (bulk.okRows.length === 0) {
+      return this.toolError(
+        "None of the transactions could be prepared for deletion. Check each transactionId.",
+      );
+    }
+    const pendingAction = this.actionBuilder.buildBatchActions(
+      userId,
+      "delete",
+      bulk.okRows,
+      bulk.previewRows,
+    );
     return {
       data: PENDING_ACTION_TOOL_RESULT,
-      summary: `Prepared to categorize the transaction as "${preview.newCategoryName}". Awaiting user confirmation.`,
+      summary: `Prepared to delete ${bulk.okRows.length} transaction${bulk.okRows.length === 1 ? "" : "s"}${bulk.skipped.length ? ` (${bulk.skipped.length} skipped)` : ""}. Awaiting user confirmation.`,
       sources: [],
       pendingAction,
     };
@@ -693,96 +932,6 @@ export class ToolExecutorService {
     };
   }
 
-  private async updateTransactionAction(
-    userId: string,
-    input: Record<string, unknown>,
-  ): Promise<ToolResult> {
-    const transactionId = input.transactionId as string;
-    const amount = input.amount as number | undefined;
-    const date = input.date as string | undefined;
-    const payeeName = input.payeeName as string | undefined;
-    const categoryName = input.categoryName as string | undefined;
-    const description = input.description as string | undefined;
-    const createPayeeIfMissing =
-      (input.createPayeeIfMissing as boolean | undefined) ?? true;
-
-    let categoryId: string | undefined;
-    if (categoryName !== undefined) {
-      const resolved = await this.resolveSingleCategoryId(userId, categoryName);
-      if (!resolved) {
-        return this.toolError(
-          `Unknown category: ${categoryName}. Call get_categories to look up valid names; subcategories can be referenced as "Parent: Child".`,
-        );
-      }
-      categoryId = resolved;
-    }
-
-    let preview;
-    try {
-      preview = await this.transactionsService.previewUpdate(
-        userId,
-        transactionId,
-        {
-          amount,
-          transactionDate: date,
-          payeeName,
-          categoryId,
-          description,
-          createPayeeIfMissing,
-        },
-      );
-    } catch (err) {
-      return this.toolErrorFromException(
-        err,
-        "Could not prepare the transaction edit.",
-      );
-    }
-
-    const pendingAction = this.actionBuilder.buildUpdateTransaction(
-      userId,
-      preview,
-    );
-
-    return {
-      data: PENDING_ACTION_TOOL_RESULT,
-      summary: `Prepared an update to the transaction in ${preview.accountName} (${preview.amount} ${preview.currencyCode}) dated ${preview.transactionDate}.${preview.payeeWillBeCreated ? ` A new payee "${preview.payeeName}" will be created on approval.` : ""} Awaiting user confirmation.`,
-      sources: [],
-      pendingAction,
-    };
-  }
-
-  private async deleteTransactionAction(
-    userId: string,
-    input: Record<string, unknown>,
-  ): Promise<ToolResult> {
-    const transactionId = input.transactionId as string;
-
-    let preview;
-    try {
-      preview = await this.transactionsService.previewDelete(
-        userId,
-        transactionId,
-      );
-    } catch (err) {
-      return this.toolErrorFromException(
-        err,
-        "Could not prepare the transaction deletion.",
-      );
-    }
-
-    const pendingAction = this.actionBuilder.buildDeleteTransaction(
-      userId,
-      preview,
-    );
-
-    return {
-      data: PENDING_ACTION_TOOL_RESULT,
-      summary: `Prepared to delete the transaction in ${preview.accountName} (${preview.amount} ${preview.currencyCode}) dated ${preview.transactionDate}${preview.payeeName ? ` for ${preview.payeeName}` : ""}. Awaiting user confirmation.`,
-      sources: [],
-      pendingAction,
-    };
-  }
-
   private async updateInvestmentTransactionAction(
     userId: string,
     input: Record<string, unknown>,
@@ -891,99 +1040,6 @@ export class ToolExecutorService {
       `bulk row preview failed: ${err instanceof Error ? err.message : err}`,
     );
     return fallback;
-  }
-
-  private async createTransactionsAction(
-    userId: string,
-    input: Record<string, unknown>,
-  ): Promise<ToolResult> {
-    const rows = (input.rows as Array<Record<string, unknown>>) ?? [];
-    const previewRows: AiActionPreviewRow[] = [];
-    const okPreviews: CreateTransactionPreview[] = [];
-
-    for (const row of rows) {
-      const accountName = row.accountName as string;
-      const amount = row.amount as number;
-      const date = row.date as string;
-      const payeeName = row.payeeName as string | undefined;
-      const categoryName = row.categoryName as string | undefined;
-      const description = row.description as string | undefined;
-      const createPayeeIfMissing =
-        (row.createPayeeIfMissing as boolean | undefined) ?? true;
-
-      const base: AiActionPreviewRow = {
-        status: "error",
-        accountName,
-        amount,
-        transactionDate: date,
-        payeeName: payeeName ?? null,
-        categoryName: categoryName ?? null,
-        description: description ?? null,
-      };
-
-      const account = await this.resolveAccountByName(userId, accountName);
-      if (!account) {
-        previewRows.push({ ...base, error: `Unknown account: ${accountName}` });
-        continue;
-      }
-
-      let categoryId: string | undefined;
-      if (categoryName) {
-        const resolved = await this.resolveSingleCategoryId(
-          userId,
-          categoryName,
-        );
-        if (!resolved) {
-          previewRows.push({
-            ...base,
-            error: `Unknown category: ${categoryName}`,
-          });
-          continue;
-        }
-        categoryId = resolved;
-      }
-
-      try {
-        const preview = await this.transactionsService.previewCreate(userId, {
-          accountId: account.id,
-          amount,
-          transactionDate: date,
-          payeeName,
-          categoryId,
-          description,
-          createPayeeIfMissing,
-        });
-        okPreviews.push(preview);
-        previewRows.push(transactionPreviewRow(preview));
-      } catch (err) {
-        previewRows.push({
-          ...base,
-          error: this.previewErrorReason(
-            err,
-            "Could not prepare this transaction.",
-          ),
-        });
-      }
-    }
-
-    if (okPreviews.length === 0) {
-      return this.toolError(
-        "None of the transactions could be prepared. Check the account, category, and date for each row and try again.",
-      );
-    }
-
-    const pendingAction = this.actionBuilder.buildCreateTransactions(
-      userId,
-      okPreviews,
-      previewRows,
-    );
-    const skippedCount = previewRows.length - okPreviews.length;
-    return {
-      data: PENDING_ACTION_TOOL_RESULT,
-      summary: `Prepared ${okPreviews.length} transaction${okPreviews.length === 1 ? "" : "s"}${skippedCount ? ` (${skippedCount} skipped)` : ""}. Awaiting user confirmation.`,
-      sources: [],
-      pendingAction,
-    };
   }
 
   private async createInvestmentTransactionsAction(

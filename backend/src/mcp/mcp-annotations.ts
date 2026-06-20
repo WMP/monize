@@ -18,6 +18,17 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
  * - `CREATE`     -- adds a new record (non-idempotent, non-destructive).
  * - `UPDATE`     -- sets fields to given values (idempotent, non-destructive).
  * - `DELETE`     -- removes a record (destructive; idempotent end-state).
+ * - `WRITE`      -- a combined create/update/delete tool whose effect varies per
+ *                   call (e.g. `manage_transactions`): destructive (can delete),
+ *                   non-idempotent (can create).
+ *
+ * | Preset    | readOnly | destructive | idempotent | openWorld |
+ * |-----------|----------|-------------|------------|-----------|
+ * | READ_ONLY | true     | false       | true       | false     |
+ * | CREATE    | false    | false       | false      | false     |
+ * | UPDATE    | false    | false       | true       | false     |
+ * | DELETE    | false    | true        | true       | false     |
+ * | WRITE     | false    | true        | false      | false     |
  */
 
 // A read-only query never mutates state, so it is non-destructive and
@@ -49,5 +60,14 @@ export const DELETE: ToolAnnotations = {
   readOnlyHint: false,
   destructiveHint: true,
   idempotentHint: true,
+  openWorldHint: false,
+};
+
+// A combined create/update/delete tool: destructive (it can delete) and
+// non-idempotent (it can create), so repeating it is not safe.
+export const WRITE: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: false,
   openWorldHint: false,
 };

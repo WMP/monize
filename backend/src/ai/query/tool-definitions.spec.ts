@@ -1,8 +1,8 @@
 import { FINANCIAL_TOOLS } from "./tool-definitions";
 
 describe("FINANCIAL_TOOLS", () => {
-  it("defines exactly 29 tools", () => {
-    expect(FINANCIAL_TOOLS).toHaveLength(29);
+  it("defines exactly 25 tools", () => {
+    expect(FINANCIAL_TOOLS).toHaveLength(25);
   });
 
   it("has unique tool names", () => {
@@ -28,14 +28,11 @@ describe("FINANCIAL_TOOLS", () => {
     "calculate",
     "render_chart",
     "search_transactions",
-    "create_transaction",
-    "categorize_transaction",
+    "manage_transactions",
     "create_payee",
     "create_security",
     "create_investment_transaction",
     "lookup_securities",
-    "update_transaction",
-    "delete_transaction",
     "update_investment_transaction",
     "delete_investment_transaction",
   ];

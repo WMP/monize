@@ -28,7 +28,10 @@ export type AiActionType =
   | "update_transaction"
   | "delete_transaction"
   | "update_investment_transaction"
-  | "delete_investment_transaction";
+  | "delete_investment_transaction"
+  | "create_transfer"
+  | "update_transfer"
+  | "batch_actions";
 
 export const AI_ACTION_TYPES: AiActionType[] = [
   "create_transaction",
@@ -42,6 +45,9 @@ export const AI_ACTION_TYPES: AiActionType[] = [
   "delete_transaction",
   "update_investment_transaction",
   "delete_investment_transaction",
+  "create_transfer",
+  "update_transfer",
+  "batch_actions",
 ];
 
 /**
@@ -224,6 +230,102 @@ export interface DeleteInvestmentTransactionDescriptor extends BaseDescriptor {
   transactionId: string;
 }
 
+/**
+ * Create a transfer between two of the user's own accounts. Carries the full
+ * resolved resulting state of both legs so confirm reproduces it exactly. The
+ * `from` leg is debited `amount` and the `to` leg is credited `toAmount`
+ * (equal to `amount` for same-currency transfers).
+ */
+export interface CreateTransferDescriptor extends BaseDescriptor {
+  type: "create_transfer";
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  transactionDate: string;
+  fromCurrencyCode: string;
+  toCurrencyCode: string;
+  exchangeRate: number;
+  toAmount: number;
+  description: string | null;
+  /** Existing payee the custom label resolved to, or null for free text. */
+  payeeId: string | null;
+  payeeName: string | null;
+  /** When true and payeeId is null, confirm creates a payee from payeeName. */
+  createPayee: boolean;
+}
+
+/** Edit an existing transfer (both linked legs). */
+export interface UpdateTransferDescriptor extends BaseDescriptor {
+  type: "update_transfer";
+  transactionId: string;
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  transactionDate: string;
+  exchangeRate: number;
+  toAmount: number;
+  description: string | null;
+  payeeId: string | null;
+  payeeName: string | null;
+  createPayee: boolean;
+}
+
+/**
+ * One resolved row inside a generic `batch_actions` envelope. The row carries
+ * the same resolved fields the matching singular descriptor would, minus the
+ * per-action envelope (the batch shares one actionId/expiresAt/userId/signature).
+ */
+export interface BatchUpdateTransactionRow {
+  transactionId: string;
+  accountId: string;
+  amount: number;
+  transactionDate: string;
+  payeeId: string | null;
+  payeeName: string | null;
+  createPayee: boolean;
+  categoryId: string | null;
+  description: string | null;
+  currencyCode: string;
+}
+
+export interface BatchDeleteTransactionRow {
+  transactionId: string;
+}
+
+export interface BatchCreateTransferRow {
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  transactionDate: string;
+  fromCurrencyCode: string;
+  toCurrencyCode: string;
+  exchangeRate: number;
+  toAmount: number;
+  description: string | null;
+  payeeId: string | null;
+  payeeName: string | null;
+  createPayee: boolean;
+}
+
+export type BatchActionRow =
+  | TransactionRowDescriptor
+  | BatchUpdateTransactionRow
+  | BatchDeleteTransactionRow
+  | BatchCreateTransferRow;
+
+/**
+ * Generic homogeneous bulk envelope executed as one unit. `operation` selects
+ * the per-row shape (standard create reuses `TransactionRowDescriptor`). Used by
+ * the unified `manage_transactions` tool for bulk update/delete/transfer-create
+ * (standard bulk create keeps its dedicated `create_transactions` descriptor).
+ */
+export interface BatchActionsDescriptor extends BaseDescriptor {
+  type: "batch_actions";
+  operation: "create" | "update" | "delete" | "create_transfer";
+  /** Order is load-bearing: covered by the signature and preserved on confirm. */
+  rows: BatchActionRow[];
+}
+
 export type AiActionDescriptor =
   | CreateTransactionDescriptor
   | CategorizeTransactionDescriptor
@@ -235,7 +337,10 @@ export type AiActionDescriptor =
   | UpdateTransactionDescriptor
   | DeleteTransactionDescriptor
   | UpdateInvestmentTransactionDescriptor
-  | DeleteInvestmentTransactionDescriptor;
+  | DeleteInvestmentTransactionDescriptor
+  | CreateTransferDescriptor
+  | UpdateTransferDescriptor
+  | BatchActionsDescriptor;
 
 /**
  * Human-readable preview shown on the confirmation card. Display-only (not part
@@ -272,9 +377,16 @@ export interface AiActionPreview {
   securityType?: string | null;
   exchange?: string | null;
   isFavourite?: boolean;
+  // create_transfer / update_transfer display fields. The "from" leg reuses
+  // accountName/amount/currencyCode; these add the destination leg.
+  fromAccountName?: string;
+  toAccountName?: string;
+  toAmount?: number;
+  toCurrencyCode?: string;
   /**
    * Per-row previews for the bulk actions (`create_transactions`,
-   * `create_investment_transactions`). Carries every pasted row in order --
+   * `create_investment_transactions`, `batch_actions`). Carries every pasted row
+   * in order --
    * both the valid rows that will be created and the flagged rows that were
    * dropped -- so the confirmation card can show the whole table with badges.
    */
@@ -312,6 +424,12 @@ export interface AiActionPreviewRow {
   cashAccountName?: string | null;
   cashCurrency?: string | null;
   cashAmount?: number | null;
+  // Transfer-row display fields (batch_actions with operation: "create_transfer").
+  // The "from" leg reuses accountName/amount/currencyCode.
+  fromAccountName?: string;
+  toAccountName?: string;
+  toAmount?: number;
+  toCurrencyCode?: string;
 }
 
 /**

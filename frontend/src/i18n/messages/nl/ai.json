@@ -112,7 +112,20 @@
     "updateInvestmentTransactionTitle": "Deze beleggingstransactie bewerken?",
     "deleteInvestmentTransactionTitle": "Deze beleggingstransactie verwijderen?",
     "updatedInvestmentTransaction": "Beleggingstransactie bijgewerkt",
-    "deletedInvestmentTransaction": "Beleggingstransactie verwijderd"
+    "deletedInvestmentTransaction": "Beleggingstransactie verwijderd",
+    "createTransferTitle": "Deze overboeking aanmaken?",
+    "updateTransferTitle": "Deze overboeking bewerken?",
+    "createdTransfer": "Overboeking aangemaakt",
+    "updatedTransfer": "Overboeking bijgewerkt",
+    "fromAccount": "Van",
+    "toAccount": "Naar",
+    "toAmount": "Doelbedrag",
+    "updateTransactionsTitle": "Deze transacties bewerken?",
+    "deleteTransactionsTitle": "Deze transacties verwijderen?",
+    "createTransfersTitle": "Deze overboekingen aanmaken?",
+    "updatedTransactions": "{count, plural, =0 {Geen transacties bijgewerkt} one {# transactie bijgewerkt} other {# transacties bijgewerkt}}",
+    "deletedTransactions": "{count, plural, =0 {Geen transacties verwijderd} one {# transactie verwijderd} other {# transacties verwijderd}}",
+    "createdTransfers": "{count, plural, =0 {Geen overboekingen aangemaakt} one {# overboeking aangemaakt} other {# overboekingen aangemaakt}}"
   },
   "table": {
     "downloadTitle": "Tabel downloaden als CSV",

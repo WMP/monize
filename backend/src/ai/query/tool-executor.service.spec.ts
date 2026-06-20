@@ -14,6 +14,8 @@ import { TransactionsService } from "../../transactions/transactions.service";
 import { PayeesService } from "../../payees/payees.service";
 import { AiActionSigningService } from "../actions/ai-action-signing.service";
 import { AiActionBuilderService } from "../actions/ai-action-builder.service";
+import { TransactionToolPrepService } from "../../transactions/transaction-tool-prep.service";
+import { TransactionTransferService } from "../../transactions/transaction-transfer.service";
 
 describe("ToolExecutorService", () => {
   let service: ToolExecutorService;
@@ -29,6 +31,7 @@ describe("ToolExecutorService", () => {
   let payees: Record<string, jest.Mock>;
   let securities: Record<string, jest.Mock>;
   let signing: Record<string, jest.Mock>;
+  let transfer: Record<string, jest.Mock>;
 
   const userId = "user-1";
 
@@ -95,6 +98,28 @@ describe("ToolExecutorService", () => {
         { id: "acc-2", name: "Savings", currencyCode: "USD" },
         { id: "acc-3", name: "Brokerage", currencyCode: "USD" },
       ]),
+      resolveByName: jest.fn(async (_uid: string, name: string) => {
+        const byName: Record<
+          string,
+          { id: string; name: string; currencyCode: string }
+        > = {
+          checking: { id: "acc-1", name: "Checking", currencyCode: "USD" },
+          savings: { id: "acc-2", name: "Savings", currencyCode: "USD" },
+          brokerage: { id: "acc-3", name: "Brokerage", currencyCode: "USD" },
+        };
+        return byName[name.toLowerCase()];
+      }),
+      findOne: jest.fn(async (_uid: string, id: string) => {
+        const byId: Record<
+          string,
+          { id: string; name: string; currencyCode: string }
+        > = {
+          "acc-1": { id: "acc-1", name: "Checking", currencyCode: "USD" },
+          "acc-2": { id: "acc-2", name: "Savings", currencyCode: "USD" },
+          "acc-3": { id: "acc-3", name: "Brokerage", currencyCode: "USD" },
+        };
+        return byId[id];
+      }),
       getLlmBalances: jest.fn().mockResolvedValue({
         accounts: [
           {
@@ -336,6 +361,12 @@ describe("ToolExecutorService", () => {
         description: null,
         currencyCode: "USD",
       }),
+      // Used by the prep service to auto-detect transfers on update.
+      findOne: jest.fn().mockResolvedValue({
+        id: "tx-1",
+        isTransfer: false,
+        linkedTransactionId: null,
+      }),
     };
 
     payees = {
@@ -387,6 +418,39 @@ describe("ToolExecutorService", () => {
       sign: jest.fn().mockReturnValue("signature-abc"),
     };
 
+    transfer = {
+      isTransfer: jest.fn(
+        (tx: { isTransfer?: boolean }) => tx.isTransfer === true,
+      ),
+      previewCreateTransfer: jest.fn().mockResolvedValue({
+        fromAccountId: "acc-1",
+        fromAccountName: "Checking",
+        fromCurrencyCode: "USD",
+        toAccountId: "acc-2",
+        toAccountName: "Savings",
+        toCurrencyCode: "USD",
+        amount: 100,
+        toAmount: 100,
+        exchangeRate: 1,
+        transactionDate: "2026-01-15",
+        description: null,
+      }),
+      previewUpdateTransfer: jest.fn().mockResolvedValue({
+        transactionId: "tx-1",
+        fromAccountId: "acc-1",
+        fromAccountName: "Checking",
+        fromCurrencyCode: "USD",
+        toAccountId: "acc-2",
+        toAccountName: "Savings",
+        toCurrencyCode: "USD",
+        amount: 100,
+        toAmount: 100,
+        exchangeRate: 1,
+        transactionDate: "2026-01-15",
+        description: null,
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ToolExecutorService,
@@ -407,9 +471,12 @@ describe("ToolExecutorService", () => {
         },
         { provide: TransactionsService, useValue: transactions },
         { provide: PayeesService, useValue: payees },
+        { provide: TransactionTransferService, useValue: transfer },
         { provide: AiActionSigningService, useValue: signing },
-        // Real builder wrapping the mocked signing service, so the executor's
-        // pending-action construction (and signing.sign assertions) still run.
+        // Real prep + builder wrapping the mocked services, so the executor's
+        // name resolution, preview building, and pending-action construction
+        // (and signing.sign assertions) still run end-to-end.
+        TransactionToolPrepService,
         AiActionBuilderService,
       ],
     }).compile();
@@ -1003,7 +1070,7 @@ describe("ToolExecutorService", () => {
         limit: 10,
       });
 
-      expect(accounts.findAll).toHaveBeenCalledWith(userId, false);
+      expect(accounts.resolveByName).toHaveBeenCalledWith(userId, "Checking");
       expect(analytics.resolveLlmCategoryIds).toHaveBeenCalledWith(userId, [
         "Dining",
       ]);
@@ -1031,21 +1098,25 @@ describe("ToolExecutorService", () => {
     });
   });
 
-  describe("create_transaction (human-in-the-loop)", () => {
-    it("returns a signed pending action and never persists", async () => {
-      const result = await service.execute(userId, "create_transaction", {
-        accountName: "Checking",
-        amount: -12.5,
-        date: "2026-01-15",
-        payeeName: "Starbucks",
-        categoryName: "Dining",
+  describe("manage_transactions (create, human-in-the-loop)", () => {
+    it("single create returns a signed pending action and never persists", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "create",
+        items: [
+          {
+            accountName: "Checking",
+            amount: -12.5,
+            date: "2026-01-15",
+            payeeName: "Starbucks",
+            categoryName: "Dining",
+          },
+        ],
       });
 
       expect(transactions.previewCreate).toHaveBeenCalledWith(
         userId,
         expect.objectContaining({ accountId: "acc-1", amount: -12.5 }),
       );
-      // Never writes during the agentic loop.
       expect(transactions.create).toBeUndefined();
       expect(signing.sign).toHaveBeenCalled();
       expect(result.pendingAction?.type).toBe("create_transaction");
@@ -1056,183 +1127,139 @@ describe("ToolExecutorService", () => {
         accountId: "acc-1",
         amount: -12.5,
         currencyCode: "USD",
-        // The resolved payee id is signed into the descriptor so the confirmed
-        // transaction links to the existing payee.
         payeeId: "payee-1",
       });
-      expect(result.pendingAction?.preview).toMatchObject({
-        accountName: "Checking",
-        categoryName: "Dining",
-      });
     });
 
-    it("defaults to creating a payee for an unmatched name (createPayee flagged on the descriptor)", async () => {
-      transactions.previewCreate.mockResolvedValueOnce({
-        accountId: "acc-1",
-        accountName: "Checking",
-        amount: -12.5,
-        transactionDate: "2026-01-15",
-        payeeId: null,
-        payeeName: "Brand New Store",
-        payeeMatched: false,
-        payeeWillBeCreated: true,
-        categoryId: null,
-        categoryName: null,
-        description: null,
-        currencyCode: "USD",
-      });
-
-      const result = await service.execute(userId, "create_transaction", {
-        accountName: "Checking",
-        amount: -12.5,
-        date: "2026-01-15",
-        payeeName: "Brand New Store",
-      });
-
-      // createPayeeIfMissing defaults to true, so previewCreate is asked to plan
-      // a payee and the signed descriptor records that intent for the confirm step.
-      expect(transactions.previewCreate).toHaveBeenCalledWith(
-        userId,
-        expect.objectContaining({ createPayeeIfMissing: true }),
-      );
-      expect(result.pendingAction?.type).toBe("create_transaction");
-      expect(result.pendingAction?.descriptor).toMatchObject({
-        payeeId: null,
-        payeeName: "Brand New Store",
-        createPayee: true,
-      });
-      expect(result.pendingAction?.preview).toMatchObject({
-        payeeName: "Brand New Store",
-        payeeWillBeCreated: true,
-      });
-      const data = result.data as { payeeNote?: string };
-      expect(data.payeeNote).toContain("a new payee will be created");
-    });
-
-    it("records a free-text payee when createPayeeIfMissing is false", async () => {
-      transactions.previewCreate.mockResolvedValueOnce({
-        accountId: "acc-1",
-        accountName: "Checking",
-        amount: -12.5,
-        transactionDate: "2026-01-15",
-        payeeId: null,
-        payeeName: "Brand New Store",
-        payeeMatched: false,
-        payeeWillBeCreated: false,
-        categoryId: null,
-        categoryName: null,
-        description: null,
-        currencyCode: "USD",
-      });
-
-      const result = await service.execute(userId, "create_transaction", {
-        accountName: "Checking",
-        amount: -12.5,
-        date: "2026-01-15",
-        payeeName: "Brand New Store",
-        createPayeeIfMissing: false,
-      });
-
-      expect(transactions.previewCreate).toHaveBeenCalledWith(
-        userId,
-        expect.objectContaining({ createPayeeIfMissing: false }),
-      );
-      expect(result.pendingAction?.descriptor).toMatchObject({
-        payeeId: null,
-        createPayee: false,
-      });
-      const data = result.data as { payeeNote?: string };
-      expect(data.payeeNote).toContain("free-text");
-    });
-
-    it("does not leak the signature into the LLM-facing data", async () => {
-      const result = await service.execute(userId, "create_transaction", {
-        accountName: "Checking",
-        amount: -12.5,
-        date: "2026-01-15",
-      });
-      expect(JSON.stringify(result.data)).not.toContain("signature-abc");
-      expect((result.data as { status: string }).status).toBe("preview_shown");
-    });
-
-    it("errors on an unknown account", async () => {
-      const result = await service.execute(userId, "create_transaction", {
-        accountName: "Ghost",
-        amount: -1,
-        date: "2026-01-15",
+    it("single create errors on an unknown account", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "create",
+        items: [{ accountName: "Ghost", amount: -1, date: "2026-01-15" }],
       });
       expect(result.isError).toBe(true);
       expect(result.pendingAction).toBeUndefined();
     });
-  });
 
-  describe("categorize_transaction (human-in-the-loop)", () => {
-    it("returns a signed pending action with current and new category", async () => {
-      const result = await service.execute(userId, "categorize_transaction", {
-        transactionId: "11111111-1111-4111-8111-111111111111",
-        categoryName: "Dining",
+    it("single transfer (toAccountName present) builds a create_transfer card", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "create",
+        items: [
+          {
+            fromAccountName: "Checking",
+            toAccountName: "Savings",
+            amount: 100,
+            date: "2026-01-15",
+          },
+        ],
       });
+      expect(transfer.previewCreateTransfer).toHaveBeenCalled();
+      expect(result.pendingAction?.type).toBe("create_transfer");
+    });
 
-      expect(transactions.previewCategorize).toHaveBeenCalledWith(
-        userId,
-        "11111111-1111-4111-8111-111111111111",
-        "cat-1",
-      );
-      expect(result.pendingAction?.type).toBe("categorize_transaction");
-      expect(result.pendingAction?.preview).toMatchObject({
-        currentCategoryName: "Uncategorized",
-        newCategoryName: "Dining",
+    it("bulk create (bulk mode) builds one create_transactions card", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "create",
+        items: [
+          { accountName: "Checking", amount: -10, date: "2026-01-15" },
+          { accountName: "Checking", amount: -20, date: "2026-01-16" },
+        ],
+        approvalMode: "bulk",
       });
+      expect(result.pendingActions).toHaveLength(1);
+      expect(result.pendingActions?.[0].type).toBe("create_transactions");
+    });
+
+    it("bulk create (individual mode) builds one card per row", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "create",
+        items: [
+          { accountName: "Checking", amount: -10, date: "2026-01-15" },
+          { accountName: "Savings", amount: -20, date: "2026-01-16" },
+        ],
+        approvalMode: "individual",
+      });
+      expect(result.pendingActions).toHaveLength(2);
+      expect(
+        result.pendingActions?.every((a) => a.type === "create_transaction"),
+      ).toBe(true);
+    });
+
+    it("does not leak the signature into the LLM-facing data", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "create",
+        items: [{ accountName: "Checking", amount: -12.5, date: "2026-01-15" }],
+      });
+      expect(JSON.stringify(result.data)).not.toContain("signature-abc");
+      expect((result.data as { status: string }).status).toBe("preview_shown");
     });
   });
 
-  describe("update_transaction (human-in-the-loop)", () => {
+  describe("manage_transactions (update, human-in-the-loop)", () => {
     const TXID = "11111111-1111-4111-8111-111111111111";
 
-    it("resolves the category and returns a signed pending action", async () => {
-      const result = await service.execute(userId, "update_transaction", {
-        transactionId: TXID,
-        amount: -30,
-        categoryName: "Dining",
+    it("category-only change resolves the category and signs an update card", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "update",
+        items: [{ transactionId: TXID, categoryName: "Dining" }],
       });
 
       expect(transactions.previewUpdate).toHaveBeenCalledWith(
         userId,
         TXID,
-        expect.objectContaining({ amount: -30, categoryId: "cat-1" }),
+        expect.objectContaining({ categoryId: "cat-1" }),
       );
       expect(result.pendingAction?.type).toBe("update_transaction");
-      expect(result.pendingAction?.preview).toMatchObject({
-        accountName: "Checking",
-        amount: -30,
-      });
       expect(JSON.stringify(result.data)).not.toContain("signature-abc");
     });
 
-    it("surfaces a 4xx preview error (e.g. transfer)", async () => {
+    it("auto-detects a transfer and builds an update_transfer card", async () => {
+      transactions.findOne.mockResolvedValueOnce({
+        id: TXID,
+        isTransfer: true,
+        linkedTransactionId: "tx-2",
+      });
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "update",
+        items: [{ transactionId: TXID, amount: 100 }],
+      });
+      expect(transfer.previewUpdateTransfer).toHaveBeenCalled();
+      expect(result.pendingAction?.type).toBe("update_transfer");
+    });
+
+    it("surfaces a 4xx preview error", async () => {
       transactions.previewUpdate.mockRejectedValueOnce(
-        new BadRequestException("Transfers can't be edited here."),
+        new BadRequestException("Split transactions can't be edited here."),
       );
-      const result = await service.execute(userId, "update_transaction", {
-        transactionId: TXID,
-        amount: -5,
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "update",
+        items: [{ transactionId: TXID, amount: -5 }],
       });
       expect(result.isError).toBe(true);
     });
   });
 
-  describe("delete_transaction (human-in-the-loop)", () => {
+  describe("manage_transactions (delete, human-in-the-loop)", () => {
     const TXID = "11111111-1111-4111-8111-111111111111";
 
-    it("returns a signed delete pending action", async () => {
-      const result = await service.execute(userId, "delete_transaction", {
-        transactionId: TXID,
+    it("single delete signs a delete card", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "delete",
+        items: [{ transactionId: TXID }],
       });
       expect(transactions.previewDelete).toHaveBeenCalledWith(userId, TXID);
       expect(result.pendingAction?.type).toBe("delete_transaction");
-      expect(result.pendingAction?.preview).toMatchObject({
-        accountName: "Checking",
+    });
+
+    it("bulk delete (bulk mode) builds one batch_actions card", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "delete",
+        items: [
+          { transactionId: "11111111-1111-4111-8111-111111111111" },
+          { transactionId: "22222222-2222-4222-8222-222222222222" },
+        ],
+        approvalMode: "bulk",
       });
+      expect(result.pendingAction?.type).toBe("batch_actions");
     });
   });
 
@@ -1504,32 +1531,249 @@ describe("ToolExecutorService", () => {
     });
   });
 
-  describe("create_transactions (bulk human-in-the-loop)", () => {
-    it("builds one pending action for the valid rows and flags the rest", async () => {
-      const result = await service.execute(userId, "create_transactions", {
-        rows: [
+  describe("manage_transactions (bulk create best-effort + caps)", () => {
+    it("builds one create_transactions card for the valid rows and flags the rest", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "create",
+        items: [
           { accountName: "Checking", amount: -10, date: "2026-01-15" },
           { accountName: "Nonexistent", amount: -20, date: "2026-01-16" },
         ],
       });
 
-      expect(result.pendingAction?.type).toBe("create_transactions");
-      const descriptor = result.pendingAction?.descriptor;
+      const card = result.pendingActions?.[0];
+      expect(card?.type).toBe("create_transactions");
+      const descriptor = card?.descriptor;
       if (descriptor?.type !== "create_transactions") throw new Error();
       // Only the resolvable row is signed.
       expect(descriptor.rows).toHaveLength(1);
       // The display table keeps both rows; the bad one is flagged.
-      expect(result.pendingAction?.preview.rows).toHaveLength(2);
-      expect(result.pendingAction?.preview.rows?.[1].status).toBe("error");
+      expect(card?.preview.rows).toHaveLength(2);
+      expect(card?.preview.rows?.[1].status).toBe("error");
       expect(result.summary).toContain("1 skipped");
     });
 
     it("returns a tool error when no row resolves (no card)", async () => {
-      const result = await service.execute(userId, "create_transactions", {
-        rows: [{ accountName: "Nonexistent", amount: -20, date: "2026-01-16" }],
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "create",
+        items: [
+          { accountName: "Nonexistent", amount: -20, date: "2026-01-16" },
+        ],
       });
       expect(result.isError).toBe(true);
       expect(result.pendingAction).toBeUndefined();
+      expect(result.pendingActions).toBeUndefined();
+    });
+
+    it("rejects a batch over 25 items at the input schema", async () => {
+      const items = Array.from({ length: 26 }, () => ({
+        accountName: "Checking",
+        amount: -1,
+        date: "2026-01-15",
+      }));
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "create",
+        items,
+      });
+      expect(result.isError).toBe(true);
+      expect(result.pendingAction).toBeUndefined();
+    });
+
+    it("bulk create (bulk mode) with both standard and transfer rows builds two cards", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "create",
+        items: [
+          { accountName: "Checking", amount: -10, date: "2026-01-15" },
+          {
+            fromAccountName: "Checking",
+            toAccountName: "Savings",
+            amount: 100,
+            date: "2026-01-16",
+          },
+        ],
+        approvalMode: "bulk",
+      });
+      const types = result.pendingActions?.map((a) => a.type).sort();
+      expect(types).toEqual(["batch_actions", "create_transactions"]);
+    });
+
+    it("bulk create (individual mode) with a transfer row builds a create_transfer card", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "create",
+        items: [
+          { accountName: "Checking", amount: -10, date: "2026-01-15" },
+          {
+            fromAccountName: "Checking",
+            toAccountName: "Savings",
+            amount: 100,
+            date: "2026-01-16",
+          },
+        ],
+        approvalMode: "individual",
+      });
+      const types = result.pendingActions?.map((a) => a.type).sort();
+      expect(types).toEqual(["create_transaction", "create_transfer"]);
+    });
+  });
+
+  describe("manage_transactions (update/delete bulk + individual branches)", () => {
+    const TXID1 = "11111111-1111-4111-8111-111111111111";
+    const TXID2 = "22222222-2222-4222-8222-222222222222";
+
+    it("bulk update (individual mode) builds one card per row", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "update",
+        items: [
+          { transactionId: TXID1, amount: -5 },
+          { transactionId: TXID2, amount: -6 },
+        ],
+        approvalMode: "individual",
+      });
+      expect(result.pendingActions).toHaveLength(2);
+      expect(
+        result.pendingActions?.every((a) => a.type === "update_transaction"),
+      ).toBe(true);
+    });
+
+    it("bulk update (individual mode) skips failing rows and surfaces the count", async () => {
+      transactions.previewUpdate
+        .mockResolvedValueOnce({
+          transactionId: TXID1,
+          accountId: "acc-1",
+          accountName: "Checking",
+          amount: -5,
+          transactionDate: "2026-01-15",
+          payeeId: "payee-1",
+          payeeName: "Store",
+          payeeMatched: true,
+          payeeWillBeCreated: false,
+          categoryId: "cat-1",
+          categoryName: "Dining",
+          description: null,
+          currencyCode: "USD",
+        })
+        .mockRejectedValueOnce(new BadRequestException("bad row"));
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "update",
+        items: [
+          { transactionId: TXID1, amount: -5 },
+          { transactionId: TXID2, amount: -6 },
+        ],
+        approvalMode: "individual",
+      });
+      expect(result.pendingActions).toHaveLength(1);
+      expect(result.summary).toContain("1 skipped");
+    });
+
+    it("bulk update (individual mode) errors when no row prepares", async () => {
+      transactions.previewUpdate.mockRejectedValue(
+        new BadRequestException("nope"),
+      );
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "update",
+        items: [
+          { transactionId: TXID1, amount: -5 },
+          { transactionId: TXID2, amount: -6 },
+        ],
+        approvalMode: "individual",
+      });
+      expect(result.isError).toBe(true);
+    });
+
+    it("bulk update (bulk mode) builds a batch_actions update card", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "update",
+        items: [
+          { transactionId: TXID1, amount: -5 },
+          { transactionId: TXID2, amount: -6 },
+        ],
+        approvalMode: "bulk",
+      });
+      expect(result.pendingAction?.type).toBe("batch_actions");
+    });
+
+    it("bulk update (bulk mode) errors when every row is skipped", async () => {
+      transactions.previewUpdate.mockRejectedValue(
+        new BadRequestException("nope"),
+      );
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "update",
+        items: [
+          { transactionId: TXID1, amount: -5 },
+          { transactionId: TXID2, amount: -6 },
+        ],
+        approvalMode: "bulk",
+      });
+      expect(result.isError).toBe(true);
+    });
+
+    it("single delete errors on a preview failure", async () => {
+      transactions.previewDelete.mockRejectedValueOnce(
+        new BadRequestException("not found"),
+      );
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "delete",
+        items: [{ transactionId: TXID1 }],
+      });
+      expect(result.isError).toBe(true);
+    });
+
+    it("bulk delete (individual mode) builds one card per row", async () => {
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "delete",
+        items: [{ transactionId: TXID1 }, { transactionId: TXID2 }],
+        approvalMode: "individual",
+      });
+      expect(result.pendingActions).toHaveLength(2);
+      expect(
+        result.pendingActions?.every((a) => a.type === "delete_transaction"),
+      ).toBe(true);
+    });
+
+    it("bulk delete (individual mode) skips failing rows", async () => {
+      transactions.previewDelete
+        .mockResolvedValueOnce({
+          transactionId: TXID1,
+          accountName: "Checking",
+          amount: -5,
+          transactionDate: "2026-01-15",
+          payeeName: "Store",
+          categoryName: "Dining",
+          description: null,
+          currencyCode: "USD",
+        })
+        .mockRejectedValueOnce(new BadRequestException("gone"));
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "delete",
+        items: [{ transactionId: TXID1 }, { transactionId: TXID2 }],
+        approvalMode: "individual",
+      });
+      expect(result.pendingActions).toHaveLength(1);
+      expect(result.summary).toContain("1 skipped");
+    });
+
+    it("bulk delete (individual mode) errors when no row prepares", async () => {
+      transactions.previewDelete.mockRejectedValue(
+        new BadRequestException("gone"),
+      );
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "delete",
+        items: [{ transactionId: TXID1 }, { transactionId: TXID2 }],
+        approvalMode: "individual",
+      });
+      expect(result.isError).toBe(true);
+    });
+
+    it("bulk delete (bulk mode) errors when every row is skipped", async () => {
+      transactions.previewDelete.mockRejectedValue(
+        new BadRequestException("gone"),
+      );
+      const result = await service.execute(userId, "manage_transactions", {
+        operation: "delete",
+        items: [{ transactionId: TXID1 }, { transactionId: TXID2 }],
+        approvalMode: "bulk",
+      });
+      expect(result.isError).toBe(true);
     });
   });
 

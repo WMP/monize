@@ -64,6 +64,7 @@
     "actionExpired": "Xác nhận này đã hết hạn. Vui lòng yêu cầu lại.",
     "actionWriteLimit": "Đã đạt giới hạn ghi AI hằng ngày ({{ limit }} mỗi ngày). Vui lòng thử lại vào ngày mai.",
     "actionConfirmFailed": "Không thể xác nhận hành động này.",
+    "transferInBulkUpdate": "Không thể chỉnh sửa khoản chuyển khoản trong cập nhật hàng loạt. Hãy chỉnh sửa khoản chuyển khoản riêng lẻ.",
     "providerConfigNotFound": "Không tìm thấy cấu hình nhà cung cấp AI",
     "maxProvidersExceeded": "Tối đa {{ maxProvidersPerUser }} cấu hình nhà cung cấp AI mỗi người dùng",
     "encryptionKeyNotConfigured": "AI_ENCRYPTION_KEY chưa được cấu hình. Không thể lưu trữ khóa API một cách an toàn.",

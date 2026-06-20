@@ -112,7 +112,20 @@
     "updateInvestmentTransactionTitle": "Edit transaksi investasi ini?",
     "deleteInvestmentTransactionTitle": "Hapus transaksi investasi ini?",
     "updatedInvestmentTransaction": "Transaksi investasi diperbarui",
-    "deletedInvestmentTransaction": "Transaksi investasi dihapus"
+    "deletedInvestmentTransaction": "Transaksi investasi dihapus",
+    "createTransferTitle": "Buat transfer ini?",
+    "updateTransferTitle": "Edit transfer ini?",
+    "createdTransfer": "Transfer dibuat",
+    "updatedTransfer": "Transfer diperbarui",
+    "fromAccount": "Dari",
+    "toAccount": "Ke",
+    "toAmount": "Jumlah tujuan",
+    "updateTransactionsTitle": "Edit transaksi ini?",
+    "deleteTransactionsTitle": "Hapus transaksi ini?",
+    "createTransfersTitle": "Buat transfer ini?",
+    "updatedTransactions": "{count, plural, =0 {Tidak ada transaksi yang diperbarui} other {# transaksi diperbarui}}",
+    "deletedTransactions": "{count, plural, =0 {Tidak ada transaksi yang dihapus} other {# transaksi dihapus}}",
+    "createdTransfers": "{count, plural, =0 {Tidak ada transfer yang dibuat} other {# transfer dibuat}}"
   },
   "table": {
     "downloadTitle": "Unduh tabel sebagai CSV",

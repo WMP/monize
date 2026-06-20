@@ -64,6 +64,7 @@
     "actionExpired": "此確認已過期。請重新詢問。",
     "actionWriteLimit": "已達到每日 AI 寫入上限（每天 {{ limit }} 次）。請明天再試。",
     "actionConfirmFailed": "無法確認此操作。",
+    "transferInBulkUpdate": "轉帳無法在批次更新中編輯。請單獨編輯該轉帳。",
     "providerConfigNotFound": "找不到 AI 提供者設定",
     "maxProvidersExceeded": "每位使用者最多 {{ maxProvidersPerUser }} 個 AI 提供者設定",
     "encryptionKeyNotConfigured": "未設定 AI_ENCRYPTION_KEY。無法安全儲存 API 金鑰。",

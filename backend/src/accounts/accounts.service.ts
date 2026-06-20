@@ -323,6 +323,25 @@ export class AccountsService {
   }
 
   /**
+   * Resolve a single account name to its id, canonical name, and currency.
+   * Case-insensitive exact match over the user's OPEN accounts (matching the AI
+   * executor's resolveAccountByName behaviour). Returns undefined when no open
+   * account matches the given name.
+   */
+  async resolveByName(
+    userId: string,
+    name: string,
+  ): Promise<{ id: string; name: string; currencyCode: string } | undefined> {
+    const accounts = await this.findAll(userId, false);
+    const match = accounts.find(
+      (a) => a.name.toLowerCase() === name.toLowerCase(),
+    );
+    return match
+      ? { id: match.id, name: match.name, currencyCode: match.currencyCode }
+      : undefined;
+  }
+
+  /**
    * Find a single account by ID
    */
   async findOne(userId: string, id: string): Promise<Account> {
