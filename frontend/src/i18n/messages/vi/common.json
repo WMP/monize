@@ -102,7 +102,8 @@
     "search": "Tìm kiếm...",
     "selectAll": "Chọn tất cả",
     "clear": "Xóa",
-    "noOptions": "Không tìm thấy tùy chọn"
+    "noOptions": "Không tìm thấy tùy chọn",
+    "selectedCount": "{count, plural, one {Đã chọn # mục} other {Đã chọn # mục}}"
   },
   "combobox": {
     "createOption": "Tạo \"{value}\""

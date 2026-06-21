@@ -102,7 +102,8 @@
     "search": "Suchen...",
     "selectAll": "Alle auswählen",
     "clear": "Löschen",
-    "noOptions": "Keine Optionen gefunden"
+    "noOptions": "Keine Optionen gefunden",
+    "selectedCount": "{count, plural, one {# Element ausgewählt} other {# Elemente ausgewählt}}"
   },
   "combobox": {
     "createOption": "\"{value}\" erstellen"

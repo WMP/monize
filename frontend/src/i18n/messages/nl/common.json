@@ -102,7 +102,8 @@
     "search": "Zoeken...",
     "selectAll": "Alles selecteren",
     "clear": "Wissen",
-    "noOptions": "Geen opties gevonden"
+    "noOptions": "Geen opties gevonden",
+    "selectedCount": "{count, plural, one {# item geselecteerd} other {# items geselecteerd}}"
   },
   "combobox": {
     "createOption": "Maak \"{value}\" aan"

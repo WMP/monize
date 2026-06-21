@@ -229,10 +229,10 @@ export function MultiSelect({
     if (value.length === 0) return placeholder;
     if (value.length === 1) {
       const opt = flatOptions.find(o => o.value === value[0]);
-      return opt?.label || '1 selected';
+      return opt?.label || t('multiSelect.selectedCount', { count: 1 });
     }
-    return `${value.length} selected`;
-  }, [value, flatOptions, placeholder]);
+    return t('multiSelect.selectedCount', { count: value.length });
+  }, [value, flatOptions, placeholder, t]);
 
   return (
     <div ref={wrapperRef} className="w-full relative">

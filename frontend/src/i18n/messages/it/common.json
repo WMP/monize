@@ -102,7 +102,8 @@
     "search": "Cerca...",
     "selectAll": "Seleziona tutto",
     "clear": "Cancella",
-    "noOptions": "Nessuna opzione trovata"
+    "noOptions": "Nessuna opzione trovata",
+    "selectedCount": "{count, plural, one {# elemento selezionato} other {# elementi selezionati}}"
   },
   "combobox": {
     "createOption": "Crea \"{value}\""
