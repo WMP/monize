@@ -171,16 +171,16 @@ describe("AiRelayService", () => {
       service.enqueuePrompt(USER, "q", [], emit);
       await service.waitForPrompt(USER);
 
-      service.reportToolActivity(USER, "get_categories", "start");
-      service.reportToolActivity(USER, "get_categories", "result", false);
+      service.reportToolActivity(USER, "list_categories", "start");
+      service.reportToolActivity(USER, "list_categories", "result", false);
 
       expect(emit).toHaveBeenNthCalledWith(1, {
         type: "tool_start",
-        name: "get_categories",
+        name: "list_categories",
       });
       expect(emit).toHaveBeenNthCalledWith(2, {
         type: "tool_result",
-        name: "get_categories",
+        name: "list_categories",
         isError: false,
       });
     });
@@ -188,7 +188,7 @@ describe("AiRelayService", () => {
     it("is a no-op when the user has no in-flight prompt", () => {
       // No throw, nothing emitted (no prompt to target).
       expect(() =>
-        service.reportToolActivity(USER, "get_categories", "start"),
+        service.reportToolActivity(USER, "list_categories", "start"),
       ).not.toThrow();
     });
   });

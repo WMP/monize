@@ -194,7 +194,7 @@ export class TransactionToolPrepService {
 
   private unknownCategoryError(categoryName: string): NotFoundException {
     return new NotFoundException(
-      `Unknown category: ${categoryName}. Call get_categories to look up valid names; subcategories can be referenced as "Parent: Child".`,
+      `Unknown category: ${categoryName}. Call list_categories to look up valid names; subcategories can be referenced as "Parent: Child".`,
     );
   }
 

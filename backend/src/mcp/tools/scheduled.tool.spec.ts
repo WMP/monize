@@ -29,10 +29,10 @@ describe("McpScheduledTools", () => {
     expect(server.registerTool).toHaveBeenCalledTimes(1);
   });
 
-  describe("get_upcoming_bills", () => {
+  describe("list_upcoming_bills", () => {
     it("returns error when no user context", async () => {
       resolve.mockReturnValue(undefined);
-      const result = await handlers["get_upcoming_bills"](
+      const result = await handlers["list_upcoming_bills"](
         {},
         { sessionId: "s1" },
       );
@@ -68,7 +68,7 @@ describe("McpScheduledTools", () => {
         ],
       });
 
-      const result = await handlers["get_upcoming_bills"](
+      const result = await handlers["list_upcoming_bills"](
         {},
         { sessionId: "s1" },
       );
@@ -96,7 +96,7 @@ describe("McpScheduledTools", () => {
         items: [],
       });
 
-      await handlers["get_upcoming_bills"](
+      await handlers["list_upcoming_bills"](
         { days: 7, kind: "deposit", accountIds: ["acc-1"] },
         { sessionId: "s1" },
       );
@@ -114,7 +114,7 @@ describe("McpScheduledTools", () => {
       scheduledService.getLlmUpcomingBillsAndDeposits.mockRejectedValue(
         new Error("DB error"),
       );
-      const result = await handlers["get_upcoming_bills"](
+      const result = await handlers["list_upcoming_bills"](
         {},
         { sessionId: "s1" },
       );

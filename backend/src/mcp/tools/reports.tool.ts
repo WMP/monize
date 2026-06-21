@@ -146,7 +146,7 @@ export class McpReportsTools {
     );
 
     server.registerTool(
-      "get_anomalies",
+      "list_anomalies",
       {
         title: "Detect spending anomalies",
         annotations: READ_ONLY,

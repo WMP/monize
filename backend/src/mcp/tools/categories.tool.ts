@@ -18,12 +18,12 @@ export class McpCategoriesTools {
 
   register(server: McpServer, resolve: UserContextResolver) {
     server.registerTool(
-      "get_categories",
+      "list_categories",
       {
         title: "List categories",
         annotations: READ_ONLY,
         description:
-          "List the user's categories with their hierarchy (parent names) and transaction counts. Optionally filter by type or search by name. Returns the same shape as the AI Assistant's get_categories tool.",
+          "List the user's categories with their hierarchy (parent names) and transaction counts. Optionally filter by type or search by name. Returns the same shape as the AI Assistant's list_categories tool.",
         inputSchema: {
           type: z
             .enum(["expense", "income", "all"])

@@ -28,12 +28,12 @@ export class McpScheduledTools {
 
   register(server: McpServer, resolve: UserContextResolver) {
     server.registerTool(
-      "get_upcoming_bills",
+      "list_upcoming_bills",
       {
         title: "Upcoming bills and deposits",
         annotations: READ_ONLY,
         description:
-          "Get upcoming scheduled bills and deposits due within a date window. Each item is classified as bill / deposit / transfer / investment and includes a daysUntilDue value (negative when overdue). Returns the same shape as the AI Assistant's get_upcoming_bills tool.",
+          "Get upcoming scheduled bills and deposits due within a date window. Each item is classified as bill / deposit / transfer / investment and includes a daysUntilDue value (negative when overdue). Returns the same shape as the AI Assistant's list_upcoming_bills tool.",
         inputSchema: {
           days: z
             .number()

@@ -103,12 +103,12 @@ describe("McpPayeesTools", () => {
     expect(server.registerTool).toHaveBeenCalledTimes(2);
   });
 
-  describe("get_payees", () => {
+  describe("list_payees", () => {
     it("should return all payees without search", async () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "read" });
       payeesService.findAll.mockResolvedValue([{ id: "p1", name: "Amazon" }]);
 
-      const result = await handlers["get_payees"]({}, { sessionId: "s1" });
+      const result = await handlers["list_payees"]({}, { sessionId: "s1" });
       expect(payeesService.findAll).toHaveBeenCalledWith("u1");
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed[0].name).toBe("Amazon");
@@ -118,13 +118,13 @@ describe("McpPayeesTools", () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "read" });
       payeesService.search.mockResolvedValue([{ id: "p1", name: "Amazon" }]);
 
-      await handlers["get_payees"]({ search: "ama" }, { sessionId: "s1" });
+      await handlers["list_payees"]({ search: "ama" }, { sessionId: "s1" });
       expect(payeesService.search).toHaveBeenCalledWith("u1", "ama", 50);
     });
 
     it("returns error when no user context", async () => {
       resolve.mockReturnValue(undefined);
-      const result = await handlers["get_payees"]({}, { sessionId: "s1" });
+      const result = await handlers["list_payees"]({}, { sessionId: "s1" });
       expect(result.isError).toBe(true);
     });
   });

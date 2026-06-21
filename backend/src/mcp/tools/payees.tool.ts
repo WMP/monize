@@ -51,7 +51,7 @@ export class McpPayeesTools {
 
   register(server: McpServer, resolve: UserContextResolver) {
     server.registerTool(
-      "get_payees",
+      "list_payees",
       {
         title: "List payees",
         annotations: READ_ONLY,
@@ -94,7 +94,7 @@ export class McpPayeesTools {
         title: "Manage payees",
         annotations: WRITE,
         description:
-          "Create, edit, or delete the user's payees. Accepts NAMES -- the payee and its default category are resolved internally, so you do NOT need to call get_payees/get_categories first. operation = 'create' | 'update' | 'delete' with an items array (1-25 rows). " +
+          "Create, edit, or delete the user's payees. Accepts NAMES -- the payee and its default category are resolved internally, so you do NOT need to call list_payees/list_categories first. operation = 'create' | 'update' | 'delete' with an items array (1-25 rows). " +
           "create: { name, categoryName? } -- categoryName optionally sets the payee's default category ('Parent: Child' for a subcategory). " +
           "update: { name, newName?, categoryName? } -- name identifies the existing payee; provide newName to rename and/or categoryName to set the default category (pass an empty string to clear it). At least one of newName/categoryName is required. " +
           "delete: { name } -- removes the payee (its transactions keep their stored payee name). " +

@@ -206,7 +206,7 @@ export class McpInvestmentsTools {
     );
 
     server.registerTool(
-      "get_capital_gains",
+      "list_capital_gains",
       {
         title: "Capital gains",
         annotations: READ_ONLY,
@@ -268,7 +268,7 @@ export class McpInvestmentsTools {
     );
 
     server.registerTool(
-      "get_holding_details",
+      "list_holding_details",
       {
         title: "Holding details",
         annotations: READ_ONLY,

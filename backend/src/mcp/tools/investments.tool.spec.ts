@@ -153,8 +153,8 @@ describe("McpInvestmentsTools", () => {
   });
 
   it("should register 7 tools", () => {
-    // get_portfolio_summary, list_investment_transactions, get_capital_gains,
-    // get_holding_details, lookup_securities, manage_securities,
+    // get_portfolio_summary, list_investment_transactions, list_capital_gains,
+    // list_holding_details, lookup_securities, manage_securities,
     // manage_investment_transactions.
     expect(server.registerTool).toHaveBeenCalledTimes(7);
   });
@@ -328,10 +328,10 @@ describe("McpInvestmentsTools", () => {
     });
   });
 
-  describe("get_capital_gains", () => {
+  describe("list_capital_gains", () => {
     it("returns error when no user context", async () => {
       resolve.mockReturnValue(undefined);
-      const result = await handlers["get_capital_gains"](
+      const result = await handlers["list_capital_gains"](
         { startDate: "2024-01-01", endDate: "2024-12-31" },
         { sessionId: "s1" },
       );
@@ -367,7 +367,7 @@ describe("McpInvestmentsTools", () => {
         truncatedEntryList: false,
       });
 
-      const result = await handlers["get_capital_gains"](
+      const result = await handlers["list_capital_gains"](
         {
           startDate: "2024-01-01",
           endDate: "2024-12-31",
@@ -404,7 +404,7 @@ describe("McpInvestmentsTools", () => {
         truncatedEntryList: false,
       });
 
-      await handlers["get_capital_gains"](
+      await handlers["list_capital_gains"](
         { startDate: "2024-01-01", endDate: "2024-12-31" },
         { sessionId: "s1" },
       );
@@ -423,7 +423,7 @@ describe("McpInvestmentsTools", () => {
         new Error("boom"),
       );
 
-      const result = await handlers["get_capital_gains"](
+      const result = await handlers["list_capital_gains"](
         { startDate: "2024-01-01", endDate: "2024-12-31" },
         { sessionId: "s1" },
       );
@@ -431,12 +431,12 @@ describe("McpInvestmentsTools", () => {
     });
   });
 
-  describe("get_holding_details", () => {
+  describe("list_holding_details", () => {
     it("should return holdings", async () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "read" });
       holdingsService.findAll.mockResolvedValue([{ id: "h1", symbol: "AAPL" }]);
 
-      const result = await handlers["get_holding_details"](
+      const result = await handlers["list_holding_details"](
         { accountId: "a1" },
         { sessionId: "s1" },
       );
@@ -449,7 +449,7 @@ describe("McpInvestmentsTools", () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "read" });
       holdingsService.findAll.mockRejectedValue(new Error("fail"));
 
-      const result = await handlers["get_holding_details"](
+      const result = await handlers["list_holding_details"](
         {},
         { sessionId: "s1" },
       );

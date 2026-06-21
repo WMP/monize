@@ -13,13 +13,13 @@ describe("FINANCIAL_TOOLS", () => {
   const expectedTools = [
     "list_transactions",
     "list_accounts",
-    "get_categories",
+    "list_categories",
     "get_net_worth_history",
     "compare_periods",
     "get_portfolio_summary",
     "list_investment_transactions",
-    "get_capital_gains",
-    "get_upcoming_bills",
+    "list_capital_gains",
+    "list_upcoming_bills",
     "get_budget_status",
     "calculate",
     "render_chart",
@@ -133,14 +133,14 @@ describe("FINANCIAL_TOOLS", () => {
     });
   });
 
-  describe("get_categories", () => {
+  describe("list_categories", () => {
     it("has no required fields (type defaults to all)", () => {
-      const tool = FINANCIAL_TOOLS.find((t) => t.name === "get_categories")!;
+      const tool = FINANCIAL_TOOLS.find((t) => t.name === "list_categories")!;
       expect(tool.inputSchema.required).toBeUndefined();
     });
 
     it("supports type filter with expense/income/all", () => {
-      const tool = FINANCIAL_TOOLS.find((t) => t.name === "get_categories")!;
+      const tool = FINANCIAL_TOOLS.find((t) => t.name === "list_categories")!;
       const props = tool.inputSchema.properties as Record<
         string,
         Record<string, unknown>
@@ -149,7 +149,7 @@ describe("FINANCIAL_TOOLS", () => {
     });
 
     it("exposes an optional search parameter", () => {
-      const tool = FINANCIAL_TOOLS.find((t) => t.name === "get_categories")!;
+      const tool = FINANCIAL_TOOLS.find((t) => t.name === "list_categories")!;
       const props = tool.inputSchema.properties as Record<
         string,
         Record<string, unknown>
@@ -266,17 +266,17 @@ describe("FINANCIAL_TOOLS", () => {
     });
   });
 
-  describe("get_upcoming_bills", () => {
+  describe("list_upcoming_bills", () => {
     it("has no required fields (days defaults to 30)", () => {
       const tool = FINANCIAL_TOOLS.find(
-        (t) => t.name === "get_upcoming_bills",
+        (t) => t.name === "list_upcoming_bills",
       )!;
       expect(tool.inputSchema.required).toBeUndefined();
     });
 
     it("supports kind with bill/deposit/transfer/investment/all", () => {
       const tool = FINANCIAL_TOOLS.find(
-        (t) => t.name === "get_upcoming_bills",
+        (t) => t.name === "list_upcoming_bills",
       )!;
       const props = tool.inputSchema.properties as Record<
         string,
@@ -293,7 +293,7 @@ describe("FINANCIAL_TOOLS", () => {
 
     it("supports optional accountNames filter", () => {
       const tool = FINANCIAL_TOOLS.find(
-        (t) => t.name === "get_upcoming_bills",
+        (t) => t.name === "list_upcoming_bills",
       )!;
       const props = tool.inputSchema.properties as Record<
         string,

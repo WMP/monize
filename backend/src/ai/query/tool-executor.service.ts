@@ -150,7 +150,7 @@ export class ToolExecutorService {
         case "list_accounts":
           result = await this.listAccounts(userId, validatedInput);
           break;
-        case "get_categories":
+        case "list_categories":
           result = await this.getCategories(userId, validatedInput);
           break;
         case "get_net_worth_history":
@@ -168,13 +168,13 @@ export class ToolExecutorService {
             validatedInput,
           );
           break;
-        case "get_capital_gains":
+        case "list_capital_gains":
           result = await this.getCapitalGains(userId, validatedInput);
           break;
         case "get_budget_status":
           result = await this.getBudgetStatus(userId, validatedInput);
           break;
-        case "get_upcoming_bills":
+        case "list_upcoming_bills":
           result = await this.getUpcomingBills(userId, validatedInput);
           break;
         case "calculate":
@@ -348,7 +348,7 @@ export class ToolExecutorService {
       );
       if (resolved.unresolved.length > 0) {
         return this.toolError(
-          `Unknown categor${resolved.unresolved.length === 1 ? "y" : "ies"}: ${resolved.unresolved.join(", ")}. Call get_categories to look up valid names; subcategories can be referenced as "Parent: Child".`,
+          `Unknown categor${resolved.unresolved.length === 1 ? "y" : "ies"}: ${resolved.unresolved.join(", ")}. Call list_categories to look up valid names; subcategories can be referenced as "Parent: Child".`,
         );
       }
       categoryIds = resolved.categoryIds;
@@ -365,7 +365,7 @@ export class ToolExecutorService {
       }
       if (unresolved.length > 0) {
         return this.toolError(
-          `Unknown payee${unresolved.length === 1 ? "" : "s"}: ${unresolved.join(", ")}. Call get_payees to look up valid names.`,
+          `Unknown payee${unresolved.length === 1 ? "" : "s"}: ${unresolved.join(", ")}. Call list_payees to look up valid names.`,
         );
       }
       payeeIds = ids;

@@ -8,7 +8,7 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
   {
     name: "list_transactions",
     description:
-      "List and aggregate the user's cash transactions. Accepts NAMES for accounts, categories, and payees (resolved internally; no need to call list_accounts/get_categories/get_payees first). Returns a rich summary by default: income/expense/net totals, per-currency totals, an optional grouped breakdown (groupBy), and an optional per-account transfer rollup (transfersOnly). Set includeTransactions=true ONLY when the user explicitly wants the individual transaction rows (this costs many more tokens); otherwise the summary alone answers spending, income, and total questions. For spending by category use groupBy: 'category'; for an income breakdown use direction: 'income' with groupBy. Transfers between the user's own accounts are excluded from income/expense totals. This single tool replaces the former search_transactions, query_transactions, get_transfers, get_spending_by_category, and get_income_summary tools.",
+      "List and aggregate the user's cash transactions. Accepts NAMES for accounts, categories, and payees (resolved internally; no need to call list_accounts/list_categories/list_payees first). Returns a rich summary by default: income/expense/net totals, per-currency totals, an optional grouped breakdown (groupBy), and an optional per-account transfer rollup (transfersOnly). Set includeTransactions=true ONLY when the user explicitly wants the individual transaction rows (this costs many more tokens); otherwise the summary alone answers spending, income, and total questions. For spending by category use groupBy: 'category'; for an income breakdown use direction: 'income' with groupBy. Transfers between the user's own accounts are excluded from income/expense totals. This single tool replaces the former search_transactions, query_transactions, get_transfers, get_spending_by_category, and get_income_summary tools.",
     inputSchema: {
       type: "object",
       properties: {
@@ -149,7 +149,7 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
     },
   },
   {
-    name: "get_categories",
+    name: "list_categories",
     description:
       "List the user's categories with their hierarchy (parent names) and transaction counts. Use this for questions like 'what categories do I have', 'list my income categories', or 'do I have a category for groceries'. Returns a flat list with each category's parent name so hierarchy is visible without nested JSON. Do not use this to query spending amounts -- use list_transactions with groupBy: 'category' for that.",
     inputSchema: {
@@ -302,7 +302,7 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
     },
   },
   {
-    name: "get_capital_gains",
+    name: "list_capital_gains",
     description:
       "Get per-period capital gains (realized + unrealized) for the user's investment accounts. Replays transaction history against historical close prices, so the result includes mark-to-market movement on currently-held positions in addition to realized gains from SELLs. Useful for 'how did my portfolio do last year', 'did I have any unrealized losses last month', or 'which securities drove my gains this quarter'. Returns period totals plus a breakdown grouped by month, security, or account. Requires startDate and endDate. All monetary values are in the holding account's currency; when a bucket spans accounts with different currencies its 'currency' field is null and sums are mixed.",
     inputSchema: {
@@ -339,7 +339,7 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
     },
   },
   {
-    name: "get_upcoming_bills",
+    name: "list_upcoming_bills",
     description:
       "Get upcoming scheduled bills and deposits due within a date window. Each item is classified as bill (scheduled outflow), deposit (scheduled inflow), transfer, or investment, and includes a daysUntilDue value (negative when overdue). Returns rollup totals for upcoming bills and deposits plus the per-item list. Use for questions like 'what bills are coming up', 'when is rent due', or 'what deposits am I expecting this month'.",
     inputSchema: {

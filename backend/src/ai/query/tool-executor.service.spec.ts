@@ -731,8 +731,8 @@ describe("ToolExecutorService", () => {
       );
     });
 
-    it("get_categories delegates to categoriesService.getLlmCategories", async () => {
-      const result = await service.execute(userId, "get_categories", {});
+    it("list_categories delegates to categoriesService.getLlmCategories", async () => {
+      const result = await service.execute(userId, "list_categories", {});
 
       expect(categories.getLlmCategories).toHaveBeenCalledWith(userId, {
         type: undefined,
@@ -742,8 +742,8 @@ describe("ToolExecutorService", () => {
       expect(result.summary).toContain("categor");
     });
 
-    it("get_categories passes type and search through", async () => {
-      await service.execute(userId, "get_categories", {
+    it("list_categories passes type and search through", async () => {
+      await service.execute(userId, "list_categories", {
         type: "expense",
         search: "groc",
       });
@@ -902,8 +902,8 @@ describe("ToolExecutorService", () => {
       );
     });
 
-    it("get_capital_gains delegates to investmentTransactions.getLlmCapitalGains", async () => {
-      const result = await service.execute(userId, "get_capital_gains", {
+    it("list_capital_gains delegates to investmentTransactions.getLlmCapitalGains", async () => {
+      const result = await service.execute(userId, "list_capital_gains", {
         startDate: "2024-01-01",
         endDate: "2024-12-31",
         symbols: ["AAA"],
@@ -928,8 +928,8 @@ describe("ToolExecutorService", () => {
       expect(result.summary).toContain("grouped by month");
     });
 
-    it("get_capital_gains resolves account names and defaults groupBy to 'month'", async () => {
-      await service.execute(userId, "get_capital_gains", {
+    it("list_capital_gains resolves account names and defaults groupBy to 'month'", async () => {
+      await service.execute(userId, "list_capital_gains", {
         startDate: "2024-01-01",
         endDate: "2024-12-31",
         accountNames: ["Checking"],
@@ -956,8 +956,8 @@ describe("ToolExecutorService", () => {
       expect(result.sources[0].type).toBe("budget");
     });
 
-    it("get_upcoming_bills delegates to scheduledTransactions.getLlmUpcomingBillsAndDeposits", async () => {
-      const result = await service.execute(userId, "get_upcoming_bills", {});
+    it("list_upcoming_bills delegates to scheduledTransactions.getLlmUpcomingBillsAndDeposits", async () => {
+      const result = await service.execute(userId, "list_upcoming_bills", {});
 
       expect(
         scheduledTransactions.getLlmUpcomingBillsAndDeposits,
@@ -973,8 +973,8 @@ describe("ToolExecutorService", () => {
       expect(result.summary).toContain("1 overdue");
     });
 
-    it("get_upcoming_bills passes through days, kind, and resolves account names", async () => {
-      await service.execute(userId, "get_upcoming_bills", {
+    it("list_upcoming_bills passes through days, kind, and resolves account names", async () => {
+      await service.execute(userId, "list_upcoming_bills", {
         days: 7,
         kind: "bill",
         accountNames: ["Checking"],

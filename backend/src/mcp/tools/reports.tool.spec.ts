@@ -216,12 +216,12 @@ describe("McpReportsTools", () => {
     });
   });
 
-  describe("get_anomalies", () => {
+  describe("list_anomalies", () => {
     it("should detect anomalies with default months", async () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "reports" });
       reportsService.getSpendingAnomalies.mockResolvedValue([]);
 
-      const result = await handlers["get_anomalies"]({}, { sessionId: "s1" });
+      const result = await handlers["list_anomalies"]({}, { sessionId: "s1" });
       expect(reportsService.getSpendingAnomalies).toHaveBeenCalledWith("u1", 3);
       expect(result.isError).toBeUndefined();
     });
@@ -230,7 +230,7 @@ describe("McpReportsTools", () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "reports" });
       reportsService.getSpendingAnomalies.mockResolvedValue([]);
 
-      await handlers["get_anomalies"]({ months: 6 }, { sessionId: "s1" });
+      await handlers["list_anomalies"]({ months: 6 }, { sessionId: "s1" });
       expect(reportsService.getSpendingAnomalies).toHaveBeenCalledWith("u1", 6);
     });
   });
