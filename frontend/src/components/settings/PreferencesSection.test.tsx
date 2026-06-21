@@ -222,8 +222,10 @@ describe('PreferencesSection', () => {
     });
   });
 
-  it('shows the detected sample in the number-format browser option', () => {
-    render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
+  it('shows the detected sample in the number-format browser option', async () => {
+    await act(async () => {
+      render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
+    });
 
     // The number-format browser option is the only "Use browser locale" entry
     // whose detected value is a number sample (the language option shows a name).
@@ -231,8 +233,10 @@ describe('PreferencesSection', () => {
     expect(option).toBeInTheDocument();
   });
 
-  it('shows the detected sample in the date-format browser option', () => {
-    render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
+  it('shows the detected sample in the date-format browser option', async () => {
+    await act(async () => {
+      render(<PreferencesSection preferences={mockPreferences} onPreferencesUpdated={mockOnPreferencesUpdated} />);
+    });
 
     // Scope to the Date Format select so the date sample is unambiguous among
     // the other "auto-detected as" options (timezone, language, number format).
