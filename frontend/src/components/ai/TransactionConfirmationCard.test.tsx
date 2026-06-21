@@ -650,6 +650,35 @@ describe('TransactionConfirmationCard', () => {
       expect(screen.queryByText('Payee')).toBeNull();
     });
 
+    it('renders the category row for a categorized transfer', () => {
+      render(
+        <TransactionConfirmationCard
+          action={makeTransferAction(
+            { categoryName: 'Investments: IKE' },
+            {
+              type: 'update_transfer',
+              descriptor: { type: 'update_transfer' },
+            },
+          )}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(screen.getByText('Category')).toBeInTheDocument();
+      expect(screen.getByText('Investments: IKE')).toBeInTheDocument();
+    });
+
+    it('omits the category row when the transfer has no category', () => {
+      render(
+        <TransactionConfirmationCard
+          action={makeTransferAction()}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+      expect(screen.queryByText('Category')).toBeNull();
+    });
+
     it('shows the transfer success message and a view link on confirm', () => {
       render(
         <TransactionConfirmationCard

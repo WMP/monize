@@ -334,7 +334,7 @@ export class McpTransactionsTools {
           "Create, update, or delete the user's cash transactions (including transfers between their own accounts). Accepts NAMES for account, category, and payee -- they are resolved internally, so you do NOT need to call get_accounts/list_categories first. operation = 'create' | 'update' | 'delete' with an items array (1-25 rows). " +
           "create (standard): { accountName, amount, date, payeeName?, categoryName?, description?, createPayeeIfMissing? } (amount positive=income, negative=expense). " +
           "create (transfer): { fromAccountName, toAccountName, amount, date, description?, payeeName?, createPayeeIfMissing?, exchangeRate?, toAmount? } -- an item is a transfer when toAccountName is present; payeeName is an optional custom label matched to an existing payee (or created if missing, like a normal transaction) and applied to both legs (omit to auto-generate 'Transfer to/from <account>'). " +
-          "update: { transactionId, amount?, date?, payeeName?, categoryName?, description?, createPayeeIfMissing? } (>=1 field; a category-only change is transactionId + categoryName; transfers auto-detected; payeeName sets the transfer's custom label, matched to an existing payee or created if missing). " +
+          "update: { transactionId, amount?, date?, payeeName?, categoryName?, description?, createPayeeIfMissing? } (>=1 field; a category-only change is transactionId + categoryName; transfers auto-detected; categoryName also applies to a transfer -- it is stored on both legs and surfaces the transfer in the monthly category breakdown without making it count as income/expense; payeeName sets the transfer's custom label, matched to an existing payee or created if missing). " +
           "split transactions (create or update): add a 'splits' array of { categoryName, amount, memo? } (>= 2 lines, category splits only) instead of a single categoryName; split amounts must sum to the transaction amount. Send split transactions one item at a time, not mixed into a multi-row batch. " +
           "delete: { transactionId } (removes linked transfer legs / split children too). " +
           "approvalMode controls the confirmation: by default 6 or more items show one confirmation for the whole batch and 1-5 items show one confirmation per item; pass 'individual' to force one confirmation per item at any count; ignored for a single item. Set dryRun=true to preview every item without saving. The user is asked to confirm before anything is saved (web chat card via relay, or an MCP confirmation dialog).",
@@ -1140,7 +1140,7 @@ export class McpTransactionsTools {
           server,
           userId,
           action,
-          `Apply this transfer edit?\nFrom: ${preview.fromAccountName}\nTo: ${preview.toAccountName}\nAmount: ${preview.amount} ${preview.fromCurrencyCode}\nDate: ${preview.transactionDate}`,
+          `Apply this transfer edit?\nFrom: ${preview.fromAccountName}\nTo: ${preview.toAccountName}\nAmount: ${preview.amount} ${preview.fromCurrencyCode}\nDate: ${preview.transactionDate}${preview.categoryName ? `\nCategory: ${preview.categoryName}` : ""}`,
           requestId,
         );
         if (outcome === "relay") return toolResult(RELAY_PREVIEW_SHOWN);
@@ -1160,6 +1160,7 @@ export class McpTransactionsTools {
             description: preview.description ?? undefined,
             payeeId,
             payeeName: preview.payeeName ?? undefined,
+            categoryId: preview.categoryId,
           },
         );
         this.writeLimiter.record(userId, "update_transfer");
@@ -1507,6 +1508,7 @@ export class McpTransactionsTools {
             description: d.description ?? undefined,
             payeeId,
             payeeName: d.payeeName ?? undefined,
+            categoryId: d.categoryId,
           },
         );
         this.writeLimiter.record(userId, "update_transfer");

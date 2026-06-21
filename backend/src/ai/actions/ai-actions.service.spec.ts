@@ -931,6 +931,7 @@ describe("AiActionsService", () => {
         payeeId: PAYEE,
         payeeName: "Edited transfer label",
         createPayee: false,
+        categoryId: CAT,
       };
       const result = await service.confirm(USER, dtoFor(descriptor));
       expect(payees.findOrCreate).not.toHaveBeenCalled();
@@ -941,6 +942,7 @@ describe("AiActionsService", () => {
           amount: 200,
           payeeId: PAYEE,
           payeeName: "Edited transfer label",
+          categoryId: CAT,
         }),
       );
       expect(result.type).toBe("update_transfer");
@@ -963,6 +965,7 @@ describe("AiActionsService", () => {
         payeeId: null,
         payeeName: "Brand new edit label",
         createPayee: true,
+        categoryId: null,
       };
       await service.confirm(USER, dtoFor(descriptor));
       expect(payees.findOrCreate).toHaveBeenCalledWith(

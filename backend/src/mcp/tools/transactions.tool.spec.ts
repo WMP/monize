@@ -748,7 +748,7 @@ describe("McpTransactionsTools", () => {
       expect(parsed.id).toBe("t1");
     });
 
-    it("routes a single transfer update through updateTransfer", async () => {
+    it("routes a single transfer update through updateTransfer, persisting the category", async () => {
       resolve.mockReturnValue({ userId: "u1", scopes: "write" });
       prepService.prepareUpdate.mockResolvedValue({
         kind: "transfer",
@@ -765,6 +765,8 @@ describe("McpTransactionsTools", () => {
           exchangeRate: 1,
           transactionDate: "2025-02-01",
           description: null,
+          categoryId: "cat-1",
+          categoryName: "Investments: IKE",
         },
       });
       transactionsService.updateTransfer.mockResolvedValue({
@@ -775,12 +777,19 @@ describe("McpTransactionsTools", () => {
       await handlers["manage_transactions"](
         {
           operation: "update",
-          items: [{ transactionId: "t1", amount: 100 }],
+          items: [
+            { transactionId: "t1", categoryName: "Investments: IKE" },
+          ],
         },
         { sessionId: "s1" },
       );
 
       expect(transactionsService.updateTransfer).toHaveBeenCalledTimes(1);
+      expect(transactionsService.updateTransfer).toHaveBeenCalledWith(
+        "u1",
+        "t1",
+        expect.objectContaining({ categoryId: "cat-1" }),
+      );
     });
 
     it("bulk update (>= 6 items) builds one batch card", async () => {
@@ -1541,6 +1550,7 @@ describe("McpTransactionsTools", () => {
           toAmount: 100,
           payeeId: "p1",
           payeeName: "Rent",
+          categoryId: "cat-1",
         },
       });
       transactionsService.updateTransfer.mockResolvedValue({
@@ -1559,6 +1569,12 @@ describe("McpTransactionsTools", () => {
         { sessionId: "s1" },
       );
       expect(transactionsService.updateTransfer).toHaveBeenCalledTimes(2);
+      // The signed descriptor's category is committed on each card.
+      expect(transactionsService.updateTransfer).toHaveBeenCalledWith(
+        "u1",
+        "t1",
+        expect.objectContaining({ categoryId: "cat-1" }),
+      );
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.count).toBe(2);
     });

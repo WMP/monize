@@ -481,6 +481,65 @@ describe("TransactionToolPrepService", () => {
         }),
       ).rejects.toThrow(/Unknown category/);
     });
+
+    it("resolves a category name and threads its id into a transfer edit", async () => {
+      transactions.findOne.mockResolvedValueOnce({
+        id: "t1",
+        isTransfer: true,
+        linkedTransactionId: "t2",
+      });
+      analytics.resolveLlmCategoryIds.mockResolvedValueOnce({
+        categoryIds: ["c1"],
+        unresolved: [],
+      });
+      const result = await service.prepareUpdate(userId, {
+        transactionId: "t1",
+        categoryName: "Investments: IKE",
+      });
+      expect(result.kind).toBe("transfer");
+      expect(transfer.previewUpdateTransfer).toHaveBeenCalledWith(
+        userId,
+        "t1",
+        expect.objectContaining({ categoryId: "c1" }),
+        expect.anything(),
+      );
+    });
+
+    it("rejects an unknown category on a transfer edit", async () => {
+      transactions.findOne.mockResolvedValueOnce({
+        id: "t1",
+        isTransfer: true,
+        linkedTransactionId: "t2",
+      });
+      analytics.resolveLlmCategoryIds.mockResolvedValueOnce({
+        categoryIds: [],
+        unresolved: ["Nope"],
+      });
+      await expect(
+        service.prepareUpdate(userId, {
+          transactionId: "t1",
+          categoryName: "Nope",
+        }),
+      ).rejects.toThrow(/Unknown category/);
+    });
+
+    it("passes categoryId undefined to a transfer edit when none is given", async () => {
+      transactions.findOne.mockResolvedValueOnce({
+        id: "t1",
+        isTransfer: true,
+        linkedTransactionId: "t2",
+      });
+      await service.prepareUpdate(userId, {
+        transactionId: "t1",
+        amount: 100,
+      });
+      expect(transfer.previewUpdateTransfer).toHaveBeenCalledWith(
+        userId,
+        "t1",
+        expect.objectContaining({ categoryId: undefined }),
+        expect.anything(),
+      );
+    });
   });
 
   describe("prepareUpdateBulk", () => {

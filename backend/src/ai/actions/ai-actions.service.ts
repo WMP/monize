@@ -276,6 +276,7 @@ export class AiActionsService {
       description: descriptor.description ?? undefined,
       payeeId,
       payeeName: descriptor.payeeName ?? undefined,
+      categoryId: descriptor.categoryId,
     });
     const result = await this.transactionsService.updateTransfer(
       userId,

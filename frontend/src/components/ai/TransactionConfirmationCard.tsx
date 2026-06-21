@@ -232,6 +232,11 @@ export function TransactionConfirmationCard({
           ? `${preview.payeeName} ${t('confirmAction.newPayee')}`
           : preview.payeeName,
       });
+    if (preview.categoryName)
+      rows.push({
+        label: t('confirmAction.category'),
+        value: preview.categoryName,
+      });
     if (preview.description)
       rows.push({
         label: t('confirmAction.description'),

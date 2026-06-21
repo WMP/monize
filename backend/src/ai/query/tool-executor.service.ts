@@ -689,7 +689,7 @@ export class ToolExecutorService {
           );
           return {
             data: PENDING_ACTION_TOOL_RESULT,
-            summary: `Prepared an update to the transfer (${result.preview.amount} ${result.preview.fromCurrencyCode}) from ${result.preview.fromAccountName} to ${result.preview.toAccountName}. Awaiting user confirmation.`,
+            summary: `Prepared an update to the transfer (${result.preview.amount} ${result.preview.fromCurrencyCode}) from ${result.preview.fromAccountName} to ${result.preview.toAccountName}${result.preview.categoryName ? `, categorized as "${result.preview.categoryName}"` : ""}. Awaiting user confirmation.`,
             sources: [],
             pendingAction,
           };

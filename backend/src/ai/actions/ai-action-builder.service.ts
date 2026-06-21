@@ -776,6 +776,7 @@ export class AiActionBuilderService {
       payeeId: preview.payeeId,
       payeeName: preview.payeeName,
       createPayee: preview.payeeWillBeCreated,
+      categoryId: preview.categoryId,
     };
     return {
       actionId,
@@ -795,6 +796,7 @@ export class AiActionBuilderService {
         description: preview.description,
         payeeName: preview.payeeName,
         payeeWillBeCreated: preview.payeeWillBeCreated,
+        categoryName: preview.categoryName,
       },
     };
   }

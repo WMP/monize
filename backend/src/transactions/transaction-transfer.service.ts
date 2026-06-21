@@ -73,6 +73,9 @@ export interface UpdateTransferPreview {
   payeeName: string | null;
   payeeMatched: boolean;
   payeeWillBeCreated: boolean;
+  /** Spending category applied to both legs after the edit (null = none). */
+  categoryId: string | null;
+  categoryName: string | null;
 }
 
 @Injectable()
@@ -430,6 +433,11 @@ export class TransactionTransferService {
       payeeName?: string;
       /** Auto-create a payee for an unmatched custom label. Defaults to true. */
       createPayeeIfMissing?: boolean;
+      /**
+       * Resolved spending category id to apply to both legs. Undefined keeps the
+       * existing category; null clears it; a string sets it (ownership checked).
+       */
+      categoryId?: string | null;
     },
     findOne: (userId: string, id: string) => Promise<Transaction>,
   ): Promise<UpdateTransferPreview> {
@@ -496,6 +504,29 @@ export class TransactionTransferService {
         !!payeeName && !payeeMatched && input.createPayeeIfMissing !== false;
     }
 
+    // Category: validate ownership of a changed category; otherwise keep the
+    // transfer's existing (from-leg) category. Mirrors previewUpdate so the
+    // confirm step re-applies the resolved id to both legs.
+    let categoryId: string | null = fromTransaction.categoryId ?? null;
+    let categoryName: string | null = fromTransaction.category?.name ?? null;
+    if (input.categoryId !== undefined) {
+      if (input.categoryId) {
+        const category = await this.categoriesRepository.findOne({
+          where: { id: input.categoryId, userId },
+        });
+        if (!category) {
+          throw new BadRequestException(
+            tr("errors.transactions.categoryNotFound", "Category not found"),
+          );
+        }
+        categoryId = category.id;
+        categoryName = category.name;
+      } else {
+        categoryId = null;
+        categoryName = null;
+      }
+    }
+
     return {
       transactionId,
       fromAccountId: fromTransaction.accountId,
@@ -513,6 +544,8 @@ export class TransactionTransferService {
       payeeName,
       payeeMatched,
       payeeWillBeCreated,
+      categoryId,
+      categoryName,
     };
   }
 

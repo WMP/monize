@@ -470,6 +470,22 @@ export class TransactionToolPrepService {
           "A transfer cannot be converted into a split transaction.",
         );
       }
+      // A transfer carries an optional spending category on both legs (the web
+      // UI supports this). Resolve a provided category name to an id so the
+      // edit persists it, matching the standard-transaction path.
+      let categoryId: string | null | undefined;
+      if (item.categoryName !== undefined) {
+        if (item.categoryName) {
+          const resolved = await this.resolveCategoryId(
+            userId,
+            item.categoryName,
+          );
+          if (!resolved) throw this.unknownCategoryError(item.categoryName);
+          categoryId = resolved;
+        } else {
+          categoryId = null;
+        }
+      }
       const preview = await this.transferService.previewUpdateTransfer(
         userId,
         item.transactionId,
@@ -479,6 +495,7 @@ export class TransactionToolPrepService {
           description: item.description,
           payeeName: item.payeeName,
           createPayeeIfMissing: item.createPayeeIfMissing ?? true,
+          categoryId,
         },
         this.transactionsService.findOne.bind(this.transactionsService),
       );

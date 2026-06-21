@@ -576,7 +576,7 @@ describe("AiActionBuilderService", () => {
     expect(action.preview).toMatchObject({ payeeWillBeCreated: true });
   });
 
-  it("builds a signed update_transfer action", () => {
+  it("builds a signed update_transfer action carrying the category", () => {
     const action = builder.buildUpdateTransfer("user-1", {
       transactionId: "t1",
       fromAccountId: "a1",
@@ -594,6 +594,8 @@ describe("AiActionBuilderService", () => {
       payeeName: "Edited transfer label",
       payeeMatched: true,
       payeeWillBeCreated: false,
+      categoryId: "cat-1",
+      categoryName: "Investments: IKE",
     });
     expect(action.type).toBe("update_transfer");
     expect(action.descriptor).toMatchObject({
@@ -603,10 +605,12 @@ describe("AiActionBuilderService", () => {
       payeeId: "payee-2",
       payeeName: "Edited transfer label",
       createPayee: false,
+      categoryId: "cat-1",
     });
     expect(action.preview).toMatchObject({
       payeeName: "Edited transfer label",
       payeeWillBeCreated: false,
+      categoryName: "Investments: IKE",
     });
   });
 

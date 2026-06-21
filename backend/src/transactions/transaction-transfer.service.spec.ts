@@ -2029,6 +2029,84 @@ describe("TransactionTransferService", () => {
       expect(preview.payeeName).toBe("Freeform");
     });
 
+    it("keeps the existing from-leg category when categoryId is omitted", async () => {
+      const findOne = jest.fn(async (_uid: string, id: string) =>
+        id === "from-tx"
+          ? {
+              ...fromLeg,
+              categoryId: "cat-existing",
+              category: { name: "Existing" },
+            }
+          : toLeg,
+      );
+      const preview = await service.previewUpdateTransfer(
+        "user-1",
+        "from-tx",
+        { amount: 200 },
+        findOne as any,
+      );
+      expect(preview.categoryId).toBe("cat-existing");
+      expect(preview.categoryName).toBe("Existing");
+      expect(categoriesRepository.findOne).not.toHaveBeenCalled();
+    });
+
+    it("resolves and validates a new category, returning its name", async () => {
+      categoriesRepository.findOne.mockResolvedValue({
+        id: "cat-1",
+        name: "Investments: IKE",
+      });
+      const findOne = jest.fn(async (_uid: string, id: string) =>
+        id === "from-tx" ? fromLeg : toLeg,
+      );
+      const preview = await service.previewUpdateTransfer(
+        "user-1",
+        "from-tx",
+        { categoryId: "cat-1" },
+        findOne as any,
+      );
+      expect(categoriesRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "cat-1", userId: "user-1" },
+      });
+      expect(preview.categoryId).toBe("cat-1");
+      expect(preview.categoryName).toBe("Investments: IKE");
+    });
+
+    it("clears the category when categoryId is null", async () => {
+      const findOne = jest.fn(async (_uid: string, id: string) =>
+        id === "from-tx"
+          ? {
+              ...fromLeg,
+              categoryId: "cat-existing",
+              category: { name: "Existing" },
+            }
+          : toLeg,
+      );
+      const preview = await service.previewUpdateTransfer(
+        "user-1",
+        "from-tx",
+        { categoryId: null },
+        findOne as any,
+      );
+      expect(preview.categoryId).toBeNull();
+      expect(preview.categoryName).toBeNull();
+      expect(categoriesRepository.findOne).not.toHaveBeenCalled();
+    });
+
+    it("rejects a category that does not belong to the user", async () => {
+      categoriesRepository.findOne.mockResolvedValue(null);
+      const findOne = jest.fn(async (_uid: string, id: string) =>
+        id === "from-tx" ? fromLeg : toLeg,
+      );
+      await expect(
+        service.previewUpdateTransfer(
+          "user-1",
+          "from-tx",
+          { categoryId: "cat-x" },
+          findOne as any,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it("throws notATransfer when the target is not a transfer", async () => {
       const findOne = jest.fn(async () => ({
         id: "x",

@@ -369,6 +369,12 @@ export interface UpdateTransferDescriptor extends BaseDescriptor {
   payeeId: string | null;
   payeeName: string | null;
   createPayee: boolean;
+  /**
+   * Optional spending category applied to both transfer legs (null = none).
+   * Carries the existing category when an edit leaves it unchanged so the
+   * confirm step re-applies it idempotently.
+   */
+  categoryId: string | null;
 }
 
 /**
