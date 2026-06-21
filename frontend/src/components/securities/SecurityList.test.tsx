@@ -43,6 +43,19 @@ describe('SecurityList', () => {
     expect(screen.getByText('Inactive')).toBeInTheDocument();
   });
 
+  it('renders tag chips and the description under the name', () => {
+    const securities = [
+      makeSecurity({
+        description: 'Global aggregate bond ETF.',
+        tags: [{ id: 't1', name: 'Bonds', color: '#abcdef', icon: null }],
+      }),
+    ];
+
+    render(<SecurityList securities={securities} onEdit={onEdit} onToggleActive={onToggleActive} />);
+    expect(screen.getByText('Bonds')).toBeInTheDocument();
+    expect(screen.getByText('Global aggregate bond ETF.')).toBeInTheDocument();
+  });
+
   it('renders security type labels', () => {
     const securities = [
       makeSecurity({ securityType: 'MUTUAL_FUND' }),

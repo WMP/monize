@@ -274,6 +274,14 @@ const SecurityRow = memo(function SecurityRow({
             ))}
           </div>
         )}
+        {security.description && (
+          <p
+            className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2 max-w-md"
+            title={security.description}
+          >
+            {security.description}
+          </p>
+        )}
       </td>
       <td className={`${cellPadding} whitespace-nowrap`}>
         <span className="text-sm text-gray-500 dark:text-gray-400">
