@@ -6,20 +6,27 @@ import {
   NotFoundException,
   ForbiddenException,
 } from "@nestjs/common";
+import { DataSource } from "typeorm";
 import { SecuritiesService } from "./securities.service";
 import { Security } from "./entities/security.entity";
+import { SecurityTag } from "./entities/security-tag.entity";
 import { Holding } from "./entities/holding.entity";
 import { InvestmentTransaction } from "./entities/investment-transaction.entity";
 import { SecurityPriceService } from "./security-price.service";
+import { YahooFinanceService } from "./yahoo-finance.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
 
 describe("SecuritiesService", () => {
   let service: SecuritiesService;
   let securitiesRepository: Record<string, any>;
+  let securityTagsRepository: Record<string, jest.Mock>;
   let holdingsRepository: Record<string, jest.Mock>;
   let investmentTransactionsRepository: Record<string, jest.Mock>;
   let mockSecurityPriceService: Record<string, jest.Mock>;
   let mockActionHistoryService: Record<string, jest.Mock>;
+  let mockYahooFinanceService: Record<string, jest.Mock>;
+  let queryRunnerManager: Record<string, jest.Mock>;
+  let mockDataSource: Record<string, any>;
 
   const mockSecurity = {
     id: "sec-1",
@@ -85,12 +92,57 @@ describe("SecuritiesService", () => {
       record: jest.fn().mockResolvedValue(null),
     };
 
+    mockYahooFinanceService = {
+      fetchSecurityProfileDescription: jest.fn().mockResolvedValue(null),
+    };
+
+    securityTagsRepository = {
+      find: jest.fn().mockResolvedValue([]),
+      delete: jest.fn().mockResolvedValue(undefined),
+      save: jest.fn().mockResolvedValue(undefined),
+      createQueryBuilder: jest.fn(() => ({
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      })),
+    };
+
+    // QueryRunner manager used by create()/update(). create() does
+    // `create(Security, data)` + `save(entity)`; update() does
+    // `save(Security, scalars)`; setSecurityTags does find/delete/save/create.
+    queryRunnerManager = {
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest
+        .fn()
+        .mockImplementation((_entity, data) => ({ ...data, id: "new-sec" })),
+      save: jest.fn().mockImplementation((a, b) => b ?? a),
+      delete: jest.fn().mockResolvedValue(undefined),
+      find: jest.fn().mockResolvedValue([]),
+    };
+
+    mockDataSource = {
+      manager: queryRunnerManager,
+      createQueryRunner: jest.fn(() => ({
+        connect: jest.fn().mockResolvedValue(undefined),
+        startTransaction: jest.fn().mockResolvedValue(undefined),
+        commitTransaction: jest.fn().mockResolvedValue(undefined),
+        rollbackTransaction: jest.fn().mockResolvedValue(undefined),
+        release: jest.fn().mockResolvedValue(undefined),
+        manager: queryRunnerManager,
+      })),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SecuritiesService,
         {
           provide: getRepositoryToken(Security),
           useValue: securitiesRepository,
+        },
+        {
+          provide: getRepositoryToken(SecurityTag),
+          useValue: securityTagsRepository,
         },
         {
           provide: getRepositoryToken(Holding),
@@ -105,8 +157,16 @@ describe("SecuritiesService", () => {
           useValue: mockSecurityPriceService,
         },
         {
+          provide: YahooFinanceService,
+          useValue: mockYahooFinanceService,
+        },
+        {
           provide: ActionHistoryService,
           useValue: mockActionHistoryService,
+        },
+        {
+          provide: DataSource,
+          useValue: mockDataSource,
         },
       ],
     }).compile();
@@ -378,7 +438,7 @@ describe("SecuritiesService", () => {
 
   describe("create", () => {
     it("creates a new security", async () => {
-      securitiesRepository.findOne.mockResolvedValue(null);
+      queryRunnerManager.findOne.mockResolvedValue(null);
 
       await service.create("user-1", {
         symbol: "MSFT",
@@ -387,14 +447,36 @@ describe("SecuritiesService", () => {
         currencyCode: "USD",
       });
 
-      expect(securitiesRepository.create).toHaveBeenCalledWith(
+      expect(queryRunnerManager.create).toHaveBeenCalledWith(
+        Security,
         expect.objectContaining({ symbol: "MSFT", userId: "user-1" }),
       );
-      expect(securitiesRepository.save).toHaveBeenCalled();
+      expect(queryRunnerManager.save).toHaveBeenCalled();
+    });
+
+    it("assigns tags atomically when tagIds are provided", async () => {
+      queryRunnerManager.findOne.mockResolvedValue(null);
+      queryRunnerManager.find.mockResolvedValue([{ id: "tag-1" }]);
+
+      await service.create("user-1", {
+        symbol: "AGGG",
+        name: "iShares Core Global Aggregate Bond",
+        currencyCode: "USD",
+        tagIds: ["tag-1"],
+      });
+
+      // tagIds must not be persisted as a column on the security row
+      expect(queryRunnerManager.create).toHaveBeenCalledWith(
+        Security,
+        expect.not.objectContaining({ tagIds: expect.anything() }),
+      );
+      expect(queryRunnerManager.save).toHaveBeenCalledWith(SecurityTag, [
+        expect.objectContaining({ securityId: "new-sec", tagId: "tag-1" }),
+      ]);
     });
 
     it("throws ConflictException for duplicate symbol", async () => {
-      securitiesRepository.findOne.mockResolvedValue(mockSecurity);
+      queryRunnerManager.findOne.mockResolvedValue(mockSecurity);
 
       await expect(
         service.create("user-1", {
@@ -407,7 +489,7 @@ describe("SecuritiesService", () => {
     });
 
     it("records action history on create", async () => {
-      securitiesRepository.findOne.mockResolvedValue(null);
+      queryRunnerManager.findOne.mockResolvedValue(null);
 
       await service.create("user-1", {
         symbol: "MSFT",
@@ -435,6 +517,7 @@ describe("SecuritiesService", () => {
 
       expect(securitiesRepository.find).toHaveBeenCalledWith({
         where: { userId: "user-1", isActive: true },
+        relations: ["tags"],
         order: { symbol: "ASC" },
       });
       expect(result).toHaveLength(1);
@@ -447,6 +530,7 @@ describe("SecuritiesService", () => {
 
       expect(securitiesRepository.find).toHaveBeenCalledWith({
         where: { userId: "user-1" },
+        relations: ["tags"],
         order: { symbol: "ASC" },
       });
     });
@@ -500,7 +584,7 @@ describe("SecuritiesService", () => {
       });
 
       expect(result.name).toBe("Apple Inc. Updated");
-      expect(securitiesRepository.save).toHaveBeenCalled();
+      expect(queryRunnerManager.save).toHaveBeenCalled();
     });
 
     it("throws ConflictException when updating to existing symbol", async () => {
@@ -535,7 +619,7 @@ describe("SecuritiesService", () => {
         isActive: false,
       });
 
-      const savedSecurity = securitiesRepository.save.mock.calls[0][0];
+      const savedSecurity = queryRunnerManager.save.mock.calls[0][1];
       expect(savedSecurity.name).toBe("New Name");
       expect(savedSecurity.securityType).toBe("ETF");
       expect(savedSecurity.exchange).toBe("NYSE");
@@ -551,7 +635,7 @@ describe("SecuritiesService", () => {
         msnInstrumentId: "a1u3p2",
       });
 
-      const saved = securitiesRepository.save.mock.calls[0][0];
+      const saved = queryRunnerManager.save.mock.calls[0][1];
       expect(saved.quoteProvider).toBe("msn");
       expect(saved.msnInstrumentId).toBe("a1u3p2");
     });
@@ -566,7 +650,7 @@ describe("SecuritiesService", () => {
         quoteProvider: null as unknown as undefined,
       });
 
-      const saved = securitiesRepository.save.mock.calls[0][0];
+      const saved = queryRunnerManager.save.mock.calls[0][1];
       expect(saved.quoteProvider).toBeNull();
     });
 
@@ -575,7 +659,7 @@ describe("SecuritiesService", () => {
 
       await service.update("user-1", "sec-1", { isFavourite: true });
 
-      const saved = securitiesRepository.save.mock.calls[0][0];
+      const saved = queryRunnerManager.save.mock.calls[0][1];
       expect(saved.isFavourite).toBe(true);
     });
 
@@ -1200,6 +1284,112 @@ describe("SecuritiesService", () => {
       await expect(
         service.previewUpdateSecurity("user-1", { query: "Apple" }),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe("setSecurityTags", () => {
+    it("validates ownership, then replaces the tag set", async () => {
+      queryRunnerManager.find.mockResolvedValue([
+        { id: "tag-1" },
+        { id: "tag-2" },
+      ]);
+
+      await service.setSecurityTags(
+        "sec-1",
+        ["tag-1", "tag-2"],
+        "user-1",
+        mockDataSource.createQueryRunner(),
+      );
+
+      expect(queryRunnerManager.delete).toHaveBeenCalledWith(SecurityTag, {
+        securityId: "sec-1",
+      });
+      expect(queryRunnerManager.save).toHaveBeenCalledWith(SecurityTag, [
+        expect.objectContaining({ securityId: "sec-1", tagId: "tag-1" }),
+        expect.objectContaining({ securityId: "sec-1", tagId: "tag-2" }),
+      ]);
+    });
+
+    it("throws when a tag does not belong to the user", async () => {
+      queryRunnerManager.find.mockResolvedValue([{ id: "tag-1" }]);
+
+      await expect(
+        service.setSecurityTags("sec-1", ["tag-1", "tag-missing"], "user-1"),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("clears all tags when given an empty list", async () => {
+      await service.setSecurityTags("sec-1", [], "user-1");
+
+      expect(queryRunnerManager.delete).toHaveBeenCalledWith(SecurityTag, {
+        securityId: "sec-1",
+      });
+      expect(queryRunnerManager.save).not.toHaveBeenCalledWith(
+        SecurityTag,
+        expect.anything(),
+      );
+    });
+  });
+
+  describe("getSuggestedDescription", () => {
+    it("returns the Yahoo profile description", async () => {
+      mockYahooFinanceService.fetchSecurityProfileDescription.mockResolvedValue(
+        "Apple Inc. designs phones.",
+      );
+
+      const result = await service.getSuggestedDescription("AAPL", "NASDAQ");
+
+      expect(
+        mockYahooFinanceService.fetchSecurityProfileDescription,
+      ).toHaveBeenCalledWith("AAPL", "NASDAQ");
+      expect(result).toEqual({
+        symbol: "AAPL",
+        description: "Apple Inc. designs phones.",
+      });
+    });
+
+    it("returns a null description when Yahoo has nothing", async () => {
+      mockYahooFinanceService.fetchSecurityProfileDescription.mockResolvedValue(
+        null,
+      );
+
+      const result = await service.getSuggestedDescription("XYZ");
+
+      expect(result).toEqual({ symbol: "XYZ", description: null });
+    });
+  });
+
+  describe("findByTag", () => {
+    it("returns the user's securities carrying a tag", async () => {
+      const tagged = [{ id: "sec-1", symbol: "AGGG" }];
+      securitiesRepository.createQueryBuilder.mockReturnValue({
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(tagged),
+      });
+
+      const result = await service.findByTag("user-1", "tag-1");
+
+      expect(result).toEqual(tagged);
+    });
+  });
+
+  describe("update with description and tags", () => {
+    it("persists the description and replaces the tag set", async () => {
+      securitiesRepository.findOne.mockResolvedValue({ ...mockSecurity });
+      queryRunnerManager.find.mockResolvedValue([{ id: "tag-1" }]);
+
+      await service.update("user-1", "sec-1", {
+        description: "Global aggregate bond ETF.",
+        tagIds: ["tag-1"],
+      });
+
+      const saved = queryRunnerManager.save.mock.calls[0][1];
+      expect(saved.description).toBe("Global aggregate bond ETF.");
+      expect(queryRunnerManager.save).toHaveBeenCalledWith(SecurityTag, [
+        expect.objectContaining({ securityId: "sec-1", tagId: "tag-1" }),
+      ]);
     });
   });
 });

@@ -1,11 +1,13 @@
 import { Module, forwardRef } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Security } from "./entities/security.entity";
+import { SecurityTag } from "./entities/security-tag.entity";
 import { Holding } from "./entities/holding.entity";
 import { InvestmentTransaction } from "./entities/investment-transaction.entity";
 import { SecurityPrice } from "./entities/security-price.entity";
 import { Account } from "../accounts/entities/account.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
+import { Tag } from "../tags/entities/tag.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { SecuritiesService } from "./securities.service";
 import { SecurityToolPrepService } from "./security-tool-prep.service";
@@ -33,11 +35,13 @@ import { DelegationModule } from "../delegation/delegation.module";
   imports: [
     TypeOrmModule.forFeature([
       Security,
+      SecurityTag,
       Holding,
       InvestmentTransaction,
       SecurityPrice,
       Account,
       Transaction,
+      Tag,
       UserPreference,
     ]),
     forwardRef(() => AccountsModule),

@@ -141,7 +141,12 @@
       "lookupTooShort": "Enter a symbol or name (at least 2 characters) to lookup",
       "notFound": "No security found for \"{query}\"",
       "found": "Found: {details}",
-      "lookupFailed": "Lookup failed - please try again"
+      "lookupFailed": "Lookup failed - please try again",
+      "descriptionFetched": "Description fetched from Yahoo Finance.",
+      "descriptionNotFound": "No description available from Yahoo Finance.",
+      "descriptionFailed": "Could not fetch a description. Please try again.",
+      "descriptionNeedsSymbol": "Enter a symbol first to fetch a description.",
+      "tagCreated": "Tag \"{name}\" created"
     },
     "msnNotConfigured": "MSN is selected as the default quote provider, but MSN_API_KEY is not configured on the server. MSN quotes will fail until an administrator sets the env var and restarts the backend.",
     "providers": {
@@ -163,7 +168,15 @@
     "symbolPlaceholder": "e.g., AAPL, XEQT, BTC",
     "namePlaceholder": "e.g., Apple Inc., iShares Core Equity ETF",
     "exchangeSearchPlaceholder": "Search exchanges...",
-    "exchangePlaceholder": "Auto-resolved from ticker; override only if wrong"
+    "exchangePlaceholder": "Auto-resolved from ticker; override only if wrong",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Notes about this security, or fetch a summary from the price provider.",
+    "fetchDescription": "Fetch from Yahoo",
+    "fetchingDescription": "Fetching...",
+    "tagsLabel": "Tags",
+    "tagsPlaceholder": "Select tags",
+    "createNewTag": "Create new tag",
+    "newTagTitle": "New Tag"
   },
   "priceForm": {
     "dateLabel": "Date",
@@ -294,7 +307,8 @@
     "symbolMax": "Symbol must be 20 characters or less",
     "nameRequired": "Name is required",
     "nameMax": "Name must be 255 characters or less",
-    "currencyRequired": "Currency is required"
+    "currencyRequired": "Currency is required",
+    "descriptionMax": "Description must be 5000 characters or fewer"
   },
   "priceValidation": {
     "dateRequired": "Date is required",

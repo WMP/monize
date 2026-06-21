@@ -8,13 +8,16 @@ import {
 } from "@nestjs/common";
 import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Repository, DataSource, QueryRunner, In } from "typeorm";
 import { Security } from "./entities/security.entity";
+import { SecurityTag } from "./entities/security-tag.entity";
 import { Holding } from "./entities/holding.entity";
 import { InvestmentTransaction } from "./entities/investment-transaction.entity";
+import { Tag } from "../tags/entities/tag.entity";
 import { CreateSecurityDto } from "./dto/create-security.dto";
 import { UpdateSecurityDto } from "./dto/update-security.dto";
 import { SecurityPriceService } from "./security-price.service";
+import { YahooFinanceService } from "./yahoo-finance.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { SecurityLookupResult } from "./providers/quote-provider.interface";
 
@@ -109,38 +112,81 @@ export class SecuritiesService {
   constructor(
     @InjectRepository(Security)
     private securitiesRepository: Repository<Security>,
+    @InjectRepository(SecurityTag)
+    private securityTagsRepository: Repository<SecurityTag>,
     @InjectRepository(Holding)
     private holdingsRepository: Repository<Holding>,
     @InjectRepository(InvestmentTransaction)
     private investmentTransactionsRepository: Repository<InvestmentTransaction>,
     private securityPriceService: SecurityPriceService,
+    private yahooFinanceService: YahooFinanceService,
     private actionHistoryService: ActionHistoryService,
+    private dataSource: DataSource,
   ) {}
+
+  /**
+   * Best-effort suggested description for a security from the Yahoo provider's
+   * profile data, for the "Fetch from Yahoo" pre-fill button. Read-only and
+   * advisory: it persists nothing and the user always reviews/edits the result
+   * before saving. Returns `description: null` when Yahoo has nothing usable.
+   */
+  async getSuggestedDescription(
+    symbol: string,
+    exchange?: string | null,
+  ): Promise<{ symbol: string; description: string | null }> {
+    const description =
+      await this.yahooFinanceService.fetchSecurityProfileDescription(
+        symbol,
+        exchange ?? null,
+      );
+    return { symbol, description };
+  }
 
   async create(
     userId: string,
     createSecurityDto: CreateSecurityDto,
   ): Promise<Security> {
-    // Check if symbol already exists for this user
-    const existing = await this.securitiesRepository.findOne({
-      where: { symbol: createSecurityDto.symbol, userId },
-    });
+    // tagIds is a relation, not a column on securities -- pull it out so the
+    // spread that builds the entity never tries to persist it as a field.
+    const { tagIds, ...securityData } = createSecurityDto;
 
-    if (existing) {
-      throw new ConflictException(
-        tr(
-          "errors.securities.symbolAlreadyExists",
-          `Security with symbol ${createSecurityDto.symbol} already exists`,
-          { symbol: createSecurityDto.symbol },
-        ),
-      );
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    let saved: Security;
+    try {
+      // Check if symbol already exists for this user
+      const existing = await queryRunner.manager.findOne(Security, {
+        where: { symbol: securityData.symbol, userId },
+      });
+
+      if (existing) {
+        throw new ConflictException(
+          tr(
+            "errors.securities.symbolAlreadyExists",
+            `Security with symbol ${securityData.symbol} already exists`,
+            { symbol: securityData.symbol },
+          ),
+        );
+      }
+
+      const security = queryRunner.manager.create(Security, {
+        ...securityData,
+        userId,
+      });
+      saved = await queryRunner.manager.save(security);
+
+      if (tagIds && tagIds.length > 0) {
+        await this.setSecurityTags(saved.id, tagIds, userId, queryRunner);
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    const security = this.securitiesRepository.create({
-      ...createSecurityDto,
-      userId,
-    });
-    const saved = await this.securitiesRepository.save(security);
 
     // Fire-and-forget: backfill 1Y of daily prices for the new security
     this.securityPriceService.backfillSecurity(saved).catch((err) => {
@@ -172,6 +218,7 @@ export class SecuritiesService {
     }
     const securities = await this.securitiesRepository.find({
       where,
+      relations: ["tags"],
       order: { symbol: "ASC" },
     });
     return this.attachLastPriceSource(securities);
@@ -205,6 +252,7 @@ export class SecuritiesService {
   async findOne(userId: string, id: string): Promise<Security> {
     const security = await this.securitiesRepository.findOne({
       where: { id, userId },
+      relations: ["tags"],
     });
     if (!security) {
       throw new NotFoundException(
@@ -272,6 +320,8 @@ export class SecuritiesService {
       security.exchange = updateSecurityDto.exchange;
     if (updateSecurityDto.currencyCode !== undefined)
       security.currencyCode = updateSecurityDto.currencyCode;
+    if (updateSecurityDto.description !== undefined)
+      security.description = updateSecurityDto.description ?? null;
     if (updateSecurityDto.isActive !== undefined)
       security.isActive = updateSecurityDto.isActive;
     if (updateSecurityDto.isFavourite !== undefined)
@@ -288,7 +338,33 @@ export class SecuritiesService {
       security.skipPriceUpdates = false;
     }
 
-    const saved = await this.securitiesRepository.save(security);
+    // Persist the scalar fields and the tag set together so a security and its
+    // classification never drift apart on a partial failure.
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      // The relation is loaded onto `security`; strip it before save so
+      // TypeORM does not try to cascade-write the join table itself.
+      const { tags: _tags, ...scalars } = security;
+      await queryRunner.manager.save(Security, scalars);
+      if (updateSecurityDto.tagIds !== undefined) {
+        await this.setSecurityTags(
+          id,
+          updateSecurityDto.tagIds,
+          userId,
+          queryRunner,
+        );
+      }
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+
+    const saved = await this.findOne(userId, id);
 
     this.actionHistoryService.record(userId, {
       entityType: "security",
@@ -827,5 +903,59 @@ export class SecuritiesService {
     }));
 
     return { query, count: candidates.length, candidates };
+  }
+
+  /**
+   * Replace the tag set on a security with `tagIds`, mirroring
+   * `TagsService.setTransactionTags`. Validates every tag belongs to the user,
+   * then clears and re-inserts the join rows. Pass a `queryRunner` to enlist in
+   * a caller's transaction (security create/update do this so the security and
+   * its tags commit atomically).
+   */
+  async setSecurityTags(
+    securityId: string,
+    tagIds: string[],
+    userId: string,
+    queryRunner?: QueryRunner,
+  ): Promise<void> {
+    const manager = queryRunner ? queryRunner.manager : this.dataSource.manager;
+
+    if (tagIds.length > 0) {
+      const tags = await manager.find(Tag, {
+        where: { id: In(tagIds), userId },
+      });
+      if (tags.length !== tagIds.length) {
+        throw new NotFoundException(
+          tr("errors.tags.oneOrMoreNotFound", "One or more tags not found"),
+        );
+      }
+    }
+
+    await manager.delete(SecurityTag, { securityId });
+
+    if (tagIds.length > 0) {
+      const newTags = tagIds.map((tagId) =>
+        manager.create(SecurityTag, { securityId, tagId }),
+      );
+      await manager.save(SecurityTag, newTags);
+    }
+  }
+
+  /**
+   * All of the user's securities carrying a given tag, ordered by symbol.
+   * Mirrors the per-user scoping of the rest of the service.
+   */
+  async findByTag(userId: string, tagId: string): Promise<Security[]> {
+    return this.securitiesRepository
+      .createQueryBuilder("security")
+      .innerJoin(
+        SecurityTag,
+        "st",
+        "st.security_id = security.id AND st.tag_id = :tagId",
+        { tagId },
+      )
+      .where("security.userId = :userId", { userId })
+      .orderBy("security.symbol", "ASC")
+      .getMany();
   }
 }

@@ -141,7 +141,12 @@
       "lookupTooShort": "[XX-Enter a symbol or name (at least 2 characters) to lookup-XX]",
       "notFound": "[XX-No security found for \"{query}\"-XX]",
       "found": "[XX-Found: {details}-XX]",
-      "lookupFailed": "[XX-Lookup failed - please try again-XX]"
+      "lookupFailed": "[XX-Lookup failed - please try again-XX]",
+      "descriptionFetched": "[XX-Description fetched from Yahoo Finance.-XX]",
+      "descriptionNotFound": "[XX-No description available from Yahoo Finance.-XX]",
+      "descriptionFailed": "[XX-Could not fetch a description. Please try again.-XX]",
+      "descriptionNeedsSymbol": "[XX-Enter a symbol first to fetch a description.-XX]",
+      "tagCreated": "[XX-Tag \"{name}\" created-XX]"
     },
     "msnNotConfigured": "[XX-MSN is selected as the default quote provider, but MSN_API_KEY is not configured on the server. MSN quotes will fail until an administrator sets the env var and restarts the backend.-XX]",
     "providers": {
@@ -163,7 +168,15 @@
     "symbolPlaceholder": "[XX-e.g., AAPL, XEQT, BTC-XX]",
     "namePlaceholder": "[XX-e.g., Apple Inc., iShares Core Equity ETF-XX]",
     "exchangeSearchPlaceholder": "[XX-Search exchanges...-XX]",
-    "exchangePlaceholder": "[XX-Auto-resolved from ticker; override only if wrong-XX]"
+    "exchangePlaceholder": "[XX-Auto-resolved from ticker; override only if wrong-XX]",
+    "descriptionLabel": "[XX-Description-XX]",
+    "descriptionPlaceholder": "[XX-Notes about this security, or fetch a summary from the price provider.-XX]",
+    "fetchDescription": "[XX-Fetch from Yahoo-XX]",
+    "fetchingDescription": "[XX-Fetching...-XX]",
+    "tagsLabel": "[XX-Tags-XX]",
+    "tagsPlaceholder": "[XX-Select tags-XX]",
+    "createNewTag": "[XX-Create new tag-XX]",
+    "newTagTitle": "[XX-New Tag-XX]"
   },
   "priceForm": {
     "dateLabel": "[XX-Date-XX]",
@@ -294,7 +307,8 @@
     "symbolMax": "[XX-Symbol must be 20 characters or less-XX]",
     "nameRequired": "[XX-Name is required-XX]",
     "nameMax": "[XX-Name must be 255 characters or less-XX]",
-    "currencyRequired": "[XX-Currency is required-XX]"
+    "currencyRequired": "[XX-Currency is required-XX]",
+    "descriptionMax": "[XX-Description must be 5000 characters or fewer-XX]"
   },
   "priceValidation": {
     "dateRequired": "[XX-Date is required-XX]",

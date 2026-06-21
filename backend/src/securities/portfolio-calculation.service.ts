@@ -1433,6 +1433,121 @@ export class PortfolioCalculationService {
     return allocation;
   }
 
+  /**
+   * Build a portfolio "exposure by tag" breakdown from the already-consolidated
+   * per-security allocation (values in the default currency) and a per-symbol
+   * tag map.
+   *
+   * Multi-tag handling is option A (overlapping exposure): a security's full
+   * value counts once under EACH of its tags, so a holding tagged both "AI" and
+   * "All-World" contributes its whole value to both slices. Percentages are of
+   * the total portfolio value and can therefore sum to more than 100% -- this is
+   * an exposure view, not a strict partition. (Partitioning a multi-tagged
+   * holding's value, or charting one tag dimension at a time, are deliberately
+   * left as open follow-ups.)
+   *
+   * Securities with no tags fall into an "Untagged" bucket and cash into a
+   * "Cash" bucket, each kept as an explicit slice. A tag's own colour is used
+   * when set, otherwise a palette colour is assigned by descending value.
+   */
+  buildAllocationByTag(
+    securityItems: AllocationItem[],
+    tagsBySymbol: Map<
+      string,
+      Array<{ id: string; name: string; color: string | null }>
+    >,
+    totalCashValue: number,
+    totalPortfolioValue: number,
+    defaultCurrency: string,
+  ): AllocationItem[] {
+    const palette = [
+      "#3b82f6",
+      "#22c55e",
+      "#f97316",
+      "#8b5cf6",
+      "#ec4899",
+      "#14b8a6",
+      "#eab308",
+      "#ef4444",
+    ];
+
+    // Accumulate value per tag (overlapping) and the untagged remainder.
+    const tagBuckets = new Map<
+      string,
+      { name: string; color: string | null; value: number }
+    >();
+    let untaggedValue = 0;
+
+    for (const item of securityItems) {
+      if (item.type !== "security" || item.value <= 0) continue;
+      const tags = item.symbol ? (tagsBySymbol.get(item.symbol) ?? []) : [];
+      if (tags.length === 0) {
+        untaggedValue += item.value;
+        continue;
+      }
+      for (const tag of tags) {
+        const existing = tagBuckets.get(tag.id);
+        if (existing) {
+          existing.value += item.value;
+        } else {
+          tagBuckets.set(tag.id, {
+            name: tag.name,
+            color: tag.color,
+            value: item.value,
+          });
+        }
+      }
+    }
+
+    const pct = (value: number) =>
+      totalPortfolioValue > 0 ? (value / totalPortfolioValue) * 100 : 0;
+
+    const allocation: AllocationItem[] = [];
+
+    if (totalCashValue > 0) {
+      allocation.push({
+        name: "Cash",
+        symbol: null,
+        type: "cash",
+        value: totalCashValue,
+        percentage: pct(totalCashValue),
+        color: "#6b7280",
+        currencyCode: defaultCurrency,
+      });
+    }
+
+    const sortedTags = [...tagBuckets.values()].sort(
+      (a, b) => b.value - a.value,
+    );
+    let colorIndex = 0;
+    for (const bucket of sortedTags) {
+      allocation.push({
+        name: bucket.name,
+        symbol: null,
+        type: "tag",
+        value: bucket.value,
+        percentage: pct(bucket.value),
+        color: bucket.color || palette[colorIndex % palette.length],
+        currencyCode: defaultCurrency,
+      });
+      colorIndex++;
+    }
+
+    if (untaggedValue > 0) {
+      allocation.push({
+        name: "Untagged",
+        symbol: null,
+        type: "untagged",
+        value: untaggedValue,
+        percentage: pct(untaggedValue),
+        color: "#9ca3af",
+        currencyCode: defaultCurrency,
+      });
+    }
+
+    return allocation;
+  }
+
   // ---------------------------------------------------------------------------
   // Performance metrics
   // ---------------------------------------------------------------------------

@@ -36,6 +36,19 @@ vi.mock('@/lib/investments', () => ({
       yahoo: { ready: true },
       msn: { ready: true },
     }),
+    getSuggestedDescription: vi
+      .fn()
+      .mockResolvedValue({ symbol: 'AAPL', description: null }),
+  },
+}));
+
+vi.mock('@/lib/tags', () => ({
+  tagsApi: {
+    getAll: vi.fn().mockResolvedValue([
+      { id: 'tag-1', userId: 'u1', name: 'AI', color: '#abcdef', icon: null, createdAt: '', updatedAt: '' },
+      { id: 'tag-2', userId: 'u1', name: 'Bonds', color: null, icon: null, createdAt: '', updatedAt: '' },
+    ]),
+    create: vi.fn(),
   },
 }));
 
@@ -595,6 +608,88 @@ describe('SecurityForm', () => {
 
     await waitFor(() => {
       expect(investmentsApi.lookupSecurityCandidates).toHaveBeenCalledWith('Apple Inc', undefined, 'auto');
+    });
+  });
+
+  describe('description and tags', () => {
+    it('renders the description field and tag picker', async () => {
+      render(<SecurityForm onSubmit={onSubmit} onCancel={onCancel} />);
+      await waitFor(() => {
+        expect(screen.getByText('Description')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Fetch from Yahoo')).toBeInTheDocument();
+      expect(screen.getByText('Tags')).toBeInTheDocument();
+    });
+
+    it('fills the description from the Yahoo pre-fill', async () => {
+      (investmentsApi.getSuggestedDescription as any).mockResolvedValue({
+        symbol: 'AAPL',
+        description: 'Apple Inc. designs smartphones.',
+      });
+      render(<SecurityForm onSubmit={onSubmit} onCancel={onCancel} />);
+
+      fireEvent.change(screen.getByLabelText('Symbol'), { target: { value: 'AAPL' } });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Fetch from Yahoo'));
+      });
+
+      await waitFor(() => {
+        expect(investmentsApi.getSuggestedDescription).toHaveBeenCalledWith('AAPL', undefined);
+      });
+      const textarea = screen.getByPlaceholderText(
+        'Notes about this security, or fetch a summary from the price provider.',
+      ) as HTMLTextAreaElement;
+      await waitFor(() => {
+        expect(textarea.value).toBe('Apple Inc. designs smartphones.');
+      });
+    });
+
+    it('submits the description and tag IDs', async () => {
+      render(<SecurityForm onSubmit={onSubmit} onCancel={onCancel} />);
+
+      fireEvent.change(screen.getByLabelText('Symbol'), { target: { value: 'MSFT' } });
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Microsoft' } });
+      fireEvent.change(
+        screen.getByPlaceholderText(
+          'Notes about this security, or fetch a summary from the price provider.',
+        ),
+        { target: { value: 'A software company.' } },
+      );
+
+      fireEvent.click(screen.getByText('Create Security'));
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            description: 'A software company.',
+            tagIds: [],
+          }),
+        );
+      });
+    });
+
+    it('pre-fills description and selected tags when editing', async () => {
+      const security = createSecurity({
+        description: 'Existing notes.',
+        tags: [
+          { id: 'tag-1', userId: 'u1', name: 'AI', color: '#abcdef', icon: null, createdAt: '', updatedAt: '' },
+        ],
+      });
+      render(<SecurityForm security={security} onSubmit={onSubmit} onCancel={onCancel} />);
+
+      await waitFor(() => {
+        const textarea = screen.getByPlaceholderText(
+          'Notes about this security, or fetch a summary from the price provider.',
+        ) as HTMLTextAreaElement;
+        expect(textarea.value).toBe('Existing notes.');
+      });
+
+      fireEvent.click(screen.getByText('Update Security'));
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({ tagIds: ['tag-1'] }),
+        );
+      });
     });
   });
 });

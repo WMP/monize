@@ -100,7 +100,7 @@ export interface PortfolioSummary {
 export interface AllocationItem {
   name: string;
   symbol: string | null;
-  type: "cash" | "security";
+  type: "cash" | "security" | "tag" | "untagged";
   value: number;
   percentage: number;
   color?: string;
@@ -134,7 +134,7 @@ export interface LlmPortfolioHolding {
 export interface LlmPortfolioAllocation {
   name: string;
   symbol: string | null;
-  type: "cash" | "security";
+  type: "cash" | "security" | "tag" | "untagged";
   value: number;
   percentage: number;
 }
@@ -803,6 +803,92 @@ export class PortfolioService {
       allocation: summary.allocation,
       totalValue: summary.totalPortfolioValue,
     };
+  }
+
+  /**
+   * Portfolio "exposure by tag" allocation. Reuses the by-security allocation
+   * from the portfolio summary (values already in the default currency), then
+   * regroups it by each security's user-defined tags. See
+   * `PortfolioCalculationService.buildAllocationByTag` for the multi-tag
+   * (overlapping exposure) semantics.
+   */
+  async getAllocationByTag(
+    userId: string,
+    accountIds?: string[],
+  ): Promise<AssetAllocation> {
+    const summary = await this.getPortfolioSummary(userId, accountIds);
+    const securityItems = summary.allocation.filter(
+      (a) => a.type === "security",
+    );
+    const cashItem = summary.allocation.find((a) => a.type === "cash");
+    const totalCashValue = cashItem?.value ?? 0;
+    const defaultCurrency =
+      cashItem?.currencyCode ??
+      securityItems[0]?.currencyCode ??
+      (await this.resolveDefaultCurrency(userId));
+
+    const symbols = securityItems
+      .map((i) => i.symbol)
+      .filter((s): s is string => Boolean(s));
+    const tagsBySymbol = await this.loadTagsBySymbol(userId, symbols);
+
+    const allocation = this.calculationService.buildAllocationByTag(
+      securityItems,
+      tagsBySymbol,
+      totalCashValue,
+      summary.totalPortfolioValue,
+      defaultCurrency,
+    );
+    return { allocation, totalValue: summary.totalPortfolioValue };
+  }
+
+  /** The user's default display currency, falling back to CAD. */
+  private async resolveDefaultCurrency(userId: string): Promise<string> {
+    const pref = await this.prefRepository.findOne({ where: { userId } });
+    return pref?.defaultCurrency || "CAD";
+  }
+
+  /**
+   * Load the user's tags for the given security symbols, keyed by symbol.
+   * Symbols are unique per user, so a symbol maps to exactly one security.
+   */
+  private async loadTagsBySymbol(
+    userId: string,
+    symbols: string[],
+  ): Promise<
+    Map<string, Array<{ id: string; name: string; color: string | null }>>
+  > {
+    const result = new Map<
+      string,
+      Array<{ id: string; name: string; color: string | null }>
+    >();
+    if (symbols.length === 0) return result;
+
+    const rows: Array<{
+      symbol: string;
+      id: string;
+      name: string;
+      color: string | null;
+    }> = await this.holdingsRepository.manager.query(
+      `SELECT s.symbol AS symbol, t.id AS id, t.name AS name, t.color AS color
+         FROM securities s
+         JOIN security_tags st ON st.security_id = s.id
+         JOIN tags t ON t.id = st.tag_id
+        WHERE s.user_id = $1 AND s.symbol = ANY($2)
+        ORDER BY t.name ASC`,
+      [userId, symbols],
+    );
+
+    for (const row of rows) {
+      const arr = result.get(row.symbol);
+      const tag = { id: row.id, name: row.name, color: row.color };
+      if (arr) {
+        arr.push(tag);
+      } else {
+        result.set(row.symbol, [tag]);
+      }
+    }
+    return result;
   }
 
   /**

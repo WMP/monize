@@ -1043,4 +1043,106 @@ export class YahooFinanceService implements QuoteProvider {
       return null;
     }
   }
+
+  /**
+   * Best-effort free-text description for a security, fetched from Yahoo's
+   * v10 quoteSummary (cookie+crumb) for the "Fetch from Yahoo" pre-fill.
+   *
+   * Stocks expose `summaryProfile.longBusinessSummary` (full prose) -- returned
+   * verbatim. ETFs/funds expose no prose, so we synthesize a one-liner from the
+   * fund family, asset-class split, expense ratio and yield, e.g.
+   *   "iShares Core Global Aggregate Bond ETF (BlackRock). ~99% bonds, ~1% cash. TER 0.10%, yield 3.14%."
+   *
+   * Returns null when nothing usable comes back. Never throws -- the caller
+   * treats the suggestion as advisory and the user can always edit or ignore it.
+   */
+  async fetchSecurityProfileDescription(
+    symbol: string,
+    exchange: string | null = null,
+  ): Promise<string | null> {
+    const yahooSymbol = this.getYahooSymbol(symbol, exchange);
+    try {
+      const modules =
+        "summaryProfile,quoteType,fundProfile,topHoldings,summaryDetail";
+      const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(yahooSymbol)}?modules=${modules}`;
+
+      const response = await this.fetchV10(url);
+      if (!response || !response.ok) {
+        this.logger.warn(
+          `Yahoo Finance profile returned ${response?.status ?? "no response"} for ${yahooSymbol}`,
+        );
+        return null;
+      }
+
+      const data = await response.json();
+      const result = data.quoteSummary?.result?.[0];
+      if (!result) return null;
+
+      const prose: string | undefined =
+        result.summaryProfile?.longBusinessSummary;
+      if (prose && prose.trim().length > 0) {
+        return prose.trim();
+      }
+
+      return this.synthesizeFundDescription(result);
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch profile description for ${yahooSymbol}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Build a one-line description for a fund/ETF from the structured
+   * quoteSummary modules. Returns null when not enough is available to say
+   * anything useful.
+   */
+  private synthesizeFundDescription(
+    result: Record<string, any>,
+  ): string | null {
+    const name: string | undefined =
+      result.quoteType?.longName || result.quoteType?.shortName;
+    const family: string | undefined = result.fundProfile?.family;
+    const topHoldings = result.topHoldings ?? {};
+
+    // Asset-class split (positions are fractions, e.g. bondPosition.raw=0.994).
+    const positions: string[] = (
+      [
+        { label: "stocks", weight: topHoldings.stockPosition?.raw },
+        { label: "bonds", weight: topHoldings.bondPosition?.raw },
+        { label: "cash", weight: topHoldings.cashPosition?.raw },
+        { label: "other", weight: topHoldings.otherPosition?.raw },
+        { label: "preferred", weight: topHoldings.preferredPosition?.raw },
+        { label: "convertible", weight: topHoldings.convertiblePosition?.raw },
+      ] as Array<{ label: string; weight: number }>
+    )
+      .filter((p) => typeof p.weight === "number" && p.weight > 0.005)
+      .sort((a, b) => b.weight - a.weight)
+      .map((p) => `~${Math.round(p.weight * 100)}% ${p.label}`);
+
+    const ter: number | undefined =
+      result.fundProfile?.feesExpensesInvestment?.annualReportExpenseRatio?.raw;
+    const yieldVal: number | undefined = result.summaryDetail?.yield?.raw;
+
+    const parts: string[] = [];
+    const lead = [name, family ? `(${family})` : null]
+      .filter(Boolean)
+      .join(" ");
+    if (lead) parts.push(`${lead}.`);
+    if (positions.length > 0) parts.push(`${positions.join(", ")}.`);
+
+    const metrics: string[] = [];
+    if (typeof ter === "number" && ter > 0) {
+      metrics.push(`TER ${(ter * 100).toFixed(2)}%`);
+    }
+    if (typeof yieldVal === "number" && yieldVal > 0) {
+      metrics.push(`yield ${(yieldVal * 100).toFixed(2)}%`);
+    }
+    if (metrics.length > 0) parts.push(`${metrics.join(", ")}.`);
+
+    const description = parts.join(" ").trim();
+    return description.length > 0 ? description : null;
+  }
 }

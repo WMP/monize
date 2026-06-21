@@ -45,6 +45,33 @@ export const investmentsApi = {
     return response.data;
   },
 
+  // Get portfolio "exposure by tag" allocation. Overlapping exposure: a
+  // multi-tagged holding counts in full under each tag, so percentages can sum
+  // to more than 100%.
+  getAllocationByTag: async (accountIds?: string[]): Promise<AssetAllocation> => {
+    const cacheKey = `investments:allocation-by-tag:${accountIds?.join(',') || 'all'}`;
+    const cached = getCached<AssetAllocation>(cacheKey);
+    if (cached) return cached;
+    const response = await apiClient.get<AssetAllocation>('/portfolio/allocation/by-tag', {
+      params: accountIds && accountIds.length > 0 ? { accountIds: accountIds.join(',') } : undefined,
+    });
+    setCache(cacheKey, response.data, 60_000);
+    return response.data;
+  },
+
+  // Suggest a description for a security from the Yahoo provider profile
+  // (advisory pre-fill for the "Fetch from Yahoo" button). Not cached.
+  getSuggestedDescription: async (
+    symbol: string,
+    exchange?: string,
+  ): Promise<{ symbol: string; description: string | null }> => {
+    const response = await apiClient.get<{ symbol: string; description: string | null }>(
+      '/securities/profile-description',
+      { params: { symbol, ...(exchange ? { exchange } : {}) } },
+    );
+    return response.data;
+  },
+
   // Get all investment accounts
   getInvestmentAccounts: async (): Promise<Account[]> => {
     const cacheKey = 'investments:accounts';

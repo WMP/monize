@@ -258,6 +258,22 @@ const SecurityRow = memo(function SecurityRow({
         <span className="text-sm text-gray-900 dark:text-gray-100">
           {security.name}
         </span>
+        {security.tags && security.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {security.tags.map((tag) => (
+              <span
+                key={tag.id}
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium"
+                style={{
+                  backgroundColor: tag.color ? `${tag.color}20` : '#9ca3af20',
+                  color: tag.color || '#6b7280',
+                }}
+              >
+                {tag.name}
+              </span>
+            ))}
+          </div>
+        )}
       </td>
       <td className={`${cellPadding} whitespace-nowrap`}>
         <span className="text-sm text-gray-500 dark:text-gray-400">

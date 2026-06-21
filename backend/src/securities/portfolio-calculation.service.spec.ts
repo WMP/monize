@@ -975,3 +975,117 @@ describe("PortfolioCalculationService daily rate index", () => {
     });
   });
 });
+
+describe("PortfolioCalculationService.buildAllocationByTag", () => {
+  let service: PortfolioCalculationService;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        PortfolioCalculationService,
+        { provide: getRepositoryToken(Holding), useValue: {} },
+        { provide: getRepositoryToken(SecurityPrice), useValue: {} },
+        { provide: getRepositoryToken(InvestmentTransaction), useValue: {} },
+        { provide: getRepositoryToken(Account), useValue: {} },
+        { provide: ExchangeRateService, useValue: {} },
+      ],
+    }).compile();
+    service = module.get(PortfolioCalculationService);
+  });
+
+  const securityItem = (symbol: string, value: number) => ({
+    name: symbol,
+    symbol,
+    type: "security" as const,
+    value,
+    percentage: 0,
+    currencyCode: "CAD",
+  });
+
+  it("counts a multi-tagged holding in full under each tag (overlapping exposure)", () => {
+    const items = [securityItem("VWCE", 100), securityItem("SMH", 50)];
+    const tags = new Map([
+      [
+        "VWCE",
+        [{ id: "t-aw", name: "All-World", color: "#111111" }],
+      ],
+      [
+        "SMH",
+        [
+          { id: "t-aw", name: "All-World", color: "#111111" },
+          { id: "t-ai", name: "AI", color: null },
+        ],
+      ],
+    ]);
+
+    const result = service.buildAllocationByTag(items, tags, 0, 150, "CAD");
+
+    const allWorld = result.find((r) => r.name === "All-World");
+    const ai = result.find((r) => r.name === "AI");
+    // VWCE (100) + SMH (50) both touch All-World => 150 (100% of portfolio)
+    expect(allWorld?.value).toBe(150);
+    expect(allWorld?.percentage).toBe(100);
+    // SMH (50) touches AI => 50 (33.33%)
+    expect(ai?.value).toBe(50);
+    // Overlap means tag percentages sum to more than 100%
+    const tagPct = result
+      .filter((r) => r.type === "tag")
+      .reduce((s, r) => s + r.percentage, 0);
+    expect(tagPct).toBeGreaterThan(100);
+  });
+
+  it("uses the tag's own colour when set, else a palette colour", () => {
+    const items = [securityItem("VWCE", 100), securityItem("SMH", 100)];
+    const tags = new Map([
+      ["VWCE", [{ id: "t-aw", name: "All-World", color: "#abcdef" }]],
+      ["SMH", [{ id: "t-ai", name: "AI", color: null }]],
+    ]);
+
+    const result = service.buildAllocationByTag(items, tags, 0, 200, "CAD");
+
+    expect(result.find((r) => r.name === "All-World")?.color).toBe("#abcdef");
+    expect(result.find((r) => r.name === "AI")?.color).toMatch(/^#/);
+  });
+
+  it("buckets untagged holdings and cash as explicit slices", () => {
+    const items = [securityItem("VWCE", 100), securityItem("XYZ", 40)];
+    const tags = new Map([
+      ["VWCE", [{ id: "t-aw", name: "All-World", color: null }]],
+    ]);
+
+    const result = service.buildAllocationByTag(items, tags, 60, 200, "CAD");
+
+    const cash = result.find((r) => r.type === "cash");
+    const untagged = result.find((r) => r.type === "untagged");
+    expect(cash?.value).toBe(60);
+    expect(cash?.percentage).toBe(30);
+    expect(untagged?.name).toBe("Untagged");
+    expect(untagged?.value).toBe(40);
+  });
+
+  it("omits cash and untagged slices when there is nothing to show", () => {
+    const items = [securityItem("VWCE", 100)];
+    const tags = new Map([
+      ["VWCE", [{ id: "t-aw", name: "All-World", color: null }]],
+    ]);
+
+    const result = service.buildAllocationByTag(items, tags, 0, 100, "CAD");
+
+    expect(result.some((r) => r.type === "cash")).toBe(false);
+    expect(result.some((r) => r.type === "untagged")).toBe(false);
+    expect(result).toHaveLength(1);
+  });
+
+  it("ignores zero/negative-value securities", () => {
+    const items = [securityItem("VWCE", 0), securityItem("SMH", 100)];
+    const tags = new Map([
+      ["VWCE", [{ id: "t-aw", name: "All-World", color: null }]],
+      ["SMH", [{ id: "t-ai", name: "AI", color: null }]],
+    ]);
+
+    const result = service.buildAllocationByTag(items, tags, 0, 100, "CAD");
+
+    expect(result.some((r) => r.name === "All-World")).toBe(false);
+    expect(result.find((r) => r.name === "AI")?.value).toBe(100);
+  });
+});

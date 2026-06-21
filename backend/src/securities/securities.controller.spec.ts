@@ -42,6 +42,7 @@ describe("SecuritiesController", () => {
       remove: jest.fn(),
       getSecurityIdsWithTransactions: jest.fn(),
       getFavouriteSecurities: jest.fn(),
+      getSuggestedDescription: jest.fn(),
     };
 
     securityPriceService = {
@@ -867,6 +868,37 @@ describe("SecuritiesController", () => {
 
       expect(securitiesService.findOne).toHaveBeenCalledWith("user-1", "sec-1");
       expect(securityPriceService.deletePrice).toHaveBeenCalledWith("sec-1", 9);
+    });
+  });
+
+  describe("suggestDescription", () => {
+    it("delegates to the service with the trimmed symbol and exchange", async () => {
+      securitiesService.getSuggestedDescription.mockResolvedValue({
+        symbol: "AGGG",
+        description: "Bond ETF.",
+      });
+
+      const result = await controller.suggestDescription("AGGG", "LSE");
+
+      expect(securitiesService.getSuggestedDescription).toHaveBeenCalledWith(
+        "AGGG",
+        "LSE",
+      );
+      expect(result).toEqual({ symbol: "AGGG", description: "Bond ETF." });
+    });
+
+    it("passes undefined when no exchange is given", async () => {
+      securitiesService.getSuggestedDescription.mockResolvedValue({
+        symbol: "AAPL",
+        description: null,
+      });
+
+      await controller.suggestDescription("AAPL");
+
+      expect(securitiesService.getSuggestedDescription).toHaveBeenCalledWith(
+        "AAPL",
+        undefined,
+      );
     });
   });
 });
