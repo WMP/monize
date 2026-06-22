@@ -3,6 +3,8 @@ import {
   Controller,
   Get,
   Logger,
+  Param,
+  ParseUUIDPipe,
   Post,
   Request,
   Res,
@@ -12,7 +14,7 @@ import { AuthGuard } from "@nestjs/passport";
 import { Throttle } from "@nestjs/throttler";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
-import { AiRelayService } from "./ai-relay.service";
+import { AiRelayService, RelayTimeoutError } from "./ai-relay.service";
 import { RelayQueryDto } from "./dto/relay-query.dto";
 import { RelayTunnelStatus } from "./ai-relay.types";
 import { tr } from "../../i18n/translate";
@@ -90,6 +92,10 @@ export class AiRelayController {
         // Lets a write tool render its confirmation card in this browser stream
         // while the agent is still working on the prompt.
         write,
+        // Tell the client its promptId up front so that if the stream dies
+        // before the answer arrives it can poll the pickup endpoint for a late
+        // answer (Fix 1) instead of showing a hard error.
+        (promptId) => write({ type: "prompt_id", promptId }),
       );
       // Emit `content` (not `assistant_text`): the chat store treats
       // assistant_text as ephemeral "thinking" text and only `content` creates
@@ -102,10 +108,20 @@ export class AiRelayController {
       this.logger.warn(
         `Relay stream failed user=${userId} after=${Date.now() - start}ms: ${rawMessage}`,
       );
-      const message = tr(
-        "errors.ai.relayTimeout",
-        "Your assistant did not respond. Make sure your MCP agent is connected and listening.",
-      );
+      // A claimed-then-quiet agent gets distinct copy from a never-claimed one,
+      // and the late answer may still arrive: the client will try the pickup
+      // endpoint with the promptId it was given above.
+      const wentQuiet =
+        error instanceof RelayTimeoutError && error.reason === "disconnected";
+      const message = wentQuiet
+        ? tr(
+            "errors.ai.relayDisconnected",
+            "Your assistant went quiet before answering. If it reconnects, its answer will appear here.",
+          )
+        : tr(
+            "errors.ai.relayTimeout",
+            "Your assistant did not respond. Make sure your MCP agent is connected and listening.",
+          );
       write({ type: "error", message });
     } finally {
       clearInterval(heartbeat);
@@ -113,5 +129,21 @@ export class AiRelayController {
         res.end();
       }
     }
+  }
+
+  @Get("response/:promptId")
+  @ApiOperation({
+    summary: "Pick up a late relay answer buffered after the stream gave up",
+  })
+  @Throttle({ default: { ttl: 60000, limit: 60 } })
+  pickupResponse(
+    @Request() req: { user: { id: string } },
+    @Param("promptId", ParseUUIDPipe) promptId: string,
+  ): { text: string | null } {
+    const buffered = this.relayService.takeBufferedResponse(
+      req.user.id,
+      promptId,
+    );
+    return { text: buffered?.text ?? null };
   }
 }

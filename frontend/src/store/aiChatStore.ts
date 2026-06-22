@@ -53,6 +53,13 @@ const IDLE_THINKING: ThinkingState = {
   tools: [],
 };
 
+// After a relay disconnect, poll the pickup endpoint this often for the late
+// answer the agent may still buffer, giving up after the deadline. The deadline
+// stays under the server-side buffer TTL (10 min) so we never poll for an
+// answer that has already been evicted.
+const RELAY_PICKUP_POLL_MS = 4000;
+const RELAY_PICKUP_DEADLINE_MS = 4 * 60 * 1000;
+
 interface AiChatState {
   messages: ChatMessage[];
   isLoading: boolean;
@@ -63,6 +70,10 @@ interface AiChatState {
   // Transient (not persisted): the assistant message id being written by the
   // current stream. Lets us reattach if the user returns mid-stream.
   _activeAssistantId: string | null;
+  // Transient (not persisted): cancels an in-flight relay late-answer poll
+  // loop (started after a relay disconnect). Invoked by cancel()/clear() and
+  // when a new prompt is submitted.
+  _relayPollCancel: (() => void) | null;
 
   submit: (
     query: string,
@@ -109,6 +120,7 @@ export const useAiChatStore = create<AiChatState>()(
       thinking: IDLE_THINKING,
       _abortController: null,
       _activeAssistantId: null,
+      _relayPollCancel: null,
 
       submit: (
         query: string,
@@ -116,6 +128,10 @@ export const useAiChatStore = create<AiChatState>()(
       ) => {
         const trimmed = query.trim();
         if (!trimmed || get().isLoading) return;
+
+        // A new prompt supersedes any relay late-answer poll still running from
+        // a previous (disconnected) turn.
+        get()._relayPollCancel?.();
 
         // Relay mode (the caller passes relay=true when the user's top provider
         // is the MCP relay) sends the prompt to the user's own agent instead of
@@ -148,6 +164,136 @@ export const useAiChatStore = create<AiChatState>()(
         let sources: ChatMessage['sources'] = [];
         let contentBuffer = '';
         let hasStartedContent = false;
+        // Relay only: the promptId the backend assigns this stream. If the SSE
+        // stream dies before the agent answers (its API connection blipped),
+        // we use this to pick up the buffered late answer instead of showing a
+        // hard error.
+        let relayPromptId: string | null = null;
+        // Guards the one-shot pickup so the error event and the onError/onDone
+        // callbacks cannot trigger it twice.
+        let pickupAttempted = false;
+
+        // Render a terminal error on the assistant message, attaching it to an
+        // in-progress message or appending a fresh one if streaming never
+        // started.
+        const renderError = (errorMsg: string): void => {
+          set((state) => {
+            if (hasStartedContent) {
+              return {
+                messages: state.messages.map((m) =>
+                  m.id === assistantMsgId
+                    ? { ...m, isStreaming: false, error: errorMsg }
+                    : m,
+                ),
+                isLoading: false,
+                thinking: IDLE_THINKING,
+                _abortController: null,
+                _activeAssistantId: null,
+              };
+            }
+            return {
+              messages: [
+                ...state.messages.filter((m) => m.id !== assistantMsgId),
+                {
+                  id: assistantMsgId,
+                  role: 'assistant',
+                  content: '',
+                  error: errorMsg,
+                },
+              ],
+              isLoading: false,
+              thinking: IDLE_THINKING,
+              _abortController: null,
+              _activeAssistantId: null,
+            };
+          });
+        };
+
+        // Render a late relay answer as a normal assistant message, replacing
+        // any disconnect placeholder.
+        const deliverLateAnswer = (text: string): void => {
+          set((state) => ({
+            messages: [
+              ...state.messages.filter((m) => m.id !== assistantMsgId),
+              { id: assistantMsgId, role: 'assistant', content: text },
+            ],
+            isLoading: false,
+            thinking: IDLE_THINKING,
+            _abortController: null,
+            _activeAssistantId: null,
+            _relayPollCancel: null,
+          }));
+        };
+
+        // Recover a late relay answer. The agent's API can blip and it may
+        // post its answer only AFTER the stream has disconnected/timed out, so
+        // a single pickup at close time usually races ahead of the buffered
+        // answer (the bug this fixes). Instead: show the disconnect placeholder
+        // immediately, then poll the pickup endpoint until the answer lands or
+        // the deadline passes (kept under the server-side buffer TTL). Returns
+        // true when it took ownership of finishing the turn (relay + recoverable
+        // + not already attempted); false so the caller can fall back to a hard
+        // error.
+        const pollRelayPickup = (placeholderMsg?: string): boolean => {
+          if (
+            !relay ||
+            !relayPromptId ||
+            hasStartedContent ||
+            pickupAttempted
+          ) {
+            return false;
+          }
+          pickupAttempted = true;
+          const promptId = relayPromptId;
+          let cancelled = false;
+
+          if (placeholderMsg) renderError(placeholderMsg);
+          set({
+            _relayPollCancel: () => {
+              cancelled = true;
+            },
+          });
+
+          const deadline = Date.now() + RELAY_PICKUP_DEADLINE_MS;
+          const delay = (ms: number) =>
+            new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+          void (async () => {
+            // Poll immediately, then on each interval until answered/deadline.
+            while (!cancelled && Date.now() < deadline) {
+              try {
+                const { text } = await aiApi.getRelayResponse(promptId);
+                // cancel()/clear()/a new prompt flips `cancelled`, so a late
+                // answer never resurrects a turn the user has moved on from.
+                if (cancelled) return;
+                if (text) {
+                  deliverLateAnswer(text);
+                  return;
+                }
+              } catch {
+                // Transient (network/5xx) -- keep trying until the deadline.
+              }
+              await delay(RELAY_PICKUP_POLL_MS);
+            }
+            // Gave up. Drop the canceller handle; if no placeholder was shown
+            // (silent backstop path) also stop the spinner.
+            set((state) => ({
+              _relayPollCancel: null,
+              ...(placeholderMsg
+                ? {}
+                : state.isLoading
+                  ? {
+                      isLoading: false,
+                      thinking: IDLE_THINKING,
+                      _abortController: null,
+                      _activeAssistantId: null,
+                    }
+                  : {}),
+            }));
+          })();
+
+          return true;
+        };
 
         // Build conversation history from existing messages for context.
         // Only include completed (non-streaming, non-error) messages with
@@ -164,6 +310,10 @@ export const useAiChatStore = create<AiChatState>()(
         const controller = aiApi.queryStream(trimmed, {
           onEvent: (event: StreamEvent) => {
             switch (event.type) {
+              case 'prompt_id':
+                relayPromptId = event.promptId ?? null;
+                break;
+
               case 'thinking':
                 set((state) => ({
                   thinking: {
@@ -348,44 +498,23 @@ export const useAiChatStore = create<AiChatState>()(
                 }));
                 break;
 
-              case 'error':
-                set((state) => {
-                  const errorMsg = (event.message as string) || 'An error occurred';
-                  if (hasStartedContent) {
-                    return {
-                      messages: state.messages.map((m) =>
-                        m.id === assistantMsgId
-                          ? { ...m, isStreaming: false, error: errorMsg }
-                          : m,
-                      ),
-                      isLoading: false,
-                      thinking: IDLE_THINKING,
-                      _abortController: null,
-                      _activeAssistantId: null,
-                    };
-                  }
-                  return {
-                    messages: [
-                      ...state.messages,
-                      {
-                        id: assistantMsgId,
-                        role: 'assistant',
-                        content: '',
-                        error: errorMsg,
-                      },
-                    ],
-                    isLoading: false,
-                    thinking: IDLE_THINKING,
-                    _abortController: null,
-                    _activeAssistantId: null,
-                  };
-                });
+              case 'error': {
+                const errorMsg =
+                  (event.message as string) || 'An error occurred';
+                // For a relay timeout, the agent may still recover and post a
+                // late answer. Show the disconnect message and keep polling for
+                // it; only fall back to a hard error if this isn't a relay turn.
+                if (!pollRelayPickup(errorMsg)) renderError(errorMsg);
                 break;
+              }
             }
           },
           onDone: () => {
-            // Backstop in case the server closes without a 'done' event.
-            if (get().isLoading) {
+            // Backstop in case the server closes without a 'done' event. If the
+            // relay stream closed before an answer (no content, no error event),
+            // poll for a late answer the agent may still buffer; otherwise just
+            // stop the spinner.
+            if (get().isLoading && !pollRelayPickup()) {
               set({
                 isLoading: false,
                 thinking: IDLE_THINKING,
@@ -395,31 +524,21 @@ export const useAiChatStore = create<AiChatState>()(
             }
           },
           onError: (error: Error) => {
-            set((state) => {
-              const errorMsg = error.message || 'Failed to connect to the AI service.';
-              if (!hasStartedContent) {
-                return {
-                  messages: [
-                    ...state.messages,
-                    {
-                      id: assistantMsgId,
-                      role: 'assistant',
-                      content: '',
-                      error: errorMsg,
-                    },
-                  ],
-                  isLoading: false,
-                  thinking: IDLE_THINKING,
-                  _abortController: null,
-                  _activeAssistantId: null,
-                };
-              }
-              return {
-                isLoading: false,
-                thinking: IDLE_THINKING,
-                _abortController: null,
-                _activeAssistantId: null,
-              };
+            const errorMsg =
+              error.message || 'Failed to connect to the AI service.';
+            // A relay stream that errors mid-flight may still recover and post a
+            // late answer; keep polling for it (placeholder shown) rather than
+            // surfacing a hard error immediately.
+            if (pollRelayPickup(errorMsg)) return;
+            if (!hasStartedContent) {
+              renderError(errorMsg);
+              return;
+            }
+            set({
+              isLoading: false,
+              thinking: IDLE_THINKING,
+              _abortController: null,
+              _activeAssistantId: null,
             });
           },
         }, history, { relay });
@@ -428,13 +547,15 @@ export const useAiChatStore = create<AiChatState>()(
       },
 
       cancel: () => {
-        const { _abortController, _activeAssistantId } = get();
+        const { _abortController, _activeAssistantId, _relayPollCancel } = get();
         _abortController?.abort();
+        _relayPollCancel?.();
         set((state) => ({
           isLoading: false,
           thinking: IDLE_THINKING,
           _abortController: null,
           _activeAssistantId: null,
+          _relayPollCancel: null,
           // If we already started writing the assistant message, mark it as
           // no-longer-streaming so it doesn't render as in-flight on return.
           messages: _activeAssistantId
@@ -449,12 +570,14 @@ export const useAiChatStore = create<AiChatState>()(
 
       clear: () => {
         get()._abortController?.abort();
+        get()._relayPollCancel?.();
         set({
           messages: [],
           isLoading: false,
           thinking: IDLE_THINKING,
           _abortController: null,
           _activeAssistantId: null,
+          _relayPollCancel: null,
         });
       },
 

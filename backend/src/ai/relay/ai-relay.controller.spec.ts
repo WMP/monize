@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { AiRelayController } from "./ai-relay.controller";
-import { AiRelayService } from "./ai-relay.service";
+import { AiRelayService, RelayTimeoutError } from "./ai-relay.service";
 
 function makeRes() {
   const events: Array<Record<string, unknown>> = [];
@@ -28,25 +28,41 @@ describe("AiRelayController", () => {
     return new AiRelayController(relay as AiRelayService);
   }
 
-  it("streams the agent answer as a content event (not assistant_text) then done", async () => {
+  it("streams a prompt_id, then the answer as content (not assistant_text), then done", async () => {
     const controller = build({
-      enqueuePrompt: jest.fn().mockResolvedValue({ text: "buy index funds" }),
+      enqueuePrompt: jest
+        .fn()
+        .mockImplementation(
+          (
+            _userId: string,
+            _query: string,
+            _history: unknown,
+            _emit: unknown,
+            onEnqueued?: (id: string) => void,
+          ) => {
+            onEnqueued?.("prompt-123");
+            return Promise.resolve({ text: "buy index funds" });
+          },
+        ),
     });
     const { res, events } = makeRes();
 
     await controller.streamQuery(req, { query: "what should I buy?" }, res);
 
-    // The chat store only renders `content` -- assistant_text is ephemeral.
+    // The client needs its promptId up front to pick up a late answer.
     expect(events).toEqual([
+      { type: "prompt_id", promptId: "prompt-123" },
       { type: "content", text: "buy index funds" },
       { type: "done" },
     ]);
     expect(events.some((e) => e.type === "assistant_text")).toBe(false);
   });
 
-  it("emits an error event when the relay times out", async () => {
+  it("emits a plain error when no agent ever claimed the prompt", async () => {
     const controller = build({
-      enqueuePrompt: jest.fn().mockRejectedValue(new Error("timed out")),
+      enqueuePrompt: jest
+        .fn()
+        .mockRejectedValue(new RelayTimeoutError("no_agent", "p1")),
     });
     const { res, events } = makeRes();
 
@@ -55,6 +71,44 @@ describe("AiRelayController", () => {
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe("error");
     expect(typeof events[0].message).toBe("string");
+    // The "make sure your agent is connected" copy, not the "went quiet" one.
+    expect(events[0].message).toContain("did not respond");
+  });
+
+  it("emits distinct copy when a claimed agent went quiet", async () => {
+    const controller = build({
+      enqueuePrompt: jest
+        .fn()
+        .mockRejectedValue(new RelayTimeoutError("disconnected", "p1")),
+    });
+    const { res, events } = makeRes();
+
+    await controller.streamQuery(req, { query: "hi" }, res);
+
+    expect(events).toHaveLength(1);
+    expect(events[0].type).toBe("error");
+    expect(events[0].message).toContain("went quiet");
+  });
+
+  it("picks up a buffered late answer by promptId", () => {
+    const takeBufferedResponse = jest
+      .fn()
+      .mockReturnValue({ text: "the late answer" });
+    const controller = build({ takeBufferedResponse });
+
+    expect(controller.pickupResponse(req, "prompt-123")).toEqual({
+      text: "the late answer",
+    });
+    expect(takeBufferedResponse).toHaveBeenCalledWith("user-1", "prompt-123");
+  });
+
+  it("returns null text when nothing is buffered for the prompt", () => {
+    const takeBufferedResponse = jest.fn().mockReturnValue(null);
+    const controller = build({ takeBufferedResponse });
+
+    expect(controller.pickupResponse(req, "prompt-123")).toEqual({
+      text: null,
+    });
   });
 
   it("returns the relay tunnel status", () => {

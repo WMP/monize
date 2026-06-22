@@ -9,6 +9,7 @@ let capturedCallbacks: StreamCallbacks | null = null;
 const mockAbortController = { abort: vi.fn() };
 
 const mockConfirmAction = vi.fn();
+const mockGetRelayResponse = vi.fn();
 
 vi.mock('@/lib/ai', () => ({
   aiApi: {
@@ -17,11 +18,19 @@ vi.mock('@/lib/ai', () => ({
       return mockAbortController;
     }),
     confirmAction: (...args: unknown[]) => mockConfirmAction(...args),
+    getRelayResponse: (...args: unknown[]) => mockGetRelayResponse(...args),
   },
 }));
 
+// The error / onError / onDone handlers attempt a relay pickup before
+// surfacing an error, so the final state is settled in a microtask. Drain it.
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 describe('aiChatStore', () => {
   beforeEach(() => {
+    // Stop any relay late-answer poll left running by a previous test before
+    // resetting, so its interval can't fire into the next test's mocks.
+    useAiChatStore.getState()._relayPollCancel?.();
     vi.clearAllMocks();
     capturedCallbacks = null;
     window.localStorage.removeItem(AI_CHAT_STORAGE_KEY);
@@ -31,6 +40,7 @@ describe('aiChatStore', () => {
       thinking: { active: false, message: '', liveText: '', tools: [] },
       _abortController: null,
       _activeAssistantId: null,
+      _relayPollCancel: null,
     });
   });
 
@@ -83,13 +93,14 @@ describe('aiChatStore', () => {
       expect(useAiChatStore.getState().isLoading).toBe(false);
     });
 
-    it('records errors against the assistant message', () => {
+    it('records errors against the assistant message', async () => {
       useAiChatStore.getState().submit('Q');
 
       capturedCallbacks?.onEvent({
         type: 'error',
         message: 'Provider unavailable',
       });
+      await flush();
 
       const messages = useAiChatStore.getState().messages;
       expect(messages).toHaveLength(2);
@@ -98,6 +109,135 @@ describe('aiChatStore', () => {
         error: 'Provider unavailable',
       });
       expect(useAiChatStore.getState().isLoading).toBe(false);
+      // No relay promptId was seen, so pickup must not be attempted.
+      expect(mockGetRelayResponse).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('relay late-answer pickup', () => {
+    it('renders a buffered late answer instead of an error after a relay timeout', async () => {
+      mockGetRelayResponse.mockResolvedValueOnce({ text: 'The late answer.' });
+      useAiChatStore.getState().submit('Q', { relay: true });
+
+      // The backend tells the client its promptId up front, then the stream
+      // times out before any content arrives.
+      capturedCallbacks?.onEvent({ type: 'prompt_id', promptId: 'p-1' });
+      capturedCallbacks?.onEvent({ type: 'error', message: 'went quiet' });
+      await flush();
+
+      expect(mockGetRelayResponse).toHaveBeenCalledWith('p-1');
+      const messages = useAiChatStore.getState().messages;
+      expect(messages).toHaveLength(2);
+      expect(messages[1]).toMatchObject({
+        role: 'assistant',
+        content: 'The late answer.',
+      });
+      expect(messages[1].error).toBeUndefined();
+      expect(useAiChatStore.getState().isLoading).toBe(false);
+    });
+
+    it('falls back to the error when no late answer is buffered', async () => {
+      mockGetRelayResponse.mockResolvedValueOnce({ text: null });
+      useAiChatStore.getState().submit('Q', { relay: true });
+
+      capturedCallbacks?.onEvent({ type: 'prompt_id', promptId: 'p-2' });
+      capturedCallbacks?.onEvent({ type: 'error', message: 'went quiet' });
+      await flush();
+
+      expect(mockGetRelayResponse).toHaveBeenCalledWith('p-2');
+      const messages = useAiChatStore.getState().messages;
+      expect(messages[1]).toMatchObject({
+        role: 'assistant',
+        error: 'went quiet',
+      });
+    });
+
+    it('picks up a late answer when the stream closes without a done event', async () => {
+      mockGetRelayResponse.mockResolvedValueOnce({ text: 'Recovered.' });
+      useAiChatStore.getState().submit('Q', { relay: true });
+
+      capturedCallbacks?.onEvent({ type: 'prompt_id', promptId: 'p-3' });
+      // Stream closes (onDone) with nothing rendered.
+      capturedCallbacks?.onDone?.();
+      await flush();
+
+      expect(mockGetRelayResponse).toHaveBeenCalledWith('p-3');
+      const messages = useAiChatStore.getState().messages;
+      expect(messages[1]).toMatchObject({
+        role: 'assistant',
+        content: 'Recovered.',
+      });
+    });
+
+    it('keeps polling and renders an answer that arrives after the first empty pickup', async () => {
+      // Reproduces the production failure: at disconnect the answer is not yet
+      // buffered (first pickup empty); the agent reconnects and posts a moment
+      // later, so a later poll must catch it.
+      vi.useFakeTimers();
+      try {
+        mockGetRelayResponse
+          .mockResolvedValueOnce({ text: null })
+          .mockResolvedValueOnce({ text: 'Arrived late.' });
+        useAiChatStore.getState().submit('Q', { relay: true });
+
+        capturedCallbacks?.onEvent({ type: 'prompt_id', promptId: 'p-late' });
+        capturedCallbacks?.onEvent({ type: 'error', message: 'went quiet' });
+
+        // First (immediate) poll comes back empty -> placeholder shown, still polling.
+        await vi.advanceTimersByTimeAsync(0);
+        expect(mockGetRelayResponse).toHaveBeenCalledTimes(1);
+        expect(useAiChatStore.getState().messages[1]).toMatchObject({
+          error: 'went quiet',
+        });
+
+        // After the poll interval the answer is buffered and gets picked up.
+        await vi.advanceTimersByTimeAsync(4000);
+        expect(mockGetRelayResponse).toHaveBeenCalledTimes(2);
+        const message = useAiChatStore.getState().messages[1];
+        expect(message.content).toBe('Arrived late.');
+        expect(message.error).toBeUndefined();
+        expect(useAiChatStore.getState().isLoading).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('stops polling for a late answer once a new prompt is submitted', async () => {
+      vi.useFakeTimers();
+      try {
+        mockGetRelayResponse.mockResolvedValue({ text: null });
+        useAiChatStore.getState().submit('Q', { relay: true });
+        capturedCallbacks?.onEvent({ type: 'prompt_id', promptId: 'p-cancel' });
+        capturedCallbacks?.onEvent({ type: 'error', message: 'went quiet' });
+        await vi.advanceTimersByTimeAsync(0);
+        const callsAfterFirst = mockGetRelayResponse.mock.calls.length;
+
+        // A new prompt supersedes the poll.
+        useAiChatStore.getState().submit('Another question', { relay: true });
+        await vi.advanceTimersByTimeAsync(8000);
+
+        // The superseded poll made no further pickup calls.
+        expect(mockGetRelayResponse.mock.calls.length).toBe(callsAfterFirst);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('does not attempt pickup once content has streamed', async () => {
+      useAiChatStore.getState().submit('Q', { relay: true });
+
+      capturedCallbacks?.onEvent({ type: 'prompt_id', promptId: 'p-4' });
+      capturedCallbacks?.onEvent({ type: 'content', text: 'Live answer.' });
+      capturedCallbacks?.onEvent({ type: 'error', message: 'late blip' });
+      await flush();
+
+      expect(mockGetRelayResponse).not.toHaveBeenCalled();
+      const messages = useAiChatStore.getState().messages;
+      expect(messages[1]).toMatchObject({
+        role: 'assistant',
+        content: 'Live answer.',
+        error: 'late blip',
+      });
     });
   });
 
@@ -356,10 +496,11 @@ describe('aiChatStore', () => {
       expect(messages[1].sources?.[0].description).toBe('5 rows');
     });
 
-    it('marks assistant message with error when error follows content', () => {
+    it('marks assistant message with error when error follows content', async () => {
       useAiChatStore.getState().submit('Q');
       capturedCallbacks?.onEvent({ type: 'content', text: 'Partial...' });
       capturedCallbacks?.onEvent({ type: 'error', message: 'Stream broke' });
+      await flush();
       const messages = useAiChatStore.getState().messages;
       expect(messages[1].isStreaming).toBe(false);
       expect(messages[1].error).toBe('Stream broke');
@@ -368,19 +509,21 @@ describe('aiChatStore', () => {
   });
 
   describe('onDone backstop', () => {
-    it('clears loading state when stream closes without a done event', () => {
+    it('clears loading state when stream closes without a done event', async () => {
       useAiChatStore.getState().submit('Q');
       capturedCallbacks?.onDone?.();
+      await flush();
       expect(useAiChatStore.getState().isLoading).toBe(false);
       expect(useAiChatStore.getState().thinking.active).toBe(false);
     });
   });
 
   describe('onError handling', () => {
-    it('preserves partial assistant message and resets loading on error after content', () => {
+    it('preserves partial assistant message and resets loading on error after content', async () => {
       useAiChatStore.getState().submit('Q');
       capturedCallbacks?.onEvent({ type: 'content', text: 'Half-' });
       capturedCallbacks?.onError?.(new Error('boom'));
+      await flush();
 
       const state = useAiChatStore.getState();
       expect(state.isLoading).toBe(false);
@@ -459,35 +602,40 @@ describe('aiChatStore', () => {
       expect(messages[1].content).toBe('');
     });
 
-    it('handles error event with no message (default message used)', () => {
+    it('handles error event with no message (default message used)', async () => {
       useAiChatStore.getState().submit('Q');
       capturedCallbacks?.onEvent({ type: 'error' } as any);
+      await flush();
       const messages = useAiChatStore.getState().messages;
       expect(messages[1].error).toBe('An error occurred');
     });
 
-    it('onDone is a no-op when already not loading', () => {
+    it('onDone is a no-op when already not loading', async () => {
       useAiChatStore.getState().submit('Q');
       // First onDone clears loading state
       capturedCallbacks?.onDone?.();
+      await flush();
       expect(useAiChatStore.getState().isLoading).toBe(false);
       // Second call should not throw and stays not loading
       capturedCallbacks?.onDone?.();
+      await flush();
       expect(useAiChatStore.getState().isLoading).toBe(false);
     });
 
-    it('onError before any content creates an error assistant message', () => {
+    it('onError before any content creates an error assistant message', async () => {
       useAiChatStore.getState().submit('Q');
       capturedCallbacks?.onError?.(new Error('connect failed'));
+      await flush();
       const state = useAiChatStore.getState();
       expect(state.isLoading).toBe(false);
       const assistant = state.messages.find((m) => m.role === 'assistant');
       expect(assistant?.error).toBe('connect failed');
     });
 
-    it('onError with no message uses fallback message', () => {
+    it('onError with no message uses fallback message', async () => {
       useAiChatStore.getState().submit('Q');
       capturedCallbacks?.onError?.({ message: '' } as Error);
+      await flush();
       const state = useAiChatStore.getState();
       const assistant = state.messages.find((m) => m.role === 'assistant');
       expect(assistant?.error).toBe('Failed to connect to the AI service.');

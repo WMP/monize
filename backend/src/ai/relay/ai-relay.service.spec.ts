@@ -221,11 +221,180 @@ describe("AiRelayService", () => {
       await expect(poll).resolves.toBeNull();
     });
 
-    it("rejects the browser prompt if no agent answers in time", async () => {
+    it("rejects a never-claimed prompt after the queue wait (offline agent)", async () => {
       const pending = service.enqueuePrompt(USER, "q", []);
-      const assertion = expect(pending).rejects.toThrow(/timed out/i);
+      const assertion = expect(pending).rejects.toMatchObject({
+        name: "RelayTimeoutError",
+        reason: "no_agent",
+      });
+      // Queue wait is 5 minutes; no agent ever polls.
       jest.advanceTimersByTime(5 * 60 * 1000);
       await assertion;
+    });
+
+    it("does not fire the old fixed wall while a claimed agent keeps working", async () => {
+      const pending = service.enqueuePrompt(USER, "q", []);
+      const rejection = jest.fn();
+      pending.catch(rejection);
+      const claimed = await service.waitForPrompt(USER);
+
+      // The agent reports liveness every 80s for 6 minutes -- past the old
+      // 5-minute fixed wall but never silent for a full idle window, so the
+      // browser must NOT have given up.
+      for (let i = 0; i < 4; i++) {
+        jest.advanceTimersByTime(80 * 1000);
+        service.reportProgress(USER, claimed!.promptId, `working ${i}`);
+        await Promise.resolve();
+      }
+      expect(rejection).not.toHaveBeenCalled();
+
+      service.postResponse(USER, claimed!.promptId, "answer");
+      await expect(pending).resolves.toEqual({ text: "answer" });
+    });
+
+    it("times out a claimed prompt that goes silent (idle window)", async () => {
+      const pending = service.enqueuePrompt(USER, "q", []);
+      await service.waitForPrompt(USER);
+      const assertion = expect(pending).rejects.toMatchObject({
+        name: "RelayTimeoutError",
+        reason: "disconnected",
+      });
+      // 90s of total silence after the claim.
+      jest.advanceTimersByTime(90 * 1000);
+      await assertion;
+    });
+
+    it("keeps a slow-but-alive agent alive across the idle window", async () => {
+      const emit = jest.fn();
+      const pending = service.enqueuePrompt(USER, "q", [], emit);
+      const claimed = await service.waitForPrompt(USER);
+
+      // Report liveness every 60s for 5 minutes -- never silent for a full 90s.
+      for (let i = 0; i < 5; i++) {
+        jest.advanceTimersByTime(60 * 1000);
+        service.reportProgress(USER, claimed!.promptId, `step ${i}`);
+      }
+      // Tool activity also counts as liveness.
+      jest.advanceTimersByTime(60 * 1000);
+      service.reportToolActivity(USER, "list_categories", "start");
+      // And a poll.
+      jest.advanceTimersByTime(60 * 1000);
+      void service.waitForPrompt(USER);
+
+      // Still in flight after well past the idle window thanks to liveness.
+      expect(service.getStatus(USER).state).toBe("busy");
+      expect(service.postResponse(USER, claimed!.promptId, "done")).toBe(true);
+      await expect(pending).resolves.toEqual({ text: "done" });
+    });
+
+    it("enforces the hard upper bound even for a chatty agent", async () => {
+      const pending = service.enqueuePrompt(USER, "q", []);
+      const claimed = await service.waitForPrompt(USER);
+      const assertion = expect(pending).rejects.toMatchObject({
+        name: "RelayTimeoutError",
+        reason: "disconnected",
+      });
+
+      // Keep reporting liveness every 60s for the full 20-minute backstop.
+      for (let i = 0; i < 21; i++) {
+        jest.advanceTimersByTime(60 * 1000);
+        service.reportProgress(USER, claimed!.promptId, `tick ${i}`);
+      }
+      await assertion;
+    });
+  });
+
+  describe("late-answer buffer", () => {
+    it("buffers a late answer after the browser timed out and serves it on pickup", async () => {
+      const pending = service.enqueuePrompt(USER, "q", []);
+      const claimed = await service.waitForPrompt(USER);
+      // Idle timeout fires while the agent is still working.
+      const assertion = expect(pending).rejects.toMatchObject({
+        reason: "disconnected",
+      });
+      jest.advanceTimersByTime(90 * 1000);
+      await assertion;
+
+      // The agent recovers and posts late: not dropped, returns true (success).
+      expect(service.postResponse(USER, claimed!.promptId, "late answer")).toBe(
+        true,
+      );
+
+      // The browser picks it up by promptId.
+      expect(service.takeBufferedResponse(USER, claimed!.promptId)).toEqual({
+        text: "late answer",
+      });
+      // Pickup removes it -- a second pickup finds nothing.
+      expect(service.takeBufferedResponse(USER, claimed!.promptId)).toBeNull();
+    });
+
+    it("is idempotent for a double late-post (keeps the first answer)", async () => {
+      const pending = service.enqueuePrompt(USER, "q", []);
+      const claimed = await service.waitForPrompt(USER);
+      pending.catch(() => undefined);
+      jest.advanceTimersByTime(90 * 1000);
+
+      expect(service.postResponse(USER, claimed!.promptId, "first")).toBe(true);
+      // Second post for the same prompt is a no-op success.
+      expect(service.postResponse(USER, claimed!.promptId, "second")).toBe(
+        true,
+      );
+      expect(service.takeBufferedResponse(USER, claimed!.promptId)).toEqual({
+        text: "first",
+      });
+    });
+
+    it("does not serve another user's buffered answer", async () => {
+      const pending = service.enqueuePrompt(USER, "q", []);
+      const claimed = await service.waitForPrompt(USER);
+      pending.catch(() => undefined);
+      jest.advanceTimersByTime(90 * 1000);
+      service.postResponse(USER, claimed!.promptId, "secret");
+
+      expect(service.takeBufferedResponse(OTHER, claimed!.promptId)).toBeNull();
+    });
+
+    it("prunes a buffered answer after its TTL", async () => {
+      const pending = service.enqueuePrompt(USER, "q", []);
+      const claimed = await service.waitForPrompt(USER);
+      pending.catch(() => undefined);
+      jest.advanceTimersByTime(90 * 1000);
+      service.postResponse(USER, claimed!.promptId, "stale");
+
+      // Past the 10-minute buffer TTL.
+      jest.advanceTimersByTime(10 * 60 * 1000 + 1);
+      expect(service.takeBufferedResponse(USER, claimed!.promptId)).toBeNull();
+    });
+
+    it("evicts the oldest buffered answer past the per-user cap", async () => {
+      const promptIds: string[] = [];
+      // Buffer MAX_BUFFERED_PER_USER + 1 (= 21) late answers for one user.
+      for (let i = 0; i < 21; i++) {
+        const pending = service.enqueuePrompt(USER, `q${i}`, []);
+        pending.catch(() => undefined);
+        const claimed = await service.waitForPrompt(USER);
+        promptIds.push(claimed!.promptId);
+        // Advance just enough to expire this prompt's idle timer; stay under the
+        // buffer TTL so earlier entries are not pruned by age, only by the cap.
+        jest.advanceTimersByTime(90 * 1000);
+        service.postResponse(USER, claimed!.promptId, `a${i}`);
+      }
+
+      // The very first answer was evicted to honour the cap.
+      expect(service.takeBufferedResponse(USER, promptIds[0])).toBeNull();
+      // The most recent one survives.
+      expect(service.takeBufferedResponse(USER, promptIds[20])).toEqual({
+        text: "a20",
+      });
+    });
+
+    it("returns null when picking up an unknown prompt", () => {
+      expect(
+        service.takeBufferedResponse(
+          USER,
+          "00000000-0000-0000-0000-000000000000",
+        ),
+      ).toBeNull();
     });
   });
 });

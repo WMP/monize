@@ -83,7 +83,8 @@
     "forecastGenerateFailed": "예측을 생성하지 못했습니다. 다시 시도하세요.",
     "forecastRateLimited": "최근에 예측이 생성되었습니다. 나중에 다시 시도하세요.",
     "insightNotFound": "인사이트를 찾을 수 없습니다",
-    "relayTimeout": "어시스턴트가 응답하지 않았습니다. MCP 에이전트가 연결되어 수신 대기 중인지 확인하세요."
+    "relayTimeout": "어시스턴트가 응답하지 않았습니다. MCP 에이전트가 연결되어 수신 대기 중인지 확인하세요.",
+    "relayDisconnected": "어시스턴트가 답변하기 전에 응답이 끊겼습니다. 다시 연결되면 답변이 여기에 표시됩니다."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "인증 시도 횟수가 너무 많습니다. 다시 로그인하세요.",

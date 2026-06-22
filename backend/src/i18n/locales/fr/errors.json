@@ -83,7 +83,8 @@
     "forecastGenerateFailed": "Échec de la génération de la prévision. Veuillez réessayer.",
     "forecastRateLimited": "Une prévision a été générée récemment. Veuillez réessayer plus tard.",
     "insightNotFound": "Analyse introuvable",
-    "relayTimeout": "Votre assistant n'a pas répondu. Assurez-vous que votre agent MCP est connecté et à l'écoute."
+    "relayTimeout": "Votre assistant n'a pas répondu. Assurez-vous que votre agent MCP est connecté et à l'écoute.",
+    "relayDisconnected": "Votre assistant s'est interrompu avant de répondre. S'il se reconnecte, sa réponse apparaîtra ici."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Trop de tentatives de vérification. Veuillez vous reconnecter.",

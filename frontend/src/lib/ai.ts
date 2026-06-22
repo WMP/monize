@@ -196,6 +196,18 @@ export const aiApi = {
     return response.data;
   },
 
+  // Reverse MCP relay: pick up a late answer the agent posted after the SSE
+  // stream already errored/closed. Returns null text when nothing is buffered
+  // (expired, never arrived, or already picked up).
+  getRelayResponse: async (
+    promptId: string,
+  ): Promise<{ text: string | null }> => {
+    const response = await apiClient.get<{ text: string | null }>(
+      `/ai/relay/response/${promptId}`,
+    );
+    return response.data;
+  },
+
   // Reverse MCP relay: tunnel status for the chat indicator.
   getRelayStatus: async (): Promise<{
     state: 'offline' | 'listening' | 'busy';

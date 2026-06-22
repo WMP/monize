@@ -83,7 +83,8 @@
     "forecastGenerateFailed": "予測の生成に失敗しました。再試行してください。",
     "forecastRateLimited": "最近予測が生成されました。しばらくしてから再試行してください。",
     "insightNotFound": "インサイトが見つかりません",
-    "relayTimeout": "アシスタントが応答しませんでした。MCP エージェントが接続され、待機していることを確認してください。"
+    "relayTimeout": "アシスタントが応答しませんでした。MCP エージェントが接続され、待機していることを確認してください。",
+    "relayDisconnected": "アシスタントが回答する前に応答しなくなりました。再接続すると、その回答がここに表示されます。"
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "確認の試行回数が多すぎます。もう一度ログインしてください。",

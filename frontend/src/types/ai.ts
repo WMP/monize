@@ -331,8 +331,13 @@ export interface StreamEvent {
     | 'content'
     | 'sources'
     | 'done'
+    // Relay only: sent first so the client knows its promptId and can pick up a
+    // late answer if the stream dies before the agent responds.
+    | 'prompt_id'
     | 'error';
   message?: string;
+  // Relay only: the id of the prompt this stream is serving (on `prompt_id`).
+  promptId?: string;
   name?: string;
   description?: string;
   summary?: string;
