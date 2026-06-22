@@ -5,11 +5,14 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  ManyToMany,
+  JoinTable,
   JoinColumn,
   Unique,
 } from "typeorm";
 import { ApiProperty } from "@nestjs/swagger";
 import { User } from "../../users/entities/user.entity";
+import { Tag } from "../../tags/entities/tag.entity";
 
 @Entity("securities")
 @Unique(["userId", "symbol"])
@@ -53,6 +56,15 @@ export class Security {
   @ApiProperty({ example: "USD" })
   @Column({ type: "varchar", length: 3, name: "currency_code" })
   currencyCode: string;
+
+  @ApiProperty({
+    example: "Global aggregate bond ETF. ~99% bonds, ~1% cash. TER 0.10%.",
+    description:
+      "Free-text description, optionally pre-filled from the quote provider",
+    nullable: true,
+  })
+  @Column({ type: "text", nullable: true })
+  description: string | null;
 
   @ApiProperty({ example: true })
   @Column({ type: "boolean", default: true, name: "is_active" })
@@ -135,6 +147,15 @@ export class Security {
     name: "historical_backfill_attempted_at",
   })
   historicalBackfillAttemptedAt: Date | null;
+
+  @ApiProperty({ description: "User-defined tags classifying this security" })
+  @ManyToMany(() => Tag)
+  @JoinTable({
+    name: "security_tags",
+    joinColumn: { name: "security_id", referencedColumnName: "id" },
+    inverseJoinColumn: { name: "tag_id", referencedColumnName: "id" },
+  })
+  tags: Tag[];
 
   @ApiProperty()
   @CreateDateColumn({ name: "created_at" })

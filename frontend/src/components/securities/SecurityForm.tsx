@@ -11,9 +11,14 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Combobox } from '@/components/ui/Combobox';
+import { MultiSelect } from '@/components/ui/MultiSelect';
+import { Modal } from '@/components/ui/Modal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { SecurityLookupPicker, LookupCandidate } from './SecurityLookupPicker';
+import { TagForm } from '@/components/tags/TagForm';
 import { Security, CreateSecurityData } from '@/types/investment';
+import { Tag } from '@/types/tag';
+import { tagsApi } from '@/lib/tags';
 import { investmentsApi } from '@/lib/investments';
 import { exchangeRatesApi, CurrencyInfo } from '@/lib/exchange-rates';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
@@ -32,6 +37,7 @@ const buildSecuritySchema = (t: (key: string) => string) => z.object({
   securityType: z.string().optional(),
   exchange: z.string().optional(),
   currencyCode: z.string().min(1, t('validation.currencyRequired')),
+  description: z.string().max(5000, t('validation.descriptionMax')).optional(),
   quoteProvider: z.enum(['', 'yahoo', 'msn']).optional(),
   msnInstrumentId: z.string().max(50).optional(),
   isFavourite: z.boolean().optional(),
@@ -83,10 +89,29 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
   const [pickerQuery, setPickerQuery] = useState<string>('');
   const [pickerCandidates, setPickerCandidates] = useState<LookupCandidate[]>([]);
   const [msnReady, setMsnReady] = useState<boolean | null>(null);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
+    security?.tags?.map((tag) => tag.id) || [],
+  );
+  const [showTagForm, setShowTagForm] = useState(false);
 
   useEffect(() => {
     exchangeRatesApi.getCurrencies().then(setCurrencies).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    tagsApi.getAll().then(setTags).catch(() => {});
+  }, []);
+
+  const tagOptions = useMemo(
+    () =>
+      [...tags]
+        .sort((a, b) =>
+          a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+        )
+        .map((tag) => ({ value: tag.id, label: tag.name })),
+    [tags],
+  );
 
   useEffect(() => {
     investmentsApi
@@ -123,6 +148,7 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
       securityType: security?.securityType || '',
       exchange: security?.exchange || '',
       currencyCode: security?.currencyCode || defaultCurrency,
+      description: security?.description || '',
       quoteProvider: security?.quoteProvider || '',
       msnInstrumentId: security?.msnInstrumentId || '',
       isFavourite: security?.isFavourite || false,
@@ -156,6 +182,18 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
       }
 
       setHasLookupResult(true);
+
+      // Pull the description from the provider as part of the lookup, just like
+      // the other fields. Best-effort and still editable: only overwrite when
+      // the provider actually returns something so a manual edit isn't wiped.
+      investmentsApi
+        .getSuggestedDescription(result.symbol, result.exchange || undefined)
+        .then(({ description }) => {
+          if (description) {
+            setValue('description', description, { shouldDirty: true });
+          }
+        })
+        .catch((error) => logger.error('Description fetch failed:', error));
 
       const details = [`Symbol: ${result.symbol}`, `Name: ${result.name}`];
       if (result.exchange) details.push(`Exchange: ${result.exchange}`);
@@ -209,6 +247,7 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
   const handleClear = useCallback(() => {
     if (security) {
       reset();
+      setSelectedTagIds(security.tags?.map((tag) => tag.id) || []);
     } else {
       reset({
         symbol: '',
@@ -216,13 +255,30 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
         securityType: '',
         exchange: '',
         currencyCode: defaultValues?.currencyCode || defaultCurrency,
+        description: '',
         quoteProvider: '',
         msnInstrumentId: '',
         isFavourite: false,
       });
+      setSelectedTagIds([]);
     }
     setHasLookupResult(false);
   }, [reset, defaultValues, defaultCurrency, security]);
+
+  // Pre-fill the description from the Yahoo provider profile. Best-effort and
+  // always editable; replaces whatever is in the field so the user can review.
+  const handleTagCreate = async (data: { name: string; color?: string; icon?: string }) => {
+    const cleanedData = {
+      ...data,
+      color: data.color || undefined,
+      icon: data.icon || undefined,
+    };
+    const newTag = await tagsApi.create(cleanedData);
+    setTags((prev) => [...prev, newTag]);
+    setSelectedTagIds((prev) => [...prev, newTag.id]);
+    toast.success(t('form.toasts.tagCreated', { name: newTag.name }));
+    setShowTagForm(false);
+  };
 
   const onFormSubmit = async (data: SecurityFormData) => {
     const cleanedData: CreateSecurityData = {
@@ -231,6 +287,8 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
       securityType: data.securityType || undefined,
       exchange: data.exchange?.trim() || undefined,
       currencyCode: data.currencyCode,
+      description: data.description?.trim() || undefined,
+      tagIds: selectedTagIds,
       // Send null (not undefined) when the user picks "Use Default" so the
       // backend clears any existing override. Undefined would be stripped by
       // axios and treated as "no change", leaving the previous override in place.
@@ -411,6 +469,43 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
           {isFavourite ? t('form.favouriteLabel') : t('form.addToFavourites')}
         </span>
       </button>
+
+      {/* Description -- populated from the provider during Lookup, editable. */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {t('form.descriptionLabel')}
+        </label>
+        <textarea
+          rows={4}
+          className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-400"
+          placeholder={t('form.descriptionPlaceholder')}
+          {...register('description')}
+        />
+        {errors.description && (
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+            {errors.description.message}
+          </p>
+        )}
+      </div>
+
+      {/* Tags */}
+      <MultiSelect
+        label={t('form.tagsLabel')}
+        options={tagOptions}
+        value={selectedTagIds}
+        onChange={setSelectedTagIds}
+        placeholder={t('form.tagsPlaceholder')}
+        onCreateNew={() => setShowTagForm(true)}
+        createNewLabel={t('form.createNewTag')}
+      />
+
+      {/* Tag creation modal */}
+      <Modal isOpen={showTagForm} onClose={() => setShowTagForm(false)} maxWidth="lg" allowOverflow pushHistory className="p-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+          {t('form.newTagTitle')}
+        </h2>
+        <TagForm onSubmit={handleTagCreate} onCancel={() => setShowTagForm(false)} />
+      </Modal>
 
       <FormActions onCancel={onCancel} submitLabel={security ? t('form.submitUpdate') : t('form.submitCreate')} isSubmitting={isSubmitting} />
     </form>

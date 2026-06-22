@@ -1834,4 +1834,85 @@ describe("YahooFinanceService", () => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe("fetchSecurityProfileDescription", () => {
+    beforeEach(() => seedCrumb());
+
+    it("returns stock prose verbatim from summaryProfile", async () => {
+      mockFetchResponse({
+        quoteSummary: {
+          result: [
+            {
+              summaryProfile: {
+                longBusinessSummary:
+                  "Apple Inc. designs, manufactures and markets smartphones.",
+              },
+            },
+          ],
+        },
+      });
+
+      const result = await service.fetchSecurityProfileDescription("AAPL");
+
+      expect(result).toBe(
+        "Apple Inc. designs, manufactures and markets smartphones.",
+      );
+    });
+
+    it("synthesizes a fund one-liner from structured modules", async () => {
+      mockFetchResponse({
+        quoteSummary: {
+          result: [
+            {
+              quoteType: {
+                longName: "iShares Core Global Aggregate Bond UCITS ETF",
+              },
+              fundProfile: {
+                family: "BlackRock",
+                feesExpensesInvestment: {
+                  annualReportExpenseRatio: { raw: 0.001 },
+                },
+              },
+              topHoldings: {
+                bondPosition: { raw: 0.994 },
+                cashPosition: { raw: 0.006 },
+                stockPosition: { raw: 0 },
+              },
+              summaryDetail: { yield: { raw: 0.0314 } },
+            },
+          ],
+        },
+      });
+
+      const result = await service.fetchSecurityProfileDescription("AGGG.L");
+
+      expect(result).toBe(
+        "iShares Core Global Aggregate Bond UCITS ETF (BlackRock). ~99% bonds, ~1% cash. TER 0.10%, yield 3.14%.",
+      );
+    });
+
+    it("returns null when neither prose nor structured data is available", async () => {
+      mockFetchResponse({ quoteSummary: { result: [{}] } });
+
+      const result = await service.fetchSecurityProfileDescription("XYZ");
+
+      expect(result).toBeNull();
+    });
+
+    it("returns null on a non-200 response", async () => {
+      mockFetchResponse({}, false, 500);
+
+      const result = await service.fetchSecurityProfileDescription("AAPL");
+
+      expect(result).toBeNull();
+    });
+
+    it("returns null when fetch throws", async () => {
+      mockFetchError(new Error("Network failure"));
+
+      const result = await service.fetchSecurityProfileDescription("AAPL");
+
+      expect(result).toBeNull();
+    });
+  });
 });

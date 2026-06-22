@@ -244,6 +244,40 @@ export class SecuritiesController {
     );
   }
 
+  @Get("profile-description")
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
+  @ApiOperation({
+    summary: "Suggest a description for a security from Yahoo Finance",
+    description:
+      "Best-effort pre-fill: stock prose or a synthesized fund one-liner. Advisory only; persists nothing.",
+  })
+  @ApiQuery({ name: "symbol", required: true })
+  @ApiQuery({ name: "exchange", required: false })
+  @ApiResponse({
+    status: 200,
+    description: "Suggested description (null when unavailable)",
+    schema: {
+      type: "object",
+      properties: {
+        symbol: { type: "string" },
+        description: { type: "string", nullable: true },
+      },
+    },
+  })
+  suggestDescription(
+    @Query("symbol") symbol: string,
+    @Query("exchange") exchange?: string,
+  ): Promise<{ symbol: string; description: string | null }> {
+    const sym = assertStringParam(symbol, "symbol");
+    const exch = assertStringParam(exchange, "exchange");
+    const safeSymbol = (sym ?? "").slice(0, 20);
+    const safeExchange = exch ? exch.slice(0, 50) : undefined;
+    return this.securitiesService.getSuggestedDescription(
+      safeSymbol,
+      safeExchange,
+    );
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Get a security by ID" })
   @ApiResponse({ status: 200, description: "Security details", type: Security })

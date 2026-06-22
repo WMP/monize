@@ -3683,4 +3683,64 @@ describe("PortfolioService", () => {
       expect(result.points).toHaveLength(1);
     });
   });
+
+  describe("getAllocationByTag", () => {
+    it("regroups the by-security allocation by each security's tags", async () => {
+      jest.spyOn(service, "getPortfolioSummary").mockResolvedValue({
+        totalCashValue: 50,
+        totalHoldingsValue: 150,
+        totalCostBasis: 0,
+        totalNetInvested: 0,
+        totalPortfolioValue: 200,
+        totalGainLoss: 0,
+        totalGainLossPercent: 0,
+        timeWeightedReturn: null,
+        cagr: null,
+        holdings: [],
+        holdingsByAccount: [],
+        allocation: [
+          {
+            name: "Cash",
+            symbol: null,
+            type: "cash",
+            value: 50,
+            percentage: 25,
+            currencyCode: "CAD",
+          },
+          {
+            name: "VWCE",
+            symbol: "VWCE",
+            type: "security",
+            value: 100,
+            percentage: 50,
+            currencyCode: "CAD",
+          },
+          {
+            name: "SMH",
+            symbol: "SMH",
+            type: "security",
+            value: 50,
+            percentage: 25,
+            currencyCode: "CAD",
+          },
+        ],
+      });
+
+      (holdingsRepository as Record<string, unknown>).manager = {
+        query: jest.fn().mockResolvedValue([
+          { symbol: "VWCE", id: "t-aw", name: "All-World", color: null },
+          { symbol: "SMH", id: "t-ai", name: "AI", color: null },
+        ]),
+      };
+
+      const result = await service.getAllocationByTag("user-1");
+
+      expect(result.totalValue).toBe(200);
+      expect(result.allocation.find((a) => a.name === "All-World")?.value).toBe(
+        100,
+      );
+      expect(result.allocation.find((a) => a.name === "AI")?.value).toBe(50);
+      expect(result.allocation.find((a) => a.type === "cash")?.value).toBe(50);
+    });
+  });
 });

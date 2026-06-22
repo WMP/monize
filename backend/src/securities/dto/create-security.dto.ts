@@ -5,6 +5,8 @@ import {
   MaxLength,
   IsBoolean,
   IsIn,
+  IsArray,
+  IsUUID,
 } from "class-validator";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
@@ -50,6 +52,27 @@ export class CreateSecurityDto {
   @ApiProperty({ example: "USD", description: "Currency code" })
   @IsCurrencyCode()
   currencyCode: string;
+
+  @ApiProperty({
+    example: "Global aggregate bond ETF. ~99% bonds, ~1% cash. TER 0.10%.",
+    description: "Free-text description of the security",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  @SanitizeHtml()
+  description?: string;
+
+  @ApiProperty({
+    description: "Tag IDs to classify this security",
+    required: false,
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID(undefined, { each: true })
+  tagIds?: string[];
 
   @ApiProperty({ example: true, required: false })
   @IsOptional()

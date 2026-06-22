@@ -136,6 +136,36 @@ export class PortfolioController {
     );
   }
 
+  @Get("allocation/by-tag")
+  @AllowDelegate()
+  @DelegateRequiresSection("investments")
+  @ApiOperation({
+    summary: "Get portfolio exposure grouped by user-defined tags",
+    description:
+      "Overlapping exposure: a multi-tagged holding counts in full under each tag, so percentages can sum to more than 100%. Cash and untagged holdings are explicit slices.",
+  })
+  @ApiQuery({
+    name: "accountIds",
+    required: false,
+    description:
+      "Comma-separated account IDs to filter by (will include linked pairs)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Tag allocation retrieved successfully",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async getAllocationByTag(
+    @Request() req,
+    @Query("accountIds") accountIds?: string,
+  ) {
+    const ids = this.parseUuidList(accountIds, "account");
+    return this.portfolioService.getAllocationByTag(
+      req.user.id,
+      await this.scopeIds(req, ids),
+    );
+  }
+
   @Get("top-movers")
   @ApiOperation({
     summary: "Get top daily movers among held securities",

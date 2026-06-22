@@ -61,7 +61,15 @@
   },
   "assetAllocation": {
     "title": "[XX-Asset Allocation-XX]",
-    "noData": "[XX-No allocation data available.-XX]"
+    "noData": "[XX-No allocation data available.-XX]",
+    "cash": "[XX-Cash-XX]",
+    "untagged": "[XX-Untagged-XX]",
+    "noTagData": "[XX-No tagged holdings to show. Add tags to your securities to see exposure by tag.-XX]",
+    "tagExposureNote": "[XX-Exposure by tag: a holding with several tags counts in full under each, so percentages can total more than 100%.-XX]",
+    "groupBy": {
+      "security": "[XX-By security-XX]",
+      "tag": "[XX-By tag-XX]"
+    }
   },
   "holdingsList": {
     "title": "[XX-Holdings-XX]",

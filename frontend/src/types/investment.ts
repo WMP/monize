@@ -1,3 +1,5 @@
+import { Tag } from './tag';
+
 export type InvestmentAction =
   | 'BUY'
   | 'SELL'
@@ -20,6 +22,8 @@ export interface Security {
   securityType: string | null;
   exchange: string | null;
   currencyCode: string;
+  description?: string | null;
+  tags?: Tag[];
   isActive: boolean;
   isFavourite: boolean;
   skipPriceUpdates: boolean;
@@ -116,7 +120,7 @@ export interface PortfolioSummary {
 export interface AllocationItem {
   name: string;
   symbol: string | null;
-  type: 'cash' | 'security';
+  type: 'cash' | 'security' | 'tag' | 'untagged';
   value: number;
   percentage: number;
   color?: string;
@@ -238,6 +242,8 @@ export interface CreateSecurityData {
   securityType?: string;
   exchange?: string;
   currencyCode: string;
+  description?: string;
+  tagIds?: string[];
   quoteProvider?: QuoteProviderName | null;
   msnInstrumentId?: string;
   isFavourite?: boolean;
