@@ -571,7 +571,11 @@
     "colMarketValue": "市場価値",
     "colPortfolioPct": "% ポートフォリオ",
     "total": "合計",
-    "holdingCount": "{count, plural, one {# 件の保有} other {# 件の保有}}"
+    "holdingCount": "{count, plural, one {# 件の保有} other {# 件の保有}}",
+    "viewByCountry": "国別",
+    "countryAllocation": "国別配分（ルックスルー）",
+    "countryLookThroughNote": "国別エクスポージャーは、各銘柄に設定された手動の国別配分を用いてETFやファンドをルックスルーします。個別株は上場取引所に基づいて分類され、分類されないものは「その他」として表示されます。",
+    "other": "その他"
   },
   "healthScoreHistory": {
     "pdfTitle": "健全性スコア履歴",

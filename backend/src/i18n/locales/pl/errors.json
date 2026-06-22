@@ -373,7 +373,8 @@
     "lookupNotFound": "Nie znaleziono papieru wartościowego pasującego do \"{{ query }}\". Sprawdź symbol lub nazwę albo określ giełdę.",
     "lookupAmbiguous": "\"{{ query }}\" pasuje do wielu papierów wartościowych: {{ list }}. Uruchom ponownie, podając giełdę.",
     "lookupNoCurrency": "Nie można ustalić waluty dla \"{{ symbol }}\". Zamiast tego dodaj papier wartościowy ręcznie.",
-    "noUpdateFields": "Podaj co najmniej jedno pole do zmiany."
+    "noUpdateFields": "Podaj co najmniej jedno pole do zmiany.",
+    "allocationExceedsTotal": "Suma procentów alokacji przekracza 100%."
   },
   "tags": {
     "notFound": "Nie znaleziono tagu o ID {{ id }}",

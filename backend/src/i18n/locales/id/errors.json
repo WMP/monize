@@ -373,7 +373,8 @@
     "lookupNotFound": "Tidak ada sekuritas yang cocok dengan \"{{ query }}\". Periksa simbol atau nama, atau tentukan bursa.",
     "lookupAmbiguous": "\"{{ query }}\" cocok dengan beberapa sekuritas: {{ list }}. Jalankan lagi dengan menentukan bursa.",
     "lookupNoCurrency": "Tidak dapat menentukan mata uang untuk \"{{ symbol }}\". Tambahkan sekuritas secara manual sebagai gantinya.",
-    "noUpdateFields": "Berikan setidaknya satu kolom untuk diubah."
+    "noUpdateFields": "Berikan setidaknya satu kolom untuk diubah.",
+    "allocationExceedsTotal": "Persentase alokasi berjumlah lebih dari 100%."
   },
   "tags": {
     "notFound": "Tag dengan ID {{ id }} tidak ditemukan",

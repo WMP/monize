@@ -571,7 +571,11 @@
     "colMarketValue": "Wartość rynkowa",
     "colPortfolioPct": "% portfela",
     "total": "Suma",
-    "holdingCount": "{count, plural, one {# pozycja} few {# pozycje} many {# pozycji} other {# pozycji}}"
+    "holdingCount": "{count, plural, one {# pozycja} few {# pozycje} many {# pozycji} other {# pozycji}}",
+    "viewByCountry": "Według kraju",
+    "countryAllocation": "Alokacja krajowa (prześwietlenie)",
+    "countryLookThroughNote": "Ekspozycja krajowa prześwietla ETF-y i fundusze na podstawie ręcznej alokacji krajowej ustawionej dla każdego papieru. Pojedyncze akcje są przypisywane według giełdy notowań; pozycje niesklasyfikowane są wyświetlane jako „Pozostałe”.",
+    "other": "Pozostałe"
   },
   "healthScoreHistory": {
     "pdfTitle": "Historia wskaźnika kondycji",

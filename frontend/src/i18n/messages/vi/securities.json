@@ -170,7 +170,19 @@
     "tagsLabel": "Thẻ",
     "tagsPlaceholder": "Chọn thẻ...",
     "createNewTag": "Tạo thẻ mới...",
-    "newTagTitle": "Thẻ mới"
+    "newTagTitle": "Thẻ mới",
+    "allocation": {
+      "help": "Các nhà cung cấp giá không cung cấp mức độ phơi nhiễm theo quốc gia cho ETF và quỹ. Hãy thêm thủ công theo tỷ lệ phần trăm. Mọi phần dưới 100% được hiển thị là \"Khác\". Bạn có thể dán bảng phân tích vào Trợ lý AI để điền vào.",
+      "countryTitle": "Phân bổ theo quốc gia",
+      "countryPlaceholder": "Chọn hoặc nhập quốc gia",
+      "addRow": "Thêm quốc gia",
+      "removeRow": "Xóa hàng",
+      "other": "Khác",
+      "total": "Tổng: {total}%",
+      "overError": "Tổng phân bổ vượt quá 100%.",
+      "nameAriaLabel": "Quốc gia",
+      "weightAriaLabel": "Phần trăm"
+    }
   },
   "priceForm": {
     "dateLabel": "Ngày",

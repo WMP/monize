@@ -170,7 +170,19 @@
     "tagsLabel": "Etiquetas",
     "tagsPlaceholder": "Seleccionar etiquetas...",
     "createNewTag": "Crear nueva etiqueta...",
-    "newTagTitle": "Nueva etiqueta"
+    "newTagTitle": "Nueva etiqueta",
+    "allocation": {
+      "help": "Los proveedores de cotizaciones no ofrecen la exposición por país de los ETF y fondos. Añádela manualmente en porcentajes. Todo lo que quede por debajo del 100 % se muestra como «Otros». Puedes pegar un desglose en el Asistente de IA para rellenarlo.",
+      "countryTitle": "Asignación por país",
+      "countryPlaceholder": "Selecciona o escribe un país",
+      "addRow": "Añadir país",
+      "removeRow": "Eliminar fila",
+      "other": "Otros",
+      "total": "Total: {total} %",
+      "overError": "La asignación suma más del 100 %.",
+      "nameAriaLabel": "País",
+      "weightAriaLabel": "Porcentaje"
+    }
   },
   "priceForm": {
     "dateLabel": "Fecha",

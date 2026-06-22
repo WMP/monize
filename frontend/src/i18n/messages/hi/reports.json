@@ -571,7 +571,11 @@
     "colMarketValue": "बाजार मूल्य",
     "colPortfolioPct": "% पोर्टफोलियो",
     "total": "कुल",
-    "holdingCount": "{count, plural, one {# होल्डिंग} other {# होल्डिंग}}"
+    "holdingCount": "{count, plural, one {# होल्डिंग} other {# होल्डिंग}}",
+    "viewByCountry": "देश के अनुसार",
+    "countryAllocation": "देश आवंटन (लुक-थ्रू)",
+    "countryLookThroughNote": "देश एक्सपोज़र प्रत्येक सिक्योरिटी पर सेट किए गए मैन्युअल देश आवंटन का उपयोग करके ETF और फंड के भीतर तक देखता है। अलग-अलग स्टॉक को उनके लिस्टिंग एक्सचेंज के अनुसार रखा जाता है; अवर्गीकृत को \"अन्य\" के रूप में दिखाया जाता है।",
+    "other": "अन्य"
   },
   "healthScoreHistory": {
     "pdfTitle": "स्वास्थ्य स्कोर इतिहास",

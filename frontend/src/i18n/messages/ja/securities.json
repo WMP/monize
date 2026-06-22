@@ -170,7 +170,19 @@
     "tagsLabel": "タグ",
     "tagsPlaceholder": "タグを選択...",
     "createNewTag": "新しいタグを作成...",
-    "newTagTitle": "新しいタグ"
+    "newTagTitle": "新しいタグ",
+    "allocation": {
+      "help": "価格プロバイダーはETFやファンドの国別エクスポージャーを提供しません。パーセンテージで手動で追加してください。100%に満たない分は「その他」として表示されます。内訳をAIアシスタントに貼り付けて入力することもできます。",
+      "countryTitle": "国別配分",
+      "countryPlaceholder": "国を選択または入力",
+      "addRow": "国を追加",
+      "removeRow": "行を削除",
+      "other": "その他",
+      "total": "合計: {total}%",
+      "overError": "配分の合計が100%を超えています。",
+      "nameAriaLabel": "国",
+      "weightAriaLabel": "パーセンテージ"
+    }
   },
   "priceForm": {
     "dateLabel": "日付",

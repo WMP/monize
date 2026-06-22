@@ -373,7 +373,8 @@
     "lookupNotFound": "No se encontró ningún valor que coincida con \"{{ query }}\". Comprueba el símbolo o el nombre, o especifica un mercado.",
     "lookupAmbiguous": "\"{{ query }}\" coincide con varios valores: {{ list }}. Vuelve a ejecutar la búsqueda especificando un mercado.",
     "lookupNoCurrency": "No se pudo determinar la moneda de \"{{ symbol }}\". Añade el valor manualmente en su lugar.",
-    "noUpdateFields": "Proporciona al menos un campo para cambiar."
+    "noUpdateFields": "Proporciona al menos un campo para cambiar.",
+    "allocationExceedsTotal": "Los porcentajes de asignación suman más del 100 %."
   },
   "tags": {
     "notFound": "Etiqueta con ID {{ id }} no encontrada",

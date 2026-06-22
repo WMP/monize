@@ -170,7 +170,19 @@
     "tagsLabel": "Tagi",
     "tagsPlaceholder": "Wybierz tagi...",
     "createNewTag": "Utwórz nowy tag...",
-    "newTagTitle": "Nowy tag"
+    "newTagTitle": "Nowy tag",
+    "allocation": {
+      "help": "Dostawcy notowań nie udostępniają ekspozycji krajowej dla ETF-ów i funduszy. Dodaj ją ręcznie w procentach. Wszystko poniżej 100% jest wyświetlane jako „Pozostałe”. Możesz wkleić zestawienie do Asystenta AI, aby je uzupełnić.",
+      "countryTitle": "Alokacja krajowa",
+      "countryPlaceholder": "Wybierz lub wpisz kraj",
+      "addRow": "Dodaj kraj",
+      "removeRow": "Usuń wiersz",
+      "other": "Pozostałe",
+      "total": "Razem: {total}%",
+      "overError": "Suma alokacji przekracza 100%.",
+      "nameAriaLabel": "Kraj",
+      "weightAriaLabel": "Procent"
+    }
   },
   "priceForm": {
     "dateLabel": "Data",

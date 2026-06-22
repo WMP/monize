@@ -373,7 +373,8 @@
     "lookupNotFound": "Aucun titre ne correspond à « {{ query }} ». Vérifiez le symbole ou le nom, ou précisez une place boursière.",
     "lookupAmbiguous": "« {{ query }} » correspond à plusieurs titres : {{ list }}. Relancez la recherche en précisant une place boursière.",
     "lookupNoCurrency": "Impossible de déterminer la devise de « {{ symbol }} ». Ajoutez le titre manuellement à la place.",
-    "noUpdateFields": "Indiquez au moins un champ à modifier."
+    "noUpdateFields": "Indiquez au moins un champ à modifier.",
+    "allocationExceedsTotal": "Les pourcentages de répartition dépassent 100 %."
   },
   "tags": {
     "notFound": "Étiquette avec l'ID {{ id }} introuvable",

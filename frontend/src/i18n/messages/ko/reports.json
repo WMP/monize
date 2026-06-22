@@ -571,7 +571,11 @@
     "colMarketValue": "시장 가치",
     "colPortfolioPct": "포트폴리오 비율",
     "total": "합계",
-    "holdingCount": "{count, plural, one {# 개의 보유 항목} other {# 개의 보유 항목}}"
+    "holdingCount": "{count, plural, one {# 개의 보유 항목} other {# 개의 보유 항목}}",
+    "viewByCountry": "국가별",
+    "countryAllocation": "국가별 배분 (룩스루)",
+    "countryLookThroughNote": "국가별 익스포저는 각 종목에 설정된 수동 국가 배분을 사용하여 ETF와 펀드를 룩스루합니다. 개별 주식은 상장 거래소에 따라 분류되며, 분류되지 않은 항목은 \"기타\"로 표시됩니다.",
+    "other": "기타"
   },
   "healthScoreHistory": {
     "pdfTitle": "건전성 점수 이력",

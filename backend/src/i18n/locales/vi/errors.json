@@ -373,7 +373,8 @@
     "lookupNotFound": "Không tìm thấy chứng khoán nào khớp với \"{{ query }}\". Kiểm tra mã hoặc tên, hoặc chỉ định một sàn giao dịch.",
     "lookupAmbiguous": "\"{{ query }}\" khớp với nhiều chứng khoán: {{ list }}. Chạy lại và chỉ định một sàn giao dịch.",
     "lookupNoCurrency": "Không thể xác định loại tiền tệ cho \"{{ symbol }}\". Thay vào đó hãy thêm chứng khoán theo cách thủ công.",
-    "noUpdateFields": "Hãy cung cấp ít nhất một trường để thay đổi."
+    "noUpdateFields": "Hãy cung cấp ít nhất một trường để thay đổi.",
+    "allocationExceedsTotal": "Tổng tỷ lệ phân bổ vượt quá 100%."
   },
   "tags": {
     "notFound": "Không tìm thấy thẻ với ID {{ id }}",

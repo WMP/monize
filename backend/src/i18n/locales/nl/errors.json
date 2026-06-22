@@ -373,7 +373,8 @@
     "lookupNotFound": "Geen effect gevonden dat overeenkomt met \"{{ query }}\". Controleer het symbool of de naam, of geef een beurs op.",
     "lookupAmbiguous": "\"{{ query }}\" komt overeen met meerdere effecten: {{ list }}. Voer opnieuw uit en geef een beurs op.",
     "lookupNoCurrency": "Kan de valuta voor \"{{ symbol }}\" niet bepalen. Voeg het effect in plaats daarvan handmatig toe.",
-    "noUpdateFields": "Geef ten minste één veld op om te wijzigen."
+    "noUpdateFields": "Geef ten minste één veld op om te wijzigen.",
+    "allocationExceedsTotal": "De toewijzingspercentages tellen op tot meer dan 100%."
   },
   "tags": {
     "notFound": "Label met ID {{ id }} niet gevonden",

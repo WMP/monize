@@ -571,7 +571,11 @@
     "colMarketValue": "市值",
     "colPortfolioPct": "佔投資組合 %",
     "total": "總計",
-    "holdingCount": "{count, plural, one {# 個持倉} other {# 個持倉}}"
+    "holdingCount": "{count, plural, one {# 個持倉} other {# 個持倉}}",
+    "viewByCountry": "依國家/地區",
+    "countryAllocation": "國家/地區配置（穿透）",
+    "countryLookThroughNote": "國家/地區曝險會使用每檔證券上手動設定的國家/地區配置穿透 ETF 和基金。個股依上市交易所歸類；未分類的部分顯示為「其他」。",
+    "other": "其他"
   },
   "healthScoreHistory": {
     "pdfTitle": "健康分數歷史",

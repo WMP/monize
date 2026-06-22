@@ -170,7 +170,19 @@
     "tagsLabel": "標籤",
     "tagsPlaceholder": "選擇標籤...",
     "createNewTag": "建立新標籤...",
-    "newTagTitle": "新增標籤"
+    "newTagTitle": "新增標籤",
+    "allocation": {
+      "help": "報價提供商不提供 ETF 和基金的國家/地區曝險。請以百分比手動新增。低於 100% 的部分會顯示為「其他」。你可以將明細貼到 AI 助理中來填入。",
+      "countryTitle": "國家/地區配置",
+      "countryPlaceholder": "選擇或輸入國家/地區",
+      "addRow": "新增國家/地區",
+      "removeRow": "移除列",
+      "other": "其他",
+      "total": "合計：{total}%",
+      "overError": "配置總和超過 100%。",
+      "nameAriaLabel": "國家/地區",
+      "weightAriaLabel": "百分比"
+    }
   },
   "priceForm": {
     "dateLabel": "日期",

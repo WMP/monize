@@ -170,7 +170,19 @@
     "tagsLabel": "Tags",
     "tagsPlaceholder": "Tags auswählen...",
     "createNewTag": "Neuen Tag erstellen...",
-    "newTagTitle": "Neuer Tag"
+    "newTagTitle": "Neuer Tag",
+    "allocation": {
+      "help": "Kursanbieter liefern keine Länderaufteilung für ETFs und Fonds. Füge sie manuell in Prozent hinzu. Alles unter 100 % wird als „Sonstige“ angezeigt. Du kannst eine Aufstellung in den KI-Assistenten einfügen, um dies auszufüllen.",
+      "countryTitle": "Länderaufteilung",
+      "countryPlaceholder": "Land auswählen oder eingeben",
+      "addRow": "Land hinzufügen",
+      "removeRow": "Zeile entfernen",
+      "other": "Sonstige",
+      "total": "Summe: {total} %",
+      "overError": "Die Aufteilung ergibt mehr als 100 %.",
+      "nameAriaLabel": "Land",
+      "weightAriaLabel": "Prozentsatz"
+    }
   },
   "priceForm": {
     "dateLabel": "Datum",

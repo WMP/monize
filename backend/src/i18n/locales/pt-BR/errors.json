@@ -373,7 +373,8 @@
     "lookupNotFound": "Nenhum ativo encontrado correspondente a \"{{ query }}\". Verifique o símbolo ou o nome, ou especifique uma bolsa.",
     "lookupAmbiguous": "\"{{ query }}\" corresponde a vários ativos: {{ list }}. Execute novamente especificando uma bolsa.",
     "lookupNoCurrency": "Não foi possível determinar a moeda de \"{{ symbol }}\". Adicione o ativo manualmente.",
-    "noUpdateFields": "Informe pelo menos um campo para alterar."
+    "noUpdateFields": "Informe pelo menos um campo para alterar.",
+    "allocationExceedsTotal": "As porcentagens de alocação somam mais de 100%."
   },
   "tags": {
     "notFound": "Etiqueta com ID {{ id }} não encontrada",

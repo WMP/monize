@@ -56,6 +56,26 @@ describe('SecurityList', () => {
     expect(screen.getByText('Global aggregate bond ETF.')).toBeInTheDocument();
   });
 
+  it('hides the description in compact and dense densities (but keeps tags)', () => {
+    const securities = [
+      makeSecurity({
+        description: 'Global aggregate bond ETF.',
+        tags: [{ id: 't1', name: 'Bonds', color: '#abcdef', icon: null }],
+      }),
+    ];
+
+    const { rerender } = render(
+      <SecurityList securities={securities} onEdit={onEdit} onToggleActive={onToggleActive} density="compact" />,
+    );
+    expect(screen.getByText('Bonds')).toBeInTheDocument();
+    expect(screen.queryByText('Global aggregate bond ETF.')).not.toBeInTheDocument();
+
+    rerender(
+      <SecurityList securities={securities} onEdit={onEdit} onToggleActive={onToggleActive} density="dense" />,
+    );
+    expect(screen.queryByText('Global aggregate bond ETF.')).not.toBeInTheDocument();
+  });
+
   it('renders security type labels', () => {
     const securities = [
       makeSecurity({ securityType: 'MUTUAL_FUND' }),

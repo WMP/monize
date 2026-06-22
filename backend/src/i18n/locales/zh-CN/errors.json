@@ -373,7 +373,8 @@
     "lookupNotFound": "未找到与\"{{ query }}\"匹配的证券。请检查代码或名称，或指定一个交易所。",
     "lookupAmbiguous": "\"{{ query }}\"匹配到多个证券：{{ list }}。请指定交易所后重新运行。",
     "lookupNoCurrency": "无法确定\"{{ symbol }}\"的货币。请改为手动添加该证券。",
-    "noUpdateFields": "请至少提供一个要更改的字段。"
+    "noUpdateFields": "请至少提供一个要更改的字段。",
+    "allocationExceedsTotal": "配置百分比总和超过 100%。"
   },
   "tags": {
     "notFound": "未找到 ID 为 {{ id }} 的标签",

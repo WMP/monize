@@ -571,7 +571,11 @@
     "colMarketValue": "Valor de mercado",
     "colPortfolioPct": "% de la cartera",
     "total": "Total",
-    "holdingCount": "{count, plural, one {# posición} other {# posiciones}}"
+    "holdingCount": "{count, plural, one {# posición} other {# posiciones}}",
+    "viewByCountry": "Por país",
+    "countryAllocation": "Asignación por país (transparencia)",
+    "countryLookThroughNote": "La exposición por país analiza por transparencia los ETF y fondos usando la asignación por país introducida manualmente en cada valor. Las acciones individuales se asignan según el mercado de cotización; lo no clasificado se muestra como «Otros».",
+    "other": "Otros"
   },
   "healthScoreHistory": {
     "pdfTitle": "Historial de puntuación de salud",

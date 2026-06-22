@@ -571,7 +571,11 @@
     "colMarketValue": "Nilai Pasar",
     "colPortfolioPct": "% dari Portofolio",
     "total": "Total",
-    "holdingCount": "{count, plural, one {# kepemilikan} other {# kepemilikan}}"
+    "holdingCount": "{count, plural, one {# kepemilikan} other {# kepemilikan}}",
+    "viewByCountry": "Berdasarkan Negara",
+    "countryAllocation": "Alokasi Negara (look-through)",
+    "countryLookThroughNote": "Eksposur negara menelaah ETF dan reksa dana menggunakan alokasi negara manual yang diatur pada setiap sekuritas. Saham individu ditempatkan berdasarkan bursa pencatatannya; yang tidak terklasifikasi ditampilkan sebagai \"Lainnya\".",
+    "other": "Lainnya"
   },
   "healthScoreHistory": {
     "pdfTitle": "Riwayat Skor Kesehatan",

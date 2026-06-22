@@ -170,7 +170,19 @@
     "tagsLabel": "Etiketler",
     "tagsPlaceholder": "Etiket seçin...",
     "createNewTag": "Yeni etiket oluştur...",
-    "newTagTitle": "Yeni Etiket"
+    "newTagTitle": "Yeni Etiket",
+    "allocation": {
+      "help": "Fiyat sağlayıcıları ETF’ler ve fonlar için ülke dağılımı sağlamaz. Bunu yüzde olarak elle ekleyin. %100’ün altındaki her şey \"Diğer\" olarak gösterilir. Doldurmak için bir dökümü Yapay Zekâ Asistanına yapıştırabilirsiniz.",
+      "countryTitle": "Ülke dağılımı",
+      "countryPlaceholder": "Ülke seçin veya yazın",
+      "addRow": "Ülke ekle",
+      "removeRow": "Satırı kaldır",
+      "other": "Diğer",
+      "total": "Toplam: %{total}",
+      "overError": "Tahsis toplamı %100'ü aşıyor.",
+      "nameAriaLabel": "Ülke",
+      "weightAriaLabel": "Yüzde"
+    }
   },
   "priceForm": {
     "dateLabel": "Tarih",

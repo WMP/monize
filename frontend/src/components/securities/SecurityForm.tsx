@@ -15,6 +15,7 @@ import { MultiSelect } from '@/components/ui/MultiSelect';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { SecurityLookupPicker, LookupCandidate } from './SecurityLookupPicker';
+import { AllocationEditor, AllocationRow } from './AllocationEditor';
 import { TagForm } from '@/components/tags/TagForm';
 import { Security, CreateSecurityData } from '@/types/investment';
 import { Tag } from '@/types/tag';
@@ -27,7 +28,20 @@ import { createLogger } from '@/lib/logger';
 import { useFormSubmitRef } from '@/hooks/useFormSubmitRef';
 import { useFormDirtyNotify } from '@/hooks/useFormDirtyNotify';
 import { FormActions } from '@/components/ui/FormActions';
-import { EXCHANGE_OPTIONS } from '@/lib/constants';
+import { EXCHANGE_OPTIONS, COUNTRY_OPTIONS } from '@/lib/constants';
+
+// Map stored country weightings (decimal 0-1) to editor rows (percentage strings).
+const toCountryRows = (
+  weightings: { name: string; weight: number }[] | null | undefined,
+): AllocationRow[] =>
+  (weightings ?? [])
+    // A provider "Other" bucket isn't a country: don't surface it as a row --
+    // it's folded into the editor's computed (100 - total) "Other" remainder.
+    .filter((w) => (w.name ?? '').trim().toLowerCase() !== 'other')
+    .map((w) => ({
+      name: w.name,
+      weight: String(Math.round(w.weight * 1000000) / 10000),
+    }));
 
 const logger = createLogger('SecurityForm');
 
@@ -92,6 +106,9 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
     security?.tags?.map((tag) => tag.id) || [],
+  );
+  const [countryRows, setCountryRows] = useState<AllocationRow[]>(
+    toCountryRows(security?.countryWeightings),
   );
   const [showTagForm, setShowTagForm] = useState(false);
 
@@ -248,6 +265,7 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
     if (security) {
       reset();
       setSelectedTagIds(security.tags?.map((tag) => tag.id) || []);
+      setCountryRows(toCountryRows(security.countryWeightings));
     } else {
       reset({
         symbol: '',
@@ -261,6 +279,7 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
         isFavourite: false,
       });
       setSelectedTagIds([]);
+      setCountryRows([]);
     }
     setHasLookupResult(false);
   }, [reset, defaultValues, defaultCurrency, security]);
@@ -280,7 +299,27 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
     setShowTagForm(false);
   };
 
+  const isFundType =
+    watch('securityType') === 'ETF' || watch('securityType') === 'MUTUAL_FUND';
+
   const onFormSubmit = async (data: SecurityFormData) => {
+    const isFund =
+      data.securityType === 'ETF' || data.securityType === 'MUTUAL_FUND';
+
+    // Editor weights are percentages; persist as decimal 0-1. Drop blank rows.
+    const countrySlices = countryRows
+      .map((row) => ({
+        name: row.name.trim(),
+        weight: parseFloat(row.weight),
+      }))
+      .filter((row) => row.name !== '' && Number.isFinite(row.weight) && row.weight > 0);
+
+    const countryTotal = countrySlices.reduce((sum, row) => sum + row.weight, 0);
+    if (isFund && countryTotal > 100.0001) {
+      toast.error(t('form.allocation.overError'));
+      return;
+    }
+
     const cleanedData: CreateSecurityData = {
       symbol: data.symbol.toUpperCase().trim(),
       name: data.name.trim(),
@@ -295,6 +334,15 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
       quoteProvider: data.quoteProvider === '' ? null : data.quoteProvider,
       msnInstrumentId: data.msnInstrumentId?.trim() || undefined,
       isFavourite: data.isFavourite ?? false,
+      // Only ETFs/funds carry a manual country breakdown; send [] to clear it.
+      ...(isFund
+        ? {
+            countryWeightings: countrySlices.map((row) => ({
+              name: row.name,
+              weight: row.weight / 100,
+            })),
+          }
+        : {}),
     };
     await onSubmit(cleanedData);
   };
@@ -376,36 +424,38 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
         placeholder={t('form.namePlaceholder')}
       />
 
-      <Select
-        label={t('form.typeLabel')}
-        options={securityTypeOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-        value={watch('securityType') || ''}
-        onChange={(e) => setValue('securityType', e.target.value, { shouldDirty: true })}
-        error={errors.securityType?.message}
-      />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Select
+          label={t('form.typeLabel')}
+          options={securityTypeOptions.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+          value={watch('securityType') || ''}
+          onChange={(e) => setValue('securityType', e.target.value, { shouldDirty: true })}
+          error={errors.securityType?.message}
+        />
 
-      <Combobox
-        label={t('form.exchangeLabel')}
-        options={EXCHANGE_OPTIONS}
-        value={watch('exchange') || ''}
-        onChange={(value, label) => setValue('exchange', value || label, { shouldDirty: true })}
-        error={errors.exchange?.message}
-        placeholder={t('form.exchangeSearchPlaceholder')}
-        allowCustomValue
-        usePortal
-        alwaysShowSubtitle
-        priorityValues={preferredExchanges}
-      />
+        <Combobox
+          label={t('form.exchangeLabel')}
+          options={EXCHANGE_OPTIONS}
+          value={watch('exchange') || ''}
+          onChange={(value, label) => setValue('exchange', value || label, { shouldDirty: true })}
+          error={errors.exchange?.message}
+          placeholder={t('form.exchangeSearchPlaceholder')}
+          allowCustomValue
+          usePortal
+          alwaysShowSubtitle
+          priorityValues={preferredExchanges}
+        />
 
-      <Select
-        label={t('form.currencyLabel')}
-        options={currencyOptions}
-        value={watch('currencyCode') || ''}
-        onChange={(e) =>
-          setValue('currencyCode', e.target.value, { shouldDirty: true })
-        }
-        error={errors.currencyCode?.message}
-      />
+        <Select
+          label={t('form.currencyLabel')}
+          options={currencyOptions}
+          value={watch('currencyCode') || ''}
+          onChange={(e) =>
+            setValue('currencyCode', e.target.value, { shouldDirty: true })
+          }
+          error={errors.currencyCode?.message}
+        />
+      </div>
 
       <div>
         <Select
@@ -498,6 +548,22 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
         onCreateNew={() => setShowTagForm(true)}
         createNewLabel={t('form.createNewTag')}
       />
+
+      {/* Manual country allocation (ETFs/funds only -- providers don't supply it) */}
+      {isFundType && (
+        <div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            {t('form.allocation.help')}
+          </p>
+          <AllocationEditor
+            title={t('form.allocation.countryTitle')}
+            value={countryRows}
+            onChange={setCountryRows}
+            options={COUNTRY_OPTIONS}
+            namePlaceholder={t('form.allocation.countryPlaceholder')}
+          />
+        </div>
+      )}
 
       {/* Tag creation modal */}
       <Modal isOpen={showTagForm} onClose={() => setShowTagForm(false)} maxWidth="lg" allowOverflow pushHistory className="p-6">

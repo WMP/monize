@@ -571,7 +571,11 @@
     "colMarketValue": "市值",
     "colPortfolioPct": "占组合 %",
     "total": "合计",
-    "holdingCount": "{count, plural, one {# 个持仓} other {# 个持仓}}"
+    "holdingCount": "{count, plural, one {# 个持仓} other {# 个持仓}}",
+    "viewByCountry": "按国家/地区",
+    "countryAllocation": "国家/地区配置（穿透）",
+    "countryLookThroughNote": "国家/地区敞口会使用每只证券上手动设置的国家/地区配置穿透 ETF 和基金。个股按上市交易所归类；未分类的部分显示为“其他”。",
+    "other": "其他"
   },
   "healthScoreHistory": {
     "pdfTitle": "健康评分历史",

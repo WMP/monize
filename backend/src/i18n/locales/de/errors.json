@@ -373,7 +373,8 @@
     "lookupNotFound": "Kein Wertpapier gefunden, das auf \"{{ query }}\" passt. Überprüfen Sie das Symbol oder den Namen oder geben Sie eine Börse an.",
     "lookupAmbiguous": "\"{{ query }}\" passt auf mehrere Wertpapiere: {{ list }}. Führen Sie die Suche erneut mit Angabe einer Börse aus.",
     "lookupNoCurrency": "Die Währung für \"{{ symbol }}\" konnte nicht ermittelt werden. Fügen Sie das Wertpapier stattdessen manuell hinzu.",
-    "noUpdateFields": "Geben Sie mindestens ein zu änderndes Feld an."
+    "noUpdateFields": "Geben Sie mindestens ein zu änderndes Feld an.",
+    "allocationExceedsTotal": "Die Aufteilungsprozentsätze ergeben in Summe mehr als 100 %."
   },
   "tags": {
     "notFound": "Etikett mit ID {{ id }} nicht gefunden",

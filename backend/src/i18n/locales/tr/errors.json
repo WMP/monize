@@ -373,7 +373,8 @@
     "lookupNotFound": "\"{{ query }}\" ile eşleşen menkul kıymet bulunamadı. Sembolü veya adı kontrol edin ya da bir borsa belirtin.",
     "lookupAmbiguous": "\"{{ query }}\" birden fazla menkul kıymetle eşleşiyor: {{ list }}. Bir borsa belirterek yeniden çalıştırın.",
     "lookupNoCurrency": "\"{{ symbol }}\" için para birimi belirlenemedi. Bunun yerine menkul kıymeti elle ekleyin.",
-    "noUpdateFields": "Değiştirmek için en az bir alan girin."
+    "noUpdateFields": "Değiştirmek için en az bir alan girin.",
+    "allocationExceedsTotal": "Tahsis yüzdeleri toplamı %100'ü aşıyor."
   },
   "tags": {
     "notFound": "{{ id }} kimliğine sahip etiket bulunamadı",

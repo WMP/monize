@@ -373,7 +373,8 @@
     "lookupNotFound": "找不到與「{{ query }}」相符的證券。請檢查代碼或名稱，或指定一個交易所。",
     "lookupAmbiguous": "「{{ query }}」符合多個證券：{{ list }}。請指定交易所後重新執行。",
     "lookupNoCurrency": "無法確定「{{ symbol }}」的貨幣。請改為手動新增該證券。",
-    "noUpdateFields": "請至少提供一個要變更的欄位。"
+    "noUpdateFields": "請至少提供一個要變更的欄位。",
+    "allocationExceedsTotal": "配置百分比總和超過 100%。"
   },
   "tags": {
     "notFound": "找不到 ID 為 {{ id }} 的標籤",

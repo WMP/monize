@@ -571,7 +571,11 @@
     "colMarketValue": "Marktwaarde",
     "colPortfolioPct": "% van portefeuille",
     "total": "Totaal",
-    "holdingCount": "{count, plural, one {# positie} other {# posities}}"
+    "holdingCount": "{count, plural, one {# positie} other {# posities}}",
+    "viewByCountry": "Per land",
+    "countryAllocation": "Landenallocatie (look-through)",
+    "countryLookThroughNote": "De landenblootstelling kijkt door ETF’s en fondsen heen op basis van de handmatige landenallocatie die per effect is ingesteld. Individuele aandelen worden ingedeeld op basis van de beurs van notering; niet-geclassificeerd wordt weergegeven als \"Overig\".",
+    "other": "Overig"
   },
   "healthScoreHistory": {
     "pdfTitle": "Geschiedenis gezondheidsscore",

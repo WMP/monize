@@ -571,7 +571,11 @@
     "colMarketValue": "Piyasa Değeri",
     "colPortfolioPct": "Portföy %",
     "total": "Toplam",
-    "holdingCount": "{count, plural, one {# varlık} other {# varlık}}"
+    "holdingCount": "{count, plural, one {# varlık} other {# varlık}}",
+    "viewByCountry": "Ülkeye göre",
+    "countryAllocation": "Ülke dağılımı (şeffaf bakış)",
+    "countryLookThroughNote": "Ülke maruziyeti, her menkul kıymette ayarlanan elle girilmiş ülke dağılımını kullanarak ETF ve fonların içine bakar. Tek tek hisseler işlem gördükleri borsaya göre sınıflandırılır; sınıflandırılmayanlar \"Diğer\" olarak gösterilir.",
+    "other": "Diğer"
   },
   "healthScoreHistory": {
     "pdfTitle": "Sağlık Puanı Geçmişi",

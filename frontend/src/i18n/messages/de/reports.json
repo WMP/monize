@@ -571,7 +571,11 @@
     "colMarketValue": "Marktwert",
     "colPortfolioPct": "% des Portfolios",
     "total": "Gesamt",
-    "holdingCount": "{count, plural, one {# Position} other {# Positionen}}"
+    "holdingCount": "{count, plural, one {# Position} other {# Positionen}}",
+    "viewByCountry": "Nach Land",
+    "countryAllocation": "Länderaufteilung (Durchschau)",
+    "countryLookThroughNote": "Das Länderengagement schaut anhand der je Wertpapier hinterlegten manuellen Länderaufteilung durch ETFs und Fonds hindurch. Einzelaktien werden anhand der Börse zugeordnet; nicht klassifizierte Bestände werden als „Sonstige“ angezeigt.",
+    "other": "Sonstige"
   },
   "healthScoreHistory": {
     "pdfTitle": "Gesundheitsscore-Verlauf",

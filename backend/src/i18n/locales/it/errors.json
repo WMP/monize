@@ -373,7 +373,8 @@
     "lookupNotFound": "Nessun titolo trovato corrispondente a \"{{ query }}\". Controlla il simbolo o il nome, oppure specifica una borsa.",
     "lookupAmbiguous": "\"{{ query }}\" corrisponde a più titoli: {{ list }}. Esegui di nuovo specificando una borsa.",
     "lookupNoCurrency": "Impossibile determinare la valuta per \"{{ symbol }}\". Aggiungi il titolo manualmente.",
-    "noUpdateFields": "Fornisci almeno un campo da modificare."
+    "noUpdateFields": "Fornisci almeno un campo da modificare.",
+    "allocationExceedsTotal": "Le percentuali di allocazione superano il 100%."
   },
   "tags": {
     "notFound": "Etichetta con ID {{ id }} non trovata",
