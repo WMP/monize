@@ -83,7 +83,8 @@
     "forecastGenerateFailed": "Tahmin oluşturulamadı. Lütfen tekrar deneyin.",
     "forecastRateLimited": "Kısa süre önce bir tahmin oluşturuldu. Lütfen daha sonra tekrar deneyin.",
     "insightNotFound": "İçgörü bulunamadı",
-    "relayTimeout": "Asistanınız yanıt vermedi. MCP aracınızın bağlı ve dinlemede olduğundan emin olun."
+    "relayTimeout": "Asistanınız yanıt vermedi. MCP aracınızın bağlı ve dinlemede olduğundan emin olun.",
+    "relayDisconnected": "Asistanınız yanıt vermeden sustu. Yeniden bağlanırsa yanıtı burada görünecek."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Çok fazla doğrulama denemesi. Lütfen tekrar giriş yapın.",

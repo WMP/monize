@@ -83,7 +83,8 @@
     "forecastGenerateFailed": "Không thể tạo dự báo. Vui lòng thử lại.",
     "forecastRateLimited": "Dự báo vừa được tạo gần đây. Vui lòng thử lại sau.",
     "insightNotFound": "Không tìm thấy thông tin chi tiết",
-    "relayTimeout": "Trợ lý của bạn không phản hồi. Hãy đảm bảo tác nhân MCP của bạn đang kết nối và lắng nghe."
+    "relayTimeout": "Trợ lý của bạn không phản hồi. Hãy đảm bảo tác nhân MCP của bạn đang kết nối và lắng nghe.",
+    "relayDisconnected": "Trợ lý của bạn đã im lặng trước khi trả lời. Nếu kết nối lại, câu trả lời sẽ xuất hiện ở đây."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Quá nhiều lần xác minh thất bại. Vui lòng đăng nhập lại.",

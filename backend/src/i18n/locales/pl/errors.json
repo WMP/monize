@@ -83,7 +83,8 @@
     "forecastGenerateFailed": "Nie udało się wygenerować prognozy. Spróbuj ponownie.",
     "forecastRateLimited": "Prognoza została niedawno wygenerowana. Spróbuj ponownie później.",
     "insightNotFound": "Nie znaleziono analizy",
-    "relayTimeout": "Twój asystent nie odpowiedział. Upewnij się, że agent MCP jest połączony i nasłuchuje."
+    "relayTimeout": "Twój asystent nie odpowiedział. Upewnij się, że agent MCP jest połączony i nasłuchuje.",
+    "relayDisconnected": "Twój asystent zamilkł przed udzieleniem odpowiedzi. Jeśli połączy się ponownie, jego odpowiedź pojawi się tutaj."
   },
   "auth": {
     "tooManyAttemptsLoginAgain": "Zbyt wiele prób weryfikacji. Zaloguj się ponownie.",
