@@ -146,9 +146,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
-
+      # No Set up QEMU step: it is only needed to emulate a foreign architecture
+      # and this workflow builds amd64 natively on an amd64 runner. Restore it if
+      # linux/arm64 is added back to platforms below.
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
@@ -159,9 +159,11 @@ jobs:
           file: ${{ matrix.file }}
           target: production
           push: true
-          # Match upstream's runnable arches. Forks that only need one arch can
-          # drop arm64 here to roughly halve build time (arm64 is emulated).
-          platforms: linux/amd64,linux/arm64
+          # amd64-only: this fork deploys to x86, so we skip the arm64 leg. arm64
+          # has to be built under QEMU emulation on the amd64 runner, which was
+          # roughly half the wall time. Add linux/arm64 back (and restore the
+          # Set up QEMU step above) if an ARM target is ever needed.
+          platforms: linux/amd64
           # Plain images: no provenance attestation manifest (unlike the signed
           # upstream release), so the registry listing stays clean.
           provenance: false
