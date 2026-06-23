@@ -625,4 +625,63 @@ describe('ChatInterface', () => {
       expect(screen.queryByText('Clear conversation')).not.toBeInTheDocument();
     });
   });
+
+  describe('auto-scroll', () => {
+    const scrollEl = () =>
+      document.querySelector('.overflow-y-auto') as HTMLElement;
+
+    // jsdom has no layout, so fake the metrics the stick-to-bottom check reads.
+    function setScrollMetrics(
+      el: HTMLElement,
+      { scrollHeight, clientHeight, scrollTop }: Record<string, number>,
+    ) {
+      Object.defineProperty(el, 'scrollHeight', { value: scrollHeight, configurable: true });
+      Object.defineProperty(el, 'clientHeight', { value: clientHeight, configurable: true });
+      Object.defineProperty(el, 'scrollTop', { value: scrollTop, configurable: true, writable: true });
+    }
+
+    it('does not scroll to the bottom when an existing message changes while scrolled up', async () => {
+      const messages: ChatMessage[] = [
+        { id: 'm1', role: 'user', content: 'Add these transactions' },
+        { id: 'm2', role: 'assistant', content: 'Confirm each one' },
+      ];
+      seedPersistedMessages(messages);
+      await renderChat();
+
+      // User scrolls up to reach an earlier confirmation card.
+      setScrollMetrics(scrollEl(), { scrollHeight: 2000, clientHeight: 500, scrollTop: 0 });
+      fireEvent.scroll(scrollEl());
+
+      (Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mockClear();
+
+      // Confirming a card mutates that message in place (same count, new ref).
+      await act(async () => {
+        useAiChatStore.setState({
+          messages: messages.map((m) =>
+            m.id === 'm2' ? { ...m, content: 'Confirmed one' } : m,
+          ),
+        });
+      });
+
+      expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    });
+
+    it('scrolls to the bottom on new content while pinned to the bottom', async () => {
+      const userMsg: ChatMessage = { id: 'm1', role: 'user', content: 'Hi' };
+      seedPersistedMessages([userMsg]);
+      await renderChat();
+
+      // Stay pinned (jsdom metrics read as 0, i.e. at the bottom).
+      fireEvent.scroll(scrollEl());
+      (Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mockClear();
+
+      await act(async () => {
+        useAiChatStore.setState({
+          messages: [userMsg, { id: 'm2', role: 'assistant', content: 'Hello' }],
+        });
+      });
+
+      expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    });
+  });
 });

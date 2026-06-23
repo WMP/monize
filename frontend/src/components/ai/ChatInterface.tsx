@@ -31,7 +31,13 @@ export function ChatInterface() {
   const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Whether the view is pinned to the bottom. We only auto-scroll when it is, so
+  // that mutating an existing message (e.g. confirming one of several pending
+  // action cards while scrolled up) does not yank the view back to the latest
+  // message. Streaming still follows along while the user sits at the bottom.
+  const stickToBottomRef = useRef(true);
 
   // Relay mode is on when the user's highest-priority active provider is the
   // MCP relay; the chat then routes prompts to their own agent.
@@ -50,8 +56,18 @@ export function ChatInterface() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
+  // "Near the bottom" still counts as pinned, so a little drift (or the tail of
+  // a smooth scroll) does not unstick the view.
+  const NEAR_BOTTOM_PX = 150;
+  const handleMessagesScroll = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    stickToBottomRef.current =
+      el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM_PX;
+  }, []);
+
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages.length > 0 && stickToBottomRef.current) {
       scrollToBottom();
     }
   }, [messages, thinking, scrollToBottom]);
@@ -61,6 +77,9 @@ export function ChatInterface() {
       const query = queryText || input;
       if (!query.trim() || isLoading) return;
       setInput('');
+      // Sending a prompt re-pins the view so the user follows their own message
+      // and its response even if they had scrolled up.
+      stickToBottomRef.current = true;
       submit(query, { relay: relayActive });
     },
     [input, isLoading, submit, relayActive],
@@ -148,7 +167,11 @@ export function ChatInterface() {
       )}
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-2 py-4">
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleMessagesScroll}
+        className="flex-1 overflow-y-auto px-2 py-4"
+      >
         {messages.length === 0 && !thinking.active ? (
           <SuggestedQueries onSelect={handleSubmit} disabled={!!aiNotConfigured} />
         ) : (
