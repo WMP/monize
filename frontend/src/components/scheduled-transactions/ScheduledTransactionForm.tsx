@@ -1080,6 +1080,7 @@ export function ScheduledTransactionForm({
               prefix={currencySymbol}
               value={watchedAmount}
               onChange={(value) => setValue('amount', value ?? 0, { shouldValidate: true })}
+              allowSignToggle
               error={errors.amount?.message}
             />
             <Input

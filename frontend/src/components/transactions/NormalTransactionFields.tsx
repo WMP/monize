@@ -206,6 +206,7 @@ export function NormalTransactionFields({
           prefix={getCurrencySymbol(watchedCurrencyCode)}
           value={watchedAmount}
           onChange={handleAmountChange}
+          allowSignToggle
           error={errors.amount?.message as string | undefined}
         />
         <Input

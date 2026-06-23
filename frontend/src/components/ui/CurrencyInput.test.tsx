@@ -303,4 +303,51 @@ describe('CurrencyInput', () => {
       expect(screen.getByLabelText('Open calculator')).toBeDisabled();
     });
   });
+
+  describe('sign toggle', () => {
+    it('does not render the sign toggle by default', () => {
+      render(<CurrencyInput label="Amount" value={50} onChange={vi.fn()} />);
+      expect(screen.queryByLabelText('Change sign')).not.toBeInTheDocument();
+    });
+
+    it('renders the sign toggle when allowSignToggle is set', () => {
+      render(<CurrencyInput label="Amount" value={50} onChange={vi.fn()} allowSignToggle />);
+      expect(screen.getByLabelText('Change sign')).toBeInTheDocument();
+    });
+
+    it('negates a positive value when clicked', () => {
+      const onChange = vi.fn();
+      render(<CurrencyInput label="Amount" value={50} onChange={onChange} allowSignToggle />);
+      fireEvent.mouseDown(screen.getByLabelText('Change sign'));
+      expect(onChange).toHaveBeenCalledWith(-50);
+    });
+
+    it('makes a negative value positive when clicked', () => {
+      const onChange = vi.fn();
+      render(<CurrencyInput label="Amount" value={-50} onChange={onChange} allowSignToggle />);
+      fireEvent.mouseDown(screen.getByLabelText('Change sign'));
+      expect(onChange).toHaveBeenCalledWith(50);
+    });
+
+    it('toggles the display sign without onChange for a zero value', () => {
+      const onChange = vi.fn();
+      render(<CurrencyInput label="Amount" value={0} onChange={onChange} allowSignToggle />);
+      const input = screen.getByLabelText('Amount');
+      fireEvent.focus(input);
+      fireEvent.mouseDown(screen.getByLabelText('Change sign'));
+      expect(onChange).not.toHaveBeenCalled();
+      expect(input).toHaveValue('-');
+    });
+
+    it('renders both the sign toggle and the calculator button together', () => {
+      render(<CurrencyInput label="Amount" value={50} onChange={vi.fn()} allowSignToggle />);
+      expect(screen.getByLabelText('Change sign')).toBeInTheDocument();
+      expect(screen.getByLabelText('Open calculator')).toBeInTheDocument();
+    });
+
+    it('disables the sign toggle when input is disabled', () => {
+      render(<CurrencyInput label="Amount" value={50} onChange={vi.fn()} allowSignToggle disabled />);
+      expect(screen.getByLabelText('Change sign')).toBeDisabled();
+    });
+  });
 });

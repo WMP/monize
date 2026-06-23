@@ -475,6 +475,7 @@ export function SplitEditor({
                     prefix={currencySymbol}
                     value={split.amount}
                     onChange={(value) => handleSplitChange(index, 'amount', roundToCents(value ?? 0))}
+                    allowSignToggle
                     disabled={disabled}
                     className="w-full"
                   />
@@ -637,6 +638,7 @@ export function SplitEditor({
                     prefix={currencySymbol}
                     value={split.amount}
                     onChange={(value) => handleSplitChange(index, 'amount', roundToCents(value ?? 0))}
+                    allowSignToggle
                     disabled={disabled}
                     className="w-full"
                   />

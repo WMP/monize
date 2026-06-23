@@ -673,6 +673,7 @@ export function PostTransactionDialog({
           prefix={getCurrencySymbol(scheduledTransaction.currencyCode)}
           value={amount}
           onChange={(value) => setAmount(value ?? 0)}
+          allowSignToggle
         />
         )}
 

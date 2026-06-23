@@ -114,7 +114,8 @@
   },
   "currencyInput": {
     "openCalculator": "[XX-Open calculator-XX]",
-    "calculator": "[XX-Calculator-XX]"
+    "calculator": "[XX-Calculator-XX]",
+    "toggleSign": "[XX-Change sign-XX]"
   },
   "dateInput": {
     "shortcutsTitle": "[XX-Keyboard shortcuts-XX]",
