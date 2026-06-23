@@ -164,9 +164,6 @@
     "captureError": "Nie udało się przechwycić obrazu wykresu",
     "downloadError": "Nie udało się pobrać wykresu"
   },
-  "attachments": {
-    "captureRich": "Przechwyć wzbogacone wklejanie"
-  },
   "relay": {
     "status": {
       "offline": "Asystent offline",

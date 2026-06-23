@@ -164,9 +164,6 @@
     "captureError": "차트 이미지를 캡처할 수 없습니다",
     "downloadError": "차트 다운로드에 실패했습니다"
   },
-  "attachments": {
-    "captureRich": "서식 있는 붙여넣기 캡처"
-  },
   "relay": {
     "status": {
       "offline": "어시스턴트 오프라인",

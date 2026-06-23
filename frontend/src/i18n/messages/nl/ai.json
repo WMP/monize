@@ -164,9 +164,6 @@
     "captureError": "Kan grafiekafbeelding niet vastleggen",
     "downloadError": "Grafiek downloaden mislukt"
   },
-  "attachments": {
-    "captureRich": "Opgemaakt plakken vastleggen"
-  },
   "relay": {
     "status": {
       "offline": "Assistent offline",

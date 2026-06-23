@@ -164,9 +164,6 @@
     "captureError": "No se puede capturar la imagen del gráfico",
     "downloadError": "Error al descargar el gráfico"
   },
-  "attachments": {
-    "captureRich": "Capturar pegado enriquecido"
-  },
   "relay": {
     "status": {
       "offline": "Asistente desconectado",

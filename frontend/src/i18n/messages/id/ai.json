@@ -164,9 +164,6 @@
     "captureError": "Tidak dapat mengambil gambar grafik",
     "downloadError": "Gagal mengunduh grafik"
   },
-  "attachments": {
-    "captureRich": "Tangkap tempel kaya"
-  },
   "relay": {
     "status": {
       "offline": "Asisten offline",

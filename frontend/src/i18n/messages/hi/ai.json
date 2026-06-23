@@ -164,9 +164,6 @@
     "captureError": "चार्ट छवि कैप्चर करने में असमर्थ",
     "downloadError": "चार्ट डाउनलोड करने में विफल"
   },
-  "attachments": {
-    "captureRich": "रिच पेस्ट कैप्चर करें"
-  },
   "relay": {
     "status": {
       "offline": "सहायक ऑफ़लाइन",

@@ -164,9 +164,6 @@
     "captureError": "Impossibile acquisire l'immagine del grafico",
     "downloadError": "Download del grafico non riuscito"
   },
-  "attachments": {
-    "captureRich": "Acquisisci incolla avanzato"
-  },
   "relay": {
     "status": {
       "offline": "Assistente offline",

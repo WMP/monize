@@ -164,9 +164,6 @@
     "captureError": "Không thể chụp ảnh biểu đồ",
     "downloadError": "Không thể tải biểu đồ"
   },
-  "attachments": {
-    "captureRich": "Ghi lại nội dung dán định dạng"
-  },
   "relay": {
     "status": {
       "offline": "Trợ lý ngoại tuyến",

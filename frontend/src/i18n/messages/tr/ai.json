@@ -164,9 +164,6 @@
     "captureError": "Grafik görüntüsü yakalanamadı",
     "downloadError": "Grafik indirilemedi"
   },
-  "attachments": {
-    "captureRich": "Zengin yapıştırmayı yakala"
-  },
   "relay": {
     "status": {
       "offline": "Asistan çevrimdışı",

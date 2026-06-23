@@ -164,9 +164,6 @@
     "captureError": "Diagrammbild konnte nicht erfasst werden",
     "downloadError": "Diagramm konnte nicht heruntergeladen werden"
   },
-  "attachments": {
-    "captureRich": "Reiches Einfügen erfassen"
-  },
   "relay": {
     "status": {
       "offline": "Assistent offline",

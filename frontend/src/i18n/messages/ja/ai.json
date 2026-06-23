@@ -164,9 +164,6 @@
     "captureError": "チャート画像を取得できません",
     "downloadError": "チャートのダウンロードに失敗しました"
   },
-  "attachments": {
-    "captureRich": "リッチな貼り付けを取り込む"
-  },
   "relay": {
     "status": {
       "offline": "アシスタントはオフライン",

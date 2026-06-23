@@ -164,9 +164,6 @@
     "captureError": "无法捕获图表图像",
     "downloadError": "下载图表失败"
   },
-  "attachments": {
-    "captureRich": "捕获富文本粘贴"
-  },
   "relay": {
     "status": {
       "offline": "助手离线",

@@ -164,9 +164,6 @@
     "captureError": "[XX-Unable to capture chart image-XX]",
     "downloadError": "[XX-Failed to download chart-XX]"
   },
-  "attachments": {
-    "captureRich": "[XX-Capture rich paste-XX]"
-  },
   "relay": {
     "status": {
       "offline": "[XX-Assistant offline-XX]",

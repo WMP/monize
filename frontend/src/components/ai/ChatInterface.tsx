@@ -28,7 +28,6 @@ export function ChatInterface() {
   const clear = useAiChatStore((s) => s.clear);
 
   const [input, setInput] = useState('');
-  const [captureRich, setCaptureRich] = useState(true);
   const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -73,7 +72,6 @@ export function ChatInterface() {
   // default plain-text paste runs.
   const handlePaste = useCallback(
     (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      if (!captureRich) return;
       const html = e.clipboardData?.getData('text/html');
       if (!html) return;
       const markdown = htmlTablesToMarkdown(html);
@@ -84,7 +82,7 @@ export function ChatInterface() {
       const end = ta?.selectionEnd ?? input.length;
       setInput(input.slice(0, start) + markdown + input.slice(end));
     },
-    [captureRich, input],
+    [input],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -332,15 +330,6 @@ export function ChatInterface() {
         </div>
         <div className="mt-2 flex items-center justify-center gap-3 text-xs text-gray-400 dark:text-gray-500">
           <span>{t('chat.keyboardHint')}</span>
-          <label className="inline-flex items-center gap-1 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={captureRich}
-              onChange={(e) => setCaptureRich(e.target.checked)}
-              className="h-3 w-3 rounded border-gray-300 dark:border-gray-600"
-            />
-            {t('attachments.captureRich')}
-          </label>
         </div>
       </div>
     </div>

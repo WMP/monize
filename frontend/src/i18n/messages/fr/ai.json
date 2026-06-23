@@ -164,9 +164,6 @@
     "captureError": "Impossible de capturer l'image du graphique",
     "downloadError": "Échec du téléchargement du graphique"
   },
-  "attachments": {
-    "captureRich": "Capturer le collage enrichi"
-  },
   "relay": {
     "status": {
       "offline": "Assistant hors ligne",
