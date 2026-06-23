@@ -172,13 +172,18 @@ jobs:
             GIT_SHA=${{ steps.meta.outputs.git_sha }}
             BUILD_DATE=${{ steps.meta.outputs.build_date }}
             VERSION=${{ steps.meta.outputs.version }}
+          # Annotate the image manifest, not the index: a single-platform build
+          # produces no image index, and buildx errors ("index annotations not
+          # supported for single platform export") if asked to annotate one. If
+          # linux/arm64 is added back to platforms above, switch these to
+          # `index:` so the annotations land on the multi-arch manifest list.
           annotations: |
-            index:org.opencontainers.image.title=${{ matrix.title }}
-            index:org.opencontainers.image.description=${{ matrix.description }}
-            index:org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            index:org.opencontainers.image.revision=${{ steps.meta.outputs.git_sha }}
-            index:org.opencontainers.image.created=${{ steps.meta.outputs.build_date }}
-            index:org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            manifest:org.opencontainers.image.title=${{ matrix.title }}
+            manifest:org.opencontainers.image.description=${{ matrix.description }}
+            manifest:org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            manifest:org.opencontainers.image.revision=${{ steps.meta.outputs.git_sha }}
+            manifest:org.opencontainers.image.created=${{ steps.meta.outputs.build_date }}
+            manifest:org.opencontainers.image.version=${{ steps.meta.outputs.version }}
 
       # List the pushed image tags in the run Summary so they're copy-pasteable
       # without digging through the build log. Tags arrive via env (never
