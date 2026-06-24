@@ -939,6 +939,20 @@ export function ScheduledTransactionForm({
     </div>
   );
 
+  // Shared footer: Active/Auto-post toggles and the Cancel/Submit buttons share
+  // one row (toggles left, actions right), stacking on narrow screens.
+  const renderFooter = (idSuffix: string) => (
+    <div className="flex flex-col gap-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
+      {renderOptions(idSuffix)}
+      <FormActions
+        onCancel={onCancel}
+        submitLabel={scheduledTransaction ? t('form.submitUpdate') : t('form.submitCreate')}
+        isSubmitting={isLoading}
+        className="pt-0"
+      />
+    </div>
+  );
+
   // Shared Tags section
   const renderTags = () => (
     <>
@@ -1123,8 +1137,8 @@ export function ScheduledTransactionForm({
           {/* Row 7: Description */}
           {renderDescription()}
 
-          {/* Row 8: Active/Auto-post */}
-          {renderOptions('Tx')}
+          {/* Row 8: Active/Auto-post and actions */}
+          {renderFooter('Tx')}
         </div>
       )}
 
@@ -1254,8 +1268,8 @@ export function ScheduledTransactionForm({
           {/* Row 7: End Condition */}
           {renderEndCondition('Split')}
 
-          {/* Row 8: Active/Auto-post */}
-          {renderOptions('Split')}
+          {/* Row 8: Active/Auto-post and actions */}
+          {renderFooter('Split')}
         </div>
       )}
 
@@ -1378,11 +1392,14 @@ export function ScheduledTransactionForm({
           {/* Tags */}
           {renderTags()}
 
-          {/* Row 7: Description */}
+          {/* Row 7: End Condition */}
+          {renderEndCondition('Transfer')}
+
+          {/* Row 8: Description */}
           {renderDescription()}
 
-          {/* Row 8: Active/Auto-post */}
-          {renderOptions('Transfer')}
+          {/* Row 9: Active/Auto-post and actions */}
+          {renderFooter('Transfer')}
         </div>
       )}
 
@@ -1398,7 +1415,7 @@ export function ScheduledTransactionForm({
             {...register('name')}
           />
 
-          {/* Row 2: Account, Action */}
+          {/* Row 2: Account, Next Due Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label={t('form.investmentAccountLabel')}
@@ -1410,6 +1427,16 @@ export function ScheduledTransactionForm({
               ]}
               {...register('accountId')}
             />
+            <DateInput
+              label={t('form.nextDueDateLabel')}
+              error={errors.nextDueDate?.message}
+              onDateChange={(date) => setValue('nextDueDate', date, { shouldDirty: true, shouldValidate: true })}
+              {...register('nextDueDate')}
+            />
+          </div>
+
+          {/* Row 3: Action, Security (Security when required) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label={t('form.actionLabel')}
               value={investmentAction}
@@ -1419,20 +1446,18 @@ export function ScheduledTransactionForm({
                 label: t(`form.investmentActionLabels.${a}` as Parameters<typeof t>[0]),
               }))}
             />
+            {SECURITY_REQUIRED_ACTIONS.includes(investmentAction) && (
+              <Select
+                label={t('form.securityLabel')}
+                value={investmentSecurityId}
+                onChange={(e) => setInvestmentSecurityId(e.target.value)}
+                options={[
+                  { value: '', label: t('form.securityPlaceholder') },
+                  ...securityOptions,
+                ]}
+              />
+            )}
           </div>
-
-          {/* Row 3: Security (when required) */}
-          {SECURITY_REQUIRED_ACTIONS.includes(investmentAction) && (
-            <Select
-              label={t('form.securityLabel')}
-              value={investmentSecurityId}
-              onChange={(e) => setInvestmentSecurityId(e.target.value)}
-              options={[
-                { value: '', label: t('form.securityPlaceholder') },
-                ...securityOptions,
-              ]}
-            />
-          )}
 
           {/* Row 4: Quantity / Price / Commission (action-conditional) */}
           {QUANTITY_PRICE_ACTIONS.includes(investmentAction) && (
@@ -1481,6 +1506,22 @@ export function ScheduledTransactionForm({
                   }
                   onChange={handleTotalValueChange}
                 />
+                {FUNDING_ACCOUNT_ACTIONS.includes(investmentAction) && (
+                  <div>
+                    <Select
+                      label={t('form.fundingAccountLabel')}
+                      value={investmentFundingAccountId}
+                      onChange={(e) => setInvestmentFundingAccountId(e.target.value)}
+                      options={[
+                        { value: '', label: t('form.fundingAccountPlaceholder') },
+                        ...fundingAccountOptions,
+                      ]}
+                    />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {t('form.fundingAccountHelp')}
+                    </p>
+                  </div>
+                )}
               </div>
               {investmentSecurityId && marketPrice == null && (
                 <p className="-mt-2 text-xs text-gray-500 dark:text-gray-400">
@@ -1514,25 +1555,7 @@ export function ScheduledTransactionForm({
             </div>
           )}
 
-          {/* Row 5: Funding account (BUY/SELL only) */}
-          {FUNDING_ACCOUNT_ACTIONS.includes(investmentAction) && (
-            <div>
-              <Select
-                label={t('form.fundingAccountLabel')}
-                value={investmentFundingAccountId}
-                onChange={(e) => setInvestmentFundingAccountId(e.target.value)}
-                options={[
-                  { value: '', label: t('form.fundingAccountPlaceholder') },
-                  ...fundingAccountOptions,
-                ]}
-              />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {t('form.fundingAccountHelp')}
-              </p>
-            </div>
-          )}
-
-          {/* Row 6: Frequency, Next Due Date */}
+          {/* Row 4: Frequency, Remind Days Before */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label={t('form.frequencyLabel')}
@@ -1541,16 +1564,6 @@ export function ScheduledTransactionForm({
               options={frequencyOptions}
               {...register('frequency')}
             />
-            <DateInput
-              label={t('form.nextDueDateLabel')}
-              error={errors.nextDueDate?.message}
-              onDateChange={(date) => setValue('nextDueDate', date, { shouldDirty: true, shouldValidate: true })}
-              {...register('nextDueDate')}
-            />
-          </div>
-
-          {/* Row 7: Reminder days */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label={t('form.remindDaysBeforeLabel')}
               type="number"
@@ -1569,13 +1582,10 @@ export function ScheduledTransactionForm({
           {/* Description */}
           {renderDescription()}
 
-          {/* Active / Auto-post */}
-          {renderOptions('Inv')}
+          {/* Active / Auto-post and actions */}
+          {renderFooter('Inv')}
         </div>
       )}
-
-      {/* Actions */}
-      <FormActions onCancel={onCancel} submitLabel={scheduledTransaction ? t('form.submitUpdate') : t('form.submitCreate')} isSubmitting={isLoading} />
     </form>
   );
 }
