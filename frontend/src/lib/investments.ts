@@ -308,6 +308,13 @@ export const investmentsApi = {
     return response.data;
   },
 
+  // Country names for the manual ETF/fund allocation picker: canonical list
+  // plus any custom countries the user has saved, base-currency country first.
+  getCountryOptions: async (): Promise<string[]> => {
+    const response = await apiClient.get<string[]>('/securities/country-options');
+    return response.data;
+  },
+
   // Create security
   createSecurity: async (data: CreateSecurityData): Promise<Security> => {
     const response = await apiClient.post<Security>('/securities', data);

@@ -39,6 +39,9 @@ vi.mock('@/lib/investments', () => ({
     getSuggestedDescription: vi
       .fn()
       .mockResolvedValue({ symbol: 'AAPL', description: null }),
+    getCountryOptions: vi
+      .fn()
+      .mockResolvedValue(['United States', 'Canada']),
   },
 }));
 
@@ -767,6 +770,67 @@ describe('SecurityForm', () => {
         expect(onSubmit).toHaveBeenCalledWith(
           expect.objectContaining({
             countryWeightings: [{ name: 'United States', weight: 0.6 }],
+          }),
+        );
+      });
+    });
+
+    it('offers custom countries fetched from the backend in the picker', async () => {
+      (investmentsApi.getCountryOptions as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce(['Canada', 'Iceland', 'United States']);
+      const etf = createSecurity({
+        securityType: 'ETF',
+        countryWeightings: [{ name: 'United States', weight: 0.6 }],
+      });
+      render(<SecurityForm security={etf} onSubmit={onSubmit} onCancel={onCancel} />);
+      await waitFor(() => {
+        expect(screen.getByText('Geographical Allocation')).toBeInTheDocument();
+      });
+      expect(investmentsApi.getCountryOptions).toHaveBeenCalled();
+
+      // Opening the row's combobox surfaces the user's custom country.
+      const countryInput = screen.getByDisplayValue('United States');
+      await act(async () => {
+        fireEvent.focus(countryInput);
+      });
+      expect(screen.getByText('Iceland')).toBeInTheDocument();
+    });
+
+    it('submits a custom country typed straight into a new row', async () => {
+      const etf = createSecurity({ securityType: 'ETF', countryWeightings: [] });
+      render(<SecurityForm security={etf} onSubmit={onSubmit} onCancel={onCancel} />);
+      await waitFor(() => {
+        expect(screen.getByText('Geographical Allocation')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Add country'));
+      });
+
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Country'), {
+          target: { value: 'Narnia' },
+        });
+      });
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Percentage'), {
+          target: { value: '50' },
+        });
+      });
+
+      // Mousedown commits the typed custom value; the click then submits the form.
+      const submit = screen.getByText('Update Security');
+      await act(async () => {
+        fireEvent.mouseDown(submit);
+      });
+      await act(async () => {
+        fireEvent.click(submit);
+      });
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            countryWeightings: [{ name: 'Narnia', weight: 0.5 }],
           }),
         );
       });

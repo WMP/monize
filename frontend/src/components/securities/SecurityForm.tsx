@@ -110,11 +110,28 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
   const [countryRows, setCountryRows] = useState<AllocationRow[]>(
     toCountryRows(security?.countryWeightings),
   );
+  // Canonical countries plus the user's custom ones, base-currency country
+  // first. Seeded with the static list so the picker works before the fetch.
+  const [countryNames, setCountryNames] = useState<string[]>(
+    COUNTRY_OPTIONS.map((o) => o.value),
+  );
   const [showTagForm, setShowTagForm] = useState(false);
 
   useEffect(() => {
     exchangeRatesApi.getCurrencies().then(setCurrencies).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    investmentsApi
+      .getCountryOptions()
+      .then(setCountryNames)
+      .catch(() => {});
+  }, []);
+
+  const countryOptions = useMemo(
+    () => countryNames.map((name) => ({ value: name, label: name })),
+    [countryNames],
+  );
 
   useEffect(() => {
     tagsApi.getAll().then(setTags).catch(() => {});
@@ -561,7 +578,7 @@ export function SecurityForm({ security, onSubmit, onCancel, onDirtyChange, subm
           <AllocationEditor
             value={countryRows}
             onChange={setCountryRows}
-            options={COUNTRY_OPTIONS}
+            options={countryOptions}
             namePlaceholder={t('form.allocation.countryPlaceholder')}
           />
         </div>

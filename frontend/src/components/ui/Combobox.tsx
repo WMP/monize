@@ -38,6 +38,8 @@ interface ComboboxProps {
    * in a modal) so the list only opens on an explicit click, keypress, or type.
    */
   openOnFocus?: boolean;
+  /** Accessible name for the input when there is no visible `label`. */
+  'aria-label'?: string;
 }
 
 export function Combobox({
@@ -56,6 +58,7 @@ export function Combobox({
   alwaysShowSubtitle = false,
   priorityValues,
   openOnFocus = true,
+  'aria-label': ariaLabel,
 }: ComboboxProps) {
   const t = useTranslations('common');
   const [isOpen, setIsOpen] = useState(false);
@@ -169,24 +172,25 @@ export function Combobox({
           setInputValue('');
           onChange('', '');
         }
-      } else if (!isSubmitButton) {
-        if (!allowCustomValue && selectedLabel) {
-          // Reset to selected value if not allowing custom
-          setInputValue(selectedLabel);
-        } else if (allowCustomValue) {
-          // For custom values, check if input matches an option exactly
-          const matchedOption = options.find(
-            opt => opt.label.toLowerCase() === inputValue.toLowerCase()
-          );
-          if (matchedOption) {
-            setSelectedLabel(matchedOption.label);
-            setInputValue(matchedOption.label);
-            onChange(matchedOption.value, matchedOption.label);
-          } else if (inputValue.trim() !== selectedLabel) {
-            setSelectedLabel(inputValue.trim());
-            onChange('', inputValue.trim());
-          }
+      } else if (allowCustomValue) {
+        // Commit the typed value -- even when the click lands on a submit button
+        // -- so a freshly-typed custom value is lifted to the parent before the
+        // form reads it. Snap to an exact option match when one exists.
+        const matchedOption = options.find(
+          opt => opt.label.toLowerCase() === inputValue.toLowerCase()
+        );
+        if (matchedOption) {
+          setSelectedLabel(matchedOption.label);
+          setInputValue(matchedOption.label);
+          onChange(matchedOption.value, matchedOption.label);
+        } else if (inputValue.trim() !== selectedLabel) {
+          setSelectedLabel(inputValue.trim());
+          onChange('', inputValue.trim());
         }
+      } else if (!isSubmitButton && selectedLabel) {
+        // Not allowing custom values: restore the committed label, but don't
+        // fight a form submission already in progress.
+        setInputValue(selectedLabel);
       }
     }
   });
@@ -540,6 +544,7 @@ export function Combobox({
           onClick={handleClick}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
+          aria-label={ariaLabel}
           disabled={disabled}
           className={cn(
             inputBaseClasses,

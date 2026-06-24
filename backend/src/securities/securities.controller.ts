@@ -278,6 +278,21 @@ export class SecuritiesController {
     );
   }
 
+  @Get("country-options")
+  @ApiOperation({
+    summary: "Country names for the manual ETF/fund allocation picker",
+    description:
+      "Canonical countries plus any custom countries the user has saved on a security, sorted alphabetically with the base-currency country first.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Ordered list of country names",
+    schema: { type: "array", items: { type: "string" } },
+  })
+  getCountryOptions(@Request() req): Promise<string[]> {
+    return this.securitiesService.getCountryOptions(req.user.id);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Get a security by ID" })
   @ApiResponse({ status: 200, description: "Security details", type: Security })

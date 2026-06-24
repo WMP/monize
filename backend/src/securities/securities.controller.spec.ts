@@ -43,6 +43,7 @@ describe("SecuritiesController", () => {
       getSecurityIdsWithTransactions: jest.fn(),
       getFavouriteSecurities: jest.fn(),
       getSuggestedDescription: jest.fn(),
+      getCountryOptions: jest.fn(),
     };
 
     securityPriceService = {
@@ -278,6 +279,22 @@ describe("SecuritiesController", () => {
 
       expect(securitiesService.findOne).toHaveBeenCalledWith("user-1", "sec-1");
       expect(result).toEqual(mockSecurity);
+    });
+  });
+
+  describe("getCountryOptions", () => {
+    it("delegates to securitiesService.getCountryOptions with userId", async () => {
+      securitiesService.getCountryOptions.mockResolvedValue([
+        "Canada",
+        "United States",
+      ]);
+
+      const result = await controller.getCountryOptions(req);
+
+      expect(securitiesService.getCountryOptions).toHaveBeenCalledWith(
+        "user-1",
+      );
+      expect(result).toEqual(["Canada", "United States"]);
     });
   });
 

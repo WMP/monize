@@ -313,6 +313,29 @@ describe('Combobox', () => {
     });
   });
 
+  it('commits a typed custom value when the click lands on a submit button', async () => {
+    render(
+      <form>
+        <Combobox options={options} onChange={onChange} allowCustomValue />
+        <button type="submit" data-testid="save">Save</button>
+      </form>,
+    );
+
+    const input = screen.getByRole('textbox');
+    fireEvent.focus(input);
+    // Input changes are ignored for ~100ms after the dropdown auto-opens.
+    await new Promise(r => setTimeout(r, 150));
+    fireEvent.change(input, { target: { value: 'Narnia' } });
+
+    // Mousedown on the submit button fires the click-outside handler. The typed
+    // custom value must still be lifted to the parent before the form submits.
+    fireEvent.mouseDown(screen.getByTestId('save'));
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith('', 'Narnia');
+    });
+  });
+
   it('resets to selected value on click outside when not allowing custom values', async () => {
     render(
       <div>

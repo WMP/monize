@@ -178,6 +178,70 @@ export function isOtherAllocationName(name: string): boolean {
 }
 
 /**
+ * Maps an ISO 4217 currency code to the canonical `COUNTRY_OPTIONS` country it
+ * is the primary currency of. Used to float the user's base-currency country to
+ * the top of the manual country-allocation picker. Currencies without a single
+ * country (notably the Euro, shared across the Eurozone) are intentionally
+ * omitted -- those users get a plain alphabetical list.
+ */
+export const CURRENCY_TO_COUNTRY: Record<string, string> = {
+  USD: "United States",
+  CAD: "Canada",
+  GBP: "United Kingdom",
+  CHF: "Switzerland",
+  SEK: "Sweden",
+  NOK: "Norway",
+  DKK: "Denmark",
+  PLN: "Poland",
+  CZK: "Czech Republic",
+  HUF: "Hungary",
+  RUB: "Russia",
+  TRY: "Turkey",
+  JPY: "Japan",
+  CNY: "China",
+  HKD: "Hong Kong",
+  TWD: "Taiwan",
+  KRW: "South Korea",
+  INR: "India",
+  AUD: "Australia",
+  NZD: "New Zealand",
+  SGD: "Singapore",
+  MYR: "Malaysia",
+  IDR: "Indonesia",
+  THB: "Thailand",
+  PHP: "Philippines",
+  VND: "Vietnam",
+  PKR: "Pakistan",
+  ILS: "Israel",
+  SAR: "Saudi Arabia",
+  AED: "United Arab Emirates",
+  QAR: "Qatar",
+  KWD: "Kuwait",
+  ZAR: "South Africa",
+  EGP: "Egypt",
+  NGN: "Nigeria",
+  KES: "Kenya",
+  MAD: "Morocco",
+  BRL: "Brazil",
+  MXN: "Mexico",
+  ARS: "Argentina",
+  CLP: "Chile",
+  COP: "Colombia",
+  PEN: "Peru",
+};
+
+/**
+ * The canonical country a currency code belongs to, or null when the currency
+ * is not tied to a single `COUNTRY_OPTIONS` country (e.g. the Euro).
+ */
+export function countryForCurrency(
+  code: string | null | undefined,
+): string | null {
+  if (!code) return null;
+  return CURRENCY_TO_COUNTRY[code.trim().toUpperCase()] ?? null;
+}
+
+/**
  * Maps a canonical `SECURITY_EXCHANGES` code to the country its listings trade
  * in. Used by the country-weightings rollup to place individual stocks (which
  * have no manual breakdown) into a country by their listing exchange.

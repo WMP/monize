@@ -20,7 +20,13 @@ import { SecurityPriceService } from "./security-price.service";
 import { YahooFinanceService } from "./yahoo-finance.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { SecurityLookupResult } from "./providers/quote-provider.interface";
-import { normalizeCountryName, isOtherAllocationName } from "./security-enums";
+import { UserPreference } from "../users/entities/user-preference.entity";
+import {
+  normalizeCountryName,
+  isOtherAllocationName,
+  countryForCurrency,
+  COUNTRY_OPTIONS,
+} from "./security-enums";
 
 /** A single {name, weight} allocation slice; weight is a decimal 0-1. */
 export interface AllocationWeight {
@@ -127,6 +133,8 @@ export class SecuritiesService {
     private holdingsRepository: Repository<Holding>,
     @InjectRepository(InvestmentTransaction)
     private investmentTransactionsRepository: Repository<InvestmentTransaction>,
+    @InjectRepository(UserPreference)
+    private userPreferencesRepository: Repository<UserPreference>,
     private securityPriceService: SecurityPriceService,
     private yahooFinanceService: YahooFinanceService,
     private actionHistoryService: ActionHistoryService,
@@ -194,6 +202,58 @@ export class SecuritiesService {
         weight: Math.round(weight * 10000) / 10000,
       }))
       .sort((a, b) => b.weight - a.weight);
+  }
+
+  /**
+   * The country names offered by the manual ETF/fund allocation picker for this
+   * user: the canonical `COUNTRY_OPTIONS` list plus any custom countries the
+   * user has already saved on a security (so a country added once is available
+   * for every other security). Sorted alphabetically, with the user's
+   * base-currency country floated to the top when it maps to a known country.
+   */
+  async getCountryOptions(userId: string): Promise<string[]> {
+    const pref = await this.userPreferencesRepository.findOne({
+      where: { userId },
+    });
+    const baseCountry = countryForCurrency(pref?.defaultCurrency);
+
+    // Distinct country names already stored in this user's manual breakdowns.
+    const rows: { name: string | null }[] = await this.securitiesRepository
+      .createQueryBuilder("s")
+      .select(
+        "DISTINCT jsonb_array_elements(s.country_weightings)->>'name'",
+        "name",
+      )
+      .where("s.user_id = :userId", { userId })
+      .andWhere("s.country_weightings IS NOT NULL")
+      .getRawMany();
+
+    const seen = new Set<string>(COUNTRY_OPTIONS.map((c) => c.toLowerCase()));
+    const custom: string[] = [];
+    for (const row of rows) {
+      const name = normalizeCountryName(row.name ?? "");
+      if (!name || isOtherAllocationName(name)) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      custom.push(name);
+    }
+
+    const sorted = [...COUNTRY_OPTIONS, ...custom].sort((a, b) =>
+      a.localeCompare(b),
+    );
+
+    // Float the base-currency country to the top, keeping the rest alphabetical.
+    if (
+      baseCountry &&
+      sorted.some((c) => c.toLowerCase() === baseCountry.toLowerCase())
+    ) {
+      return [
+        baseCountry,
+        ...sorted.filter((c) => c.toLowerCase() !== baseCountry.toLowerCase()),
+      ];
+    }
+    return sorted;
   }
 
   async create(

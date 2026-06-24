@@ -12,6 +12,7 @@ import { Security } from "./entities/security.entity";
 import { SecurityTag } from "./entities/security-tag.entity";
 import { Holding } from "./entities/holding.entity";
 import { InvestmentTransaction } from "./entities/investment-transaction.entity";
+import { UserPreference } from "../users/entities/user-preference.entity";
 import { SecurityPriceService } from "./security-price.service";
 import { YahooFinanceService } from "./yahoo-finance.service";
 import { ActionHistoryService } from "../action-history/action-history.service";
@@ -22,6 +23,7 @@ describe("SecuritiesService", () => {
   let securityTagsRepository: Record<string, jest.Mock>;
   let holdingsRepository: Record<string, jest.Mock>;
   let investmentTransactionsRepository: Record<string, jest.Mock>;
+  let userPreferencesRepository: Record<string, jest.Mock>;
   let mockSecurityPriceService: Record<string, jest.Mock>;
   let mockActionHistoryService: Record<string, jest.Mock>;
   let mockYahooFinanceService: Record<string, jest.Mock>;
@@ -77,6 +79,10 @@ describe("SecuritiesService", () => {
         getCount: jest.fn().mockResolvedValue(0),
         getRawMany: jest.fn().mockResolvedValue([]),
       })),
+    };
+
+    userPreferencesRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
     };
 
     mockSecurityPriceService = {
@@ -151,6 +157,10 @@ describe("SecuritiesService", () => {
         {
           provide: getRepositoryToken(InvestmentTransaction),
           useValue: investmentTransactionsRepository,
+        },
+        {
+          provide: getRepositoryToken(UserPreference),
+          useValue: userPreferencesRepository,
         },
         {
           provide: SecurityPriceService,
@@ -1085,6 +1095,85 @@ describe("SecuritiesService", () => {
       const result = await service.search("user-1", "ZZZZZ");
 
       expect(result).toHaveLength(0);
+    });
+  });
+
+  describe("getCountryOptions", () => {
+    const mockCountryQuery = (rows: { name: string | null }[]) => {
+      const getRawMany = jest.fn().mockResolvedValue(rows);
+      securitiesRepository.createQueryBuilder.mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawMany,
+      });
+      return getRawMany;
+    };
+
+    it("returns the canonical list alphabetically when there are no customs", async () => {
+      userPreferencesRepository.findOne.mockResolvedValue(null);
+      mockCountryQuery([]);
+
+      const result = await service.getCountryOptions("user-1");
+
+      expect(result).toContain("United States");
+      expect(result).toContain("Canada");
+      // Alphabetical: Argentina precedes Australia precedes Austria.
+      const argentina = result.indexOf("Argentina");
+      const australia = result.indexOf("Australia");
+      expect(argentina).toBeGreaterThanOrEqual(0);
+      expect(argentina).toBeLessThan(australia);
+    });
+
+    it("floats the base-currency country to the top", async () => {
+      userPreferencesRepository.findOne.mockResolvedValue({
+        userId: "user-1",
+        defaultCurrency: "CAD",
+      });
+      mockCountryQuery([]);
+
+      const result = await service.getCountryOptions("user-1");
+
+      expect(result[0]).toBe("Canada");
+      // The remainder stays alphabetical and the base country is not duplicated.
+      expect(result.filter((c) => c === "Canada")).toHaveLength(1);
+    });
+
+    it("merges custom countries saved on securities and de-dupes canonicals", async () => {
+      userPreferencesRepository.findOne.mockResolvedValue({
+        userId: "user-1",
+        defaultCurrency: "USD",
+      });
+      mockCountryQuery([
+        { name: "Iceland" }, // custom, not canonical
+        { name: "united states" }, // canonical dup (case-insensitive)
+        { name: "Other" }, // provider bucket, must be dropped
+        { name: "" }, // blank, dropped
+        { name: null }, // null, dropped
+      ]);
+
+      const result = await service.getCountryOptions("user-1");
+
+      expect(result[0]).toBe("United States");
+      expect(result).toContain("Iceland");
+      expect(
+        result.filter((c) => c.toLowerCase() === "united states"),
+      ).toHaveLength(1);
+      expect(result).not.toContain("Other");
+      expect(result).not.toContain("");
+    });
+
+    it("leaves the list alphabetical when the base currency has no single country", async () => {
+      userPreferencesRepository.findOne.mockResolvedValue({
+        userId: "user-1",
+        defaultCurrency: "EUR",
+      });
+      mockCountryQuery([]);
+
+      const result = await service.getCountryOptions("user-1");
+
+      // Euro maps to no single country, so the first entry is alphabetical.
+      expect(result[0]).toBe("Argentina");
     });
   });
 
