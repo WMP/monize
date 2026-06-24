@@ -28,8 +28,8 @@ vi.mock('@/hooks/useDateFormat', () => ({
 }));
 
 let mockIsValid = true;
+const mockResolvedRange = { start: '2025-01-01', end: '2025-06-30' };
 vi.mock('@/hooks/useDateRange', () => {
-  const resolvedRange = { start: '2025-01-01', end: '2025-06-30' };
   return {
     useDateRange: () => ({
       dateRange: '6m',
@@ -38,7 +38,7 @@ vi.mock('@/hooks/useDateRange', () => {
       setStartDate: vi.fn(),
       endDate: '',
       setEndDate: vi.fn(),
-      resolvedRange,
+      resolvedRange: mockResolvedRange,
       get isValid() {
         return mockIsValid;
       },
@@ -115,7 +115,44 @@ describe('MonthlyCategoryBreakdownReport', () => {
     vi.clearAllMocks();
     mockPush.mockClear();
     mockIsValid = true;
+    mockResolvedRange.start = '2025-01-01';
+    mockResolvedRange.end = '2025-06-30';
     window.localStorage.clear();
+  });
+
+  it('snaps a mid-month resolved start down to the first of the month', async () => {
+    // Day-level presets (e.g. "3m" = 90 days) resolve to a mid-month start.
+    // The report is month-columnar, so it must request the whole leading month
+    // -- otherwise that month's column would silently drop early transactions
+    // and disagree with a wider preset that includes the full month.
+    mockResolvedRange.start = '2025-03-25';
+    mockGetMonthlyCategoryBreakdown.mockResolvedValue(sampleResponse);
+    render(<MonthlyCategoryBreakdownReport />);
+
+    await waitFor(() => {
+      expect(mockGetMonthlyCategoryBreakdown).toHaveBeenCalled();
+    });
+    expect(mockGetMonthlyCategoryBreakdown).toHaveBeenCalledWith({
+      startDate: '2025-03-01',
+      endDate: '2025-06-30',
+    });
+  });
+
+  it('drills into the month-snapped start, matching the rendered columns', async () => {
+    mockResolvedRange.start = '2025-03-25';
+    mockGetMonthlyCategoryBreakdown.mockResolvedValue(sampleResponse);
+    render(<MonthlyCategoryBreakdownReport />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Groceries')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Groceries'));
+    });
+
+    const url = mockPush.mock.calls[0][0] as string;
+    expect(url).toContain('startDate=2025-03-01');
   });
 
   it('shows loading state initially', async () => {

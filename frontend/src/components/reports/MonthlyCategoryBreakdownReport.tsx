@@ -361,15 +361,24 @@ export function MonthlyCategoryBreakdownReport() {
 
   const { start: rangeStart, end: rangeEnd } = resolvedRange;
 
+  // This report is month-columnar: every column is a whole calendar month. Day-
+  // level presets (e.g. "3m" = last 90 days) resolve to a mid-month start, which
+  // would render a partial leading month -- the column is labelled "2026-03" but
+  // silently omits transactions dated before the cut-off, so the same month
+  // shows different figures depending on the preset. Snap the start down to the
+  // first of its month so every visible month is fully covered and consistent
+  // across presets. An empty start ("all") stays empty.
+  const reportStart = rangeStart ? `${rangeStart.slice(0, 7)}-01` : '';
+
   const { data, isLoading, error, reload } = useReportData(
     () =>
       isValid
         ? builtInReportsApi.getMonthlyCategoryBreakdown({
-            startDate: rangeStart || undefined,
+            startDate: reportStart || undefined,
             endDate: rangeEnd,
           })
         : Promise.resolve(null),
-    [isValid, rangeStart, rangeEnd],
+    [isValid, reportStart, rangeEnd],
   );
 
   const currency = data?.currency;
@@ -604,7 +613,7 @@ export function MonthlyCategoryBreakdownReport() {
   // Drill into the full report date range for the given categories (used when
   // clicking a category/subcategory name rather than a single month cell).
   const drillDownRange = (categoryIds: string[]) => {
-    navigateToTransactions(categoryIds, rangeStart || undefined, rangeEnd || undefined);
+    navigateToTransactions(categoryIds, reportStart || undefined, rangeEnd || undefined);
   };
 
   // Drill-down ids for a category row: its real category id, or the
@@ -620,7 +629,7 @@ export function MonthlyCategoryBreakdownReport() {
     pushTransactions({
       categoryIds: ['transfer'],
       accountIds,
-      start: rangeStart || undefined,
+      start: reportStart || undefined,
       end: rangeEnd || undefined,
     });
   };
