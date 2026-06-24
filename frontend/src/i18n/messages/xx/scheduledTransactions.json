@@ -90,6 +90,13 @@
     "totalAmountLabel": "[XX-Total Amount-XX]",
     "descriptionLabel": "[XX-Description (optional)-XX]",
     "categoryLabel": "[XX-Category-XX]",
+    "transferLabel": "[XX-Transfer-XX]",
+    "balanceWarning": {
+      "belowZero": "[XX-below zero-XX]",
+      "overCreditLimit": "[XX-over the credit limit-XX]",
+      "single": "[XX-Posting on this date will bring <b>{account}</b> to <b>{amount}</b>, {condition}.-XX]",
+      "both": "[XX-Posting on this date will bring <b>{fromAccount}</b> to <b>{fromAmount}</b> ({fromCondition}) and <b>{toAccount}</b> to <b>{toAmount}</b> ({toCondition}).-XX]"
+    },
     "splitLabel": "[XX-Split this transaction-XX]",
     "referenceNumberLabel": "[XX-Reference Number (optional)-XX]",
     "noPriceHistory": "[XX-No price history yet for this security. Enter the price manually.-XX]",

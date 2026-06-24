@@ -90,6 +90,13 @@
     "totalAmountLabel": "总金额",
     "descriptionLabel": "描述（可选）",
     "categoryLabel": "分类",
+    "transferLabel": "转账",
+    "balanceWarning": {
+      "belowZero": "低于零",
+      "overCreditLimit": "超过信用额度",
+      "single": "在此日期记账会使 <b>{account}</b> 变为 <b>{amount}</b>（{condition}）。",
+      "both": "在此日期记账会使 <b>{fromAccount}</b> 变为 <b>{fromAmount}</b>（{fromCondition}）、<b>{toAccount}</b> 变为 <b>{toAmount}</b>（{toCondition}）。"
+    },
     "splitLabel": "拆分此交易",
     "referenceNumberLabel": "参考编号（可选）",
     "noPriceHistory": "此证券暂无价格历史。请手动输入价格。",

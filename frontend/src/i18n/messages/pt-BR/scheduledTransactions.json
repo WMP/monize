@@ -90,6 +90,13 @@
     "totalAmountLabel": "Valor Total",
     "descriptionLabel": "Descrição (opcional)",
     "categoryLabel": "Categoria",
+    "transferLabel": "Transferência",
+    "balanceWarning": {
+      "belowZero": "abaixo de zero",
+      "overCreditLimit": "acima do limite de crédito",
+      "single": "Lançar nesta data deixará <b>{account}</b> em <b>{amount}</b>, {condition}.",
+      "both": "Lançar nesta data deixará <b>{fromAccount}</b> em <b>{fromAmount}</b> ({fromCondition}) e <b>{toAccount}</b> em <b>{toAmount}</b> ({toCondition})."
+    },
     "splitLabel": "Dividir esta transação",
     "referenceNumberLabel": "Número de Referência (opcional)",
     "noPriceHistory": "Ainda não existe histórico de cotações para este título. Insira o preço manualmente.",

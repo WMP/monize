@@ -90,6 +90,13 @@
     "totalAmountLabel": "Общая сумма",
     "descriptionLabel": "Описание (необязательно)",
     "categoryLabel": "Категория",
+    "transferLabel": "Перевод",
+    "balanceWarning": {
+      "belowZero": "ниже нуля",
+      "overCreditLimit": "выше кредитного лимита",
+      "single": "Проводка на эту дату приведёт <b>{account}</b> к <b>{amount}</b>, {condition}.",
+      "both": "Проводка на эту дату приведёт <b>{fromAccount}</b> к <b>{fromAmount}</b> ({fromCondition}) и <b>{toAccount}</b> к <b>{toAmount}</b> ({toCondition})."
+    },
     "splitLabel": "Разделить эту проводку",
     "referenceNumberLabel": "Референс-номер (необязательно)",
     "noPriceHistory": "Пока нет истории цен для этой ценной бумаги. Введите цену вручную.",

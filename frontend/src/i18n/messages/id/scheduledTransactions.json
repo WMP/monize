@@ -90,6 +90,13 @@
     "totalAmountLabel": "Total Jumlah",
     "descriptionLabel": "Deskripsi (opsional)",
     "categoryLabel": "Kategori",
+    "transferLabel": "Transfer",
+    "balanceWarning": {
+      "belowZero": "di bawah nol",
+      "overCreditLimit": "melebihi batas kredit",
+      "single": "Membukukan pada tanggal ini akan membuat <b>{account}</b> menjadi <b>{amount}</b>, {condition}.",
+      "both": "Membukukan pada tanggal ini akan membuat <b>{fromAccount}</b> menjadi <b>{fromAmount}</b> ({fromCondition}) dan <b>{toAccount}</b> menjadi <b>{toAmount}</b> ({toCondition})."
+    },
     "splitLabel": "Bagi transaksi ini",
     "referenceNumberLabel": "Nomor Referensi (opsional)",
     "noPriceHistory": "Belum ada riwayat harga untuk sekuritas ini. Masukkan harga secara manual.",
