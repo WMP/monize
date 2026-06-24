@@ -1304,7 +1304,7 @@ export function ScheduledTransactionForm({
             />
           </div>
 
-          {/* Row 4: Transfer Amount */}
+          {/* Row 4: Transfer Amount, Reference Number (mirrors the Transaction tab) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <CurrencyInput
               label={t('form.transferAmountLabel')}
@@ -1314,9 +1314,18 @@ export function ScheduledTransactionForm({
               allowNegative={false}
               error={errors.amount?.message}
             />
+            <Input
+              label={t('form.referenceNumberLabel')}
+              type="text"
+              placeholder={t('form.referenceNumberPlaceholder')}
+              error={errors.referenceNumber?.message}
+              {...register('referenceNumber')}
+            />
           </div>
 
-          {/* Row 5: Payee, Reference Number */}
+          {/* Row 5: Payee, Category. An optional category on a transfer surfaces
+              it in the monthly category breakdown without counting as
+              income/expense (#743). Laid out beside Payee like the Transaction tab. */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Combobox
               label={t('form.payeeLabel')}
@@ -1330,18 +1339,6 @@ export function ScheduledTransactionForm({
               allowCustomValue={true}
               error={errors.payeeName?.message}
             />
-            <Input
-              label={t('form.referenceNumberLabel')}
-              type="text"
-              placeholder={t('form.referenceNumberPlaceholder')}
-              error={errors.referenceNumber?.message}
-              {...register('referenceNumber')}
-            />
-          </div>
-
-          {/* Optional category: a categorized transfer surfaces in the monthly
-              category breakdown without counting as income/expense (#743). */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Combobox
                 label={t('form.transferCategoryLabel')}
