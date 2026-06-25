@@ -29,7 +29,7 @@ const DESTRUCTIVE_TOOLS = new Set([
   "manage_investment_transactions",
 ]);
 
-const EXPECTED_TOOL_COUNT = 23;
+const EXPECTED_TOOL_COUNT = 21;
 
 interface ToolProvider {
   register: (server: unknown, resolve?: unknown) => void;

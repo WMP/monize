@@ -868,7 +868,7 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
   {
     name: "generate_report",
     description:
-      "Run one of the built-in financial reports over a date range. Prefer this over list_transactions for spending/income breakdown questions because it returns a ready aggregated result. Report types: 'spending_by_category' (expense totals grouped by category), 'spending_by_payee' (expense totals grouped by payee), 'income_vs_expenses' (period income, expenses, and net), 'monthly_trend' (spending per month over the range), and 'income_by_source' (income grouped by source). Use 'monthly_trend' for trend questions instead of fetching transactions month by month.",
+      "Run one of the built-in financial reports. Prefer this over list_transactions for spending/income breakdown, anomaly, and month-comparison questions because it returns a ready aggregated result. Report types: 'spending_by_category' (expense totals grouped by category), 'spending_by_payee' (expense totals grouped by payee), 'income_vs_expenses' (period income, expenses, and net), 'monthly_trend' (spending per month over the range -- use this for trend questions instead of fetching transactions month by month), 'income_by_source' (income grouped by source), 'spending_anomalies' (transactions that are statistically large for their category vs recent history -- use for 'any unusual spending?'; may return an empty list for sparse data, in which case say there was nothing unusual rather than implying a problem), and 'month_comparison' (one month vs the previous month in a single call: income vs expenses, category spending changes, net worth, and investment performance -- use for 'how am I doing this month?'). Parameters apply per type: the five aggregation types use startDate/endDate (default last 30 days); 'spending_anomalies' uses months; 'month_comparison' uses month. For an arbitrary pair of date ranges use compare_periods instead.",
     inputSchema: {
       type: "object",
       properties: {
@@ -880,6 +880,8 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
             "income_vs_expenses",
             "monthly_trend",
             "income_by_source",
+            "spending_anomalies",
+            "month_comparison",
           ],
           description:
             "Which report to run. MUST be exactly one of the listed values.",
@@ -887,46 +889,27 @@ export const FINANCIAL_TOOLS: AiToolDefinition[] = [
         startDate: {
           type: "string",
           description:
-            "Start date in YYYY-MM-DD format. Omit to default to 30 days ago.",
+            "Start date in YYYY-MM-DD format for the five aggregation types. Omit to default to 30 days ago.",
         },
         endDate: {
           type: "string",
           description:
-            "End date in YYYY-MM-DD format. Omit to default to today.",
+            "End date in YYYY-MM-DD format for the five aggregation types. Omit to default to today.",
         },
-      },
-      required: ["type"],
-    },
-  },
-  {
-    name: "list_anomalies",
-    description:
-      "Detect unusual spending: transactions that are statistically large for their category compared with the user's recent history. Use this for questions like 'any unusual spending?' or 'did I overspend anywhere this month?' instead of manually scanning transactions. Analyses a rolling window of recent months and needs enough history per category to be meaningful, so it can return an empty list for sparse data -- in that case tell the user there was nothing unusual (or not enough data) rather than implying a problem.",
-    inputSchema: {
-      type: "object",
-      properties: {
         months: {
           type: "integer",
           minimum: 1,
           maximum: 24,
-          description: "Number of months of history to analyse. Defaults to 3.",
+          description:
+            "spending_anomalies only: months of history to analyse. Defaults to 3.",
         },
-      },
-    },
-  },
-  {
-    name: "monthly_comparison",
-    description:
-      "Compare one month against the previous month in a single call: income vs expenses, category spending changes, net worth, and investment performance. Use this for 'how am I doing this month?' or 'how did last month compare?'. For an arbitrary pair of date ranges use compare_periods instead.",
-    inputSchema: {
-      type: "object",
-      properties: {
         month: {
           type: "string",
           description:
-            "Month to compare in YYYY-MM format (e.g. 2026-01). Omit to default to the previous complete month.",
+            "month_comparison only: month to compare in YYYY-MM format (e.g. 2026-01). Omit to default to the previous complete month.",
         },
       },
+      required: ["type"],
     },
   },
 ];

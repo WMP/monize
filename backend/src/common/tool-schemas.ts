@@ -156,8 +156,8 @@ export function resolveComparePeriods(input: {
 
 /**
  * Return the previous complete calendar month in YYYY-MM format.
- * Used as the default for monthly_comparison so reports run against
- * a month that has already closed.
+ * Used as the default for the generate_report month_comparison type so
+ * reports run against a month that has already closed.
  */
 export function getDefaultPreviousMonth(): string {
   const now = new Date();

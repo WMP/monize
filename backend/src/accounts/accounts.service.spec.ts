@@ -3019,6 +3019,43 @@ describe("AccountsService", () => {
     });
   });
 
+  describe("resolveAccountIdsByName", () => {
+    it("returns undefined when no names are supplied", async () => {
+      const findAllSpy = jest.spyOn(service, "findAll");
+      expect(await service.resolveAccountIdsByName("user-1")).toBeUndefined();
+      expect(await service.resolveAccountIdsByName("user-1", [])).toBeUndefined();
+      expect(findAllSpy).not.toHaveBeenCalled();
+    });
+
+    it("maps names to ids case-insensitively over open accounts", async () => {
+      jest.spyOn(service, "findAll").mockResolvedValue([
+        { id: "a1", name: "Checking", currencyCode: "USD" },
+        { id: "a2", name: "RRSP", currencyCode: "CAD" },
+      ] as never);
+
+      const result = await service.resolveAccountIdsByName("user-1", [
+        "checking",
+        "RRSP",
+      ]);
+      expect(service.findAll).toHaveBeenCalledWith("user-1", false);
+      expect(result).toEqual(["a1", "a2"]);
+    });
+
+    it("silently drops names that do not match any account", async () => {
+      jest
+        .spyOn(service, "findAll")
+        .mockResolvedValue([
+          { id: "a1", name: "Checking", currencyCode: "USD" },
+        ] as never);
+
+      const result = await service.resolveAccountIdsByName("user-1", [
+        "Checking",
+        "Nope",
+      ]);
+      expect(result).toEqual(["a1"]);
+    });
+  });
+
   describe("resolveBrokerageByName", () => {
     const rrspBrokerage = {
       id: "b1",

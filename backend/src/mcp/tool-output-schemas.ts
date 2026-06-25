@@ -111,6 +111,34 @@ export const comparePeriodsOutput = {
 
 const bulkSkippedRow = looseObject({ index: num, reason: str });
 
+/**
+ * Shared output envelope for the four `manage_*` tools. They all expose the same
+ * result branches -- dry-run preview, a single created/updated/deleted entity,
+ * bulk/individual results, and the relay branch -- and differ only in the fields
+ * of the single-entity branch. Every field is optional and the object is loose,
+ * so this superset envelope validates each tool's payloads; `entityFields`
+ * supplies the per-tool single-entity columns.
+ */
+const manageToolOutput = (entityFields: z.ZodRawShape) => ({
+  // Dry-run / preview branch.
+  dryRun: bool.optional(),
+  operation: str.optional(),
+  preview: z.object({}).loose().optional(),
+  previews: z.array(looseObject({})).optional(),
+  message: str.optional(),
+  // Single created/updated/deleted entity (tool-specific) + common delete flag.
+  ...entityFields,
+  deleted: bool.optional(),
+  // Bulk / individual branches.
+  created: z.array(looseObject({})).optional(),
+  results: z.array(looseObject({})).optional(),
+  ids: z.array(str).optional(),
+  count: num.optional(),
+  skipped: z.array(bulkSkippedRow).optional(),
+  // Relay branch: a confirmation card was shown in the web chat instead.
+  status: str.optional(),
+});
+
 export const createTransactionsOutput = {
   // Dry-run / preview branch: resolved rows + the rows that could not resolve.
   dryRun: bool.optional(),
@@ -166,35 +194,18 @@ export const listTransactionsOutput = {
 };
 
 /**
- * Tolerant output for the unified `manage_transactions` tool. The tool has many
- * result branches (dry-run preview, single created/updated/deleted, per-item
- * results in individual mode, bulk count/skipped, and the relay branch), so ALL
- * fields are optional and the object is loose.
+ * Tolerant output for the unified `manage_transactions` tool. See
+ * `manageToolOutput` for the shared branch envelope; only the single-entity
+ * fields are tool-specific.
  */
-export const manageTransactionsOutput = {
-  // Dry-run preview branch (per-item previews + skipped rows).
-  dryRun: bool.optional(),
-  operation: str.optional(),
-  preview: z.object({}).loose().optional(),
-  previews: z.array(looseObject({})).optional(),
-  message: str.optional(),
-  // Single created/updated/deleted branch.
+export const manageTransactionsOutput = manageToolOutput({
   id: str.optional(),
   date: str.optional(),
   amount: num.optional(),
   payeeId: strNull.optional(),
   payeeName: strNull.optional(),
   categoryId: strNull.optional(),
-  deleted: bool.optional(),
-  // Bulk / individual branches.
-  created: z.array(looseObject({})).optional(),
-  results: z.array(looseObject({})).optional(),
-  ids: z.array(str).optional(),
-  count: num.optional(),
-  skipped: z.array(bulkSkippedRow).optional(),
-  // Relay branch: a confirmation card was shown in the web chat instead.
-  status: str.optional(),
-};
+});
 
 // ---------------------------------------------------------------------------
 // categories.tool.ts
@@ -236,41 +247,33 @@ export const getPayeesOutput = {
 };
 
 /**
- * Tolerant output for the unified `manage_payees` tool. Like
- * manage_transactions it has many result branches (dry-run preview, single
- * created/updated/deleted, bulk count/skipped, and the relay branch), so ALL
- * fields are optional and the object is loose.
+ * Tolerant output for the unified `manage_payees` tool. See `manageToolOutput`
+ * for the shared branch envelope; only the single-entity fields are
+ * tool-specific.
  */
-export const managePayeesOutput = {
-  // Dry-run preview branch (per-item previews + skipped rows).
-  dryRun: bool.optional(),
-  operation: str.optional(),
-  previews: z.array(looseObject({})).optional(),
-  message: str.optional(),
-  // Single created/updated/deleted branch.
+export const managePayeesOutput = manageToolOutput({
   id: str.optional(),
   name: str.optional(),
-  deleted: bool.optional(),
-  // Bulk branch.
-  ids: z.array(str).optional(),
-  count: num.optional(),
-  skipped: z.array(bulkSkippedRow).optional(),
-  // Relay branch: a confirmation card was shown in the web chat instead.
-  status: str.optional(),
-};
+});
 
 // ---------------------------------------------------------------------------
 // reports.tool.ts
 // ---------------------------------------------------------------------------
 
+/**
+ * Unified `generate_report` output. The tool runs seven report types whose
+ * payloads differ, so every field is optional and the object stays tolerant:
+ * the five date-range aggregations return data/totals; 'month_comparison'
+ * returns the current/previous-month bundle; 'spending_anomalies' returns
+ * statistics/anomalies/counts.
+ */
 export const generateReportOutput = {
+  // Date-range aggregation types.
   data: z.array(z.unknown()).optional(),
   totals: z.unknown().optional(),
   totalSpending: num.optional(),
   totalIncome: num.optional(),
-};
-
-export const monthlyComparisonOutput = {
+  // month_comparison type.
   currentMonth: str.optional(),
   previousMonth: str.optional(),
   currentMonthLabel: str.optional(),
@@ -282,28 +285,28 @@ export const monthlyComparisonOutput = {
   topCategories: z.record(z.string(), z.unknown()).optional(),
   netWorth: z.record(z.string(), z.unknown()).optional(),
   investments: z.record(z.string(), z.unknown()).optional(),
-};
-
-export const getAnomaliesOutput = {
-  statistics: looseObject({ mean: num, stdDev: num }),
-  anomalies: z.array(
-    looseObject({
-      type: str,
-      severity: str,
-      title: str,
-      description: str,
-      amount: num.optional(),
-      transactionId: str.optional(),
-      transactionDate: str.optional(),
-      payeeName: strNull.optional(),
-      categoryId: strNull.optional(),
-      categoryName: strNull.optional(),
-      currentPeriodAmount: num.optional(),
-      previousPeriodAmount: num.optional(),
-      percentChange: num.optional(),
-    }),
-  ),
-  counts: looseObject({ high: num, medium: num, low: num }),
+  // spending_anomalies type.
+  statistics: looseObject({ mean: num, stdDev: num }).optional(),
+  anomalies: z
+    .array(
+      looseObject({
+        type: str,
+        severity: str,
+        title: str,
+        description: str,
+        amount: num.optional(),
+        transactionId: str.optional(),
+        transactionDate: str.optional(),
+        payeeName: strNull.optional(),
+        categoryId: strNull.optional(),
+        categoryName: strNull.optional(),
+        currentPeriodAmount: num.optional(),
+        previousPeriodAmount: num.optional(),
+        percentChange: num.optional(),
+      }),
+    )
+    .optional(),
+  counts: looseObject({ high: num, medium: num, low: num }).optional(),
 };
 
 // ---------------------------------------------------------------------------
@@ -450,18 +453,11 @@ export const lookupSecuritiesOutput = {
 };
 
 /**
- * Tolerant output for the unified `manage_securities` tool. Like
- * manage_transactions it has many result branches (dry-run preview, single
- * created/updated/deleted, bulk count/skipped, and the relay branch), so ALL
- * fields are optional and the object is loose.
+ * Tolerant output for the unified `manage_securities` tool. See
+ * `manageToolOutput` for the shared branch envelope; only the single-entity
+ * fields are tool-specific.
  */
-export const manageSecuritiesOutput = {
-  // Dry-run preview branch (per-item previews + skipped rows).
-  dryRun: bool.optional(),
-  operation: str.optional(),
-  previews: z.array(looseObject({})).optional(),
-  message: str.optional(),
-  // Single created/updated/deleted branch.
+export const manageSecuritiesOutput = manageToolOutput({
   id: str.optional(),
   symbol: str.optional(),
   name: str.optional(),
@@ -469,26 +465,14 @@ export const manageSecuritiesOutput = {
   exchange: strNull.optional(),
   currencyCode: str.optional(),
   isFavourite: bool.optional(),
-  deleted: bool.optional(),
-  // Bulk branch.
-  ids: z.array(str).optional(),
-  count: num.optional(),
-  skipped: z.array(bulkSkippedRow).optional(),
-  // Relay branch: a confirmation card was shown in the web chat instead.
-  status: str.optional(),
-};
+});
 
 /**
- * Tolerant output for the unified `manage_investment_transactions` tool. Like
- * manage_transactions it has many result branches (single created/updated/
- * deleted preview, bulk one-card, individual per-item cards, and the relay
- * branch), so ALL fields are optional and the object is loose.
+ * Tolerant output for the unified `manage_investment_transactions` tool. See
+ * `manageToolOutput` for the shared branch envelope; only the single-entity
+ * fields are tool-specific.
  */
-export const manageInvestmentTransactionsOutput = {
-  operation: str.optional(),
-  preview: z.object({}).loose().optional(),
-  previews: z.array(looseObject({})).optional(),
-  message: str.optional(),
+export const manageInvestmentTransactionsOutput = manageToolOutput({
   id: str.optional(),
   action: str.optional(),
   date: str.optional(),
@@ -496,15 +480,7 @@ export const manageInvestmentTransactionsOutput = {
   quantity: numNull.optional(),
   price: numNull.optional(),
   totalAmount: num.optional(),
-  deleted: bool.optional(),
-  created: z.array(looseObject({})).optional(),
-  results: z.array(looseObject({})).optional(),
-  ids: z.array(str).optional(),
-  count: num.optional(),
-  skipped: z.array(bulkSkippedRow).optional(),
-  // Relay branch: a confirmation card was shown in the web chat instead.
-  status: str.optional(),
-};
+});
 
 // ---------------------------------------------------------------------------
 // scheduled.tool.ts

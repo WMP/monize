@@ -101,14 +101,14 @@ export class McpInvestmentsTools {
         title: "Portfolio summary",
         annotations: READ_ONLY,
         description:
-          "Get investment portfolio overview with holdings, gains/losses, and allocation. Returns the same compact, LLM-friendly shape as the AI Assistant's tool.",
+          "Get investment portfolio overview with holdings, gains/losses, and allocation. Returns the same compact, LLM-friendly shape as the AI Assistant's tool. Accepts account NAMES (resolved internally), so you do NOT need to call list_accounts first.",
         inputSchema: {
-          accountIds: z
-            .array(z.string().uuid())
+          accountNames: z
+            .array(z.string().max(100))
             .max(50)
             .optional()
             .describe(
-              "Optional investment account IDs to filter to. Omit to cover all investment accounts.",
+              "Optional investment account names to filter to (resolved internally). Omit to cover all investment accounts.",
             ),
         },
         outputSchema: getPortfolioSummaryOutput,
@@ -120,9 +120,13 @@ export class McpInvestmentsTools {
         if (check.error) return check.result;
 
         try {
+          const accountIds = await this.accountsService.resolveAccountIdsByName(
+            ctx.userId,
+            args.accountNames,
+          );
           const summary = await this.portfolioService.getLlmSummary(
             ctx.userId,
-            args.accountIds,
+            accountIds,
           );
           return toolResult(summary);
         } catch (err: unknown) {
@@ -137,7 +141,7 @@ export class McpInvestmentsTools {
         title: "List investment transactions",
         annotations: READ_ONLY,
         description:
-          "Query brokerage investment-account transactions (buys, sells, dividends, interest, capital gains, splits, transfers, reinvestments, share adjustments). Filter by account, security symbol, action, and date; optionally group by account, date, security, or action. Returns the same compact, LLM-friendly shape as the AI Assistant's tool.",
+          "Query brokerage investment-account transactions (buys, sells, dividends, interest, capital gains, splits, transfers, reinvestments, share adjustments). Filter by account, security symbol, action, and date; optionally group by account, date, security, or action. Returns the same compact, LLM-friendly shape as the AI Assistant's tool. Accepts account NAMES (resolved internally), so you do NOT need to call list_accounts first.",
         inputSchema: {
           startDate: z
             .string()
@@ -149,11 +153,13 @@ export class McpInvestmentsTools {
             .max(10)
             .optional()
             .describe("Optional end date (YYYY-MM-DD)"),
-          accountIds: z
-            .array(z.string().uuid())
+          accountNames: z
+            .array(z.string().max(100))
             .max(50)
             .optional()
-            .describe("Optional investment account IDs."),
+            .describe(
+              "Optional investment account names (resolved internally).",
+            ),
           symbols: z
             .array(z.string().min(1).max(20))
             .max(50)
@@ -182,13 +188,17 @@ export class McpInvestmentsTools {
         if (check.error) return check.result;
 
         try {
+          const accountIds = await this.accountsService.resolveAccountIdsByName(
+            ctx.userId,
+            args.accountNames,
+          );
           const result =
             await this.investmentTransactionsService.getLlmInvestmentTransactions(
               ctx.userId,
               {
                 startDate: args.startDate,
                 endDate: args.endDate,
-                accountIds: args.accountIds,
+                accountIds,
                 symbols: args.symbols,
                 actions: args.actions,
                 groupBy:
@@ -209,7 +219,7 @@ export class McpInvestmentsTools {
         title: "Capital gains",
         annotations: READ_ONLY,
         description:
-          "Per-period capital gains (realized + unrealized) for the user's investment accounts. Replays transaction history and snapshots positions against historical close prices, so the output includes mark-to-market movement on currently-held positions in addition to realized SELL gains. Requires startDate and endDate. Returns the same compact, LLM-friendly shape as the AI Assistant's tool.",
+          "Per-period capital gains (realized + unrealized) for the user's investment accounts. Replays transaction history and snapshots positions against historical close prices, so the output includes mark-to-market movement on currently-held positions in addition to realized SELL gains. Requires startDate and endDate. Returns the same compact, LLM-friendly shape as the AI Assistant's tool. Accepts account NAMES (resolved internally), so you do NOT need to call list_accounts first.",
         inputSchema: {
           startDate: z
             .string()
@@ -219,11 +229,13 @@ export class McpInvestmentsTools {
             .string()
             .regex(/^\d{4}-\d{2}-\d{2}$/)
             .describe("End date of the window (YYYY-MM-DD)"),
-          accountIds: z
-            .array(z.string().uuid())
+          accountNames: z
+            .array(z.string().max(100))
             .max(50)
             .optional()
-            .describe("Optional investment account IDs."),
+            .describe(
+              "Optional investment account names (resolved internally).",
+            ),
           symbols: z
             .array(z.string().min(1).max(20))
             .max(50)
@@ -245,13 +257,17 @@ export class McpInvestmentsTools {
         if (check.error) return check.result;
 
         try {
+          const accountIds = await this.accountsService.resolveAccountIdsByName(
+            ctx.userId,
+            args.accountNames,
+          );
           const result =
             await this.investmentTransactionsService.getLlmCapitalGains(
               ctx.userId,
               {
                 startDate: args.startDate,
                 endDate: args.endDate,
-                accountIds: args.accountIds,
+                accountIds,
                 symbols: args.symbols,
                 groupBy:
                   (args.groupBy as LlmCapitalGainsGroupBy | undefined) ??

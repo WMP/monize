@@ -346,6 +346,27 @@ export class AccountsService {
   }
 
   /**
+   * Resolve a list of account names to their ids. Case-insensitive exact match
+   * over the user's OPEN accounts; names that do not match any account are
+   * silently dropped. Returns undefined when no names are supplied so callers
+   * can treat that as "all accounts". Shared by the AI Assistant tool executor
+   * and the MCP investment tools so both accept friendly account names.
+   */
+  async resolveAccountIdsByName(
+    userId: string,
+    names?: string[],
+  ): Promise<string[] | undefined> {
+    if (!names || names.length === 0) return undefined;
+
+    const accounts = await this.findAll(userId, false);
+    const nameMap = new Map(accounts.map((a) => [a.name.toLowerCase(), a.id]));
+
+    return names
+      .map((name) => nameMap.get(name.toLowerCase()))
+      .filter((id): id is string => id !== undefined);
+  }
+
+  /**
    * Resolve an account name for an investment transaction, preferring the
    * brokerage half of a linked investment pair. Investment transactions must be
    * booked against the brokerage account, which is auto-named "<name> -

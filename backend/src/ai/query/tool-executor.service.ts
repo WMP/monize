@@ -210,12 +210,6 @@ export class ToolExecutorService {
         case "generate_report":
           result = await this.generateReport(userId, validatedInput);
           break;
-        case "list_anomalies":
-          result = await this.listAnomalies(userId, validatedInput);
-          break;
-        case "monthly_comparison":
-          result = await this.monthlyComparison(userId, validatedInput);
-          break;
         default:
           this.logger.warn(`execute unknown tool=${toolName} user=${userId}`);
           return {
@@ -247,14 +241,7 @@ export class ToolExecutorService {
     userId: string,
     accountNames?: string[],
   ): Promise<string[] | undefined> {
-    if (!accountNames || accountNames.length === 0) return undefined;
-
-    const accounts = await this.accountsService.findAll(userId, false);
-    const nameMap = new Map(accounts.map((a) => [a.name.toLowerCase(), a.id]));
-
-    return accountNames
-      .map((name) => nameMap.get(name.toLowerCase()))
-      .filter((id): id is string => id !== undefined);
+    return this.accountsService.resolveAccountIdsByName(userId, accountNames);
   }
 
   /**
@@ -2066,7 +2053,9 @@ export class ToolExecutorService {
 
   /**
    * Run a built-in financial report. Mirrors the MCP generate_report tool and
-   * returns the same per-type data shape. Dates default to the last 30 days.
+   * returns the same per-type data shape. The five aggregation types take a date
+   * range (default last 30 days); 'spending_anomalies' takes a months window
+   * (default 3); 'month_comparison' takes a month (default the previous month).
    */
   private async generateReport(
     userId: string,
@@ -2077,7 +2066,47 @@ export class ToolExecutorService {
       | "spending_by_payee"
       | "income_vs_expenses"
       | "monthly_trend"
-      | "income_by_source";
+      | "income_by_source"
+      | "spending_anomalies"
+      | "month_comparison";
+
+    if (type === "spending_anomalies") {
+      const months = (input.months as number | undefined) ?? 3;
+      const data = await this.builtInReportsService.getSpendingAnomalies(
+        userId,
+        months,
+      );
+      const count = data.anomalies.length;
+      return {
+        data,
+        summary: `${count} spending anomal${count === 1 ? "y" : "ies"} detected over the last ${months} month${months === 1 ? "" : "s"}.`,
+        sources: [
+          {
+            type: "anomalies",
+            description: "Spending anomaly detection",
+          },
+        ],
+      };
+    }
+
+    if (type === "month_comparison") {
+      const month = (input.month as string) ?? getDefaultPreviousMonth();
+      const data = await this.builtInReportsService.getMonthlyComparison(
+        userId,
+        month,
+      );
+      return {
+        data,
+        summary: `Comparison of ${data.currentMonthLabel} vs ${data.previousMonthLabel}.`,
+        sources: [
+          {
+            type: "monthly_comparison",
+            description: `Monthly comparison for ${data.currentMonthLabel}`,
+          },
+        ],
+      };
+    }
+
     const defaults = getDefaultDateRange();
     const startDate = (input.startDate as string) ?? defaults.startDate;
     const endDate = (input.endDate as string) ?? defaults.endDate;
@@ -2129,59 +2158,6 @@ export class ToolExecutorService {
           type: "report",
           description: `Built-in report: ${type}`,
           dateRange: `${startDate} to ${endDate}`,
-        },
-      ],
-    };
-  }
-
-  /**
-   * Detect statistically unusual spending. Mirrors the MCP list_anomalies tool,
-   * including its argument handling, so both surfaces return the same shape.
-   */
-  private async listAnomalies(
-    userId: string,
-    input: Record<string, unknown>,
-  ): Promise<ToolResult> {
-    const months = (input.months as number | undefined) ?? 3;
-    const data = await this.builtInReportsService.getSpendingAnomalies(
-      userId,
-      months,
-    );
-
-    const count = data.anomalies.length;
-    return {
-      data,
-      summary: `${count} spending anomal${count === 1 ? "y" : "ies"} detected over the last ${months} month${months === 1 ? "" : "s"}.`,
-      sources: [
-        {
-          type: "anomalies",
-          description: "Spending anomaly detection",
-        },
-      ],
-    };
-  }
-
-  /**
-   * Compare a month against the previous month. Mirrors the MCP
-   * monthly_comparison tool and returns the same shape.
-   */
-  private async monthlyComparison(
-    userId: string,
-    input: Record<string, unknown>,
-  ): Promise<ToolResult> {
-    const month = (input.month as string) ?? getDefaultPreviousMonth();
-    const data = await this.builtInReportsService.getMonthlyComparison(
-      userId,
-      month,
-    );
-
-    return {
-      data,
-      summary: `Comparison of ${data.currentMonthLabel} vs ${data.previousMonthLabel}.`,
-      sources: [
-        {
-          type: "monthly_comparison",
-          description: `Monthly comparison for ${data.currentMonthLabel}`,
         },
       ],
     };

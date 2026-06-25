@@ -389,7 +389,7 @@ const cases: Array<{ name: string; schema: RawShape; raw: unknown }> = [
     },
   },
   {
-    name: "generateReportOutput",
+    name: "generateReportOutput (aggregation type)",
     schema: schemas.generateReportOutput,
     raw: {
       data: [{ categoryId: "c1", categoryName: "Food", color: null, total: 5 }],
@@ -397,8 +397,8 @@ const cases: Array<{ name: string; schema: RawShape; raw: unknown }> = [
     },
   },
   {
-    name: "monthlyComparisonOutput",
-    schema: schemas.monthlyComparisonOutput,
+    name: "generateReportOutput (month_comparison type)",
+    schema: schemas.generateReportOutput,
     raw: {
       currentMonth: "2026-01",
       previousMonth: "2025-12",
@@ -414,8 +414,8 @@ const cases: Array<{ name: string; schema: RawShape; raw: unknown }> = [
     },
   },
   {
-    name: "getAnomaliesOutput",
-    schema: schemas.getAnomaliesOutput,
+    name: "generateReportOutput (spending_anomalies type)",
+    schema: schemas.generateReportOutput,
     raw: {
       statistics: { mean: 5, stdDev: 1 },
       anomalies: [

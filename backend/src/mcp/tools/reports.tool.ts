@@ -13,11 +13,7 @@ import {
   getDefaultDateRange,
   getDefaultPreviousMonth,
 } from "../../common/tool-schemas";
-import {
-  generateReportOutput,
-  monthlyComparisonOutput,
-  getAnomaliesOutput,
-} from "../tool-output-schemas";
+import { generateReportOutput } from "../tool-output-schemas";
 import { READ_ONLY } from "../mcp-annotations";
 
 @Injectable()
@@ -31,7 +27,7 @@ export class McpReportsTools {
         title: "Generate report",
         annotations: READ_ONLY,
         description:
-          "Run a built-in financial report over a date range. Prefer this over list_transactions for spending/income breakdown questions because it returns a ready aggregated result. Types: 'spending_by_category' (expense totals grouped by category), 'spending_by_payee' (expense totals grouped by payee), 'income_vs_expenses' (period income, expenses, and net), 'monthly_trend' (spending per month over the range -- use this for trend questions instead of fetching transactions month by month), and 'income_by_source' (income grouped by source). Dates default to the last 30 days.",
+          "Run a built-in financial report. Prefer this over list_transactions for spending/income breakdown, anomaly, and month-comparison questions because it returns a ready aggregated result. Types: 'spending_by_category' (expense totals grouped by category), 'spending_by_payee' (expense totals grouped by payee), 'income_vs_expenses' (period income, expenses, and net), 'monthly_trend' (spending per month over the range -- use this for trend questions instead of fetching transactions month by month), 'income_by_source' (income grouped by source), 'spending_anomalies' (transactions that are statistically large for their category vs recent history -- use for 'any unusual spending?'; may return an empty list for sparse data, in which case report that nothing was unusual rather than implying a problem), and 'month_comparison' (one month vs the previous month: income vs expenses, category spending changes, net worth, and investment performance -- use for 'how am I doing this month?'). Parameters apply per type: the five aggregation types use startDate/endDate (default last 30 days); 'spending_anomalies' uses months; 'month_comparison' uses month. For an arbitrary pair of date ranges use compare_periods instead.",
         inputSchema: {
           type: z
             .enum([
@@ -40,6 +36,8 @@ export class McpReportsTools {
               "income_vs_expenses",
               "monthly_trend",
               "income_by_source",
+              "spending_anomalies",
+              "month_comparison",
             ])
             .describe(
               "Which report to run. MUST be exactly one of the listed values.",
@@ -48,12 +46,31 @@ export class McpReportsTools {
             .string()
             .max(10)
             .optional()
-            .describe("Start date (YYYY-MM-DD). Defaults to 30 days ago."),
+            .describe(
+              "Start date (YYYY-MM-DD) for the five aggregation types. Defaults to 30 days ago.",
+            ),
           endDate: z
             .string()
             .max(10)
             .optional()
-            .describe("End date (YYYY-MM-DD). Defaults to today."),
+            .describe(
+              "End date (YYYY-MM-DD) for the five aggregation types. Defaults to today.",
+            ),
+          months: z
+            .number()
+            .min(1)
+            .max(24)
+            .optional()
+            .describe(
+              "spending_anomalies only: months of recent history to analyze (default 3).",
+            ),
+          month: z
+            .string()
+            .max(7)
+            .optional()
+            .describe(
+              "month_comparison only: month in YYYY-MM format (e.g. 2026-01). Defaults to the previous complete month.",
+            ),
         },
         outputSchema: generateReportOutput,
       },
@@ -64,6 +81,21 @@ export class McpReportsTools {
         if (check.error) return check.result;
 
         try {
+          if (args.type === "spending_anomalies") {
+            const data = await this.reportsService.getSpendingAnomalies(
+              ctx.userId,
+              args.months ?? 3,
+            );
+            return toolResult(data);
+          }
+          if (args.type === "month_comparison") {
+            const data = await this.reportsService.getMonthlyComparison(
+              ctx.userId,
+              args.month ?? getDefaultPreviousMonth(),
+            );
+            return toolResult(data);
+          }
+
           const defaults = getDefaultDateRange();
           const startDate = args.startDate ?? defaults.startDate;
           const endDate = args.endDate ?? defaults.endDate;
@@ -106,80 +138,6 @@ export class McpReportsTools {
               break;
           }
           return toolResult(data);
-        } catch (err: unknown) {
-          return safeToolError(err);
-        }
-      },
-    );
-
-    server.registerTool(
-      "monthly_comparison",
-      {
-        title: "Monthly comparison",
-        annotations: READ_ONLY,
-        description:
-          "Generate a monthly comparison report comparing one month to the previous month. Includes income vs expenses, category spending breakdown, net worth, and investment performance.",
-        inputSchema: {
-          month: z
-            .string()
-            .max(7)
-            .optional()
-            .describe(
-              "Month to compare in YYYY-MM format (e.g., 2026-01). Defaults to the previous complete month.",
-            ),
-        },
-        outputSchema: monthlyComparisonOutput,
-      },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "reports");
-        if (check.error) return check.result;
-
-        try {
-          const data = await this.reportsService.getMonthlyComparison(
-            ctx.userId,
-            args.month ?? getDefaultPreviousMonth(),
-          );
-          return toolResult(data);
-        } catch (err: unknown) {
-          return safeToolError(err);
-        }
-      },
-    );
-
-    server.registerTool(
-      "list_anomalies",
-      {
-        title: "Detect spending anomalies",
-        annotations: READ_ONLY,
-        description:
-          "Detect unusual spending: transactions that are statistically large for their category compared with the user's recent history. Use this for 'any unusual spending?' rather than manually scanning transactions. Needs enough history per category to be meaningful, so it can return an empty list for sparse data -- in that case report that nothing was unusual (or there was not enough data) rather than implying a problem.",
-        inputSchema: {
-          months: z
-            .number()
-            .min(1)
-            .max(24)
-            .optional()
-            .default(3)
-            .describe(
-              "How much recent history to analyze, in months (default 3).",
-            ),
-        },
-        outputSchema: getAnomaliesOutput,
-      },
-      async (args, extra) => {
-        const ctx = resolve(extra.sessionId);
-        if (!ctx) return toolError("No user context");
-        const check = requireScope(ctx.scopes, "reports");
-        if (check.error) return check.result;
-
-        try {
-          const anomalies = await this.reportsService.getSpendingAnomalies(
-            ctx.userId,
-            args.months || 3,
-          );
-          return toolResult(anomalies);
         } catch (err: unknown) {
           return safeToolError(err);
         }
