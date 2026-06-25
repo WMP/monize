@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "Rekeningnaam is vereist",
-    "currencyCodeLength": "Valutacode moet 3 tekens zijn"
+    "currencyCodeLength": "Valutacode moet 3 tekens zijn",
+    "institutionRequired": "Selecteer of maak een instelling aan",
+    "interestRateRequired": "Rentepercentage is vereist",
+    "paymentAmountRequired": "Betalingsbedrag is vereist",
+    "paymentFrequencyRequired": "Betalingsfrequentie is vereist",
+    "paymentStartDateRequired": "Datum eerste betaling is vereist",
+    "paymentAccountRequired": "Betaalrekening is vereist",
+    "amortizationRequired": "Afschrijvingstermijn is vereist"
   }
 }

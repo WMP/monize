@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "勘定科目名は必須です",
-    "currencyCodeLength": "通貨コードは3文字でなければなりません"
+    "currencyCodeLength": "通貨コードは3文字でなければなりません",
+    "institutionRequired": "金融機関を選択または作成してください",
+    "interestRateRequired": "利率は必須です",
+    "paymentAmountRequired": "支払い金額は必須です",
+    "paymentFrequencyRequired": "支払い頻度は必須です",
+    "paymentStartDateRequired": "初回支払日は必須です",
+    "paymentAccountRequired": "支払い元勘定科目は必須です",
+    "amortizationRequired": "償却期間は必須です"
   }
 }

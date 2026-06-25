@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "Nama akun wajib diisi",
-    "currencyCodeLength": "Kode mata uang harus 3 karakter"
+    "currencyCodeLength": "Kode mata uang harus 3 karakter",
+    "institutionRequired": "Silakan pilih atau buat lembaga",
+    "interestRateRequired": "Tingkat bunga wajib diisi",
+    "paymentAmountRequired": "Jumlah pembayaran wajib diisi",
+    "paymentFrequencyRequired": "Frekuensi pembayaran wajib dipilih",
+    "paymentStartDateRequired": "Tanggal pembayaran pertama wajib diisi",
+    "paymentAccountRequired": "Akun pembayaran wajib dipilih",
+    "amortizationRequired": "Periode amortisasi wajib diisi"
   }
 }

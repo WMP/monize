@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "账户名称为必填项",
-    "currencyCodeLength": "货币代码必须为 3 个字符"
+    "currencyCodeLength": "货币代码必须为 3 个字符",
+    "institutionRequired": "请选择或创建机构",
+    "interestRateRequired": "利率为必填项",
+    "paymentAmountRequired": "还款金额为必填项",
+    "paymentFrequencyRequired": "还款频率为必填项",
+    "paymentStartDateRequired": "首次还款日期为必填项",
+    "paymentAccountRequired": "还款来源账户为必填项",
+    "amortizationRequired": "摊销期为必填项"
   }
 }

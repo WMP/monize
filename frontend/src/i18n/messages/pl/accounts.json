@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "Nazwa konta jest wymagana",
-    "currencyCodeLength": "Kod waluty musi mieć 3 znaki"
+    "currencyCodeLength": "Kod waluty musi mieć 3 znaki",
+    "institutionRequired": "Wybierz lub utwórz instytucję",
+    "interestRateRequired": "Oprocentowanie jest wymagane",
+    "paymentAmountRequired": "Kwota płatności jest wymagana",
+    "paymentFrequencyRequired": "Częstotliwość płatności jest wymagana",
+    "paymentStartDateRequired": "Data pierwszej płatności jest wymagana",
+    "paymentAccountRequired": "Konto płatności jest wymagane",
+    "amortizationRequired": "Okres amortyzacji jest wymagany"
   }
 }

@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "Назва рахунку є обов'язковою",
-    "currencyCodeLength": "Код валюти має містити 3 символи"
+    "currencyCodeLength": "Код валюти має містити 3 символи",
+    "institutionRequired": "Виберіть або створіть установу",
+    "interestRateRequired": "Відсоткова ставка є обов'язковою",
+    "paymentAmountRequired": "Сума платежу є обов'язковою",
+    "paymentFrequencyRequired": "Частота платежів є обов'язковою",
+    "paymentStartDateRequired": "Дата першого платежу є обов'язковою",
+    "paymentAccountRequired": "Рахунок списання є обов'язковим",
+    "amortizationRequired": "Амортизаційний період є обов'язковим"
   }
 }

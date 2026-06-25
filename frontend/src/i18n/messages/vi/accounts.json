@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "Tên tài khoản là bắt buộc",
-    "currencyCodeLength": "Mã tiền tệ phải có đúng 3 ký tự"
+    "currencyCodeLength": "Mã tiền tệ phải có đúng 3 ký tự",
+    "institutionRequired": "Vui lòng chọn hoặc tạo một tổ chức",
+    "interestRateRequired": "Lãi suất là bắt buộc",
+    "paymentAmountRequired": "Số tiền thanh toán là bắt buộc",
+    "paymentFrequencyRequired": "Tần suất thanh toán là bắt buộc",
+    "paymentStartDateRequired": "Ngày thanh toán đầu tiên là bắt buộc",
+    "paymentAccountRequired": "Tài khoản thanh toán là bắt buộc",
+    "amortizationRequired": "Thời gian khấu hao là bắt buộc"
   }
 }

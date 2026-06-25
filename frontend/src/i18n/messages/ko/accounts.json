@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "계정명은 필수입니다",
-    "currencyCodeLength": "통화 코드는 3자여야 합니다"
+    "currencyCodeLength": "통화 코드는 3자여야 합니다",
+    "institutionRequired": "기관을 선택하거나 생성하세요",
+    "interestRateRequired": "이자율은 필수입니다",
+    "paymentAmountRequired": "납부 금액은 필수입니다",
+    "paymentFrequencyRequired": "납부 주기는 필수입니다",
+    "paymentStartDateRequired": "첫 납부일은 필수입니다",
+    "paymentAccountRequired": "납부 출금 계정은 필수입니다",
+    "amortizationRequired": "상환 기간은 필수입니다"
   }
 }

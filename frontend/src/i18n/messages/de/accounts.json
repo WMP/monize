@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "Kontoname ist erforderlich",
-    "currencyCodeLength": "Währungscode muss 3 Zeichen lang sein"
+    "currencyCodeLength": "Währungscode muss 3 Zeichen lang sein",
+    "institutionRequired": "Bitte wählen oder erstellen Sie ein Institut",
+    "interestRateRequired": "Zinssatz ist erforderlich",
+    "paymentAmountRequired": "Zahlungsbetrag ist erforderlich",
+    "paymentFrequencyRequired": "Zahlungsintervall ist erforderlich",
+    "paymentStartDateRequired": "Datum der ersten Zahlung ist erforderlich",
+    "paymentAccountRequired": "Zahlungskonto ist erforderlich",
+    "amortizationRequired": "Tilgungszeitraum ist erforderlich"
   }
 }

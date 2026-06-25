@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "खाते का नाम आवश्यक है",
-    "currencyCodeLength": "मुद्रा कोड 3 अक्षरों का होना चाहिए"
+    "currencyCodeLength": "मुद्रा कोड 3 अक्षरों का होना चाहिए",
+    "institutionRequired": "कृपया कोई संस्था चुनें या बनाएं",
+    "interestRateRequired": "ब्याज दर आवश्यक है",
+    "paymentAmountRequired": "भुगतान राशि आवश्यक है",
+    "paymentFrequencyRequired": "भुगतान आवृत्ति आवश्यक है",
+    "paymentStartDateRequired": "पहली भुगतान तिथि आवश्यक है",
+    "paymentAccountRequired": "भुगतान खाता आवश्यक है",
+    "amortizationRequired": "परिशोधन अवधि आवश्यक है"
   }
 }

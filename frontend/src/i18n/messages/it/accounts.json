@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "Il nome del conto è obbligatorio",
-    "currencyCodeLength": "Il codice valuta deve essere di 3 caratteri"
+    "currencyCodeLength": "Il codice valuta deve essere di 3 caratteri",
+    "institutionRequired": "Seleziona o crea un istituto",
+    "interestRateRequired": "Il tasso d'interesse è obbligatorio",
+    "paymentAmountRequired": "L'importo del pagamento è obbligatorio",
+    "paymentFrequencyRequired": "La frequenza di pagamento è obbligatoria",
+    "paymentStartDateRequired": "La data del primo pagamento è obbligatoria",
+    "paymentAccountRequired": "Il conto di pagamento è obbligatorio",
+    "amortizationRequired": "Il periodo di ammortamento è obbligatorio"
   }
 }

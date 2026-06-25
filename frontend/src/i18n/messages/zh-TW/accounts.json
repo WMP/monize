@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "科目名稱為必填",
-    "currencyCodeLength": "貨幣代碼必須為 3 個字元"
+    "currencyCodeLength": "貨幣代碼必須為 3 個字元",
+    "institutionRequired": "請選擇或建立機構",
+    "interestRateRequired": "利率為必填",
+    "paymentAmountRequired": "還款金額為必填",
+    "paymentFrequencyRequired": "還款頻率為必填",
+    "paymentStartDateRequired": "首次還款日期為必填",
+    "paymentAccountRequired": "付款科目為必填",
+    "amortizationRequired": "攤還期為必填"
   }
 }

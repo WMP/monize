@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "Hesap adı zorunludur",
-    "currencyCodeLength": "Para birimi kodu 3 karakter olmalıdır"
+    "currencyCodeLength": "Para birimi kodu 3 karakter olmalıdır",
+    "institutionRequired": "Lütfen bir kurum seçin veya oluşturun",
+    "interestRateRequired": "Faiz oranı zorunludur",
+    "paymentAmountRequired": "Ödeme tutarı zorunludur",
+    "paymentFrequencyRequired": "Ödeme sıklığı zorunludur",
+    "paymentStartDateRequired": "İlk ödeme tarihi zorunludur",
+    "paymentAccountRequired": "Ödeme hesabı zorunludur",
+    "amortizationRequired": "Amortisman süresi zorunludur"
   }
 }

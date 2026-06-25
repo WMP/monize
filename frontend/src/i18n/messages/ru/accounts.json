@@ -299,6 +299,13 @@
   },
   "validation": {
     "nameRequired": "Название счёта обязательно",
-    "currencyCodeLength": "Код валюты должен состоять из 3 символов"
+    "currencyCodeLength": "Код валюты должен состоять из 3 символов",
+    "institutionRequired": "Выберите или создайте организацию",
+    "interestRateRequired": "Процентная ставка обязательна",
+    "paymentAmountRequired": "Сумма платежа обязательна",
+    "paymentFrequencyRequired": "Периодичность платежей обязательна",
+    "paymentStartDateRequired": "Дата первого платежа обязательна",
+    "paymentAccountRequired": "Счёт списания обязателен",
+    "amortizationRequired": "Период амортизации обязателен"
   }
 }
