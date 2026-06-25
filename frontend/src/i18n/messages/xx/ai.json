@@ -10,7 +10,20 @@
     "inputPlaceholderDisabled": "[XX-AI provider not configured-XX]",
     "keyboardHint": "[XX-Press Enter to send, Shift+Enter for new line-XX]",
     "cancelTitle": "[XX-Cancel-XX]",
-    "sendTitle": "[XX-Send-XX]"
+    "sendTitle": "[XX-Send-XX]",
+    "attachButtonTitle": "[XX-Attach files or images-XX]",
+    "attachButtonAriaLabel": "[XX-Add attachment-XX]",
+    "removeAttachmentAriaLabel": "[XX-Remove attachment-XX]",
+    "attachmentImageAlt": "[XX-Attached image preview-XX]",
+    "dropHint": "[XX-Drop files to attach-XX]",
+    "attachmentOnlyPrompt": "[XX-Please review the attached file(s).-XX]",
+    "errors": {
+      "tooManyAttachments": "[XX-You can attach up to {max} files.-XX]",
+      "fileTooLarge": "[XX-{filename} is too large (max {maxMb} MB).-XX]",
+      "totalTooLarge": "[XX-Attachments exceed the total size limit ({maxMb} MB).-XX]",
+      "unsupportedType": "[XX-{filename} isn't a supported file type.-XX]",
+      "readFailed": "[XX-Couldn't read {filename}. Try again.-XX]"
+    }
   },
   "notConfigured": {
     "heading": "[XX-AI Not Configured-XX]",

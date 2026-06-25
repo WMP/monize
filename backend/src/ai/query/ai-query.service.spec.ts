@@ -86,6 +86,165 @@ describe("AiQueryService", () => {
     return events;
   }
 
+  describe("attachments", () => {
+    const PNG_MAGIC = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]);
+    const makePng = (bytes: number): string => {
+      const buf = Buffer.alloc(bytes);
+      PNG_MAGIC.copy(buf, 0);
+      return buf.toString("base64");
+    };
+    const smallPng = makePng(16);
+    const smallPdf = Buffer.from("%PDF-1.4\n%mock").toString("base64");
+    const csv = Buffer.from("date,amount\n2026-01-01,9.99").toString("base64");
+
+    async function streamWith(
+      query: string,
+      attachments: Array<{
+        kind: "image" | "pdf" | "text";
+        mediaType: string;
+        filename: string;
+        data: string;
+      }>,
+      history?: Array<{ role: "user" | "assistant"; content: string }>,
+    ): Promise<StreamEvent[]> {
+      const events: StreamEvent[] = [];
+      for await (const event of service.executeQueryStream(
+        userId,
+        query,
+        history,
+
+        attachments as any,
+      )) {
+        events.push(event);
+      }
+      return events;
+    }
+
+    it("builds an ordered multimodal user message and keeps history text-only", async () => {
+      const events = await streamWith(
+        "extract this",
+        [
+          {
+            kind: "image",
+            mediaType: "image/png",
+            filename: "r.png",
+            data: smallPng,
+          },
+          {
+            kind: "pdf",
+            mediaType: "application/pdf",
+            filename: "s.pdf",
+            data: smallPdf,
+          },
+          { kind: "text", mediaType: "text/csv", filename: "t.csv", data: csv },
+        ],
+        [{ role: "user", content: "earlier turn" }],
+      );
+
+      expect(events.find((e) => e.type === "error")).toBeUndefined();
+
+      const sent = (mockProvider.completeWithTools as jest.Mock).mock
+        .calls[0][0].messages;
+      // [history (string), current user (content array), safety reminder].
+      expect(sent[0]).toEqual({ role: "user", content: "earlier turn" });
+
+      const current = sent[1];
+      expect(Array.isArray(current.content)).toBe(true);
+      expect(current.content.map((b: { type: string }) => b.type)).toEqual([
+        "document",
+        "image",
+        "text",
+        "text",
+      ]);
+      // Query text comes after the binary blocks.
+      expect(current.content[2]).toEqual({
+        type: "text",
+        text: "extract this",
+      });
+      // CSV is decoded and inlined, labelled with the filename.
+      expect(current.content[3].text).toContain("t.csv");
+      expect(current.content[3].text).toContain("date,amount");
+    });
+
+    it("sends a plain string when there are no attachments", async () => {
+      await streamWith("just text", []);
+      const sent = (mockProvider.completeWithTools as jest.Mock).mock
+        .calls[0][0].messages;
+      expect(sent[0]).toEqual({ role: "user", content: "just text" });
+    });
+
+    it("rejects an attachment whose kind mismatches its media type", async () => {
+      const events = await streamWith("q", [
+        {
+          kind: "image",
+          mediaType: "application/pdf",
+          filename: "x.pdf",
+          data: smallPdf,
+        },
+      ]);
+      expect(events.find((e) => e.type === "error")).toBeDefined();
+      expect(mockProvider.completeWithTools).not.toHaveBeenCalled();
+    });
+
+    it("rejects an attachment whose bytes don't match the declared type", async () => {
+      const notPng = Buffer.from("definitely not a png").toString("base64");
+      const events = await streamWith("q", [
+        {
+          kind: "image",
+          mediaType: "image/png",
+          filename: "x.png",
+          data: notPng,
+        },
+      ]);
+      expect(events.find((e) => e.type === "error")).toBeDefined();
+      expect(mockProvider.completeWithTools).not.toHaveBeenCalled();
+    });
+
+    it("rejects an attachment over the per-file size limit", async () => {
+      const tooBig = makePng(6 * 1024 * 1024);
+      const events = await streamWith("q", [
+        {
+          kind: "image",
+          mediaType: "image/png",
+          filename: "big.png",
+          data: tooBig,
+        },
+      ]);
+      expect(events.find((e) => e.type === "error")).toBeDefined();
+      expect(mockProvider.completeWithTools).not.toHaveBeenCalled();
+    });
+
+    it("rejects when the combined size exceeds the total limit", async () => {
+      const each = makePng(4.5 * 1024 * 1024);
+      const events = await streamWith(
+        "q",
+        Array.from({ length: 5 }, (_, i) => ({
+          kind: "image" as const,
+          mediaType: "image/png",
+          filename: `f${i}.png`,
+          data: each,
+        })),
+      );
+      expect(events.find((e) => e.type === "error")).toBeDefined();
+      expect(mockProvider.completeWithTools).not.toHaveBeenCalled();
+    });
+
+    it("executeQuery throws on an invalid attachment", async () => {
+      await expect(
+        service.executeQuery(userId, "q", undefined, [
+          {
+            kind: "image",
+            mediaType: "image/png",
+            filename: "x.png",
+            data: "bm90",
+          },
+        ] as any),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
   describe("executeQueryStream()", () => {
     it("yields thinking, content, and done events for simple queries", async () => {
       const events = await collectEvents(userId, "What's my balance?");

@@ -89,6 +89,14 @@ async function bootstrap() {
       }
       return parser(req, res, next);
     };
+  // The AI assistant accepts attachments (images/PDFs) base64-encoded in the
+  // JSON body, so its query endpoints need a larger limit than the 10mb
+  // default. Mounted BEFORE the global parser so Express's first-match-wins
+  // parsing handles these paths at 30mb; everything else stays at 10mb.
+  app.use(
+    ["/api/v1/ai/query", "/api/v1/ai/query/stream"],
+    express.json({ limit: "30mb" }),
+  );
   app.use(skipForProvider(express.json({ limit: "10mb" })));
   app.use(
     skipForProvider(express.urlencoded({ limit: "10mb", extended: true })),

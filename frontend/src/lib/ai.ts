@@ -14,6 +14,7 @@ import type {
   InsightType,
   InsightSeverity,
   ConfirmActionResponse,
+  AttachmentPayload,
 } from '@/types/ai';
 
 export const aiApi = {
@@ -65,10 +66,15 @@ export const aiApi = {
   query: async (
     query: string,
     conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>,
+    attachments?: AttachmentPayload[],
   ): Promise<QueryResult> => {
     const response = await apiClient.post<QueryResult>(
       '/ai/query',
-      { query, conversationHistory },
+      {
+        query,
+        conversationHistory,
+        ...(attachments && attachments.length > 0 ? { attachments } : {}),
+      },
       { timeout: 120000 },
     );
     return response.data;
@@ -79,16 +85,26 @@ export const aiApi = {
     callbacks: StreamCallbacks,
     conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>,
     opts?: { relay?: boolean },
+    attachments?: AttachmentPayload[],
   ): AbortController => {
     const controller = new AbortController();
 
     // Relay mode routes the prompt to the user's own MCP agent (their
     // subscription) instead of a server-side LLM provider. Same SSE event
     // shape, different endpoint.
-    const path = opts?.relay
+    const relay = opts?.relay ?? false;
+    const path = relay
       ? '/api/v1/ai/relay/query/stream'
       : '/api/v1/ai/query/stream';
-    const body = { query, conversationHistory };
+    // Attachments flow only to the direct provider path -- the relay protocol
+    // is text-only, so they're omitted there.
+    const body = {
+      query,
+      conversationHistory,
+      ...(!relay && attachments && attachments.length > 0
+        ? { attachments }
+        : {}),
+    };
 
     // Open the stream. Re-read the CSRF cookie each call so a retry after
     // token refresh picks up the rotated value. js-cookie URL-decodes the

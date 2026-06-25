@@ -8,8 +8,13 @@ import {
   AiToolResponse,
   AiToolStreamChunk,
   AiMessage,
+  AiContentBlock,
   ModelVerificationResult,
 } from "./ai-provider.interface";
+import {
+  isContentBlocks,
+  unsupportedAttachmentNote,
+} from "./content-blocks.util";
 import { randomUUID } from "crypto";
 import { longRunningFetch } from "./long-running-fetch";
 import { validateUrlBasicSafety } from "../validators/safe-url.validator";
@@ -580,6 +585,37 @@ export class OllamaProvider implements AiProvider {
     }
   }
 
+  /**
+   * Build an Ollama user message from a turn's content. Plain strings pass
+   * through unchanged. Multimodal blocks are split: image base64 strings go
+   * into Ollama's `images` array (vision models only), text/csv blocks become
+   * `content`, and a PDF `document` block degrades to a text note since Ollama
+   * has no document-input path.
+   */
+  private userMessageForOllama(
+    content: string | AiContentBlock[],
+  ): Record<string, unknown> {
+    if (!isContentBlocks(content)) {
+      return { role: "user", content };
+    }
+    const texts: string[] = [];
+    const images: string[] = [];
+    for (const block of content) {
+      if (block.type === "image") {
+        images.push(block.data);
+      } else if (block.type === "document") {
+        texts.push(unsupportedAttachmentNote("PDF", block.filename, this.name));
+      } else {
+        texts.push(block.text);
+      }
+    }
+    return {
+      role: "user",
+      content: texts.join("\n\n"),
+      ...(images.length > 0 && { images }),
+    };
+  }
+
   private toOllamaMessages(
     messages: AiMessage[],
     systemPrompt: string,
@@ -590,7 +626,7 @@ export class OllamaProvider implements AiProvider {
 
     for (const msg of messages) {
       if (msg.role === "user") {
-        result.push({ role: "user", content: msg.content });
+        result.push(this.userMessageForOllama(msg.content));
       } else if (msg.role === "assistant") {
         // Ollama Cloud (and stricter backends) validate that tool-result
         // messages reference a tool_call_id produced earlier in the same

@@ -6,8 +6,9 @@ import { AssistantMarkdown } from './AssistantMarkdown';
 import { ResultChart } from './ResultChart';
 import { TransactionConfirmationCard } from './TransactionConfirmationCard';
 import { BulkConfirmationCard } from './BulkConfirmationCard';
+import { MessageAttachmentChips } from './AttachmentChips';
 import { useAiChatStore } from '@/store/aiChatStore';
-import type { PendingAction } from '@/types/ai';
+import type { PendingAction, ChatAttachmentMeta } from '@/types/ai';
 
 interface ToolInfo {
   name: string;
@@ -34,6 +35,7 @@ interface ChatMessageProps {
   id?: string;
   role: 'user' | 'assistant';
   content: string;
+  attachments?: ChatAttachmentMeta[];
   toolsUsed?: ToolInfo[];
   sources?: SourceInfo[];
   charts?: ChartInfo[];
@@ -171,6 +173,7 @@ export const ChatMessage = memo(function ChatMessage({
   id,
   role,
   content,
+  attachments,
   toolsUsed,
   sources,
   charts,
@@ -186,6 +189,9 @@ export const ChatMessage = memo(function ChatMessage({
       <div className="flex justify-end mb-4">
         <div className="max-w-[80%] px-4 py-3 rounded-2xl rounded-br-sm bg-blue-600 text-white">
           <p className="text-sm whitespace-pre-wrap">{content}</p>
+          {attachments && attachments.length > 0 && (
+            <MessageAttachmentChips attachments={attachments} />
+          )}
         </div>
       </div>
     );

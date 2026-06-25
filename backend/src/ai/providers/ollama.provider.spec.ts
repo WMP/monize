@@ -35,6 +35,59 @@ describe("OllamaProvider", () => {
     expect(provider.supportsToolUse).toBe(true);
   });
 
+  it("puts image data in images[] and degrades PDFs in content", async () => {
+    const enc = new TextEncoder();
+    let i = 0;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      body: {
+        getReader: () => ({
+          read: () =>
+            i++ === 0
+              ? Promise.resolve({
+                  value: enc.encode(
+                    '{"message":{"role":"assistant","content":"ok"},"done":true,"prompt_eval_count":1,"eval_count":1}\n',
+                  ),
+                  done: false,
+                })
+              : Promise.resolve({ value: undefined, done: true }),
+          releaseLock: jest.fn(),
+        }),
+      },
+    });
+
+    await provider.completeWithTools(
+      {
+        systemPrompt: "sys",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "image", mediaType: "image/png", data: "iVBOR" },
+              {
+                type: "document",
+                mediaType: "application/pdf",
+                data: "JVBER",
+                filename: "c.pdf",
+              },
+              { type: "text", text: "read it" },
+            ],
+          },
+        ],
+      },
+      [],
+    );
+
+    const body = JSON.parse(
+      (global.fetch as jest.Mock).mock.calls[0][1].body as string,
+    );
+    // messages[0] is the system prompt; messages[1] is the user turn.
+    const userMsg = body.messages[1];
+    expect(userMsg.images).toEqual(["iVBOR"]);
+    expect(userMsg.content).toContain("read it");
+    expect(userMsg.content).toContain("cannot read PDF");
+  });
+
   describe("constructor baseUrl validation", () => {
     // Defence-in-depth: the service layer validates the URL before it
     // reaches this constructor, but the provider still rejects anything

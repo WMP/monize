@@ -161,6 +161,41 @@ export interface QueryResult {
   usage: { inputTokens: number; outputTokens: number; toolCalls: number };
 }
 
+// Attachment types: a user can attach images/PDFs/CSVs to a query so the AI
+// can OCR or read them. `image`/`pdf` are sent as base64 binary; `text` (csv/
+// plain) is decoded server-side and inlined as text.
+export type AttachmentKind = 'image' | 'pdf' | 'text';
+
+/** Wire shape sent in the query JSON body (base64 payload, no `data:` prefix). */
+export interface AttachmentPayload {
+  kind: AttachmentKind;
+  mediaType: string;
+  filename: string;
+  data: string;
+}
+
+/**
+ * UI-side attachment in the composer: the wire payload plus transient fields
+ * (client id, decoded size, image object-URL preview) that are never sent to
+ * the server or persisted to localStorage.
+ */
+export interface ChatAttachment extends AttachmentPayload {
+  id: string;
+  size: number;
+  previewUrl?: string;
+}
+
+/**
+ * Lightweight attachment metadata kept on a sent chat message and persisted to
+ * localStorage. Deliberately omits the base64 `data` so the conversation in
+ * storage stays small and binaries don't leak across reloads.
+ */
+export interface ChatAttachmentMeta {
+  kind: AttachmentKind;
+  mediaType: string;
+  filename: string;
+}
+
 export type ChartType = 'bar' | 'pie' | 'line' | 'area';
 
 export interface ChartPayload {

@@ -2,12 +2,20 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import toast from 'react-hot-toast';
 import { aiApi } from '@/lib/ai';
 import { SuggestedQueries } from './SuggestedQueries';
 import { ChatMessage } from './ChatMessage';
+import { AttachmentChips } from './AttachmentChips';
 import { RelayStatusBar } from './RelayStatusBar';
 import { htmlTablesToMarkdown } from '@/lib/html-table-to-markdown';
-import type { AiStatus } from '@/types/ai';
+import type { AiStatus, AttachmentPayload, ChatAttachment } from '@/types/ai';
+import {
+  fileToAttachment,
+  validateFile,
+  validateAddition,
+  ATTACHMENT_ACCEPT,
+} from '@/lib/ai-attachments';
 import {
   useAiChatStore,
   AI_CHAT_STORAGE_KEY,
@@ -28,13 +36,20 @@ export function ChatInterface() {
   const clear = useAiChatStore((s) => s.clear);
 
   const [input, setInput] = useState('');
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Mirror of `attachments` for the unmount cleanup, which must revoke the
+  // latest object URLs without re-subscribing the effect on every change.
+  const attachmentsRef = useRef<ChatAttachment[]>([]);
 
   // Relay mode is on when the user's highest-priority active provider is the
-  // MCP relay; the chat then routes prompts to their own agent.
+  // MCP relay; the chat then routes prompts to their own agent. The relay
+  // protocol is text-only, so attachments are unavailable in that mode.
   const relayActive = !!aiStatus?.relayActive;
 
   useEffect(() => {
@@ -56,14 +71,123 @@ export function ChatInterface() {
     }
   }, [messages, thinking, scrollToBottom]);
 
+  // Keep the ref in sync so the unmount cleanup below can revoke the latest
+  // object URLs without re-running on every attachment change.
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
+  // Revoke any outstanding image preview object URLs when the component
+  // unmounts so we don't leak them on navigation away from the chat.
+  useEffect(() => {
+    return () => {
+      attachmentsRef.current.forEach((a) => {
+        if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
+      });
+    };
+  }, []);
+
+  // Read, validate, and append dropped/selected/pasted files. Validation
+  // failures surface as toasts; valid files are added one by one.
+  const addFiles = useCallback(
+    async (files: File[]) => {
+      if (files.length === 0) return;
+      const additionError = validateAddition(attachments, files);
+      if (additionError) {
+        toast.error(t(additionError.key, additionError.values));
+        return;
+      }
+      for (const file of files) {
+        const fileError = validateFile(file);
+        if (fileError) {
+          toast.error(t(fileError.key, fileError.values));
+          continue;
+        }
+        try {
+          const attachment = await fileToAttachment(file);
+          setAttachments((prev) => [...prev, attachment]);
+        } catch {
+          toast.error(t('chat.errors.readFailed', { filename: file.name }));
+        }
+      }
+    },
+    [attachments, t],
+  );
+
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments((prev) => {
+      const target = prev.find((a) => a.id === id);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((a) => a.id !== id);
+    });
+  }, []);
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files ? Array.from(e.target.files) : [];
+      void addFiles(files);
+      // Reset so selecting the same file again still fires onChange.
+      e.target.value = '';
+    },
+    [addFiles],
+  );
+
   const handleSubmit = useCallback(
     (queryText?: string) => {
-      const query = queryText || input;
-      if (!query.trim() || isLoading) return;
+      const typed = (queryText ?? input).trim();
+      const hasAttachments = attachments.length > 0;
+      if ((!typed && !hasAttachments) || isLoading) return;
+
+      // The backend requires a non-empty query, so an attachment-only message
+      // gets a default instruction (also shown in the user bubble).
+      const query = typed || t('chat.attachmentOnlyPrompt');
+      const payloads: AttachmentPayload[] = attachments.map((a) => ({
+        kind: a.kind,
+        mediaType: a.mediaType,
+        filename: a.filename,
+        data: a.data,
+      }));
+
       setInput('');
-      submit(query, { relay: relayActive });
+      attachments.forEach((a) => {
+        if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
+      });
+      setAttachments([]);
+
+      submit(query, payloads.length > 0 ? payloads : undefined, {
+        relay: relayActive,
+      });
     },
-    [input, isLoading, submit, relayActive],
+    [input, attachments, isLoading, submit, relayActive, t],
+  );
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (relayActive || isLoading) return;
+      if (Array.from(e.dataTransfer.types).includes('Files')) {
+        e.preventDefault();
+        if (!isDragging) setIsDragging(true);
+      }
+    },
+    [relayActive, isLoading, isDragging],
+  );
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      if (relayActive || isLoading) return;
+      const files = e.dataTransfer.files
+        ? Array.from(e.dataTransfer.files)
+        : [];
+      void addFiles(files);
+    },
+    [addFiles, relayActive, isLoading],
   );
 
   // Rich paste: when pasting a table from a web page, drop a readable Markdown
@@ -72,6 +196,26 @@ export function ChatInterface() {
   // default plain-text paste runs.
   const handlePaste = useCallback(
     (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      // Pasted files (e.g. a screenshot from the clipboard) become attachments.
+      // Checked before the HTML-table branch so an image paste never falls
+      // through to text handling. Disabled in relay mode (text-only protocol).
+      if (!relayActive) {
+        const items = e.clipboardData?.items;
+        const files: File[] = [];
+        for (let i = 0; i < (items?.length ?? 0); i++) {
+          const item = items![i];
+          if (item.kind === 'file') {
+            const file = item.getAsFile();
+            if (file) files.push(file);
+          }
+        }
+        if (files.length > 0) {
+          e.preventDefault();
+          void addFiles(files);
+          return;
+        }
+      }
+
       const html = e.clipboardData?.getData('text/html');
       if (!html) return;
       const markdown = htmlTablesToMarkdown(html);
@@ -82,7 +226,7 @@ export function ChatInterface() {
       const end = ta?.selectionEnd ?? input.length;
       setInput(input.slice(0, start) + markdown + input.slice(end));
     },
-    [input],
+    [input, addFiles, relayActive],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -159,6 +303,7 @@ export function ChatInterface() {
                 id={msg.id}
                 role={msg.role}
                 content={msg.content}
+                attachments={msg.attachments}
                 toolsUsed={msg.toolsUsed}
                 sources={msg.sources}
                 charts={msg.charts}
@@ -271,9 +416,61 @@ export function ChatInterface() {
       </div>
 
       {/* Input area */}
-      <div className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-2">
+      <div
+        className="relative border-t border-gray-200 dark:border-gray-700 pt-4 pb-2"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <RelayStatusBar enabled={relayActive} />
+
+        {isDragging && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-blue-500 bg-blue-50/80 dark:bg-blue-900/40 text-sm font-medium text-blue-700 dark:text-blue-200">
+            {t('chat.dropHint')}
+          </div>
+        )}
+
+        {attachments.length > 0 && (
+          <AttachmentChips attachments={attachments} onRemove={removeAttachment} />
+        )}
+
+        {/* Hidden file input, triggered by the + button. */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept={ATTACHMENT_ACCEPT}
+          onChange={handleFileChange}
+          className="hidden"
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+
         <div className="flex gap-2 items-end">
+          {!relayActive && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading || !!aiNotConfigured}
+              className="flex-shrink-0 p-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-500 hover:text-blue-600 hover:border-blue-400 dark:text-gray-400 dark:hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={t('chat.attachButtonTitle')}
+              aria-label={t('chat.attachButtonAriaLabel')}
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 4.5v15m7.5-7.5h-15"
+                />
+              </svg>
+            </button>
+          )}
           <textarea
             ref={textareaRef}
             value={input}
@@ -308,7 +505,9 @@ export function ChatInterface() {
           ) : (
             <button
               onClick={() => handleSubmit()}
-              disabled={!input.trim() || !!aiNotConfigured}
+              disabled={
+                (!input.trim() && attachments.length === 0) || !!aiNotConfigured
+              }
               className="flex-shrink-0 p-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white transition-colors disabled:cursor-not-allowed"
               title={t('chat.sendTitle')}
             >

@@ -647,7 +647,7 @@ describe("OpenAiCompatibleProvider", () => {
       const r = flattenToolMessages(m);
       expect(r[0].content).toContain('"name":"n"');
       // No leading content+\n
-      expect(r[0].content.startsWith("\n")).toBe(false);
+      expect((r[0].content as string).startsWith("\n")).toBe(false);
     });
   });
 });

@@ -1,5 +1,5 @@
 import { AnthropicProvider } from "./anthropic.provider";
-import type { AiToolStreamChunk } from "./ai-provider.interface";
+import type { AiToolStreamChunk, AiMessage } from "./ai-provider.interface";
 
 const mockCreate = jest.fn().mockResolvedValue({
   content: [{ type: "text", text: "Hello from Claude" }],
@@ -65,6 +65,43 @@ describe("AnthropicProvider", () => {
     expect(provider.name).toBe("anthropic");
     expect(provider.supportsStreaming).toBe(true);
     expect(provider.supportsToolUse).toBe(true);
+  });
+
+  it("maps multimodal user content to image/document/text blocks", async () => {
+    const messages: AiMessage[] = [
+      {
+        role: "user",
+        content: [
+          {
+            type: "document",
+            mediaType: "application/pdf",
+            data: "JVBERi0=",
+            filename: "a.pdf",
+          },
+          { type: "image", mediaType: "image/png", data: "iVBORw0=" },
+          { type: "text", text: "extract this" },
+        ],
+      },
+    ];
+
+    await provider.completeWithTools({ systemPrompt: "sys", messages }, []);
+
+    const sent = mockCreate.mock.calls[0][0].messages;
+    expect(sent[0].content).toEqual([
+      {
+        type: "document",
+        source: {
+          type: "base64",
+          media_type: "application/pdf",
+          data: "JVBERi0=",
+        },
+      },
+      {
+        type: "image",
+        source: { type: "base64", media_type: "image/png", data: "iVBORw0=" },
+      },
+      { type: "text", text: "extract this" },
+    ]);
   });
 
   it("constructs the SDK client with the long-running fetch wrapper", () => {

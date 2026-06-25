@@ -44,6 +44,7 @@ export class AiQueryController {
       req.user.id,
       dto.query,
       dto.conversationHistory,
+      dto.attachments,
     );
   }
 
@@ -98,6 +99,7 @@ export class AiQueryController {
         userId,
         dto.query,
         dto.conversationHistory,
+        dto.attachments,
       )) {
         if (abortController.signal.aborted) break;
         if (event) {

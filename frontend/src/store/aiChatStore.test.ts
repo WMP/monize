@@ -58,6 +58,51 @@ describe('aiChatStore', () => {
       expect(state.thinking.active).toBe(true);
     });
 
+    it('sends the attachment payload and stores only metadata (no base64)', async () => {
+      const { aiApi } = await import('@/lib/ai');
+      const attachments = [
+        { kind: 'image' as const, mediaType: 'image/png', filename: 'r.png', data: 'SECRETB64' },
+      ];
+
+      useAiChatStore.getState().submit('extract this', attachments);
+
+      // The persisted message keeps metadata only -- no base64 payload.
+      const userMsg = useAiChatStore.getState().messages[0];
+      expect(userMsg.attachments).toEqual([
+        { kind: 'image', mediaType: 'image/png', filename: 'r.png' },
+      ]);
+      expect(JSON.stringify(userMsg)).not.toContain('SECRETB64');
+
+      const persisted = window.localStorage.getItem(AI_CHAT_STORAGE_KEY) || '';
+      expect(persisted).toContain('r.png');
+      expect(persisted).not.toContain('SECRETB64');
+
+      // The full payload is handed to the API client as the 5th argument.
+      const call = vi.mocked(aiApi.queryStream).mock.calls[0];
+      expect(call[4]).toEqual(attachments);
+    });
+
+    it('does not resend attachments in conversation history on later turns', async () => {
+      const { aiApi } = await import('@/lib/ai');
+
+      useAiChatStore.getState().submit('first', [
+        { kind: 'image' as const, mediaType: 'image/png', filename: 'r.png', data: 'SECRETB64' },
+      ]);
+      // Complete the assistant turn so it becomes part of history.
+      capturedCallbacks?.onEvent({ type: 'content', text: 'done' });
+      capturedCallbacks?.onEvent({
+        type: 'done',
+        usage: { inputTokens: 1, outputTokens: 1, toolCalls: 0 },
+      });
+
+      useAiChatStore.getState().submit('second');
+
+      const history = vi.mocked(aiApi.queryStream).mock.calls[1][2];
+      const serialized = JSON.stringify(history);
+      expect(serialized).not.toContain('SECRETB64');
+      expect(serialized).not.toContain('r.png');
+    });
+
     it('ignores empty/whitespace queries', async () => {
       const { aiApi } = await import('@/lib/ai');
       useAiChatStore.getState().submit('   ');
@@ -117,7 +162,7 @@ describe('aiChatStore', () => {
   describe('relay late-answer pickup', () => {
     it('renders a buffered late answer instead of an error after a relay timeout', async () => {
       mockGetRelayResponse.mockResolvedValueOnce({ text: 'The late answer.' });
-      useAiChatStore.getState().submit('Q', { relay: true });
+      useAiChatStore.getState().submit('Q', undefined, { relay: true });
 
       // The backend tells the client its promptId up front, then the stream
       // times out before any content arrives.
@@ -138,7 +183,7 @@ describe('aiChatStore', () => {
 
     it('falls back to the error when no late answer is buffered', async () => {
       mockGetRelayResponse.mockResolvedValueOnce({ text: null });
-      useAiChatStore.getState().submit('Q', { relay: true });
+      useAiChatStore.getState().submit('Q', undefined, { relay: true });
 
       capturedCallbacks?.onEvent({ type: 'prompt_id', promptId: 'p-2' });
       capturedCallbacks?.onEvent({ type: 'error', message: 'went quiet' });
@@ -154,7 +199,7 @@ describe('aiChatStore', () => {
 
     it('picks up a late answer when the stream closes without a done event', async () => {
       mockGetRelayResponse.mockResolvedValueOnce({ text: 'Recovered.' });
-      useAiChatStore.getState().submit('Q', { relay: true });
+      useAiChatStore.getState().submit('Q', undefined, { relay: true });
 
       capturedCallbacks?.onEvent({ type: 'prompt_id', promptId: 'p-3' });
       // Stream closes (onDone) with nothing rendered.
@@ -178,7 +223,7 @@ describe('aiChatStore', () => {
         mockGetRelayResponse
           .mockResolvedValueOnce({ text: null })
           .mockResolvedValueOnce({ text: 'Arrived late.' });
-        useAiChatStore.getState().submit('Q', { relay: true });
+        useAiChatStore.getState().submit('Q', undefined, { relay: true });
 
         capturedCallbacks?.onEvent({ type: 'prompt_id', promptId: 'p-late' });
         capturedCallbacks?.onEvent({ type: 'error', message: 'went quiet' });
@@ -206,14 +251,14 @@ describe('aiChatStore', () => {
       vi.useFakeTimers();
       try {
         mockGetRelayResponse.mockResolvedValue({ text: null });
-        useAiChatStore.getState().submit('Q', { relay: true });
+        useAiChatStore.getState().submit('Q', undefined, { relay: true });
         capturedCallbacks?.onEvent({ type: 'prompt_id', promptId: 'p-cancel' });
         capturedCallbacks?.onEvent({ type: 'error', message: 'went quiet' });
         await vi.advanceTimersByTimeAsync(0);
         const callsAfterFirst = mockGetRelayResponse.mock.calls.length;
 
         // A new prompt supersedes the poll.
-        useAiChatStore.getState().submit('Another question', { relay: true });
+        useAiChatStore.getState().submit('Another question', undefined, { relay: true });
         await vi.advanceTimersByTimeAsync(8000);
 
         // The superseded poll made no further pickup calls.
@@ -224,7 +269,7 @@ describe('aiChatStore', () => {
     });
 
     it('does not attempt pickup once content has streamed', async () => {
-      useAiChatStore.getState().submit('Q', { relay: true });
+      useAiChatStore.getState().submit('Q', undefined, { relay: true });
 
       capturedCallbacks?.onEvent({ type: 'prompt_id', promptId: 'p-4' });
       capturedCallbacks?.onEvent({ type: 'content', text: 'Live answer.' });

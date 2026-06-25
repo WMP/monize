@@ -9,8 +9,10 @@ import {
   AiToolResponse,
   AiToolStreamChunk,
   AiMessage,
+  AiContentBlock,
   ModelVerificationResult,
 } from "./ai-provider.interface";
+import { contentToPlainText, isContentBlocks } from "./content-blocks.util";
 import { longRunningFetch } from "./long-running-fetch";
 
 export class AnthropicProvider implements AiProvider {
@@ -37,7 +39,10 @@ export class AnthropicProvider implements AiProvider {
 
     for (const msg of messages) {
       if (msg.role === "user") {
-        result.push({ role: "user", content: msg.content });
+        result.push({
+          role: "user",
+          content: this.mapUserContent(msg.content),
+        });
       } else if (msg.role === "assistant") {
         if (msg.toolCalls && msg.toolCalls.length > 0) {
           const content: Anthropic.ContentBlockParam[] = [];
@@ -86,12 +91,49 @@ export class AnthropicProvider implements AiProvider {
     return result;
   }
 
+  /**
+   * Map a user turn's content to Anthropic's native shape. Plain strings pass
+   * through; multimodal blocks become image/document content blocks. All
+   * current Claude models support vision and base64 PDFs, so no block type
+   * needs to degrade here.
+   */
+  private mapUserContent(
+    content: string | AiContentBlock[],
+  ): string | Anthropic.ContentBlockParam[] {
+    if (!isContentBlocks(content)) {
+      return content;
+    }
+    return content.map((block): Anthropic.ContentBlockParam => {
+      if (block.type === "image") {
+        return {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: block.mediaType,
+            data: block.data,
+          },
+        };
+      }
+      if (block.type === "document") {
+        return {
+          type: "document",
+          source: {
+            type: "base64",
+            media_type: "application/pdf",
+            data: block.data,
+          },
+        };
+      }
+      return { type: "text", text: block.text };
+    });
+  }
+
   private toSimpleMessages(messages: AiMessage[]): Anthropic.MessageParam[] {
     return messages
       .filter((m) => m.role === "user" || m.role === "assistant")
       .map((m) => ({
         role: m.role as "user" | "assistant",
-        content: m.role === "assistant" ? m.content : m.content,
+        content: contentToPlainText(m.content),
       }));
   }
 

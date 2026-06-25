@@ -1,7 +1,13 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { aiApi } from '@/lib/ai';
-import type { ChartPayload, PendingAction, StreamEvent } from '@/types/ai';
+import type {
+  ChartPayload,
+  PendingAction,
+  StreamEvent,
+  AttachmentPayload,
+  ChatAttachmentMeta,
+} from '@/types/ai';
 
 // Key for persisting the AI conversation in the browser's localStorage.
 // Cleared on logout via authStore so conversations don't leak between accounts.
@@ -18,6 +24,9 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  // Attachments the user sent with this message. Metadata only (no base64) so
+  // the persisted conversation stays small; rendered as chips on the bubble.
+  attachments?: ChatAttachmentMeta[];
   toolsUsed?: ToolCallRecord[];
   sources?: Array<{ type: string; description: string; dateRange?: string }>;
   // Charts the assistant rendered via the render_chart tool. Populated as
@@ -77,6 +86,7 @@ interface AiChatState {
 
   submit: (
     query: string,
+    attachments?: AttachmentPayload[],
     opts?: { relay?: boolean },
   ) => void;
   cancel: () => void;
@@ -124,6 +134,7 @@ export const useAiChatStore = create<AiChatState>()(
 
       submit: (
         query: string,
+        attachments?: AttachmentPayload[],
         opts?: { relay?: boolean },
       ) => {
         const trimmed = query.trim();
@@ -141,10 +152,27 @@ export const useAiChatStore = create<AiChatState>()(
         const userMsgId = `user-${Date.now()}`;
         const assistantMsgId = `assistant-${Date.now()}`;
 
+        // Persist only lightweight attachment metadata on the message (no
+        // base64) so localStorage stays small and binaries don't leak across
+        // reloads. The base64 payload is sent on this request only.
+        const attachmentMeta: ChatAttachmentMeta[] | undefined =
+          attachments && attachments.length > 0
+            ? attachments.map((a) => ({
+                kind: a.kind,
+                mediaType: a.mediaType,
+                filename: a.filename,
+              }))
+            : undefined;
+
         set((state) => ({
           messages: [
             ...state.messages,
-            { id: userMsgId, role: 'user', content: trimmed },
+            {
+              id: userMsgId,
+              role: 'user',
+              content: trimmed,
+              ...(attachmentMeta ? { attachments: attachmentMeta } : {}),
+            },
           ],
           isLoading: true,
           thinking: {
@@ -541,7 +569,7 @@ export const useAiChatStore = create<AiChatState>()(
               _activeAssistantId: null,
             });
           },
-        }, history, { relay });
+        }, history, { relay }, attachments);
 
         set({ _abortController: controller });
       },

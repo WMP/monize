@@ -10,7 +10,20 @@
     "inputPlaceholderDisabled": "AI provider not configured",
     "keyboardHint": "Press Enter to send, Shift+Enter for new line",
     "cancelTitle": "Cancel",
-    "sendTitle": "Send"
+    "sendTitle": "Send",
+    "attachButtonTitle": "Attach files or images",
+    "attachButtonAriaLabel": "Add attachment",
+    "removeAttachmentAriaLabel": "Remove attachment",
+    "attachmentImageAlt": "Attached image preview",
+    "dropHint": "Drop files to attach",
+    "attachmentOnlyPrompt": "Please review the attached file(s).",
+    "errors": {
+      "tooManyAttachments": "You can attach up to {max} files.",
+      "fileTooLarge": "{filename} is too large (max {maxMb} MB).",
+      "totalTooLarge": "Attachments exceed the total size limit ({maxMb} MB).",
+      "unsupportedType": "{filename} isn't a supported file type.",
+      "readFailed": "Couldn't read {filename}. Try again."
+    }
   },
   "notConfigured": {
     "heading": "AI Not Configured",
