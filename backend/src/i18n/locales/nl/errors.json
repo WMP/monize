@@ -85,6 +85,7 @@
     "insightNotFound": "Inzicht niet gevonden",
     "relayTimeout": "Je assistent heeft niet gereageerd. Zorg ervoor dat je MCP-agent verbonden is en luistert.",
     "relayDisconnected": "Je assistent viel stil voordat er een antwoord kwam. Als de verbinding wordt hersteld, verschijnt het antwoord hier.",
+    "relayAttachmentRejected": "Een bijlage kon niet naar je assistent worden verzonden. Controleer het bestandstype en de bestandsgrootte en probeer het opnieuw.",
     "attachmentTypeMismatch": "Het type van een bijlage komt niet overeen met het bestandsformaat.",
     "attachmentTooLarge": "Een bijlage overschrijdt de maximale bestandsgrootte.",
     "attachmentCorrupt": "Een bijlage kon niet worden gelezen of is niet het bestandstype dat het beweert te zijn.",

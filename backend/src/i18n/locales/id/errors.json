@@ -85,6 +85,7 @@
     "insightNotFound": "Wawasan tidak ditemukan",
     "relayTimeout": "Asisten Anda tidak merespons. Pastikan agen MCP Anda terhubung dan mendengarkan.",
     "relayDisconnected": "Asisten Anda terdiam sebelum menjawab. Jika terhubung kembali, jawabannya akan muncul di sini.",
+    "relayAttachmentRejected": "Lampiran tidak dapat dikirim ke asisten Anda. Periksa jenis dan ukuran file, lalu coba lagi.",
     "attachmentTypeMismatch": "Tipe sebuah lampiran tidak cocok dengan format filenya.",
     "attachmentTooLarge": "Sebuah lampiran melebihi ukuran file maksimum.",
     "attachmentCorrupt": "Sebuah lampiran tidak dapat dibaca atau bukan tipe file seperti yang diklaim.",

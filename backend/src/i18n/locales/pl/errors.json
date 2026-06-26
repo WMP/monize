@@ -85,6 +85,7 @@
     "insightNotFound": "Nie znaleziono analizy",
     "relayTimeout": "Twój asystent nie odpowiedział. Upewnij się, że agent MCP jest połączony i nasłuchuje.",
     "relayDisconnected": "Twój asystent zamilkł przed udzieleniem odpowiedzi. Jeśli połączy się ponownie, jego odpowiedź pojawi się tutaj.",
+    "relayAttachmentRejected": "Nie udało się wysłać załącznika do Twojego asystenta. Sprawdź typ i rozmiar pliku, a następnie spróbuj ponownie.",
     "attachmentTypeMismatch": "Typ załącznika nie odpowiada jego formatowi pliku.",
     "attachmentTooLarge": "Załącznik przekracza maksymalny rozmiar pliku.",
     "attachmentCorrupt": "Nie udało się odczytać załącznika lub nie jest on plikiem typu, za jaki się podaje.",

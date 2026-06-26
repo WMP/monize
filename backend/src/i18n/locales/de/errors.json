@@ -85,6 +85,7 @@
     "insightNotFound": "Insight nicht gefunden",
     "relayTimeout": "Ihr Assistent hat nicht geantwortet. Stellen Sie sicher, dass Ihr MCP-Agent verbunden ist und zuhört.",
     "relayDisconnected": "Ihr Assistent ist verstummt, bevor er antworten konnte. Wenn er sich wieder verbindet, erscheint seine Antwort hier.",
+    "relayAttachmentRejected": "Ein Anhang konnte nicht an Ihren Assistenten gesendet werden. Überprüfen Sie Dateityp und -größe und versuchen Sie es erneut.",
     "attachmentTypeMismatch": "Der Typ eines Anhangs stimmt nicht mit seinem Dateiformat überein.",
     "attachmentTooLarge": "Ein Anhang überschreitet die maximale Dateigröße.",
     "attachmentCorrupt": "Ein Anhang konnte nicht gelesen werden oder entspricht nicht dem angegebenen Dateityp.",

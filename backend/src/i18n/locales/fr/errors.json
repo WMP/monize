@@ -85,6 +85,7 @@
     "insightNotFound": "Analyse introuvable",
     "relayTimeout": "Votre assistant n'a pas répondu. Assurez-vous que votre agent MCP est connecté et à l'écoute.",
     "relayDisconnected": "Votre assistant s'est interrompu avant de répondre. S'il se reconnecte, sa réponse apparaîtra ici.",
+    "relayAttachmentRejected": "Une pièce jointe n'a pas pu être envoyée à votre assistant. Vérifiez le type et la taille du fichier, puis réessayez.",
     "attachmentTypeMismatch": "Le type d'une pièce jointe ne correspond pas à son format de fichier.",
     "attachmentTooLarge": "Une pièce jointe dépasse la taille de fichier maximale.",
     "attachmentCorrupt": "Une pièce jointe n'a pas pu être lue ou n'est pas du type de fichier qu'elle prétend être.",

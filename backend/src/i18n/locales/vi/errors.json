@@ -85,6 +85,7 @@
     "insightNotFound": "Không tìm thấy thông tin chi tiết",
     "relayTimeout": "Trợ lý của bạn không phản hồi. Hãy đảm bảo tác nhân MCP của bạn đang kết nối và lắng nghe.",
     "relayDisconnected": "Trợ lý của bạn đã im lặng trước khi trả lời. Nếu kết nối lại, câu trả lời sẽ xuất hiện ở đây.",
+    "relayAttachmentRejected": "Không thể gửi tệp đính kèm đến trợ lý của bạn. Hãy kiểm tra loại tệp và kích thước, sau đó thử lại.",
     "attachmentTypeMismatch": "Loại của tệp đính kèm không khớp với định dạng tệp của nó.",
     "attachmentTooLarge": "Một tệp đính kèm vượt quá kích thước tệp tối đa.",
     "attachmentCorrupt": "Không thể đọc một tệp đính kèm hoặc nó không phải là loại tệp như đã khai báo.",

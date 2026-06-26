@@ -85,6 +85,7 @@
     "insightNotFound": "İçgörü bulunamadı",
     "relayTimeout": "Asistanınız yanıt vermedi. MCP aracınızın bağlı ve dinlemede olduğundan emin olun.",
     "relayDisconnected": "Asistanınız yanıt vermeden sustu. Yeniden bağlanırsa yanıtı burada görünecek.",
+    "relayAttachmentRejected": "Bir ek asistanınıza gönderilemedi. Dosya türünü ve boyutunu kontrol edip tekrar deneyin.",
     "attachmentTypeMismatch": "Bir ekin türü, dosya biçimiyle eşleşmiyor.",
     "attachmentTooLarge": "Bir ek, en büyük dosya boyutunu aşıyor.",
     "attachmentCorrupt": "Bir ek okunamadı veya iddia ettiği dosya türünde değil.",

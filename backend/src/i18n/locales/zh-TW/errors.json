@@ -85,6 +85,7 @@
     "insightNotFound": "找不到洞察",
     "relayTimeout": "您的助理沒有回應。請確認您的 MCP 代理程式已連線並正在監聽。",
     "relayDisconnected": "您的助理在回答前中斷了。如果重新連線，其回答將顯示在此處。",
+    "relayAttachmentRejected": "無法將附件傳送給您的助理。請檢查檔案類型和大小，然後再試一次。",
     "attachmentTypeMismatch": "某個附件的類型與其檔案格式不符。",
     "attachmentTooLarge": "某個附件超過了最大檔案大小。",
     "attachmentCorrupt": "無法讀取某個附件，或它並非其聲稱的檔案類型。",

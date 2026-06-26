@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 // The chat pulls in markdown/chart dependencies, so load it only when the
@@ -41,14 +42,20 @@ export function AiChatBubble() {
   const t = useTranslations('ai.bubble');
   const pathname = usePathname();
   const enabled = usePreferencesStore((s) => s.preferences?.aiBubbleEnabled);
+  const isMobile = useIsMobile();
   const [view, setView] = useState<View>('closed');
 
-  // Collapse back to the launcher whenever the route changes (setState during
-  // render pattern; a useEffect here would trip react-hooks/set-state-in-effect).
+  // Collapse the assistant whenever the route changes (setState during render
+  // pattern; a useEffect here would trip react-hooks/set-state-in-effect).
+  // Exception: a desktop corner sheet (open, not full-screen) stays open so it
+  // persists across pages -- it is non-blocking, so the user can keep chatting
+  // while navigating. The full-screen overlay and the mobile bottom sheet (which
+  // covers the page behind a scrim) still collapse on navigation.
   const [prevPath, setPrevPath] = useState(pathname);
   if (pathname !== prevPath) {
     setPrevPath(pathname);
-    if (view !== 'closed') setView('closed');
+    const keepDesktopSheetOpen = view === 'sheet' && !isMobile;
+    if (view !== 'closed' && !keepDesktopSheetOpen) setView('closed');
   }
 
   // Escape steps down one level: full -> sheet -> closed.
