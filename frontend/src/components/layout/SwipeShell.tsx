@@ -9,6 +9,7 @@ import { DemoModeBanner } from './DemoModeBanner';
 import { HttpWarningBanner } from './HttpWarningBanner';
 import { SwipeIndicator } from './SwipeIndicator';
 import { UpdateAvailableBanner } from './UpdateAvailableBanner';
+import { AiChatBubble } from '@/components/ai/AiChatBubble';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { useScrollToTopOnNavigation } from '@/hooks/useScrollToTopOnNavigation';
 
@@ -51,6 +52,7 @@ export function SwipeShell({ children, httpsHeadersActive = false }: SwipeShellP
       <div ref={contentRef}>
         {children}
       </div>
+      <AiChatBubble />
     </div>
   );
 }

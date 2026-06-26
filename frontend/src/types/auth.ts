@@ -109,6 +109,7 @@ export interface UserPreferences {
   preferredExchanges: string[];
   defaultQuoteProvider: 'yahoo' | 'msn';
   recentTransactionsLimit: number;
+  aiBubbleEnabled: boolean;
   language: string;
   createdAt: string;
   updatedAt: string;
@@ -169,6 +170,7 @@ export interface UpdatePreferencesData {
   preferredExchanges?: string[];
   defaultQuoteProvider?: 'yahoo' | 'msn';
   recentTransactionsLimit?: number;
+  aiBubbleEnabled?: boolean;
   language?: string;
 }
 

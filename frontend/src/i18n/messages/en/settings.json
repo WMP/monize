@@ -608,6 +608,14 @@
     "backLink": "Back to Settings",
     "title": "AI Settings",
     "subtitle": "Configure AI providers for intelligent financial features",
+    "bubble": {
+      "title": "Floating chat bubble",
+      "subtitle": "Show a chat button on every page so you can ask the AI assistant from anywhere. It opens as a bottom sheet you can expand to full screen.",
+      "toggleLabel": "Enable floating AI chat bubble",
+      "enabled": "Floating chat bubble enabled",
+      "disabled": "Floating chat bubble disabled",
+      "saveFailed": "Could not update the chat bubble setting"
+    },
     "demoRestricted": {
       "heading": "Restricted in Demo Mode",
       "body": "AI provider configuration is disabled in demo mode."

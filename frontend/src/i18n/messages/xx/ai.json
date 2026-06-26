@@ -3,6 +3,13 @@
     "title": "[XX-AI Assistant-XX]",
     "subtitle": "[XX-Ask questions about your finances in natural language-XX]"
   },
+  "bubble": {
+    "launcherAriaLabel": "[XX-Open AI assistant-XX]",
+    "title": "[XX-AI Assistant-XX]",
+    "expand": "[XX-Expand to full screen-XX]",
+    "collapse": "[XX-Collapse to panel-XX]",
+    "close": "[XX-Close-XX]"
+  },
   "chat": {
     "conversationSaved": "[XX-Conversation saved in your browser-XX]",
     "clearConversation": "[XX-Clear conversation-XX]",

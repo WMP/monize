@@ -187,6 +187,9 @@ export class UsersService {
     if (dto.gettingStartedDismissed !== undefined) {
       preferences.gettingStartedDismissed = dto.gettingStartedDismissed;
     }
+    if (dto.aiBubbleEnabled !== undefined) {
+      preferences.aiBubbleEnabled = dto.aiBubbleEnabled;
+    }
     if (dto.weekStartsOn !== undefined) {
       preferences.weekStartsOn = dto.weekStartsOn;
     }

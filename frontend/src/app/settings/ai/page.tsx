@@ -9,6 +9,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { ProviderList } from '@/components/settings/ai/ProviderList';
 import { UsageDashboard } from '@/components/settings/ai/UsageDashboard';
+import { AiBubbleToggle } from '@/components/settings/ai/AiBubbleToggle';
 import { aiApi } from '@/lib/ai';
 import { getErrorMessage } from '@/lib/errors';
 import type { AiProviderConfig, AiUsageSummary, AiStatus } from '@/types/ai';
@@ -102,6 +103,8 @@ function AiSettingsContent() {
             </p>
           </div>
         )}
+
+        <AiBubbleToggle disabled={isDemoMode} />
 
         <ProviderList
           configs={configs}

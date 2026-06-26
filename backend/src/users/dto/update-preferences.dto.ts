@@ -115,6 +115,13 @@ export class UpdatePreferencesDto {
   gettingStartedDismissed?: boolean;
 
   @ApiPropertyOptional({
+    description: "Show the app-wide floating AI chat bubble",
+  })
+  @IsOptional()
+  @IsBoolean()
+  aiBubbleEnabled?: boolean;
+
+  @ApiPropertyOptional({
     description: "Day the week starts on (0=Sunday, 1=Monday, ..., 6=Saturday)",
     example: 1,
   })

@@ -160,6 +160,7 @@ describe('ProtectedRoute', () => {
         preferredExchanges: [],
     defaultQuoteProvider: 'yahoo' as const,
     recentTransactionsLimit: 5,
+    aiBubbleEnabled: false,
     language: 'en',
         createdAt: '2026-01-01T00:00:00Z',
         updatedAt: '2026-01-01T00:00:00Z',

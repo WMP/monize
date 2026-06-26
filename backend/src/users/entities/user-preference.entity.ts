@@ -103,6 +103,11 @@ export class UserPreference {
   })
   recentTransactionsLimit: number;
 
+  // Opt-in: show the app-wide floating AI chat bubble. Default off so the
+  // bubble only appears for users who enable it in AI Settings.
+  @Column({ name: "ai_bubble_enabled", default: false })
+  aiBubbleEnabled: boolean;
+
   @Column({ length: 10, default: "en" })
   language: string;
 
