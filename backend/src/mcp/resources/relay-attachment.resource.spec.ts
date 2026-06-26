@@ -1,10 +1,20 @@
 import { McpRelayAttachmentResource } from "./relay-attachment.resource";
 import { RelayAttachmentStore } from "../../ai/relay/relay-attachment.store";
+import { extractPdfText } from "../../ai/relay/pdf-text.util";
 import { UserContextResolver } from "../mcp-context";
+
+jest.mock("../../ai/relay/pdf-text.util", () => ({
+  extractPdfText: jest.fn(),
+}));
+const mockExtractPdfText = extractPdfText as jest.MockedFunction<
+  typeof extractPdfText
+>;
 
 const PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 const CSV_BASE64 = Buffer.from("a,b\n1,2\n").toString("base64");
+// The store only checks the leading %PDF magic bytes; extraction is mocked.
+const PDF_BASE64 = Buffer.from("%PDF-1.4 minimal").toString("base64");
 
 // The handler only reads `uri.href`, so a light stub suffices.
 const uriFor = (id: string) => ({ href: `monize-attachment://${id}` }) as any;
@@ -98,6 +108,71 @@ describe("McpRelayAttachmentResource", () => {
     );
     expect(result.contents[0].mimeType).toBe("text/csv");
     expect(result.contents[0].text).toBe("a,b\n1,2\n");
+    expect(result.contents[0].blob).toBeUndefined();
+  });
+
+  it("returns server-extracted text (not a blob) for a PDF attachment", async () => {
+    mockExtractPdfText.mockResolvedValue("Bank statement: balance $100");
+    const [ref] = store.store("u1", [
+      {
+        kind: "pdf",
+        mediaType: "application/pdf",
+        filename: "statement.pdf",
+        data: PDF_BASE64,
+      },
+    ]);
+    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+
+    const result = await handler(
+      uriFor(ref.id),
+      { id: ref.id },
+      { sessionId: "s1" },
+    );
+    // Returned as text/plain so the agent's client never sees a PDF blob.
+    expect(result.contents[0].mimeType).toBe("text/plain");
+    expect(result.contents[0].text).toBe("Bank statement: balance $100");
+    expect(result.contents[0].blob).toBeUndefined();
+  });
+
+  it("returns a note when a PDF has no extractable text", async () => {
+    mockExtractPdfText.mockResolvedValue("");
+    const [ref] = store.store("u1", [
+      {
+        kind: "pdf",
+        mediaType: "application/pdf",
+        filename: "scan.pdf",
+        data: PDF_BASE64,
+      },
+    ]);
+    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+
+    const result = await handler(
+      uriFor(ref.id),
+      { id: ref.id },
+      { sessionId: "s1" },
+    );
+    expect(result.contents[0].text).toContain("no extractable text");
+    expect(result.contents[0].blob).toBeUndefined();
+  });
+
+  it("returns an error when PDF extraction fails", async () => {
+    mockExtractPdfText.mockRejectedValue(new Error("corrupt pdf"));
+    const [ref] = store.store("u1", [
+      {
+        kind: "pdf",
+        mediaType: "application/pdf",
+        filename: "broken.pdf",
+        data: PDF_BASE64,
+      },
+    ]);
+    resolve.mockReturnValue({ userId: "u1", scopes: "read" });
+
+    const result = await handler(
+      uriFor(ref.id),
+      { id: ref.id },
+      { sessionId: "s1" },
+    );
+    expect(result.contents[0].text).toContain("could not extract text");
     expect(result.contents[0].blob).toBeUndefined();
   });
 
