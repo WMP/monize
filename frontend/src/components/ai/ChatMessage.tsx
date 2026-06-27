@@ -210,10 +210,12 @@ export const ChatMessage = memo(function ChatMessage({
         )}
 
         {/* Message content. Skip the bubble entirely for a text-less message
-            (e.g. a relay turn that delivered only confirmation cards): an empty
-            grey bubble above the cards reads as a lost/blank answer. Still render
-            it while streaming so the typing cursor shows, or to carry an error. */}
-        {(error || isStreaming || content.length > 0) && (
+            (e.g. a relay turn delivering only confirmation cards, whether live
+            with isStreaming set or after a disconnect): an empty grey bubble --
+            or one holding just the blinking cursor -- above the cards reads as a
+            lost/blank answer. Only render once there is text or an error; the
+            streaming cursor then shows alongside the text. */}
+        {(error || content.length > 0) && (
           <div className="px-4 py-3 rounded-2xl rounded-bl-sm bg-gray-100 dark:bg-gray-700/60 text-gray-900 dark:text-gray-100">
             {error ? (
               <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
