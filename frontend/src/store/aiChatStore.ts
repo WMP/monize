@@ -65,10 +65,12 @@ const IDLE_THINKING: ThinkingState = {
 
 // After a relay disconnect, poll the pickup endpoint this often for the late
 // answer the agent may still buffer, giving up after the deadline. The deadline
-// stays under the server-side buffer TTL (10 min) so we never poll for an
-// answer that has already been evicted.
+// stays just under the server-side buffer TTL (10 min) so we keep polling for
+// as long as the answer could still be retained -- a large tool-call payload or
+// a long final summary can take several minutes of quiet composition before the
+// agent posts, well past the server's idle timeout.
 const RELAY_PICKUP_POLL_MS = 4000;
-const RELAY_PICKUP_DEADLINE_MS = 4 * 60 * 1000;
+const RELAY_PICKUP_DEADLINE_MS = 9 * 60 * 1000;
 
 interface AiChatState {
   messages: ChatMessage[];
@@ -202,12 +204,16 @@ export const useAiChatStore = create<AiChatState>()(
         // callbacks cannot trigger it twice.
         let pickupAttempted = false;
 
-        // Render a terminal error on the assistant message, attaching it to an
-        // in-progress message or appending a fresh one if streaming never
-        // started.
+        // Render a terminal error on the assistant message. If the message
+        // already exists (content streamed, or a confirmation card / chart was
+        // rendered before any text), the error is attached to it so those parts
+        // survive; otherwise a fresh placeholder is appended, still carrying any
+        // cards collected so far so a card the agent posted live is not wiped by
+        // the disconnect placeholder.
         const renderError = (errorMsg: string): void => {
           set((state) => {
-            if (hasStartedContent) {
+            const exists = state.messages.some((m) => m.id === assistantMsgId);
+            if (exists) {
               return {
                 messages: state.messages.map((m) =>
                   m.id === assistantMsgId
@@ -227,6 +233,9 @@ export const useAiChatStore = create<AiChatState>()(
                   id: assistantMsgId,
                   role: 'assistant',
                   content: '',
+                  ...(pendingActions.length > 0
+                    ? { pendingActions: [...pendingActions] }
+                    : {}),
                   error: errorMsg,
                 },
               ],
@@ -238,20 +247,114 @@ export const useAiChatStore = create<AiChatState>()(
           });
         };
 
+        // Project the collected cards onto the message while preserving any
+        // status the user has already set in the store. The closure only ever
+        // marks a card 'pending', so re-rendering it verbatim (when a later batch
+        // or the final answer arrives) would reset a card the user just approved
+        // back to pending -- and re-approving an already-applied card errors. The
+        // store is the source of truth for status; merge onto it every time.
+        const projectPendingActions = (
+          current: ChatMessage | undefined,
+        ): PendingAction[] => {
+          const statusById = new Map(
+            (current?.pendingActions ?? []).map((a) => [a.actionId, a.status]),
+          );
+          return pendingActions.map((a) => {
+            const status = statusById.get(a.actionId);
+            return status && status !== a.status ? { ...a, status } : a;
+          });
+        };
+
         // Render a late relay answer as a normal assistant message, replacing
-        // any disconnect placeholder.
+        // any disconnect placeholder. Keeps any confirmation cards already
+        // picked up so a buffered card is not dropped when the answer arrives.
         const deliverLateAnswer = (text: string): void => {
-          set((state) => ({
-            messages: [
-              ...state.messages.filter((m) => m.id !== assistantMsgId),
-              { id: assistantMsgId, role: 'assistant', content: text },
-            ],
-            isLoading: false,
-            thinking: IDLE_THINKING,
-            _abortController: null,
-            _activeAssistantId: null,
-            _relayPollCancel: null,
-          }));
+          set((state) => {
+            const merged = projectPendingActions(
+              state.messages.find((m) => m.id === assistantMsgId),
+            );
+            return {
+              messages: [
+                ...state.messages.filter((m) => m.id !== assistantMsgId),
+                {
+                  id: assistantMsgId,
+                  role: 'assistant',
+                  content: text,
+                  ...(merged.length > 0 ? { pendingActions: merged } : {}),
+                },
+              ],
+              isLoading: false,
+              thinking: IDLE_THINKING,
+              _abortController: null,
+              _activeAssistantId: null,
+              _relayPollCancel: null,
+            };
+          });
+        };
+
+        // Render confirmation cards picked up after the stream gave up (the
+        // agent composed them slowly and the turn idle-timed-out, #793). New
+        // cards (by actionId) are added to the assistant message, replacing any
+        // disconnect placeholder; the pickup loop keeps polling for the answer.
+        // Returns true when at least one new card was added, so the poll loop can
+        // extend its deadline while the agent is still actively delivering.
+        const deliverLateActions = (
+          incoming: Omit<PendingAction, 'status'>[],
+        ): boolean => {
+          let added = false;
+          for (const action of incoming) {
+            if (!pendingActions.some((p) => p.actionId === action.actionId)) {
+              pendingActions.push({ ...action, status: 'pending' });
+              added = true;
+            }
+          }
+          if (!added) return false;
+          set((state) => {
+            const current = state.messages.find((m) => m.id === assistantMsgId);
+            return {
+              messages: [
+                ...state.messages.filter((m) => m.id !== assistantMsgId),
+                {
+                  id: assistantMsgId,
+                  role: 'assistant',
+                  content: current?.content ?? '',
+                  pendingActions: projectPendingActions(current),
+                },
+              ],
+            };
+          });
+          return true;
+        };
+
+        // Create the assistant message, or merge the latest streamed fields into
+        // it. Lets a confirmation card or chart that arrives before any text
+        // render immediately (instead of staying invisible until `content`), so
+        // the user sees the agent's work as it lands -- and the card lives in
+        // state, not just the closure, so a disconnect cannot lose it. Does not
+        // touch `hasStartedContent`: a cards-only message still triggers the
+        // late-answer pickup, since only real text content suppresses it.
+        const upsertAssistantMessage = (): void => {
+          set((state) => {
+            const existing = state.messages.find((m) => m.id === assistantMsgId);
+            const merged = projectPendingActions(existing);
+            const fields = {
+              content: contentBuffer,
+              toolsUsed: [...toolsUsed],
+              ...(charts.length > 0 ? { charts: [...charts] } : {}),
+              ...(merged.length > 0 ? { pendingActions: merged } : {}),
+              isStreaming: true,
+            };
+            return {
+              messages: existing
+                ? state.messages.map((m) =>
+                    m.id === assistantMsgId ? { ...m, ...fields } : m,
+                  )
+                : [
+                    ...state.messages,
+                    { id: assistantMsgId, role: 'assistant', ...fields },
+                  ],
+            };
+          });
         };
 
         // Recover a late relay answer. The agent's API can blip and it may
@@ -283,7 +386,12 @@ export const useAiChatStore = create<AiChatState>()(
             },
           });
 
-          const deadline = Date.now() + RELAY_PICKUP_DEADLINE_MS;
+          // The deadline keeps the poll bounded, but each batch of new cards
+          // pushes it forward: a large import streams cards over several minutes
+          // (one per ~25 rows), and an agent that is still actively delivering
+          // should keep the browser polling rather than be abandoned mid-import.
+          // The fresh window per batch stays under the server buffer TTL.
+          let deadline = Date.now() + RELAY_PICKUP_DEADLINE_MS;
           const delay = (ms: number) =>
             new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -291,10 +399,20 @@ export const useAiChatStore = create<AiChatState>()(
             // Poll immediately, then on each interval until answered/deadline.
             while (!cancelled && Date.now() < deadline) {
               try {
-                const { text } = await aiApi.getRelayResponse(promptId);
+                const { text, pendingActions: latePending } =
+                  await aiApi.getRelayResponse(promptId);
                 // cancel()/clear()/a new prompt flips `cancelled`, so a late
                 // answer never resurrects a turn the user has moved on from.
                 if (cancelled) return;
+                // Show any confirmation cards as soon as they arrive; the answer
+                // (post_response) may still be a poll or two behind them.
+                if (
+                  latePending &&
+                  latePending.length > 0 &&
+                  deliverLateActions(latePending)
+                ) {
+                  deadline = Date.now() + RELAY_PICKUP_DEADLINE_MS;
+                }
                 if (text) {
                   deliverLateAnswer(text);
                   return;
@@ -425,78 +543,30 @@ export const useAiChatStore = create<AiChatState>()(
               case 'chart':
                 if (event.chart) {
                   charts.push(event.chart);
-                  // If the assistant message already exists (chart event
-                  // arriving after content started), attach immediately so
-                  // the chart shows up mid-stream. Otherwise we'll pick it
-                  // up when 'content' creates the message.
-                  if (hasStartedContent) {
-                    set((state) => ({
-                      messages: state.messages.map((m) =>
-                        m.id === assistantMsgId
-                          ? { ...m, charts: [...charts] }
-                          : m,
-                      ),
-                    }));
-                  }
+                  // Render the chart immediately, creating the assistant message
+                  // if it arrived before any text content.
+                  upsertAssistantMessage();
                 }
                 break;
 
               case 'pending_action':
                 if (event.action) {
                   pendingActions.push({ ...event.action, status: 'pending' });
-                  // If the assistant message already exists, attach immediately
-                  // so the card shows mid-stream; otherwise 'content' picks it up.
-                  if (hasStartedContent) {
-                    set((state) => ({
-                      messages: state.messages.map((m) =>
-                        m.id === assistantMsgId
-                          ? { ...m, pendingActions: [...pendingActions] }
-                          : m,
-                      ),
-                    }));
-                  }
+                  // Render the card immediately. In relay mode the agent posts
+                  // cards before its final answer (post_response), so without
+                  // this they would stay invisible until the answer arrives --
+                  // and be lost entirely if the turn disconnects first (#793).
+                  upsertAssistantMessage();
                 }
                 break;
 
               case 'content':
                 if (!hasStartedContent) {
                   hasStartedContent = true;
-                  set((state) => ({
-                    thinking: IDLE_THINKING,
-                    messages: [
-                      ...state.messages,
-                      {
-                        id: assistantMsgId,
-                        role: 'assistant',
-                        content: event.text || '',
-                        toolsUsed: [...toolsUsed],
-                        charts: charts.length > 0 ? [...charts] : undefined,
-                        pendingActions:
-                          pendingActions.length > 0
-                            ? [...pendingActions]
-                            : undefined,
-                        isStreaming: true,
-                      },
-                    ],
-                  }));
+                  set({ thinking: IDLE_THINKING });
                 }
                 contentBuffer = event.text || '';
-                set((state) => ({
-                  messages: state.messages.map((m) =>
-                    m.id === assistantMsgId
-                      ? {
-                          ...m,
-                          content: contentBuffer,
-                          toolsUsed: [...toolsUsed],
-                          charts: charts.length > 0 ? [...charts] : m.charts,
-                          pendingActions:
-                            pendingActions.length > 0
-                              ? [...pendingActions]
-                              : m.pendingActions,
-                        }
-                      : m,
-                  ),
-                }));
+                upsertAssistantMessage();
                 break;
 
               case 'sources':
@@ -505,26 +575,30 @@ export const useAiChatStore = create<AiChatState>()(
                 break;
 
               case 'done':
-                set((state) => ({
-                  messages: state.messages.map((m) =>
-                    m.id === assistantMsgId
-                      ? {
-                          ...m,
-                          isStreaming: false,
-                          sources,
-                          charts: charts.length > 0 ? [...charts] : m.charts,
-                          pendingActions:
-                            pendingActions.length > 0
-                              ? [...pendingActions]
-                              : m.pendingActions,
-                        }
-                      : m,
-                  ),
-                  isLoading: false,
-                  thinking: IDLE_THINKING,
-                  _abortController: null,
-                  _activeAssistantId: null,
-                }));
+                set((state) => {
+                  const current = state.messages.find(
+                    (m) => m.id === assistantMsgId,
+                  );
+                  const merged = projectPendingActions(current);
+                  return {
+                    messages: state.messages.map((m) =>
+                      m.id === assistantMsgId
+                        ? {
+                            ...m,
+                            isStreaming: false,
+                            sources,
+                            charts: charts.length > 0 ? [...charts] : m.charts,
+                            pendingActions:
+                              merged.length > 0 ? merged : m.pendingActions,
+                          }
+                        : m,
+                    ),
+                    isLoading: false,
+                    thinking: IDLE_THINKING,
+                    _abortController: null,
+                    _activeAssistantId: null,
+                  };
+                });
                 break;
 
               case 'error': {

@@ -125,10 +125,35 @@ describe("AiRelayService", () => {
       expect(emit).not.toHaveBeenCalled();
     });
 
-    it("returns false when the in-flight prompt has no emit channel", async () => {
+    it("buffers the card (no live stream) when the in-flight prompt has no emit channel", async () => {
+      // A relay turn exists for the user but its stream cannot receive events;
+      // the card is buffered for pickup rather than reported as "not relay".
       service.enqueuePrompt(USER, "q", []);
       await service.waitForPrompt(USER);
+      expect(service.emitPendingAction(USER, action)).toBe(true);
+      expect(service.takeBufferedActions(USER)).toEqual([action]);
+    });
+
+    it("buffers a card emitted after the turn timed out, for pickup", () => {
+      // Simulate a claimed prompt that idle-timed-out: the agent kept composing
+      // a large call, the browser gave up, and the card lands afterwards.
+      const pending = service.enqueuePrompt(USER, "bulk edit", [], jest.fn());
+      pending.catch(() => undefined);
+      void service.waitForPrompt(USER);
+      // Past the idle window: the prompt leaves inFlight, but the user still has
+      // a relay turn (the awaitingLate marker), so a card landing now must be
+      // buffered, not dropped or reported as non-relay.
+      jest.advanceTimersByTime(180 * 1000);
+
+      expect(service.emitPendingAction(USER, action)).toBe(true);
+      expect(service.takeBufferedActions(USER)).toEqual([action]);
+      // Drained on pickup -- a second pickup is empty.
+      expect(service.takeBufferedActions(USER)).toEqual([]);
+    });
+
+    it("does not buffer a card for a user with no relay turn (direct MCP client)", () => {
       expect(service.emitPendingAction(USER, action)).toBe(false);
+      expect(service.takeBufferedActions(USER)).toEqual([]);
     });
   });
 
@@ -266,8 +291,8 @@ describe("AiRelayService", () => {
         name: "RelayTimeoutError",
         reason: "disconnected",
       });
-      // 90s of total silence after the claim.
-      jest.advanceTimersByTime(90 * 1000);
+      // 180s of total silence after the claim.
+      jest.advanceTimersByTime(180 * 1000);
       await assertion;
     });
 
@@ -276,7 +301,7 @@ describe("AiRelayService", () => {
       const pending = service.enqueuePrompt(USER, "q", [], emit);
       const claimed = await service.waitForPrompt(USER);
 
-      // Report liveness every 60s for 5 minutes -- never silent for a full 90s.
+      // Report liveness every 60s for 5 minutes -- never silent for a full 180s.
       for (let i = 0; i < 5; i++) {
         jest.advanceTimersByTime(60 * 1000);
         service.reportProgress(USER, claimed!.promptId, `step ${i}`);
@@ -319,7 +344,7 @@ describe("AiRelayService", () => {
       const assertion = expect(pending).rejects.toMatchObject({
         reason: "disconnected",
       });
-      jest.advanceTimersByTime(90 * 1000);
+      jest.advanceTimersByTime(180 * 1000);
       await assertion;
 
       // The agent recovers and posts late: not dropped, returns true (success).
@@ -339,7 +364,7 @@ describe("AiRelayService", () => {
       const pending = service.enqueuePrompt(USER, "q", []);
       const claimed = await service.waitForPrompt(USER);
       pending.catch(() => undefined);
-      jest.advanceTimersByTime(90 * 1000);
+      jest.advanceTimersByTime(180 * 1000);
 
       expect(service.postResponse(USER, claimed!.promptId, "first")).toBe(true);
       // Second post for the same prompt is a no-op success.
@@ -355,7 +380,7 @@ describe("AiRelayService", () => {
       const pending = service.enqueuePrompt(USER, "q", []);
       const claimed = await service.waitForPrompt(USER);
       pending.catch(() => undefined);
-      jest.advanceTimersByTime(90 * 1000);
+      jest.advanceTimersByTime(180 * 1000);
       service.postResponse(USER, claimed!.promptId, "secret");
 
       expect(service.takeBufferedResponse(OTHER, claimed!.promptId)).toBeNull();
@@ -365,7 +390,7 @@ describe("AiRelayService", () => {
       const pending = service.enqueuePrompt(USER, "q", []);
       const claimed = await service.waitForPrompt(USER);
       pending.catch(() => undefined);
-      jest.advanceTimersByTime(90 * 1000);
+      jest.advanceTimersByTime(180 * 1000);
       service.postResponse(USER, claimed!.promptId, "stale");
 
       // Past the 10-minute buffer TTL.
@@ -383,7 +408,7 @@ describe("AiRelayService", () => {
         promptIds.push(claimed!.promptId);
         // Advance just enough to expire this prompt's idle timer; stay under the
         // buffer TTL so earlier entries are not pruned by age, only by the cap.
-        jest.advanceTimersByTime(90 * 1000);
+        jest.advanceTimersByTime(180 * 1000);
         service.postResponse(USER, claimed!.promptId, `a${i}`);
       }
 
