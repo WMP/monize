@@ -209,19 +209,26 @@ export const ChatMessage = memo(function ChatMessage({
           </div>
         )}
 
-        {/* Message content */}
-        <div className="px-4 py-3 rounded-2xl rounded-bl-sm bg-gray-100 dark:bg-gray-700/60 text-gray-900 dark:text-gray-100">
-          {error ? (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          ) : (
-            <div className="text-sm leading-relaxed">
-              <AssistantMarkdown content={content} />
-              {isStreaming && (
-                <span className="inline-block w-1.5 h-4 ml-0.5 bg-gray-400 dark:bg-gray-500 animate-pulse" />
-              )}
-            </div>
-          )}
-        </div>
+        {/* Message content. Skip the bubble entirely for a text-less message
+            (e.g. a relay turn delivering only confirmation cards, whether live
+            with isStreaming set or after a disconnect): an empty grey bubble --
+            or one holding just the blinking cursor -- above the cards reads as a
+            lost/blank answer. Only render once there is text or an error; the
+            streaming cursor then shows alongside the text. */}
+        {(error || content.length > 0) && (
+          <div className="px-4 py-3 rounded-2xl rounded-bl-sm bg-gray-100 dark:bg-gray-700/60 text-gray-900 dark:text-gray-100">
+            {error ? (
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            ) : (
+              <div className="text-sm leading-relaxed">
+                <AssistantMarkdown content={content} />
+                {isStreaming && (
+                  <span className="inline-block w-1.5 h-4 ml-0.5 bg-gray-400 dark:bg-gray-500 animate-pulse" />
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Charts emitted by the render_chart tool */}
         {charts && charts.length > 0 && (

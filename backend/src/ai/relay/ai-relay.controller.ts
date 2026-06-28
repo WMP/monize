@@ -18,6 +18,7 @@ import { Response } from "express";
 import { AiRelayService, RelayTimeoutError } from "./ai-relay.service";
 import { RelayQueryDto } from "./dto/relay-query.dto";
 import { RelayTunnelStatus } from "./ai-relay.types";
+import { PendingAiAction } from "../actions/ai-action.types";
 import { tr } from "../../i18n/translate";
 
 /**
@@ -149,11 +150,15 @@ export class AiRelayController {
   pickupResponse(
     @Request() req: { user: { id: string } },
     @Param("promptId", ParseUUIDPipe) promptId: string,
-  ): { text: string | null } {
+  ): { text: string | null; pendingActions: PendingAiAction[] } {
     const buffered = this.relayService.takeBufferedResponse(
       req.user.id,
       promptId,
     );
-    return { text: buffered?.text ?? null };
+    // Confirmation cards composed after the stream gave up are buffered per user
+    // (not per prompt), so drain them on the same pickup the client already
+    // polls -- the browser renders any cards and keeps polling for the answer.
+    const pendingActions = this.relayService.takeBufferedActions(req.user.id);
+    return { text: buffered?.text ?? null, pendingActions };
   }
 }

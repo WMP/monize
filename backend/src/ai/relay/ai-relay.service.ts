@@ -25,10 +25,18 @@ const QUEUE_WAIT_MS = 5 * 60 * 1000; // 5 minutes
  * poll, progress, or tool activity) before the browser gives up on it. Reset by
  * every liveness signal, so a slow-but-alive agent that keeps reporting stays
  * connected indefinitely (up to HARD_WAIT_MS). A blip in the agent's own API
- * connection is what trips this -- and Fix 1's buffer still preserves the answer
- * if the agent recovers and posts late.
+ * connection is what trips this -- and the late-answer buffer still preserves
+ * the answer if the agent recovers and posts late.
+ *
+ * Sized to outlast the agent's own quiet phases: composing a large tool-call
+ * payload (e.g. a 40-item bulk write) is invisible to us -- no poll, progress,
+ * or tool activity reaches the relay until the call lands -- so too short a
+ * window trips mid-composition, the browser gives up, and a confirmation card
+ * emitted afterwards has no live stream to render into (#793). The card buffer
+ * recovers that case regardless, but a generous idle window keeps the common
+ * case on the live stream so the card appears without a pickup round-trip.
  */
-const IDLE_TIMEOUT_MS = 90 * 1000; // 90 seconds of silence after a claim
+const IDLE_TIMEOUT_MS = 180 * 1000; // 3 minutes of silence after a claim
 
 /**
  * Absolute backstop from claim time, regardless of liveness, so a wedged agent
@@ -115,6 +123,18 @@ interface BufferedResponse {
 }
 
 /**
+ * A write-confirmation card emitted by an agent after the browser stream had
+ * already given up (idle timeout while the agent composed a large tool call).
+ * Held for pickup so the user still sees and can approve it -- mirrors the
+ * late-answer buffer above, keyed by the action's own id.
+ */
+interface BufferedAction {
+  action: PendingAiAction;
+  /** Epoch ms the card was emitted; used for TTL pruning and LRU eviction. */
+  at: number;
+}
+
+/**
  * In-memory broker between the browser chat and the user's MCP agent.
  *
  * State is per-process (single backend instance): a multi-replica deployment
@@ -156,6 +176,16 @@ export class AiRelayService {
   private readonly awaitingLate = new Map<
     string,
     { userId: string; at: number }
+  >();
+  /**
+   * Write-confirmation cards emitted after the browser stream gave up, keyed by
+   * userId then actionId. The browser drains them via the pickup endpoint so a
+   * card composed slowly (idle timeout fired) is still shown and approvable
+   * rather than being silently lost or auto-declined (#793).
+   */
+  private readonly bufferedActions = new Map<
+    string,
+    Map<string, BufferedAction>
   >();
 
   /**
@@ -439,13 +469,107 @@ export class AiRelayService {
    * the user would have to accept in their CLI), the approve/reject card is
    * rendered in the web chat, exactly like the native AI Assistant.
    *
-   * Returns true when a card was delivered (the caller is in relay context and
-   * must NOT perform the write -- the browser commits it via /ai/actions/confirm
-   * on approval). Returns false when the user has no in-flight relay prompt, so
-   * the caller falls back to its normal (direct MCP-client) confirmation.
+   * Returns true when the card was handled by the relay (the caller is in relay
+   * context and must NOT perform the write -- the browser commits it via
+   * /ai/actions/confirm on approval): either delivered live, or, when the
+   * browser stream already gave up while the agent composed the call, buffered
+   * for pickup. Returns false only when the user has no relay turn at all (a
+   * direct MCP client), so the caller falls back to its own confirmation.
+   *
+   * Buffering the card when the stream is gone is what fixes #793: previously a
+   * card emitted after the idle timeout returned false, the write tool fell
+   * through to an MCP-client elicitation the web-chat user could not answer, and
+   * it surfaced as a decline.
    */
   emitPendingAction(userId: string, action: PendingAiAction): boolean {
-    return this.emitToInFlight(userId, { type: "pending_action", action });
+    if (this.emitToInFlight(userId, { type: "pending_action", action })) {
+      return true;
+    }
+    // No live stream. If the user has a relay turn in progress (or one that just
+    // timed out), the stream was almost certainly killed by the idle timeout
+    // while the agent composed this call -- buffer the card for pickup rather
+    // than telling the caller this is not a relay context.
+    if (this.hasRelayTurn(userId)) {
+      this.bufferAction(userId, action);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Drain any buffered confirmation cards for a user, removing them. Returns an
+   * empty array when none are buffered (expired, already picked up, or never
+   * buffered). Prunes expired entries on access.
+   */
+  takeBufferedActions(userId: string): PendingAiAction[] {
+    this.pruneActionBuffer(userId);
+    const userBuffer = this.bufferedActions.get(userId);
+    if (!userBuffer || userBuffer.size === 0) {
+      return [];
+    }
+    const actions = [...userBuffer.values()]
+      .sort((a, b) => a.at - b.at)
+      .map((entry) => entry.action);
+    this.bufferedActions.delete(userId);
+    return actions;
+  }
+
+  /**
+   * Whether the user has a relay agent currently or very recently handling a
+   * prompt: an in-flight prompt, a prompt that timed out after a claim (awaiting
+   * a late answer), or an agent that polled within the connection window. Used
+   * to decide whether a card with no live stream belongs to a relay turn (buffer
+   * it) or to a direct MCP client (let the caller elicit).
+   */
+  private hasRelayTurn(userId: string): boolean {
+    for (const record of this.inFlight.values()) {
+      if (record.userId === userId) {
+        return true;
+      }
+    }
+    for (const marker of this.awaitingLate.values()) {
+      if (marker.userId === userId) {
+        return true;
+      }
+    }
+    const last = this.lastPollAt.get(userId) ?? 0;
+    return Date.now() - last < CONNECTED_WINDOW_MS;
+  }
+
+  /** Store a late confirmation card for pickup, enforcing TTL and the per-user cap. */
+  private bufferAction(userId: string, action: PendingAiAction): void {
+    this.pruneActionBuffer(userId);
+    const existing =
+      this.bufferedActions.get(userId) ?? new Map<string, BufferedAction>();
+    const next = new Map(existing);
+    next.set(action.actionId, { action, at: Date.now() });
+    // Evict oldest entries (by emit time) until within the per-user cap.
+    if (next.size > MAX_BUFFERED_PER_USER) {
+      const ordered = [...next.entries()].sort((a, b) => a[1].at - b[1].at);
+      const trimmed = ordered.slice(next.size - MAX_BUFFERED_PER_USER);
+      this.bufferedActions.set(userId, new Map(trimmed));
+    } else {
+      this.bufferedActions.set(userId, next);
+    }
+    this.logger.warn(
+      `Relay confirmation card ${action.actionId} for user ${userId} emitted ` +
+        `after the stream gave up; buffered for pickup`,
+    );
+  }
+
+  /** Drop expired buffered cards for a user; clean up the empty bucket. */
+  private pruneActionBuffer(userId: string): void {
+    const userBuffer = this.bufferedActions.get(userId);
+    if (!userBuffer) {
+      return;
+    }
+    const cutoff = Date.now() - BUFFER_TTL_MS;
+    const live = [...userBuffer.entries()].filter(([, v]) => v.at >= cutoff);
+    if (live.length === 0) {
+      this.bufferedActions.delete(userId);
+    } else if (live.length !== userBuffer.size) {
+      this.bufferedActions.set(userId, new Map(live));
+    }
   }
 
   /** Tunnel status for the chat indicator. */
