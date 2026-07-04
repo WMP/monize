@@ -302,7 +302,9 @@
     "aliasNotFound": "Alias com ID {{ id }} não encontrado",
     "mergeSelf": "Não é possível mesclar um beneficiário consigo mesmo",
     "autoMergeDuplicatePayee": "Um beneficiário aparece em mais de um grupo de mesclagem",
-    "autoMergeSourceNotFound": "Um ou mais beneficiários de origem não foram encontrados"
+    "autoMergeSourceNotFound": "Um ou mais beneficiários de origem não foram encontrados",
+    "autoMergeGroupConflict": "Não foi possível mesclar \"{{ name }}\": o valor \"{{ value }}\" já está em uso",
+    "autoMergeGroupFailed": "Não foi possível mesclar \"{{ name }}\""
   },
   "reports": {
     "notFound": "Relatório com ID {{ id }} não encontrado",

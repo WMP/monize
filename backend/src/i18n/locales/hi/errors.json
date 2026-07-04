@@ -302,7 +302,9 @@
     "aliasNotFound": "ID {{ id }} वाला उपनाम नहीं मिला",
     "mergeSelf": "किसी भुगतानकर्ता को स्वयं में विलय नहीं किया जा सकता",
     "autoMergeDuplicatePayee": "एक भुगतानकर्ता एक से अधिक विलय समूहों में दिखाई देता है",
-    "autoMergeSourceNotFound": "एक या अधिक स्रोत भुगतानकर्ता नहीं मिले"
+    "autoMergeSourceNotFound": "एक या अधिक स्रोत भुगतानकर्ता नहीं मिले",
+    "autoMergeGroupConflict": "\"{{ name }}\" को मर्ज नहीं किया जा सका: मान \"{{ value }}\" पहले से उपयोग में है",
+    "autoMergeGroupFailed": "\"{{ name }}\" को मर्ज नहीं किया जा सका"
   },
   "reports": {
     "notFound": "ID {{ id }} वाली रिपोर्ट नहीं मिली",

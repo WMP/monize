@@ -302,7 +302,9 @@
     "aliasNotFound": "未找到 ID 为 {{ id }} 的别名",
     "mergeSelf": "无法将收款人合并到自身",
     "autoMergeDuplicatePayee": "一个收款人出现在多个合并组中",
-    "autoMergeSourceNotFound": "一个或多个来源收款人未找到"
+    "autoMergeSourceNotFound": "一个或多个来源收款人未找到",
+    "autoMergeGroupConflict": "无法合并\"{{ name }}\"：值\"{{ value }}\"已被使用",
+    "autoMergeGroupFailed": "无法合并\"{{ name }}\""
   },
   "reports": {
     "notFound": "未找到 ID 为 {{ id }} 的报告",

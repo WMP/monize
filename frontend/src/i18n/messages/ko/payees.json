@@ -198,7 +198,8 @@
       "backfilled": "{count, plural, one {거래 #건을 분류했습니다} other {거래 #건을 분류했습니다}}",
       "aliasesSkipped": "{count, plural, one {충돌로 인해 별칭 #개가 건너뜀} other {충돌로 인해 별칭 #개가 건너뜀}}",
       "loadFailed": "병합 그룹 로드에 실패했습니다",
-      "applyFailed": "수취인 병합에 실패했습니다"
+      "applyFailed": "수취인 병합에 실패했습니다",
+      "someGroupsFailed": "{count, plural, one {그룹 #개를 병합할 수 없습니다} other {그룹 #개를 병합할 수 없습니다}}: {reason}"
     },
     "categoryMatchLabel": "동일 카테고리의 수취인만 병합",
     "categoryMatchHelp": "카테고리가 다른 수취인은 별도로 유지하여 잘못된 매칭을 줄입니다.",

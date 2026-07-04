@@ -302,7 +302,9 @@
     "aliasNotFound": "Nie znaleziono aliasu o ID {{ id }}",
     "mergeSelf": "Nie można scalić odbiorcy z samym sobą",
     "autoMergeDuplicatePayee": "Odbiorca występuje w więcej niż jednej grupie scalania",
-    "autoMergeSourceNotFound": "Nie znaleziono jednego lub więcej odbiorców źródłowych"
+    "autoMergeSourceNotFound": "Nie znaleziono jednego lub więcej odbiorców źródłowych",
+    "autoMergeGroupConflict": "Nie można scalić \"{{ name }}\": wartość \"{{ value }}\" jest już używana",
+    "autoMergeGroupFailed": "Nie można scalić \"{{ name }}\""
   },
   "reports": {
     "notFound": "Nie znaleziono raportu o ID {{ id }}",

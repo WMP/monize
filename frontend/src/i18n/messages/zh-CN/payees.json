@@ -198,7 +198,8 @@
       "backfilled": "{count, plural, one {已分类 # 笔交易} other {已分类 # 笔交易}}",
       "aliasesSkipped": "{count, plural, one {# 个别名因冲突被跳过} other {# 个别名因冲突被跳过}}",
       "loadFailed": "加载合并分组失败",
-      "applyFailed": "合并收款人失败"
+      "applyFailed": "合并收款人失败",
+      "someGroupsFailed": "{count, plural, one {# 个分组无法合并} other {# 个分组无法合并}}：{reason}"
     },
     "categoryMatchLabel": "仅合并同一分类下的收款人",
     "categoryMatchHelp": "当收款人分类不同时保持分开，减少误匹配。",

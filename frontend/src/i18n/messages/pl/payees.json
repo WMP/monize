@@ -198,7 +198,8 @@
       "backfilled": "{count, plural, one {Skategoryzowano # transakcję} few {Skategoryzowano # transakcje} many {Skategoryzowano # transakcji} other {Skategoryzowano # transakcji}}",
       "aliasesSkipped": "{count, plural, one {Pominięto # alias z powodu konfliktu} few {Pominięto # aliasy z powodu konfliktów} many {Pominięto # aliasów z powodu konfliktów} other {Pominięto # aliasów z powodu konfliktów}}",
       "loadFailed": "Nie udało się załadować grup scalania",
-      "applyFailed": "Nie udało się scalić odbiorców"
+      "applyFailed": "Nie udało się scalić odbiorców",
+      "someGroupsFailed": "{count, plural, one {Nie udało się scalić # grupy} few {Nie udało się scalić # grup} many {Nie udało się scalić # grup} other {Nie udało się scalić # grup}}: {reason}"
     },
     "categoryMatchLabel": "Scalaj tylko odbiorców z tej samej kategorii",
     "categoryMatchHelp": "Rozdziela odbiorców o różnych kategoriach, ograniczając błędne dopasowania.",

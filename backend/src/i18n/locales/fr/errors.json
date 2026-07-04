@@ -302,7 +302,9 @@
     "aliasNotFound": "Alias avec l'ID {{ id }} introuvable",
     "mergeSelf": "Impossible de fusionner un bénéficiaire avec lui-même",
     "autoMergeDuplicatePayee": "Un bénéficiaire apparaît dans plusieurs groupes de fusion",
-    "autoMergeSourceNotFound": "Un ou plusieurs bénéficiaires sources sont introuvables"
+    "autoMergeSourceNotFound": "Un ou plusieurs bénéficiaires sources sont introuvables",
+    "autoMergeGroupConflict": "Impossible de fusionner « {{ name }} » : la valeur « {{ value }} » est déjà utilisée",
+    "autoMergeGroupFailed": "Impossible de fusionner « {{ name }} »"
   },
   "reports": {
     "notFound": "Rapport avec l'ID {{ id }} introuvable",

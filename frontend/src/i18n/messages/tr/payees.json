@@ -198,7 +198,8 @@
       "backfilled": "{count, plural, one {# işlem kategorize edildi} other {# işlem kategorize edildi}}",
       "aliasesSkipped": "{count, plural, one {# takma ad çakışma nedeniyle atlandı} other {# takma ad çakışma nedeniyle atlandı}}",
       "loadFailed": "Birleştirme grupları yüklenemedi",
-      "applyFailed": "Alacaklılar birleştirilemedi"
+      "applyFailed": "Alacaklılar birleştirilemedi",
+      "someGroupsFailed": "{count, plural, one {# grup birleştirilemedi} other {# grup birleştirilemedi}}: {reason}"
     },
     "categoryMatchLabel": "Yalnızca aynı kategorideki alacaklıları birleştir",
     "categoryMatchHelp": "Kategorileri farklı olduğunda alacaklıları ayırın, böylece yanlış eşleşmeler azalır.",

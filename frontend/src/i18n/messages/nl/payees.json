@@ -198,7 +198,8 @@
       "backfilled": "{count, plural, one {# transactie gecategoriseerd} other {# transacties gecategoriseerd}}",
       "aliasesSkipped": "{count, plural, one {# alias is overgeslagen vanwege een conflict} other {# aliassen zijn overgeslagen vanwege conflicten}}",
       "loadFailed": "Samenvoegingsgroepen konden niet worden geladen",
-      "applyFailed": "Begunstigden konden niet worden samengevoegd"
+      "applyFailed": "Begunstigden konden niet worden samengevoegd",
+      "someGroupsFailed": "{count, plural, one {# groep kon niet worden samengevoegd} other {# groepen konden niet worden samengevoegd}}: {reason}"
     },
     "categoryMatchLabel": "Alleen begunstigden in dezelfde categorie samenvoegen",
     "categoryMatchHelp": "Houdt begunstigden gescheiden als hun categorieën verschillen, waardoor onjuiste overeenkomsten afnemen.",

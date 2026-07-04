@@ -302,7 +302,9 @@
     "aliasNotFound": "Псевдоним с ID {{ id }} не найден",
     "mergeSelf": "Невозможно объединить получателя с самим собой",
     "autoMergeDuplicatePayee": "Получатель присутствует в нескольких группах объединения",
-    "autoMergeSourceNotFound": "Один или несколько исходных получателей не найдены"
+    "autoMergeSourceNotFound": "Один или несколько исходных получателей не найдены",
+    "autoMergeGroupConflict": "Не удалось объединить \"{{ name }}\": значение \"{{ value }}\" уже используется",
+    "autoMergeGroupFailed": "Не удалось объединить \"{{ name }}\""
   },
   "reports": {
     "notFound": "Отчёт с ID {{ id }} не найден",

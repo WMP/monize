@@ -302,7 +302,9 @@
     "aliasNotFound": "Alias mit ID {{ id }} nicht gefunden",
     "mergeSelf": "Ein Zahlungsempfänger kann nicht mit sich selbst zusammengeführt werden",
     "autoMergeDuplicatePayee": "Ein Zahlungsempfänger erscheint in mehr als einer Zusammenführungsgruppe",
-    "autoMergeSourceNotFound": "Ein oder mehrere Quell-Zahlungsempfänger wurden nicht gefunden"
+    "autoMergeSourceNotFound": "Ein oder mehrere Quell-Zahlungsempfänger wurden nicht gefunden",
+    "autoMergeGroupConflict": "\"{{ name }}\" konnte nicht zusammengeführt werden: Der Wert \"{{ value }}\" wird bereits verwendet",
+    "autoMergeGroupFailed": "\"{{ name }}\" konnte nicht zusammengeführt werden"
   },
   "reports": {
     "notFound": "Bericht mit ID {{ id }} nicht gefunden",

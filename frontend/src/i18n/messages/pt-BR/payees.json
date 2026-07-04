@@ -198,7 +198,8 @@
       "backfilled": "{count, plural, one {# transação categorizada} other {# transações categorizadas}}",
       "aliasesSkipped": "{count, plural, one {# alias foi ignorado devido a um conflito} other {# aliases foram ignorados devido a conflitos}}",
       "loadFailed": "Falha ao carregar os grupos de mesclagem",
-      "applyFailed": "Falha ao mesclar os beneficiários"
+      "applyFailed": "Falha ao mesclar os beneficiários",
+      "someGroupsFailed": "{count, plural, one {# grupo não pôde ser mesclado} other {# grupos não puderam ser mesclados}}: {reason}"
     },
     "categoryMatchLabel": "Mesclar apenas beneficiários da mesma categoria",
     "categoryMatchHelp": "Mantém os beneficiários separados quando suas categorias diferem, reduzindo correspondências falsas.",

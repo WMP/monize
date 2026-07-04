@@ -198,7 +198,8 @@
       "backfilled": "{count, plural, one {# transaction catégorisée} other {# transactions catégorisées}}",
       "aliasesSkipped": "{count, plural, one {# alias a été ignoré en raison d'un conflit} other {# alias ont été ignorés en raison de conflits}}",
       "loadFailed": "Échec du chargement des groupes de fusion",
-      "applyFailed": "Échec de la fusion des bénéficiaires"
+      "applyFailed": "Échec de la fusion des bénéficiaires",
+      "someGroupsFailed": "{count, plural, one {# groupe n'a pas pu être fusionné} other {# groupes n'ont pas pu être fusionnés}} : {reason}"
     },
     "categoryMatchLabel": "Fusionner uniquement les bénéficiaires de la même catégorie",
     "categoryMatchHelp": "Sépare les bénéficiaires dont les catégories diffèrent, réduisant les faux positifs.",

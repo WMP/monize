@@ -302,7 +302,9 @@
     "aliasNotFound": "Alias met ID {{ id }} niet gevonden",
     "mergeSelf": "Kan een begunstigde niet samenvoegen met zichzelf",
     "autoMergeDuplicatePayee": "Een begunstigde komt voor in meer dan één samenvoegingsgroep",
-    "autoMergeSourceNotFound": "Een of meer bronbegunstigden zijn niet gevonden"
+    "autoMergeSourceNotFound": "Een of meer bronbegunstigden zijn niet gevonden",
+    "autoMergeGroupConflict": "Kan \"{{ name }}\" niet samenvoegen: de waarde \"{{ value }}\" is al in gebruik",
+    "autoMergeGroupFailed": "Kan \"{{ name }}\" niet samenvoegen"
   },
   "reports": {
     "notFound": "Rapport met ID {{ id }} niet gevonden",

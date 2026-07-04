@@ -198,7 +198,8 @@
       "backfilled": "{count, plural, one {# 件の取引を分類しました} other {# 件の取引を分類しました}}",
       "aliasesSkipped": "{count, plural, one {# 件のエイリアスが競合のためスキップされました} other {# 件のエイリアスが競合のためスキップされました}}",
       "loadFailed": "マージグループの読み込みに失敗しました",
-      "applyFailed": "支払先のマージに失敗しました"
+      "applyFailed": "支払先のマージに失敗しました",
+      "someGroupsFailed": "{count, plural, one {# 件のグループを統合できませんでした} other {# 件のグループを統合できませんでした}}: {reason}"
     },
     "categoryMatchLabel": "同じカテゴリの支払先のみをマージ",
     "categoryMatchHelp": "カテゴリが異なる場合は支払先を分けておき、誤った一致を減らします。",
