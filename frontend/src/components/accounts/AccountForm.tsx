@@ -83,7 +83,7 @@ const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z
   interestRate: optionalNumberWithRange(0, 100),
   description: z.string().optional(),
   accountNumber: z.string().optional(),
-  institutionId: z.string().optional(),
+  institutionId: z.string().nullable().optional(),
   isFavourite: z.boolean().optional(),
   excludeFromNetWorth: z.boolean().optional(),
   createInvestmentPair: z.boolean().optional(),
@@ -311,7 +311,15 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
 
   const handleInstitutionChange = (value: string) => {
     setSelectedInstitutionId(value);
-    setValue('institutionId', value || undefined, { shouldDirty: true });
+    // The combobox only reports changes from real user interaction, so an
+    // empty value here means the user explicitly cleared the field. When
+    // editing, encode that as null -- the explicit "clear the stored
+    // institution" signal -- so the submit layer never has to infer a clear
+    // from a merely absent value (issue #806). On create there is nothing to
+    // clear, so an empty selection stays undefined and is stripped on submit.
+    setValue('institutionId', value || (account ? null : undefined), {
+      shouldDirty: true,
+    });
   };
 
   const handleInstitutionCreate = (name: string) => {

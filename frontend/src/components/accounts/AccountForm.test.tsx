@@ -6,6 +6,7 @@ import { Account } from '@/types/account';
 import { exchangeRatesApi } from '@/lib/exchange-rates';
 import { accountsApi } from '@/lib/accounts';
 import { categoriesApi } from '@/lib/categories';
+import { institutionsApi } from '@/lib/institutions';
 
 vi.mock('@/lib/accounts', () => ({
   accountsApi: {
@@ -585,6 +586,62 @@ describe('AccountForm', () => {
       expect(screen.getByText('Lender/Institution (required)')).toBeInTheDocument();
     });
     expect(screen.queryByText('Institution (optional)')).not.toBeInTheDocument();
+  });
+
+  it('keeps the existing institutionId on submit when the field is untouched (issue #806)', async () => {
+    vi.mocked(institutionsApi.getAll).mockResolvedValueOnce([
+      { id: 'inst-1', name: 'RBC', website: 'rbc.com' } as never,
+    ]);
+    const account = createExistingAccount({ institutionId: 'inst-1' });
+
+    render(
+      <AccountForm account={account} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('RBC')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Update Account/i }));
+    });
+
+    await waitFor(() => {
+      expect(mockOnSubmit).toHaveBeenCalled();
+    });
+    expect(mockOnSubmit.mock.calls[0][0].institutionId).toBe('inst-1');
+  });
+
+  it('submits an explicit null when the user clears the institution while editing', async () => {
+    vi.mocked(institutionsApi.getAll).mockResolvedValueOnce([
+      { id: 'inst-1', name: 'RBC', website: 'rbc.com' } as never,
+    ]);
+    const account = createExistingAccount({ institutionId: 'inst-1' });
+
+    render(
+      <AccountForm account={account} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('RBC')).toBeInTheDocument();
+    });
+
+    // Click the combobox's clear (X) button next to the institution input
+    const institutionInput = screen.getByDisplayValue('RBC');
+    const clearButton = institutionInput.parentElement!.querySelector('button');
+    expect(clearButton).not.toBeNull();
+    await act(async () => {
+      fireEvent.mouseDown(clearButton!);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Update Account/i }));
+    });
+
+    await waitFor(() => {
+      expect(mockOnSubmit).toHaveBeenCalled();
+    });
+    expect(mockOnSubmit.mock.calls[0][0].institutionId).toBeNull();
   });
 
   it('blocks new MORTGAGE submit with localized required errors and no raw Zod enum message', async () => {
