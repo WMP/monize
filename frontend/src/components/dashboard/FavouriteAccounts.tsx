@@ -10,6 +10,7 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { accountsApi } from '@/lib/accounts';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { getOrdinal } from '@/lib/ordinal';
+import { useDragReorder, dropIndicatorClass } from '@/hooks/useDragReorder';
 
 interface FavouriteAccountsProps {
   accounts: Account[];
@@ -26,8 +27,6 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
   const defaultCurrency = preferences?.defaultCurrency || 'CAD';
   const [reordering, setReordering] = useState(false);
   const [localOrder, setLocalOrder] = useState<{ accounts: Account[]; order: Account[] } | null>(null);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
 
   // Invalidate local order when parent accounts reference changes
   const effectiveLocalOrder = localOrder?.accounts === accounts ? localOrder.order : null;
@@ -77,13 +76,7 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
     [applyReorder],
   );
 
-  const handleDrop = (targetIndex: number) => {
-    setOverIndex(null);
-    const from = dragIndex;
-    setDragIndex(null);
-    if (from === null) return;
-    applyReorder(from, targetIndex);
-  };
+  const { dragIndex, rowProps, dropIndicator } = useDragReorder(applyReorder);
 
   if (isLoading) {
     return (
@@ -143,39 +136,13 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
           <div
             key={account.id}
             data-testid={`favourite-account-row-${account.id}`}
+            {...(reordering ? rowProps(index) : {})}
             draggable={reordering}
-            onDragStart={reordering ? () => setDragIndex(index) : undefined}
-            onDragOver={
-              reordering
-                ? (e) => {
-                    e.preventDefault();
-                    if (overIndex !== index) setOverIndex(index);
-                  }
-                : undefined
-            }
-            onDrop={
-              reordering
-                ? (e) => {
-                    e.preventDefault();
-                    handleDrop(index);
-                  }
-                : undefined
-            }
-            onDragEnd={
-              reordering
-                ? () => {
-                    setDragIndex(null);
-                    setOverIndex(null);
-                  }
-                : undefined
-            }
             className={`flex items-center gap-1 rounded-lg ${
               reordering ? 'cursor-grab' : ''
-            } ${dragIndex === index ? 'opacity-50' : ''} ${
-              overIndex === index && dragIndex !== null && dragIndex !== index
-                ? 'bg-blue-100 dark:bg-blue-500/20 ring-2 ring-inset ring-blue-500 dark:ring-blue-400'
-                : ''
-            }`}
+            } ${dragIndex === index ? 'opacity-50' : ''} ${dropIndicatorClass(
+              dropIndicator(index),
+            )}`}
           >
             {reordering && (
               <span aria-hidden="true" className="select-none text-gray-400 flex-shrink-0">

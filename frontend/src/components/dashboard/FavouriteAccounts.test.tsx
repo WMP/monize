@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@/test/render";
+import { render, screen, fireEvent, createEvent, act } from "@/test/render";
 import { FavouriteAccounts } from "./FavouriteAccounts";
 import { accountsApi } from "@/lib/accounts";
 
@@ -407,15 +407,23 @@ describe("FavouriteAccounts", () => {
       expect(mockPush).not.toHaveBeenCalled();
     });
 
-    it("calls reorderFavourites API when dragging an account onto another", async () => {
+    // jsdom rows have a zero-height bounding rect, so a negative clientY lands
+    // in the top half (insert above) and a positive one in the bottom half.
+    const dragOverAt = (el: Element, clientY: number) => {
+      const evt = createEvent.dragOver(el);
+      Object.defineProperty(evt, "clientY", { value: clientY });
+      fireEvent(el, evt);
+    };
+
+    it("calls reorderFavourites API when dragging an account above another", async () => {
       render(<FavouriteAccounts accounts={orderedAccounts} isLoading={false} />);
 
       fireEvent.click(screen.getByText("Reorder"));
 
       // Sorted display order is Alpha (acc-a), Bravo (acc-b), Charlie (acc-c);
-      // drag Charlie onto Alpha to move it to the top.
+      // drag Charlie above Alpha to move it to the top.
       fireEvent.dragStart(screen.getByTestId("favourite-account-row-acc-c"));
-      fireEvent.dragOver(screen.getByTestId("favourite-account-row-acc-a"));
+      dragOverAt(screen.getByTestId("favourite-account-row-acc-a"), -5);
       await act(async () => {
         fireEvent.drop(screen.getByTestId("favourite-account-row-acc-a"));
       });
@@ -424,6 +432,25 @@ describe("FavouriteAccounts", () => {
         "acc-c",
         "acc-a",
         "acc-b",
+      ]);
+    });
+
+    it("dropping in the bottom half of a row inserts below it", async () => {
+      render(<FavouriteAccounts accounts={orderedAccounts} isLoading={false} />);
+
+      fireEvent.click(screen.getByText("Reorder"));
+
+      // Drag Alpha below Bravo.
+      fireEvent.dragStart(screen.getByTestId("favourite-account-row-acc-a"));
+      dragOverAt(screen.getByTestId("favourite-account-row-acc-b"), 5);
+      await act(async () => {
+        fireEvent.drop(screen.getByTestId("favourite-account-row-acc-b"));
+      });
+
+      expect(accountsApi.reorderFavourites).toHaveBeenCalledWith([
+        "acc-b",
+        "acc-a",
+        "acc-c",
       ]);
     });
 

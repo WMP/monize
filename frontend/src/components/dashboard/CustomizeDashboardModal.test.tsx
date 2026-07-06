@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, screen, fireEvent, within } from '@testing-library/react';
+import { act, screen, fireEvent, createEvent, within } from '@testing-library/react';
 import { render } from '@/test/render';
 import { CustomizeDashboardModal } from './CustomizeDashboardModal';
 import { DASHBOARD_WIDGETS, DEFAULT_DASHBOARD_WIDGET_IDS } from './widget-registry';
@@ -38,6 +38,14 @@ async function renderModal() {
 }
 
 const rowFor = (name: string) => screen.getByText(name).closest('li')!;
+
+// jsdom rows have a zero-height bounding rect, so a negative clientY lands in
+// the top half (insert above) and a positive one in the bottom half (below).
+const dragOverAt = (el: Element, clientY: number) => {
+  const evt = createEvent.dragOver(el);
+  Object.defineProperty(evt, 'clientY', { value: clientY });
+  fireEvent(el, evt);
+};
 
 describe('CustomizeDashboardModal', () => {
   beforeEach(() => {
@@ -92,14 +100,14 @@ describe('CustomizeDashboardModal', () => {
     expect(updatePreferencesMock).toHaveBeenCalledWith({ dashboardWidgets: expected });
   });
 
-  it('saves the new order after dragging a widget onto another', async () => {
+  it('dropping in the top half of a row inserts above it', async () => {
     await renderModal();
-    // Drag Insights (last default widget) onto Favourite Accounts (first).
+    // Drag Insights (last default widget) above Favourite Accounts (first).
     await act(async () => {
       fireEvent.dragStart(screen.getByTestId('widget-row-insights'));
     });
     await act(async () => {
-      fireEvent.dragOver(screen.getByTestId('widget-row-favourite-accounts'));
+      dragOverAt(screen.getByTestId('widget-row-favourite-accounts'), -5);
     });
     await act(async () => {
       fireEvent.drop(screen.getByTestId('widget-row-favourite-accounts'));
@@ -112,6 +120,48 @@ describe('CustomizeDashboardModal', () => {
       ...DEFAULT_DASHBOARD_WIDGET_IDS.filter((id) => id !== 'insights'),
     ];
     expect(updatePreferencesMock).toHaveBeenCalledWith({ dashboardWidgets: expected });
+  });
+
+  it('dropping in the bottom half of a row inserts below it', async () => {
+    await renderModal();
+    await act(async () => {
+      fireEvent.dragStart(screen.getByTestId('widget-row-insights'));
+    });
+    await act(async () => {
+      dragOverAt(screen.getByTestId('widget-row-favourite-accounts'), 5);
+    });
+    await act(async () => {
+      fireEvent.drop(screen.getByTestId('widget-row-favourite-accounts'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save'));
+    });
+    const rest = DEFAULT_DASHBOARD_WIDGET_IDS.filter(
+      (id) => id !== 'insights' && id !== 'favourite-accounts',
+    );
+    expect(updatePreferencesMock).toHaveBeenCalledWith({
+      dashboardWidgets: ['favourite-accounts', 'insights', ...rest],
+    });
+  });
+
+  it('shows an insertion line above or below the hovered row while dragging', async () => {
+    await renderModal();
+    const target = screen.getByTestId('widget-row-favourite-accounts');
+    await act(async () => {
+      fireEvent.dragStart(screen.getByTestId('widget-row-insights'));
+    });
+    await act(async () => {
+      dragOverAt(target, -5);
+    });
+    expect(target.className).toContain('inset_0_3px');
+    await act(async () => {
+      dragOverAt(target, 5);
+    });
+    expect(target.className).toContain('inset_0_-3px');
+    await act(async () => {
+      fireEvent.dragEnd(screen.getByTestId('widget-row-insights'));
+    });
+    expect(target.className).not.toContain('inset_0_-3px');
   });
 
   it('dropping a widget onto itself keeps the default layout', async () => {

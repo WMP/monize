@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { userSettingsApi } from '@/lib/user-settings';
 import { getErrorMessage } from '@/lib/errors';
+import { useDragReorder, dropIndicatorClass } from '@/hooks/useDragReorder';
 import {
   DASHBOARD_WIDGETS,
   DEFAULT_DASHBOARD_WIDGET_IDS,
@@ -45,8 +46,6 @@ export function CustomizeDashboardModal({ isOpen, onClose }: CustomizeDashboardM
   const updateStorePreferences = usePreferencesStore((s) => s.updatePreferences);
   const [rows, setRows] = useState<WidgetRow[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
 
   // Re-seed the working list each time the modal opens ("info from previous
   // render" pattern -- state updates during render, not in an effect).
@@ -67,29 +66,19 @@ export function CustomizeDashboardModal({ isOpen, onClose }: CustomizeDashboardM
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r)));
   };
 
-  const move = (index: number, delta: -1 | 1) => {
+  const moveRow = (from: number, to: number) => {
     setRows((prev) => {
-      const target = index + delta;
-      if (target < 0 || target >= prev.length) return prev;
+      if (to < 0 || to >= prev.length) return prev;
       const next = [...prev];
-      const [row] = next.splice(index, 1);
-      next.splice(target, 0, row);
+      const [row] = next.splice(from, 1);
+      next.splice(to, 0, row);
       return next;
     });
   };
 
-  const handleDrop = (targetIndex: number) => {
-    setOverIndex(null);
-    const from = dragIndex;
-    setDragIndex(null);
-    if (from === null || from === targetIndex) return;
-    setRows((prev) => {
-      const next = [...prev];
-      const [row] = next.splice(from, 1);
-      next.splice(targetIndex, 0, row);
-      return next;
-    });
-  };
+  const move = (index: number, delta: -1 | 1) => moveRow(index, index + delta);
+
+  const { dragIndex, rowProps, dropIndicator } = useDragReorder(moveRow);
 
   const reset = () => {
     setRows(buildRows([]));
@@ -132,27 +121,10 @@ export function CustomizeDashboardModal({ isOpen, onClose }: CustomizeDashboardM
           <li
             key={row.id}
             data-testid={`widget-row-${row.id}`}
-            draggable
-            onDragStart={() => setDragIndex(index)}
-            onDragOver={(e) => {
-              e.preventDefault();
-              if (overIndex !== index) setOverIndex(index);
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              handleDrop(index);
-            }}
-            onDragEnd={() => {
-              setDragIndex(null);
-              setOverIndex(null);
-            }}
+            {...rowProps(index)}
             className={`flex items-center gap-3 px-3 py-2 cursor-grab ${
               dragIndex === index ? 'opacity-50' : ''
-            } ${
-              overIndex === index && dragIndex !== null && dragIndex !== index
-                ? 'bg-blue-100 dark:bg-blue-500/20 ring-2 ring-inset ring-blue-500 dark:ring-blue-400'
-                : ''
-            }`}
+            } ${dropIndicatorClass(dropIndicator(index))}`}
           >
             <span aria-hidden="true" className="select-none text-gray-400">
               ⠿
