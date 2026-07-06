@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { userSettingsApi } from '@/lib/user-settings';
 import { getErrorMessage } from '@/lib/errors';
-import { useDragReorder, dropIndicatorClass } from '@/hooks/useDragReorder';
+import { useDragReorder, DropIndicatorLine } from '@/hooks/useDragReorder';
 import {
   DASHBOARD_WIDGETS,
   DEFAULT_DASHBOARD_WIDGET_IDS,
@@ -21,82 +21,66 @@ interface CustomizeDashboardModalProps {
   onClose: () => void;
 }
 
-interface WidgetRow {
-  id: DashboardWidgetId;
-  enabled: boolean;
-}
-
-/** Current layout first (in stored order), then the hidden widgets. */
-function buildRows(preferredIds: string[] | null | undefined): WidgetRow[] {
-  const enabled = resolveDashboardWidgets(preferredIds);
-  const enabledIds = new Set(enabled.map((w) => w.id));
-  return [
-    ...enabled.map((w) => ({ id: w.id, enabled: true })),
-    ...DASHBOARD_WIDGETS.filter((w) => !enabledIds.has(w.id)).map((w) => ({
-      id: w.id,
-      enabled: false,
-    })),
-  ];
-}
-
 export function CustomizeDashboardModal({ isOpen, onClose }: CustomizeDashboardModalProps) {
   const t = useTranslations('dashboard');
   const tc = useTranslations('common');
   const dashboardWidgets = usePreferencesStore((s) => s.preferences?.dashboardWidgets);
   const updateStorePreferences = usePreferencesStore((s) => s.updatePreferences);
-  const [rows, setRows] = useState<WidgetRow[]>([]);
+  // Ordered ids of the widgets currently shown; everything else is hidden.
+  const [visible, setVisible] = useState<DashboardWidgetId[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Re-seed the working list each time the modal opens ("info from previous
+  // Re-seed the working layout each time the modal opens ("info from previous
   // render" pattern -- state updates during render, not in an effect).
   const [prevOpen, setPrevOpen] = useState(false);
   if (isOpen !== prevOpen) {
     setPrevOpen(isOpen);
     if (isOpen) {
-      setRows(buildRows(dashboardWidgets));
+      setVisible(resolveDashboardWidgets(dashboardWidgets).map((w) => w.id));
     }
   }
+
+  const hidden = DASHBOARD_WIDGETS.map((w) => w.id).filter((id) => !visible.includes(id));
 
   const widgetName = (id: DashboardWidgetId): string => {
     const section = DASHBOARD_WIDGETS.find((w) => w.id === id)!.titleSection;
     return t(`${section}.title` as Parameters<typeof t>[0]);
   };
 
-  const toggle = (id: DashboardWidgetId) => {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r)));
-  };
-
-  const moveRow = (from: number, to: number) => {
-    setRows((prev) => {
+  const moveWidget = (from: number, to: number) => {
+    setVisible((prev) => {
       if (to < 0 || to >= prev.length) return prev;
       const next = [...prev];
-      const [row] = next.splice(from, 1);
-      next.splice(to, 0, row);
+      const [id] = next.splice(from, 1);
+      next.splice(to, 0, id);
       return next;
     });
   };
 
-  const move = (index: number, delta: -1 | 1) => moveRow(index, index + delta);
+  const { dragIndex, rowProps, dropIndicator } = useDragReorder(moveWidget, 'x');
 
-  const { dragIndex, rowProps, dropIndicator } = useDragReorder(moveRow);
-
-  const reset = () => {
-    setRows(buildRows([]));
+  const hide = (id: DashboardWidgetId) => {
+    setVisible((prev) => prev.filter((v) => v !== id));
   };
 
-  const enabledCount = rows.filter((r) => r.enabled).length;
+  const show = (id: DashboardWidgetId) => {
+    setVisible((prev) => [...prev, id]);
+  };
+
+  const reset = () => {
+    setVisible(DEFAULT_DASHBOARD_WIDGET_IDS);
+  };
 
   const handleSave = async () => {
-    const enabledIds = rows.filter((r) => r.enabled).map((r) => r.id);
     // A layout identical to the default is stored as "not customized" so the
     // user keeps following default-layout improvements in future versions.
     const isDefault =
-      enabledIds.length === DEFAULT_DASHBOARD_WIDGET_IDS.length &&
-      enabledIds.every((id, i) => id === DEFAULT_DASHBOARD_WIDGET_IDS[i]);
+      visible.length === DEFAULT_DASHBOARD_WIDGET_IDS.length &&
+      visible.every((id, i) => id === DEFAULT_DASHBOARD_WIDGET_IDS[i]);
     setIsSaving(true);
     try {
       const saved = await userSettingsApi.updatePreferences({
-        dashboardWidgets: isDefault ? [] : enabledIds,
+        dashboardWidgets: isDefault ? [] : visible,
       });
       updateStorePreferences({ dashboardWidgets: saved.dashboardWidgets });
       onClose();
@@ -108,7 +92,7 @@ export function CustomizeDashboardModal({ isOpen, onClose }: CustomizeDashboardM
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="md" className="p-6" pushHistory>
+    <Modal isOpen={isOpen} onClose={onClose} maxWidth="lg" className="p-6" pushHistory>
       <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
         {t('customize.title')}
       </h3>
@@ -116,69 +100,94 @@ export function CustomizeDashboardModal({ isOpen, onClose }: CustomizeDashboardM
         {t('customize.description')}
       </p>
 
-      <ul className="divide-y divide-gray-100 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg mb-2">
-        {rows.map((row, index) => (
-          <li
-            key={row.id}
-            data-testid={`widget-row-${row.id}`}
-            {...rowProps(index)}
-            className={`flex items-center gap-3 px-3 py-2 cursor-grab ${
-              dragIndex === index ? 'opacity-50' : ''
-            } ${dropIndicatorClass(dropIndicator(index, rows.length))}`}
-          >
-            <span aria-hidden="true" className="select-none text-gray-400">
-              ⠿
-            </span>
-            <input
-              id={`widget-toggle-${row.id}`}
-              type="checkbox"
-              checked={row.enabled}
-              onChange={() => toggle(row.id)}
-              className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-            />
-            <label
-              htmlFor={`widget-toggle-${row.id}`}
-              className={`flex-1 min-w-0 truncate text-sm ${
-                row.enabled
-                  ? 'text-gray-900 dark:text-gray-100'
-                  : 'text-gray-400 dark:text-gray-500'
+      {/* Mockup of the dashboard grid: two columns, flowing left to right,
+          exactly like the real page on large screens. */}
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900/40 p-3 mb-2">
+        <div className="grid grid-cols-2 gap-3">
+          {visible.map((id, index) => (
+            <div
+              key={id}
+              data-testid={`widget-tile-${id}`}
+              {...rowProps(index)}
+              className={`relative flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-sm px-2 py-3 cursor-grab ${
+                dragIndex === index ? 'opacity-50' : ''
               }`}
             >
-              {widgetName(row.id)}
-            </label>
-            <button
-              type="button"
-              onClick={() => move(index, -1)}
-              disabled={index === 0}
-              aria-label={t('customize.moveUp', { name: widgetName(row.id) })}
-              className="p-1 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => move(index, 1)}
-              disabled={index === rows.length - 1}
-              aria-label={t('customize.moveDown', { name: widgetName(row.id) })}
-              className="p-1 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </li>
-        ))}
-      </ul>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              <DropIndicatorLine position={dropIndicator(index, visible.length)} axis="x" />
+              <span aria-hidden="true" className="select-none text-gray-400 flex-shrink-0">
+                ⠿
+              </span>
+              <span className="flex-1 min-w-0 truncate text-sm text-gray-900 dark:text-gray-100">
+                {widgetName(id)}
+              </span>
+              <button
+                type="button"
+                onClick={() => moveWidget(index, index - 1)}
+                disabled={index === 0}
+                aria-label={t('customize.moveEarlier', { name: widgetName(id) })}
+                className="p-0.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => moveWidget(index, index + 1)}
+                disabled={index === visible.length - 1}
+                aria-label={t('customize.moveLater', { name: widgetName(id) })}
+                className="p-0.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => hide(id)}
+                aria-label={t('customize.hide', { name: widgetName(id) })}
+                className="p-0.5 rounded text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ))}
+          {visible.length === 0 && (
+            <p className="col-span-2 text-sm text-amber-600 dark:text-amber-400 text-center py-4">
+              {t('customize.atLeastOne')}
+            </p>
+          )}
+        </div>
+      </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
         {t('customize.dragToReorder')}
       </p>
 
-      {enabledCount === 0 && (
-        <p className="text-sm text-amber-600 dark:text-amber-400 mb-2">
-          {t('customize.atLeastOne')}
-        </p>
+      {hidden.length > 0 && (
+        <>
+          <h4 className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+            {t('customize.hiddenWidgets')}
+          </h4>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {hidden.map((id) => (
+              <button
+                key={id}
+                type="button"
+                data-testid={`widget-hidden-${id}`}
+                onClick={() => show(id)}
+                aria-label={t('customize.show', { name: widgetName(id) })}
+                className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-gray-300 dark:border-gray-600 px-3 py-1 text-sm text-gray-600 dark:text-gray-300 hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-400 transition-colors"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                {widgetName(id)}
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       <div className="mt-4 flex items-center justify-between gap-3">
@@ -189,7 +198,7 @@ export function CustomizeDashboardModal({ isOpen, onClose }: CustomizeDashboardM
           <Button variant="outline" onClick={onClose} disabled={isSaving}>
             {tc('cancel')}
           </Button>
-          <Button onClick={handleSave} disabled={isSaving || enabledCount === 0}>
+          <Button onClick={handleSave} disabled={isSaving || visible.length === 0}>
             {tc('save')}
           </Button>
         </div>

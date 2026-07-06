@@ -137,10 +137,13 @@
   "customize": {
     "button": "[XX-Customize-XX]",
     "title": "[XX-Customize dashboard-XX]",
-    "description": "[XX-Choose which widgets appear on your dashboard and the order they are shown in. Widgets flow left to right, two per row on large screens.-XX]",
-    "moveUp": "[XX-Move {name} up-XX]",
-    "moveDown": "[XX-Move {name} down-XX]",
-    "dragToReorder": "[XX-Drag widgets to reorder them, or use the arrow buttons.-XX]",
+    "description": "[XX-The layout below mirrors your dashboard: widgets flow left to right, two per row on large screens.-XX]",
+    "moveEarlier": "[XX-Move {name} earlier-XX]",
+    "moveLater": "[XX-Move {name} later-XX]",
+    "dragToReorder": "[XX-Drag widgets to rearrange them, or use the arrow buttons.-XX]",
+    "hiddenWidgets": "[XX-Hidden widgets-XX]",
+    "hide": "[XX-Hide {name}-XX]",
+    "show": "[XX-Show {name}-XX]",
     "atLeastOne": "[XX-Select at least one widget to show on the dashboard.-XX]",
     "reset": "[XX-Reset to default-XX]",
     "toasts": {

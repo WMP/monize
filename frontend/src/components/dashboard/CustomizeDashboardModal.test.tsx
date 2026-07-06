@@ -37,13 +37,15 @@ async function renderModal() {
   return result!;
 }
 
-const rowFor = (name: string) => screen.getByText(name).closest('li')!;
+const tile = (id: string) => screen.getByTestId(`widget-tile-${id}`);
 
-// jsdom rows have a zero-height bounding rect, so a negative clientY lands in
-// the top half (insert above) and a positive one in the bottom half (below).
-const dragOverAt = (el: Element, clientY: number) => {
+// The mockup grid flows left to right, so the insertion gap is picked from
+// the pointer's horizontal position. jsdom tiles have a zero-size bounding
+// rect: a negative clientX lands in the leading half (insert before) and a
+// positive one in the trailing half (insert after).
+const dragOverAt = (el: Element, clientX: number) => {
   const evt = createEvent.dragOver(el);
-  Object.defineProperty(evt, 'clientY', { value: clientY });
+  Object.defineProperty(evt, 'clientX', { value: clientX });
   fireEvent(el, evt);
 };
 
@@ -56,12 +58,14 @@ describe('CustomizeDashboardModal', () => {
     }));
   });
 
-  it('lists every registered widget with default enabled states', async () => {
+  it('shows visible widgets as grid tiles and the rest as hidden chips', async () => {
     await renderModal();
-    const checkboxes = screen.getAllByRole('checkbox');
-    expect(checkboxes).toHaveLength(DASHBOARD_WIDGETS.length);
-    expect(within(rowFor('Favourite Accounts')).getByRole('checkbox')).toBeChecked();
-    expect(within(rowFor('Favourite Reports')).getByRole('checkbox')).not.toBeChecked();
+    for (const id of DEFAULT_DASHBOARD_WIDGET_IDS) {
+      expect(screen.getByTestId(`widget-tile-${id}`)).toBeInTheDocument();
+    }
+    expect(screen.queryByTestId('widget-tile-favourite-reports')).not.toBeInTheDocument();
+    expect(screen.getByTestId('widget-hidden-favourite-reports')).toBeInTheDocument();
+    expect(screen.getByText('Hidden widgets')).toBeInTheDocument();
   });
 
   it('saves an unmodified default layout as empty (not customized)', async () => {
@@ -77,8 +81,9 @@ describe('CustomizeDashboardModal', () => {
   it('saves the explicit list when a widget is hidden', async () => {
     await renderModal();
     await act(async () => {
-      fireEvent.click(within(rowFor('Upcoming Bills & Deposits')).getByRole('checkbox'));
+      fireEvent.click(screen.getByLabelText('Hide Upcoming Bills & Deposits'));
     });
+    expect(screen.getByTestId('widget-hidden-upcoming-bills')).toBeInTheDocument();
     await act(async () => {
       fireEvent.click(screen.getByText('Save'));
     });
@@ -87,10 +92,10 @@ describe('CustomizeDashboardModal', () => {
     });
   });
 
-  it('saves the new order after moving a widget up', async () => {
+  it('saves the new order after moving a widget earlier with the arrow button', async () => {
     await renderModal();
     await act(async () => {
-      fireEvent.click(screen.getByLabelText('Move Upcoming Bills & Deposits up'));
+      fireEvent.click(screen.getByLabelText('Move Upcoming Bills & Deposits earlier'));
     });
     await act(async () => {
       fireEvent.click(screen.getByText('Save'));
@@ -100,129 +105,12 @@ describe('CustomizeDashboardModal', () => {
     expect(updatePreferencesMock).toHaveBeenCalledWith({ dashboardWidgets: expected });
   });
 
-  it('dropping in the top half of a row inserts above it', async () => {
-    await renderModal();
-    // Drag Insights (last default widget) above Favourite Accounts (first).
-    await act(async () => {
-      fireEvent.dragStart(screen.getByTestId('widget-row-insights'));
-    });
-    await act(async () => {
-      dragOverAt(screen.getByTestId('widget-row-favourite-accounts'), -5);
-    });
-    await act(async () => {
-      fireEvent.drop(screen.getByTestId('widget-row-favourite-accounts'));
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByText('Save'));
-    });
-    const expected = [
-      'insights',
-      ...DEFAULT_DASHBOARD_WIDGET_IDS.filter((id) => id !== 'insights'),
-    ];
-    expect(updatePreferencesMock).toHaveBeenCalledWith({ dashboardWidgets: expected });
-  });
-
-  it('dropping in the bottom half of a row inserts below it', async () => {
+  it('showing Favourite Reports appends it to the layout', async () => {
     await renderModal();
     await act(async () => {
-      fireEvent.dragStart(screen.getByTestId('widget-row-insights'));
+      fireEvent.click(screen.getByTestId('widget-hidden-favourite-reports'));
     });
-    await act(async () => {
-      dragOverAt(screen.getByTestId('widget-row-favourite-accounts'), 5);
-    });
-    await act(async () => {
-      fireEvent.drop(screen.getByTestId('widget-row-favourite-accounts'));
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByText('Save'));
-    });
-    const rest = DEFAULT_DASHBOARD_WIDGET_IDS.filter(
-      (id) => id !== 'insights' && id !== 'favourite-accounts',
-    );
-    expect(updatePreferencesMock).toHaveBeenCalledWith({
-      dashboardWidgets: ['favourite-accounts', 'insights', ...rest],
-    });
-  });
-
-  it('renders one insertion line per gap, shared by adjacent row halves', async () => {
-    await renderModal();
-    const first = screen.getByTestId('widget-row-favourite-accounts');
-    const second = screen.getByTestId('widget-row-upcoming-bills');
-    await act(async () => {
-      fireEvent.dragStart(screen.getByTestId('widget-row-insights'));
-    });
-
-    // Bottom half of the first row and top half of the second row are the
-    // same gap: both draw the single line on the second row's top edge.
-    await act(async () => {
-      dragOverAt(first, 5);
-    });
-    expect(second.className).toContain('inset_0_3px');
-    expect(first.className).not.toContain('inset_0_-3px');
-
-    await act(async () => {
-      dragOverAt(second, -5);
-    });
-    expect(second.className).toContain('inset_0_3px');
-    expect(first.className).not.toContain('inset_0_-3px');
-
-    // Only the end-of-list gap uses a bottom-edge line, on the last row.
-    const last = screen.getByTestId('widget-row-favourite-reports');
-    await act(async () => {
-      dragOverAt(last, 5);
-    });
-    expect(last.className).toContain('inset_0_-3px');
-
-    await act(async () => {
-      fireEvent.dragEnd(screen.getByTestId('widget-row-insights'));
-    });
-    expect(last.className).not.toContain('inset_0_-3px');
-  });
-
-  it('shows no insertion line for the gaps beside the dragged row', async () => {
-    await renderModal();
-    const dragged = screen.getByTestId('widget-row-insights');
-    await act(async () => {
-      fireEvent.dragStart(dragged);
-    });
-    // Hovering the dragged row's own top half targets the gap above it,
-    // which would not move it: nothing is highlighted.
-    await act(async () => {
-      dragOverAt(dragged, -5);
-    });
-    expect(dragged.className).not.toContain('inset_0_3px');
-  });
-
-  it('dropping a widget onto itself keeps the default layout', async () => {
-    await renderModal();
-    await act(async () => {
-      fireEvent.dragStart(screen.getByTestId('widget-row-insights'));
-    });
-    await act(async () => {
-      fireEvent.drop(screen.getByTestId('widget-row-insights'));
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByText('Save'));
-    });
-    expect(updatePreferencesMock).toHaveBeenCalledWith({ dashboardWidgets: [] });
-  });
-
-  it('a drop with no drag in progress changes nothing', async () => {
-    await renderModal();
-    await act(async () => {
-      fireEvent.drop(screen.getByTestId('widget-row-favourite-accounts'));
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByText('Save'));
-    });
-    expect(updatePreferencesMock).toHaveBeenCalledWith({ dashboardWidgets: [] });
-  });
-
-  it('enabling Favourite Reports saves it at its list position', async () => {
-    await renderModal();
-    await act(async () => {
-      fireEvent.click(within(rowFor('Favourite Reports')).getByRole('checkbox'));
-    });
+    expect(screen.getByTestId('widget-tile-favourite-reports')).toBeInTheDocument();
     await act(async () => {
       fireEvent.click(screen.getByText('Save'));
     });
@@ -231,21 +119,22 @@ describe('CustomizeDashboardModal', () => {
     });
   });
 
-  it('seeds from a stored custom layout: order kept, hidden widgets appended unchecked', async () => {
+  it('seeds from a stored custom layout: order kept, others hidden', async () => {
     prefsState.current = { dashboardWidgets: ['insights', 'net-worth'] };
     await renderModal();
-    const labels = screen.getAllByRole('listitem').map((li) => li.textContent);
-    expect(labels[0]).toContain('Spending Insights');
-    expect(labels[1]).toContain('Net Worth');
-    expect(within(rowFor('Spending Insights')).getByRole('checkbox')).toBeChecked();
-    expect(within(rowFor('Favourite Accounts')).getByRole('checkbox')).not.toBeChecked();
+    const tiles = screen.getAllByTestId(/^widget-tile-/);
+    expect(tiles.map((el) => el.getAttribute('data-testid'))).toEqual([
+      'widget-tile-insights',
+      'widget-tile-net-worth',
+    ]);
+    expect(screen.getByTestId('widget-hidden-favourite-accounts')).toBeInTheDocument();
   });
 
-  it('blocks saving when no widget is enabled', async () => {
+  it('blocks saving when no widget is visible', async () => {
     prefsState.current = { dashboardWidgets: ['insights'] };
     await renderModal();
     await act(async () => {
-      fireEvent.click(within(rowFor('Spending Insights')).getByRole('checkbox'));
+      fireEvent.click(screen.getByLabelText('Hide Spending Insights'));
     });
     expect(screen.getByText(/Select at least one widget/)).toBeInTheDocument();
     expect(screen.getByText('Save').closest('button')).toBeDisabled();
@@ -273,5 +162,137 @@ describe('CustomizeDashboardModal', () => {
     await act(async () => {});
     expect(toast.error).toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('dropping in the leading half of a tile inserts before it', async () => {
+    await renderModal();
+    await act(async () => {
+      fireEvent.dragStart(tile('insights'));
+    });
+    await act(async () => {
+      dragOverAt(tile('favourite-accounts'), -5);
+    });
+    await act(async () => {
+      fireEvent.drop(tile('favourite-accounts'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save'));
+    });
+    const expected = [
+      'insights',
+      ...DEFAULT_DASHBOARD_WIDGET_IDS.filter((id) => id !== 'insights'),
+    ];
+    expect(updatePreferencesMock).toHaveBeenCalledWith({ dashboardWidgets: expected });
+  });
+
+  it('dropping in the trailing half of a tile inserts after it', async () => {
+    await renderModal();
+    await act(async () => {
+      fireEvent.dragStart(tile('insights'));
+    });
+    await act(async () => {
+      dragOverAt(tile('favourite-accounts'), 5);
+    });
+    await act(async () => {
+      fireEvent.drop(tile('favourite-accounts'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save'));
+    });
+    const rest = DEFAULT_DASHBOARD_WIDGET_IDS.filter(
+      (id) => id !== 'insights' && id !== 'favourite-accounts',
+    );
+    expect(updatePreferencesMock).toHaveBeenCalledWith({
+      dashboardWidgets: ['favourite-accounts', 'insights', ...rest],
+    });
+  });
+
+  it('renders one insertion line per gap, shared by adjacent tile halves', async () => {
+    await renderModal();
+    const first = tile('favourite-accounts');
+    const second = tile('upcoming-bills');
+    await act(async () => {
+      fireEvent.dragStart(tile('insights'));
+    });
+
+    // Trailing half of the first tile and leading half of the second are the
+    // same gap: both draw the single line before the second tile.
+    await act(async () => {
+      dragOverAt(first, 5);
+    });
+    expect(within(second).getByTestId('drop-indicator-before')).toBeInTheDocument();
+    expect(within(first).queryByTestId('drop-indicator-after')).not.toBeInTheDocument();
+
+    await act(async () => {
+      dragOverAt(second, -5);
+    });
+    expect(within(second).getByTestId('drop-indicator-before')).toBeInTheDocument();
+    expect(within(first).queryByTestId('drop-indicator-after')).not.toBeInTheDocument();
+
+    // Only the end-of-list gap draws after the last tile. Drag a different
+    // widget for this: the gap after the last tile is a no-op for itself.
+    await act(async () => {
+      fireEvent.dragEnd(tile('insights'));
+    });
+    const last = tile(DEFAULT_DASHBOARD_WIDGET_IDS[DEFAULT_DASHBOARD_WIDGET_IDS.length - 1]);
+    await act(async () => {
+      fireEvent.dragStart(first);
+    });
+    await act(async () => {
+      dragOverAt(last, 5);
+    });
+    expect(within(last).getByTestId('drop-indicator-after')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.dragEnd(first);
+    });
+    expect(screen.queryByTestId('drop-indicator-after')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('drop-indicator-before')).not.toBeInTheDocument();
+  });
+
+  it('shows no insertion line for the gaps beside the dragged tile', async () => {
+    await renderModal();
+    const dragged = tile('insights');
+    await act(async () => {
+      fireEvent.dragStart(dragged);
+    });
+    await act(async () => {
+      dragOverAt(dragged, -5);
+    });
+    expect(screen.queryByTestId('drop-indicator-before')).not.toBeInTheDocument();
+  });
+
+  it('dropping a tile onto itself keeps the default layout', async () => {
+    await renderModal();
+    await act(async () => {
+      fireEvent.dragStart(tile('insights'));
+    });
+    await act(async () => {
+      fireEvent.drop(tile('insights'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save'));
+    });
+    expect(updatePreferencesMock).toHaveBeenCalledWith({ dashboardWidgets: [] });
+  });
+
+  it('a drop with no drag in progress changes nothing', async () => {
+    await renderModal();
+    await act(async () => {
+      fireEvent.drop(tile('favourite-accounts'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save'));
+    });
+    expect(updatePreferencesMock).toHaveBeenCalledWith({ dashboardWidgets: [] });
+  });
+
+  it('every registered widget appears exactly once (tile or hidden chip)', async () => {
+    await renderModal();
+    for (const w of DASHBOARD_WIDGETS) {
+      const asTile = screen.queryByTestId(`widget-tile-${w.id}`);
+      const asChip = screen.queryByTestId(`widget-hidden-${w.id}`);
+      expect(!!asTile !== !!asChip).toBe(true);
+    }
   });
 });

@@ -10,7 +10,7 @@ import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { accountsApi } from '@/lib/accounts';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { getOrdinal } from '@/lib/ordinal';
-import { useDragReorder, dropIndicatorClass } from '@/hooks/useDragReorder';
+import { useDragReorder, DropIndicatorLine } from '@/hooks/useDragReorder';
 
 interface FavouriteAccountsProps {
   accounts: Account[];
@@ -138,12 +138,11 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
             data-testid={`favourite-account-row-${account.id}`}
             {...(reordering ? rowProps(index) : {})}
             draggable={reordering}
-            className={`flex items-center gap-1 rounded-lg ${
+            className={`relative flex items-center gap-1 rounded-lg ${
               reordering ? 'cursor-grab' : ''
-            } ${dragIndex === index ? 'opacity-50' : ''} ${dropIndicatorClass(
-              dropIndicator(index, favouriteAccounts.length),
-            )}`}
+            } ${dragIndex === index ? 'opacity-50' : ''}`}
           >
+            <DropIndicatorLine position={dropIndicator(index, favouriteAccounts.length)} />
             {reordering && (
               <span aria-hidden="true" className="select-none text-gray-400 flex-shrink-0">
                 ⠿
