@@ -179,5 +179,5 @@ done
 
 echo "Summary: pruned=${total_deleted} kept=${total_kept} dry_run=${DRY_RUN}"
 if [ "${DRY_RUN}" = "true" ]; then
-  echo "Dry-run only -- nothing was deleted. Set GHCR_PRUNE_ENABLED=true and run again to prune."
+  echo "Dry-run only -- nothing was deleted. Re-run with DRY_RUN=false to prune."
 fi

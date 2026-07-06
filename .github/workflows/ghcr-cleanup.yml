@@ -8,10 +8,9 @@ name: GHCR Untagged Cleanup
 # tag still references (platform children, provenance/SBOM attestations) -- is
 # in scripts/prune-ghcr-untagged.sh. See that file's header for the algorithm.
 #
-# SAFE ROLLOUT: this workflow only deletes when the repository variable
-# GHCR_PRUNE_ENABLED is set to the string "true". Until then (and for any
-# workflow_dispatch left at its default), it runs in dry-run mode and only logs
-# what it WOULD delete. Review a dry run, then set the variable to arm it.
+# The scheduled run prunes for real. A manual run (workflow_dispatch) has a
+# dry_run toggle -- left at its default (checked) it only logs what it WOULD
+# delete, so you can review before running it for real.
 
 on:
   schedule:
@@ -46,25 +45,18 @@ jobs:
         with:
           persist-credentials: false
 
-      # Resolve dry-run. A manual run honours its input; a scheduled run deletes
-      # for real -- but ONLY once GHCR_PRUNE_ENABLED is "true". Absent the
-      # variable, every run is forced to dry-run so merging this workflow can
-      # never delete anything until an operator explicitly arms it.
+      # Resolve dry-run. A manual run honours its toggle (default: dry-run); a
+      # scheduled run prunes for real.
       - name: Resolve dry-run mode
         id: mode
         env:
           EVENT: ${{ github.event_name }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
-          ENABLE: ${{ vars.GHCR_PRUNE_ENABLED }}
         run: |
           if [ "${EVENT}" = "workflow_dispatch" ]; then
             DRY="${INPUT_DRY_RUN}"
           else
             DRY="false"
-          fi
-          if [ "${ENABLE}" != "true" ]; then
-            echo "GHCR_PRUNE_ENABLED is not 'true'; forcing dry-run."
-            DRY="true"
           fi
           echo "dry_run=${DRY}" >>"${GITHUB_OUTPUT}"
 
