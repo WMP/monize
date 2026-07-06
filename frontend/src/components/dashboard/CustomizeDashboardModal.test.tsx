@@ -144,24 +144,53 @@ describe('CustomizeDashboardModal', () => {
     });
   });
 
-  it('shows an insertion line above or below the hovered row while dragging', async () => {
+  it('renders one insertion line per gap, shared by adjacent row halves', async () => {
     await renderModal();
-    const target = screen.getByTestId('widget-row-favourite-accounts');
+    const first = screen.getByTestId('widget-row-favourite-accounts');
+    const second = screen.getByTestId('widget-row-upcoming-bills');
     await act(async () => {
       fireEvent.dragStart(screen.getByTestId('widget-row-insights'));
     });
+
+    // Bottom half of the first row and top half of the second row are the
+    // same gap: both draw the single line on the second row's top edge.
     await act(async () => {
-      dragOverAt(target, -5);
+      dragOverAt(first, 5);
     });
-    expect(target.className).toContain('inset_0_3px');
+    expect(second.className).toContain('inset_0_3px');
+    expect(first.className).not.toContain('inset_0_-3px');
+
     await act(async () => {
-      dragOverAt(target, 5);
+      dragOverAt(second, -5);
     });
-    expect(target.className).toContain('inset_0_-3px');
+    expect(second.className).toContain('inset_0_3px');
+    expect(first.className).not.toContain('inset_0_-3px');
+
+    // Only the end-of-list gap uses a bottom-edge line, on the last row.
+    const last = screen.getByTestId('widget-row-favourite-reports');
+    await act(async () => {
+      dragOverAt(last, 5);
+    });
+    expect(last.className).toContain('inset_0_-3px');
+
     await act(async () => {
       fireEvent.dragEnd(screen.getByTestId('widget-row-insights'));
     });
-    expect(target.className).not.toContain('inset_0_-3px');
+    expect(last.className).not.toContain('inset_0_-3px');
+  });
+
+  it('shows no insertion line for the gaps beside the dragged row', async () => {
+    await renderModal();
+    const dragged = screen.getByTestId('widget-row-insights');
+    await act(async () => {
+      fireEvent.dragStart(dragged);
+    });
+    // Hovering the dragged row's own top half targets the gap above it,
+    // which would not move it: nothing is highlighted.
+    await act(async () => {
+      dragOverAt(dragged, -5);
+    });
+    expect(dragged.className).not.toContain('inset_0_3px');
   });
 
   it('dropping a widget onto itself keeps the default layout', async () => {

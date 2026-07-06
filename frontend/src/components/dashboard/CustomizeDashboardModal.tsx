@@ -124,7 +124,7 @@ export function CustomizeDashboardModal({ isOpen, onClose }: CustomizeDashboardM
             {...rowProps(index)}
             className={`flex items-center gap-3 px-3 py-2 cursor-grab ${
               dragIndex === index ? 'opacity-50' : ''
-            } ${dropIndicatorClass(dropIndicator(index))}`}
+            } ${dropIndicatorClass(dropIndicator(index, rows.length))}`}
           >
             <span aria-hidden="true" className="select-none text-gray-400">
               ⠿

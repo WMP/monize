@@ -6,21 +6,22 @@ export type DropPosition = 'above' | 'below';
  * Shared state for HTML5 drag-to-reorder lists (dashboard customize dialog,
  * Favourite Accounts widget, investment report column chooser).
  *
- * Rows spread `rowProps(index)`. While dragging, `dropIndicator(index)`
- * reports whether the dragged item would be inserted above or below the
- * hovered row (based on the pointer's vertical position within it) so the
- * list can draw an insertion line at the exact drop position instead of
- * highlighting the whole row. On drop, `moveItem(from, to)` receives the
- * source index and the insertion index within the post-removal list.
+ * Rows spread `rowProps(index)`. While dragging, the hook tracks the
+ * insertion gap under the pointer (gap g = "between row g-1 and row g",
+ * derived from which half of the hovered row the pointer is in), so the
+ * bottom half of one row and the top half of the next resolve to the SAME
+ * gap and render one identical insertion line at that boundary. Gaps that
+ * would not move the dragged item show no indicator. On drop,
+ * `moveItem(from, to)` receives the source index and the insertion index
+ * within the post-removal list.
  */
 export function useDragReorder(moveItem: (from: number, to: number) => void) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
-  const [overPosition, setOverPosition] = useState<DropPosition>('below');
+  const [gapIndex, setGapIndex] = useState<number | null>(null);
 
   const reset = () => {
     setDragIndex(null);
-    setOverIndex(null);
+    setGapIndex(null);
   };
 
   const rowProps = (index: number) => ({
@@ -29,31 +30,35 @@ export function useDragReorder(moveItem: (from: number, to: number) => void) {
     onDragOver: (e: DragEvent) => {
       e.preventDefault();
       const rect = e.currentTarget.getBoundingClientRect();
-      const position: DropPosition =
-        e.clientY < rect.top + rect.height / 2 ? 'above' : 'below';
-      if (overIndex !== index) setOverIndex(index);
-      if (overPosition !== position) setOverPosition(position);
+      const gap = e.clientY < rect.top + rect.height / 2 ? index : index + 1;
+      if (gapIndex !== gap) setGapIndex(gap);
     },
     onDrop: (e: DragEvent) => {
       e.preventDefault();
       const from = dragIndex;
-      // A drop is always preceded by a dragOver on the same row, so the
-      // tracked position applies; fall back to 'below' just in case.
-      const position = overIndex === index ? overPosition : 'below';
+      const gap = gapIndex;
       reset();
-      if (from === null) return;
-      let to = position === 'above' ? index : index + 1;
-      if (to > from) to -= 1; // account for the dragged item's removal
+      if (from === null || gap === null) return;
+      const to = gap > from ? gap - 1 : gap; // account for the dragged item's removal
       if (to === from) return;
       moveItem(from, to);
     },
     onDragEnd: reset,
   });
 
-  const dropIndicator = (index: number): DropPosition | null =>
-    dragIndex !== null && overIndex === index && dragIndex !== index
-      ? overPosition
-      : null;
+  /**
+   * The insertion line for the hovered gap, drawn once: on the top edge of
+   * the row the gap precedes, or on the bottom edge of the last row for the
+   * end-of-list gap. `itemCount` is the rendered list's length.
+   */
+  const dropIndicator = (index: number, itemCount: number): DropPosition | null => {
+    if (dragIndex === null || gapIndex === null) return null;
+    // Dropping into the gap on either side of the dragged row is a no-op.
+    if (gapIndex === dragIndex || gapIndex === dragIndex + 1) return null;
+    if (gapIndex === index) return 'above';
+    if (index === itemCount - 1 && gapIndex === itemCount) return 'below';
+    return null;
+  };
 
   return { dragIndex, rowProps, dropIndicator };
 }

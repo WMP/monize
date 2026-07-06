@@ -64,7 +64,7 @@ export function InvestmentReportColumnChooser({
                 {...rowProps(index)}
                 className={`flex items-center gap-2 px-3 py-2 text-sm cursor-grab ${
                   dragIndex === index ? 'opacity-50' : ''
-                } ${dropIndicatorClass(dropIndicator(index))}`}
+                } ${dropIndicatorClass(dropIndicator(index, value.length))}`}
               >
                 <span aria-hidden="true" className="select-none text-gray-400">
                   ⠿

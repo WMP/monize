@@ -141,7 +141,7 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
             className={`flex items-center gap-1 rounded-lg ${
               reordering ? 'cursor-grab' : ''
             } ${dragIndex === index ? 'opacity-50' : ''} ${dropIndicatorClass(
-              dropIndicator(index),
+              dropIndicator(index, favouriteAccounts.length),
             )}`}
           >
             {reordering && (

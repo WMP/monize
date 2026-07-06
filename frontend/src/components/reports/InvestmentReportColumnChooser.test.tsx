@@ -87,6 +87,7 @@ describe('InvestmentReportColumnChooser', () => {
       <InvestmentReportColumnChooser value={['symbol', 'gain', 'name']} onChange={onChange} />,
     );
     fireEvent.dragStart(screen.getByTestId('selected-symbol'));
+    dragOverAt(screen.getByTestId('selected-name'), 5);
     fireEvent.drop(screen.getByTestId('selected-name'));
     expect(onChange).toHaveBeenCalledWith(['gain', 'name', 'symbol']);
   });
