@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { aiApi } from '@/lib/ai';
 import { AiInsight, AiStatus, InsightType, InsightSeverity, INSIGHT_TYPE_LABELS, INSIGHT_SEVERITY_LABELS } from '@/types/ai';
 import { InsightCard } from './InsightCard';
+import { RelayStatusBar } from '@/components/ai/RelayStatusBar';
 import { createLogger } from '@/lib/logger';
 import Link from 'next/link';
 import { useDateFormat } from '@/hooks/useDateFormat';
@@ -141,9 +142,11 @@ export function InsightsList() {
   const alertCount = insights.filter((i) => i.severity === 'alert' && !i.isDismissed).length;
   const warningCount = insights.filter((i) => i.severity === 'warning' && !i.isDismissed).length;
   const aiNotConfigured = aiStatus !== null && !aiStatus.configured;
-  // Insights will be generated through the user's own agent via the reverse
-  // MCP relay, which only works while that agent is connected -- worth a
-  // heads-up before they trigger a generation.
+  // Insights are generated through the user's own agent via the reverse MCP
+  // relay, which only works while that agent is connected. Rather than a static
+  // heads-up, we surface the live tunnel status and the same connect help as the
+  // AI Assistant so the user can confirm their agent is listening before they
+  // trigger a generation.
   const relayActive = aiStatus?.relayActive === true;
 
   if (isLoading) {
@@ -186,19 +189,10 @@ export function InsightsList() {
         </div>
       )}
 
-      {/* Relay note: generation goes through the user's own MCP agent */}
-      {!aiNotConfigured && relayActive && (
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div className="flex items-start gap-3">
-            <svg className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-            </svg>
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              {t('relayNote')}
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Relay tunnel: live connection status plus the same connect help shown
+          on the AI Assistant, so the user can confirm their agent is listening
+          before generating. Renders nothing when the relay is not active. */}
+      {!aiNotConfigured && <RelayStatusBar enabled={relayActive} />}
 
       {/* Header with stats and actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

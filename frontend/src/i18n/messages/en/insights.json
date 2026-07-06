@@ -28,7 +28,6 @@
     "message": "No AI provider is configured. To use Spending Insights, please {link} in your settings.",
     "linkText": "configure an AI provider"
   },
-  "relayNote": "Insights are generated through your MCP relay agent. Make sure your agent is connected before generating.",
   "insightTypes": {
     "anomaly": "Anomaly",
     "trend": "Trend",

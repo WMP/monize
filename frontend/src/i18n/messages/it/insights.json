@@ -28,7 +28,6 @@
     "message": "Nessun provider AI è configurato. Per usare le Analisi spese, {link} nelle impostazioni.",
     "linkText": "configura un provider AI"
   },
-  "relayNote": "Le analisi vengono generate tramite il tuo agente relay MCP. Assicurati che il tuo agente sia connesso prima di generarle.",
   "insightTypes": {
     "anomaly": "Anomalia",
     "trend": "Tendenza",

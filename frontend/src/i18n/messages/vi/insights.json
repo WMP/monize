@@ -28,7 +28,6 @@
     "message": "Chưa có nhà cung cấp AI nào được cấu hình. Để sử dụng Thông tin chi tiêu, vui lòng {link} trong cài đặt của bạn.",
     "linkText": "cấu hình nhà cung cấp AI"
   },
-  "relayNote": "Thông tin chi tiết được tạo thông qua tác nhân relay MCP của bạn. Hãy đảm bảo tác nhân đang kết nối trước khi tạo.",
   "insightTypes": {
     "anomaly": "Bất thường",
     "trend": "Xu hướng",

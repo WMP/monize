@@ -28,7 +28,6 @@
     "message": "Er is geen AI-provider geconfigureerd. Om Uitgaveninzichten te gebruiken, {link} in je instellingen.",
     "linkText": "configureer een AI-provider"
   },
-  "relayNote": "Inzichten worden gegenereerd via je MCP-relay-agent. Zorg ervoor dat je agent verbonden is voordat je genereert.",
   "insightTypes": {
     "anomaly": "Afwijking",
     "trend": "Trend",

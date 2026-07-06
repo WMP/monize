@@ -28,7 +28,6 @@
     "message": "Não há nenhum provedor de IA configurado. Para utilizar a Análise de gastos, {link} nas configurações.",
     "linkText": "configure um provedor de IA"
   },
-  "relayNote": "As análises são geradas por meio do seu agente de relay MCP. Verifique se o seu agente está conectado antes de gerar.",
   "insightTypes": {
     "anomaly": "Anomalia",
     "trend": "Tendência",

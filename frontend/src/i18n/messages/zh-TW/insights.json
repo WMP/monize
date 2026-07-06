@@ -28,7 +28,6 @@
     "message": "尚未設定 AI 提供者。若要使用消費洞察，請在設定中 {link}。",
     "linkText": "設定 AI 提供者"
   },
-  "relayNote": "洞察會透過您的 MCP 中繼代理程式產生。產生前請確認您的代理程式已連線。",
   "insightTypes": {
     "anomaly": "異常",
     "trend": "趨勢",

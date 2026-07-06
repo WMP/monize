@@ -28,7 +28,6 @@
     "message": "No hay ningún proveedor de AI configurado. Para usar Análisis de gastos, {link} en tu configuración.",
     "linkText": "configura un proveedor de AI"
   },
-  "relayNote": "Los análisis se generan a través de tu agente de relay MCP. Asegúrate de que tu agente esté conectado antes de generar.",
   "insightTypes": {
     "anomaly": "Anomalía",
     "trend": "Tendencia",
