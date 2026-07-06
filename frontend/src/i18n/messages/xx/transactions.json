@@ -1,4 +1,52 @@
 {
+  "payeeWidget": {
+    "totalSpent": "[XX-Total Spent-XX]",
+    "income": "[XX-Income-XX]",
+    "net": "[XX-Net-XX]",
+    "transactions": "[XX-Transactions-XX]",
+    "averageAmount": "[XX-Average Amount-XX]",
+    "lastTransaction": "[XX-Last Transaction-XX]",
+    "defaultCategory": "[XX-Default Category-XX]",
+    "nextBill": "[XX-Next Bill-XX]",
+    "viewBills": "[XX-View in Bills & Deposits-XX]",
+    "topCategories": "[XX-Top Categories-XX]",
+    "uncategorized": "[XX-Uncategorized-XX]",
+    "aliases": "[XX-Aliases-XX]",
+    "recurring": "[XX-Recurring: {cadence} · {amount}-XX]",
+    "recurringTooltip": "[XX-Detected from repeated charges over the selected period (or the last 12 months when no date filter is set).-XX]",
+    "cadence": {
+      "weekly": "[XX-Weekly-XX]",
+      "biweekly": "[XX-Every 2 Weeks-XX]",
+      "monthly": "[XX-Monthly-XX]",
+      "quarterly": "[XX-Quarterly-XX]",
+      "yearly": "[XX-Yearly-XX]"
+    },
+    "inactive": "[XX-Inactive-XX]",
+    "noTransactions": "[XX-No transactions in this period-XX]",
+    "editAria": "[XX-Edit payee-XX]",
+    "collapseAria": "[XX-Hide payee info-XX]",
+    "show": "[XX-Show payee info-XX]"
+  },
+  "categoryWidget": {
+    "totalSpent": "[XX-Total Spent-XX]",
+    "totalEarned": "[XX-Total Earned-XX]",
+    "income": "[XX-Income-XX]",
+    "expense": "[XX-Expense-XX]",
+    "budgetThisMonth": "[XX-This Month's Budget-XX]",
+    "budgetProgress": "[XX-{spent} of {budgeted}-XX]",
+    "transactions": "[XX-Transactions-XX]",
+    "averageAmount": "[XX-Average Amount-XX]",
+    "monthlyAverage": "[XX-Monthly Average-XX]",
+    "subcategories": "[XX-Subcategories-XX]",
+    "thisCategory": "[XX-This category-XX]",
+    "topPayees": "[XX-Top Payees-XX]",
+    "noPayee": "[XX-No payee-XX]",
+    "nextScheduled": "[XX-Next Scheduled-XX]",
+    "noTransactions": "[XX-No transactions in this period-XX]",
+    "editAria": "[XX-Edit category-XX]",
+    "collapseAria": "[XX-Hide category info-XX]",
+    "show": "[XX-Show category info-XX]"
+  },
   "accountWidget": {
     "currentBalance": "[XX-Current Balance-XX]",
     "nextPayment": "[XX-Next Payment-XX]",
@@ -27,7 +75,8 @@
       "duplicateTitle": "[XX-Duplicate Transaction-XX]",
       "newTitle": "[XX-New Transaction-XX]",
       "scheduleTitle": "[XX-Schedule as Recurring-XX]",
-      "editPayeeTitle": "[XX-Edit Payee-XX]"
+      "editPayeeTitle": "[XX-Edit Payee-XX]",
+      "editCategoryTitle": "[XX-Edit Category-XX]"
     },
     "loading": "[XX-Loading transactions...-XX]",
     "totalCount": "[XX-{count, plural, one {# transaction} other {# transactions}}-XX]",
@@ -430,6 +479,8 @@
     "loadFailed": "[XX-Failed to load transactions-XX]",
     "loadPayeeFailed": "[XX-Failed to load payee details-XX]",
     "payeeUpdateFailed": "[XX-Failed to update payee-XX]",
+    "categoryUpdated": "[XX-Category updated successfully-XX]",
+    "categoryUpdateFailed": "[XX-Failed to update category-XX]",
     "exportFailed": "[XX-Failed to export transactions-XX]"
   },
   "validation": {

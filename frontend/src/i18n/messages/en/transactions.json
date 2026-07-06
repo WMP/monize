@@ -1,4 +1,52 @@
 {
+  "payeeWidget": {
+    "totalSpent": "Total Spent",
+    "income": "Income",
+    "net": "Net",
+    "transactions": "Transactions",
+    "averageAmount": "Average Amount",
+    "lastTransaction": "Last Transaction",
+    "defaultCategory": "Default Category",
+    "nextBill": "Next Bill",
+    "viewBills": "View in Bills & Deposits",
+    "topCategories": "Top Categories",
+    "uncategorized": "Uncategorized",
+    "aliases": "Aliases",
+    "recurring": "Recurring: {cadence} · {amount}",
+    "recurringTooltip": "Detected from repeated charges over the selected period (or the last 12 months when no date filter is set).",
+    "cadence": {
+      "weekly": "Weekly",
+      "biweekly": "Every 2 Weeks",
+      "monthly": "Monthly",
+      "quarterly": "Quarterly",
+      "yearly": "Yearly"
+    },
+    "inactive": "Inactive",
+    "noTransactions": "No transactions in this period",
+    "editAria": "Edit payee",
+    "collapseAria": "Hide payee info",
+    "show": "Show payee info"
+  },
+  "categoryWidget": {
+    "totalSpent": "Total Spent",
+    "totalEarned": "Total Earned",
+    "income": "Income",
+    "expense": "Expense",
+    "budgetThisMonth": "This Month's Budget",
+    "budgetProgress": "{spent} of {budgeted}",
+    "transactions": "Transactions",
+    "averageAmount": "Average Amount",
+    "monthlyAverage": "Monthly Average",
+    "subcategories": "Subcategories",
+    "thisCategory": "This category",
+    "topPayees": "Top Payees",
+    "noPayee": "No payee",
+    "nextScheduled": "Next Scheduled",
+    "noTransactions": "No transactions in this period",
+    "editAria": "Edit category",
+    "collapseAria": "Hide category info",
+    "show": "Show category info"
+  },
   "accountWidget": {
     "currentBalance": "Current Balance",
     "nextPayment": "Next Payment",
@@ -27,7 +75,8 @@
       "duplicateTitle": "Duplicate Transaction",
       "newTitle": "New Transaction",
       "scheduleTitle": "Schedule as Recurring",
-      "editPayeeTitle": "Edit Payee"
+      "editPayeeTitle": "Edit Payee",
+      "editCategoryTitle": "Edit Category"
     },
     "loading": "Loading transactions...",
     "totalCount": "{count, plural, one {# transaction} other {# transactions}}",
@@ -430,6 +479,8 @@
     "loadFailed": "Failed to load transactions",
     "loadPayeeFailed": "Failed to load payee details",
     "payeeUpdateFailed": "Failed to update payee",
+    "categoryUpdated": "Category updated successfully",
+    "categoryUpdateFailed": "Failed to update category",
     "exportFailed": "Failed to export transactions"
   },
   "validation": {

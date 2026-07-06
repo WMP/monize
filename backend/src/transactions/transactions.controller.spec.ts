@@ -37,6 +37,8 @@ describe("TransactionsController", () => {
       removeTransfer: jest.fn(),
       updateTransfer: jest.fn(),
       getSummary: jest.fn(),
+      getGroupedTotals: jest.fn(),
+      getRecurringCharges: jest.fn(),
       bulkUpdate: jest.fn(),
       getRecent: jest.fn(),
     };
@@ -848,6 +850,7 @@ describe("TransactionsController", () => {
         undefined,
         undefined,
         undefined,
+        undefined,
       );
     });
 
@@ -872,6 +875,40 @@ describe("TransactionsController", () => {
         undefined,
         undefined,
         undefined,
+        undefined,
+      );
+    });
+
+    it("parses comma-separated tagIds for summary", async () => {
+      mockService.getSummary.mockResolvedValue({});
+
+      await controller.getSummary(
+        mockReq,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        `${uuid1},${uuid2}`,
+      );
+
+      expect(mockService.getSummary).toHaveBeenCalledWith(
+        "user-1",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        [uuid1, uuid2],
       );
     });
 
@@ -915,6 +952,7 @@ describe("TransactionsController", () => {
         undefined,
         10.5,
         99.99,
+        undefined,
       );
     });
 
@@ -951,6 +989,132 @@ describe("TransactionsController", () => {
           undefined,
           undefined,
           "xyz",
+        ),
+      ).toThrow(BadRequestException);
+    });
+  });
+
+  describe("getGroupedTotals()", () => {
+    it("delegates to service.getGroupedTotals with parsed parameters", async () => {
+      const expected = [
+        {
+          id: uuid1,
+          name: "Groceries",
+          currencyCode: "CAD",
+          total: -10,
+          count: 1,
+        },
+      ];
+      mockService.getGroupedTotals.mockResolvedValue(expected);
+
+      const result = await controller.getGroupedTotals(
+        mockReq,
+        "category",
+        `${uuid1},${uuid2}`,
+        "2024-01-01",
+        "2024-12-31",
+        undefined,
+        uuid3,
+        undefined,
+        "coffee",
+        "-500",
+        "0",
+        "25",
+      );
+
+      expect(result).toEqual(expected);
+      expect(mockService.getGroupedTotals).toHaveBeenCalledWith("user-1", {
+        groupBy: "category",
+        accountIds: [uuid1, uuid2],
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        categoryIds: undefined,
+        payeeIds: [uuid3],
+        tagIds: undefined,
+        search: "coffee",
+        amountFrom: -500,
+        amountTo: 0,
+        limit: 25,
+      });
+    });
+
+    it("rejects a missing or invalid groupBy", () => {
+      expect(() => controller.getGroupedTotals(mockReq)).toThrow(
+        BadRequestException,
+      );
+      expect(() => controller.getGroupedTotals(mockReq, "month")).toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("rejects an invalid date and a non-positive limit", () => {
+      expect(() =>
+        controller.getGroupedTotals(mockReq, "payee", undefined, "notadate"),
+      ).toThrow(BadRequestException);
+      expect(() =>
+        controller.getGroupedTotals(
+          mockReq,
+          "payee",
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          "0",
+        ),
+      ).toThrow(BadRequestException);
+    });
+  });
+
+  describe("getRecurringCharges()", () => {
+    it("delegates to service.getRecurringCharges with parsed payeeIds", async () => {
+      const expected = [{ payeeName: "Netflix", frequency: "monthly" }];
+      mockService.getRecurringCharges.mockResolvedValue(expected);
+
+      const result = await controller.getRecurringCharges(
+        mockReq,
+        `${uuid1},${uuid2}`,
+        "2024-01-01",
+        "2024-12-31",
+      );
+
+      expect(result).toEqual(expected);
+      expect(mockService.getRecurringCharges).toHaveBeenCalledWith(
+        "user-1",
+        "2024-01-01",
+        "2024-12-31",
+        [uuid1, uuid2],
+      );
+    });
+
+    it("rejects missing payeeIds or dates", () => {
+      expect(() =>
+        controller.getRecurringCharges(
+          mockReq,
+          undefined,
+          "2024-01-01",
+          "2024-12-31",
+        ),
+      ).toThrow(BadRequestException);
+      expect(() =>
+        controller.getRecurringCharges(mockReq, uuid1, undefined, "2024-12-31"),
+      ).toThrow(BadRequestException);
+      expect(() =>
+        controller.getRecurringCharges(mockReq, uuid1, "2024-01-01"),
+      ).toThrow(BadRequestException);
+    });
+
+    it("rejects an invalid payee UUID", () => {
+      expect(() =>
+        controller.getRecurringCharges(
+          mockReq,
+          "not-a-uuid",
+          "2024-01-01",
+          "2024-12-31",
         ),
       ).toThrow(BadRequestException);
     });

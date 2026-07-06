@@ -2190,6 +2190,7 @@ export class TransactionsService {
     search?: string,
     amountFrom?: number,
     amountTo?: number,
+    tagIds?: string[],
   ) {
     return this.analyticsService.getSummary(
       userId,
@@ -2201,6 +2202,42 @@ export class TransactionsService {
       search,
       amountFrom,
       amountTo,
+      undefined,
+      undefined,
+      tagIds,
+    );
+  }
+
+  async getGroupedTotals(
+    userId: string,
+    params: {
+      groupBy: "category" | "payee";
+      accountIds?: string[];
+      startDate?: string;
+      endDate?: string;
+      categoryIds?: string[];
+      payeeIds?: string[];
+      tagIds?: string[];
+      search?: string;
+      amountFrom?: number;
+      amountTo?: number;
+      limit?: number;
+    },
+  ) {
+    return this.analyticsService.getGroupedTotals(userId, params);
+  }
+
+  async getRecurringCharges(
+    userId: string,
+    startDate: string,
+    endDate: string,
+    payeeIds: string[],
+  ) {
+    return this.analyticsService.getRecurringCharges(
+      userId,
+      startDate,
+      endDate,
+      { payeeIds },
     );
   }
 

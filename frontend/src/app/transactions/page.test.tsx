@@ -128,6 +128,9 @@ vi.mock('@/lib/transactions', () => ({
     getById: (...args: any[]) => mockGetById(...args),
     bulkUpdate: (...args: any[]) => mockBulkUpdate(...args),
     getMonthlyTotals: (...args: any[]) => mockGetMonthlyTotals(...args),
+    // Used by the payee/category info widgets that mount on single-entity filters
+    getGroupedTotals: vi.fn().mockResolvedValue([]),
+    getRecurringCharges: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -165,6 +168,8 @@ vi.mock('@/lib/payees', () => ({
     getAll: (...args: any[]) => mockGetAllPayees(...args),
     getById: (...args: any[]) => mockGetPayeeById(...args),
     update: (...args: any[]) => mockUpdatePayee(...args),
+    // Used by the payee info widget that mounts on single-payee filters
+    getAliases: vi.fn().mockResolvedValue([]),
   },
 }));
 

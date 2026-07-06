@@ -18,6 +18,7 @@ import { useDateFormat } from '@/hooks/useDateFormat';
 import { InstitutionLogo, InstitutionLogoData } from '@/components/institutions/InstitutionLogo';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { safeHttpUrl } from '@/lib/safe-url';
+import { getNextScheduled } from '@/lib/scheduled-utils';
 
 interface AccountInfoWidgetProps {
   account: Account;
@@ -81,19 +82,10 @@ export function AccountInfoWidget({
   const institutionWebsite = safeHttpUrl(institution?.website);
 
   // The soonest active scheduled bill/deposit booked against this account.
-  // Honours a per-occurrence override for both the date and the amount.
-  const nextPayment = useMemo(() => {
-    const candidates = scheduledTransactions
-      .filter((st) => st.isActive && st.accountId === account.id)
-      .map((st) => ({
-        date: (st.nextOverride?.overrideDate ?? st.nextDueDate).split('T')[0],
-        amount: st.nextOverride?.amount ?? st.amount,
-        currencyCode: st.currencyCode,
-        payeeName: st.payee?.name ?? st.payeeName ?? null,
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-    return candidates[0] ?? null;
-  }, [scheduledTransactions, account.id]);
+  const nextPayment = useMemo(
+    () => getNextScheduled(scheduledTransactions, (st) => st.accountId === account.id),
+    [scheduledTransactions, account.id],
+  );
 
   const details: Array<{
     label: string;

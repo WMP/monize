@@ -239,11 +239,14 @@ export class TransactionAnalyticsService {
     amountTo?: number,
     excludeInvestmentLinked?: boolean,
     excludeTransfers?: boolean,
+    tagIds?: string[],
   ): Promise<{
     totalIncome: number;
     totalExpenses: number;
     netCashFlow: number;
     transactionCount: number;
+    firstTransactionDate: string | null;
+    lastTransactionDate: string | null;
     byCurrency: Record<
       string,
       {
@@ -254,6 +257,144 @@ export class TransactionAnalyticsService {
       }
     >;
   }> {
+    const queryBuilder = await this.createFilteredAnalyticsQuery(userId, {
+      accountIds,
+      startDate,
+      endDate,
+      categoryIds,
+      payeeIds,
+      search,
+      amountFrom,
+      amountTo,
+      excludeInvestmentLinked,
+      excludeTransfers,
+      tagIds,
+    });
+
+    // Use the split amount when the row came from the splits join;
+    // otherwise the transaction's own amount. A split parent's `amount`
+    // equals the sum of its splits, so only one of the two contributes
+    // per row.
+    const amountExpr = "COALESCE(splits.amount, transaction.amount)";
+
+    queryBuilder
+      .select("transaction.currencyCode", "currencyCode")
+      .addSelect(
+        `SUM(CASE WHEN ${amountExpr} > 0 THEN ${amountExpr} ELSE 0 END)`,
+        "totalIncome",
+      )
+      .addSelect(
+        `SUM(CASE WHEN ${amountExpr} < 0 THEN ABS(${amountExpr}) ELSE 0 END)`,
+        "totalExpenses",
+      )
+      .addSelect("COUNT(DISTINCT transaction.id)", "transactionCount")
+      .addSelect(
+        "TO_CHAR(MIN(transaction.transactionDate), 'YYYY-MM-DD')",
+        "firstDate",
+      )
+      .addSelect(
+        "TO_CHAR(MAX(transaction.transactionDate), 'YYYY-MM-DD')",
+        "lastDate",
+      )
+      .groupBy("transaction.currencyCode");
+
+    const rows = await queryBuilder.getRawMany();
+
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    let transactionCount = 0;
+    let firstTransactionDate: string | null = null;
+    let lastTransactionDate: string | null = null;
+    const byCurrency: Record<
+      string,
+      {
+        totalIncome: number;
+        totalExpenses: number;
+        netCashFlow: number;
+        transactionCount: number;
+      }
+    > = {};
+
+    for (const row of rows) {
+      const income = Number(row.totalIncome) || 0;
+      const expenses = Number(row.totalExpenses) || 0;
+      const count = Number(row.transactionCount) || 0;
+      totalIncome += income;
+      totalExpenses += expenses;
+      transactionCount += count;
+      // ISO date strings compare correctly as strings, so the min/max
+      // across per-currency rows reduces with a plain comparison.
+      if (
+        row.firstDate &&
+        (!firstTransactionDate || row.firstDate < firstTransactionDate)
+      ) {
+        firstTransactionDate = row.firstDate;
+      }
+      if (
+        row.lastDate &&
+        (!lastTransactionDate || row.lastDate > lastTransactionDate)
+      ) {
+        lastTransactionDate = row.lastDate;
+      }
+      if (row.currencyCode) {
+        byCurrency[row.currencyCode] = {
+          totalIncome: income,
+          totalExpenses: expenses,
+          netCashFlow: income - expenses,
+          transactionCount: count,
+        };
+      }
+    }
+
+    return {
+      totalIncome,
+      totalExpenses,
+      netCashFlow: totalIncome - totalExpenses,
+      transactionCount,
+      firstTransactionDate,
+      lastTransactionDate,
+      byCurrency,
+    };
+  }
+
+  /**
+   * Base query shared by {@link getSummary} and {@link getGroupedTotals}:
+   * applies the full transaction-list filter surface (accounts incl. the
+   * brokerage exclusion, dates, categories with descendant expansion and
+   * the `uncategorized`/`transfer` pseudo-ids, payees, search, amount
+   * range, tags) with splits always joined so split transactions count
+   * per matching split via `COALESCE(splits.amount, transaction.amount)`.
+   */
+  private async createFilteredAnalyticsQuery(
+    userId: string,
+    filters: {
+      accountIds?: string[];
+      startDate?: string;
+      endDate?: string;
+      categoryIds?: string[];
+      payeeIds?: string[];
+      search?: string;
+      amountFrom?: number;
+      amountTo?: number;
+      excludeInvestmentLinked?: boolean;
+      excludeTransfers?: boolean;
+      tagIds?: string[];
+    },
+  ) {
+    const {
+      accountIds,
+      startDate,
+      endDate,
+      categoryIds,
+      payeeIds,
+      search,
+      amountFrom,
+      amountTo,
+      excludeInvestmentLinked,
+      excludeTransfers,
+      tagIds,
+    } = filters;
+
     const queryBuilder = this.transactionsRepository
       .createQueryBuilder("transaction")
       .where("transaction.userId = :userId", { userId });
@@ -397,64 +538,102 @@ export class TransactionAnalyticsService {
       queryBuilder.andWhere("transaction.amount <= :amountTo", { amountTo });
     }
 
-    // Use the split amount when the row came from the splits join;
-    // otherwise the transaction's own amount. A split parent's `amount`
-    // equals the sum of its splits, so only one of the two contributes
-    // per row.
+    if (tagIds && tagIds.length > 0) {
+      queryBuilder.leftJoin("transaction.tags", "filterTags");
+      queryBuilder.leftJoin("splits.tags", "filterSplitTags");
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
+          qb.where("filterTags.id IN (:...summaryTagIds)", {
+            summaryTagIds: tagIds,
+          }).orWhere("filterSplitTags.id IN (:...summaryTagIds)", {
+            summaryTagIds: tagIds,
+          });
+        }),
+      );
+    }
+
+    return queryBuilder;
+  }
+
+  /**
+   * Totals grouped by category or payee under the same filter semantics
+   * as {@link getSummary}, so a widget's breakdown reconciles with its
+   * headline summary and with the transaction list. Rows are keyed by
+   * entity id (null = uncategorized / no payee) and split per currency;
+   * `total` keeps its sign so income and refunds remain visible.
+   *
+   * Unlike the private LLM breakdown, this returns ids (rows must be
+   * clickable in the UI) and applies no minimum-count aggregation.
+   */
+  async getGroupedTotals(
+    userId: string,
+    params: {
+      groupBy: "category" | "payee";
+      accountIds?: string[];
+      startDate?: string;
+      endDate?: string;
+      categoryIds?: string[];
+      payeeIds?: string[];
+      tagIds?: string[];
+      search?: string;
+      amountFrom?: number;
+      amountTo?: number;
+      limit?: number;
+    },
+  ): Promise<
+    Array<{
+      id: string | null;
+      name: string | null;
+      currencyCode: string;
+      total: number;
+      count: number;
+    }>
+  > {
+    const { groupBy, limit, ...filters } = params;
+
+    const queryBuilder = await this.createFilteredAnalyticsQuery(
+      userId,
+      filters,
+    );
+
     const amountExpr = "COALESCE(splits.amount, transaction.amount)";
 
+    if (groupBy === "category") {
+      // A split row's own category wins over the parent transaction's.
+      const idExpr = "COALESCE(splits.categoryId, transaction.categoryId)";
+      queryBuilder
+        .leftJoin("transaction.category", "groupCat")
+        .leftJoin("splits.category", "groupSplitCat")
+        .select(idExpr, "id")
+        .addSelect("COALESCE(groupSplitCat.name, groupCat.name)", "name")
+        .groupBy(idExpr)
+        .addGroupBy("COALESCE(groupSplitCat.name, groupCat.name)");
+    } else {
+      queryBuilder
+        .leftJoin("transaction.payee", "groupPayee")
+        .select("transaction.payeeId", "id")
+        .addSelect("COALESCE(groupPayee.name, transaction.payeeName)", "name")
+        .groupBy("transaction.payeeId")
+        .addGroupBy("COALESCE(groupPayee.name, transaction.payeeName)");
+    }
+
     queryBuilder
-      .select("transaction.currencyCode", "currencyCode")
-      .addSelect(
-        `SUM(CASE WHEN ${amountExpr} > 0 THEN ${amountExpr} ELSE 0 END)`,
-        "totalIncome",
-      )
-      .addSelect(
-        `SUM(CASE WHEN ${amountExpr} < 0 THEN ABS(${amountExpr}) ELSE 0 END)`,
-        "totalExpenses",
-      )
-      .addSelect("COUNT(DISTINCT transaction.id)", "transactionCount")
-      .groupBy("transaction.currencyCode");
+      .addSelect("transaction.currencyCode", "currencyCode")
+      .addSelect(`SUM(${amountExpr})`, "total")
+      .addSelect("COUNT(DISTINCT transaction.id)", "count")
+      .addGroupBy("transaction.currencyCode")
+      .orderBy(`SUM(ABS(${amountExpr}))`, "DESC")
+      .limit(Math.min(Math.max(limit ?? 100, 1), 500));
 
     const rows = await queryBuilder.getRawMany();
 
-    let totalIncome = 0;
-    let totalExpenses = 0;
-    let transactionCount = 0;
-    const byCurrency: Record<
-      string,
-      {
-        totalIncome: number;
-        totalExpenses: number;
-        netCashFlow: number;
-        transactionCount: number;
-      }
-    > = {};
-
-    for (const row of rows) {
-      const income = Number(row.totalIncome) || 0;
-      const expenses = Number(row.totalExpenses) || 0;
-      const count = Number(row.transactionCount) || 0;
-      totalIncome += income;
-      totalExpenses += expenses;
-      transactionCount += count;
-      if (row.currencyCode) {
-        byCurrency[row.currencyCode] = {
-          totalIncome: income,
-          totalExpenses: expenses,
-          netCashFlow: income - expenses,
-          transactionCount: count,
-        };
-      }
-    }
-
-    return {
-      totalIncome,
-      totalExpenses,
-      netCashFlow: totalIncome - totalExpenses,
-      transactionCount,
-      byCurrency,
-    };
+    return rows.map((row) => ({
+      id: row.id ?? null,
+      name: row.name ?? null,
+      currencyCode: row.currencyCode,
+      total: roundMoney(Number(row.total) || 0),
+      count: Number(row.count) || 0,
+    }));
   }
 
   async getMonthlyTotals(
@@ -1175,16 +1354,22 @@ export class TransactionAnalyticsService {
     userId: string,
     startDate: string,
     endDate: string,
-    options: { uncategorizedLabel?: string } = {},
+    options: { uncategorizedLabel?: string; payeeIds?: string[] } = {},
   ): Promise<RecurringCharge[]> {
     const categoryNameSelect = options.uncategorizedLabel
       ? "COALESCE(cat.name, :uncategorizedLabel)"
       : "cat.name";
 
-    const rows = await this.transactionsRepository
+    // A transaction linked to a payee record carries payeeId with a NULL
+    // payeeName, so resolve the display name through the payee relation and
+    // fall back to the free-text name (e.g. imported rows).
+    const payeeNameExpr = "COALESCE(chargePayee.name, t.payeeName)";
+
+    const qb = this.transactionsRepository
       .createQueryBuilder("t")
       .leftJoin("t.category", "cat")
-      .select("COALESCE(t.payeeName, 'Unknown')", "payeeName")
+      .leftJoin("t.payee", "chargePayee")
+      .select(payeeNameExpr, "payeeName")
       .addSelect(categoryNameSelect, "categoryName")
       .addSelect(
         "ARRAY_AGG(ABS(t.amount) ORDER BY t.transactionDate ASC)",
@@ -1202,7 +1387,7 @@ export class TransactionAnalyticsService {
       .andWhere("t.status != 'VOID'")
       .andWhere("t.isTransfer = false")
       .andWhere("t.parentTransactionId IS NULL")
-      .andWhere("t.payeeName IS NOT NULL")
+      .andWhere("(t.payeeId IS NOT NULL OR t.payeeName IS NOT NULL)")
       // Exclude investment-linked cash debits so regular BUY activity
       // isn't flagged as a subscription-like "recurring charge".
       .andWhere(
@@ -1213,11 +1398,18 @@ export class TransactionAnalyticsService {
           ? { uncategorizedLabel: options.uncategorizedLabel }
           : {},
       )
-      .groupBy("t.payeeName")
+      .groupBy(payeeNameExpr)
       .addGroupBy("cat.name")
       .having("COUNT(*) >= 3")
-      .orderBy("COUNT(*)", "DESC")
-      .getRawMany();
+      .orderBy("COUNT(*)", "DESC");
+
+    if (options.payeeIds && options.payeeIds.length > 0) {
+      qb.andWhere("t.payeeId IN (:...payeeIds)", {
+        payeeIds: options.payeeIds,
+      });
+    }
+
+    const rows = await qb.getRawMany();
 
     return rows
       .map((r) => {

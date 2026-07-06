@@ -129,7 +129,27 @@ export interface TransactionSummary {
   totalExpenses: number;
   netCashFlow: number;
   transactionCount: number;
+  firstTransactionDate?: string | null;
+  lastTransactionDate?: string | null;
   byCurrency?: Record<string, CurrencySummary>;
+}
+
+export interface GroupedTotal {
+  id: string | null;
+  name: string | null;
+  currencyCode: string;
+  total: number;
+  count: number;
+}
+
+export interface RecurringChargeInfo {
+  payeeName: string;
+  amounts: number[];
+  dates: string[];
+  frequency: string;
+  currentAmount: number;
+  previousAmount: number;
+  categoryName: string | null;
 }
 
 export interface MonthlyTotal {

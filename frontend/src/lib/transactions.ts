@@ -17,6 +17,8 @@ import {
   BulkDeleteData,
   BulkDeleteResult,
   MonthlyTotal,
+  GroupedTotal,
+  RecurringChargeInfo,
 } from '@/types/transaction';
 import { invalidateCache } from './apiCache';
 
@@ -237,6 +239,55 @@ export const transactionsApi = {
 
     const response = await apiClient.get<TransactionSummary>('/transactions/summary', {
       params: apiParams,
+      timeout: 60000,
+    });
+    return response.data;
+  },
+
+  // Get totals grouped by category or payee under the same filters as the summary
+  getGroupedTotals: async (params: {
+    groupBy: 'category' | 'payee';
+    accountIds?: string[];
+    startDate?: string;
+    endDate?: string;
+    categoryIds?: string[];
+    payeeIds?: string[];
+    tagIds?: string[];
+    search?: string;
+    amountFrom?: number;
+    amountTo?: number;
+    limit?: number;
+  }): Promise<GroupedTotal[]> => {
+    const apiParams = {
+      ...buildFilterParams(params),
+      groupBy: params.groupBy,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      search: params.search,
+      amountFrom: params.amountFrom,
+      amountTo: params.amountTo,
+      limit: params.limit,
+    };
+
+    const response = await apiClient.get<GroupedTotal[]>('/transactions/grouped-totals', {
+      params: apiParams,
+      timeout: 60000,
+    });
+    return response.data;
+  },
+
+  // Detect recurring charges (cadence + typical amount) for the given payees
+  getRecurringCharges: async (params: {
+    payeeIds: string[];
+    startDate: string;
+    endDate: string;
+  }): Promise<RecurringChargeInfo[]> => {
+    const response = await apiClient.get<RecurringChargeInfo[]>('/transactions/recurring-charges', {
+      params: {
+        payeeIds: params.payeeIds.join(','),
+        startDate: params.startDate,
+        endDate: params.endDate,
+      },
       timeout: 60000,
     });
     return response.data;

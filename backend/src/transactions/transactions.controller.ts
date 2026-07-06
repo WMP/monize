@@ -421,6 +421,7 @@ export class TransactionsController {
     @Query("search") search?: string,
     @Query("amountFrom") amountFrom?: string,
     @Query("amountTo") amountTo?: string,
+    @Query("tagIds") tagIdsParam?: string,
   ) {
     validateDateParam(startDate, "startDate");
     validateDateParam(endDate, "endDate");
@@ -457,6 +458,206 @@ export class TransactionsController {
       search,
       parsedAmountFrom,
       parsedAmountTo,
+      parseUuids(tagIdsParam),
+    );
+  }
+
+  @Get("grouped-totals")
+  @ApiOperation({
+    summary:
+      "Get transaction totals grouped by category or payee under the same filters as the summary",
+  })
+  @ApiQuery({
+    name: "groupBy",
+    required: true,
+    enum: ["category", "payee"],
+    description: "Group rows by category or payee",
+  })
+  @ApiQuery({
+    name: "accountIds",
+    required: false,
+    description: "Filter by account IDs (comma-separated)",
+  })
+  @ApiQuery({
+    name: "startDate",
+    required: false,
+    description: "Filter by start date (YYYY-MM-DD)",
+  })
+  @ApiQuery({
+    name: "endDate",
+    required: false,
+    description: "Filter by end date (YYYY-MM-DD)",
+  })
+  @ApiQuery({
+    name: "categoryIds",
+    required: false,
+    description:
+      "Filter by category IDs (comma-separated, supports 'uncategorized' and 'transfer')",
+  })
+  @ApiQuery({
+    name: "payeeIds",
+    required: false,
+    description: "Filter by payee IDs (comma-separated)",
+  })
+  @ApiQuery({
+    name: "tagIds",
+    required: false,
+    description: "Filter by tag IDs (comma-separated)",
+  })
+  @ApiQuery({
+    name: "search",
+    required: false,
+    description: "Search text (same fields as the summary endpoint)",
+  })
+  @ApiQuery({
+    name: "amountFrom",
+    required: false,
+    description: "Filter by minimum amount (inclusive)",
+  })
+  @ApiQuery({
+    name: "amountTo",
+    required: false,
+    description: "Filter by maximum amount (inclusive)",
+  })
+  @ApiQuery({
+    name: "limit",
+    required: false,
+    description: "Maximum number of groups returned (default 100, max 500)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Grouped totals retrieved successfully",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  getGroupedTotals(
+    @Request() req,
+    @Query("groupBy") groupBy?: string,
+    @Query("accountIds") accountIds?: string,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+    @Query("categoryIds") categoryIds?: string,
+    @Query("payeeIds") payeeIds?: string,
+    @Query("tagIds") tagIdsParam?: string,
+    @Query("search") search?: string,
+    @Query("amountFrom") amountFrom?: string,
+    @Query("amountTo") amountTo?: string,
+    @Query("limit") limit?: string,
+  ) {
+    if (groupBy !== "category" && groupBy !== "payee") {
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.invalidGroupBy",
+          "groupBy must be 'category' or 'payee'",
+        ),
+      );
+    }
+
+    validateDateParam(startDate, "startDate");
+    validateDateParam(endDate, "endDate");
+
+    const parsedAmountFrom =
+      amountFrom !== undefined ? parseFloat(amountFrom) : undefined;
+    if (parsedAmountFrom !== undefined && isNaN(parsedAmountFrom)) {
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.amountFromMustBeNumber",
+          "amountFrom must be a number",
+        ),
+      );
+    }
+
+    const parsedAmountTo =
+      amountTo !== undefined ? parseFloat(amountTo) : undefined;
+    if (parsedAmountTo !== undefined && isNaN(parsedAmountTo)) {
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.amountToMustBeNumber",
+          "amountTo must be a number",
+        ),
+      );
+    }
+
+    const parsedLimit = limit !== undefined ? parseInt(limit, 10) : undefined;
+    if (parsedLimit !== undefined && (isNaN(parsedLimit) || parsedLimit < 1)) {
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.limitMustBePositive",
+          "limit must be a positive number",
+        ),
+      );
+    }
+
+    return this.transactionsService.getGroupedTotals(req.user.id, {
+      groupBy,
+      accountIds: parseUuids(accountIds),
+      startDate,
+      endDate,
+      categoryIds: parseCategoryIds(categoryIds),
+      payeeIds: parseUuids(payeeIds),
+      tagIds: parseUuids(tagIdsParam),
+      search,
+      amountFrom: parsedAmountFrom,
+      amountTo: parsedAmountTo,
+      limit: parsedLimit,
+    });
+  }
+
+  @Get("recurring-charges")
+  @ApiOperation({
+    summary:
+      "Detect recurring charges (cadence and typical amount) for the given payees within a date range",
+  })
+  @ApiQuery({
+    name: "payeeIds",
+    required: true,
+    description: "Payee IDs to inspect (comma-separated UUIDs)",
+  })
+  @ApiQuery({
+    name: "startDate",
+    required: true,
+    description: "Start of the detection window (YYYY-MM-DD)",
+  })
+  @ApiQuery({
+    name: "endDate",
+    required: true,
+    description: "End of the detection window (YYYY-MM-DD)",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Recurring charges retrieved successfully",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  getRecurringCharges(
+    @Request() req,
+    @Query("payeeIds") payeeIds?: string,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+  ) {
+    const parsedPayeeIds = parseUuids(payeeIds);
+    if (!parsedPayeeIds || parsedPayeeIds.length === 0) {
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.recurringPayeeRequired",
+          "payeeIds is required",
+        ),
+      );
+    }
+    if (!startDate || !endDate) {
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.recurringDatesRequired",
+          "startDate and endDate are required",
+        ),
+      );
+    }
+    validateDateParam(startDate, "startDate");
+    validateDateParam(endDate, "endDate");
+
+    return this.transactionsService.getRecurringCharges(
+      req.user.id,
+      startDate,
+      endDate,
+      parsedPayeeIds,
     );
   }
 
