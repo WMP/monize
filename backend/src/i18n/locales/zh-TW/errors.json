@@ -73,6 +73,8 @@
     "noActiveProviders": "未設定任何已啟用的 AI 提供者。請在 AI 設定中設定提供者。",
     "allProvidersFailed": "所有 AI 提供者均失敗。請檢查您的提供者設定後再試。",
     "noToolUseProvider": "未設定支援工具使用的 AI 提供者。自然語言查詢需要 Anthropic、OpenAI 或 Ollama。請在 AI 設定中設定一個。",
+    "relayAgentOffline": "您的 MCP 中繼代理程式未連線。請連線您的代理程式後再試一次。",
+    "relayCompletionTimedOut": "您的 MCP 中繼代理程式未及時回答。請確認其已連線，然後再試一次。",
     "baseUrlInvalidBasic": "baseUrl 必須是有效的 HTTP 或 HTTPS URL",
     "baseUrlInvalidExternal": "baseUrl 必須是指向外部主機的有效 HTTP/HTTPS URL",
     "ollamaCloudApiKeyRequired": "ollama-cloud 提供者需要 apiKey",

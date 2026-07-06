@@ -141,6 +141,10 @@ export function InsightsList() {
   const alertCount = insights.filter((i) => i.severity === 'alert' && !i.isDismissed).length;
   const warningCount = insights.filter((i) => i.severity === 'warning' && !i.isDismissed).length;
   const aiNotConfigured = aiStatus !== null && !aiStatus.configured;
+  // Insights will be generated through the user's own agent via the reverse
+  // MCP relay, which only works while that agent is connected -- worth a
+  // heads-up before they trigger a generation.
+  const relayActive = aiStatus?.relayActive === true;
 
   if (isLoading) {
     return (
@@ -178,6 +182,20 @@ export function InsightsList() {
                 })}
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Relay note: generation goes through the user's own MCP agent */}
+      {!aiNotConfigured && relayActive && (
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <svg className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+            </svg>
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              {t('relayNote')}
+            </p>
           </div>
         </div>
       )}

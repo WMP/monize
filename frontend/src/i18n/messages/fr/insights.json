@@ -28,6 +28,7 @@
     "message": "Aucun fournisseur IA n'est configuré. Pour utiliser les Analyses des dépenses, veuillez {link} dans vos paramètres.",
     "linkText": "configurer un fournisseur IA"
   },
+  "relayNote": "Les analyses sont générées via votre agent relais MCP. Assurez-vous que votre agent est connecté avant de lancer la génération.",
   "insightTypes": {
     "anomaly": "Anomalie",
     "trend": "Tendance",

@@ -28,6 +28,7 @@
     "message": "Nie skonfigurowano żadnego dostawcy AI. Aby korzystać z Analiz wydatków, {link} w ustawieniach.",
     "linkText": "skonfiguruj dostawcę AI"
   },
+  "relayNote": "Analizy są generowane za pośrednictwem Twojego agenta przekaźnika MCP. Przed wygenerowaniem upewnij się, że agent jest połączony.",
   "insightTypes": {
     "anomaly": "Anomalia",
     "trend": "Trend",

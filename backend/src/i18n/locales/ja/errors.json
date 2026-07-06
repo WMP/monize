@@ -73,6 +73,8 @@
     "noActiveProviders": "有効なAIプロバイダーが設定されていません。AI設定でプロバイダーを設定してください。",
     "allProvidersFailed": "すべてのAIプロバイダーが失敗しました。プロバイダーの設定を確認して再試行してください。",
     "noToolUseProvider": "ツール使用をサポートするAIプロバイダーが設定されていません。自然言語クエリにはAnthropic、OpenAI、またはOllamaが必要です。AI設定で設定してください。",
+    "relayAgentOffline": "MCP リレーエージェントが接続されていません。エージェントを接続してから、もう一度お試しください。",
+    "relayCompletionTimedOut": "MCP リレーエージェントが時間内に応答しませんでした。接続されていることを確認して、もう一度お試しください。",
     "baseUrlInvalidBasic": "baseUrl は有効な HTTP または HTTPS URL でなければなりません",
     "baseUrlInvalidExternal": "baseUrl は外部ホストを指す有効な HTTP/HTTPS URL でなければなりません",
     "ollamaCloudApiKeyRequired": "ollama-cloud プロバイダーには apiKey が必要です",

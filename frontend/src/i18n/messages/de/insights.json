@@ -28,6 +28,7 @@
     "message": "Es ist kein KI-Anbieter konfiguriert. Um Ausgaben-Insights zu nutzen, {link} Sie bitte in Ihren Einstellungen.",
     "linkText": "konfigurieren Sie einen KI-Anbieter"
   },
+  "relayNote": "Die Ausgaben-Insights werden über Ihren MCP-Relay-Agenten erstellt. Stellen Sie vor dem Generieren sicher, dass Ihr Agent verbunden ist.",
   "insightTypes": {
     "anomaly": "Anomalie",
     "trend": "Trend",

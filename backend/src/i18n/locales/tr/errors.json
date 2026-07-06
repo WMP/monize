@@ -73,6 +73,8 @@
     "noActiveProviders": "Yapılandırılmış etkin yapay zeka sağlayıcısı yok. Lütfen Yapay Zeka Ayarları'nda bir sağlayıcı yapılandırın.",
     "allProvidersFailed": "Tüm yapay zeka sağlayıcıları başarısız oldu. Lütfen sağlayıcı yapılandırmanızı kontrol edip tekrar deneyin.",
     "noToolUseProvider": "Araç kullanım desteğine sahip yapay zeka sağlayıcısı yapılandırılmamış. Doğal dil sorguları Anthropic, OpenAI veya Ollama gerektirir. Lütfen Yapay Zeka Ayarları'nda birini yapılandırın.",
+    "relayAgentOffline": "MCP relay aracınız bağlı değil. Aracınızı bağlayın ve tekrar deneyin.",
+    "relayCompletionTimedOut": "MCP relay aracınız zamanında yanıt vermedi. Bağlı olduğundan emin olun ve tekrar deneyin.",
     "baseUrlInvalidBasic": "baseUrl geçerli bir HTTP veya HTTPS URL'si olmalıdır",
     "baseUrlInvalidExternal": "baseUrl harici bir ana bilgisayara işaret eden geçerli bir HTTP/HTTPS URL'si olmalıdır",
     "ollamaCloudApiKeyRequired": "ollama-cloud sağlayıcısı için apiKey gereklidir",

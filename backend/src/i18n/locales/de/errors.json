@@ -73,6 +73,8 @@
     "noActiveProviders": "Keine aktiven KI-Anbieter konfiguriert. Konfigurieren Sie einen Anbieter in den KI-Einstellungen.",
     "allProvidersFailed": "Alle KI-Anbieter sind fehlgeschlagen. Überprüfen Sie Ihre Anbieterkonfiguration und versuchen Sie es erneut.",
     "noToolUseProvider": "Kein KI-Anbieter mit Tool-Unterstützung konfiguriert. Anfragen in natürlicher Sprache erfordern Anthropic, OpenAI oder Ollama. Konfigurieren Sie einen in den KI-Einstellungen.",
+    "relayAgentOffline": "Ihr MCP-Relay-Agent ist nicht verbunden. Verbinden Sie Ihren Agenten und versuchen Sie es erneut.",
+    "relayCompletionTimedOut": "Ihr MCP-Relay-Agent hat nicht rechtzeitig geantwortet. Stellen Sie sicher, dass er verbunden ist, und versuchen Sie es erneut.",
     "baseUrlInvalidBasic": "baseUrl muss eine gültige HTTP- oder HTTPS-URL sein",
     "baseUrlInvalidExternal": "baseUrl muss eine gültige HTTP/HTTPS-URL sein, die auf einen externen Host zeigt",
     "ollamaCloudApiKeyRequired": "apiKey ist für den ollama-cloud-Anbieter erforderlich",

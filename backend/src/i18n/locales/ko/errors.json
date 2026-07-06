@@ -73,6 +73,8 @@
     "noActiveProviders": "활성화된 AI 공급자가 구성되어 있지 않습니다. AI 설정에서 공급자를 구성하세요.",
     "allProvidersFailed": "모든 AI 공급자가 실패했습니다. 공급자 구성을 확인한 후 다시 시도하세요.",
     "noToolUseProvider": "도구 사용을 지원하는 AI 공급자가 구성되어 있지 않습니다. 자연어 쿼리에는 Anthropic, OpenAI 또는 Ollama가 필요합니다. AI 설정에서 하나를 구성하세요.",
+    "relayAgentOffline": "MCP 릴레이 에이전트가 연결되어 있지 않습니다. 에이전트를 연결한 후 다시 시도하세요.",
+    "relayCompletionTimedOut": "MCP 릴레이 에이전트가 제시간에 응답하지 않았습니다. 연결되어 있는지 확인한 후 다시 시도하세요.",
     "baseUrlInvalidBasic": "baseUrl은 유효한 HTTP 또는 HTTPS URL이어야 합니다",
     "baseUrlInvalidExternal": "baseUrl은 외부 호스트를 가리키는 유효한 HTTP/HTTPS URL이어야 합니다",
     "ollamaCloudApiKeyRequired": "ollama-cloud 공급자에는 apiKey가 필요합니다",

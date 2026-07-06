@@ -297,11 +297,20 @@ export class AiInsightsService {
   }
 
   private async getActiveUserIds(): Promise<string[]> {
+    // Relay-backed completions need the in-memory relay broker with a
+    // connected agent, which lives in the web-server process -- this cron runs
+    // in the separate scheduler process, where a relay prompt can never be
+    // served. Skip users whose only active provider is the relay instead of
+    // failing their generation every day; they can still generate on demand
+    // from the Insights page.
     const userIdsWithConfig = await this.insightRepo.manager
       .createQueryBuilder()
       .select("DISTINCT apc.user_id", "userId")
       .from("ai_provider_configs", "apc")
       .where("apc.is_active = true")
+      .andWhere("apc.provider != :relayProvider", {
+        relayProvider: "mcp_relay",
+      })
       .getRawMany();
 
     const ids = new Set(userIdsWithConfig.map((r: any) => r.userId as string));

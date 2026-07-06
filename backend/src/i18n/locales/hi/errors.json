@@ -73,6 +73,8 @@
     "noActiveProviders": "कोई सक्रिय AI प्रदाता कॉन्फ़िगर नहीं है। कृपया AI सेटिंग्स में एक प्रदाता कॉन्फ़िगर करें।",
     "allProvidersFailed": "सभी AI प्रदाता विफल हो गए। कृपया अपना प्रदाता कॉन्फ़िगरेशन जाँचें और पुनः प्रयास करें।",
     "noToolUseProvider": "टूल उपयोग समर्थन वाला कोई AI प्रदाता कॉन्फ़िगर नहीं है। प्राकृतिक भाषा क्वेरी के लिए Anthropic, OpenAI या Ollama आवश्यक है। कृपया AI सेटिंग्स में एक कॉन्फ़िगर करें।",
+    "relayAgentOffline": "आपका MCP रिले एजेंट कनेक्ट नहीं है। अपने एजेंट को कनेक्ट करें और फिर से प्रयास करें।",
+    "relayCompletionTimedOut": "आपके MCP रिले एजेंट ने समय पर उत्तर नहीं दिया। सुनिश्चित करें कि यह कनेक्ट है, फिर से प्रयास करें।",
     "baseUrlInvalidBasic": "baseUrl एक मान्य HTTP या HTTPS URL होनी चाहिए",
     "baseUrlInvalidExternal": "baseUrl किसी बाहरी होस्ट की ओर इशारा करने वाली एक मान्य HTTP/HTTPS URL होनी चाहिए",
     "ollamaCloudApiKeyRequired": "ollama-cloud प्रदाता के लिए apiKey आवश्यक है",

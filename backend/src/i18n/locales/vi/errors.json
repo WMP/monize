@@ -73,6 +73,8 @@
     "noActiveProviders": "Không có nhà cung cấp AI nào đang hoạt động. Vui lòng cấu hình nhà cung cấp trong Cài đặt AI.",
     "allProvidersFailed": "Tất cả nhà cung cấp AI đều thất bại. Vui lòng kiểm tra cấu hình nhà cung cấp và thử lại.",
     "noToolUseProvider": "Không có nhà cung cấp AI nào hỗ trợ sử dụng công cụ. Truy vấn bằng ngôn ngữ tự nhiên yêu cầu Anthropic, OpenAI hoặc Ollama. Vui lòng cấu hình một nhà cung cấp trong Cài đặt AI.",
+    "relayAgentOffline": "Tác nhân relay MCP của bạn chưa được kết nối. Hãy kết nối tác nhân và thử lại.",
+    "relayCompletionTimedOut": "Tác nhân relay MCP của bạn không trả lời kịp thời. Hãy đảm bảo tác nhân đang kết nối, sau đó thử lại.",
     "baseUrlInvalidBasic": "baseUrl phải là URL HTTP hoặc HTTPS hợp lệ",
     "baseUrlInvalidExternal": "baseUrl phải là URL HTTP/HTTPS hợp lệ trỏ đến máy chủ bên ngoài",
     "ollamaCloudApiKeyRequired": "apiKey là bắt buộc cho nhà cung cấp ollama-cloud",

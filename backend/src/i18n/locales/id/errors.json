@@ -73,6 +73,8 @@
     "noActiveProviders": "Tidak ada penyedia AI aktif yang dikonfigurasi. Harap konfigurasikan penyedia di Pengaturan AI.",
     "allProvidersFailed": "Semua penyedia AI gagal. Periksa konfigurasi penyedia Anda dan coba lagi.",
     "noToolUseProvider": "Tidak ada penyedia AI dengan dukungan penggunaan alat yang dikonfigurasi. Kueri bahasa alami memerlukan Anthropic, OpenAI, atau Ollama. Harap konfigurasikan salah satunya di Pengaturan AI.",
+    "relayAgentOffline": "Agen relay MCP Anda tidak terhubung. Hubungkan agen Anda dan coba lagi.",
+    "relayCompletionTimedOut": "Agen relay MCP Anda tidak menjawab tepat waktu. Pastikan agen terhubung, lalu coba lagi.",
     "baseUrlInvalidBasic": "baseUrl harus berupa URL HTTP atau HTTPS yang valid",
     "baseUrlInvalidExternal": "baseUrl harus berupa URL HTTP/HTTPS yang valid yang menunjuk ke host eksternal",
     "ollamaCloudApiKeyRequired": "apiKey diperlukan untuk penyedia ollama-cloud",

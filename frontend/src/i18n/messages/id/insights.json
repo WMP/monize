@@ -28,6 +28,7 @@
     "message": "Tidak ada penyedia AI yang dikonfigurasi. Untuk menggunakan Wawasan Pengeluaran, silakan {link} di pengaturan Anda.",
     "linkText": "konfigurasi penyedia AI"
   },
+  "relayNote": "Wawasan dibuat melalui agen relay MCP Anda. Pastikan agen Anda terhubung sebelum membuat wawasan.",
   "insightTypes": {
     "anomaly": "Anomali",
     "trend": "Tren",

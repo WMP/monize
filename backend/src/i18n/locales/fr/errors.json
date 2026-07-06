@@ -73,6 +73,8 @@
     "noActiveProviders": "Aucun fournisseur IA actif configuré. Veuillez configurer un fournisseur dans les Paramètres IA.",
     "allProvidersFailed": "Tous les fournisseurs IA ont échoué. Vérifiez votre configuration de fournisseur et réessayez.",
     "noToolUseProvider": "Aucun fournisseur IA avec prise en charge des outils configuré. Les requêtes en langage naturel nécessitent Anthropic, OpenAI ou Ollama. Veuillez en configurer un dans les Paramètres IA.",
+    "relayAgentOffline": "Votre agent relais MCP n'est pas connecté. Connectez votre agent et réessayez.",
+    "relayCompletionTimedOut": "Votre agent relais MCP n'a pas répondu à temps. Assurez-vous qu'il est connecté, puis réessayez.",
     "baseUrlInvalidBasic": "baseUrl doit être une URL HTTP ou HTTPS valide",
     "baseUrlInvalidExternal": "baseUrl doit être une URL HTTP/HTTPS valide pointant vers un hôte externe",
     "ollamaCloudApiKeyRequired": "apiKey est requis pour le fournisseur ollama-cloud",

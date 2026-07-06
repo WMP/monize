@@ -73,6 +73,8 @@
     "noActiveProviders": "Não há fornecedores de IA ativos configurados. Configure um fornecedor nas Definições de IA.",
     "allProvidersFailed": "Todos os fornecedores de IA falharam. Verifique a configuração do seu fornecedor e tente novamente.",
     "noToolUseProvider": "Nenhum fornecedor de IA com suporte a ferramentas configurado. As consultas em linguagem natural requerem Anthropic, OpenAI ou Ollama. Configure um nas Definições de IA.",
+    "relayAgentOffline": "O seu agente de relay MCP não está ligado. Ligue o seu agente e tente novamente.",
+    "relayCompletionTimedOut": "O seu agente de relay MCP não respondeu a tempo. Certifique-se de que está ligado e tente novamente.",
     "baseUrlInvalidBasic": "baseUrl deve ser um URL HTTP ou HTTPS válido",
     "baseUrlInvalidExternal": "baseUrl deve ser um URL HTTP/HTTPS válido apontando para um host externo",
     "ollamaCloudApiKeyRequired": "apiKey é obrigatório para o fornecedor ollama-cloud",

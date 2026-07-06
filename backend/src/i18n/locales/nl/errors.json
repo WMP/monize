@@ -73,6 +73,8 @@
     "noActiveProviders": "Geen actieve AI-providers geconfigureerd. Configureer een provider in AI-instellingen.",
     "allProvidersFailed": "Alle AI-providers zijn mislukt. Controleer je providerconfiguratie en probeer het opnieuw.",
     "noToolUseProvider": "Geen AI-provider met ondersteuning voor toolgebruik geconfigureerd. Zoekopdrachten in gewone taal vereisen Anthropic, OpenAI of Ollama. Configureer er een in AI-instellingen.",
+    "relayAgentOffline": "Je MCP-relay-agent is niet verbonden. Verbind je agent en probeer het opnieuw.",
+    "relayCompletionTimedOut": "Je MCP-relay-agent heeft niet op tijd geantwoord. Zorg ervoor dat deze verbonden is en probeer het opnieuw.",
     "baseUrlInvalidBasic": "baseUrl moet een geldige HTTP- of HTTPS-URL zijn",
     "baseUrlInvalidExternal": "baseUrl moet een geldige HTTP/HTTPS-URL zijn die verwijst naar een externe host",
     "ollamaCloudApiKeyRequired": "apiKey is verplicht voor de ollama-cloud-provider",

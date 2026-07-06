@@ -28,6 +28,7 @@
     "message": "Yapay zeka sağlayıcısı yapılandırılmamış. Harcama İçgörüleri'ni kullanmak için lütfen ayarlarınızda {link}.",
     "linkText": "bir yapay zeka sağlayıcısı yapılandırın"
   },
+  "relayNote": "İçgörüler MCP relay aracınız üzerinden oluşturulur. Oluşturmadan önce aracınızın bağlı olduğundan emin olun.",
   "insightTypes": {
     "anomaly": "Anormallik",
     "trend": "Trend",

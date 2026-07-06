@@ -109,6 +109,7 @@ describe("AiInsightsService", () => {
           select: jest.fn().mockReturnThis(),
           from: jest.fn().mockReturnThis(),
           where: jest.fn().mockReturnThis(),
+          andWhere: jest.fn().mockReturnThis(),
           getRawMany: jest.fn().mockResolvedValue([]),
         }),
       },
@@ -1063,6 +1064,24 @@ describe("AiInsightsService", () => {
       await expect(
         service.handleDailyInsightGeneration(),
       ).resolves.not.toThrow();
+    });
+
+    it("excludes relay-only users when selecting who to generate for", async () => {
+      const managerQb = {
+        select: jest.fn().mockReturnThis(),
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      };
+      mockInsightRepo.manager.createQueryBuilder.mockReturnValue(managerQb);
+
+      await service.handleDailyInsightGeneration();
+
+      expect(managerQb.andWhere).toHaveBeenCalledWith(
+        "apc.provider != :relayProvider",
+        { relayProvider: "mcp_relay" },
+      );
     });
   });
 });

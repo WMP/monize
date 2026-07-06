@@ -2,13 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@/test/render';
 import { InsightsList } from './InsightsList';
 
+const mockGetStatus = vi.fn();
 const mockGetInsights = vi.fn();
 const mockGenerateInsights = vi.fn();
 const mockDismissInsight = vi.fn();
 
 vi.mock('@/lib/ai', () => ({
   aiApi: {
-    getStatus: vi.fn().mockResolvedValue({ configured: true }),
+    getStatus: (...args: unknown[]) => mockGetStatus(...args),
     getInsights: (...args: unknown[]) => mockGetInsights(...args),
     generateInsights: (...args: unknown[]) => mockGenerateInsights(...args),
     dismissInsight: (...args: unknown[]) => mockDismissInsight(...args),
@@ -37,6 +38,10 @@ describe('InsightsList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
+    mockGetStatus.mockResolvedValue({
+      configured: true,
+      relayActive: false,
+    });
     mockGetInsights.mockResolvedValue({
       insights: [],
       total: 0,
@@ -330,6 +335,35 @@ describe('InsightsList', () => {
         ),
       ).toBeInTheDocument();
     });
+  });
+
+  it('shows the relay note without blocking generation when the relay is active', async () => {
+    mockGetStatus.mockResolvedValue({
+      configured: true,
+      relayActive: true,
+    });
+
+    await renderInsights();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/generated through your MCP relay agent/),
+      ).toBeInTheDocument();
+    });
+    // Generation stays available: it is served by the connected relay agent
+    expect(screen.getByText('Refresh Insights')).not.toBeDisabled();
+    expect(screen.getByText('Generate Insights')).toBeInTheDocument();
+  });
+
+  it('does not show the relay note for a native provider', async () => {
+    await renderInsights();
+
+    await waitFor(() => {
+      expect(screen.getByText('Generate Insights')).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText(/generated through your MCP relay agent/),
+    ).not.toBeInTheDocument();
   });
 
   it('passes filter parameters to API', async () => {
