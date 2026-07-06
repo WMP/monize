@@ -132,5 +132,34 @@
     "income": "収入",
     "expenses": "支出",
     "net": "差引"
+  },
+  "favouriteReports": {
+    "title": "お気に入りのレポート",
+    "empty": "お気に入りのレポートがまだありません。<reportsLink>レポートページ</reportsLink>でレポートをスターするとここに表示されます。"
+  },
+  "edit": {
+    "editDashboard": "ダッシュボードを編集",
+    "done": "完了",
+    "dragHint": "ウィジェットをドラッグして並べ替えるか、上下のボタンを使用してください。ウィジェットを切り替えて表示または非表示にできます。",
+    "dragHandle": "{name} をドラッグして並べ替え",
+    "moveUp": "{name} を上へ移動",
+    "moveDown": "{name} を下へ移動",
+    "showWidget": "{name} を表示",
+    "hideWidget": "{name} を非表示",
+    "visible": "表示",
+    "hidden": "非表示"
+  },
+  "widgetNames": {
+    "favourite-accounts": "お気に入りの勘定科目",
+    "upcoming-bills": "今後の請求書・入金",
+    "top-movers": "値動き上位",
+    "favourite-securities": "お気に入りの有価証券",
+    "net-worth": "純資産",
+    "assets-vs-liabilities": "資産 対 負債",
+    "expenses-pie": "カテゴリ別支出",
+    "income-expenses": "収入 対 支出",
+    "budget-status": "予算の状況",
+    "insights": "支出インサイト",
+    "favourite-reports": "お気に入りのレポート"
   }
 }

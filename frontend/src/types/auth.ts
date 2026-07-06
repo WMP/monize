@@ -88,6 +88,16 @@ export interface AuthState {
   error: string | null;
 }
 
+/**
+ * One entry in a user's dashboard layout: which widget and whether it is shown.
+ * The array order is the render order. An empty array means "use the registry
+ * defaults", resolved client-side in the widget registry.
+ */
+export interface DashboardWidgetPreference {
+  id: string;
+  visible: boolean;
+}
+
 export interface UserPreferences {
   userId: string;
   defaultCurrency: string;
@@ -110,6 +120,7 @@ export interface UserPreferences {
   defaultQuoteProvider: 'yahoo' | 'msn';
   recentTransactionsLimit: number;
   aiBubbleEnabled: boolean;
+  dashboardWidgets: DashboardWidgetPreference[];
   language: string;
   createdAt: string;
   updatedAt: string;
@@ -171,6 +182,7 @@ export interface UpdatePreferencesData {
   defaultQuoteProvider?: 'yahoo' | 'msn';
   recentTransactionsLimit?: number;
   aiBubbleEnabled?: boolean;
+  dashboardWidgets?: DashboardWidgetPreference[];
   language?: string;
 }
 

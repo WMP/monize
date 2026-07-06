@@ -132,5 +132,34 @@
     "income": "Доходи",
     "expenses": "Витрати",
     "net": "Нетто"
+  },
+  "favouriteReports": {
+    "title": "Обрані звіти",
+    "empty": "Ще немає обраних звітів. Позначте звіти зірочкою на <reportsLink>сторінці звітів</reportsLink>, щоб бачити їх тут."
+  },
+  "edit": {
+    "editDashboard": "Редагувати панель",
+    "done": "Готово",
+    "dragHint": "Перетягуйте віджети, щоб змінити порядок, або використовуйте кнопки вгору та вниз. Перемкніть віджет, щоб показати або приховати його.",
+    "dragHandle": "Перетягніть, щоб змінити порядок: {name}",
+    "moveUp": "Перемістити {name} вгору",
+    "moveDown": "Перемістити {name} вниз",
+    "showWidget": "Показати {name}",
+    "hideWidget": "Приховати {name}",
+    "visible": "Показано",
+    "hidden": "Приховано"
+  },
+  "widgetNames": {
+    "favourite-accounts": "Обрані рахунки",
+    "upcoming-bills": "Майбутні рахунки та надходження",
+    "top-movers": "Найбільші зміни",
+    "favourite-securities": "Обрані цінні папери",
+    "net-worth": "Чисті активи",
+    "assets-vs-liabilities": "Активи проти зобов'язань",
+    "expenses-pie": "Витрати за категоріями",
+    "income-expenses": "Доходи проти витрат",
+    "budget-status": "Стан бюджету",
+    "insights": "Аналіз витрат",
+    "favourite-reports": "Обрані звіти"
   }
 }

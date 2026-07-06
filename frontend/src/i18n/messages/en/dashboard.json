@@ -132,5 +132,34 @@
     "income": "Income",
     "expenses": "Expenses",
     "net": "Net"
+  },
+  "favouriteReports": {
+    "title": "Favourite Reports",
+    "empty": "No favourite reports yet. Star reports on the <reportsLink>Reports page</reportsLink> to see them here."
+  },
+  "edit": {
+    "editDashboard": "Edit dashboard",
+    "done": "Done",
+    "dragHint": "Drag widgets to reorder, or use the up and down buttons. Toggle a widget to show or hide it.",
+    "dragHandle": "Drag to reorder {name}",
+    "moveUp": "Move {name} up",
+    "moveDown": "Move {name} down",
+    "showWidget": "Show {name}",
+    "hideWidget": "Hide {name}",
+    "visible": "Shown",
+    "hidden": "Hidden"
+  },
+  "widgetNames": {
+    "favourite-accounts": "Favourite Accounts",
+    "upcoming-bills": "Upcoming Bills & Deposits",
+    "top-movers": "Top Movers",
+    "favourite-securities": "Favourite Securities",
+    "net-worth": "Net Worth",
+    "assets-vs-liabilities": "Assets vs Liabilities",
+    "expenses-pie": "Expenses by Category",
+    "income-expenses": "Income vs Expenses",
+    "budget-status": "Budget Status",
+    "insights": "Spending Insights",
+    "favourite-reports": "Favourite Reports"
   }
 }

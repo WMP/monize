@@ -190,6 +190,9 @@ export class UsersService {
     if (dto.aiBubbleEnabled !== undefined) {
       preferences.aiBubbleEnabled = dto.aiBubbleEnabled;
     }
+    if (dto.dashboardWidgets !== undefined) {
+      preferences.dashboardWidgets = dto.dashboardWidgets;
+    }
     if (dto.weekStartsOn !== undefined) {
       preferences.weekStartsOn = dto.weekStartsOn;
     }

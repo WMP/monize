@@ -132,5 +132,34 @@
     "income": "收入",
     "expenses": "支出",
     "net": "净额"
+  },
+  "favouriteReports": {
+    "title": "收藏报表",
+    "empty": "暂无收藏报表。在<reportsLink>报表页面</reportsLink>收藏报表后即可在此查看。"
+  },
+  "edit": {
+    "editDashboard": "编辑仪表板",
+    "done": "完成",
+    "dragHint": "拖动小组件以重新排序，或使用上下按钮。切换小组件以显示或隐藏它。",
+    "dragHandle": "拖动以重新排序 {name}",
+    "moveUp": "将 {name} 上移",
+    "moveDown": "将 {name} 下移",
+    "showWidget": "显示 {name}",
+    "hideWidget": "隐藏 {name}",
+    "visible": "已显示",
+    "hidden": "已隐藏"
+  },
+  "widgetNames": {
+    "favourite-accounts": "收藏账户",
+    "upcoming-bills": "即将到来的账单与存款",
+    "top-movers": "涨跌幅榜",
+    "favourite-securities": "收藏证券",
+    "net-worth": "资产净值",
+    "assets-vs-liabilities": "资产与负债",
+    "expenses-pie": "按科目划分的支出",
+    "income-expenses": "收入与支出",
+    "budget-status": "预算状态",
+    "insights": "消费洞察",
+    "favourite-reports": "收藏报表"
   }
 }

@@ -1,4 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsString,
   IsOptional,
@@ -11,7 +12,26 @@ import {
   ArrayMaxSize,
   Matches,
   IsIn,
+  ValidateNested,
 } from "class-validator";
+
+export class DashboardWidgetDto {
+  @ApiPropertyOptional({
+    description: "Stable widget id (kebab-case)",
+    example: "favourite-accounts",
+  })
+  @IsString()
+  @MaxLength(50)
+  @Matches(/^[a-z0-9-]+$/, {
+    message:
+      "dashboard widget id must contain only lowercase letters, numbers, and hyphens",
+  })
+  id: string;
+
+  @ApiPropertyOptional({ description: "Whether the widget is shown" })
+  @IsBoolean()
+  visible: boolean;
+}
 
 export class UpdatePreferencesDto {
   @ApiPropertyOptional({
@@ -120,6 +140,22 @@ export class UpdatePreferencesDto {
   @IsOptional()
   @IsBoolean()
   aiBubbleEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "Per-user dashboard layout: ordered list of { id, visible }. Empty array uses the default layout.",
+    type: [DashboardWidgetDto],
+    example: [
+      { id: "favourite-accounts", visible: true },
+      { id: "upcoming-bills", visible: false },
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DashboardWidgetDto)
+  @ArrayMaxSize(50)
+  dashboardWidgets?: DashboardWidgetDto[];
 
   @ApiPropertyOptional({
     description: "Day the week starts on (0=Sunday, 1=Monday, ..., 6=Saturday)",

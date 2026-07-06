@@ -132,5 +132,34 @@
     "income": "Thu nhập",
     "expenses": "Chi tiêu",
     "net": "Ròng"
+  },
+  "favouriteReports": {
+    "title": "Báo cáo yêu thích",
+    "empty": "Chưa có báo cáo yêu thích nào. Gắn sao các báo cáo trên <reportsLink>trang Báo cáo</reportsLink> để xem tại đây."
+  },
+  "edit": {
+    "editDashboard": "Chỉnh sửa bảng điều khiển",
+    "done": "Xong",
+    "dragHint": "Kéo các widget để sắp xếp lại, hoặc dùng các nút lên và xuống. Bật/tắt một widget để hiển thị hoặc ẩn nó.",
+    "dragHandle": "Kéo để sắp xếp lại {name}",
+    "moveUp": "Di chuyển {name} lên",
+    "moveDown": "Di chuyển {name} xuống",
+    "showWidget": "Hiển thị {name}",
+    "hideWidget": "Ẩn {name}",
+    "visible": "Đang hiển thị",
+    "hidden": "Đã ẩn"
+  },
+  "widgetNames": {
+    "favourite-accounts": "Tài khoản yêu thích",
+    "upcoming-bills": "Hóa đơn & Tiền gửi sắp tới",
+    "top-movers": "Biến động hàng đầu",
+    "favourite-securities": "Chứng khoán yêu thích",
+    "net-worth": "Tài sản ròng",
+    "assets-vs-liabilities": "Tài sản và nợ phải trả",
+    "expenses-pie": "Chi tiêu theo danh mục",
+    "income-expenses": "Thu nhập và Chi tiêu",
+    "budget-status": "Trạng thái ngân sách",
+    "insights": "Thông tin chi tiêu",
+    "favourite-reports": "Báo cáo yêu thích"
   }
 }

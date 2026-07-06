@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@/test/render';
+import { render, screen, waitFor, fireEvent, act } from '@/test/render';
 import DashboardPage from './page';
 
 // Mock next/image
@@ -50,16 +50,39 @@ vi.mock('@/store/authStore', () => ({
   ),
 }));
 
-// Mock preferences store
-vi.mock('@/store/preferencesStore', () => ({
-  usePreferencesStore: (selector?: any) => {
-    const state = {
-      preferences: { twoFactorEnabled: true, theme: 'system' },
+// Mock preferences store (mutable so tests can seed a saved dashboard layout)
+const { prefsState, mockUpdateStorePreferences } = vi.hoisted(() => ({
+  prefsState: {
+    current: {
+      preferences: {
+        twoFactorEnabled: true,
+        theme: 'system',
+        dashboardWidgets: [] as { id: string; visible: boolean }[],
+        favouriteReportIds: [] as string[],
+      },
       isLoaded: true,
       _hasHydrated: true,
-    };
-    return selector ? selector(state) : state;
+      updatePreferences: (_: unknown) => {},
+    },
   },
+  mockUpdateStorePreferences: vi.fn(),
+}));
+prefsState.current.updatePreferences = mockUpdateStorePreferences;
+
+vi.mock('@/store/preferencesStore', () => ({
+  usePreferencesStore: (selector?: any) =>
+    selector ? selector(prefsState.current) : prefsState.current,
+}));
+
+const mockUpdatePreferencesApi = vi.fn((data: unknown) => Promise.resolve(data));
+vi.mock('@/lib/user-settings', () => ({
+  userSettingsApi: {
+    updatePreferences: (data: unknown) => mockUpdatePreferencesApi(data),
+  },
+}));
+
+vi.mock('@/components/dashboard/FavouriteReportsWidget', () => ({
+  FavouriteReportsWidget: () => <div data-testid="favourite-reports">FavouriteReports</div>,
 }));
 
 // Mock auth API for ProtectedRoute
@@ -203,6 +226,8 @@ describe('DashboardPage', () => {
     mockGetPortfolioSummary.mockResolvedValue(null);
     authState.current.actingAsUserId = null;
     authState.current.delegateSections = null;
+    prefsState.current.preferences.dashboardWidgets = [];
+    prefsState.current.preferences.favouriteReportIds = [];
   });
 
   it('renders the welcome message with user name', async () => {
@@ -385,5 +410,69 @@ describe('DashboardPage', () => {
       expect(screen.getByTestId('top-movers')).toBeInTheDocument();
       expect(screen.getByTestId('favourite-securities')).toBeInTheDocument();
     });
+  });
+
+  it('renders the new Favourite Reports widget in the default layout', async () => {
+    render(<DashboardPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('favourite-reports')).toBeInTheDocument();
+    });
+  });
+
+  it('hides a widget that the saved layout marks as not visible', async () => {
+    prefsState.current.preferences.dashboardWidgets = [{ id: 'insights', visible: false }];
+    render(<DashboardPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('favourite-accounts')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('insights-widget')).not.toBeInTheDocument();
+  });
+
+  it('lets the user reorder and hide widgets and persists the layout on Done', async () => {
+    render(<DashboardPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('favourite-accounts')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Edit dashboard'));
+    });
+
+    // The live widget grid is replaced by the editor, which lists widgets by name.
+    expect(screen.getByText('Spending Insights')).toBeInTheDocument();
+    expect(screen.queryByTestId('favourite-accounts')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Move Upcoming Bills & Deposits up'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Hide Spending Insights'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Done'));
+    });
+
+    expect(mockUpdatePreferencesApi).toHaveBeenCalledTimes(1);
+    const saved = mockUpdatePreferencesApi.mock.calls[0][0] as {
+      dashboardWidgets: { id: string; visible: boolean }[];
+    };
+    const layout = saved.dashboardWidgets;
+    expect(layout).toHaveLength(11);
+    // Upcoming bills moved above favourite accounts.
+    expect(layout[0].id).toBe('upcoming-bills');
+    expect(layout[1].id).toBe('favourite-accounts');
+    // Insights toggled off.
+    expect(layout.find((w) => w.id === 'insights')?.visible).toBe(false);
+    // Store updated with the same layout for immediate cross-device consistency.
+    expect(mockUpdateStorePreferences).toHaveBeenCalledWith({ dashboardWidgets: layout });
+  });
+
+  it('does not offer the customizer in delegate view', async () => {
+    authState.current.actingAsUserId = 'owner-1';
+    render(<DashboardPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('favourite-accounts')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Edit dashboard')).not.toBeInTheDocument();
   });
 });

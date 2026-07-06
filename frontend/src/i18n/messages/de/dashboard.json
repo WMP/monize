@@ -132,5 +132,34 @@
     "income": "Einnahmen",
     "expenses": "Ausgaben",
     "net": "Netto"
+  },
+  "favouriteReports": {
+    "title": "Favoritenberichte",
+    "empty": "Noch keine Favoritenberichte. Markieren Sie Berichte auf der <reportsLink>Berichtsseite</reportsLink> mit einem Stern, um sie hier zu sehen."
+  },
+  "edit": {
+    "editDashboard": "Dashboard bearbeiten",
+    "done": "Fertig",
+    "dragHint": "Ziehen Sie Widgets, um sie neu anzuordnen, oder verwenden Sie die Schaltflächen nach oben und unten. Schalten Sie ein Widget um, um es ein- oder auszublenden.",
+    "dragHandle": "Zum Neuanordnen ziehen: {name}",
+    "moveUp": "{name} nach oben verschieben",
+    "moveDown": "{name} nach unten verschieben",
+    "showWidget": "{name} anzeigen",
+    "hideWidget": "{name} ausblenden",
+    "visible": "Angezeigt",
+    "hidden": "Ausgeblendet"
+  },
+  "widgetNames": {
+    "favourite-accounts": "Favoritenkonten",
+    "upcoming-bills": "Bevorstehende Rechnungen und Einzahlungen",
+    "top-movers": "Top-Beweger",
+    "favourite-securities": "Favoritwertpapiere",
+    "net-worth": "Reinvermögen",
+    "assets-vs-liabilities": "Aktiva vs. Verbindlichkeiten",
+    "expenses-pie": "Ausgaben nach Kategorie",
+    "income-expenses": "Einnahmen vs. Ausgaben",
+    "budget-status": "Budget-Status",
+    "insights": "Ausgaben-Einblicke",
+    "favourite-reports": "Favoritenberichte"
   }
 }

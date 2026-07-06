@@ -34,6 +34,7 @@ export function buildDefaultPreferences(
   preferences.twoFactorEnabled = false;
   preferences.gettingStartedDismissed = false;
   preferences.favouriteReportIds = [];
+  preferences.dashboardWidgets = [];
   preferences.language = language;
   return preferences;
 }

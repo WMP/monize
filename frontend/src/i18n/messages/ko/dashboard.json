@@ -132,5 +132,34 @@
     "income": "수입",
     "expenses": "지출",
     "net": "순액"
+  },
+  "favouriteReports": {
+    "title": "즐겨찾기 보고서",
+    "empty": "즐겨찾기 보고서가 없습니다. <reportsLink>보고서 페이지</reportsLink>에서 보고서에 별표를 표시하면 여기에 나타납니다."
+  },
+  "edit": {
+    "editDashboard": "대시보드 편집",
+    "done": "완료",
+    "dragHint": "위젯을 드래그하여 순서를 변경하거나 위아래 버튼을 사용하세요. 위젯을 전환하여 표시하거나 숨길 수 있습니다.",
+    "dragHandle": "{name} 드래그하여 순서 변경",
+    "moveUp": "{name} 위로 이동",
+    "moveDown": "{name} 아래로 이동",
+    "showWidget": "{name} 표시",
+    "hideWidget": "{name} 숨기기",
+    "visible": "표시됨",
+    "hidden": "숨겨짐"
+  },
+  "widgetNames": {
+    "favourite-accounts": "즐겨찾기 계정",
+    "upcoming-bills": "예정된 청구서 및 입금",
+    "top-movers": "주요 등락 종목",
+    "favourite-securities": "즐겨찾기 유가증권",
+    "net-worth": "순자산가액",
+    "assets-vs-liabilities": "자산 대 부채",
+    "expenses-pie": "카테고리별 지출",
+    "income-expenses": "수입 대 지출",
+    "budget-status": "예산 현황",
+    "insights": "지출 인사이트",
+    "favourite-reports": "즐겨찾기 보고서"
   }
 }

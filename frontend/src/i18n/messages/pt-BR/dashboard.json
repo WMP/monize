@@ -132,5 +132,34 @@
     "income": "Receitas",
     "expenses": "Despesas",
     "net": "Líquido"
+  },
+  "favouriteReports": {
+    "title": "Relatórios Favoritos",
+    "empty": "Ainda sem relatórios favoritos. Marque relatórios com uma estrela na <reportsLink>página de Relatórios</reportsLink> para vê-los aqui."
+  },
+  "edit": {
+    "editDashboard": "Editar painel",
+    "done": "Concluído",
+    "dragHint": "Arraste os widgets para reordenar ou use os botões para cima e para baixo. Alterne um widget para exibi-lo ou ocultá-lo.",
+    "dragHandle": "Arraste para reordenar {name}",
+    "moveUp": "Mover {name} para cima",
+    "moveDown": "Mover {name} para baixo",
+    "showWidget": "Exibir {name}",
+    "hideWidget": "Ocultar {name}",
+    "visible": "Exibido",
+    "hidden": "Oculto"
+  },
+  "widgetNames": {
+    "favourite-accounts": "Contas Favoritas",
+    "upcoming-bills": "Faturas e Depósitos Próximos",
+    "top-movers": "Maiores Variações",
+    "favourite-securities": "Títulos Favoritos",
+    "net-worth": "Patrimônio Líquido",
+    "assets-vs-liabilities": "Ativos vs Passivos",
+    "expenses-pie": "Despesas por Categoria",
+    "income-expenses": "Receitas vs Despesas",
+    "budget-status": "Status do Orçamento",
+    "insights": "Análise de Despesas",
+    "favourite-reports": "Relatórios Favoritos"
   }
 }

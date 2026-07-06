@@ -132,5 +132,34 @@
     "income": "Przychody",
     "expenses": "Wydatki",
     "net": "Saldo"
+  },
+  "favouriteReports": {
+    "title": "Ulubione raporty",
+    "empty": "Brak ulubionych raportów. Oznacz raporty gwiazdką na <reportsLink>stronie Raporty</reportsLink>, aby zobaczyć je tutaj."
+  },
+  "edit": {
+    "editDashboard": "Edytuj pulpit",
+    "done": "Gotowe",
+    "dragHint": "Przeciągnij widżety, aby zmienić ich kolejność, lub użyj przycisków w górę i w dół. Przełącz widżet, aby go pokazać lub ukryć.",
+    "dragHandle": "Przeciągnij, aby zmienić kolejność: {name}",
+    "moveUp": "Przesuń {name} w górę",
+    "moveDown": "Przesuń {name} w dół",
+    "showWidget": "Pokaż {name}",
+    "hideWidget": "Ukryj {name}",
+    "visible": "Widoczny",
+    "hidden": "Ukryty"
+  },
+  "widgetNames": {
+    "favourite-accounts": "Ulubione konta",
+    "upcoming-bills": "Nadchodzące rachunki i wpłaty",
+    "top-movers": "Największe zmiany",
+    "favourite-securities": "Ulubione papiery wartościowe",
+    "net-worth": "Wartość netto",
+    "assets-vs-liabilities": "Aktywa a zobowiązania",
+    "expenses-pie": "Wydatki według kategorii",
+    "income-expenses": "Przychody a wydatki",
+    "budget-status": "Stan budżetu",
+    "insights": "Analiza wydatków",
+    "favourite-reports": "Ulubione raporty"
   }
 }

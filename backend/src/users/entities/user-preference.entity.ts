@@ -9,6 +9,16 @@ import {
 } from "typeorm";
 import { User } from "./user.entity";
 
+/**
+ * One entry in a user's dashboard layout: which widget and whether it is shown.
+ * The order of the array is the render order. An empty array means "use the
+ * frontend registry defaults", so existing users see no change until they edit.
+ */
+export interface DashboardWidgetPreference {
+  id: string;
+  visible: boolean;
+}
+
 @Entity("user_preferences")
 export class UserPreference {
   @PrimaryColumn("uuid", { name: "user_id" })
@@ -107,6 +117,15 @@ export class UserPreference {
   // bubble only appears for users who enable it in AI Settings.
   @Column({ name: "ai_bubble_enabled", default: false })
   aiBubbleEnabled: boolean;
+
+  // Per-user dashboard layout: ordered list of { id, visible }. Empty array
+  // means "use the frontend registry defaults" (resolved client-side).
+  @Column({
+    name: "dashboard_widgets",
+    type: "jsonb",
+    default: () => "'[]'",
+  })
+  dashboardWidgets: DashboardWidgetPreference[];
 
   @Column({ length: 10, default: "en" })
   language: string;

@@ -132,5 +132,34 @@
     "income": "आय",
     "expenses": "व्यय",
     "net": "शुद्ध"
+  },
+  "favouriteReports": {
+    "title": "पसंदीदा रिपोर्ट",
+    "empty": "अभी कोई पसंदीदा रिपोर्ट नहीं। यहाँ देखने के लिए <reportsLink>रिपोर्ट पृष्ठ</reportsLink> पर रिपोर्ट को स्टार करें।"
+  },
+  "edit": {
+    "editDashboard": "डैशबोर्ड संपादित करें",
+    "done": "हो गया",
+    "dragHint": "विजेट्स को पुनः क्रमबद्ध करने के लिए खींचें, या ऊपर और नीचे बटनों का उपयोग करें। किसी विजेट को दिखाने या छिपाने के लिए टॉगल करें।",
+    "dragHandle": "{name} को पुनः क्रमबद्ध करने के लिए खींचें",
+    "moveUp": "{name} को ऊपर ले जाएं",
+    "moveDown": "{name} को नीचे ले जाएं",
+    "showWidget": "{name} दिखाएं",
+    "hideWidget": "{name} छिपाएं",
+    "visible": "दिखाया गया",
+    "hidden": "छिपा हुआ"
+  },
+  "widgetNames": {
+    "favourite-accounts": "पसंदीदा खाते",
+    "upcoming-bills": "आगामी बिल और जमा",
+    "top-movers": "शीर्ष परिवर्तक",
+    "favourite-securities": "पसंदीदा प्रतिभूतियां",
+    "net-worth": "शुद्ध संपत्ति",
+    "assets-vs-liabilities": "संपत्ति बनाम देनदारियां",
+    "expenses-pie": "श्रेणी के अनुसार व्यय",
+    "income-expenses": "आय बनाम व्यय",
+    "budget-status": "बजट स्थिति",
+    "insights": "खर्च अंतर्दृष्टि",
+    "favourite-reports": "पसंदीदा रिपोर्ट"
   }
 }

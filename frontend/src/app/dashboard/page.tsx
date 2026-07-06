@@ -1,37 +1,22 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
 import { subMonths, subWeeks, startOfWeek, format } from 'date-fns';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
-import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/store/authStore';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { FavouriteAccounts } from '@/components/dashboard/FavouriteAccounts';
 import { UpcomingBills } from '@/components/dashboard/UpcomingBills';
 import { GettingStarted } from '@/components/dashboard/GettingStarted';
-import { TopMovers } from '@/components/dashboard/TopMovers';
-import { FavouriteSecurities } from '@/components/dashboard/FavouriteSecurities';
-import { InsightsWidget } from '@/components/dashboard/InsightsWidget';
-import { BudgetStatusWidget } from '@/components/dashboard/BudgetStatusWidget';
-
-const ExpensesPieChart = dynamic(() => import('@/components/dashboard/ExpensesPieChart').then(m => m.ExpensesPieChart), {
-  ssr: false,
-  loading: () => <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6 lg:min-h-[540px]" />,
-});
-const IncomeExpensesBarChart = dynamic(() => import('@/components/dashboard/IncomeExpensesBarChart').then(m => m.IncomeExpensesBarChart), {
-  ssr: false,
-  loading: () => <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[540px]" />,
-});
-const NetWorthChart = dynamic(() => import('@/components/dashboard/NetWorthChart').then(m => m.NetWorthChart), {
-  ssr: false,
-  loading: () => <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[500px]" />,
-});
-const AssetsVsLiabilities = dynamic(() => import('@/components/dashboard/AssetsVsLiabilities').then(m => m.AssetsVsLiabilities), {
-  ssr: false,
-  loading: () => <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[500px]" />,
-});
+import { DashboardEditor } from '@/components/dashboard/DashboardEditor';
+import {
+  resolveDashboardLayout,
+  type DashboardWidgetContext,
+} from '@/components/dashboard/widget-registry';
+import { userSettingsApi } from '@/lib/user-settings';
+import { DashboardWidgetPreference } from '@/types/auth';
 import { accountsApi } from '@/lib/accounts';
 import { transactionsApi } from '@/lib/transactions';
 import { categoriesApi } from '@/lib/categories';
@@ -74,6 +59,14 @@ function DashboardContent() {
   // path), so wait until the store has hydrated before firing.
   const authHydrated = useAuthStore((s) => s._hasHydrated);
   const weekStartsOn = (usePreferencesStore((s) => s.preferences?.weekStartsOn) ?? 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  const savedDashboardWidgets = usePreferencesStore((s) => s.preferences?.dashboardWidgets);
+  const updateStorePreferences = usePreferencesStore((s) => s.updatePreferences);
+
+  // Dashboard edit mode. `draft` holds the working layout while editing; it is
+  // seeded from the saved layout in the "Edit dashboard" click handler (not an
+  // effect) so we never call setState from useEffect.
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState<DashboardWidgetPreference[]>([]);
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -213,6 +206,108 @@ function DashboardContent() {
     }
   }, [hasInvestments, isLoading, triggerAutoRefresh]);
 
+  // Everything a registry widget needs to render, assembled from the centrally
+  // loaded data and handlers above.
+  const widgetContext: DashboardWidgetContext = useMemo(
+    () => ({
+      accounts,
+      brokerageMarketValues,
+      scheduledTransactions,
+      transactions,
+      categories,
+      topMovers,
+      favouriteSecurities,
+      netWorthData,
+      hasSecurities,
+      hasInvestments,
+      isLoading,
+      isRefreshing,
+      onAccountsChanged: loadDashboardData,
+      loadDashboardData,
+      triggerManualRefresh,
+    }),
+    [
+      accounts,
+      brokerageMarketValues,
+      scheduledTransactions,
+      transactions,
+      categories,
+      topMovers,
+      favouriteSecurities,
+      netWorthData,
+      hasSecurities,
+      hasInvestments,
+      isLoading,
+      isRefreshing,
+      loadDashboardData,
+      triggerManualRefresh,
+    ],
+  );
+
+  // Effective layout for normal (non-edit) rendering: resolved from the saved
+  // preference, then narrowed to visible + available widgets.
+  const visibleWidgets = useMemo(
+    () =>
+      resolveDashboardLayout(savedDashboardWidgets).filter(
+        ({ entry, visible }) =>
+          visible && (entry.available ? entry.available(widgetContext) : true),
+      ),
+    [savedDashboardWidgets, widgetContext],
+  );
+
+  const startEditing = () => {
+    setDraft(
+      resolveDashboardLayout(savedDashboardWidgets).map(({ entry, visible }) => ({
+        id: entry.id,
+        visible,
+      })),
+    );
+    setIsEditing(true);
+  };
+
+  const finishEditing = () => {
+    const layout = resolveDashboardLayout(draft).map(({ entry, visible }) => ({
+      id: entry.id,
+      visible,
+    }));
+    updateStorePreferences({ dashboardWidgets: layout });
+    userSettingsApi
+      .updatePreferences({ dashboardWidgets: layout })
+      .then((saved) => updateStorePreferences({ dashboardWidgets: saved.dashboardWidgets }))
+      .catch((error) => logger.error('Failed to save dashboard layout:', error));
+    setIsEditing(false);
+  };
+
+  const toggleWidget = (id: string) => {
+    setDraft((current) =>
+      current.map((w) => (w.id === id ? { ...w, visible: !w.visible } : w)),
+    );
+  };
+
+  const moveWidget = (id: string, direction: 'up' | 'down') => {
+    setDraft((current) => {
+      const index = current.findIndex((w) => w.id === id);
+      if (index === -1) return current;
+      const target = direction === 'up' ? index - 1 : index + 1;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const reorderWidget = (fromId: string, toId: string) => {
+    setDraft((current) => {
+      const fromIndex = current.findIndex((w) => w.id === fromId);
+      const toIndex = current.findIndex((w) => w.id === toId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return current;
+      const next = [...current];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  };
+
   return (
     <PageLayout>
       <main className="px-4 sm:px-6 lg:px-12 pt-6 pb-8">
@@ -248,42 +343,39 @@ function DashboardContent() {
             <>
               <GettingStarted />
 
-              {/* Reports Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <FavouriteAccounts accounts={accounts} brokerageMarketValues={brokerageMarketValues} isLoading={isLoading} onAccountsChanged={loadDashboardData} />
-                <UpcomingBills
-                  scheduledTransactions={scheduledTransactions}
-                  accounts={accounts}
-                  isLoading={isLoading}
-                  maxItems={accounts.filter((a) => a.isFavourite && !a.isClosed).length + 2}
-                />
+              <div className="flex justify-end mb-4">
+                <button
+                  type="button"
+                  onClick={isEditing ? finishEditing : startEditing}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  {isEditing ? (
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  )}
+                  {isEditing ? t('edit.done') : t('edit.editDashboard')}
+                </button>
               </div>
 
-              {(isLoading || hasSecurities) && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                  <TopMovers movers={topMovers} isLoading={isLoading} hasInvestmentAccounts={hasInvestments} onRefresh={triggerManualRefresh} isRefreshing={isRefreshing} />
-                  <FavouriteSecurities securities={favouriteSecurities} isLoading={isLoading} onRefresh={triggerManualRefresh} isRefreshing={isRefreshing} />
+              {isEditing ? (
+                <DashboardEditor
+                  items={resolveDashboardLayout(draft)}
+                  onToggle={toggleWidget}
+                  onMove={moveWidget}
+                  onReorder={reorderWidget}
+                />
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {visibleWidgets.map(({ entry }) => (
+                    <Fragment key={entry.id}>{entry.render(widgetContext)}</Fragment>
+                  ))}
                 </div>
               )}
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <NetWorthChart data={netWorthData} isLoading={isLoading} />
-                <AssetsVsLiabilities data={netWorthData} isLoading={isLoading} />
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <ExpensesPieChart
-                  transactions={transactions}
-                  categories={categories}
-                  isLoading={isLoading}
-                />
-                <IncomeExpensesBarChart transactions={transactions} isLoading={isLoading} />
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <BudgetStatusWidget isLoading={isLoading} />
-                <InsightsWidget isLoading={isLoading} />
-              </div>
             </>
           )}
         </div>

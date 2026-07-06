@@ -29,5 +29,6 @@ describe("buildDefaultPreferences", () => {
     expect(prefs.twoFactorEnabled).toBe(false);
     expect(prefs.gettingStartedDismissed).toBe(false);
     expect(prefs.favouriteReportIds).toEqual([]);
+    expect(prefs.dashboardWidgets).toEqual([]);
   });
 });

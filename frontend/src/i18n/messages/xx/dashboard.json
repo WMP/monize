@@ -132,5 +132,34 @@
     "income": "[XX-Income-XX]",
     "expenses": "[XX-Expenses-XX]",
     "net": "[XX-Net-XX]"
+  },
+  "favouriteReports": {
+    "title": "[XX-Favourite Reports-XX]",
+    "empty": "[XX-No favourite reports yet. Star reports on the <reportsLink>Reports page</reportsLink> to see them here.-XX]"
+  },
+  "edit": {
+    "editDashboard": "[XX-Edit dashboard-XX]",
+    "done": "[XX-Done-XX]",
+    "dragHint": "[XX-Drag widgets to reorder, or use the up and down buttons. Toggle a widget to show or hide it.-XX]",
+    "dragHandle": "[XX-Drag to reorder {name}-XX]",
+    "moveUp": "[XX-Move {name} up-XX]",
+    "moveDown": "[XX-Move {name} down-XX]",
+    "showWidget": "[XX-Show {name}-XX]",
+    "hideWidget": "[XX-Hide {name}-XX]",
+    "visible": "[XX-Shown-XX]",
+    "hidden": "[XX-Hidden-XX]"
+  },
+  "widgetNames": {
+    "favourite-accounts": "[XX-Favourite Accounts-XX]",
+    "upcoming-bills": "[XX-Upcoming Bills & Deposits-XX]",
+    "top-movers": "[XX-Top Movers-XX]",
+    "favourite-securities": "[XX-Favourite Securities-XX]",
+    "net-worth": "[XX-Net Worth-XX]",
+    "assets-vs-liabilities": "[XX-Assets vs Liabilities-XX]",
+    "expenses-pie": "[XX-Expenses by Category-XX]",
+    "income-expenses": "[XX-Income vs Expenses-XX]",
+    "budget-status": "[XX-Budget Status-XX]",
+    "insights": "[XX-Spending Insights-XX]",
+    "favourite-reports": "[XX-Favourite Reports-XX]"
   }
 }

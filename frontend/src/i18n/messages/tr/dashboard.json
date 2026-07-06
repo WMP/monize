@@ -132,5 +132,34 @@
     "income": "Gelir",
     "expenses": "Giderler",
     "net": "Net"
+  },
+  "favouriteReports": {
+    "title": "Favori Raporlar",
+    "empty": "Henüz favori rapor yok. Burada görmek için <reportsLink>Raporlar sayfasında</reportsLink> raporları yıldızlayın."
+  },
+  "edit": {
+    "editDashboard": "Panoyu düzenle",
+    "done": "Tamam",
+    "dragHint": "Widget'ları yeniden sıralamak için sürükleyin veya yukarı ve aşağı düğmelerini kullanın. Bir widget'ı göstermek veya gizlemek için değiştirin.",
+    "dragHandle": "Yeniden sıralamak için {name} öğesini sürükleyin",
+    "moveUp": "{name} öğesini yukarı taşı",
+    "moveDown": "{name} öğesini aşağı taşı",
+    "showWidget": "{name} öğesini göster",
+    "hideWidget": "{name} öğesini gizle",
+    "visible": "Gösteriliyor",
+    "hidden": "Gizli"
+  },
+  "widgetNames": {
+    "favourite-accounts": "Favori Hesaplar",
+    "upcoming-bills": "Yaklaşan Faturalar ve Ödemeler",
+    "top-movers": "En Çok Değişenler",
+    "favourite-securities": "Favori Menkul Kıymetler",
+    "net-worth": "Net Değer",
+    "assets-vs-liabilities": "Varlıklar ve Borçlar",
+    "expenses-pie": "Kategoriye Göre Giderler",
+    "income-expenses": "Gelir ve Giderler",
+    "budget-status": "Bütçe Durumu",
+    "insights": "Harcama Analizleri",
+    "favourite-reports": "Favori Raporlar"
   }
 }

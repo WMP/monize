@@ -43,6 +43,7 @@ const mockPreferences: UserPreferences = {
     defaultQuoteProvider: 'yahoo' as const,
     recentTransactionsLimit: 5,
   aiBubbleEnabled: false,
+  dashboardWidgets: [],
   language: 'en',
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',

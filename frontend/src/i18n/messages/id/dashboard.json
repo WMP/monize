@@ -132,5 +132,34 @@
     "income": "Pendapatan",
     "expenses": "Pengeluaran",
     "net": "Bersih"
+  },
+  "favouriteReports": {
+    "title": "Laporan Favorit",
+    "empty": "Belum ada laporan favorit. Bintangi laporan di <reportsLink>halaman Laporan</reportsLink> untuk melihatnya di sini."
+  },
+  "edit": {
+    "editDashboard": "Edit dasbor",
+    "done": "Selesai",
+    "dragHint": "Seret widget untuk menyusun ulang, atau gunakan tombol atas dan bawah. Alihkan widget untuk menampilkan atau menyembunyikannya.",
+    "dragHandle": "Seret untuk menyusun ulang {name}",
+    "moveUp": "Pindahkan {name} ke atas",
+    "moveDown": "Pindahkan {name} ke bawah",
+    "showWidget": "Tampilkan {name}",
+    "hideWidget": "Sembunyikan {name}",
+    "visible": "Ditampilkan",
+    "hidden": "Disembunyikan"
+  },
+  "widgetNames": {
+    "favourite-accounts": "Akun Favorit",
+    "upcoming-bills": "Tagihan & Setoran Mendatang",
+    "top-movers": "Penggerak Teratas",
+    "favourite-securities": "Sekuritas Favorit",
+    "net-worth": "Nilai Bersih",
+    "assets-vs-liabilities": "Aset vs Liabilitas",
+    "expenses-pie": "Pengeluaran per Kategori",
+    "income-expenses": "Pendapatan vs Pengeluaran",
+    "budget-status": "Status Anggaran",
+    "insights": "Wawasan Pengeluaran",
+    "favourite-reports": "Laporan Favorit"
   }
 }
