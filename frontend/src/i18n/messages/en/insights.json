@@ -28,6 +28,11 @@
     "message": "No AI provider is configured. To use Spending Insights, please {link} in your settings.",
     "linkText": "configure an AI provider"
   },
+  "relayOnly": {
+    "heading": "Insights Need a Native AI Provider",
+    "message": "Your only AI provider is the MCP relay, which only powers the chat. To use Spending Insights, please {link} (Anthropic, OpenAI, or Ollama) in your settings.",
+    "linkText": "add a native AI provider"
+  },
   "insightTypes": {
     "anomaly": "Anomaly",
     "trend": "Trend",

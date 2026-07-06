@@ -569,6 +569,51 @@ describe("AiService", () => {
       ).rejects.toThrow("All AI providers failed");
     });
 
+    it("skips mcp_relay and completes with the next real provider", async () => {
+      const relayConfig = makeConfig({
+        id: "c1",
+        provider: "mcp_relay",
+        priority: 0,
+        apiKeyEnc: null,
+      });
+      const anthropicConfig = makeConfig({ id: "c2", priority: 1 });
+      mockConfigRepository.find.mockResolvedValue([
+        relayConfig,
+        anthropicConfig,
+      ]);
+
+      const result = await service.complete(
+        userId,
+        { systemPrompt: "test", messages: [{ role: "user", content: "hi" }] },
+        "insight",
+      );
+
+      expect(result.content).toBe("Response text");
+      expect(mockProviderFactory.createProvider).toHaveBeenCalledTimes(1);
+      expect(mockProviderFactory.createProvider).toHaveBeenCalledWith(
+        anthropicConfig,
+      );
+    });
+
+    it("throws a relay-specific error when the only provider is mcp_relay", async () => {
+      const relayConfig = makeConfig({
+        provider: "mcp_relay",
+        apiKeyEnc: null,
+      });
+      mockConfigRepository.find.mockResolvedValue([relayConfig]);
+
+      await expect(
+        service.complete(
+          userId,
+          { systemPrompt: "test", messages: [{ role: "user", content: "hi" }] },
+          "insight",
+        ),
+      ).rejects.toThrow(
+        "This feature needs a native AI provider (Anthropic, OpenAI, or Ollama). The MCP relay only powers the chat. Please configure one in AI Settings.",
+      );
+      expect(mockProviderFactory.createProvider).not.toHaveBeenCalled();
+    });
+
     it("uses system default when user has no configs", async () => {
       mockConfigRepository.find.mockResolvedValue([]);
       mockConfigService.get!.mockImplementation((key: string) => {
@@ -649,6 +694,69 @@ describe("AiService", () => {
       expect(result.hasSystemDefault).toBe(true);
       expect(result.systemDefaultProvider).toBe("anthropic");
       expect(result.systemDefaultModel).toBe("claude-sonnet-4-20250514");
+    });
+
+    it("reports a completion provider for a native user config", async () => {
+      mockConfigRepository.find.mockResolvedValue([makeConfig()]);
+
+      const result = await service.getStatus(userId);
+
+      expect(result.relayActive).toBe(false);
+      expect(result.hasCompletionProvider).toBe(true);
+    });
+
+    it("reports no completion provider for a relay-only setup", async () => {
+      const relayConfig = makeConfig({
+        provider: "mcp_relay",
+        apiKeyEnc: null,
+      });
+      mockConfigRepository.find.mockResolvedValue([relayConfig]);
+
+      const result = await service.getStatus(userId);
+
+      expect(result.configured).toBe(true);
+      expect(result.relayActive).toBe(true);
+      expect(result.hasCompletionProvider).toBe(false);
+    });
+
+    it("reports no completion provider for relay-only even with a system default", async () => {
+      // getActiveConfigs() only falls back to the system default when the
+      // user has NO configs, so a relay-only user cannot complete() even
+      // when the server defines a default provider.
+      const relayConfig = makeConfig({
+        provider: "mcp_relay",
+        apiKeyEnc: null,
+      });
+      mockConfigRepository.find.mockResolvedValue([relayConfig]);
+      mockConfigService.get!.mockImplementation((key: string) => {
+        if (key === "AI_DEFAULT_PROVIDER") return "anthropic";
+        return undefined;
+      });
+
+      const result = await service.getStatus(userId);
+
+      expect(result.hasSystemDefault).toBe(true);
+      expect(result.hasCompletionProvider).toBe(false);
+    });
+
+    it("reports a completion provider when only the system default exists", async () => {
+      mockConfigRepository.find.mockResolvedValue([]);
+      mockConfigService.get!.mockImplementation((key: string) => {
+        if (key === "AI_DEFAULT_PROVIDER") return "openai";
+        return undefined;
+      });
+
+      const result = await service.getStatus(userId);
+
+      expect(result.hasCompletionProvider).toBe(true);
+    });
+
+    it("reports no completion provider when nothing is configured", async () => {
+      mockConfigRepository.find.mockResolvedValue([]);
+
+      const result = await service.getStatus(userId);
+
+      expect(result.hasCompletionProvider).toBe(false);
     });
 
     it("returns null model when system default has no model", async () => {

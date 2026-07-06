@@ -2,13 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@/test/render';
 import { InsightsList } from './InsightsList';
 
+const mockGetStatus = vi.fn();
 const mockGetInsights = vi.fn();
 const mockGenerateInsights = vi.fn();
 const mockDismissInsight = vi.fn();
 
 vi.mock('@/lib/ai', () => ({
   aiApi: {
-    getStatus: vi.fn().mockResolvedValue({ configured: true }),
+    getStatus: (...args: unknown[]) => mockGetStatus(...args),
     getInsights: (...args: unknown[]) => mockGetInsights(...args),
     generateInsights: (...args: unknown[]) => mockGenerateInsights(...args),
     dismissInsight: (...args: unknown[]) => mockDismissInsight(...args),
@@ -37,6 +38,10 @@ describe('InsightsList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
+    mockGetStatus.mockResolvedValue({
+      configured: true,
+      hasCompletionProvider: true,
+    });
     mockGetInsights.mockResolvedValue({
       insights: [],
       total: 0,
@@ -330,6 +335,35 @@ describe('InsightsList', () => {
         ),
       ).toBeInTheDocument();
     });
+  });
+
+  it('shows the relay-only banner and disables generation when the only provider is the MCP relay', async () => {
+    mockGetStatus.mockResolvedValue({
+      configured: true,
+      hasCompletionProvider: false,
+    });
+
+    await renderInsights();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Insights Need a Native AI Provider'),
+      ).toBeInTheDocument();
+    });
+    // Header refresh button is disabled; the empty-state generate button is hidden
+    expect(screen.getByText('Refresh Insights')).toBeDisabled();
+    expect(screen.queryByText('Generate Insights')).not.toBeInTheDocument();
+  });
+
+  it('does not show the relay-only banner when a native provider exists', async () => {
+    await renderInsights();
+
+    await waitFor(() => {
+      expect(screen.getByText('Generate Insights')).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText('Insights Need a Native AI Provider'),
+    ).not.toBeInTheDocument();
   });
 
   it('passes filter parameters to API', async () => {

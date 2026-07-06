@@ -297,11 +297,17 @@ export class AiInsightsService {
   }
 
   private async getActiveUserIds(): Promise<string[]> {
+    // The MCP relay only powers the chat, so a user whose only active
+    // provider is the relay cannot generate insights -- skip them instead of
+    // failing their generation every day.
     const userIdsWithConfig = await this.insightRepo.manager
       .createQueryBuilder()
       .select("DISTINCT apc.user_id", "userId")
       .from("ai_provider_configs", "apc")
       .where("apc.is_active = true")
+      .andWhere("apc.provider != :relayProvider", {
+        relayProvider: "mcp_relay",
+      })
       .getRawMany();
 
     const ids = new Set(userIdsWithConfig.map((r: any) => r.userId as string));

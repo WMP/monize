@@ -379,15 +379,27 @@ export class AiService {
       );
     }
 
+    // mcp_relay is not a callable LLM -- it routes chat to the user's own
+    // agent. Non-chat features (insights, forecast) can only run on a real
+    // provider, so drop relay configs and fail with a specific message when
+    // nothing callable remains (relay-only setup), instead of the misleading
+    // generic "all providers failed".
+    const callableConfigs = configs.filter(
+      (config) => config.provider !== "mcp_relay",
+    );
+
+    if (callableConfigs.length === 0) {
+      throw new BadRequestException(
+        tr(
+          "errors.ai.relayOnlyProvider",
+          "This feature needs a native AI provider (Anthropic, OpenAI, or Ollama). The MCP relay only powers the chat. Please configure one in AI Settings.",
+        ),
+      );
+    }
+
     const errors: string[] = [];
 
-    for (const config of configs) {
-      // mcp_relay is not a callable LLM -- it routes chat to the user's own
-      // agent. Skip it here so non-chat features (insights, forecast) fall
-      // through to the next real provider.
-      if (config.provider === "mcp_relay") {
-        continue;
-      }
+    for (const config of callableConfigs) {
       const startTime = Date.now();
       try {
         const provider = this.providerFactory.createProvider(config);
@@ -461,6 +473,14 @@ export class AiService {
       // The chat routes to the reverse MCP relay when the highest-priority
       // active provider is mcp_relay (priority ASC -> [0] is top).
       relayActive: configs[0]?.provider === "mcp_relay",
+      // Mirrors what complete() can actually call: the relay is not an LLM,
+      // and the system default only applies when the user has no configs of
+      // their own. False for a relay-only setup, where Insights/Forecast
+      // cannot run even though the chat works.
+      hasCompletionProvider:
+        configs.length > 0
+          ? configs.some((c) => c.provider !== "mcp_relay")
+          : hasSystemDefault,
     };
   }
 
