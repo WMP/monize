@@ -17,7 +17,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { format, differenceInDays, startOfYear, startOfMonth, addMonths } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { chartColors } from '@/lib/chart-colors';
 import { investmentsApi } from '@/lib/investments';
 import { Security, SecurityPrice, InvestmentTransaction, HoldingWithMarketValue } from '@/types/investment';
@@ -32,39 +32,11 @@ import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { aggregateHoldingsBySecurity } from '@/lib/aggregate-holdings';
 import { renderChartFlagDot, ChartFlagShadowFilter } from '@/components/investments/portfolio-chart-utils';
+import { buildTimeAxisTicks } from '@/lib/chart-time-axis';
+import { SecurityComparisonChart } from '@/components/reports/SecurityComparisonChart';
+import { MultiSelect, MultiSelectOption } from '@/components/ui/MultiSelect';
 
 const MAX_PAGES = 50;
-
-// Candidate spacings (in months) for the price chart's time axis, smallest first.
-const TICK_STEP_MONTHS = [1, 2, 3, 6, 12, 24, 60, 120];
-
-// Build evenly-spaced, calendar-aligned tick timestamps for the time axis.
-// Picks the smallest step that keeps the tick count at or below `target`, then
-// anchors ticks to year/month boundaries. This keeps spacing uniform across the
-// whole timeline regardless of how densely the underlying prices are sampled
-// (e.g. sparse early history vs. daily recent prices), so old and new periods
-// get the same horizontal scale.
-function buildTimeAxisTicks(
-  minTs: number,
-  maxTs: number,
-  target = 10,
-): { ticks: number[]; stepMonths: number } {
-  if (!(maxTs > minTs)) return { ticks: [minTs], stepMonths: 1 };
-  const minDate = new Date(minTs);
-  const maxDate = new Date(maxTs);
-  const spanMonths =
-    (maxDate.getFullYear() - minDate.getFullYear()) * 12 +
-    (maxDate.getMonth() - minDate.getMonth());
-  const stepMonths =
-    TICK_STEP_MONTHS.find((s) => spanMonths / s <= target) ??
-    TICK_STEP_MONTHS[TICK_STEP_MONTHS.length - 1];
-  const anchor = stepMonths >= 12 ? startOfYear(minDate) : startOfMonth(minDate);
-  const ticks: number[] = [];
-  for (let cur = anchor; cur.getTime() <= maxTs; cur = addMonths(cur, stepMonths)) {
-    if (cur.getTime() >= minTs) ticks.push(cur.getTime());
-  }
-  return { ticks: ticks.length > 0 ? ticks : [minTs, maxTs], stepMonths };
-}
 
 type TradeSortField = 'date' | 'account' | 'action' | 'shares' | 'price' | 'total';
 type DividendSortField = 'date' | 'account' | 'type' | 'amount';
@@ -86,8 +58,19 @@ export function SecurityPerformanceReport() {
   const { formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatSignedPercent } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
-  const [selectedSecurityId, setSelectedSecurityId] = useState<string>('');
+  // The securities the user has picked in the multi-select. One selected shows
+  // the single-security deep dive (stats, tabs, PDF); two or more switch to the
+  // performance-comparison chart. Empty shows the initial prompt.
+  const [selectedSecurityIds, setSelectedSecurityIds] = useState<string[]>([]);
   const [viewType, setViewType] = useState<'chart' | 'transactions' | 'dividends'>('chart');
+  // Bumped on a manual price refresh so the comparison chart re-fetches its
+  // (separately loaded) per-security price history.
+  const [allRefreshKey, setAllRefreshKey] = useState(0);
+  const isComparison = selectedSecurityIds.length > 1;
+  const isSingle = selectedSecurityIds.length === 1;
+  // The single selected security's id (empty in the prompt/comparison modes),
+  // which drives the per-security detail fetch and panels below.
+  const selectedSecurityId = isSingle ? selectedSecurityIds[0] : '';
   // Avg-cost bubble the user has temporarily dismissed, keyed by value (mirrors
   // the high/low flag bubbles) so it re-shows when a different security's avg
   // cost differs.
@@ -125,6 +108,23 @@ export function SecurityPerformanceReport() {
   const accounts = useMemo<Account[]>(() => baseData?.accounts ?? [], [baseData]);
 
   const selectedSecurity = securities.find((s) => s.id === selectedSecurityId);
+
+  // Searchable multi-select options, one per active security (symbol first so it
+  // sorts and reads like the rest of the report).
+  const securityOptions = useMemo<MultiSelectOption[]>(
+    () =>
+      securities
+        .slice()
+        .sort((a, b) => a.symbol.localeCompare(b.symbol))
+        .map((sec) => ({ value: sec.id, label: `${sec.symbol} - ${sec.name}` })),
+    [securities],
+  );
+
+  // The chosen securities, used to drive the comparison chart's fetches.
+  const selectedSecurities = useMemo(
+    () => securities.filter((s) => selectedSecurityIds.includes(s.id)),
+    [securities, selectedSecurityIds],
+  );
 
   const accountNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -432,24 +432,17 @@ export function SecurityPerformanceReport() {
       {/* Security Selector */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
         <div className="flex flex-wrap gap-4 items-center justify-between">
-          <div className="flex gap-2 items-center">
-            <select
-              value={selectedSecurityId}
-              onChange={(e) => setSelectedSecurityId(e.target.value)}
-              className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm min-w-[250px]"
-            >
-              <option value="">{t('securityPerformance.selectSecurityPlaceholder')}</option>
-              {securities
-                .sort((a, b) => a.symbol.localeCompare(b.symbol))
-                .map((sec) => (
-                  <option key={sec.id} value={sec.id}>
-                    {sec.symbol} - {sec.name}
-                  </option>
-                ))}
-            </select>
+          <div className="flex gap-2 items-center min-w-[250px]">
+            <MultiSelect
+              ariaLabel={t('securityPerformance.selectSecuritiesPlaceholder')}
+              options={securityOptions}
+              value={selectedSecurityIds}
+              onChange={setSelectedSecurityIds}
+              placeholder={t('securityPerformance.selectSecuritiesPlaceholder')}
+            />
           </div>
           <div className="flex gap-2 items-center">
-            {selectedSecurityId && (
+            {isSingle && (
               <>
                 <button
                   onClick={() => setViewType('chart')}
@@ -477,18 +470,20 @@ export function SecurityPerformanceReport() {
                 </button>
               </>
             )}
-            <RefreshPricesButton onRefreshComplete={() => { reloadBase(); reloadDetail(); }} />
-            {selectedSecurityId && <ExportDropdown onExportPdf={handleExportPdf} />}
+            <RefreshPricesButton onRefreshComplete={() => { reloadBase(); reloadDetail(); setAllRefreshKey((k) => k + 1); }} />
+            {isSingle && <ExportDropdown onExportPdf={handleExportPdf} />}
           </div>
         </div>
       </div>
 
-      {!selectedSecurityId ? (
+      {selectedSecurityIds.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-8 text-center">
           <p className="text-gray-500 dark:text-gray-400">
             {t('securityPerformance.selectPrompt')}
           </p>
         </div>
+      ) : isComparison ? (
+        <SecurityComparisonChart securities={selectedSecurities} reloadKey={allRefreshKey} />
       ) : isLoadingDetail ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <div className="space-y-4">
