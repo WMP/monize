@@ -302,7 +302,9 @@
     "aliasNotFound": "Không tìm thấy bí danh với ID {{ id }}",
     "mergeSelf": "Không thể gộp người nhận vào chính nó",
     "autoMergeDuplicatePayee": "Một người nhận xuất hiện trong nhiều hơn một nhóm gộp",
-    "autoMergeSourceNotFound": "Không tìm thấy một hoặc nhiều người nhận nguồn"
+    "autoMergeSourceNotFound": "Không tìm thấy một hoặc nhiều người nhận nguồn",
+    "autoMergeGroupConflict": "Không thể hợp nhất \"{{ name }}\": giá trị \"{{ value }}\" đã được sử dụng",
+    "autoMergeGroupFailed": "Không thể hợp nhất \"{{ name }}\""
   },
   "reports": {
     "notFound": "Không tìm thấy báo cáo với ID {{ id }}",

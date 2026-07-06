@@ -196,9 +196,10 @@
       "selectAtLeastOne": "请至少选择一个分组进行合并",
       "applied": "已合并 {groups, plural, one {# 个分组} other {# 个分组}}（合并了 {payees} 个收款人）",
       "backfilled": "{count, plural, one {已分类 # 笔交易} other {已分类 # 笔交易}}",
-      "aliasesSkipped": "{count, plural, one {# 个别名因冲突被跳过} other {# 个别名因冲突被跳过}}",
+      "aliasesSkipped": "{count, plural, one {# 个别名因冲突被跳过} other {# 个别名因冲突被跳过}}: {aliases}",
       "loadFailed": "加载合并分组失败",
-      "applyFailed": "合并收款人失败"
+      "applyFailed": "合并收款人失败",
+      "someGroupsFailed": "{count, plural, one {# 个分组无法合并} other {# 个分组无法合并}}：{reason}"
     },
     "categoryMatchLabel": "仅合并同一分类下的收款人",
     "categoryMatchHelp": "当收款人分类不同时保持分开，减少误匹配。",

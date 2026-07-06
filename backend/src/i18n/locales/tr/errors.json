@@ -302,7 +302,9 @@
     "aliasNotFound": "{{ id }} kimliğine sahip takma ad bulunamadı",
     "mergeSelf": "Bir alacaklı kendisiyle birleştirilemez",
     "autoMergeDuplicatePayee": "Bir alacaklı birden fazla birleştirme grubunda görünüyor",
-    "autoMergeSourceNotFound": "Bir veya daha fazla kaynak alacaklı bulunamadı"
+    "autoMergeSourceNotFound": "Bir veya daha fazla kaynak alacaklı bulunamadı",
+    "autoMergeGroupConflict": "\"{{ name }}\" birleştirilemedi: \"{{ value }}\" değeri zaten kullanımda",
+    "autoMergeGroupFailed": "\"{{ name }}\" birleştirilemedi"
   },
   "reports": {
     "notFound": "{{ id }} kimliğine sahip rapor bulunamadı",

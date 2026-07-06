@@ -196,9 +196,10 @@
       "selectAtLeastOne": "請至少選取一個群組以合併",
       "applied": "已合併 {groups, plural, one {# 個群組} other {# 個群組}}（合計 {payees} 個收款人）",
       "backfilled": "{count, plural, one {已分類 # 筆交易} other {已分類 # 筆交易}}",
-      "aliasesSkipped": "{count, plural, one {# 個別名因衝突而略過} other {# 個別名因衝突而略過}}",
+      "aliasesSkipped": "{count, plural, one {# 個別名因衝突而略過} other {# 個別名因衝突而略過}}: {aliases}",
       "loadFailed": "載入合併群組失敗",
-      "applyFailed": "合併收款人失敗"
+      "applyFailed": "合併收款人失敗",
+      "someGroupsFailed": "{count, plural, one {# 個群組無法合併} other {# 個群組無法合併}}：{reason}"
     },
     "categoryMatchLabel": "僅合併同類別的收款人",
     "categoryMatchHelp": "當類別不同時保持收款人獨立，以減少誤判。",

@@ -196,9 +196,10 @@
       "selectAtLeastOne": "मर्ज करने के लिए कम से कम एक समूह चुनें",
       "applied": "{groups, plural, one {# समूह} other {# समूह}} मर्ज हुए ({payees} भुगतानकर्ता संयुक्त)",
       "backfilled": "{count, plural, one {# लेनदेन वर्गीकृत हुआ} other {# लेनदेन वर्गीकृत हुए}}",
-      "aliasesSkipped": "{count, plural, one {# उपनाम टकराव के कारण छोड़ा गया} other {# उपनाम टकरावों के कारण छोड़े गए}}",
+      "aliasesSkipped": "{count, plural, one {# उपनाम टकराव के कारण छोड़ा गया} other {# उपनाम टकरावों के कारण छोड़े गए}}: {aliases}",
       "loadFailed": "मर्ज समूह लोड करने में विफल",
-      "applyFailed": "भुगतानकर्ताओं को मर्ज करने में विफल"
+      "applyFailed": "भुगतानकर्ताओं को मर्ज करने में विफल",
+      "someGroupsFailed": "{count, plural, one {# समूह मर्ज नहीं किया जा सका} other {# समूह मर्ज नहीं किए जा सके}}: {reason}"
     },
     "categoryMatchLabel": "केवल एक ही श्रेणी के भुगतानकर्ताओं को मर्ज करें",
     "categoryMatchHelp": "जब श्रेणियां अलग हों तो भुगतानकर्ताओं को अलग रखें, जिससे गलत मिलान कम होते हैं।",

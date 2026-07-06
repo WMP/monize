@@ -302,7 +302,9 @@
     "aliasNotFound": "Alias con ID {{ id }} no encontrado",
     "mergeSelf": "No se puede fusionar un beneficiario consigo mismo",
     "autoMergeDuplicatePayee": "Un beneficiario aparece en más de un grupo de fusión",
-    "autoMergeSourceNotFound": "No se encontraron uno o más beneficiarios de origen"
+    "autoMergeSourceNotFound": "No se encontraron uno o más beneficiarios de origen",
+    "autoMergeGroupConflict": "No se pudo combinar \"{{ name }}\": el valor \"{{ value }}\" ya está en uso",
+    "autoMergeGroupFailed": "No se pudo combinar \"{{ name }}\""
   },
   "reports": {
     "notFound": "Informe con ID {{ id }} no encontrado",

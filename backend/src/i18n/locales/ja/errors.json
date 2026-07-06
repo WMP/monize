@@ -302,7 +302,9 @@
     "aliasNotFound": "ID {{ id }} のエイリアスが見つかりません",
     "mergeSelf": "支払先を自分自身とマージすることはできません",
     "autoMergeDuplicatePayee": "ある支払先が複数のマージグループに含まれています",
-    "autoMergeSourceNotFound": "1つ以上のソース支払先が見つかりませんでした"
+    "autoMergeSourceNotFound": "1つ以上のソース支払先が見つかりませんでした",
+    "autoMergeGroupConflict": "「{{ name }}」を統合できませんでした: 値「{{ value }}」はすでに使用されています",
+    "autoMergeGroupFailed": "「{{ name }}」を統合できませんでした"
   },
   "reports": {
     "notFound": "ID {{ id }} のレポートが見つかりません",
