@@ -33,7 +33,7 @@ import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
 import { aggregateHoldingsBySecurity } from '@/lib/aggregate-holdings';
 import { renderChartFlagDot, ChartFlagShadowFilter } from '@/components/investments/portfolio-chart-utils';
 import { buildTimeAxisTicks } from '@/lib/chart-time-axis';
-import { SecurityComparisonChart } from '@/components/reports/SecurityComparisonChart';
+import { SecurityComparisonChart, SecurityComparisonChartHandle } from '@/components/reports/SecurityComparisonChart';
 import { MultiSelect, MultiSelectOption } from '@/components/ui/MultiSelect';
 
 const MAX_PAGES = 50;
@@ -58,6 +58,8 @@ export function SecurityPerformanceReport() {
   const { formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatSignedPercent } = useNumberFormat();
   const { defaultCurrency } = useExchangeRates();
   const chartRef = useRef<HTMLDivElement>(null);
+  // Export handle for the comparison chart, which owns its own data and DOM.
+  const comparisonExportRef = useRef<SecurityComparisonChartHandle>(null);
   // The securities the user has picked in the multi-select. One selected shows
   // the single-security deep dive (stats, tabs, PDF); two or more switch to the
   // performance-comparison chart. Empty shows the initial prompt.
@@ -346,6 +348,11 @@ export function SecurityPerformanceReport() {
   const displayCurrency = selectedSecurity?.currencyCode || defaultCurrency;
 
   const handleExportPdf = async () => {
+    if (isComparison) {
+      await comparisonExportRef.current?.exportPdf();
+      return;
+    }
+
     const { exportToPdf } = await import('@/lib/pdf-export');
 
     const secLabel = selectedSecurity
@@ -471,7 +478,7 @@ export function SecurityPerformanceReport() {
               </>
             )}
             <RefreshPricesButton onRefreshComplete={() => { reloadBase(); reloadDetail(); setAllRefreshKey((k) => k + 1); }} />
-            {isSingle && <ExportDropdown onExportPdf={handleExportPdf} />}
+            {(isSingle || isComparison) && <ExportDropdown onExportPdf={handleExportPdf} />}
           </div>
         </div>
       </div>
@@ -483,7 +490,11 @@ export function SecurityPerformanceReport() {
           </p>
         </div>
       ) : isComparison ? (
-        <SecurityComparisonChart securities={selectedSecurities} reloadKey={allRefreshKey} />
+        <SecurityComparisonChart
+          securities={selectedSecurities}
+          reloadKey={allRefreshKey}
+          exportRef={comparisonExportRef}
+        />
       ) : isLoadingDetail ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
           <div className="space-y-4">

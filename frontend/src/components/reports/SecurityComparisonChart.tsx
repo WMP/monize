@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useImperativeHandle, useMemo, useRef, type Ref } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   LineChart,
@@ -21,6 +21,7 @@ import { parseLocalDate, type ChartDatePattern } from '@/lib/utils';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { buildTimeAxisTicks } from '@/lib/chart-time-axis';
+import { resolvePdfColor } from '@/components/reports/resolve-pdf-color';
 
 // Match the single-security price chart's window (~3 years of history).
 const PRICE_LIMIT = 1095;
@@ -76,11 +77,23 @@ export function buildPerformanceData(
   return { rows, series };
 }
 
+/** Imperative surface for the parent report's Export dropdown. */
+export interface SecurityComparisonChartHandle {
+  exportPdf: () => Promise<void>;
+}
+
 interface SecurityComparisonChartProps {
   /** The securities the user chose to compare (from the multi-select). */
   securities: Security[];
   /** Bumped by the RefreshPricesButton so a manual price refresh re-fetches. */
   reloadKey?: number;
+  /**
+   * Exposes `exportPdf` so the parent report's Export dropdown (which lives in
+   * the shared toolbar above this component) can export the comparison chart.
+   * The handle lives here because this component owns the fetched series and
+   * the chart DOM the capture needs.
+   */
+  exportRef?: Ref<SecurityComparisonChartHandle>;
 }
 
 /**
@@ -93,10 +106,12 @@ interface SecurityComparisonChartProps {
 export function SecurityComparisonChart({
   securities,
   reloadKey = 0,
+  exportRef,
 }: SecurityComparisonChartProps) {
   const t = useTranslations('reports');
   const formatChartDate = useChartDateFormat();
   const { formatSignedPercent } = useNumberFormat();
+  const chartRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, error } = useReportData(async () => {
     const results = await Promise.all(
@@ -141,6 +156,30 @@ export function SecurityComparisonChart({
     };
   }, [rows]);
 
+  // Mirrors the single-security chart export: the on-screen card's title,
+  // subtitle, and chart, plus a drawn legend (the Recharts legend is HTML, not
+  // part of the captured SVG, so the PDF redraws it from the series colours).
+  useImperativeHandle(
+    exportRef,
+    () => ({
+      exportPdf: async () => {
+        const { exportToPdf } = await import('@/lib/pdf-export');
+        await exportToPdf({
+          title: t('securityPerformance.comparisonTitle'),
+          subtitle: series.map((s) => s.symbol).join(', ') || undefined,
+          description: t('securityPerformance.comparisonSubtitle'),
+          chartContainer: chartRef.current,
+          chartLegend: series.map((s) => ({
+            color: resolvePdfColor(s.color),
+            label: `${s.symbol} - ${s.name}`,
+          })),
+          filename: 'security-performance-comparison',
+        });
+      },
+    }),
+    [series, t],
+  );
+
   if (error) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-8 text-center">
@@ -152,7 +191,7 @@ export function SecurityComparisonChart({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
+    <div ref={chartRef} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
         {t('securityPerformance.comparisonTitle')}
       </h3>

@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act } from '@/test/render';
-import { SecurityComparisonChart, buildPerformanceData } from './SecurityComparisonChart';
+import {
+  SecurityComparisonChart,
+  buildPerformanceData,
+  type SecurityComparisonChartHandle,
+} from './SecurityComparisonChart';
 import type { Security, SecurityPrice } from '@/types/investment';
 
 vi.mock('recharts', () => ({
@@ -21,6 +25,11 @@ vi.mock('@/lib/investments', () => ({
   investmentsApi: {
     getSecurityPrices: (...args: unknown[]) => mockGetSecurityPrices(...args),
   },
+}));
+
+const mockExportToPdf = vi.fn();
+vi.mock('@/lib/pdf-export', () => ({
+  exportToPdf: (...args: unknown[]) => mockExportToPdf(...args),
 }));
 
 vi.mock('@/hooks/useChartDateFormat', () => ({
@@ -109,5 +118,42 @@ describe('SecurityComparisonChart', () => {
         screen.getByText(/No price history is available/i),
       ).toBeInTheDocument(),
     );
+  });
+
+  it('exports the comparison chart to PDF through the export handle', async () => {
+    mockExportToPdf.mockResolvedValue(undefined);
+    mockGetSecurityPrices.mockImplementation((id: string) =>
+      Promise.resolve(
+        id === 's1'
+          ? [price('2024-01-01', 10), price('2024-02-01', 12)]
+          : [price('2024-01-01', 100), price('2024-02-01', 90)],
+      ),
+    );
+    const ref: { current: SecurityComparisonChartHandle | null } = { current: null };
+    await act(async () => {
+      render(
+        <SecurityComparisonChart
+          securities={[sec('s1', 'AAA'), sec('s2', 'BBB')]}
+          exportRef={ref}
+        />,
+      );
+    });
+    await waitFor(() => expect(screen.getAllByTestId('line')).toHaveLength(2));
+
+    await act(async () => {
+      await ref.current!.exportPdf();
+    });
+
+    expect(mockExportToPdf).toHaveBeenCalledTimes(1);
+    const call = mockExportToPdf.mock.calls[0][0];
+    expect(call.title).toBe('Performance Comparison');
+    expect(call.subtitle).toBe('AAA, BBB');
+    expect(call.filename).toBe('security-performance-comparison');
+    expect(call.chartContainer).toBeInstanceOf(HTMLElement);
+    // One legend entry per plotted security, resolved to concrete colours.
+    expect(call.chartLegend).toEqual([
+      { color: expect.stringMatching(/^#/), label: 'AAA - AAA Inc' },
+      { color: expect.stringMatching(/^#/), label: 'BBB - BBB Inc' },
+    ]);
   });
 });

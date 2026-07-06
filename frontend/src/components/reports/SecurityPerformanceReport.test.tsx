@@ -1038,9 +1038,44 @@ describe('SecurityPerformanceReport', () => {
     await waitFor(() => {
       expect(screen.getByText('Performance Comparison')).toBeInTheDocument();
     });
-    // Single-security controls are hidden in comparison mode.
+    // Per-security view tabs are hidden in comparison mode, but the export
+    // control stays available for the comparison chart.
     expect(screen.queryByText('Price Chart')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('export-pdf')).not.toBeInTheDocument();
+    expect(screen.getByTestId('export-pdf')).toBeInTheDocument();
     expect(screen.getByTestId('line-chart')).toBeInTheDocument();
+  });
+
+  it('exports the comparison chart pdf when 2+ securities are selected', async () => {
+    const { exportToPdf } = await import('@/lib/pdf-export');
+    (exportToPdf as any).mockClear();
+    mockGetSecurities.mockResolvedValue(mockSecurities);
+    mockGetPortfolioSummary.mockResolvedValue({ holdings: mockHoldings });
+    mockGetSecurityPrices.mockResolvedValue([
+      { id: 1, priceDate: '2024-01-01', closePrice: 100, createdAt: '' },
+      { id: 2, priceDate: '2024-02-01', closePrice: 110, createdAt: '' },
+    ]);
+    mockGetTransactions.mockResolvedValue({ data: [], pagination: { hasMore: false } });
+
+    render(<SecurityPerformanceReport />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: SELECT_PLACEHOLDER })).toBeInTheDocument();
+    });
+
+    await selectSecurity('AAPL - Apple Inc.');
+    await selectSecurity('VTI - Vanguard Total Stock');
+
+    await waitFor(() => {
+      expect(screen.getByText('Performance Comparison')).toBeInTheDocument();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('export-pdf'));
+    });
+
+    expect(exportToPdf).toHaveBeenCalledTimes(1);
+    const call = (exportToPdf as any).mock.calls[0][0];
+    expect(call.title).toBe('Performance Comparison');
+    expect(call.subtitle).toBe('AAPL, VTI');
+    expect(call.filename).toBe('security-performance-comparison');
+    expect(call.chartLegend).toHaveLength(2);
   });
 });
