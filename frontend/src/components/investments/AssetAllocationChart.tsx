@@ -362,16 +362,6 @@ export function AssetAllocationChart({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 lg:min-h-[420px]">
       {heading}
-      {isTagView && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-3">
-          {t('assetAllocation.tagExposureNote')}
-        </p>
-      )}
-      {isCountryView && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-3">
-          {t('assetAllocation.countryExposureNote')}
-        </p>
-      )}
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <PieChart>
@@ -392,7 +382,7 @@ export function AssetAllocationChart({
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-4 grid grid-cols-3 gap-2">
         {legendData.map((item, index) => {
           const isForeign = !foreignCurrency && item.currencyCode && item.currencyCode !== defaultCurrency;
           return (
