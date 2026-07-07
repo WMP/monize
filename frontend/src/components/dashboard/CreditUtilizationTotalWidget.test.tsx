@@ -26,7 +26,7 @@ const creditCard = (id: string, balance: number): Account =>
     currentBalance: balance,
     creditLimit: 1000,
     isClosed: false,
-  }) as Account;
+  }) as unknown as Account;
 
 describe('CreditUtilizationTotalWidget', () => {
   it('renders the overall utilization percentage', () => {

@@ -19,7 +19,7 @@ const account = (overrides: Partial<Account>): Account =>
     creditLimit: 2000,
     isClosed: false,
     ...overrides,
-  }) as Account;
+  }) as unknown as Account;
 
 // Identity converter for tests (no FX).
 const noConvert = (v: number) => v;
@@ -31,7 +31,7 @@ describe('isCreditAccount', () => {
   });
 
   it('rejects non-credit account types', () => {
-    expect(isCreditAccount(account({ accountType: 'CHECKING' }))).toBe(false);
+    expect(isCreditAccount(account({ accountType: 'CHEQUING' }))).toBe(false);
   });
 
   it('rejects accounts without a positive limit', () => {

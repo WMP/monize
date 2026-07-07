@@ -26,7 +26,7 @@ const creditCard = (id: string, balance: number): Account =>
     currentBalance: balance,
     creditLimit: 1000,
     isClosed: false,
-  }) as Account;
+  }) as unknown as Account;
 
 describe('CreditUtilizationAccountsWidget', () => {
   it('renders a bar for credit accounts with a limit', () => {
