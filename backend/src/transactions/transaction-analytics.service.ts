@@ -8,6 +8,7 @@ import { applyInvestmentTransactionFilters } from "../common/investment-filter.u
 import {
   joinSplitsForAnalytics,
   SPLIT_AMOUNT,
+  SPLIT_CATEGORY_ID,
   SPLIT_CATEGORY_NAME,
 } from "../common/transaction-split-query.util";
 import {
@@ -19,6 +20,7 @@ import { roundMoney, sumMoney } from "../common/round.util";
 import { suggestClosestNames } from "../common/name-suggestions.util";
 
 export interface TransferAccountSummary {
+  accountId: string | null;
   accountName: string;
   currency: string;
   inbound: number;
@@ -180,6 +182,7 @@ export class TransactionAnalyticsService {
       .createQueryBuilder("t")
       .leftJoin("t.account", "transferAccount")
       .select("transferAccount.name", "accountName")
+      .addSelect("transferAccount.id", "accountId")
       .addSelect("t.currencyCode", "currencyCode")
       .addSelect(
         "SUM(CASE WHEN t.amount > 0 THEN t.amount ELSE 0 END)",
@@ -210,6 +213,7 @@ export class TransactionAnalyticsService {
       const inbound = roundMoney(Number(r.inbound) || 0);
       const outbound = roundMoney(Number(r.outbound) || 0);
       return {
+        accountId: r.accountId ?? null,
         accountName: r.accountName,
         currency: r.currencyCode,
         inbound,
@@ -1115,8 +1119,15 @@ export class TransactionAnalyticsService {
 
     switch (groupBy) {
       case "category": {
+        // Grouping stays on the display name so row granularity is unchanged;
+        // MIN() attaches one category id per name for entity deep-links. Two
+        // same-named categories under different parents share a row today, so
+        // the id is an arbitrary member (link filters to a subset). The
+        // "Uncategorized" bucket has no ids and yields null. uuid has no MIN
+        // in PostgreSQL, hence the ::text cast.
         qb.leftJoin("t.category", "cat")
           .select(SPLIT_CATEGORY_NAME, "label")
+          .addSelect(`MIN(${SPLIT_CATEGORY_ID}::text)`, "categoryId")
           .addSelect(`SUM(ABS(${SPLIT_AMOUNT}))`, "total")
           .addSelect("COUNT(*)", "count")
           .groupBy(SPLIT_CATEGORY_NAME);
@@ -1125,6 +1136,7 @@ export class TransactionAnalyticsService {
         return rows
           .map((r) => ({
             category: r.label,
+            categoryId: r.categoryId ?? null,
             total: roundMoney(Number(r.total)),
             count: Number(r.count),
           }))
@@ -1132,7 +1144,11 @@ export class TransactionAnalyticsService {
       }
 
       case "payee": {
+        // Grouping stays on the denormalized name string; MIN() attaches a
+        // payee id where one exists. Free-text payees (no payee record) and
+        // the "Unknown" bucket yield null, so no deep-link is offered.
         qb.select("COALESCE(t.payeeName, 'Unknown')", "label")
+          .addSelect("MIN(t.payeeId::text)", "payeeId")
           .addSelect(`SUM(ABS(${SPLIT_AMOUNT}))`, "total")
           .addSelect("COUNT(*)", "count")
           .groupBy("t.payeeName");
@@ -1141,6 +1157,7 @@ export class TransactionAnalyticsService {
         return enforcePayeeAggregationThreshold(
           rows.map((r) => ({
             payee: r.label,
+            payeeId: r.payeeId ?? null,
             total: roundMoney(Number(r.total)),
             count: Number(r.count),
           })),
@@ -1440,15 +1457,25 @@ export class TransactionAnalyticsService {
  * transactions into a single "Other (aggregated)" bucket so individual
  * transaction amounts can't leak via targeted queries.
  */
+interface PayeeBreakdownRow {
+  payee: string;
+  payeeId: string | null;
+  total: number;
+  count: number;
+}
+
 function enforcePayeeAggregationThreshold(
-  rows: Array<{ payee: string; total: number; count: number }>,
-): Array<{ payee: string; total: number; count: number }> {
+  rows: PayeeBreakdownRow[],
+): PayeeBreakdownRow[] {
   const above = rows.filter((r) => r.count >= MIN_AGGREGATION_COUNT);
   const below = rows.filter((r) => r.count < MIN_AGGREGATION_COUNT);
 
   if (below.length > 0) {
+    // The synthetic bucket must never carry a real payee id -- it exists to
+    // hide the identities of the folded groups.
     above.push({
       payee: "Other (aggregated)",
+      payeeId: null,
       total: sumMoney(below.map((r) => r.total)),
       count: below.reduce((sum, r) => sum + r.count, 0),
     });
