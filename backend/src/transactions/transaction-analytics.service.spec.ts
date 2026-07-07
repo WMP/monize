@@ -1050,6 +1050,7 @@ describe("TransactionAnalyticsService", () => {
     it("aggregates inbound, outbound, net, and count per account", async () => {
       mockQueryBuilder.getRawMany.mockResolvedValue([
         {
+          accountId: "acc-chequing",
           accountName: "Chequing",
           currencyCode: "USD",
           inbound: "0",
@@ -1057,6 +1058,7 @@ describe("TransactionAnalyticsService", () => {
           count: "3",
         },
         {
+          accountId: "acc-savings",
           accountName: "Savings",
           currencyCode: "USD",
           inbound: "1500",
@@ -1073,6 +1075,7 @@ describe("TransactionAnalyticsService", () => {
 
       expect(result.accounts).toHaveLength(2);
       expect(result.accounts[0]).toMatchObject({
+        accountId: "acc-chequing",
         accountName: "Chequing",
         currency: "USD",
         inbound: 0,
@@ -1083,6 +1086,30 @@ describe("TransactionAnalyticsService", () => {
       expect(result.totalInbound).toBe(1500);
       expect(result.totalOutbound).toBe(1500);
       expect(result.transferCount).toBe(6);
+    });
+
+    it("selects the account id for deep-links and maps a missing id to null", async () => {
+      mockQueryBuilder.getRawMany.mockResolvedValue([
+        {
+          accountName: "Orphaned",
+          currencyCode: "USD",
+          inbound: "100",
+          outbound: "0",
+          count: "4",
+        },
+      ]);
+
+      const result = await service.getTransfersByAccount(
+        userId,
+        "2026-01-01",
+        "2026-01-31",
+      );
+
+      expect(mockQueryBuilder.addSelect).toHaveBeenCalledWith(
+        "transferAccount.id",
+        "accountId",
+      );
+      expect(result.accounts[0].accountId).toBeNull();
     });
 
     it("applies accountIds filter when provided", async () => {
@@ -2072,23 +2099,48 @@ describe("TransactionAnalyticsService", () => {
 
     it("groups by category and sorts by total descending", async () => {
       const rows = await runWithGroupBy("category", [
-        { label: "Food", total: "100", count: "5" },
-        { label: "Travel", total: "300", count: "2" },
+        { label: "Food", categoryId: "cat-food", total: "100", count: "5" },
+        { label: "Travel", categoryId: "cat-travel", total: "300", count: "2" },
       ]);
 
       expect(rows[0].category).toBe("Travel");
+      expect(rows[0].categoryId).toBe("cat-travel");
       expect(rows[1].category).toBe("Food");
+      expect(rows[1].categoryId).toBe("cat-food");
+    });
+
+    it("maps a missing category id (Uncategorized bucket) to null", async () => {
+      const rows = await runWithGroupBy("category", [
+        { label: "Uncategorized", categoryId: null, total: "50", count: "3" },
+      ]);
+
+      expect(rows[0].category).toBe("Uncategorized");
+      expect(rows[0].categoryId).toBeNull();
     });
 
     it("groups by payee and aggregates small payees into Other (aggregated)", async () => {
       const rows = await runWithGroupBy("payee", [
-        { label: "Costco", total: "500", count: "10" },
-        { label: "Tiny", total: "5", count: "1" },
+        { label: "Costco", payeeId: "payee-costco", total: "500", count: "10" },
+        { label: "Tiny", payeeId: "payee-tiny", total: "5", count: "1" },
       ]);
 
       const labels = rows.map((r) => r.payee);
       expect(labels).toContain("Costco");
       expect(labels).toContain("Other (aggregated)");
+      const costco = rows.find((r) => r.payee === "Costco");
+      expect(costco.payeeId).toBe("payee-costco");
+      // The synthetic bucket must never expose a folded payee's id.
+      const other = rows.find((r) => r.payee === "Other (aggregated)");
+      expect(other.payeeId).toBeNull();
+    });
+
+    it("maps free-text payee groups (no payee record) to a null payeeId", async () => {
+      const rows = await runWithGroupBy("payee", [
+        { label: "Cash lunch", payeeId: null, total: "90", count: "4" },
+      ]);
+
+      expect(rows[0].payee).toBe("Cash lunch");
+      expect(rows[0].payeeId).toBeNull();
     });
 
     it("groups by year and returns one row per year", async () => {

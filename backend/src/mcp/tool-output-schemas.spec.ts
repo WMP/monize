@@ -76,7 +76,10 @@ const cases: Array<{ name: string; schema: RawShape; raw: unknown }> = [
         },
       },
       groupedBy: "category",
-      breakdown: { groupedBy: "category", groups: [] },
+      breakdown: [
+        { category: "Food", categoryId: "cat-1", total: 5, count: 1 },
+        { category: "Uncategorized", categoryId: null, total: 2, count: 1 },
+      ],
     },
   },
   {
@@ -92,7 +95,17 @@ const cases: Array<{ name: string; schema: RawShape; raw: unknown }> = [
         totalInbound: 5,
         totalOutbound: 0,
         net: 5,
-        accounts: [],
+        accounts: [
+          {
+            accountId: "acc-1",
+            accountName: "Chequing",
+            currency: "USD",
+            inbound: 5,
+            outbound: 0,
+            net: 5,
+            transferCount: 1,
+          },
+        ],
       },
     },
   },
