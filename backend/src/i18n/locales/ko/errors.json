@@ -281,7 +281,8 @@
   "netWorth": {
     "invalidStartDate": "startDate는 YYYY-MM-DD 형식이어야 합니다",
     "invalidEndDate": "endDate는 YYYY-MM-DD 형식이어야 합니다",
-    "invalidAccountIds": "accountIds는 쉼표로 구분된 UUID여야 합니다"
+    "invalidAccountIds": "accountIds는 쉼표로 구분된 UUID여야 합니다",
+    "invalidGranularity": "granularity는 'daily' 또는 'monthly'여야 합니다"
   },
   "notifications": {
     "smtpNotConfigured": "SMTP가 구성되지 않았습니다. SMTP 환경 변수를 설정하세요.",

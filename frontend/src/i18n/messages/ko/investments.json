@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "시간별 포트폴리오 가치",
+    "viewReport": "보고서 보기",
+    "viewReportTitle": "전체 포트폴리오 가치 보고서 열기",
     "updatingLabel": "업데이트 중…",
     "updatingAriaLabel": "업데이트 중",
     "intradayFallbackWarningAriaLabel": "세부 당일 가격 정보 사용 불가",

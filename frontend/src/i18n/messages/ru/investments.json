@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "Стоимость портфеля за период",
+    "viewReport": "Открыть отчёт",
+    "viewReportTitle": "Открыть полный отчёт «Стоимость портфеля»",
     "updatingLabel": "Обновление…",
     "updatingAriaLabel": "Обновление",
     "intradayFallbackWarningAriaLabel": "Детальные внутридневные данные недоступны",

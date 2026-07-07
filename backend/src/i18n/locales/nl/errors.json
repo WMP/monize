@@ -281,7 +281,8 @@
   "netWorth": {
     "invalidStartDate": "startDate moet JJJJ-MM-DD zijn",
     "invalidEndDate": "endDate moet JJJJ-MM-DD zijn",
-    "invalidAccountIds": "accountIds moeten door komma's gescheiden UUID's zijn"
+    "invalidAccountIds": "accountIds moeten door komma's gescheiden UUID's zijn",
+    "invalidGranularity": "granularity moet 'daily' of 'monthly' zijn"
   },
   "notifications": {
     "smtpNotConfigured": "SMTP is niet geconfigureerd. Stel SMTP-omgevingsvariabelen in.",

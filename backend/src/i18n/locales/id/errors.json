@@ -281,7 +281,8 @@
   "netWorth": {
     "invalidStartDate": "startDate harus dalam format YYYY-MM-DD",
     "invalidEndDate": "endDate harus dalam format YYYY-MM-DD",
-    "invalidAccountIds": "accountIds harus berupa UUID yang dipisahkan koma"
+    "invalidAccountIds": "accountIds harus berupa UUID yang dipisahkan koma",
+    "invalidGranularity": "granularity harus 'daily' atau 'monthly'"
   },
   "notifications": {
     "smtpNotConfigured": "SMTP belum dikonfigurasi. Atur variabel lingkungan SMTP.",

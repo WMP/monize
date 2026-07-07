@@ -281,7 +281,8 @@
   "netWorth": {
     "invalidStartDate": "startDate phải có định dạng YYYY-MM-DD",
     "invalidEndDate": "endDate phải có định dạng YYYY-MM-DD",
-    "invalidAccountIds": "accountIds phải là các UUID được phân cách bằng dấu phẩy"
+    "invalidAccountIds": "accountIds phải là các UUID được phân cách bằng dấu phẩy",
+    "invalidGranularity": "granularity phải là 'daily' hoặc 'monthly'"
   },
   "notifications": {
     "smtpNotConfigured": "SMTP chưa được cấu hình. Hãy thiết lập các biến môi trường SMTP.",

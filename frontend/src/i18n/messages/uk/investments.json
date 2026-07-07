@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "Вартість портфеля з часом",
+    "viewReport": "Переглянути звіт",
+    "viewReportTitle": "Відкрити повний звіт «Вартість портфеля»",
     "updatingLabel": "Оновлення…",
     "updatingAriaLabel": "Оновлення",
     "intradayFallbackWarningAriaLabel": "Детальні внутрішньоденні ціни недоступні",

@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "Nilai Portofolio dari Waktu ke Waktu",
+    "viewReport": "Lihat laporan",
+    "viewReportTitle": "Buka laporan Nilai Portofolio lengkap",
     "updatingLabel": "Memperbarui…",
     "updatingAriaLabel": "Memperbarui",
     "intradayFallbackWarningAriaLabel": "Harga intraday terperinci tidak tersedia",

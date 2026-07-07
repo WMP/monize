@@ -281,7 +281,8 @@
   "netWorth": {
     "invalidStartDate": "startDate は YYYY-MM-DD 形式でなければなりません",
     "invalidEndDate": "endDate は YYYY-MM-DD 形式でなければなりません",
-    "invalidAccountIds": "accountIds はカンマ区切りのUUIDでなければなりません"
+    "invalidAccountIds": "accountIds はカンマ区切りのUUIDでなければなりません",
+    "invalidGranularity": "granularity は 'daily' または 'monthly' である必要があります"
   },
   "notifications": {
     "smtpNotConfigured": "SMTPが設定されていません。SMTP環境変数を設定してください。",

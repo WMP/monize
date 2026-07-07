@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "投资组合价值走势",
+    "viewReport": "查看报告",
+    "viewReportTitle": "打开完整的组合价值报告",
     "updatingLabel": "更新中…",
     "updatingAriaLabel": "更新中",
     "intradayFallbackWarningAriaLabel": "详细日内定价不可用",

@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "Portefeuillewaarde over tijd",
+    "viewReport": "Rapport bekijken",
+    "viewReportTitle": "Het volledige rapport Portefeuillewaarde openen",
     "updatingLabel": "Bijwerken…",
     "updatingAriaLabel": "Bijwerken",
     "intradayFallbackWarningAriaLabel": "Gedetailleerde intradagkoersen niet beschikbaar",

@@ -281,7 +281,8 @@
   "netWorth": {
     "invalidStartDate": "startDate має бути у форматі YYYY-MM-DD",
     "invalidEndDate": "endDate має бути у форматі YYYY-MM-DD",
-    "invalidAccountIds": "accountIds має бути UUID через кому"
+    "invalidAccountIds": "accountIds має бути UUID через кому",
+    "invalidGranularity": "granularity має бути 'daily' або 'monthly'"
   },
   "notifications": {
     "smtpNotConfigured": "SMTP не налаштовано. Встановіть змінні середовища SMTP.",
