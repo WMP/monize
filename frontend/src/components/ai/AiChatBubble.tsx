@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { AI_ENTITY_LINK_EVENT } from '@/lib/ai-entity-links';
 
 // The chat pulls in markdown/chart dependencies, so load it only when the
 // bubble is actually opened (and never on the server) to keep it out of the
@@ -163,6 +164,22 @@ export function AiChatBubble() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [view]);
+
+  // Collapse when an entity deep-link in a chat message is clicked, applying
+  // the same rule as the route-change collapse above. Needed separately from
+  // it because a link clicked while already on /transactions only changes the
+  // query string -- the pathname never changes, and the mobile sheet would
+  // otherwise stay open covering the freshly filtered page.
+  useEffect(() => {
+    const onEntityLink = () => {
+      setView((v) => {
+        const keepDesktopSheetOpen = v === 'sheet' && !isMobile;
+        return v !== 'closed' && !keepDesktopSheetOpen ? 'closed' : v;
+      });
+    };
+    window.addEventListener(AI_ENTITY_LINK_EVENT, onEntityLink);
+    return () => window.removeEventListener(AI_ENTITY_LINK_EVENT, onEntityLink);
+  }, [isMobile]);
 
   // Lock background scroll only when fully maximized (it covers the viewport).
   useEffect(() => {

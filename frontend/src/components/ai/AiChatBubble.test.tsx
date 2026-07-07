@@ -26,6 +26,7 @@ vi.mock('@/hooks/useIsMobile', () => ({
 import { AiChatBubble } from './AiChatBubble';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { AI_ENTITY_LINK_EVENT } from '@/lib/ai-entity-links';
 
 function setMobile(mobile: boolean) {
   (useIsMobile as unknown as Mock).mockReturnValue(mobile);
@@ -146,6 +147,42 @@ describe('AiChatBubble', () => {
     // The mobile bottom sheet sits over a scrim, so it still closes on nav.
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(launcher()).toBeInTheDocument();
+  });
+
+  it('collapses the mobile sheet when an entity deep-link is clicked (query-only nav)', () => {
+    setMobile(true);
+    render(<AiChatBubble />);
+    fireEvent.click(launcher()!);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    // Clicking a chat entity link while already on /transactions changes only
+    // the query string; the pathname never changes, so the link dispatches
+    // this event instead.
+    fireEvent(window, new CustomEvent(AI_ENTITY_LINK_EVENT));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(launcher()).toBeInTheDocument();
+  });
+
+  it('collapses a full-screen view when an entity deep-link is clicked', () => {
+    render(<AiChatBubble />);
+    fireEvent.click(launcher()!);
+    fireEvent.click(screen.getByLabelText('Expand to full screen'));
+
+    fireEvent(window, new CustomEvent(AI_ENTITY_LINK_EVENT));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(launcher()).toBeInTheDocument();
+  });
+
+  it('keeps the desktop corner sheet open when an entity deep-link is clicked', () => {
+    render(<AiChatBubble />);
+    fireEvent.click(launcher()!);
+
+    fireEvent(window, new CustomEvent(AI_ENTITY_LINK_EVENT));
+
+    // Non-blocking desktop sheet persists, same as the route-change rule.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   it('opens the desktop panel at the default bottom-right corner', () => {
