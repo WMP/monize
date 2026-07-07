@@ -13,17 +13,28 @@ interface PageHeaderProps {
   actions?: ReactNode;
   /** URL to the wiki help page for this feature */
   helpUrl?: string;
+  /**
+   * Keep the actions inline (on the same row as the title) on mobile instead
+   * of stacking them full-width below it. Use for compact, icon-sized actions.
+   */
+  compactMobileActions?: boolean;
 }
 
 /**
  * Inline page header with title, subtitle, and action buttons.
  * Renders directly in the content area without a separate background bar.
  */
-export function PageHeader({ title, subtitle, actions, helpUrl }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, actions, helpUrl, compactMobileActions }: PageHeaderProps) {
   const t = useTranslations('layout');
 
+  const layoutClasses = actions
+    ? compactMobileActions
+      ? 'flex flex-row justify-between items-start sm:items-center gap-4'
+      : 'flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'
+    : '';
+
   return (
-    <div className={`${actions ? 'flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4' : ''} mb-6`}>
+    <div className={`${layoutClasses} mb-6`}>
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -55,7 +66,17 @@ export function PageHeader({ title, subtitle, actions, helpUrl }: PageHeaderProp
           </p>
         )}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto [&>*]:w-full [&>*]:sm:w-auto">{actions}</div>}
+      {actions && (
+        <div
+          className={`flex flex-wrap items-center gap-3 ${
+            compactMobileActions
+              ? 'w-auto'
+              : 'w-full sm:w-auto [&>*]:w-full [&>*]:sm:w-auto'
+          }`}
+        >
+          {actions}
+        </div>
+      )}
     </div>
   );
 }
