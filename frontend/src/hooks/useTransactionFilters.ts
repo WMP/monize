@@ -91,6 +91,25 @@ function getFilterValue(key: string, urlParam: string | null, hasAnyUrlParams: b
   return localStorage.getItem(key) || '';
 }
 
+/**
+ * Signature of the single-entity deep-link params (the SINGULAR forms only:
+ * `accountId`/`categoryId`/`payeeId`). The page's own URL rewrites
+ * (`updateUrl`) emit exclusively the plural forms, so a singular param can
+ * only come from an external deep link -- a sibling page's row click or an AI
+ * chat entity link. Comparing signatures lets the soft-navigation watcher
+ * below detect a NEW deep link without re-firing on the page's own rewrites.
+ * Returns null when no singular param is present.
+ */
+function buildEntityParamSignature(
+  params: Pick<URLSearchParams, 'get'>,
+): string | null {
+  const accountId = params.get('accountId');
+  const categoryId = params.get('categoryId');
+  const payeeId = params.get('payeeId');
+  if (!accountId && !categoryId && !payeeId) return null;
+  return `a:${accountId ?? ''}|c:${categoryId ?? ''}|p:${payeeId ?? ''}`;
+}
+
 // Helper to get stored value (for non-URL params like account status)
 function getStoredValue<T>(key: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue;
@@ -156,6 +175,11 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
   // separately from targetTransactionIdRef because the latter is consumed (set
   // back to null) by each load.
   const appliedTargetRef = useRef<string | null>(null);
+  // Same idea for single-entity deep links (`accountId`/`categoryId`/`payeeId`
+  // singular params, e.g. an AI chat entity link clicked while this page is
+  // already mounted): the signature already applied, so neither the mount-time
+  // init nor the page's own URL rewrites re-trigger the watcher.
+  const appliedEntityFilterRef = useRef<string | null>(null);
   // Debounce timer for filter-triggered loads
   const filterDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -391,6 +415,11 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
       setHighlightTransactionId(targetId);
       appliedTargetRef.current = targetId;
     }
+    // Singular entity params in the mount URL were just applied above (along
+    // with any co-present params like dates or search). Seed the applied
+    // signature so the soft-navigation watcher below does not re-apply them
+    // and wipe those co-applied filters.
+    appliedEntityFilterRef.current = buildEntityParamSignature(searchParams);
     setFiltersInitialized(true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -440,6 +469,79 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
     setFilterSearch('');
     targetTransactionIdRef.current = targetId;
     setHighlightTransactionId(targetId);
+  }, [searchParams, filtersInitialized]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Honour a single-entity deep link (`?accountId=`/`?categoryId=`/`?payeeId=`,
+  // singular) that arrives while this page is already mounted -- e.g. an AI
+  // chat entity link clicked from the chat bubble without navigating away.
+  // Mirrors the targetTransactionId watcher above: the mount-time init effect
+  // does not re-run on a soft navigation, so without this the query string
+  // would change but the filters would not. The page's own URL rewrites only
+  // emit plural params, so a singular param is always an external deep link.
+  // `isFilterChange` is deliberately left false: the link click already pushed
+  // a history entry, and a replace-rewrite to the plural form keeps Back
+  // returning to the pre-click page instead of looping on the singular URL.
+  /* eslint-disable react-hooks/set-state-in-effect -- apply deep link from URL */
+  useEffect(() => {
+    if (!filtersInitialized) return;
+    // Never fight the targetTransactionId watcher over one URL change.
+    const targetId = searchParams.get('targetTransactionId');
+    if (targetId && UUID_REGEX.test(targetId)) return;
+    const signature = buildEntityParamSignature(searchParams);
+    if (!signature) {
+      // Params consumed (rewritten to plural) or never present: allow the
+      // same link to re-trigger later, e.g. clicking it a second time.
+      appliedEntityFilterRef.current = null;
+      return;
+    }
+    if (signature === appliedEntityFilterRef.current) return;
+    appliedEntityFilterRef.current = signature;
+
+    const accountId = searchParams.get('accountId');
+    const categoryId = searchParams.get('categoryId');
+    const payeeId = searchParams.get('payeeId');
+    const entity = accountId
+      ? { kind: 'account' as const, id: accountId }
+      : categoryId
+        ? { kind: 'category' as const, id: categoryId }
+        : { kind: 'payee' as const, id: payeeId as string };
+    // A malformed id is ignored rather than applied, matching the
+    // targetTransactionId handling (special category pseudo-ids excepted).
+    const isSpecialCategory =
+      entity.kind === 'category' &&
+      (entity.id === 'uncategorized' || entity.id === 'transfer');
+    if (!isSpecialCategory && !UUID_REGEX.test(entity.id)) return;
+
+    setFilterAccountIds(entity.kind === 'account' ? [entity.id] : []);
+    setFilterCategoryIds(entity.kind === 'category' ? [entity.id] : []);
+    setFilterPayeeIds(entity.kind === 'payee' ? [entity.id] : []);
+    // Deep links to accounts carry `accountStatus` (e.g. `all`) so a closed
+    // account is not pruned by the stored Show Accounts toggle; apply it the
+    // same way the mount-time init does. Absent the param, the toggle is left
+    // untouched (same rationale as the targetTransactionId watcher).
+    const accountStatusParam = searchParams.get('accountStatus');
+    if (
+      accountStatusParam === 'all' ||
+      accountStatusParam === 'active' ||
+      accountStatusParam === 'closed'
+    ) {
+      setFilterAccountStatus(accountStatusParam === 'all' ? '' : accountStatusParam);
+    }
+    setFilterTagIds([]);
+    setFilterStartDate('');
+    setFilterEndDate('');
+    setFilterTimePeriod('');
+    setFilterAmountFrom('');
+    setFilterAmountTo('');
+    setFilterStatuses([]);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+      searchDebounceRef.current = null;
+    }
+    setSearchInput('');
+    setFilterSearch('');
+    setCurrentPage(1);
   }, [searchParams, filtersInitialized]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
