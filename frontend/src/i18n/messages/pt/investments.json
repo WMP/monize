@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "Valor do Portefólio ao Longo do Tempo",
+    "viewReport": "Ver relatório",
+    "viewReportTitle": "Abrir o relatório completo Valor do Portefólio",
     "updatingLabel": "A atualizar…",
     "updatingAriaLabel": "A atualizar",
     "intradayFallbackWarningAriaLabel": "Cotações intradiárias detalhadas indisponíveis",

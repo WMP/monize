@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "Zaman İçinde Portföy Değeri",
+    "viewReport": "Raporu görüntüle",
+    "viewReportTitle": "Portföy Değeri raporunun tamamını aç",
     "updatingLabel": "Güncelleniyor…",
     "updatingAriaLabel": "Güncelleniyor",
     "intradayFallbackWarningAriaLabel": "Ayrıntılı gün içi fiyatlandırma kullanılamıyor",

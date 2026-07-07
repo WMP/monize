@@ -281,7 +281,8 @@
   "netWorth": {
     "invalidStartDate": "startDate YYYY-AA-GG biçiminde olmalıdır",
     "invalidEndDate": "endDate YYYY-AA-GG biçiminde olmalıdır",
-    "invalidAccountIds": "accountIds virgülle ayrılmış UUID'ler olmalıdır"
+    "invalidAccountIds": "accountIds virgülle ayrılmış UUID'ler olmalıdır",
+    "invalidGranularity": "granularity 'daily' veya 'monthly' olmalıdır"
   },
   "notifications": {
     "smtpNotConfigured": "SMTP yapılandırılmamış. SMTP ortam değişkenlerini ayarlayın.",

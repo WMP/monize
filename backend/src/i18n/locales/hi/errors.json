@@ -281,7 +281,8 @@
   "netWorth": {
     "invalidStartDate": "startDate YYYY-MM-DD प्रारूप में होनी चाहिए",
     "invalidEndDate": "endDate YYYY-MM-DD प्रारूप में होनी चाहिए",
-    "invalidAccountIds": "accountIds अल्पविराम-अलग UUID होने चाहिए"
+    "invalidAccountIds": "accountIds अल्पविराम-अलग UUID होने चाहिए",
+    "invalidGranularity": "granularity 'daily' या 'monthly' होना चाहिए"
   },
   "notifications": {
     "smtpNotConfigured": "SMTP कॉन्फ़िगर नहीं है। SMTP पर्यावरण चर सेट करें।",

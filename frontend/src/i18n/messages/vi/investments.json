@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "Giá trị danh mục theo thời gian",
+    "viewReport": "Xem báo cáo",
+    "viewReportTitle": "Mở báo cáo Giá trị danh mục đầy đủ",
     "updatingLabel": "Đang cập nhật…",
     "updatingAriaLabel": "Đang cập nhật",
     "intradayFallbackWarningAriaLabel": "Giá trong ngày chi tiết không khả dụng",

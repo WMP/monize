@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "Valor de la Cartera en el Tiempo",
+    "viewReport": "Ver informe",
+    "viewReportTitle": "Abrir el informe completo de Valor de la cartera",
     "updatingLabel": "Actualizando…",
     "updatingAriaLabel": "Actualizando",
     "intradayFallbackWarningAriaLabel": "Precios intradía detallados no disponibles",

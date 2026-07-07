@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "Portfoliowert im Zeitverlauf",
+    "viewReport": "Bericht ansehen",
+    "viewReportTitle": "Vollständigen Portfolio-Wert-Bericht öffnen",
     "updatingLabel": "Wird aktualisiert…",
     "updatingAriaLabel": "Wird aktualisiert",
     "intradayFallbackWarningAriaLabel": "Detaillierte Intraday-Kursdaten nicht verfügbar",

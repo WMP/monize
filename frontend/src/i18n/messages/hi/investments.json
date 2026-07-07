@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "समय के साथ पोर्टफोलियो मूल्य",
+    "viewReport": "रिपोर्ट देखें",
+    "viewReportTitle": "पूरी पोर्टफोलियो मूल्य रिपोर्ट खोलें",
     "updatingLabel": "अपडेट हो रहा है…",
     "updatingAriaLabel": "अपडेट हो रहा है",
     "intradayFallbackWarningAriaLabel": "विस्तृत इंट्राडे मूल्य निर्धारण अनुपलब्ध",

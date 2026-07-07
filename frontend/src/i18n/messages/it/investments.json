@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "Valore del portafoglio nel tempo",
+    "viewReport": "Vedi report",
+    "viewReportTitle": "Apri il report completo Valore del portafoglio",
     "updatingLabel": "Aggiornamento…",
     "updatingAriaLabel": "Aggiornamento",
     "intradayFallbackWarningAriaLabel": "Prezzi intraday dettagliati non disponibili",

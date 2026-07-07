@@ -281,7 +281,8 @@
   "netWorth": {
     "invalidStartDate": "startDate deve essere nel formato YYYY-MM-DD",
     "invalidEndDate": "endDate deve essere nel formato YYYY-MM-DD",
-    "invalidAccountIds": "accountIds deve essere un elenco di UUID separati da virgole"
+    "invalidAccountIds": "accountIds deve essere un elenco di UUID separati da virgole",
+    "invalidGranularity": "granularity deve essere 'daily' o 'monthly'"
   },
   "notifications": {
     "smtpNotConfigured": "SMTP non è configurato. Imposta le variabili d'ambiente SMTP.",

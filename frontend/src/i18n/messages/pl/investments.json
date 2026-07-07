@@ -107,6 +107,8 @@
   },
   "investmentValueChart": {
     "title": "Wartość portfela w czasie",
+    "viewReport": "Zobacz raport",
+    "viewReportTitle": "Otwórz pełny raport Wartość portfela",
     "updatingLabel": "Aktualizowanie…",
     "updatingAriaLabel": "Aktualizowanie",
     "intradayFallbackWarningAriaLabel": "Szczegółowe ceny śróddzienne niedostępne",

@@ -281,7 +281,8 @@
   "netWorth": {
     "invalidStartDate": "startDate 必須為 YYYY-MM-DD 格式",
     "invalidEndDate": "endDate 必須為 YYYY-MM-DD 格式",
-    "invalidAccountIds": "accountIds 必須是以逗號分隔的 UUID"
+    "invalidAccountIds": "accountIds 必須是以逗號分隔的 UUID",
+    "invalidGranularity": "granularity 必須為 'daily' 或 'monthly'"
   },
   "notifications": {
     "smtpNotConfigured": "未設定 SMTP。請設定 SMTP 環境變數。",

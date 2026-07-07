@@ -281,7 +281,8 @@
   "netWorth": {
     "invalidStartDate": "startDate должна быть в формате ГГГГ-ММ-ДД",
     "invalidEndDate": "endDate должна быть в формате ГГГГ-ММ-ДД",
-    "invalidAccountIds": "accountIds должны быть UUID, разделёнными запятыми"
+    "invalidAccountIds": "accountIds должны быть UUID, разделёнными запятыми",
+    "invalidGranularity": "granularity должно быть 'daily' или 'monthly'"
   },
   "notifications": {
     "smtpNotConfigured": "SMTP не настроен. Задайте переменные окружения SMTP.",

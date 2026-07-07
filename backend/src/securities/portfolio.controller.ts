@@ -225,6 +225,30 @@ export class PortfolioController {
     });
   }
 
+  @Get("intraday-breakdown")
+  @AllowDelegate()
+  @DelegateRequiresSection("investments")
+  @ApiOperation({
+    summary:
+      "Get per-security intraday portfolio value series for the 1D / 1W / 1M ranges",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Per-security intraday portfolio value retrieved successfully",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async getIntradayBreakdown(
+    @Request() req,
+    @Query() query: IntradayValueQueryDto,
+  ) {
+    const ids = this.parseUuidList(query.accountIds, "account");
+    return this.portfolioService.getIntradayBreakdown(req.user.id, {
+      range: query.range,
+      accountIds: await this.scopeIds(req, ids),
+      displayCurrency: query.displayCurrency,
+    });
+  }
+
   @Get("sector-weightings")
   @AllowDelegate()
   @DelegateRequiresSection("investments")

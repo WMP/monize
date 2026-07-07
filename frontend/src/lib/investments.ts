@@ -19,6 +19,7 @@ import {
   SecurityPrice,
   SecurityTransactionHistory,
 } from '@/types/investment';
+import { IntradayBreakdown } from '@/types/net-worth';
 import { getCached, setCache, invalidateCache } from './apiCache';
 
 export const investmentsApi = {
@@ -101,6 +102,22 @@ export const investmentsApi = {
     fallbackToDaily: boolean;
   }> => {
     const response = await apiClient.get('/portfolio/intraday-value', { params });
+    return response.data;
+  },
+
+  // Per-security intraday breakdown (1D / 1W / 1M ranges) for the Portfolio
+  // Value Over Time report's "by security" view. Carries the same availability
+  // metadata as getIntradayValue so the caller can apply identical fallback
+  // handling. Backend caches for 60s; not cached in sessionStorage here.
+  getIntradayBreakdown: async (params: {
+    range: '1d' | '1w' | '1m';
+    accountIds?: string;
+    displayCurrency?: string;
+  }): Promise<IntradayBreakdown> => {
+    const response = await apiClient.get<IntradayBreakdown>(
+      '/portfolio/intraday-breakdown',
+      { params },
+    );
     return response.data;
   },
 
