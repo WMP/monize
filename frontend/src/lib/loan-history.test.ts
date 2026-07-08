@@ -61,12 +61,11 @@ afterEach(() => {
 });
 
 describe('deriveLoanPaymentHistory', () => {
-  it('builds events from positive transactions in date order', () => {
+  it('builds a row per repayment in date order, anchored to the opening balance', () => {
     const account = makeAccount();
     const transactions = [
       makeTransaction({ transactionDate: '2026-02-15', amount: 460 }),
       makeTransaction({ transactionDate: '2026-01-15', amount: 450 }),
-      makeTransaction({ transactionDate: '2026-01-20', amount: -100 }), // disbursement, ignored
     ];
 
     const result = deriveLoanPaymentHistory(account, transactions);
@@ -79,6 +78,50 @@ describe('deriveLoanPaymentHistory', () => {
     expect(result.events[1].balance).toBe(10000 - 450 - 460);
     expect(result.cumulativePrincipal).toBe(910);
     expect(result.currentBalance).toBe(8000);
+  });
+
+  it('counts draws in the running balance but emits no row for them', () => {
+    // A draw between two repayments raises the debt magnitude, so the second
+    // repayment's balance reflects it (10000 - 450 - 100(draw) - 460).
+    const account = makeAccount();
+    const transactions = [
+      makeTransaction({ transactionDate: '2026-02-15', amount: 460 }),
+      makeTransaction({ transactionDate: '2026-01-15', amount: 450 }),
+      makeTransaction({ transactionDate: '2026-01-20', amount: -100 }), // draw
+    ];
+
+    const result = deriveLoanPaymentHistory(account, transactions);
+
+    expect(result.events).toHaveLength(2);
+    expect(result.events[0].balance).toBe(10000 - 450);
+    expect(result.events[1].balance).toBe(10000 - 450 + 100 - 460);
+    expect(result.cumulativePrincipal).toBe(910);
+  });
+
+  it('does not inflate a revolving line of credit opened at zero', () => {
+    // A LOC that cycled near zero: draws and repayments net out. The old
+    // positive-only reconstruction summed every repayment (2100) on top of the
+    // balance; anchoring to the true opening of 0 keeps it honest.
+    const loc = makeAccount({
+      accountType: 'LINE_OF_CREDIT',
+      openingBalance: 0,
+      currentBalance: -200,
+    });
+    const transactions = [
+      makeTransaction({ id: 'd1', transactionDate: '2026-01-01', amount: -1000 }), // draw
+      makeTransaction({ id: 'p1', transactionDate: '2026-02-01', amount: 1000 }), // repay
+      makeTransaction({ id: 'd2', transactionDate: '2026-03-01', amount: -1200 }), // draw
+      makeTransaction({ id: 'p2', transactionDate: '2026-04-01', amount: 1000 }), // repay
+    ];
+
+    const result = deriveLoanPaymentHistory(loc, transactions);
+
+    expect(result.startingBalance).toBe(0);
+    // Repayment rows only; balances track real utilization
+    expect(result.events).toHaveLength(2);
+    expect(result.events[0].balance).toBe(0); // 0 - 1000 + 1000
+    expect(result.events[1].balance).toBe(200); // ... - 1200 + 1000 => -200 magnitude
+    expect(result.currentBalance).toBe(200);
   });
 
   it('reads interest from the linked transaction split that is not the loan transfer', () => {

@@ -38,18 +38,31 @@ export function deriveLoanPaymentHistory(
 ): LoanHistoryResult {
   const loanAccountId = account.id;
 
-  const sortedTransactions = [...transactions]
-    .filter((t) => t.amount > 0)
-    .sort((a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime());
+  const sortedTransactions = [...transactions].sort(
+    (a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime(),
+  );
 
-  const totalPrincipalPaid = sortedTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+  // On a debt account the balance is stored negative. Repayments post as
+  // positive amounts (raising the balance toward zero); draws post as negative
+  // amounts (driving it further into debt). Summing only the repayments would
+  // count every payoff across the account's life while dropping the offsetting
+  // draws -- which is exactly what inflates a revolving line of credit whose
+  // real balance cycled near zero.
+  const openingSigned = Number(account.openingBalance) || 0;
+  const currentBalance = Math.abs(Number(account.currentBalance) || 0);
+  const repayments = sortedTransactions.filter((t) => Number(t.amount) > 0);
+  const hasDraws = sortedTransactions.some((t) => Number(t.amount) < 0);
+  const totalPrincipalPaid = repayments.reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
 
-  const openingBalance = Math.abs(account.openingBalance || 0);
-  const currentBalance = Math.abs(account.currentBalance || 0);
-  const calculatedOriginalBalance = currentBalance + totalPrincipalPaid;
+  // Anchor to the real opening balance whenever we have one, or the account is
+  // revolving (has draws). Only reconstruct the original principal by summing
+  // repayments for an amortizing loan imported without an opening balance and
+  // with no draws -- the one case where the true opening is genuinely unknown.
+  const useReconstruction = openingSigned === 0 && !hasDraws;
+  const startingBalance = useReconstruction
+    ? currentBalance + totalPrincipalPaid
+    : debtMagnitude(openingSigned);
 
-  const startingBalance = openingBalance > 0 ? openingBalance : calculatedOriginalBalance;
-  let runningBalance = startingBalance;
   let cumulativePrincipal = 0;
   let cumulativeInterest = 0;
 
@@ -58,35 +71,46 @@ export function deriveLoanPaymentHistory(
   const processedParentIds = new Set<string>();
   const events: LoanPaymentEvent[] = [];
 
-  for (const transaction of sortedTransactions) {
-    const principal = Math.abs(transaction.amount);
-    let interest = 0;
-
-    const linkedTx = transaction.linkedTransaction;
-    if (linkedTx?.splits && linkedTx.splits.length > 0) {
-      if (!processedParentIds.has(linkedTx.id)) {
-        processedParentIds.add(linkedTx.id);
-        const interestSplit = linkedTx.splits.find(
-          (s) => s.transferAccountId !== loanAccountId,
-        );
-        if (interestSplit) {
-          interest = Math.abs(interestSplit.amount);
-        }
-      }
+  if (useReconstruction) {
+    // Legacy path: monotonic amortizing loan, balance decreasing from the
+    // reconstructed principal by each repayment.
+    let runningBalance = startingBalance;
+    for (const transaction of repayments) {
+      const principal = Math.abs(Number(transaction.amount));
+      const interest = readInterest(transaction, loanAccountId, processedParentIds);
+      runningBalance = Math.max(0, runningBalance - principal);
+      cumulativePrincipal += principal;
+      cumulativeInterest += interest;
+      events.push({
+        date: transaction.transactionDate,
+        principal,
+        interest,
+        balance: runningBalance,
+        cumulativePrincipal,
+        cumulativeInterest,
+      });
     }
-
-    runningBalance = Math.max(0, runningBalance - principal);
-    cumulativePrincipal += principal;
-    cumulativeInterest += interest;
-
-    events.push({
-      date: transaction.transactionDate,
-      principal,
-      interest,
-      balance: runningBalance,
-      cumulativePrincipal,
-      cumulativeInterest,
-    });
+  } else {
+    // Ledger path: track the true signed running balance so draws and
+    // repayments both count. Emit an event per repayment with the debt
+    // magnitude at that point.
+    let runningSigned = openingSigned;
+    for (const transaction of sortedTransactions) {
+      runningSigned += Number(transaction.amount);
+      if (Number(transaction.amount) <= 0) continue; // draws move the balance, no row
+      const principal = Math.abs(Number(transaction.amount));
+      const interest = readInterest(transaction, loanAccountId, processedParentIds);
+      cumulativePrincipal += principal;
+      cumulativeInterest += interest;
+      events.push({
+        date: transaction.transactionDate,
+        principal,
+        interest,
+        balance: debtMagnitude(runningSigned),
+        cumulativePrincipal,
+        cumulativeInterest,
+      });
+    }
   }
 
   return {
@@ -96,6 +120,33 @@ export function deriveLoanPaymentHistory(
     cumulativePrincipal,
     cumulativeInterest,
   };
+}
+
+/**
+ * Debt owed for a signed account balance. Debt accounts store the balance
+ * negative, so the outstanding amount is `-balance`, floored at zero so an
+ * overpaid balance (in credit) reads as paid off rather than as fresh debt.
+ */
+function debtMagnitude(signedBalance: number): number {
+  return Math.max(0, -signedBalance);
+}
+
+/**
+ * The interest portion of a payment lives on the linked source-account
+ * transaction as the split that does not transfer back to the loan. A single
+ * source payment covering several loan transfers is counted only once.
+ */
+function readInterest(
+  transaction: Transaction,
+  loanAccountId: string,
+  processedParentIds: Set<string>,
+): number {
+  const linkedTx = transaction.linkedTransaction;
+  if (!linkedTx?.splits || linkedTx.splits.length === 0) return 0;
+  if (processedParentIds.has(linkedTx.id)) return 0;
+  processedParentIds.add(linkedTx.id);
+  const interestSplit = linkedTx.splits.find((s) => s.transferAccountId !== loanAccountId);
+  return interestSplit ? Math.abs(interestSplit.amount) : 0;
 }
 
 /**
