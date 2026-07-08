@@ -89,7 +89,7 @@ describe('PastImpactSection', () => {
     // Falls back to the opening balance; the section renders rather than hinting
     expect(screen.getByText('Extra Principal Paid')).toBeInTheDocument();
     expect(
-      screen.queryByText(/set the original principal and first payment date/),
+      screen.queryByText(/needs an interest rate, a payment frequency/),
     ).not.toBeInTheDocument();
   });
 
@@ -98,7 +98,7 @@ describe('PastImpactSection', () => {
     render(<PastImpactSection account={account} history={makeHistory(account)} />);
 
     expect(
-      screen.getByText(/set the original principal and first payment date/),
+      screen.getByText(/needs an interest rate, a payment frequency/),
     ).toBeInTheDocument();
     expect(screen.queryByTestId('area-chart')).not.toBeInTheDocument();
   });

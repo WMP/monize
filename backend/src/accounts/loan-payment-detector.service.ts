@@ -48,7 +48,7 @@ export interface DetectedLoanPayment {
   lastInterestAmount: number | null;
 }
 
-interface PaymentRecord {
+export interface PaymentRecord {
   date: string;
   amount: number;
   sourceAccountId: string | null;
@@ -238,7 +238,7 @@ export class LoanPaymentDetectorService {
    * When no linked source transaction is found (simple transfer without splits),
    * the loan account transaction amount is used as the payment amount.
    */
-  private async buildPaymentRecords(
+  async buildPaymentRecords(
     userId: string,
     accountId: string,
     transactions: Transaction[],
@@ -393,9 +393,7 @@ export class LoanPaymentDetectorService {
    *
    * Prefers the record with the most complete split data (has interestAmount).
    */
-  private consolidatePaymentsByDate(
-    payments: PaymentRecord[],
-  ): PaymentRecord[] {
+  consolidatePaymentsByDate(payments: PaymentRecord[]): PaymentRecord[] {
     const byDate = new Map<string, PaymentRecord[]>();
     for (const p of payments) {
       const dateKey = p.date.split("T")[0];
@@ -685,7 +683,7 @@ export class LoanPaymentDetectorService {
    * rather than forwards from openingBalance (which may not match
    * the actual balance when the user started tracking).
    */
-  private buildRunningBalanceMap(
+  buildRunningBalanceMap(
     account: Account,
     transactions: Transaction[],
   ): Map<string, number> {

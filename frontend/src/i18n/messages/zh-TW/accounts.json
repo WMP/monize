@@ -354,7 +354,8 @@
       "projectedFuturePayments": "預測的未來還款",
       "showAll": "顯示全部 {count} 期還款",
       "showLess": "收合",
-      "noPayments": "找不到還款紀錄"
+      "noPayments": "找不到還款紀錄",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "提前還款模擬器",
@@ -416,7 +417,7 @@
       "description": "您已完成的還款與原始合約還款計畫的比較。",
       "extraPrincipalPaid": "額外償還本金",
       "extraPrincipalNote": "您比原計畫提前了多少",
-      "missingData": "若要查看提前還款為這筆貸款縮短了多少時間，請在帳戶中設定原始本金和首次還款日期。",
+      "missingData": "若要查看您的超額還款為這筆貸款縮短了多少時間，此帳戶需要利率、還款頻率和一些已記錄的還款，以便重建其原始還款計畫。",
       "monthsAlreadySaved": "已節省的時間",
       "monthsValue": "{count, plural, one {# 個月} other {# 個月}}",
       "payoffComparison": "原為 {original}，現為 {current}",
@@ -435,6 +436,41 @@
       "utilization": "使用率",
       "balanceHistory": "餘額歷史",
       "noHistory": "沒有可用的餘額歷史。"
+    },
+    "rateHistory": {
+      "title": "利率變更歷史",
+      "description": "追蹤貸款存續期間的利率變更，從浮動利率重設到期限續約。",
+      "add": "新增利率變更",
+      "detect": "從紀錄中偵測",
+      "empty": "尚未記錄利率變更。利率變動時請新增一筆，或從還款紀錄中偵測過去的變更。",
+      "rateValue": "{rate}%",
+      "paymentSummary": "還款額：{payment}",
+      "paymentUnchanged": "不變",
+      "badgeInferred": "推算",
+      "badgeInitial": "初始",
+      "edit": "編輯",
+      "delete": "刪除",
+      "cancel": "取消",
+      "save": "儲存",
+      "addTitle": "新增利率變更",
+      "editTitle": "編輯利率變更",
+      "effectiveDateLabel": "生效日期",
+      "rateLabel": "新年利率 (%)",
+      "paymentModeLabel": "還款額",
+      "paymentModeKeep": "維持目前還款額（還清時間將順延）",
+      "paymentModeSet": "設定新的還款額",
+      "paymentModeRecalculate": "重新計算還款額以維持攤還進度",
+      "newPaymentLabel": "新的還款額",
+      "noteLabel": "備註（選填）",
+      "addedToast": "已記錄利率變更",
+      "updatedToast": "已更新利率變更",
+      "deletedToast": "已刪除利率變更",
+      "saveFailed": "無法儲存利率變更",
+      "deleteFailed": "無法刪除利率變更",
+      "detectTitle": "偵測利率變更",
+      "detectMessage": "此操作會分析您的還款紀錄並取代先前偵測到的項目。您自己新增或編輯的項目將予以保留。",
+      "detectedToast": "{count, plural, =0 {未偵測到新的利率變更} one {偵測到 # 項利率變更} other {偵測到 # 項利率變更}}",
+      "detectFailed": "無法從還款紀錄中偵測利率變更"
     }
   }
 }

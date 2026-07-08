@@ -354,7 +354,8 @@
       "projectedFuturePayments": "予測される今後の返済",
       "showAll": "全 {count} 回の返済を表示",
       "showLess": "表示を減らす",
-      "noPayments": "返済が見つかりません"
+      "noPayments": "返済が見つかりません",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "繰上返済シミュレーター",
@@ -416,7 +417,7 @@
       "description": "これまでの返済が当初の契約スケジュールと比べてどう推移しているかを示します。",
       "extraPrincipalPaid": "追加で支払った元金",
       "extraPrincipalNote": "当初スケジュールよりどれだけ前倒しか",
-      "missingData": "繰上返済によってこのローンがどれだけ短縮されたかを見るには、勘定科目に当初借入額と初回返済日を設定してください。",
+      "missingData": "繰上返済によってこのローンがどれだけ短縮されたかを見るには、この口座に金利、返済頻度、および元のスケジュールを再構築するための返済記録が必要です。",
       "monthsAlreadySaved": "すでに短縮された期間",
       "monthsValue": "{count, plural, one {# か月} other {# か月}}",
       "payoffComparison": "当初 {original} → 現在 {current}",
@@ -435,6 +436,41 @@
       "utilization": "利用率",
       "balanceHistory": "残高の推移",
       "noHistory": "残高の履歴はありません。"
+    },
+    "rateHistory": {
+      "title": "金利履歴",
+      "description": "変動金利の見直しから期間の更新まで、ローン期間全体にわたる金利の変更を記録します。",
+      "add": "金利変更を追加",
+      "detect": "履歴から検出",
+      "empty": "記録された金利変更はありません。金利が変わったときに追加するか、返済履歴から過去の変更を検出してください。",
+      "rateValue": "{rate}%",
+      "paymentSummary": "返済額：{payment}",
+      "paymentUnchanged": "変更なし",
+      "badgeInferred": "推定",
+      "badgeInitial": "当初",
+      "edit": "編集",
+      "delete": "削除",
+      "cancel": "キャンセル",
+      "save": "保存",
+      "addTitle": "金利変更を追加",
+      "editTitle": "金利変更を編集",
+      "effectiveDateLabel": "適用日",
+      "rateLabel": "新しい年利率（%）",
+      "paymentModeLabel": "返済額",
+      "paymentModeKeep": "現在の返済額を維持する（完済時期がずれます）",
+      "paymentModeSet": "新しい返済額を設定する",
+      "paymentModeRecalculate": "償却が予定どおり進むよう返済額を再計算する",
+      "newPaymentLabel": "新しい返済額",
+      "noteLabel": "メモ（任意）",
+      "addedToast": "金利変更を記録しました",
+      "updatedToast": "金利変更を更新しました",
+      "deletedToast": "金利変更を削除しました",
+      "saveFailed": "金利変更の保存に失敗しました",
+      "deleteFailed": "金利変更の削除に失敗しました",
+      "detectTitle": "金利変更を検出",
+      "detectMessage": "返済履歴を分析し、以前に検出されたエントリを置き換えます。ご自身で追加または編集したエントリは保持されます。",
+      "detectedToast": "{count, plural, =0 {新しい金利変更は検出されませんでした} one {# 件の金利変更を検出しました} other {# 件の金利変更を検出しました}}",
+      "detectFailed": "返済履歴から金利変更を検出できませんでした"
     }
   }
 }

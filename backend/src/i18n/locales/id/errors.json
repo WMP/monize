@@ -454,5 +454,14 @@
     "notFound": "Skenario pinjaman dengan ID {{ id }} tidak ditemukan",
     "nameConflict": "Skenario bernama \"{{ name }}\" sudah ada untuk akun ini",
     "notLoanAccount": "Skenario pinjaman hanya tersedia untuk akun pinjaman, hipotek, dan jalur kredit"
+  },
+  "loanRateChanges": {
+    "notFound": "Perubahan suku bunga dengan ID {{ id }} tidak ditemukan",
+    "notLoanAccount": "Perubahan suku bunga hanya tersedia untuk akun pinjaman dan hipotek",
+    "duplicateDate": "Perubahan suku bunga yang berlaku {{ date }} sudah ada untuk akun ini",
+    "paymentModeConflict": "Berikan salah satu: jumlah angsuran baru atau recalculatePayment, bukan keduanya",
+    "recalculateMortgageOnly": "Penghitungan ulang angsuran hanya tersedia untuk akun hipotek",
+    "insufficientData": "Tidak cukup pembayaran dengan rincian bunga untuk mendeteksi perubahan suku bunga",
+    "frequencyMismatch": "Tanggal pembayaran tidak sesuai dengan frekuensi pembayaran akun; suku bunga yang diperkirakan mungkin kurang akurat"
   }
 }

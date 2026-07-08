@@ -454,5 +454,14 @@
     "notFound": "Không tìm thấy kịch bản khoản vay có ID {{ id }}",
     "nameConflict": "Kịch bản có tên \"{{ name }}\" đã tồn tại cho tài khoản này",
     "notLoanAccount": "Kịch bản khoản vay chỉ khả dụng cho tài khoản khoản vay, thế chấp và hạn mức tín dụng"
+  },
+  "loanRateChanges": {
+    "notFound": "Không tìm thấy thay đổi lãi suất có ID {{ id }}",
+    "notLoanAccount": "Thay đổi lãi suất chỉ khả dụng cho tài khoản vay và thế chấp",
+    "duplicateDate": "Đã tồn tại một thay đổi lãi suất có hiệu lực từ {{ date }} cho tài khoản này",
+    "paymentModeConflict": "Chỉ cung cấp một trong hai: số tiền trả mới hoặc recalculatePayment, không phải cả hai",
+    "recalculateMortgageOnly": "Tính lại khoản trả chỉ khả dụng cho tài khoản thế chấp",
+    "insufficientData": "Không đủ khoản thanh toán có chi tiết lãi để phát hiện thay đổi lãi suất",
+    "frequencyMismatch": "Ngày thanh toán không khớp với tần suất thanh toán của tài khoản; lãi suất suy ra có thể kém chính xác hơn"
   }
 }

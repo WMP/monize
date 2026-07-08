@@ -454,5 +454,14 @@
     "notFound": "Cenário de empréstimo com o ID {{ id }} não encontrado",
     "nameConflict": "Já existe um cenário chamado \"{{ name }}\" para esta conta",
     "notLoanAccount": "Os cenários de empréstimo só estão disponíveis para contas de empréstimo, hipoteca e linha de crédito"
+  },
+  "loanRateChanges": {
+    "notFound": "Alteração de taxa com ID {{ id }} não encontrada",
+    "notLoanAccount": "As alterações de taxa só estão disponíveis para contas de empréstimo e hipoteca",
+    "duplicateDate": "Já existe uma alteração de taxa com vigência em {{ date }} para esta conta",
+    "paymentModeConflict": "Informe um novo valor de parcela ou recalculatePayment, não ambos",
+    "recalculateMortgageOnly": "O recálculo da parcela só está disponível para contas de hipoteca",
+    "insufficientData": "Não há pagamentos suficientes com detalhes de juros para detectar alterações de taxa",
+    "frequencyMismatch": "As datas de pagamento não correspondem à frequência de pagamento da conta; as taxas inferidas podem ser menos precisas"
   }
 }

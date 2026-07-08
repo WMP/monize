@@ -454,5 +454,14 @@
     "notFound": "Leningscenario met ID {{ id }} niet gevonden",
     "nameConflict": "Er bestaat al een scenario met de naam \"{{ name }}\" voor deze rekening",
     "notLoanAccount": "Leningscenario's zijn alleen beschikbaar voor lening-, hypotheek- en kredietlijnrekeningen"
+  },
+  "loanRateChanges": {
+    "notFound": "Renteverandering met ID {{ id }} niet gevonden",
+    "notLoanAccount": "Renteveranderingen zijn alleen beschikbaar voor lening- en hypotheekrekeningen",
+    "duplicateDate": "Er bestaat al een renteverandering met ingangsdatum {{ date }} voor deze rekening",
+    "paymentModeConflict": "Geef een nieuw betalingsbedrag of recalculatePayment op, niet beide",
+    "recalculateMortgageOnly": "Herberekening van de betaling is alleen beschikbaar voor hypotheekrekeningen",
+    "insufficientData": "Niet genoeg betalingen met rentegegevens om renteveranderingen te detecteren",
+    "frequencyMismatch": "Betaaldatums komen niet overeen met de betalingsfrequentie van de rekening; afgeleide rentepercentages zijn mogelijk minder nauwkeurig"
   }
 }

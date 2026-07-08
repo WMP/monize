@@ -354,7 +354,8 @@
       "projectedFuturePayments": "Prognostizierte zukünftige Zahlungen",
       "showAll": "Alle {count} Zahlungen anzeigen",
       "showLess": "Weniger anzeigen",
-      "noPayments": "Keine Zahlungen gefunden"
+      "noPayments": "Keine Zahlungen gefunden",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "Sondertilgungs-Simulator",
@@ -416,7 +417,7 @@
       "description": "Wie sich Ihre bereits geleisteten Zahlungen im Vergleich zum ursprünglichen vertraglichen Tilgungsplan auswirken.",
       "extraPrincipalPaid": "Zusätzliche Tilgung",
       "extraPrincipalNote": "Wie weit Sie dem ursprünglichen Plan voraus sind",
-      "missingData": "Um zu sehen, wie Ihre Sondertilgungen diesen Kredit verkürzt haben, legen Sie den ursprünglichen Kreditbetrag und das erste Zahlungsdatum im Konto fest.",
+      "missingData": "Um zu sehen, wie Ihre Sondertilgungen diesen Kredit verkürzt haben, benötigt dieses Konto einen Zinssatz, ein Zahlungsintervall und einige erfasste Zahlungen, um seinen ursprünglichen Tilgungsplan zu rekonstruieren.",
       "monthsAlreadySaved": "Bereits gesparte Zeit",
       "monthsValue": "{count, plural, one {# Monat} other {# Monate}}",
       "payoffComparison": "Ursprünglich {original}, jetzt {current}",
@@ -435,6 +436,41 @@
       "utilization": "Auslastung",
       "balanceHistory": "Saldoverlauf",
       "noHistory": "Kein Saldoverlauf verfügbar."
+    },
+    "rateHistory": {
+      "title": "Zinsverlauf",
+      "description": "Verfolgen Sie Zinssatzänderungen über die Laufzeit des Kredits, von variablen Zinsanpassungen bis zu Verlängerungen der Zinsbindung.",
+      "add": "Zinssatzänderung hinzufügen",
+      "detect": "Aus Verlauf erkennen",
+      "empty": "Keine Zinssatzänderungen erfasst. Fügen Sie eine hinzu, wenn sich Ihr Zinssatz ändert, oder erkennen Sie vergangene Änderungen aus Ihrer Zahlungshistorie.",
+      "rateValue": "{rate}%",
+      "paymentSummary": "Rate: {payment}",
+      "paymentUnchanged": "unverändert",
+      "badgeInferred": "Abgeleitet",
+      "badgeInitial": "Anfänglich",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "addTitle": "Zinssatzänderung hinzufügen",
+      "editTitle": "Zinssatzänderung bearbeiten",
+      "effectiveDateLabel": "Gültig ab",
+      "rateLabel": "Neuer Jahreszins (%)",
+      "paymentModeLabel": "Rate",
+      "paymentModeKeep": "Aktuelle Rate beibehalten (Tilgungszeitraum verschiebt sich)",
+      "paymentModeSet": "Neuen Ratenbetrag festlegen",
+      "paymentModeRecalculate": "Rate neu berechnen, um den Tilgungsplan einzuhalten",
+      "newPaymentLabel": "Neuer Ratenbetrag",
+      "noteLabel": "Notiz (optional)",
+      "addedToast": "Zinssatzänderung erfasst",
+      "updatedToast": "Zinssatzänderung aktualisiert",
+      "deletedToast": "Zinssatzänderung gelöscht",
+      "saveFailed": "Zinssatzänderung konnte nicht gespeichert werden",
+      "deleteFailed": "Zinssatzänderung konnte nicht gelöscht werden",
+      "detectTitle": "Zinssatzänderungen erkennen",
+      "detectMessage": "Dies analysiert Ihre Zahlungshistorie und ersetzt zuvor erkannte Einträge. Von Ihnen selbst hinzugefügte oder bearbeitete Einträge bleiben erhalten.",
+      "detectedToast": "{count, plural, =0 {Keine neuen Zinssatzänderungen erkannt} one {# Zinssatzänderung erkannt} other {# Zinssatzänderungen erkannt}}",
+      "detectFailed": "Zinssatzänderungen konnten nicht aus der Zahlungshistorie erkannt werden"
     }
   }
 }

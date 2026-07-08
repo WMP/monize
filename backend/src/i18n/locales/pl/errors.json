@@ -454,5 +454,14 @@
     "notFound": "Nie znaleziono scenariusza kredytu o identyfikatorze {{ id }}",
     "nameConflict": "Scenariusz o nazwie \"{{ name }}\" już istnieje dla tego konta",
     "notLoanAccount": "Scenariusze kredytowe są dostępne tylko dla kont kredytów, hipotek i linii kredytowych"
+  },
+  "loanRateChanges": {
+    "notFound": "Nie znaleziono zmiany oprocentowania o ID {{ id }}",
+    "notLoanAccount": "Zmiany oprocentowania są dostępne tylko dla kont pożyczek i kredytów hipotecznych",
+    "duplicateDate": "Zmiana oprocentowania obowiązująca od {{ date }} już istnieje dla tego konta",
+    "paymentModeConflict": "Podaj nową kwotę raty albo recalculatePayment, nie oba naraz",
+    "recalculateMortgageOnly": "Przeliczenie raty jest dostępne tylko dla kont kredytów hipotecznych",
+    "insufficientData": "Za mało płatności ze szczegółami odsetek, aby wykryć zmiany oprocentowania",
+    "frequencyMismatch": "Daty płatności nie odpowiadają częstotliwości płatności konta; wywnioskowane oprocentowanie może być mniej dokładne"
   }
 }

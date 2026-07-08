@@ -454,5 +454,14 @@
     "notFound": "No se encontró el escenario de préstamo con ID {{ id }}",
     "nameConflict": "Ya existe un escenario llamado \"{{ name }}\" para esta cuenta",
     "notLoanAccount": "Los escenarios de préstamo solo están disponibles para cuentas de préstamo, hipoteca y línea de crédito"
+  },
+  "loanRateChanges": {
+    "notFound": "No se encontró el cambio de tasa con ID {{ id }}",
+    "notLoanAccount": "Los cambios de tasa solo están disponibles para cuentas de préstamo e hipoteca",
+    "duplicateDate": "Ya existe un cambio de tasa con vigencia {{ date }} para esta cuenta",
+    "paymentModeConflict": "Indica un nuevo importe de pago o recalculatePayment, pero no ambos",
+    "recalculateMortgageOnly": "El recálculo del pago solo está disponible para cuentas de hipoteca",
+    "insufficientData": "No hay suficientes pagos con detalles de intereses para detectar cambios de tasa",
+    "frequencyMismatch": "Las fechas de pago no coinciden con la frecuencia de pago de la cuenta; las tasas inferidas pueden ser menos precisas"
   }
 }

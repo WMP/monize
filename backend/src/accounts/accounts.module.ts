@@ -21,6 +21,7 @@ import { SecuritiesModule } from "../securities/securities.module";
 import { ActionHistoryModule } from "../action-history/action-history.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { DelegationModule } from "../delegation/delegation.module";
+import { LoanRateChangesModule } from "../loan-rate-changes/loan-rate-changes.module";
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { DelegationModule } from "../delegation/delegation.module";
     ActionHistoryModule,
     NotificationsModule,
     DelegationModule,
+    forwardRef(() => LoanRateChangesModule),
   ],
   providers: [
     AccountsService,

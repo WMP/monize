@@ -454,5 +454,14 @@
     "notFound": "找不到 ID 為 {{ id }} 的貸款情境",
     "nameConflict": "此帳戶已存在名為「{{ name }}」的情境",
     "notLoanAccount": "貸款情境僅適用於貸款、抵押貸款和信用額度帳戶"
+  },
+  "loanRateChanges": {
+    "notFound": "找不到 ID 為 {{ id }} 的利率變更",
+    "notLoanAccount": "利率變更僅適用於貸款和抵押貸款科目",
+    "duplicateDate": "此科目已存在生效日期為 {{ date }} 的利率變更",
+    "paymentModeConflict": "請提供新的還款額或 recalculatePayment 其中之一，不能同時提供兩者",
+    "recalculateMortgageOnly": "還款額重新計算僅適用於抵押貸款科目",
+    "insufficientData": "具利息明細的還款不足，無法偵測利率變更",
+    "frequencyMismatch": "還款日期與科目的還款頻率不符；推算的利率可能較不準確"
   }
 }

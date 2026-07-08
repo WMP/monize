@@ -354,7 +354,8 @@
       "projectedFuturePayments": "Các kỳ trả dự kiến trong tương lai",
       "showAll": "Hiện tất cả {count} kỳ trả",
       "showLess": "Thu gọn",
-      "noPayments": "Không tìm thấy khoản trả nào"
+      "noPayments": "Không tìm thấy khoản trả nào",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "Trình mô phỏng trả nợ trước hạn",
@@ -416,7 +417,7 @@
       "description": "So sánh các khoản bạn đã trả với lịch trả nợ theo hợp đồng ban đầu.",
       "extraPrincipalPaid": "Gốc trả thêm",
       "extraPrincipalNote": "Bạn đang vượt trước lịch ban đầu bao nhiêu",
-      "missingData": "Để xem các khoản trả trước hạn đã rút ngắn khoản vay này bao nhiêu, hãy đặt số tiền gốc ban đầu và ngày trả đầu tiên trên tài khoản.",
+      "missingData": "Để xem các khoản trả trước hạn đã rút ngắn khoản vay này bao nhiêu, tài khoản này cần có lãi suất, tần suất thanh toán và một số khoản thanh toán đã ghi nhận để tái tạo lịch trả nợ ban đầu.",
       "monthsAlreadySaved": "Thời gian đã tiết kiệm",
       "monthsValue": "{count, plural, one {# tháng} other {# tháng}}",
       "payoffComparison": "Ban đầu {original}, hiện tại {current}",
@@ -435,6 +436,41 @@
       "utilization": "Mức sử dụng",
       "balanceHistory": "Lịch sử số dư",
       "noHistory": "Không có lịch sử số dư."
+    },
+    "rateHistory": {
+      "title": "Lịch sử lãi suất",
+      "description": "Theo dõi các thay đổi lãi suất trong suốt thời hạn khoản vay, từ việc đặt lại lãi suất thả nổi đến gia hạn kỳ hạn.",
+      "add": "Thêm thay đổi lãi suất",
+      "detect": "Phát hiện từ lịch sử",
+      "empty": "Chưa ghi nhận thay đổi lãi suất nào. Thêm một mục khi lãi suất của bạn thay đổi, hoặc phát hiện các thay đổi trước đây từ lịch sử thanh toán của bạn.",
+      "rateValue": "{rate}%",
+      "paymentSummary": "Khoản trả: {payment}",
+      "paymentUnchanged": "không đổi",
+      "badgeInferred": "Suy ra",
+      "badgeInitial": "Ban đầu",
+      "edit": "Sửa",
+      "delete": "Xóa",
+      "cancel": "Hủy",
+      "save": "Lưu",
+      "addTitle": "Thêm thay đổi lãi suất",
+      "editTitle": "Sửa thay đổi lãi suất",
+      "effectiveDateLabel": "Ngày hiệu lực",
+      "rateLabel": "Lãi suất hằng năm mới (%)",
+      "paymentModeLabel": "Khoản trả",
+      "paymentModeKeep": "Giữ khoản trả hiện tại (thời gian trả hết sẽ thay đổi)",
+      "paymentModeSet": "Đặt số tiền trả mới",
+      "paymentModeRecalculate": "Tính lại khoản trả để giữ lịch khấu hao đúng tiến độ",
+      "newPaymentLabel": "Số tiền trả mới",
+      "noteLabel": "Ghi chú (tùy chọn)",
+      "addedToast": "Đã ghi nhận thay đổi lãi suất",
+      "updatedToast": "Đã cập nhật thay đổi lãi suất",
+      "deletedToast": "Đã xóa thay đổi lãi suất",
+      "saveFailed": "Không thể lưu thay đổi lãi suất",
+      "deleteFailed": "Không thể xóa thay đổi lãi suất",
+      "detectTitle": "Phát hiện thay đổi lãi suất",
+      "detectMessage": "Thao tác này phân tích lịch sử thanh toán của bạn và thay thế các mục đã phát hiện trước đó. Các mục bạn tự thêm hoặc chỉnh sửa sẽ được giữ lại.",
+      "detectedToast": "{count, plural, =0 {Không phát hiện thay đổi lãi suất mới nào} one {Đã phát hiện # thay đổi lãi suất} other {Đã phát hiện # thay đổi lãi suất}}",
+      "detectFailed": "Không thể phát hiện thay đổi lãi suất từ lịch sử thanh toán"
     }
   }
 }

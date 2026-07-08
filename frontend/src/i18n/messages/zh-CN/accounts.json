@@ -354,7 +354,8 @@
       "projectedFuturePayments": "预测的未来还款",
       "showAll": "显示全部 {count} 期还款",
       "showLess": "收起",
-      "noPayments": "未找到还款记录"
+      "noPayments": "未找到还款记录",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "提前还款模拟器",
@@ -416,7 +417,7 @@
       "description": "您已完成的还款与原始合同还款计划的对比。",
       "extraPrincipalPaid": "额外偿还本金",
       "extraPrincipalNote": "您比原计划提前了多少",
-      "missingData": "要查看提前还款为这笔贷款缩短了多少时间，请在账户中设置原始本金和首次还款日期。",
+      "missingData": "要查看您的超额还款为这笔贷款缩短了多少时间，此账户需要利率、还款频率和一些已记录的还款，以便重建其原始还款计划。",
       "monthsAlreadySaved": "已节省的时间",
       "monthsValue": "{count, plural, one {# 个月} other {# 个月}}",
       "payoffComparison": "原为 {original}，现为 {current}",
@@ -435,6 +436,41 @@
       "utilization": "使用率",
       "balanceHistory": "余额历史",
       "noHistory": "没有可用的余额历史。"
+    },
+    "rateHistory": {
+      "title": "利率变更历史",
+      "description": "追踪贷款存续期内的利率变更，从浮动利率重置到期限续约。",
+      "add": "添加利率变更",
+      "detect": "从历史中检测",
+      "empty": "尚未记录利率变更。利率变化时请添加一条，或从还款历史中检测过去的变更。",
+      "rateValue": "{rate}%",
+      "paymentSummary": "还款额：{payment}",
+      "paymentUnchanged": "不变",
+      "badgeInferred": "推算",
+      "badgeInitial": "初始",
+      "edit": "编辑",
+      "delete": "删除",
+      "cancel": "取消",
+      "save": "保存",
+      "addTitle": "添加利率变更",
+      "editTitle": "编辑利率变更",
+      "effectiveDateLabel": "生效日期",
+      "rateLabel": "新年利率 (%)",
+      "paymentModeLabel": "还款额",
+      "paymentModeKeep": "保持当前还款额（还清时间将顺延）",
+      "paymentModeSet": "设置新的还款额",
+      "paymentModeRecalculate": "重新计算还款额以保持摊销进度",
+      "newPaymentLabel": "新的还款额",
+      "noteLabel": "备注（可选）",
+      "addedToast": "已记录利率变更",
+      "updatedToast": "已更新利率变更",
+      "deletedToast": "已删除利率变更",
+      "saveFailed": "无法保存利率变更",
+      "deleteFailed": "无法删除利率变更",
+      "detectTitle": "检测利率变更",
+      "detectMessage": "此操作会分析您的还款历史并替换先前检测到的条目。您自己添加或编辑的条目将予以保留。",
+      "detectedToast": "{count, plural, =0 {未检测到新的利率变更} one {检测到 # 项利率变更} other {检测到 # 项利率变更}}",
+      "detectFailed": "无法从还款历史中检测利率变更"
     }
   }
 }

@@ -48,6 +48,7 @@ import { OAuthModule } from "./oauth/oauth.module";
 import { BudgetsModule } from "./budgets/budgets.module";
 import { TagsModule } from "./tags/tags.module";
 import { LoanScenariosModule } from "./loan-scenarios/loan-scenarios.module";
+import { LoanRateChangesModule } from "./loan-rate-changes/loan-rate-changes.module";
 import { BackupModule } from "./backup/backup.module";
 import { ActionHistoryModule } from "./action-history/action-history.module";
 import { UpdatesModule } from "./updates/updates.module";
@@ -139,6 +140,7 @@ import { I18nModule } from "./i18n/i18n.module";
     BudgetsModule,
     TagsModule,
     LoanScenariosModule,
+    LoanRateChangesModule,
     BackupModule,
     ActionHistoryModule,
     UpdatesModule,

@@ -354,7 +354,8 @@
       "projectedFuturePayments": "Geprojecteerde toekomstige betalingen",
       "showAll": "Alle {count} betalingen tonen",
       "showLess": "Minder tonen",
-      "noPayments": "Geen betalingen gevonden"
+      "noPayments": "Geen betalingen gevonden",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "Simulator extra aflossen",
@@ -416,7 +417,7 @@
       "description": "Hoe de betalingen die u al hebt gedaan zich verhouden tot het oorspronkelijke contractuele schema.",
       "extraPrincipalPaid": "Extra afgeloste hoofdsom",
       "extraPrincipalNote": "Hoever u voorloopt op het oorspronkelijke schema",
-      "missingData": "Om te zien hoeveel uw extra aflossingen deze lening hebben verkort, stelt u de oorspronkelijke hoofdsom en de eerste betaaldatum in op de rekening.",
+      "missingData": "Om te zien hoeveel uw extra aflossingen deze lening hebben verkort, heeft deze rekening een rentepercentage, een betalingsfrequentie en enkele vastgelegde betalingen nodig om het oorspronkelijke schema te reconstrueren.",
       "monthsAlreadySaved": "Reeds bespaarde tijd",
       "monthsValue": "{count, plural, one {# maand} other {# maanden}}",
       "payoffComparison": "Oorspronkelijk {original}, nu {current}",
@@ -435,6 +436,41 @@
       "utilization": "Benutting",
       "balanceHistory": "Saldogeschiedenis",
       "noHistory": "Geen saldogeschiedenis beschikbaar."
+    },
+    "rateHistory": {
+      "title": "Rentehistorie",
+      "description": "Volg renteveranderingen gedurende de looptijd van de lening, van variabele renteherzieningen tot verlengingen van de rentevaste periode.",
+      "add": "Renteverandering toevoegen",
+      "detect": "Detecteren uit geschiedenis",
+      "empty": "Geen renteveranderingen vastgelegd. Voeg er een toe wanneer uw rente verandert, of detecteer eerdere veranderingen uit uw betalingsgeschiedenis.",
+      "rateValue": "{rate}%",
+      "paymentSummary": "Betaling: {payment}",
+      "paymentUnchanged": "ongewijzigd",
+      "badgeInferred": "Afgeleid",
+      "badgeInitial": "Initieel",
+      "edit": "Bewerken",
+      "delete": "Verwijderen",
+      "cancel": "Annuleren",
+      "save": "Opslaan",
+      "addTitle": "Renteverandering toevoegen",
+      "editTitle": "Renteverandering bewerken",
+      "effectiveDateLabel": "Ingangsdatum",
+      "rateLabel": "Nieuw jaarlijks rentepercentage (%)",
+      "paymentModeLabel": "Betaling",
+      "paymentModeKeep": "Huidige betaling behouden (aflossingstermijn verschuift)",
+      "paymentModeSet": "Een nieuw betalingsbedrag instellen",
+      "paymentModeRecalculate": "Betaling herberekenen om de aflossing op schema te houden",
+      "newPaymentLabel": "Nieuw betalingsbedrag",
+      "noteLabel": "Notitie (optioneel)",
+      "addedToast": "Renteverandering vastgelegd",
+      "updatedToast": "Renteverandering bijgewerkt",
+      "deletedToast": "Renteverandering verwijderd",
+      "saveFailed": "Kan renteverandering niet opslaan",
+      "deleteFailed": "Kan renteverandering niet verwijderen",
+      "detectTitle": "Renteveranderingen detecteren",
+      "detectMessage": "Dit analyseert uw betalingsgeschiedenis en vervangt eerder gedetecteerde vermeldingen. Vermeldingen die u zelf hebt toegevoegd of bewerkt, blijven behouden.",
+      "detectedToast": "{count, plural, =0 {Geen nieuwe renteveranderingen gedetecteerd} one {# renteverandering gedetecteerd} other {# renteveranderingen gedetecteerd}}",
+      "detectFailed": "Kan geen renteveranderingen detecteren uit de betalingsgeschiedenis"
     }
   }
 }

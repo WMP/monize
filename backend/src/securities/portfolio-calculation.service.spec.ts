@@ -1005,10 +1005,7 @@ describe("PortfolioCalculationService.buildAllocationByTag", () => {
   it("counts a multi-tagged holding in full under each tag (overlapping exposure)", () => {
     const items = [securityItem("VWCE", 100), securityItem("SMH", 50)];
     const tags = new Map([
-      [
-        "VWCE",
-        [{ id: "t-aw", name: "All-World", color: "#111111" }],
-      ],
+      ["VWCE", [{ id: "t-aw", name: "All-World", color: "#111111" }]],
       [
         "SMH",
         [

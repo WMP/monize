@@ -354,7 +354,8 @@
       "projectedFuturePayments": "Angsuran Mendatang yang Diproyeksikan",
       "showAll": "Tampilkan semua {count} angsuran",
       "showLess": "Tampilkan lebih sedikit",
-      "noPayments": "Tidak ada angsuran ditemukan"
+      "noPayments": "Tidak ada angsuran ditemukan",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "Simulator Pelunasan Dipercepat",
@@ -416,7 +417,7 @@
       "description": "Bagaimana pembayaran yang sudah Anda lakukan dibandingkan dengan jadwal kontrak awal.",
       "extraPrincipalPaid": "Pokok Tambahan Dibayar",
       "extraPrincipalNote": "Seberapa jauh Anda mendahului jadwal awal",
-      "missingData": "Untuk melihat seberapa besar pembayaran tambahan Anda mempersingkat pinjaman ini, atur pokok awal dan tanggal pembayaran pertama pada akun.",
+      "missingData": "Untuk melihat seberapa besar pembayaran tambahan Anda mempersingkat pinjaman ini, akun ini memerlukan suku bunga, frekuensi pembayaran, dan beberapa pembayaran tercatat untuk merekonstruksi jadwal awalnya.",
       "monthsAlreadySaved": "Waktu yang Sudah Dihemat",
       "monthsValue": "{count, plural, one {# bulan} other {# bulan}}",
       "payoffComparison": "Semula {original}, sekarang {current}",
@@ -435,6 +436,41 @@
       "utilization": "Penggunaan",
       "balanceHistory": "Riwayat Saldo",
       "noHistory": "Tidak ada riwayat saldo."
+    },
+    "rateHistory": {
+      "title": "Riwayat Suku Bunga",
+      "description": "Lacak perubahan suku bunga sepanjang masa pinjaman, dari penyesuaian suku bunga variabel hingga pembaruan jangka waktu.",
+      "add": "Tambah perubahan suku bunga",
+      "detect": "Deteksi dari riwayat",
+      "empty": "Belum ada perubahan suku bunga yang tercatat. Tambahkan saat suku bunga Anda berubah, atau deteksi perubahan sebelumnya dari riwayat pembayaran Anda.",
+      "rateValue": "{rate}%",
+      "paymentSummary": "Angsuran: {payment}",
+      "paymentUnchanged": "tidak berubah",
+      "badgeInferred": "Diperkirakan",
+      "badgeInitial": "Awal",
+      "edit": "Edit",
+      "delete": "Hapus",
+      "cancel": "Batal",
+      "save": "Simpan",
+      "addTitle": "Tambah Perubahan Suku Bunga",
+      "editTitle": "Edit Perubahan Suku Bunga",
+      "effectiveDateLabel": "Tanggal berlaku",
+      "rateLabel": "Suku bunga tahunan baru (%)",
+      "paymentModeLabel": "Angsuran",
+      "paymentModeKeep": "Pertahankan angsuran saat ini (linimasa pelunasan bergeser)",
+      "paymentModeSet": "Tetapkan jumlah angsuran baru",
+      "paymentModeRecalculate": "Hitung ulang angsuran agar amortisasi tetap sesuai jadwal",
+      "newPaymentLabel": "Jumlah angsuran baru",
+      "noteLabel": "Catatan (opsional)",
+      "addedToast": "Perubahan suku bunga tercatat",
+      "updatedToast": "Perubahan suku bunga diperbarui",
+      "deletedToast": "Perubahan suku bunga dihapus",
+      "saveFailed": "Gagal menyimpan perubahan suku bunga",
+      "deleteFailed": "Gagal menghapus perubahan suku bunga",
+      "detectTitle": "Deteksi Perubahan Suku Bunga",
+      "detectMessage": "Ini menganalisis riwayat pembayaran Anda dan menggantikan entri yang sebelumnya terdeteksi. Entri yang Anda tambahkan atau edit sendiri tetap dipertahankan.",
+      "detectedToast": "{count, plural, =0 {Tidak ada perubahan suku bunga baru terdeteksi} one {# perubahan suku bunga terdeteksi} other {# perubahan suku bunga terdeteksi}}",
+      "detectFailed": "Tidak dapat mendeteksi perubahan suku bunga dari riwayat pembayaran"
     }
   }
 }

@@ -454,5 +454,14 @@
     "notFound": "Scenario di prestito con ID {{ id }} non trovato",
     "nameConflict": "Uno scenario denominato \"{{ name }}\" esiste già per questo conto",
     "notLoanAccount": "Gli scenari di prestito sono disponibili solo per conti di prestito, mutuo e linea di credito"
+  },
+  "loanRateChanges": {
+    "notFound": "Variazione del tasso con ID {{ id }} non trovata",
+    "notLoanAccount": "Le variazioni del tasso sono disponibili solo per conti di prestito e mutuo",
+    "duplicateDate": "Esiste già una variazione del tasso con decorrenza {{ date }} per questo conto",
+    "paymentModeConflict": "Fornisci un nuovo importo della rata oppure recalculatePayment, ma non entrambi",
+    "recalculateMortgageOnly": "Il ricalcolo della rata è disponibile solo per i conti mutuo",
+    "insufficientData": "Pagamenti con dettagli sugli interessi insufficienti per rilevare le variazioni del tasso",
+    "frequencyMismatch": "Le date di pagamento non corrispondono alla frequenza di pagamento del conto; i tassi dedotti potrebbero essere meno accurati"
   }
 }

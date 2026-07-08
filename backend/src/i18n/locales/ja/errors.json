@@ -454,5 +454,14 @@
     "notFound": "ID {{ id }} のローンシナリオが見つかりません",
     "nameConflict": "この勘定科目には「{{ name }}」という名前のシナリオが既に存在します",
     "notLoanAccount": "ローンシナリオはローン、住宅ローン、与信枠の勘定科目でのみ利用できます"
+  },
+  "loanRateChanges": {
+    "notFound": "ID {{ id }} の金利変更が見つかりません",
+    "notLoanAccount": "金利変更はローンおよび住宅ローン口座でのみ利用できます",
+    "duplicateDate": "適用日 {{ date }} の金利変更はこの口座にすでに存在します",
+    "paymentModeConflict": "新しい返済額または recalculatePayment のいずれかを指定してください。両方は指定できません",
+    "recalculateMortgageOnly": "返済額の再計算は住宅ローン口座でのみ利用できます",
+    "insufficientData": "金利変更を検出するには利息の詳細を含む返済が不足しています",
+    "frequencyMismatch": "返済日が口座の返済頻度と一致しません。推定金利の精度が低下する可能性があります"
   }
 }

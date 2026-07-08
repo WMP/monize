@@ -454,5 +454,14 @@
     "notFound": "Kreditszenario mit ID {{ id }} nicht gefunden",
     "nameConflict": "Ein Szenario namens \"{{ name }}\" existiert bereits für dieses Konto",
     "notLoanAccount": "Kreditszenarien sind nur für Kredit-, Hypotheken- und Kreditlinienkonten verfügbar"
+  },
+  "loanRateChanges": {
+    "notFound": "Zinssatzänderung mit ID {{ id }} nicht gefunden",
+    "notLoanAccount": "Zinssatzänderungen sind nur für Darlehens- und Hypothekenkonten verfügbar",
+    "duplicateDate": "Eine Zinssatzänderung mit Gültigkeit {{ date }} existiert bereits für dieses Konto",
+    "paymentModeConflict": "Geben Sie entweder einen neuen Ratenbetrag oder recalculatePayment an, nicht beides",
+    "recalculateMortgageOnly": "Die Neuberechnung der Rate ist nur für Hypothekenkonten verfügbar",
+    "insufficientData": "Nicht genügend Zahlungen mit Zinsdetails, um Zinssatzänderungen zu erkennen",
+    "frequencyMismatch": "Die Zahlungsdaten stimmen nicht mit dem Zahlungsintervall des Kontos überein; abgeleitete Zinssätze sind möglicherweise weniger genau"
   }
 }

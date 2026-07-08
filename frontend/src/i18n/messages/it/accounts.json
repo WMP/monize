@@ -354,7 +354,8 @@
       "projectedFuturePayments": "Rate future previste",
       "showAll": "Mostra tutte le {count} rate",
       "showLess": "Mostra meno",
-      "noPayments": "Nessuna rata trovata"
+      "noPayments": "Nessuna rata trovata",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "Simulatore di rimborso anticipato",
@@ -416,7 +417,7 @@
       "description": "Come i pagamenti già effettuati si confrontano con il piano contrattuale originario.",
       "extraPrincipalPaid": "Capitale extra versato",
       "extraPrincipalNote": "Quanto sei in anticipo sul piano originario",
-      "missingData": "Per vedere quanto i tuoi rimborsi anticipati hanno accorciato questo prestito, imposta il capitale originario e la data della prima rata sul conto.",
+      "missingData": "Per vedere quanto i tuoi rimborsi anticipati hanno accorciato questo prestito, questo conto necessita di un tasso d'interesse, di una frequenza di pagamento e di alcuni pagamenti registrati per ricostruire il suo piano originario.",
       "monthsAlreadySaved": "Tempo già risparmiato",
       "monthsValue": "{count, plural, one {# mese} other {# mesi}}",
       "payoffComparison": "In origine {original}, ora {current}",
@@ -435,6 +436,41 @@
       "utilization": "Utilizzo",
       "balanceHistory": "Cronologia del saldo",
       "noHistory": "Nessuna cronologia del saldo disponibile."
+    },
+    "rateHistory": {
+      "title": "Storico dei tassi",
+      "description": "Tieni traccia delle variazioni del tasso d'interesse per tutta la durata del prestito, dagli adeguamenti del tasso variabile ai rinnovi di scadenza.",
+      "add": "Aggiungi variazione del tasso",
+      "detect": "Rileva dallo storico",
+      "empty": "Nessuna variazione del tasso registrata. Aggiungine una quando cambia il tuo tasso oppure rileva le variazioni passate dallo storico dei pagamenti.",
+      "rateValue": "{rate}%",
+      "paymentSummary": "Rata: {payment}",
+      "paymentUnchanged": "invariata",
+      "badgeInferred": "Dedotto",
+      "badgeInitial": "Iniziale",
+      "edit": "Modifica",
+      "delete": "Elimina",
+      "cancel": "Annulla",
+      "save": "Salva",
+      "addTitle": "Aggiungi variazione del tasso",
+      "editTitle": "Modifica variazione del tasso",
+      "effectiveDateLabel": "Data di decorrenza",
+      "rateLabel": "Nuovo tasso annuo (%)",
+      "paymentModeLabel": "Rata",
+      "paymentModeKeep": "Mantieni la rata attuale (la data di estinzione si sposta)",
+      "paymentModeSet": "Imposta un nuovo importo della rata",
+      "paymentModeRecalculate": "Ricalcola la rata per mantenere l'ammortamento in linea",
+      "newPaymentLabel": "Nuovo importo della rata",
+      "noteLabel": "Nota (facoltativo)",
+      "addedToast": "Variazione del tasso registrata",
+      "updatedToast": "Variazione del tasso aggiornata",
+      "deletedToast": "Variazione del tasso eliminata",
+      "saveFailed": "Impossibile salvare la variazione del tasso",
+      "deleteFailed": "Impossibile eliminare la variazione del tasso",
+      "detectTitle": "Rileva variazioni del tasso",
+      "detectMessage": "Questa operazione analizza il tuo storico dei pagamenti e sostituisce le voci rilevate in precedenza. Le voci che hai aggiunto o modificato manualmente vengono conservate.",
+      "detectedToast": "{count, plural, =0 {Nessuna nuova variazione del tasso rilevata} one {# variazione del tasso rilevata} other {# variazioni del tasso rilevate}}",
+      "detectFailed": "Impossibile rilevare le variazioni del tasso dallo storico dei pagamenti"
     }
   }
 }

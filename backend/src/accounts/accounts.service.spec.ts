@@ -16,6 +16,7 @@ import { ScheduledTransactionsService } from "../scheduled-transactions/schedule
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { PortfolioService } from "../securities/portfolio.service";
 import { LoanMortgageAccountService } from "./loan-mortgage-account.service";
+import { LoanRateChangesService } from "../loan-rate-changes/loan-rate-changes.service";
 import { DataSource } from "typeorm";
 import { ActionHistoryService } from "../action-history/action-history.service";
 
@@ -31,6 +32,7 @@ describe("AccountsService", () => {
   let mockQueryRunner: Record<string, any>;
   let mockQrRepo: Record<string, jest.Mock>;
   let mockActionHistoryService: Record<string, jest.Mock>;
+  let loanRateChangesService: Record<string, jest.Mock>;
   // loanMortgageService uses the real class with mocked repositories
 
   const mockAccount = {
@@ -95,6 +97,19 @@ describe("AccountsService", () => {
       create: jest.fn().mockResolvedValue({ id: "sched-tx-1" }),
       update: jest.fn().mockResolvedValue({}),
       remove: jest.fn(),
+    };
+
+    loanRateChangesService = {
+      create: jest.fn().mockImplementation((_userId, _accountId, dto) =>
+        Promise.resolve({
+          id: "rate-change-1",
+          effectiveDate: dto.effectiveDate,
+          annualRate: dto.annualRate,
+          newPaymentAmount:
+            dto.newPaymentAmount ?? (dto.recalculatePayment ? 1450.25 : null),
+          source: "manual",
+        }),
+      ),
     };
 
     categoriesService = {
@@ -173,6 +188,10 @@ describe("AccountsService", () => {
           useValue: mockActionHistoryService,
         },
         LoanMortgageAccountService,
+        {
+          provide: LoanRateChangesService,
+          useValue: loanRateChangesService,
+        },
         {
           provide: DataSource,
           useValue: {
@@ -1804,7 +1823,7 @@ describe("AccountsService", () => {
       expect(result.interestPayment).toBeGreaterThan(0);
     });
 
-    it("updates account interestRate and paymentAmount", async () => {
+    it("records a rate-history row via the rate-changes service", async () => {
       accountsRepository.findOne.mockResolvedValue({
         ...mockMortgageAccount,
       });
@@ -1816,12 +1835,19 @@ describe("AccountsService", () => {
         new Date("2025-06-01"),
       );
 
-      const savedAccount = accountsRepository.save.mock.calls[0][0];
-      expect(savedAccount.interestRate).toBe(4.0);
-      expect(savedAccount.paymentAmount).toBeGreaterThan(0);
+      expect(loanRateChangesService.create).toHaveBeenCalledWith(
+        "user-1",
+        "mortgage-1",
+        {
+          effectiveDate: "2025-06-01",
+          annualRate: 4.0,
+          newPaymentAmount: null,
+          recalculatePayment: true,
+        },
+      );
     });
 
-    it("updates scheduled transaction when scheduledTransactionId exists", async () => {
+    it("passes an explicit payment through without recalculation", async () => {
       accountsRepository.findOne.mockResolvedValue({
         ...mockMortgageAccount,
       });
@@ -1831,54 +1857,19 @@ describe("AccountsService", () => {
         "mortgage-1",
         4.0,
         new Date("2025-06-01"),
+        2000,
       );
 
-      expect(scheduledTransactionsService.update).toHaveBeenCalledWith(
-        "user-1",
-        "sched-tx-1",
-        expect.objectContaining({
-          amount: expect.any(Number),
-          splits: expect.arrayContaining([
-            expect.objectContaining({ memo: "Principal" }),
-            expect.objectContaining({ memo: "Interest" }),
-          ]),
-        }),
-      );
-    });
-
-    it("does not update scheduled transaction when scheduledTransactionId is null", async () => {
-      accountsRepository.findOne.mockResolvedValue({
-        ...mockMortgageAccount,
-        scheduledTransactionId: null,
-      });
-
-      await service.updateMortgageRate(
+      expect(loanRateChangesService.create).toHaveBeenCalledWith(
         "user-1",
         "mortgage-1",
-        4.0,
-        new Date("2025-06-01"),
+        {
+          effectiveDate: "2025-06-01",
+          annualRate: 4.0,
+          newPaymentAmount: 2000,
+          recalculatePayment: false,
+        },
       );
-
-      expect(scheduledTransactionsService.update).not.toHaveBeenCalled();
-    });
-
-    it("handles scheduled transaction update failure gracefully", async () => {
-      accountsRepository.findOne.mockResolvedValue({
-        ...mockMortgageAccount,
-      });
-      scheduledTransactionsService.update.mockRejectedValue(
-        new Error("update failed"),
-      );
-
-      // Should not throw - the error is caught and logged
-      const result = await service.updateMortgageRate(
-        "user-1",
-        "mortgage-1",
-        4.0,
-        new Date("2025-06-01"),
-      );
-
-      expect(result.newRate).toBe(4.0);
     });
   });
 

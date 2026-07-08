@@ -454,5 +454,14 @@
     "notFound": "Scénario de prêt avec l'ID {{ id }} introuvable",
     "nameConflict": "Un scénario nommé « {{ name }} » existe déjà pour ce compte",
     "notLoanAccount": "Les scénarios de prêt ne sont disponibles que pour les comptes de prêt, d'hypothèque et de marge de crédit"
+  },
+  "loanRateChanges": {
+    "notFound": "Changement de taux avec l'ID {{ id }} introuvable",
+    "notLoanAccount": "Les changements de taux ne sont disponibles que pour les comptes de prêt et de prêt hypothécaire",
+    "duplicateDate": "Un changement de taux prenant effet le {{ date }} existe déjà pour ce compte",
+    "paymentModeConflict": "Fournissez soit un nouveau montant de versement, soit recalculatePayment, mais pas les deux",
+    "recalculateMortgageOnly": "Le recalcul du versement n'est disponible que pour les comptes de prêt hypothécaire",
+    "insufficientData": "Pas assez de paiements avec des détails d'intérêts pour détecter les changements de taux",
+    "frequencyMismatch": "Les dates de paiement ne correspondent pas à la fréquence de paiement du compte ; les taux déduits peuvent être moins précis"
   }
 }

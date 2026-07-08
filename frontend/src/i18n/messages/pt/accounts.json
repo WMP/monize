@@ -354,7 +354,8 @@
       "projectedFuturePayments": "Prestações futuras projetadas",
       "showAll": "Mostrar as {count} prestações",
       "showLess": "Mostrar menos",
-      "noPayments": "Nenhuma prestação encontrada"
+      "noPayments": "Nenhuma prestação encontrada",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "Simulador de amortização antecipada",
@@ -416,7 +417,7 @@
       "description": "Como os pagamentos que já efetuou se comparam com o plano contratual original.",
       "extraPrincipalPaid": "Capital extra pago",
       "extraPrincipalNote": "Quanto está adiantado em relação ao plano original",
-      "missingData": "Para ver quanto as suas amortizações antecipadas encurtaram este empréstimo, defina o capital original e a data da primeira prestação na conta.",
+      "missingData": "Para ver quanto as suas amortizações antecipadas encurtaram este empréstimo, esta conta precisa de uma taxa de juro, uma frequência de pagamento e alguns pagamentos registados para reconstruir o seu plano original.",
       "monthsAlreadySaved": "Tempo já poupado",
       "monthsValue": "{count, plural, one {# mês} other {# meses}}",
       "payoffComparison": "Originalmente {original}, agora {current}",
@@ -435,6 +436,41 @@
       "utilization": "Utilização",
       "balanceHistory": "Histórico de saldo",
       "noHistory": "Sem histórico de saldo disponível."
+    },
+    "rateHistory": {
+      "title": "Histórico de taxas",
+      "description": "Acompanhe as alterações da taxa de juro ao longo da vida do empréstimo, desde revisões de taxa variável a renovações de prazo.",
+      "add": "Adicionar alteração de taxa",
+      "detect": "Detetar a partir do histórico",
+      "empty": "Nenhuma alteração de taxa registada. Adicione uma quando a taxa mudar, ou detete alterações passadas a partir do histórico de pagamentos.",
+      "rateValue": "{rate}%",
+      "paymentSummary": "Prestação: {payment}",
+      "paymentUnchanged": "sem alterações",
+      "badgeInferred": "Inferida",
+      "badgeInitial": "Inicial",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "addTitle": "Adicionar alteração de taxa",
+      "editTitle": "Editar alteração de taxa",
+      "effectiveDateLabel": "Data de entrada em vigor",
+      "rateLabel": "Nova taxa anual (%)",
+      "paymentModeLabel": "Prestação",
+      "paymentModeKeep": "Manter a prestação atual (a data de liquidação altera-se)",
+      "paymentModeSet": "Definir um novo montante da prestação",
+      "paymentModeRecalculate": "Recalcular a prestação para manter a amortização no plano",
+      "newPaymentLabel": "Novo montante da prestação",
+      "noteLabel": "Nota (opcional)",
+      "addedToast": "Alteração de taxa registada",
+      "updatedToast": "Alteração de taxa atualizada",
+      "deletedToast": "Alteração de taxa eliminada",
+      "saveFailed": "Falha ao guardar a alteração de taxa",
+      "deleteFailed": "Falha ao eliminar a alteração de taxa",
+      "detectTitle": "Detetar alterações de taxa",
+      "detectMessage": "Isto analisa o seu histórico de pagamentos e substitui as entradas detetadas anteriormente. As entradas que adicionou ou editou manualmente são mantidas.",
+      "detectedToast": "{count, plural, =0 {Nenhuma nova alteração de taxa detetada} one {# alteração de taxa detetada} other {# alterações de taxa detetadas}}",
+      "detectFailed": "Não foi possível detetar alterações de taxa a partir do histórico de pagamentos"
     }
   }
 }

@@ -354,7 +354,8 @@
       "projectedFuturePayments": "예상되는 향후 상환",
       "showAll": "{count}회 상환 모두 보기",
       "showLess": "간략히 보기",
-      "noPayments": "상환 내역이 없습니다"
+      "noPayments": "상환 내역이 없습니다",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "조기 상환 시뮬레이터",
@@ -416,7 +417,7 @@
       "description": "지금까지의 납부가 최초 계약 일정과 어떻게 비교되는지 보여줍니다.",
       "extraPrincipalPaid": "추가 상환 원금",
       "extraPrincipalNote": "원래 일정보다 얼마나 앞서 있는지",
-      "missingData": "조기 상환으로 이 대출이 얼마나 단축되었는지 보려면 계좌에 최초 원금과 첫 납부일을 설정하세요.",
+      "missingData": "조기 상환으로 이 대출이 얼마나 단축되었는지 보려면 이 계좌에 이자율, 상환 주기, 그리고 원래 일정을 재구성할 수 있는 상환 기록이 필요합니다.",
       "monthsAlreadySaved": "이미 단축된 기간",
       "monthsValue": "{count, plural, one {#개월} other {#개월}}",
       "payoffComparison": "원래 {original}, 현재 {current}",
@@ -435,6 +436,41 @@
       "utilization": "사용률",
       "balanceHistory": "잔액 내역",
       "noHistory": "잔액 내역이 없습니다."
+    },
+    "rateHistory": {
+      "title": "금리 내역",
+      "description": "변동 금리 재설정부터 기간 갱신까지, 대출 기간 전반에 걸친 금리 변경을 추적합니다.",
+      "add": "금리 변경 추가",
+      "detect": "내역에서 검출",
+      "empty": "기록된 금리 변경이 없습니다. 금리가 바뀔 때 추가하거나 상환 내역에서 과거 변경을 검출하세요.",
+      "rateValue": "{rate}%",
+      "paymentSummary": "상환액: {payment}",
+      "paymentUnchanged": "변경 없음",
+      "badgeInferred": "추정",
+      "badgeInitial": "최초",
+      "edit": "편집",
+      "delete": "삭제",
+      "cancel": "취소",
+      "save": "저장",
+      "addTitle": "금리 변경 추가",
+      "editTitle": "금리 변경 편집",
+      "effectiveDateLabel": "적용일",
+      "rateLabel": "새 연이율(%)",
+      "paymentModeLabel": "상환액",
+      "paymentModeKeep": "현재 상환액 유지(완납 시기가 변경됨)",
+      "paymentModeSet": "새 상환액 설정",
+      "paymentModeRecalculate": "상환이 예정대로 진행되도록 상환액 재계산",
+      "newPaymentLabel": "새 상환액",
+      "noteLabel": "메모(선택)",
+      "addedToast": "금리 변경이 기록되었습니다",
+      "updatedToast": "금리 변경이 업데이트되었습니다",
+      "deletedToast": "금리 변경이 삭제되었습니다",
+      "saveFailed": "금리 변경을 저장하지 못했습니다",
+      "deleteFailed": "금리 변경을 삭제하지 못했습니다",
+      "detectTitle": "금리 변경 검출",
+      "detectMessage": "상환 내역을 분석하여 이전에 검출된 항목을 대체합니다. 직접 추가하거나 편집한 항목은 유지됩니다.",
+      "detectedToast": "{count, plural, =0 {새로운 금리 변경이 검출되지 않았습니다} one {# 건의 금리 변경을 검출했습니다} other {# 건의 금리 변경을 검출했습니다}}",
+      "detectFailed": "상환 내역에서 금리 변경을 검출할 수 없습니다"
     }
   }
 }

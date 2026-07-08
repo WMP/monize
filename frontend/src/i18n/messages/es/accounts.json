@@ -354,7 +354,8 @@
       "projectedFuturePayments": "Pagos futuros proyectados",
       "showAll": "Mostrar los {count} pagos",
       "showLess": "Mostrar menos",
-      "noPayments": "No se encontraron pagos"
+      "noPayments": "No se encontraron pagos",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "Simulador de pagos anticipados",
@@ -416,7 +417,7 @@
       "description": "Cómo se comparan los pagos que ya ha realizado con el calendario contractual original.",
       "extraPrincipalPaid": "Capital adicional pagado",
       "extraPrincipalNote": "Cuánto se adelanta al calendario original",
-      "missingData": "Para ver cuánto han acortado este préstamo sus pagos anticipados, defina el capital original y la fecha del primer pago en la cuenta.",
+      "missingData": "Para ver cuánto han acortado este préstamo sus pagos anticipados, esta cuenta necesita una tasa de interés, una frecuencia de pago y algunos pagos registrados para reconstruir su calendario original.",
       "monthsAlreadySaved": "Tiempo ya ahorrado",
       "monthsValue": "{count, plural, one {# mes} other {# meses}}",
       "payoffComparison": "Originalmente {original}, ahora {current}",
@@ -435,6 +436,41 @@
       "utilization": "Utilización",
       "balanceHistory": "Historial de saldo",
       "noHistory": "No hay historial de saldo disponible."
+    },
+    "rateHistory": {
+      "title": "Historial de tasas",
+      "description": "Registre los cambios en la tasa de interés a lo largo de la vida del préstamo, desde ajustes de tasa variable hasta renovaciones de plazo.",
+      "add": "Añadir cambio de tasa",
+      "detect": "Detectar del historial",
+      "empty": "No hay cambios de tasa registrados. Añada uno cuando cambie su tasa o detecte cambios anteriores a partir de su historial de pagos.",
+      "rateValue": "{rate}%",
+      "paymentSummary": "Pago: {payment}",
+      "paymentUnchanged": "sin cambios",
+      "badgeInferred": "Inferido",
+      "badgeInitial": "Inicial",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "addTitle": "Añadir cambio de tasa",
+      "editTitle": "Editar cambio de tasa",
+      "effectiveDateLabel": "Fecha de vigencia",
+      "rateLabel": "Nueva tasa anual (%)",
+      "paymentModeLabel": "Pago",
+      "paymentModeKeep": "Mantener el pago actual (se ajusta la fecha de liquidación)",
+      "paymentModeSet": "Establecer un nuevo importe de pago",
+      "paymentModeRecalculate": "Recalcular el pago para mantener la amortización al día",
+      "newPaymentLabel": "Nuevo importe de pago",
+      "noteLabel": "Nota (opcional)",
+      "addedToast": "Cambio de tasa registrado",
+      "updatedToast": "Cambio de tasa actualizado",
+      "deletedToast": "Cambio de tasa eliminado",
+      "saveFailed": "No se pudo guardar el cambio de tasa",
+      "deleteFailed": "No se pudo eliminar el cambio de tasa",
+      "detectTitle": "Detectar cambios de tasa",
+      "detectMessage": "Esto analiza su historial de pagos y reemplaza las entradas detectadas anteriormente. Las entradas que añadió o editó usted mismo se conservan.",
+      "detectedToast": "{count, plural, =0 {No se detectaron nuevos cambios de tasa} one {# cambio de tasa detectado} other {# cambios de tasa detectados}}",
+      "detectFailed": "No se pudieron detectar cambios de tasa a partir del historial de pagos"
     }
   }
 }

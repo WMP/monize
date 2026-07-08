@@ -454,5 +454,14 @@
     "notFound": "[XX-Loan scenario with ID {{ id }} not found-XX]",
     "nameConflict": "[XX-A scenario named \"{{ name }}\" already exists for this account-XX]",
     "notLoanAccount": "[XX-Loan scenarios are only available for loan, mortgage, and line of credit accounts-XX]"
+  },
+  "loanRateChanges": {
+    "notFound": "[XX-Rate change with ID {{ id }} not found-XX]",
+    "notLoanAccount": "[XX-Rate changes are only available for loan and mortgage accounts-XX]",
+    "duplicateDate": "[XX-A rate change effective {{ date }} already exists for this account-XX]",
+    "paymentModeConflict": "[XX-Provide either a new payment amount or recalculatePayment, not both-XX]",
+    "recalculateMortgageOnly": "[XX-Payment recalculation is only available for mortgage accounts-XX]",
+    "insufficientData": "[XX-Not enough payments with interest details to detect rate changes-XX]",
+    "frequencyMismatch": "[XX-Payment dates do not match the account's payment frequency; inferred rates may be less accurate-XX]"
   }
 }

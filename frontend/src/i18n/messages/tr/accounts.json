@@ -354,7 +354,8 @@
       "projectedFuturePayments": "Öngörülen Gelecek Taksitler",
       "showAll": "Tüm {count} taksiti göster",
       "showLess": "Daha az göster",
-      "noPayments": "Taksit bulunamadı"
+      "noPayments": "Taksit bulunamadı",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "Erken Ödeme Simülatörü",
@@ -416,7 +417,7 @@
       "description": "Şimdiye kadar yaptığınız ödemelerin orijinal sözleşme planıyla karşılaştırması.",
       "extraPrincipalPaid": "Ödenen Ek Anapara",
       "extraPrincipalNote": "Orijinal planın ne kadar önündesiniz",
-      "missingData": "Erken ödemelerinizin bu krediyi ne kadar kısalttığını görmek için hesapta başlangıç anaparasını ve ilk ödeme tarihini ayarlayın.",
+      "missingData": "Erken ödemelerinizin bu krediyi ne kadar kısalttığını görmek için bu hesabın bir faiz oranına, bir ödeme sıklığına ve orijinal planını yeniden oluşturmak için kayıtlı bazı ödemelere ihtiyacı var.",
       "monthsAlreadySaved": "Şimdiden Kazanılan Süre",
       "monthsValue": "{count, plural, one {# ay} other {# ay}}",
       "payoffComparison": "Başlangıçta {original}, şimdi {current}",
@@ -435,6 +436,41 @@
       "utilization": "Kullanım",
       "balanceHistory": "Bakiye Geçmişi",
       "noHistory": "Bakiye geçmişi yok."
+    },
+    "rateHistory": {
+      "title": "Faiz Geçmişi",
+      "description": "Değişken faiz sıfırlamalarından vade yenilemelerine kadar, kredi süresi boyunca faiz oranı değişikliklerini takip edin.",
+      "add": "Faiz değişikliği ekle",
+      "detect": "Geçmişten algıla",
+      "empty": "Kayıtlı faiz değişikliği yok. Faiziniz değiştiğinde bir tane ekleyin veya ödeme geçmişinizden geçmiş değişiklikleri algılayın.",
+      "rateValue": "%{rate}",
+      "paymentSummary": "Taksit: {payment}",
+      "paymentUnchanged": "değişmedi",
+      "badgeInferred": "Çıkarsanan",
+      "badgeInitial": "Başlangıç",
+      "edit": "Düzenle",
+      "delete": "Sil",
+      "cancel": "İptal",
+      "save": "Kaydet",
+      "addTitle": "Faiz Değişikliği Ekle",
+      "editTitle": "Faiz Değişikliğini Düzenle",
+      "effectiveDateLabel": "Geçerlilik tarihi",
+      "rateLabel": "Yeni yıllık oran (%)",
+      "paymentModeLabel": "Taksit",
+      "paymentModeKeep": "Mevcut taksiti koru (kapanış zaman çizelgesi kayar)",
+      "paymentModeSet": "Yeni bir taksit tutarı belirle",
+      "paymentModeRecalculate": "Amortismanı planına uygun tutmak için taksiti yeniden hesapla",
+      "newPaymentLabel": "Yeni taksit tutarı",
+      "noteLabel": "Not (isteğe bağlı)",
+      "addedToast": "Faiz değişikliği kaydedildi",
+      "updatedToast": "Faiz değişikliği güncellendi",
+      "deletedToast": "Faiz değişikliği silindi",
+      "saveFailed": "Faiz değişikliği kaydedilemedi",
+      "deleteFailed": "Faiz değişikliği silinemedi",
+      "detectTitle": "Faiz Değişikliklerini Algıla",
+      "detectMessage": "Bu, ödeme geçmişinizi analiz eder ve önceden algılanan girişleri değiştirir. Kendiniz eklediğiniz veya düzenlediğiniz girişler korunur.",
+      "detectedToast": "{count, plural, =0 {Yeni faiz değişikliği algılanmadı} one {# faiz değişikliği algılandı} other {# faiz değişikliği algılandı}}",
+      "detectFailed": "Ödeme geçmişinden faiz değişiklikleri algılanamadı"
     }
   }
 }

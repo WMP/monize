@@ -454,5 +454,14 @@
     "notFound": "{{ id }} kimlikli kredi senaryosu bulunamadı",
     "nameConflict": "Bu hesap için \"{{ name }}\" adlı bir senaryo zaten var",
     "notLoanAccount": "Kredi senaryoları yalnızca kredi, ipotek ve kredi limiti hesapları için kullanılabilir"
+  },
+  "loanRateChanges": {
+    "notFound": "{{ id }} kimliğine sahip faiz değişikliği bulunamadı",
+    "notLoanAccount": "Faiz değişiklikleri yalnızca kredi ve ipotek hesapları için kullanılabilir",
+    "duplicateDate": "Bu hesap için {{ date }} tarihinde geçerli olan bir faiz değişikliği zaten mevcut",
+    "paymentModeConflict": "Yeni bir taksit tutarı veya recalculatePayment değerinden yalnızca birini girin, ikisini birden değil",
+    "recalculateMortgageOnly": "Taksit yeniden hesaplaması yalnızca ipotek hesapları için kullanılabilir",
+    "insufficientData": "Faiz değişikliklerini algılamak için faiz ayrıntıları olan yeterli ödeme yok",
+    "frequencyMismatch": "Ödeme tarihleri hesabın ödeme sıklığıyla eşleşmiyor; çıkarsanan oranlar daha az doğru olabilir"
   }
 }

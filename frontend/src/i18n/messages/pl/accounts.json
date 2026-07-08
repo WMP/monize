@@ -354,7 +354,8 @@
       "projectedFuturePayments": "Prognozowane przyszłe raty",
       "showAll": "Pokaż wszystkie raty ({count})",
       "showLess": "Pokaż mniej",
-      "noPayments": "Nie znaleziono rat"
+      "noPayments": "Nie znaleziono rat",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "Symulator nadpłat",
@@ -416,7 +417,7 @@
       "description": "Jak dokonane już płatności wypadają na tle pierwotnego harmonogramu umownego.",
       "extraPrincipalPaid": "Zapłacony dodatkowy kapitał",
       "extraPrincipalNote": "O ile wyprzedzasz pierwotny harmonogram",
-      "missingData": "Aby zobaczyć, o ile Twoje nadpłaty skróciły ten kredyt, ustaw pierwotny kapitał i datę pierwszej raty na koncie.",
+      "missingData": "Aby zobaczyć, o ile Twoje nadpłaty skróciły ten kredyt, to konto potrzebuje oprocentowania, częstotliwości płatności oraz kilku zarejestrowanych płatności, aby odtworzyć pierwotny harmonogram.",
       "monthsAlreadySaved": "Już zaoszczędzony czas",
       "monthsValue": "{count, plural, one {# miesiąc} few {# miesiące} many {# miesięcy} other {# miesiąca}}",
       "payoffComparison": "Pierwotnie {original}, teraz {current}",
@@ -435,6 +436,41 @@
       "utilization": "Wykorzystanie",
       "balanceHistory": "Historia salda",
       "noHistory": "Brak historii salda."
+    },
+    "rateHistory": {
+      "title": "Historia oprocentowania",
+      "description": "Śledź zmiany oprocentowania przez cały okres kredytu, od zmian oprocentowania zmiennego po odnowienia okresu kredytowania.",
+      "add": "Dodaj zmianę oprocentowania",
+      "detect": "Wykryj z historii",
+      "empty": "Nie zarejestrowano żadnych zmian oprocentowania. Dodaj zmianę, gdy zmieni się Twoje oprocentowanie, lub wykryj wcześniejsze zmiany z historii płatności.",
+      "rateValue": "{rate}%",
+      "paymentSummary": "Rata: {payment}",
+      "paymentUnchanged": "bez zmian",
+      "badgeInferred": "Wywnioskowane",
+      "badgeInitial": "Początkowe",
+      "edit": "Edytuj",
+      "delete": "Usuń",
+      "cancel": "Anuluj",
+      "save": "Zapisz",
+      "addTitle": "Dodaj zmianę oprocentowania",
+      "editTitle": "Edytuj zmianę oprocentowania",
+      "effectiveDateLabel": "Data wejścia w życie",
+      "rateLabel": "Nowe roczne oprocentowanie (%)",
+      "paymentModeLabel": "Rata",
+      "paymentModeKeep": "Zachowaj bieżącą ratę (termin spłaty się przesuwa)",
+      "paymentModeSet": "Ustaw nową kwotę raty",
+      "paymentModeRecalculate": "Przelicz ratę, aby utrzymać harmonogram spłaty",
+      "newPaymentLabel": "Nowa kwota raty",
+      "noteLabel": "Notatka (opcjonalnie)",
+      "addedToast": "Zmiana oprocentowania zarejestrowana",
+      "updatedToast": "Zmiana oprocentowania zaktualizowana",
+      "deletedToast": "Zmiana oprocentowania usunięta",
+      "saveFailed": "Nie udało się zapisać zmiany oprocentowania",
+      "deleteFailed": "Nie udało się usunąć zmiany oprocentowania",
+      "detectTitle": "Wykryj zmiany oprocentowania",
+      "detectMessage": "Analizuje to Twoją historię płatności i zastępuje wcześniej wykryte wpisy. Wpisy dodane lub edytowane przez Ciebie zostają zachowane.",
+      "detectedToast": "{count, plural, =0 {Nie wykryto nowych zmian oprocentowania} one {# wykryta zmiana oprocentowania} few {# wykryte zmiany oprocentowania} many {# wykrytych zmian oprocentowania} other {# wykrytej zmiany oprocentowania}}",
+      "detectFailed": "Nie udało się wykryć zmian oprocentowania z historii płatności"
     }
   }
 }

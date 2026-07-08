@@ -354,7 +354,8 @@
       "projectedFuturePayments": "Versements futurs projetés",
       "showAll": "Afficher les {count} versements",
       "showLess": "Afficher moins",
-      "noPayments": "Aucun versement trouvé"
+      "noPayments": "Aucun versement trouvé",
+      "rateChangeBadge": "{from}% → {to}%"
     },
     "simulator": {
       "title": "Simulateur de remboursement anticipé",
@@ -416,7 +417,7 @@
       "description": "Comment les versements que vous avez déjà effectués se comparent au calendrier contractuel initial.",
       "extraPrincipalPaid": "Capital supplémentaire payé",
       "extraPrincipalNote": "De combien vous êtes en avance sur le calendrier initial",
-      "missingData": "Pour voir comment vos remboursements anticipés ont raccourci ce prêt, définissez le capital initial et la date du premier versement sur le compte.",
+      "missingData": "Pour voir comment vos remboursements anticipés ont raccourci ce prêt, ce compte a besoin d'un taux d'intérêt, d'une fréquence de versement et de quelques paiements enregistrés pour reconstituer son calendrier initial.",
       "monthsAlreadySaved": "Temps déjà économisé",
       "monthsValue": "{count, plural, one {# mois} other {# mois}}",
       "payoffComparison": "Initialement {original}, maintenant {current}",
@@ -435,6 +436,41 @@
       "utilization": "Utilisation",
       "balanceHistory": "Historique du solde",
       "noHistory": "Aucun historique de solde disponible."
+    },
+    "rateHistory": {
+      "title": "Historique des taux",
+      "description": "Suivez les changements de taux d'intérêt tout au long de la vie du prêt, des révisions de taux variable aux renouvellements de terme.",
+      "add": "Ajouter un changement de taux",
+      "detect": "Détecter à partir de l'historique",
+      "empty": "Aucun changement de taux enregistré. Ajoutez-en un lorsque votre taux change, ou détectez les changements passés à partir de votre historique de paiements.",
+      "rateValue": "{rate}%",
+      "paymentSummary": "Versement : {payment}",
+      "paymentUnchanged": "inchangé",
+      "badgeInferred": "Déduit",
+      "badgeInitial": "Initial",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "addTitle": "Ajouter un changement de taux",
+      "editTitle": "Modifier le changement de taux",
+      "effectiveDateLabel": "Date d'effet",
+      "rateLabel": "Nouveau taux annuel (%)",
+      "paymentModeLabel": "Versement",
+      "paymentModeKeep": "Conserver le versement actuel (la date de remboursement est décalée)",
+      "paymentModeSet": "Définir un nouveau montant de versement",
+      "paymentModeRecalculate": "Recalculer le versement pour maintenir l'amortissement sur la bonne voie",
+      "newPaymentLabel": "Nouveau montant de versement",
+      "noteLabel": "Note (facultatif)",
+      "addedToast": "Changement de taux enregistré",
+      "updatedToast": "Changement de taux mis à jour",
+      "deletedToast": "Changement de taux supprimé",
+      "saveFailed": "Échec de l'enregistrement du changement de taux",
+      "deleteFailed": "Échec de la suppression du changement de taux",
+      "detectTitle": "Détecter les changements de taux",
+      "detectMessage": "Cela analyse votre historique de paiements et remplace les entrées détectées précédemment. Les entrées que vous avez ajoutées ou modifiées vous-même sont conservées.",
+      "detectedToast": "{count, plural, =0 {Aucun nouveau changement de taux détecté} one {# changement de taux détecté} other {# changements de taux détectés}}",
+      "detectFailed": "Impossible de détecter les changements de taux à partir de l'historique de paiements"
     }
   }
 }
