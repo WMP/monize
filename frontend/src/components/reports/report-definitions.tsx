@@ -159,6 +159,17 @@ export const builtInReports: Report[] = [
       </svg>
     ),
   },
+  {
+    id: 'loan-overpayment-simulator',
+    category: 'debt',
+    color: 'bg-emerald-500',
+    icon: (
+      <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v4m-2-2h4" />
+      </svg>
+    ),
+  },
   // Investment
   {
     id: 'investment-performance',
