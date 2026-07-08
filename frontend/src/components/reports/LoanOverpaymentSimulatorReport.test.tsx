@@ -3,6 +3,11 @@ import { render, screen, act, fireEvent } from '@/test/render';
 import { LoanOverpaymentSimulatorReport } from './LoanOverpaymentSimulatorReport';
 import { Account } from '@/types/account';
 
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 const mockGetAll = vi.fn();
 vi.mock('@/lib/accounts', () => ({
   accountsApi: {
@@ -90,6 +95,17 @@ describe('LoanOverpaymentSimulatorReport', () => {
     expect(screen.getByTestId('loan-detail-view')).toHaveTextContent('Car Loan');
     expect(loanViewProps?.transactions).toHaveLength(1);
     expect(mockGetAll).toHaveBeenCalledWith(true);
+  });
+
+  it('navigates to the register from the View Transactions button', async () => {
+    mockGetAll.mockResolvedValue([makeAccount()]);
+
+    await renderReport();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('View Transactions'));
+    });
+    expect(mockPush).toHaveBeenCalledWith('/transactions?accountId=loan-1');
   });
 
   it('loads transactions and scenarios for the selected loan', async () => {

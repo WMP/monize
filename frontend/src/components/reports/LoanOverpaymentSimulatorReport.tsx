@@ -1,7 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { accountsApi } from '@/lib/accounts';
 import { loanScenariosApi } from '@/lib/loan-scenarios';
@@ -24,6 +26,7 @@ const DEBT_ACCOUNT_TYPES: AccountType[] = ['LOAN', 'MORTGAGE', 'LINE_OF_CREDIT']
  */
 export function LoanOverpaymentSimulatorReport() {
   const t = useTranslations('reports');
+  const router = useRouter();
   const [selectedAccountIdState, setSelectedAccountId] = useState<string>('');
 
   const {
@@ -100,23 +103,35 @@ export function LoanOverpaymentSimulatorReport() {
   return (
     <div className="space-y-6">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          {t('loanOverpayment.labelSelectAccount')}
-        </label>
-        <select
-          value={selectedAccountId}
-          onChange={(e) => setSelectedAccountId(e.target.value)}
-          className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 min-w-[200px]"
-        >
-          {accounts
-            .slice()
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-        </select>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('loanOverpayment.labelSelectAccount')}
+            </label>
+            <select
+              value={selectedAccountId}
+              onChange={(e) => setSelectedAccountId(e.target.value)}
+              className="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 min-w-[200px]"
+            >
+              {accounts
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+          {selectedAccount && (
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/transactions?accountId=${selectedAccount.id}`)}
+            >
+              {t('loanOverpayment.viewTransactions')}
+            </Button>
+          )}
+        </div>
       </div>
 
       {selectedAccount && isRevolving && <LineOfCreditView account={selectedAccount} />}
