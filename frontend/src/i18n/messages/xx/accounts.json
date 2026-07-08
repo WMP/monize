@@ -355,6 +355,40 @@
       "showAll": "[XX-Show all {count} payments-XX]",
       "showLess": "[XX-Show less-XX]",
       "noPayments": "[XX-No payments found-XX]"
+    },
+    "simulator": {
+      "title": "[XX-Overpayment Simulator-XX]",
+      "description": "[XX-Model extra payments to see how much sooner the loan could be paid off and how much interest you would save. Simulations do not change your real payments.-XX]",
+      "reset": "[XX-Reset-XX]",
+      "detectedExtraHint": "[XX-Your payment history shows an average of {amount} in extra principal per payment.-XX]",
+      "applyDetected": "[XX-Use it-XX]",
+      "recurringAmount": "[XX-Extra per payment-XX]",
+      "recurringStart": "[XX-Starting (optional)-XX]",
+      "recurringEnd": "[XX-Until (optional)-XX]",
+      "lumpSums": "[XX-One-off lump sums-XX]",
+      "addLumpSum": "[XX-Add lump sum-XX]",
+      "noLumpSums": "[XX-No lump sums added.-XX]",
+      "lumpSumDate": "[XX-Date-XX]",
+      "lumpSumAmount": "[XX-Amount-XX]",
+      "removeLumpSum": "[XX-Remove-XX]"
+    },
+    "comparison": {
+      "newPayoff": "[XX-New Payoff Date-XX]",
+      "timeSaved": "[XX-Time Saved-XX]",
+      "monthsSaved": "[XX-{count, plural, one {# month} other {# months}}-XX]",
+      "paymentsSaved": "[XX-{count, plural, one {# payment} other {# payments}}-XX]",
+      "interestSaved": "[XX-Interest Saved-XX]",
+      "totalExtraContributed": "[XX-Total Extra Contributed-XX]",
+      "beyondProjection": "[XX-Beyond projection-XX]"
+    },
+    "chart": {
+      "title": "[XX-Payoff Timeline-XX]",
+      "empty": "[XX-No payment history or projection available.-XX]",
+      "seriesHistorical": "[XX-Actual Balance-XX]",
+      "seriesBaseline": "[XX-Current Projection-XX]",
+      "seriesScenario": "[XX-With Overpayments-XX]",
+      "today": "[XX-Today-XX]",
+      "scenarioNote": "[XX-The overpayment scenario is a simulation and does not change your scheduled payments.-XX]"
     }
   }
 }

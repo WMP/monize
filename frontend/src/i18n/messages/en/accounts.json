@@ -355,6 +355,40 @@
       "showAll": "Show all {count} payments",
       "showLess": "Show less",
       "noPayments": "No payments found"
+    },
+    "simulator": {
+      "title": "Overpayment Simulator",
+      "description": "Model extra payments to see how much sooner the loan could be paid off and how much interest you would save. Simulations do not change your real payments.",
+      "reset": "Reset",
+      "detectedExtraHint": "Your payment history shows an average of {amount} in extra principal per payment.",
+      "applyDetected": "Use it",
+      "recurringAmount": "Extra per payment",
+      "recurringStart": "Starting (optional)",
+      "recurringEnd": "Until (optional)",
+      "lumpSums": "One-off lump sums",
+      "addLumpSum": "Add lump sum",
+      "noLumpSums": "No lump sums added.",
+      "lumpSumDate": "Date",
+      "lumpSumAmount": "Amount",
+      "removeLumpSum": "Remove"
+    },
+    "comparison": {
+      "newPayoff": "New Payoff Date",
+      "timeSaved": "Time Saved",
+      "monthsSaved": "{count, plural, one {# month} other {# months}}",
+      "paymentsSaved": "{count, plural, one {# payment} other {# payments}}",
+      "interestSaved": "Interest Saved",
+      "totalExtraContributed": "Total Extra Contributed",
+      "beyondProjection": "Beyond projection"
+    },
+    "chart": {
+      "title": "Payoff Timeline",
+      "empty": "No payment history or projection available.",
+      "seriesHistorical": "Actual Balance",
+      "seriesBaseline": "Current Projection",
+      "seriesScenario": "With Overpayments",
+      "today": "Today",
+      "scenarioNote": "The overpayment scenario is a simulation and does not change your scheduled payments."
     }
   }
 }

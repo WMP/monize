@@ -45,9 +45,11 @@ vi.mock('@/hooks/useNumberFormat', () => ({
 }));
 
 const mockGetById = vi.fn();
+const mockDetectLoanPayments = vi.fn();
 vi.mock('@/lib/accounts', () => ({
   accountsApi: {
     getById: (...args: unknown[]) => mockGetById(...args),
+    detectLoanPayments: (...args: unknown[]) => mockDetectLoanPayments(...args),
   },
 }));
 
@@ -103,6 +105,7 @@ async function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockDetectLoanPayments.mockResolvedValue(null);
   mockGetAllTransactions.mockResolvedValue({
     data: [
       {

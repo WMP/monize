@@ -11,13 +11,18 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { LoanSummaryCards } from '@/components/accounts/loan-detail/LoanSummaryCards';
 import { AmortizationScheduleTable } from '@/components/accounts/loan-detail/AmortizationScheduleTable';
+import { OverpaymentSimulator } from '@/components/accounts/loan-detail/OverpaymentSimulator';
+import { PayoffComparisonChart } from '@/components/accounts/loan-detail/PayoffComparisonChart';
+import { ComparisonSummaryCards } from '@/components/accounts/loan-detail/ComparisonSummaryCards';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { accountsApi } from '@/lib/accounts';
 import { deriveLoanPaymentHistory, fetchAllAccountTransactions } from '@/lib/loan-history';
 import {
+  OverpaymentPlan,
   ScheduleFrequency,
   advanceDate,
+  compareSchedules,
   generateLoanSchedule,
 } from '@/lib/loan-schedule';
 import { formatAccountType } from '@/lib/account-utils';
@@ -46,6 +51,7 @@ function AccountDetailContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [plan, setPlan] = useState<OverpaymentPlan | null>(null);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -88,7 +94,7 @@ function AccountDetailContent() {
     [account, transactions, isLoanAccount],
   );
 
-  const baseline = useMemo(() => {
+  const projectionInput = useMemo(() => {
     if (!account || !history) return null;
     const canProject =
       history.currentBalance > 0.01 &&
@@ -99,7 +105,7 @@ function AccountDetailContent() {
     if (!canProject) return null;
 
     const frequency = account.paymentFrequency as ScheduleFrequency;
-    return generateLoanSchedule({
+    return {
       startingBalance: history.currentBalance,
       annualRate: account.interestRate!,
       paymentAmount: account.paymentAmount!,
@@ -107,8 +113,26 @@ function AccountDetailContent() {
       isCanadian: account.isCanadianMortgage || false,
       isVariableRate: account.isVariableRate || false,
       firstPaymentDate: advanceDate(new Date(), frequency),
-    });
+    };
   }, [account, history]);
+
+  const baseline = useMemo(
+    () => (projectionInput ? generateLoanSchedule(projectionInput) : null),
+    [projectionInput],
+  );
+
+  const scenario = useMemo(
+    () =>
+      projectionInput && plan
+        ? generateLoanSchedule({ ...projectionInput, overpayments: plan })
+        : null,
+    [projectionInput, plan],
+  );
+
+  const comparison = useMemo(
+    () => (baseline && scenario ? compareSchedules(baseline, scenario) : null),
+    [baseline, scenario],
+  );
 
   if (isLoading) {
     return (
@@ -176,9 +200,23 @@ function AccountDetailContent() {
             baseline={baseline}
           />
 
+          {projectionInput && (
+            <OverpaymentSimulator accountId={account.id} onPlanChange={setPlan} />
+          )}
+
+          {comparison && (
+            <ComparisonSummaryCards comparison={comparison} currencyCode={account.currencyCode} />
+          )}
+
+          <PayoffComparisonChart
+            historyEvents={history.events}
+            baseline={baseline}
+            scenario={scenario}
+          />
+
           <AmortizationScheduleTable
             historyEvents={history.events}
-            projectionRows={baseline?.rows ?? []}
+            projectionRows={(scenario ?? baseline)?.rows ?? []}
             currencyCode={account.currencyCode}
           />
         </div>
