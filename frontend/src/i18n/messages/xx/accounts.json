@@ -452,7 +452,7 @@
       "description": "[XX-How the payments you have already made compare against the original contractual schedule.-XX]",
       "extraPrincipalPaid": "[XX-Extra Principal Paid-XX]",
       "extraPrincipalNote": "[XX-How far ahead of the original schedule you are-XX]",
-      "missingData": "[XX-To see how your overpayments have shortened this loan, set the original principal and first payment date on the account.-XX]",
+      "missingData": "[XX-To see how your overpayments have shortened this loan, this account needs an interest rate, a payment frequency, and some recorded payments to reconstruct its original schedule.-XX]",
       "monthsAlreadySaved": "[XX-Time Already Saved-XX]",
       "monthsValue": "[XX-{count, plural, one {# month} other {# months}}-XX]",
       "payoffComparison": "[XX-Originally {original}, now {current}-XX]",

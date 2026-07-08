@@ -63,11 +63,22 @@ export function computePastImpact(
 ): PastImpactResult | null {
   // The original principal is the configured value, or the loan's opening
   // balance (mortgages store the original amount as the negative opening
-  // balance), falling back to the reconstructed starting balance.
+  // balance). When neither is available -- common for loans imported from
+  // Quicken/MS Money without an opening balance, where any draw or adjustment
+  // also pushes derivation onto the ledger path and leaves startingBalance at
+  // zero -- reconstruct the starting debt from the payment history itself:
+  // today's balance plus every principal dollar already repaid. That equals
+  // the opening balance whenever one is known and stays positive when it is
+  // blank, so the contractual baseline can still be built from transactions.
+  const reconstructedPrincipal = round2(
+    history.currentBalance + history.cumulativePrincipal,
+  );
   const originalPrincipal =
     account.originalPrincipal && account.originalPrincipal > 0
       ? account.originalPrincipal
-      : history.startingBalance;
+      : history.startingBalance > 0
+        ? history.startingBalance
+        : reconstructedPrincipal;
 
   // The schedule starts at the configured first-payment date, or the earliest
   // actual payment when that is unset.

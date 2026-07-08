@@ -84,6 +84,40 @@ describe('computePastImpact', () => {
     expect(impact!.originalSchedule.rows[0].balance).toBeGreaterThan(290000);
   });
 
+  it('reconstructs the original principal from history when no opening balance is set', () => {
+    // A mortgage imported from Quicken/MS Money with neither originalPrincipal
+    // nor an opening balance, and an initial advance recorded as a draw. The
+    // draw forces the ledger derivation path, which leaves history's
+    // startingBalance at zero, so the impact must be reconstructed from the
+    // payments themselves (current balance + principal already repaid).
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      originalPrincipal: null,
+      openingBalance: 0,
+      currentBalance: -283500,
+      amortizationMonths: 300,
+      interestRate: 5,
+      paymentAmount: 1750,
+      paymentStartDate: null,
+    });
+    const transactions = [
+      // Initial advance (a draw); makes hasDraws true -> ledger path
+      { id: 'adv', accountId: account.id, transactionDate: '2025-01-01', amount: -287000, linkedTransaction: null },
+      { id: 'p1', accountId: account.id, transactionDate: '2025-01-15', amount: 1750, linkedTransaction: null },
+      { id: 'p2', accountId: account.id, transactionDate: '2025-02-15', amount: 1750, linkedTransaction: null },
+    ] as Transaction[];
+    const history = deriveLoanPaymentHistory(account, transactions);
+    expect(history.startingBalance).toBe(0); // ledger path with no opening balance
+
+    const impact = computePastImpact(account, history);
+
+    // Previously this returned null and showed the "set the original principal"
+    // message; now the schedule is reconstructed from 283500 + 3500 repaid.
+    expect(impact).not.toBeNull();
+    expect(impact!.originalSchedule.rows[0].balance).toBeGreaterThan(285000);
+    expect(impact!.originalSchedule.rows[0].balance).toBeLessThan(287000);
+  });
+
   it('falls back to the earliest payment date when the start date is unset', () => {
     const account = makeAccount({ paymentStartDate: null });
     const history = makeHistory(account, [450, 450]); // events on 2025-01-15, 2025-02-15

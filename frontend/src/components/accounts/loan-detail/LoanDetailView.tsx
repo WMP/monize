@@ -116,12 +116,6 @@ export function LoanDetailView({
         baseline={baseline}
       />
 
-      <RateHistoryPanel
-        account={account}
-        rateChanges={rateChanges}
-        onChanged={onRateChangesChanged}
-      />
-
       {projectionInput && (
         <OverpaymentSimulator
           accountId={account.id}
@@ -158,6 +152,12 @@ export function LoanDetailView({
         historyEvents={history.events}
         projectionRows={(scenario ?? baseline)?.rows ?? []}
         currencyCode={account.currencyCode}
+      />
+
+      <RateHistoryPanel
+        account={account}
+        rateChanges={rateChanges}
+        onChanged={onRateChangesChanged}
       />
     </div>
   );
