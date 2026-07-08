@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "還債時間表",
       "loan-amortization": "貸款攤還計劃",
       "credit-utilization": "信用使用率",
+      "loan-overpayment-simulator": "貸款提前還款模擬器",
       "investment-performance": "投資績效",
       "dividend-income": "獲利、股利與利息",
       "sector-weightings": "類股比重",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "以圖表呈現還款進度並預測還清日期。",
       "loan-amortization": "房貸及貸款的詳細還款計劃，包含本金與利息明細。",
       "credit-utilization": "查看信用卡及信用額度的可用信用使用情況。",
+      "loan-overpayment-simulator": "選擇一筆貸款並模擬額外還款，看看能提前多久還清、能節省多少利息。",
       "investment-performance": "追蹤投資組合報酬、損益及資產配置的歷史變化。",
       "dividend-income": "追蹤資本利得與虧損（已實現及未實現），以及股利和利息收入。",
       "sector-weightings": "分析來自個股及 ETF 的投資組合類股曝險。",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "名稱為必填"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "選擇貸款帳戶",
+    "empty": "找不到貸款、抵押貸款或信用額度帳戶。"
   }
 }

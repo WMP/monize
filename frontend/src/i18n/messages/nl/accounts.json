@@ -424,6 +424,15 @@
       "seriesActual": "Werkelijk saldo",
       "seriesCurrent": "Huidige projectie",
       "unknown": "Onbekend"
+    },
+    "lineOfCredit": {
+      "currentBalance": "Huidig saldo",
+      "creditLimit": "Kredietlimiet",
+      "available": "Beschikbaar krediet",
+      "peakBalance": "Hoogste saldo",
+      "utilization": "Benutting",
+      "balanceHistory": "Saldogeschiedenis",
+      "noHistory": "Geen saldogeschiedenis beschikbaar."
     }
   }
 }

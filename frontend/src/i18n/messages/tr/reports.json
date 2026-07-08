@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "Borç Kapatma Takvimi",
       "loan-amortization": "Kredi İtfa Planı",
       "credit-utilization": "Kredi Kullanımı",
+      "loan-overpayment-simulator": "Kredi Erken Ödeme Simülatörü",
       "investment-performance": "Yatırım Performansı",
       "dividend-income": "Kazançlar, Temettüler ve Faiz",
       "sector-weightings": "Sektör Ağırlıkları",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "Kapatma tarihleri projeksiyonlarıyla borç azaltma ilerlemenizi görselleştirin.",
       "loan-amortization": "Anapara - faiz dökümüyle ipotek ve krediler için ayrıntılı ödeme planları.",
       "credit-utilization": "Kredi kartları ve kredi limitleri genelinde mevcut kredinizin ne kadarını kullandığınızı görün.",
+      "loan-overpayment-simulator": "Bir kredi seçin ve ek ödemeleri simüle ederek ne kadar erken kapanacağını ve ne kadar faiz tasarrufu sağlayacağınızı görün.",
       "investment-performance": "Zaman içinde portföy getirilerini, kazanç/kayıpları ve varlık dağılımını takip edin.",
       "dividend-income": "Temettü ve faiz gelirinin yanı sıra gerçekleşen ve gerçekleşmeyen sermaye kazançlarını ve kayıplarını takip edin.",
       "sector-weightings": "Bireysel hisseler ve ETF'lerden portföy sektör riskini analiz edin.",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "Ad zorunludur"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "Kredi Hesabı Seç",
+    "empty": "Kredi, ipotek veya kredi limiti hesabı bulunamadı."
   }
 }

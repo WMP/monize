@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "Linimasa Pelunasan Utang",
       "loan-amortization": "Jadwal Amortisasi Pinjaman",
       "credit-utilization": "Utilisasi Kredit",
+      "loan-overpayment-simulator": "Simulator Pelunasan Dipercepat Pinjaman",
       "investment-performance": "Kinerja Investasi",
       "dividend-income": "Laba Modal, Dividen & Bunga",
       "sector-weightings": "Bobot Sektor",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "Visualisasikan kemajuan pengurangan utang Anda dengan proyeksi tanggal pelunasan.",
       "loan-amortization": "Jadwal pembayaran terperinci untuk hipotek dan pinjaman dengan rincian pokok vs bunga.",
       "credit-utilization": "Lihat seberapa banyak kredit yang tersedia yang Anda gunakan di kartu kredit dan jalur kredit.",
+      "loan-overpayment-simulator": "Pilih pinjaman dan simulasikan pembayaran tambahan untuk melihat seberapa cepat lunas dan berapa banyak bunga yang bisa Anda hemat.",
       "investment-performance": "Lacak imbal hasil portofolio, keuntungan/kerugian, dan alokasi aset dari waktu ke waktu.",
       "dividend-income": "Lacak laba modal dan kerugian (direalisasi + belum direalisasi) bersama pendapatan dividen dan bunga.",
       "sector-weightings": "Analisis eksposur sektor portofolio dari saham individual dan ETF.",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "Nama diperlukan"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "Pilih Akun Pinjaman",
+    "empty": "Tidak ada akun pinjaman, hipotek, atau jalur kredit yang ditemukan."
   }
 }

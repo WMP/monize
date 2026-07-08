@@ -424,6 +424,15 @@
       "seriesActual": "Rzeczywiste saldo",
       "seriesCurrent": "Bieżąca prognoza",
       "unknown": "Nieznane"
+    },
+    "lineOfCredit": {
+      "currentBalance": "Bieżące saldo",
+      "creditLimit": "Limit kredytowy",
+      "available": "Dostępny kredyt",
+      "peakBalance": "Najwyższe saldo",
+      "utilization": "Wykorzystanie",
+      "balanceHistory": "Historia salda",
+      "noHistory": "Brak historii salda."
     }
   }
 }

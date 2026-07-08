@@ -424,6 +424,15 @@
       "seriesActual": "Фактичний залишок",
       "seriesCurrent": "Поточний прогноз",
       "unknown": "Невідомо"
+    },
+    "lineOfCredit": {
+      "currentBalance": "Поточний баланс",
+      "creditLimit": "Кредитний ліміт",
+      "available": "Доступний кредит",
+      "peakBalance": "Найбільший баланс",
+      "utilization": "Використання",
+      "balanceHistory": "Історія балансу",
+      "noHistory": "Історія балансу недоступна."
     }
   }
 }

@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "Harmonogram spłaty długu",
       "loan-amortization": "Harmonogram amortyzacji pożyczki",
       "credit-utilization": "Wykorzystanie kredytu",
+      "loan-overpayment-simulator": "Symulator nadpłat kredytu",
       "investment-performance": "Wyniki inwestycji",
       "dividend-income": "Zyski, dywidendy i odsetki",
       "sector-weightings": "Wagi sektorów",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "Wizualizuj postęp redukcji długu wraz z prognozami terminów spłaty.",
       "loan-amortization": "Szczegółowe harmonogramy spłat hipotek i pożyczek z podziałem na kapitał i odsetki.",
       "credit-utilization": "Zobacz, jaką część dostępnego kredytu wykorzystujesz na kartach kredytowych i liniach kredytowych.",
+      "loan-overpayment-simulator": "Wybierz kredyt i zasymuluj dodatkowe wpłaty, aby zobaczyć, o ile wcześniej zostałby spłacony i ile odsetek byś zaoszczędził.",
       "investment-performance": "Śledź zwroty portfela, zyski/straty i alokację aktywów w czasie.",
       "dividend-income": "Śledź zyski i straty kapitałowe (zrealizowane i niezrealizowane) wraz z przychodami z dywidend i odsetek.",
       "sector-weightings": "Analizuj ekspozycję sektorową portfela na podstawie poszczególnych akcji i funduszy ETF.",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "Nazwa jest wymagana"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "Wybierz konto kredytu",
+    "empty": "Nie znaleziono kont kredytów, hipotek ani linii kredytowych."
   }
 }

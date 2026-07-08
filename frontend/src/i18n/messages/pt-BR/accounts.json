@@ -424,6 +424,15 @@
       "seriesActual": "Saldo real",
       "seriesCurrent": "Projeção atual",
       "unknown": "Desconhecido"
+    },
+    "lineOfCredit": {
+      "currentBalance": "Saldo atual",
+      "creditLimit": "Limite de crédito",
+      "available": "Crédito disponível",
+      "peakBalance": "Saldo mais alto",
+      "utilization": "Utilização",
+      "balanceHistory": "Histórico de saldo",
+      "noHistory": "Sem histórico de saldo disponível."
     }
   }
 }

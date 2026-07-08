@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "借金返済タイムライン",
       "loan-amortization": "ローン償還スケジュール",
       "credit-utilization": "クレジット使用率",
+      "loan-overpayment-simulator": "ローン繰上返済シミュレーター",
       "investment-performance": "投資パフォーマンス",
       "dividend-income": "損益、配当 & 利息",
       "sector-weightings": "セクターウェイト",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "返済期日の予測で借金返済の進捗を視覚化します。",
       "loan-amortization": "元金 vs 利息の内訳付き住宅ローンとローンの詳細な支払いスケジュール。",
       "credit-utilization": "クレジットカードと当座貸越で利用可能なクレジットの使用率を確認します。",
+      "loan-overpayment-simulator": "ローンを選び、追加返済をシミュレーションして、どれだけ早く完済でき、利息をいくら節約できるかを確認できます。",
       "investment-performance": "ポートフォリオのリターン、損益、資産配分を時系列で追跡します。",
       "dividend-income": "配当と利息収入とともにキャピタルゲインと損失（実現 + 未実現）を追跡します。",
       "sector-weightings": "個別株とETFからのポートフォリオのセクターエクスポージャーを分析します。",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "名前は必須です"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "ローン勘定科目を選択",
+    "empty": "ローン、住宅ローン、与信枠の勘定科目が見つかりません。"
   }
 }

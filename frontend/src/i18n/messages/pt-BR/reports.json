@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "Cronograma de Pagamento de Dívidas",
       "loan-amortization": "Plano de Amortização de Empréstimo",
       "credit-utilization": "Utilização de Crédito",
+      "loan-overpayment-simulator": "Simulador de amortização extra de empréstimo",
       "investment-performance": "Desempenho de Investimentos",
       "dividend-income": "Ganhos, Dividendos e Juros",
       "sector-weightings": "Ponderações Setoriais",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "Visualize o seu progresso na redução de dívidas com projeções para as datas de liquidação.",
       "loan-amortization": "Planos de pagamento detalhados para hipotecas e empréstimos com análise de capital vs juros.",
       "credit-utilization": "Veja quanto do crédito disponível está utilizando em cartões de crédito e linhas de crédito.",
+      "loan-overpayment-simulator": "Escolha um empréstimo e simule pagamentos extras para ver quanto antes ele seria quitado e quantos juros você economizaria.",
       "investment-performance": "Acompanhe rentabilidades do portfólio, ganhos/perdas e alocação de ativos ao longo do tempo.",
       "dividend-income": "Acompanhe ganhos e perdas de capital (realizados e não realizados) juntamente com rendimentos de dividendos e juros.",
       "sector-weightings": "Analise a exposição setorial do portfólio a partir de ações individuais e ETFs.",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "O nome é obrigatório"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "Selecionar conta de empréstimo",
+    "empty": "Nenhuma conta de empréstimo, hipoteca ou linha de crédito encontrada."
   }
 }

@@ -424,6 +424,15 @@
       "seriesActual": "वास्तविक शेष",
       "seriesCurrent": "वर्तमान अनुमान",
       "unknown": "अज्ञात"
+    },
+    "lineOfCredit": {
+      "currentBalance": "वर्तमान शेष",
+      "creditLimit": "ऋण सीमा",
+      "available": "उपलब्ध ऋण",
+      "peakBalance": "उच्चतम शेष",
+      "utilization": "उपयोग",
+      "balanceHistory": "शेष इतिहास",
+      "noHistory": "कोई शेष इतिहास उपलब्ध नहीं है।"
     }
   }
 }

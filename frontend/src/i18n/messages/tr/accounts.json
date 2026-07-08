@@ -424,6 +424,15 @@
       "seriesActual": "Gerçek Bakiye",
       "seriesCurrent": "Mevcut Öngörü",
       "unknown": "Bilinmiyor"
+    },
+    "lineOfCredit": {
+      "currentBalance": "Güncel Bakiye",
+      "creditLimit": "Kredi Limiti",
+      "available": "Kullanılabilir Kredi",
+      "peakBalance": "En Yüksek Bakiye",
+      "utilization": "Kullanım",
+      "balanceHistory": "Bakiye Geçmişi",
+      "noHistory": "Bakiye geçmişi yok."
     }
   }
 }

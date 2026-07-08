@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "Tijdlijn aflossing schulden",
       "loan-amortization": "Afschrijvingsschema lening",
       "credit-utilization": "Kredietbenutting",
+      "loan-overpayment-simulator": "Simulator extra aflossen lening",
       "investment-performance": "Beleggingsprestaties",
       "dividend-income": "Winst, dividenden & rente",
       "sector-weightings": "Sectorgewichten",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "Visualiseer jouw schuldafbouwvoortgang met prognoses voor aflossingsdatums.",
       "loan-amortization": "Gedetailleerde betalingsschema's voor hypotheken en leningen met opsplitsing van aflossing en rente.",
       "credit-utilization": "Bekijk hoeveel van jouw beschikbare krediet je gebruikt op creditcards en kredietlijnen.",
+      "loan-overpayment-simulator": "Kies een lening en simuleer extra betalingen om te zien hoeveel eerder deze afgelost zou zijn en hoeveel rente u zou besparen.",
       "investment-performance": "Volg portefeuillerendementen, winsten/verliezen en activaspreiding in de tijd.",
       "dividend-income": "Volg kapitaalwinsten en -verliezen (gerealiseerd + ongerealiseerd) naast dividend- en rente-inkomsten.",
       "sector-weightings": "Analyseer de sectorblootstelling van jouw portefeuille via individuele aandelen en ETFs.",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "Naam is verplicht"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "Leningrekening selecteren",
+    "empty": "Geen lening-, hypotheek- of kredietlijnrekeningen gevonden."
   }
 }

@@ -424,6 +424,15 @@
       "seriesActual": "실제 잔액",
       "seriesCurrent": "현재 예측",
       "unknown": "알 수 없음"
+    },
+    "lineOfCredit": {
+      "currentBalance": "현재 잔액",
+      "creditLimit": "신용 한도",
+      "available": "사용 가능 신용",
+      "peakBalance": "최고 잔액",
+      "utilization": "사용률",
+      "balanceHistory": "잔액 내역",
+      "noHistory": "잔액 내역이 없습니다."
     }
   }
 }

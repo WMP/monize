@@ -424,6 +424,15 @@
       "seriesActual": "実際の残高",
       "seriesCurrent": "現在の予測",
       "unknown": "不明"
+    },
+    "lineOfCredit": {
+      "currentBalance": "現在残高",
+      "creditLimit": "与信枠",
+      "available": "利用可能額",
+      "peakBalance": "最高残高",
+      "utilization": "利用率",
+      "balanceHistory": "残高の推移",
+      "noHistory": "残高の履歴はありません。"
     }
   }
 }

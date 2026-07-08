@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "[XX-Debt Payoff Timeline-XX]",
       "loan-amortization": "[XX-Loan Amortization Schedule-XX]",
       "credit-utilization": "[XX-Credit Utilization-XX]",
+      "loan-overpayment-simulator": "[XX-Loan Overpayment Simulator-XX]",
       "investment-performance": "[XX-Investment Performance-XX]",
       "dividend-income": "[XX-Gains, Dividends & Interest-XX]",
       "sector-weightings": "[XX-Sector Weightings-XX]",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "[XX-Visualize your debt reduction progress with projections for payoff dates.-XX]",
       "loan-amortization": "[XX-Detailed payment schedules for mortgages and loans with principal vs interest breakdown.-XX]",
       "credit-utilization": "[XX-See how much of your available credit you are using across credit cards and lines of credit.-XX]",
+      "loan-overpayment-simulator": "[XX-Pick a loan and model extra payments to see how much sooner it would be paid off and how much interest you would save.-XX]",
       "investment-performance": "[XX-Track portfolio returns, gains/losses, and asset allocation over time.-XX]",
       "dividend-income": "[XX-Track capital gains and losses (realized + unrealized) alongside dividend and interest income.-XX]",
       "sector-weightings": "[XX-Analyze portfolio sector exposure from individual stocks and ETFs.-XX]",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "[XX-Name is required-XX]"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "[XX-Select Loan Account-XX]",
+    "empty": "[XX-No loan, mortgage, or line of credit accounts found.-XX]"
   }
 }

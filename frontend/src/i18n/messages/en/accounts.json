@@ -424,6 +424,15 @@
       "seriesActual": "Actual Balance",
       "seriesCurrent": "Current Projection",
       "unknown": "Unknown"
+    },
+    "lineOfCredit": {
+      "currentBalance": "Current Balance",
+      "creditLimit": "Credit Limit",
+      "available": "Available Credit",
+      "peakBalance": "Highest Balance",
+      "utilization": "Utilization",
+      "balanceHistory": "Balance History",
+      "noHistory": "No balance history available."
     }
   }
 }

@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "Cronologia estinzione debiti",
       "loan-amortization": "Piano di ammortamento prestito",
       "credit-utilization": "Utilizzo del credito",
+      "loan-overpayment-simulator": "Simulatore di rimborso anticipato del prestito",
       "investment-performance": "Rendimento degli investimenti",
       "dividend-income": "Plusvalenze, dividendi e interessi",
       "sector-weightings": "Pesi per settore",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "Visualizza l'avanzamento nella riduzione dei debiti con proiezioni sulle date di estinzione.",
       "loan-amortization": "Piani di pagamento dettagliati per mutui e prestiti con ripartizione capitale vs interessi.",
       "credit-utilization": "Scopri quanto del credito disponibile stai utilizzando su carte di credito e linee di credito.",
+      "loan-overpayment-simulator": "Scegli un prestito e simula pagamenti extra per vedere quanto prima verrebbe estinto e quanti interessi risparmieresti.",
       "investment-performance": "Monitora i rendimenti del portafoglio, plusvalenze/minusvalenze e allocazione degli asset nel tempo.",
       "dividend-income": "Monitora plusvalenze e minusvalenze (realizzate e non) insieme a dividendi e interessi.",
       "sector-weightings": "Analizza l'esposizione del portafoglio per settore dai singoli titoli ed ETF.",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "Il nome è obbligatorio"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "Seleziona conto di prestito",
+    "empty": "Nessun conto di prestito, mutuo o linea di credito trovato."
   }
 }

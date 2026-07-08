@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "Cronograma de pago de deudas",
       "loan-amortization": "Tabla de amortización del préstamo",
       "credit-utilization": "Utilización del crédito",
+      "loan-overpayment-simulator": "Simulador de pagos anticipados de préstamo",
       "investment-performance": "Rendimiento de inversiones",
       "dividend-income": "Ganancias, dividendos e intereses",
       "sector-weightings": "Ponderaciones por sector",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "Visualiza el progreso en la reducción de deudas con proyecciones de fechas de pago.",
       "loan-amortization": "Calendarios de pago detallados para hipotecas y préstamos con desglose de capital e intereses.",
       "credit-utilization": "Ve cuánto de tu crédito disponible estás usando en tarjetas de crédito y líneas de crédito.",
+      "loan-overpayment-simulator": "Elija un préstamo y simule pagos adicionales para ver cuánto antes se liquidaría y cuántos intereses ahorraría.",
       "investment-performance": "Rastrea los rendimientos de la cartera, ganancias/pérdidas y asignación de activos a lo largo del tiempo.",
       "dividend-income": "Rastrea las ganancias y pérdidas de capital (realizadas y no realizadas) junto con los ingresos por dividendos e intereses.",
       "sector-weightings": "Analiza la exposición sectorial de la cartera a partir de acciones individuales y ETFs.",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "El nombre es obligatorio"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "Seleccionar cuenta de préstamo",
+    "empty": "No se encontraron cuentas de préstamo, hipoteca o línea de crédito."
   }
 }

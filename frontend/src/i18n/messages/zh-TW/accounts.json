@@ -424,6 +424,15 @@
       "seriesActual": "實際餘額",
       "seriesCurrent": "目前預測",
       "unknown": "未知"
+    },
+    "lineOfCredit": {
+      "currentBalance": "目前餘額",
+      "creditLimit": "信用額度",
+      "available": "可用額度",
+      "peakBalance": "最高餘額",
+      "utilization": "使用率",
+      "balanceHistory": "餘額歷史",
+      "noHistory": "沒有可用的餘額歷史。"
     }
   }
 }

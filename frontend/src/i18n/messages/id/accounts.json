@@ -424,6 +424,15 @@
       "seriesActual": "Saldo Aktual",
       "seriesCurrent": "Proyeksi Saat Ini",
       "unknown": "Tidak diketahui"
+    },
+    "lineOfCredit": {
+      "currentBalance": "Saldo Saat Ini",
+      "creditLimit": "Batas Kredit",
+      "available": "Kredit Tersedia",
+      "peakBalance": "Saldo Tertinggi",
+      "utilization": "Penggunaan",
+      "balanceHistory": "Riwayat Saldo",
+      "noHistory": "Tidak ada riwayat saldo."
     }
   }
 }

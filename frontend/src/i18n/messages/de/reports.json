@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "Schuldentilgungs-Zeitplan",
       "loan-amortization": "Tilgungsplan",
       "credit-utilization": "Kreditauslastung",
+      "loan-overpayment-simulator": "Kredit-Sondertilgungs-Simulator",
       "investment-performance": "Anlageperformance",
       "dividend-income": "Gewinne, Dividenden & Zinsen",
       "sector-weightings": "Sektorgewichtungen",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "Visualisieren Sie Ihren Schuldenabbau mit Prognosen für die Tilgungsdaten.",
       "loan-amortization": "Detaillierte Zahlungspläne für Hypotheken und Darlehen mit Tilgungs-/Zinsaufschlüsselung.",
       "credit-utilization": "Sehen Sie, wie viel Ihres verfügbaren Kreditrahmens Sie auf Kreditkarten und Kreditlinien nutzen.",
+      "loan-overpayment-simulator": "Wählen Sie einen Kredit und simulieren Sie zusätzliche Zahlungen, um zu sehen, wie viel früher er getilgt wäre und wie viel Zinsen Sie sparen würden.",
       "investment-performance": "Verfolgen Sie Portfolio-Renditen, Gewinne/Verluste und Asset-Allokation.",
       "dividend-income": "Verfolgen Sie Kapitalerträge und -verluste (realisiert und unrealisiert) sowie Dividenden- und Zinseinnahmen.",
       "sector-weightings": "Analysieren Sie das Sektor-Exposure Ihres Portfolios aus Einzelaktien und ETFs.",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "Name ist erforderlich"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "Kreditkonto auswählen",
+    "empty": "Keine Kredit-, Hypotheken- oder Kreditlinienkonten gefunden."
   }
 }

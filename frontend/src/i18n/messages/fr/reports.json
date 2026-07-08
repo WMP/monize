@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "Calendrier de remboursement des dettes",
       "loan-amortization": "Tableau d'amortissement",
       "credit-utilization": "Utilisation du crédit",
+      "loan-overpayment-simulator": "Simulateur de remboursement anticipé de prêt",
       "investment-performance": "Performance des investissements",
       "dividend-income": "Plus-values, dividendes et intérêts",
       "sector-weightings": "Pondération sectorielle",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "Visualisez votre progression dans le remboursement des dettes avec des projections de dates de solde.",
       "loan-amortization": "Tableaux de remboursement détaillés pour vos emprunts et prêts immobiliers avec ventilation capital/intérêts.",
       "credit-utilization": "Voyez quelle part de votre crédit disponible vous utilisez sur vos cartes de crédit et lignes de crédit.",
+      "loan-overpayment-simulator": "Choisissez un prêt et simulez des versements supplémentaires pour voir combien de temps plus tôt il serait remboursé et combien d'intérêts vous économiseriez.",
       "investment-performance": "Suivez les rendements du portefeuille, les gains/pertes et la répartition des actifs dans le temps.",
       "dividend-income": "Suivez les plus-values et pertes (réalisées + latentes) ainsi que les revenus de dividendes et d'intérêts.",
       "sector-weightings": "Analysez l'exposition sectorielle du portefeuille à partir des actions et ETF individuels.",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "Le nom est obligatoire"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "Sélectionner un compte de prêt",
+    "empty": "Aucun compte de prêt, d'hypothèque ou de marge de crédit trouvé."
   }
 }

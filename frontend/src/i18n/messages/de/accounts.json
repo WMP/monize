@@ -424,6 +424,15 @@
       "seriesActual": "Tatsächlicher Saldo",
       "seriesCurrent": "Aktuelle Prognose",
       "unknown": "Unbekannt"
+    },
+    "lineOfCredit": {
+      "currentBalance": "Aktueller Saldo",
+      "creditLimit": "Kreditrahmen",
+      "available": "Verfügbarer Kredit",
+      "peakBalance": "Höchststand",
+      "utilization": "Auslastung",
+      "balanceHistory": "Saldoverlauf",
+      "noHistory": "Kein Saldoverlauf verfügbar."
     }
   }
 }

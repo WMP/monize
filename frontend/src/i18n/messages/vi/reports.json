@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "Lịch trình thanh toán nợ",
       "loan-amortization": "Lịch trả nợ vay",
       "credit-utilization": "Mức sử dụng tín dụng",
+      "loan-overpayment-simulator": "Trình mô phỏng trả nợ vay trước hạn",
       "investment-performance": "Hiệu suất đầu tư",
       "dividend-income": "Lãi vốn, cổ tức & lãi suất",
       "sector-weightings": "Tỷ trọng ngành",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "Hình dung tiến trình giảm nợ của bạn với các dự báo về ngày thanh toán.",
       "loan-amortization": "Lịch thanh toán chi tiết cho thế chấp và khoản vay với phân tích gốc so với lãi.",
       "credit-utilization": "Xem bạn đang sử dụng bao nhiêu tín dụng khả dụng trên thẻ tín dụng và hạn mức tín dụng.",
+      "loan-overpayment-simulator": "Chọn một khoản vay và mô phỏng các khoản trả thêm để xem nó được trả hết sớm hơn bao nhiêu và bạn tiết kiệm được bao nhiêu tiền lãi.",
       "investment-performance": "Theo dõi lợi nhuận danh mục, lãi/lỗ và phân bổ tài sản theo thời gian.",
       "dividend-income": "Theo dõi lãi và lỗ vốn (đã thực hiện + chưa thực hiện) cùng với thu nhập cổ tức và lãi suất.",
       "sector-weightings": "Phân tích mức độ phơi nhiễm ngành của danh mục từ cổ phiếu riêng lẻ và ETFs.",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "Tên là bắt buộc"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "Chọn tài khoản khoản vay",
+    "empty": "Không tìm thấy tài khoản khoản vay, thế chấp hoặc hạn mức tín dụng."
   }
 }

@@ -48,6 +48,7 @@
       "debt-payoff-timeline": "债务偿还时间表",
       "loan-amortization": "贷款摊销计划",
       "credit-utilization": "信用额度使用率",
+      "loan-overpayment-simulator": "贷款提前还款模拟器",
       "investment-performance": "投资表现",
       "dividend-income": "收益、股息与利息",
       "sector-weightings": "行业权重",
@@ -93,6 +94,7 @@
       "debt-payoff-timeline": "通过偿还预测，可视化您的债务减少进度。",
       "loan-amortization": "抵押贷款和贷款的详细还款计划，含本金与利息明细。",
       "credit-utilization": "查看您在信用卡和信用额度上使用了多少可用信用额度。",
+      "loan-overpayment-simulator": "选择一笔贷款并模拟额外还款，看看能提前多久还清、能节省多少利息。",
       "investment-performance": "追踪投资组合回报、盈亏和资产配置随时间的变化。",
       "dividend-income": "追踪资本收益与损失（已实现+未实现）以及股息和利息收入。",
       "sector-weightings": "分析来自个股和 ETF 的投资组合行业敞口。",
@@ -1670,5 +1672,9 @@
   },
   "monteCarloSaveAs": {
     "nameRequired": "名称为必填项"
+  },
+  "loanOverpayment": {
+    "labelSelectAccount": "选择贷款账户",
+    "empty": "未找到贷款、抵押贷款或信用额度账户。"
   }
 }

@@ -424,6 +424,15 @@
       "seriesActual": "Số dư thực tế",
       "seriesCurrent": "Dự báo hiện tại",
       "unknown": "Không rõ"
+    },
+    "lineOfCredit": {
+      "currentBalance": "Số dư hiện tại",
+      "creditLimit": "Hạn mức tín dụng",
+      "available": "Tín dụng khả dụng",
+      "peakBalance": "Số dư cao nhất",
+      "utilization": "Mức sử dụng",
+      "balanceHistory": "Lịch sử số dư",
+      "noHistory": "Không có lịch sử số dư."
     }
   }
 }

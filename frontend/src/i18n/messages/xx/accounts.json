@@ -424,6 +424,15 @@
       "seriesActual": "[XX-Actual Balance-XX]",
       "seriesCurrent": "[XX-Current Projection-XX]",
       "unknown": "[XX-Unknown-XX]"
+    },
+    "lineOfCredit": {
+      "currentBalance": "[XX-Current Balance-XX]",
+      "creditLimit": "[XX-Credit Limit-XX]",
+      "available": "[XX-Available Credit-XX]",
+      "peakBalance": "[XX-Highest Balance-XX]",
+      "utilization": "[XX-Utilization-XX]",
+      "balanceHistory": "[XX-Balance History-XX]",
+      "noHistory": "[XX-No balance history available.-XX]"
     }
   }
 }

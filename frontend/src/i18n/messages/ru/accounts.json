@@ -424,6 +424,15 @@
       "seriesActual": "Фактический остаток",
       "seriesCurrent": "Текущий прогноз",
       "unknown": "Неизвестно"
+    },
+    "lineOfCredit": {
+      "currentBalance": "Текущий баланс",
+      "creditLimit": "Кредитный лимит",
+      "available": "Доступный кредит",
+      "peakBalance": "Наибольший баланс",
+      "utilization": "Использование",
+      "balanceHistory": "История баланса",
+      "noHistory": "История баланса недоступна."
     }
   }
 }
