@@ -410,6 +410,20 @@
       "deletedToast": "Scenario \"{name}\" deleted",
       "saveFailed": "Failed to save scenario",
       "deleteFailed": "Failed to delete scenario"
+    },
+    "pastImpact": {
+      "title": "Impact of Overpayments Made",
+      "description": "How the payments you have already made compare against the original contractual schedule.",
+      "missingData": "To see how your overpayments have shortened this loan, set the original principal and first payment date on the account.",
+      "monthsAlreadySaved": "Time Already Saved",
+      "monthsValue": "{count, plural, one {# month} other {# months}}",
+      "payoffComparison": "Originally {original}, now {current}",
+      "interestAlreadySaved": "Interest Already Saved",
+      "vsOriginalInterest": "vs {amount} originally projected",
+      "seriesOriginal": "Original Schedule",
+      "seriesActual": "Actual Balance",
+      "seriesCurrent": "Current Projection",
+      "unknown": "Unknown"
     }
   }
 }

@@ -410,6 +410,20 @@
       "deletedToast": "[XX-Scenario \"{name}\" deleted-XX]",
       "saveFailed": "[XX-Failed to save scenario-XX]",
       "deleteFailed": "[XX-Failed to delete scenario-XX]"
+    },
+    "pastImpact": {
+      "title": "[XX-Impact of Overpayments Made-XX]",
+      "description": "[XX-How the payments you have already made compare against the original contractual schedule.-XX]",
+      "missingData": "[XX-To see how your overpayments have shortened this loan, set the original principal and first payment date on the account.-XX]",
+      "monthsAlreadySaved": "[XX-Time Already Saved-XX]",
+      "monthsValue": "[XX-{count, plural, one {# month} other {# months}}-XX]",
+      "payoffComparison": "[XX-Originally {original}, now {current}-XX]",
+      "interestAlreadySaved": "[XX-Interest Already Saved-XX]",
+      "vsOriginalInterest": "[XX-vs {amount} originally projected-XX]",
+      "seriesOriginal": "[XX-Original Schedule-XX]",
+      "seriesActual": "[XX-Actual Balance-XX]",
+      "seriesCurrent": "[XX-Current Projection-XX]",
+      "unknown": "[XX-Unknown-XX]"
     }
   }
 }

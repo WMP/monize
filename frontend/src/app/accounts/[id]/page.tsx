@@ -15,6 +15,7 @@ import { OverpaymentSimulator } from '@/components/accounts/loan-detail/Overpaym
 import { PayoffComparisonChart } from '@/components/accounts/loan-detail/PayoffComparisonChart';
 import { ComparisonSummaryCards } from '@/components/accounts/loan-detail/ComparisonSummaryCards';
 import { SavedScenariosPanel } from '@/components/accounts/loan-detail/SavedScenariosPanel';
+import { PastImpactSection } from '@/components/accounts/loan-detail/PastImpactSection';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { accountsApi } from '@/lib/accounts';
@@ -251,6 +252,8 @@ function AccountDetailContent() {
             baseline={baseline}
             scenario={scenario}
           />
+
+          <PastImpactSection account={account} history={history} />
 
           <AmortizationScheduleTable
             historyEvents={history.events}
