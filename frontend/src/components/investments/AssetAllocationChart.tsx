@@ -382,7 +382,7 @@ export function AssetAllocationChart({
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="mt-4 grid grid-cols-3 gap-x-6 gap-y-2">
         {legendData.map((item, index) => {
           const isForeign = !foreignCurrency && item.currencyCode && item.currencyCode !== defaultCurrency;
           return (
