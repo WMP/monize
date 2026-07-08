@@ -51,7 +51,7 @@
     "currentBalance": "[XX-Current Balance-XX]",
     "nextPayment": "[XX-Next Payment-XX]",
     "viewBills": "[XX-View in Bills & Deposits-XX]",
-    "loanDetails": "[XX-View Loan Details-XX]",
+    "loanDetails": "[XX-View Details-XX]",
     "type": "[XX-Type-XX]",
     "accountNumber": "[XX-Account Number-XX]",
     "currency": "[XX-Currency-XX]",

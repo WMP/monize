@@ -255,7 +255,7 @@
     "canadianMortgageDesc": "निश्चित दरों के लिए अर्ध-वार्षिक चक्रवृद्धि का उपयोग करता है (कनाडा में कानून द्वारा आवश्यक)",
     "variableRate": "परिवर्तनीय दर",
     "variableRateDesc": "अवधि के दौरान दर बदल सकती है (मासिक चक्रवृद्धि का उपयोग करती है)",
-    "variableRateLoanSettingsLink": "<link>ऋण सेटिंग्स</link> में दर परिवर्तन दर्ज करें।",
+    "variableRateLoanDetailsLink": "<link>ऋण विवरण</link> में दर परिवर्तन दर्ज करें।",
     "termLength": "अवधि की लंबाई",
     "termLengthNoTerm": "कोई अवधि नहीं के लिए 0 साल और 0 महीने पर छोड़ें।",
     "amortizationPeriod": "परिशोधन अवधि (आवश्यक)",

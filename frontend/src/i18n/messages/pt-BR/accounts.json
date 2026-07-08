@@ -255,7 +255,7 @@
     "canadianMortgageDesc": "Usa capitalização semestral para taxas fixas (obrigatório por lei no Canadá)",
     "variableRate": "Taxa Variável",
     "variableRateDesc": "A taxa pode variar durante o prazo (usa capitalização mensal)",
-    "variableRateLoanSettingsLink": "Registre as alterações de taxa nas <link>Configurações do Empréstimo</link>.",
+    "variableRateLoanDetailsLink": "Registre as alterações de taxa nos <link>detalhes do empréstimo</link>.",
     "termLength": "Duração do Prazo",
     "termLengthNoTerm": "Deixar em 0 anos e 0 meses para sem prazo.",
     "amortizationPeriod": "Período de Amortização (obrigatório)",

@@ -255,7 +255,7 @@
     "canadianMortgageDesc": "[XX-Uses semi-annual compounding for fixed rates (required by law in Canada)-XX]",
     "variableRate": "[XX-Variable Rate-XX]",
     "variableRateDesc": "[XX-Rate may change during the term (uses monthly compounding)-XX]",
-    "variableRateLoanSettingsLink": "[XX-Record rate changes in <link>Loan Settings</link>.-XX]",
+    "variableRateLoanDetailsLink": "[XX-Record rate changes in <link>Loan Details</link>.-XX]",
     "termLength": "[XX-Term Length-XX]",
     "termLengthNoTerm": "[XX-Leave at 0 years and 0 months for no term.-XX]",
     "amortizationPeriod": "[XX-Amortization Period (required)-XX]",

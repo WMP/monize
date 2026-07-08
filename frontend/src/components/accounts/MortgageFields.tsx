@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { UseFormRegister, UseFormSetValue, FieldErrors } from 'react-hook-form';
 import { Input } from '@/components/ui/Input';
@@ -25,7 +24,7 @@ interface MortgageFieldsProps {
   paymentStartDate: string | undefined;
   isCanadianMortgage: boolean | undefined;
   isVariableRate: boolean | undefined;
-  accountId?: string;
+  onViewLoanDetails?: () => void;
   termMonths: number | undefined;
   amortizationMonths: number | undefined;
   mortgagePaymentFrequency: MortgagePaymentFrequency | undefined;
@@ -47,7 +46,7 @@ export function MortgageFields({
   paymentStartDate,
   isCanadianMortgage,
   isVariableRate,
-  accountId,
+  onViewLoanDetails,
   termMonths,
   amortizationMonths,
   mortgagePaymentFrequency,
@@ -244,16 +243,17 @@ export function MortgageFields({
             <span className="block text-xs text-gray-500 dark:text-gray-400">
               {t('mortgageFields.variableRateDesc')}
             </span>
-            {isEditing && accountId && (
+            {isEditing && onViewLoanDetails && (
               <span className="block text-xs mt-1">
-                {t.rich('mortgageFields.variableRateLoanSettingsLink', {
+                {t.rich('mortgageFields.variableRateLoanDetailsLink', {
                   link: (chunks) => (
-                    <Link
-                      href={`/accounts/${accountId}#rate-history`}
+                    <button
+                      type="button"
+                      onClick={onViewLoanDetails}
                       className="font-medium underline text-purple-700 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-200"
                     >
                       {chunks}
-                    </Link>
+                    </button>
                   ),
                 })}
               </span>
