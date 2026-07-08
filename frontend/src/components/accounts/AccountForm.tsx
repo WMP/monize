@@ -483,6 +483,19 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
     }
   };
 
+  const handleViewLoanDetails = () => {
+    if (account) {
+      const accountId = account.id;
+      // Close the modal first so its history entry is cleaned up before
+      // navigating. Without this, the Modal's unmount cleanup calls
+      // history.back() which navigates away from the account detail page.
+      onCancel();
+      setTimeout(() => {
+        router.push(`/accounts/${accountId}#rate-history`);
+      }, 100);
+    }
+  };
+
   const [showExportModal, setShowExportModal] = useState(false);
 
   // Handle interest category selection (for loan/mortgage)
@@ -746,7 +759,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           paymentStartDate={watchedPaymentStartDate}
           isCanadianMortgage={watchedIsCanadianMortgage}
           isVariableRate={watchedIsVariableRate}
-          accountId={account?.id}
+          onViewLoanDetails={account ? handleViewLoanDetails : undefined}
           termMonths={watchedTermMonths}
           amortizationMonths={watchedAmortizationMonths}
           mortgagePaymentFrequency={watchedMortgagePaymentFrequency}

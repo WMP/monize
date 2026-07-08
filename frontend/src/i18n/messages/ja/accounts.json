@@ -255,7 +255,7 @@
     "canadianMortgageDesc": "固定金利に半年複利を使用します（カナダでは法律で義務付けられています）",
     "variableRate": "変動金利",
     "variableRateDesc": "期間中に金利が変動する可能性があります（月次複利を使用）",
-    "variableRateLoanSettingsLink": "<link>ローン設定</link>で金利変更を記録します。",
+    "variableRateLoanDetailsLink": "<link>ローン詳細</link>で金利変更を記録します。",
     "termLength": "ローン期間",
     "termLengthNoTerm": "期間なしの場合は0年0ヶ月のままにしてください。",
     "amortizationPeriod": "償却期間（必須）",

@@ -255,7 +255,7 @@
     "canadianMortgageDesc": "Utilise la composition semestrielle pour les taux fixes (obligatoire au Canada)",
     "variableRate": "Taux variable",
     "variableRateDesc": "Le taux peut changer durant la durée (utilise la composition mensuelle)",
-    "variableRateLoanSettingsLink": "Enregistrez les changements de taux dans les <link>Paramètres du prêt</link>.",
+    "variableRateLoanDetailsLink": "Enregistrez les changements de taux dans les <link>détails du prêt</link>.",
     "termLength": "Durée du terme",
     "termLengthNoTerm": "Laisser à 0 ans et 0 mois pour aucun terme.",
     "amortizationPeriod": "Période d'amortissement (obligatoire)",

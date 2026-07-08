@@ -255,7 +255,7 @@
     "canadianMortgageDesc": "Stosuje kapitalizację półroczną dla stałego oprocentowania (wymagane prawem w Kanadzie)",
     "variableRate": "Oprocentowanie zmienne",
     "variableRateDesc": "Oprocentowanie może się zmieniać w trakcie trwania (stosuje kapitalizację miesięczną)",
-    "variableRateLoanSettingsLink": "Zarejestruj zmiany oprocentowania w <link>Ustawieniach kredytu</link>.",
+    "variableRateLoanDetailsLink": "Zarejestruj zmiany oprocentowania w <link>szczegółach kredytu</link>.",
     "termLength": "Okres kredytowania",
     "termLengthNoTerm": "Pozostaw 0 lat i 0 miesięcy, aby nie ustawiać okresu.",
     "amortizationPeriod": "Okres amortyzacji (wymagane)",

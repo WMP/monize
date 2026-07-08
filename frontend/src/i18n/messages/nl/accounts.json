@@ -255,7 +255,7 @@
     "canadianMortgageDesc": "Gebruikt halfjaarlijkse samengestelde rente voor vaste tarieven (wettelijk vereist in Canada)",
     "variableRate": "Variabele rente",
     "variableRateDesc": "Tarief kan wijzigen tijdens de looptijd (gebruikt maandelijkse samengestelde rente)",
-    "variableRateLoanSettingsLink": "Registreer tariefwijzigingen in <link>Leninginstellingen</link>.",
+    "variableRateLoanDetailsLink": "Registreer tariefwijzigingen in <link>Leninggegevens</link>.",
     "termLength": "Looptijd",
     "termLengthNoTerm": "Laat op 0 jaar en 0 maanden voor geen looptijd.",
     "amortizationPeriod": "Afschrijvingstermijn (vereist)",

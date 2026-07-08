@@ -255,7 +255,7 @@
     "canadianMortgageDesc": "Verwendet halbjährliche Verzinsung für Festzinsen (gesetzlich vorgeschrieben in Kanada)",
     "variableRate": "Variabler Zinssatz",
     "variableRateDesc": "Der Zinssatz kann sich während der Laufzeit ändern (verwendet monatliche Verzinsung)",
-    "variableRateLoanSettingsLink": "Zinsänderungen in den <link>Kreditkonditionen</link> erfassen.",
+    "variableRateLoanDetailsLink": "Zinsänderungen in den <link>Kreditdetails</link> erfassen.",
     "termLength": "Laufzeit",
     "termLengthNoTerm": "Bei 0 Jahren und 0 Monaten belassen, wenn keine Laufzeit gilt.",
     "amortizationPeriod": "Tilgungszeitraum (erforderlich)",

@@ -255,7 +255,7 @@
     "canadianMortgageDesc": "Sử dụng lãi kép nửa năm cho lãi suất cố định (theo quy định pháp luật tại Canada)",
     "variableRate": "Lãi suất thay đổi",
     "variableRateDesc": "Lãi suất có thể thay đổi trong thời hạn (sử dụng lãi kép hàng tháng)",
-    "variableRateLoanSettingsLink": "Ghi lại các thay đổi lãi suất trong <link>Cài đặt Khoản vay</link>.",
+    "variableRateLoanDetailsLink": "Ghi lại các thay đổi lãi suất trong <link>chi tiết khoản vay</link>.",
     "termLength": "Thời hạn",
     "termLengthNoTerm": "Để 0 năm và 0 tháng nếu không có thời hạn.",
     "amortizationPeriod": "Thời gian khấu hao (bắt buộc)",

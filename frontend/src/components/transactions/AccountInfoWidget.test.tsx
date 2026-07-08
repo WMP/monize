@@ -102,7 +102,7 @@ describe('AccountInfoWidget', () => {
         onCollapse={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByText('View Loan Details'));
+    fireEvent.click(screen.getByText('View Details'));
     expect(mockPush).toHaveBeenCalledWith('/accounts/loan-9');
   });
 
@@ -114,7 +114,7 @@ describe('AccountInfoWidget', () => {
         onCollapse={vi.fn()}
       />,
     );
-    expect(screen.queryByText('View Loan Details')).not.toBeInTheDocument();
+    expect(screen.queryByText('View Details')).not.toBeInTheDocument();
   });
 
   it('renders optional fields and a closed badge when present', () => {

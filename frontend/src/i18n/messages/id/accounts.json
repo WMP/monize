@@ -255,7 +255,7 @@
     "canadianMortgageDesc": "Menggunakan bunga majemuk semi-tahunan untuk tarif tetap (diwajibkan oleh hukum di Kanada)",
     "variableRate": "Tarif Variabel",
     "variableRateDesc": "Tarif dapat berubah selama jangka waktu (menggunakan bunga majemuk bulanan)",
-    "variableRateLoanSettingsLink": "Catat perubahan tarif di <link>Pengaturan Pinjaman</link>.",
+    "variableRateLoanDetailsLink": "Catat perubahan tarif di <link>Detail Pinjaman</link>.",
     "termLength": "Panjang Jangka Waktu",
     "termLengthNoTerm": "Biarkan di 0 tahun dan 0 bulan jika tidak ada jangka waktu.",
     "amortizationPeriod": "Periode Amortisasi (wajib)",

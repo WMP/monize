@@ -293,6 +293,25 @@ describe('MortgageFields', () => {
     expect(screen.queryByText('Interest Category')).not.toBeInTheDocument();
   });
 
+  it('shows the Loan Details link when editing and onViewLoanDetails is provided', () => {
+    const onViewLoanDetails = vi.fn();
+    render(<MortgageFields {...defaultProps} isEditing={true} onViewLoanDetails={onViewLoanDetails} />);
+    const link = screen.getByRole('button', { name: 'Loan Details' });
+    expect(link).toBeInTheDocument();
+    fireEvent.click(link);
+    expect(onViewLoanDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the Loan Details link when not editing', () => {
+    render(<MortgageFields {...defaultProps} isEditing={false} onViewLoanDetails={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: 'Loan Details' })).not.toBeInTheDocument();
+  });
+
+  it('hides the Loan Details link when onViewLoanDetails is absent', () => {
+    render(<MortgageFields {...defaultProps} isEditing={true} />);
+    expect(screen.queryByRole('button', { name: 'Loan Details' })).not.toBeInTheDocument();
+  });
+
   it('does not call preview API when isEditing is true', async () => {
     render(<MortgageFields {...defaultProps}
       isEditing={true}

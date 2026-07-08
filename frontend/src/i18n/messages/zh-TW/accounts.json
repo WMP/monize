@@ -255,7 +255,7 @@
     "canadianMortgageDesc": "固定利率使用半年複利（加拿大法律規定）",
     "variableRate": "浮動利率",
     "variableRateDesc": "貸款期間利率可能變動（使用月複利）",
-    "variableRateLoanSettingsLink": "在<link>貸款設定</link>中記錄利率變更。",
+    "variableRateLoanDetailsLink": "在<link>貸款詳情</link>中記錄利率變更。",
     "termLength": "貸款期限",
     "termLengthNoTerm": "年和月均設為 0 表示無期限。",
     "amortizationPeriod": "攤還期（必填）",

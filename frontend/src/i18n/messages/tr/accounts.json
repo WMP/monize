@@ -255,7 +255,7 @@
     "canadianMortgageDesc": "Sabit faiz oranları için yarı yıllık bileşik faiz kullanır (Kanada'da yasal zorunluluk)",
     "variableRate": "Değişken Faiz",
     "variableRateDesc": "Faiz oranı vade süresince değişebilir (aylık bileşik faiz kullanır)",
-    "variableRateLoanSettingsLink": "Oran değişikliklerini <link>Kredi Ayarları</link>'nda kaydedin.",
+    "variableRateLoanDetailsLink": "Oran değişikliklerini <link>Kredi Ayrıntıları</link>'nda kaydedin.",
     "termLength": "Vade Süresi",
     "termLengthNoTerm": "Vade yoksa 0 yıl ve 0 ay bırakın.",
     "amortizationPeriod": "Amortisman Süresi (zorunlu)",
