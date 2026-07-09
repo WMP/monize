@@ -76,6 +76,12 @@ export interface TransactionsGetAllParams {
   amountTo?: number;
   tagIds?: string[];
   statuses?: TransactionStatus[];
+  /** KEY:VALUE tag filter: the key to filter on (e.g. "country"). */
+  tagKey?: string;
+  /** KEY:VALUE tag filter operator. */
+  tagKeyOp?: 'hasValue' | 'noValue' | 'contains' | 'notContains';
+  /** Substring term for the contains / notContains operators. */
+  tagKeyValue?: string;
 }
 
 export const transactionsApi = {
@@ -100,6 +106,9 @@ export const transactionsApi = {
       amountFrom: params?.amountFrom,
       amountTo: params?.amountTo,
       statuses: params?.statuses && params.statuses.length > 0 ? params.statuses.join(',') : undefined,
+      tagKey: params?.tagKey || undefined,
+      tagKeyOp: params?.tagKey ? params?.tagKeyOp : undefined,
+      tagKeyValue: params?.tagKey ? params?.tagKeyValue || undefined : undefined,
     };
 
     const response = await apiClient.get<PaginatedTransactions>('/transactions', {

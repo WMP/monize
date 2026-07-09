@@ -103,6 +103,12 @@ describe('TransactionFilterPanel', () => {
     tagFilterOptions: [],
     filterStatuses: [] as never[],
     setFilterStatuses: vi.fn(),
+    filterTagKey: '',
+    filterTagKeyOp: 'hasValue' as const,
+    filterTagKeyValue: '',
+    setFilterTagKey: vi.fn(),
+    setFilterTagKeyOp: vi.fn(),
+    setFilterTagKeyValue: vi.fn(),
     onClearFilters: vi.fn(),
   };
 
@@ -152,6 +158,31 @@ describe('TransactionFilterPanel', () => {
     const clearButton = screen.getByText('Clear');
     fireEvent.click(clearButton);
     expect(defaultProps.onClearFilters).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the tag key filter only when key:value tags exist', () => {
+    const { rerender } = render(
+      <TransactionFilterPanel
+        {...defaultProps}
+        filtersExpanded={true}
+        tagFilterOptions={[{ value: 't1', label: 'important' }]}
+      />,
+    );
+    // Plain tags -> no key filter offered.
+    expect(screen.queryByText('Tag key')).not.toBeInTheDocument();
+
+    rerender(
+      <TransactionFilterPanel
+        {...defaultProps}
+        filtersExpanded={true}
+        tagFilterOptions={[{ value: 't2', label: 'country:usa' }]}
+      />,
+    );
+    // A key:value tag -> the key filter appears, with the key as an option.
+    expect(screen.getByText('Tag key')).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'country' }),
+    ).toBeInTheDocument();
   });
 
   it('renders favourite account quick select buttons', () => {
