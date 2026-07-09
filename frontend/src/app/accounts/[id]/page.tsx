@@ -11,6 +11,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AccountDetailShell } from '@/components/accounts/shared/AccountDetailShell';
 import { LoanDetailView } from '@/components/accounts/loan-detail/LoanDetailView';
 import { LineOfCreditView } from '@/components/accounts/loan-detail/LineOfCreditView';
+import { CreditCardDetailView } from '@/components/accounts/credit-card-detail/CreditCardDetailView';
 import { useOnUndoRedo } from '@/hooks/useOnUndoRedo';
 import { useOnAiAction } from '@/hooks/useOnAiAction';
 import { accountsApi } from '@/lib/accounts';
@@ -29,12 +30,13 @@ import type { LoanRateChange } from '@/types/loan-rate-change';
  * here. A type absent from the registry has no dedicated page yet and
  * redirects to its transaction register.
  */
-type DetailViewKind = 'loan' | 'lineOfCredit';
+type DetailViewKind = 'loan' | 'lineOfCredit' | 'creditCard';
 
 const DETAIL_VIEW_REGISTRY: Partial<Record<AccountType, DetailViewKind>> = {
   LOAN: 'loan',
   MORTGAGE: 'loan',
   LINE_OF_CREDIT: 'lineOfCredit',
+  CREDIT_CARD: 'creditCard',
 };
 
 function resolveDetailView(type: AccountType): DetailViewKind | null {
@@ -73,9 +75,10 @@ function AccountDetailContent() {
     setError(null);
     try {
       const accountData = await accountsApi.getById(accountId);
-      // A revolving line of credit uses the balance-history view, which loads
-      // its own daily balances; only the amortizing view needs transactions.
-      if (accountData.accountType === 'LINE_OF_CREDIT') {
+      // Only the amortizing loan/mortgage view needs transaction history and
+      // scenarios; the line-of-credit and credit-card views load their own
+      // analytics, so just resolve the account for them.
+      if (resolveDetailView(accountData.accountType) !== 'loan') {
         setAccount(accountData);
         setTransactions([]);
         setScenarios([]);
@@ -182,9 +185,16 @@ function AccountDetailContent() {
         <AccountDetailShell
           account={account}
           onViewTransactions={() => router.push(`/transactions?accountId=${account.id}`)}
+          onReconcile={
+            detailView === 'creditCard'
+              ? () => router.push(`/reconcile?accountId=${account.id}`)
+              : undefined
+          }
           onBack={() => router.push('/accounts')}
         >
-          {isRevolving ? (
+          {detailView === 'creditCard' ? (
+            <CreditCardDetailView account={account} />
+          ) : isRevolving ? (
             <LineOfCreditView account={account} />
           ) : (
             <LoanDetailView

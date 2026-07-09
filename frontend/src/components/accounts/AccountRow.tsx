@@ -35,7 +35,12 @@ export interface AccountActionHandlers {
  * Account types with a dedicated detail page (the "Details" row action). Grows
  * as per-type detail views land; today it is the debt accounts.
  */
-export const DETAIL_ACCOUNT_TYPES: AccountType[] = ['LOAN', 'MORTGAGE', 'LINE_OF_CREDIT'];
+export const DETAIL_ACCOUNT_TYPES: AccountType[] = [
+  'LOAN',
+  'MORTGAGE',
+  'LINE_OF_CREDIT',
+  'CREDIT_CARD',
+];
 
 /**
  * Builds the standard row actions for an account. Shared by the desktop
