@@ -2,7 +2,7 @@
   "summary": {
     "currentBalance": "[XX-Current Balance-XX]",
     "projectedBalance": "[XX-Projected Balance-XX]",
-    "projectedNote": "[XX-Includes upcoming transactions-XX]",
+    "projectedNote": "[XX-In 90 days-XX]",
     "moneyIn": "[XX-Money In-XX]",
     "moneyOut": "[XX-Money Out-XX]",
     "thisMonth": "[XX-This month-XX]",
