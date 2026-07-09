@@ -179,7 +179,8 @@
   },
   "portfolioValue": {
     "title": "Valore del portafoglio",
-    "empty": "Nessuno storico investimenti da mostrare per ora."
+    "empty": "Nessuno storico investimenti da mostrare per ora.",
+    "refresh": "Aggiorna valore attuale"
   },
   "spendingByPayee": {
     "title": "Uscite per beneficiario",

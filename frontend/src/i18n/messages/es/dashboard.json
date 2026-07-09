@@ -179,7 +179,8 @@
   },
   "portfolioValue": {
     "title": "Valor de la cartera",
-    "empty": "Aún no hay historial de inversiones para mostrar."
+    "empty": "Aún no hay historial de inversiones para mostrar.",
+    "refresh": "Actualizar valor actual"
   },
   "spendingByPayee": {
     "title": "Gastos por beneficiario",

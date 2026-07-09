@@ -179,7 +179,8 @@
   },
   "portfolioValue": {
     "title": "ポートフォリオ価値",
-    "empty": "表示する投資履歴がまだありません。"
+    "empty": "表示する投資履歴がまだありません。",
+    "refresh": "現在の価値を更新"
   },
   "spendingByPayee": {
     "title": "支払先別支出",

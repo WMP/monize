@@ -179,7 +179,8 @@
   },
   "portfolioValue": {
     "title": "Nilai Portofolio",
-    "empty": "Belum ada riwayat investasi untuk ditampilkan."
+    "empty": "Belum ada riwayat investasi untuk ditampilkan.",
+    "refresh": "Segarkan nilai saat ini"
   },
   "spendingByPayee": {
     "title": "Pengeluaran per Penerima",

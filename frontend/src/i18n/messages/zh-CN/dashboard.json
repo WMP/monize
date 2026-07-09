@@ -179,7 +179,8 @@
   },
   "portfolioValue": {
     "title": "投资组合价值",
-    "empty": "暂无投资历史可显示。"
+    "empty": "暂无投资历史可显示。",
+    "refresh": "刷新当前价值"
   },
   "spendingByPayee": {
     "title": "按收款人支出",

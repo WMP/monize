@@ -179,7 +179,8 @@
   },
   "portfolioValue": {
     "title": "投資組合價值",
-    "empty": "尚無投資歷史可顯示。"
+    "empty": "尚無投資歷史可顯示。",
+    "refresh": "重新整理目前價值"
   },
   "spendingByPayee": {
     "title": "依收款人分析支出",

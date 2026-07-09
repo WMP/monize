@@ -179,7 +179,8 @@
   },
   "portfolioValue": {
     "title": "Portfolio-Wert",
-    "empty": "Noch keine Anlagehistorie vorhanden."
+    "empty": "Noch keine Anlagehistorie vorhanden.",
+    "refresh": "Aktuellen Wert aktualisieren"
   },
   "spendingByPayee": {
     "title": "Ausgaben nach Zahlungsempfänger",

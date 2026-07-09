@@ -179,7 +179,8 @@
   },
   "portfolioValue": {
     "title": "Portefeuillewaarde",
-    "empty": "Nog geen beleggingsgeschiedenis om te tonen."
+    "empty": "Nog geen beleggingsgeschiedenis om te tonen.",
+    "refresh": "Huidige waarde vernieuwen"
   },
   "spendingByPayee": {
     "title": "Uitgaven per begunstigde",

@@ -179,7 +179,8 @@
   },
   "portfolioValue": {
     "title": "Valeur du portefeuille",
-    "empty": "Aucun historique d'investissement à afficher pour l'instant."
+    "empty": "Aucun historique d'investissement à afficher pour l'instant.",
+    "refresh": "Actualiser la valeur actuelle"
   },
   "spendingByPayee": {
     "title": "Dépenses par bénéficiaire",

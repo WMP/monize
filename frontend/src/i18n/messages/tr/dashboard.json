@@ -179,7 +179,8 @@
   },
   "portfolioValue": {
     "title": "Portföy Değeri",
-    "empty": "Henüz gösterilecek yatırım geçmişi yok."
+    "empty": "Henüz gösterilecek yatırım geçmişi yok.",
+    "refresh": "Güncel değeri yenile"
   },
   "spendingByPayee": {
     "title": "Alacaklıya Göre Harcama",

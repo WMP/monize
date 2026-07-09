@@ -179,7 +179,8 @@
   },
   "portfolioValue": {
     "title": "Giá trị danh mục đầu tư",
-    "empty": "Chưa có lịch sử đầu tư để hiển thị."
+    "empty": "Chưa có lịch sử đầu tư để hiển thị.",
+    "refresh": "Làm mới giá trị hiện tại"
   },
   "spendingByPayee": {
     "title": "Chi tiêu theo người nhận",

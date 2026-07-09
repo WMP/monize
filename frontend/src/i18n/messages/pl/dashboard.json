@@ -179,7 +179,8 @@
   },
   "portfolioValue": {
     "title": "Wartość portfela",
-    "empty": "Brak historii inwestycji do wyświetlenia."
+    "empty": "Brak historii inwestycji do wyświetlenia.",
+    "refresh": "Odśwież bieżącą wartość"
   },
   "spendingByPayee": {
     "title": "Wydatki według odbiorcy",

@@ -179,7 +179,8 @@
   },
   "portfolioValue": {
     "title": "포트폴리오 가치",
-    "empty": "아직 표시할 투자 내역이 없습니다."
+    "empty": "아직 표시할 투자 내역이 없습니다.",
+    "refresh": "현재 가치 새로고침"
   },
   "spendingByPayee": {
     "title": "수취인별 지출",
