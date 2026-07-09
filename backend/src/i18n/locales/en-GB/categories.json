@@ -1,0 +1,12 @@
+{
+  "defaults": {
+    "automobile": {
+      "sub": {
+        "licencing": "Licensing"
+      }
+    },
+    "licencingFees": {
+      "name": "Licensing Fees"
+    }
+  }
+}

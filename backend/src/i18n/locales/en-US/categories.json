@@ -1,0 +1,22 @@
+{
+  "defaults": {
+    "automobile": {
+      "sub": {
+        "licencing": "Licensing"
+      }
+    },
+    "childcare": {
+      "sub": {
+        "counselling": "Counseling"
+      }
+    },
+    "healthcare": {
+      "sub": {
+        "counselling": "Counseling"
+      }
+    },
+    "licencingFees": {
+      "name": "Licensing Fees"
+    }
+  }
+}

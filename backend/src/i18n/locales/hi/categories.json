@@ -1,0 +1,369 @@
+{
+  "defaults": {
+    "investmentIncome": {
+      "name": "निवेश आय",
+      "sub": {
+        "capitalGains": "पूंजीगत लाभ",
+        "interest": "ब्याज",
+        "respGrant": "RESP अनुदान"
+      }
+    },
+    "otherIncome": {
+      "name": "अन्य आय",
+      "sub": {
+        "blogging": "ब्लॉगिंग",
+        "businessReimbursement": "व्यावसायिक प्रतिपूर्ति",
+        "cashback": "कैशबैक",
+        "consulting": "परामर्श",
+        "creditCardReward": "क्रेडिट कार्ड इनाम",
+        "employeeStockOption": "कर्मचारी स्टॉक विकल्प",
+        "giftsReceived": "प्राप्त उपहार",
+        "incomeTaxRefund": "आयकर वापसी",
+        "rentalIncome": "किराया आय",
+        "stateLocalTaxRefund": "राज्य एवं स्थानीय कर वापसी",
+        "transferBonus": "ट्रांसफर बोनस",
+        "tutoring": "ट्यूशन"
+      }
+    },
+    "retirementIncome": {
+      "name": "सेवानिवृत्ति आय",
+      "sub": {
+        "cppQppBenefits": "CPP/QPP लाभ"
+      }
+    },
+    "wagesSalary": {
+      "name": "मजदूरी एवं वेतन",
+      "sub": {
+        "bonus": "बोनस",
+        "commission": "कमीशन",
+        "employerMatching": "नियोक्ता मिलान अंशदान",
+        "grossPay": "सकल वेतन",
+        "netPay": "शुद्ध वेतन",
+        "overtime": "ओवरटाइम",
+        "vacationPay": "अवकाश वेतन"
+      }
+    },
+    "automobile": {
+      "name": "वाहन",
+      "sub": {
+        "accessories": "सहायक उपकरण",
+        "carPayment": "कार किस्त",
+        "cleaning": "सफाई",
+        "fines": "जुर्माना",
+        "gasoline": "पेट्रोल",
+        "licencing": "लाइसेंसिंग",
+        "maintenance": "रखरखाव",
+        "parking": "पार्किंग",
+        "parts": "पुर्जे",
+        "tollCharges": "टोल शुल्क"
+      }
+    },
+    "bankFees": {
+      "name": "बैंक शुल्क",
+      "sub": {
+        "atm": "ATM",
+        "annual": "वार्षिक",
+        "nsf": "अपर्याप्त राशि (NSF)",
+        "other": "अन्य",
+        "overdraft": "ओवरड्राफ्ट",
+        "service": "सेवा"
+      }
+    },
+    "bills": {
+      "name": "बिल",
+      "sub": {
+        "accounting": "लेखांकन",
+        "cableTv": "केबल टीवी",
+        "cellPhone": "मोबाइल फोन",
+        "electricity": "बिजली",
+        "internet": "इंटरनेट",
+        "lawyer": "वकील",
+        "naturalGas": "प्राकृतिक गैस",
+        "satelliteRadio": "सैटेलाइट रेडियो",
+        "streaming": "स्ट्रीमिंग",
+        "telephone": "टेलीफोन",
+        "waterSewer": "पानी एवं सीवर",
+        "waterHeater": "वॉटर हीटर"
+      }
+    },
+    "business": {
+      "name": "व्यवसाय",
+      "sub": {
+        "airfare": "हवाई किराया",
+        "alcohol": "शराब",
+        "bankFees": "बैंक शुल्क",
+        "carRental": "कार किराया",
+        "cellPhone": "मोबाइल फोन",
+        "computerHardware": "कंप्यूटर हार्डवेयर",
+        "computerSoftware": "कंप्यूटर सॉफ्टवेयर",
+        "diningOut": "बाहर भोजन",
+        "education": "शिक्षा",
+        "gasoline": "पेट्रोल",
+        "internet": "इंटरनेट",
+        "lodging": "आवास",
+        "mileage": "माइलेज",
+        "miscellaneous": "विविध",
+        "parking": "पार्किंग",
+        "recreation": "मनोरंजन",
+        "tollCharges": "टोल शुल्क",
+        "transit": "परिवहन"
+      }
+    },
+    "cashWithdrawal": {
+      "name": "नकद निकासी",
+      "sub": {
+        "barbadianDollars": "बारबाडियन डॉलर",
+        "bermudianDollars": "बरमूडियन डॉलर",
+        "canadianDollars": "कनाडाई डॉलर",
+        "costaRicanColones": "कोस्टा रिकन कोलोन",
+        "croatianKunas": "क्रोएशियाई कुना",
+        "dominicanRepublicPesos": "डोमिनिकन गणराज्य पेसो",
+        "easternCaribbeanDollars": "पूर्वी कैरेबियाई डॉलर",
+        "euros": "यूरो",
+        "forints": "फोरिंट",
+        "honduranLempiras": "होंडुरन लेम्पिरा",
+        "hongKongDollars": "हांगकांग डॉलर",
+        "indonesianRupiah": "इंडोनेशियाई रुपिया",
+        "malaysianRinggits": "मलेशियाई रिंगित",
+        "mexicanPesos": "मैक्सिकन पेसो",
+        "peruvianSoles": "पेरूवियन सोल",
+        "singaporeDollars": "सिंगापुर डॉलर",
+        "thaiBaht": "थाई बाहत",
+        "usDollars": "अमेरिकी डॉलर"
+      }
+    },
+    "charitableDonations": {
+      "name": "धर्मार्थ दान",
+      "sub": {}
+    },
+    "childcare": {
+      "name": "शिशु देखभाल",
+      "sub": {
+        "activities": "गतिविधियाँ",
+        "allowance": "जेबखर्च",
+        "babysitting": "बच्चों की देखरेख",
+        "books": "किताबें",
+        "clothing": "कपड़े",
+        "counselling": "परामर्श",
+        "daycare": "डे केयर",
+        "entertainment": "मनोरंजन",
+        "fees": "शुल्क",
+        "furnishings": "साज-सज्जा",
+        "gifts": "उपहार",
+        "haircut": "बाल कटाई",
+        "medication": "दवाइयाँ",
+        "shoes": "जूते",
+        "sportingGoods": "खेल सामग्री",
+        "sports": "खेल",
+        "supplies": "सामग्री",
+        "toiletries": "प्रसाधन सामग्री",
+        "toysGames": "खिलौने एवं खेल"
+      }
+    },
+    "clothing": {
+      "name": "कपड़े",
+      "sub": {
+        "accessories": "सहायक उपकरण",
+        "clothes": "पोशाक",
+        "coats": "कोट",
+        "shoes": "जूते"
+      }
+    },
+    "computer": {
+      "name": "कंप्यूटर",
+      "sub": {
+        "hardware": "हार्डवेयर",
+        "software": "सॉफ्टवेयर",
+        "webHosting": "वेब होस्टिंग"
+      }
+    },
+    "education": {
+      "name": "शिक्षा",
+      "sub": {
+        "books": "किताबें",
+        "fees": "शुल्क",
+        "tuition": "ट्यूशन फीस"
+      }
+    },
+    "food": {
+      "name": "भोजन",
+      "sub": {
+        "alcohol": "शराब",
+        "cannabis": "कैनबिस",
+        "diningOut": "बाहर भोजन",
+        "groceries": "किराना"
+      }
+    },
+    "furnishings": {
+      "name": "साज-सज्जा",
+      "sub": {
+        "accessories": "सहायक उपकरण",
+        "appliances": "उपकरण",
+        "basement": "बेसमेंट",
+        "bathroom": "बाथरूम",
+        "bedroom": "शयनकक्ष",
+        "diningRoom": "भोजन कक्ष",
+        "dishes": "बर्तन",
+        "kitchen": "रसोई",
+        "livingRoom": "बैठक कक्ष",
+        "office": "कार्यालय",
+        "outdoor": "बाहरी",
+        "plants": "पौधे"
+      }
+    },
+    "gifts": {
+      "name": "उपहार",
+      "sub": {
+        "anniversary": "वर्षगांठ",
+        "birthday": "जन्मदिन",
+        "cards": "कार्ड",
+        "christmas": "क्रिसमस",
+        "flowers": "फूल",
+        "mothersDay": "मातृ दिवस",
+        "respContribution": "RESP अंशदान",
+        "valentines": "वैलेंटाइन",
+        "wedding": "विवाह"
+      }
+    },
+    "healthcare": {
+      "name": "स्वास्थ्य सेवा",
+      "sub": {
+        "counselling": "परामर्श",
+        "dental": "दंत चिकित्सा",
+        "eyecare": "नेत्र देखभाल",
+        "fertility": "प्रजनन उपचार",
+        "fitness": "फिटनेस",
+        "hospital": "अस्पताल",
+        "massage": "मालिश",
+        "medication": "दवाइयाँ",
+        "physician": "चिकित्सक",
+        "physiotherapy": "फिजियोथेरेपी",
+        "prescriptions": "नुस्खे",
+        "supplies": "सामग्री"
+      }
+    },
+    "housing": {
+      "name": "आवास",
+      "sub": {
+        "fees": "शुल्क",
+        "gardenSupplies": "बागवानी सामग्री",
+        "homeImprovement": "गृह सुधार",
+        "maintenance": "रखरखाव",
+        "mortgageInterest": "बंधक ब्याज",
+        "mortgagePrincipal": "बंधक मूलधन",
+        "rent": "किराया",
+        "supplies": "सामग्री",
+        "tools": "औज़ार"
+      }
+    },
+    "insurance": {
+      "name": "बीमा",
+      "sub": {
+        "automobile": "वाहन",
+        "disability": "विकलांगता",
+        "health": "स्वास्थ्य",
+        "homeownerRenter": "गृहस्वामी/किरायेदार",
+        "life": "जीवन",
+        "travel": "यात्रा"
+      }
+    },
+    "interestExpense": {
+      "name": "ब्याज व्यय",
+      "sub": {}
+    },
+    "leisure": {
+      "name": "मनोरंजन",
+      "sub": {
+        "booksMagazines": "किताबें एवं पत्रिकाएँ",
+        "cd": "CD",
+        "cameraFilm": "कैमरा/फिल्म",
+        "camping": "कैंपिंग",
+        "coverCharge": "प्रवेश शुल्क",
+        "culturalEvents": "सांस्कृतिक कार्यक्रम",
+        "dvd": "DVD",
+        "electronics": "इलेक्ट्रॉनिक्स",
+        "entertaining": "मेहमाननवाजी",
+        "entertainment": "मनोरंजन",
+        "fees": "शुल्क",
+        "gambling": "जुआ",
+        "lps": "LP रिकॉर्ड",
+        "movies": "फिल्में",
+        "newspaper": "समाचार पत्र",
+        "sportingEvents": "खेल आयोजन",
+        "sportingGoods": "खेल सामग्री",
+        "sports": "खेल",
+        "toysGames": "खिलौने एवं खेल",
+        "transit": "परिवहन",
+        "vhs": "VHS",
+        "videoRentals": "वीडियो किराया"
+      }
+    },
+    "licencingFees": {
+      "name": "लाइसेंस शुल्क",
+      "sub": {}
+    },
+    "loan": {
+      "name": "ऋण",
+      "sub": {
+        "loanInterest": "ऋण ब्याज",
+        "loanPrincipal": "ऋण मूलधन",
+        "mortgageInterest": "बंधक ब्याज"
+      }
+    },
+    "miscellaneous": {
+      "name": "विविध",
+      "sub": {
+        "postage": "डाक शुल्क",
+        "postcards": "पोस्टकार्ड",
+        "tools": "औज़ार",
+        "transit": "परिवहन"
+      }
+    },
+    "personalCare": {
+      "name": "व्यक्तिगत देखभाल",
+      "sub": {
+        "dryCleaning": "ड्राई क्लीनिंग",
+        "haircut": "बाल कटाई",
+        "laundry": "कपड़े धुलाई",
+        "pedicure": "पेडीक्योर",
+        "toiletries": "प्रसाधन सामग्री"
+      }
+    },
+    "petCare": {
+      "name": "पालतू पशु देखभाल",
+      "sub": {
+        "food": "भोजन",
+        "supplies": "सामग्री",
+        "veterinarian": "पशु चिकित्सक"
+      }
+    },
+    "taxes": {
+      "name": "कर",
+      "sub": {
+        "cppQppContributions": "CPP/QPP अंशदान",
+        "eiPremiums": "EI प्रीमियम",
+        "federalIncome": "संघीय आयकर",
+        "goodsServices": "वस्तु एवं सेवा कर",
+        "other": "अन्य",
+        "property": "संपत्ति कर",
+        "realEstate": "अचल संपत्ति कर",
+        "stateProvincial": "राज्य/प्रांतीय",
+        "unionDues": "यूनियन शुल्क"
+      }
+    },
+    "vacation": {
+      "name": "छुट्टी",
+      "sub": {
+        "airfare": "हवाई किराया",
+        "carRental": "कार किराया",
+        "entertainment": "मनोरंजन",
+        "gasoline": "पेट्रोल",
+        "lodging": "आवास",
+        "miscellaneous": "विविध",
+        "parking": "पार्किंग",
+        "transit": "परिवहन",
+        "travel": "यात्रा"
+      }
+    }
+  }
+}

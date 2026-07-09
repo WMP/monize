@@ -10,6 +10,8 @@ import { TransactionSplit } from "../transactions/entities/transaction-split.ent
 import { Payee } from "../payees/entities/payee.entity";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
 import { ScheduledTransactionSplit } from "../scheduled-transactions/entities/scheduled-transaction-split.entity";
+import { UserPreference } from "../users/entities/user-preference.entity";
+import { I18nService } from "nestjs-i18n";
 
 describe("CategoriesService", () => {
   let service: CategoriesService;
@@ -19,6 +21,7 @@ describe("CategoriesService", () => {
   let payeesRepository: Record<string, jest.Mock>;
   let scheduledTransactionsRepository: Record<string, jest.Mock>;
   let scheduledSplitsRepository: Record<string, jest.Mock>;
+  let preferencesRepository: Record<string, jest.Mock>;
   let mockDataSource: Record<string, jest.Mock>;
 
   const mockCategory: Category = {
@@ -119,6 +122,10 @@ describe("CategoriesService", () => {
       createQueryBuilder: jest.fn(() => createMockQueryBuilder()),
     };
 
+    preferencesRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+
     mockDataSource = {
       createQueryRunner: jest.fn().mockReturnValue({
         connect: jest.fn(),
@@ -179,10 +186,23 @@ describe("CategoriesService", () => {
           provide: getRepositoryToken(ScheduledTransactionSplit),
           useValue: scheduledSplitsRepository,
         },
+        {
+          provide: getRepositoryToken(UserPreference),
+          useValue: preferencesRepository,
+        },
         { provide: DataSource, useValue: mockDataSource },
         {
           provide: ActionHistoryService,
           useValue: { record: jest.fn().mockResolvedValue(null) },
+        },
+        {
+          provide: I18nService,
+          useValue: {
+            translate: jest.fn(
+              (_key: string, opts?: { defaultValue?: string }) =>
+                opts?.defaultValue,
+            ),
+          },
         },
       ],
     }).compile();

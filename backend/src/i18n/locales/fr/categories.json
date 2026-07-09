@@ -1,0 +1,369 @@
+{
+  "defaults": {
+    "investmentIncome": {
+      "name": "Revenus de placement",
+      "sub": {
+        "capitalGains": "Gains en capital",
+        "interest": "Intérêts",
+        "respGrant": "Subvention REEE"
+      }
+    },
+    "otherIncome": {
+      "name": "Autres revenus",
+      "sub": {
+        "blogging": "Blogue",
+        "businessReimbursement": "Remboursement professionnel",
+        "cashback": "Remise en argent",
+        "consulting": "Conseil",
+        "creditCardReward": "Récompense de carte de crédit",
+        "employeeStockOption": "Option d'achat d'actions",
+        "giftsReceived": "Cadeaux reçus",
+        "incomeTaxRefund": "Remboursement d'impôt sur le revenu",
+        "rentalIncome": "Revenus locatifs",
+        "stateLocalTaxRefund": "Remboursement d'impôts locaux",
+        "transferBonus": "Prime de transfert",
+        "tutoring": "Cours particuliers"
+      }
+    },
+    "retirementIncome": {
+      "name": "Revenus de retraite",
+      "sub": {
+        "cppQppBenefits": "Prestations du RPC/RRQ"
+      }
+    },
+    "wagesSalary": {
+      "name": "Traitements et salaires",
+      "sub": {
+        "bonus": "Prime",
+        "commission": "Commission",
+        "employerMatching": "Cotisation patronale",
+        "grossPay": "Salaire brut",
+        "netPay": "Salaire net",
+        "overtime": "Heures supplémentaires",
+        "vacationPay": "Paie de vacances"
+      }
+    },
+    "automobile": {
+      "name": "Automobile",
+      "sub": {
+        "accessories": "Accessoires",
+        "carPayment": "Paiement de voiture",
+        "cleaning": "Nettoyage",
+        "fines": "Amendes",
+        "gasoline": "Essence",
+        "licencing": "Immatriculation",
+        "maintenance": "Entretien",
+        "parking": "Stationnement",
+        "parts": "Pièces",
+        "tollCharges": "Frais de péage"
+      }
+    },
+    "bankFees": {
+      "name": "Frais bancaires",
+      "sub": {
+        "atm": "Guichet automatique",
+        "annual": "Annuels",
+        "nsf": "Chèque sans provision",
+        "other": "Autres",
+        "overdraft": "Découvert",
+        "service": "Service"
+      }
+    },
+    "bills": {
+      "name": "Factures",
+      "sub": {
+        "accounting": "Comptabilité",
+        "cableTv": "Télévision par câble",
+        "cellPhone": "Téléphone cellulaire",
+        "electricity": "Électricité",
+        "internet": "Internet",
+        "lawyer": "Avocat",
+        "naturalGas": "Gaz naturel",
+        "satelliteRadio": "Radio satellite",
+        "streaming": "Diffusion en continu",
+        "telephone": "Téléphone",
+        "waterSewer": "Eau et égouts",
+        "waterHeater": "Chauffe-eau"
+      }
+    },
+    "business": {
+      "name": "Affaires",
+      "sub": {
+        "airfare": "Billet d'avion",
+        "alcohol": "Alcool",
+        "bankFees": "Frais bancaires",
+        "carRental": "Location de voiture",
+        "cellPhone": "Téléphone cellulaire",
+        "computerHardware": "Matériel informatique",
+        "computerSoftware": "Logiciels",
+        "diningOut": "Restaurant",
+        "education": "Formation",
+        "gasoline": "Essence",
+        "internet": "Internet",
+        "lodging": "Hébergement",
+        "mileage": "Kilométrage",
+        "miscellaneous": "Divers",
+        "parking": "Stationnement",
+        "recreation": "Loisirs",
+        "tollCharges": "Frais de péage",
+        "transit": "Transport en commun"
+      }
+    },
+    "cashWithdrawal": {
+      "name": "Retrait d'espèces",
+      "sub": {
+        "barbadianDollars": "Dollars barbadiens",
+        "bermudianDollars": "Dollars bermudiens",
+        "canadianDollars": "Dollars canadiens",
+        "costaRicanColones": "Colóns costariciens",
+        "croatianKunas": "Kunas croates",
+        "dominicanRepublicPesos": "Pesos dominicains",
+        "easternCaribbeanDollars": "Dollars des Caraïbes orientales",
+        "euros": "Euros",
+        "forints": "Forints",
+        "honduranLempiras": "Lempiras honduriens",
+        "hongKongDollars": "Dollars de Hong Kong",
+        "indonesianRupiah": "Roupies indonésiennes",
+        "malaysianRinggits": "Ringgits malaisiens",
+        "mexicanPesos": "Pesos mexicains",
+        "peruvianSoles": "Sols péruviens",
+        "singaporeDollars": "Dollars de Singapour",
+        "thaiBaht": "Bahts thaïlandais",
+        "usDollars": "Dollars américains"
+      }
+    },
+    "charitableDonations": {
+      "name": "Dons de bienfaisance",
+      "sub": {}
+    },
+    "childcare": {
+      "name": "Garde d'enfants",
+      "sub": {
+        "activities": "Activités",
+        "allowance": "Argent de poche",
+        "babysitting": "Gardiennage",
+        "books": "Livres",
+        "clothing": "Vêtements",
+        "counselling": "Counseling",
+        "daycare": "Garderie",
+        "entertainment": "Divertissement",
+        "fees": "Frais",
+        "furnishings": "Ameublement",
+        "gifts": "Cadeaux",
+        "haircut": "Coupe de cheveux",
+        "medication": "Médicaments",
+        "shoes": "Chaussures",
+        "sportingGoods": "Articles de sport",
+        "sports": "Sports",
+        "supplies": "Fournitures",
+        "toiletries": "Articles de toilette",
+        "toysGames": "Jouets et jeux"
+      }
+    },
+    "clothing": {
+      "name": "Vêtements",
+      "sub": {
+        "accessories": "Accessoires",
+        "clothes": "Habits",
+        "coats": "Manteaux",
+        "shoes": "Chaussures"
+      }
+    },
+    "computer": {
+      "name": "Informatique",
+      "sub": {
+        "hardware": "Matériel",
+        "software": "Logiciels",
+        "webHosting": "Hébergement Web"
+      }
+    },
+    "education": {
+      "name": "Éducation",
+      "sub": {
+        "books": "Livres",
+        "fees": "Frais",
+        "tuition": "Frais de scolarité"
+      }
+    },
+    "food": {
+      "name": "Alimentation",
+      "sub": {
+        "alcohol": "Alcool",
+        "cannabis": "Cannabis",
+        "diningOut": "Restaurant",
+        "groceries": "Épicerie"
+      }
+    },
+    "furnishings": {
+      "name": "Ameublement",
+      "sub": {
+        "accessories": "Accessoires",
+        "appliances": "Électroménagers",
+        "basement": "Sous-sol",
+        "bathroom": "Salle de bain",
+        "bedroom": "Chambre",
+        "diningRoom": "Salle à manger",
+        "dishes": "Vaisselle",
+        "kitchen": "Cuisine",
+        "livingRoom": "Salon",
+        "office": "Bureau",
+        "outdoor": "Extérieur",
+        "plants": "Plantes"
+      }
+    },
+    "gifts": {
+      "name": "Cadeaux",
+      "sub": {
+        "anniversary": "Anniversaire de mariage",
+        "birthday": "Anniversaire",
+        "cards": "Cartes",
+        "christmas": "Noël",
+        "flowers": "Fleurs",
+        "mothersDay": "Fête des Mères",
+        "respContribution": "Cotisation REEE",
+        "valentines": "Saint-Valentin",
+        "wedding": "Mariage"
+      }
+    },
+    "healthcare": {
+      "name": "Soins de santé",
+      "sub": {
+        "counselling": "Counseling",
+        "dental": "Soins dentaires",
+        "eyecare": "Soins des yeux",
+        "fertility": "Fertilité",
+        "fitness": "Conditionnement physique",
+        "hospital": "Hôpital",
+        "massage": "Massage",
+        "medication": "Médicaments",
+        "physician": "Médecin",
+        "physiotherapy": "Physiothérapie",
+        "prescriptions": "Ordonnances",
+        "supplies": "Fournitures"
+      }
+    },
+    "housing": {
+      "name": "Logement",
+      "sub": {
+        "fees": "Frais",
+        "gardenSupplies": "Fournitures de jardin",
+        "homeImprovement": "Rénovation",
+        "maintenance": "Entretien",
+        "mortgageInterest": "Intérêts hypothécaires",
+        "mortgagePrincipal": "Capital hypothécaire",
+        "rent": "Loyer",
+        "supplies": "Fournitures",
+        "tools": "Outils"
+      }
+    },
+    "insurance": {
+      "name": "Assurance",
+      "sub": {
+        "automobile": "Automobile",
+        "disability": "Invalidité",
+        "health": "Maladie",
+        "homeownerRenter": "Habitation/locataire",
+        "life": "Vie",
+        "travel": "Voyage"
+      }
+    },
+    "interestExpense": {
+      "name": "Frais d'intérêts",
+      "sub": {}
+    },
+    "leisure": {
+      "name": "Loisirs",
+      "sub": {
+        "booksMagazines": "Livres et magazines",
+        "cd": "CD",
+        "cameraFilm": "Appareil photo/pellicule",
+        "camping": "Camping",
+        "coverCharge": "Droit d'entrée",
+        "culturalEvents": "Événements culturels",
+        "dvd": "DVD",
+        "electronics": "Électronique",
+        "entertaining": "Réception",
+        "entertainment": "Divertissement",
+        "fees": "Frais",
+        "gambling": "Jeux de hasard",
+        "lps": "Disques vinyle",
+        "movies": "Cinéma",
+        "newspaper": "Journal",
+        "sportingEvents": "Événements sportifs",
+        "sportingGoods": "Articles de sport",
+        "sports": "Sports",
+        "toysGames": "Jouets et jeux",
+        "transit": "Transport en commun",
+        "vhs": "VHS",
+        "videoRentals": "Location de vidéos"
+      }
+    },
+    "licencingFees": {
+      "name": "Frais de permis",
+      "sub": {}
+    },
+    "loan": {
+      "name": "Prêt",
+      "sub": {
+        "loanInterest": "Intérêts du prêt",
+        "loanPrincipal": "Capital du prêt",
+        "mortgageInterest": "Intérêts hypothécaires"
+      }
+    },
+    "miscellaneous": {
+      "name": "Divers",
+      "sub": {
+        "postage": "Affranchissement",
+        "postcards": "Cartes postales",
+        "tools": "Outils",
+        "transit": "Transport en commun"
+      }
+    },
+    "personalCare": {
+      "name": "Soins personnels",
+      "sub": {
+        "dryCleaning": "Nettoyage à sec",
+        "haircut": "Coupe de cheveux",
+        "laundry": "Lessive",
+        "pedicure": "Pédicure",
+        "toiletries": "Articles de toilette"
+      }
+    },
+    "petCare": {
+      "name": "Soins des animaux",
+      "sub": {
+        "food": "Nourriture",
+        "supplies": "Fournitures",
+        "veterinarian": "Vétérinaire"
+      }
+    },
+    "taxes": {
+      "name": "Impôts",
+      "sub": {
+        "cppQppContributions": "Cotisations au RPC/RRQ",
+        "eiPremiums": "Cotisations d'assurance-emploi",
+        "federalIncome": "Impôt fédéral sur le revenu",
+        "goodsServices": "Taxe sur les produits et services",
+        "other": "Autres",
+        "property": "Foncier",
+        "realEstate": "Immobilier",
+        "stateProvincial": "Provincial",
+        "unionDues": "Cotisations syndicales"
+      }
+    },
+    "vacation": {
+      "name": "Vacances",
+      "sub": {
+        "airfare": "Billet d'avion",
+        "carRental": "Location de voiture",
+        "entertainment": "Divertissement",
+        "gasoline": "Essence",
+        "lodging": "Hébergement",
+        "miscellaneous": "Divers",
+        "parking": "Stationnement",
+        "transit": "Transport en commun",
+        "travel": "Voyage"
+      }
+    }
+  }
+}

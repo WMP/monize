@@ -3,10 +3,17 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
-import { tr } from "../i18n/translate";
+import { I18nService } from "nestjs-i18n";
+import { tr, translateInLocale } from "../i18n/translate";
+import { resolveUserEmailLocale } from "../i18n/resolve-user-email-locale";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, IsNull, DataSource, EntityManager } from "typeorm";
 import { Category } from "./entities/category.entity";
+import { UserPreference } from "../users/entities/user-preference.entity";
+import {
+  defaultCategoryNameKey,
+  defaultSubcategoryNameKey,
+} from "./default-category-i18n";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
 import { Payee } from "../payees/entities/payee.entity";
@@ -36,8 +43,11 @@ export class CategoriesService {
     private scheduledTransactionsRepository: Repository<ScheduledTransaction>,
     @InjectRepository(ScheduledTransactionSplit)
     private scheduledSplitsRepository: Repository<ScheduledTransactionSplit>,
+    @InjectRepository(UserPreference)
+    private preferencesRepository: Repository<UserPreference>,
     private dataSource: DataSource,
     private actionHistoryService: ActionHistoryService,
+    private readonly i18n: I18nService,
   ) {}
 
   async create(
@@ -773,6 +783,24 @@ export class CategoriesService {
       );
     }
 
+    // Seed the rows in the user's own language, not the request locale. The
+    // names become user-owned, editable rows, so this localizes only what is
+    // created now; already-imported categories are untouched. Missing catalog
+    // keys fall back to the English source.
+    const lang = await resolveUserEmailLocale(
+      this.preferencesRepository,
+      userId,
+    );
+    const localizeCategory = (name: string): string =>
+      translateInLocale(this.i18n, lang, defaultCategoryNameKey(name), name);
+    const localizeSubcategory = (parentName: string, name: string): string =>
+      translateInLocale(
+        this.i18n,
+        lang,
+        defaultSubcategoryNameKey(parentName, name),
+        name,
+      );
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -784,7 +812,7 @@ export class CategoriesService {
       for (const cat of DEFAULT_INCOME_CATEGORIES) {
         const parentCategory = repo.create({
           userId,
-          name: cat.name,
+          name: localizeCategory(cat.name),
           isIncome: true,
         });
         const savedParent = await repo.save(parentCategory);
@@ -794,7 +822,7 @@ export class CategoriesService {
           const subCategory = repo.create({
             userId,
             parentId: savedParent.id,
-            name: subName,
+            name: localizeSubcategory(cat.name, subName),
             isIncome: true,
           });
           await repo.save(subCategory);
@@ -805,7 +833,7 @@ export class CategoriesService {
       for (const cat of DEFAULT_EXPENSE_CATEGORIES) {
         const parentCategory = repo.create({
           userId,
-          name: cat.name,
+          name: localizeCategory(cat.name),
           isIncome: false,
         });
         const savedParent = await repo.save(parentCategory);
@@ -815,7 +843,7 @@ export class CategoriesService {
           const subCategory = repo.create({
             userId,
             parentId: savedParent.id,
-            name: subName,
+            name: localizeSubcategory(cat.name, subName),
             isIncome: false,
           });
           await repo.save(subCategory);

@@ -1,0 +1,369 @@
+{
+  "defaults": {
+    "investmentIncome": {
+      "name": "Инвестиционный доход",
+      "sub": {
+        "capitalGains": "Прирост капитала",
+        "interest": "Проценты",
+        "respGrant": "Государственная субсидия на образование"
+      }
+    },
+    "otherIncome": {
+      "name": "Прочие доходы",
+      "sub": {
+        "blogging": "Блогинг",
+        "businessReimbursement": "Возмещение деловых расходов",
+        "cashback": "Кэшбэк",
+        "consulting": "Консалтинг",
+        "creditCardReward": "Бонусы по кредитной карте",
+        "employeeStockOption": "Опционы на акции для сотрудников",
+        "giftsReceived": "Полученные подарки",
+        "incomeTaxRefund": "Возврат подоходного налога",
+        "rentalIncome": "Доход от аренды",
+        "stateLocalTaxRefund": "Возврат региональных и местных налогов",
+        "transferBonus": "Бонус за перевод",
+        "tutoring": "Репетиторство"
+      }
+    },
+    "retirementIncome": {
+      "name": "Пенсионный доход",
+      "sub": {
+        "cppQppBenefits": "Пенсионные выплаты (CPP/QPP)"
+      }
+    },
+    "wagesSalary": {
+      "name": "Заработная плата",
+      "sub": {
+        "bonus": "Премия",
+        "commission": "Комиссионные",
+        "employerMatching": "Взносы работодателя",
+        "grossPay": "Оклад до вычетов",
+        "netPay": "Оклад на руки",
+        "overtime": "Сверхурочные",
+        "vacationPay": "Отпускные"
+      }
+    },
+    "automobile": {
+      "name": "Автомобиль",
+      "sub": {
+        "accessories": "Аксессуары",
+        "carPayment": "Платёж за автомобиль",
+        "cleaning": "Мойка",
+        "fines": "Штрафы",
+        "gasoline": "Бензин",
+        "licencing": "Регистрация и лицензирование",
+        "maintenance": "Техобслуживание",
+        "parking": "Парковка",
+        "parts": "Запчасти",
+        "tollCharges": "Платные дороги"
+      }
+    },
+    "bankFees": {
+      "name": "Банковские комиссии",
+      "sub": {
+        "atm": "Банкомат",
+        "annual": "Годовое обслуживание",
+        "nsf": "Недостаток средств",
+        "other": "Прочее",
+        "overdraft": "Овердрафт",
+        "service": "Обслуживание"
+      }
+    },
+    "bills": {
+      "name": "Счета",
+      "sub": {
+        "accounting": "Бухгалтерские услуги",
+        "cableTv": "Кабельное ТВ",
+        "cellPhone": "Мобильная связь",
+        "electricity": "Электричество",
+        "internet": "Интернет",
+        "lawyer": "Юридические услуги",
+        "naturalGas": "Природный газ",
+        "satelliteRadio": "Спутниковое радио",
+        "streaming": "Стриминговые сервисы",
+        "telephone": "Телефон",
+        "waterSewer": "Вода и канализация",
+        "waterHeater": "Водонагреватель"
+      }
+    },
+    "business": {
+      "name": "Бизнес",
+      "sub": {
+        "airfare": "Авиабилеты",
+        "alcohol": "Алкоголь",
+        "bankFees": "Банковские комиссии",
+        "carRental": "Аренда автомобиля",
+        "cellPhone": "Мобильная связь",
+        "computerHardware": "Компьютерное оборудование",
+        "computerSoftware": "Программное обеспечение",
+        "diningOut": "Питание вне дома",
+        "education": "Обучение",
+        "gasoline": "Бензин",
+        "internet": "Интернет",
+        "lodging": "Проживание",
+        "mileage": "Пробег",
+        "miscellaneous": "Прочее",
+        "parking": "Парковка",
+        "recreation": "Развлечения",
+        "tollCharges": "Платные дороги",
+        "transit": "Общественный транспорт"
+      }
+    },
+    "cashWithdrawal": {
+      "name": "Снятие наличных",
+      "sub": {
+        "barbadianDollars": "Барбадосские доллары",
+        "bermudianDollars": "Бермудские доллары",
+        "canadianDollars": "Канадские доллары",
+        "costaRicanColones": "Костариканские колоны",
+        "croatianKunas": "Хорватские куны",
+        "dominicanRepublicPesos": "Доминиканские песо",
+        "easternCaribbeanDollars": "Восточнокарибские доллары",
+        "euros": "Евро",
+        "forints": "Форинты",
+        "honduranLempiras": "Гондурасские лемпиры",
+        "hongKongDollars": "Гонконгские доллары",
+        "indonesianRupiah": "Индонезийские рупии",
+        "malaysianRinggits": "Малайзийские ринггиты",
+        "mexicanPesos": "Мексиканские песо",
+        "peruvianSoles": "Перуанские соли",
+        "singaporeDollars": "Сингапурские доллары",
+        "thaiBaht": "Тайские баты",
+        "usDollars": "Доллары США"
+      }
+    },
+    "charitableDonations": {
+      "name": "Благотворительные пожертвования",
+      "sub": {}
+    },
+    "childcare": {
+      "name": "Уход за детьми",
+      "sub": {
+        "activities": "Занятия",
+        "allowance": "Карманные деньги",
+        "babysitting": "Услуги няни",
+        "books": "Книги",
+        "clothing": "Одежда",
+        "counselling": "Консультации психолога",
+        "daycare": "Детский сад",
+        "entertainment": "Развлечения",
+        "fees": "Взносы",
+        "furnishings": "Обстановка",
+        "gifts": "Подарки",
+        "haircut": "Стрижка",
+        "medication": "Лекарства",
+        "shoes": "Обувь",
+        "sportingGoods": "Спортивные товары",
+        "sports": "Спорт",
+        "supplies": "Принадлежности",
+        "toiletries": "Средства гигиены",
+        "toysGames": "Игрушки и игры"
+      }
+    },
+    "clothing": {
+      "name": "Одежда",
+      "sub": {
+        "accessories": "Аксессуары",
+        "clothes": "Одежда",
+        "coats": "Верхняя одежда",
+        "shoes": "Обувь"
+      }
+    },
+    "computer": {
+      "name": "Компьютер",
+      "sub": {
+        "hardware": "Оборудование",
+        "software": "Программное обеспечение",
+        "webHosting": "Веб-хостинг"
+      }
+    },
+    "education": {
+      "name": "Образование",
+      "sub": {
+        "books": "Книги",
+        "fees": "Сборы",
+        "tuition": "Плата за обучение"
+      }
+    },
+    "food": {
+      "name": "Питание",
+      "sub": {
+        "alcohol": "Алкоголь",
+        "cannabis": "Каннабис",
+        "diningOut": "Питание вне дома",
+        "groceries": "Продукты"
+      }
+    },
+    "furnishings": {
+      "name": "Обстановка",
+      "sub": {
+        "accessories": "Аксессуары",
+        "appliances": "Бытовая техника",
+        "basement": "Подвал",
+        "bathroom": "Ванная комната",
+        "bedroom": "Спальня",
+        "diningRoom": "Столовая",
+        "dishes": "Посуда",
+        "kitchen": "Кухня",
+        "livingRoom": "Гостиная",
+        "office": "Кабинет",
+        "outdoor": "Улица",
+        "plants": "Растения"
+      }
+    },
+    "gifts": {
+      "name": "Подарки",
+      "sub": {
+        "anniversary": "Годовщина",
+        "birthday": "День рождения",
+        "cards": "Открытки",
+        "christmas": "Рождество",
+        "flowers": "Цветы",
+        "mothersDay": "День матери",
+        "respContribution": "Взнос на образование",
+        "valentines": "День святого Валентина",
+        "wedding": "Свадьба"
+      }
+    },
+    "healthcare": {
+      "name": "Здоровье",
+      "sub": {
+        "counselling": "Консультации психолога",
+        "dental": "Стоматология",
+        "eyecare": "Офтальмология",
+        "fertility": "Репродуктивное здоровье",
+        "fitness": "Фитнес",
+        "hospital": "Стационар",
+        "massage": "Массаж",
+        "medication": "Лекарства",
+        "physician": "Врач",
+        "physiotherapy": "Физиотерапия",
+        "prescriptions": "Рецептурные препараты",
+        "supplies": "Медицинские принадлежности"
+      }
+    },
+    "housing": {
+      "name": "Жильё",
+      "sub": {
+        "fees": "Сборы",
+        "gardenSupplies": "Товары для сада",
+        "homeImprovement": "Ремонт и обустройство",
+        "maintenance": "Обслуживание",
+        "mortgageInterest": "Проценты по ипотеке",
+        "mortgagePrincipal": "Основной долг по ипотеке",
+        "rent": "Аренда",
+        "supplies": "Хозтовары",
+        "tools": "Инструменты"
+      }
+    },
+    "insurance": {
+      "name": "Страхование",
+      "sub": {
+        "automobile": "Автомобильное",
+        "disability": "На случай нетрудоспособности",
+        "health": "Медицинское",
+        "homeownerRenter": "Жилья",
+        "life": "Жизни",
+        "travel": "Туристическое"
+      }
+    },
+    "interestExpense": {
+      "name": "Расходы на проценты",
+      "sub": {}
+    },
+    "leisure": {
+      "name": "Досуг",
+      "sub": {
+        "booksMagazines": "Книги и журналы",
+        "cd": "Компакт-диски",
+        "cameraFilm": "Фотоаппарат и плёнка",
+        "camping": "Кемпинг",
+        "coverCharge": "Входная плата",
+        "culturalEvents": "Культурные мероприятия",
+        "dvd": "DVD",
+        "electronics": "Электроника",
+        "entertaining": "Приём гостей",
+        "entertainment": "Развлечения",
+        "fees": "Взносы",
+        "gambling": "Азартные игры",
+        "lps": "Виниловые пластинки",
+        "movies": "Кино",
+        "newspaper": "Газеты",
+        "sportingEvents": "Спортивные мероприятия",
+        "sportingGoods": "Спортивные товары",
+        "sports": "Спорт",
+        "toysGames": "Игрушки и игры",
+        "transit": "Общественный транспорт",
+        "vhs": "Видеокассеты",
+        "videoRentals": "Прокат видео"
+      }
+    },
+    "licencingFees": {
+      "name": "Лицензионные сборы",
+      "sub": {}
+    },
+    "loan": {
+      "name": "Кредит",
+      "sub": {
+        "loanInterest": "Проценты по кредиту",
+        "loanPrincipal": "Основной долг по кредиту",
+        "mortgageInterest": "Проценты по ипотеке"
+      }
+    },
+    "miscellaneous": {
+      "name": "Прочее",
+      "sub": {
+        "postage": "Почтовые расходы",
+        "postcards": "Открытки",
+        "tools": "Инструменты",
+        "transit": "Общественный транспорт"
+      }
+    },
+    "personalCare": {
+      "name": "Личная гигиена и уход",
+      "sub": {
+        "dryCleaning": "Химчистка",
+        "haircut": "Стрижка",
+        "laundry": "Прачечная",
+        "pedicure": "Педикюр",
+        "toiletries": "Средства гигиены"
+      }
+    },
+    "petCare": {
+      "name": "Уход за питомцами",
+      "sub": {
+        "food": "Корм",
+        "supplies": "Принадлежности",
+        "veterinarian": "Ветеринар"
+      }
+    },
+    "taxes": {
+      "name": "Налоги",
+      "sub": {
+        "cppQppContributions": "Пенсионные взносы (CPP/QPP)",
+        "eiPremiums": "Взносы на страхование занятости",
+        "federalIncome": "Федеральный подоходный налог",
+        "goodsServices": "Налог на товары и услуги",
+        "other": "Прочее",
+        "property": "Налог на имущество",
+        "realEstate": "Налог на недвижимость",
+        "stateProvincial": "Региональный налог",
+        "unionDues": "Профсоюзные взносы"
+      }
+    },
+    "vacation": {
+      "name": "Отпуск",
+      "sub": {
+        "airfare": "Авиабилеты",
+        "carRental": "Аренда автомобиля",
+        "entertainment": "Развлечения",
+        "gasoline": "Бензин",
+        "lodging": "Проживание",
+        "miscellaneous": "Прочее",
+        "parking": "Парковка",
+        "transit": "Общественный транспорт",
+        "travel": "Проезд"
+      }
+    }
+  }
+}

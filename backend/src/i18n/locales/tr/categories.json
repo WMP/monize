@@ -1,0 +1,369 @@
+{
+  "defaults": {
+    "investmentIncome": {
+      "name": "Yatırım Geliri",
+      "sub": {
+        "capitalGains": "Sermaye Kazançları",
+        "interest": "Faiz",
+        "respGrant": "Eğitim Tasarrufu Devlet Katkısı"
+      }
+    },
+    "otherIncome": {
+      "name": "Diğer Gelirler",
+      "sub": {
+        "blogging": "Blog Yazarlığı",
+        "businessReimbursement": "İş Masrafı İadesi",
+        "cashback": "Para İadesi",
+        "consulting": "Danışmanlık",
+        "creditCardReward": "Kredi Kartı Ödülü",
+        "employeeStockOption": "Çalışan Hisse Senedi Opsiyonu",
+        "giftsReceived": "Alınan Hediyeler",
+        "incomeTaxRefund": "Gelir Vergisi İadesi",
+        "rentalIncome": "Kira Geliri",
+        "stateLocalTaxRefund": "Eyalet ve Yerel Vergi İadesi",
+        "transferBonus": "Transfer Bonusu",
+        "tutoring": "Özel Ders"
+      }
+    },
+    "retirementIncome": {
+      "name": "Emeklilik Geliri",
+      "sub": {
+        "cppQppBenefits": "Emeklilik Maaşı"
+      }
+    },
+    "wagesSalary": {
+      "name": "Ücret ve Maaş",
+      "sub": {
+        "bonus": "Prim",
+        "commission": "Komisyon",
+        "employerMatching": "İşveren Katkısı",
+        "grossPay": "Brüt Ücret",
+        "netPay": "Net Ücret",
+        "overtime": "Fazla Mesai",
+        "vacationPay": "İzin Ücreti"
+      }
+    },
+    "automobile": {
+      "name": "Otomobil",
+      "sub": {
+        "accessories": "Aksesuarlar",
+        "carPayment": "Araç Taksiti",
+        "cleaning": "Temizlik",
+        "fines": "Cezalar",
+        "gasoline": "Yakıt",
+        "licencing": "Ruhsat ve Tescil",
+        "maintenance": "Bakım",
+        "parking": "Otopark",
+        "parts": "Parçalar",
+        "tollCharges": "Geçiş Ücretleri"
+      }
+    },
+    "bankFees": {
+      "name": "Banka Ücretleri",
+      "sub": {
+        "atm": "ATM",
+        "annual": "Yıllık",
+        "nsf": "Karşılıksız Çek",
+        "other": "Diğer",
+        "overdraft": "Hesap Aşımı",
+        "service": "Hizmet"
+      }
+    },
+    "bills": {
+      "name": "Faturalar",
+      "sub": {
+        "accounting": "Muhasebe",
+        "cableTv": "Kablolu TV",
+        "cellPhone": "Cep Telefonu",
+        "electricity": "Elektrik",
+        "internet": "İnternet",
+        "lawyer": "Avukat",
+        "naturalGas": "Doğal Gaz",
+        "satelliteRadio": "Uydu Radyo",
+        "streaming": "Dijital Yayın",
+        "telephone": "Telefon",
+        "waterSewer": "Su ve Kanalizasyon",
+        "waterHeater": "Şofben"
+      }
+    },
+    "business": {
+      "name": "İş",
+      "sub": {
+        "airfare": "Uçak Bileti",
+        "alcohol": "Alkol",
+        "bankFees": "Banka Ücretleri",
+        "carRental": "Araç Kiralama",
+        "cellPhone": "Cep Telefonu",
+        "computerHardware": "Bilgisayar Donanımı",
+        "computerSoftware": "Bilgisayar Yazılımı",
+        "diningOut": "Dışarıda Yemek",
+        "education": "Eğitim",
+        "gasoline": "Yakıt",
+        "internet": "İnternet",
+        "lodging": "Konaklama",
+        "mileage": "Yol Masrafı",
+        "miscellaneous": "Çeşitli",
+        "parking": "Otopark",
+        "recreation": "Eğlence ve Dinlence",
+        "tollCharges": "Geçiş Ücretleri",
+        "transit": "Toplu Taşıma"
+      }
+    },
+    "cashWithdrawal": {
+      "name": "Nakit Çekme",
+      "sub": {
+        "barbadianDollars": "Barbados Doları",
+        "bermudianDollars": "Bermuda Doları",
+        "canadianDollars": "Kanada Doları",
+        "costaRicanColones": "Kosta Rika Kolonu",
+        "croatianKunas": "Hırvatistan Kunası",
+        "dominicanRepublicPesos": "Dominik Cumhuriyeti Pesosu",
+        "easternCaribbeanDollars": "Doğu Karayip Doları",
+        "euros": "Euro",
+        "forints": "Macar Forinti",
+        "honduranLempiras": "Honduras Lempirası",
+        "hongKongDollars": "Hong Kong Doları",
+        "indonesianRupiah": "Endonezya Rupisi",
+        "malaysianRinggits": "Malezya Ringgiti",
+        "mexicanPesos": "Meksika Pesosu",
+        "peruvianSoles": "Peru Solü",
+        "singaporeDollars": "Singapur Doları",
+        "thaiBaht": "Tayland Bahtı",
+        "usDollars": "ABD Doları"
+      }
+    },
+    "charitableDonations": {
+      "name": "Hayır Bağışları",
+      "sub": {}
+    },
+    "childcare": {
+      "name": "Çocuk Bakımı",
+      "sub": {
+        "activities": "Aktiviteler",
+        "allowance": "Harçlık",
+        "babysitting": "Bebek Bakıcılığı",
+        "books": "Kitaplar",
+        "clothing": "Giyim",
+        "counselling": "Danışmanlık",
+        "daycare": "Kreş",
+        "entertainment": "Eğlence",
+        "fees": "Ücretler",
+        "furnishings": "Mobilya",
+        "gifts": "Hediyeler",
+        "haircut": "Saç Kesimi",
+        "medication": "İlaç",
+        "shoes": "Ayakkabı",
+        "sportingGoods": "Spor Malzemeleri",
+        "sports": "Spor",
+        "supplies": "Sarf Malzemeleri",
+        "toiletries": "Kişisel Bakım Ürünleri",
+        "toysGames": "Oyuncaklar ve Oyunlar"
+      }
+    },
+    "clothing": {
+      "name": "Giyim",
+      "sub": {
+        "accessories": "Aksesuarlar",
+        "clothes": "Kıyafetler",
+        "coats": "Montlar",
+        "shoes": "Ayakkabı"
+      }
+    },
+    "computer": {
+      "name": "Bilgisayar",
+      "sub": {
+        "hardware": "Donanım",
+        "software": "Yazılım",
+        "webHosting": "Web Barındırma"
+      }
+    },
+    "education": {
+      "name": "Eğitim",
+      "sub": {
+        "books": "Kitaplar",
+        "fees": "Ücretler",
+        "tuition": "Okul Ücreti"
+      }
+    },
+    "food": {
+      "name": "Yiyecek",
+      "sub": {
+        "alcohol": "Alkol",
+        "cannabis": "Esrar",
+        "diningOut": "Dışarıda Yemek",
+        "groceries": "Market Alışverişi"
+      }
+    },
+    "furnishings": {
+      "name": "Ev Eşyaları",
+      "sub": {
+        "accessories": "Aksesuarlar",
+        "appliances": "Beyaz Eşya",
+        "basement": "Bodrum",
+        "bathroom": "Banyo",
+        "bedroom": "Yatak Odası",
+        "diningRoom": "Yemek Odası",
+        "dishes": "Tabak Takımı",
+        "kitchen": "Mutfak",
+        "livingRoom": "Oturma Odası",
+        "office": "Çalışma Odası",
+        "outdoor": "Dış Mekan",
+        "plants": "Bitkiler"
+      }
+    },
+    "gifts": {
+      "name": "Hediyeler",
+      "sub": {
+        "anniversary": "Yıl Dönümü",
+        "birthday": "Doğum Günü",
+        "cards": "Kartlar",
+        "christmas": "Noel",
+        "flowers": "Çiçekler",
+        "mothersDay": "Anneler Günü",
+        "respContribution": "Eğitim Tasarrufu Katkısı",
+        "valentines": "Sevgililer Günü",
+        "wedding": "Düğün"
+      }
+    },
+    "healthcare": {
+      "name": "Sağlık",
+      "sub": {
+        "counselling": "Danışmanlık",
+        "dental": "Diş Bakımı",
+        "eyecare": "Göz Bakımı",
+        "fertility": "Doğurganlık Tedavisi",
+        "fitness": "Fitness",
+        "hospital": "Hastane",
+        "massage": "Masaj",
+        "medication": "İlaç",
+        "physician": "Doktor",
+        "physiotherapy": "Fizik Tedavi",
+        "prescriptions": "Reçeteler",
+        "supplies": "Sağlık Malzemeleri"
+      }
+    },
+    "housing": {
+      "name": "Konut",
+      "sub": {
+        "fees": "Aidatlar",
+        "gardenSupplies": "Bahçe Malzemeleri",
+        "homeImprovement": "Ev Tadilatı",
+        "maintenance": "Bakım",
+        "mortgageInterest": "Konut Kredisi Faizi",
+        "mortgagePrincipal": "Konut Kredisi Anaparası",
+        "rent": "Kira",
+        "supplies": "Sarf Malzemeleri",
+        "tools": "Aletler"
+      }
+    },
+    "insurance": {
+      "name": "Sigorta",
+      "sub": {
+        "automobile": "Otomobil",
+        "disability": "Maluliyet",
+        "health": "Sağlık",
+        "homeownerRenter": "Konut/Kiracı",
+        "life": "Hayat",
+        "travel": "Seyahat"
+      }
+    },
+    "interestExpense": {
+      "name": "Faiz Gideri",
+      "sub": {}
+    },
+    "leisure": {
+      "name": "Boş Zaman",
+      "sub": {
+        "booksMagazines": "Kitaplar ve Dergiler",
+        "cd": "CD",
+        "cameraFilm": "Fotoğraf Makinesi/Film",
+        "camping": "Kamp",
+        "coverCharge": "Giriş Ücreti",
+        "culturalEvents": "Kültürel Etkinlikler",
+        "dvd": "DVD",
+        "electronics": "Elektronik",
+        "entertaining": "Ağırlama",
+        "entertainment": "Eğlence",
+        "fees": "Ücretler",
+        "gambling": "Kumar",
+        "lps": "Plaklar",
+        "movies": "Filmler",
+        "newspaper": "Gazete",
+        "sportingEvents": "Spor Etkinlikleri",
+        "sportingGoods": "Spor Malzemeleri",
+        "sports": "Spor",
+        "toysGames": "Oyuncaklar ve Oyunlar",
+        "transit": "Toplu Taşıma",
+        "vhs": "VHS",
+        "videoRentals": "Video Kiralama"
+      }
+    },
+    "licencingFees": {
+      "name": "Ruhsat ve Lisans Ücretleri",
+      "sub": {}
+    },
+    "loan": {
+      "name": "Kredi",
+      "sub": {
+        "loanInterest": "Kredi Faizi",
+        "loanPrincipal": "Kredi Anaparası",
+        "mortgageInterest": "Konut Kredisi Faizi"
+      }
+    },
+    "miscellaneous": {
+      "name": "Çeşitli",
+      "sub": {
+        "postage": "Posta Ücreti",
+        "postcards": "Kartpostallar",
+        "tools": "Aletler",
+        "transit": "Toplu Taşıma"
+      }
+    },
+    "personalCare": {
+      "name": "Kişisel Bakım",
+      "sub": {
+        "dryCleaning": "Kuru Temizleme",
+        "haircut": "Saç Kesimi",
+        "laundry": "Çamaşır",
+        "pedicure": "Pedikür",
+        "toiletries": "Kişisel Bakım Ürünleri"
+      }
+    },
+    "petCare": {
+      "name": "Evcil Hayvan Bakımı",
+      "sub": {
+        "food": "Mama",
+        "supplies": "Malzemeler",
+        "veterinarian": "Veteriner"
+      }
+    },
+    "taxes": {
+      "name": "Vergiler",
+      "sub": {
+        "cppQppContributions": "Emeklilik Primleri",
+        "eiPremiums": "İşsizlik Sigortası Primleri",
+        "federalIncome": "Federal Gelir",
+        "goodsServices": "Mal ve Hizmet",
+        "other": "Diğer",
+        "property": "Emlak",
+        "realEstate": "Gayrimenkul",
+        "stateProvincial": "Eyalet/Bölge",
+        "unionDues": "Sendika Aidatları"
+      }
+    },
+    "vacation": {
+      "name": "Tatil",
+      "sub": {
+        "airfare": "Uçak Bileti",
+        "carRental": "Araç Kiralama",
+        "entertainment": "Eğlence",
+        "gasoline": "Yakıt",
+        "lodging": "Konaklama",
+        "miscellaneous": "Çeşitli",
+        "parking": "Otopark",
+        "transit": "Toplu Taşıma",
+        "travel": "Seyahat"
+      }
+    }
+  }
+}

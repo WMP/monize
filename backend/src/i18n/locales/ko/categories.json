@@ -1,0 +1,369 @@
+{
+  "defaults": {
+    "investmentIncome": {
+      "name": "투자 소득",
+      "sub": {
+        "capitalGains": "자본 이득",
+        "interest": "이자",
+        "respGrant": "교육저축 정부지원금"
+      }
+    },
+    "otherIncome": {
+      "name": "기타 소득",
+      "sub": {
+        "blogging": "블로그 수입",
+        "businessReimbursement": "업무 경비 환급",
+        "cashback": "캐시백",
+        "consulting": "컨설팅",
+        "creditCardReward": "신용카드 리워드",
+        "employeeStockOption": "스톡옵션",
+        "giftsReceived": "받은 선물",
+        "incomeTaxRefund": "소득세 환급",
+        "rentalIncome": "임대 소득",
+        "stateLocalTaxRefund": "지방세 환급",
+        "transferBonus": "이체 보너스",
+        "tutoring": "과외"
+      }
+    },
+    "retirementIncome": {
+      "name": "은퇴 소득",
+      "sub": {
+        "cppQppBenefits": "국민연금 급여"
+      }
+    },
+    "wagesSalary": {
+      "name": "급여",
+      "sub": {
+        "bonus": "보너스",
+        "commission": "성과급",
+        "employerMatching": "회사 매칭 지원금",
+        "grossPay": "세전 급여",
+        "netPay": "실수령액",
+        "overtime": "초과근무 수당",
+        "vacationPay": "휴가 수당"
+      }
+    },
+    "automobile": {
+      "name": "자동차",
+      "sub": {
+        "accessories": "액세서리",
+        "carPayment": "자동차 할부금",
+        "cleaning": "세차",
+        "fines": "과태료",
+        "gasoline": "주유비",
+        "licencing": "등록비",
+        "maintenance": "정비",
+        "parking": "주차비",
+        "parts": "부품",
+        "tollCharges": "통행료"
+      }
+    },
+    "bankFees": {
+      "name": "은행 수수료",
+      "sub": {
+        "atm": "ATM",
+        "annual": "연회비",
+        "nsf": "잔액 부족 수수료",
+        "other": "기타",
+        "overdraft": "마이너스 통장 수수료",
+        "service": "서비스 수수료"
+      }
+    },
+    "bills": {
+      "name": "공과금",
+      "sub": {
+        "accounting": "회계 서비스",
+        "cableTv": "케이블 TV",
+        "cellPhone": "휴대폰 요금",
+        "electricity": "전기 요금",
+        "internet": "인터넷 요금",
+        "lawyer": "변호사 비용",
+        "naturalGas": "도시가스",
+        "satelliteRadio": "위성 라디오",
+        "streaming": "스트리밍",
+        "telephone": "전화 요금",
+        "waterSewer": "상하수도 요금",
+        "waterHeater": "온수기"
+      }
+    },
+    "business": {
+      "name": "사업",
+      "sub": {
+        "airfare": "항공료",
+        "alcohol": "주류",
+        "bankFees": "은행 수수료",
+        "carRental": "렌터카",
+        "cellPhone": "휴대폰 요금",
+        "computerHardware": "컴퓨터 하드웨어",
+        "computerSoftware": "컴퓨터 소프트웨어",
+        "diningOut": "외식",
+        "education": "교육",
+        "gasoline": "주유비",
+        "internet": "인터넷 요금",
+        "lodging": "숙박비",
+        "mileage": "주행 거리",
+        "miscellaneous": "기타 잡비",
+        "parking": "주차비",
+        "recreation": "여가 활동",
+        "tollCharges": "통행료",
+        "transit": "대중교통비"
+      }
+    },
+    "cashWithdrawal": {
+      "name": "현금 인출",
+      "sub": {
+        "barbadianDollars": "바베이도스 달러",
+        "bermudianDollars": "버뮤다 달러",
+        "canadianDollars": "캐나다 달러",
+        "costaRicanColones": "코스타리카 콜론",
+        "croatianKunas": "크로아티아 쿠나",
+        "dominicanRepublicPesos": "도미니카 페소",
+        "easternCaribbeanDollars": "동카리브 달러",
+        "euros": "유로",
+        "forints": "헝가리 포린트",
+        "honduranLempiras": "온두라스 렘피라",
+        "hongKongDollars": "홍콩 달러",
+        "indonesianRupiah": "인도네시아 루피아",
+        "malaysianRinggits": "말레이시아 링깃",
+        "mexicanPesos": "멕시코 페소",
+        "peruvianSoles": "페루 솔",
+        "singaporeDollars": "싱가포르 달러",
+        "thaiBaht": "태국 바트",
+        "usDollars": "미국 달러"
+      }
+    },
+    "charitableDonations": {
+      "name": "기부금",
+      "sub": {}
+    },
+    "childcare": {
+      "name": "육아",
+      "sub": {
+        "activities": "활동",
+        "allowance": "용돈",
+        "babysitting": "베이비시터",
+        "books": "도서",
+        "clothing": "의류",
+        "counselling": "상담",
+        "daycare": "어린이집",
+        "entertainment": "오락",
+        "fees": "이용료",
+        "furnishings": "가구",
+        "gifts": "선물",
+        "haircut": "이발",
+        "medication": "약품",
+        "shoes": "신발",
+        "sportingGoods": "운동용품",
+        "sports": "스포츠",
+        "supplies": "용품",
+        "toiletries": "세면용품",
+        "toysGames": "장난감 및 게임"
+      }
+    },
+    "clothing": {
+      "name": "의류",
+      "sub": {
+        "accessories": "액세서리",
+        "clothes": "옷",
+        "coats": "외투",
+        "shoes": "신발"
+      }
+    },
+    "computer": {
+      "name": "컴퓨터",
+      "sub": {
+        "hardware": "하드웨어",
+        "software": "소프트웨어",
+        "webHosting": "웹 호스팅"
+      }
+    },
+    "education": {
+      "name": "교육",
+      "sub": {
+        "books": "도서",
+        "fees": "학비",
+        "tuition": "수업료"
+      }
+    },
+    "food": {
+      "name": "식비",
+      "sub": {
+        "alcohol": "주류",
+        "cannabis": "대마초",
+        "diningOut": "외식",
+        "groceries": "장보기"
+      }
+    },
+    "furnishings": {
+      "name": "가구 및 인테리어",
+      "sub": {
+        "accessories": "소품",
+        "appliances": "가전제품",
+        "basement": "지하실",
+        "bathroom": "욕실",
+        "bedroom": "침실",
+        "diningRoom": "식당",
+        "dishes": "그릇",
+        "kitchen": "주방",
+        "livingRoom": "거실",
+        "office": "서재",
+        "outdoor": "야외",
+        "plants": "식물"
+      }
+    },
+    "gifts": {
+      "name": "선물",
+      "sub": {
+        "anniversary": "기념일",
+        "birthday": "생일",
+        "cards": "카드",
+        "christmas": "크리스마스",
+        "flowers": "꽃",
+        "mothersDay": "어버이날",
+        "respContribution": "교육저축 납입금",
+        "valentines": "발렌타인데이",
+        "wedding": "결혼"
+      }
+    },
+    "healthcare": {
+      "name": "의료비",
+      "sub": {
+        "counselling": "상담",
+        "dental": "치과",
+        "eyecare": "안과",
+        "fertility": "난임 치료",
+        "fitness": "운동",
+        "hospital": "병원",
+        "massage": "마사지",
+        "medication": "약품",
+        "physician": "진료",
+        "physiotherapy": "물리치료",
+        "prescriptions": "처방약",
+        "supplies": "의료용품"
+      }
+    },
+    "housing": {
+      "name": "주거",
+      "sub": {
+        "fees": "관리비",
+        "gardenSupplies": "정원 용품",
+        "homeImprovement": "주택 개선",
+        "maintenance": "유지 보수",
+        "mortgageInterest": "주택담보대출 이자",
+        "mortgagePrincipal": "주택담보대출 원금",
+        "rent": "월세",
+        "supplies": "생활용품",
+        "tools": "공구"
+      }
+    },
+    "insurance": {
+      "name": "보험",
+      "sub": {
+        "automobile": "자동차 보험",
+        "disability": "장애 보험",
+        "health": "건강 보험",
+        "homeownerRenter": "주택/임차인 보험",
+        "life": "생명 보험",
+        "travel": "여행자 보험"
+      }
+    },
+    "interestExpense": {
+      "name": "이자 비용",
+      "sub": {}
+    },
+    "leisure": {
+      "name": "여가",
+      "sub": {
+        "booksMagazines": "도서 및 잡지",
+        "cd": "CD",
+        "cameraFilm": "카메라/필름",
+        "camping": "캠핑",
+        "coverCharge": "입장료",
+        "culturalEvents": "문화 행사",
+        "dvd": "DVD",
+        "electronics": "전자제품",
+        "entertaining": "접대",
+        "entertainment": "오락",
+        "fees": "이용료",
+        "gambling": "도박",
+        "lps": "LP 음반",
+        "movies": "영화",
+        "newspaper": "신문",
+        "sportingEvents": "스포츠 경기",
+        "sportingGoods": "운동용품",
+        "sports": "스포츠",
+        "toysGames": "장난감 및 게임",
+        "transit": "대중교통비",
+        "vhs": "VHS",
+        "videoRentals": "비디오 대여"
+      }
+    },
+    "licencingFees": {
+      "name": "면허 및 등록 비용",
+      "sub": {}
+    },
+    "loan": {
+      "name": "대출",
+      "sub": {
+        "loanInterest": "대출 이자",
+        "loanPrincipal": "대출 원금",
+        "mortgageInterest": "주택담보대출 이자"
+      }
+    },
+    "miscellaneous": {
+      "name": "기타",
+      "sub": {
+        "postage": "우편 요금",
+        "postcards": "엽서",
+        "tools": "공구",
+        "transit": "대중교통비"
+      }
+    },
+    "personalCare": {
+      "name": "미용 및 위생",
+      "sub": {
+        "dryCleaning": "드라이클리닝",
+        "haircut": "이발",
+        "laundry": "세탁",
+        "pedicure": "페디큐어",
+        "toiletries": "세면용품"
+      }
+    },
+    "petCare": {
+      "name": "반려동물",
+      "sub": {
+        "food": "사료",
+        "supplies": "용품",
+        "veterinarian": "동물병원"
+      }
+    },
+    "taxes": {
+      "name": "세금",
+      "sub": {
+        "cppQppContributions": "국민연금 납부금",
+        "eiPremiums": "고용보험료",
+        "federalIncome": "연방 소득세",
+        "goodsServices": "부가가치세",
+        "other": "기타",
+        "property": "재산세",
+        "realEstate": "부동산세",
+        "stateProvincial": "지방 소득세",
+        "unionDues": "노동조합비"
+      }
+    },
+    "vacation": {
+      "name": "휴가",
+      "sub": {
+        "airfare": "항공료",
+        "carRental": "렌터카",
+        "entertainment": "오락",
+        "gasoline": "주유비",
+        "lodging": "숙박비",
+        "miscellaneous": "기타 잡비",
+        "parking": "주차비",
+        "transit": "대중교통비",
+        "travel": "여행"
+      }
+    }
+  }
+}

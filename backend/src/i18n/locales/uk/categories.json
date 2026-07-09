@@ -1,0 +1,369 @@
+{
+  "defaults": {
+    "investmentIncome": {
+      "name": "Інвестиційний дохід",
+      "sub": {
+        "capitalGains": "Приріст капіталу",
+        "interest": "Відсотки",
+        "respGrant": "Грант на освітні заощадження"
+      }
+    },
+    "otherIncome": {
+      "name": "Інший дохід",
+      "sub": {
+        "blogging": "Ведення блогу",
+        "businessReimbursement": "Відшкодування витрат бізнесу",
+        "cashback": "Кешбек",
+        "consulting": "Консалтинг",
+        "creditCardReward": "Винагорода за кредитною карткою",
+        "employeeStockOption": "Опціон на акції працівника",
+        "giftsReceived": "Отримані подарунки",
+        "incomeTaxRefund": "Повернення податку на дохід",
+        "rentalIncome": "Дохід від оренди",
+        "stateLocalTaxRefund": "Повернення державних та місцевих податків",
+        "transferBonus": "Бонус за переказ",
+        "tutoring": "Репетиторство"
+      }
+    },
+    "retirementIncome": {
+      "name": "Пенсійний дохід",
+      "sub": {
+        "cppQppBenefits": "Виплати CPP/QPP"
+      }
+    },
+    "wagesSalary": {
+      "name": "Заробітна плата",
+      "sub": {
+        "bonus": "Премія",
+        "commission": "Комісійні",
+        "employerMatching": "Внесок роботодавця",
+        "grossPay": "Нарахована заробітна плата",
+        "netPay": "Заробітна плата на руки",
+        "overtime": "Понаднормові",
+        "vacationPay": "Відпускні"
+      }
+    },
+    "automobile": {
+      "name": "Автомобіль",
+      "sub": {
+        "accessories": "Аксесуари",
+        "carPayment": "Платіж за автомобіль",
+        "cleaning": "Мийка",
+        "fines": "Штрафи",
+        "gasoline": "Пальне",
+        "licencing": "Реєстрація",
+        "maintenance": "Технічне обслуговування",
+        "parking": "Паркування",
+        "parts": "Запчастини",
+        "tollCharges": "Дорожні збори"
+      }
+    },
+    "bankFees": {
+      "name": "Банківські комісії",
+      "sub": {
+        "atm": "Банкомат",
+        "annual": "Річна",
+        "nsf": "Недостатньо коштів",
+        "other": "Інше",
+        "overdraft": "Овердрафт",
+        "service": "Обслуговування"
+      }
+    },
+    "bills": {
+      "name": "Рахунки",
+      "sub": {
+        "accounting": "Бухгалтерські послуги",
+        "cableTv": "Кабельне телебачення",
+        "cellPhone": "Мобільний зв'язок",
+        "electricity": "Електроенергія",
+        "internet": "Інтернет",
+        "lawyer": "Юридичні послуги",
+        "naturalGas": "Природний газ",
+        "satelliteRadio": "Супутникове радіо",
+        "streaming": "Стримінгові сервіси",
+        "telephone": "Телефон",
+        "waterSewer": "Вода та каналізація",
+        "waterHeater": "Водонагрівач"
+      }
+    },
+    "business": {
+      "name": "Бізнес",
+      "sub": {
+        "airfare": "Авіаквитки",
+        "alcohol": "Алкоголь",
+        "bankFees": "Банківські комісії",
+        "carRental": "Оренда авто",
+        "cellPhone": "Мобільний зв'язок",
+        "computerHardware": "Комп'ютерне обладнання",
+        "computerSoftware": "Програмне забезпечення",
+        "diningOut": "Харчування поза домом",
+        "education": "Освіта",
+        "gasoline": "Пальне",
+        "internet": "Інтернет",
+        "lodging": "Проживання",
+        "mileage": "Пробіг",
+        "miscellaneous": "Різне",
+        "parking": "Паркування",
+        "recreation": "Відпочинок",
+        "tollCharges": "Дорожні збори",
+        "transit": "Громадський транспорт"
+      }
+    },
+    "cashWithdrawal": {
+      "name": "Зняття готівки",
+      "sub": {
+        "barbadianDollars": "Барбадоські долари",
+        "bermudianDollars": "Бермудські долари",
+        "canadianDollars": "Канадські долари",
+        "costaRicanColones": "Костариканські колони",
+        "croatianKunas": "Хорватські куни",
+        "dominicanRepublicPesos": "Домініканські песо",
+        "easternCaribbeanDollars": "Східнокарибські долари",
+        "euros": "Євро",
+        "forints": "Форинти",
+        "honduranLempiras": "Гондураські лемпіри",
+        "hongKongDollars": "Гонконгські долари",
+        "indonesianRupiah": "Індонезійські рупії",
+        "malaysianRinggits": "Малайзійські ринггіти",
+        "mexicanPesos": "Мексиканські песо",
+        "peruvianSoles": "Перуанські соль",
+        "singaporeDollars": "Сінгапурські долари",
+        "thaiBaht": "Тайські бати",
+        "usDollars": "Долари США"
+      }
+    },
+    "charitableDonations": {
+      "name": "Благодійні пожертви",
+      "sub": {}
+    },
+    "childcare": {
+      "name": "Догляд за дітьми",
+      "sub": {
+        "activities": "Заняття",
+        "allowance": "Кишенькові гроші",
+        "babysitting": "Няня",
+        "books": "Книги",
+        "clothing": "Одяг",
+        "counselling": "Психологічна допомога",
+        "daycare": "Дитячий садок",
+        "entertainment": "Розваги",
+        "fees": "Внески",
+        "furnishings": "Меблі та обстановка",
+        "gifts": "Подарунки",
+        "haircut": "Стрижка",
+        "medication": "Ліки",
+        "shoes": "Взуття",
+        "sportingGoods": "Спортивні товари",
+        "sports": "Спорт",
+        "supplies": "Приладдя",
+        "toiletries": "Засоби гігієни",
+        "toysGames": "Іграшки та ігри"
+      }
+    },
+    "clothing": {
+      "name": "Одяг",
+      "sub": {
+        "accessories": "Аксесуари",
+        "clothes": "Одяг",
+        "coats": "Верхній одяг",
+        "shoes": "Взуття"
+      }
+    },
+    "computer": {
+      "name": "Комп'ютер",
+      "sub": {
+        "hardware": "Обладнання",
+        "software": "Програмне забезпечення",
+        "webHosting": "Вебхостинг"
+      }
+    },
+    "education": {
+      "name": "Освіта",
+      "sub": {
+        "books": "Книги",
+        "fees": "Внески",
+        "tuition": "Плата за навчання"
+      }
+    },
+    "food": {
+      "name": "Харчування",
+      "sub": {
+        "alcohol": "Алкоголь",
+        "cannabis": "Канабіс",
+        "diningOut": "Харчування поза домом",
+        "groceries": "Продукти"
+      }
+    },
+    "furnishings": {
+      "name": "Меблі та обстановка",
+      "sub": {
+        "accessories": "Аксесуари",
+        "appliances": "Побутова техніка",
+        "basement": "Підвал",
+        "bathroom": "Ванна кімната",
+        "bedroom": "Спальня",
+        "diningRoom": "Їдальня",
+        "dishes": "Посуд",
+        "kitchen": "Кухня",
+        "livingRoom": "Вітальня",
+        "office": "Кабінет",
+        "outdoor": "Подвір'я",
+        "plants": "Рослини"
+      }
+    },
+    "gifts": {
+      "name": "Подарунки",
+      "sub": {
+        "anniversary": "Річниця",
+        "birthday": "День народження",
+        "cards": "Листівки",
+        "christmas": "Різдво",
+        "flowers": "Квіти",
+        "mothersDay": "День матері",
+        "respContribution": "Внесок на освітні заощадження",
+        "valentines": "День святого Валентина",
+        "wedding": "Весілля"
+      }
+    },
+    "healthcare": {
+      "name": "Охорона здоров'я",
+      "sub": {
+        "counselling": "Психологічна допомога",
+        "dental": "Стоматологія",
+        "eyecare": "Догляд за зором",
+        "fertility": "Репродуктивне здоров'я",
+        "fitness": "Фітнес",
+        "hospital": "Лікарня",
+        "massage": "Масаж",
+        "medication": "Ліки",
+        "physician": "Лікар",
+        "physiotherapy": "Фізіотерапія",
+        "prescriptions": "Рецептурні ліки",
+        "supplies": "Медичне приладдя"
+      }
+    },
+    "housing": {
+      "name": "Житло",
+      "sub": {
+        "fees": "Внески",
+        "gardenSupplies": "Садові товари",
+        "homeImprovement": "Ремонт житла",
+        "maintenance": "Технічне обслуговування",
+        "mortgageInterest": "Відсотки за іпотекою",
+        "mortgagePrincipal": "Тіло іпотечного кредиту",
+        "rent": "Оренда",
+        "supplies": "Приладдя",
+        "tools": "Інструменти"
+      }
+    },
+    "insurance": {
+      "name": "Страхування",
+      "sub": {
+        "automobile": "Автомобіль",
+        "disability": "Страхування на випадок непрацездатності",
+        "health": "Здоров'я",
+        "homeownerRenter": "Житло/оренда",
+        "life": "Життя",
+        "travel": "Подорожі"
+      }
+    },
+    "interestExpense": {
+      "name": "Витрати на відсотки",
+      "sub": {}
+    },
+    "leisure": {
+      "name": "Дозвілля",
+      "sub": {
+        "booksMagazines": "Книги та журнали",
+        "cd": "CD",
+        "cameraFilm": "Фотоапарат/плівка",
+        "camping": "Кемпінг",
+        "coverCharge": "Вхідна плата",
+        "culturalEvents": "Культурні заходи",
+        "dvd": "DVD",
+        "electronics": "Електроніка",
+        "entertaining": "Прийом гостей",
+        "entertainment": "Розваги",
+        "fees": "Внески",
+        "gambling": "Азартні ігри",
+        "lps": "Вінілові платівки",
+        "movies": "Кіно",
+        "newspaper": "Газети",
+        "sportingEvents": "Спортивні події",
+        "sportingGoods": "Спортивні товари",
+        "sports": "Спорт",
+        "toysGames": "Іграшки та ігри",
+        "transit": "Громадський транспорт",
+        "vhs": "Відеокасети",
+        "videoRentals": "Прокат відео"
+      }
+    },
+    "licencingFees": {
+      "name": "Ліцензійні збори",
+      "sub": {}
+    },
+    "loan": {
+      "name": "Кредит",
+      "sub": {
+        "loanInterest": "Відсотки за кредитом",
+        "loanPrincipal": "Тіло кредиту",
+        "mortgageInterest": "Відсотки за іпотекою"
+      }
+    },
+    "miscellaneous": {
+      "name": "Різне",
+      "sub": {
+        "postage": "Поштові витрати",
+        "postcards": "Листівки",
+        "tools": "Інструменти",
+        "transit": "Громадський транспорт"
+      }
+    },
+    "personalCare": {
+      "name": "Особистий догляд",
+      "sub": {
+        "dryCleaning": "Хімчистка",
+        "haircut": "Стрижка",
+        "laundry": "Прання",
+        "pedicure": "Педикюр",
+        "toiletries": "Засоби гігієни"
+      }
+    },
+    "petCare": {
+      "name": "Догляд за домашніми тваринами",
+      "sub": {
+        "food": "Корм",
+        "supplies": "Приладдя",
+        "veterinarian": "Ветеринар"
+      }
+    },
+    "taxes": {
+      "name": "Податки",
+      "sub": {
+        "cppQppContributions": "Внески CPP/QPP",
+        "eiPremiums": "Внески на страхування зайнятості",
+        "federalIncome": "Федеральний прибутковий",
+        "goodsServices": "Податок на товари та послуги",
+        "other": "Інше",
+        "property": "Майновий податок",
+        "realEstate": "Податок на нерухомість",
+        "stateProvincial": "Регіональний/провінційний",
+        "unionDues": "Профспілкові внески"
+      }
+    },
+    "vacation": {
+      "name": "Відпустка",
+      "sub": {
+        "airfare": "Авіаквитки",
+        "carRental": "Оренда авто",
+        "entertainment": "Розваги",
+        "gasoline": "Пальне",
+        "lodging": "Проживання",
+        "miscellaneous": "Різне",
+        "parking": "Паркування",
+        "transit": "Громадський транспорт",
+        "travel": "Подорож"
+      }
+    }
+  }
+}
