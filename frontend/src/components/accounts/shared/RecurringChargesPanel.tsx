@@ -88,30 +88,34 @@ export function RecurringChargesPanel({ accountId, currencyCode }: RecurringChar
       const now = new Date();
       const endDate = format(now, 'yyyy-MM-dd');
       const startDate = format(subMonths(now, 12), 'yyyy-MM-dd');
-      try {
-        const [schedules, page] = await Promise.all([
-          scheduledTransactionsApi.getAll().catch((error) => {
-            logger.error('Failed to load scheduled transactions:', error);
-            return [] as ScheduledTransaction[];
-          }),
-          transactionsApi.getAll({ accountId, startDate, endDate, limit: 500, page: 1 }),
-        ]);
-        const payeeIds = Array.from(
-          new Set(page.data.map((tx) => tx.payeeId).filter((id): id is string => !!id)),
-        );
-        const charges = payeeIds.length
-          ? await transactionsApi.getRecurringCharges({ payeeIds, startDate, endDate })
-          : [];
-        if (cancelled) return;
-        setScheduled(schedules);
-        setDetected(charges.filter((c) => SUBSCRIPTION_CADENCES.has(c.frequency)));
-      } catch (error) {
-        if (cancelled) return;
-        logger.error('Failed to load recurring charges:', error);
-        setScheduled([]);
-        setDetected([]);
-      }
-      if (!cancelled) setLoadedForId(accountId);
+
+      // Load scheduled bills and detected charges independently so a failure in
+      // one never blanks the other (e.g. the transaction fetch erroring must not
+      // hide already-loaded scheduled bills).
+      const schedules = await scheduledTransactionsApi.getAll().catch((error) => {
+        logger.error('Failed to load scheduled transactions:', error);
+        return [] as ScheduledTransaction[];
+      });
+
+      const charges = await transactionsApi
+        .getAll({ accountId, startDate, endDate, limit: 500, page: 1 })
+        .then((page) => {
+          const payeeIds = Array.from(
+            new Set(page.data.map((tx) => tx.payeeId).filter((id): id is string => !!id)),
+          );
+          return payeeIds.length
+            ? transactionsApi.getRecurringCharges({ payeeIds, startDate, endDate })
+            : [];
+        })
+        .catch((error) => {
+          logger.error('Failed to load recurring charges:', error);
+          return [] as RecurringChargeInfo[];
+        });
+
+      if (cancelled) return;
+      setScheduled(schedules);
+      setDetected(charges.filter((c) => SUBSCRIPTION_CADENCES.has(c.frequency)));
+      setLoadedForId(accountId);
     })();
     return () => {
       cancelled = true;
