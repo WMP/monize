@@ -2550,6 +2550,14 @@ describe("TransactionAnalyticsService", () => {
         "COALESCE(splits.categoryId, transaction.categoryId)",
         "id",
       );
+      // Transfers with no category are excluded from the Uncategorized bucket:
+      // keep rows with a resolved category, or that are not transfers.
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        "COALESCE(splits.categoryId, transaction.categoryId) IS NOT NULL",
+      );
+      expect(mockQueryBuilder.orWhere).toHaveBeenCalledWith(
+        "transaction.isTransfer = false",
+      );
       expect(result).toEqual([
         {
           id: "cat-1",

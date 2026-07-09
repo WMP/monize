@@ -96,8 +96,34 @@ describe('RecurringChargesPanel', () => {
     await renderPanel();
     await waitFor(() => expect(screen.getByText('Landlord')).toBeInTheDocument());
     expect(screen.getByText('Scheduled')).toBeInTheDocument();
-    expect(screen.getByText('$1200.00')).toBeInTheDocument();
+    // Expense: signed and coloured red.
+    const amount = screen.getByText('-$1200.00');
+    expect(amount).toBeInTheDocument();
+    expect(amount.className).toContain('text-red-600');
     expect(screen.getByText(/Next due 2026-07-01/)).toBeInTheDocument();
+  });
+
+  it('colours scheduled bills by kind (income green, transfer blue)', async () => {
+    mockGetScheduled.mockResolvedValue([
+      schedule({ id: 'inc', payeeName: 'Payroll', payeeId: 'pay-job', amount: 2500 }),
+      schedule({
+        id: 'xfer',
+        payeeName: 'To Savings',
+        payeeId: null,
+        amount: -300,
+        isTransfer: true,
+        transferAccountId: 'sav-1',
+      }),
+    ]);
+    await renderPanel();
+    await waitFor(() => expect(screen.getByText('Payroll')).toBeInTheDocument());
+
+    const income = screen.getByText('+$2500.00');
+    expect(income.className).toContain('text-green-600');
+
+    // Transfers carry no +/- sign and are coloured blue.
+    const transfer = screen.getByText('$300.00');
+    expect(transfer.className).toContain('text-blue-600');
   });
 
   it('flags detected charges not already scheduled', async () => {

@@ -40,6 +40,23 @@ function normaliseName(value: string | null | undefined): string {
 }
 
 /**
+ * Colour a scheduled bill's amount by kind, matching the app convention:
+ * transfers blue, income (positive) green, expense (negative) red.
+ */
+function scheduledAmountClass(s: ScheduledTransaction): string {
+  if (s.isTransfer) return 'text-blue-600 dark:text-blue-400';
+  return Number(s.amount) < 0
+    ? 'text-red-600 dark:text-red-400'
+    : 'text-green-600 dark:text-green-400';
+}
+
+/** Signed prefix for a scheduled bill amount; transfers carry no +/-. */
+function scheduledAmountSign(s: ScheduledTransaction): string {
+  if (s.isTransfer) return '';
+  return Number(s.amount) < 0 ? '-' : '+';
+}
+
+/**
  * Build a template transaction from a detected charge so the scheduled-bill
  * form opens pre-filled. Detection reports the charge magnitude as a positive
  * number, but the underlying transactions are expenses, so seed a negative
@@ -186,7 +203,10 @@ export function RecurringChargesPanel({ accountId, currencyCode }: RecurringChar
                           {t('recurring.nextDue', { date: formatDate(s.nextDueDate) })}
                         </div>
                       </div>
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 tabular-nums">
+                      <div
+                        className={`text-sm font-medium tabular-nums ${scheduledAmountClass(s)}`}
+                      >
+                        {scheduledAmountSign(s)}
                         {formatCurrency(Math.abs(Number(s.amount)), s.currencyCode)}
                       </div>
                     </li>

@@ -653,7 +653,19 @@ export class TransactionAnalyticsService {
         .select(idExpr, "id")
         .addSelect("COALESCE(groupSplitCat.name, groupCat.name)", "name")
         .groupBy(idExpr)
-        .addGroupBy("COALESCE(groupSplitCat.name, groupCat.name)");
+        .addGroupBy("COALESCE(groupSplitCat.name, groupCat.name)")
+        // Transfers are movements between own accounts, not spending, so a
+        // transfer with no category must not swell the "Uncategorized" bucket.
+        // This matches the transaction-list filter, which excludes transfers
+        // from "uncategorized". A transfer carrying an optional category still
+        // shows under that category.
+        .andWhere(
+          new Brackets((qb) => {
+            qb.where(`${idExpr} IS NOT NULL`).orWhere(
+              "transaction.isTransfer = false",
+            );
+          }),
+        );
     } else {
       queryBuilder
         .leftJoin("transaction.payee", "groupPayee")
