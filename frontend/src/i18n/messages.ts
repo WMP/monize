@@ -16,6 +16,7 @@ const NAMESPACES = [
   "auth",
   "navigation",
   "accounts",
+  "accountDetail",
   "admin",
   "ai",
   "bills",

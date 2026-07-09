@@ -81,7 +81,7 @@ function createDefaultProps(overrides: Partial<AccountRowProps> = {}): AccountRo
     getAccountTypeColor: () => 'bg-blue-100 text-blue-800',
     actionLabels: {
       viewTransactions: 'View Transactions',
-      loanDetails: 'Loan Details',
+      details: 'Details',
       edit: 'Edit',
       reconcile: 'Reconcile',
       close: 'Close',
@@ -90,7 +90,7 @@ function createDefaultProps(overrides: Partial<AccountRowProps> = {}): AccountRo
       reopen: 'Reopen',
       delete: 'Delete',
     },
-    onLoanDetails: vi.fn(),
+    onDetails: vi.fn(),
     onEdit: vi.fn(),
     onReconcile: vi.fn(),
     onCloseClick: vi.fn(),

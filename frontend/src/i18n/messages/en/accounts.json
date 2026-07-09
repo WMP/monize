@@ -78,7 +78,7 @@
       "closeTitleEnabled": "Close account",
       "balanceMustBeZero": "Balance must be zero",
       "closedPrefix": " — Closed",
-      "loanDetails": "Loan Details"
+      "details": "Details"
     }
   },
   "contextMenu": {

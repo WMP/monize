@@ -1,0 +1,13 @@
+{
+  "header": {
+    "viewTransactions": "View Transactions",
+    "reconcile": "Reconcile",
+    "edit": "Edit Account",
+    "export": "Export",
+    "back": "Back to Accounts"
+  },
+  "loading": "Loading account details...",
+  "error": {
+    "retry": "Retry"
+  }
+}

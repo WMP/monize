@@ -78,7 +78,7 @@
       "closeTitleEnabled": "[XX-Close account-XX]",
       "balanceMustBeZero": "[XX-Balance must be zero-XX]",
       "closedPrefix": "[XX- — Closed-XX]",
-      "loanDetails": "[XX-Loan Details-XX]"
+      "details": "[XX-Details-XX]"
     }
   },
   "contextMenu": {
