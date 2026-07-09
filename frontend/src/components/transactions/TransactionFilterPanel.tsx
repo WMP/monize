@@ -12,6 +12,8 @@ import { Payee } from '@/types/payee';
 import { Tag } from '@/types/tag';
 import { TransactionStatus } from '@/types/transaction';
 import { TimePeriod, TIME_PERIOD_OPTIONS, resolveTimePeriod } from '@/lib/time-periods';
+import { collectTagKeys } from '@/lib/tag-key-value';
+import { TagKeyOp } from '@/hooks/useTransactionFilters';
 
 
 interface TransactionFilterPanelProps {
@@ -28,6 +30,9 @@ interface TransactionFilterPanelProps {
   filterAmountTo: string;
   filterTagIds: string[];
   filterStatuses: TransactionStatus[];
+  filterTagKey: string;
+  filterTagKeyOp: TagKeyOp;
+  filterTagKeyValue: string;
   weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   handleArrayFilterChange: <T>(setter: (value: T) => void, value: T) => void;
   handleFilterChange: (setter: (value: string) => void, value: string) => void;
@@ -44,6 +49,9 @@ interface TransactionFilterPanelProps {
   setFilterAmountTo: (value: string) => void;
   setFilterTagIds: (value: string[]) => void;
   setFilterStatuses: (value: TransactionStatus[]) => void;
+  setFilterTagKey: (value: string) => void;
+  setFilterTagKeyOp: (value: TagKeyOp) => void;
+  setFilterTagKeyValue: (value: string) => void;
   filtersExpanded: boolean;
   setFiltersExpanded: (value: boolean) => void;
   activeFilterCount: number;
@@ -76,6 +84,9 @@ export function TransactionFilterPanel({
   filterAmountTo,
   filterTagIds,
   filterStatuses,
+  filterTagKey,
+  filterTagKeyOp,
+  filterTagKeyValue,
   weekStartsOn,
   handleArrayFilterChange,
   handleFilterChange,
@@ -92,6 +103,9 @@ export function TransactionFilterPanel({
   setFilterAmountTo,
   setFilterTagIds,
   setFilterStatuses,
+  setFilterTagKey,
+  setFilterTagKeyOp,
+  setFilterTagKeyValue,
   filtersExpanded,
   setFiltersExpanded,
   activeFilterCount,
@@ -117,6 +131,18 @@ export function TransactionFilterPanel({
     [TransactionStatus.RECONCILED]: t('filter.statusLabels.reconciled'),
     [TransactionStatus.VOID]: t('filter.statusLabels.void'),
   };
+
+  // KEY:VALUE tag keys the user actually has (e.g. "country", "sector"). The
+  // whole key filter is only offered when at least one key:value tag exists.
+  const availableTagKeys = collectTagKeys(tagFilterOptions.map((o) => o.label));
+  const tagKeyOpOptions: { value: TagKeyOp; label: string }[] = [
+    { value: 'hasValue', label: t('filter.tagKeyOps.hasValue') },
+    { value: 'noValue', label: t('filter.tagKeyOps.noValue') },
+    { value: 'contains', label: t('filter.tagKeyOps.contains') },
+    { value: 'notContains', label: t('filter.tagKeyOps.notContains') },
+  ];
+  const tagKeyNeedsValue =
+    filterTagKeyOp === 'contains' || filterTagKeyOp === 'notContains';
 
   const STATUS_FILTER_OPTIONS: MultiSelectOption[] = [
     { value: TransactionStatus.UNRECONCILED, label: STATUS_LABELS[TransactionStatus.UNRECONCILED] },
@@ -468,6 +494,48 @@ export function TransactionFilterPanel({
                   placeholder={t('filter.placeholders.tags')}
                 />
               </div>
+
+              {/* KEY:VALUE tag key filter. Only shown when the user has at least
+                  one key:value tag (e.g. country:usa). Choose a key, an operator,
+                  and (for contains/notContains) a term. */}
+              {availableTagKeys.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_2fr_3fr] gap-4 mt-4">
+                  <Select
+                    label={t('filter.fields.tagKey')}
+                    options={[
+                      { value: '', label: t('filter.tagKeyNone') },
+                      ...availableTagKeys.map((k) => ({ value: k, label: k })),
+                    ]}
+                    value={filterTagKey}
+                    onChange={(e) =>
+                      handleFilterChange(setFilterTagKey, e.target.value)
+                    }
+                  />
+                  <Select
+                    label={t('filter.fields.tagKeyOp')}
+                    options={tagKeyOpOptions}
+                    value={filterTagKeyOp}
+                    disabled={!filterTagKey}
+                    onChange={(e) =>
+                      handleFilterChange(
+                        setFilterTagKeyOp as (value: string) => void,
+                        e.target.value,
+                      )
+                    }
+                  />
+                  {tagKeyNeedsValue && (
+                    <Input
+                      label={t('filter.fields.tagKeyValue')}
+                      value={filterTagKeyValue}
+                      disabled={!filterTagKey}
+                      placeholder={t('filter.placeholders.tagKeyValue')}
+                      onChange={(e) =>
+                        handleFilterChange(setFilterTagKeyValue, e.target.value)
+                      }
+                    />
+                  )}
+                </div>
+              )}
 
               {/* Second row: Time period, dates, amount range, reconciliation status, and search.
                   Uses an explicit fr template so Reconciliation can be a fraction

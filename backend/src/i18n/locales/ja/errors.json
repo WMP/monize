@@ -386,7 +386,8 @@
     "lookupAmbiguous": "「{{ query }}」は複数の証券に一致します: {{ list }}。取引所を指定して再実行してください。",
     "lookupNoCurrency": "「{{ symbol }}」の通貨を特定できませんでした。代わりに証券を手動で追加してください。",
     "noUpdateFields": "変更するフィールドを少なくとも1つ指定してください。",
-    "allocationExceedsTotal": "配分の割合の合計が100%を超えています。"
+    "allocationExceedsTotal": "配分の割合の合計が100%を超えています。",
+    "invalidTagKey": "タグキー（1〜100文字）が必要です"
   },
   "tags": {
     "notFound": "ID {{ id }} のタグが見つかりません",
@@ -433,7 +434,11 @@
     "payeeNotFound": "支払先が見つかりません",
     "cannotEditTransfer": "振替はここでは編集できません。取引画面から振替を編集してください。",
     "cannotEditSplit": "分割取引はここでは編集できません。取引画面から分割を編集してください。",
-    "noUpdateFields": "変更するフィールドを少なくとも1つ指定してください。"
+    "noUpdateFields": "変更するフィールドを少なくとも1つ指定してください。",
+    "tagKeyTooLong": "tagKey は100文字を超えてはいけません",
+    "invalidTagKeyOp": "無効な tagKeyOp: {{ op }}",
+    "tagKeyValueRequired": "contains / notContains には tagKeyValue が必要です",
+    "tagKeyRequired": "タグキー（1〜100文字）が必要です"
   },
   "users": {
     "userNotFound": "ユーザーが見つかりません",

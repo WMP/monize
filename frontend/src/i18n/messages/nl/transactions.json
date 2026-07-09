@@ -217,7 +217,10 @@
       "amountFrom": "Bedrag vanaf",
       "amountTo": "Bedrag tot",
       "status": "Status",
-      "search": "Zoeken"
+      "search": "Zoeken",
+      "tagKey": "Tagsleutel",
+      "tagKeyOp": "Voorwaarde",
+      "tagKeyValue": "Waarde"
     },
     "placeholders": {
       "accounts": "Alle rekeningen",
@@ -227,7 +230,8 @@
       "statuses": "Alle statussen",
       "amountMin": "Min",
       "amountMax": "Max",
-      "search": "Zoek op begunstigde, categorie, bedrag, label, omschrijving, referentie #..."
+      "search": "Zoek op begunstigde, categorie, bedrag, label, omschrijving, referentie #...",
+      "tagKeyValue": "bijv. usa"
     },
     "chips": {
       "removeAccount": "Filter {name} verwijderen",
@@ -261,6 +265,13 @@
       "yearToDate": "Jaar tot nu toe",
       "lastYear": "Vorig jaar",
       "custom": "Aangepast"
+    },
+    "tagKeyNone": "Alle (geen sleutelfilter)",
+    "tagKeyOps": {
+      "hasValue": "Heeft een waarde",
+      "noValue": "Heeft geen waarde",
+      "contains": "Waarde bevat",
+      "notContains": "Waarde bevat niet"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "Datum is vereist"
+  },
+  "tagKeyBreakdown": {
+    "title": "Uitgaven per {key}",
+    "other": "Overige",
+    "noData": "Geen getagde uitgaven om te verdelen voor deze sleutel."
   }
 }

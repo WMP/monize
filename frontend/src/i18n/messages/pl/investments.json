@@ -72,8 +72,11 @@
     "groupBy": {
       "security": "Wg papieru",
       "tag": "Wg tagu",
-      "country": "Wg kraju"
-    }
+      "country": "Wg kraju",
+      "tagKey": "Wg klucza"
+    },
+    "noKeyData": "Żadna pozycja nie ma wartości dla tego klucza tagu. Oznacz papiery jako klucz:wartość (np. country:usa), aby zobaczyć ten podział.",
+    "keySelectorLabel": "Klucz tagu do agregacji"
   },
   "holdingsList": {
     "title": "Pozycje",

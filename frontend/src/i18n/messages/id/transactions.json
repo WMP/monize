@@ -217,7 +217,10 @@
       "amountFrom": "Jumlah Dari",
       "amountTo": "Jumlah Sampai",
       "status": "Status",
-      "search": "Cari"
+      "search": "Cari",
+      "tagKey": "Kunci tag",
+      "tagKeyOp": "Kondisi",
+      "tagKeyValue": "Nilai"
     },
     "placeholders": {
       "accounts": "Semua akun",
@@ -227,7 +230,8 @@
       "statuses": "Semua status",
       "amountMin": "Min",
       "amountMax": "Maks",
-      "search": "Cari penerima, kategori, jumlah, tag, keterangan, referensi #..."
+      "search": "Cari penerima, kategori, jumlah, tag, keterangan, referensi #...",
+      "tagKeyValue": "mis. usa"
     },
     "chips": {
       "removeAccount": "Hapus filter {name}",
@@ -261,6 +265,13 @@
       "yearToDate": "Tahun Berjalan",
       "lastYear": "Tahun Lalu",
       "custom": "Kustom"
+    },
+    "tagKeyNone": "Semua (tanpa filter kunci)",
+    "tagKeyOps": {
+      "hasValue": "Memiliki nilai",
+      "noValue": "Tidak memiliki nilai",
+      "contains": "Nilai mengandung",
+      "notContains": "Nilai tidak mengandung"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "Tanggal diperlukan"
+  },
+  "tagKeyBreakdown": {
+    "title": "Pengeluaran menurut {key}",
+    "other": "Lainnya",
+    "noData": "Tidak ada pengeluaran bertag untuk dirinci pada kunci ini."
   }
 }

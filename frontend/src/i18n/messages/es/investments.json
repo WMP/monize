@@ -72,8 +72,11 @@
     "groupBy": {
       "security": "Por valor",
       "tag": "Por etiqueta",
-      "country": "Por país"
-    }
+      "country": "Por país",
+      "tagKey": "Por clave"
+    },
+    "noKeyData": "Ninguna posición tiene un valor para esta clave de etiqueta. Etiquete los valores como clave:valor (p. ej. country:usa) para ver este desglose.",
+    "keySelectorLabel": "Clave de etiqueta para agregar"
   },
   "holdingsList": {
     "title": "Posiciones",

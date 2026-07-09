@@ -8,6 +8,7 @@ import { useOnAiAction } from '@/hooks/useOnAiAction';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { TransactionFilterPanel } from '@/components/transactions/TransactionFilterPanel';
+import { TagKeyBreakdownChart } from '@/components/transactions/TagKeyBreakdownChart';
 import { Pagination } from '@/components/ui/Pagination';
 import { TransactionList } from '@/components/transactions/TransactionList';
 import { type DensityLevel } from '@/hooks/useTableDensity';
@@ -230,6 +231,9 @@ function TransactionsContent() {
           amountFrom: parsedAmountFrom,
           amountTo: parsedAmountTo,
           statuses: filters.filterStatuses.length > 0 ? filters.filterStatuses : undefined,
+          tagKey: filters.filterTagKey || undefined,
+          tagKeyOp: filters.filterTagKeyOp,
+          tagKeyValue: filters.filterTagKeyValue || undefined,
         }),
         chartPromise,
       ]);
@@ -267,7 +271,7 @@ function TransactionsContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [accountIdsForQuery, filters.filterAccountStatus, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, t]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [accountIdsForQuery, filters.filterAccountStatus, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, filters.filterTagKey, filters.filterTagKeyOp, filters.filterTagKeyValue, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadData = useCallback(async (page: number = filters.currentPage) => {
     await loadTransactions(page);
@@ -324,6 +328,9 @@ function TransactionsContent() {
         amountFrom: filters.filterAmountFrom,
         amountTo: filters.filterAmountTo,
         statuses: filters.filterStatuses,
+        tagKey: filters.filterTagKey,
+        tagKeyOp: filters.filterTagKeyOp,
+        tagKeyValue: filters.filterTagKeyValue,
       }, wasFilterChange);
     }
 
@@ -335,7 +342,7 @@ function TransactionsContent() {
     } else {
       loadTransactions(page);
     }
-  }, [filters.currentPage, filters.filterAccountIds, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, filters.updateUrl, loadTransactions, filters.filtersInitialized, undoRedoTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filters.currentPage, filters.filterAccountIds, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, filters.filterTagKey, filters.filterTagKeyOp, filters.filterTagKeyValue, filters.updateUrl, loadTransactions, filters.filtersInitialized, undoRedoTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Once the deep-linked transaction is actually on the page, let the flash
   // linger briefly then clear it, so the highlight does not stick around on
@@ -1055,6 +1062,9 @@ function TransactionsContent() {
           filterAmountTo={filters.filterAmountTo}
           filterTagIds={filters.filterTagIds}
           filterStatuses={filters.filterStatuses}
+          filterTagKey={filters.filterTagKey}
+          filterTagKeyOp={filters.filterTagKeyOp}
+          filterTagKeyValue={filters.filterTagKeyValue}
           weekStartsOn={weekStartsOn}
           handleArrayFilterChange={filters.handleArrayFilterChange}
           handleFilterChange={filters.handleFilterChange}
@@ -1071,6 +1081,9 @@ function TransactionsContent() {
           setFilterAmountTo={filters.setFilterAmountTo}
           setFilterTagIds={filters.setFilterTagIds}
           setFilterStatuses={filters.setFilterStatuses}
+          setFilterTagKey={filters.setFilterTagKey}
+          setFilterTagKeyOp={filters.setFilterTagKeyOp}
+          setFilterTagKeyValue={filters.setFilterTagKeyValue}
           filtersExpanded={filters.filtersExpanded}
           setFiltersExpanded={filters.setFiltersExpanded}
           activeFilterCount={filters.activeFilterCount}
@@ -1091,6 +1104,31 @@ function TransactionsContent() {
           }}
           onClearFilters={filters.clearFilters}
         />
+
+        {/* Spending broken down by the selected KEY:VALUE tag key. */}
+        {filters.filterTagKey && (
+          <div className="mb-6">
+            <TagKeyBreakdownChart
+              tagKey={filters.filterTagKey}
+              params={{
+                accountIds: accountIdsForQuery,
+                startDate: filters.filterStartDate || undefined,
+                endDate: filters.filterEndDate || undefined,
+                tagIds:
+                  filters.filterTagIds.length > 0
+                    ? filters.filterTagIds
+                    : undefined,
+                search: filters.filterSearch || undefined,
+                amountFrom: filters.filterAmountFrom
+                  ? parseFloat(filters.filterAmountFrom)
+                  : undefined,
+                amountTo: filters.filterAmountTo
+                  ? parseFloat(filters.filterAmountTo)
+                  : undefined,
+              }}
+            />
+          </div>
+        )}
 
         {/* Bulk Selection Banner */}
         {selection.hasSelection && (

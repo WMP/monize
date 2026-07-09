@@ -386,7 +386,8 @@
     "lookupAmbiguous": "\"{{ query }}\" passt auf mehrere Wertpapiere: {{ list }}. Führen Sie die Suche erneut mit Angabe einer Börse aus.",
     "lookupNoCurrency": "Die Währung für \"{{ symbol }}\" konnte nicht ermittelt werden. Fügen Sie das Wertpapier stattdessen manuell hinzu.",
     "noUpdateFields": "Geben Sie mindestens ein zu änderndes Feld an.",
-    "allocationExceedsTotal": "Die Aufteilungsprozentsätze ergeben in Summe mehr als 100 %."
+    "allocationExceedsTotal": "Die Aufteilungsprozentsätze ergeben in Summe mehr als 100 %.",
+    "invalidTagKey": "Ein Tag-Schlüssel (1–100 Zeichen) ist erforderlich"
   },
   "tags": {
     "notFound": "Etikett mit ID {{ id }} nicht gefunden",
@@ -433,7 +434,11 @@
     "payeeNotFound": "Zahlungsempfänger nicht gefunden",
     "cannotEditTransfer": "Umbuchungen können hier nicht bearbeitet werden. Bearbeiten Sie die Umbuchung im Transaktionsbildschirm.",
     "cannotEditSplit": "Aufgeteilte Transaktionen können hier nicht bearbeitet werden. Bearbeiten Sie die Aufteilung im Transaktionsbildschirm.",
-    "noUpdateFields": "Geben Sie mindestens ein zu änderndes Feld an."
+    "noUpdateFields": "Geben Sie mindestens ein zu änderndes Feld an.",
+    "tagKeyTooLong": "tagKey darf 100 Zeichen nicht überschreiten",
+    "invalidTagKeyOp": "Ungültiger tagKeyOp: {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue ist für contains / notContains erforderlich",
+    "tagKeyRequired": "Ein Tag-Schlüssel (1–100 Zeichen) ist erforderlich"
   },
   "users": {
     "userNotFound": "Benutzer nicht gefunden",

@@ -217,7 +217,10 @@
       "amountFrom": "Cantidad desde",
       "amountTo": "Cantidad hasta",
       "status": "Estado",
-      "search": "Buscar"
+      "search": "Buscar",
+      "tagKey": "Clave de etiqueta",
+      "tagKeyOp": "Condición",
+      "tagKeyValue": "Valor"
     },
     "placeholders": {
       "accounts": "Todas las cuentas",
@@ -227,7 +230,8 @@
       "statuses": "Todos los estados",
       "amountMin": "Mín",
       "amountMax": "Máx",
-      "search": "Buscar beneficiario, categoría, cantidad, etiqueta, descripción, referencia #..."
+      "search": "Buscar beneficiario, categoría, cantidad, etiqueta, descripción, referencia #...",
+      "tagKeyValue": "p. ej. usa"
     },
     "chips": {
       "removeAccount": "Quitar filtro {name}",
@@ -261,6 +265,13 @@
       "yearToDate": "Año hasta hoy",
       "lastYear": "Año pasado",
       "custom": "Personalizado"
+    },
+    "tagKeyNone": "Cualquiera (sin filtro de clave)",
+    "tagKeyOps": {
+      "hasValue": "Tiene un valor",
+      "noValue": "No tiene valor",
+      "contains": "El valor contiene",
+      "notContains": "El valor no contiene"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "La fecha es obligatoria"
+  },
+  "tagKeyBreakdown": {
+    "title": "Gastos por {key}",
+    "other": "Otros",
+    "noData": "No hay gastos etiquetados para desglosar con esta clave."
   }
 }

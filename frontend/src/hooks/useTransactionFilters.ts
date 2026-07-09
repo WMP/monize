@@ -29,7 +29,21 @@ const STORAGE_KEYS = {
   amountTo: 'transactions.filter.amountTo',
   tagIds: 'transactions.filter.tagIds',
   statuses: 'transactions.filter.statuses',
+  tagKey: 'transactions.filter.tagKey',
+  tagKeyOp: 'transactions.filter.tagKeyOp',
+  tagKeyValue: 'transactions.filter.tagKeyValue',
 };
+
+export type TagKeyOp = 'hasValue' | 'noValue' | 'contains' | 'notContains';
+const VALID_TAG_KEY_OPS = new Set<string>([
+  'hasValue',
+  'noValue',
+  'contains',
+  'notContains',
+]);
+function sanitizeTagKeyOp(value: string): TagKeyOp {
+  return VALID_TAG_KEY_OPS.has(value) ? (value as TagKeyOp) : 'hasValue';
+}
 
 // Mirrors the backend's targetTransactionId validation so a malformed deep-link
 // value is ignored rather than sent on to a 4xx.
@@ -156,6 +170,10 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
   const [filterAmountTo, setFilterAmountTo] = useState<string>('');
   const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
   const [filterStatuses, setFilterStatuses] = useState<TransactionStatus[]>([]);
+  // KEY:VALUE tag filter (e.g. key "country", op "contains", value "usa").
+  const [filterTagKey, setFilterTagKey] = useState<string>('');
+  const [filterTagKeyOp, setFilterTagKeyOp] = useState<TagKeyOp>('hasValue');
+  const [filterTagKeyValue, setFilterTagKeyValue] = useState<string>('');
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const [filtersInitialized, setFiltersInitialized] = useState(false);
   const [filtersExpanded, setFiltersExpanded] = useState(true);
@@ -195,6 +213,9 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
     amountFrom: string;
     amountTo: string;
     statuses: TransactionStatus[];
+    tagKey: string;
+    tagKeyOp: TagKeyOp;
+    tagKeyValue: string;
   }, push: boolean = false) => {
     const params = new URLSearchParams();
     if (page > 1) params.set('page', page.toString());
@@ -208,6 +229,16 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
     if (filters.amountFrom) params.set('amountFrom', filters.amountFrom);
     if (filters.amountTo) params.set('amountTo', filters.amountTo);
     if (filters.statuses.length) params.set('statuses', filters.statuses.join(','));
+    if (filters.tagKey) {
+      params.set('tagKey', filters.tagKey);
+      params.set('tagKeyOp', filters.tagKeyOp);
+      if (
+        (filters.tagKeyOp === 'contains' || filters.tagKeyOp === 'notContains') &&
+        filters.tagKeyValue
+      ) {
+        params.set('tagKeyValue', filters.tagKeyValue);
+      }
+    }
 
     const queryString = params.toString();
     const newUrl = queryString ? `/transactions?${queryString}` : '/transactions';
@@ -325,8 +356,9 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
     if (filterSearch) count++;
     if (filterAmountFrom) count++;
     if (filterAmountTo) count++;
+    if (filterTagKey) count++;
     return count;
-  }, [filterAccountIds, filterCategoryIds, filterPayeeIds, filterTagIds, filterStatuses, filterStartDate, filterEndDate, filterSearch, filterAmountFrom, filterAmountTo]);
+  }, [filterAccountIds, filterCategoryIds, filterPayeeIds, filterTagIds, filterStatuses, filterStartDate, filterEndDate, filterSearch, filterAmountFrom, filterAmountTo, filterTagKey]);
 
   // Auto-collapse filters when there are active filters, expand when none
   useEffect(() => {
@@ -353,6 +385,7 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
       searchParams.has('amountTo') ||
       searchParams.has('tagIds') ||
       searchParams.has('statuses') ||
+      searchParams.has('tagKey') ||
       searchParams.has('targetTransactionId');
 
     const getAccountIds = () => {
@@ -401,6 +434,9 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
     setFilterAmountFrom(getFilterValue(STORAGE_KEYS.amountFrom, searchParams.get('amountFrom'), hasAnyUrlParams));
     setFilterAmountTo(getFilterValue(STORAGE_KEYS.amountTo, searchParams.get('amountTo'), hasAnyUrlParams));
     setFilterStatuses(sanitizeStatuses(getFilterValues(STORAGE_KEYS.statuses, searchParams.get('statuses'), hasAnyUrlParams)));
+    setFilterTagKey(getFilterValue(STORAGE_KEYS.tagKey, searchParams.get('tagKey'), hasAnyUrlParams));
+    setFilterTagKeyOp(sanitizeTagKeyOp(getFilterValue(STORAGE_KEYS.tagKeyOp, searchParams.get('tagKeyOp'), hasAnyUrlParams)));
+    setFilterTagKeyValue(getFilterValue(STORAGE_KEYS.tagKeyValue, searchParams.get('tagKeyValue'), hasAnyUrlParams));
     if (hasAnyUrlParams) {
       setFilterTimePeriod((initialStartDate || initialEndDate) ? 'custom' : '');
     } else {
@@ -461,6 +497,9 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
     setFilterAmountFrom('');
     setFilterAmountTo('');
     setFilterStatuses([]);
+    setFilterTagKey('');
+    setFilterTagKeyOp('hasValue');
+    setFilterTagKeyValue('');
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
       searchDebounceRef.current = null;
@@ -535,6 +574,9 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
     setFilterAmountFrom('');
     setFilterAmountTo('');
     setFilterStatuses([]);
+    setFilterTagKey('');
+    setFilterTagKeyOp('hasValue');
+    setFilterTagKeyValue('');
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
       searchDebounceRef.current = null;
@@ -563,7 +605,10 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
     localStorage.setItem(STORAGE_KEYS.amountFrom, filterAmountFrom);
     localStorage.setItem(STORAGE_KEYS.amountTo, filterAmountTo);
     localStorage.setItem(STORAGE_KEYS.statuses, JSON.stringify(filterStatuses));
-  }, [filterAccountIds, filterCategoryIds, filterPayeeIds, filterTagIds, filterStartDate, filterEndDate, filterSearch, filterTimePeriod, filterAmountFrom, filterAmountTo, filterStatuses, filtersInitialized]);
+    localStorage.setItem(STORAGE_KEYS.tagKey, filterTagKey);
+    localStorage.setItem(STORAGE_KEYS.tagKeyOp, filterTagKeyOp);
+    localStorage.setItem(STORAGE_KEYS.tagKeyValue, filterTagKeyValue);
+  }, [filterAccountIds, filterCategoryIds, filterPayeeIds, filterTagIds, filterStartDate, filterEndDate, filterSearch, filterTimePeriod, filterAmountFrom, filterAmountTo, filterStatuses, filterTagKey, filterTagKeyOp, filterTagKeyValue, filtersInitialized]);
 
   // Helper to update array filter and mark as filter change
   const handleArrayFilterChange = useCallback(<T,>(setter: (value: T) => void, value: T) => {
@@ -621,6 +666,9 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
       setFilterAmountFrom('');
       setFilterAmountTo('');
       setFilterStatuses([]);
+      setFilterTagKey('');
+      setFilterTagKeyOp('hasValue');
+      setFilterTagKeyValue('');
       setSearchInput(term);
       setFilterSearch(term);
       setCurrentPage(1);
@@ -648,6 +696,9 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
       setFilterAmountFrom(params.get('amountFrom') || '');
       setFilterAmountTo(params.get('amountTo') || '');
       setFilterStatuses(sanitizeStatuses(params.get('statuses')?.split(',').filter(Boolean) || []));
+      setFilterTagKey(params.get('tagKey') || '');
+      setFilterTagKeyOp(sanitizeTagKeyOp(params.get('tagKeyOp') || ''));
+      setFilterTagKeyValue(params.get('tagKeyValue') || '');
       const hasDateParams = params.has('startDate') || params.has('endDate');
       setFilterTimePeriod(hasDateParams ? 'custom' : '');
       const pageParam = params.get('page');
@@ -713,6 +764,9 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
     setFilterAmountFrom('');
     setFilterAmountTo('');
     setFilterStatuses([]);
+    setFilterTagKey('');
+    setFilterTagKeyOp('hasValue');
+    setFilterTagKeyValue('');
     localStorage.removeItem(STORAGE_KEYS.accountIds);
     localStorage.removeItem(STORAGE_KEYS.categoryIds);
     localStorage.removeItem(STORAGE_KEYS.payeeIds);
@@ -724,6 +778,9 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
     localStorage.removeItem(STORAGE_KEYS.amountFrom);
     localStorage.removeItem(STORAGE_KEYS.amountTo);
     localStorage.removeItem(STORAGE_KEYS.statuses);
+    localStorage.removeItem(STORAGE_KEYS.tagKey);
+    localStorage.removeItem(STORAGE_KEYS.tagKeyOp);
+    localStorage.removeItem(STORAGE_KEYS.tagKeyValue);
     router.replace('/transactions', { scroll: false });
   }, [router]);
 
@@ -749,6 +806,9 @@ export function useTransactionFilters({ accounts, categories, payees, tags, week
     filterAmountTo, setFilterAmountTo,
     filterTagIds, setFilterTagIds,
     filterStatuses, setFilterStatuses,
+    filterTagKey, setFilterTagKey,
+    filterTagKeyOp, setFilterTagKeyOp,
+    filterTagKeyValue, setFilterTagKeyValue,
     filtersInitialized,
     filtersExpanded, setFiltersExpanded,
     activeFilterCount,

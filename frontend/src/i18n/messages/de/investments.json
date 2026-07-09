@@ -72,8 +72,11 @@
     "groupBy": {
       "security": "Nach Wertpapier",
       "tag": "Nach Tag",
-      "country": "Nach Land"
-    }
+      "country": "Nach Land",
+      "tagKey": "Nach Schlüssel"
+    },
+    "noKeyData": "Keine Positionen haben einen Wert für diesen Tag-Schlüssel. Kennzeichnen Sie Wertpapiere als key:value (z. B. country:usa), um diese Aufschlüsselung zu sehen.",
+    "keySelectorLabel": "Tag-Schlüssel zum Aggregieren"
   },
   "holdingsList": {
     "title": "Depotbestand",

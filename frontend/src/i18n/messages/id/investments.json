@@ -72,8 +72,11 @@
     "groupBy": {
       "security": "Berdasarkan sekuritas",
       "tag": "Berdasarkan tag",
-      "country": "Berdasarkan negara"
-    }
+      "country": "Berdasarkan negara",
+      "tagKey": "Menurut kunci"
+    },
+    "noKeyData": "Tidak ada kepemilikan yang memiliki nilai untuk kunci tag ini. Beri tag sekuritas sebagai key:value (mis. country:usa) untuk melihat rincian ini.",
+    "keySelectorLabel": "Kunci tag untuk diagregasi"
   },
   "holdingsList": {
     "title": "Kepemilikan",

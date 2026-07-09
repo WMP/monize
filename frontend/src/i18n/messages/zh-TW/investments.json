@@ -72,8 +72,11 @@
     "groupBy": {
       "security": "按證券",
       "tag": "按標籤",
-      "country": "依國家/地區"
-    }
+      "country": "依國家/地區",
+      "tagKey": "依鍵"
+    },
+    "noKeyData": "沒有持倉包含此標籤鍵的值。將證券標記為 key:value（例如 country:usa）以檢視此細分。",
+    "keySelectorLabel": "用於彙總的標籤鍵"
   },
   "holdingsList": {
     "title": "持倉",

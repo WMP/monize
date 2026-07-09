@@ -217,7 +217,10 @@
       "amountFrom": "金额从",
       "amountTo": "金额至",
       "status": "状态",
-      "search": "搜索"
+      "search": "搜索",
+      "tagKey": "标签键",
+      "tagKeyOp": "条件",
+      "tagKeyValue": "值"
     },
     "placeholders": {
       "accounts": "所有账户",
@@ -227,7 +230,8 @@
       "statuses": "所有状态",
       "amountMin": "最小",
       "amountMax": "最大",
-      "search": "搜索收款人、分类、金额、标签、描述、参考编号..."
+      "search": "搜索收款人、分类、金额、标签、描述、参考编号...",
+      "tagKeyValue": "例如 usa"
     },
     "chips": {
       "removeAccount": "移除 {name} 筛选",
@@ -261,6 +265,13 @@
       "yearToDate": "今年至今",
       "lastYear": "去年",
       "custom": "自定义"
+    },
+    "tagKeyNone": "任意（无键筛选）",
+    "tagKeyOps": {
+      "hasValue": "有值",
+      "noValue": "无值",
+      "contains": "值包含",
+      "notContains": "值不包含"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "日期为必填项"
+  },
+  "tagKeyBreakdown": {
+    "title": "按 {key} 的支出",
+    "other": "其他",
+    "noData": "没有可按此键细分的已标记支出。"
   }
 }

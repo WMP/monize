@@ -72,8 +72,11 @@
     "groupBy": {
       "security": "Theo chứng khoán",
       "tag": "Theo thẻ",
-      "country": "Theo quốc gia"
-    }
+      "country": "Theo quốc gia",
+      "tagKey": "Theo khóa"
+    },
+    "noKeyData": "Không có khoản nắm giữ nào có giá trị cho khóa thẻ này. Gắn thẻ chứng khoán dạng khóa:giá_trị (ví dụ: country:usa) để xem phân tích này.",
+    "keySelectorLabel": "Khóa thẻ để tổng hợp"
   },
   "holdingsList": {
     "title": "Nắm giữ",

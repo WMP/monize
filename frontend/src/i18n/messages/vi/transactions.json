@@ -217,7 +217,10 @@
       "amountFrom": "Số tiền từ",
       "amountTo": "Số tiền đến",
       "status": "Trạng thái",
-      "search": "Tìm kiếm"
+      "search": "Tìm kiếm",
+      "tagKey": "Khóa thẻ",
+      "tagKeyOp": "Điều kiện",
+      "tagKeyValue": "Giá trị"
     },
     "placeholders": {
       "accounts": "Tất cả tài khoản",
@@ -227,7 +230,8 @@
       "statuses": "Tất cả trạng thái",
       "amountMin": "Tối thiểu",
       "amountMax": "Tối đa",
-      "search": "Tìm kiếm người nhận, danh mục, số tiền, thẻ, mô tả, số tham chiếu..."
+      "search": "Tìm kiếm người nhận, danh mục, số tiền, thẻ, mô tả, số tham chiếu...",
+      "tagKeyValue": "ví dụ: usa"
     },
     "chips": {
       "removeAccount": "Xóa bộ lọc {name}",
@@ -261,6 +265,13 @@
       "yearToDate": "Năm đến nay",
       "lastYear": "Năm ngoái",
       "custom": "Tùy chọn"
+    },
+    "tagKeyNone": "Bất kỳ (không lọc theo khóa)",
+    "tagKeyOps": {
+      "hasValue": "Có giá trị",
+      "noValue": "Không có giá trị",
+      "contains": "Giá trị chứa",
+      "notContains": "Giá trị không chứa"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "Ngày là bắt buộc"
+  },
+  "tagKeyBreakdown": {
+    "title": "Chi tiêu theo {key}",
+    "other": "Khác",
+    "noData": "Không có chi tiêu được gắn thẻ để phân tích cho khóa này."
   }
 }

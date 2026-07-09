@@ -582,6 +582,7 @@ describe('useTransactionFilters - URL update', () => {
         amountFrom: '1',
         amountTo: '5',
         statuses: [],
+        tagKey: '', tagKeyOp: 'hasValue', tagKeyValue: '',
       });
     });
     expect(mockReplace).toHaveBeenCalled();
@@ -598,6 +599,7 @@ describe('useTransactionFilters - URL update', () => {
         accountIds: [], categoryIds: [], payeeIds: [], tagIds: [],
         startDate: '', endDate: '', search: '', amountFrom: '', amountTo: '',
         statuses: [],
+        tagKey: '', tagKeyOp: 'hasValue', tagKeyValue: '',
       }, true);
     });
     expect(mockPush).toHaveBeenCalledWith('/transactions', { scroll: false });
@@ -826,6 +828,7 @@ describe('useTransactionFilters - filter persistence', () => {
         accountIds: [], categoryIds: [], payeeIds: [], tagIds: [],
         startDate: '', endDate: '', search: '', amountFrom: '', amountTo: '',
         statuses: result.current.filterStatuses,
+        tagKey: '', tagKeyOp: 'hasValue', tagKeyValue: '',
       });
     });
     expect(mockReplace).toHaveBeenCalled();

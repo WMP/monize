@@ -386,7 +386,8 @@
     "lookupAmbiguous": "\"{{ query }}\" corresponde a vários títulos: {{ list }}. Execute novamente especificando uma bolsa.",
     "lookupNoCurrency": "Não foi possível determinar a moeda de \"{{ symbol }}\". Adicione o título manualmente.",
     "noUpdateFields": "Indique pelo menos um campo para alterar.",
-    "allocationExceedsTotal": "As percentagens de alocação somam mais de 100%."
+    "allocationExceedsTotal": "As percentagens de alocação somam mais de 100%.",
+    "invalidTagKey": "É necessária uma chave de etiqueta (1-100 caracteres)"
   },
   "tags": {
     "notFound": "Etiqueta com ID {{ id }} não encontrada",
@@ -433,7 +434,11 @@
     "payeeNotFound": "Beneficiário não encontrado",
     "cannotEditTransfer": "As transferências não podem ser editadas aqui. Edite a transferência no ecrã Transações.",
     "cannotEditSplit": "As transações divididas não podem ser editadas aqui. Edite a divisão no ecrã Transações.",
-    "noUpdateFields": "Indique pelo menos um campo para alterar."
+    "noUpdateFields": "Indique pelo menos um campo para alterar.",
+    "tagKeyTooLong": "tagKey não deve exceder 100 caracteres",
+    "invalidTagKeyOp": "tagKeyOp inválido: {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue é obrigatório para contains / notContains",
+    "tagKeyRequired": "É necessária uma chave de etiqueta (1-100 caracteres)"
   },
   "users": {
     "userNotFound": "Utilizador não encontrado",

@@ -386,7 +386,8 @@
     "lookupAmbiguous": "\"{{ query }}\" pasuje do wielu papierów wartościowych: {{ list }}. Uruchom ponownie, podając giełdę.",
     "lookupNoCurrency": "Nie można ustalić waluty dla \"{{ symbol }}\". Zamiast tego dodaj papier wartościowy ręcznie.",
     "noUpdateFields": "Podaj co najmniej jedno pole do zmiany.",
-    "allocationExceedsTotal": "Suma procentów alokacji przekracza 100%."
+    "allocationExceedsTotal": "Suma procentów alokacji przekracza 100%.",
+    "invalidTagKey": "Wymagany jest klucz tagu (1–100 znaków)"
   },
   "tags": {
     "notFound": "Nie znaleziono tagu o ID {{ id }}",
@@ -433,7 +434,11 @@
     "payeeNotFound": "Nie znaleziono odbiorcy",
     "cannotEditTransfer": "Przelewów nie można tutaj edytować. Edytuj przelew na ekranie Transakcje.",
     "cannotEditSplit": "Transakcji podzielonych nie można tutaj edytować. Edytuj podział na ekranie Transakcje.",
-    "noUpdateFields": "Podaj co najmniej jedno pole do zmiany."
+    "noUpdateFields": "Podaj co najmniej jedno pole do zmiany.",
+    "tagKeyTooLong": "tagKey nie może przekraczać 100 znaków",
+    "invalidTagKeyOp": "Nieprawidłowy tagKeyOp: {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue jest wymagany dla contains / notContains",
+    "tagKeyRequired": "Wymagany jest klucz tagu (1–100 znaków)"
   },
   "users": {
     "userNotFound": "Nie znaleziono użytkownika",

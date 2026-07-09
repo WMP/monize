@@ -72,8 +72,11 @@
     "groupBy": {
       "security": "Per effect",
       "tag": "Per label",
-      "country": "Per land"
-    }
+      "country": "Per land",
+      "tagKey": "Op sleutel"
+    },
+    "noKeyData": "Geen posities hebben een waarde voor deze tagsleutel. Tag effecten als key:value (bijv. country:usa) om deze verdeling te zien.",
+    "keySelectorLabel": "Tagsleutel om te aggregeren"
   },
   "holdingsList": {
     "title": "Posities",

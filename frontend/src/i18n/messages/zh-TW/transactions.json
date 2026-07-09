@@ -217,7 +217,10 @@
       "amountFrom": "金額起",
       "amountTo": "金額至",
       "status": "狀態",
-      "search": "搜尋"
+      "search": "搜尋",
+      "tagKey": "標籤鍵",
+      "tagKeyOp": "條件",
+      "tagKeyValue": "值"
     },
     "placeholders": {
       "accounts": "所有科目",
@@ -227,7 +230,8 @@
       "statuses": "所有狀態",
       "amountMin": "最小",
       "amountMax": "最大",
-      "search": "搜尋收款人、類別、金額、標籤、描述、參考號碼..."
+      "search": "搜尋收款人、類別、金額、標籤、描述、參考號碼...",
+      "tagKeyValue": "例如 usa"
     },
     "chips": {
       "removeAccount": "移除 {name} 篩選",
@@ -261,6 +265,13 @@
       "yearToDate": "年初至今",
       "lastYear": "去年",
       "custom": "自訂"
+    },
+    "tagKeyNone": "任意（無鍵篩選）",
+    "tagKeyOps": {
+      "hasValue": "有值",
+      "noValue": "無值",
+      "contains": "值包含",
+      "notContains": "值不包含"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "日期為必填"
+  },
+  "tagKeyBreakdown": {
+    "title": "依 {key} 的支出",
+    "other": "其他",
+    "noData": "沒有可依此鍵細分的已標記支出。"
   }
 }

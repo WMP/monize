@@ -72,8 +72,11 @@
     "groupBy": {
       "security": "Menkul kıymete göre",
       "tag": "Etikete göre",
-      "country": "Ülkeye göre"
-    }
+      "country": "Ülkeye göre",
+      "tagKey": "Anahtara göre"
+    },
+    "noKeyData": "Bu etiket anahtarı için değeri olan varlık yok. Bu dökümü görmek için menkul kıymetleri anahtar:değer (örn. country:usa) olarak etiketleyin.",
+    "keySelectorLabel": "Toplanacak etiket anahtarı"
   },
   "holdingsList": {
     "title": "Pozisyonlar",

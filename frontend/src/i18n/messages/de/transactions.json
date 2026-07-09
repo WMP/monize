@@ -217,7 +217,10 @@
       "amountFrom": "Betrag von",
       "amountTo": "Betrag bis",
       "status": "Status",
-      "search": "Suche"
+      "search": "Suche",
+      "tagKey": "Tag-Schlüssel",
+      "tagKeyOp": "Bedingung",
+      "tagKeyValue": "Wert"
     },
     "placeholders": {
       "accounts": "Alle Konten",
@@ -227,7 +230,8 @@
       "statuses": "Alle Status",
       "amountMin": "Min.",
       "amountMax": "Max.",
-      "search": "Zahlungsempfänger, Kategorie, Betrag, Tag, Beschreibung, Referenz-Nr. suchen..."
+      "search": "Zahlungsempfänger, Kategorie, Betrag, Tag, Beschreibung, Referenz-Nr. suchen...",
+      "tagKeyValue": "z. B. usa"
     },
     "chips": {
       "removeAccount": "Filter {name} entfernen",
@@ -261,6 +265,13 @@
       "yearToDate": "Jahr bis heute",
       "lastYear": "Letztes Jahr",
       "custom": "Benutzerdefiniert"
+    },
+    "tagKeyNone": "Beliebig (kein Schlüsselfilter)",
+    "tagKeyOps": {
+      "hasValue": "Hat einen Wert",
+      "noValue": "Hat keinen Wert",
+      "contains": "Wert enthält",
+      "notContains": "Wert enthält nicht"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "Datum ist erforderlich"
+  },
+  "tagKeyBreakdown": {
+    "title": "Ausgaben nach {key}",
+    "other": "Sonstige",
+    "noData": "Keine getaggten Ausgaben für diesen Schlüssel."
   }
 }

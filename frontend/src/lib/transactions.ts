@@ -76,6 +76,12 @@ export interface TransactionsGetAllParams {
   amountTo?: number;
   tagIds?: string[];
   statuses?: TransactionStatus[];
+  /** KEY:VALUE tag filter: the key to filter on (e.g. "country"). */
+  tagKey?: string;
+  /** KEY:VALUE tag filter operator. */
+  tagKeyOp?: 'hasValue' | 'noValue' | 'contains' | 'notContains';
+  /** Substring term for the contains / notContains operators. */
+  tagKeyValue?: string;
 }
 
 export const transactionsApi = {
@@ -100,6 +106,9 @@ export const transactionsApi = {
       amountFrom: params?.amountFrom,
       amountTo: params?.amountTo,
       statuses: params?.statuses && params.statuses.length > 0 ? params.statuses.join(',') : undefined,
+      tagKey: params?.tagKey || undefined,
+      tagKeyOp: params?.tagKey ? params?.tagKeyOp : undefined,
+      tagKeyValue: params?.tagKey ? params?.tagKeyValue || undefined : undefined,
     };
 
     const response = await apiClient.get<PaginatedTransactions>('/transactions', {
@@ -273,6 +282,40 @@ export const transactionsApi = {
       params: apiParams,
       timeout: 60000,
     });
+    return response.data;
+  },
+
+  // Spending broken down by the value of a KEY:VALUE tag key (e.g. key
+  // "country" -> a total per country). Rows are per-currency, like grouped
+  // totals, so the caller converts to one display currency.
+  getTagKeyBreakdown: async (params: {
+    key: string;
+    accountIds?: string[];
+    startDate?: string;
+    endDate?: string;
+    categoryIds?: string[];
+    payeeIds?: string[];
+    tagIds?: string[];
+    search?: string;
+    amountFrom?: number;
+    amountTo?: number;
+    limit?: number;
+  }): Promise<GroupedTotal[]> => {
+    const apiParams = {
+      ...buildFilterParams(params),
+      key: params.key,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      search: params.search,
+      amountFrom: params.amountFrom,
+      amountTo: params.amountTo,
+      limit: params.limit,
+    };
+
+    const response = await apiClient.get<GroupedTotal[]>(
+      '/transactions/tag-key-breakdown',
+      { params: apiParams, timeout: 60000 },
+    );
     return response.data;
   },
 

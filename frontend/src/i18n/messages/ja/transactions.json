@@ -217,7 +217,10 @@
       "amountFrom": "金額（下限）",
       "amountTo": "金額（上限）",
       "status": "状態",
-      "search": "検索"
+      "search": "検索",
+      "tagKey": "タグキー",
+      "tagKeyOp": "条件",
+      "tagKeyValue": "値"
     },
     "placeholders": {
       "accounts": "すべての口座",
@@ -227,7 +230,8 @@
       "statuses": "すべての状態",
       "amountMin": "最小",
       "amountMax": "最大",
-      "search": "支払先、カテゴリ、金額、タグ、説明、参照番号で検索..."
+      "search": "支払先、カテゴリ、金額、タグ、説明、参照番号で検索...",
+      "tagKeyValue": "例: usa"
     },
     "chips": {
       "removeAccount": "{name}フィルターを削除",
@@ -261,6 +265,13 @@
       "yearToDate": "今年初めから",
       "lastYear": "昨年",
       "custom": "カスタム"
+    },
+    "tagKeyNone": "すべて（キーフィルターなし）",
+    "tagKeyOps": {
+      "hasValue": "値がある",
+      "noValue": "値がない",
+      "contains": "値が次を含む",
+      "notContains": "値が次を含まない"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "日付は必須です"
+  },
+  "tagKeyBreakdown": {
+    "title": "{key}別の支出",
+    "other": "その他",
+    "noData": "このキーで内訳を表示できるタグ付き支出がありません。"
   }
 }

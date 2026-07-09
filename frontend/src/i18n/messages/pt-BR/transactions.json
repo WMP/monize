@@ -217,7 +217,10 @@
       "amountFrom": "Valor A Partir De",
       "amountTo": "Valor Até",
       "status": "Status",
-      "search": "Pesquisar"
+      "search": "Pesquisar",
+      "tagKey": "Chave de tag",
+      "tagKeyOp": "Condição",
+      "tagKeyValue": "Valor"
     },
     "placeholders": {
       "accounts": "Todas as contas",
@@ -227,7 +230,8 @@
       "statuses": "Todos os status",
       "amountMin": "Mín",
       "amountMax": "Máx",
-      "search": "Pesquisar beneficiário, categoria, valor, etiqueta, descrição, referência #..."
+      "search": "Pesquisar beneficiário, categoria, valor, etiqueta, descrição, referência #...",
+      "tagKeyValue": "ex.: usa"
     },
     "chips": {
       "removeAccount": "Remover filtro {name}",
@@ -261,6 +265,13 @@
       "yearToDate": "Ano até Hoje",
       "lastYear": "Ano Passado",
       "custom": "Personalizado"
+    },
+    "tagKeyNone": "Qualquer (sem filtro de chave)",
+    "tagKeyOps": {
+      "hasValue": "Tem um valor",
+      "noValue": "Não tem valor",
+      "contains": "O valor contém",
+      "notContains": "O valor não contém"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "A data é obrigatória"
+  },
+  "tagKeyBreakdown": {
+    "title": "Gastos por {key}",
+    "other": "Outros",
+    "noData": "Nenhum gasto marcado para detalhar por esta chave."
   }
 }

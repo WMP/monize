@@ -72,8 +72,11 @@
     "groupBy": {
       "security": "銘柄別",
       "tag": "タグ別",
-      "country": "国別"
-    }
+      "country": "国別",
+      "tagKey": "キー別"
+    },
+    "noKeyData": "このタグキーの値を持つ保有銘柄がありません。この内訳を表示するには、銘柄を key:value（例: country:usa）としてタグ付けしてください。",
+    "keySelectorLabel": "集計するタグキー"
   },
   "holdingsList": {
     "title": "保有銘柄",

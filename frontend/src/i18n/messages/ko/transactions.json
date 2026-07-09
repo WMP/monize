@@ -217,7 +217,10 @@
       "amountFrom": "금액 이상",
       "amountTo": "금액 이하",
       "status": "상태",
-      "search": "검색"
+      "search": "검색",
+      "tagKey": "태그 키",
+      "tagKeyOp": "조건",
+      "tagKeyValue": "값"
     },
     "placeholders": {
       "accounts": "모든 계정",
@@ -227,7 +230,8 @@
       "statuses": "모든 상태",
       "amountMin": "최소",
       "amountMax": "최대",
-      "search": "수취인, 카테고리, 금액, 태그, 설명, 참조 번호 검색..."
+      "search": "수취인, 카테고리, 금액, 태그, 설명, 참조 번호 검색...",
+      "tagKeyValue": "예: usa"
     },
     "chips": {
       "removeAccount": "{name} 필터 제거",
@@ -261,6 +265,13 @@
       "yearToDate": "올해",
       "lastYear": "지난 해",
       "custom": "사용자 정의"
+    },
+    "tagKeyNone": "모두(키 필터 없음)",
+    "tagKeyOps": {
+      "hasValue": "값 있음",
+      "noValue": "값 없음",
+      "contains": "값 포함",
+      "notContains": "값 미포함"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "날짜는 필수입니다"
+  },
+  "tagKeyBreakdown": {
+    "title": "{key}별 지출",
+    "other": "기타",
+    "noData": "이 키로 분석할 태그된 지출이 없습니다."
   }
 }

@@ -72,8 +72,11 @@
     "groupBy": {
       "security": "按证券",
       "tag": "按标签",
-      "country": "按国家/地区"
-    }
+      "country": "按国家/地区",
+      "tagKey": "按键"
+    },
+    "noKeyData": "没有持仓包含此标签键的值。将证券标记为 key:value（例如 country:usa）以查看此细分。",
+    "keySelectorLabel": "用于汇总的标签键"
   },
   "holdingsList": {
     "title": "持仓",

@@ -72,8 +72,11 @@
     "groupBy": {
       "security": "증권별",
       "tag": "태그별",
-      "country": "국가별"
-    }
+      "country": "국가별",
+      "tagKey": "키별"
+    },
+    "noKeyData": "이 태그 키에 대한 값을 가진 보유 종목이 없습니다. 이 분석을 보려면 증권을 key:value(예: country:usa) 형식으로 태그하세요.",
+    "keySelectorLabel": "집계할 태그 키"
   },
   "holdingsList": {
     "title": "보유 자산",

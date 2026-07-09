@@ -386,7 +386,8 @@
     "lookupAmbiguous": "「{{ query }}」符合多個證券：{{ list }}。請指定交易所後重新執行。",
     "lookupNoCurrency": "無法確定「{{ symbol }}」的貨幣。請改為手動新增該證券。",
     "noUpdateFields": "請至少提供一個要變更的欄位。",
-    "allocationExceedsTotal": "配置百分比總和超過 100%。"
+    "allocationExceedsTotal": "配置百分比總和超過 100%。",
+    "invalidTagKey": "需要標籤鍵（1-100 個字元）"
   },
   "tags": {
     "notFound": "找不到 ID 為 {{ id }} 的標籤",
@@ -433,7 +434,11 @@
     "payeeNotFound": "找不到收款人",
     "cannotEditTransfer": "無法在此處編輯轉帳。請在交易頁面中編輯該轉帳。",
     "cannotEditSplit": "無法在此處編輯拆分交易。請在交易頁面中編輯該拆分。",
-    "noUpdateFields": "請至少提供一個要變更的欄位。"
+    "noUpdateFields": "請至少提供一個要變更的欄位。",
+    "tagKeyTooLong": "tagKey 不得超過 100 個字元",
+    "invalidTagKeyOp": "無效的 tagKeyOp：{{ op }}",
+    "tagKeyValueRequired": "contains / notContains 需要 tagKeyValue",
+    "tagKeyRequired": "需要標籤鍵（1-100 個字元）"
   },
   "users": {
     "userNotFound": "找不到使用者",

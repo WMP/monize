@@ -217,7 +217,10 @@
       "amountFrom": "Montant depuis",
       "amountTo": "Montant jusqu'à",
       "status": "Statut",
-      "search": "Rechercher"
+      "search": "Rechercher",
+      "tagKey": "Clé d'étiquette",
+      "tagKeyOp": "Condition",
+      "tagKeyValue": "Valeur"
     },
     "placeholders": {
       "accounts": "Tous les comptes",
@@ -227,7 +230,8 @@
       "statuses": "Tous les statuts",
       "amountMin": "Min",
       "amountMax": "Max",
-      "search": "Rechercher bénéficiaire, catégorie, montant, étiquette, description, référence #..."
+      "search": "Rechercher bénéficiaire, catégorie, montant, étiquette, description, référence #...",
+      "tagKeyValue": "p. ex. usa"
     },
     "chips": {
       "removeAccount": "Supprimer le filtre {name}",
@@ -261,6 +265,13 @@
       "yearToDate": "Année en cours",
       "lastYear": "Année dernière",
       "custom": "Personnalisé"
+    },
+    "tagKeyNone": "Toutes (aucun filtre de clé)",
+    "tagKeyOps": {
+      "hasValue": "A une valeur",
+      "noValue": "N'a pas de valeur",
+      "contains": "La valeur contient",
+      "notContains": "La valeur ne contient pas"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "La date est obligatoire"
+  },
+  "tagKeyBreakdown": {
+    "title": "Dépenses par {key}",
+    "other": "Autres",
+    "noData": "Aucune dépense étiquetée à répartir pour cette clé."
   }
 }

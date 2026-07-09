@@ -386,7 +386,8 @@
     "lookupAmbiguous": "\"{{ query }}\" cocok dengan beberapa sekuritas: {{ list }}. Jalankan lagi dengan menentukan bursa.",
     "lookupNoCurrency": "Tidak dapat menentukan mata uang untuk \"{{ symbol }}\". Tambahkan sekuritas secara manual sebagai gantinya.",
     "noUpdateFields": "Berikan setidaknya satu kolom untuk diubah.",
-    "allocationExceedsTotal": "Persentase alokasi berjumlah lebih dari 100%."
+    "allocationExceedsTotal": "Persentase alokasi berjumlah lebih dari 100%.",
+    "invalidTagKey": "Kunci tag (1-100 karakter) diperlukan"
   },
   "tags": {
     "notFound": "Tag dengan ID {{ id }} tidak ditemukan",
@@ -433,7 +434,11 @@
     "payeeNotFound": "Penerima tidak ditemukan",
     "cannotEditTransfer": "Transfer tidak dapat diedit di sini. Edit transfer dari layar Transaksi.",
     "cannotEditSplit": "Transaksi terpisah tidak dapat diedit di sini. Edit pemisahan dari layar Transaksi.",
-    "noUpdateFields": "Berikan setidaknya satu kolom untuk diubah."
+    "noUpdateFields": "Berikan setidaknya satu kolom untuk diubah.",
+    "tagKeyTooLong": "tagKey tidak boleh melebihi 100 karakter",
+    "invalidTagKeyOp": "tagKeyOp tidak valid: {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue diperlukan untuk contains / notContains",
+    "tagKeyRequired": "Kunci tag (1-100 karakter) diperlukan"
   },
   "users": {
     "userNotFound": "Pengguna tidak ditemukan",

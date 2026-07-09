@@ -386,7 +386,8 @@
     "lookupAmbiguous": "\"{{ query }}\" khớp với nhiều chứng khoán: {{ list }}. Chạy lại và chỉ định một sàn giao dịch.",
     "lookupNoCurrency": "Không thể xác định loại tiền tệ cho \"{{ symbol }}\". Thay vào đó hãy thêm chứng khoán theo cách thủ công.",
     "noUpdateFields": "Hãy cung cấp ít nhất một trường để thay đổi.",
-    "allocationExceedsTotal": "Tổng tỷ lệ phân bổ vượt quá 100%."
+    "allocationExceedsTotal": "Tổng tỷ lệ phân bổ vượt quá 100%.",
+    "invalidTagKey": "Cần có khóa thẻ (1-100 ký tự)"
   },
   "tags": {
     "notFound": "Không tìm thấy thẻ với ID {{ id }}",
@@ -433,7 +434,11 @@
     "payeeNotFound": "Không tìm thấy người nhận",
     "cannotEditTransfer": "Không thể chỉnh sửa khoản chuyển khoản tại đây. Hãy chỉnh sửa khoản chuyển khoản từ màn hình Giao dịch.",
     "cannotEditSplit": "Không thể chỉnh sửa giao dịch chia nhỏ tại đây. Hãy chỉnh sửa phần chia nhỏ từ màn hình Giao dịch.",
-    "noUpdateFields": "Hãy cung cấp ít nhất một trường để thay đổi."
+    "noUpdateFields": "Hãy cung cấp ít nhất một trường để thay đổi.",
+    "tagKeyTooLong": "tagKey không được vượt quá 100 ký tự",
+    "invalidTagKeyOp": "tagKeyOp không hợp lệ: {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue là bắt buộc cho contains / notContains",
+    "tagKeyRequired": "Cần có khóa thẻ (1-100 ký tự)"
   },
   "users": {
     "userNotFound": "Không tìm thấy người dùng",

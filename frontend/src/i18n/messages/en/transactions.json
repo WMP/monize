@@ -217,7 +217,10 @@
       "amountFrom": "Amount From",
       "amountTo": "Amount To",
       "status": "Status",
-      "search": "Search"
+      "search": "Search",
+      "tagKey": "Tag key",
+      "tagKeyOp": "Condition",
+      "tagKeyValue": "Value"
     },
     "placeholders": {
       "accounts": "All accounts",
@@ -227,7 +230,15 @@
       "statuses": "All statuses",
       "amountMin": "Min",
       "amountMax": "Max",
-      "search": "Search payee, category, amount, tag, description, reference #..."
+      "search": "Search payee, category, amount, tag, description, reference #...",
+      "tagKeyValue": "e.g. usa"
+    },
+    "tagKeyNone": "Any (no key filter)",
+    "tagKeyOps": {
+      "hasValue": "Has a value",
+      "noValue": "Has no value",
+      "contains": "Value contains",
+      "notContains": "Value does not contain"
     },
     "chips": {
       "removeAccount": "Remove {name} filter",
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "Date is required"
+  },
+  "tagKeyBreakdown": {
+    "title": "Spending by {key}",
+    "other": "Other",
+    "noData": "No tagged spending to break down for this key."
   }
 }

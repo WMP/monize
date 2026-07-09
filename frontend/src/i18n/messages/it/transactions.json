@@ -217,7 +217,10 @@
       "amountFrom": "Importo da",
       "amountTo": "Importo a",
       "status": "Stato",
-      "search": "Cerca"
+      "search": "Cerca",
+      "tagKey": "Chiave tag",
+      "tagKeyOp": "Condizione",
+      "tagKeyValue": "Valore"
     },
     "placeholders": {
       "accounts": "Tutti i conti",
@@ -227,7 +230,8 @@
       "statuses": "Tutti gli stati",
       "amountMin": "Min",
       "amountMax": "Max",
-      "search": "Cerca beneficiario, categoria, importo, etichetta, descrizione, rif. #..."
+      "search": "Cerca beneficiario, categoria, importo, etichetta, descrizione, rif. #...",
+      "tagKeyValue": "es. usa"
     },
     "chips": {
       "removeAccount": "Rimuovi filtro {name}",
@@ -261,6 +265,13 @@
       "yearToDate": "Anno corrente",
       "lastYear": "Anno scorso",
       "custom": "Personalizzato"
+    },
+    "tagKeyNone": "Qualsiasi (nessun filtro chiave)",
+    "tagKeyOps": {
+      "hasValue": "Ha un valore",
+      "noValue": "Non ha valore",
+      "contains": "Il valore contiene",
+      "notContains": "Il valore non contiene"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "La data è obbligatoria"
+  },
+  "tagKeyBreakdown": {
+    "title": "Spese per {key}",
+    "other": "Altro",
+    "noData": "Nessuna spesa etichettata da ripartire per questa chiave."
   }
 }

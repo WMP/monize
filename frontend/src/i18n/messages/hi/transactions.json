@@ -217,7 +217,10 @@
       "amountFrom": "राशि से",
       "amountTo": "राशि तक",
       "status": "स्थिति",
-      "search": "खोज"
+      "search": "खोज",
+      "tagKey": "टैग कुंजी",
+      "tagKeyOp": "शर्त",
+      "tagKeyValue": "मान"
     },
     "placeholders": {
       "accounts": "सभी खाते",
@@ -227,7 +230,8 @@
       "statuses": "सभी स्थितियां",
       "amountMin": "न्यूनतम",
       "amountMax": "अधिकतम",
-      "search": "भुगतानकर्ता, श्रेणी, राशि, टैग, विवरण, संदर्भ # खोजें..."
+      "search": "भुगतानकर्ता, श्रेणी, राशि, टैग, विवरण, संदर्भ # खोजें...",
+      "tagKeyValue": "जैसे usa"
     },
     "chips": {
       "removeAccount": "{name} फ़िल्टर हटाएं",
@@ -261,6 +265,13 @@
       "yearToDate": "वर्ष की शुरुआत से",
       "lastYear": "पिछला वर्ष",
       "custom": "कस्टम"
+    },
+    "tagKeyNone": "कोई भी (कुंजी फ़िल्टर नहीं)",
+    "tagKeyOps": {
+      "hasValue": "मान मौजूद है",
+      "noValue": "कोई मान नहीं",
+      "contains": "मान में शामिल है",
+      "notContains": "मान में शामिल नहीं है"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "तिथि आवश्यक है"
+  },
+  "tagKeyBreakdown": {
+    "title": "{key} के अनुसार खर्च",
+    "other": "अन्य",
+    "noData": "इस कुंजी के लिए विभाजित करने हेतु कोई टैग किया गया खर्च नहीं है।"
   }
 }

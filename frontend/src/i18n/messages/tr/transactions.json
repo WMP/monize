@@ -217,7 +217,10 @@
       "amountFrom": "Tutardan",
       "amountTo": "Tutara",
       "status": "Durum",
-      "search": "Ara"
+      "search": "Ara",
+      "tagKey": "Etiket anahtarı",
+      "tagKeyOp": "Koşul",
+      "tagKeyValue": "Değer"
     },
     "placeholders": {
       "accounts": "Tüm hesaplar",
@@ -227,7 +230,8 @@
       "statuses": "Tüm durumlar",
       "amountMin": "Min",
       "amountMax": "Maks",
-      "search": "Alacaklı, kategori, tutar, etiket, açıklama, referans # ara..."
+      "search": "Alacaklı, kategori, tutar, etiket, açıklama, referans # ara...",
+      "tagKeyValue": "örn. usa"
     },
     "chips": {
       "removeAccount": "{name} filtresini kaldır",
@@ -261,6 +265,13 @@
       "yearToDate": "Yılbaşından Bugüne",
       "lastYear": "Geçen Yıl",
       "custom": "Özel"
+    },
+    "tagKeyNone": "Herhangi (anahtar filtresi yok)",
+    "tagKeyOps": {
+      "hasValue": "Değeri var",
+      "noValue": "Değeri yok",
+      "contains": "Değer içerir",
+      "notContains": "Değer içermez"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "Tarih zorunludur"
+  },
+  "tagKeyBreakdown": {
+    "title": "{key} bazında harcama",
+    "other": "Diğer",
+    "noData": "Bu anahtar için ayrıştırılacak etiketli harcama yok."
   }
 }

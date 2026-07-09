@@ -386,7 +386,8 @@
     "lookupAmbiguous": "\"{{ query }}\" komt overeen met meerdere effecten: {{ list }}. Voer opnieuw uit en geef een beurs op.",
     "lookupNoCurrency": "Kan de valuta voor \"{{ symbol }}\" niet bepalen. Voeg het effect in plaats daarvan handmatig toe.",
     "noUpdateFields": "Geef ten minste één veld op om te wijzigen.",
-    "allocationExceedsTotal": "De toewijzingspercentages tellen op tot meer dan 100%."
+    "allocationExceedsTotal": "De toewijzingspercentages tellen op tot meer dan 100%.",
+    "invalidTagKey": "Een tagsleutel (1-100 tekens) is vereist"
   },
   "tags": {
     "notFound": "Label met ID {{ id }} niet gevonden",
@@ -433,7 +434,11 @@
     "payeeNotFound": "Begunstigde niet gevonden",
     "cannotEditTransfer": "Overboekingen kunnen hier niet worden bewerkt. Bewerk de overboeking via het scherm Transacties.",
     "cannotEditSplit": "Gesplitste transacties kunnen hier niet worden bewerkt. Bewerk de splitsing via het scherm Transacties.",
-    "noUpdateFields": "Geef ten minste één veld op om te wijzigen."
+    "noUpdateFields": "Geef ten minste één veld op om te wijzigen.",
+    "tagKeyTooLong": "tagKey mag niet langer zijn dan 100 tekens",
+    "invalidTagKeyOp": "Ongeldige tagKeyOp: {{ op }}",
+    "tagKeyValueRequired": "tagKeyValue is vereist voor contains / notContains",
+    "tagKeyRequired": "Een tagsleutel (1-100 tekens) is vereist"
   },
   "users": {
     "userNotFound": "Gebruiker niet gevonden",

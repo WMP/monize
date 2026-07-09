@@ -217,7 +217,10 @@
       "amountFrom": "Kwota od",
       "amountTo": "Kwota do",
       "status": "Status",
-      "search": "Szukaj"
+      "search": "Szukaj",
+      "tagKey": "Klucz tagu",
+      "tagKeyOp": "Warunek",
+      "tagKeyValue": "Wartość"
     },
     "placeholders": {
       "accounts": "Wszystkie konta",
@@ -227,7 +230,8 @@
       "statuses": "Wszystkie statusy",
       "amountMin": "Min",
       "amountMax": "Maks",
-      "search": "Szukaj odbiorcy, kategorii, kwoty, tagu, opisu, nr referencyjnego..."
+      "search": "Szukaj odbiorcy, kategorii, kwoty, tagu, opisu, nr referencyjnego...",
+      "tagKeyValue": "np. usa"
     },
     "chips": {
       "removeAccount": "Usuń filtr {name}",
@@ -261,6 +265,13 @@
       "yearToDate": "Bieżący rok",
       "lastYear": "Poprzedni rok",
       "custom": "Niestandardowy"
+    },
+    "tagKeyNone": "Dowolny (bez filtra klucza)",
+    "tagKeyOps": {
+      "hasValue": "Ma wartość",
+      "noValue": "Nie ma wartości",
+      "contains": "Wartość zawiera",
+      "notContains": "Wartość nie zawiera"
     }
   },
   "bulk": {
@@ -486,5 +497,10 @@
   },
   "validation": {
     "dateRequired": "Data jest wymagana"
+  },
+  "tagKeyBreakdown": {
+    "title": "Wydatki wg {key}",
+    "other": "Inne",
+    "noData": "Brak otagowanych wydatków do podziału dla tego klucza."
   }
 }
