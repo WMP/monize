@@ -1,0 +1,369 @@
+{
+  "defaults": {
+    "investmentIncome": {
+      "name": "Beleggingsinkomsten",
+      "sub": {
+        "capitalGains": "Vermogenswinst",
+        "interest": "Rente",
+        "respGrant": "Onderwijsspaarsubsidie"
+      }
+    },
+    "otherIncome": {
+      "name": "Overige inkomsten",
+      "sub": {
+        "blogging": "Bloggen",
+        "businessReimbursement": "Zakelijke vergoeding",
+        "cashback": "Cashback",
+        "consulting": "Advieswerk",
+        "creditCardReward": "Creditcardbeloning",
+        "employeeStockOption": "Werknemersaandelenoptie",
+        "giftsReceived": "Ontvangen giften",
+        "incomeTaxRefund": "Teruggaaf inkomstenbelasting",
+        "rentalIncome": "Huurinkomsten",
+        "stateLocalTaxRefund": "Teruggaaf gemeentelijke en regionale belasting",
+        "transferBonus": "Overstapbonus",
+        "tutoring": "Bijles"
+      }
+    },
+    "retirementIncome": {
+      "name": "Pensioeninkomen",
+      "sub": {
+        "cppQppBenefits": "AOW-uitkering"
+      }
+    },
+    "wagesSalary": {
+      "name": "Loon en salaris",
+      "sub": {
+        "bonus": "Bonus",
+        "commission": "Provisie",
+        "employerMatching": "Werkgeversbijdrage",
+        "grossPay": "Brutoloon",
+        "netPay": "Nettoloon",
+        "overtime": "Overwerk",
+        "vacationPay": "Vakantiegeld"
+      }
+    },
+    "automobile": {
+      "name": "Auto",
+      "sub": {
+        "accessories": "Accessoires",
+        "carPayment": "Autolening",
+        "cleaning": "Wassen",
+        "fines": "Boetes",
+        "gasoline": "Benzine",
+        "licencing": "Kentekenkosten",
+        "maintenance": "Onderhoud",
+        "parking": "Parkeren",
+        "parts": "Onderdelen",
+        "tollCharges": "Tolkosten"
+      }
+    },
+    "bankFees": {
+      "name": "Bankkosten",
+      "sub": {
+        "atm": "Geldautomaat",
+        "annual": "Jaarlijks",
+        "nsf": "Onvoldoende saldo",
+        "other": "Overig",
+        "overdraft": "Roodstand",
+        "service": "Servicekosten"
+      }
+    },
+    "bills": {
+      "name": "Rekeningen",
+      "sub": {
+        "accounting": "Boekhouding",
+        "cableTv": "Kabel-tv",
+        "cellPhone": "Mobiele telefoon",
+        "electricity": "Elektriciteit",
+        "internet": "Internet",
+        "lawyer": "Advocaat",
+        "naturalGas": "Aardgas",
+        "satelliteRadio": "Satellietradio",
+        "streaming": "Streaming",
+        "telephone": "Telefoon",
+        "waterSewer": "Water en riolering",
+        "waterHeater": "Boiler"
+      }
+    },
+    "business": {
+      "name": "Zakelijk",
+      "sub": {
+        "airfare": "Vliegtickets",
+        "alcohol": "Alcohol",
+        "bankFees": "Bankkosten",
+        "carRental": "Autohuur",
+        "cellPhone": "Mobiele telefoon",
+        "computerHardware": "Computerhardware",
+        "computerSoftware": "Computersoftware",
+        "diningOut": "Uit eten",
+        "education": "Opleiding",
+        "gasoline": "Benzine",
+        "internet": "Internet",
+        "lodging": "Overnachting",
+        "mileage": "Kilometervergoeding",
+        "miscellaneous": "Diversen",
+        "parking": "Parkeren",
+        "recreation": "Recreatie",
+        "tollCharges": "Tolkosten",
+        "transit": "Openbaar vervoer"
+      }
+    },
+    "cashWithdrawal": {
+      "name": "Geldopname",
+      "sub": {
+        "barbadianDollars": "Barbadaanse dollar",
+        "bermudianDollars": "Bermudaanse dollar",
+        "canadianDollars": "Canadese dollar",
+        "costaRicanColones": "Costa Ricaanse colón",
+        "croatianKunas": "Kroatische kuna",
+        "dominicanRepublicPesos": "Dominicaanse peso",
+        "easternCaribbeanDollars": "Oost-Caribische dollar",
+        "euros": "Euro",
+        "forints": "Forint",
+        "honduranLempiras": "Hondurese lempira",
+        "hongKongDollars": "Hongkongse dollar",
+        "indonesianRupiah": "Indonesische roepia",
+        "malaysianRinggits": "Maleisische ringgit",
+        "mexicanPesos": "Mexicaanse peso",
+        "peruvianSoles": "Peruaanse sol",
+        "singaporeDollars": "Singaporese dollar",
+        "thaiBaht": "Thaise baht",
+        "usDollars": "Amerikaanse dollar"
+      }
+    },
+    "charitableDonations": {
+      "name": "Goede doelen",
+      "sub": {}
+    },
+    "childcare": {
+      "name": "Kinderopvang",
+      "sub": {
+        "activities": "Activiteiten",
+        "allowance": "Zakgeld",
+        "babysitting": "Oppas",
+        "books": "Boeken",
+        "clothing": "Kleding",
+        "counselling": "Begeleiding",
+        "daycare": "Kinderdagverblijf",
+        "entertainment": "Vermaak",
+        "fees": "Kosten",
+        "furnishings": "Inrichting",
+        "gifts": "Cadeaus",
+        "haircut": "Kapper",
+        "medication": "Medicijnen",
+        "shoes": "Schoenen",
+        "sportingGoods": "Sportartikelen",
+        "sports": "Sport",
+        "supplies": "Benodigdheden",
+        "toiletries": "Toiletartikelen",
+        "toysGames": "Speelgoed en spellen"
+      }
+    },
+    "clothing": {
+      "name": "Kleding",
+      "sub": {
+        "accessories": "Accessoires",
+        "clothes": "Kleding",
+        "coats": "Jassen",
+        "shoes": "Schoenen"
+      }
+    },
+    "computer": {
+      "name": "Computer",
+      "sub": {
+        "hardware": "Hardware",
+        "software": "Software",
+        "webHosting": "Webhosting"
+      }
+    },
+    "education": {
+      "name": "Opleiding",
+      "sub": {
+        "books": "Boeken",
+        "fees": "Kosten",
+        "tuition": "Lesgeld"
+      }
+    },
+    "food": {
+      "name": "Eten",
+      "sub": {
+        "alcohol": "Alcohol",
+        "cannabis": "Cannabis",
+        "diningOut": "Uit eten",
+        "groceries": "Boodschappen"
+      }
+    },
+    "furnishings": {
+      "name": "Inrichting",
+      "sub": {
+        "accessories": "Accessoires",
+        "appliances": "Apparaten",
+        "basement": "Kelder",
+        "bathroom": "Badkamer",
+        "bedroom": "Slaapkamer",
+        "diningRoom": "Eetkamer",
+        "dishes": "Serviesgoed",
+        "kitchen": "Keuken",
+        "livingRoom": "Woonkamer",
+        "office": "Werkkamer",
+        "outdoor": "Buiten",
+        "plants": "Planten"
+      }
+    },
+    "gifts": {
+      "name": "Cadeaus",
+      "sub": {
+        "anniversary": "Jubileum",
+        "birthday": "Verjaardag",
+        "cards": "Kaarten",
+        "christmas": "Kerstmis",
+        "flowers": "Bloemen",
+        "mothersDay": "Moederdag",
+        "respContribution": "Onderwijsspaarbijdrage",
+        "valentines": "Valentijnsdag",
+        "wedding": "Bruiloft"
+      }
+    },
+    "healthcare": {
+      "name": "Gezondheidszorg",
+      "sub": {
+        "counselling": "Begeleiding",
+        "dental": "Tandarts",
+        "eyecare": "Oogzorg",
+        "fertility": "Vruchtbaarheid",
+        "fitness": "Fitness",
+        "hospital": "Ziekenhuis",
+        "massage": "Massage",
+        "medication": "Medicijnen",
+        "physician": "Huisarts",
+        "physiotherapy": "Fysiotherapie",
+        "prescriptions": "Recepten",
+        "supplies": "Benodigdheden"
+      }
+    },
+    "housing": {
+      "name": "Wonen",
+      "sub": {
+        "fees": "Kosten",
+        "gardenSupplies": "Tuinbenodigdheden",
+        "homeImprovement": "Woningverbetering",
+        "maintenance": "Onderhoud",
+        "mortgageInterest": "Hypotheekrente",
+        "mortgagePrincipal": "Hypotheekaflossing",
+        "rent": "Huur",
+        "supplies": "Benodigdheden",
+        "tools": "Gereedschap"
+      }
+    },
+    "insurance": {
+      "name": "Verzekering",
+      "sub": {
+        "automobile": "Auto",
+        "disability": "Arbeidsongeschiktheid",
+        "health": "Zorg",
+        "homeownerRenter": "Woonverzekering",
+        "life": "Leven",
+        "travel": "Reis"
+      }
+    },
+    "interestExpense": {
+      "name": "Rentelasten",
+      "sub": {}
+    },
+    "leisure": {
+      "name": "Vrije tijd",
+      "sub": {
+        "booksMagazines": "Boeken en tijdschriften",
+        "cd": "Cd",
+        "cameraFilm": "Camera/film",
+        "camping": "Kamperen",
+        "coverCharge": "Entreegeld",
+        "culturalEvents": "Culturele evenementen",
+        "dvd": "Dvd",
+        "electronics": "Elektronica",
+        "entertaining": "Gasten ontvangen",
+        "entertainment": "Vermaak",
+        "fees": "Kosten",
+        "gambling": "Gokken",
+        "lps": "Lp's",
+        "movies": "Films",
+        "newspaper": "Krant",
+        "sportingEvents": "Sportevenementen",
+        "sportingGoods": "Sportartikelen",
+        "sports": "Sport",
+        "toysGames": "Speelgoed en spellen",
+        "transit": "Openbaar vervoer",
+        "vhs": "Vhs",
+        "videoRentals": "Videohuur"
+      }
+    },
+    "licencingFees": {
+      "name": "Vergunningskosten",
+      "sub": {}
+    },
+    "loan": {
+      "name": "Lening",
+      "sub": {
+        "loanInterest": "Leningrente",
+        "loanPrincipal": "Leningaflossing",
+        "mortgageInterest": "Hypotheekrente"
+      }
+    },
+    "miscellaneous": {
+      "name": "Diversen",
+      "sub": {
+        "postage": "Portokosten",
+        "postcards": "Ansichtkaarten",
+        "tools": "Gereedschap",
+        "transit": "Openbaar vervoer"
+      }
+    },
+    "personalCare": {
+      "name": "Persoonlijke verzorging",
+      "sub": {
+        "dryCleaning": "Stomerij",
+        "haircut": "Kapper",
+        "laundry": "Wasserij",
+        "pedicure": "Pedicure",
+        "toiletries": "Toiletartikelen"
+      }
+    },
+    "petCare": {
+      "name": "Huisdierverzorging",
+      "sub": {
+        "food": "Voer",
+        "supplies": "Benodigdheden",
+        "veterinarian": "Dierenarts"
+      }
+    },
+    "taxes": {
+      "name": "Belastingen",
+      "sub": {
+        "cppQppContributions": "AOW-premies",
+        "eiPremiums": "WW-premies",
+        "federalIncome": "Rijksinkomstenbelasting",
+        "goodsServices": "Btw",
+        "other": "Overig",
+        "property": "Onroerendezaakbelasting",
+        "realEstate": "Onroerend goed",
+        "stateProvincial": "Regionale belasting",
+        "unionDues": "Vakbondscontributie"
+      }
+    },
+    "vacation": {
+      "name": "Vakantie",
+      "sub": {
+        "airfare": "Vliegtickets",
+        "carRental": "Autohuur",
+        "entertainment": "Vermaak",
+        "gasoline": "Benzine",
+        "lodging": "Overnachting",
+        "miscellaneous": "Diversen",
+        "parking": "Parkeren",
+        "transit": "Openbaar vervoer",
+        "travel": "Reizen"
+      }
+    }
+  }
+}

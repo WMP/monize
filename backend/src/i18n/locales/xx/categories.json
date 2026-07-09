@@ -1,0 +1,369 @@
+{
+  "defaults": {
+    "investmentIncome": {
+      "name": "[XX-Investment Income-XX]",
+      "sub": {
+        "capitalGains": "[XX-Capital Gains-XX]",
+        "interest": "[XX-Interest-XX]",
+        "respGrant": "[XX-RESP Grant-XX]"
+      }
+    },
+    "otherIncome": {
+      "name": "[XX-Other Income-XX]",
+      "sub": {
+        "blogging": "[XX-Blogging-XX]",
+        "businessReimbursement": "[XX-Business Reimbursement-XX]",
+        "cashback": "[XX-Cashback-XX]",
+        "consulting": "[XX-Consulting-XX]",
+        "creditCardReward": "[XX-Credit Card Reward-XX]",
+        "employeeStockOption": "[XX-Employee Stock Option-XX]",
+        "giftsReceived": "[XX-Gifts Received-XX]",
+        "incomeTaxRefund": "[XX-Income Tax Refund-XX]",
+        "rentalIncome": "[XX-Rental Income-XX]",
+        "stateLocalTaxRefund": "[XX-State & Local Tax Refund-XX]",
+        "transferBonus": "[XX-Transfer Bonus-XX]",
+        "tutoring": "[XX-Tutoring-XX]"
+      }
+    },
+    "retirementIncome": {
+      "name": "[XX-Retirement Income-XX]",
+      "sub": {
+        "cppQppBenefits": "[XX-CPP/QPP Benefits-XX]"
+      }
+    },
+    "wagesSalary": {
+      "name": "[XX-Wages & Salary-XX]",
+      "sub": {
+        "bonus": "[XX-Bonus-XX]",
+        "commission": "[XX-Commission-XX]",
+        "employerMatching": "[XX-Employer Matching-XX]",
+        "grossPay": "[XX-Gross Pay-XX]",
+        "netPay": "[XX-Net Pay-XX]",
+        "overtime": "[XX-Overtime-XX]",
+        "vacationPay": "[XX-Vacation Pay-XX]"
+      }
+    },
+    "automobile": {
+      "name": "[XX-Automobile-XX]",
+      "sub": {
+        "accessories": "[XX-Accessories-XX]",
+        "carPayment": "[XX-Car Payment-XX]",
+        "cleaning": "[XX-Cleaning-XX]",
+        "fines": "[XX-Fines-XX]",
+        "gasoline": "[XX-Gasoline-XX]",
+        "licencing": "[XX-Licencing-XX]",
+        "maintenance": "[XX-Maintenance-XX]",
+        "parking": "[XX-Parking-XX]",
+        "parts": "[XX-Parts-XX]",
+        "tollCharges": "[XX-Toll Charges-XX]"
+      }
+    },
+    "bankFees": {
+      "name": "[XX-Bank Fees-XX]",
+      "sub": {
+        "atm": "[XX-ATM-XX]",
+        "annual": "[XX-Annual-XX]",
+        "nsf": "[XX-NSF-XX]",
+        "other": "[XX-Other-XX]",
+        "overdraft": "[XX-Overdraft-XX]",
+        "service": "[XX-Service-XX]"
+      }
+    },
+    "bills": {
+      "name": "[XX-Bills-XX]",
+      "sub": {
+        "accounting": "[XX-Accounting-XX]",
+        "cableTv": "[XX-Cable TV-XX]",
+        "cellPhone": "[XX-Cell Phone-XX]",
+        "electricity": "[XX-Electricity-XX]",
+        "internet": "[XX-Internet-XX]",
+        "lawyer": "[XX-Lawyer-XX]",
+        "naturalGas": "[XX-Natural Gas-XX]",
+        "satelliteRadio": "[XX-Satellite Radio-XX]",
+        "streaming": "[XX-Streaming-XX]",
+        "telephone": "[XX-Telephone-XX]",
+        "waterSewer": "[XX-Water & Sewer-XX]",
+        "waterHeater": "[XX-Water Heater-XX]"
+      }
+    },
+    "business": {
+      "name": "[XX-Business-XX]",
+      "sub": {
+        "airfare": "[XX-Airfare-XX]",
+        "alcohol": "[XX-Alcohol-XX]",
+        "bankFees": "[XX-Bank Fees-XX]",
+        "carRental": "[XX-Car Rental-XX]",
+        "cellPhone": "[XX-Cell Phone-XX]",
+        "computerHardware": "[XX-Computer Hardware-XX]",
+        "computerSoftware": "[XX-Computer Software-XX]",
+        "diningOut": "[XX-Dining Out-XX]",
+        "education": "[XX-Education-XX]",
+        "gasoline": "[XX-Gasoline-XX]",
+        "internet": "[XX-Internet-XX]",
+        "lodging": "[XX-Lodging-XX]",
+        "mileage": "[XX-Mileage-XX]",
+        "miscellaneous": "[XX-Miscellaneous-XX]",
+        "parking": "[XX-Parking-XX]",
+        "recreation": "[XX-Recreation-XX]",
+        "tollCharges": "[XX-Toll Charges-XX]",
+        "transit": "[XX-Transit-XX]"
+      }
+    },
+    "cashWithdrawal": {
+      "name": "[XX-Cash Withdrawal-XX]",
+      "sub": {
+        "barbadianDollars": "[XX-Barbadian Dollars-XX]",
+        "bermudianDollars": "[XX-Bermudian Dollars-XX]",
+        "canadianDollars": "[XX-Canadian Dollars-XX]",
+        "costaRicanColones": "[XX-Costa Rican Colones-XX]",
+        "croatianKunas": "[XX-Croatian Kunas-XX]",
+        "dominicanRepublicPesos": "[XX-Dominican Republic Pesos-XX]",
+        "easternCaribbeanDollars": "[XX-Eastern Caribbean Dollars-XX]",
+        "euros": "[XX-Euros-XX]",
+        "forints": "[XX-Forints-XX]",
+        "honduranLempiras": "[XX-Honduran Lempiras-XX]",
+        "hongKongDollars": "[XX-Hong Kong Dollars-XX]",
+        "indonesianRupiah": "[XX-Indonesian Rupiah-XX]",
+        "malaysianRinggits": "[XX-Malaysian Ringgits-XX]",
+        "mexicanPesos": "[XX-Mexican Pesos-XX]",
+        "peruvianSoles": "[XX-Peruvian Soles-XX]",
+        "singaporeDollars": "[XX-Singapore Dollars-XX]",
+        "thaiBaht": "[XX-Thai Baht-XX]",
+        "usDollars": "[XX-US Dollars-XX]"
+      }
+    },
+    "charitableDonations": {
+      "name": "[XX-Charitable Donations-XX]",
+      "sub": {}
+    },
+    "childcare": {
+      "name": "[XX-Childcare-XX]",
+      "sub": {
+        "activities": "[XX-Activities-XX]",
+        "allowance": "[XX-Allowance-XX]",
+        "babysitting": "[XX-Babysitting-XX]",
+        "books": "[XX-Books-XX]",
+        "clothing": "[XX-Clothing-XX]",
+        "counselling": "[XX-Counselling-XX]",
+        "daycare": "[XX-Daycare-XX]",
+        "entertainment": "[XX-Entertainment-XX]",
+        "fees": "[XX-Fees-XX]",
+        "furnishings": "[XX-Furnishings-XX]",
+        "gifts": "[XX-Gifts-XX]",
+        "haircut": "[XX-Haircut-XX]",
+        "medication": "[XX-Medication-XX]",
+        "shoes": "[XX-Shoes-XX]",
+        "sportingGoods": "[XX-Sporting Goods-XX]",
+        "sports": "[XX-Sports-XX]",
+        "supplies": "[XX-Supplies-XX]",
+        "toiletries": "[XX-Toiletries-XX]",
+        "toysGames": "[XX-Toys & Games-XX]"
+      }
+    },
+    "clothing": {
+      "name": "[XX-Clothing-XX]",
+      "sub": {
+        "accessories": "[XX-Accessories-XX]",
+        "clothes": "[XX-Clothes-XX]",
+        "coats": "[XX-Coats-XX]",
+        "shoes": "[XX-Shoes-XX]"
+      }
+    },
+    "computer": {
+      "name": "[XX-Computer-XX]",
+      "sub": {
+        "hardware": "[XX-Hardware-XX]",
+        "software": "[XX-Software-XX]",
+        "webHosting": "[XX-Web Hosting-XX]"
+      }
+    },
+    "education": {
+      "name": "[XX-Education-XX]",
+      "sub": {
+        "books": "[XX-Books-XX]",
+        "fees": "[XX-Fees-XX]",
+        "tuition": "[XX-Tuition-XX]"
+      }
+    },
+    "food": {
+      "name": "[XX-Food-XX]",
+      "sub": {
+        "alcohol": "[XX-Alcohol-XX]",
+        "cannabis": "[XX-Cannabis-XX]",
+        "diningOut": "[XX-Dining Out-XX]",
+        "groceries": "[XX-Groceries-XX]"
+      }
+    },
+    "furnishings": {
+      "name": "[XX-Furnishings-XX]",
+      "sub": {
+        "accessories": "[XX-Accessories-XX]",
+        "appliances": "[XX-Appliances-XX]",
+        "basement": "[XX-Basement-XX]",
+        "bathroom": "[XX-Bathroom-XX]",
+        "bedroom": "[XX-Bedroom-XX]",
+        "diningRoom": "[XX-Dining Room-XX]",
+        "dishes": "[XX-Dishes-XX]",
+        "kitchen": "[XX-Kitchen-XX]",
+        "livingRoom": "[XX-Living Room-XX]",
+        "office": "[XX-Office-XX]",
+        "outdoor": "[XX-Outdoor-XX]",
+        "plants": "[XX-Plants-XX]"
+      }
+    },
+    "gifts": {
+      "name": "[XX-Gifts-XX]",
+      "sub": {
+        "anniversary": "[XX-Anniversary-XX]",
+        "birthday": "[XX-Birthday-XX]",
+        "cards": "[XX-Cards-XX]",
+        "christmas": "[XX-Christmas-XX]",
+        "flowers": "[XX-Flowers-XX]",
+        "mothersDay": "[XX-Mother's Day-XX]",
+        "respContribution": "[XX-RESP Contribution-XX]",
+        "valentines": "[XX-Valentines-XX]",
+        "wedding": "[XX-Wedding-XX]"
+      }
+    },
+    "healthcare": {
+      "name": "[XX-Healthcare-XX]",
+      "sub": {
+        "counselling": "[XX-Counselling-XX]",
+        "dental": "[XX-Dental-XX]",
+        "eyecare": "[XX-Eyecare-XX]",
+        "fertility": "[XX-Fertility-XX]",
+        "fitness": "[XX-Fitness-XX]",
+        "hospital": "[XX-Hospital-XX]",
+        "massage": "[XX-Massage-XX]",
+        "medication": "[XX-Medication-XX]",
+        "physician": "[XX-Physician-XX]",
+        "physiotherapy": "[XX-Physiotherapy-XX]",
+        "prescriptions": "[XX-Prescriptions-XX]",
+        "supplies": "[XX-Supplies-XX]"
+      }
+    },
+    "housing": {
+      "name": "[XX-Housing-XX]",
+      "sub": {
+        "fees": "[XX-Fees-XX]",
+        "gardenSupplies": "[XX-Garden Supplies-XX]",
+        "homeImprovement": "[XX-Home Improvement-XX]",
+        "maintenance": "[XX-Maintenance-XX]",
+        "mortgageInterest": "[XX-Mortgage Interest-XX]",
+        "mortgagePrincipal": "[XX-Mortgage Principal-XX]",
+        "rent": "[XX-Rent-XX]",
+        "supplies": "[XX-Supplies-XX]",
+        "tools": "[XX-Tools-XX]"
+      }
+    },
+    "insurance": {
+      "name": "[XX-Insurance-XX]",
+      "sub": {
+        "automobile": "[XX-Automobile-XX]",
+        "disability": "[XX-Disability-XX]",
+        "health": "[XX-Health-XX]",
+        "homeownerRenter": "[XX-Homeowner/Renter-XX]",
+        "life": "[XX-Life-XX]",
+        "travel": "[XX-Travel-XX]"
+      }
+    },
+    "interestExpense": {
+      "name": "[XX-Interest Expense-XX]",
+      "sub": {}
+    },
+    "leisure": {
+      "name": "[XX-Leisure-XX]",
+      "sub": {
+        "booksMagazines": "[XX-Books & Magazines-XX]",
+        "cd": "[XX-CD-XX]",
+        "cameraFilm": "[XX-Camera/Film-XX]",
+        "camping": "[XX-Camping-XX]",
+        "coverCharge": "[XX-Cover Charge-XX]",
+        "culturalEvents": "[XX-Cultural Events-XX]",
+        "dvd": "[XX-DVD-XX]",
+        "electronics": "[XX-Electronics-XX]",
+        "entertaining": "[XX-Entertaining-XX]",
+        "entertainment": "[XX-Entertainment-XX]",
+        "fees": "[XX-Fees-XX]",
+        "gambling": "[XX-Gambling-XX]",
+        "lps": "[XX-LPs-XX]",
+        "movies": "[XX-Movies-XX]",
+        "newspaper": "[XX-Newspaper-XX]",
+        "sportingEvents": "[XX-Sporting Events-XX]",
+        "sportingGoods": "[XX-Sporting Goods-XX]",
+        "sports": "[XX-Sports-XX]",
+        "toysGames": "[XX-Toys & Games-XX]",
+        "transit": "[XX-Transit-XX]",
+        "vhs": "[XX-VHS-XX]",
+        "videoRentals": "[XX-Video Rentals-XX]"
+      }
+    },
+    "licencingFees": {
+      "name": "[XX-Licencing Fees-XX]",
+      "sub": {}
+    },
+    "loan": {
+      "name": "[XX-Loan-XX]",
+      "sub": {
+        "loanInterest": "[XX-Loan Interest-XX]",
+        "loanPrincipal": "[XX-Loan Principal-XX]",
+        "mortgageInterest": "[XX-Mortgage Interest-XX]"
+      }
+    },
+    "miscellaneous": {
+      "name": "[XX-Miscellaneous-XX]",
+      "sub": {
+        "postage": "[XX-Postage-XX]",
+        "postcards": "[XX-Postcards-XX]",
+        "tools": "[XX-Tools-XX]",
+        "transit": "[XX-Transit-XX]"
+      }
+    },
+    "personalCare": {
+      "name": "[XX-Personal Care-XX]",
+      "sub": {
+        "dryCleaning": "[XX-Dry Cleaning-XX]",
+        "haircut": "[XX-Haircut-XX]",
+        "laundry": "[XX-Laundry-XX]",
+        "pedicure": "[XX-Pedicure-XX]",
+        "toiletries": "[XX-Toiletries-XX]"
+      }
+    },
+    "petCare": {
+      "name": "[XX-Pet Care-XX]",
+      "sub": {
+        "food": "[XX-Food-XX]",
+        "supplies": "[XX-Supplies-XX]",
+        "veterinarian": "[XX-Veterinarian-XX]"
+      }
+    },
+    "taxes": {
+      "name": "[XX-Taxes-XX]",
+      "sub": {
+        "cppQppContributions": "[XX-CPP/QPP Contributions-XX]",
+        "eiPremiums": "[XX-EI Premiums-XX]",
+        "federalIncome": "[XX-Federal Income-XX]",
+        "goodsServices": "[XX-Goods & Services-XX]",
+        "other": "[XX-Other-XX]",
+        "property": "[XX-Property-XX]",
+        "realEstate": "[XX-Real Estate-XX]",
+        "stateProvincial": "[XX-State/Provincial-XX]",
+        "unionDues": "[XX-Union Dues-XX]"
+      }
+    },
+    "vacation": {
+      "name": "[XX-Vacation-XX]",
+      "sub": {
+        "airfare": "[XX-Airfare-XX]",
+        "carRental": "[XX-Car Rental-XX]",
+        "entertainment": "[XX-Entertainment-XX]",
+        "gasoline": "[XX-Gasoline-XX]",
+        "lodging": "[XX-Lodging-XX]",
+        "miscellaneous": "[XX-Miscellaneous-XX]",
+        "parking": "[XX-Parking-XX]",
+        "transit": "[XX-Transit-XX]",
+        "travel": "[XX-Travel-XX]"
+      }
+    }
+  }
+}

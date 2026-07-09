@@ -1,0 +1,369 @@
+{
+  "defaults": {
+    "investmentIncome": {
+      "name": "Investment Income",
+      "sub": {
+        "capitalGains": "Capital Gains",
+        "interest": "Interest",
+        "respGrant": "RESP Grant"
+      }
+    },
+    "otherIncome": {
+      "name": "Other Income",
+      "sub": {
+        "blogging": "Blogging",
+        "businessReimbursement": "Business Reimbursement",
+        "cashback": "Cashback",
+        "consulting": "Consulting",
+        "creditCardReward": "Credit Card Reward",
+        "employeeStockOption": "Employee Stock Option",
+        "giftsReceived": "Gifts Received",
+        "incomeTaxRefund": "Income Tax Refund",
+        "rentalIncome": "Rental Income",
+        "stateLocalTaxRefund": "State & Local Tax Refund",
+        "transferBonus": "Transfer Bonus",
+        "tutoring": "Tutoring"
+      }
+    },
+    "retirementIncome": {
+      "name": "Retirement Income",
+      "sub": {
+        "cppQppBenefits": "CPP/QPP Benefits"
+      }
+    },
+    "wagesSalary": {
+      "name": "Wages & Salary",
+      "sub": {
+        "bonus": "Bonus",
+        "commission": "Commission",
+        "employerMatching": "Employer Matching",
+        "grossPay": "Gross Pay",
+        "netPay": "Net Pay",
+        "overtime": "Overtime",
+        "vacationPay": "Vacation Pay"
+      }
+    },
+    "automobile": {
+      "name": "Automobile",
+      "sub": {
+        "accessories": "Accessories",
+        "carPayment": "Car Payment",
+        "cleaning": "Cleaning",
+        "fines": "Fines",
+        "gasoline": "Gasoline",
+        "licencing": "Licencing",
+        "maintenance": "Maintenance",
+        "parking": "Parking",
+        "parts": "Parts",
+        "tollCharges": "Toll Charges"
+      }
+    },
+    "bankFees": {
+      "name": "Bank Fees",
+      "sub": {
+        "atm": "ATM",
+        "annual": "Annual",
+        "nsf": "NSF",
+        "other": "Other",
+        "overdraft": "Overdraft",
+        "service": "Service"
+      }
+    },
+    "bills": {
+      "name": "Bills",
+      "sub": {
+        "accounting": "Accounting",
+        "cableTv": "Cable TV",
+        "cellPhone": "Cell Phone",
+        "electricity": "Electricity",
+        "internet": "Internet",
+        "lawyer": "Lawyer",
+        "naturalGas": "Natural Gas",
+        "satelliteRadio": "Satellite Radio",
+        "streaming": "Streaming",
+        "telephone": "Telephone",
+        "waterSewer": "Water & Sewer",
+        "waterHeater": "Water Heater"
+      }
+    },
+    "business": {
+      "name": "Business",
+      "sub": {
+        "airfare": "Airfare",
+        "alcohol": "Alcohol",
+        "bankFees": "Bank Fees",
+        "carRental": "Car Rental",
+        "cellPhone": "Cell Phone",
+        "computerHardware": "Computer Hardware",
+        "computerSoftware": "Computer Software",
+        "diningOut": "Dining Out",
+        "education": "Education",
+        "gasoline": "Gasoline",
+        "internet": "Internet",
+        "lodging": "Lodging",
+        "mileage": "Mileage",
+        "miscellaneous": "Miscellaneous",
+        "parking": "Parking",
+        "recreation": "Recreation",
+        "tollCharges": "Toll Charges",
+        "transit": "Transit"
+      }
+    },
+    "cashWithdrawal": {
+      "name": "Cash Withdrawal",
+      "sub": {
+        "barbadianDollars": "Barbadian Dollars",
+        "bermudianDollars": "Bermudian Dollars",
+        "canadianDollars": "Canadian Dollars",
+        "costaRicanColones": "Costa Rican Colones",
+        "croatianKunas": "Croatian Kunas",
+        "dominicanRepublicPesos": "Dominican Republic Pesos",
+        "easternCaribbeanDollars": "Eastern Caribbean Dollars",
+        "euros": "Euros",
+        "forints": "Forints",
+        "honduranLempiras": "Honduran Lempiras",
+        "hongKongDollars": "Hong Kong Dollars",
+        "indonesianRupiah": "Indonesian Rupiah",
+        "malaysianRinggits": "Malaysian Ringgits",
+        "mexicanPesos": "Mexican Pesos",
+        "peruvianSoles": "Peruvian Soles",
+        "singaporeDollars": "Singapore Dollars",
+        "thaiBaht": "Thai Baht",
+        "usDollars": "US Dollars"
+      }
+    },
+    "charitableDonations": {
+      "name": "Charitable Donations",
+      "sub": {}
+    },
+    "childcare": {
+      "name": "Childcare",
+      "sub": {
+        "activities": "Activities",
+        "allowance": "Allowance",
+        "babysitting": "Babysitting",
+        "books": "Books",
+        "clothing": "Clothing",
+        "counselling": "Counselling",
+        "daycare": "Daycare",
+        "entertainment": "Entertainment",
+        "fees": "Fees",
+        "furnishings": "Furnishings",
+        "gifts": "Gifts",
+        "haircut": "Haircut",
+        "medication": "Medication",
+        "shoes": "Shoes",
+        "sportingGoods": "Sporting Goods",
+        "sports": "Sports",
+        "supplies": "Supplies",
+        "toiletries": "Toiletries",
+        "toysGames": "Toys & Games"
+      }
+    },
+    "clothing": {
+      "name": "Clothing",
+      "sub": {
+        "accessories": "Accessories",
+        "clothes": "Clothes",
+        "coats": "Coats",
+        "shoes": "Shoes"
+      }
+    },
+    "computer": {
+      "name": "Computer",
+      "sub": {
+        "hardware": "Hardware",
+        "software": "Software",
+        "webHosting": "Web Hosting"
+      }
+    },
+    "education": {
+      "name": "Education",
+      "sub": {
+        "books": "Books",
+        "fees": "Fees",
+        "tuition": "Tuition"
+      }
+    },
+    "food": {
+      "name": "Food",
+      "sub": {
+        "alcohol": "Alcohol",
+        "cannabis": "Cannabis",
+        "diningOut": "Dining Out",
+        "groceries": "Groceries"
+      }
+    },
+    "furnishings": {
+      "name": "Furnishings",
+      "sub": {
+        "accessories": "Accessories",
+        "appliances": "Appliances",
+        "basement": "Basement",
+        "bathroom": "Bathroom",
+        "bedroom": "Bedroom",
+        "diningRoom": "Dining Room",
+        "dishes": "Dishes",
+        "kitchen": "Kitchen",
+        "livingRoom": "Living Room",
+        "office": "Office",
+        "outdoor": "Outdoor",
+        "plants": "Plants"
+      }
+    },
+    "gifts": {
+      "name": "Gifts",
+      "sub": {
+        "anniversary": "Anniversary",
+        "birthday": "Birthday",
+        "cards": "Cards",
+        "christmas": "Christmas",
+        "flowers": "Flowers",
+        "mothersDay": "Mother's Day",
+        "respContribution": "RESP Contribution",
+        "valentines": "Valentines",
+        "wedding": "Wedding"
+      }
+    },
+    "healthcare": {
+      "name": "Healthcare",
+      "sub": {
+        "counselling": "Counselling",
+        "dental": "Dental",
+        "eyecare": "Eyecare",
+        "fertility": "Fertility",
+        "fitness": "Fitness",
+        "hospital": "Hospital",
+        "massage": "Massage",
+        "medication": "Medication",
+        "physician": "Physician",
+        "physiotherapy": "Physiotherapy",
+        "prescriptions": "Prescriptions",
+        "supplies": "Supplies"
+      }
+    },
+    "housing": {
+      "name": "Housing",
+      "sub": {
+        "fees": "Fees",
+        "gardenSupplies": "Garden Supplies",
+        "homeImprovement": "Home Improvement",
+        "maintenance": "Maintenance",
+        "mortgageInterest": "Mortgage Interest",
+        "mortgagePrincipal": "Mortgage Principal",
+        "rent": "Rent",
+        "supplies": "Supplies",
+        "tools": "Tools"
+      }
+    },
+    "insurance": {
+      "name": "Insurance",
+      "sub": {
+        "automobile": "Automobile",
+        "disability": "Disability",
+        "health": "Health",
+        "homeownerRenter": "Homeowner/Renter",
+        "life": "Life",
+        "travel": "Travel"
+      }
+    },
+    "interestExpense": {
+      "name": "Interest Expense",
+      "sub": {}
+    },
+    "leisure": {
+      "name": "Leisure",
+      "sub": {
+        "booksMagazines": "Books & Magazines",
+        "cd": "CD",
+        "cameraFilm": "Camera/Film",
+        "camping": "Camping",
+        "coverCharge": "Cover Charge",
+        "culturalEvents": "Cultural Events",
+        "dvd": "DVD",
+        "electronics": "Electronics",
+        "entertaining": "Entertaining",
+        "entertainment": "Entertainment",
+        "fees": "Fees",
+        "gambling": "Gambling",
+        "lps": "LPs",
+        "movies": "Movies",
+        "newspaper": "Newspaper",
+        "sportingEvents": "Sporting Events",
+        "sportingGoods": "Sporting Goods",
+        "sports": "Sports",
+        "toysGames": "Toys & Games",
+        "transit": "Transit",
+        "vhs": "VHS",
+        "videoRentals": "Video Rentals"
+      }
+    },
+    "licencingFees": {
+      "name": "Licencing Fees",
+      "sub": {}
+    },
+    "loan": {
+      "name": "Loan",
+      "sub": {
+        "loanInterest": "Loan Interest",
+        "loanPrincipal": "Loan Principal",
+        "mortgageInterest": "Mortgage Interest"
+      }
+    },
+    "miscellaneous": {
+      "name": "Miscellaneous",
+      "sub": {
+        "postage": "Postage",
+        "postcards": "Postcards",
+        "tools": "Tools",
+        "transit": "Transit"
+      }
+    },
+    "personalCare": {
+      "name": "Personal Care",
+      "sub": {
+        "dryCleaning": "Dry Cleaning",
+        "haircut": "Haircut",
+        "laundry": "Laundry",
+        "pedicure": "Pedicure",
+        "toiletries": "Toiletries"
+      }
+    },
+    "petCare": {
+      "name": "Pet Care",
+      "sub": {
+        "food": "Food",
+        "supplies": "Supplies",
+        "veterinarian": "Veterinarian"
+      }
+    },
+    "taxes": {
+      "name": "Taxes",
+      "sub": {
+        "cppQppContributions": "CPP/QPP Contributions",
+        "eiPremiums": "EI Premiums",
+        "federalIncome": "Federal Income",
+        "goodsServices": "Goods & Services",
+        "other": "Other",
+        "property": "Property",
+        "realEstate": "Real Estate",
+        "stateProvincial": "State/Provincial",
+        "unionDues": "Union Dues"
+      }
+    },
+    "vacation": {
+      "name": "Vacation",
+      "sub": {
+        "airfare": "Airfare",
+        "carRental": "Car Rental",
+        "entertainment": "Entertainment",
+        "gasoline": "Gasoline",
+        "lodging": "Lodging",
+        "miscellaneous": "Miscellaneous",
+        "parking": "Parking",
+        "transit": "Transit",
+        "travel": "Travel"
+      }
+    }
+  }
+}

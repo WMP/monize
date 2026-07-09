@@ -1,0 +1,369 @@
+{
+  "defaults": {
+    "investmentIncome": {
+      "name": "投資収入",
+      "sub": {
+        "capitalGains": "譲渡益（キャピタルゲイン）",
+        "interest": "利息",
+        "respGrant": "教育資金給付金"
+      }
+    },
+    "otherIncome": {
+      "name": "その他の収入",
+      "sub": {
+        "blogging": "ブログ収入",
+        "businessReimbursement": "経費精算（会社立替）",
+        "cashback": "キャッシュバック",
+        "consulting": "コンサルティング",
+        "creditCardReward": "クレジットカードのポイント還元",
+        "employeeStockOption": "ストックオプション",
+        "giftsReceived": "受け取った贈り物",
+        "incomeTaxRefund": "所得税還付",
+        "rentalIncome": "賃貸収入",
+        "stateLocalTaxRefund": "地方税の還付",
+        "transferBonus": "口座移管ボーナス",
+        "tutoring": "家庭教師収入"
+      }
+    },
+    "retirementIncome": {
+      "name": "年金収入",
+      "sub": {
+        "cppQppBenefits": "公的年金給付"
+      }
+    },
+    "wagesSalary": {
+      "name": "給与",
+      "sub": {
+        "bonus": "賞与（ボーナス）",
+        "commission": "歩合給",
+        "employerMatching": "会社拠出（マッチング）",
+        "grossPay": "総支給額",
+        "netPay": "手取り額",
+        "overtime": "残業代",
+        "vacationPay": "有給休暇手当"
+      }
+    },
+    "automobile": {
+      "name": "自動車",
+      "sub": {
+        "accessories": "アクセサリー",
+        "carPayment": "自動車ローン返済",
+        "cleaning": "洗車",
+        "fines": "反則金",
+        "gasoline": "ガソリン",
+        "licencing": "登録・免許",
+        "maintenance": "メンテナンス",
+        "parking": "駐車料金",
+        "parts": "部品",
+        "tollCharges": "高速料金"
+      }
+    },
+    "bankFees": {
+      "name": "銀行手数料",
+      "sub": {
+        "atm": "ATM手数料",
+        "annual": "年会費",
+        "nsf": "残高不足手数料",
+        "other": "その他",
+        "overdraft": "当座貸越手数料",
+        "service": "サービス手数料"
+      }
+    },
+    "bills": {
+      "name": "公共料金・請求",
+      "sub": {
+        "accounting": "会計・税理士費用",
+        "cableTv": "ケーブルテレビ",
+        "cellPhone": "携帯電話",
+        "electricity": "電気",
+        "internet": "インターネット",
+        "lawyer": "弁護士費用",
+        "naturalGas": "都市ガス",
+        "satelliteRadio": "衛星ラジオ",
+        "streaming": "動画・音楽配信",
+        "telephone": "固定電話",
+        "waterSewer": "上下水道",
+        "waterHeater": "給湯器"
+      }
+    },
+    "business": {
+      "name": "事業経費",
+      "sub": {
+        "airfare": "航空運賃",
+        "alcohol": "酒類",
+        "bankFees": "銀行手数料",
+        "carRental": "レンタカー",
+        "cellPhone": "携帯電話",
+        "computerHardware": "パソコン機器",
+        "computerSoftware": "ソフトウェア",
+        "diningOut": "外食",
+        "education": "研修・教育",
+        "gasoline": "ガソリン",
+        "internet": "インターネット",
+        "lodging": "宿泊費",
+        "mileage": "走行距離手当",
+        "miscellaneous": "雑費",
+        "parking": "駐車料金",
+        "recreation": "娯楽費",
+        "tollCharges": "高速料金",
+        "transit": "交通費"
+      }
+    },
+    "cashWithdrawal": {
+      "name": "現金引き出し",
+      "sub": {
+        "barbadianDollars": "バルバドス・ドル",
+        "bermudianDollars": "バミューダ・ドル",
+        "canadianDollars": "カナダ・ドル",
+        "costaRicanColones": "コスタリカ・コロン",
+        "croatianKunas": "クロアチア・クーナ",
+        "dominicanRepublicPesos": "ドミニカ共和国ペソ",
+        "easternCaribbeanDollars": "東カリブ・ドル",
+        "euros": "ユーロ",
+        "forints": "ハンガリー・フォリント",
+        "honduranLempiras": "ホンジュラス・レンピラ",
+        "hongKongDollars": "香港ドル",
+        "indonesianRupiah": "インドネシア・ルピア",
+        "malaysianRinggits": "マレーシア・リンギット",
+        "mexicanPesos": "メキシコ・ペソ",
+        "peruvianSoles": "ペルー・ソル",
+        "singaporeDollars": "シンガポール・ドル",
+        "thaiBaht": "タイ・バーツ",
+        "usDollars": "米ドル"
+      }
+    },
+    "charitableDonations": {
+      "name": "寄付",
+      "sub": {}
+    },
+    "childcare": {
+      "name": "育児・子育て",
+      "sub": {
+        "activities": "習い事・活動",
+        "allowance": "お小遣い",
+        "babysitting": "ベビーシッター",
+        "books": "書籍",
+        "clothing": "衣料品",
+        "counselling": "カウンセリング",
+        "daycare": "保育園",
+        "entertainment": "娯楽",
+        "fees": "各種費用",
+        "furnishings": "家具・備品",
+        "gifts": "贈り物",
+        "haircut": "散髪",
+        "medication": "薬代",
+        "shoes": "靴",
+        "sportingGoods": "スポーツ用品",
+        "sports": "スポーツ",
+        "supplies": "日用品",
+        "toiletries": "洗面用品",
+        "toysGames": "おもちゃ・ゲーム"
+      }
+    },
+    "clothing": {
+      "name": "衣料品",
+      "sub": {
+        "accessories": "アクセサリー",
+        "clothes": "衣服",
+        "coats": "コート",
+        "shoes": "靴"
+      }
+    },
+    "computer": {
+      "name": "パソコン",
+      "sub": {
+        "hardware": "ハードウェア",
+        "software": "ソフトウェア",
+        "webHosting": "ウェブホスティング"
+      }
+    },
+    "education": {
+      "name": "教育",
+      "sub": {
+        "books": "書籍",
+        "fees": "各種費用",
+        "tuition": "授業料"
+      }
+    },
+    "food": {
+      "name": "食費",
+      "sub": {
+        "alcohol": "酒類",
+        "cannabis": "大麻製品",
+        "diningOut": "外食",
+        "groceries": "食料品"
+      }
+    },
+    "furnishings": {
+      "name": "家具・インテリア",
+      "sub": {
+        "accessories": "小物・雑貨",
+        "appliances": "家電",
+        "basement": "地下室",
+        "bathroom": "浴室",
+        "bedroom": "寝室",
+        "diningRoom": "ダイニング",
+        "dishes": "食器",
+        "kitchen": "キッチン",
+        "livingRoom": "リビング",
+        "office": "書斎・仕事部屋",
+        "outdoor": "屋外",
+        "plants": "観葉植物"
+      }
+    },
+    "gifts": {
+      "name": "贈り物",
+      "sub": {
+        "anniversary": "記念日",
+        "birthday": "誕生日",
+        "cards": "グリーティングカード",
+        "christmas": "クリスマス",
+        "flowers": "花",
+        "mothersDay": "母の日",
+        "respContribution": "教育資金積立",
+        "valentines": "バレンタイン",
+        "wedding": "結婚祝い"
+      }
+    },
+    "healthcare": {
+      "name": "医療・健康",
+      "sub": {
+        "counselling": "カウンセリング",
+        "dental": "歯科",
+        "eyecare": "眼科・視力ケア",
+        "fertility": "不妊治療",
+        "fitness": "フィットネス",
+        "hospital": "入院・病院",
+        "massage": "マッサージ",
+        "medication": "薬代",
+        "physician": "診察",
+        "physiotherapy": "理学療法",
+        "prescriptions": "処方薬",
+        "supplies": "医療用品"
+      }
+    },
+    "housing": {
+      "name": "住居",
+      "sub": {
+        "fees": "各種費用",
+        "gardenSupplies": "園芸用品",
+        "homeImprovement": "リフォーム",
+        "maintenance": "メンテナンス",
+        "mortgageInterest": "住宅ローン利息",
+        "mortgagePrincipal": "住宅ローン元金",
+        "rent": "家賃",
+        "supplies": "日用品",
+        "tools": "工具"
+      }
+    },
+    "insurance": {
+      "name": "保険",
+      "sub": {
+        "automobile": "自動車保険",
+        "disability": "所得補償保険",
+        "health": "医療保険",
+        "homeownerRenter": "住宅・家財保険",
+        "life": "生命保険",
+        "travel": "旅行保険"
+      }
+    },
+    "interestExpense": {
+      "name": "支払利息",
+      "sub": {}
+    },
+    "leisure": {
+      "name": "レジャー・娯楽",
+      "sub": {
+        "booksMagazines": "書籍・雑誌",
+        "cd": "CD",
+        "cameraFilm": "カメラ・フィルム",
+        "camping": "キャンプ",
+        "coverCharge": "入場料・席料",
+        "culturalEvents": "文化イベント",
+        "dvd": "DVD",
+        "electronics": "電化製品",
+        "entertaining": "接待・もてなし",
+        "entertainment": "娯楽",
+        "fees": "各種費用",
+        "gambling": "ギャンブル",
+        "lps": "レコード",
+        "movies": "映画",
+        "newspaper": "新聞",
+        "sportingEvents": "スポーツ観戦",
+        "sportingGoods": "スポーツ用品",
+        "sports": "スポーツ",
+        "toysGames": "おもちゃ・ゲーム",
+        "transit": "交通費",
+        "vhs": "ビデオ（VHS）",
+        "videoRentals": "レンタルビデオ"
+      }
+    },
+    "licencingFees": {
+      "name": "登録・ライセンス料",
+      "sub": {}
+    },
+    "loan": {
+      "name": "ローン",
+      "sub": {
+        "loanInterest": "ローン利息",
+        "loanPrincipal": "ローン元金",
+        "mortgageInterest": "住宅ローン利息"
+      }
+    },
+    "miscellaneous": {
+      "name": "雑費",
+      "sub": {
+        "postage": "郵送料",
+        "postcards": "はがき",
+        "tools": "工具",
+        "transit": "交通費"
+      }
+    },
+    "personalCare": {
+      "name": "身だしなみ・美容",
+      "sub": {
+        "dryCleaning": "クリーニング",
+        "haircut": "散髪",
+        "laundry": "洗濯",
+        "pedicure": "ペディキュア",
+        "toiletries": "洗面用品"
+      }
+    },
+    "petCare": {
+      "name": "ペット",
+      "sub": {
+        "food": "ペットフード",
+        "supplies": "ペット用品",
+        "veterinarian": "動物病院"
+      }
+    },
+    "taxes": {
+      "name": "税金",
+      "sub": {
+        "cppQppContributions": "公的年金保険料",
+        "eiPremiums": "雇用保険料",
+        "federalIncome": "国税（所得税）",
+        "goodsServices": "消費税",
+        "other": "その他",
+        "property": "固定資産税",
+        "realEstate": "不動産取得税",
+        "stateProvincial": "地方税",
+        "unionDues": "組合費"
+      }
+    },
+    "vacation": {
+      "name": "旅行・休暇",
+      "sub": {
+        "airfare": "航空運賃",
+        "carRental": "レンタカー",
+        "entertainment": "娯楽",
+        "gasoline": "ガソリン",
+        "lodging": "宿泊費",
+        "miscellaneous": "雑費",
+        "parking": "駐車料金",
+        "transit": "交通費",
+        "travel": "交通費（移動）"
+      }
+    }
+  }
+}
