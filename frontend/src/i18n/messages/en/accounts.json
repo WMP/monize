@@ -397,11 +397,14 @@
       "detectFailed": "Could not detect rate changes from the payment history"
     },
     "overpaymentCategory": {
-      "title": "Overpayment Category",
-      "description": "Pick the category you tag standalone overpayments with. Payments in this category count as 100% principal, so the schedule flags them instead of treating them as a regular installment.",
+      "title": "Overpayment Detection",
+      "description": "Recognize standalone overpayments by category, by memo text, or both. Either match counts a payment as 100% principal, so the schedule flags it instead of treating it as a regular installment.",
       "label": "Overpayment category",
       "placeholder": "Select a category",
-      "saveError": "Failed to save the overpayment category"
+      "memoLabel": "Overpayment memo",
+      "memoPlaceholder": "e.g. Extra principal",
+      "memoHelp": "Payments whose memo contains this text count as overpayments (case-insensitive).",
+      "saveError": "Failed to save the overpayment settings"
     },
     "simulator": {
       "title": "Overpayment Simulator",

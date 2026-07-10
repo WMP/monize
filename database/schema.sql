@@ -138,6 +138,7 @@ CREATE TABLE accounts (
     principal_category_id UUID, -- category for principal portion (FK added after categories table)
     interest_category_id UUID, -- category for interest portion (FK added after categories table)
     overpayment_category_id UUID, -- category tagging standalone overpayments/extra principal (FK added after categories table)
+    overpayment_memo VARCHAR(255), -- memo text marking a payment as a standalone overpayment (case-insensitive substring match)
     scheduled_transaction_id UUID, -- linked scheduled transaction for payments (FK added after scheduled_transactions table)
     -- Asset-specific fields
     asset_category_id UUID, -- category for tracking value changes on asset accounts (FK added after categories table)

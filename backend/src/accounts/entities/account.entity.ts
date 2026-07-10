@@ -209,6 +209,18 @@ export class Account {
   @JoinColumn({ name: "overpayment_category_id" })
   overpaymentCategory: Category | null;
 
+  // Free-text the user tags standalone overpayments with in a transaction memo
+  // (its description, the linked source transaction's memo, or a split memo).
+  // A case-insensitive substring match flags the payment as 100% principal,
+  // usable on its own or alongside the overpayment category. Optional, per-loan.
+  @Column({
+    type: "varchar",
+    length: 255,
+    name: "overpayment_memo",
+    nullable: true,
+  })
+  overpaymentMemo: string | null;
+
   // Asset-specific fields
   @Column({ type: "uuid", name: "asset_category_id", nullable: true })
   assetCategoryId: string | null;

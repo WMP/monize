@@ -213,7 +213,7 @@ function createExistingAccount(overrides: Partial<Account> = {}): Account {
     sourceAccountId: null,
     principalCategoryId: null,
     interestCategoryId: null,
-    overpaymentCategoryId: null,
+    overpaymentCategoryId: null, overpaymentMemo: null,
     scheduledTransactionId: null,
     assetCategoryId: null,
     dateAcquired: null,
@@ -1416,7 +1416,7 @@ describe('AccountForm', () => {
     const existingLoan = createExistingAccount({
       accountType: 'LOAN',
       interestCategoryId: 'loan-int',
-      overpaymentCategoryId: null,
+      overpaymentCategoryId: null, overpaymentMemo: null,
     });
     render(<AccountForm account={existingLoan} onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
     await waitFor(() => {

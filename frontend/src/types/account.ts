@@ -58,6 +58,9 @@ export interface Account {
   // Category tagging standalone overpayments (extra principal) so the loan
   // schedule can flag them as 100% principal.
   overpaymentCategoryId: string | null;
+  // Memo text marking a payment as a standalone overpayment (case-insensitive
+  // substring match); usable with or instead of the overpayment category.
+  overpaymentMemo: string | null;
   scheduledTransactionId: string | null;
   // Asset-specific fields
   assetCategoryId: string | null;
@@ -102,6 +105,7 @@ export interface CreateAccountData {
   principalCategoryId?: string;
   interestCategoryId?: string;
   overpaymentCategoryId?: string | null;
+  overpaymentMemo?: string | null;
   // Asset-specific fields
   assetCategoryId?: string;
   dateAcquired?: string;

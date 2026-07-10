@@ -18,7 +18,7 @@ import { LoanHistoryResult } from '@/lib/loan-history';
 import { LoanRateChange } from '@/types/loan-rate-change';
 import { computePastImpact } from '@/lib/loan-past-impact';
 import { buildPayoffComparisonSeries } from './PayoffComparisonChart';
-import { OverpaymentCategoryControl } from './OverpaymentCategoryControl';
+import { OverpaymentSettingsControl } from './OverpaymentSettingsControl';
 import { chartColors } from '@/lib/chart-colors';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
@@ -30,8 +30,12 @@ interface PastImpactSectionProps {
   rateChanges?: LoanRateChange[];
   /** Current overpayment category (reactive copy held by the parent) */
   overpaymentCategoryId: string | null;
+  /** Current overpayment memo text (reactive copy held by the parent) */
+  overpaymentMemo: string | null;
   /** Called after the overpayment category is changed via the gear menu */
   onOverpaymentCategoryChange: (categoryId: string | null) => void;
+  /** Called after the overpayment memo is changed via the gear menu */
+  onOverpaymentMemoChange: (memo: string | null) => void;
 }
 
 /**
@@ -46,17 +50,21 @@ export function PastImpactSection({
   history,
   rateChanges = [],
   overpaymentCategoryId,
+  overpaymentMemo,
   onOverpaymentCategoryChange,
+  onOverpaymentMemoChange,
 }: PastImpactSectionProps) {
   const t = useTranslations('accounts');
   const formatChartDate = useChartDateFormat();
   const { formatCurrency, formatCurrencyCompact, formatCurrencyAxis } = useNumberFormat();
 
   const gear = (
-    <OverpaymentCategoryControl
+    <OverpaymentSettingsControl
       accountId={account.id}
-      value={overpaymentCategoryId}
-      onChange={onOverpaymentCategoryChange}
+      categoryValue={overpaymentCategoryId}
+      memoValue={overpaymentMemo}
+      onCategoryChange={onOverpaymentCategoryChange}
+      onMemoChange={onOverpaymentMemoChange}
     />
   );
 
