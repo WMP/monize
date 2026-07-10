@@ -222,6 +222,17 @@ export class UpdateAccountDto {
   @IsUUID()
   overpaymentCategoryId?: string | null;
 
+  @ApiPropertyOptional({
+    description:
+      "Memo text that marks a payment as a standalone overpayment (case-insensitive substring match). Pass null or empty to clear.",
+  })
+  @IsOptional()
+  @ValidateIf((o) => o.overpaymentMemo !== null)
+  @IsString()
+  @MaxLength(255)
+  @SanitizeHtml()
+  overpaymentMemo?: string | null;
+
   // Asset-specific fields
   @ApiPropertyOptional({
     description: "Category ID for tracking value changes on asset accounts",

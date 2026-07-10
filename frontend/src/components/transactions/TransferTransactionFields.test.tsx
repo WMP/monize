@@ -78,7 +78,7 @@ function createAccount(overrides: Partial<Account> = {}): Account {
     sourceAccountId: null,
     principalCategoryId: null,
     interestCategoryId: null,
-    overpaymentCategoryId: null,
+    overpaymentCategoryId: null, overpaymentMemo: null,
     scheduledTransactionId: null,
     assetCategoryId: null,
     dateAcquired: null,

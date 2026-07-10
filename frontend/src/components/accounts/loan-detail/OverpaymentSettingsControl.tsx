@@ -12,31 +12,47 @@ import { useClickOutside } from '@/hooks/useClickOutside';
 import type { Category } from '@/types/category';
 import { createLogger } from '@/lib/logger';
 
-const logger = createLogger('OverpaymentCategoryControl');
+const logger = createLogger('OverpaymentSettingsControl');
 
-interface OverpaymentCategoryControlProps {
+interface OverpaymentSettingsControlProps {
   accountId: string;
-  value: string | null;
+  categoryValue: string | null;
+  memoValue: string | null;
   /** Called with the newly selected category id (or null) after a successful save */
-  onChange: (categoryId: string | null) => void;
+  onCategoryChange: (categoryId: string | null) => void;
+  /** Called with the newly saved memo text (or null) after a successful save */
+  onMemoChange: (memo: string | null) => void;
 }
 
 /**
- * Gear-menu setting for the per-loan overpayment category. Tagging standalone
- * overpayments with the chosen category lets the schedule recognize them as
- * 100% principal (interest 0) and flag them, instead of treating them as a
- * regular installment. Uses the same category Combobox as the transaction form.
+ * Gear-menu settings for how a loan recognizes standalone overpayments (extra
+ * principal). A payment matching the chosen category or the memo text counts as
+ * 100% principal (interest 0) and is flagged, instead of being treated as a
+ * regular installment. Either match works on its own, so a user can tag
+ * overpayments by category, by memo, or both. Uses the same category Combobox
+ * as the transaction form.
  */
-export function OverpaymentCategoryControl({
+export function OverpaymentSettingsControl({
   accountId,
-  value,
-  onChange,
-}: OverpaymentCategoryControlProps) {
+  categoryValue,
+  memoValue,
+  onCategoryChange,
+  onMemoChange,
+}: OverpaymentSettingsControlProps) {
   const t = useTranslations('accounts');
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
+  const [memoDraft, setMemoDraft] = useState(memoValue ?? '');
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Keep the memo input in sync when the saved value changes upstream
+  // (info-from-previous-render pattern -- no setState in effect).
+  const [trackedMemo, setTrackedMemo] = useState(memoValue);
+  if (trackedMemo !== memoValue) {
+    setTrackedMemo(memoValue);
+    setMemoDraft(memoValue ?? '');
+  }
 
   useClickOutside(wrapperRef, () => setOpen(false), {
     enabled: open,
@@ -77,18 +93,35 @@ export function OverpaymentCategoryControl({
   );
 
   const currentLabel =
-    categoryOptions.find((option) => option.value === value)?.label ?? '';
+    categoryOptions.find((option) => option.value === categoryValue)?.label ?? '';
 
-  const handleChange = async (categoryId: string) => {
+  const handleCategoryChange = async (categoryId: string) => {
     const nextId = categoryId || null;
-    if (nextId === value) return;
+    if (nextId === categoryValue) return;
     setSaving(true);
     try {
       await accountsApi.update(accountId, { overpaymentCategoryId: nextId });
-      onChange(nextId);
+      onCategoryChange(nextId);
     } catch (error) {
       logger.error('Failed to save overpayment category:', error);
       toast.error(t('loanDetail.overpaymentCategory.saveError'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleMemoSave = async () => {
+    const nextMemo = memoDraft.trim() || null;
+    if (nextMemo === (memoValue ?? null)) return;
+    setSaving(true);
+    try {
+      await accountsApi.update(accountId, { overpaymentMemo: nextMemo });
+      onMemoChange(nextMemo);
+    } catch (error) {
+      logger.error('Failed to save overpayment memo:', error);
+      toast.error(t('loanDetail.overpaymentCategory.saveError'));
+      // Restore the last saved value so the input reflects reality.
+      setMemoDraft(memoValue ?? '');
     } finally {
       setSaving(false);
     }
@@ -117,11 +150,39 @@ export function OverpaymentCategoryControl({
             label={t('loanDetail.overpaymentCategory.label')}
             placeholder={t('loanDetail.overpaymentCategory.placeholder')}
             options={categoryOptions}
-            value={value ?? ''}
+            value={categoryValue ?? ''}
             initialDisplayValue={currentLabel}
-            onChange={handleChange}
+            onChange={handleCategoryChange}
             disabled={saving}
           />
+          <div className="mt-3">
+            <label
+              htmlFor="overpayment-memo"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
+              {t('loanDetail.overpaymentCategory.memoLabel')}
+            </label>
+            <input
+              id="overpayment-memo"
+              type="text"
+              value={memoDraft}
+              onChange={(e) => setMemoDraft(e.target.value)}
+              onBlur={handleMemoSave}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleMemoSave();
+                }
+              }}
+              maxLength={255}
+              disabled={saving}
+              placeholder={t('loanDetail.overpaymentCategory.memoPlaceholder')}
+              className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm text-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-400"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {t('loanDetail.overpaymentCategory.memoHelp')}
+            </p>
+          </div>
         </div>
       )}
     </div>

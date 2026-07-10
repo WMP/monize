@@ -634,6 +634,36 @@ describe("AccountsService", () => {
       expect(saved.overpaymentCategoryId).toBeNull();
     });
 
+    it("updates overpaymentMemo when provided, trimming whitespace", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: "LOAN",
+        overpaymentMemo: null,
+      });
+
+      await service.update("user-1", "account-1", {
+        overpaymentMemo: "  Extra principal  ",
+      });
+
+      const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+      expect(saved.overpaymentMemo).toBe("Extra principal");
+    });
+
+    it("clears overpaymentMemo when set to null or blank", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: "LOAN",
+        overpaymentMemo: "Extra principal",
+      });
+
+      await service.update("user-1", "account-1", {
+        overpaymentMemo: "   ",
+      });
+
+      const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+      expect(saved.overpaymentMemo).toBeNull();
+    });
+
     it("updates credit card statement date fields", async () => {
       mockQueryRunner.manager.findOne.mockResolvedValue({
         ...mockAccount,

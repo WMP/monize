@@ -247,6 +247,62 @@ describe('deriveLoanPaymentHistory', () => {
     expect(result.events[0].interest).toBe(0);
   });
 
+  it('classifies payments whose memo matches the overpayment memo, case-insensitively', () => {
+    const account = makeAccount({ overpaymentMemo: 'Extra principal' });
+    const result = deriveLoanPaymentHistory(account, [
+      makeTransaction({
+        transactionDate: '2026-01-15',
+        amount: 450,
+        description: 'JAN extra PRINCIPAL payment',
+      }),
+    ]);
+    expect(result.events[0].type).toBe('OVERPAYMENT');
+    expect(result.events[0].interest).toBe(0);
+    expect(result.events[0].principal).toBe(450);
+  });
+
+  it('recognizes an overpayment memo on the linked source transaction and its splits', () => {
+    const account = makeAccount({ overpaymentMemo: 'overpay' });
+    const tx = {
+      ...makeTransaction({ transactionDate: '2026-01-15', amount: 300 }),
+      linkedTransaction: {
+        id: 'p1',
+        description: null,
+        splits: [{ memo: 'monthly OVERPAY', amount: -300 } as TransactionSplit],
+      } as unknown as Transaction,
+    };
+    const result = deriveLoanPaymentHistory(account, [tx]);
+    expect(result.events[0].type).toBe('OVERPAYMENT');
+    expect(result.events[0].interest).toBe(0);
+  });
+
+  it('treats a payment as regular when its memo does not contain the overpayment memo', () => {
+    const account = makeAccount({ overpaymentMemo: 'extra principal' });
+    const result = deriveLoanPaymentHistory(account, [
+      makeTransaction({
+        transactionDate: '2026-01-15',
+        amount: 450,
+        description: 'Regular monthly payment',
+      }),
+    ]);
+    expect(result.events[0].type).toBe('REGULAR');
+  });
+
+  it('flags overpayments by memo even without an overpayment category set', () => {
+    const account = makeAccount({
+      overpaymentCategoryId: null,
+      overpaymentMemo: 'lump sum',
+    });
+    const result = deriveLoanPaymentHistory(account, [
+      makeTransaction({
+        transactionDate: '2026-01-15',
+        amount: 1000,
+        description: 'Annual LUMP SUM',
+      }),
+    ]);
+    expect(result.events[0].type).toBe('OVERPAYMENT');
+  });
+
   it('does not derive analytic interest for revolving credit', () => {
     const loc = makeAccount({
       accountType: 'LINE_OF_CREDIT',

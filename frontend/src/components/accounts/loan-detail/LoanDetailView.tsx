@@ -55,24 +55,29 @@ export function LoanDetailView({
   const [loadedPlan, setLoadedPlan] = useState<OverpaymentPlan | null>(null);
   const [loadedPlanVersion, setLoadedPlanVersion] = useState(0);
 
-  // Local, immediately-reactive copy of the overpayment category so selecting
-  // one reclassifies the schedule without waiting for a full account reload.
+  // Local, immediately-reactive copies of the overpayment settings so changing
+  // either reclassifies the schedule without waiting for a full account reload.
   // Reset when the account changes (info-from-previous-render pattern).
   const [overpaymentCategoryId, setOverpaymentCategoryId] = useState(
     account.overpaymentCategoryId,
+  );
+  const [overpaymentMemo, setOverpaymentMemo] = useState(
+    account.overpaymentMemo,
   );
   const [trackedAccountId, setTrackedAccountId] = useState(account.id);
   if (trackedAccountId !== account.id) {
     setTrackedAccountId(account.id);
     setOverpaymentCategoryId(account.overpaymentCategoryId);
+    setOverpaymentMemo(account.overpaymentMemo);
   }
 
   const effectiveAccount = useMemo(
     () =>
-      account.overpaymentCategoryId === overpaymentCategoryId
+      account.overpaymentCategoryId === overpaymentCategoryId &&
+      account.overpaymentMemo === overpaymentMemo
         ? account
-        : { ...account, overpaymentCategoryId },
-    [account, overpaymentCategoryId],
+        : { ...account, overpaymentCategoryId, overpaymentMemo },
+    [account, overpaymentCategoryId, overpaymentMemo],
   );
 
   const handleLoadScenario = useCallback((loaded: OverpaymentPlan | null) => {
@@ -186,7 +191,9 @@ export function LoanDetailView({
         history={history}
         rateChanges={rateChanges}
         overpaymentCategoryId={overpaymentCategoryId}
+        overpaymentMemo={overpaymentMemo}
         onOverpaymentCategoryChange={setOverpaymentCategoryId}
+        onOverpaymentMemoChange={setOverpaymentMemo}
       />
 
       <AmortizationScheduleTable

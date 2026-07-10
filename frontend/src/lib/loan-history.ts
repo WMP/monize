@@ -14,8 +14,9 @@ import {
  * Payments to the loan appear as positive transactions on the loan account.
  * The interest portion of a regular installment is recovered, in order of
  * preference:
- *   1. an overpayment tagged with the loan's overpayment category is 100%
- *      principal, so its interest is 0 and the row is flagged OVERPAYMENT;
+ *   1. an overpayment recognized by the loan's overpayment category or its
+ *      overpayment memo text is 100% principal, so its interest is 0 and the
+ *      row is flagged OVERPAYMENT;
  *   2. otherwise, if the linked source-account transaction carries an interest
  *      split (the shape ScheduledTransactionLoanService builds), that recorded
  *      interest is used -- exact even on variable-rate loans;
@@ -191,9 +192,10 @@ export function deriveCurrentInstallment(
 
 /**
  * Classify a positive loan-account transaction into its interest portion and
- * row type. An overpayment (tagged with the loan's overpayment category) is
- * 100% principal; a regular installment prefers its recorded interest split
- * and otherwise derives interest analytically from the running balance.
+ * row type. An overpayment (recognized by the loan's overpayment category or
+ * overpayment memo text) is 100% principal; a regular installment prefers its
+ * recorded interest split and otherwise derives interest analytically from the
+ * running balance.
  */
 function classifyPayment(
   transaction: Transaction,
@@ -202,7 +204,13 @@ function classifyPayment(
   loanAccountId: string,
   processedParentIds: Set<string>,
 ): { interest: number; type: LoanPaymentType } {
-  if (isOverpayment(transaction, account.overpaymentCategoryId)) {
+  if (
+    isOverpayment(
+      transaction,
+      account.overpaymentCategoryId,
+      account.overpaymentMemo,
+    )
+  ) {
     return { interest: 0, type: 'OVERPAYMENT' };
   }
   const recorded = readRecordedInterest(
@@ -220,11 +228,26 @@ function classifyPayment(
 }
 
 /**
- * Whether a payment is a standalone overpayment, recognized by the loan's
- * overpayment category on the transaction itself, its linked source-account
- * transaction, or any split of that linked transaction.
+ * Whether a payment is a standalone overpayment. Recognized either by the
+ * loan's overpayment category or its overpayment memo text -- each usable on
+ * its own or together, so either match is sufficient.
  */
 function isOverpayment(
+  transaction: Transaction,
+  overpaymentCategoryId: string | null | undefined,
+  overpaymentMemo: string | null | undefined,
+): boolean {
+  return (
+    matchesOverpaymentCategory(transaction, overpaymentCategoryId) ||
+    matchesOverpaymentMemo(transaction, overpaymentMemo)
+  );
+}
+
+/**
+ * Whether the overpayment category tags the transaction itself, its linked
+ * source-account transaction, or any split of that linked transaction.
+ */
+function matchesOverpaymentCategory(
   transaction: Transaction,
   overpaymentCategoryId: string | null | undefined,
 ): boolean {
@@ -235,6 +258,29 @@ function isOverpayment(
   if (linkedTx.categoryId === overpaymentCategoryId) return true;
   return Boolean(
     linkedTx.splits?.some((s) => s.categoryId === overpaymentCategoryId),
+  );
+}
+
+/**
+ * Whether the overpayment memo text appears (case-insensitive substring) in the
+ * transaction's memo, its linked source-account transaction's memo, or any
+ * split memo of that linked transaction. The transaction-level memo is stored
+ * as `description`.
+ */
+function matchesOverpaymentMemo(
+  transaction: Transaction,
+  overpaymentMemo: string | null | undefined,
+): boolean {
+  const needle = overpaymentMemo?.trim().toLowerCase();
+  if (!needle) return false;
+  const linkedTx = transaction.linkedTransaction;
+  const haystacks: (string | null | undefined)[] = [
+    transaction.description,
+    linkedTx?.description,
+    ...(linkedTx?.splits?.map((s) => s.memo) ?? []),
+  ];
+  return haystacks.some(
+    (text) => !!text && text.toLowerCase().includes(needle),
   );
 }
 
