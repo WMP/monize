@@ -7,7 +7,7 @@ import { ScheduleRow } from '@/lib/loan-schedule';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateFormat } from '@/hooks/useDateFormat';
 
-const COLLAPSED_ROW_COUNT = 24;
+const COLLAPSED_ROW_COUNT = 10;
 
 interface AmortizationScheduleTableProps {
   historyEvents: LoanPaymentEvent[];
