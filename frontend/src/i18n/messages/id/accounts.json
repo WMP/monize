@@ -220,6 +220,7 @@
     "selectAccount": "Pilih akun...",
     "nextPaymentDate": "Tanggal Pembayaran Berikutnya *",
     "annualInterestRate": "Tingkat Bunga Tahunan (%)",
+    "interestRatePlaceholder": "mis. 5,5",
     "estimatedFromHistory": "Diperkirakan dari riwayat transaksi: {rate}%",
     "interestExpenseCategory": "Kategori Pengeluaran Bunga",
     "detectedCategory": "Terdeteksi: {name}",

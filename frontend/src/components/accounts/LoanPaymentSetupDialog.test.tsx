@@ -342,7 +342,7 @@ describe('LoanPaymentSetupDialog', () => {
     mockDetectLoanPayments.mockResolvedValue(defaultDetected);
     await renderDialog();
 
-    const input = screen.getByPlaceholderText('e.g., 5.5') as HTMLInputElement;
+    const input = screen.getByPlaceholderText('e.g. 5.5') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '4.5' } });
     expect(input.value).toBe('4.5');
 
@@ -539,7 +539,7 @@ describe('LoanPaymentSetupDialog', () => {
     mockSetupLoanPayments.mockResolvedValue({} as any);
     await renderDialog();
 
-    const rateInput = screen.getByPlaceholderText('e.g., 5.5') as HTMLInputElement;
+    const rateInput = screen.getByPlaceholderText('e.g. 5.5') as HTMLInputElement;
     await act(async () => fireEvent.change(rateInput, { target: { value: '6.25' } }));
 
     const submitButton = screen.getByRole('button', { name: /Set Up Payments/i });

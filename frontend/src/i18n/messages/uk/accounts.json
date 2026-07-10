@@ -220,6 +220,7 @@
     "selectAccount": "Виберіть рахунок...",
     "nextPaymentDate": "Дата наступного платежу *",
     "annualInterestRate": "Річна відсоткова ставка (%)",
+    "interestRatePlaceholder": "напр. 5,5",
     "estimatedFromHistory": "Оцінено з історії транзакцій: {rate}%",
     "interestExpenseCategory": "Категорія витрат на відсотки",
     "detectedCategory": "Виявлено: {name}",

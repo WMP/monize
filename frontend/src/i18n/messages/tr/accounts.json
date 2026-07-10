@@ -220,6 +220,7 @@
     "selectAccount": "Hesap seçin...",
     "nextPaymentDate": "Sonraki Ödeme Tarihi *",
     "annualInterestRate": "Yıllık Faiz Oranı (%)",
+    "interestRatePlaceholder": "ör. 5,5",
     "estimatedFromHistory": "İşlem geçmişinden tahmini: {rate}%",
     "interestExpenseCategory": "Faiz Gider Kategorisi",
     "detectedCategory": "Tespit edildi: {name}",

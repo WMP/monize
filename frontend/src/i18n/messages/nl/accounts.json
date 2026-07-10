@@ -220,6 +220,7 @@
     "selectAccount": "Selecteer rekening...",
     "nextPaymentDate": "Datum volgende betaling *",
     "annualInterestRate": "Jaarlijks rentepercentage (%)",
+    "interestRatePlaceholder": "bijv. 5,5",
     "estimatedFromHistory": "Geschat uit transactiegeschiedenis: {rate}%",
     "interestExpenseCategory": "Categorie renteonkosten",
     "detectedCategory": "Gedetecteerd: {name}",

@@ -220,6 +220,7 @@
     "selectAccount": "Chọn tài khoản...",
     "nextPaymentDate": "Ngày thanh toán tiếp theo *",
     "annualInterestRate": "Lãi suất hàng năm (%)",
+    "interestRatePlaceholder": "vd. 5,5",
     "estimatedFromHistory": "Ước tính từ lịch sử giao dịch: {rate}%",
     "interestExpenseCategory": "Danh mục chi phí lãi",
     "detectedCategory": "Đã phát hiện: {name}",

@@ -220,6 +220,7 @@
     "selectAccount": "[XX-Select account...-XX]",
     "nextPaymentDate": "[XX-Next Payment Date *-XX]",
     "annualInterestRate": "[XX-Annual Interest Rate (%)-XX]",
+    "interestRatePlaceholder": "[XX-e.g. 5.5-XX]",
     "estimatedFromHistory": "[XX-Estimated from transaction history: {rate}%-XX]",
     "interestExpenseCategory": "[XX-Interest Expense Category-XX]",
     "detectedCategory": "[XX-Detected: {name}-XX]",

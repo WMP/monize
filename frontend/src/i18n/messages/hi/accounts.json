@@ -220,6 +220,7 @@
     "selectAccount": "खाता चुनें...",
     "nextPaymentDate": "अगली भुगतान तिथि *",
     "annualInterestRate": "वार्षिक ब्याज दर (%)",
+    "interestRatePlaceholder": "उदा. 5.5",
     "estimatedFromHistory": "लेनदेन इतिहास से अनुमानित: {rate}%",
     "interestExpenseCategory": "ब्याज व्यय श्रेणी",
     "detectedCategory": "पाया गया: {name}",

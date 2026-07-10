@@ -220,6 +220,7 @@
     "selectAccount": "选择账户...",
     "nextPaymentDate": "下次还款日期 *",
     "annualInterestRate": "年利率（%）",
+    "interestRatePlaceholder": "例如 5.5",
     "estimatedFromHistory": "根据交易历史估算：{rate}%",
     "interestExpenseCategory": "利息支出科目",
     "detectedCategory": "已检测到：{name}",

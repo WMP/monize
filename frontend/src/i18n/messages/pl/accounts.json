@@ -220,6 +220,7 @@
     "selectAccount": "Wybierz konto...",
     "nextPaymentDate": "Data następnej płatności *",
     "annualInterestRate": "Roczne oprocentowanie (%)",
+    "interestRatePlaceholder": "np. 5,5",
     "estimatedFromHistory": "Oszacowano z historii transakcji: {rate}%",
     "interestExpenseCategory": "Kategoria wydatków na odsetki",
     "detectedCategory": "Wykryto: {name}",
@@ -229,7 +230,7 @@
     "mortgageDetails": "Szczegóły kredytu hipotecznego",
     "canadianMortgage": "Kredyt kanadyjski (kapitalizacja półroczna)",
     "variableRate": "Oprocentowanie zmienne",
-    "amortizationMonths": "Amortyzacja (miesiące)",
+    "amortizationMonths": "Okres spłaty (miesiące)",
     "termMonths": "Okres (miesiące)",
     "autoPost": "Automatycznie księguj transakcje w terminie",
     "skip": "Pomiń",
@@ -258,7 +259,7 @@
     "variableRateLoanDetailsLink": "Zarejestruj zmiany oprocentowania w <link>szczegółach kredytu</link>.",
     "termLength": "Okres kredytowania",
     "termLengthNoTerm": "Pozostaw 0 lat i 0 miesięcy, aby nie ustawiać okresu.",
-    "amortizationPeriod": "Okres amortyzacji (wymagane)",
+    "amortizationPeriod": "Okres spłaty (wymagane)",
     "years": "Lata",
     "months": "Miesiące",
     "paymentFrequency": "Częstotliwość płatności (wymagane)",
@@ -268,7 +269,7 @@
     "selectFrequency": "Wybierz częstotliwość...",
     "selectAccount": "Wybierz konto...",
     "selectCategory": "Wybierz kategorię...",
-    "previewTitle": "Podgląd amortyzacji",
+    "previewTitle": "Podgląd spłaty",
     "previewPaymentAmount": "Kwota płatności:",
     "previewEffectiveRate": "Efektywna stopa:",
     "previewFirstPrincipal": "Kapitał pierwszej płatności:",
@@ -313,7 +314,7 @@
     "paymentFrequencyRequired": "Częstotliwość płatności jest wymagana",
     "paymentStartDateRequired": "Data pierwszej płatności jest wymagana",
     "paymentAccountRequired": "Konto płatności jest wymagane",
-    "amortizationRequired": "Okres amortyzacji jest wymagany"
+    "amortizationRequired": "Okres spłaty jest wymagany"
   },
   "loanDetail": {
     "backToAccounts": "Powrót do kont",

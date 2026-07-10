@@ -483,4 +483,33 @@ describe('MortgageFields', () => {
     render(<MortgageFields {...defaultProps} />);
     expect(screen.getByText('Leave at 0 years and 0 months for no term.')).toBeInTheDocument();
   });
+
+  it('shows the Term Length field for Canadian mortgages', () => {
+    render(<MortgageFields {...defaultProps} isCanadianMortgage={true} />);
+    expect(screen.getByText('Term Length')).toBeInTheDocument();
+  });
+
+  it('hides the Term Length field for non-Canadian mortgages but keeps the amortization period', () => {
+    render(<MortgageFields {...defaultProps} isCanadianMortgage={false} />);
+    // Term (a Canada-only contract-renewal concept) is hidden...
+    expect(screen.queryByText('Term Length')).not.toBeInTheDocument();
+    expect(screen.queryByText('Leave at 0 years and 0 months for no term.')).not.toBeInTheDocument();
+    // ...but the single repayment period a non-Canadian mortgage has is still shown.
+    expect(screen.getByText('Amortization Period (required)')).toBeInTheDocument();
+  });
+
+  it('clears a stale term when the mortgage is not Canadian', () => {
+    render(<MortgageFields {...defaultProps} isCanadianMortgage={false} termMonths={60} />);
+    expect(mockSetValue).toHaveBeenCalledWith('termMonths', 0, { shouldDirty: false });
+  });
+
+  it('does not clear the term when none is set on a non-Canadian mortgage', () => {
+    render(<MortgageFields {...defaultProps} isCanadianMortgage={false} termMonths={undefined} />);
+    expect(mockSetValue).not.toHaveBeenCalledWith('termMonths', 0, expect.anything());
+  });
+
+  it('does not clear the term for a Canadian mortgage that has one', () => {
+    render(<MortgageFields {...defaultProps} isCanadianMortgage={true} termMonths={60} />);
+    expect(mockSetValue).not.toHaveBeenCalledWith('termMonths', 0, expect.anything());
+  });
 });

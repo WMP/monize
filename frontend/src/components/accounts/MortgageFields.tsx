@@ -107,6 +107,18 @@ export function MortgageFields({
     }
   }, [amortizationMonths]);
 
+  // A term (and its renewal reminder) is a Canada-only concept: outside Canada a
+  // mortgage has a single repayment period, not a separate contract term. When
+  // the mortgage is not Canadian, drop any previously entered term so no renewal
+  // reminder fires -- the backend nulls termEndDate when termMonths is cleared.
+  // setValue comes from react-hook-form (not React state), so it is allowed in
+  // an effect despite the no-setState-in-effect rule.
+  useEffect(() => {
+    if (!isCanadianMortgage && termMonths) {
+      setValue('termMonths', 0, { shouldDirty: false });
+    }
+  }, [isCanadianMortgage, termMonths, setValue]);
+
   const updateTermMonths = (years: string, months: string) => {
     const y = years === '' ? 0 : parseInt(years, 10);
     const m = months === '' ? 0 : parseInt(months, 10);
@@ -266,34 +278,38 @@ export function MortgageFields({
       <input type="hidden" {...register('termMonths', { valueAsNumber: true })} />
       <input type="hidden" {...register('amortizationMonths', { valueAsNumber: true })} />
 
-      {/* Term Length - years + months inputs */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          {t('mortgageFields.termLength')}
-        </label>
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label={t('mortgageFields.years')}
-            type="number"
-            min={0}
-            max={99}
-            value={termYears}
-            onChange={handleTermYearsChange}
-            error={errors.termMonths?.message as string | undefined}
-          />
-          <Input
-            label={t('mortgageFields.months')}
-            type="number"
-            min={0}
-            max={11}
-            value={termRemainder}
-            onChange={handleTermMonthsChange}
-          />
+      {/* Term Length - years + months inputs. A separate contract term (that
+          drives renewal) only exists for Canadian mortgages; elsewhere there is
+          a single repayment period, so hide this field for non-Canadian loans. */}
+      {isCanadianMortgage && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {t('mortgageFields.termLength')}
+          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label={t('mortgageFields.years')}
+              type="number"
+              min={0}
+              max={99}
+              value={termYears}
+              onChange={handleTermYearsChange}
+              error={errors.termMonths?.message as string | undefined}
+            />
+            <Input
+              label={t('mortgageFields.months')}
+              type="number"
+              min={0}
+              max={11}
+              value={termRemainder}
+              onChange={handleTermMonthsChange}
+            />
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {t('mortgageFields.termLengthNoTerm')}
+          </p>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          {t('mortgageFields.termLengthNoTerm')}
-        </p>
-      </div>
+      )}
 
       {/* Amortization Period - years + months inputs */}
       <div>

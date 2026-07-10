@@ -220,6 +220,7 @@
     "selectAccount": "勘定科目を選択...",
     "nextPaymentDate": "次回支払日 *",
     "annualInterestRate": "年利率（%）",
+    "interestRatePlaceholder": "例：5.5",
     "estimatedFromHistory": "取引履歴からの推定：{rate}%",
     "interestExpenseCategory": "利息費用カテゴリ",
     "detectedCategory": "検出済み：{name}",

@@ -220,6 +220,7 @@
     "selectAccount": "계정 선택...",
     "nextPaymentDate": "다음 납부일 *",
     "annualInterestRate": "연이자율 (%)",
+    "interestRatePlaceholder": "예: 5.5",
     "estimatedFromHistory": "거래 내역에서 추정: {rate}%",
     "interestExpenseCategory": "이자 지출 카테고리",
     "detectedCategory": "감지됨: {name}",

@@ -220,6 +220,7 @@
     "selectAccount": "Выберите счёт...",
     "nextPaymentDate": "Дата следующего платежа *",
     "annualInterestRate": "Годовая процентная ставка (%)",
+    "interestRatePlaceholder": "например, 5,5",
     "estimatedFromHistory": "Оценка на основе истории проводок: {rate}%",
     "interestExpenseCategory": "Категория расходов по процентам",
     "detectedCategory": "Обнаружено: {name}",
