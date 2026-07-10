@@ -356,7 +356,8 @@
       "showAll": "Afficher les {count} versements",
       "showLess": "Afficher moins",
       "noPayments": "Aucun versement trouvé",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "Remboursement anticipé"
     },
     "simulator": {
       "title": "Simulateur de remboursement anticipé",
@@ -372,7 +373,12 @@
       "noLumpSums": "Aucun versement forfaitaire ajouté.",
       "lumpSumDate": "Date",
       "lumpSumAmount": "Montant",
-      "removeLumpSum": "Retirer"
+      "removeLumpSum": "Retirer",
+      "modeLabel": "Après un remboursement anticipé",
+      "modeShortenTerm": "Raccourcir la durée",
+      "modeLowerInstallment": "Réduire la mensualité",
+      "modeShortenTermHint": "Conserver la même mensualité et rembourser le prêt plus tôt. Économie d'intérêts maximale.",
+      "modeLowerInstallmentHint": "Conserver la même date de remboursement et recalculer une mensualité plus faible sur le solde réduit."
     },
     "comparison": {
       "newPayoff": "Nouvelle date de remboursement",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# versement} other {# versements}}",
       "interestSaved": "Intérêts économisés",
       "totalExtraContributed": "Total des versements supplémentaires",
-      "beyondProjection": "Au-delà de la projection"
+      "beyondProjection": "Au-delà de la projection",
+      "newInstallment": "Nouvelle mensualité",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "Chronologie du remboursement",
@@ -476,6 +484,13 @@
       "detectMessage": "Cela analyse votre historique de paiements et remplace les entrées détectées précédemment. Les entrées que vous avez ajoutées ou modifiées vous-même sont conservées.",
       "detectedToast": "{count, plural, =0 {Aucun nouveau changement de taux détecté} one {# changement de taux détecté} other {# changements de taux détectés}}",
       "detectFailed": "Impossible de détecter les changements de taux à partir de l'historique de paiements"
+    },
+    "overpaymentCategory": {
+      "title": "Catégorie de remboursement anticipé",
+      "description": "Choisissez la catégorie avec laquelle vous marquez les remboursements anticipés ponctuels. Les paiements de cette catégorie comptent à 100 % comme capital ; l'échéancier les signale au lieu de les traiter comme une mensualité normale.",
+      "label": "Catégorie de remboursement anticipé",
+      "placeholder": "Sélectionner une catégorie",
+      "saveError": "Échec de l'enregistrement de la catégorie de remboursement anticipé"
     }
   }
 }

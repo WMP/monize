@@ -356,7 +356,8 @@
       "showAll": "Hiện tất cả {count} kỳ trả",
       "showLess": "Thu gọn",
       "noPayments": "Không tìm thấy khoản trả nào",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "Trả thêm gốc"
     },
     "simulator": {
       "title": "Trình mô phỏng trả nợ trước hạn",
@@ -372,7 +373,12 @@
       "noLumpSums": "Chưa thêm khoản trả một lần nào.",
       "lumpSumDate": "Ngày",
       "lumpSumAmount": "Số tiền",
-      "removeLumpSum": "Xóa"
+      "removeLumpSum": "Xóa",
+      "modeLabel": "Sau khi trả thêm gốc",
+      "modeShortenTerm": "Rút ngắn kỳ hạn",
+      "modeLowerInstallment": "Giảm kỳ trả",
+      "modeShortenTermHint": "Giữ nguyên số tiền trả và tất toán khoản vay sớm hơn. Tiết kiệm lãi tối đa.",
+      "modeLowerInstallmentHint": "Giữ nguyên ngày tất toán và tính lại số tiền trả nhỏ hơn trên dư nợ đã giảm."
     },
     "comparison": {
       "newPayoff": "Ngày trả hết mới",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# kỳ} other {# kỳ}}",
       "interestSaved": "Tiền lãi tiết kiệm",
       "totalExtraContributed": "Tổng số tiền trả thêm",
-      "beyondProjection": "Ngoài phạm vi dự báo"
+      "beyondProjection": "Ngoài phạm vi dự báo",
+      "newInstallment": "Kỳ trả mới",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "Dòng thời gian trả nợ",
@@ -476,6 +484,13 @@
       "detectMessage": "Thao tác này phân tích lịch sử thanh toán của bạn và thay thế các mục đã phát hiện trước đó. Các mục bạn tự thêm hoặc chỉnh sửa sẽ được giữ lại.",
       "detectedToast": "{count, plural, =0 {Không phát hiện thay đổi lãi suất mới nào} one {Đã phát hiện # thay đổi lãi suất} other {Đã phát hiện # thay đổi lãi suất}}",
       "detectFailed": "Không thể phát hiện thay đổi lãi suất từ lịch sử thanh toán"
+    },
+    "overpaymentCategory": {
+      "title": "Danh mục trả thêm gốc",
+      "description": "Chọn danh mục bạn dùng để gắn nhãn các khoản trả thêm gốc riêng lẻ. Các khoản thanh toán trong danh mục này được tính 100% là gốc, nên lịch trả nợ đánh dấu chúng thay vì coi là một kỳ trả thông thường.",
+      "label": "Danh mục trả thêm gốc",
+      "placeholder": "Chọn một danh mục",
+      "saveError": "Không thể lưu danh mục trả thêm gốc"
     }
   }
 }

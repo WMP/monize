@@ -356,7 +356,8 @@
       "showAll": "Tampilkan semua {count} angsuran",
       "showLess": "Tampilkan lebih sedikit",
       "noPayments": "Tidak ada angsuran ditemukan",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "Pembayaran ekstra"
     },
     "simulator": {
       "title": "Simulator Pelunasan Dipercepat",
@@ -372,7 +373,12 @@
       "noLumpSums": "Belum ada pembayaran sekaligus.",
       "lumpSumDate": "Tanggal",
       "lumpSumAmount": "Jumlah",
-      "removeLumpSum": "Hapus"
+      "removeLumpSum": "Hapus",
+      "modeLabel": "Setelah pembayaran ekstra",
+      "modeShortenTerm": "Perpendek tenor",
+      "modeLowerInstallment": "Turunkan angsuran",
+      "modeShortenTermHint": "Pertahankan angsuran yang sama dan lunasi pinjaman lebih cepat. Penghematan bunga maksimal.",
+      "modeLowerInstallmentHint": "Pertahankan tanggal pelunasan yang sama dan hitung ulang angsuran yang lebih kecil atas saldo yang berkurang."
     },
     "comparison": {
       "newPayoff": "Tanggal Lunas Baru",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# angsuran} other {# angsuran}}",
       "interestSaved": "Bunga yang Dihemat",
       "totalExtraContributed": "Total Pembayaran Tambahan",
-      "beyondProjection": "Di luar proyeksi"
+      "beyondProjection": "Di luar proyeksi",
+      "newInstallment": "Angsuran Baru",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "Linimasa Pelunasan",
@@ -476,6 +484,13 @@
       "detectMessage": "Ini menganalisis riwayat pembayaran Anda dan menggantikan entri yang sebelumnya terdeteksi. Entri yang Anda tambahkan atau edit sendiri tetap dipertahankan.",
       "detectedToast": "{count, plural, =0 {Tidak ada perubahan suku bunga baru terdeteksi} one {# perubahan suku bunga terdeteksi} other {# perubahan suku bunga terdeteksi}}",
       "detectFailed": "Tidak dapat mendeteksi perubahan suku bunga dari riwayat pembayaran"
+    },
+    "overpaymentCategory": {
+      "title": "Kategori Pembayaran Ekstra",
+      "description": "Pilih kategori yang Anda gunakan untuk menandai pembayaran ekstra tersendiri. Pembayaran dalam kategori ini dihitung 100% sebagai pokok, sehingga jadwal menandainya alih-alih memperlakukannya sebagai angsuran biasa.",
+      "label": "Kategori pembayaran ekstra",
+      "placeholder": "Pilih kategori",
+      "saveError": "Gagal menyimpan kategori pembayaran ekstra"
     }
   }
 }

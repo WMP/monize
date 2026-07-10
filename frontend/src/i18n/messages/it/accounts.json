@@ -356,7 +356,8 @@
       "showAll": "Mostra tutte le {count} rate",
       "showLess": "Mostra meno",
       "noPayments": "Nessuna rata trovata",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "Rimborso anticipato"
     },
     "simulator": {
       "title": "Simulatore di rimborso anticipato",
@@ -372,7 +373,12 @@
       "noLumpSums": "Nessun versamento una tantum aggiunto.",
       "lumpSumDate": "Data",
       "lumpSumAmount": "Importo",
-      "removeLumpSum": "Rimuovi"
+      "removeLumpSum": "Rimuovi",
+      "modeLabel": "Dopo un rimborso anticipato",
+      "modeShortenTerm": "Accorcia la durata",
+      "modeLowerInstallment": "Riduci la rata",
+      "modeShortenTermHint": "Mantieni la stessa rata e salda il prestito prima. Massimo risparmio di interessi.",
+      "modeLowerInstallmentHint": "Mantieni la stessa data di estinzione e ricalcola una rata più bassa sul saldo ridotto."
     },
     "comparison": {
       "newPayoff": "Nuova data di estinzione",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# rata} other {# rate}}",
       "interestSaved": "Interessi risparmiati",
       "totalExtraContributed": "Totale extra versato",
-      "beyondProjection": "Oltre la proiezione"
+      "beyondProjection": "Oltre la proiezione",
+      "newInstallment": "Nuova rata",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "Cronologia di estinzione",
@@ -476,6 +484,13 @@
       "detectMessage": "Questa operazione analizza il tuo storico dei pagamenti e sostituisce le voci rilevate in precedenza. Le voci che hai aggiunto o modificato manualmente vengono conservate.",
       "detectedToast": "{count, plural, =0 {Nessuna nuova variazione del tasso rilevata} one {# variazione del tasso rilevata} other {# variazioni del tasso rilevate}}",
       "detectFailed": "Impossibile rilevare le variazioni del tasso dallo storico dei pagamenti"
+    },
+    "overpaymentCategory": {
+      "title": "Categoria di rimborso anticipato",
+      "description": "Scegli la categoria con cui contrassegni i singoli rimborsi anticipati. I pagamenti di questa categoria contano al 100% come capitale, quindi il piano li evidenzia invece di trattarli come una rata normale.",
+      "label": "Categoria di rimborso anticipato",
+      "placeholder": "Seleziona una categoria",
+      "saveError": "Impossibile salvare la categoria di rimborso anticipato"
     }
   }
 }

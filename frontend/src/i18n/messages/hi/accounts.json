@@ -356,7 +356,8 @@
       "showAll": "सभी {count} किस्तें दिखाएँ",
       "showLess": "कम दिखाएँ",
       "noPayments": "कोई किस्त नहीं मिली",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "अतिरिक्त भुगतान"
     },
     "simulator": {
       "title": "पूर्व-भुगतान सिम्युलेटर",
@@ -372,7 +373,12 @@
       "noLumpSums": "कोई एकमुश्त भुगतान नहीं जोड़ा गया।",
       "lumpSumDate": "तिथि",
       "lumpSumAmount": "राशि",
-      "removeLumpSum": "हटाएँ"
+      "removeLumpSum": "हटाएँ",
+      "modeLabel": "अतिरिक्त भुगतान के बाद",
+      "modeShortenTerm": "अवधि घटाएँ",
+      "modeLowerInstallment": "किस्त घटाएँ",
+      "modeShortenTermHint": "वही किस्त बनाए रखें और ऋण जल्दी चुकाएँ। अधिकतम ब्याज बचत।",
+      "modeLowerInstallmentHint": "वही भुगतान तिथि बनाए रखें और घटे हुए शेष पर कम किस्त की पुनर्गणना करें।"
     },
     "comparison": {
       "newPayoff": "नई चुकौती तिथि",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# किस्त} other {# किस्तें}}",
       "interestSaved": "बचा हुआ ब्याज",
       "totalExtraContributed": "कुल अतिरिक्त योगदान",
-      "beyondProjection": "अनुमान से परे"
+      "beyondProjection": "अनुमान से परे",
+      "newInstallment": "नई किस्त",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "चुकौती समयरेखा",
@@ -476,6 +484,13 @@
       "detectMessage": "यह आपके भुगतान इतिहास का विश्लेषण करता है और पहले से पता लगाई गई प्रविष्टियों को बदल देता है। आपके द्वारा स्वयं जोड़ी या संपादित की गई प्रविष्टियाँ बनी रहती हैं।",
       "detectedToast": "{count, plural, =0 {कोई नया दर परिवर्तन नहीं मिला} one {# दर परिवर्तन मिला} other {# दर परिवर्तन मिले}}",
       "detectFailed": "भुगतान इतिहास से दर परिवर्तनों का पता नहीं लगाया जा सका"
+    },
+    "overpaymentCategory": {
+      "title": "अतिरिक्त भुगतान श्रेणी",
+      "description": "वह श्रेणी चुनें जिससे आप अलग-अलग अतिरिक्त भुगतानों को टैग करते हैं। इस श्रेणी के भुगतान 100% मूलधन माने जाते हैं, इसलिए शेड्यूल उन्हें नियमित किस्त मानने के बजाय चिह्नित करता है।",
+      "label": "अतिरिक्त भुगतान श्रेणी",
+      "placeholder": "श्रेणी चुनें",
+      "saveError": "अतिरिक्त भुगतान श्रेणी सहेजने में विफल"
     }
   }
 }

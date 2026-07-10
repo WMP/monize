@@ -356,7 +356,8 @@
       "showAll": "{count}회 상환 모두 보기",
       "showLess": "간략히 보기",
       "noPayments": "상환 내역이 없습니다",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "추가 상환"
     },
     "simulator": {
       "title": "조기 상환 시뮬레이터",
@@ -372,7 +373,12 @@
       "noLumpSums": "추가된 일시 상환이 없습니다.",
       "lumpSumDate": "날짜",
       "lumpSumAmount": "금액",
-      "removeLumpSum": "제거"
+      "removeLumpSum": "제거",
+      "modeLabel": "추가 상환 후",
+      "modeShortenTerm": "상환 기간 단축",
+      "modeLowerInstallment": "상환액 낮추기",
+      "modeShortenTermHint": "같은 상환액을 유지하고 대출을 더 빨리 상환합니다. 이자 절감 최대.",
+      "modeLowerInstallmentHint": "같은 상환 완료일을 유지하고 줄어든 잔액에 대해 더 낮은 상환액을 다시 계산합니다."
     },
     "comparison": {
       "newPayoff": "새 완납일",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# 회} other {# 회}}",
       "interestSaved": "절약되는 이자",
       "totalExtraContributed": "총 추가 상환액",
-      "beyondProjection": "예측 범위 초과"
+      "beyondProjection": "예측 범위 초과",
+      "newInstallment": "새 상환액",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "완납 타임라인",
@@ -476,6 +484,13 @@
       "detectMessage": "상환 내역을 분석하여 이전에 검출된 항목을 대체합니다. 직접 추가하거나 편집한 항목은 유지됩니다.",
       "detectedToast": "{count, plural, =0 {새로운 금리 변경이 검출되지 않았습니다} one {# 건의 금리 변경을 검출했습니다} other {# 건의 금리 변경을 검출했습니다}}",
       "detectFailed": "상환 내역에서 금리 변경을 검출할 수 없습니다"
+    },
+    "overpaymentCategory": {
+      "title": "추가 상환 카테고리",
+      "description": "개별 추가 상환에 태그를 지정할 카테고리를 선택하세요. 이 카테고리의 결제는 100% 원금으로 계산되어, 일반 할부금이 아니라 추가 상환으로 일정에 표시됩니다.",
+      "label": "추가 상환 카테고리",
+      "placeholder": "카테고리 선택",
+      "saveError": "추가 상환 카테고리를 저장하지 못했습니다"
     }
   }
 }

@@ -356,7 +356,8 @@
       "showAll": "Mostrar as {count} prestações",
       "showLess": "Mostrar menos",
       "noPayments": "Nenhuma prestação encontrada",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "Amortização antecipada"
     },
     "simulator": {
       "title": "Simulador de amortização antecipada",
@@ -372,7 +373,12 @@
       "noLumpSums": "Nenhum pagamento único adicionado.",
       "lumpSumDate": "Data",
       "lumpSumAmount": "Montante",
-      "removeLumpSum": "Remover"
+      "removeLumpSum": "Remover",
+      "modeLabel": "Após uma amortização antecipada",
+      "modeShortenTerm": "Encurtar prazo",
+      "modeLowerInstallment": "Reduzir prestação",
+      "modeShortenTermHint": "Manter a mesma prestação e liquidar o empréstimo mais cedo. Poupança máxima de juros.",
+      "modeLowerInstallmentHint": "Manter a mesma data de liquidação e recalcular uma prestação menor sobre o saldo reduzido."
     },
     "comparison": {
       "newPayoff": "Nova data de liquidação",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# prestação} other {# prestações}}",
       "interestSaved": "Juros poupados",
       "totalExtraContributed": "Total extra contribuído",
-      "beyondProjection": "Além da projeção"
+      "beyondProjection": "Além da projeção",
+      "newInstallment": "Nova prestação",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "Cronologia de liquidação",
@@ -476,6 +484,13 @@
       "detectMessage": "Isto analisa o seu histórico de pagamentos e substitui as entradas detetadas anteriormente. As entradas que adicionou ou editou manualmente são mantidas.",
       "detectedToast": "{count, plural, =0 {Nenhuma nova alteração de taxa detetada} one {# alteração de taxa detetada} other {# alterações de taxa detetadas}}",
       "detectFailed": "Não foi possível detetar alterações de taxa a partir do histórico de pagamentos"
+    },
+    "overpaymentCategory": {
+      "title": "Categoria de amortização antecipada",
+      "description": "Escolha a categoria com que marca as amortizações antecipadas avulsas. Os pagamentos nesta categoria contam 100% como capital, pelo que o plano os assinala em vez de os tratar como uma prestação normal.",
+      "label": "Categoria de amortização antecipada",
+      "placeholder": "Selecione uma categoria",
+      "saveError": "Não foi possível guardar a categoria de amortização antecipada"
     }
   }
 }

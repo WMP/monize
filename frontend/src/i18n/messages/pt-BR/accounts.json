@@ -356,7 +356,8 @@
       "showAll": "Mostrar todas as {count} parcelas",
       "showLess": "Mostrar menos",
       "noPayments": "Nenhuma parcela encontrada",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "Amortização extra"
     },
     "simulator": {
       "title": "Simulador de amortização extra",
@@ -372,7 +373,12 @@
       "noLumpSums": "Nenhum pagamento avulso adicionado.",
       "lumpSumDate": "Data",
       "lumpSumAmount": "Valor",
-      "removeLumpSum": "Remover"
+      "removeLumpSum": "Remover",
+      "modeLabel": "Após uma amortização extra",
+      "modeShortenTerm": "Encurtar prazo",
+      "modeLowerInstallment": "Reduzir parcela",
+      "modeShortenTermHint": "Manter a mesma parcela e quitar o empréstimo mais cedo. Máxima economia de juros.",
+      "modeLowerInstallmentHint": "Manter a mesma data de quitação e recalcular uma parcela menor sobre o saldo reduzido."
     },
     "comparison": {
       "newPayoff": "Nova data de quitação",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# parcela} other {# parcelas}}",
       "interestSaved": "Juros economizados",
       "totalExtraContributed": "Total extra contribuído",
-      "beyondProjection": "Além da projeção"
+      "beyondProjection": "Além da projeção",
+      "newInstallment": "Nova parcela",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "Linha do tempo de quitação",
@@ -476,6 +484,13 @@
       "detectMessage": "Isso analisa seu histórico de pagamentos e substitui as entradas detectadas anteriormente. As entradas que você adicionou ou editou manualmente são mantidas.",
       "detectedToast": "{count, plural, =0 {Nenhuma nova alteração de taxa detectada} one {# alteração de taxa detectada} other {# alterações de taxa detectadas}}",
       "detectFailed": "Não foi possível detectar alterações de taxa a partir do histórico de pagamentos"
+    },
+    "overpaymentCategory": {
+      "title": "Categoria de amortização extra",
+      "description": "Escolha a categoria com que você marca as amortizações extras avulsas. Os pagamentos nesta categoria contam 100% como principal, então o cronograma os destaca em vez de tratá-los como uma parcela normal.",
+      "label": "Categoria de amortização extra",
+      "placeholder": "Selecione uma categoria",
+      "saveError": "Não foi possível salvar a categoria de amortização extra"
     }
   }
 }

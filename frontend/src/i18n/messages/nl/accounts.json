@@ -356,7 +356,8 @@
       "showAll": "Alle {count} betalingen tonen",
       "showLess": "Minder tonen",
       "noPayments": "Geen betalingen gevonden",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "Extra aflossing"
     },
     "simulator": {
       "title": "Simulator extra aflossen",
@@ -372,7 +373,12 @@
       "noLumpSums": "Geen extra stortingen toegevoegd.",
       "lumpSumDate": "Datum",
       "lumpSumAmount": "Bedrag",
-      "removeLumpSum": "Verwijderen"
+      "removeLumpSum": "Verwijderen",
+      "modeLabel": "Na een extra aflossing",
+      "modeShortenTerm": "Looptijd verkorten",
+      "modeLowerInstallment": "Termijn verlagen",
+      "modeShortenTermHint": "Houd dezelfde termijn aan en los de lening eerder af. Maximale rentebesparing.",
+      "modeLowerInstallmentHint": "Houd dezelfde einddatum aan en herbereken een lagere termijn op het verlaagde saldo."
     },
     "comparison": {
       "newPayoff": "Nieuwe aflossingsdatum",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# betaling} other {# betalingen}}",
       "interestSaved": "Bespaarde rente",
       "totalExtraContributed": "Totaal extra ingelegd",
-      "beyondProjection": "Buiten de projectie"
+      "beyondProjection": "Buiten de projectie",
+      "newInstallment": "Nieuwe termijn",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "Aflossingstijdlijn",
@@ -476,6 +484,13 @@
       "detectMessage": "Dit analyseert uw betalingsgeschiedenis en vervangt eerder gedetecteerde vermeldingen. Vermeldingen die u zelf hebt toegevoegd of bewerkt, blijven behouden.",
       "detectedToast": "{count, plural, =0 {Geen nieuwe renteveranderingen gedetecteerd} one {# renteverandering gedetecteerd} other {# renteveranderingen gedetecteerd}}",
       "detectFailed": "Kan geen renteveranderingen detecteren uit de betalingsgeschiedenis"
+    },
+    "overpaymentCategory": {
+      "title": "Categorie voor extra aflossingen",
+      "description": "Kies de categorie waarmee u losse extra aflossingen labelt. Betalingen in deze categorie tellen voor 100% als aflossing, zodat het schema ze markeert in plaats van ze als een gewone termijn te behandelen.",
+      "label": "Categorie voor extra aflossingen",
+      "placeholder": "Selecteer een categorie",
+      "saveError": "Kan de categorie voor extra aflossingen niet opslaan"
     }
   }
 }

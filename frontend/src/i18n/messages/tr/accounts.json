@@ -356,7 +356,8 @@
       "showAll": "Tüm {count} taksiti göster",
       "showLess": "Daha az göster",
       "noPayments": "Taksit bulunamadı",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "Ek ödeme"
     },
     "simulator": {
       "title": "Erken Ödeme Simülatörü",
@@ -372,7 +373,12 @@
       "noLumpSums": "Toplu ödeme eklenmedi.",
       "lumpSumDate": "Tarih",
       "lumpSumAmount": "Tutar",
-      "removeLumpSum": "Kaldır"
+      "removeLumpSum": "Kaldır",
+      "modeLabel": "Ek ödemeden sonra",
+      "modeShortenTerm": "Vadeyi kısalt",
+      "modeLowerInstallment": "Taksiti düşür",
+      "modeShortenTermHint": "Aynı taksiti koruyun ve krediyi daha erken kapatın. Maksimum faiz tasarrufu.",
+      "modeLowerInstallmentHint": "Aynı kapanış tarihini koruyun ve azalan bakiye üzerinden daha düşük bir taksit hesaplayın."
     },
     "comparison": {
       "newPayoff": "Yeni Kapanış Tarihi",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# taksit} other {# taksit}}",
       "interestSaved": "Tasarruf Edilen Faiz",
       "totalExtraContributed": "Toplam Ek Ödeme",
-      "beyondProjection": "Öngörünün ötesinde"
+      "beyondProjection": "Öngörünün ötesinde",
+      "newInstallment": "Yeni Taksit",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "Kapanış Zaman Çizelgesi",
@@ -476,6 +484,13 @@
       "detectMessage": "Bu, ödeme geçmişinizi analiz eder ve önceden algılanan girişleri değiştirir. Kendiniz eklediğiniz veya düzenlediğiniz girişler korunur.",
       "detectedToast": "{count, plural, =0 {Yeni faiz değişikliği algılanmadı} one {# faiz değişikliği algılandı} other {# faiz değişikliği algılandı}}",
       "detectFailed": "Ödeme geçmişinden faiz değişiklikleri algılanamadı"
+    },
+    "overpaymentCategory": {
+      "title": "Ek Ödeme Kategorisi",
+      "description": "Tek seferlik ek ödemeleri etiketlediğiniz kategoriyi seçin. Bu kategorideki ödemeler %100 anapara sayılır; böylece plan bunları normal taksit gibi ele almak yerine işaretler.",
+      "label": "Ek ödeme kategorisi",
+      "placeholder": "Bir kategori seçin",
+      "saveError": "Ek ödeme kategorisi kaydedilemedi"
     }
   }
 }

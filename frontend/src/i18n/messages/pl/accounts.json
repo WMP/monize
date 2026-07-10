@@ -356,7 +356,8 @@
       "showAll": "Pokaż wszystkie raty ({count})",
       "showLess": "Pokaż mniej",
       "noPayments": "Nie znaleziono rat",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "Nadpłata"
     },
     "simulator": {
       "title": "Symulator nadpłat",
@@ -372,7 +373,12 @@
       "noLumpSums": "Nie dodano nadpłat jednorazowych.",
       "lumpSumDate": "Data",
       "lumpSumAmount": "Kwota",
-      "removeLumpSum": "Usuń"
+      "removeLumpSum": "Usuń",
+      "modeLabel": "Po nadpłacie",
+      "modeShortenTerm": "Skrócenie okresu",
+      "modeLowerInstallment": "Obniżenie raty",
+      "modeShortenTermHint": "Zachowaj tę samą ratę i spłać kredyt szybciej. Maksymalna oszczędność na odsetkach.",
+      "modeLowerInstallmentHint": "Zachowaj tę samą datę spłaty i przelicz niższą ratę od zmniejszonego salda."
     },
     "comparison": {
       "newPayoff": "Nowa data spłaty",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# rata} few {# raty} many {# rat} other {# raty}}",
       "interestSaved": "Zaoszczędzone odsetki",
       "totalExtraContributed": "Łączna kwota nadpłat",
-      "beyondProjection": "Poza prognozą"
+      "beyondProjection": "Poza prognozą",
+      "newInstallment": "Nowa rata",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "Oś czasu spłaty",
@@ -476,6 +484,13 @@
       "detectMessage": "Analizuje to Twoją historię płatności i zastępuje wcześniej wykryte wpisy. Wpisy dodane lub edytowane przez Ciebie zostają zachowane.",
       "detectedToast": "{count, plural, =0 {Nie wykryto nowych zmian oprocentowania} one {# wykryta zmiana oprocentowania} few {# wykryte zmiany oprocentowania} many {# wykrytych zmian oprocentowania} other {# wykrytej zmiany oprocentowania}}",
       "detectFailed": "Nie udało się wykryć zmian oprocentowania z historii płatności"
+    },
+    "overpaymentCategory": {
+      "title": "Kategoria nadpłat",
+      "description": "Wybierz kategorię, którą oznaczasz pojedyncze nadpłaty. Płatności w tej kategorii liczą się w 100% jako kapitał, więc harmonogram je oznacza zamiast traktować jak zwykłą ratę.",
+      "label": "Kategoria nadpłat",
+      "placeholder": "Wybierz kategorię",
+      "saveError": "Nie udało się zapisać kategorii nadpłat"
     }
   }
 }

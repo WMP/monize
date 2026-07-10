@@ -356,7 +356,8 @@
       "showAll": "显示全部 {count} 期还款",
       "showLess": "收起",
       "noPayments": "未找到还款记录",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "提前还款"
     },
     "simulator": {
       "title": "提前还款模拟器",
@@ -372,7 +373,12 @@
       "noLumpSums": "尚未添加一次性还款。",
       "lumpSumDate": "日期",
       "lumpSumAmount": "金额",
-      "removeLumpSum": "移除"
+      "removeLumpSum": "移除",
+      "modeLabel": "提前还款后",
+      "modeShortenTerm": "缩短期限",
+      "modeLowerInstallment": "降低月供",
+      "modeShortenTermHint": "保持相同还款额，更快还清贷款。利息节省最多。",
+      "modeLowerInstallmentHint": "保持相同的还清日期，并按减少后的余额重新计算较低的还款额。"
     },
     "comparison": {
       "newPayoff": "新的还清日期",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# 期} other {# 期}}",
       "interestSaved": "节省的利息",
       "totalExtraContributed": "额外还款总额",
-      "beyondProjection": "超出预测范围"
+      "beyondProjection": "超出预测范围",
+      "newInstallment": "新还款额",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "还清时间线",
@@ -476,6 +484,13 @@
       "detectMessage": "此操作会分析您的还款历史并替换先前检测到的条目。您自己添加或编辑的条目将予以保留。",
       "detectedToast": "{count, plural, =0 {未检测到新的利率变更} one {检测到 # 项利率变更} other {检测到 # 项利率变更}}",
       "detectFailed": "无法从还款历史中检测利率变更"
+    },
+    "overpaymentCategory": {
+      "title": "提前还款类别",
+      "description": "选择用于标记单笔提前还款的类别。此类别中的款项 100% 计为本金，因此还款计划会将其标记出来，而不是视为常规分期还款。",
+      "label": "提前还款类别",
+      "placeholder": "选择类别",
+      "saveError": "无法保存提前还款类别"
     }
   }
 }

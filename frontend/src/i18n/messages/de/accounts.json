@@ -356,7 +356,8 @@
       "showAll": "Alle {count} Zahlungen anzeigen",
       "showLess": "Weniger anzeigen",
       "noPayments": "Keine Zahlungen gefunden",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "Sondertilgung"
     },
     "simulator": {
       "title": "Sondertilgungs-Simulator",
@@ -372,7 +373,12 @@
       "noLumpSums": "Keine Sonderzahlungen hinzugefügt.",
       "lumpSumDate": "Datum",
       "lumpSumAmount": "Betrag",
-      "removeLumpSum": "Entfernen"
+      "removeLumpSum": "Entfernen",
+      "modeLabel": "Nach einer Sondertilgung",
+      "modeShortenTerm": "Laufzeit verkürzen",
+      "modeLowerInstallment": "Rate senken",
+      "modeShortenTermHint": "Gleiche Rate beibehalten und das Darlehen früher abbezahlen. Maximale Zinsersparnis.",
+      "modeLowerInstallmentHint": "Gleiches Tilgungsdatum beibehalten und eine niedrigere Rate auf den reduzierten Saldo berechnen."
     },
     "comparison": {
       "newPayoff": "Neues Tilgungsdatum",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# Zahlung} other {# Zahlungen}}",
       "interestSaved": "Gesparte Zinsen",
       "totalExtraContributed": "Gesamte Sondertilgung",
-      "beyondProjection": "Außerhalb der Prognose"
+      "beyondProjection": "Außerhalb der Prognose",
+      "newInstallment": "Neue Rate",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "Tilgungsverlauf",
@@ -476,6 +484,13 @@
       "detectMessage": "Dies analysiert Ihre Zahlungshistorie und ersetzt zuvor erkannte Einträge. Von Ihnen selbst hinzugefügte oder bearbeitete Einträge bleiben erhalten.",
       "detectedToast": "{count, plural, =0 {Keine neuen Zinssatzänderungen erkannt} one {# Zinssatzänderung erkannt} other {# Zinssatzänderungen erkannt}}",
       "detectFailed": "Zinssatzänderungen konnten nicht aus der Zahlungshistorie erkannt werden"
+    },
+    "overpaymentCategory": {
+      "title": "Sondertilgungs-Kategorie",
+      "description": "Wählen Sie die Kategorie, mit der Sie einzelne Sondertilgungen kennzeichnen. Zahlungen in dieser Kategorie zählen zu 100 % als Tilgung, sodass der Tilgungsplan sie markiert, statt sie als reguläre Rate zu behandeln.",
+      "label": "Sondertilgungs-Kategorie",
+      "placeholder": "Kategorie auswählen",
+      "saveError": "Sondertilgungs-Kategorie konnte nicht gespeichert werden"
     }
   }
 }

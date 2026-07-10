@@ -356,7 +356,8 @@
       "showAll": "全 {count} 回の返済を表示",
       "showLess": "表示を減らす",
       "noPayments": "返済が見つかりません",
-      "rateChangeBadge": "{from}% → {to}%"
+      "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "繰り上げ返済"
     },
     "simulator": {
       "title": "繰上返済シミュレーター",
@@ -372,7 +373,12 @@
       "noLumpSums": "一括返済は追加されていません。",
       "lumpSumDate": "日付",
       "lumpSumAmount": "金額",
-      "removeLumpSum": "削除"
+      "removeLumpSum": "削除",
+      "modeLabel": "繰り上げ返済後",
+      "modeShortenTerm": "期間を短縮",
+      "modeLowerInstallment": "返済額を減額",
+      "modeShortenTermHint": "返済額を維持し、ローンをより早く完済します。利息の節約が最大になります。",
+      "modeLowerInstallmentHint": "完済日を維持し、減少した残高に対してより少ない返済額を再計算します。"
     },
     "comparison": {
       "newPayoff": "新しい完済日",
@@ -381,7 +387,9 @@
       "paymentsSaved": "{count, plural, one {# 回} other {# 回}}",
       "interestSaved": "節約できる利息",
       "totalExtraContributed": "追加返済の合計",
-      "beyondProjection": "予測範囲外"
+      "beyondProjection": "予測範囲外",
+      "newInstallment": "新しい返済額",
+      "installmentDrop": "{payment} (−{reduction})"
     },
     "chart": {
       "title": "完済タイムライン",
@@ -476,6 +484,13 @@
       "detectMessage": "返済履歴を分析し、以前に検出されたエントリを置き換えます。ご自身で追加または編集したエントリは保持されます。",
       "detectedToast": "{count, plural, =0 {新しい金利変更は検出されませんでした} one {# 件の金利変更を検出しました} other {# 件の金利変更を検出しました}}",
       "detectFailed": "返済履歴から金利変更を検出できませんでした"
+    },
+    "overpaymentCategory": {
+      "title": "繰り上げ返済カテゴリ",
+      "description": "個別の繰り上げ返済にタグ付けするカテゴリを選択します。このカテゴリの支払いは100%元金として扱われるため、明細では通常の返済としてではなく繰り上げ返済として印が付きます。",
+      "label": "繰り上げ返済カテゴリ",
+      "placeholder": "カテゴリを選択",
+      "saveError": "繰り上げ返済カテゴリを保存できませんでした"
     }
   }
 }
