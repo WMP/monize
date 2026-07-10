@@ -78,8 +78,10 @@ describe('PastImpactSection', () => {
         history={makeHistory(account)}
         overpaymentCategoryId={null}
         overpaymentMemo={null}
+        interestCategoryId={null}
         onOverpaymentCategoryChange={() => {}}
         onOverpaymentMemoChange={() => {}}
+        onInterestCategoryChange={() => {}}
       />,
     );
 
@@ -105,8 +107,10 @@ describe('PastImpactSection', () => {
         history={makeHistory(account)}
         overpaymentCategoryId={null}
         overpaymentMemo={null}
+        interestCategoryId={null}
         onOverpaymentCategoryChange={() => {}}
         onOverpaymentMemoChange={() => {}}
+        onInterestCategoryChange={() => {}}
       />,
     );
 
@@ -125,8 +129,10 @@ describe('PastImpactSection', () => {
         history={makeHistory(account)}
         overpaymentCategoryId={null}
         overpaymentMemo={null}
+        interestCategoryId={null}
         onOverpaymentCategoryChange={() => {}}
         onOverpaymentMemoChange={() => {}}
+        onInterestCategoryChange={() => {}}
       />,
     );
 

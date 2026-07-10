@@ -220,6 +220,7 @@
     "selectAccount": "勘定科目を選択...",
     "nextPaymentDate": "次回支払日 *",
     "annualInterestRate": "年利率（%）",
+    "interestRatePlaceholder": "例：5.5",
     "estimatedFromHistory": "取引履歴からの推定：{rate}%",
     "interestExpenseCategory": "利息費用カテゴリ",
     "detectedCategory": "検出済み：{name}",
@@ -492,6 +493,16 @@
       "detectMessage": "返済履歴を分析し、以前に検出されたエントリを置き換えます。ご自身で追加または編集したエントリは保持されます。",
       "detectedToast": "{count, plural, =0 {新しい金利変更は検出されませんでした} one {# 件の金利変更を検出しました} other {# 件の金利変更を検出しました}}",
       "detectFailed": "返済履歴から金利変更を検出できませんでした"
+    },
+    "recognitionSettings": {
+      "title": "支払いの認識"
+    },
+    "interestCategory": {
+      "title": "利息カテゴリ",
+      "description": "このローンの利息が記録される場所です。利息が支払いの内訳ではなく別の取引として記録されている場合、そのカテゴリを指定すると、返済予定表に実際の利息が表示され、「履歴から検出」が十分な利息を見つけられるようになります。",
+      "label": "利息カテゴリ",
+      "placeholder": "利息カテゴリを選択",
+      "saveError": "利息カテゴリを保存できませんでした"
     },
     "overpaymentCategory": {
       "title": "繰り上げ返済の検出",

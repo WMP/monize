@@ -220,6 +220,7 @@
     "selectAccount": "Seleziona conto...",
     "nextPaymentDate": "Data prossimo pagamento *",
     "annualInterestRate": "Tasso d'interesse annuo (%)",
+    "interestRatePlaceholder": "es. 5,5",
     "estimatedFromHistory": "Stimato dallo storico transazioni: {rate}%",
     "interestExpenseCategory": "Categoria spese interessi",
     "detectedCategory": "Rilevata: {name}",
@@ -492,6 +493,16 @@
       "detectMessage": "Questa operazione analizza il tuo storico dei pagamenti e sostituisce le voci rilevate in precedenza. Le voci che hai aggiunto o modificato manualmente vengono conservate.",
       "detectedToast": "{count, plural, =0 {Nessuna nuova variazione del tasso rilevata} one {# variazione del tasso rilevata} other {# variazioni del tasso rilevate}}",
       "detectFailed": "Impossibile rilevare le variazioni del tasso dallo storico dei pagamenti"
+    },
+    "recognitionSettings": {
+      "title": "Riconoscimento dei pagamenti"
+    },
+    "interestCategory": {
+      "title": "Categoria degli interessi",
+      "description": "Dove vengono registrati gli interessi di questo prestito. Quando gli interessi sono registrati come transazione separata anziché come parte del pagamento, indicarne la categoria permette al piano di ammortamento di mostrare gli interessi reali e a «Rileva dallo storico» di trovare interessi sufficienti per funzionare.",
+      "label": "Categoria degli interessi",
+      "placeholder": "Seleziona una categoria di interessi",
+      "saveError": "Impossibile salvare la categoria degli interessi"
     },
     "overpaymentCategory": {
       "title": "Rilevamento dei rimborsi anticipati",

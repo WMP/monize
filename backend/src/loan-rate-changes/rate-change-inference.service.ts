@@ -94,7 +94,15 @@ export class RateChangeInferenceService {
       accountId,
       transactions,
     );
-    const payments = this.detector.consolidatePaymentsByDate(rawPayments);
+    const consolidated = this.detector.consolidatePaymentsByDate(rawPayments);
+    // Recover interest booked as a separate categorized transaction (not a
+    // split leg) so those payments yield a rate observation instead of being
+    // dropped as "no interest details".
+    const payments = await this.detector.pairSeparateInterest(
+      userId,
+      account,
+      consolidated,
+    );
     const balanceMap = this.detector.buildRunningBalanceMap(
       account,
       transactions,

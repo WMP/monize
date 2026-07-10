@@ -103,7 +103,7 @@ export interface CreateAccountData {
   paymentStartDate?: string;
   sourceAccountId?: string;
   principalCategoryId?: string;
-  interestCategoryId?: string;
+  interestCategoryId?: string | null;
   overpaymentCategoryId?: string | null;
   overpaymentMemo?: string | null;
   // Asset-specific fields

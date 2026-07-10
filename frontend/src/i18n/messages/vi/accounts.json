@@ -220,6 +220,7 @@
     "selectAccount": "Chọn tài khoản...",
     "nextPaymentDate": "Ngày thanh toán tiếp theo *",
     "annualInterestRate": "Lãi suất hàng năm (%)",
+    "interestRatePlaceholder": "vd. 5,5",
     "estimatedFromHistory": "Ước tính từ lịch sử giao dịch: {rate}%",
     "interestExpenseCategory": "Danh mục chi phí lãi",
     "detectedCategory": "Đã phát hiện: {name}",
@@ -492,6 +493,16 @@
       "detectMessage": "Thao tác này phân tích lịch sử thanh toán của bạn và thay thế các mục đã phát hiện trước đó. Các mục bạn tự thêm hoặc chỉnh sửa sẽ được giữ lại.",
       "detectedToast": "{count, plural, =0 {Không phát hiện thay đổi lãi suất mới nào} one {Đã phát hiện # thay đổi lãi suất} other {Đã phát hiện # thay đổi lãi suất}}",
       "detectFailed": "Không thể phát hiện thay đổi lãi suất từ lịch sử thanh toán"
+    },
+    "recognitionSettings": {
+      "title": "Nhận dạng thanh toán"
+    },
+    "interestCategory": {
+      "title": "Danh mục lãi",
+      "description": "Nơi ghi nhận lãi của khoản vay này. Khi lãi được ghi thành một giao dịch riêng thay vì một phần của khoản thanh toán, việc chỉ định danh mục của nó giúp lịch trả nợ hiển thị lãi thực tế và giúp \"Phát hiện từ lịch sử\" tìm đủ lãi để hoạt động.",
+      "label": "Danh mục lãi",
+      "placeholder": "Chọn danh mục lãi",
+      "saveError": "Không thể lưu danh mục lãi"
     },
     "overpaymentCategory": {
       "title": "Phát hiện khoản trả thêm gốc",

@@ -64,11 +64,18 @@ export function LoanDetailView({
   const [overpaymentMemo, setOverpaymentMemo] = useState(
     account.overpaymentMemo,
   );
+  // The designated interest category feeds backend rate detection (it does not
+  // change the client schedule); keep a reactive copy so the gear menu shows the
+  // latest saved value without a full account reload.
+  const [interestCategoryId, setInterestCategoryId] = useState(
+    account.interestCategoryId,
+  );
   const [trackedAccountId, setTrackedAccountId] = useState(account.id);
   if (trackedAccountId !== account.id) {
     setTrackedAccountId(account.id);
     setOverpaymentCategoryId(account.overpaymentCategoryId);
     setOverpaymentMemo(account.overpaymentMemo);
+    setInterestCategoryId(account.interestCategoryId);
   }
 
   const effectiveAccount = useMemo(
@@ -192,8 +199,10 @@ export function LoanDetailView({
         rateChanges={rateChanges}
         overpaymentCategoryId={overpaymentCategoryId}
         overpaymentMemo={overpaymentMemo}
+        interestCategoryId={interestCategoryId}
         onOverpaymentCategoryChange={setOverpaymentCategoryId}
         onOverpaymentMemoChange={setOverpaymentMemo}
+        onInterestCategoryChange={setInterestCategoryId}
       />
 
       <AmortizationScheduleTable

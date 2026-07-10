@@ -220,6 +220,7 @@
     "selectAccount": "계정 선택...",
     "nextPaymentDate": "다음 납부일 *",
     "annualInterestRate": "연이자율 (%)",
+    "interestRatePlaceholder": "예: 5.5",
     "estimatedFromHistory": "거래 내역에서 추정: {rate}%",
     "interestExpenseCategory": "이자 지출 카테고리",
     "detectedCategory": "감지됨: {name}",
@@ -492,6 +493,16 @@
       "detectMessage": "상환 내역을 분석하여 이전에 검출된 항목을 대체합니다. 직접 추가하거나 편집한 항목은 유지됩니다.",
       "detectedToast": "{count, plural, =0 {새로운 금리 변경이 검출되지 않았습니다} one {# 건의 금리 변경을 검출했습니다} other {# 건의 금리 변경을 검출했습니다}}",
       "detectFailed": "상환 내역에서 금리 변경을 검출할 수 없습니다"
+    },
+    "recognitionSettings": {
+      "title": "결제 인식"
+    },
+    "interestCategory": {
+      "title": "이자 카테고리",
+      "description": "이 대출의 이자가 기록되는 위치입니다. 이자가 결제의 분할 항목이 아니라 별도의 거래로 입력된 경우, 해당 카테고리를 지정하면 상환 일정에 실제 이자가 표시되고 '내역에서 검출'이 충분한 이자를 찾을 수 있습니다.",
+      "label": "이자 카테고리",
+      "placeholder": "이자 카테고리 선택",
+      "saveError": "이자 카테고리를 저장하지 못했습니다"
     },
     "overpaymentCategory": {
       "title": "추가 상환 감지",

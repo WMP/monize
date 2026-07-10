@@ -220,6 +220,7 @@
     "selectAccount": "Sélectionner un compte…",
     "nextPaymentDate": "Date du prochain paiement *",
     "annualInterestRate": "Taux d'intérêt annuel (%)",
+    "interestRatePlaceholder": "ex. 5,5",
     "estimatedFromHistory": "Estimé à partir de l'historique : {rate}%",
     "interestExpenseCategory": "Catégorie de charges d'intérêts",
     "detectedCategory": "Détecté : {name}",
@@ -492,6 +493,16 @@
       "detectMessage": "Cela analyse votre historique de paiements et remplace les entrées détectées précédemment. Les entrées que vous avez ajoutées ou modifiées vous-même sont conservées.",
       "detectedToast": "{count, plural, =0 {Aucun nouveau changement de taux détecté} one {# changement de taux détecté} other {# changements de taux détectés}}",
       "detectFailed": "Impossible de détecter les changements de taux à partir de l'historique de paiements"
+    },
+    "recognitionSettings": {
+      "title": "Reconnaissance des paiements"
+    },
+    "interestCategory": {
+      "title": "Catégorie d'intérêts",
+      "description": "Où les intérêts de ce prêt sont enregistrés. Lorsque les intérêts sont saisis comme une transaction distincte plutôt que comme une ventilation du paiement, indiquer leur catégorie permet à l'échéancier d'afficher les intérêts réels et à « Détecter à partir de l'historique » de trouver suffisamment d'intérêts pour fonctionner.",
+      "label": "Catégorie d'intérêts",
+      "placeholder": "Sélectionner une catégorie d'intérêts",
+      "saveError": "Échec de l'enregistrement de la catégorie d'intérêts"
     },
     "overpaymentCategory": {
       "title": "Détection des remboursements anticipés",

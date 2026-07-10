@@ -220,6 +220,7 @@
     "selectAccount": "Pilih akun...",
     "nextPaymentDate": "Tanggal Pembayaran Berikutnya *",
     "annualInterestRate": "Tingkat Bunga Tahunan (%)",
+    "interestRatePlaceholder": "mis. 5,5",
     "estimatedFromHistory": "Diperkirakan dari riwayat transaksi: {rate}%",
     "interestExpenseCategory": "Kategori Pengeluaran Bunga",
     "detectedCategory": "Terdeteksi: {name}",
@@ -492,6 +493,16 @@
       "detectMessage": "Ini menganalisis riwayat pembayaran Anda dan menggantikan entri yang sebelumnya terdeteksi. Entri yang Anda tambahkan atau edit sendiri tetap dipertahankan.",
       "detectedToast": "{count, plural, =0 {Tidak ada perubahan suku bunga baru terdeteksi} one {# perubahan suku bunga terdeteksi} other {# perubahan suku bunga terdeteksi}}",
       "detectFailed": "Tidak dapat mendeteksi perubahan suku bunga dari riwayat pembayaran"
+    },
+    "recognitionSettings": {
+      "title": "Pengenalan pembayaran"
+    },
+    "interestCategory": {
+      "title": "Kategori bunga",
+      "description": "Tempat bunga pinjaman ini dicatat. Ketika bunga dicatat sebagai transaksi terpisah alih-alih bagian dari pembayaran, menentukan kategorinya membuat jadwal menampilkan bunga sebenarnya dan membuat \"Deteksi dari riwayat\" menemukan cukup bunga untuk bekerja.",
+      "label": "Kategori bunga",
+      "placeholder": "Pilih kategori bunga",
+      "saveError": "Gagal menyimpan kategori bunga"
     },
     "overpaymentCategory": {
       "title": "Deteksi pembayaran ekstra",

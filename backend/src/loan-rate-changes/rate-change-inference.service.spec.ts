@@ -141,6 +141,9 @@ describe("RateChangeInferenceService", () => {
       consolidatePaymentsByDate: jest
         .fn()
         .mockImplementation((records) => records),
+      pairSeparateInterest: jest
+        .fn()
+        .mockImplementation((_userId, _account, records) => records),
       buildRunningBalanceMap: jest.fn().mockReturnValue(new Map()),
     };
 
@@ -185,6 +188,42 @@ describe("RateChangeInferenceService", () => {
     expect(initial.effectiveDate).toBe("2020-01-01");
     expect(Math.abs(initial.annualRate - 5.5)).toBeLessThanOrEqual(0.05);
     expect(initial.newPaymentAmount).toBe(2500);
+  });
+
+  it("recovers separately-booked interest via pairSeparateInterest so detection succeeds", async () => {
+    const { records, balanceMap } = generateHistory(400000, [
+      { annualRate: 5.5, payments: 24, paymentAmount: 2500 },
+    ]);
+    // The payments were entered without an interest split; buildPaymentRecords
+    // sees no interest, and pairSeparateInterest recovers it from the loan's
+    // designated interest category.
+    const stripped = records.map((r) => ({ ...r, interestAmount: null }));
+    detector.buildPaymentRecords.mockResolvedValue(stripped);
+    detector.pairSeparateInterest.mockResolvedValue(records);
+    detector.buildRunningBalanceMap.mockReturnValue(balanceMap);
+
+    const result = await service.detectAndPersist(userId, accountId);
+
+    expect(detector.pairSeparateInterest).toHaveBeenCalledWith(
+      userId,
+      expect.objectContaining({ id: accountId }),
+      stripped,
+    );
+    expect(result.created.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("still reports insufficient data when no interest can be recovered", async () => {
+    const { records, balanceMap } = generateHistory(400000, [
+      { annualRate: 5.5, payments: 24, paymentAmount: 2500 },
+    ]);
+    const stripped = records.map((r) => ({ ...r, interestAmount: null }));
+    detector.buildPaymentRecords.mockResolvedValue(stripped);
+    detector.pairSeparateInterest.mockResolvedValue(stripped);
+    detector.buildRunningBalanceMap.mockReturnValue(balanceMap);
+
+    await expect(service.detectAndPersist(userId, accountId)).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it("detects multiple rate steps with an unchanged payment", async () => {

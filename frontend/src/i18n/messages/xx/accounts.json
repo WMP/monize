@@ -220,6 +220,7 @@
     "selectAccount": "[XX-Select account...-XX]",
     "nextPaymentDate": "[XX-Next Payment Date *-XX]",
     "annualInterestRate": "[XX-Annual Interest Rate (%)-XX]",
+    "interestRatePlaceholder": "[XX-e.g. 5.5-XX]",
     "estimatedFromHistory": "[XX-Estimated from transaction history: {rate}%-XX]",
     "interestExpenseCategory": "[XX-Interest Expense Category-XX]",
     "detectedCategory": "[XX-Detected: {name}-XX]",
@@ -403,6 +404,16 @@
       "scheduledUpdateAppliedToast": "[XX-Scheduled payment updated-XX]",
       "scheduledUpdateSkippedToast": "[XX-Scheduled payment left unchanged-XX]",
       "scheduledUpdateFailed": "[XX-Could not update the scheduled payment-XX]"
+    },
+    "recognitionSettings": {
+      "title": "[XX-Payment recognition-XX]"
+    },
+    "interestCategory": {
+      "title": "[XX-Interest category-XX]",
+      "description": "[XX-Where this loan's interest is recorded. When interest is booked as a separate transaction rather than a split of the payment, naming its category lets the schedule show real interest and lets \"Detect from history\" find enough interest to work.-XX]",
+      "label": "[XX-Interest category-XX]",
+      "placeholder": "[XX-Select interest category-XX]",
+      "saveError": "[XX-Failed to save the interest category-XX]"
     },
     "overpaymentCategory": {
       "title": "[XX-Overpayment Detection-XX]",

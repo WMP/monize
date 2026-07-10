@@ -220,6 +220,7 @@
     "selectAccount": "选择账户...",
     "nextPaymentDate": "下次还款日期 *",
     "annualInterestRate": "年利率（%）",
+    "interestRatePlaceholder": "例如 5.5",
     "estimatedFromHistory": "根据交易历史估算：{rate}%",
     "interestExpenseCategory": "利息支出科目",
     "detectedCategory": "已检测到：{name}",
@@ -492,6 +493,16 @@
       "detectMessage": "此操作会分析您的还款历史并替换先前检测到的条目。您自己添加或编辑的条目将予以保留。",
       "detectedToast": "{count, plural, =0 {未检测到新的利率变更} one {检测到 # 项利率变更} other {检测到 # 项利率变更}}",
       "detectFailed": "无法从还款历史中检测利率变更"
+    },
+    "recognitionSettings": {
+      "title": "付款识别"
+    },
+    "interestCategory": {
+      "title": "利息类别",
+      "description": "记录这笔贷款利息的位置。当利息作为单独的交易而非付款的拆分项入账时，指定其类别可让还款计划显示真实利息，并让“从历史中检测”找到足够的利息来工作。",
+      "label": "利息类别",
+      "placeholder": "选择利息类别",
+      "saveError": "无法保存利息类别"
     },
     "overpaymentCategory": {
       "title": "提前还款检测",

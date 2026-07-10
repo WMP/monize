@@ -32,10 +32,14 @@ interface PastImpactSectionProps {
   overpaymentCategoryId: string | null;
   /** Current overpayment memo text (reactive copy held by the parent) */
   overpaymentMemo: string | null;
+  /** Current designated interest category (reactive copy held by the parent) */
+  interestCategoryId: string | null;
   /** Called after the overpayment category is changed via the gear menu */
   onOverpaymentCategoryChange: (categoryId: string | null) => void;
   /** Called after the overpayment memo is changed via the gear menu */
   onOverpaymentMemoChange: (memo: string | null) => void;
+  /** Called after the interest category is changed via the gear menu */
+  onInterestCategoryChange: (categoryId: string | null) => void;
 }
 
 /**
@@ -51,8 +55,10 @@ export function PastImpactSection({
   rateChanges = [],
   overpaymentCategoryId,
   overpaymentMemo,
+  interestCategoryId,
   onOverpaymentCategoryChange,
   onOverpaymentMemoChange,
+  onInterestCategoryChange,
 }: PastImpactSectionProps) {
   const t = useTranslations('accounts');
   const formatChartDate = useChartDateFormat();
@@ -63,8 +69,10 @@ export function PastImpactSection({
       accountId={account.id}
       categoryValue={overpaymentCategoryId}
       memoValue={overpaymentMemo}
+      interestCategoryValue={interestCategoryId}
       onCategoryChange={onOverpaymentCategoryChange}
       onMemoChange={onOverpaymentMemoChange}
+      onInterestCategoryChange={onInterestCategoryChange}
     />
   );
 

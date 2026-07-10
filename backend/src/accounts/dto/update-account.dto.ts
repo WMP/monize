@@ -207,11 +207,13 @@ export class UpdateAccountDto {
   principalCategoryId?: string;
 
   @ApiPropertyOptional({
-    description: "Category ID for interest portion of payments",
+    description:
+      "Category ID for the interest portion of payments. Pass null to clear.",
   })
   @IsOptional()
+  @ValidateIf((o) => o.interestCategoryId !== null)
   @IsUUID()
-  interestCategoryId?: string;
+  interestCategoryId?: string | null;
 
   @ApiPropertyOptional({
     description:
