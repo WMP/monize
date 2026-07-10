@@ -106,28 +106,29 @@ export function RecurringChargesPanel({ accountId, currencyCode }: RecurringChar
       const endDate = format(now, 'yyyy-MM-dd');
       const startDate = format(subMonths(now, 12), 'yyyy-MM-dd');
 
-      // Load scheduled bills and detected charges independently so a failure in
-      // one never blanks the other (e.g. the transaction fetch erroring must not
-      // hide already-loaded scheduled bills).
-      const schedules = await scheduledTransactionsApi.getAll().catch((error) => {
-        logger.error('Failed to load scheduled transactions:', error);
-        return [] as ScheduledTransaction[];
-      });
-
-      const charges = await transactionsApi
-        .getAll({ accountId, startDate, endDate, limit: 500, page: 1 })
-        .then((page) => {
-          const payeeIds = Array.from(
-            new Set(page.data.map((tx) => tx.payeeId).filter((id): id is string => !!id)),
-          );
-          return payeeIds.length
-            ? transactionsApi.getRecurringCharges({ payeeIds, startDate, endDate })
-            : [];
-        })
-        .catch((error) => {
-          logger.error('Failed to load recurring charges:', error);
-          return [] as RecurringChargeInfo[];
-        });
+      // Kick off both loads in parallel (each call issued synchronously) with
+      // independent error handling, so a failure in one never blanks the other
+      // and neither is deferred behind the other's request.
+      const [schedules, charges] = await Promise.all([
+        scheduledTransactionsApi.getAll().catch((error) => {
+          logger.error('Failed to load scheduled transactions:', error);
+          return [] as ScheduledTransaction[];
+        }),
+        transactionsApi
+          .getAll({ accountId, startDate, endDate, limit: 500, page: 1 })
+          .then((page) => {
+            const payeeIds = Array.from(
+              new Set(page.data.map((tx) => tx.payeeId).filter((id): id is string => !!id)),
+            );
+            return payeeIds.length
+              ? transactionsApi.getRecurringCharges({ payeeIds, startDate, endDate })
+              : [];
+          })
+          .catch((error) => {
+            logger.error('Failed to load recurring charges:', error);
+            return [] as RecurringChargeInfo[];
+          }),
+      ]);
 
       if (cancelled) return;
       setScheduled(schedules);

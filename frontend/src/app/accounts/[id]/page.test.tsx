@@ -121,6 +121,14 @@ vi.mock('@/components/ui/LoadingSpinner', () => ({
   LoadingSpinner: () => <div data-testid="loading-spinner">Loading...</div>,
 }));
 
+// RecurringChargesPanel (rendered by the banking/credit-card views) loads
+// scheduled transactions; stub it so the panel makes no real request.
+vi.mock('@/lib/scheduled-transactions', () => ({
+  scheduledTransactionsApi: {
+    getAll: () => Promise.resolve([]),
+  },
+}));
+
 function makeAccount(overrides: Partial<Account> = {}): Account {
   return {
     id: 'loan-1',
