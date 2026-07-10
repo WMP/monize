@@ -55,6 +55,9 @@ export interface Account {
   sourceAccountId: string | null;
   principalCategoryId: string | null;
   interestCategoryId: string | null;
+  // Category tagging standalone overpayments (extra principal) so the loan
+  // schedule can flag them as 100% principal.
+  overpaymentCategoryId: string | null;
   scheduledTransactionId: string | null;
   // Asset-specific fields
   assetCategoryId: string | null;
@@ -98,6 +101,7 @@ export interface CreateAccountData {
   sourceAccountId?: string;
   principalCategoryId?: string;
   interestCategoryId?: string;
+  overpaymentCategoryId?: string | null;
   // Asset-specific fields
   assetCategoryId?: string;
   dateAcquired?: string;

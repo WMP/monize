@@ -44,6 +44,15 @@ export interface OverpaymentPlan {
   lumpSums?: LumpSum[];
 }
 
+/**
+ * What a bank holds fixed after an overpayment:
+ * - SHORTEN_TERM (PL *skrócenie okresu*): keep the installment, pay off sooner.
+ * - LOWER_INSTALLMENT (PL *obniżenie raty*): keep the end date, recompute a
+ *   smaller installment that amortizes the reduced balance over the remaining
+ *   periods.
+ */
+export type OverpaymentMode = 'SHORTEN_TERM' | 'LOWER_INSTALLMENT';
+
 /** A step on the loan's interest-rate timeline, applied during generation */
 export interface RateChange {
   /** ISO date (yyyy-MM-dd) the new rate takes effect */
@@ -84,6 +93,8 @@ export interface LoanScheduleInput {
   /** Date of the first projected payment (row 1) */
   firstPaymentDate: Date;
   overpayments?: OverpaymentPlan;
+  /** How overpayments reshape the schedule; defaults to SHORTEN_TERM */
+  overpaymentMode?: OverpaymentMode;
   /** Known rate steps; each applies from the first payment on/after its date */
   rateChanges?: RateChange[];
   /** Maximum projected payments; defaults to 600, clamped to 10000 */
@@ -125,6 +136,12 @@ export interface LoanScheduleResult {
   totalExtraPrincipal: number;
   numPayments: number;
   paidOff: boolean;
+  /**
+   * The regular installment in effect at the end of the schedule. Equal to the
+   * contractual payment for SHORTEN_TERM; the recomputed lower payment for
+   * LOWER_INSTALLMENT (PL *obniżenie raty*).
+   */
+  finalPaymentAmount: number;
 }
 
 export interface ScenarioComparison {
@@ -133,6 +150,12 @@ export interface ScenarioComparison {
   paymentsSaved: number;
   monthsSaved: number;
   interestSaved: number;
+  /**
+   * How much lower the scenario's ending installment is than the baseline's.
+   * Zero for SHORTEN_TERM (the installment is unchanged); positive for
+   * LOWER_INSTALLMENT (PL *obniżenie raty*).
+   */
+  installmentReduction: number;
 }
 
 const DEFAULT_MAX_PAYMENTS = 600;
@@ -239,6 +262,31 @@ export function calculateMortgagePaymentAmount(
   return round4(solvePayment(principal, periodicRate, totalPayments));
 }
 
+/**
+ * Installment that amortizes `balance` over exactly `periods` payments at the
+ * given rate -- the annuity `A = B*r / (1 - (1 + r)^(-n))`. This is the payment
+ * a bank recomputes for the *obniżenie raty* (lower-installment) overpayment
+ * mode, keeping the end date fixed. A 0% rate splits the balance evenly.
+ */
+export function calculatePaymentForTerm(
+  balance: number,
+  annualRate: number,
+  periods: number,
+  frequency: ScheduleFrequency,
+  isCanadian = false,
+  isVariableRate = false,
+): number {
+  if (balance <= 0 || periods <= 0) return 0;
+  const periodicRate = getPeriodicRate(
+    annualRate,
+    getPeriodsPerYear(frequency),
+    isCanadian,
+    isVariableRate,
+  );
+  if (periodicRate === 0) return round4(balance / periods);
+  return round4((balance * periodicRate) / (1 - Math.pow(1 + periodicRate, -periods)));
+}
+
 /** Standard amortization payment: PMT = P * [r(1+r)^n] / [(1+r)^n - 1] */
 function solvePayment(principal: number, periodicRate: number, totalPayments: number): number {
   if (totalPayments <= 0) return 0;
@@ -273,6 +321,23 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     Math.max(1, input.maxPayments ?? DEFAULT_MAX_PAYMENTS),
     HARD_MAX_PAYMENTS,
   );
+
+  const mode = input.overpaymentMode ?? 'SHORTEN_TERM';
+  const hasOverpayments = Boolean(
+    overpayments?.recurringExtra || (overpayments?.lumpSums?.length ?? 0) > 0,
+  );
+  // LOWER_INSTALLMENT keeps the end date fixed: the term is the baseline
+  // (no-overpayment) payoff length, and the installment is recomputed each
+  // period to amortize the remaining balance over the remaining periods. The
+  // baseline runs once with overpayments stripped (no further recursion).
+  const fixedEndPeriod =
+    mode === 'LOWER_INSTALLMENT' && hasOverpayments
+      ? generateLoanSchedule({
+          ...input,
+          overpayments: undefined,
+          overpaymentMode: 'SHORTEN_TERM',
+        }).numPayments
+      : null;
 
   const periodsPerYear = getPeriodsPerYear(frequency);
 
@@ -370,6 +435,24 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     totalExtraPrincipal += extraPrincipal;
     paymentNumber++;
 
+    // LOWER_INSTALLMENT: recompute the installment to amortize the remaining
+    // balance over the periods left to the fixed end date. Between overpayments
+    // this reproduces the current payment; after one it steps the payment down.
+    // Also re-levels the payment after a rate change on a variable-rate loan.
+    if (fixedEndPeriod !== null) {
+      const remaining = fixedEndPeriod - paymentNumber;
+      if (remaining > 0 && balance > PAYOFF_EPSILON) {
+        currentPayment = calculatePaymentForTerm(
+          balance,
+          currentAnnualRate,
+          remaining,
+          frequency,
+          isCanadian,
+          isVariableRate,
+        );
+      }
+    }
+
     rows.push({
       paymentNumber,
       date: rowDate,
@@ -396,6 +479,7 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     totalExtraPrincipal: round2(totalExtraPrincipal),
     numPayments: rows.length,
     paidOff,
+    finalPaymentAmount: round2(currentPayment),
   };
 }
 
@@ -448,6 +532,9 @@ export function compareSchedules(
     paymentsSaved: baseline.numPayments - scenario.numPayments,
     monthsSaved: monthsBetween(scenario.payoffDate, baseline.payoffDate),
     interestSaved: round2(baseline.totalInterest - scenario.totalInterest),
+    installmentReduction: round2(
+      baseline.finalPaymentAmount - scenario.finalPaymentAmount,
+    ),
   };
 }
 

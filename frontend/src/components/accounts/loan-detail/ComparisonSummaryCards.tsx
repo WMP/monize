@@ -23,6 +23,10 @@ export function ComparisonSummaryCards({ comparison, currencyCode }: ComparisonS
     ? format(parseISO(scenario.payoffDate), 'MMM yyyy')
     : t('loanDetail.comparison.beyondProjection');
 
+  // Lower-installment scenarios keep the end date (no time saved); their headline
+  // outcome is the smaller installment instead.
+  const isLowerInstallment = comparison.installmentReduction > 0.005;
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <Card
@@ -30,15 +34,26 @@ export function ComparisonSummaryCards({ comparison, currencyCode }: ComparisonS
         value={newPayoffLabel}
         valueClass="text-purple-600 dark:text-purple-400"
       />
-      <Card
-        label={t('loanDetail.comparison.timeSaved')}
-        value={
-          comparison.monthsSaved > 0
-            ? t('loanDetail.comparison.monthsSaved', { count: comparison.monthsSaved })
-            : t('loanDetail.comparison.paymentsSaved', { count: Math.max(comparison.paymentsSaved, 0) })
-        }
-        valueClass="text-green-600 dark:text-green-400"
-      />
+      {isLowerInstallment ? (
+        <Card
+          label={t('loanDetail.comparison.newInstallment')}
+          value={t('loanDetail.comparison.installmentDrop', {
+            payment: formatCurrency(scenario.finalPaymentAmount, currencyCode),
+            reduction: formatCurrency(comparison.installmentReduction, currencyCode),
+          })}
+          valueClass="text-green-600 dark:text-green-400"
+        />
+      ) : (
+        <Card
+          label={t('loanDetail.comparison.timeSaved')}
+          value={
+            comparison.monthsSaved > 0
+              ? t('loanDetail.comparison.monthsSaved', { count: comparison.monthsSaved })
+              : t('loanDetail.comparison.paymentsSaved', { count: Math.max(comparison.paymentsSaved, 0) })
+          }
+          valueClass="text-green-600 dark:text-green-400"
+        />
+      )}
       <Card
         label={t('loanDetail.comparison.interestSaved')}
         value={formatCurrency(Math.max(comparison.interestSaved, 0), currencyCode)}

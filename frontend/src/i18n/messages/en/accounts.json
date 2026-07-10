@@ -354,6 +354,7 @@
       "colBalance": "Balance",
       "projectedFuturePayments": "Projected Future Payments",
       "rateChangeBadge": "{from}% → {to}%",
+      "overpaymentBadge": "Overpayment",
       "showAll": "Show all {count} payments",
       "showLess": "Show less",
       "noPayments": "No payments found"
@@ -395,10 +396,22 @@
       "detectedToast": "{count, plural, =0 {No new rate changes detected} one {# rate change detected} other {# rate changes detected}}",
       "detectFailed": "Could not detect rate changes from the payment history"
     },
+    "overpaymentCategory": {
+      "title": "Overpayment Category",
+      "description": "Pick the category you tag standalone overpayments with. Payments in this category count as 100% principal, so the schedule flags them instead of treating them as a regular installment.",
+      "label": "Overpayment category",
+      "none": "None",
+      "saveError": "Failed to save the overpayment category"
+    },
     "simulator": {
       "title": "Overpayment Simulator",
       "description": "Model extra payments to see how much sooner the loan could be paid off and how much interest you would save. Simulations do not change your real payments.",
       "reset": "Reset",
+      "modeLabel": "After an overpayment",
+      "modeShortenTerm": "Shorten term",
+      "modeLowerInstallment": "Lower installment",
+      "modeShortenTermHint": "Keep the same payment and pay the loan off sooner. Maximum interest saved.",
+      "modeLowerInstallmentHint": "Keep the same payoff date and recalculate a smaller payment on the reduced balance.",
       "detectedExtraHint": "Your payment history shows an average of {amount} in extra principal per payment.",
       "applyDetected": "Use it",
       "recurringAmount": "Extra per payment",
@@ -417,6 +430,8 @@
       "monthsSaved": "{count, plural, one {# month} other {# months}}",
       "paymentsSaved": "{count, plural, one {# payment} other {# payments}}",
       "interestSaved": "Interest Saved",
+      "newInstallment": "New Installment",
+      "installmentDrop": "{payment} (−{reduction})",
       "totalExtraContributed": "Total Extra Contributed",
       "beyondProjection": "Beyond projection"
     },

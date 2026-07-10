@@ -10,7 +10,11 @@ import {
   advanceDate,
   generateLoanSchedule,
 } from '@/lib/loan-schedule';
-import { deriveLoanPaymentHistory, fetchAllAccountTransactions } from '@/lib/loan-history';
+import {
+  deriveCurrentInstallment,
+  deriveLoanPaymentHistory,
+  fetchAllAccountTransactions,
+} from '@/lib/loan-history';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { exportToCsv } from '@/lib/csv-export';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
@@ -124,10 +128,16 @@ export function LoanAmortizationReport() {
 
     if (canProject) {
       const frequency = selectedAccount.paymentFrequency as ScheduleFrequency;
+      // Seed from the installment actually observed in recent history when the
+      // lender lowered it, not the stale contractual paymentAmount.
+      const currentPayment = deriveCurrentInstallment(
+        history,
+        selectedAccount.paymentAmount!,
+      );
       const projection = generateLoanSchedule({
         startingBalance: history.currentBalance,
         annualRate: selectedAccount.interestRate!,
-        paymentAmount: selectedAccount.paymentAmount!,
+        paymentAmount: currentPayment,
         frequency,
         isCanadian: selectedAccount.isCanadianMortgage || false,
         isVariableRate: selectedAccount.isVariableRate || false,

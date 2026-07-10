@@ -65,6 +65,12 @@ export const listAccountsOutput = {
       excludeFromNetWorth: bool.optional(),
       institutionName: strNull.optional(),
       accountNumber: strNull.optional(),
+      // Loan/mortgage schedule fields; null on non-debt accounts.
+      paymentAmount: numNull.optional(),
+      paymentFrequency: strNull.optional(),
+      paymentStartDate: strNull.optional(),
+      amortizationMonths: numNull.optional(),
+      originalPrincipal: numNull.optional(),
     }),
   ),
   totalAssets: num,

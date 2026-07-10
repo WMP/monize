@@ -226,6 +226,14 @@ export class CreateAccountDto {
   @IsUUID()
   interestCategoryId?: string;
 
+  @ApiPropertyOptional({
+    description:
+      "Category ID used to tag standalone overpayments (extra principal) so the loan schedule can flag them",
+  })
+  @IsOptional()
+  @IsUUID()
+  overpaymentCategoryId?: string;
+
   // Asset-specific fields
   @ApiPropertyOptional({
     description: "Category ID for tracking value changes on asset accounts",

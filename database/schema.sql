@@ -137,6 +137,7 @@ CREATE TABLE accounts (
     source_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL, -- account payments come from
     principal_category_id UUID, -- category for principal portion (FK added after categories table)
     interest_category_id UUID, -- category for interest portion (FK added after categories table)
+    overpayment_category_id UUID, -- category tagging standalone overpayments/extra principal (FK added after categories table)
     scheduled_transaction_id UUID, -- linked scheduled transaction for payments (FK added after scheduled_transactions table)
     -- Asset-specific fields
     asset_category_id UUID, -- category for tracking value changes on asset accounts (FK added after categories table)
@@ -170,6 +171,7 @@ CREATE INDEX idx_accounts_asset_category ON accounts(asset_category_id);
 CREATE INDEX idx_accounts_term_end_date ON accounts(term_end_date) WHERE account_type = 'MORTGAGE' AND term_end_date IS NOT NULL;
 CREATE INDEX idx_accounts_interest_category ON accounts(interest_category_id);
 CREATE INDEX idx_accounts_principal_category ON accounts(principal_category_id);
+CREATE INDEX idx_accounts_overpayment_category ON accounts(overpayment_category_id);
 CREATE INDEX idx_accounts_scheduled_transaction ON accounts(scheduled_transaction_id);
 CREATE INDEX idx_accounts_source_account ON accounts(source_account_id);
 CREATE INDEX idx_accounts_institution ON accounts(institution_id);
@@ -477,6 +479,8 @@ ALTER TABLE accounts ADD CONSTRAINT fk_accounts_principal_category
     FOREIGN KEY (principal_category_id) REFERENCES categories(id) ON DELETE SET NULL;
 ALTER TABLE accounts ADD CONSTRAINT fk_accounts_interest_category
     FOREIGN KEY (interest_category_id) REFERENCES categories(id) ON DELETE SET NULL;
+ALTER TABLE accounts ADD CONSTRAINT fk_accounts_overpayment_category
+    FOREIGN KEY (overpayment_category_id) REFERENCES categories(id) ON DELETE SET NULL;
 ALTER TABLE accounts ADD CONSTRAINT fk_accounts_scheduled_transaction
     FOREIGN KEY (scheduled_transaction_id) REFERENCES scheduled_transactions(id) ON DELETE SET NULL;
 ALTER TABLE accounts ADD CONSTRAINT fk_accounts_asset_category

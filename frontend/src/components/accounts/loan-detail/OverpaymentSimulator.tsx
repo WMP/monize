@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { DateInput } from '@/components/ui/DateInput';
-import { OverpaymentPlan } from '@/lib/loan-schedule';
+import { OverpaymentMode, OverpaymentPlan } from '@/lib/loan-schedule';
 import { accountsApi } from '@/lib/accounts';
 import { getCurrencySymbol } from '@/lib/format';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
@@ -40,6 +40,9 @@ interface OverpaymentSimulatorProps {
   /** Account currency, for the amount inputs' symbol. */
   currencyCode: string;
   onPlanChange: (plan: OverpaymentPlan | null) => void;
+  /** Whether overpayments shorten the term or lower the installment */
+  mode: OverpaymentMode;
+  onModeChange: (mode: OverpaymentMode) => void;
   /** Externally loaded plan (e.g. a saved scenario); applied when version changes */
   loadedPlan?: OverpaymentPlan | null;
   loadedPlanVersion?: number;
@@ -96,6 +99,8 @@ export function OverpaymentSimulator({
   accountId,
   currencyCode,
   onPlanChange,
+  mode,
+  onModeChange,
   loadedPlan = null,
   loadedPlanVersion = 0,
   headerActions,
@@ -190,6 +195,41 @@ export function OverpaymentSimulator({
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
         {t('loanDetail.simulator.description')}
       </p>
+
+      <div className="mb-4">
+        <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          {t('loanDetail.simulator.modeLabel')}
+        </span>
+        <div
+          role="radiogroup"
+          aria-label={t('loanDetail.simulator.modeLabel')}
+          className="inline-flex rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden"
+        >
+          {(['SHORTEN_TERM', 'LOWER_INSTALLMENT'] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="radio"
+              aria-checked={mode === option}
+              onClick={() => onModeChange(option)}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                mode === option
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+              }`}
+            >
+              {option === 'SHORTEN_TERM'
+                ? t('loanDetail.simulator.modeShortenTerm')
+                : t('loanDetail.simulator.modeLowerInstallment')}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+          {mode === 'SHORTEN_TERM'
+            ? t('loanDetail.simulator.modeShortenTermHint')
+            : t('loanDetail.simulator.modeLowerInstallmentHint')}
+        </p>
+      </div>
 
       {detectedExtra !== null && form.recurringAmount === undefined && (
         <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md bg-blue-50 dark:bg-blue-900/20 px-3 py-2 text-sm text-blue-800 dark:text-blue-200">

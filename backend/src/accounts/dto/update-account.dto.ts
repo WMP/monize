@@ -213,6 +213,15 @@ export class UpdateAccountDto {
   @IsUUID()
   interestCategoryId?: string;
 
+  @ApiPropertyOptional({
+    description:
+      "Category ID used to tag standalone overpayments (extra principal). Pass null to clear.",
+  })
+  @IsOptional()
+  @ValidateIf((o) => o.overpaymentCategoryId !== null)
+  @IsUUID()
+  overpaymentCategoryId?: string | null;
+
   // Asset-specific fields
   @ApiPropertyOptional({
     description: "Category ID for tracking value changes on asset accounts",

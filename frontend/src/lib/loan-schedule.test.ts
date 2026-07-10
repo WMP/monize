@@ -4,6 +4,7 @@ import {
   advanceDate,
   buildRateTimeline,
   calculateMortgagePaymentAmount,
+  calculatePaymentForTerm,
   compareSchedules,
   generateLoanSchedule,
   getPeriodicRate,
@@ -489,6 +490,77 @@ describe('compareSchedules', () => {
       baseInput({ paymentAmount: 40, overpayments: { recurringExtra: { amount: 200 } } }),
     );
     const comparison = compareSchedules(baseline, scenario);
+    expect(comparison.monthsSaved).toBe(0);
+  });
+});
+
+describe('calculatePaymentForTerm', () => {
+  it('solves the annuity payment for a balance over a fixed term', () => {
+    // 225400 over 300 monthly periods at 5% -> ~1317 (WMP worked example)
+    const payment = calculatePaymentForTerm(225400, 5, 300, 'MONTHLY');
+    expect(payment).toBeGreaterThan(1300);
+    expect(payment).toBeLessThan(1335);
+  });
+
+  it('splits the balance evenly at 0% interest', () => {
+    expect(calculatePaymentForTerm(12000, 0, 24, 'MONTHLY')).toBe(500);
+  });
+
+  it('returns 0 for a non-positive balance or term', () => {
+    expect(calculatePaymentForTerm(0, 5, 300, 'MONTHLY')).toBe(0);
+    expect(calculatePaymentForTerm(1000, 5, 0, 'MONTHLY')).toBe(0);
+  });
+
+  it('recovers the contractual payment that generateLoanSchedule amortizes', () => {
+    // The payment that clears 10000 over the baseline term should reproduce
+    // roughly the same number of periods.
+    const baseline = generateLoanSchedule(baseInput());
+    const payment = calculatePaymentForTerm(10000, 6, baseline.numPayments, 'MONTHLY');
+    const rebuilt = generateLoanSchedule(baseInput({ paymentAmount: payment }));
+    expect(Math.abs(rebuilt.numPayments - baseline.numPayments)).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('generateLoanSchedule LOWER_INSTALLMENT mode', () => {
+  it('keeps the payoff date fixed and lowers the installment after a lump sum', () => {
+    const base = baseInput({
+      startingBalance: 275400,
+      annualRate: 5,
+      paymentAmount: 1610.46,
+      maxPayments: 400,
+    });
+    const shorten = generateLoanSchedule({
+      ...base,
+      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 50000 }] },
+      overpaymentMode: 'SHORTEN_TERM',
+    });
+    const lower = generateLoanSchedule({
+      ...base,
+      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 50000 }] },
+      overpaymentMode: 'LOWER_INSTALLMENT',
+    });
+    const baseline = generateLoanSchedule(base);
+
+    // SHORTEN keeps the installment but ends sooner.
+    expect(shorten.numPayments).toBeLessThan(baseline.numPayments);
+    // LOWER keeps the term (within a period) but drops the installment.
+    expect(Math.abs(lower.numPayments - baseline.numPayments)).toBeLessThanOrEqual(1);
+    expect(lower.finalPaymentAmount).toBeLessThan(baseline.finalPaymentAmount);
+    // Both still save interest versus the baseline; SHORTEN saves more.
+    expect(baseline.totalInterest - lower.totalInterest).toBeGreaterThan(0);
+    expect(shorten.totalInterest).toBeLessThan(lower.totalInterest);
+  });
+
+  it('reports the installment reduction in the comparison', () => {
+    const base = baseInput({ startingBalance: 200000, annualRate: 4, paymentAmount: 1200, maxPayments: 400 });
+    const baseline = generateLoanSchedule(base);
+    const lower = generateLoanSchedule({
+      ...base,
+      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 30000 }] },
+      overpaymentMode: 'LOWER_INSTALLMENT',
+    });
+    const comparison = compareSchedules(baseline, lower);
+    expect(comparison.installmentReduction).toBeGreaterThan(0);
     expect(comparison.monthsSaved).toBe(0);
   });
 });

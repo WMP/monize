@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { deriveLoanPaymentHistory, fetchAllAccountTransactions } from './loan-history';
+import {
+  deriveCurrentInstallment,
+  deriveLoanPaymentHistory,
+  fetchAllAccountTransactions,
+} from './loan-history';
 import { transactionsApi } from '@/lib/transactions';
 import { Account } from '@/types/account';
 import { Transaction, TransactionSplit } from '@/types/transaction';
@@ -185,6 +189,126 @@ describe('deriveLoanPaymentHistory', () => {
     expect(result.events).toHaveLength(0);
     expect(result.cumulativePrincipal).toBe(0);
     expect(result.cumulativeInterest).toBe(0);
+  });
+
+  it('derives interest analytically when a payment records no interest split', () => {
+    // A plain transfer with no linked interest split used to read interest = 0
+    // (rata = 100% principal). It now derives interest from the running
+    // balance: 10000 * (6% / 12) = 50.
+    const account = makeAccount();
+    const result = deriveLoanPaymentHistory(account, [
+      makeTransaction({ transactionDate: '2026-01-15', amount: 450 }),
+    ]);
+    expect(result.events[0].type).toBe('REGULAR');
+    expect(result.events[0].interest).toBeCloseTo(50, 2);
+    expect(result.events[0].principal).toBe(450);
+    expect(result.events[0].balance).toBe(10000 - 450);
+  });
+
+  it('prefers a recorded interest split over the analytic estimate', () => {
+    const account = makeAccount();
+    const tx = withInterestSplit(
+      makeTransaction({ transactionDate: '2026-01-15', amount: 450 }),
+      'parent-1',
+      42,
+    );
+    const result = deriveLoanPaymentHistory(account, [tx]);
+    expect(result.events[0].type).toBe('REGULAR');
+    expect(result.events[0].interest).toBe(42);
+  });
+
+  it('classifies overpayment-category payments as 100% principal and flags them', () => {
+    const account = makeAccount({ overpaymentCategoryId: 'cat-over' });
+    const result = deriveLoanPaymentHistory(account, [
+      makeTransaction({
+        transactionDate: '2026-01-15',
+        amount: 450,
+        categoryId: 'cat-over',
+      }),
+    ]);
+    expect(result.events[0].type).toBe('OVERPAYMENT');
+    expect(result.events[0].interest).toBe(0);
+    expect(result.events[0].principal).toBe(450);
+    expect(result.cumulativeInterest).toBe(0);
+  });
+
+  it('recognizes an overpayment tagged on the linked source transaction', () => {
+    const account = makeAccount({ overpaymentCategoryId: 'cat-over' });
+    const tx = {
+      ...makeTransaction({ transactionDate: '2026-01-15', amount: 300 }),
+      linkedTransaction: {
+        id: 'p1',
+        categoryId: 'cat-over',
+        splits: [],
+      } as unknown as Transaction,
+    };
+    const result = deriveLoanPaymentHistory(account, [tx]);
+    expect(result.events[0].type).toBe('OVERPAYMENT');
+    expect(result.events[0].interest).toBe(0);
+  });
+
+  it('does not derive analytic interest for revolving credit', () => {
+    const loc = makeAccount({
+      accountType: 'LINE_OF_CREDIT',
+      openingBalance: -1000,
+      currentBalance: -500,
+    });
+    const result = deriveLoanPaymentHistory(loc, [
+      makeTransaction({ transactionDate: '2026-01-15', amount: 200 }),
+    ]);
+    expect(result.events[0].interest).toBe(0);
+  });
+});
+
+describe('deriveCurrentInstallment', () => {
+  const history = (events: Array<{ principal: number; interest: number; type: 'REGULAR' | 'OVERPAYMENT' }>) => ({
+    events: events.map((e, i) => ({
+      date: `2026-0${i + 1}-15`,
+      principal: e.principal,
+      interest: e.interest,
+      balance: 0,
+      cumulativePrincipal: 0,
+      cumulativeInterest: 0,
+      type: e.type,
+    })),
+    startingBalance: 0,
+    currentBalance: 0,
+    cumulativePrincipal: 0,
+    cumulativeInterest: 0,
+  });
+
+  it('uses the last regular installment when it is lower than contractual', () => {
+    const result = deriveCurrentInstallment(
+      history([
+        { principal: 800, interest: 200, type: 'REGULAR' },
+        { principal: 765, interest: 153, type: 'REGULAR' },
+      ]),
+      1279,
+    );
+    expect(result).toBe(918);
+  });
+
+  it('ignores the last regular installment when it exceeds contractual', () => {
+    const result = deriveCurrentInstallment(
+      history([{ principal: 765, interest: 700, type: 'REGULAR' }]),
+      1279,
+    );
+    expect(result).toBe(1279);
+  });
+
+  it('skips overpayment rows when finding the last regular installment', () => {
+    const result = deriveCurrentInstallment(
+      history([
+        { principal: 765, interest: 153, type: 'REGULAR' },
+        { principal: 5000, interest: 0, type: 'OVERPAYMENT' },
+      ]),
+      1279,
+    );
+    expect(result).toBe(918);
+  });
+
+  it('falls back to the contractual payment with no regular history', () => {
+    expect(deriveCurrentInstallment(history([]), 1279)).toBe(1279);
   });
 });
 

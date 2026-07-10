@@ -604,6 +604,36 @@ describe("AccountsService", () => {
       expect(saved.amortizationMonths).toBe(360);
     });
 
+    it("updates overpaymentCategoryId when provided", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: "LOAN",
+        overpaymentCategoryId: null,
+      });
+
+      await service.update("user-1", "account-1", {
+        overpaymentCategoryId: "cat-overpay",
+      });
+
+      const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+      expect(saved.overpaymentCategoryId).toBe("cat-overpay");
+    });
+
+    it("clears overpaymentCategoryId when set to null", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: "LOAN",
+        overpaymentCategoryId: "cat-overpay",
+      });
+
+      await service.update("user-1", "account-1", {
+        overpaymentCategoryId: null,
+      });
+
+      const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+      expect(saved.overpaymentCategoryId).toBeNull();
+    });
+
     it("updates credit card statement date fields", async () => {
       mockQueryRunner.manager.findOne.mockResolvedValue({
         ...mockAccount,
@@ -2833,6 +2863,12 @@ describe("AccountsService", () => {
       expect(checking.institutionName).toBe("Big Bank");
       expect(checking.accountNumber).toBe("1234");
       expect(checking.excludeFromNetWorth).toBe(false);
+      // Loan fields are null on non-debt accounts
+      expect(checking.paymentAmount).toBeNull();
+      expect(checking.paymentFrequency).toBeNull();
+      expect(checking.paymentStartDate).toBeNull();
+      expect(checking.amortizationMonths).toBeNull();
+      expect(checking.originalPrincipal).toBeNull();
 
       expect(savings.creditLimit).toBe(5000);
       expect(savings.interestRate).toBe(1.25);
@@ -2842,6 +2878,38 @@ describe("AccountsService", () => {
 
       expect(brokerage.subType).toBe(AccountSubType.INVESTMENT_BROKERAGE);
       expect(brokerage.institutionName).toBeNull();
+    });
+
+    it("exposes loan/mortgage schedule fields for debt accounts", async () => {
+      const loan = {
+        id: "l1",
+        userId: "user-1",
+        name: "Car Loan",
+        accountType: AccountType.LOAN,
+        accountSubType: null,
+        currencyCode: "USD",
+        currentBalance: -8000,
+        futureTransactionsSum: 0,
+        creditLimit: null,
+        interestRate: 6,
+        excludeFromNetWorth: false,
+        institutionId: null,
+        accountNumber: null,
+        isClosed: false,
+        paymentAmount: 500,
+        paymentFrequency: "MONTHLY",
+        paymentStartDate: "2024-02-01",
+        amortizationMonths: 60,
+        originalPrincipal: 20000,
+      };
+      jest.spyOn(service, "findAll").mockResolvedValue([loan] as never);
+      const r = await service.getLlmAccounts("user-1", { status: "all" });
+      const car = r.accounts.find((a) => a.name === "Car Loan")!;
+      expect(car.paymentAmount).toBe(500);
+      expect(car.paymentFrequency).toBe("MONTHLY");
+      expect(car.paymentStartDate).toBe("2024-02-01");
+      expect(car.amortizationMonths).toBe(60);
+      expect(car.originalPrincipal).toBe(20000);
     });
 
     it("skips the institution lookup when no account references one", async () => {

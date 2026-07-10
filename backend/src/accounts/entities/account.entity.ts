@@ -199,6 +199,16 @@ export class Account {
   @JoinColumn({ name: "interest_category_id" })
   interestCategory: Category | null;
 
+  // Category the user tags standalone overpayments (extra principal) with, so
+  // the loan schedule can tell an overpayment apart from a regular installment
+  // (overpayments are 100% principal). Optional, per-loan setting.
+  @Column({ type: "uuid", name: "overpayment_category_id", nullable: true })
+  overpaymentCategoryId: string | null;
+
+  @ManyToOne(() => Category, { nullable: true })
+  @JoinColumn({ name: "overpayment_category_id" })
+  overpaymentCategory: Category | null;
+
   // Asset-specific fields
   @Column({ type: "uuid", name: "asset_category_id", nullable: true })
   assetCategoryId: string | null;

@@ -1,16 +1,33 @@
 import { Account } from '@/types/account';
 import { Transaction } from '@/types/transaction';
 import { transactionsApi } from '@/lib/transactions';
+import {
+  ScheduleFrequency,
+  getPeriodicRate,
+  getPeriodsPerYear,
+} from '@/lib/loan-schedule';
 
 /**
  * Historical loan-payment derivation shared by the loan reports and the loan
- * detail page. Extracted verbatim from LoanAmortizationReport /
- * DebtPayoffTimelineReport so their rendered numbers are unchanged.
+ * detail page.
  *
- * Payments to the loan appear as positive transactions on the loan account;
- * the interest portion lives on the linked source-account transaction as the
- * split that does not transfer back to the loan.
+ * Payments to the loan appear as positive transactions on the loan account.
+ * The interest portion of a regular installment is recovered, in order of
+ * preference:
+ *   1. an overpayment tagged with the loan's overpayment category is 100%
+ *      principal, so its interest is 0 and the row is flagged OVERPAYMENT;
+ *   2. otherwise, if the linked source-account transaction carries an interest
+ *      split (the shape ScheduledTransactionLoanService builds), that recorded
+ *      interest is used -- exact even on variable-rate loans;
+ *   3. otherwise the interest is derived analytically from the running balance
+ *      (`balance * periodicRate`), so a payment entered as a plain transfer no
+ *      longer shows interest = 0 / rata = 100% principal.
+ *
+ * The balance walk is unchanged -- it always tracks the actual ledger amount,
+ * so the projected balance still ends at the account's current balance.
  */
+
+export type LoanPaymentType = 'REGULAR' | 'OVERPAYMENT';
 
 export interface LoanPaymentEvent {
   /** ISO transaction date (yyyy-MM-dd) */
@@ -21,6 +38,8 @@ export interface LoanPaymentEvent {
   balance: number;
   cumulativePrincipal: number;
   cumulativeInterest: number;
+  /** REGULAR installment or a standalone OVERPAYMENT (extra principal) */
+  type: LoanPaymentType;
 }
 
 export interface LoanHistoryResult {
@@ -77,7 +96,13 @@ export function deriveLoanPaymentHistory(
     let runningBalance = startingBalance;
     for (const transaction of repayments) {
       const principal = Math.abs(Number(transaction.amount));
-      const interest = readInterest(transaction, loanAccountId, processedParentIds);
+      const { interest, type } = classifyPayment(
+        transaction,
+        runningBalance,
+        account,
+        loanAccountId,
+        processedParentIds,
+      );
       runningBalance = Math.max(0, runningBalance - principal);
       cumulativePrincipal += principal;
       cumulativeInterest += interest;
@@ -88,6 +113,7 @@ export function deriveLoanPaymentHistory(
         balance: runningBalance,
         cumulativePrincipal,
         cumulativeInterest,
+        type,
       });
     }
   } else {
@@ -96,10 +122,17 @@ export function deriveLoanPaymentHistory(
     // magnitude at that point.
     let runningSigned = openingSigned;
     for (const transaction of sortedTransactions) {
+      const balanceBefore = debtMagnitude(runningSigned);
       runningSigned += Number(transaction.amount);
       if (Number(transaction.amount) <= 0) continue; // draws move the balance, no row
       const principal = Math.abs(Number(transaction.amount));
-      const interest = readInterest(transaction, loanAccountId, processedParentIds);
+      const { interest, type } = classifyPayment(
+        transaction,
+        balanceBefore,
+        account,
+        loanAccountId,
+        processedParentIds,
+      );
       cumulativePrincipal += principal;
       cumulativeInterest += interest;
       events.push({
@@ -109,6 +142,7 @@ export function deriveLoanPaymentHistory(
         balance: debtMagnitude(runningSigned),
         cumulativePrincipal,
         cumulativeInterest,
+        type,
       });
     }
   }
@@ -132,21 +166,125 @@ function debtMagnitude(signedBalance: number): number {
 }
 
 /**
- * The interest portion of a payment lives on the linked source-account
- * transaction as the split that does not transfer back to the loan. A single
- * source payment covering several loan transfers is counted only once.
+ * The installment to seed a forward projection with, given the payment history.
+ * Returns the most recent regular installment (principal + interest) when the
+ * lender has demonstrably lowered it below the stored contractual payment (PL
+ * *obniżenie raty*); otherwise the contractual payment. Only a genuine
+ * reduction is trusted -- a figure above the contractual usually reflects
+ * analytic interest on a payment recorded without an interest split rather than
+ * a real raise, so it is ignored to avoid projecting too high a payment.
  */
-function readInterest(
+export function deriveCurrentInstallment(
+  history: LoanHistoryResult,
+  contractualPayment: number,
+): number {
+  const lastRegular = [...history.events]
+    .reverse()
+    .find((event) => event.type === 'REGULAR');
+  if (!lastRegular) return contractualPayment;
+  const observed =
+    Math.round((lastRegular.principal + lastRegular.interest) * 100) / 100;
+  return observed > 0 && observed < contractualPayment
+    ? observed
+    : contractualPayment;
+}
+
+/**
+ * Classify a positive loan-account transaction into its interest portion and
+ * row type. An overpayment (tagged with the loan's overpayment category) is
+ * 100% principal; a regular installment prefers its recorded interest split
+ * and otherwise derives interest analytically from the running balance.
+ */
+function classifyPayment(
+  transaction: Transaction,
+  balanceBefore: number,
+  account: Account,
+  loanAccountId: string,
+  processedParentIds: Set<string>,
+): { interest: number; type: LoanPaymentType } {
+  if (isOverpayment(transaction, account.overpaymentCategoryId)) {
+    return { interest: 0, type: 'OVERPAYMENT' };
+  }
+  const recorded = readRecordedInterest(
+    transaction,
+    loanAccountId,
+    processedParentIds,
+  );
+  if (recorded !== null) {
+    return { interest: recorded, type: 'REGULAR' };
+  }
+  return {
+    interest: analyticInterest(balanceBefore, account, transaction),
+    type: 'REGULAR',
+  };
+}
+
+/**
+ * Whether a payment is a standalone overpayment, recognized by the loan's
+ * overpayment category on the transaction itself, its linked source-account
+ * transaction, or any split of that linked transaction.
+ */
+function isOverpayment(
+  transaction: Transaction,
+  overpaymentCategoryId: string | null | undefined,
+): boolean {
+  if (!overpaymentCategoryId) return false;
+  if (transaction.categoryId === overpaymentCategoryId) return true;
+  const linkedTx = transaction.linkedTransaction;
+  if (!linkedTx) return false;
+  if (linkedTx.categoryId === overpaymentCategoryId) return true;
+  return Boolean(
+    linkedTx.splits?.some((s) => s.categoryId === overpaymentCategoryId),
+  );
+}
+
+/**
+ * The recorded interest of a payment lives on the linked source-account
+ * transaction as the split that does not transfer back to the loan. Returns
+ * null when there is no recorded interest split (so the caller falls back to
+ * the analytic derivation); a single source payment covering several loan
+ * transfers is counted only once.
+ */
+function readRecordedInterest(
   transaction: Transaction,
   loanAccountId: string,
   processedParentIds: Set<string>,
-): number {
+): number | null {
   const linkedTx = transaction.linkedTransaction;
-  if (!linkedTx?.splits || linkedTx.splits.length === 0) return 0;
+  if (!linkedTx?.splits || linkedTx.splits.length === 0) return null;
   if (processedParentIds.has(linkedTx.id)) return 0;
   processedParentIds.add(linkedTx.id);
   const interestSplit = linkedTx.splits.find((s) => s.transferAccountId !== loanAccountId);
   return interestSplit ? Math.abs(interestSplit.amount) : 0;
+}
+
+/**
+ * Interest a regular payment accrued over the period, `balance * periodicRate`,
+ * for amortizing debt with a positive rate. Only loans and mortgages get an
+ * analytic estimate (revolving credit has no fixed installment schedule);
+ * capped at the payment amount and floored at zero so it never goes negative
+ * or dwarfs the payment.
+ */
+function analyticInterest(
+  balanceBefore: number,
+  account: Account,
+  transaction: Transaction,
+): number {
+  if (account.accountType !== 'LOAN' && account.accountType !== 'MORTGAGE') {
+    return 0;
+  }
+  const annualRate = Number(account.interestRate);
+  if (!annualRate || annualRate <= 0 || balanceBefore <= 0) return 0;
+  const frequency = (account.paymentFrequency as ScheduleFrequency) || 'MONTHLY';
+  const periodicRate = getPeriodicRate(
+    annualRate,
+    getPeriodsPerYear(frequency),
+    account.isCanadianMortgage || false,
+    account.isVariableRate || false,
+  );
+  const interest = balanceBefore * periodicRate;
+  const capped = Math.min(Math.max(0, interest), Math.abs(Number(transaction.amount)));
+  return Math.round(capped * 100) / 100;
 }
 
 /**

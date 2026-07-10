@@ -24,6 +24,8 @@ interface DisplayRow {
   extraPrincipal: number;
   balance: number;
   isProjected: boolean;
+  /** Historical row tagged as a standalone overpayment (100% principal) */
+  isOverpayment?: boolean;
   /** Set on the first projected row of a new rate segment */
   rateChange?: { from: number; to: number };
 }
@@ -54,6 +56,7 @@ export function AmortizationScheduleTable({
       extraPrincipal: 0,
       balance: event.balance,
       isProjected: false,
+      isOverpayment: event.type === 'OVERPAYMENT',
     }));
     const projected = projectionRows.map((row, index) => {
       const previousRate = index > 0 ? projectionRows[index - 1].annualRate : row.annualRate;
@@ -148,6 +151,11 @@ export function AmortizationScheduleTable({
                           {formatDate(row.date)}
                           {row.isProjected && (
                             <span className="ml-1.5 text-xs text-blue-500 dark:text-blue-400">*</span>
+                          )}
+                          {row.isOverpayment && (
+                            <span className="ml-1.5 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                              {t('loanDetail.schedule.overpaymentBadge')}
+                            </span>
                           )}
                           {row.rateChange && (
                             <span className="ml-1.5 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">

@@ -25,6 +25,8 @@ async function renderSimulator(props: Partial<React.ComponentProps<typeof Overpa
         accountId="loan-1"
         currencyCode="USD"
         onPlanChange={onPlanChange}
+        mode="SHORTEN_TERM"
+        onModeChange={vi.fn()}
         {...props}
       />,
     );
@@ -49,6 +51,17 @@ describe('OverpaymentSimulator', () => {
     expect(onPlanChange).toHaveBeenLastCalledWith({
       recurringExtra: { amount: 200 },
     } satisfies OverpaymentPlan);
+  });
+
+  it('reports a mode change when the lower-installment toggle is clicked', async () => {
+    const onModeChange = vi.fn();
+    await renderSimulator({ onModeChange });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Lower installment'));
+    });
+
+    expect(onModeChange).toHaveBeenCalledWith('LOWER_INSTALLMENT');
   });
 
   it('includes the optional date window in the emitted plan', async () => {
@@ -160,6 +173,8 @@ describe('OverpaymentSimulator', () => {
           accountId="loan-1"
           currencyCode="USD"
           onPlanChange={vi.fn()}
+          mode="SHORTEN_TERM"
+          onModeChange={vi.fn()}
           loadedPlan={loaded}
           loadedPlanVersion={1}
         />,

@@ -729,6 +729,8 @@ export class AccountsService {
         account.principalCategoryId = updateAccountDto.principalCategoryId;
       if (updateAccountDto.interestCategoryId !== undefined)
         account.interestCategoryId = updateAccountDto.interestCategoryId;
+      if (updateAccountDto.overpaymentCategoryId !== undefined)
+        account.overpaymentCategoryId = updateAccountDto.overpaymentCategoryId;
       if (updateAccountDto.assetCategoryId !== undefined)
         account.assetCategoryId = updateAccountDto.assetCategoryId;
       if (updateAccountDto.dateAcquired !== undefined)
@@ -1177,6 +1179,13 @@ export class AccountsService {
       excludeFromNetWorth: boolean;
       institutionName: string | null;
       accountNumber: string | null;
+      // Loan/mortgage fields, so an assistant can reason about a loan's
+      // schedule (null on non-debt accounts).
+      paymentAmount: number | null;
+      paymentFrequency: string | null;
+      paymentStartDate: string | null;
+      amortizationMonths: number | null;
+      originalPrincipal: number | null;
     }>;
     totalAssets: number;
     totalLiabilities: number;
@@ -1264,6 +1273,15 @@ export class AccountsService {
           ? (institutionNameMap.get(a.institutionId) ?? null)
           : null,
         accountNumber: a.accountNumber ?? null,
+        paymentAmount: a.paymentAmount ?? null,
+        paymentFrequency: a.paymentFrequency ?? null,
+        // The global pg DATE parser returns date columns as YYYY-MM-DD
+        // strings; guard the type and trim any time component defensively.
+        paymentStartDate: a.paymentStartDate
+          ? String(a.paymentStartDate).slice(0, 10)
+          : null,
+        amortizationMonths: a.amortizationMonths ?? null,
+        originalPrincipal: a.originalPrincipal ?? null,
       };
     });
 

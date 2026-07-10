@@ -45,6 +45,7 @@ function makeHistory(): LoanPaymentEvent[] {
       balance: 9550,
       cumulativePrincipal: 450,
       cumulativeInterest: 50,
+      type: 'REGULAR' as const,
     },
     {
       date: '2026-02-15',
@@ -53,6 +54,7 @@ function makeHistory(): LoanPaymentEvent[] {
       balance: 9100,
       cumulativePrincipal: 900,
       cumulativeInterest: 100,
+      type: 'REGULAR' as const,
     },
   ];
 }
@@ -106,8 +108,8 @@ describe('buildPayoffComparisonSeries', () => {
 
   it('uses the last balance when multiple payments land in one month', () => {
     const history: LoanPaymentEvent[] = [
-      { date: '2026-01-05', principal: 100, interest: 10, balance: 900, cumulativePrincipal: 100, cumulativeInterest: 10 },
-      { date: '2026-01-20', principal: 100, interest: 10, balance: 800, cumulativePrincipal: 200, cumulativeInterest: 20 },
+      { date: '2026-01-05', principal: 100, interest: 10, balance: 900, cumulativePrincipal: 100, cumulativeInterest: 10, type: 'REGULAR' },
+      { date: '2026-01-20', principal: 100, interest: 10, balance: 800, cumulativePrincipal: 200, cumulativeInterest: 20, type: 'REGULAR' },
     ];
     const { points } = buildPayoffComparisonSeries(history, null, null);
     expect(points).toHaveLength(1);

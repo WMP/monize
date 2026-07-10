@@ -26,6 +26,7 @@ function makeHistoryEvents(count: number): LoanPaymentEvent[] {
     balance: 10000 - 450 * (i + 1),
     cumulativePrincipal: 450 * (i + 1),
     cumulativeInterest: 50 * (i + 1),
+    type: 'REGULAR' as const,
   }));
 }
 
