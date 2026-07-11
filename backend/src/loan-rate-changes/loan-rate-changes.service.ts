@@ -105,8 +105,10 @@ export class LoanRateChangesService {
   }
 
   /**
-   * Record a rate change and realign the account scalars. By default the linked
-   * scheduled bill payment is resynced immediately (the legacy mortgage-rate
+   * Record a rate change. The account's own `interestRate`/`paymentAmount` are
+   * left untouched (they are user-owned via the edit form); only the linked
+   * scheduled bill payment is realigned to the timeline's current rate. By
+   * default that resync is applied immediately (the legacy mortgage-rate
    * behaviour). Pass `deferScheduledSync` to instead return a preview of the
    * pending scheduled-payment change and leave it unapplied, so the caller can
    * confirm with the user before applying it via `applyScheduledPaymentSync`.
@@ -158,7 +160,8 @@ export class LoanRateChangesService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     let saved: LoanRateChange;
-    let applied = false;
+    let resolved: { annualRate: number; paymentAmount: number | null } | null =
+      null;
     try {
       await this.rejectDuplicateDate(
         queryRunner.manager,
@@ -182,7 +185,10 @@ export class LoanRateChangesService {
       });
       saved = await queryRunner.manager.save(rateChange);
 
-      applied = await this.syncAccountToTimeline(queryRunner.manager, account);
+      resolved = await this.resolveCurrentTimeline(
+        queryRunner.manager,
+        account,
+      );
 
       await queryRunner.commitTransaction();
     } catch (error) {
@@ -193,12 +199,12 @@ export class LoanRateChangesService {
     }
 
     let scheduledPaymentPreview: ScheduledPaymentPreview | null = null;
-    if (applied) {
+    if (resolved) {
       if (options?.deferScheduledSync) {
-        const plan = await this.buildScheduledUpdate(userId, account);
+        const plan = await this.buildScheduledUpdate(userId, account, resolved);
         scheduledPaymentPreview = plan?.preview ?? null;
       } else {
-        await this.syncScheduledTransaction(userId, account);
+        await this.syncScheduledTransaction(userId, account, resolved);
       }
     }
     return { ...saved, scheduledPaymentPreview };
@@ -217,7 +223,8 @@ export class LoanRateChangesService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     let saved: LoanRateChange;
-    let applied = false;
+    let resolved: { annualRate: number; paymentAmount: number | null } | null =
+      null;
     try {
       if (
         dto.effectiveDate !== undefined &&
@@ -247,7 +254,10 @@ export class LoanRateChangesService {
       });
       saved = await queryRunner.manager.save(merged);
 
-      applied = await this.syncAccountToTimeline(queryRunner.manager, account);
+      resolved = await this.resolveCurrentTimeline(
+        queryRunner.manager,
+        account,
+      );
 
       await queryRunner.commitTransaction();
     } catch (error) {
@@ -257,8 +267,8 @@ export class LoanRateChangesService {
       await queryRunner.release();
     }
 
-    if (applied) {
-      await this.syncScheduledTransaction(userId, account);
+    if (resolved) {
+      await this.syncScheduledTransaction(userId, account, resolved);
     }
     return saved;
   }
@@ -270,10 +280,14 @@ export class LoanRateChangesService {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
-    let applied = false;
+    let resolved: { annualRate: number; paymentAmount: number | null } | null =
+      null;
     try {
       await queryRunner.manager.remove(rateChange);
-      applied = await this.syncAccountToTimeline(queryRunner.manager, account);
+      resolved = await this.resolveCurrentTimeline(
+        queryRunner.manager,
+        account,
+      );
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -282,24 +296,26 @@ export class LoanRateChangesService {
       await queryRunner.release();
     }
 
-    if (applied) {
-      await this.syncScheduledTransaction(userId, account);
+    if (resolved) {
+      await this.syncScheduledTransaction(userId, account, resolved);
     }
   }
 
   /**
-   * Keep the account's denormalized scalars in line with the timeline: the
-   * rate in effect today is the latest row not in the future; the payment in
-   * effect is the latest non-null newPaymentAmount at or before today. Rows
-   * dated in the future are recorded but not applied. Closed accounts keep
-   * their final scalars untouched. Returns whether scalars were applied, so
-   * callers know whether the scheduled payment needs a resync.
+   * Resolve the rate and payment in effect today from the timeline WITHOUT
+   * mutating the account: the rate is the latest row not in the future; the
+   * payment is the latest non-null newPaymentAmount at or before today. Rows
+   * dated in the future are recorded but not applied. The account's own
+   * `interestRate`/`paymentAmount` remain user-owned (set only via the account
+   * edit form) and are never overwritten from the timeline -- so editing rates
+   * or running detection can never clobber a manually-set rate/payment. Returns
+   * null for a closed account or when no row applies (nothing to resync).
    */
-  async syncAccountToTimeline(
+  async resolveCurrentTimeline(
     manager: EntityManager,
     account: Account,
-  ): Promise<boolean> {
-    if (account.isClosed) return false;
+  ): Promise<{ annualRate: number; paymentAmount: number | null } | null> {
+    if (account.isClosed) return null;
 
     const rows = await manager.find(LoanRateChange, {
       where: { accountId: account.id },
@@ -307,19 +323,20 @@ export class LoanRateChangesService {
     });
     const today = todayYMD();
     const applicable = rows.filter((row) => row.effectiveDate <= today);
-    if (applicable.length === 0) return false;
+    if (applicable.length === 0) return null;
 
     const latest = applicable[applicable.length - 1];
     const latestWithPayment = [...applicable]
       .reverse()
       .find((row) => row.newPaymentAmount != null);
 
-    account.interestRate = Number(latest.annualRate);
-    if (latestWithPayment?.newPaymentAmount != null) {
-      account.paymentAmount = Number(latestWithPayment.newPaymentAmount);
-    }
-    await manager.save(account);
-    return true;
+    return {
+      annualRate: Number(latest.annualRate),
+      paymentAmount:
+        latestWithPayment?.newPaymentAmount != null
+          ? Number(latestWithPayment.newPaymentAmount)
+          : null,
+    };
   }
 
   /**
@@ -330,8 +347,9 @@ export class LoanRateChangesService {
   async syncScheduledTransaction(
     userId: string,
     account: Account,
+    override?: { annualRate: number; paymentAmount: number | null },
   ): Promise<void> {
-    const plan = await this.buildScheduledUpdate(userId, account);
+    const plan = await this.buildScheduledUpdate(userId, account, override);
     if (!plan) return;
     try {
       await this.scheduledTransactionsService.update(
@@ -357,7 +375,15 @@ export class LoanRateChangesService {
     accountId: string,
   ): Promise<ScheduledPaymentPreview | null> {
     const account = await this.verifyLoanAccount(userId, accountId);
-    const plan = await this.buildScheduledUpdate(userId, account);
+    const resolved = await this.resolveCurrentTimeline(
+      this.dataSource.manager,
+      account,
+    );
+    const plan = await this.buildScheduledUpdate(
+      userId,
+      account,
+      resolved ?? undefined,
+    );
     if (!plan) return null;
     await this.scheduledTransactionsService.update(
       userId,
@@ -377,21 +403,22 @@ export class LoanRateChangesService {
   async buildScheduledUpdate(
     userId: string,
     account: Account,
+    override?: { annualRate: number; paymentAmount: number | null },
   ): Promise<ScheduledUpdatePlan | null> {
     if (account.isClosed || !account.scheduledTransactionId) return null;
-    if (
-      account.interestRate == null ||
-      !account.paymentAmount ||
-      !account.paymentFrequency
-    ) {
+    // The current rate/payment come from the resolved timeline when supplied,
+    // else the account's own (user-owned) scalars. The timeline never mutates
+    // the account, so this override is how a rate change reaches the bill.
+    const annualRate = override?.annualRate ?? account.interestRate;
+    const effectivePayment =
+      override?.paymentAmount ?? account.paymentAmount ?? null;
+    if (annualRate == null || !effectivePayment || !account.paymentFrequency) {
       return null;
     }
     const balance = Math.abs(Number(account.currentBalance));
     if (balance <= 0.01) return null;
 
-    let scheduled: Awaited<
-      ReturnType<ScheduledTransactionsService["findOne"]>
-    >;
+    let scheduled: Awaited<ReturnType<ScheduledTransactionsService["findOne"]>>;
     try {
       scheduled = await this.scheduledTransactionsService.findOne(
         userId,
@@ -407,18 +434,18 @@ export class LoanRateChangesService {
     const isMortgage = account.accountType === AccountType.MORTGAGE;
     const periodicRate = isMortgage
       ? getPeriodicRate(
-          account.interestRate,
+          annualRate,
           getMortgagePeriodsPerYear(
             account.paymentFrequency as MortgagePaymentFrequency,
           ),
           account.isCanadianMortgage || false,
           account.isVariableRate || false,
         )
-      : account.interestRate /
+      : annualRate /
         100 /
         getPeriodsPerYear(account.paymentFrequency as PaymentFrequency);
 
-    const paymentAmount = Number(account.paymentAmount);
+    const paymentAmount = Number(effectivePayment);
     let interest = roundMoney(balance * periodicRate);
     if (interest > paymentAmount) interest = paymentAmount;
     let principal = roundMoney(paymentAmount - interest);
@@ -496,7 +523,8 @@ export class LoanRateChangesService {
 
   /**
    * Snapshot the origination rate as an 'initial' row the first time any
-   * change is recorded, so the pre-change rate survives the scalar overwrite.
+   * change is recorded, so the timeline carries an explicit anchor for the
+   * pre-change rate rather than relying on the account's current scalar.
    */
   async insertInitialRowIfFirst(
     manager: EntityManager,

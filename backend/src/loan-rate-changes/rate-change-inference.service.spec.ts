@@ -149,8 +149,6 @@ describe("RateChangeInferenceService", () => {
 
     rateChangesService = {
       verifyLoanAccount: jest.fn().mockResolvedValue(makeAccount()),
-      syncAccountToTimeline: jest.fn().mockResolvedValue(undefined),
-      syncScheduledTransaction: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -374,7 +372,7 @@ describe("RateChangeInferenceService", () => {
     expect(result.warnings.length).toBeGreaterThan(0);
   });
 
-  it("syncs the account timeline for open accounts after persisting", async () => {
+  it("persists inferred rows without touching account scalars or the schedule", async () => {
     rateChangesService.verifyLoanAccount.mockResolvedValue(
       makeAccount({ isClosed: false }),
     );
@@ -383,9 +381,12 @@ describe("RateChangeInferenceService", () => {
     ]);
     setHistory(records, balanceMap);
 
-    await service.detectAndPersist(userId, accountId);
+    const result = await service.detectAndPersist(userId, accountId);
 
-    expect(rateChangesService.syncAccountToTimeline).toHaveBeenCalled();
-    expect(rateChangesService.syncScheduledTransaction).toHaveBeenCalled();
+    // Detection is historical inference: it only writes timeline rows. It must
+    // never resolve/sync the account's user-owned rate/payment or the bill.
+    expect(result.created.length).toBeGreaterThan(0);
+    expect(rateChangesService.resolveCurrentTimeline).toBeUndefined();
+    expect(rateChangesService.syncScheduledTransaction).toBeUndefined();
   });
 });

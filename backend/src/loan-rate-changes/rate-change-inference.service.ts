@@ -403,11 +403,6 @@ export class RateChangeInferenceService {
         created.push(await queryRunner.manager.save(row));
       }
 
-      await this.rateChangesService.syncAccountToTimeline(
-        queryRunner.manager,
-        account,
-      );
-
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -416,7 +411,9 @@ export class RateChangeInferenceService {
       await queryRunner.release();
     }
 
-    await this.rateChangesService.syncScheduledTransaction(userId, account);
+    // Detection is historical inference: it only writes timeline rows and must
+    // never overwrite the account's user-owned rate/payment or resync the
+    // linked scheduled bill (that would clobber manually-set values).
 
     this.logger.log(
       `Detected ${created.length} rate segment(s) for account ${account.id} (replaced ${replacedCount} inferred rows)`,
