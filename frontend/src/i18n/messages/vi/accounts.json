@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "Mỗi 2 tuần tăng tốc",
       "weekly": "Hàng tuần",
       "acceleratedWeekly": "Hàng tuần tăng tốc"
+    },
+    "overpaymentRecognition": {
+      "title": "Nhận diện trả trước",
+      "description": "Cách lịch phân biệt khoản trả trước độc lập (100% gốc) với kỳ trả góp thông thường. Một khoản thanh toán khớp với bất kỳ tiêu chí nào trong số này được tính là trả trước.",
+      "categoryLabel": "Danh mục trả trước",
+      "payeeLabel": "Người nhận trả trước",
+      "payeePlaceholder": "Chọn người nhận...",
+      "memoLabel": "Nội dung ghi chú trả trước",
+      "memoPlaceholder": "vd. trả trước",
+      "memoHelp": "So khớp chuỗi con không phân biệt hoa thường với ghi chú của khoản thanh toán, ghi chú của giao dịch nguồn hoặc ghi chú tách."
     }
   },
   "assetFields": {

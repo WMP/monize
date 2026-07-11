@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "Hızlandırılmış 2 Haftada Bir",
       "weekly": "Haftalık",
       "acceleratedWeekly": "Hızlandırılmış Haftalık"
+    },
+    "overpaymentRecognition": {
+      "title": "Fazla ödeme tanıma",
+      "description": "Planın bağımsız bir fazla ödemeyi (%100 anapara) normal taksitten nasıl ayırt ettiği. Bunlardan herhangi biriyle eşleşen bir ödeme fazla ödeme sayılır.",
+      "categoryLabel": "Fazla ödeme kategorisi",
+      "payeeLabel": "Fazla ödeme alıcısı",
+      "payeePlaceholder": "Alıcı seçin...",
+      "memoLabel": "Fazla ödeme not metni",
+      "memoPlaceholder": "örn. fazla ödeme",
+      "memoHelp": "Ödemenin notu, kaynak işleminin notu veya bir bölme notu ile büyük/küçük harfe duyarsız alt dize eşleşmesi."
     }
   },
   "assetFields": {

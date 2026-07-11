@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "Bisettimanale accelerato",
       "weekly": "Settimanale",
       "acceleratedWeekly": "Settimanale accelerato"
+    },
+    "overpaymentRecognition": {
+      "title": "Riconoscimento dell'estinzione anticipata",
+      "description": "Come il piano di ammortamento distingue un'estinzione anticipata autonoma (100% capitale) da una rata regolare. Un pagamento che corrisponde a uno di questi criteri conta come estinzione anticipata.",
+      "categoryLabel": "Categoria di estinzione anticipata",
+      "payeeLabel": "Beneficiario dell'estinzione anticipata",
+      "payeePlaceholder": "Seleziona beneficiario...",
+      "memoLabel": "Testo memo di estinzione anticipata",
+      "memoPlaceholder": "es. estinzione anticipata",
+      "memoHelp": "Corrispondenza di sottostringa senza distinzione tra maiuscole e minuscole con il memo del pagamento, il memo della transazione di origine o il memo di una suddivisione."
     }
   },
   "assetFields": {

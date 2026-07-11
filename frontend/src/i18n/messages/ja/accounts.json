@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "加速隔週払い",
       "weekly": "毎週",
       "acceleratedWeekly": "加速週払い"
+    },
+    "overpaymentRecognition": {
+      "title": "繰上返済の認識",
+      "description": "スケジュールが単独の繰上返済（100% 元金）を通常の返済と区別する方法。いずれかに一致する支払いは繰上返済として扱われます。",
+      "categoryLabel": "繰上返済カテゴリ",
+      "payeeLabel": "繰上返済の支払先",
+      "payeePlaceholder": "支払先を選択...",
+      "memoLabel": "繰上返済のメモテキスト",
+      "memoPlaceholder": "例: 繰上返済",
+      "memoHelp": "支払いのメモ、その元取引のメモ、または分割のメモに対する大文字小文字を区別しない部分一致。"
     }
   },
   "assetFields": {

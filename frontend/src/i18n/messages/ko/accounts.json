@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "가속 격주",
       "weekly": "매주",
       "acceleratedWeekly": "가속 매주"
+    },
+    "overpaymentRecognition": {
+      "title": "추가 상환 인식",
+      "description": "일정표가 독립적인 추가 상환(100% 원금)을 일반 할부와 구분하는 방법. 이 중 하나라도 일치하는 결제는 추가 상환으로 계산됩니다.",
+      "categoryLabel": "추가 상환 카테고리",
+      "payeeLabel": "추가 상환 수취인",
+      "payeePlaceholder": "수취인 선택...",
+      "memoLabel": "추가 상환 메모 텍스트",
+      "memoPlaceholder": "예: 추가 상환",
+      "memoHelp": "결제 메모, 원본 거래 메모 또는 분할 메모에 대한 대소문자 구분 없는 부분 문자열 일치."
     }
   },
   "assetFields": {

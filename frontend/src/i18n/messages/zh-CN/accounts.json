@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "加速双周还款",
       "weekly": "每周",
       "acceleratedWeekly": "加速每周还款"
+    },
+    "overpaymentRecognition": {
+      "title": "超额还款识别",
+      "description": "计划如何将独立的超额还款（100% 本金）与常规分期区分开来。符合其中任一条件的付款计为超额还款。",
+      "categoryLabel": "超额还款类别",
+      "payeeLabel": "超额还款收款人",
+      "payeePlaceholder": "选择收款人...",
+      "memoLabel": "超额还款备注文本",
+      "memoPlaceholder": "例如 超额还款",
+      "memoHelp": "对付款备注、其来源交易备注或拆分备注进行不区分大小写的子字符串匹配。"
     }
   },
   "assetFields": {

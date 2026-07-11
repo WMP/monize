@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "Beschleunigt zweiwöchentlich",
       "weekly": "Wöchentlich",
       "acceleratedWeekly": "Beschleunigt wöchentlich"
+    },
+    "overpaymentRecognition": {
+      "title": "Sondertilgungs-Erkennung",
+      "description": "Wie der Tilgungsplan eine eigenständige Sondertilgung (100 % Tilgung) von einer regulären Rate unterscheidet. Eine Zahlung, die auf eines dieser Kriterien passt, gilt als Sondertilgung.",
+      "categoryLabel": "Sondertilgungs-Kategorie",
+      "payeeLabel": "Sondertilgungs-Empfänger",
+      "payeePlaceholder": "Empfänger auswählen …",
+      "memoLabel": "Sondertilgungs-Notiztext",
+      "memoPlaceholder": "z. B. Sondertilgung",
+      "memoHelp": "Groß-/Kleinschreibung wird ignoriert; Teilstring-Abgleich mit der Notiz der Zahlung, der Notiz der Quelltransaktion oder einer Split-Notiz."
     }
   },
   "assetFields": {

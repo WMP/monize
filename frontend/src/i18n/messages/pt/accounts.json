@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "Quinzenal Acelerado",
       "weekly": "Semanal",
       "acceleratedWeekly": "Semanal Acelerado"
+    },
+    "overpaymentRecognition": {
+      "title": "Reconhecimento de amortização antecipada",
+      "description": "Como o plano distingue uma amortização antecipada autónoma (100% de capital) de uma prestação regular. Um pagamento que corresponda a qualquer um destes critérios conta como amortização antecipada.",
+      "categoryLabel": "Categoria de amortização antecipada",
+      "payeeLabel": "Beneficiário da amortização antecipada",
+      "payeePlaceholder": "Selecionar beneficiário...",
+      "memoLabel": "Texto da nota de amortização antecipada",
+      "memoPlaceholder": "por ex. amortização antecipada",
+      "memoHelp": "Correspondência de subcadeia sem distinção entre maiúsculas e minúsculas com a nota do pagamento, a nota da transação de origem ou a nota de uma divisão."
     }
   },
   "assetFields": {

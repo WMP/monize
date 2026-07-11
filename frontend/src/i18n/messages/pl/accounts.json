@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "Przyspieszone co 2 tygodnie",
       "weekly": "Co tydzień",
       "acceleratedWeekly": "Przyspieszone co tydzień"
+    },
+    "overpaymentRecognition": {
+      "title": "Rozpoznawanie nadpłat",
+      "description": "Jak harmonogram odróżnia samodzielną nadpłatę (100% kapitału) od zwykłej raty. Płatność pasująca do dowolnego z tych kryteriów liczona jest jako nadpłata.",
+      "categoryLabel": "Kategoria nadpłaty",
+      "payeeLabel": "Odbiorca nadpłaty",
+      "payeePlaceholder": "Wybierz odbiorcę...",
+      "memoLabel": "Tekst notatki nadpłaty",
+      "memoPlaceholder": "np. nadpłata",
+      "memoHelp": "Dopasowanie fragmentu tekstu (bez rozróżniania wielkości liter) do notatki płatności, notatki transakcji źródłowej lub notatki podziału."
     }
   },
   "assetFields": {

@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "Quinzenal Acelerado",
       "weekly": "Semanal",
       "acceleratedWeekly": "Semanal Acelerado"
+    },
+    "overpaymentRecognition": {
+      "title": "Reconhecimento de amortização extra",
+      "description": "Como o cronograma distingue uma amortização extra independente (100% de principal) de uma parcela regular. Um pagamento que corresponda a qualquer um destes critérios conta como amortização extra.",
+      "categoryLabel": "Categoria de amortização extra",
+      "payeeLabel": "Beneficiário da amortização extra",
+      "payeePlaceholder": "Selecionar beneficiário...",
+      "memoLabel": "Texto da nota de amortização extra",
+      "memoPlaceholder": "ex.: amortização extra",
+      "memoHelp": "Correspondência de substring sem diferenciar maiúsculas de minúsculas com a nota do pagamento, a nota da transação de origem ou a nota de um rateio."
     }
   },
   "assetFields": {

@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "Quincenal Acelerado",
       "weekly": "Semanal",
       "acceleratedWeekly": "Semanal Acelerado"
+    },
+    "overpaymentRecognition": {
+      "title": "Reconocimiento de amortización anticipada",
+      "description": "Cómo el cuadro de amortización distingue una amortización anticipada independiente (100 % de capital) de una cuota regular. Un pago que coincida con cualquiera de estos criterios cuenta como amortización anticipada.",
+      "categoryLabel": "Categoría de amortización anticipada",
+      "payeeLabel": "Beneficiario de amortización anticipada",
+      "payeePlaceholder": "Seleccionar beneficiario...",
+      "memoLabel": "Texto de nota de amortización anticipada",
+      "memoPlaceholder": "p. ej. amortización",
+      "memoHelp": "Coincidencia de subcadena sin distinguir mayúsculas con la nota del pago, la nota de la transacción de origen o la nota de un desglose."
     }
   },
   "assetFields": {

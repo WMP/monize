@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "Dua Mingguan Dipercepat",
       "weekly": "Mingguan",
       "acceleratedWeekly": "Mingguan Dipercepat"
+    },
+    "overpaymentRecognition": {
+      "title": "Pengenalan pembayaran berlebih",
+      "description": "Bagaimana jadwal membedakan pembayaran berlebih mandiri (100% pokok) dari angsuran reguler. Pembayaran yang cocok dengan salah satu dari ini dihitung sebagai pembayaran berlebih.",
+      "categoryLabel": "Kategori pembayaran berlebih",
+      "payeeLabel": "Penerima pembayaran berlebih",
+      "payeePlaceholder": "Pilih penerima...",
+      "memoLabel": "Teks memo pembayaran berlebih",
+      "memoPlaceholder": "mis. pembayaran berlebih",
+      "memoHelp": "Pencocokan substring tanpa memperhatikan huruf besar/kecil terhadap memo pembayaran, memo transaksi sumbernya, atau memo split."
     }
   },
   "assetFields": {

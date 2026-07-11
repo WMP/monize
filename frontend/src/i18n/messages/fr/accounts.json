@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "Toutes les 2 semaines (accéléré)",
       "weekly": "Hebdomadaire",
       "acceleratedWeekly": "Hebdomadaire (accéléré)"
+    },
+    "overpaymentRecognition": {
+      "title": "Reconnaissance des remboursements anticipés",
+      "description": "Comment l'échéancier distingue un remboursement anticipé autonome (100 % de capital) d'une mensualité normale. Un paiement correspondant à l'un de ces critères est compté comme remboursement anticipé.",
+      "categoryLabel": "Catégorie de remboursement anticipé",
+      "payeeLabel": "Bénéficiaire du remboursement anticipé",
+      "payeePlaceholder": "Sélectionner un bénéficiaire...",
+      "memoLabel": "Texte de mémo de remboursement anticipé",
+      "memoPlaceholder": "p. ex. remboursement anticipé",
+      "memoHelp": "Correspondance de sous-chaîne insensible à la casse avec le mémo du paiement, le mémo de la transaction source ou le mémo d'une ventilation."
     }
   },
   "assetFields": {

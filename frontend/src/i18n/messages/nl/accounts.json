@@ -286,6 +286,16 @@
       "acceleratedBiweekly": "Versneld twee keer per week",
       "weekly": "Wekelijks",
       "acceleratedWeekly": "Versneld wekelijks"
+    },
+    "overpaymentRecognition": {
+      "title": "Herkenning van extra aflossing",
+      "description": "Hoe het schema een losstaande extra aflossing (100% aflossing) onderscheidt van een reguliere termijn. Een betaling die aan een van deze criteria voldoet, telt als extra aflossing.",
+      "categoryLabel": "Categorie extra aflossing",
+      "payeeLabel": "Begunstigde extra aflossing",
+      "payeePlaceholder": "Begunstigde selecteren...",
+      "memoLabel": "Notitietekst extra aflossing",
+      "memoPlaceholder": "bijv. extra aflossing",
+      "memoHelp": "Hoofdletterongevoelige subtekenreeks-overeenkomst met de notitie van de betaling, de notitie van de brontransactie of een split-notitie."
     }
   },
   "assetFields": {
