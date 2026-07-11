@@ -266,6 +266,13 @@
     "firstPaymentDate": "First Payment Date (required)",
     "paymentFromAccount": "Payment From Account (required)",
     "interestCategory": "Interest Category",
+    "interestBookingMode": {
+      "label": "How is interest recorded?",
+      "help": "Lets rate detection read your interest correctly. Auto works for most setups.",
+      "AUTO": "Automatic (recommended)",
+      "SPLIT": "Split leg of the payment",
+      "SEPARATE": "Separate expense (principal is a transfer)"
+    },
     "selectFrequency": "Select frequency...",
     "selectAccount": "Select account...",
     "selectCategory": "Select category...",

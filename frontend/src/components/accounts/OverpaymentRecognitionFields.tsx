@@ -5,8 +5,10 @@ import { useTranslations } from 'next-intl';
 import { UseFormRegister, FieldErrors } from 'react-hook-form';
 import { Input } from '@/components/ui/Input';
 import { Combobox } from '@/components/ui/Combobox';
+import { Select } from '@/components/ui/Select';
 import { Category } from '@/types/category';
 import { Payee } from '@/types/payee';
+import { InterestBookingMode, INTEREST_BOOKING_MODES } from '@/types/account';
 import { buildCategoryTree } from '@/lib/categoryUtils';
 import { payeesApi } from '@/lib/payees';
 import { createLogger } from '@/lib/logger';
@@ -18,6 +20,9 @@ interface OverpaymentRecognitionFieldsProps {
   /** Where this loan's interest is booked, so the schedule/detection find it. */
   selectedInterestCategoryId: string;
   onInterestCategoryChange: (categoryId: string) => void;
+  /** How this loan records interest, so rate detection reads it correctly. */
+  interestBookingMode: InterestBookingMode;
+  onInterestBookingModeChange: (mode: InterestBookingMode) => void;
   selectedOverpaymentCategoryId: string;
   onOverpaymentCategoryChange: (categoryId: string) => void;
   selectedOverpaymentPayeeId: string;
@@ -39,6 +44,8 @@ export function OverpaymentRecognitionFields({
   categories,
   selectedInterestCategoryId,
   onInterestCategoryChange,
+  interestBookingMode,
+  onInterestBookingModeChange,
   selectedOverpaymentCategoryId,
   onOverpaymentCategoryChange,
   selectedOverpaymentPayeeId,
@@ -112,6 +119,23 @@ export function OverpaymentRecognitionFields({
         onChange={onInterestCategoryChange}
         error={errors.interestCategoryId?.message as string | undefined}
       />
+
+      <div className="mt-3">
+        <Select
+          label={t('mortgageFields.interestBookingMode.label')}
+          value={interestBookingMode}
+          onChange={(e) =>
+            onInterestBookingModeChange(e.target.value as InterestBookingMode)
+          }
+          options={INTEREST_BOOKING_MODES.map((mode) => ({
+            value: mode,
+            label: t(`mortgageFields.interestBookingMode.${mode}` as string),
+          }))}
+        />
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          {t('mortgageFields.interestBookingMode.help')}
+        </p>
+      </div>
 
       <h4 className="mt-4 text-sm font-medium text-gray-800 dark:text-gray-200">
         {t('mortgageFields.overpaymentRecognition.title')}

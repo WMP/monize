@@ -266,6 +266,13 @@
     "firstPaymentDate": "İlk Ödeme Tarihi (zorunlu)",
     "paymentFromAccount": "Ödeme Hesabı (zorunlu)",
     "interestCategory": "Faiz Kategorisi",
+    "interestBookingMode": {
+      "label": "Faiz nasıl kaydedilir?",
+      "help": "Oran algılaması doğru okusun diye. Otomatik çoğu durumda uyar.",
+      "AUTO": "Otomatik (önerilir)",
+      "SPLIT": "Ödemenin bölünmüş kalemi",
+      "SEPARATE": "Ayrı gider (anapara bir transferdir)"
+    },
     "selectFrequency": "Sıklık seçin...",
     "selectAccount": "Hesap seçin...",
     "selectCategory": "Kategori seçin...",

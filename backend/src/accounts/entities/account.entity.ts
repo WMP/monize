@@ -33,6 +33,10 @@ export enum AccountSubType {
   INVESTMENT_BROKERAGE = "INVESTMENT_BROKERAGE",
 }
 
+/** How a loan/mortgage's interest is recorded, for rate detection. */
+export const INTEREST_BOOKING_MODES = ["AUTO", "SPLIT", "SEPARATE"] as const;
+export type InterestBookingMode = (typeof INTEREST_BOOKING_MODES)[number];
+
 const numericTransformer = {
   to: (value: number | null): number | null => value,
   from: (value: string | null): number | null =>
@@ -199,6 +203,22 @@ export class Account {
   @ManyToOne(() => Category, { nullable: true })
   @JoinColumn({ name: "interest_category_id" })
   interestCategory: Category | null;
+
+  // How the loan's interest is recorded, so rate detection reads it correctly:
+  //   'AUTO'     -- a categorized split leg of the payment when present, else a
+  //                 separate expense in the interest category (principal
+  //                 transfers are never counted as interest);
+  //   'SPLIT'    -- interest is only ever a categorized split leg of the payment;
+  //   'SEPARATE' -- interest is a standalone expense in the interest category,
+  //                 with principal booked as a transfer to the loan.
+  // Optional, per-loan; defaults to AUTO (universal).
+  @Column({
+    type: "varchar",
+    length: 16,
+    name: "interest_booking_mode",
+    default: "AUTO",
+  })
+  interestBookingMode: InterestBookingMode;
 
   // Category the user tags standalone overpayments (extra principal) with, so
   // the loan schedule can tell an overpayment apart from a regular installment

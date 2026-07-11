@@ -729,6 +729,8 @@ export class AccountsService {
         account.principalCategoryId = updateAccountDto.principalCategoryId;
       if (updateAccountDto.interestCategoryId !== undefined)
         account.interestCategoryId = updateAccountDto.interestCategoryId;
+      if (updateAccountDto.interestBookingMode !== undefined)
+        account.interestBookingMode = updateAccountDto.interestBookingMode;
       if (updateAccountDto.overpaymentCategoryId !== undefined)
         account.overpaymentCategoryId = updateAccountDto.overpaymentCategoryId;
       if (updateAccountDto.overpaymentMemo !== undefined)

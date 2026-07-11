@@ -13,7 +13,11 @@ import {
   IsIn,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { AccountType } from "../entities/account.entity";
+import {
+  AccountType,
+  INTEREST_BOOKING_MODES,
+  InterestBookingMode,
+} from "../entities/account.entity";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
 
@@ -225,6 +229,15 @@ export class CreateAccountDto {
   @IsOptional()
   @IsUUID()
   interestCategoryId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "How interest is recorded, for rate detection: AUTO (default), SPLIT (categorized split leg of the payment), or SEPARATE (standalone expense in the interest category)",
+    enum: INTEREST_BOOKING_MODES,
+  })
+  @IsOptional()
+  @IsIn(INTEREST_BOOKING_MODES)
+  interestBookingMode?: InterestBookingMode;
 
   @ApiPropertyOptional({
     description:

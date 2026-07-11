@@ -266,6 +266,13 @@
     "firstPaymentDate": "首次还款日期（必填）",
     "paymentFromAccount": "还款来源账户（必填）",
     "interestCategory": "利息科目",
+    "interestBookingMode": {
+      "label": "利息如何记账？",
+      "help": "让利率检测正确读取。多数情况用自动即可。",
+      "AUTO": "自动（推荐）",
+      "SPLIT": "付款的拆分项",
+      "SEPARATE": "单独支出（本金为转账）"
+    },
     "selectFrequency": "选择频率...",
     "selectAccount": "选择账户...",
     "selectCategory": "选择科目...",

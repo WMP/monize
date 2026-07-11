@@ -210,6 +210,22 @@ describe("RateChangeInferenceService", () => {
     expect(result.created.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("skips separate-interest pairing in SPLIT mode (interest comes only from splits)", async () => {
+    rateChangesService.verifyLoanAccount.mockResolvedValue(
+      makeAccount({ interestBookingMode: "SPLIT" }),
+    );
+    const { records, balanceMap } = generateHistory(400000, [
+      { annualRate: 5.5, payments: 24, paymentAmount: 2500 },
+    ]);
+    detector.buildPaymentRecords.mockResolvedValue(records);
+    detector.buildRunningBalanceMap.mockReturnValue(balanceMap);
+
+    const result = await service.detectAndPersist(userId, accountId);
+
+    expect(detector.pairSeparateInterest).not.toHaveBeenCalled();
+    expect(result.created.length).toBeGreaterThanOrEqual(1);
+  });
+
   it("still reports insufficient data when no interest can be recovered", async () => {
     const { records, balanceMap } = generateHistory(400000, [
       { annualRate: 5.5, payments: 24, paymentAmount: 2500 },

@@ -12,6 +12,10 @@ export type AccountType =
 
 export type AccountSubType = 'INVESTMENT_CASH' | 'INVESTMENT_BROKERAGE' | null;
 
+/** How a loan/mortgage's interest is recorded, for rate detection. */
+export type InterestBookingMode = 'AUTO' | 'SPLIT' | 'SEPARATE';
+export const INTEREST_BOOKING_MODES: InterestBookingMode[] = ['AUTO', 'SPLIT', 'SEPARATE'];
+
 export type PaymentFrequency = 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
 
 export type MortgagePaymentFrequency =
@@ -55,6 +59,10 @@ export interface Account {
   sourceAccountId: string | null;
   principalCategoryId: string | null;
   interestCategoryId: string | null;
+  // How interest is recorded, for rate detection: AUTO | SPLIT | SEPARATE.
+  // Always set by the backend (defaults to AUTO); optional here so fixtures and
+  // non-loan accounts need not specify it.
+  interestBookingMode?: InterestBookingMode;
   // Category tagging standalone overpayments (extra principal) so the loan
   // schedule can flag them as 100% principal.
   overpaymentCategoryId: string | null;
@@ -107,6 +115,7 @@ export interface CreateAccountData {
   sourceAccountId?: string;
   principalCategoryId?: string;
   interestCategoryId?: string | null;
+  interestBookingMode?: InterestBookingMode;
   overpaymentCategoryId?: string | null;
   overpaymentMemo?: string | null;
   overpaymentPayeeId?: string | null;

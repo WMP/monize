@@ -137,6 +137,7 @@ CREATE TABLE accounts (
     source_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL, -- account payments come from
     principal_category_id UUID, -- category for principal portion (FK added after categories table)
     interest_category_id UUID, -- category for interest portion (FK added after categories table)
+    interest_booking_mode VARCHAR(16) NOT NULL DEFAULT 'AUTO', -- how interest is recorded for rate detection: AUTO | SPLIT | SEPARATE
     overpayment_category_id UUID, -- category tagging standalone overpayments/extra principal (FK added after categories table)
     overpayment_memo VARCHAR(255), -- memo text marking a payment as a standalone overpayment (case-insensitive substring match)
     overpayment_payee_id UUID, -- payee whose payments count as standalone overpayments/extra principal (FK added after payees table)

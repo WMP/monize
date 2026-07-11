@@ -266,6 +266,13 @@
     "firstPaymentDate": "첫 납부일 (필수)",
     "paymentFromAccount": "납부 출금 계정 (필수)",
     "interestCategory": "이자 카테고리",
+    "interestBookingMode": {
+      "label": "이자를 어떻게 기록하나요?",
+      "help": "금리 감지가 올바르게 읽도록 합니다. 대부분 자동이면 됩니다.",
+      "AUTO": "자동(권장)",
+      "SPLIT": "결제의 분할 항목",
+      "SEPARATE": "별도 지출(원금은 이체)"
+    },
     "selectFrequency": "주기 선택...",
     "selectAccount": "계정 선택...",
     "selectCategory": "카테고리 선택...",

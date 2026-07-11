@@ -266,6 +266,13 @@
     "firstPaymentDate": "Date du premier paiement (obligatoire)",
     "paymentFromAccount": "Paiement depuis le compte (obligatoire)",
     "interestCategory": "Catégorie d'intérêts",
+    "interestBookingMode": {
+      "label": "Comment les intérêts sont-ils enregistrés ?",
+      "help": "Pour que la détection du taux les lise correctement. Auto convient le plus souvent.",
+      "AUTO": "Automatique (recommandé)",
+      "SPLIT": "Ligne fractionnée du paiement",
+      "SEPARATE": "Dépense séparée (le capital est un virement)"
+    },
     "selectFrequency": "Sélectionner la fréquence…",
     "selectAccount": "Sélectionner un compte…",
     "selectCategory": "Sélectionner une catégorie…",

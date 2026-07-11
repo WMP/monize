@@ -266,6 +266,13 @@
     "firstPaymentDate": "पहली भुगतान तिथि (आवश्यक)",
     "paymentFromAccount": "भुगतान खाता (आवश्यक)",
     "interestCategory": "ब्याज श्रेणी",
+    "interestBookingMode": {
+      "label": "ब्याज कैसे दर्ज होता है?",
+      "help": "ताकि दर पहचान सही पढ़े। ऑटो अधिकांश के लिए ठीक है।",
+      "AUTO": "स्वचालित (अनुशंसित)",
+      "SPLIT": "भुगतान का विभाजित भाग",
+      "SEPARATE": "अलग व्यय (मूलधन एक स्थानांतरण है)"
+    },
     "selectFrequency": "आवृत्ति चुनें...",
     "selectAccount": "खाता चुनें...",
     "selectCategory": "श्रेणी चुनें...",

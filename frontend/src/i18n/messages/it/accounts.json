@@ -266,6 +266,13 @@
     "firstPaymentDate": "Data primo pagamento (obbligatoria)",
     "paymentFromAccount": "Pagamento dal conto (obbligatorio)",
     "interestCategory": "Categoria interessi",
+    "interestBookingMode": {
+      "label": "Come vengono registrati gli interessi?",
+      "help": "Così il rilevamento del tasso li legge bene. Auto va nella maggior parte dei casi.",
+      "AUTO": "Automatico (consigliato)",
+      "SPLIT": "Voce divisa del pagamento",
+      "SEPARATE": "Spesa separata (il capitale è un trasferimento)"
+    },
     "selectFrequency": "Seleziona frequenza...",
     "selectAccount": "Seleziona conto...",
     "selectCategory": "Seleziona categoria...",

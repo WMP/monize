@@ -73,6 +73,7 @@ describe("NetWorthService", () => {
     principalCategory: null,
     interestCategoryId: null,
     interestCategory: null,
+    interestBookingMode: "AUTO",
     overpaymentCategoryId: null,
     overpaymentCategory: null,
     overpaymentMemo: null,

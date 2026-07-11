@@ -266,6 +266,13 @@
     "firstPaymentDate": "Ngày thanh toán đầu tiên (bắt buộc)",
     "paymentFromAccount": "Thanh toán từ tài khoản (bắt buộc)",
     "interestCategory": "Danh mục lãi suất",
+    "interestBookingMode": {
+      "label": "Lãi được ghi nhận thế nào?",
+      "help": "Để phát hiện lãi suất đọc đúng. Tự động hợp với hầu hết.",
+      "AUTO": "Tự động (khuyến nghị)",
+      "SPLIT": "Phần tách của khoản thanh toán",
+      "SEPARATE": "Chi phí riêng (gốc là chuyển khoản)"
+    },
     "selectFrequency": "Chọn tần suất...",
     "selectAccount": "Chọn tài khoản...",
     "selectCategory": "Chọn danh mục...",

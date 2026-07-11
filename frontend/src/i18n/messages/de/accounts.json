@@ -266,6 +266,13 @@
     "firstPaymentDate": "Datum der ersten Zahlung (erforderlich)",
     "paymentFromAccount": "Zahlung vom Konto (erforderlich)",
     "interestCategory": "Zinskategorie",
+    "interestBookingMode": {
+      "label": "Wie werden Zinsen erfasst?",
+      "help": "Damit die Zinserkennung korrekt liest. Automatisch passt meistens.",
+      "AUTO": "Automatisch (empfohlen)",
+      "SPLIT": "Aufgeteilter Zahlungsanteil",
+      "SEPARATE": "Separate Ausgabe (Tilgung ist eine Umbuchung)"
+    },
     "selectFrequency": "Intervall auswählen...",
     "selectAccount": "Konto auswählen...",
     "selectCategory": "Kategorie auswählen...",

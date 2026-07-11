@@ -6,7 +6,7 @@ import { UseFormRegister, UseFormSetValue, FieldErrors } from 'react-hook-form';
 import { Input } from '@/components/ui/Input';
 import { DateInput } from '@/components/ui/DateInput';
 import { Select } from '@/components/ui/Select';
-import { Account, MortgageAmortizationPreview, MortgagePaymentFrequency } from '@/types/account';
+import { Account, MortgageAmortizationPreview, MortgagePaymentFrequency, InterestBookingMode } from '@/types/account';
 import { Category } from '@/types/category';
 import { accountsApi } from '@/lib/accounts';
 import { OverpaymentRecognitionFields } from './OverpaymentRecognitionFields';
@@ -36,6 +36,8 @@ interface MortgageFieldsProps {
   isEditing: boolean;
   selectedInterestCategoryId: string;
   handleInterestCategoryChange: (categoryId: string) => void;
+  interestBookingMode: InterestBookingMode;
+  handleInterestBookingModeChange: (mode: InterestBookingMode) => void;
   selectedOverpaymentCategoryId: string;
   handleOverpaymentCategoryChange: (categoryId: string) => void;
   selectedOverpaymentPayeeId: string;
@@ -62,6 +64,8 @@ export function MortgageFields({
   isEditing,
   selectedInterestCategoryId,
   handleInterestCategoryChange,
+  interestBookingMode,
+  handleInterestBookingModeChange,
   selectedOverpaymentCategoryId,
   handleOverpaymentCategoryChange,
   selectedOverpaymentPayeeId,
@@ -420,6 +424,8 @@ export function MortgageFields({
         categories={categories}
         selectedInterestCategoryId={selectedInterestCategoryId}
         onInterestCategoryChange={handleInterestCategoryChange}
+        interestBookingMode={interestBookingMode}
+        onInterestBookingModeChange={handleInterestBookingModeChange}
         selectedOverpaymentCategoryId={selectedOverpaymentCategoryId}
         onOverpaymentCategoryChange={handleOverpaymentCategoryChange}
         selectedOverpaymentPayeeId={selectedOverpaymentPayeeId}

@@ -266,6 +266,13 @@
     "firstPaymentDate": "初回支払日（必須）",
     "paymentFromAccount": "支払い元勘定科目（必須）",
     "interestCategory": "利息カテゴリ",
+    "interestBookingMode": {
+      "label": "利息の記録方法は？",
+      "help": "金利検出が正しく読めるようにします。ほとんどは自動でOK。",
+      "AUTO": "自動（推奨）",
+      "SPLIT": "支払いの分割項目",
+      "SEPARATE": "別の支出（元本は振替）"
+    },
     "selectFrequency": "頻度を選択...",
     "selectAccount": "勘定科目を選択...",
     "selectCategory": "カテゴリを選択...",

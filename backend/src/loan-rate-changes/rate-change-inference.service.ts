@@ -95,14 +95,18 @@ export class RateChangeInferenceService {
       transactions,
     );
     const consolidated = this.detector.consolidatePaymentsByDate(rawPayments);
-    // Recover interest booked as a separate categorized transaction (not a
-    // split leg) so those payments yield a rate observation instead of being
-    // dropped as "no interest details".
-    const payments = await this.detector.pairSeparateInterest(
-      userId,
-      account,
-      consolidated,
-    );
+    // Recover interest booked as a separate categorized expense (not a split
+    // leg) so those payments yield a rate observation instead of being dropped
+    // as "no interest details". Skipped in SPLIT mode, where interest is only
+    // ever a split leg and pairing a separate expense would double-count.
+    const payments =
+      account.interestBookingMode === "SPLIT"
+        ? consolidated
+        : await this.detector.pairSeparateInterest(
+            userId,
+            account,
+            consolidated,
+          );
     const balanceMap = this.detector.buildRunningBalanceMap(
       account,
       transactions,

@@ -402,10 +402,13 @@ export class LoanPaymentDetectorService {
    * why rate detection reports "not enough payments with interest details".
    *
    * When the loan designates an interest category, we recover the interest by
-   * pairing every source-account transaction in that category to the nearest
-   * payment (within half a payment period) and summing per payment. Interest can
+   * pairing every source-account expense in that category to the nearest payment
+   * (within half a payment period) and summing per payment. Interest can
    * legitimately be spread across several transactions in one period, so summing
-   * is correct. Records that already carry split-based interest are left as-is.
+   * is correct. Transfers are excluded: a ledger that tags the principal transfer
+   * with the same category as the interest expense would otherwise fold the
+   * principal into "interest" and roughly double the implied rate. Records that
+   * already carry split-based interest are left as-is.
    *
    * Returns a new array (records are copied, not mutated).
    */
@@ -446,6 +449,11 @@ export class LoanPaymentDetectorService {
     const tolerance = this.paymentPeriodToleranceDays(payments);
     const byDate = new Map<string, number>();
     for (const tx of interestTxns) {
+      // Interest is always a plain expense; principal is a transfer to the loan.
+      // A ledger that tags the principal transfer with the same category as the
+      // interest expense (a common style) would otherwise have its principal
+      // summed into "interest" and inflate the implied rate, so skip transfers.
+      if (tx.isTransfer) continue;
       const txDate = tx.transactionDate.split("T")[0];
       const nearest = this.nearestPaymentDateKey(txDate, dateKeys, tolerance);
       if (!nearest) continue;

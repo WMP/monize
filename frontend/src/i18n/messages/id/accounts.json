@@ -266,6 +266,13 @@
     "firstPaymentDate": "Tanggal Pembayaran Pertama (wajib)",
     "paymentFromAccount": "Pembayaran Dari Akun (wajib)",
     "interestCategory": "Kategori Bunga",
+    "interestBookingMode": {
+      "label": "Bagaimana bunga dicatat?",
+      "help": "Agar deteksi suku bunga membacanya dengan benar. Otomatis cocok untuk kebanyakan.",
+      "AUTO": "Otomatis (disarankan)",
+      "SPLIT": "Bagian split dari pembayaran",
+      "SEPARATE": "Pengeluaran terpisah (pokok berupa transfer)"
+    },
     "selectFrequency": "Pilih frekuensi...",
     "selectAccount": "Pilih akun...",
     "selectCategory": "Pilih kategori...",

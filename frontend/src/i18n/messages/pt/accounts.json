@@ -266,6 +266,13 @@
     "firstPaymentDate": "Data do Primeiro Pagamento (obrigatório)",
     "paymentFromAccount": "Pagar a Partir da Conta (obrigatório)",
     "interestCategory": "Categoria de Juros",
+    "interestBookingMode": {
+      "label": "Como os juros são registados?",
+      "help": "Para a deteção de taxa os ler bem. Automático serve na maioria.",
+      "AUTO": "Automático (recomendado)",
+      "SPLIT": "Parte dividida do pagamento",
+      "SEPARATE": "Despesa separada (o capital é uma transferência)"
+    },
     "selectFrequency": "Selecionar frequência...",
     "selectAccount": "Selecionar conta...",
     "selectCategory": "Selecionar categoria...",

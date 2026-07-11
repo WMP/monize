@@ -266,6 +266,13 @@
     "firstPaymentDate": "Datum eerste betaling (vereist)",
     "paymentFromAccount": "Betaling van rekening (vereist)",
     "interestCategory": "Rentecategorie",
+    "interestBookingMode": {
+      "label": "Hoe wordt rente geboekt?",
+      "help": "Zodat rentedetectie het goed leest. Automatisch werkt meestal.",
+      "AUTO": "Automatisch (aanbevolen)",
+      "SPLIT": "Gesplitst deel van de betaling",
+      "SEPARATE": "Aparte uitgave (hoofdsom is een overboeking)"
+    },
     "selectFrequency": "Selecteer frequentie...",
     "selectAccount": "Selecteer rekening...",
     "selectCategory": "Selecteer categorie...",

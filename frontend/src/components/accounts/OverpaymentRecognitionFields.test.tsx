@@ -52,6 +52,8 @@ function renderFields(overrides = {}) {
     categories,
     selectedInterestCategoryId: '',
     onInterestCategoryChange: vi.fn(),
+    interestBookingMode: 'AUTO',
+    onInterestBookingModeChange: vi.fn(),
     selectedOverpaymentCategoryId: '',
     onOverpaymentCategoryChange: vi.fn(),
     selectedOverpaymentPayeeId: '',
@@ -91,5 +93,14 @@ describe('OverpaymentRecognitionFields', () => {
       target: { value: 'p1' },
     });
     expect(props.onOverpaymentPayeeChange).toHaveBeenCalledWith('p1');
+  });
+
+  it('reports the chosen interest booking mode', async () => {
+    const props = renderFields();
+    const { fireEvent } = await import('@testing-library/react');
+    fireEvent.change(screen.getByLabelText('How is interest recorded?'), {
+      target: { value: 'SEPARATE' },
+    });
+    expect(props.onInterestBookingModeChange).toHaveBeenCalledWith('SEPARATE');
   });
 });

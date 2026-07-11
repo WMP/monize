@@ -102,6 +102,8 @@ describe('LoanFields', () => {
     formatCurrency: mockFormatCurrency,
     selectedInterestCategoryId: '',
     handleInterestCategoryChange: vi.fn(),
+    interestBookingMode: 'AUTO' as const,
+    handleInterestBookingModeChange: vi.fn(),
     selectedOverpaymentCategoryId: '',
     handleOverpaymentCategoryChange: vi.fn(),
     selectedOverpaymentPayeeId: '',

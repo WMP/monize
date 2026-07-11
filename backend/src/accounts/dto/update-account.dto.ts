@@ -14,7 +14,11 @@ import {
   ValidateIf,
 } from "class-validator";
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { AccountType } from "../entities/account.entity";
+import {
+  AccountType,
+  INTEREST_BOOKING_MODES,
+  InterestBookingMode,
+} from "../entities/account.entity";
 import { PAYMENT_FREQUENCIES, PaymentFrequency } from "./create-account.dto";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
@@ -214,6 +218,15 @@ export class UpdateAccountDto {
   @ValidateIf((o) => o.interestCategoryId !== null)
   @IsUUID()
   interestCategoryId?: string | null;
+
+  @ApiPropertyOptional({
+    description:
+      "How interest is recorded, for rate detection: AUTO, SPLIT, or SEPARATE.",
+    enum: INTEREST_BOOKING_MODES,
+  })
+  @IsOptional()
+  @IsIn(INTEREST_BOOKING_MODES)
+  interestBookingMode?: InterestBookingMode;
 
   @ApiPropertyOptional({
     description:

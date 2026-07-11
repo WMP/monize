@@ -266,6 +266,13 @@
     "firstPaymentDate": "首次還款日期（必填）",
     "paymentFromAccount": "從科目付款（必填）",
     "interestCategory": "利息類別",
+    "interestBookingMode": {
+      "label": "利息如何記帳？",
+      "help": "讓利率偵測正確讀取。多數情況用自動即可。",
+      "AUTO": "自動（建議）",
+      "SPLIT": "付款的拆分項",
+      "SEPARATE": "單獨支出（本金為轉帳）"
+    },
     "selectFrequency": "選擇頻率...",
     "selectAccount": "選擇科目...",
     "selectCategory": "選擇類別...",

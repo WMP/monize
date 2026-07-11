@@ -6,7 +6,7 @@ import { UseFormRegister, UseFormSetValue, FieldErrors } from 'react-hook-form';
 import { DateInput } from '@/components/ui/DateInput';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Select } from '@/components/ui/Select';
-import { Account, AmortizationPreview, PaymentFrequency } from '@/types/account';
+import { Account, AmortizationPreview, PaymentFrequency, InterestBookingMode } from '@/types/account';
 import { Category } from '@/types/category';
 import { accountsApi } from '@/lib/accounts';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
@@ -32,6 +32,8 @@ interface LoanFieldsProps {
   formatCurrency: (amount: number, currency?: string) => string;
   selectedInterestCategoryId: string;
   handleInterestCategoryChange: (categoryId: string) => void;
+  interestBookingMode: InterestBookingMode;
+  handleInterestBookingModeChange: (mode: InterestBookingMode) => void;
   selectedOverpaymentCategoryId: string;
   handleOverpaymentCategoryChange: (categoryId: string) => void;
   selectedOverpaymentPayeeId: string;
@@ -54,6 +56,8 @@ export function LoanFields({
   formatCurrency,
   selectedInterestCategoryId,
   handleInterestCategoryChange,
+  interestBookingMode,
+  handleInterestBookingModeChange,
   selectedOverpaymentCategoryId,
   handleOverpaymentCategoryChange,
   selectedOverpaymentPayeeId,
@@ -158,6 +162,8 @@ export function LoanFields({
         categories={categories}
         selectedInterestCategoryId={selectedInterestCategoryId}
         onInterestCategoryChange={handleInterestCategoryChange}
+        interestBookingMode={interestBookingMode}
+        onInterestBookingModeChange={handleInterestBookingModeChange}
         selectedOverpaymentCategoryId={selectedOverpaymentCategoryId}
         onOverpaymentCategoryChange={handleOverpaymentCategoryChange}
         selectedOverpaymentPayeeId={selectedOverpaymentPayeeId}

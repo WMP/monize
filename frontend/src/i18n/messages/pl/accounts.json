@@ -266,6 +266,13 @@
     "firstPaymentDate": "Data pierwszej płatności (wymagane)",
     "paymentFromAccount": "Płatność z konta (wymagane)",
     "interestCategory": "Kategoria odsetek",
+    "interestBookingMode": {
+      "label": "Jak księgowane są odsetki?",
+      "help": "Aby wykrywanie stóp czytało je poprawnie. Automatycznie pasuje w większości.",
+      "AUTO": "Automatycznie (zalecane)",
+      "SPLIT": "Noga splitu w płatności",
+      "SEPARATE": "Osobny wydatek (kapitał to przelew)"
+    },
     "selectFrequency": "Wybierz częstotliwość...",
     "selectAccount": "Wybierz konto...",
     "selectCategory": "Wybierz kategorię...",

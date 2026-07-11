@@ -266,6 +266,13 @@
     "firstPaymentDate": "Fecha del Primer Pago (obligatoria)",
     "paymentFromAccount": "Pagar desde Cuenta (obligatorio)",
     "interestCategory": "Categoría de Interés",
+    "interestBookingMode": {
+      "label": "¿Cómo se registran los intereses?",
+      "help": "Para que la detección de tipos los lea bien. Automático sirve casi siempre.",
+      "AUTO": "Automático (recomendado)",
+      "SPLIT": "Parte dividida del pago",
+      "SEPARATE": "Gasto separado (el capital es una transferencia)"
+    },
     "selectFrequency": "Seleccionar frecuencia...",
     "selectAccount": "Seleccionar cuenta...",
     "selectCategory": "Seleccionar categoría...",
