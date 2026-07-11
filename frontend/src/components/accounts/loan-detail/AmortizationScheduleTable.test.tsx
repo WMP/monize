@@ -150,6 +150,24 @@ describe('AmortizationScheduleTable', () => {
     expect(overpaymentRow?.textContent).toContain('$1000.00');
   });
 
+  it('collapses around the present: hides the oldest, shows recent past + upcoming', () => {
+    // 12 historical (Jan-Dec 2025) + projected (from Aug 2026).
+    render(
+      <AmortizationScheduleTable
+        historyEvents={makeHistoryEvents(12)}
+        projectionRows={makeProjection().rows}
+        currencyCode="CAD"
+      />,
+    );
+
+    // Oldest historical is hidden by default; a recent paid row and the first
+    // projected row are shown.
+    expect(screen.queryByText('Jan 15, 2025')).not.toBeInTheDocument();
+    expect(screen.getByText('Dec 15, 2025')).toBeInTheDocument();
+    expect(screen.getByText('Aug 15, 2026')).toBeInTheDocument();
+    expect(screen.getByText('Projected Future Payments')).toBeInTheDocument();
+  });
+
   it('collapses to 10 rows and expands with the show-all toggle', () => {
     const projection = makeProjection();
     render(

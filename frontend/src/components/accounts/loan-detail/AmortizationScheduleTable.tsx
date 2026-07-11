@@ -11,7 +11,8 @@ import { RateCell } from './RateCell';
 import { LoanRateControls } from './LoanRateControls';
 import { LoanRateEditing } from './useLoanRateEditing';
 
-const COLLAPSED_ROW_COUNT = 10;
+const COLLAPSED_PAST_ROWS = 5;
+const COLLAPSED_FUTURE_ROWS = 5;
 
 interface AmortizationScheduleTableProps {
   historyEvents: LoanPaymentEvent[];
@@ -126,7 +127,21 @@ export function AmortizationScheduleTable({
     [historyEvents, projectionRows],
   );
 
-  const displayedRows = showAllRows ? rows : rows.slice(0, COLLAPSED_ROW_COUNT);
+  // Collapsed by default around "today": the last few paid rows and the first
+  // few projected rows, so upcoming installments are visible without expanding.
+  // When there is no projection yet, show the most recent rows instead of the
+  // oldest. "Show all" expands to the full schedule.
+  const displayedRows = useMemo(() => {
+    if (showAllRows) return rows;
+    const firstProjected = rows.findIndex((row) => row.isProjected);
+    if (firstProjected === -1) {
+      return rows.slice(-(COLLAPSED_PAST_ROWS + COLLAPSED_FUTURE_ROWS));
+    }
+    const start = Math.max(0, firstProjected - COLLAPSED_PAST_ROWS);
+    const end = Math.min(rows.length, firstProjected + COLLAPSED_FUTURE_ROWS);
+    return rows.slice(start, end);
+  }, [showAllRows, rows]);
+  const hasHiddenRows = displayedRows.length < rows.length;
   // Nr, Date, Payment, Principal, Interest, [Extra], Rate, Balance
   const columnCount = showExtraColumn ? 8 : 7;
 
@@ -272,7 +287,7 @@ export function AmortizationScheduleTable({
             </table>
           </div>
 
-          {rows.length > COLLAPSED_ROW_COUNT && (
+          {(hasHiddenRows || showAllRows) && (
             <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => setShowAllRows(!showAllRows)}
