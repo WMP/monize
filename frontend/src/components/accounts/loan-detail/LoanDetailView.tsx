@@ -19,6 +19,8 @@ import {
   buildRateTimeline,
   compareSchedules,
   generateLoanSchedule,
+  getPeriodicRate,
+  getPeriodsPerYear,
 } from '@/lib/loan-schedule';
 import type { Account } from '@/types/account';
 import type { Transaction } from '@/types/transaction';
@@ -97,9 +99,22 @@ export function LoanDetailView({
     // recorded payment change), not the original contractual paymentAmount --
     // otherwise a loan whose installment the lender lowered (PL obniżenie raty)
     // projects too high a payment and too short a remaining term.
+    const installment = deriveCurrentInstallment(history, account.paymentAmount!);
+    const seededPayment = futureTimeline.startingPaymentAmount ?? installment;
+    // A recorded payment amount (stored or from a detected rate row) can be
+    // principal-only for loans that book interest separately -- below the
+    // period's interest, so the projection never amortizes. When it does not
+    // cover the interest, fall back to the real installment (principal +
+    // interest), which always does.
+    const periodicRate = getPeriodicRate(
+      account.interestRate!,
+      getPeriodsPerYear(frequency),
+      account.isCanadianMortgage || false,
+      account.isVariableRate || false,
+    );
+    const firstPeriodInterest = history.currentBalance * periodicRate;
     const currentPayment =
-      futureTimeline.startingPaymentAmount ??
-      deriveCurrentInstallment(history, account.paymentAmount!);
+      seededPayment > firstPeriodInterest ? seededPayment : installment;
     return {
       startingBalance: history.currentBalance,
       annualRate: account.interestRate!,
