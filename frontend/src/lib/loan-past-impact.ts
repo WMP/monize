@@ -137,18 +137,20 @@ export function computePastImpact(
   );
   if (contractualPayment <= 0) return null;
 
-  // Never plot the contractual schedule past the configured repayment period,
-  // with a one-period buffer so a rounding remainder on the final payment is
-  // not clipped.
+  // The contractual schedule runs for exactly the configured repayment period.
+  const configuredTermPeriods = Math.round((configuredTermMonths * periodsPerYear) / 12);
+  // A one-period buffer so a rounding remainder on the final payment is not
+  // clipped by the length cap.
   const maxOriginalPayments = Math.min(
-    Math.round((configuredTermMonths * periodsPerYear) / 12) + Math.ceil(periodsPerYear / 12),
+    configuredTermPeriods + Math.ceil(periodsPerYear / 12),
     ORIGINAL_SCHEDULE_MAX_PAYMENTS,
   );
 
-  // Old detect runs may have written rate rows that also carry a principal-only
-  // payment (e.g. 285.25). Applied mid-schedule that payment cannot cover the
-  // interest, so a fixed-payment schedule stalls right after it. Keep the rate
-  // steps but drop their payment overrides.
+  // Keep the recorded rate steps (the real variable-rate history) but drop
+  // their payment overrides: those are often principal-only figures that would
+  // stall a fixed-payment schedule. Re-levelling (fixedEndPeriod below) then
+  // adjusts the installment on each rate change, so the schedule follows the
+  // rate history and still amortizes to zero over the term without stalling.
   const rateStepsOnly = timeline.rateChanges.map((change) => ({
     ...change,
     paymentAmount: null,
@@ -200,6 +202,7 @@ export function computePastImpact(
     isVariableRate,
     firstPaymentDate: parseIsoDate(startDate),
     rateChanges: rateStepsOnly,
+    fixedEndPeriod: configuredTermPeriods,
     maxPayments: maxOriginalPayments,
   });
 

@@ -99,6 +99,32 @@ describe('computePastImpact', () => {
     expect(impact.originalSchedule.numPayments).toBeGreaterThan(270);
   });
 
+  it('re-levels the contractual payment on a rate rise so the schedule holds its term', () => {
+    // Variable rate starting at 2% and rising to 6% mid-way (the recorded rate
+    // history). The initial payment, sized at 2%, cannot cover 6% interest --
+    // re-levelling must keep the schedule amortizing to the term, not stall.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      originalPrincipal: 200000,
+      currentBalance: -150000,
+      interestRate: 6,
+      amortizationMonths: 284,
+      paymentStartDate: '2020-01-15',
+    });
+    const history = makeHistory(account, [1000, 1000]);
+    const rateChanges = [
+      { effectiveDate: '2020-01-01', annualRate: 2 },
+      { effectiveDate: '2022-01-01', annualRate: 6, newPaymentAmount: 300 },
+    ];
+
+    const impact = computePastImpact(account, history, new Date(2025, 0, 1), rateChanges)!;
+
+    expect(impact.originalSchedule.paidOff).toBe(true);
+    expect(impact.originalSchedule.payoffDate).not.toBeNull();
+    expect(impact.originalSchedule.numPayments).toBeLessThanOrEqual(285);
+    expect(impact.originalSchedule.numPayments).toBeGreaterThan(270);
+  });
+
   it('builds the contractual schedule from the term even without a stored payment', () => {
     // The contractual payment comes from the original principal, rate, and
     // repayment period, so no stored paymentAmount is needed.

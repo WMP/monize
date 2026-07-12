@@ -99,6 +99,15 @@ export interface LoanScheduleInput {
   rateChanges?: RateChange[];
   /** Maximum projected payments; defaults to 600, clamped to 10000 */
   maxPayments?: number;
+  /**
+   * Amortize to zero over exactly this many payments, re-levelling the payment
+   * each period (so it also adjusts on every rate change). Models a
+   * variable-rate loan that holds its term by adjusting the installment when
+   * the rate moves, so a fixed payment can neither stall nor stretch the
+   * schedule. Superseded by the LOWER_INSTALLMENT overpayment mode, which
+   * derives its own fixed end from the baseline.
+   */
+  fixedEndPeriod?: number;
   /** Seed for cumulative principal (e.g. historical principal already paid) */
   initialCumulativePrincipal?: number;
   /** Seed for cumulative interest (e.g. historical interest already paid) */
@@ -337,7 +346,7 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
           overpayments: undefined,
           overpaymentMode: 'SHORTEN_TERM',
         }).numPayments
-      : null;
+      : (input.fixedEndPeriod ?? null);
 
   const periodsPerYear = getPeriodsPerYear(frequency);
 
@@ -398,6 +407,25 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
 
     const interest = balance * currentPeriodicRate;
     let principal = currentPayment - interest;
+
+    if (principal <= 0 && fixedEndPeriod !== null) {
+      // Holding a fixed term: a rate rise can push the current installment
+      // below the interest for a period. Re-level it now, at the new rate, to
+      // amortize the remaining balance over the periods left -- so the schedule
+      // adjusts on the rate change instead of stalling.
+      const remaining = fixedEndPeriod - paymentNumber;
+      if (remaining > 0) {
+        currentPayment = calculatePaymentForTerm(
+          balance,
+          currentAnnualRate,
+          remaining,
+          frequency,
+          isCanadian,
+          isVariableRate,
+        );
+        principal = currentPayment - interest;
+      }
+    }
 
     if (principal <= 0) {
       // Payment doesn't cover interest: the loan never amortizes
