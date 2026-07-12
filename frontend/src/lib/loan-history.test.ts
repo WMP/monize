@@ -630,4 +630,31 @@ describe('deriveLoanPaymentHistory with paired separate interest expenses', () =
     // Grace interest is counted in the running total.
     expect(cumulativeInterest).toBeCloseTo(388.14 + 286.49 + 335.92, 2);
   });
+
+  it('derives the observed rate from the actual days between payments', () => {
+    // A 5.5% loan: the second payment falls 31 days after the first, and its
+    // interest is exactly 31 days of 5.5% on the balance then owed. The rate
+    // must come out at ~5.5%, not the 5.6% an assumed 1/12 month would give.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      openingBalance: -200000,
+      currentBalance: -199400,
+      interestRate: 5.5,
+    });
+    const balanceBeforeSecond = 200000 - 300;
+    const secondInterest = (balanceBeforeSecond * 0.055 * 31) / 365;
+    const transactions = [
+      makeTransaction({ transactionDate: '2024-01-05', amount: 300 }),
+      makeTransaction({ transactionDate: '2024-02-05', amount: 300 }),
+    ];
+    const interestTransactions = [
+      { transactionDate: '2024-01-05', amount: -900, isTransfer: false } as Transaction,
+      { transactionDate: '2024-02-05', amount: -secondInterest, isTransfer: false } as Transaction,
+    ];
+
+    const { events } = deriveLoanPaymentHistory(account, transactions, [], interestTransactions);
+
+    expect(events[1].interest).toBeCloseTo(secondInterest, 2);
+    expect(events[1].annualRate).toBeCloseTo(5.5, 1);
+  });
 });
