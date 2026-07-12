@@ -29,6 +29,7 @@ function makeAccount(overrides: Partial<Account> = {}): Account {
     paymentFrequency: 'MONTHLY',
     paymentStartDate: '2025-01-15',
     originalPrincipal: 10000,
+    amortizationMonths: 21,
     isCanadianMortgage: false,
     isVariableRate: false,
     ...overrides,

@@ -18,7 +18,9 @@ function makeAccount(overrides: Partial<Account> = {}): Account {
     paymentFrequency: 'MONTHLY',
     paymentStartDate: '2025-01-15',
     originalPrincipal: 10000,
-    amortizationMonths: null,
+    // A repayment period is required in the UI; ~21 months amortizes the
+    // default 10k at 6% near the default 500 payment.
+    amortizationMonths: 21,
     isCanadianMortgage: false,
     isVariableRate: false,
     ...overrides,
@@ -46,10 +48,11 @@ describe('computePastImpact', () => {
 
     expect(computePastImpact(makeAccount({ interestRate: null }), history)).toBeNull();
     expect(computePastImpact(makeAccount({ paymentFrequency: null }), history)).toBeNull();
-    // With no stored payment AND no payment history, there is nothing to derive
-    // a contractual installment from.
-    const noHistory = makeHistory(account, []);
-    expect(computePastImpact(makeAccount({ paymentAmount: null }), noHistory)).toBeNull();
+    // The repayment period is required; without a configured amortization or
+    // term there is no contractual baseline to build.
+    expect(
+      computePastImpact(makeAccount({ amortizationMonths: null, termMonths: null }), history),
+    ).toBeNull();
   });
 
   it('ignores principal-only payment steps in the rate history so the schedule completes', () => {
@@ -61,6 +64,7 @@ describe('computePastImpact', () => {
       originalPrincipal: 200000,
       currentBalance: -180000,
       paymentAmount: 1200,
+      amortizationMonths: 360,
       paymentStartDate: '2020-01-15',
     });
     const history = makeHistory(makeAccount(), [1200, 1200, 1200]);
@@ -81,6 +85,7 @@ describe('computePastImpact', () => {
       currentBalance: -100000,
       interestRate: 6,
       paymentAmount: 1050,
+      amortizationMonths: null,
       termMonths: 284,
       paymentStartDate: '2020-01-15',
     });
@@ -89,33 +94,14 @@ describe('computePastImpact', () => {
     const impact = computePastImpact(account, history)!;
 
     expect(impact.originalSchedule.paidOff).toBe(true);
-    // Amortizes over ~284 payments, never the 360 default or longer.
+    // Amortizes over ~284 payments, never longer.
     expect(impact.originalSchedule.numPayments).toBeLessThanOrEqual(285);
     expect(impact.originalSchedule.numPayments).toBeGreaterThan(270);
   });
 
-  it('floors the contractual payment so it amortizes within a standard term', () => {
-    // A payment barely above the interest (sized for a much smaller, overpaid
-    // balance) would take 50+ years to clear the full original principal. The
-    // floor keeps the contractual schedule within a ~30-year term.
-    const account = makeAccount({
-      originalPrincipal: 200000,
-      currentBalance: -100000,
-      interestRate: 6,
-      paymentAmount: 1050,
-      paymentStartDate: '2020-01-15',
-    });
-    const history = makeHistory(account, [1050, 1050]);
-
-    const impact = computePastImpact(account, history)!;
-
-    expect(impact.originalSchedule.paidOff).toBe(true);
-    expect(impact.originalSchedule.numPayments).toBeLessThanOrEqual(365);
-  });
-
-  it('derives the contractual payment from history when none is stored', () => {
-    // No stored paymentAmount, but a real installment is recoverable from the
-    // payments made, so the schedules still build (instead of returning null).
+  it('builds the contractual schedule from the term even without a stored payment', () => {
+    // The contractual payment comes from the original principal, rate, and
+    // repayment period, so no stored paymentAmount is needed.
     const account = makeAccount({ paymentAmount: null });
     const history = makeHistory(makeAccount(), [450, 450, 450]);
 
@@ -241,6 +227,7 @@ describe('computePastImpact', () => {
       originalPrincipal: 200000,
       currentBalance: -40000,
       paymentAmount: 1200,
+      amortizationMonths: 360,
       paymentStartDate: '2020-01-15',
     });
     const transactions = Array.from(

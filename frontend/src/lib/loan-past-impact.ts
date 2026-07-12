@@ -88,11 +88,22 @@ export function computePastImpact(
   // actual payment when that is unset.
   const startDate = account.paymentStartDate || history.events[0]?.date || null;
 
+  // The configured repayment period. Prefer the amortization period; fall back
+  // to the term. It is required (the loan/mortgage form collects it), so
+  // without it there is no contractual baseline to compare against.
+  const configuredTermMonths =
+    account.amortizationMonths && account.amortizationMonths > 0
+      ? account.amortizationMonths
+      : account.termMonths && account.termMonths > 0
+        ? account.termMonths
+        : null;
+
   if (
     originalPrincipal <= 0 ||
     !startDate ||
     account.interestRate == null ||
-    !account.paymentFrequency
+    !account.paymentFrequency ||
+    !configuredTermMonths
   ) {
     return null;
   }
@@ -108,79 +119,29 @@ export function computePastImpact(
 
   const periodsPerYear = getPeriodsPerYear(frequency);
 
-  // The borrower's real installment (principal + interest) from history. The
-  // stored paymentAmount is often principal-only for separately-booked interest
-  // (and can be a stale detected value) and then cannot amortize the balance,
-  // which left both schedules non-amortizing -- reporting "unknown" payoffs and
-  // near-zero saved interest. Where a stored/contractual payment does cover the
-  // period's interest it is kept (it is the true contractual installment);
-  // otherwise fall back to the derived one, which always amortizes.
+  // The borrower's real installment (principal + interest) from history, used
+  // to seed the forward projection when the stored payment is principal-only.
   const installment = deriveCurrentInstallment(history, account.paymentAmount ?? 0);
   const amortizes = (payment: number, balance: number, annualRate: number) =>
     payment > balance * getPeriodicRate(annualRate, periodsPerYear, isCanadian, isVariableRate);
 
-  // The configured repayment period bounds the whole schedule: the loan cannot
-  // run past it. Prefer the amortization period; fall back to the term. Only
-  // when neither is set do we assume a 30-year default.
-  const configuredTermMonths =
-    account.amortizationMonths && account.amortizationMonths > 0
-      ? account.amortizationMonths
-      : account.termMonths && account.termMonths > 0
-        ? account.termMonths
-        : null;
-  const DEFAULT_TERM_MONTHS = 360;
-
-  let contractualPayment: number;
-  if (configuredTermMonths) {
-    // The original contractual payment is the PMT for the original principal at
-    // the origination rate over the configured repayment period.
-    contractualPayment = calculateMortgagePaymentAmount(
-      originalPrincipal,
-      timeline.startingAnnualRate,
-      configuredTermMonths,
-      frequency,
-      isCanadian,
-      isVariableRate,
-    );
-  } else {
-    // No configured term: start from the recorded payment, or the real
-    // installment when the recorded value is principal-only and cannot
-    // amortize, floored at the payment that amortizes the original principal
-    // over a 30-year default at the current rate. The current installment is
-    // sized for today's (overpaid, much smaller) balance, so on the full
-    // original principal it barely covers interest and would stretch the
-    // schedule for decades past the real payoff.
-    const seededContractual = timeline.startingPaymentAmount ?? account.paymentAmount ?? 0;
-    const recordedContractual = amortizes(
-      seededContractual,
-      originalPrincipal,
-      timeline.startingAnnualRate,
-    )
-      ? seededContractual
-      : installment;
-    const flooredPayment =
-      account.interestRate != null
-        ? calculateMortgagePaymentAmount(
-            originalPrincipal,
-            account.interestRate,
-            DEFAULT_TERM_MONTHS,
-            frequency,
-            isCanadian,
-            isVariableRate,
-          )
-        : 0;
-    // Only floor when there is a real base payment to begin with; with neither
-    // a recorded payment nor a usable history there is nothing to build from.
-    contractualPayment = recordedContractual > 0 ? Math.max(recordedContractual, flooredPayment) : 0;
-  }
+  // The original contractual payment is the PMT for the original principal at
+  // the origination rate over the configured repayment period.
+  const contractualPayment = calculateMortgagePaymentAmount(
+    originalPrincipal,
+    timeline.startingAnnualRate,
+    configuredTermMonths,
+    frequency,
+    isCanadian,
+    isVariableRate,
+  );
   if (contractualPayment <= 0) return null;
 
-  // Never plot the contractual schedule past the configured repayment period
-  // (or the 30-year default), with a one-period buffer so a rounding remainder
-  // on the final payment is not clipped.
+  // Never plot the contractual schedule past the configured repayment period,
+  // with a one-period buffer so a rounding remainder on the final payment is
+  // not clipped.
   const maxOriginalPayments = Math.min(
-    Math.round(((configuredTermMonths ?? DEFAULT_TERM_MONTHS) * periodsPerYear) / 12) +
-      Math.ceil(periodsPerYear / 12),
+    Math.round((configuredTermMonths * periodsPerYear) / 12) + Math.ceil(periodsPerYear / 12),
     ORIGINAL_SCHEDULE_MAX_PAYMENTS,
   );
 
