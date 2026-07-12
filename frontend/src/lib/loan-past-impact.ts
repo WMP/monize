@@ -119,22 +119,37 @@ export function computePastImpact(
   const amortizes = (payment: number, balance: number, annualRate: number) =>
     payment > balance * getPeriodicRate(annualRate, periodsPerYear, isCanadian, isVariableRate);
 
+  // The configured repayment period bounds the whole schedule: the loan cannot
+  // run past it. Prefer the amortization period; fall back to the term. Only
+  // when neither is set do we assume a 30-year default.
+  const configuredTermMonths =
+    account.amortizationMonths && account.amortizationMonths > 0
+      ? account.amortizationMonths
+      : account.termMonths && account.termMonths > 0
+        ? account.termMonths
+        : null;
+  const DEFAULT_TERM_MONTHS = 360;
+
   let contractualPayment: number;
-  if (account.accountType === 'MORTGAGE' && account.amortizationMonths) {
-    // A mortgage with a known amortization period: the original contractual
-    // payment is the PMT for the original principal at the origination rate
-    // over that period.
+  if (configuredTermMonths) {
+    // The original contractual payment is the PMT for the original principal at
+    // the origination rate over the configured repayment period.
     contractualPayment = calculateMortgagePaymentAmount(
       originalPrincipal,
       timeline.startingAnnualRate,
-      account.amortizationMonths,
+      configuredTermMonths,
       frequency,
       isCanadian,
       isVariableRate,
     );
   } else {
-    // Otherwise start from the recorded payment, or the real installment when
-    // the recorded value is principal-only and cannot amortize.
+    // No configured term: start from the recorded payment, or the real
+    // installment when the recorded value is principal-only and cannot
+    // amortize, floored at the payment that amortizes the original principal
+    // over a 30-year default at the current rate. The current installment is
+    // sized for today's (overpaid, much smaller) balance, so on the full
+    // original principal it barely covers interest and would stretch the
+    // schedule for decades past the real payoff.
     const seededContractual = timeline.startingPaymentAmount ?? account.paymentAmount ?? 0;
     const recordedContractual = amortizes(
       seededContractual,
@@ -143,17 +158,12 @@ export function computePastImpact(
     )
       ? seededContractual
       : installment;
-    // Floor it at the payment that amortizes the *original* principal over a
-    // 30-year term at the current rate. The current installment is sized for
-    // today's (overpaid, much smaller) balance, so on the full original
-    // principal it barely covers interest and stretches the schedule for
-    // decades past the real payoff.
     const flooredPayment =
       account.interestRate != null
         ? calculateMortgagePaymentAmount(
             originalPrincipal,
             account.interestRate,
-            360,
+            DEFAULT_TERM_MONTHS,
             frequency,
             isCanadian,
             isVariableRate,
@@ -164,6 +174,15 @@ export function computePastImpact(
     contractualPayment = recordedContractual > 0 ? Math.max(recordedContractual, flooredPayment) : 0;
   }
   if (contractualPayment <= 0) return null;
+
+  // Never plot the contractual schedule past the configured repayment period
+  // (or the 30-year default), with a one-period buffer so a rounding remainder
+  // on the final payment is not clipped.
+  const maxOriginalPayments = Math.min(
+    Math.round(((configuredTermMonths ?? DEFAULT_TERM_MONTHS) * periodsPerYear) / 12) +
+      Math.ceil(periodsPerYear / 12),
+    ORIGINAL_SCHEDULE_MAX_PAYMENTS,
+  );
 
   // Old detect runs may have written rate rows that also carry a principal-only
   // payment (e.g. 285.25). Applied mid-schedule that payment cannot cover the
@@ -220,7 +239,7 @@ export function computePastImpact(
     isVariableRate,
     firstPaymentDate: parseIsoDate(startDate),
     rateChanges: rateStepsOnly,
-    maxPayments: ORIGINAL_SCHEDULE_MAX_PAYMENTS,
+    maxPayments: maxOriginalPayments,
   });
 
   const projectedRemainingInterest = currentProjection?.totalInterest ?? 0;

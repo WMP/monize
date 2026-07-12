@@ -73,6 +73,27 @@ describe('computePastImpact', () => {
     expect(impact!.originalPayoffDate).not.toBeNull();
   });
 
+  it('bounds the contractual schedule by the configured repayment term', () => {
+    // 23y8m = 284 months in `termMonths` (no amortizationMonths). Even with a
+    // too-small stored payment, the schedule must not run past the term.
+    const account = makeAccount({
+      originalPrincipal: 200000,
+      currentBalance: -100000,
+      interestRate: 6,
+      paymentAmount: 1050,
+      termMonths: 284,
+      paymentStartDate: '2020-01-15',
+    });
+    const history = makeHistory(account, [1050, 1050]);
+
+    const impact = computePastImpact(account, history)!;
+
+    expect(impact.originalSchedule.paidOff).toBe(true);
+    // Amortizes over ~284 payments, never the 360 default or longer.
+    expect(impact.originalSchedule.numPayments).toBeLessThanOrEqual(285);
+    expect(impact.originalSchedule.numPayments).toBeGreaterThan(270);
+  });
+
   it('floors the contractual payment so it amortizes within a standard term', () => {
     // A payment barely above the interest (sized for a much smaller, overpaid
     // balance) would take 50+ years to clear the full original principal. The
