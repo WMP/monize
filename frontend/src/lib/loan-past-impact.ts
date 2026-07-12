@@ -139,6 +139,16 @@ export function computePastImpact(
         : installment;
   if (contractualPayment <= 0) return null;
 
+  // Old detect runs may have written rate rows that also carry a principal-only
+  // payment (e.g. 285.25). Applied mid-schedule that payment cannot cover the
+  // interest, so the contractual schedule stalls right after it and the payoff
+  // reads "unknown". Keep the rate steps but drop their payment overrides, so
+  // the contractual installment holds for the whole schedule.
+  const rateStepsOnly = timeline.rateChanges.map((change) => ({
+    ...change,
+    paymentAmount: null,
+  }));
+
   const originalSchedule = generateLoanSchedule({
     startingBalance: originalPrincipal,
     annualRate: timeline.startingAnnualRate,
@@ -147,7 +157,7 @@ export function computePastImpact(
     isCanadian,
     isVariableRate,
     firstPaymentDate: parseIsoDate(startDate),
-    rateChanges: timeline.rateChanges,
+    rateChanges: rateStepsOnly,
     maxPayments: ORIGINAL_SCHEDULE_MAX_PAYMENTS,
   });
 
@@ -179,7 +189,11 @@ export function computePastImpact(
         isCanadian,
         isVariableRate,
         firstPaymentDate: advanceDate(asOf, frequency),
-        rateChanges: futureTimeline.rateChanges,
+        // Drop any principal-only payment overrides here too (see above).
+        rateChanges: futureTimeline.rateChanges.map((change) => ({
+          ...change,
+          paymentAmount: null,
+        })),
       })
     : null;
 

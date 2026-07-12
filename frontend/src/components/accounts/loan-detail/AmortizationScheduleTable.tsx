@@ -215,6 +215,9 @@ export function AmortizationScheduleTable({
 
   const headerClass =
     'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider';
+  // Faint arithmetic operators spelling out Payment = Interest + Principal
+  // (+ Extra) across the money column headers.
+  const operatorClass = 'text-gray-300 dark:text-gray-600 font-normal';
 
   return (
     <div id="rate-history" className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden scroll-mt-4">
@@ -246,10 +249,19 @@ export function AmortizationScheduleTable({
                   <th className={`${headerClass} text-left`}>{t('loanDetail.schedule.colNumber')}</th>
                   <th className={`${headerClass} text-left`}>{t('loanDetail.schedule.colDate')}</th>
                   <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colPayment')}</th>
-                  <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colPrincipal')}</th>
-                  <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colInterest')}</th>
+                  <th className={`${headerClass} text-right`}>
+                    <span className={operatorClass}>= </span>
+                    {t('loanDetail.schedule.colInterest')}
+                  </th>
+                  <th className={`${headerClass} text-right`}>
+                    <span className={operatorClass}>+ </span>
+                    {t('loanDetail.schedule.colPrincipal')}
+                  </th>
                   {showExtraColumn && (
-                    <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colExtra')}</th>
+                    <th className={`${headerClass} text-right`}>
+                      <span className={operatorClass}>+ </span>
+                      {t('loanDetail.schedule.colExtra')}
+                    </th>
                   )}
                   <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colRate')}</th>
                   <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colBalance')}</th>
@@ -271,11 +283,11 @@ export function AmortizationScheduleTable({
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
                             {formatCurrency(paidTotals.payment, currencyCode)}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600 dark:text-green-400">
-                            {formatCurrency(paidTotals.principal, currencyCode)}
-                          </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-orange-600 dark:text-orange-400">
                             {formatCurrency(paidTotals.interest, currencyCode)}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600 dark:text-green-400">
+                            {formatCurrency(paidTotals.principal, currencyCode)}
                           </td>
                           {showExtraColumn && (
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-blue-600 dark:text-blue-400">
@@ -350,11 +362,11 @@ export function AmortizationScheduleTable({
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
                     {formatCurrency(totals.payment, currencyCode)}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600 dark:text-green-400">
-                    {formatCurrency(totals.principal, currencyCode)}
-                  </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-orange-600 dark:text-orange-400">
                     {formatCurrency(totals.interest, currencyCode)}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600 dark:text-green-400">
+                    {formatCurrency(totals.principal, currencyCode)}
                   </td>
                   {showExtraColumn && (
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-blue-600 dark:text-blue-400">

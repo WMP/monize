@@ -134,11 +134,11 @@ export function ScheduleTableRow({
       <td className={`${cellClass} text-right text-gray-900 dark:text-gray-100`}>
         {formatCurrency(row.payment, currencyCode)}
       </td>
-      <td className={`${cellClass} text-right text-green-600 dark:text-green-400`}>
-        {formatCurrency(row.principal, currencyCode)}
-      </td>
       <td className={`${cellClass} text-right text-orange-600 dark:text-orange-400`}>
         {formatCurrency(row.interest, currencyCode)}
+      </td>
+      <td className={`${cellClass} text-right text-green-600 dark:text-green-400`}>
+        {formatCurrency(row.principal, currencyCode)}
       </td>
       {showExtraColumn && (
         <td className={`${cellClass} text-right text-blue-600 dark:text-blue-400`}>

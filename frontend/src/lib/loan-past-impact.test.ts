@@ -52,6 +52,27 @@ describe('computePastImpact', () => {
     expect(computePastImpact(makeAccount({ paymentAmount: null }), noHistory)).toBeNull();
   });
 
+  it('ignores principal-only payment steps in the rate history so the schedule completes', () => {
+    // An old detect run left a rate row that also set a principal-only payment
+    // (285). Applied mid-schedule it cannot cover interest and would stall the
+    // contractual schedule -- the payoff must still be reached by keeping the
+    // contractual installment.
+    const account = makeAccount({
+      originalPrincipal: 200000,
+      currentBalance: -180000,
+      paymentAmount: 1200,
+      paymentStartDate: '2020-01-15',
+    });
+    const history = makeHistory(makeAccount(), [1200, 1200, 1200]);
+    const rateChanges = [{ effectiveDate: '2020-06-01', annualRate: 6, newPaymentAmount: 285 }];
+
+    const impact = computePastImpact(account, history, new Date(2025, 0, 1), rateChanges);
+
+    expect(impact).not.toBeNull();
+    expect(impact!.originalSchedule.payoffDate).not.toBeNull();
+    expect(impact!.originalPayoffDate).not.toBeNull();
+  });
+
   it('derives the contractual payment from history when none is stored', () => {
     // No stored paymentAmount, but a real installment is recoverable from the
     // payments made, so the schedules still build (instead of returning null).
