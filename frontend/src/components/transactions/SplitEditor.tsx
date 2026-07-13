@@ -554,13 +554,13 @@ export function SplitEditor({
                   {t('splitEditor.columns.type')}
                 </th>
               )}
-              <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: supportsTransfers ? '34%' : '45%' }}>
+              <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: supportsTransfers ? '32%' : '45%' }}>
                 {supportsTransfers ? t('splitEditor.columns.categoryAccount') : t('splitEditor.columns.category')}
               </th>
-              <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: supportsTransfers ? '15%' : '13%' }}>
+              <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: supportsTransfers ? '20%' : '13%' }}>
                 {t('splitEditor.columns.amount')}
               </th>
-              <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: '20%' }}>
+              <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase" style={{ width: '17%' }}>
                 {t('splitEditor.columns.memo')}
               </th>
               {tagOptions.length > 0 && (
