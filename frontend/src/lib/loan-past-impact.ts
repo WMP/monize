@@ -7,6 +7,7 @@ import {
   buildRateTimeline,
   calculateMortgagePaymentAmount,
   generateLoanSchedule,
+  getPeriodicRate,
   getPeriodsPerYear,
 } from '@/lib/loan-schedule';
 
@@ -119,40 +120,78 @@ export function computePastImpact(
   const periodsPerYear = getPeriodsPerYear(frequency);
 
   // --- The contractual "if I never overpaid" schedule ---
-  // Payment: PMT for the original principal at the origination rate over the
-  // configured term. It seeds the first row; fixedEndPeriod then re-levels the
-  // installment on each recorded rate change so the schedule follows the real
-  // rate history and still amortizes to zero exactly at the term.
-  const contractualPayment = calculateMortgagePaymentAmount(
-    originalPrincipal,
-    timeline.startingAnnualRate,
-    configuredTermMonths,
-    frequency,
-    isCanadian,
-    isVariableRate,
-  );
+  // Prefer the loan's real origination installment -- the payment recorded on
+  // the initial rate row, sized for the full original principal -- and follow
+  // its recorded steps. This plots the loan's true payoff, so a loan paid down
+  // faster than its nominal amortization (a large regular payment on a
+  // long-amortization mortgage) is not stretched onto the theoretical
+  // minimum-payment curve that a fresh PMT over the configured term would draw.
+  //
+  // Fall back to that PMT only when no usable installment is recorded: interest
+  // booked separately leaves the rate rows' payment null (recording it would
+  // capture a principal-only figure), and a recorded payment that cannot even
+  // cover the first period's interest is unusable. The fallback path is
+  // unchanged from before, so loans that already relied on it are unaffected.
+  const configuredTermPeriods = Math.round((configuredTermMonths * periodsPerYear) / 12);
+  const firstPeriodInterest =
+    originalPrincipal *
+    getPeriodicRate(timeline.startingAnnualRate, periodsPerYear, isCanadian, isVariableRate);
+  const recordedInstallment = timeline.startingPaymentAmount;
+  const useRecordedInstallment =
+    recordedInstallment != null && recordedInstallment > firstPeriodInterest;
+
+  const contractualPayment = useRecordedInstallment
+    ? recordedInstallment
+    : calculateMortgagePaymentAmount(
+        originalPrincipal,
+        timeline.startingAnnualRate,
+        configuredTermMonths,
+        frequency,
+        isCanadian,
+        isVariableRate,
+      );
   if (contractualPayment <= 0) return null;
 
-  const configuredTermPeriods = Math.round((configuredTermMonths * periodsPerYear) / 12);
-  const originalSchedule = generateLoanSchedule({
-    startingBalance: originalPrincipal,
-    annualRate: timeline.startingAnnualRate,
-    paymentAmount: contractualPayment,
-    frequency,
-    isCanadian,
-    isVariableRate,
-    firstPaymentDate: parseIsoDate(startDate),
-    // Keep the recorded rate steps but drop their payment overrides (often
-    // principal-only figures that would stall a fixed payment); re-levelling
-    // sets the installment instead.
-    rateChanges: timeline.rateChanges.map((change) => ({ ...change, paymentAmount: null })),
-    fixedEndPeriod: configuredTermPeriods,
-    // One-period buffer so a rounding remainder on the final payment is kept.
-    maxPayments: Math.min(
-      configuredTermPeriods + Math.ceil(periodsPerYear / 12),
-      ORIGINAL_SCHEDULE_MAX_PAYMENTS,
-    ),
-  });
+  const originalSchedule = generateLoanSchedule(
+    useRecordedInstallment
+      ? {
+          startingBalance: originalPrincipal,
+          annualRate: timeline.startingAnnualRate,
+          paymentAmount: contractualPayment,
+          frequency,
+          isCanadian,
+          isVariableRate,
+          firstPaymentDate: parseIsoDate(startDate),
+          // Keep the timeline's payment steps so the contractual installment
+          // tracks the lender period to period (e.g. a variable rate that
+          // re-levelled the payment upward), then run to the loan's own payoff.
+          rateChanges: timeline.rateChanges,
+          // Re-level toward the configured term ONLY if a rate rise would
+          // otherwise stall the payment; unlike fixedEndPeriod this never forces
+          // payoff at the term, so a faster real schedule keeps its earlier one.
+          rescueEndPeriod: configuredTermPeriods,
+          maxPayments: ORIGINAL_SCHEDULE_MAX_PAYMENTS,
+        }
+      : {
+          startingBalance: originalPrincipal,
+          annualRate: timeline.startingAnnualRate,
+          paymentAmount: contractualPayment,
+          frequency,
+          isCanadian,
+          isVariableRate,
+          firstPaymentDate: parseIsoDate(startDate),
+          // Keep the recorded rate steps but drop their payment overrides (often
+          // principal-only figures that would stall a fixed payment);
+          // re-levelling sets the installment instead.
+          rateChanges: timeline.rateChanges.map((change) => ({ ...change, paymentAmount: null })),
+          fixedEndPeriod: configuredTermPeriods,
+          // One-period buffer so a rounding remainder on the final payment is kept.
+          maxPayments: Math.min(
+            configuredTermPeriods + Math.ceil(periodsPerYear / 12),
+            ORIGINAL_SCHEDULE_MAX_PAYMENTS,
+          ),
+        },
+  );
 
   // --- Current payoff, from the caller's forward projection ---
   const isPaidOff = history.currentBalance <= 0.01;

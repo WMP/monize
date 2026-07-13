@@ -588,6 +588,61 @@ describe('deriveLoanPaymentHistory interest from the rate timeline', () => {
   });
 });
 
+describe('deriveLoanPaymentHistory rate column with a recorded rate history', () => {
+  it('shows the discrete timeline rate on regular rows, not the observed reconstruction', () => {
+    // With a recorded rate history the schedule's rate column must show the
+    // exact rate in effect on each date -- the clean, discrete history -- not
+    // the per-installment figure reconstructed from the interest charged, which
+    // jitters with the day count and reads as "averaged by month".
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      openingBalance: -200000,
+      currentBalance: -199100,
+      interestRate: 3.25,
+    });
+    // Payments on irregular days: the observed (interest/balance/days) rate
+    // would not land on the clean 1.75 / 2.25 / 3.25 steps.
+    const transactions = [
+      makeTransaction({ transactionDate: '2022-05-13', amount: 300 }),
+      makeTransaction({ transactionDate: '2022-06-24', amount: 300 }),
+      makeTransaction({ transactionDate: '2022-08-05', amount: 300 }),
+    ];
+    const rateChanges = [
+      { effectiveDate: '2022-05-13', annualRate: 1.75 },
+      { effectiveDate: '2022-06-24', annualRate: 2.25 },
+      { effectiveDate: '2022-08-05', annualRate: 3.25 },
+    ];
+
+    const { events } = deriveLoanPaymentHistory(account, transactions, rateChanges);
+
+    expect(events[0].annualRate).toBe(1.75);
+    expect(events[1].annualRate).toBe(2.25);
+    expect(events[2].annualRate).toBe(3.25);
+  });
+
+  it('shows no rate on an overpayment row even with a recorded rate history', () => {
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      openingBalance: -200000,
+      currentBalance: -196700,
+      interestRate: 5.5,
+      overpaymentCategoryId: 'cat-over',
+    });
+    const transactions = [
+      makeTransaction({ transactionDate: '2024-01-05', amount: 300 }),
+      makeTransaction({ transactionDate: '2024-01-20', amount: 3000, categoryId: 'cat-over' }),
+    ];
+    const rateChanges = [{ effectiveDate: '2024-01-01', annualRate: 5.5 }];
+
+    const { events } = deriveLoanPaymentHistory(account, transactions, rateChanges);
+
+    const overpayment = events.find((e) => e.type === 'OVERPAYMENT');
+    const regular = events.find((e) => e.type === 'REGULAR');
+    expect(overpayment?.annualRate).toBeNull();
+    expect(regular?.annualRate).toBe(5.5);
+  });
+});
+
 describe('deriveLoanPaymentHistory with paired separate interest expenses', () => {
   it('uses the actual interest expense per row and shows overpayment interest', () => {
     const account = makeAccount({

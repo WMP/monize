@@ -119,6 +119,14 @@ export interface LoanScheduleInput {
    * derives its own fixed end from the baseline.
    */
   fixedEndPeriod?: number;
+  /**
+   * Term (in periods) to re-level the installment toward ONLY when a rate rise
+   * would push the current payment below the period's interest (a stall).
+   * Unlike `fixedEndPeriod` it does not re-level every period, so a schedule can
+   * follow its real recorded payment amounts and still be rescued from a stall
+   * instead of stopping. Superseded by `fixedEndPeriod` (which already rescues).
+   */
+  rescueEndPeriod?: number;
   /** Seed for cumulative principal (e.g. historical principal already paid) */
   initialCumulativePrincipal?: number;
   /** Seed for cumulative interest (e.g. historical interest already paid) */
@@ -367,7 +375,10 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
       ? generateLoanSchedule({ ...input, overpayments: undefined }).numPayments
       : null;
   // Term to re-level toward if a rate rise would otherwise stall the payment.
-  const rescueEnd = reLevelEveryPeriod ?? lowerEnd;
+  // An explicit `rescueEndPeriod` supplies this rescue without the every-period
+  // re-levelling of `fixedEndPeriod`, so a contractual schedule keeps following
+  // its real recorded payments and only re-levels to avoid a stall.
+  const rescueEnd = reLevelEveryPeriod ?? input.rescueEndPeriod ?? lowerEnd;
 
   const periodsPerYear = getPeriodsPerYear(frequency);
 

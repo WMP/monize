@@ -53,13 +53,13 @@ export interface LoanPaymentEvent {
    */
   interestRecorded: boolean;
   /**
-   * The annual interest rate (percentage) observed for this installment,
-   * inferred from the interest actually charged: `interest / balanceBefore x
-   * periodsPerYear`. Null for overpayments and rows with no interest or no
-   * outstanding balance. This is the real rate that produced the row's
-   * interest, so it always matches the lender without any detection step.
-   * Always populated by `deriveLoanPaymentHistory`; optional only so test
-   * fixtures that build events by hand need not supply it.
+   * The annual interest rate (percentage) for this installment. When the loan
+   * has a recorded rate history it is the exact rate in effect on this row's
+   * date (the clean, discrete history); with no rate history it falls back to
+   * the rate reconstructed from the interest charged (`interest /
+   * balanceBefore x periodsPerYear`). Null for overpayments. Always populated
+   * by `deriveLoanPaymentHistory`; optional only so test fixtures that build
+   * events by hand need not supply it.
    */
   annualRate?: number | null;
 }
@@ -639,9 +639,13 @@ function nearestDateKey(
 const FULL_PERIOD_INTEREST_RATIO = 0.5;
 
 /**
- * Fill each event's observed annual rate: the interest charged, annualized over
- * the actual days since interest was last settled (`interest / balanceBefore x
- * 365 / days`). The period runs from the previous *interest-bearing* event, not
+ * Fill each event's annual rate. When the loan has a recorded rate history
+ * (`rateChanges`), each regular row shows the exact rate in effect on its date
+ * from that history and overpayments show none -- this is the primary path.
+ *
+ * Only when no rate history is recorded does the reconstruction below run: the
+ * interest charged, annualized over the actual days since interest was last
+ * settled (`interest / balanceBefore x 365 / days`). The period runs from the previous *interest-bearing* event, not
  * merely the previous row: a pure-principal overpayment (no interest) does not
  * reset the accrual clock, so the following installment still covers the whole
  * month -- measuring from the overpayment instead would divide a full month's
@@ -668,6 +672,25 @@ function assignObservedRates(
   rateChanges: RateTimelineRow[],
   account: Account,
 ): void {
+  // When the loan has recorded rate-change rows, show the actual rate in effect
+  // on each date -- the clean, discrete rate history -- rather than a
+  // per-installment figure reconstructed from the interest charged. The
+  // reconstruction jitters with day-count and partial periods and reads as the
+  // rate being "averaged by month"; the recorded timeline is exact. An
+  // overpayment is an ad-hoc extra payment, not a scheduled installment, so it
+  // still shows no rate. The reconstruction below is kept only for loans with
+  // no rate history recorded (e.g. a variable-rate loan whose changes were
+  // never detected), where it is the sole signal of how the rate moved.
+  if (rateChanges.length > 0) {
+    for (const event of events) {
+      event.annualRate =
+        event.type === 'REGULAR'
+          ? effectiveAnnualRateOn(rateChanges, event.date, Number(account.interestRate))
+          : null;
+    }
+    return;
+  }
+
   const periodDays = 365 / periodsPerYear;
   const isCanadian = account.isCanadianMortgage || false;
   const isVariable = account.isVariableRate || false;

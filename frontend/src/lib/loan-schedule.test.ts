@@ -427,6 +427,51 @@ describe('generateLoanSchedule with rate changes', () => {
   });
 });
 
+describe('generateLoanSchedule rescueEndPeriod', () => {
+  it('re-levels toward the rescue term when a rate rise would stall the payment, instead of stopping', () => {
+    // A low fixed payment sized at 2% cannot cover the interest once the rate
+    // jumps to 12% mid-schedule. Without a rescue the schedule stalls (never
+    // paid off); rescueEndPeriod re-levels the payment to amortize the rest.
+    const stalling = baseInput({
+      startingBalance: 100000,
+      annualRate: 2,
+      paymentAmount: 500,
+      rateChanges: [{ effectiveDate: '2026-06-01', annualRate: 12 }],
+      maxPayments: 600,
+    });
+
+    expect(generateLoanSchedule(stalling).paidOff).toBe(false);
+
+    const rescued = generateLoanSchedule({ ...stalling, rescueEndPeriod: 360 });
+    expect(rescued.paidOff).toBe(true);
+    expect(rescued.payoffDate).not.toBeNull();
+  });
+
+  it('does not force payoff at the rescue term when the payment amortizes early', () => {
+    // Unlike fixedEndPeriod, rescueEndPeriod never re-levels a healthy payment:
+    // a payment that clears the loan well before the term keeps its early
+    // payoff.
+    const early = generateLoanSchedule(
+      baseInput({ startingBalance: 10000, annualRate: 6, paymentAmount: 2000, rescueEndPeriod: 360 }),
+    );
+    expect(early.paidOff).toBe(true);
+    expect(early.numPayments).toBeLessThan(12);
+
+    // fixedEndPeriod, by contrast, re-levels every period and stretches the
+    // same payment across the whole term.
+    const forced = generateLoanSchedule(
+      baseInput({
+        startingBalance: 10000,
+        annualRate: 6,
+        paymentAmount: 2000,
+        fixedEndPeriod: 360,
+        maxPayments: 600,
+      }),
+    );
+    expect(forced.numPayments).toBeGreaterThan(300);
+  });
+});
+
 describe('buildRateTimeline', () => {
   const rows = [
     { effectiveDate: '2022-01-01', annualRate: 5.5, newPaymentAmount: 2500 },

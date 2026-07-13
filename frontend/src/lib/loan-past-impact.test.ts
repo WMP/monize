@@ -125,6 +125,62 @@ describe('computePastImpact', () => {
     expect(impact.originalSchedule.numPayments).toBeGreaterThan(270);
   });
 
+  it('follows the recorded installment so a fast-paid loan is not stretched to its amortization term', () => {
+    // A 25-year (300-month) mortgage whose real regular payment -- recorded on
+    // the initial rate row (interest booked as a split leg, so the payment is
+    // the full installment) -- is far larger than the 300-month minimum, paying
+    // it off in ~5 years. The contractual "if I never overpaid" schedule must
+    // follow that recorded installment and pay off early, not draw the
+    // theoretical minimum-payment curve stretching to 300 months.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      originalPrincipal: 180000,
+      currentBalance: -120000,
+      interestRate: 1.75,
+      paymentAmount: 3200,
+      amortizationMonths: 300,
+      paymentStartDate: '2022-04-25',
+    });
+    const history = makeHistory(account, [3200, 3200, 3200]);
+    const rateChanges = [
+      { effectiveDate: '2022-04-25', annualRate: 1.75, newPaymentAmount: 3200 },
+    ];
+
+    const impact = computePastImpact(account, history, null, rateChanges)!;
+
+    expect(impact.originalSchedule.paidOff).toBe(true);
+    // ~59 monthly payments at 1.75% -- an order of magnitude below the 300-month
+    // amortization term the old PMT-over-term curve would have drawn.
+    expect(impact.originalSchedule.numPayments).toBeLessThan(80);
+    expect(impact.originalSchedule.numPayments).toBeGreaterThan(45);
+  });
+
+  it('falls back to the term when interest is booked separately (no recorded installment)', () => {
+    // The same mortgage, but interest booked separately leaves the rate rows'
+    // payment null (see rate-change inference). With no recorded installment the
+    // contractual schedule uses the PMT over the configured term, exactly as
+    // before -- so loans that relied on that path are unaffected by the
+    // recorded-installment path above.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      originalPrincipal: 180000,
+      currentBalance: -120000,
+      interestRate: 1.75,
+      amortizationMonths: 300,
+      paymentStartDate: '2022-04-25',
+    });
+    const history = makeHistory(account, [3200, 3200, 3200]);
+    const rateChanges = [
+      { effectiveDate: '2022-04-25', annualRate: 1.75, newPaymentAmount: null },
+    ];
+
+    const impact = computePastImpact(account, history, null, rateChanges)!;
+
+    expect(impact.originalSchedule.paidOff).toBe(true);
+    // Amortizes over ~300 months, not the ~59 the recorded installment gives.
+    expect(impact.originalSchedule.numPayments).toBeGreaterThan(250);
+  });
+
   it('builds the contractual schedule from the term even without a stored payment', () => {
     // The contractual payment comes from the original principal, rate, and
     // repayment period, so no stored paymentAmount is needed.
