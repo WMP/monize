@@ -594,8 +594,9 @@ export function effectiveAnnualRateOn(
  * starts at `scheduleStartIso`: the rate in effect at the start is the
  * latest row on or before that date (before the earliest row, the earliest
  * row's rate applies; with no rows, the fallback), the payment in effect is
- * the latest non-null payment on or before the start, and the remaining
- * rows become steps for generateLoanSchedule.
+ * the latest non-null payment on or before the start (before the earliest
+ * row, that row's payment applies -- the origination installment), and the
+ * remaining rows become steps for generateLoanSchedule.
  */
 export function buildRateTimeline(
   rows: RateTimelineRow[],
@@ -614,9 +615,16 @@ export function buildRateTimeline(
     scheduleStartIso,
     fallbackAnnualRate,
   );
+  // Mirror the rate's "before the earliest row, the earliest row applies"
+  // fallback for the payment: a schedule starting shortly before the first
+  // recorded row (payment_start_date precedes the first installment, which is
+  // where detection dates the initial row) still starts at the origination
+  // installment that row records. Only the earliest row is consulted -- later
+  // rows describe later rate levels and become steps anyway.
   const startingPaymentAmount =
     [...atOrBefore].reverse().find((row) => row.newPaymentAmount != null)
-      ?.newPaymentAmount ?? null;
+      ?.newPaymentAmount ??
+    (atOrBefore.length === 0 ? sorted[0]?.newPaymentAmount ?? null : null);
 
   const rateChanges = sorted
     .filter((row) => row.effectiveDate > scheduleStartIso)

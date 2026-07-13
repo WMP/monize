@@ -155,6 +155,57 @@ describe('computePastImpact', () => {
     expect(impact.originalSchedule.numPayments).toBeGreaterThan(45);
   });
 
+  it('starts at the initial rate row payment when paymentStartDate precedes that row', () => {
+    // Real dataset shape: paymentStartDate is the origination date (2022-04-25),
+    // but rate detection dates the initial row at the FIRST INSTALLMENT
+    // (2022-05-13). The starting payment must fall back to that row's recorded
+    // installment -- otherwise the schedule silently drops to the PMT-over-term
+    // minimum payment and stretches a ~4-year payoff to the full 25-year
+    // amortization. Variable-rate Canadian mortgage, accelerated bi-weekly,
+    // with the recorded rate/payment steps.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      originalPrincipal: 300000,
+      currentBalance: 0,
+      interestRate: 3.5,
+      paymentAmount: 0,
+      paymentFrequency: 'ACCELERATED_BIWEEKLY',
+      amortizationMonths: 300,
+      termMonths: 60,
+      paymentStartDate: '2022-04-25',
+      isCanadianMortgage: true,
+      isVariableRate: true,
+    });
+    const history = makeHistory(account, [3200, 3200, 3200]);
+    const rateChanges = [
+      { effectiveDate: '2022-05-13', annualRate: 1.75, newPaymentAmount: 3200 },
+      { effectiveDate: '2022-06-24', annualRate: 2.25, newPaymentAmount: 3233.04 },
+      { effectiveDate: '2022-08-05', annualRate: 3.25, newPaymentAmount: 3303.43 },
+      { effectiveDate: '2022-09-30', annualRate: 4.0, newPaymentAmount: 3127.05 },
+      { effectiveDate: '2022-11-11', annualRate: 4.5, newPaymentAmount: 3264.52 },
+      { effectiveDate: '2022-12-23', annualRate: 5.0, newPaymentAmount: 3300.06 },
+      { effectiveDate: '2023-02-17', annualRate: 5.25, newPaymentAmount: 3319.16 },
+      { effectiveDate: '2023-06-23', annualRate: 5.5, newPaymentAmount: 3332.64 },
+      { effectiveDate: '2023-08-04', annualRate: 5.75, newPaymentAmount: 4050.54 },
+      { effectiveDate: '2024-06-21', annualRate: 5.5, newPaymentAmount: null },
+      { effectiveDate: '2024-08-16', annualRate: 5.25, newPaymentAmount: null },
+      { effectiveDate: '2024-09-27', annualRate: 5.0, newPaymentAmount: null },
+      { effectiveDate: '2024-11-08', annualRate: 4.5, newPaymentAmount: 4228.27 },
+      { effectiveDate: '2025-01-03', annualRate: 4.0, newPaymentAmount: null },
+      { effectiveDate: '2025-02-14', annualRate: 3.75, newPaymentAmount: null },
+      { effectiveDate: '2025-03-28', annualRate: 3.5, newPaymentAmount: null },
+    ];
+
+    const impact = computePastImpact(account, history, null, rateChanges)!;
+
+    expect(impact.originalSchedule.paidOff).toBe(true);
+    // ~100 bi-weekly payments (payoff early 2026) -- an order of magnitude below
+    // the 650-period amortization the PMT fallback would stretch to (2047).
+    expect(impact.originalSchedule.numPayments).toBeLessThan(130);
+    expect(impact.originalSchedule.payoffDate! < '2027-01-01').toBe(true);
+    expect(impact.originalSchedule.payoffDate! > '2025-01-01').toBe(true);
+  });
+
   it('falls back to the term when interest is booked separately (no recorded installment)', () => {
     // The same mortgage, but interest booked separately leaves the rate rows'
     // payment null (see rate-change inference). With no recorded installment the

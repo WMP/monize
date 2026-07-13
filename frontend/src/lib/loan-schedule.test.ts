@@ -497,10 +497,26 @@ describe('buildRateTimeline', () => {
   });
 
   it('uses the earliest row before the timeline begins', () => {
+    // Both the rate AND the payment fall back to the earliest row: it is the
+    // origination snapshot. Real case: payment_start_date (2022-04-25) precedes
+    // the initial rate row, which detection dates at the first installment
+    // (2022-05-13) -- the schedule must still start at that recorded payment.
     const timeline = buildRateTimeline(rows, '2020-01-01', 99);
     expect(timeline.startingAnnualRate).toBe(5.5);
-    expect(timeline.startingPaymentAmount).toBeNull();
+    expect(timeline.startingPaymentAmount).toBe(2500);
     expect(timeline.rateChanges).toHaveLength(3);
+  });
+
+  it('keeps the pre-history payment null when the earliest row has none', () => {
+    // Interest booked separately leaves every row's payment null (recording it
+    // would capture a principal-only figure); the fallback must not invent one
+    // from a later row, whose payment belongs to a later rate level.
+    const nullFirst = [
+      { effectiveDate: '2022-01-01', annualRate: 5.5, newPaymentAmount: null },
+      { effectiveDate: '2024-03-01', annualRate: 4.9, newPaymentAmount: 2650 },
+    ];
+    const timeline = buildRateTimeline(nullFirst, '2020-01-01', 99);
+    expect(timeline.startingPaymentAmount).toBeNull();
   });
 
   it('turns the full history into steps for a schedule starting at origination', () => {
