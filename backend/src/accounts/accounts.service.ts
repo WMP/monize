@@ -729,12 +729,16 @@ export class AccountsService {
         account.principalCategoryId = updateAccountDto.principalCategoryId;
       if (updateAccountDto.interestCategoryId !== undefined)
         account.interestCategoryId = updateAccountDto.interestCategoryId;
+      if (updateAccountDto.interestBookingMode !== undefined)
+        account.interestBookingMode = updateAccountDto.interestBookingMode;
       if (updateAccountDto.overpaymentCategoryId !== undefined)
         account.overpaymentCategoryId = updateAccountDto.overpaymentCategoryId;
       if (updateAccountDto.overpaymentMemo !== undefined)
         account.overpaymentMemo = updateAccountDto.overpaymentMemo?.trim()
           ? updateAccountDto.overpaymentMemo.trim()
           : null;
+      if (updateAccountDto.overpaymentPayeeId !== undefined)
+        account.overpaymentPayeeId = updateAccountDto.overpaymentPayeeId;
       if (updateAccountDto.assetCategoryId !== undefined)
         account.assetCategoryId = updateAccountDto.assetCategoryId;
       if (updateAccountDto.dateAcquired !== undefined)

@@ -266,6 +266,23 @@
     "firstPaymentDate": "첫 납부일 (필수)",
     "paymentFromAccount": "납부 출금 계정 (필수)",
     "interestCategory": "이자 카테고리",
+    "interestBookingMode": {
+      "label": "이자를 어떻게 기록하나요?",
+      "help": "금리 감지가 올바르게 읽도록 합니다. 대부분 자동이면 됩니다.",
+      "AUTO": "자동(권장)",
+      "SPLIT": "결제의 분할 항목",
+      "SEPARATE": "별도 지출(원금은 이체)"
+    },
+    "bookingHelp": {
+      "title": "대출 상환 기록 방법",
+      "intro": "각 상환액은 재무상 의미가 다른 두 부분으로 이루어지므로 따로 기록합니다:",
+      "principalTitle": "원금은 이체입니다.",
+      "principalBody": "빌린 돈을 갚는 것으로 비용이 아닙니다. 은행 계좌에서 대출 계좌로의 이체로 범주 없이 기록하면 잔액은 줄지만 지출에는 나타나지 않습니다.",
+      "interestTitle": "이자는 지출입니다.",
+      "interestBody": "대출의 실제 비용입니다. 범주(예: \"대출\")를 지정해 지출로 기록하세요.",
+      "avoid": "피하세요: 상환액 전체를 하나의 지출로 기록하지 마세요. 비용이 부풀려지고 대출 잔액이 전혀 줄지 않습니다.",
+      "overpayments": "추가 상환은 원금과 동일하게: 대출 계좌로 이체, 범주 없음. 은행이 이자를 더했다면 그 부분을 별도 지출로 분리하세요."
+    },
     "selectFrequency": "주기 선택...",
     "selectAccount": "계정 선택...",
     "selectCategory": "카테고리 선택...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "가속 격주",
       "weekly": "매주",
       "acceleratedWeekly": "가속 매주"
+    },
+    "overpaymentRecognition": {
+      "title": "추가 상환 인식",
+      "description": "일정표가 독립적인 추가 상환(100% 원금)을 일반 할부와 구분하는 방법. 이 중 하나라도 일치하는 결제는 추가 상환으로 계산됩니다.",
+      "categoryLabel": "추가 상환 카테고리",
+      "payeeLabel": "추가 상환 수취인",
+      "payeePlaceholder": "수취인 선택...",
+      "memoLabel": "추가 상환 메모 텍스트",
+      "memoPlaceholder": "예: 추가 상환",
+      "memoHelp": "결제 메모, 원본 거래 메모 또는 분할 메모에 대한 대소문자 구분 없는 부분 문자열 일치."
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "원금",
       "colInterest": "이자",
       "colExtra": "추가 원금",
+      "colRate": "금리",
       "colBalance": "잔액",
       "projectedFuturePayments": "예상되는 향후 상환",
+      "total": "합계",
+      "paidToDate": "현재까지 납입",
+      "monthEntries": "{count, plural, other {#건}}",
+      "toggleMonth": "{month}의 납입 내역 표시 또는 숨기기",
+      "gapRow": "기록된 납입 없음 — 예상된 하나 이상의 상환이 여기에 없습니다",
       "showAll": "{count}회 상환 모두 보기",
       "showLess": "간략히 보기",
       "noPayments": "상환 내역이 없습니다",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "추가 상환"
+      "overpaymentBadge": "추가 상환",
+      "editRateLabel": "{date}의 금리 편집"
     },
     "simulator": {
       "title": "조기 상환 시뮬레이터",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "새 완납일",
+      "title": "시뮬레이션 결과",
+      "placeholder": "위에서 추가 상환을 입력하면 그 효과가 여기에 표시됩니다.",
       "timeSaved": "단축 기간",
       "monthsSaved": "{count, plural, one {#개월} other {#개월}}",
       "paymentsSaved": "{count, plural, one {# 회} other {# 회}}",
@@ -397,7 +433,8 @@
       "empty": "납부 이력이나 예측이 없습니다.",
       "seriesHistorical": "실제 잔액",
       "seriesBaseline": "현재 예측",
-      "seriesScenario": "조기 상환 시",
+      "seriesScenario": "시뮬레이션된 추가 상환 포함",
+      "seriesOriginal": "최초 일정",
       "today": "오늘",
       "scenarioNote": "조기 상환 시나리오는 시뮬레이션이며 예정된 납부를 변경하지 않습니다."
     },
@@ -464,6 +501,7 @@
       "detect": "내역에서 검출",
       "empty": "기록된 금리 변경이 없습니다. 금리가 바뀔 때 추가하거나 상환 내역에서 과거 변경을 검출하세요.",
       "rateValue": "{rate}%",
+      "chartLegend": "금리",
       "paymentSummary": "상환액: {payment}",
       "paymentUnchanged": "변경 없음",
       "badgeInferred": "추정",

@@ -6,6 +6,7 @@ import {
   calculateMortgagePaymentAmount,
   calculatePaymentForTerm,
   compareSchedules,
+  effectiveAnnualRateOn,
   generateLoanSchedule,
   getPeriodicRate,
   getPeriodsPerYear,
@@ -426,6 +427,51 @@ describe('generateLoanSchedule with rate changes', () => {
   });
 });
 
+describe('generateLoanSchedule rescueEndPeriod', () => {
+  it('re-levels toward the rescue term when a rate rise would stall the payment, instead of stopping', () => {
+    // A low fixed payment sized at 2% cannot cover the interest once the rate
+    // jumps to 12% mid-schedule. Without a rescue the schedule stalls (never
+    // paid off); rescueEndPeriod re-levels the payment to amortize the rest.
+    const stalling = baseInput({
+      startingBalance: 100000,
+      annualRate: 2,
+      paymentAmount: 500,
+      rateChanges: [{ effectiveDate: '2026-06-01', annualRate: 12 }],
+      maxPayments: 600,
+    });
+
+    expect(generateLoanSchedule(stalling).paidOff).toBe(false);
+
+    const rescued = generateLoanSchedule({ ...stalling, rescueEndPeriod: 360 });
+    expect(rescued.paidOff).toBe(true);
+    expect(rescued.payoffDate).not.toBeNull();
+  });
+
+  it('does not force payoff at the rescue term when the payment amortizes early', () => {
+    // Unlike fixedEndPeriod, rescueEndPeriod never re-levels a healthy payment:
+    // a payment that clears the loan well before the term keeps its early
+    // payoff.
+    const early = generateLoanSchedule(
+      baseInput({ startingBalance: 10000, annualRate: 6, paymentAmount: 2000, rescueEndPeriod: 360 }),
+    );
+    expect(early.paidOff).toBe(true);
+    expect(early.numPayments).toBeLessThan(12);
+
+    // fixedEndPeriod, by contrast, re-levels every period and stretches the
+    // same payment across the whole term.
+    const forced = generateLoanSchedule(
+      baseInput({
+        startingBalance: 10000,
+        annualRate: 6,
+        paymentAmount: 2000,
+        fixedEndPeriod: 360,
+        maxPayments: 600,
+      }),
+    );
+    expect(forced.numPayments).toBeGreaterThan(300);
+  });
+});
+
 describe('buildRateTimeline', () => {
   const rows = [
     { effectiveDate: '2022-01-01', annualRate: 5.5, newPaymentAmount: 2500 },
@@ -451,10 +497,26 @@ describe('buildRateTimeline', () => {
   });
 
   it('uses the earliest row before the timeline begins', () => {
+    // Both the rate AND the payment fall back to the earliest row: it is the
+    // origination snapshot. Real case: payment_start_date (2022-04-25) precedes
+    // the initial rate row, which detection dates at the first installment
+    // (2022-05-13) -- the schedule must still start at that recorded payment.
     const timeline = buildRateTimeline(rows, '2020-01-01', 99);
     expect(timeline.startingAnnualRate).toBe(5.5);
-    expect(timeline.startingPaymentAmount).toBeNull();
+    expect(timeline.startingPaymentAmount).toBe(2500);
     expect(timeline.rateChanges).toHaveLength(3);
+  });
+
+  it('keeps the pre-history payment null when the earliest row has none', () => {
+    // Interest booked separately leaves every row's payment null (recording it
+    // would capture a principal-only figure); the fallback must not invent one
+    // from a later row, whose payment belongs to a later rate level.
+    const nullFirst = [
+      { effectiveDate: '2022-01-01', annualRate: 5.5, newPaymentAmount: null },
+      { effectiveDate: '2024-03-01', annualRate: 4.9, newPaymentAmount: 2650 },
+    ];
+    const timeline = buildRateTimeline(nullFirst, '2020-01-01', 99);
+    expect(timeline.startingPaymentAmount).toBeNull();
   });
 
   it('turns the full history into steps for a schedule starting at origination', () => {
@@ -531,13 +593,11 @@ describe('generateLoanSchedule LOWER_INSTALLMENT mode', () => {
     });
     const shorten = generateLoanSchedule({
       ...base,
-      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 50000 }] },
-      overpaymentMode: 'SHORTEN_TERM',
+      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 50000, mode: 'SHORTEN_TERM' }] },
     });
     const lower = generateLoanSchedule({
       ...base,
-      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 50000 }] },
-      overpaymentMode: 'LOWER_INSTALLMENT',
+      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 50000, mode: 'LOWER_INSTALLMENT' }] },
     });
     const baseline = generateLoanSchedule(base);
 
@@ -556,11 +616,75 @@ describe('generateLoanSchedule LOWER_INSTALLMENT mode', () => {
     const baseline = generateLoanSchedule(base);
     const lower = generateLoanSchedule({
       ...base,
-      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 30000 }] },
-      overpaymentMode: 'LOWER_INSTALLMENT',
+      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 30000, mode: 'LOWER_INSTALLMENT' }] },
     });
     const comparison = compareSchedules(baseline, lower);
     expect(comparison.installmentReduction).toBeGreaterThan(0);
     expect(comparison.monthsSaved).toBe(0);
+  });
+});
+
+describe('generateLoanSchedule per-overpayment mode', () => {
+  const base = () =>
+    baseInput({ startingBalance: 275400, annualRate: 5, paymentAmount: 1610.46, maxPayments: 400 });
+
+  it("applies each lump sum's own mode", () => {
+    const baseline = generateLoanSchedule(base());
+    const shorten = generateLoanSchedule({
+      ...base(),
+      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 50000, mode: 'SHORTEN_TERM' }] },
+    });
+    const lower = generateLoanSchedule({
+      ...base(),
+      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 50000, mode: 'LOWER_INSTALLMENT' }] },
+    });
+
+    // SHORTEN keeps the installment and ends sooner.
+    expect(shorten.finalPaymentAmount).toBeCloseTo(baseline.finalPaymentAmount, 0);
+    expect(shorten.numPayments).toBeLessThan(baseline.numPayments);
+    // LOWER drops the installment and keeps ~the original term.
+    expect(lower.finalPaymentAmount).toBeLessThan(baseline.finalPaymentAmount);
+    expect(Math.abs(lower.numPayments - baseline.numPayments)).toBeLessThanOrEqual(1);
+  });
+
+  it('handles mixed modes in one plan', () => {
+    const baseline = generateLoanSchedule(base());
+    const mixed = generateLoanSchedule({
+      ...base(),
+      overpayments: {
+        lumpSums: [
+          { date: '2026-02-15', amount: 40000, mode: 'LOWER_INSTALLMENT' },
+          { date: '2027-02-15', amount: 40000, mode: 'SHORTEN_TERM' },
+        ],
+      },
+    });
+
+    expect(mixed.paidOff).toBe(true);
+    // The LOWER lump lowered the installment...
+    expect(mixed.finalPaymentAmount).toBeLessThan(baseline.finalPaymentAmount);
+    // ...and the later SHORTEN lump ended it before the original term.
+    expect(mixed.numPayments).toBeLessThan(baseline.numPayments);
+  });
+});
+
+describe('effectiveAnnualRateOn', () => {
+  const rows = [
+    { effectiveDate: '2021-07-05', annualRate: 1.95 },
+    { effectiveDate: '2022-01-05', annualRate: 4.21 },
+    { effectiveDate: '2022-04-05', annualRate: 5.5 },
+  ];
+
+  it('returns the latest rate on or before the date', () => {
+    expect(effectiveAnnualRateOn(rows, '2022-04-05', 9)).toBe(5.5);
+    expect(effectiveAnnualRateOn(rows, '2022-03-01', 9)).toBe(4.21);
+    expect(effectiveAnnualRateOn(rows, '2025-06-05', 9)).toBe(5.5);
+  });
+
+  it('uses the earliest row for a date before the first change', () => {
+    expect(effectiveAnnualRateOn(rows, '2020-01-01', 9)).toBe(1.95);
+  });
+
+  it('falls back to the account rate when there are no rows', () => {
+    expect(effectiveAnnualRateOn([], '2024-01-01', 5.5)).toBe(5.5);
   });
 });

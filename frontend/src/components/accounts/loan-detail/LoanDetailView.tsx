@@ -1,25 +1,29 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { format } from 'date-fns';
+import { useTranslations } from 'next-intl';
 import { LoanSummaryCards } from '@/components/accounts/loan-detail/LoanSummaryCards';
 import { AmortizationScheduleTable } from '@/components/accounts/loan-detail/AmortizationScheduleTable';
 import { OverpaymentSimulator } from '@/components/accounts/loan-detail/OverpaymentSimulator';
 import { PayoffComparisonChart } from '@/components/accounts/loan-detail/PayoffComparisonChart';
+import { RateHistorySidebar } from '@/components/accounts/loan-detail/RateHistorySidebar';
 import { ComparisonSummaryCards } from '@/components/accounts/loan-detail/ComparisonSummaryCards';
 import { SavedScenariosPanel } from '@/components/accounts/loan-detail/SavedScenariosPanel';
 import { PastImpactSection } from '@/components/accounts/loan-detail/PastImpactSection';
-import { RateHistoryPanel } from '@/components/accounts/loan-detail/RateHistoryPanel';
-import { deriveCurrentInstallment, deriveLoanPaymentHistory } from '@/lib/loan-history';
+import { useLoanRateEditing } from '@/components/accounts/loan-detail/useLoanRateEditing';
 import {
-  OverpaymentMode,
+  buildLoanProjectionInput,
+  deriveCurrentInstallment,
+  deriveLoanPaymentHistory,
+} from '@/lib/loan-history';
+import { computePastImpact } from '@/lib/loan-past-impact';
+import {
   OverpaymentPlan,
-  ScheduleFrequency,
-  advanceDate,
-  buildRateTimeline,
+  ScenarioComparison,
   compareSchedules,
   generateLoanSchedule,
 } from '@/lib/loan-schedule';
+import { scenarioToPlan } from '@/lib/loan-scenarios';
 import type { Account } from '@/types/account';
 import type { Transaction } from '@/types/transaction';
 import type { LoanScenario } from '@/types/loan-scenario';
@@ -30,6 +34,9 @@ interface LoanDetailViewProps {
   transactions: Transaction[];
   scenarios: LoanScenario[];
   rateChanges: LoanRateChange[];
+  /** Separate interest expenses (see fetchLoanInterestTransactions), for exact
+   *  per-row interest including overpayments. */
+  interestTransactions?: Transaction[];
   onScenariosChanged: () => void;
   onRateChangesChanged: () => void;
 }
@@ -47,45 +54,15 @@ export function LoanDetailView({
   transactions,
   scenarios,
   rateChanges,
+  interestTransactions = [],
   onScenariosChanged,
   onRateChangesChanged,
 }: LoanDetailViewProps) {
+  const t = useTranslations('accounts');
   const [plan, setPlan] = useState<OverpaymentPlan | null>(null);
-  const [mode, setMode] = useState<OverpaymentMode>('SHORTEN_TERM');
   const [loadedPlan, setLoadedPlan] = useState<OverpaymentPlan | null>(null);
   const [loadedPlanVersion, setLoadedPlanVersion] = useState(0);
-
-  // Local, immediately-reactive copies of the overpayment settings so changing
-  // either reclassifies the schedule without waiting for a full account reload.
-  // Reset when the account changes (info-from-previous-render pattern).
-  const [overpaymentCategoryId, setOverpaymentCategoryId] = useState(
-    account.overpaymentCategoryId,
-  );
-  const [overpaymentMemo, setOverpaymentMemo] = useState(
-    account.overpaymentMemo,
-  );
-  // The designated interest category feeds backend rate detection (it does not
-  // change the client schedule); keep a reactive copy so the gear menu shows the
-  // latest saved value without a full account reload.
-  const [interestCategoryId, setInterestCategoryId] = useState(
-    account.interestCategoryId,
-  );
-  const [trackedAccountId, setTrackedAccountId] = useState(account.id);
-  if (trackedAccountId !== account.id) {
-    setTrackedAccountId(account.id);
-    setOverpaymentCategoryId(account.overpaymentCategoryId);
-    setOverpaymentMemo(account.overpaymentMemo);
-    setInterestCategoryId(account.interestCategoryId);
-  }
-
-  const effectiveAccount = useMemo(
-    () =>
-      account.overpaymentCategoryId === overpaymentCategoryId &&
-      account.overpaymentMemo === overpaymentMemo
-        ? account
-        : { ...account, overpaymentCategoryId, overpaymentMemo },
-    [account, overpaymentCategoryId, overpaymentMemo],
-  );
+  const rateEditing = useLoanRateEditing(account, onRateChangesChanged);
 
   const handleLoadScenario = useCallback((loaded: OverpaymentPlan | null) => {
     setPlan(loaded);
@@ -93,43 +70,32 @@ export function LoanDetailView({
     setLoadedPlanVersion((version) => version + 1);
   }, []);
 
+  // Overpayment recognition settings (category / memo / payee) now live in the
+  // account edit form, so the `account` prop always carries the saved values.
   const history = useMemo(
-    () => deriveLoanPaymentHistory(effectiveAccount, transactions),
-    [effectiveAccount, transactions],
+    () =>
+      deriveLoanPaymentHistory(
+        account,
+        transactions,
+        rateChanges,
+        interestTransactions,
+      ),
+    [account, transactions, rateChanges, interestTransactions],
   );
 
-  const projectionInput = useMemo(() => {
-    const canProject =
-      history.currentBalance > 0.01 &&
-      account.interestRate != null &&
-      account.paymentAmount &&
-      account.paymentAmount > 0 &&
-      account.paymentFrequency;
-    if (!canProject) return null;
+  // The borrower's real current installment (principal + interest) from the
+  // payment history, shown on the summary card and used to seed the projection.
+  // The stored paymentAmount is often principal-only for separately-booked
+  // interest, so it is only a fallback when there is no usable history yet.
+  const currentInstallment = useMemo(() => {
+    const derived = deriveCurrentInstallment(history, account.paymentAmount ?? 0);
+    return derived > 0 ? derived : account.paymentAmount ?? null;
+  }, [history, account.paymentAmount]);
 
-    const frequency = account.paymentFrequency as ScheduleFrequency;
-    // The account's scalar rate is already current; only future-dated steps
-    // from the rate history bend the projection ahead.
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const futureTimeline = buildRateTimeline(rateChanges, today, account.interestRate!);
-    // Seed the projection from the installment actually in effect (the latest
-    // recorded payment change), not the original contractual paymentAmount --
-    // otherwise a loan whose installment the lender lowered (PL obniżenie raty)
-    // projects too high a payment and too short a remaining term.
-    const currentPayment =
-      futureTimeline.startingPaymentAmount ??
-      deriveCurrentInstallment(history, account.paymentAmount!);
-    return {
-      startingBalance: history.currentBalance,
-      annualRate: account.interestRate!,
-      paymentAmount: currentPayment,
-      frequency,
-      isCanadian: account.isCanadianMortgage || false,
-      isVariableRate: account.isVariableRate || false,
-      firstPaymentDate: advanceDate(new Date(), frequency),
-      rateChanges: futureTimeline.rateChanges,
-    };
-  }, [account, history, rateChanges]);
+  const projectionInput = useMemo(
+    () => buildLoanProjectionInput(account, history, rateChanges),
+    [account, history, rateChanges],
+  );
 
   const baseline = useMemo(
     () => (projectionInput ? generateLoanSchedule(projectionInput) : null),
@@ -139,13 +105,9 @@ export function LoanDetailView({
   const scenario = useMemo(
     () =>
       projectionInput && plan
-        ? generateLoanSchedule({
-            ...projectionInput,
-            overpayments: plan,
-            overpaymentMode: mode,
-          })
+        ? generateLoanSchedule({ ...projectionInput, overpayments: plan })
         : null,
-    [projectionInput, plan, mode],
+    [projectionInput, plan],
   );
 
   const comparison = useMemo(
@@ -153,69 +115,123 @@ export function LoanDetailView({
     [baseline, scenario],
   );
 
+  // Each saved scenario's outcome vs the baseline, so the list can show a
+  // comparison table without loading each one. Each scenario's overpayments
+  // carry their own mode (shorten term / lower installment).
+  const scenarioComparisons = useMemo(() => {
+    const map = new Map<string, ScenarioComparison | null>();
+    if (!projectionInput || !baseline) return map;
+    for (const saved of scenarios) {
+      const scenarioSchedule = generateLoanSchedule({
+        ...projectionInput,
+        overpayments: scenarioToPlan(saved) ?? undefined,
+      });
+      map.set(saved.id, compareSchedules(baseline, scenarioSchedule));
+    }
+    return map;
+  }, [scenarios, projectionInput, baseline]);
+
+  // Past impact of overpayments. It reuses the baseline (no-overpayment)
+  // projection as the current projection -- computed once here, not twice --
+  // and its original contractual schedule also feeds the payoff chart's
+  // contractual curve, so the views stay consistent.
+  const impact = useMemo(
+    () => computePastImpact(account, history, baseline, rateChanges),
+    [account, history, baseline, rateChanges],
+  );
+
+  // Last payment date, so the Rate History chart can hold the final recorded
+  // rate out to the end of the timeline.
+  const rateSeriesEndDate =
+    history.events.length > 0
+      ? history.events[history.events.length - 1].date.split('T')[0]
+      : null;
+
   return (
     <div className="space-y-6">
       <LoanSummaryCards
         account={account}
         startingBalance={history.startingBalance}
+        currentInstallment={currentInstallment}
         baseline={baseline}
       />
 
-      {projectionInput && (
-        <OverpaymentSimulator
-          accountId={account.id}
-          currencyCode={account.currencyCode}
-          onPlanChange={setPlan}
-          mode={mode}
-          onModeChange={setMode}
-          loadedPlan={loadedPlan}
-          loadedPlanVersion={loadedPlanVersion}
-        />
-      )}
+      <PastImpactSection account={account} impact={impact} />
 
+      {/* Active loan: simulator (70%) with the Rate History panel beside it
+          (30%), stacking on narrow screens. */}
       {projectionInput && (
-        <SavedScenariosPanel
-          accountId={account.id}
-          scenarios={scenarios}
-          activePlan={plan}
-          onLoad={handleLoadScenario}
-          onScenariosChanged={onScenariosChanged}
-        />
-      )}
-
-      {comparison && (
-        <ComparisonSummaryCards comparison={comparison} currencyCode={account.currencyCode} />
+        <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch">
+          <div className="w-full lg:w-[70%]">
+            <OverpaymentSimulator
+              accountId={account.id}
+              currencyCode={account.currencyCode}
+              onPlanChange={setPlan}
+              loadedPlan={loadedPlan}
+              loadedPlanVersion={loadedPlanVersion}
+              footer={
+                <>
+                  {comparison && (
+                    <div className="mt-6 pt-5 border-t border-gray-200 dark:border-gray-700">
+                      <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        {t('loanDetail.comparison.title')}
+                      </h4>
+                      <ComparisonSummaryCards
+                        comparison={comparison}
+                        currencyCode={account.currencyCode}
+                      />
+                    </div>
+                  )}
+                  <SavedScenariosPanel
+                    accountId={account.id}
+                    scenarios={scenarios}
+                    comparisons={scenarioComparisons}
+                    currencyCode={account.currencyCode}
+                    activePlan={plan}
+                    onLoad={handleLoadScenario}
+                    onScenariosChanged={onScenariosChanged}
+                  />
+                </>
+              }
+            />
+          </div>
+          <div className="w-full lg:w-[30%]">
+            <RateHistorySidebar
+              account={account}
+              rateChanges={rateChanges}
+              editing={rateEditing}
+              endDate={rateSeriesEndDate}
+              fillHeight
+            />
+          </div>
+        </div>
       )}
 
       <PayoffComparisonChart
         historyEvents={history.events}
         baseline={baseline}
         scenario={scenario}
-      />
-
-      <PastImpactSection
-        account={account}
-        history={history}
-        rateChanges={rateChanges}
-        overpaymentCategoryId={overpaymentCategoryId}
-        overpaymentMemo={overpaymentMemo}
-        interestCategoryId={interestCategoryId}
-        onOverpaymentCategoryChange={setOverpaymentCategoryId}
-        onOverpaymentMemoChange={setOverpaymentMemo}
-        onInterestCategoryChange={setInterestCategoryId}
+        original={impact?.originalSchedule ?? null}
       />
 
       <AmortizationScheduleTable
         historyEvents={history.events}
         projectionRows={(scenario ?? baseline)?.rows ?? []}
         currencyCode={account.currencyCode}
+        rateChanges={rateChanges}
+        editing={rateEditing}
       />
 
-      <RateHistoryPanel
-        account={account}
-        rateChanges={rateChanges}
-        onChanged={onRateChangesChanged}
-      />
+      {/* Finished loan (no simulator): the Rate History panel goes full-width
+          below the schedule. */}
+      {!projectionInput && (
+        <RateHistorySidebar
+          account={account}
+          rateChanges={rateChanges}
+          editing={rateEditing}
+          endDate={rateSeriesEndDate}
+        />
+      )}
     </div>
   );
 }

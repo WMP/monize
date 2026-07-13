@@ -266,6 +266,23 @@
     "firstPaymentDate": "首次还款日期（必填）",
     "paymentFromAccount": "还款来源账户（必填）",
     "interestCategory": "利息科目",
+    "interestBookingMode": {
+      "label": "利息如何记账？",
+      "help": "让利率检测正确读取。多数情况用自动即可。",
+      "AUTO": "自动（推荐）",
+      "SPLIT": "付款的拆分项",
+      "SEPARATE": "单独支出（本金为转账）"
+    },
+    "bookingHelp": {
+      "title": "如何记录贷款还款",
+      "intro": "每期还款包含两部分，在财务上含义不同，因此分开记录：",
+      "principalTitle": "本金是转账。",
+      "principalBody": "它偿还借来的钱，并非支出。记为从银行账户到贷款账户的转账，不设类别，这样可减少欠款但不计入支出。",
+      "interestTitle": "利息是支出。",
+      "interestBody": "这是贷款的真实成本。记为支出并设类别（例如“贷款”）。",
+      "avoid": "避免：不要把整期还款记为一笔支出。那会高估成本，且贷款账户欠款永远不减少。",
+      "overpayments": "提前还款与本金相同：转账到贷款账户，不设类别。若银行在提前还款中计入利息，把这部分单列为支出。"
+    },
     "selectFrequency": "选择频率...",
     "selectAccount": "选择账户...",
     "selectCategory": "选择科目...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "加速双周还款",
       "weekly": "每周",
       "acceleratedWeekly": "加速每周还款"
+    },
+    "overpaymentRecognition": {
+      "title": "超额还款识别",
+      "description": "计划如何将独立的超额还款（100% 本金）与常规分期区分开来。符合其中任一条件的付款计为超额还款。",
+      "categoryLabel": "超额还款类别",
+      "payeeLabel": "超额还款收款人",
+      "payeePlaceholder": "选择收款人...",
+      "memoLabel": "超额还款备注文本",
+      "memoPlaceholder": "例如 超额还款",
+      "memoHelp": "对付款备注、其来源交易备注或拆分备注进行不区分大小写的子字符串匹配。"
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "本金",
       "colInterest": "利息",
       "colExtra": "额外本金",
+      "colRate": "利率",
       "colBalance": "余额",
       "projectedFuturePayments": "预测的未来还款",
+      "total": "总计",
+      "paidToDate": "已还款",
+      "monthEntries": "{count, plural, other {# 笔}}",
+      "toggleMonth": "显示或隐藏 {month} 的还款",
+      "gapRow": "无还款记录 — 此处缺少一笔或多笔预期分期",
       "showAll": "显示全部 {count} 期还款",
       "showLess": "收起",
       "noPayments": "未找到还款记录",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "提前还款"
+      "overpaymentBadge": "提前还款",
+      "editRateLabel": "编辑 {date} 的利率"
     },
     "simulator": {
       "title": "提前还款模拟器",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "新的还清日期",
+      "title": "模拟结果",
+      "placeholder": "在上方填写额外还款即可在此查看其影响。",
       "timeSaved": "节省的时间",
       "monthsSaved": "{count, plural, one {# 个月} other {# 个月}}",
       "paymentsSaved": "{count, plural, one {# 期} other {# 期}}",
@@ -397,7 +433,8 @@
       "empty": "没有可用的还款历史或预测。",
       "seriesHistorical": "实际余额",
       "seriesBaseline": "当前预测",
-      "seriesScenario": "含提前还款",
+      "seriesScenario": "含模拟额外还款",
+      "seriesOriginal": "原始计划",
       "today": "今天",
       "scenarioNote": "提前还款方案只是模拟，不会改变您的计划还款。"
     },
@@ -464,6 +501,7 @@
       "detect": "从历史中检测",
       "empty": "尚未记录利率变更。利率变化时请添加一条，或从还款历史中检测过去的变更。",
       "rateValue": "{rate}%",
+      "chartLegend": "利率",
       "paymentSummary": "还款额：{payment}",
       "paymentUnchanged": "不变",
       "badgeInferred": "推算",

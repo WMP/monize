@@ -95,14 +95,25 @@ export class RateChangeInferenceService {
       transactions,
     );
     const consolidated = this.detector.consolidatePaymentsByDate(rawPayments);
-    // Recover interest booked as a separate categorized transaction (not a
-    // split leg) so those payments yield a rate observation instead of being
-    // dropped as "no interest details".
-    const payments = await this.detector.pairSeparateInterest(
-      userId,
-      account,
-      consolidated,
-    );
+    const hadSplitInterest = consolidated.some((p) => p.interestAmount != null);
+    // Recover interest booked as a separate categorized expense (not a split
+    // leg) so those payments yield a rate observation instead of being dropped
+    // as "no interest details". Skipped in SPLIT mode, where interest is only
+    // ever a split leg and pairing a separate expense would double-count.
+    const payments =
+      account.interestBookingMode === "SPLIT"
+        ? consolidated
+        : await this.detector.pairSeparateInterest(
+            userId,
+            account,
+            consolidated,
+          );
+    // When interest is a separate expense, the payment amounts are principal
+    // only (not the full installment), so they must not be recorded as the
+    // rate rows' payment.
+    const interestBookedSeparately =
+      account.interestBookingMode === "SEPARATE" ||
+      (!hadSplitInterest && payments.some((p) => p.interestAmount != null));
     const balanceMap = this.detector.buildRunningBalanceMap(
       account,
       transactions,
@@ -140,7 +151,13 @@ export class RateChangeInferenceService {
       );
     }
 
-    return this.persistSegments(userId, account, segments, warnings);
+    return this.persistSegments(
+      userId,
+      account,
+      segments,
+      warnings,
+      interestBookedSeparately,
+    );
   }
 
   /**
@@ -154,6 +171,11 @@ export class RateChangeInferenceService {
     periodsPerYear: number,
   ): RateObservation[] {
     const observations: RateObservation[] = [];
+    // Day-count annualization (non-Canadian) measures each accrual over the
+    // actual gap since the last interest-bearing payment; the first falls back
+    // to the nominal period.
+    const periodDays = 365 / periodsPerYear;
+    let lastDate: string | null = null;
     for (const payment of payments) {
       if (payment.interestAmount == null || payment.interestAmount <= 0) {
         continue;
@@ -164,11 +186,20 @@ export class RateChangeInferenceService {
         continue;
       }
 
+      // A gap much longer than one interval (a payment holiday) still covers a
+      // single billing period, so cap it; a non-positive gap (same-day) falls
+      // back to the nominal period.
+      const gap =
+        lastDate !== null ? this.daysBetween(lastDate, dateKey) : periodDays;
+      const days = gap <= 0 || gap > periodDays * 1.5 ? periodDays : gap;
+      lastDate = dateKey;
+
       const periodicRate = payment.interestAmount / balanceBefore;
       const annualRate = this.annualizeRate(
         account,
         periodicRate,
         periodsPerYear,
+        days,
       );
       if (annualRate <= 0 || annualRate >= 100) continue;
 
@@ -181,23 +212,37 @@ export class RateChangeInferenceService {
     return observations;
   }
 
+  /** Whole days from `aKey` to `bKey` (both yyyy-MM-dd), timezone-safe. */
+  private daysBetween(aKey: string, bKey: string): number {
+    const a = new Date(`${aKey}T00:00:00Z`).getTime();
+    const b = new Date(`${bKey}T00:00:00Z`).getTime();
+    return Math.round((b - a) / (1000 * 60 * 60 * 24));
+  }
+
   /**
-   * Inverse of the periodic-rate formulas in mortgage-amortization.util:
-   * Canadian fixed mortgages compound semi-annually, everything else simply.
+   * Annualize an observed periodic rate. This mirrors the frontend's
+   * reconstruction (`assignObservedRates`) so a detected rate matches what the
+   * schedule shows:
+   *  - Canadian mortgage: annualize by the nominal periods per year (the
+   *    lender's convention), inverting the semi-annual compounding for a
+   *    fixed-rate loan;
+   *  - everything else: annualize over the actual accrual window (`x 365 /
+   *    days`), which self-corrects for month-length and payment-gap variation
+   *    rather than overshooting a fixed `x periodsPerYear`.
    */
   private annualizeRate(
     account: Account,
     periodicRate: number,
     periodsPerYear: number,
+    days: number,
   ): number {
-    const isCanadianFixed =
-      account.accountType === AccountType.MORTGAGE &&
-      (account.isCanadianMortgage || false) &&
-      !(account.isVariableRate || false);
-    if (isCanadianFixed) {
-      return (Math.pow(1 + periodicRate, periodsPerYear / 2) - 1) * 2 * 100;
+    const isCanadian = account.isCanadianMortgage || false;
+    if (!isCanadian) {
+      return periodicRate * (365 / days) * 100;
     }
-    return periodicRate * periodsPerYear * 100;
+    return account.isVariableRate || false
+      ? periodicRate * periodsPerYear * 100
+      : (Math.pow(1 + periodicRate, periodsPerYear / 2) - 1) * 2 * 100;
   }
 
   /**
@@ -350,6 +395,11 @@ export class RateChangeInferenceService {
     account: Account,
     segments: RateSegment[],
     warnings: string[],
+    // When interest is booked separately, the observed payment amount is
+    // principal-only (not the full installment), so it must not be recorded as
+    // the row's payment -- doing so would seed the forward projection with a
+    // non-amortizing payment.
+    interestBookedSeparately: boolean,
   ): Promise<DetectRateChangesResult> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -390,23 +440,20 @@ export class RateChangeInferenceService {
           accountId: account.id,
           effectiveDate,
           annualRate: segment.medianRate,
-          newPaymentAmount: isFirst
-            ? segment.paymentAmount != null
-              ? roundMoney(segment.paymentAmount)
-              : null
-            : paymentStepped
-              ? roundMoney(segment.paymentAmount!)
-              : null,
+          newPaymentAmount: interestBookedSeparately
+            ? null
+            : isFirst
+              ? segment.paymentAmount != null
+                ? roundMoney(segment.paymentAmount)
+                : null
+              : paymentStepped
+                ? roundMoney(segment.paymentAmount!)
+                : null,
           source: isFirst ? ("initial" as const) : ("inferred" as const),
           note: null,
         });
         created.push(await queryRunner.manager.save(row));
       }
-
-      await this.rateChangesService.syncAccountToTimeline(
-        queryRunner.manager,
-        account,
-      );
 
       await queryRunner.commitTransaction();
     } catch (error) {
@@ -416,7 +463,9 @@ export class RateChangeInferenceService {
       await queryRunner.release();
     }
 
-    await this.rateChangesService.syncScheduledTransaction(userId, account);
+    // Detection is historical inference: it only writes timeline rows and must
+    // never overwrite the account's user-owned rate/payment or resync the
+    // linked scheduled bill (that would clobber manually-set values).
 
     this.logger.log(
       `Detected ${created.length} rate segment(s) for account ${account.id} (replaced ${replacedCount} inferred rows)`,

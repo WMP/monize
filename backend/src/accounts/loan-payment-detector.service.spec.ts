@@ -1808,6 +1808,38 @@ describe("LoanPaymentDetectorService", () => {
       expect(payments[0].interestAmount).toBeNull();
     });
 
+    it("excludes principal transfers that share the interest category (only expenses count)", async () => {
+      const payments = [makePayment("2024-06-05", { amount: 259.13 })];
+      transactionRepository.find.mockResolvedValue([
+        // The interest expense -- counted.
+        {
+          transactionDate: "2024-06-05",
+          amount: -849.93,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: false,
+        },
+        // The principal transfer, tagged with the same category -- excluded, so
+        // it is not folded into "interest" (which would give the full rata).
+        {
+          transactionDate: "2024-06-05",
+          amount: -259.13,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: true,
+        },
+      ]);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      // Only the expense -> 849.93, not 849.93 + 259.13 = 1109.06 (full rata).
+      expect(result[0].interestAmount).toBeCloseTo(849.93, 2);
+    });
+
     it("does not override interest already read from a payment split", async () => {
       const payments = [
         makePayment("2026-01-05", { interestAmount: 200 }),

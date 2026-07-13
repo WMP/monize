@@ -266,6 +266,23 @@
     "firstPaymentDate": "Fecha del Primer Pago (obligatoria)",
     "paymentFromAccount": "Pagar desde Cuenta (obligatorio)",
     "interestCategory": "Categoría de Interés",
+    "interestBookingMode": {
+      "label": "¿Cómo se registran los intereses?",
+      "help": "Para que la detección de tipos los lea bien. Automático sirve casi siempre.",
+      "AUTO": "Automático (recomendado)",
+      "SPLIT": "Parte dividida del pago",
+      "SEPARATE": "Gasto separado (el capital es una transferencia)"
+    },
+    "bookingHelp": {
+      "title": "Cómo registrar los pagos del préstamo",
+      "intro": "Cada cuota tiene dos partes que significan cosas distintas en tus finanzas, así que se registran por separado:",
+      "principalTitle": "El capital es una transferencia.",
+      "principalBody": "Devuelve el dinero prestado, no es un gasto. Regístralo como transferencia de tu cuenta bancaria a la del préstamo, sin categoría, para que reduzca el saldo sin aparecer en los gastos.",
+      "interestTitle": "Los intereses son un gasto.",
+      "interestBody": "Son el coste real del préstamo. Regístralos como gasto con una categoría (por ejemplo, «Préstamos»).",
+      "avoid": "Evita: no registres toda la cuota como un solo gasto. Infla tus costes y el saldo del préstamo nunca baja.",
+      "overpayments": "Las amortizaciones anticipadas funcionan como el capital: transferencia a la cuenta del préstamo, sin categoría. Si el banco añadió intereses, separa esa parte como gasto aparte."
+    },
     "selectFrequency": "Seleccionar frecuencia...",
     "selectAccount": "Seleccionar cuenta...",
     "selectCategory": "Seleccionar categoría...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "Quincenal Acelerado",
       "weekly": "Semanal",
       "acceleratedWeekly": "Semanal Acelerado"
+    },
+    "overpaymentRecognition": {
+      "title": "Reconocimiento de amortización anticipada",
+      "description": "Cómo el cuadro de amortización distingue una amortización anticipada independiente (100 % de capital) de una cuota regular. Un pago que coincida con cualquiera de estos criterios cuenta como amortización anticipada.",
+      "categoryLabel": "Categoría de amortización anticipada",
+      "payeeLabel": "Beneficiario de amortización anticipada",
+      "payeePlaceholder": "Seleccionar beneficiario...",
+      "memoLabel": "Texto de nota de amortización anticipada",
+      "memoPlaceholder": "p. ej. amortización",
+      "memoHelp": "Coincidencia de subcadena sin distinguir mayúsculas con la nota del pago, la nota de la transacción de origen o la nota de un desglose."
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "Capital",
       "colInterest": "Intereses",
       "colExtra": "Capital adicional",
+      "colRate": "Tasa",
       "colBalance": "Saldo",
       "projectedFuturePayments": "Pagos futuros proyectados",
+      "total": "Total",
+      "paidToDate": "Pagado hasta la fecha",
+      "monthEntries": "{count, plural, one {# entrada} other {# entradas}}",
+      "toggleMonth": "Mostrar u ocultar los pagos de {month}",
+      "gapRow": "Sin pagos registrados: faltan una o más cuotas previstas aquí",
       "showAll": "Mostrar los {count} pagos",
       "showLess": "Mostrar menos",
       "noPayments": "No se encontraron pagos",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "Pago anticipado"
+      "overpaymentBadge": "Pago anticipado",
+      "editRateLabel": "Editar la tasa de interés de {date}"
     },
     "simulator": {
       "title": "Simulador de pagos anticipados",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "Nueva fecha de liquidación",
+      "title": "Resultados de la simulación",
+      "placeholder": "Introduce una amortización anticipada arriba para ver su impacto aquí.",
       "timeSaved": "Tiempo ahorrado",
       "monthsSaved": "{count, plural, one {# mes} other {# meses}}",
       "paymentsSaved": "{count, plural, one {# pago} other {# pagos}}",
@@ -397,7 +433,8 @@
       "empty": "No hay historial de pagos ni proyección disponible.",
       "seriesHistorical": "Saldo real",
       "seriesBaseline": "Proyección actual",
-      "seriesScenario": "Con pagos anticipados",
+      "seriesScenario": "Con pagos extra simulados",
+      "seriesOriginal": "Calendario original",
       "today": "Hoy",
       "scenarioNote": "El escenario de pagos anticipados es una simulación y no cambia sus pagos programados."
     },
@@ -464,6 +501,7 @@
       "detect": "Detectar del historial",
       "empty": "No hay cambios de tasa registrados. Añada uno cuando cambie su tasa o detecte cambios anteriores a partir de su historial de pagos.",
       "rateValue": "{rate}%",
+      "chartLegend": "Tasa de interés",
       "paymentSummary": "Pago: {payment}",
       "paymentUnchanged": "sin cambios",
       "badgeInferred": "Inferido",

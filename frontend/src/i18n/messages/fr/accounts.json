@@ -266,6 +266,23 @@
     "firstPaymentDate": "Date du premier paiement (obligatoire)",
     "paymentFromAccount": "Paiement depuis le compte (obligatoire)",
     "interestCategory": "Catégorie d'intérêts",
+    "interestBookingMode": {
+      "label": "Comment les intérêts sont-ils enregistrés ?",
+      "help": "Pour que la détection du taux les lise correctement. Auto convient le plus souvent.",
+      "AUTO": "Automatique (recommandé)",
+      "SPLIT": "Ligne fractionnée du paiement",
+      "SEPARATE": "Dépense séparée (le capital est un virement)"
+    },
+    "bookingHelp": {
+      "title": "Comment enregistrer les paiements de prêt",
+      "intro": "Chaque échéance comporte deux parts qui n'ont pas le même sens en finances, on les enregistre donc séparément :",
+      "principalTitle": "Le capital est un virement.",
+      "principalBody": "Il rembourse l'argent emprunté, ce n'est pas une charge. Enregistrez-le en virement de votre compte bancaire vers le compte de prêt, sans catégorie, pour qu'il réduise le solde sans figurer dans les dépenses.",
+      "interestTitle": "Les intérêts sont une dépense.",
+      "interestBody": "Ils sont le coût réel du prêt. Enregistrez-les en dépense avec une catégorie (par exemple « Prêts »).",
+      "avoid": "À éviter : n'enregistrez pas toute l'échéance en une seule dépense. Cela gonfle vos coûts et le solde du prêt ne diminue jamais.",
+      "overpayments": "Les remboursements anticipés fonctionnent comme le capital : un virement vers le compte de prêt, sans catégorie. Si la banque a ajouté des intérêts, isolez cette part en dépense séparée."
+    },
     "selectFrequency": "Sélectionner la fréquence…",
     "selectAccount": "Sélectionner un compte…",
     "selectCategory": "Sélectionner une catégorie…",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "Toutes les 2 semaines (accéléré)",
       "weekly": "Hebdomadaire",
       "acceleratedWeekly": "Hebdomadaire (accéléré)"
+    },
+    "overpaymentRecognition": {
+      "title": "Reconnaissance des remboursements anticipés",
+      "description": "Comment l'échéancier distingue un remboursement anticipé autonome (100 % de capital) d'une mensualité normale. Un paiement correspondant à l'un de ces critères est compté comme remboursement anticipé.",
+      "categoryLabel": "Catégorie de remboursement anticipé",
+      "payeeLabel": "Bénéficiaire du remboursement anticipé",
+      "payeePlaceholder": "Sélectionner un bénéficiaire...",
+      "memoLabel": "Texte de mémo de remboursement anticipé",
+      "memoPlaceholder": "p. ex. remboursement anticipé",
+      "memoHelp": "Correspondance de sous-chaîne insensible à la casse avec le mémo du paiement, le mémo de la transaction source ou le mémo d'une ventilation."
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "Capital",
       "colInterest": "Intérêts",
       "colExtra": "Capital supplémentaire",
+      "colRate": "Taux",
       "colBalance": "Solde",
       "projectedFuturePayments": "Versements futurs projetés",
+      "total": "Total",
+      "paidToDate": "Payé à ce jour",
+      "monthEntries": "{count, plural, one {# entrée} other {# entrées}}",
+      "toggleMonth": "Afficher ou masquer les paiements de {month}",
+      "gapRow": "Aucun paiement enregistré — une ou plusieurs échéances attendues manquent ici",
       "showAll": "Afficher les {count} versements",
       "showLess": "Afficher moins",
       "noPayments": "Aucun versement trouvé",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "Remboursement anticipé"
+      "overpaymentBadge": "Remboursement anticipé",
+      "editRateLabel": "Modifier le taux d'intérêt pour {date}"
     },
     "simulator": {
       "title": "Simulateur de remboursement anticipé",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "Nouvelle date de remboursement",
+      "title": "Résultats de la simulation",
+      "placeholder": "Renseignez un remboursement anticipé ci-dessus pour voir son impact ici.",
       "timeSaved": "Temps économisé",
       "monthsSaved": "{count, plural, one {# mois} other {# mois}}",
       "paymentsSaved": "{count, plural, one {# versement} other {# versements}}",
@@ -397,7 +433,8 @@
       "empty": "Aucun historique de paiements ni projection disponible.",
       "seriesHistorical": "Solde réel",
       "seriesBaseline": "Projection actuelle",
-      "seriesScenario": "Avec remboursements anticipés",
+      "seriesScenario": "Avec remboursements anticipés simulés",
+      "seriesOriginal": "Calendrier initial",
       "today": "Aujourd'hui",
       "scenarioNote": "Le scénario de remboursement anticipé est une simulation et ne modifie pas vos versements planifiés."
     },
@@ -464,6 +501,7 @@
       "detect": "Détecter à partir de l'historique",
       "empty": "Aucun changement de taux enregistré. Ajoutez-en un lorsque votre taux change, ou détectez les changements passés à partir de votre historique de paiements.",
       "rateValue": "{rate}%",
+      "chartLegend": "Taux d'intérêt",
       "paymentSummary": "Versement : {payment}",
       "paymentUnchanged": "inchangé",
       "badgeInferred": "Déduit",

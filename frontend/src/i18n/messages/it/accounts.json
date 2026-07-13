@@ -266,6 +266,23 @@
     "firstPaymentDate": "Data primo pagamento (obbligatoria)",
     "paymentFromAccount": "Pagamento dal conto (obbligatorio)",
     "interestCategory": "Categoria interessi",
+    "interestBookingMode": {
+      "label": "Come vengono registrati gli interessi?",
+      "help": "Così il rilevamento del tasso li legge bene. Auto va nella maggior parte dei casi.",
+      "AUTO": "Automatico (consigliato)",
+      "SPLIT": "Voce divisa del pagamento",
+      "SEPARATE": "Spesa separata (il capitale è un trasferimento)"
+    },
+    "bookingHelp": {
+      "title": "Come registrare i pagamenti del prestito",
+      "intro": "Ogni rata ha due parti che in finanza significano cose diverse, quindi si registrano separatamente:",
+      "principalTitle": "Il capitale è un trasferimento.",
+      "principalBody": "Restituisce il denaro preso in prestito, non è un costo. Registralo come trasferimento dal conto bancario al conto del prestito, senza categoria, così riduce il saldo senza comparire nelle spese.",
+      "interestTitle": "Gli interessi sono una spesa.",
+      "interestBody": "Sono il costo reale del prestito. Registrali come spesa con una categoria (ad esempio \"Prestiti\").",
+      "avoid": "Da evitare: non registrare l'intera rata come un'unica spesa. Gonfia i costi e il saldo del prestito non scende mai.",
+      "overpayments": "Le estinzioni anticipate funzionano come il capitale: un trasferimento al conto del prestito, senza categoria. Se la banca ha aggiunto interessi, separa quella parte come spesa a sé."
+    },
     "selectFrequency": "Seleziona frequenza...",
     "selectAccount": "Seleziona conto...",
     "selectCategory": "Seleziona categoria...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "Bisettimanale accelerato",
       "weekly": "Settimanale",
       "acceleratedWeekly": "Settimanale accelerato"
+    },
+    "overpaymentRecognition": {
+      "title": "Riconoscimento dell'estinzione anticipata",
+      "description": "Come il piano di ammortamento distingue un'estinzione anticipata autonoma (100% capitale) da una rata regolare. Un pagamento che corrisponde a uno di questi criteri conta come estinzione anticipata.",
+      "categoryLabel": "Categoria di estinzione anticipata",
+      "payeeLabel": "Beneficiario dell'estinzione anticipata",
+      "payeePlaceholder": "Seleziona beneficiario...",
+      "memoLabel": "Testo memo di estinzione anticipata",
+      "memoPlaceholder": "es. estinzione anticipata",
+      "memoHelp": "Corrispondenza di sottostringa senza distinzione tra maiuscole e minuscole con il memo del pagamento, il memo della transazione di origine o il memo di una suddivisione."
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "Capitale",
       "colInterest": "Interessi",
       "colExtra": "Capitale extra",
+      "colRate": "Tasso",
       "colBalance": "Saldo",
       "projectedFuturePayments": "Rate future previste",
+      "total": "Totale",
+      "paidToDate": "Pagato finora",
+      "monthEntries": "{count, plural, one {# voce} other {# voci}}",
+      "toggleMonth": "Mostra o nascondi i pagamenti di {month}",
+      "gapRow": "Nessun pagamento registrato — qui mancano una o più rate previste",
       "showAll": "Mostra tutte le {count} rate",
       "showLess": "Mostra meno",
       "noPayments": "Nessuna rata trovata",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "Rimborso anticipato"
+      "overpaymentBadge": "Rimborso anticipato",
+      "editRateLabel": "Modifica il tasso di interesse per {date}"
     },
     "simulator": {
       "title": "Simulatore di rimborso anticipato",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "Nuova data di estinzione",
+      "title": "Risultati della simulazione",
+      "placeholder": "Inserisci un rimborso anticipato sopra per vederne l'impatto qui.",
       "timeSaved": "Tempo risparmiato",
       "monthsSaved": "{count, plural, one {# mese} other {# mesi}}",
       "paymentsSaved": "{count, plural, one {# rata} other {# rate}}",
@@ -397,7 +433,8 @@
       "empty": "Nessuna cronologia dei pagamenti o proiezione disponibile.",
       "seriesHistorical": "Saldo effettivo",
       "seriesBaseline": "Proiezione attuale",
-      "seriesScenario": "Con rimborsi anticipati",
+      "seriesScenario": "Con sovrapagamenti simulati",
+      "seriesOriginal": "Piano originario",
       "today": "Oggi",
       "scenarioNote": "Lo scenario di rimborso anticipato è una simulazione e non modifica i tuoi pagamenti pianificati."
     },
@@ -464,6 +501,7 @@
       "detect": "Rileva dallo storico",
       "empty": "Nessuna variazione del tasso registrata. Aggiungine una quando cambia il tuo tasso oppure rileva le variazioni passate dallo storico dei pagamenti.",
       "rateValue": "{rate}%",
+      "chartLegend": "Tasso di interesse",
       "paymentSummary": "Rata: {payment}",
       "paymentUnchanged": "invariata",
       "badgeInferred": "Dedotto",

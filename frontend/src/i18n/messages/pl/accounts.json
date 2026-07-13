@@ -266,6 +266,23 @@
     "firstPaymentDate": "Data pierwszej płatności (wymagane)",
     "paymentFromAccount": "Płatność z konta (wymagane)",
     "interestCategory": "Kategoria odsetek",
+    "interestBookingMode": {
+      "label": "Jak księgowane są odsetki?",
+      "help": "Aby wykrywanie oprocentowania czytało je poprawnie. Automatycznie pasuje w większości.",
+      "AUTO": "Automatycznie (zalecane)",
+      "SPLIT": "Rozbicie płatności (kapitał + odsetki)",
+      "SEPARATE": "Osobny wydatek (kapitał to przelew)"
+    },
+    "bookingHelp": {
+      "title": "Jak prawidłowo księgować spłatę kredytu",
+      "intro": "Każda rata składa się z dwóch części, które w finansach znaczą co innego — dlatego księguje się je osobno:",
+      "principalTitle": "Kapitał to przelew.",
+      "principalBody": "To zwrot pożyczonych pieniędzy, nie koszt. Zaksięguj go jako przelew z konta bankowego na konto kredytu i nie nadawaj kategorii, żeby obniżał saldo kredytu, ale nie pojawiał się w wydatkach ani w rozbiciu po kategoriach.",
+      "interestTitle": "Odsetki to wydatek.",
+      "interestBody": "To realny koszt kredytu. Zaksięguj je jako wydatek i przypisz kategorię (np. „Kredyty”).",
+      "avoid": "Unikaj: nie wrzucaj całej raty jako jednego wydatku. Zawyży to Twoje koszty (realny koszt to same odsetki), a dług na koncie kredytu w ogóle się nie zmniejszy.",
+      "overpayments": "Nadpłaty działają jak kapitał: przelew na konto kredytu, bez kategorii. Jeśli bank doliczył do nadpłaty odsetki, wydziel tę część jako osobny wydatek."
+    },
     "selectFrequency": "Wybierz częstotliwość...",
     "selectAccount": "Wybierz konto...",
     "selectCategory": "Wybierz kategorię...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "Przyspieszone co 2 tygodnie",
       "weekly": "Co tydzień",
       "acceleratedWeekly": "Przyspieszone co tydzień"
+    },
+    "overpaymentRecognition": {
+      "title": "Rozpoznawanie nadpłat",
+      "description": "Jak harmonogram odróżnia samodzielną nadpłatę (100% kapitału) od zwykłej raty. Płatność pasująca do dowolnego z tych kryteriów liczona jest jako nadpłata.",
+      "categoryLabel": "Kategoria nadpłaty",
+      "payeeLabel": "Odbiorca nadpłaty",
+      "payeePlaceholder": "Wybierz odbiorcę...",
+      "memoLabel": "Tekst notatki nadpłaty",
+      "memoPlaceholder": "np. nadpłata",
+      "memoHelp": "Dopasowanie fragmentu tekstu (bez rozróżniania wielkości liter) do notatki płatności, notatki transakcji źródłowej lub notatki podziału."
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "Kapitał",
       "colInterest": "Odsetki",
       "colExtra": "Dodatkowy kapitał",
+      "colRate": "Oprocentowanie",
       "colBalance": "Saldo",
       "projectedFuturePayments": "Prognozowane przyszłe raty",
+      "total": "Razem",
+      "paidToDate": "Spłacono do teraz",
+      "monthEntries": "{count, plural, one {# wpłata} few {# wpłaty} many {# wpłat} other {# wpłaty}}",
+      "toggleMonth": "Pokaż lub ukryj wpłaty z {month}",
+      "gapRow": "Brak zarejestrowanych płatności — brakuje tu jednej lub więcej oczekiwanych rat",
       "showAll": "Pokaż wszystkie raty ({count})",
       "showLess": "Pokaż mniej",
       "noPayments": "Nie znaleziono rat",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "Nadpłata"
+      "overpaymentBadge": "Nadpłata",
+      "editRateLabel": "Edytuj oprocentowanie dla {date}"
     },
     "simulator": {
       "title": "Symulator nadpłat",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "Nowa data spłaty",
+      "title": "Wyniki symulacji",
+      "placeholder": "Wypełnij nadpłatę powyżej, aby zobaczyć jej wpływ.",
       "timeSaved": "Zaoszczędzony czas",
       "monthsSaved": "{count, plural, one {# miesiąc} few {# miesiące} many {# miesięcy} other {# miesiąca}}",
       "paymentsSaved": "{count, plural, one {# rata} few {# raty} many {# rat} other {# raty}}",
@@ -397,7 +433,8 @@
       "empty": "Brak historii płatności i prognozy.",
       "seriesHistorical": "Rzeczywiste saldo",
       "seriesBaseline": "Bieżąca prognoza",
-      "seriesScenario": "Z nadpłatami",
+      "seriesScenario": "Z symulowanymi nadpłatami",
+      "seriesOriginal": "Pierwotny harmonogram",
       "today": "Dzisiaj",
       "scenarioNote": "Scenariusz nadpłat jest symulacją i nie zmienia zaplanowanych płatności."
     },
@@ -464,6 +501,7 @@
       "detect": "Wykryj z historii",
       "empty": "Nie zarejestrowano żadnych zmian oprocentowania. Dodaj zmianę, gdy zmieni się Twoje oprocentowanie, lub wykryj wcześniejsze zmiany z historii płatności.",
       "rateValue": "{rate}%",
+      "chartLegend": "Oprocentowanie",
       "paymentSummary": "Rata: {payment}",
       "paymentUnchanged": "bez zmian",
       "badgeInferred": "Wywnioskowane",

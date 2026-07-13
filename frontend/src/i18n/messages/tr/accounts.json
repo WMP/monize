@@ -266,6 +266,23 @@
     "firstPaymentDate": "İlk Ödeme Tarihi (zorunlu)",
     "paymentFromAccount": "Ödeme Hesabı (zorunlu)",
     "interestCategory": "Faiz Kategorisi",
+    "interestBookingMode": {
+      "label": "Faiz nasıl kaydedilir?",
+      "help": "Oran algılaması doğru okusun diye. Otomatik çoğu durumda uyar.",
+      "AUTO": "Otomatik (önerilir)",
+      "SPLIT": "Ödemenin bölünmüş kalemi",
+      "SEPARATE": "Ayrı gider (anapara bir transferdir)"
+    },
+    "bookingHelp": {
+      "title": "Kredi ödemeleri nasıl kaydedilir",
+      "intro": "Her taksitin, finansal olarak farklı anlam taşıyan iki parçası vardır; bu yüzden ayrı kaydedin:",
+      "principalTitle": "Anapara bir transferdir.",
+      "principalBody": "Ödünç alınan parayı geri öder, bir gider değildir. Banka hesabından kredi hesabına transfer olarak, kategorisiz kaydedin; böylece bakiyeyi düşürür ama giderlerde görünmez.",
+      "interestTitle": "Faiz bir giderdir.",
+      "interestBody": "Kredinin gerçek maliyetidir. Bir kategoriyle (örneğin \"Krediler\") gider olarak kaydedin.",
+      "avoid": "Kaçının: taksidin tamamını tek bir gider olarak kaydetmeyin. Maliyetleri şişirir ve kredi bakiyesi hiç azalmaz.",
+      "overpayments": "Erken ödemeler anapara gibidir: kredi hesabına transfer, kategorisiz. Banka faiz eklediyse o kısmı ayrı gider olarak ayırın."
+    },
     "selectFrequency": "Sıklık seçin...",
     "selectAccount": "Hesap seçin...",
     "selectCategory": "Kategori seçin...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "Hızlandırılmış 2 Haftada Bir",
       "weekly": "Haftalık",
       "acceleratedWeekly": "Hızlandırılmış Haftalık"
+    },
+    "overpaymentRecognition": {
+      "title": "Fazla ödeme tanıma",
+      "description": "Planın bağımsız bir fazla ödemeyi (%100 anapara) normal taksitten nasıl ayırt ettiği. Bunlardan herhangi biriyle eşleşen bir ödeme fazla ödeme sayılır.",
+      "categoryLabel": "Fazla ödeme kategorisi",
+      "payeeLabel": "Fazla ödeme alıcısı",
+      "payeePlaceholder": "Alıcı seçin...",
+      "memoLabel": "Fazla ödeme not metni",
+      "memoPlaceholder": "örn. fazla ödeme",
+      "memoHelp": "Ödemenin notu, kaynak işleminin notu veya bir bölme notu ile büyük/küçük harfe duyarsız alt dize eşleşmesi."
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "Anapara",
       "colInterest": "Faiz",
       "colExtra": "Ek Anapara",
+      "colRate": "Oran",
       "colBalance": "Bakiye",
       "projectedFuturePayments": "Öngörülen Gelecek Taksitler",
+      "total": "Toplam",
+      "paidToDate": "Bugüne kadar ödenen",
+      "monthEntries": "{count, plural, one {# giriş} other {# giriş}}",
+      "toggleMonth": "{month} ayındaki ödemeleri göster veya gizle",
+      "gapRow": "Kayıtlı ödeme yok — burada beklenen bir veya daha fazla taksit eksik",
       "showAll": "Tüm {count} taksiti göster",
       "showLess": "Daha az göster",
       "noPayments": "Taksit bulunamadı",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "Ek ödeme"
+      "overpaymentBadge": "Ek ödeme",
+      "editRateLabel": "{date} için faiz oranını düzenle"
     },
     "simulator": {
       "title": "Erken Ödeme Simülatörü",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "Yeni Kapanış Tarihi",
+      "title": "Simülasyon Sonuçları",
+      "placeholder": "Etkisini burada görmek için yukarıya bir ek ödeme girin.",
       "timeSaved": "Kazanılan Süre",
       "monthsSaved": "{count, plural, one {# ay} other {# ay}}",
       "paymentsSaved": "{count, plural, one {# taksit} other {# taksit}}",
@@ -397,7 +433,8 @@
       "empty": "Ödeme geçmişi veya öngörü yok.",
       "seriesHistorical": "Gerçek Bakiye",
       "seriesBaseline": "Mevcut Öngörü",
-      "seriesScenario": "Erken Ödemelerle",
+      "seriesScenario": "Simüle edilmiş fazla ödemelerle",
+      "seriesOriginal": "Orijinal Plan",
       "today": "Bugün",
       "scenarioNote": "Erken ödeme senaryosu bir simülasyondur ve planlanan ödemelerinizi değiştirmez."
     },
@@ -464,6 +501,7 @@
       "detect": "Geçmişten algıla",
       "empty": "Kayıtlı faiz değişikliği yok. Faiziniz değiştiğinde bir tane ekleyin veya ödeme geçmişinizden geçmiş değişiklikleri algılayın.",
       "rateValue": "%{rate}",
+      "chartLegend": "Faiz oranı",
       "paymentSummary": "Taksit: {payment}",
       "paymentUnchanged": "değişmedi",
       "badgeInferred": "Çıkarsanan",

@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { UseFormRegister, UseFormSetValue, FieldErrors } from 'react-hook-form';
 import { Input } from '@/components/ui/Input';
 import { DateInput } from '@/components/ui/DateInput';
 import { Select } from '@/components/ui/Select';
-import { Combobox } from '@/components/ui/Combobox';
-import { Account, MortgageAmortizationPreview, MortgagePaymentFrequency } from '@/types/account';
+import { Account, MortgageAmortizationPreview, MortgagePaymentFrequency, InterestBookingMode } from '@/types/account';
 import { Category } from '@/types/category';
-import { buildCategoryTree } from '@/lib/categoryUtils';
 import { accountsApi } from '@/lib/accounts';
+import { OverpaymentRecognitionFields } from './OverpaymentRecognitionFields';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { createLogger } from '@/lib/logger';
 import { useDateFormat } from '@/hooks/useDateFormat';
@@ -37,6 +36,12 @@ interface MortgageFieldsProps {
   isEditing: boolean;
   selectedInterestCategoryId: string;
   handleInterestCategoryChange: (categoryId: string) => void;
+  interestBookingMode: InterestBookingMode;
+  handleInterestBookingModeChange: (mode: InterestBookingMode) => void;
+  selectedOverpaymentCategoryId: string;
+  handleOverpaymentCategoryChange: (categoryId: string) => void;
+  selectedOverpaymentPayeeId: string;
+  handleOverpaymentPayeeChange: (payeeId: string) => void;
 }
 
 export function MortgageFields({
@@ -59,6 +64,12 @@ export function MortgageFields({
   isEditing,
   selectedInterestCategoryId,
   handleInterestCategoryChange,
+  interestBookingMode,
+  handleInterestBookingModeChange,
+  selectedOverpaymentCategoryId,
+  handleOverpaymentCategoryChange,
+  selectedOverpaymentPayeeId,
+  handleOverpaymentPayeeChange,
 }: MortgageFieldsProps) {
   const t = useTranslations('accounts');
   const { formatDate } = useDateFormat();
@@ -196,25 +207,6 @@ export function MortgageFields({
     return () => clearTimeout(timer);
   }, [calculateMortgagePreview]);
 
-  const interestCategoryOptions = useMemo(() =>
-    buildCategoryTree(categories).map(({ category }) => {
-      const parentCategory = category.parentId
-        ? categories.find(c => c.id === category.parentId)
-        : null;
-      return {
-        value: category.id,
-        label: parentCategory ? `${parentCategory.name}: ${category.name}` : category.name,
-      };
-    }),
-  [categories]);
-
-  const initialInterestCategoryName = useMemo(() => {
-    if (!selectedInterestCategoryId) return '';
-    const cat = categories.find(c => c.id === selectedInterestCategoryId);
-    if (!cat) return '';
-    const parent = cat.parentId ? categories.find(c => c.id === cat.parentId) : null;
-    return parent ? `${parent.name}: ${cat.name}` : cat.name;
-  }, [selectedInterestCategoryId, categories]);
 
   return (
     <div className="space-y-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
@@ -358,31 +350,19 @@ export function MortgageFields({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              label={t('mortgageFields.paymentFromAccount')}
-              options={[
-                { value: '', label: t('mortgageFields.selectAccount') },
-                ...buildAccountDropdownOptions(
-                  accounts,
-                  () => true,
-                  (a) => `${a.name} (${a.currencyCode})`,
-                ),
-              ]}
-              error={errors.sourceAccountId?.message as string | undefined}
-              {...register('sourceAccountId')}
-            />
-
-            <Combobox
-              label={t('mortgageFields.interestCategory')}
-              placeholder={t('mortgageFields.selectCategory')}
-              options={interestCategoryOptions}
-              value={selectedInterestCategoryId}
-              initialDisplayValue={initialInterestCategoryName}
-              onChange={handleInterestCategoryChange}
-              error={errors.interestCategoryId?.message as string | undefined}
-            />
-          </div>
+          <Select
+            label={t('mortgageFields.paymentFromAccount')}
+            options={[
+              { value: '', label: t('mortgageFields.selectAccount') },
+              ...buildAccountDropdownOptions(
+                accounts,
+                () => true,
+                (a) => `${a.name} (${a.currencyCode})`,
+              ),
+            ]}
+            error={errors.sourceAccountId?.message as string | undefined}
+            {...register('sourceAccountId')}
+          />
 
           {/* Mortgage Amortization Preview */}
           {mortgagePreview && (
@@ -437,6 +417,22 @@ export function MortgageFields({
           )}
         </>
       )}
+
+      {/* Payment recognition (interest category + overpayment category / payee /
+          memo). Always shown so an existing loan can be configured on edit. */}
+      <OverpaymentRecognitionFields
+        categories={categories}
+        selectedInterestCategoryId={selectedInterestCategoryId}
+        onInterestCategoryChange={handleInterestCategoryChange}
+        interestBookingMode={interestBookingMode}
+        onInterestBookingModeChange={handleInterestBookingModeChange}
+        selectedOverpaymentCategoryId={selectedOverpaymentCategoryId}
+        onOverpaymentCategoryChange={handleOverpaymentCategoryChange}
+        selectedOverpaymentPayeeId={selectedOverpaymentPayeeId}
+        onOverpaymentPayeeChange={handleOverpaymentPayeeChange}
+        register={register}
+        errors={errors}
+      />
     </div>
   );
 }

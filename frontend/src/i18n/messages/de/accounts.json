@@ -266,6 +266,23 @@
     "firstPaymentDate": "Datum der ersten Zahlung (erforderlich)",
     "paymentFromAccount": "Zahlung vom Konto (erforderlich)",
     "interestCategory": "Zinskategorie",
+    "interestBookingMode": {
+      "label": "Wie werden Zinsen erfasst?",
+      "help": "Damit die Zinserkennung korrekt liest. Automatisch passt meistens.",
+      "AUTO": "Automatisch (empfohlen)",
+      "SPLIT": "Aufgeteilter Zahlungsanteil",
+      "SEPARATE": "Separate Ausgabe (Tilgung ist eine Umbuchung)"
+    },
+    "bookingHelp": {
+      "title": "So erfassen Sie Kreditraten",
+      "intro": "Jede Rate hat zwei Teile, die finanziell Verschiedenes bedeuten, daher werden sie getrennt erfasst:",
+      "principalTitle": "Tilgung ist eine Umbuchung.",
+      "principalBody": "Sie zahlt geliehenes Geld zurück und ist kein Aufwand. Erfassen Sie sie als Umbuchung vom Bankkonto auf das Kreditkonto ohne Kategorie, damit sie den Saldo senkt, aber nicht in den Ausgaben erscheint.",
+      "interestTitle": "Zinsen sind ein Aufwand.",
+      "interestBody": "Sie sind die echten Kosten des Kredits. Erfassen Sie sie als Ausgabe mit Kategorie (z. B. „Kredite“).",
+      "avoid": "Vermeiden: Erfassen Sie nicht die ganze Rate als eine Ausgabe. Das überzeichnet die Kosten und der Kreditsaldo sinkt nie.",
+      "overpayments": "Sondertilgungen wie Tilgung behandeln: Umbuchung aufs Kreditkonto, ohne Kategorie. Rechnete die Bank Zinsen hinzu, trennen Sie diesen Teil als eigene Ausgabe ab."
+    },
     "selectFrequency": "Intervall auswählen...",
     "selectAccount": "Konto auswählen...",
     "selectCategory": "Kategorie auswählen...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "Beschleunigt zweiwöchentlich",
       "weekly": "Wöchentlich",
       "acceleratedWeekly": "Beschleunigt wöchentlich"
+    },
+    "overpaymentRecognition": {
+      "title": "Sondertilgungs-Erkennung",
+      "description": "Wie der Tilgungsplan eine eigenständige Sondertilgung (100 % Tilgung) von einer regulären Rate unterscheidet. Eine Zahlung, die auf eines dieser Kriterien passt, gilt als Sondertilgung.",
+      "categoryLabel": "Sondertilgungs-Kategorie",
+      "payeeLabel": "Sondertilgungs-Empfänger",
+      "payeePlaceholder": "Empfänger auswählen …",
+      "memoLabel": "Sondertilgungs-Notiztext",
+      "memoPlaceholder": "z. B. Sondertilgung",
+      "memoHelp": "Groß-/Kleinschreibung wird ignoriert; Teilstring-Abgleich mit der Notiz der Zahlung, der Notiz der Quelltransaktion oder einer Split-Notiz."
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "Tilgung",
       "colInterest": "Zinsen",
       "colExtra": "Sondertilgung",
+      "colRate": "Zinssatz",
       "colBalance": "Saldo",
       "projectedFuturePayments": "Prognostizierte zukünftige Zahlungen",
+      "total": "Gesamt",
+      "paidToDate": "Bisher gezahlt",
+      "monthEntries": "{count, plural, one {# Eintrag} other {# Einträge}}",
+      "toggleMonth": "Zahlungen aus {month} ein- oder ausblenden",
+      "gapRow": "Keine erfassten Zahlungen – hier fehlen eine oder mehrere erwartete Raten",
       "showAll": "Alle {count} Zahlungen anzeigen",
       "showLess": "Weniger anzeigen",
       "noPayments": "Keine Zahlungen gefunden",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "Sondertilgung"
+      "overpaymentBadge": "Sondertilgung",
+      "editRateLabel": "Zinssatz für {date} bearbeiten"
     },
     "simulator": {
       "title": "Sondertilgungs-Simulator",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "Neues Tilgungsdatum",
+      "title": "Simulationsergebnis",
+      "placeholder": "Geben Sie oben eine Sondertilgung ein, um die Auswirkung hier zu sehen.",
       "timeSaved": "Gesparte Zeit",
       "monthsSaved": "{count, plural, one {# Monat} other {# Monate}}",
       "paymentsSaved": "{count, plural, one {# Zahlung} other {# Zahlungen}}",
@@ -397,7 +433,8 @@
       "empty": "Keine Zahlungshistorie oder Prognose verfügbar.",
       "seriesHistorical": "Tatsächlicher Saldo",
       "seriesBaseline": "Aktuelle Prognose",
-      "seriesScenario": "Mit Sondertilgungen",
+      "seriesScenario": "Mit simulierten Sondertilgungen",
+      "seriesOriginal": "Ursprünglicher Plan",
       "today": "Heute",
       "scenarioNote": "Das Sondertilgungsszenario ist eine Simulation und ändert Ihre geplanten Zahlungen nicht."
     },
@@ -464,6 +501,7 @@
       "detect": "Aus Verlauf erkennen",
       "empty": "Keine Zinssatzänderungen erfasst. Fügen Sie eine hinzu, wenn sich Ihr Zinssatz ändert, oder erkennen Sie vergangene Änderungen aus Ihrer Zahlungshistorie.",
       "rateValue": "{rate}%",
+      "chartLegend": "Zinssatz",
       "paymentSummary": "Rate: {payment}",
       "paymentUnchanged": "unverändert",
       "badgeInferred": "Abgeleitet",

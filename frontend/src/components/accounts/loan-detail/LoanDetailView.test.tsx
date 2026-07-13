@@ -3,6 +3,7 @@ import { render, screen, act } from '@/test/render';
 import { LoanDetailView } from './LoanDetailView';
 import { Account } from '@/types/account';
 import { Transaction } from '@/types/transaction';
+import type { ReactNode } from 'react';
 import type { OverpaymentPlan } from '@/lib/loan-schedule';
 
 // Mock the presentational children so this test focuses on LoanDetailView's
@@ -29,15 +30,16 @@ vi.mock('./ComparisonSummaryCards', () => ({
 vi.mock('./SavedScenariosPanel', () => ({
   SavedScenariosPanel: () => <div data-testid="scenarios-panel" />,
 }));
-vi.mock('./RateHistoryPanel', () => ({
-  RateHistoryPanel: () => <div data-testid="rate-history-panel" />,
-}));
 
 let capturedOnPlanChange: ((plan: OverpaymentPlan | null) => void) | undefined;
 vi.mock('./OverpaymentSimulator', () => ({
-  OverpaymentSimulator: (props: { onPlanChange: (p: OverpaymentPlan | null) => void }) => {
+  OverpaymentSimulator: (props: {
+    onPlanChange: (p: OverpaymentPlan | null) => void;
+    footer?: ReactNode;
+  }) => {
     capturedOnPlanChange = props.onPlanChange;
-    return <div data-testid="simulator" />;
+    // The saved-scenarios panel is now rendered inside the simulator's footer.
+    return <div data-testid="simulator">{props.footer}</div>;
   },
 }));
 
@@ -79,18 +81,17 @@ beforeEach(() => {
 });
 
 describe('LoanDetailView', () => {
-  it('always renders the summary, rate history, chart, past-impact, and schedule', () => {
+  it('always renders the summary, chart, past-impact, and schedule', () => {
     renderView(makeAccount());
     expect(screen.getByTestId('summary')).toBeInTheDocument();
-    expect(screen.getByTestId('rate-history-panel')).toBeInTheDocument();
     expect(screen.getByTestId('chart')).toBeInTheDocument();
     expect(screen.getByTestId('past-impact')).toBeInTheDocument();
     expect(screen.getByTestId('schedule')).toBeInTheDocument();
   });
 
-  it('shows the rate history even when the loan cannot be projected', () => {
+  it('shows the schedule even when the loan cannot be projected', () => {
     renderView(makeAccount({ paymentAmount: null, interestRate: null, paymentFrequency: null }));
-    expect(screen.getByTestId('rate-history-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('schedule')).toBeInTheDocument();
   });
 
   it('passes the anchored opening balance to the summary', () => {

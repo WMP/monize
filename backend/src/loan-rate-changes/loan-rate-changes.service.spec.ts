@@ -113,7 +113,7 @@ describe("LoanRateChangesService", () => {
         },
         {
           provide: DataSource,
-          useValue: { createQueryRunner: jest.fn(() => queryRunner) },
+          useValue: { createQueryRunner: jest.fn(() => queryRunner), manager },
         },
         {
           provide: ScheduledTransactionsService,
@@ -308,7 +308,7 @@ describe("LoanRateChangesService", () => {
       expect(result.newPaymentAmount).toBe(expected.paymentAmount);
     });
 
-    it("applies a past-dated change to the account scalars", async () => {
+    it("records a past-dated change without touching the account scalars", async () => {
       const account = makeAccount();
       accountsRepository.findOne.mockResolvedValue(account);
       manager.save.mockImplementation((data) => Promise.resolve(data));
@@ -327,10 +327,10 @@ describe("LoanRateChangesService", () => {
         annualRate: 4.9,
       });
 
-      expect(account.interestRate).toBe(4.9);
-      // Payment unchanged: latest non-null payment is the initial snapshot
+      // The timeline is user-owned; the account's manual rate/payment stay put.
+      expect(account.interestRate).toBe(5.5);
       expect(account.paymentAmount).toBe(2500);
-      expect(manager.save).toHaveBeenCalledWith(account);
+      expect(manager.save).not.toHaveBeenCalledWith(account);
     });
 
     it("resyncs the scheduled payment splits at the new rate, keeping the amount", async () => {
@@ -590,7 +590,7 @@ describe("LoanRateChangesService", () => {
       rateChangesRepository.findOne.mockResolvedValue(makeRow());
     });
 
-    it("merges provided fields and resyncs the timeline", async () => {
+    it("merges provided fields without touching the account scalars", async () => {
       const account = makeAccount();
       accountsRepository.findOne.mockResolvedValue(account);
       manager.find.mockResolvedValue([
@@ -602,7 +602,8 @@ describe("LoanRateChangesService", () => {
       });
 
       expect(result.annualRate).toBe(5.1);
-      expect(account.interestRate).toBe(5.1);
+      // Editing the timeline never rewrites the account's own rate.
+      expect(account.interestRate).toBe(5.5);
     });
 
     it("flips an inferred row to manual when edited", async () => {
@@ -653,7 +654,7 @@ describe("LoanRateChangesService", () => {
   });
 
   describe("remove", () => {
-    it("removes the row and rolls the scalars back to the prior row", async () => {
+    it("removes the row without rewriting the account scalars", async () => {
       const account = makeAccount({ interestRate: 4.9 });
       accountsRepository.findOne.mockResolvedValue(account);
       const row = makeRow();
@@ -670,7 +671,8 @@ describe("LoanRateChangesService", () => {
       await service.remove(userId, accountId, "rc-1");
 
       expect(manager.remove).toHaveBeenCalledWith(row);
-      expect(account.interestRate).toBe(5.5);
+      // Account rate stays as the user set it; deletion never restores a row's value.
+      expect(account.interestRate).toBe(4.9);
     });
 
     it("leaves scalars alone when no applicable rows remain", async () => {
@@ -693,8 +695,8 @@ describe("LoanRateChangesService", () => {
     });
   });
 
-  describe("syncAccountToTimeline", () => {
-    it("uses the latest applicable rate and the latest non-null payment", async () => {
+  describe("resolveCurrentTimeline", () => {
+    it("returns the latest applicable rate and latest non-null payment without mutating the account", async () => {
       const account = makeAccount();
       const today = todayYMD();
       manager.find.mockResolvedValue([
@@ -714,11 +716,26 @@ describe("LoanRateChangesService", () => {
         makeRow({ id: "rc-4", effectiveDate: "2099-01-01", annualRate: 4.0 }),
       ]);
 
-      await service.syncAccountToTimeline(manager as any, account);
+      const resolved = await service.resolveCurrentTimeline(
+        manager as any,
+        account,
+      );
 
       expect(today >= "2024-01-01").toBe(true);
-      expect(account.interestRate).toBe(5.9);
-      expect(account.paymentAmount).toBe(2650);
+      expect(resolved).toEqual({ annualRate: 5.9, paymentAmount: 2650 });
+      // Read-only: the account's own scalars are never touched.
+      expect(account.interestRate).toBe(5.5);
+      expect(account.paymentAmount).toBe(2500);
+      expect(manager.save).not.toHaveBeenCalledWith(account);
+    });
+
+    it("returns null for a closed account", async () => {
+      const resolved = await service.resolveCurrentTimeline(
+        manager as any,
+        makeAccount({ isClosed: true }),
+      );
+      expect(resolved).toBeNull();
+      expect(manager.find).not.toHaveBeenCalled();
     });
   });
 });

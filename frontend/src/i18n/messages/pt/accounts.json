@@ -266,6 +266,23 @@
     "firstPaymentDate": "Data do Primeiro Pagamento (obrigatório)",
     "paymentFromAccount": "Pagar a Partir da Conta (obrigatório)",
     "interestCategory": "Categoria de Juros",
+    "interestBookingMode": {
+      "label": "Como os juros são registados?",
+      "help": "Para a deteção de taxa os ler bem. Automático serve na maioria.",
+      "AUTO": "Automático (recomendado)",
+      "SPLIT": "Parte dividida do pagamento",
+      "SEPARATE": "Despesa separada (o capital é uma transferência)"
+    },
+    "bookingHelp": {
+      "title": "Como registar os pagamentos do empréstimo",
+      "intro": "Cada prestação tem duas partes que significam coisas diferentes nas finanças, por isso registam-se em separado:",
+      "principalTitle": "O capital é uma transferência.",
+      "principalBody": "Devolve o dinheiro emprestado, não é um custo. Registe-o como transferência da conta bancária para a conta do empréstimo, sem categoria, para baixar o saldo sem surgir nas despesas.",
+      "interestTitle": "Os juros são uma despesa.",
+      "interestBody": "São o custo real do empréstimo. Registe-os como despesa com uma categoria (por exemplo, \"Empréstimos\").",
+      "avoid": "Evite: não registe a prestação inteira como uma única despesa. Inflaciona os custos e o saldo do empréstimo nunca desce.",
+      "overpayments": "Os pagamentos antecipados funcionam como o capital: uma transferência para a conta do empréstimo, sem categoria. Se o banco somou juros, separe essa parte como despesa à parte."
+    },
     "selectFrequency": "Selecionar frequência...",
     "selectAccount": "Selecionar conta...",
     "selectCategory": "Selecionar categoria...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "Quinzenal Acelerado",
       "weekly": "Semanal",
       "acceleratedWeekly": "Semanal Acelerado"
+    },
+    "overpaymentRecognition": {
+      "title": "Reconhecimento de amortização antecipada",
+      "description": "Como o plano distingue uma amortização antecipada autónoma (100% de capital) de uma prestação regular. Um pagamento que corresponda a qualquer um destes critérios conta como amortização antecipada.",
+      "categoryLabel": "Categoria de amortização antecipada",
+      "payeeLabel": "Beneficiário da amortização antecipada",
+      "payeePlaceholder": "Selecionar beneficiário...",
+      "memoLabel": "Texto da nota de amortização antecipada",
+      "memoPlaceholder": "por ex. amortização antecipada",
+      "memoHelp": "Correspondência de subcadeia sem distinção entre maiúsculas e minúsculas com a nota do pagamento, a nota da transação de origem ou a nota de uma divisão."
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "Capital",
       "colInterest": "Juros",
       "colExtra": "Capital extra",
+      "colRate": "Taxa",
       "colBalance": "Saldo",
       "projectedFuturePayments": "Prestações futuras projetadas",
+      "total": "Total",
+      "paidToDate": "Pago até à data",
+      "monthEntries": "{count, plural, one {# entrada} other {# entradas}}",
+      "toggleMonth": "Mostrar ou ocultar os pagamentos de {month}",
+      "gapRow": "Sem pagamentos registados — faltam aqui uma ou mais prestações previstas",
       "showAll": "Mostrar as {count} prestações",
       "showLess": "Mostrar menos",
       "noPayments": "Nenhuma prestação encontrada",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "Amortização antecipada"
+      "overpaymentBadge": "Amortização antecipada",
+      "editRateLabel": "Editar taxa de juro para {date}"
     },
     "simulator": {
       "title": "Simulador de amortização antecipada",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "Nova data de liquidação",
+      "title": "Resultados da simulação",
+      "placeholder": "Introduza um pagamento adicional acima para ver o seu impacto aqui.",
       "timeSaved": "Tempo poupado",
       "monthsSaved": "{count, plural, one {# mês} other {# meses}}",
       "paymentsSaved": "{count, plural, one {# prestação} other {# prestações}}",
@@ -397,7 +433,8 @@
       "empty": "Sem histórico de pagamentos nem projeção disponível.",
       "seriesHistorical": "Saldo real",
       "seriesBaseline": "Projeção atual",
-      "seriesScenario": "Com amortizações antecipadas",
+      "seriesScenario": "Com amortizações extra simuladas",
+      "seriesOriginal": "Plano original",
       "today": "Hoje",
       "scenarioNote": "O cenário de amortização antecipada é uma simulação e não altera os seus pagamentos agendados."
     },
@@ -464,6 +501,7 @@
       "detect": "Detetar a partir do histórico",
       "empty": "Nenhuma alteração de taxa registada. Adicione uma quando a taxa mudar, ou detete alterações passadas a partir do histórico de pagamentos.",
       "rateValue": "{rate}%",
+      "chartLegend": "Taxa de juro",
       "paymentSummary": "Prestação: {payment}",
       "paymentUnchanged": "sem alterações",
       "badgeInferred": "Inferida",

@@ -71,6 +71,32 @@ function makeProjection(extra?: number) {
 }
 
 describe('buildPayoffComparisonSeries', () => {
+  it('accumulates real overpayments onto their month for the tooltip flag', () => {
+    const history: LoanPaymentEvent[] = [
+      {
+        date: '2022-07-05',
+        principal: 300,
+        interest: 40,
+        balance: 190000,
+        cumulativePrincipal: 300,
+        cumulativeInterest: 40,
+        type: 'REGULAR' as const,
+      },
+      {
+        date: '2022-07-20',
+        principal: 1650,
+        interest: 0,
+        balance: 188350,
+        cumulativePrincipal: 1950,
+        cumulativeInterest: 40,
+        type: 'OVERPAYMENT' as const,
+      },
+    ];
+    const { points } = buildPayoffComparisonSeries(history, null, null);
+    const july = points.find((p) => p.monthKey === '2022-07');
+    expect(july?.overpayment).toBe(1650);
+  });
+
   it('merges history and projections into monthly points', () => {
     const baseline = makeProjection();
     const { points, projectionStartKey } = buildPayoffComparisonSeries(
@@ -84,6 +110,48 @@ describe('buildPayoffComparisonSeries', () => {
     const march = points.find((p) => p.monthKey === '2026-03');
     expect(march?.baselineBalance).toBeDefined();
     expect(march?.historicalBalance).toBeUndefined();
+  });
+
+  it('carries the actual balance forward across a payment-holiday gap', () => {
+    // History has no payment in February; the continuous contractual curve
+    // still creates that month. The gap month must carry January's balance so
+    // the curve stays continuous and the tooltip shows a real value there --
+    // but months after the last actual payment stay empty (a projection, not
+    // a carried balance).
+    const history: LoanPaymentEvent[] = [
+      {
+        date: '2026-01-15',
+        principal: 450,
+        interest: 50,
+        balance: 9550,
+        cumulativePrincipal: 450,
+        cumulativeInterest: 50,
+        type: 'REGULAR',
+      },
+      {
+        date: '2026-03-15',
+        principal: 450,
+        interest: 50,
+        balance: 9100,
+        cumulativePrincipal: 900,
+        cumulativeInterest: 100,
+        type: 'REGULAR',
+      },
+    ];
+    const original = generateLoanSchedule({
+      startingBalance: 10000,
+      annualRate: 6,
+      paymentAmount: 500,
+      frequency: 'MONTHLY',
+      firstPaymentDate: new Date(2026, 0, 15),
+    });
+
+    const { points } = buildPayoffComparisonSeries(history, null, null, original);
+
+    expect(points.find((p) => p.monthKey === '2026-02')?.historicalBalance).toBe(9550);
+    expect(points.find((p) => p.monthKey === '2026-03')?.historicalBalance).toBe(9100);
+    // A month past the last actual payment is a projection gap, not carried.
+    expect(points.find((p) => p.monthKey === '2026-04')?.historicalBalance).toBeUndefined();
   });
 
   it('stitches projections onto the last historical point', () => {
@@ -131,6 +199,46 @@ describe('buildPayoffComparisonSeries', () => {
     expect(points[points.length - 1].monthKey).toBe(lastRow.date.slice(0, 7));
   });
 
+  it('keeps the history/projection transition after sampling a long series', () => {
+    // ~90 months of history plus a long projection, so sampling kicks in and
+    // could otherwise drop the "today" transition, leaving a visual gap.
+    const history: LoanPaymentEvent[] = Array.from({ length: 90 }, (_, i) => {
+      const year = 2019 + Math.floor(i / 12);
+      const month = String((i % 12) + 1).padStart(2, '0');
+      return {
+        date: `${year}-${month}-15`,
+        principal: 100,
+        interest: 10,
+        balance: 200000 - i * 100,
+        cumulativePrincipal: (i + 1) * 100,
+        cumulativeInterest: (i + 1) * 10,
+        type: 'REGULAR' as const,
+      };
+    });
+    const lastHistMonth = history[history.length - 1].date.slice(0, 7); // 2026-06
+    const projection = generateLoanSchedule({
+      startingBalance: 191000,
+      annualRate: 5,
+      paymentAmount: 1100,
+      frequency: 'MONTHLY',
+      firstPaymentDate: new Date(2026, 6, 15),
+    });
+
+    const { points, projectionStartKey } = buildPayoffComparisonSeries(history, projection, null);
+
+    // The last historical month keeps its balance, and the first projected
+    // month is present -- the transition is not dropped.
+    const lastHist = points.find((p) => p.monthKey === lastHistMonth);
+    expect(lastHist?.historicalBalance).toBeDefined();
+    expect(points.some((p) => p.monthKey === projectionStartKey)).toBe(true);
+  });
+
+  it('adds the original contractual series from the fourth argument', () => {
+    const original = makeProjection();
+    const { points } = buildPayoffComparisonSeries(makeHistory(), null, null, original);
+    expect(points.some((p) => p.originalBalance !== undefined)).toBe(true);
+  });
+
   it('returns no projection start without projections', () => {
     const { projectionStartKey } = buildPayoffComparisonSeries(makeHistory(), null, null);
     expect(projectionStartKey).toBeNull();
@@ -150,8 +258,21 @@ describe('PayoffComparisonChart', () => {
     expect(screen.getByText('Payoff Timeline')).toBeInTheDocument();
     expect(screen.getByText('Actual Balance')).toBeInTheDocument();
     expect(screen.getByText('Current Projection')).toBeInTheDocument();
-    expect(screen.queryByText('With Overpayments')).not.toBeInTheDocument();
+    expect(screen.queryByText('With Simulated Overpayments')).not.toBeInTheDocument();
     expect(screen.getByTestId('reference-line')).toHaveTextContent('Today');
+  });
+
+  it('renders the original contractual series when provided', () => {
+    render(
+      <PayoffComparisonChart
+        historyEvents={makeHistory()}
+        baseline={makeProjection()}
+        scenario={null}
+        original={makeProjection()}
+      />,
+    );
+
+    expect(screen.getByText('Original Schedule')).toBeInTheDocument();
   });
 
   it('adds the scenario series and note when a simulation is active', () => {
@@ -163,7 +284,7 @@ describe('PayoffComparisonChart', () => {
       />,
     );
 
-    expect(screen.getByText('With Overpayments')).toBeInTheDocument();
+    expect(screen.getByText('With Simulated Overpayments')).toBeInTheDocument();
     expect(screen.getByText(/does not change your scheduled payments/)).toBeInTheDocument();
   });
 

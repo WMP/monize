@@ -266,6 +266,23 @@
     "firstPaymentDate": "Ngày thanh toán đầu tiên (bắt buộc)",
     "paymentFromAccount": "Thanh toán từ tài khoản (bắt buộc)",
     "interestCategory": "Danh mục lãi suất",
+    "interestBookingMode": {
+      "label": "Lãi được ghi nhận thế nào?",
+      "help": "Để phát hiện lãi suất đọc đúng. Tự động hợp với hầu hết.",
+      "AUTO": "Tự động (khuyến nghị)",
+      "SPLIT": "Phần tách của khoản thanh toán",
+      "SEPARATE": "Chi phí riêng (gốc là chuyển khoản)"
+    },
+    "bookingHelp": {
+      "title": "Cách ghi nhận các khoản trả nợ vay",
+      "intro": "Mỗi kỳ trả gồm hai phần mang ý nghĩa khác nhau về tài chính, nên hãy ghi riêng:",
+      "principalTitle": "Gốc là một khoản chuyển khoản.",
+      "principalBody": "Nó hoàn lại tiền đã vay, không phải chi phí. Ghi dưới dạng chuyển khoản từ tài khoản ngân hàng sang tài khoản vay, không gán danh mục, để giảm dư nợ mà không hiện trong chi tiêu.",
+      "interestTitle": "Lãi là một khoản chi.",
+      "interestBody": "Đây là chi phí thực của khoản vay. Ghi dưới dạng chi tiêu kèm danh mục (ví dụ \"Khoản vay\").",
+      "avoid": "Tránh: đừng ghi toàn bộ kỳ trả thành một khoản chi. Nó thổi phồng chi phí và dư nợ vay không bao giờ giảm.",
+      "overpayments": "Trả trước hoạt động như gốc: chuyển khoản vào tài khoản vay, không danh mục. Nếu ngân hàng cộng thêm lãi, tách phần đó thành khoản chi riêng."
+    },
     "selectFrequency": "Chọn tần suất...",
     "selectAccount": "Chọn tài khoản...",
     "selectCategory": "Chọn danh mục...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "Mỗi 2 tuần tăng tốc",
       "weekly": "Hàng tuần",
       "acceleratedWeekly": "Hàng tuần tăng tốc"
+    },
+    "overpaymentRecognition": {
+      "title": "Nhận diện trả trước",
+      "description": "Cách lịch phân biệt khoản trả trước độc lập (100% gốc) với kỳ trả góp thông thường. Một khoản thanh toán khớp với bất kỳ tiêu chí nào trong số này được tính là trả trước.",
+      "categoryLabel": "Danh mục trả trước",
+      "payeeLabel": "Người nhận trả trước",
+      "payeePlaceholder": "Chọn người nhận...",
+      "memoLabel": "Nội dung ghi chú trả trước",
+      "memoPlaceholder": "vd. trả trước",
+      "memoHelp": "So khớp chuỗi con không phân biệt hoa thường với ghi chú của khoản thanh toán, ghi chú của giao dịch nguồn hoặc ghi chú tách."
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "Gốc",
       "colInterest": "Lãi",
       "colExtra": "Gốc trả thêm",
+      "colRate": "Lãi suất",
       "colBalance": "Số dư",
       "projectedFuturePayments": "Các kỳ trả dự kiến trong tương lai",
+      "total": "Tổng",
+      "paidToDate": "Đã trả đến nay",
+      "monthEntries": "{count, plural, other {# mục}}",
+      "toggleMonth": "Hiển thị hoặc ẩn các khoản thanh toán trong {month}",
+      "gapRow": "Không có khoản thanh toán nào được ghi nhận — thiếu một hoặc nhiều kỳ trả góp dự kiến ở đây",
       "showAll": "Hiện tất cả {count} kỳ trả",
       "showLess": "Thu gọn",
       "noPayments": "Không tìm thấy khoản trả nào",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "Trả thêm gốc"
+      "overpaymentBadge": "Trả thêm gốc",
+      "editRateLabel": "Chỉnh sửa lãi suất cho {date}"
     },
     "simulator": {
       "title": "Trình mô phỏng trả nợ trước hạn",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "Ngày trả hết mới",
+      "title": "Kết quả mô phỏng",
+      "placeholder": "Nhập một khoản trả thêm ở trên để xem tác động tại đây.",
       "timeSaved": "Thời gian tiết kiệm",
       "monthsSaved": "{count, plural, one {# tháng} other {# tháng}}",
       "paymentsSaved": "{count, plural, one {# kỳ} other {# kỳ}}",
@@ -397,7 +433,8 @@
       "empty": "Không có lịch sử thanh toán hoặc dự báo.",
       "seriesHistorical": "Số dư thực tế",
       "seriesBaseline": "Dự báo hiện tại",
-      "seriesScenario": "Có trả trước hạn",
+      "seriesScenario": "Có trả trước mô phỏng",
+      "seriesOriginal": "Lịch ban đầu",
       "today": "Hôm nay",
       "scenarioNote": "Kịch bản trả trước hạn chỉ là mô phỏng và không thay đổi các khoản trả đã lên lịch của bạn."
     },
@@ -464,6 +501,7 @@
       "detect": "Phát hiện từ lịch sử",
       "empty": "Chưa ghi nhận thay đổi lãi suất nào. Thêm một mục khi lãi suất của bạn thay đổi, hoặc phát hiện các thay đổi trước đây từ lịch sử thanh toán của bạn.",
       "rateValue": "{rate}%",
+      "chartLegend": "Lãi suất",
       "paymentSummary": "Khoản trả: {payment}",
       "paymentUnchanged": "không đổi",
       "badgeInferred": "Suy ra",

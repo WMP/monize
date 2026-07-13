@@ -18,7 +18,9 @@ function makeAccount(overrides: Partial<Account> = {}): Account {
     paymentFrequency: 'MONTHLY',
     paymentStartDate: '2025-01-15',
     originalPrincipal: 10000,
-    amortizationMonths: null,
+    // A repayment period is required in the UI; ~21 months amortizes the
+    // default 10k at 6% near the default 500 payment.
+    amortizationMonths: 21,
     isCanadianMortgage: false,
     isVariableRate: false,
     ...overrides,
@@ -46,9 +48,200 @@ describe('computePastImpact', () => {
 
     expect(computePastImpact(makeAccount({ interestRate: null }), history)).toBeNull();
     expect(computePastImpact(makeAccount({ paymentFrequency: null }), history)).toBeNull();
-    // A loan with no amortization period and no payment amount has no
-    // contractual payment to build a schedule from.
-    expect(computePastImpact(makeAccount({ paymentAmount: null }), history)).toBeNull();
+    // The repayment period is required; without a configured amortization or
+    // term there is no contractual baseline to build.
+    expect(
+      computePastImpact(makeAccount({ amortizationMonths: null, termMonths: null }), history),
+    ).toBeNull();
+  });
+
+  it('ignores principal-only payment steps in the rate history so the schedule completes', () => {
+    // An old detect run left a rate row that also set a principal-only payment
+    // (285). Applied mid-schedule it cannot cover interest and would stall the
+    // contractual schedule -- the payoff must still be reached by keeping the
+    // contractual installment.
+    const account = makeAccount({
+      originalPrincipal: 200000,
+      currentBalance: -180000,
+      paymentAmount: 1200,
+      amortizationMonths: 360,
+      paymentStartDate: '2020-01-15',
+    });
+    const history = makeHistory(makeAccount(), [1200, 1200, 1200]);
+    const rateChanges = [{ effectiveDate: '2020-06-01', annualRate: 6, newPaymentAmount: 285 }];
+
+    const impact = computePastImpact(account, history, null, rateChanges);
+
+    expect(impact).not.toBeNull();
+    expect(impact!.originalSchedule.payoffDate).not.toBeNull();
+    expect(impact!.originalPayoffDate).not.toBeNull();
+  });
+
+  it('bounds the contractual schedule by the configured repayment term', () => {
+    // 23y8m = 284 months in `termMonths` (no amortizationMonths). Even with a
+    // too-small stored payment, the schedule must not run past the term.
+    const account = makeAccount({
+      originalPrincipal: 200000,
+      currentBalance: -100000,
+      interestRate: 6,
+      paymentAmount: 1050,
+      amortizationMonths: null,
+      termMonths: 284,
+      paymentStartDate: '2020-01-15',
+    });
+    const history = makeHistory(account, [1050, 1050]);
+
+    const impact = computePastImpact(account, history)!;
+
+    expect(impact.originalSchedule.paidOff).toBe(true);
+    // Amortizes over ~284 payments, never longer.
+    expect(impact.originalSchedule.numPayments).toBeLessThanOrEqual(285);
+    expect(impact.originalSchedule.numPayments).toBeGreaterThan(270);
+  });
+
+  it('re-levels the contractual payment on a rate rise so the schedule holds its term', () => {
+    // Variable rate starting at 2% and rising to 6% mid-way (the recorded rate
+    // history). The initial payment, sized at 2%, cannot cover 6% interest --
+    // re-levelling must keep the schedule amortizing to the term, not stall.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      originalPrincipal: 200000,
+      currentBalance: -150000,
+      interestRate: 6,
+      amortizationMonths: 284,
+      paymentStartDate: '2020-01-15',
+    });
+    const history = makeHistory(account, [1000, 1000]);
+    const rateChanges = [
+      { effectiveDate: '2020-01-01', annualRate: 2 },
+      { effectiveDate: '2022-01-01', annualRate: 6, newPaymentAmount: 300 },
+    ];
+
+    const impact = computePastImpact(account, history, null, rateChanges)!;
+
+    expect(impact.originalSchedule.paidOff).toBe(true);
+    expect(impact.originalSchedule.payoffDate).not.toBeNull();
+    expect(impact.originalSchedule.numPayments).toBeLessThanOrEqual(285);
+    expect(impact.originalSchedule.numPayments).toBeGreaterThan(270);
+  });
+
+  it('follows the recorded installment so a fast-paid loan is not stretched to its amortization term', () => {
+    // A 25-year (300-month) mortgage whose real regular payment -- recorded on
+    // the initial rate row (interest booked as a split leg, so the payment is
+    // the full installment) -- is far larger than the 300-month minimum, paying
+    // it off in ~5 years. The contractual "if I never overpaid" schedule must
+    // follow that recorded installment and pay off early, not draw the
+    // theoretical minimum-payment curve stretching to 300 months.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      originalPrincipal: 180000,
+      currentBalance: -120000,
+      interestRate: 1.75,
+      paymentAmount: 3200,
+      amortizationMonths: 300,
+      paymentStartDate: '2022-04-25',
+    });
+    const history = makeHistory(account, [3200, 3200, 3200]);
+    const rateChanges = [
+      { effectiveDate: '2022-04-25', annualRate: 1.75, newPaymentAmount: 3200 },
+    ];
+
+    const impact = computePastImpact(account, history, null, rateChanges)!;
+
+    expect(impact.originalSchedule.paidOff).toBe(true);
+    // ~59 monthly payments at 1.75% -- an order of magnitude below the 300-month
+    // amortization term the old PMT-over-term curve would have drawn.
+    expect(impact.originalSchedule.numPayments).toBeLessThan(80);
+    expect(impact.originalSchedule.numPayments).toBeGreaterThan(45);
+  });
+
+  it('starts at the initial rate row payment when paymentStartDate precedes that row', () => {
+    // Real dataset shape: paymentStartDate is the origination date (2022-04-25),
+    // but rate detection dates the initial row at the FIRST INSTALLMENT
+    // (2022-05-13). The starting payment must fall back to that row's recorded
+    // installment -- otherwise the schedule silently drops to the PMT-over-term
+    // minimum payment and stretches a ~4-year payoff to the full 25-year
+    // amortization. Variable-rate Canadian mortgage, accelerated bi-weekly,
+    // with the recorded rate/payment steps.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      originalPrincipal: 300000,
+      currentBalance: 0,
+      interestRate: 3.5,
+      paymentAmount: 0,
+      paymentFrequency: 'ACCELERATED_BIWEEKLY',
+      amortizationMonths: 300,
+      termMonths: 60,
+      paymentStartDate: '2022-04-25',
+      isCanadianMortgage: true,
+      isVariableRate: true,
+    });
+    const history = makeHistory(account, [3200, 3200, 3200]);
+    const rateChanges = [
+      { effectiveDate: '2022-05-13', annualRate: 1.75, newPaymentAmount: 3200 },
+      { effectiveDate: '2022-06-24', annualRate: 2.25, newPaymentAmount: 3233.04 },
+      { effectiveDate: '2022-08-05', annualRate: 3.25, newPaymentAmount: 3303.43 },
+      { effectiveDate: '2022-09-30', annualRate: 4.0, newPaymentAmount: 3127.05 },
+      { effectiveDate: '2022-11-11', annualRate: 4.5, newPaymentAmount: 3264.52 },
+      { effectiveDate: '2022-12-23', annualRate: 5.0, newPaymentAmount: 3300.06 },
+      { effectiveDate: '2023-02-17', annualRate: 5.25, newPaymentAmount: 3319.16 },
+      { effectiveDate: '2023-06-23', annualRate: 5.5, newPaymentAmount: 3332.64 },
+      { effectiveDate: '2023-08-04', annualRate: 5.75, newPaymentAmount: 4050.54 },
+      { effectiveDate: '2024-06-21', annualRate: 5.5, newPaymentAmount: null },
+      { effectiveDate: '2024-08-16', annualRate: 5.25, newPaymentAmount: null },
+      { effectiveDate: '2024-09-27', annualRate: 5.0, newPaymentAmount: null },
+      { effectiveDate: '2024-11-08', annualRate: 4.5, newPaymentAmount: 4228.27 },
+      { effectiveDate: '2025-01-03', annualRate: 4.0, newPaymentAmount: null },
+      { effectiveDate: '2025-02-14', annualRate: 3.75, newPaymentAmount: null },
+      { effectiveDate: '2025-03-28', annualRate: 3.5, newPaymentAmount: null },
+    ];
+
+    const impact = computePastImpact(account, history, null, rateChanges)!;
+
+    expect(impact.originalSchedule.paidOff).toBe(true);
+    // ~100 bi-weekly payments (payoff early 2026) -- an order of magnitude below
+    // the 650-period amortization the PMT fallback would stretch to (2047).
+    expect(impact.originalSchedule.numPayments).toBeLessThan(130);
+    expect(impact.originalSchedule.payoffDate! < '2027-01-01').toBe(true);
+    expect(impact.originalSchedule.payoffDate! > '2025-01-01').toBe(true);
+  });
+
+  it('falls back to the term when interest is booked separately (no recorded installment)', () => {
+    // The same mortgage, but interest booked separately leaves the rate rows'
+    // payment null (see rate-change inference). With no recorded installment the
+    // contractual schedule uses the PMT over the configured term, exactly as
+    // before -- so loans that relied on that path are unaffected by the
+    // recorded-installment path above.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      originalPrincipal: 180000,
+      currentBalance: -120000,
+      interestRate: 1.75,
+      amortizationMonths: 300,
+      paymentStartDate: '2022-04-25',
+    });
+    const history = makeHistory(account, [3200, 3200, 3200]);
+    const rateChanges = [
+      { effectiveDate: '2022-04-25', annualRate: 1.75, newPaymentAmount: null },
+    ];
+
+    const impact = computePastImpact(account, history, null, rateChanges)!;
+
+    expect(impact.originalSchedule.paidOff).toBe(true);
+    // Amortizes over ~300 months, not the ~59 the recorded installment gives.
+    expect(impact.originalSchedule.numPayments).toBeGreaterThan(250);
+  });
+
+  it('builds the contractual schedule from the term even without a stored payment', () => {
+    // The contractual payment comes from the original principal, rate, and
+    // repayment period, so no stored paymentAmount is needed.
+    const account = makeAccount({ paymentAmount: null });
+    const history = makeHistory(makeAccount(), [450, 450, 450]);
+
+    const impact = computePastImpact(account, history);
+
+    expect(impact).not.toBeNull();
+    expect(impact!.originalSchedule.totalInterest).toBeGreaterThan(0);
   });
 
   it('returns null when there is no principal, start date, or history', () => {
@@ -141,7 +334,7 @@ describe('computePastImpact', () => {
     ] as Transaction[];
     const history = deriveLoanPaymentHistory(account, transactions);
 
-    const impact = computePastImpact(account, history, new Date(2025, 5, 20))!;
+    const impact = computePastImpact(account, history)!;
 
     expect(impact.extraPrincipalPaid).toBeCloseTo(1500 + 2500, 2);
   });
@@ -150,9 +343,8 @@ describe('computePastImpact', () => {
     // Plain payments with no overpayment category or memo -> nothing classified
     const account = makeAccount({ currentBalance: -5000 });
     const history = makeHistory(account, [500, 500]);
-    const asOf = new Date(2025, 5, 20);
 
-    const impact = computePastImpact(account, history, asOf)!;
+    const impact = computePastImpact(account, history)!;
 
     expect(impact.extraPrincipalPaid).toBe(0);
   });
@@ -167,6 +359,7 @@ describe('computePastImpact', () => {
       originalPrincipal: 200000,
       currentBalance: -40000,
       paymentAmount: 1200,
+      amortizationMonths: 360,
       paymentStartDate: '2020-01-15',
     });
     const transactions = Array.from(
@@ -181,8 +374,17 @@ describe('computePastImpact', () => {
         }) as Transaction,
     );
     const history = deriveLoanPaymentHistory(account, transactions);
+    // The forward projection from today's remaining 40k -- the loan detail
+    // page's baseline, passed in the way the app now does.
+    const currentProjection = generateLoanSchedule({
+      startingBalance: 40000,
+      annualRate: 6,
+      paymentAmount: 1200,
+      frequency: 'MONTHLY',
+      firstPaymentDate: new Date(2025, 0, 15),
+    });
 
-    const impact = computePastImpact(account, history);
+    const impact = computePastImpact(account, history, currentProjection);
 
     expect(impact).not.toBeNull();
     expect(impact!.originalSchedule.paidOff).toBe(true);
@@ -279,9 +481,8 @@ describe('computePastImpact with rate history', () => {
     const account = makeAccount();
     const history = makeHistory(account, [450, 450]);
 
-    const asOf = new Date(2025, 5, 15);
-    const without = computePastImpact(account, history, asOf);
-    const withEmpty = computePastImpact(account, history, asOf, []);
+    const without = computePastImpact(account, history);
+    const withEmpty = computePastImpact(account, history, null, []);
 
     expect(withEmpty).toEqual(without);
   });
@@ -296,8 +497,7 @@ describe('computePastImpact with rate history', () => {
       { effectiveDate: '2025-03-01', annualRate: 4, newPaymentAmount: null },
     ];
 
-    const asOf = new Date(2025, 5, 15);
-    const impact = computePastImpact(account, history, asOf, rateChanges);
+    const impact = computePastImpact(account, history, null, rateChanges);
 
     expect(impact).not.toBeNull();
     // Rows before the step accrue at 6%, after it at 4%
@@ -314,33 +514,12 @@ describe('computePastImpact with rate history', () => {
       { effectiveDate: '2025-06-01', annualRate: 12, newPaymentAmount: null },
     ];
 
-    const asOf = new Date(2025, 5, 15);
-    const withStep = computePastImpact(account, history, asOf, rateChanges)!;
-    const withoutStep = computePastImpact(account, history, asOf)!;
+    const withStep = computePastImpact(account, history, null, rateChanges)!;
+    const withoutStep = computePastImpact(account, history)!;
 
     // A rate hike in the baseline means more contractual interest
     expect(withStep.originalSchedule.totalInterest).toBeGreaterThan(
       withoutStep.originalSchedule.totalInterest,
     );
-  });
-
-  it('applies only future-dated steps to the current projection', () => {
-    const account = makeAccount();
-    const history = makeHistory(account, [450, 450]);
-    const asOf = new Date(2025, 5, 15);
-    const rateChanges = [
-      // Past step: already reflected in the scalar rate, must not double-apply
-      { effectiveDate: '2025-03-01', annualRate: 6, newPaymentAmount: null },
-      // Future step: the projection should bend at this date
-      { effectiveDate: '2025-09-01', annualRate: 12, newPaymentAmount: null },
-    ];
-
-    const impact = computePastImpact(account, history, asOf, rateChanges)!;
-
-    expect(impact.currentProjection).not.toBeNull();
-    const rows = impact.currentProjection!.rows;
-    expect(rows[0].annualRate).toBe(6);
-    const septemberOn = rows.filter((row) => row.date >= '2025-09-01');
-    expect(septemberOn[0].annualRate).toBe(12);
   });
 });

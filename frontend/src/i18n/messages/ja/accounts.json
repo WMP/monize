@@ -266,6 +266,23 @@
     "firstPaymentDate": "初回支払日（必須）",
     "paymentFromAccount": "支払い元勘定科目（必須）",
     "interestCategory": "利息カテゴリ",
+    "interestBookingMode": {
+      "label": "利息の記録方法は？",
+      "help": "金利検出が正しく読めるようにします。ほとんどは自動でOK。",
+      "AUTO": "自動（推奨）",
+      "SPLIT": "支払いの分割項目",
+      "SEPARATE": "別の支出（元本は振替）"
+    },
+    "bookingHelp": {
+      "title": "ローン返済の記録方法",
+      "intro": "毎回の返済は財務上意味の異なる2つの部分から成るため、分けて記録します:",
+      "principalTitle": "元金は振替です。",
+      "principalBody": "借りたお金の返済で、費用ではありません。銀行口座からローン口座への振替として、カテゴリなしで記録すると、残高を減らしつつ支出には出ません。",
+      "interestTitle": "利息は支出です。",
+      "interestBody": "ローンの実際のコストです。カテゴリ（例：「ローン」）を付けて支出として記録します。",
+      "avoid": "避けること: 返済全額を1つの支出として記録しないでください。費用が過大になり、ローン残高も減りません。",
+      "overpayments": "繰上返済は元金と同じ扱い: ローン口座への振替、カテゴリなし。銀行が利息を加えた場合は、その分を別の支出として分けます。"
+    },
     "selectFrequency": "頻度を選択...",
     "selectAccount": "勘定科目を選択...",
     "selectCategory": "カテゴリを選択...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "加速隔週払い",
       "weekly": "毎週",
       "acceleratedWeekly": "加速週払い"
+    },
+    "overpaymentRecognition": {
+      "title": "繰上返済の認識",
+      "description": "スケジュールが単独の繰上返済（100% 元金）を通常の返済と区別する方法。いずれかに一致する支払いは繰上返済として扱われます。",
+      "categoryLabel": "繰上返済カテゴリ",
+      "payeeLabel": "繰上返済の支払先",
+      "payeePlaceholder": "支払先を選択...",
+      "memoLabel": "繰上返済のメモテキスト",
+      "memoPlaceholder": "例: 繰上返済",
+      "memoHelp": "支払いのメモ、その元取引のメモ、または分割のメモに対する大文字小文字を区別しない部分一致。"
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "元金",
       "colInterest": "利息",
       "colExtra": "繰上返済",
+      "colRate": "金利",
       "colBalance": "残高",
       "projectedFuturePayments": "予測される今後の返済",
+      "total": "合計",
+      "paidToDate": "これまでの支払い",
+      "monthEntries": "{count, plural, other {# 件}}",
+      "toggleMonth": "{month} の支払いを表示または非表示にする",
+      "gapRow": "記録された支払いがありません — 予定されていた1回以上の返済がここにありません",
       "showAll": "全 {count} 回の返済を表示",
       "showLess": "表示を減らす",
       "noPayments": "返済が見つかりません",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "繰り上げ返済"
+      "overpaymentBadge": "繰り上げ返済",
+      "editRateLabel": "{date}の金利を編集"
     },
     "simulator": {
       "title": "繰上返済シミュレーター",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "新しい完済日",
+      "title": "シミュレーション結果",
+      "placeholder": "上で繰上返済を入力すると、その効果がここに表示されます。",
       "timeSaved": "短縮期間",
       "monthsSaved": "{count, plural, one {# か月} other {# か月}}",
       "paymentsSaved": "{count, plural, one {# 回} other {# 回}}",
@@ -397,7 +433,8 @@
       "empty": "返済履歴や予測はありません。",
       "seriesHistorical": "実際の残高",
       "seriesBaseline": "現在の予測",
-      "seriesScenario": "繰上返済あり",
+      "seriesScenario": "シミュレーションした繰上返済あり",
+      "seriesOriginal": "当初スケジュール",
       "today": "今日",
       "scenarioNote": "繰上返済シナリオはシミュレーションであり、予定されている返済を変更するものではありません。"
     },
@@ -464,6 +501,7 @@
       "detect": "履歴から検出",
       "empty": "記録された金利変更はありません。金利が変わったときに追加するか、返済履歴から過去の変更を検出してください。",
       "rateValue": "{rate}%",
+      "chartLegend": "金利",
       "paymentSummary": "返済額：{payment}",
       "paymentUnchanged": "変更なし",
       "badgeInferred": "推定",

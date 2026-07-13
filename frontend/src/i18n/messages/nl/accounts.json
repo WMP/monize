@@ -266,6 +266,23 @@
     "firstPaymentDate": "Datum eerste betaling (vereist)",
     "paymentFromAccount": "Betaling van rekening (vereist)",
     "interestCategory": "Rentecategorie",
+    "interestBookingMode": {
+      "label": "Hoe wordt rente geboekt?",
+      "help": "Zodat rentedetectie het goed leest. Automatisch werkt meestal.",
+      "AUTO": "Automatisch (aanbevolen)",
+      "SPLIT": "Gesplitst deel van de betaling",
+      "SEPARATE": "Aparte uitgave (hoofdsom is een overboeking)"
+    },
+    "bookingHelp": {
+      "title": "Hoe je leningbetalingen boekt",
+      "intro": "Elke termijn heeft twee delen die financieel iets anders betekenen, dus boek ze apart:",
+      "principalTitle": "Aflossing is een overboeking.",
+      "principalBody": "Ze betaalt geleend geld terug en is geen kost. Boek haar als overboeking van je bankrekening naar de leningrekening, zonder categorie, zodat het saldo daalt zonder in de uitgaven te verschijnen.",
+      "interestTitle": "Rente is een uitgave.",
+      "interestBody": "Dit is de echte kost van de lening. Boek ze als uitgave met een categorie (bijvoorbeeld \"Leningen\").",
+      "avoid": "Vermijd: boek niet de hele termijn als één uitgave. Dat overdrijft je kosten en het leningsaldo daalt nooit.",
+      "overpayments": "Extra aflossingen werken als aflossing: een overboeking naar de leningrekening, zonder categorie. Voegde de bank rente toe, splits dat deel dan af als aparte uitgave."
+    },
     "selectFrequency": "Selecteer frequentie...",
     "selectAccount": "Selecteer rekening...",
     "selectCategory": "Selecteer categorie...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "Versneld twee keer per week",
       "weekly": "Wekelijks",
       "acceleratedWeekly": "Versneld wekelijks"
+    },
+    "overpaymentRecognition": {
+      "title": "Herkenning van extra aflossing",
+      "description": "Hoe het schema een losstaande extra aflossing (100% aflossing) onderscheidt van een reguliere termijn. Een betaling die aan een van deze criteria voldoet, telt als extra aflossing.",
+      "categoryLabel": "Categorie extra aflossing",
+      "payeeLabel": "Begunstigde extra aflossing",
+      "payeePlaceholder": "Begunstigde selecteren...",
+      "memoLabel": "Notitietekst extra aflossing",
+      "memoPlaceholder": "bijv. extra aflossing",
+      "memoHelp": "Hoofdletterongevoelige subtekenreeks-overeenkomst met de notitie van de betaling, de notitie van de brontransactie of een split-notitie."
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "Hoofdsom",
       "colInterest": "Rente",
       "colExtra": "Extra hoofdsom",
+      "colRate": "Rente",
       "colBalance": "Saldo",
       "projectedFuturePayments": "Geprojecteerde toekomstige betalingen",
+      "total": "Totaal",
+      "paidToDate": "Tot nu toe betaald",
+      "monthEntries": "{count, plural, one {# item} other {# items}}",
+      "toggleMonth": "Betalingen van {month} tonen of verbergen",
+      "gapRow": "Geen geregistreerde betalingen — een of meer verwachte termijnen ontbreken hier",
       "showAll": "Alle {count} betalingen tonen",
       "showLess": "Minder tonen",
       "noPayments": "Geen betalingen gevonden",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "Extra aflossing"
+      "overpaymentBadge": "Extra aflossing",
+      "editRateLabel": "Rente voor {date} bewerken"
     },
     "simulator": {
       "title": "Simulator extra aflossen",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "Nieuwe aflossingsdatum",
+      "title": "Simulatieresultaten",
+      "placeholder": "Vul hierboven een extra aflossing in om het effect hier te zien.",
       "timeSaved": "Bespaarde tijd",
       "monthsSaved": "{count, plural, one {# maand} other {# maanden}}",
       "paymentsSaved": "{count, plural, one {# betaling} other {# betalingen}}",
@@ -397,7 +433,8 @@
       "empty": "Geen betalingsgeschiedenis of projectie beschikbaar.",
       "seriesHistorical": "Werkelijk saldo",
       "seriesBaseline": "Huidige projectie",
-      "seriesScenario": "Met extra aflossingen",
+      "seriesScenario": "Met gesimuleerde extra aflossingen",
+      "seriesOriginal": "Oorspronkelijk schema",
       "today": "Vandaag",
       "scenarioNote": "Het scenario met extra aflossingen is een simulatie en wijzigt uw geplande betalingen niet."
     },
@@ -464,6 +501,7 @@
       "detect": "Detecteren uit geschiedenis",
       "empty": "Geen renteveranderingen vastgelegd. Voeg er een toe wanneer uw rente verandert, of detecteer eerdere veranderingen uit uw betalingsgeschiedenis.",
       "rateValue": "{rate}%",
+      "chartLegend": "Rente",
       "paymentSummary": "Betaling: {payment}",
       "paymentUnchanged": "ongewijzigd",
       "badgeInferred": "Afgeleid",

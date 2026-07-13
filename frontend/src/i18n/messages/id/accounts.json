@@ -266,6 +266,23 @@
     "firstPaymentDate": "Tanggal Pembayaran Pertama (wajib)",
     "paymentFromAccount": "Pembayaran Dari Akun (wajib)",
     "interestCategory": "Kategori Bunga",
+    "interestBookingMode": {
+      "label": "Bagaimana bunga dicatat?",
+      "help": "Agar deteksi suku bunga membacanya dengan benar. Otomatis cocok untuk kebanyakan.",
+      "AUTO": "Otomatis (disarankan)",
+      "SPLIT": "Bagian split dari pembayaran",
+      "SEPARATE": "Pengeluaran terpisah (pokok berupa transfer)"
+    },
+    "bookingHelp": {
+      "title": "Cara mencatat pembayaran pinjaman",
+      "intro": "Setiap angsuran punya dua bagian yang berbeda arti dalam keuangan, jadi catat terpisah:",
+      "principalTitle": "Pokok adalah transfer.",
+      "principalBody": "Ini mengembalikan uang pinjaman, bukan biaya. Catat sebagai transfer dari rekening bank ke akun pinjaman tanpa kategori, agar menurunkan saldo tanpa muncul sebagai pengeluaran.",
+      "interestTitle": "Bunga adalah pengeluaran.",
+      "interestBody": "Ini biaya nyata pinjaman. Catat sebagai pengeluaran dengan kategori (misalnya \"Pinjaman\").",
+      "avoid": "Hindari: jangan catat seluruh angsuran sebagai satu pengeluaran. Itu membesarkan biaya dan saldo pinjaman tak pernah turun.",
+      "overpayments": "Pelunasan dipercepat seperti pokok: transfer ke akun pinjaman, tanpa kategori. Jika bank menambahkan bunga, pisahkan bagian itu sebagai pengeluaran tersendiri."
+    },
     "selectFrequency": "Pilih frekuensi...",
     "selectAccount": "Pilih akun...",
     "selectCategory": "Pilih kategori...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "Dua Mingguan Dipercepat",
       "weekly": "Mingguan",
       "acceleratedWeekly": "Mingguan Dipercepat"
+    },
+    "overpaymentRecognition": {
+      "title": "Pengenalan pembayaran berlebih",
+      "description": "Bagaimana jadwal membedakan pembayaran berlebih mandiri (100% pokok) dari angsuran reguler. Pembayaran yang cocok dengan salah satu dari ini dihitung sebagai pembayaran berlebih.",
+      "categoryLabel": "Kategori pembayaran berlebih",
+      "payeeLabel": "Penerima pembayaran berlebih",
+      "payeePlaceholder": "Pilih penerima...",
+      "memoLabel": "Teks memo pembayaran berlebih",
+      "memoPlaceholder": "mis. pembayaran berlebih",
+      "memoHelp": "Pencocokan substring tanpa memperhatikan huruf besar/kecil terhadap memo pembayaran, memo transaksi sumbernya, atau memo split."
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "Pokok",
       "colInterest": "Bunga",
       "colExtra": "Pokok Tambahan",
+      "colRate": "Suku Bunga",
       "colBalance": "Saldo",
       "projectedFuturePayments": "Angsuran Mendatang yang Diproyeksikan",
+      "total": "Total",
+      "paidToDate": "Dibayar sampai saat ini",
+      "monthEntries": "{count, plural, other {# entri}}",
+      "toggleMonth": "Tampilkan atau sembunyikan pembayaran pada {month}",
+      "gapRow": "Tidak ada pembayaran tercatat — satu atau beberapa angsuran yang diharapkan tidak ada di sini",
       "showAll": "Tampilkan semua {count} angsuran",
       "showLess": "Tampilkan lebih sedikit",
       "noPayments": "Tidak ada angsuran ditemukan",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "Pembayaran ekstra"
+      "overpaymentBadge": "Pembayaran ekstra",
+      "editRateLabel": "Edit suku bunga untuk {date}"
     },
     "simulator": {
       "title": "Simulator Pelunasan Dipercepat",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "Tanggal Lunas Baru",
+      "title": "Hasil Simulasi",
+      "placeholder": "Isi pembayaran ekstra di atas untuk melihat dampaknya di sini.",
       "timeSaved": "Waktu yang Dihemat",
       "monthsSaved": "{count, plural, one {# bulan} other {# bulan}}",
       "paymentsSaved": "{count, plural, one {# angsuran} other {# angsuran}}",
@@ -397,7 +433,8 @@
       "empty": "Tidak ada riwayat pembayaran atau proyeksi.",
       "seriesHistorical": "Saldo Aktual",
       "seriesBaseline": "Proyeksi Saat Ini",
-      "seriesScenario": "Dengan Pembayaran Tambahan",
+      "seriesScenario": "Dengan pembayaran ekstra tersimulasi",
+      "seriesOriginal": "Jadwal Awal",
       "today": "Hari ini",
       "scenarioNote": "Skenario pembayaran tambahan hanyalah simulasi dan tidak mengubah pembayaran terjadwal Anda."
     },
@@ -464,6 +501,7 @@
       "detect": "Deteksi dari riwayat",
       "empty": "Belum ada perubahan suku bunga yang tercatat. Tambahkan saat suku bunga Anda berubah, atau deteksi perubahan sebelumnya dari riwayat pembayaran Anda.",
       "rateValue": "{rate}%",
+      "chartLegend": "Suku bunga",
       "paymentSummary": "Angsuran: {payment}",
       "paymentUnchanged": "tidak berubah",
       "badgeInferred": "Diperkirakan",

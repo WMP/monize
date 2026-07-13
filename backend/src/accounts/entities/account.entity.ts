@@ -10,6 +10,7 @@ import {
 } from "typeorm";
 import { Transaction } from "../../transactions/entities/transaction.entity";
 import { Category } from "../../categories/entities/category.entity";
+import { Payee } from "../../payees/entities/payee.entity";
 import { ScheduledTransaction } from "../../scheduled-transactions/entities/scheduled-transaction.entity";
 import { User } from "../../users/entities/user.entity";
 import { Institution } from "../../institutions/entities/institution.entity";
@@ -31,6 +32,10 @@ export enum AccountSubType {
   INVESTMENT_CASH = "INVESTMENT_CASH",
   INVESTMENT_BROKERAGE = "INVESTMENT_BROKERAGE",
 }
+
+/** How a loan/mortgage's interest is recorded, for rate detection. */
+export const INTEREST_BOOKING_MODES = ["AUTO", "SPLIT", "SEPARATE"] as const;
+export type InterestBookingMode = (typeof INTEREST_BOOKING_MODES)[number];
 
 const numericTransformer = {
   to: (value: number | null): number | null => value,
@@ -199,6 +204,22 @@ export class Account {
   @JoinColumn({ name: "interest_category_id" })
   interestCategory: Category | null;
 
+  // How the loan's interest is recorded, so rate detection reads it correctly:
+  //   'AUTO'     -- a categorized split leg of the payment when present, else a
+  //                 separate expense in the interest category (principal
+  //                 transfers are never counted as interest);
+  //   'SPLIT'    -- interest is only ever a categorized split leg of the payment;
+  //   'SEPARATE' -- interest is a standalone expense in the interest category,
+  //                 with principal booked as a transfer to the loan.
+  // Optional, per-loan; defaults to AUTO (universal).
+  @Column({
+    type: "varchar",
+    length: 16,
+    name: "interest_booking_mode",
+    default: "AUTO",
+  })
+  interestBookingMode: InterestBookingMode;
+
   // Category the user tags standalone overpayments (extra principal) with, so
   // the loan schedule can tell an overpayment apart from a regular installment
   // (overpayments are 100% principal). Optional, per-loan setting.
@@ -220,6 +241,16 @@ export class Account {
     nullable: true,
   })
   overpaymentMemo: string | null;
+
+  // Payee whose payments count as standalone overpayments (extra principal),
+  // usable on its own or alongside the overpayment category / memo. Optional,
+  // per-loan setting.
+  @Column({ type: "uuid", name: "overpayment_payee_id", nullable: true })
+  overpaymentPayeeId: string | null;
+
+  @ManyToOne(() => Payee, { nullable: true })
+  @JoinColumn({ name: "overpayment_payee_id" })
+  overpaymentPayee: Payee | null;
 
   // Asset-specific fields
   @Column({ type: "uuid", name: "asset_category_id", nullable: true })

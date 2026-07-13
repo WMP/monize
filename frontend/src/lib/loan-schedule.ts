@@ -29,6 +29,11 @@ export interface LumpSum {
   /** ISO date (yyyy-MM-dd) the lump sum is paid */
   date: string;
   amount: number;
+  /**
+   * Whether this overpayment shortens the term (keep the installment) or lowers
+   * the installment (keep the end date). Defaults to SHORTEN_TERM when omitted.
+   */
+  mode?: OverpaymentMode;
 }
 
 export interface RecurringExtra {
@@ -37,6 +42,11 @@ export interface RecurringExtra {
   startDate?: string;
   /** ISO date (yyyy-MM-dd); applies until payoff when omitted */
   endDate?: string;
+  /**
+   * Whether this overpayment shortens the term or lowers the installment.
+   * Defaults to SHORTEN_TERM when omitted.
+   */
+  mode?: OverpaymentMode;
 }
 
 export interface OverpaymentPlan {
@@ -93,12 +103,27 @@ export interface LoanScheduleInput {
   /** Date of the first projected payment (row 1) */
   firstPaymentDate: Date;
   overpayments?: OverpaymentPlan;
-  /** How overpayments reshape the schedule; defaults to SHORTEN_TERM */
-  overpaymentMode?: OverpaymentMode;
   /** Known rate steps; each applies from the first payment on/after its date */
   rateChanges?: RateChange[];
   /** Maximum projected payments; defaults to 600, clamped to 10000 */
   maxPayments?: number;
+  /**
+   * Amortize to zero over exactly this many payments, re-levelling the payment
+   * each period (so it also adjusts on every rate change). Models a
+   * variable-rate loan that holds its term by adjusting the installment when
+   * the rate moves, so a fixed payment can neither stall nor stretch the
+   * schedule. Superseded by the LOWER_INSTALLMENT overpayment mode, which
+   * derives its own fixed end from the baseline.
+   */
+  fixedEndPeriod?: number;
+  /**
+   * Term (in periods) to re-level the installment toward ONLY when a rate rise
+   * would push the current payment below the period's interest (a stall).
+   * Unlike `fixedEndPeriod` it does not re-level every period, so a schedule can
+   * follow its real recorded payment amounts and still be rescued from a stall
+   * instead of stopping. Superseded by `fixedEndPeriod` (which already rescues).
+   */
+  rescueEndPeriod?: number;
   /** Seed for cumulative principal (e.g. historical principal already paid) */
   initialCumulativePrincipal?: number;
   /** Seed for cumulative interest (e.g. historical interest already paid) */
@@ -196,6 +221,25 @@ export function getPeriodicRate(
     return Math.pow(1 + semiAnnualRate, 2 / periodsPerYear) - 1;
   }
   return annualRate / 100 / periodsPerYear;
+}
+
+/**
+ * Interest accrued on `balance` over one payment period at `annualRate`. A
+ * candidate installment amortizes only when it exceeds this, so it is the
+ * shared guard for seeding a projection or the contractual schedule -- rejecting
+ * a principal-only figure that would never reduce the balance.
+ */
+export function firstPeriodInterest(
+  balance: number,
+  annualRate: number,
+  frequency: ScheduleFrequency,
+  isCanadian = false,
+  isVariableRate = false,
+): number {
+  return (
+    balance *
+    getPeriodicRate(annualRate, getPeriodsPerYear(frequency), isCanadian, isVariableRate)
+  );
 }
 
 export function advanceDate(date: Date, frequency: ScheduleFrequency): Date {
@@ -322,22 +366,34 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     HARD_MAX_PAYMENTS,
   );
 
-  const mode = input.overpaymentMode ?? 'SHORTEN_TERM';
+  // Each overpayment carries its own mode; SHORTEN_TERM is the default for
+  // those that omit one.
+  const modeOf = (m?: OverpaymentMode): OverpaymentMode => m ?? 'SHORTEN_TERM';
   const hasOverpayments = Boolean(
     overpayments?.recurringExtra || (overpayments?.lumpSums?.length ?? 0) > 0,
   );
-  // LOWER_INSTALLMENT keeps the end date fixed: the term is the baseline
-  // (no-overpayment) payoff length, and the installment is recomputed each
-  // period to amortize the remaining balance over the remaining periods. The
-  // baseline runs once with overpayments stripped (no further recursion).
-  const fixedEndPeriod =
-    mode === 'LOWER_INSTALLMENT' && hasOverpayments
-      ? generateLoanSchedule({
-          ...input,
-          overpayments: undefined,
-          overpaymentMode: 'SHORTEN_TERM',
-        }).numPayments
+  const anyLowerOverpayment =
+    hasOverpayments &&
+    ((overpayments?.recurringExtra != null &&
+      modeOf(overpayments.recurringExtra.mode) === 'LOWER_INSTALLMENT') ||
+      (overpayments?.lumpSums ?? []).some((l) => modeOf(l.mode) === 'LOWER_INSTALLMENT'));
+
+  // Two re-levelling ends. `reLevelEveryPeriod` (a passed fixedEndPeriod) holds
+  // a variable-rate contractual schedule on its term every period. `lowerEnd`
+  // is the no-overpayment payoff length that a LOWER_INSTALLMENT overpayment
+  // re-levels the installment toward -- applied only in the period such an
+  // overpayment lands, so SHORTEN_TERM overpayments keep the installment (and
+  // shorten the term) alongside it.
+  const reLevelEveryPeriod = input.fixedEndPeriod ?? null;
+  const lowerEnd =
+    reLevelEveryPeriod === null && anyLowerOverpayment
+      ? generateLoanSchedule({ ...input, overpayments: undefined }).numPayments
       : null;
+  // Term to re-level toward if a rate rise would otherwise stall the payment.
+  // An explicit `rescueEndPeriod` supplies this rescue without the every-period
+  // re-levelling of `fixedEndPeriod`, so a contractual schedule keeps following
+  // its real recorded payments and only re-levels to avoid a stall.
+  const rescueEnd = reLevelEveryPeriod ?? input.rescueEndPeriod ?? lowerEnd;
 
   const periodsPerYear = getPeriodsPerYear(frequency);
 
@@ -399,6 +455,25 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     const interest = balance * currentPeriodicRate;
     let principal = currentPayment - interest;
 
+    if (principal <= 0 && rescueEnd !== null) {
+      // Holding a fixed term: a rate rise can push the current installment
+      // below the interest for a period. Re-level it now, at the new rate, to
+      // amortize the remaining balance over the periods left -- so the schedule
+      // adjusts on the rate change instead of stalling.
+      const remaining = rescueEnd - paymentNumber;
+      if (remaining > 0) {
+        currentPayment = calculatePaymentForTerm(
+          balance,
+          currentAnnualRate,
+          remaining,
+          frequency,
+          isCanadian,
+          isVariableRate,
+        );
+        principal = currentPayment - interest;
+      }
+    }
+
     if (principal <= 0) {
       // Payment doesn't cover interest: the loan never amortizes
       coveredInterest = false;
@@ -410,6 +485,9 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     balance = Math.max(0, balance - principal);
 
     let extraPrincipal = 0;
+    // Whether a LOWER_INSTALLMENT-mode overpayment landed this period, so the
+    // installment is re-levelled below (SHORTEN_TERM ones leave it unchanged).
+    let lowerApplied = false;
     if (
       recurringExtra &&
       recurringExtra.amount > 0 &&
@@ -417,11 +495,13 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
       (!recurringExtra.endDate || rowDate <= recurringExtra.endDate)
     ) {
       extraPrincipal += recurringExtra.amount;
+      if (modeOf(recurringExtra.mode) === 'LOWER_INSTALLMENT') lowerApplied = true;
     }
     // Lump sums land on the first payment on or after their date (sums dated
     // before the first payment attach to row 1)
     while (lumpSumIndex < lumpSums.length && lumpSums[lumpSumIndex].date <= rowDate) {
       extraPrincipal += lumpSums[lumpSumIndex].amount;
+      if (modeOf(lumpSums[lumpSumIndex].mode) === 'LOWER_INSTALLMENT') lowerApplied = true;
       lumpSumIndex++;
     }
     if (extraPrincipal > balance) {
@@ -435,12 +515,16 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     totalExtraPrincipal += extraPrincipal;
     paymentNumber++;
 
-    // LOWER_INSTALLMENT: recompute the installment to amortize the remaining
-    // balance over the periods left to the fixed end date. Between overpayments
-    // this reproduces the current payment; after one it steps the payment down.
-    // Also re-levels the payment after a rate change on a variable-rate loan.
-    if (fixedEndPeriod !== null) {
-      const remaining = fixedEndPeriod - paymentNumber;
+    // Re-level the installment to amortize the remaining balance over the
+    // periods left to the target end. `reLevelEveryPeriod` (contractual
+    // variable-rate schedule) re-levels every period, so it also tracks rate
+    // changes; a LOWER_INSTALLMENT overpayment re-levels toward `lowerEnd`
+    // only in the period it lands, stepping the payment down while
+    // SHORTEN_TERM overpayments leave it unchanged (shortening the term).
+    const reLevelEnd =
+      reLevelEveryPeriod !== null ? reLevelEveryPeriod : lowerApplied ? lowerEnd : null;
+    if (reLevelEnd !== null) {
+      const remaining = reLevelEnd - paymentNumber;
       if (remaining > 0 && balance > PAYOFF_EPSILON) {
         currentPayment = calculatePaymentForTerm(
           balance,
@@ -484,12 +568,35 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
 }
 
 /**
+ * The annual rate (percentage) in effect on a given date: the latest row with
+ * `effectiveDate <= date`, else the earliest row's rate (a date before the
+ * first recorded change still amortizes at the origination rate), else the
+ * fallback. Shared by the schedule table (per-row historical rate) and
+ * `buildRateTimeline`'s starting rate.
+ */
+export function effectiveAnnualRateOn(
+  rows: RateTimelineRow[],
+  dateIso: string,
+  fallbackAnnualRate: number,
+): number {
+  const sorted = [...rows].sort((a, b) =>
+    a.effectiveDate.localeCompare(b.effectiveDate),
+  );
+  const atOrBefore = sorted.filter((row) => row.effectiveDate <= dateIso);
+  if (atOrBefore.length > 0) {
+    return atOrBefore[atOrBefore.length - 1].annualRate;
+  }
+  return sorted[0]?.annualRate ?? fallbackAnnualRate;
+}
+
+/**
  * Resolve a persisted rate history into engine inputs for a schedule that
  * starts at `scheduleStartIso`: the rate in effect at the start is the
  * latest row on or before that date (before the earliest row, the earliest
  * row's rate applies; with no rows, the fallback), the payment in effect is
- * the latest non-null payment on or before the start, and the remaining
- * rows become steps for generateLoanSchedule.
+ * the latest non-null payment on or before the start (before the earliest
+ * row, that row's payment applies -- the origination installment), and the
+ * remaining rows become steps for generateLoanSchedule.
  */
 export function buildRateTimeline(
   rows: RateTimelineRow[],
@@ -503,13 +610,21 @@ export function buildRateTimeline(
   const atOrBefore = sorted.filter(
     (row) => row.effectiveDate <= scheduleStartIso,
   );
-  const startingAnnualRate =
-    atOrBefore.length > 0
-      ? atOrBefore[atOrBefore.length - 1].annualRate
-      : (sorted[0]?.annualRate ?? fallbackAnnualRate);
+  const startingAnnualRate = effectiveAnnualRateOn(
+    rows,
+    scheduleStartIso,
+    fallbackAnnualRate,
+  );
+  // Mirror the rate's "before the earliest row, the earliest row applies"
+  // fallback for the payment: a schedule starting shortly before the first
+  // recorded row (payment_start_date precedes the first installment, which is
+  // where detection dates the initial row) still starts at the origination
+  // installment that row records. Only the earliest row is consulted -- later
+  // rows describe later rate levels and become steps anyway.
   const startingPaymentAmount =
     [...atOrBefore].reverse().find((row) => row.newPaymentAmount != null)
-      ?.newPaymentAmount ?? null;
+      ?.newPaymentAmount ??
+    (atOrBefore.length === 0 ? sorted[0]?.newPaymentAmount ?? null : null);
 
   const rateChanges = sorted
     .filter((row) => row.effectiveDate > scheduleStartIso)
@@ -539,7 +654,7 @@ export function compareSchedules(
 }
 
 /** Whole months from `fromDate` to `toDate` (0 when either is missing) */
-function monthsBetween(fromDate: string | null, toDate: string | null): number {
+export function monthsBetween(fromDate: string | null, toDate: string | null): number {
   if (!fromDate || !toDate) return 0;
   const from = parseIsoDateParts(fromDate);
   const to = parseIsoDateParts(toDate);
@@ -551,7 +666,8 @@ function parseIsoDateParts(isoDate: string): { year: number; month: number } {
   return { year, month };
 }
 
-function round2(value: number): number {
+/** Round to 2 decimals (cents), avoiding floating-point drift. */
+export function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 

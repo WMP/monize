@@ -266,6 +266,23 @@
     "firstPaymentDate": "首次還款日期（必填）",
     "paymentFromAccount": "從科目付款（必填）",
     "interestCategory": "利息類別",
+    "interestBookingMode": {
+      "label": "利息如何記帳？",
+      "help": "讓利率偵測正確讀取。多數情況用自動即可。",
+      "AUTO": "自動（建議）",
+      "SPLIT": "付款的拆分項",
+      "SEPARATE": "單獨支出（本金為轉帳）"
+    },
+    "bookingHelp": {
+      "title": "如何記錄貸款還款",
+      "intro": "每期還款包含兩部分，在財務上含義不同，因此分開記錄：",
+      "principalTitle": "本金是轉帳。",
+      "principalBody": "它償還借來的錢，並非支出。記為從銀行帳戶到貸款帳戶的轉帳，不設類別，如此可減少欠款但不計入支出。",
+      "interestTitle": "利息是支出。",
+      "interestBody": "這是貸款的真實成本。記為支出並設類別（例如「貸款」）。",
+      "avoid": "避免：不要把整期還款記為一筆支出。那會高估成本，且貸款帳戶欠款永遠不減少。",
+      "overpayments": "提前還款與本金相同：轉帳到貸款帳戶，不設類別。若銀行在提前還款中計入利息，把這部分單列為支出。"
+    },
     "selectFrequency": "選擇頻率...",
     "selectAccount": "選擇科目...",
     "selectCategory": "選擇類別...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "加速雙週還款",
       "weekly": "每週",
       "acceleratedWeekly": "加速週還款"
+    },
+    "overpaymentRecognition": {
+      "title": "超額還款識別",
+      "description": "排程如何將獨立的超額還款（100% 本金）與一般分期區分開來。符合其中任一條件的付款會計為超額還款。",
+      "categoryLabel": "超額還款類別",
+      "payeeLabel": "超額還款收款人",
+      "payeePlaceholder": "選擇收款人...",
+      "memoLabel": "超額還款備註文字",
+      "memoPlaceholder": "例如 超額還款",
+      "memoHelp": "對付款備註、其來源交易備註或拆分備註進行不區分大小寫的子字串比對。"
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "本金",
       "colInterest": "利息",
       "colExtra": "額外本金",
+      "colRate": "利率",
       "colBalance": "餘額",
       "projectedFuturePayments": "預測的未來還款",
+      "total": "總計",
+      "paidToDate": "已還款",
+      "monthEntries": "{count, plural, other {# 筆}}",
+      "toggleMonth": "顯示或隱藏 {month} 的還款",
+      "gapRow": "無還款記錄 — 此處缺少一筆或多筆預期分期",
       "showAll": "顯示全部 {count} 期還款",
       "showLess": "收合",
       "noPayments": "找不到還款紀錄",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "提前還款"
+      "overpaymentBadge": "提前還款",
+      "editRateLabel": "編輯 {date} 的利率"
     },
     "simulator": {
       "title": "提前還款模擬器",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "新的還清日期",
+      "title": "模擬結果",
+      "placeholder": "在上方填寫額外還款即可在此查看其影響。",
       "timeSaved": "節省的時間",
       "monthsSaved": "{count, plural, one {# 個月} other {# 個月}}",
       "paymentsSaved": "{count, plural, one {# 期} other {# 期}}",
@@ -397,7 +433,8 @@
       "empty": "沒有可用的還款紀錄或預測。",
       "seriesHistorical": "實際餘額",
       "seriesBaseline": "目前預測",
-      "seriesScenario": "含提前還款",
+      "seriesScenario": "含模擬額外還款",
+      "seriesOriginal": "原始計畫",
       "today": "今天",
       "scenarioNote": "提前還款情境只是模擬，不會改變您排定的還款。"
     },
@@ -464,6 +501,7 @@
       "detect": "從紀錄中偵測",
       "empty": "尚未記錄利率變更。利率變動時請新增一筆，或從還款紀錄中偵測過去的變更。",
       "rateValue": "{rate}%",
+      "chartLegend": "利率",
       "paymentSummary": "還款額：{payment}",
       "paymentUnchanged": "不變",
       "badgeInferred": "推算",

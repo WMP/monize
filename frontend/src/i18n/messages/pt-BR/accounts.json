@@ -266,6 +266,23 @@
     "firstPaymentDate": "Data do Primeiro Pagamento (obrigatório)",
     "paymentFromAccount": "Pagar a Partir da Conta (obrigatório)",
     "interestCategory": "Categoria de Juros",
+    "interestBookingMode": {
+      "label": "Como os juros são registrados?",
+      "help": "Para a detecção de taxa lê-los corretamente. Automático serve na maioria.",
+      "AUTO": "Automático (recomendado)",
+      "SPLIT": "Parte dividida do pagamento",
+      "SEPARATE": "Despesa separada (o principal é uma transferência)"
+    },
+    "bookingHelp": {
+      "title": "Como registrar os pagamentos do empréstimo",
+      "intro": "Cada parcela tem duas partes que significam coisas diferentes nas finanças, então registre-as separadamente:",
+      "principalTitle": "O principal é uma transferência.",
+      "principalBody": "Devolve o dinheiro emprestado, não é um custo. Registre-o como transferência da conta bancária para a conta do empréstimo, sem categoria, para reduzir o saldo sem aparecer nas despesas.",
+      "interestTitle": "Os juros são uma despesa.",
+      "interestBody": "São o custo real do empréstimo. Registre-os como despesa com uma categoria (por exemplo, \"Empréstimos\").",
+      "avoid": "Evite: não registre a parcela inteira como uma única despesa. Isso infla os custos e o saldo do empréstimo nunca diminui.",
+      "overpayments": "As amortizações funcionam como o principal: uma transferência para a conta do empréstimo, sem categoria. Se o banco somou juros, separe essa parte como despesa à parte."
+    },
     "selectFrequency": "Selecionar frequência...",
     "selectAccount": "Selecionar conta...",
     "selectCategory": "Selecionar categoria...",
@@ -286,6 +303,16 @@
       "acceleratedBiweekly": "Quinzenal Acelerado",
       "weekly": "Semanal",
       "acceleratedWeekly": "Semanal Acelerado"
+    },
+    "overpaymentRecognition": {
+      "title": "Reconhecimento de amortização extra",
+      "description": "Como o cronograma distingue uma amortização extra independente (100% de principal) de uma parcela regular. Um pagamento que corresponda a qualquer um destes critérios conta como amortização extra.",
+      "categoryLabel": "Categoria de amortização extra",
+      "payeeLabel": "Beneficiário da amortização extra",
+      "payeePlaceholder": "Selecionar beneficiário...",
+      "memoLabel": "Texto da nota de amortização extra",
+      "memoPlaceholder": "ex.: amortização extra",
+      "memoHelp": "Correspondência de substring sem diferenciar maiúsculas de minúsculas com a nota do pagamento, a nota da transação de origem ou a nota de um rateio."
     }
   },
   "assetFields": {
@@ -352,13 +379,20 @@
       "colPrincipal": "Principal",
       "colInterest": "Juros",
       "colExtra": "Principal extra",
+      "colRate": "Taxa",
       "colBalance": "Saldo",
       "projectedFuturePayments": "Parcelas futuras projetadas",
+      "total": "Total",
+      "paidToDate": "Pago até o momento",
+      "monthEntries": "{count, plural, one {# entrada} other {# entradas}}",
+      "toggleMonth": "Mostrar ou ocultar os pagamentos de {month}",
+      "gapRow": "Sem pagamentos registrados — faltam aqui uma ou mais parcelas previstas",
       "showAll": "Mostrar todas as {count} parcelas",
       "showLess": "Mostrar menos",
       "noPayments": "Nenhuma parcela encontrada",
       "rateChangeBadge": "{from}% → {to}%",
-      "overpaymentBadge": "Amortização extra"
+      "overpaymentBadge": "Amortização extra",
+      "editRateLabel": "Editar taxa de juros de {date}"
     },
     "simulator": {
       "title": "Simulador de amortização extra",
@@ -383,6 +417,8 @@
     },
     "comparison": {
       "newPayoff": "Nova data de quitação",
+      "title": "Resultados da simulação",
+      "placeholder": "Preencha um pagamento extra acima para ver o impacto aqui.",
       "timeSaved": "Tempo economizado",
       "monthsSaved": "{count, plural, one {# mês} other {# meses}}",
       "paymentsSaved": "{count, plural, one {# parcela} other {# parcelas}}",
@@ -397,7 +433,8 @@
       "empty": "Sem histórico de pagamentos nem projeção disponível.",
       "seriesHistorical": "Saldo real",
       "seriesBaseline": "Projeção atual",
-      "seriesScenario": "Com amortizações extras",
+      "seriesScenario": "Com amortizações extras simuladas",
+      "seriesOriginal": "Tabela original",
       "today": "Hoje",
       "scenarioNote": "O cenário de amortização extra é uma simulação e não altera seus pagamentos agendados."
     },
@@ -464,6 +501,7 @@
       "detect": "Detectar do histórico",
       "empty": "Nenhuma alteração de taxa registrada. Adicione uma quando a taxa mudar, ou detecte alterações passadas a partir do histórico de pagamentos.",
       "rateValue": "{rate}%",
+      "chartLegend": "Taxa de juros",
       "paymentSummary": "Parcela: {payment}",
       "paymentUnchanged": "sem alteração",
       "badgeInferred": "Inferida",

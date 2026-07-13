@@ -14,7 +14,11 @@ import {
   ValidateIf,
 } from "class-validator";
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { AccountType } from "../entities/account.entity";
+import {
+  AccountType,
+  INTEREST_BOOKING_MODES,
+  InterestBookingMode,
+} from "../entities/account.entity";
 import { PAYMENT_FREQUENCIES, PaymentFrequency } from "./create-account.dto";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
 import { IsCurrencyCode } from "../../common/validators/is-currency-code.validator";
@@ -217,6 +221,15 @@ export class UpdateAccountDto {
 
   @ApiPropertyOptional({
     description:
+      "How interest is recorded, for rate detection: AUTO, SPLIT, or SEPARATE.",
+    enum: INTEREST_BOOKING_MODES,
+  })
+  @IsOptional()
+  @IsIn(INTEREST_BOOKING_MODES)
+  interestBookingMode?: InterestBookingMode;
+
+  @ApiPropertyOptional({
+    description:
       "Category ID used to tag standalone overpayments (extra principal). Pass null to clear.",
   })
   @IsOptional()
@@ -234,6 +247,15 @@ export class UpdateAccountDto {
   @MaxLength(255)
   @SanitizeHtml()
   overpaymentMemo?: string | null;
+
+  @ApiPropertyOptional({
+    description:
+      "Payee ID whose payments count as standalone overpayments (extra principal). Pass null to clear.",
+  })
+  @IsOptional()
+  @ValidateIf((o) => o.overpaymentPayeeId !== null)
+  @IsUUID()
+  overpaymentPayeeId?: string | null;
 
   // Asset-specific fields
   @ApiPropertyOptional({

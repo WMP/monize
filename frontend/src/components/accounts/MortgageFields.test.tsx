@@ -62,7 +62,7 @@ const mockAccounts: Account[] = [
     accountNumber: null, institution: null, institutionId: null, openingBalance: 5000, currentBalance: 5000,
     creditLimit: null, interestRate: null, isClosed: false, closedDate: null,
     isFavourite: false, favouriteSortOrder: 0, excludeFromNetWorth: false, paymentAmount: null, paymentFrequency: null, paymentStartDate: null,
-    sourceAccountId: null, principalCategoryId: null, interestCategoryId: null, overpaymentCategoryId: null, overpaymentMemo: null,
+    sourceAccountId: null, principalCategoryId: null, interestCategoryId: null, overpaymentCategoryId: null, overpaymentMemo: null, overpaymentPayeeId: null,
     scheduledTransactionId: null, assetCategoryId: null, dateAcquired: null, linkedLoanAccountId: null,
     isCanadianMortgage: false, isVariableRate: false, termMonths: null, termEndDate: null,
     amortizationMonths: null, originalPrincipal: null,
@@ -75,7 +75,7 @@ const mockAccounts: Account[] = [
     accountNumber: null, institution: null, institutionId: null, openingBalance: 10000, currentBalance: 10000,
     creditLimit: null, interestRate: null, isClosed: false, closedDate: null,
     isFavourite: false, favouriteSortOrder: 0, excludeFromNetWorth: false, paymentAmount: null, paymentFrequency: null, paymentStartDate: null,
-    sourceAccountId: null, principalCategoryId: null, interestCategoryId: null, overpaymentCategoryId: null, overpaymentMemo: null,
+    sourceAccountId: null, principalCategoryId: null, interestCategoryId: null, overpaymentCategoryId: null, overpaymentMemo: null, overpaymentPayeeId: null,
     scheduledTransactionId: null, assetCategoryId: null, dateAcquired: null, linkedLoanAccountId: null,
     isCanadianMortgage: false, isVariableRate: false, termMonths: null, termEndDate: null,
     amortizationMonths: null, originalPrincipal: null,
@@ -126,6 +126,12 @@ describe('MortgageFields', () => {
     isEditing: false,
     selectedInterestCategoryId: '',
     handleInterestCategoryChange: vi.fn(),
+    interestBookingMode: 'AUTO' as const,
+    handleInterestBookingModeChange: vi.fn(),
+    selectedOverpaymentCategoryId: '',
+    handleOverpaymentCategoryChange: vi.fn(),
+    selectedOverpaymentPayeeId: '',
+    handleOverpaymentPayeeChange: vi.fn(),
   };
 
   beforeEach(() => {
@@ -286,11 +292,13 @@ describe('MortgageFields', () => {
     expect(screen.getByText('Term Length')).toBeInTheDocument();
     expect(screen.getByText('Amortization Period (required)')).toBeInTheDocument();
     expect(screen.getByText('Canadian Mortgage')).toBeInTheDocument();
-    // Payment fields should be hidden
+    // Payment-setup fields (create-only) should be hidden
     expect(screen.queryByText('Payment Frequency (required)')).not.toBeInTheDocument();
     expect(screen.queryByText('First Payment Date (required)')).not.toBeInTheDocument();
     expect(screen.queryByText('Payment From Account (required)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Interest Category')).not.toBeInTheDocument();
+    // Recognition settings (interest category + overpayment) stay available on edit
+    expect(screen.getByText('Interest Category')).toBeInTheDocument();
+    expect(screen.getByText('Overpayment recognition')).toBeInTheDocument();
   });
 
   it('shows the Loan Details link when editing and onViewLoanDetails is provided', () => {
