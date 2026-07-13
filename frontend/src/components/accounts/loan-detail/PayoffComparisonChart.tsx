@@ -30,6 +30,8 @@ export interface PayoffChartPoint {
   scenarioBalance?: number;
   /** Original contractual balance (the "if I never overpaid" curve) */
   originalBalance?: number;
+  /** Total real (recorded) overpayment principal paid this month, if any. */
+  overpayment?: number;
 }
 
 /**
@@ -67,6 +69,15 @@ export function buildPayoffComparisonSeries(
   }
   for (const event of historyEvents) {
     setValue(event.date, 'historicalBalance', event.balance);
+    // Accumulate real recorded overpayments so the tooltip can flag the month.
+    if (event.type === 'OVERPAYMENT' && event.principal > 0) {
+      const monthKey = event.date.slice(0, 7);
+      const existing = byMonth.get(monthKey) ?? { monthKey };
+      byMonth.set(monthKey, {
+        ...existing,
+        overpayment: (existing.overpayment ?? 0) + event.principal,
+      });
+    }
   }
   for (const row of baseline?.rows ?? []) {
     setValue(row.date, 'baselineBalance', row.balance);
@@ -142,6 +153,11 @@ export function buildPayoffComparisonSeries(
       keep.add(lastHistoricalIndex);
       if (lastHistoricalIndex + 1 < points.length) keep.add(lastHistoricalIndex + 1);
     }
+    // Never sample away a month that had a real overpayment -- its tooltip flag
+    // is the whole point of the marker.
+    points.forEach((p, index) => {
+      if (p.overpayment) keep.add(index);
+    });
     points = points.filter((_, index) => index % step === 0 || keep.has(index));
   }
 
@@ -214,7 +230,19 @@ export function PayoffComparisonChart({
             <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
             <YAxis tickFormatter={formatCurrencyAxis} tick={{ fontSize: 12 }} />
             <Tooltip
-              content={<ChartTooltip formatValue={(value) => formatCurrencyCompact(value)} />}
+              content={
+                <ChartTooltip
+                  formatValue={(value) => formatCurrencyCompact(value)}
+                  extra={(point) =>
+                    typeof point.overpayment === 'number' && point.overpayment > 0 ? (
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                        {t('loanDetail.schedule.overpaymentBadge')}:{' '}
+                        {formatCurrencyCompact(point.overpayment)}
+                      </p>
+                    ) : null
+                  }
+                />
+              }
             />
             <Legend />
             {original && (

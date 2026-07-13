@@ -158,51 +158,54 @@ export function LoanDetailView({
 
       <PastImpactSection account={account} impact={impact} />
 
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
-          {projectionInput && (
-            <div className="w-full lg:w-[70%]">
-              <OverpaymentSimulator
-                accountId={account.id}
-                currencyCode={account.currencyCode}
-                onPlanChange={setPlan}
-                loadedPlan={loadedPlan}
-                loadedPlanVersion={loadedPlanVersion}
-                footer={
-                  <>
-                    {comparison && (
-                      <div className="mt-6 pt-5 border-t border-gray-200 dark:border-gray-700">
-                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                          {t('loanDetail.comparison.title')}
-                        </h4>
-                        <ComparisonSummaryCards
-                          comparison={comparison}
-                          currencyCode={account.currencyCode}
-                        />
-                      </div>
-                    )}
-                    <SavedScenariosPanel
-                      accountId={account.id}
-                      scenarios={scenarios}
-                      comparisons={scenarioComparisons}
-                      currencyCode={account.currencyCode}
-                      activePlan={plan}
-                      onLoad={handleLoadScenario}
-                      onScenariosChanged={onScenariosChanged}
-                    />
-                  </>
-                }
-              />
-            </div>
-          )}
-          <div className={projectionInput ? 'w-full lg:w-[30%]' : 'w-full'}>
+      {/* Active loan: simulator (70%) with the Rate History panel beside it
+          (30%), stacking on narrow screens. */}
+      {projectionInput && (
+        <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch">
+          <div className="w-full lg:w-[70%]">
+            <OverpaymentSimulator
+              accountId={account.id}
+              currencyCode={account.currencyCode}
+              onPlanChange={setPlan}
+              loadedPlan={loadedPlan}
+              loadedPlanVersion={loadedPlanVersion}
+              footer={
+                <>
+                  {comparison && (
+                    <div className="mt-6 pt-5 border-t border-gray-200 dark:border-gray-700">
+                      <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        {t('loanDetail.comparison.title')}
+                      </h4>
+                      <ComparisonSummaryCards
+                        comparison={comparison}
+                        currencyCode={account.currencyCode}
+                      />
+                    </div>
+                  )}
+                  <SavedScenariosPanel
+                    accountId={account.id}
+                    scenarios={scenarios}
+                    comparisons={scenarioComparisons}
+                    currencyCode={account.currencyCode}
+                    activePlan={plan}
+                    onLoad={handleLoadScenario}
+                    onScenariosChanged={onScenariosChanged}
+                  />
+                </>
+              }
+            />
+          </div>
+          <div className="w-full lg:w-[30%]">
             <RateHistorySidebar
               account={account}
               rateChanges={rateChanges}
               editing={rateEditing}
               endDate={rateSeriesEndDate}
+              fillHeight
             />
           </div>
-      </div>
+        </div>
+      )}
 
       <PayoffComparisonChart
         historyEvents={history.events}
@@ -218,6 +221,17 @@ export function LoanDetailView({
         rateChanges={rateChanges}
         editing={rateEditing}
       />
+
+      {/* Finished loan (no simulator): the Rate History panel goes full-width
+          below the schedule. */}
+      {!projectionInput && (
+        <RateHistorySidebar
+          account={account}
+          rateChanges={rateChanges}
+          editing={rateEditing}
+          endDate={rateSeriesEndDate}
+        />
+      )}
     </div>
   );
 }

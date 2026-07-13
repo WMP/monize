@@ -583,6 +583,43 @@ describe('deriveLoanPaymentHistory interest from the rate timeline', () => {
   });
 });
 
+describe('deriveLoanPaymentHistory reconstructed rate (no rate history)', () => {
+  it('uses semi-annual annualization for a Canadian fixed mortgage', () => {
+    // Canadian fixed mortgage, no recorded rate history: interest is analytic
+    // (balance x the semi-annually-compounded periodic rate). Kenlasko's
+    // periodic annualization inverts that compounding and recovers the nominal
+    // 5.5% exactly, where WMP's day-count (x365/days) would read ~5.44%.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      isCanadianMortgage: true,
+      isVariableRate: false,
+      openingBalance: -200000,
+      currentBalance: -199715,
+      interestRate: 5.5,
+    });
+    const { events } = deriveLoanPaymentHistory(account, [
+      makeTransaction({ transactionDate: '2022-05-05', amount: 285 }),
+    ]);
+    expect(events[0].annualRate).toBeCloseTo(5.5, 1);
+  });
+
+  it('uses day-count annualization for a non-Canadian loan', () => {
+    // Same shape, not Canadian: interest is balance x rate/12, and the
+    // day-count annualization over the nominal first period recovers 6%.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      isCanadianMortgage: false,
+      openingBalance: -200000,
+      currentBalance: -199000,
+      interestRate: 6,
+    });
+    const { events } = deriveLoanPaymentHistory(account, [
+      makeTransaction({ transactionDate: '2024-01-05', amount: 1000 }),
+    ]);
+    expect(events[0].annualRate).toBeCloseTo(6, 1);
+  });
+});
+
 describe('deriveLoanPaymentHistory rate column with a recorded rate history', () => {
   it('shows the discrete timeline rate on regular rows, not the observed reconstruction', () => {
     // With a recorded rate history the schedule's rate column must show the

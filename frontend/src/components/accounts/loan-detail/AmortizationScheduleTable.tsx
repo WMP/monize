@@ -29,7 +29,10 @@ interface AmortizationScheduleTableProps {
  *  always single (one per period). */
 type ScheduleUnit =
   | { kind: 'single'; row: DisplayRow }
-  | { kind: 'group'; monthKey: string; aggregate: DisplayRow; children: DisplayRow[] };
+  | { kind: 'group'; monthKey: string; aggregate: DisplayRow; children: DisplayRow[] }
+  // A gap in payments: one or more expected installments with no recorded
+  // payment. Rendered as an empty "no data" band before the row after the gap.
+  | { kind: 'gap'; key: string };
 
 const sumField = (rows: DisplayRow[], field: keyof DisplayRow): number =>
   rows.reduce((acc, row) => acc + Math.round(Number(row[field]) * 10000), 0) / 10000;
@@ -224,6 +227,10 @@ export function AmortizationScheduleTable({
     }
     const historicalUnits: ScheduleUnit[] = [];
     for (const [monthKey, monthRows] of byMonth) {
+      // A gap before this month's first payment gets an empty "no data" band.
+      if (monthRows[0].precededByGap) {
+        historicalUnits.push({ kind: 'gap', key: `gap-${monthKey}` });
+      }
       if (monthRows.length === 1) {
         historicalUnits.push({ kind: 'single', row: monthRows[0] });
         continue;
@@ -246,8 +253,6 @@ export function AmortizationScheduleTable({
           balance: last.balance,
           isProjected: false,
           annualRate: regular?.annualRate ?? null,
-          // The month follows a gap if its first payment does.
-          precededByGap: monthRows[0].precededByGap,
         },
       });
     }
@@ -386,6 +391,24 @@ export function AmortizationScheduleTable({
                       </tr>
                     </>
                   );
+
+                  if (unit.kind === 'gap') {
+                    // Empty red band: expected installments here have no
+                    // recorded payment (a payment holiday, or missing data).
+                    return (
+                      <tr
+                        key={unit.key}
+                        className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300"
+                      >
+                        <td
+                          colSpan={columnCount}
+                          className="px-4 py-2 text-center text-xs font-medium"
+                        >
+                          {t('loanDetail.schedule.gapRow')}
+                        </td>
+                      </tr>
+                    );
+                  }
 
                   if (unit.kind === 'single') {
                     return (

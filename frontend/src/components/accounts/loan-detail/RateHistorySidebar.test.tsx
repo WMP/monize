@@ -21,12 +21,10 @@ vi.mock('@/lib/loan-rate-changes', () => ({
 // test) renders deterministically in jsdom.
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  LineChart: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  Line: () => null,
+  AreaChart: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Area: () => null,
   XAxis: () => null,
   YAxis: () => null,
-  CartesianGrid: () => null,
-  Tooltip: () => null,
 }));
 
 const account = {
@@ -81,6 +79,17 @@ describe('RateHistorySidebar', () => {
     expect(screen.getByText('Inferred')).toBeInTheDocument();
     // A row with no recorded payment shows "unchanged".
     expect(screen.getByText(/unchanged/)).toBeInTheDocument();
+  });
+
+  it('collapses and expands when the header bar is clicked', () => {
+    render(<Harness rows={rateChanges} onChanged={() => {}} />);
+
+    expect(screen.getByText('1.75%')).toBeInTheDocument();
+    // The header (title) is the collapse toggle.
+    fireEvent.click(screen.getByText('Rate History'));
+    expect(screen.queryByText('1.75%')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Rate History'));
+    expect(screen.getByText('1.75%')).toBeInTheDocument();
   });
 
   it('keeps the Add and Detect actions available even with no rate changes', () => {

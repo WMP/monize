@@ -757,7 +757,17 @@ function assignObservedRates(
     // period, so it shows no rate -- but its interest still settles the accrual
     // clock for the following installment.
     if (event.type === 'REGULAR' && event.interest > 0 && balanceBefore > 0 && days > 0) {
-      const observed = (event.interest / balanceBefore) * (365 / days) * 100;
+      const periodicRate = event.interest / balanceBefore;
+      // Canadian mortgages annualize by the nominal periods-per-year (with the
+      // semi-annual compounding inversion for a fixed rate) -- the convention
+      // the lender quotes. Everything else annualizes over the actual accrual
+      // window (days since interest was last settled), which self-corrects for
+      // overpayments and payment gaps.
+      const observed = isCanadian
+        ? isVariable
+          ? periodicRate * periodsPerYear * 100
+          : (Math.pow(1 + periodicRate, periodsPerYear / 2) - 1) * 2 * 100
+        : periodicRate * (365 / days) * 100;
       // No rate history here (this branch only runs when rateChanges is empty),
       // so the account's scalar rate is the only reference to sanity-check the
       // observed figure against.

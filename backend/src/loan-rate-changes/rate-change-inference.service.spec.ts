@@ -34,15 +34,29 @@ function generateHistory(
   let balance = startingBalance;
   let year = 2020;
   let month = 1;
+  // The nominal monthly period the detector assumes for the first payment.
+  const periodDays = 365 / 12;
+  const daysBetween = (aKey: string, bKey: string) =>
+    Math.round(
+      (new Date(`${bKey}T00:00:00Z`).getTime() -
+        new Date(`${aKey}T00:00:00Z`).getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
+  let prevDate: string | null = null;
 
   for (const segment of segments) {
-    const periodicRate = options.isCanadianFixed
-      ? Math.pow(1 + segment.annualRate / 100 / 2, 2 / 12) - 1
-      : segment.annualRate / 100 / 12;
-
     for (let i = 0; i < segment.payments; i++) {
       const date = `${year}-${String(month).padStart(2, "0")}-01`;
-      const interest = Math.round(balance * periodicRate * 100) / 100;
+      // Non-Canadian detection annualizes by day count, so book interest by day
+      // count too (balance x rate x days/365); a Canadian fixed mortgage
+      // compounds semi-annually. Either way the detector recovers the quoted
+      // rate exactly.
+      const days = prevDate === null ? periodDays : daysBetween(prevDate, date);
+      const interest = options.isCanadianFixed
+        ? Math.round(
+            balance * (Math.pow(1 + segment.annualRate / 100 / 2, 2 / 12) - 1) * 100,
+          ) / 100
+        : Math.round(balance * (segment.annualRate / 100) * (days / 365) * 100) / 100;
       const principal =
         Math.round((segment.paymentAmount - interest) * 100) / 100;
 
@@ -61,6 +75,7 @@ function generateHistory(
       });
 
       balance -= principal;
+      prevDate = date;
       month++;
       if (month > 12) {
         month = 1;

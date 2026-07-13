@@ -171,6 +171,11 @@ export class RateChangeInferenceService {
     periodsPerYear: number,
   ): RateObservation[] {
     const observations: RateObservation[] = [];
+    // Day-count annualization (non-Canadian) measures each accrual over the
+    // actual gap since the last interest-bearing payment; the first falls back
+    // to the nominal period.
+    const periodDays = 365 / periodsPerYear;
+    let lastDate: string | null = null;
     for (const payment of payments) {
       if (payment.interestAmount == null || payment.interestAmount <= 0) {
         continue;
@@ -181,11 +186,20 @@ export class RateChangeInferenceService {
         continue;
       }
 
+      // A gap much longer than one interval (a payment holiday) still covers a
+      // single billing period, so cap it; a non-positive gap (same-day) falls
+      // back to the nominal period.
+      const gap =
+        lastDate !== null ? this.daysBetween(lastDate, dateKey) : periodDays;
+      const days = gap <= 0 || gap > periodDays * 1.5 ? periodDays : gap;
+      lastDate = dateKey;
+
       const periodicRate = payment.interestAmount / balanceBefore;
       const annualRate = this.annualizeRate(
         account,
         periodicRate,
         periodsPerYear,
+        days,
       );
       if (annualRate <= 0 || annualRate >= 100) continue;
 
@@ -198,23 +212,37 @@ export class RateChangeInferenceService {
     return observations;
   }
 
+  /** Whole days from `aKey` to `bKey` (both yyyy-MM-dd), timezone-safe. */
+  private daysBetween(aKey: string, bKey: string): number {
+    const a = new Date(`${aKey}T00:00:00Z`).getTime();
+    const b = new Date(`${bKey}T00:00:00Z`).getTime();
+    return Math.round((b - a) / (1000 * 60 * 60 * 24));
+  }
+
   /**
-   * Inverse of the periodic-rate formulas in mortgage-amortization.util:
-   * Canadian fixed mortgages compound semi-annually, everything else simply.
+   * Annualize an observed periodic rate. This mirrors the frontend's
+   * reconstruction (`assignObservedRates`) so a detected rate matches what the
+   * schedule shows:
+   *  - Canadian mortgage: annualize by the nominal periods per year (the
+   *    lender's convention), inverting the semi-annual compounding for a
+   *    fixed-rate loan;
+   *  - everything else: annualize over the actual accrual window (`x 365 /
+   *    days`), which self-corrects for month-length and payment-gap variation
+   *    rather than overshooting a fixed `x periodsPerYear`.
    */
   private annualizeRate(
     account: Account,
     periodicRate: number,
     periodsPerYear: number,
+    days: number,
   ): number {
-    const isCanadianFixed =
-      account.accountType === AccountType.MORTGAGE &&
-      (account.isCanadianMortgage || false) &&
-      !(account.isVariableRate || false);
-    if (isCanadianFixed) {
-      return (Math.pow(1 + periodicRate, periodsPerYear / 2) - 1) * 2 * 100;
+    const isCanadian = account.isCanadianMortgage || false;
+    if (!isCanadian) {
+      return periodicRate * (365 / days) * 100;
     }
-    return periodicRate * periodsPerYear * 100;
+    return account.isVariableRate || false
+      ? periodicRate * periodsPerYear * 100
+      : (Math.pow(1 + periodicRate, periodsPerYear / 2) - 1) * 2 * 100;
   }
 
   /**

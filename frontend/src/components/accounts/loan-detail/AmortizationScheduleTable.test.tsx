@@ -75,9 +75,12 @@ describe('AmortizationScheduleTable', () => {
       />,
     );
 
-    const flagged = screen.getAllByTitle(/Gap in payments/);
-    expect(flagged).toHaveLength(1);
-    expect(flagged[0].textContent).toContain('Aug 15, 2025');
+    // The gap is shown as its own empty "no data" band, not by tinting the
+    // real August row.
+    const gapRows = screen.getAllByText(/No recorded payments/);
+    expect(gapRows).toHaveLength(1);
+    // The real August payment still renders as a normal row.
+    expect(screen.getByText('Aug 15, 2025')).toBeInTheDocument();
   });
 
   it('renders historical and projected rows with a separator', () => {

@@ -71,6 +71,32 @@ function makeProjection(extra?: number) {
 }
 
 describe('buildPayoffComparisonSeries', () => {
+  it('accumulates real overpayments onto their month for the tooltip flag', () => {
+    const history: LoanPaymentEvent[] = [
+      {
+        date: '2022-07-05',
+        principal: 300,
+        interest: 40,
+        balance: 190000,
+        cumulativePrincipal: 300,
+        cumulativeInterest: 40,
+        type: 'REGULAR' as const,
+      },
+      {
+        date: '2022-07-20',
+        principal: 1650,
+        interest: 0,
+        balance: 188350,
+        cumulativePrincipal: 1950,
+        cumulativeInterest: 40,
+        type: 'OVERPAYMENT' as const,
+      },
+    ];
+    const { points } = buildPayoffComparisonSeries(history, null, null);
+    const july = points.find((p) => p.monthKey === '2022-07');
+    expect(july?.overpayment).toBe(1650);
+  });
+
   it('merges history and projections into monthly points', () => {
     const baseline = makeProjection();
     const { points, projectionStartKey } = buildPayoffComparisonSeries(
@@ -232,7 +258,7 @@ describe('PayoffComparisonChart', () => {
     expect(screen.getByText('Payoff Timeline')).toBeInTheDocument();
     expect(screen.getByText('Actual Balance')).toBeInTheDocument();
     expect(screen.getByText('Current Projection')).toBeInTheDocument();
-    expect(screen.queryByText('With Overpayments')).not.toBeInTheDocument();
+    expect(screen.queryByText('With Simulated Overpayments')).not.toBeInTheDocument();
     expect(screen.getByTestId('reference-line')).toHaveTextContent('Today');
   });
 
@@ -258,7 +284,7 @@ describe('PayoffComparisonChart', () => {
       />,
     );
 
-    expect(screen.getByText('With Overpayments')).toBeInTheDocument();
+    expect(screen.getByText('With Simulated Overpayments')).toBeInTheDocument();
     expect(screen.getByText(/does not change your scheduled payments/)).toBeInTheDocument();
   });
 
