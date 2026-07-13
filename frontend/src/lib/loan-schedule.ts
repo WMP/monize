@@ -31,8 +31,7 @@ export interface LumpSum {
   amount: number;
   /**
    * Whether this overpayment shortens the term (keep the installment) or lowers
-   * the installment (keep the end date). Defaults to the schedule's
-   * `overpaymentMode` when omitted.
+   * the installment (keep the end date). Defaults to SHORTEN_TERM when omitted.
    */
   mode?: OverpaymentMode;
 }
@@ -45,7 +44,7 @@ export interface RecurringExtra {
   endDate?: string;
   /**
    * Whether this overpayment shortens the term or lowers the installment.
-   * Defaults to the schedule's `overpaymentMode` when omitted.
+   * Defaults to SHORTEN_TERM when omitted.
    */
   mode?: OverpaymentMode;
 }
@@ -104,8 +103,6 @@ export interface LoanScheduleInput {
   /** Date of the first projected payment (row 1) */
   firstPaymentDate: Date;
   overpayments?: OverpaymentPlan;
-  /** How overpayments reshape the schedule; defaults to SHORTEN_TERM */
-  overpaymentMode?: OverpaymentMode;
   /** Known rate steps; each applies from the first payment on/after its date */
   rateChanges?: RateChange[];
   /** Maximum projected payments; defaults to 600, clamped to 10000 */
@@ -224,6 +221,25 @@ export function getPeriodicRate(
     return Math.pow(1 + semiAnnualRate, 2 / periodsPerYear) - 1;
   }
   return annualRate / 100 / periodsPerYear;
+}
+
+/**
+ * Interest accrued on `balance` over one payment period at `annualRate`. A
+ * candidate installment amortizes only when it exceeds this, so it is the
+ * shared guard for seeding a projection or the contractual schedule -- rejecting
+ * a principal-only figure that would never reduce the balance.
+ */
+export function firstPeriodInterest(
+  balance: number,
+  annualRate: number,
+  frequency: ScheduleFrequency,
+  isCanadian = false,
+  isVariableRate = false,
+): number {
+  return (
+    balance *
+    getPeriodicRate(annualRate, getPeriodsPerYear(frequency), isCanadian, isVariableRate)
+  );
 }
 
 export function advanceDate(date: Date, frequency: ScheduleFrequency): Date {
@@ -350,10 +366,9 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     HARD_MAX_PAYMENTS,
   );
 
-  // Each overpayment carries its own mode; the input's overpaymentMode is only
-  // the default for those that omit one.
-  const defaultMode = input.overpaymentMode ?? 'SHORTEN_TERM';
-  const modeOf = (m?: OverpaymentMode): OverpaymentMode => m ?? defaultMode;
+  // Each overpayment carries its own mode; SHORTEN_TERM is the default for
+  // those that omit one.
+  const modeOf = (m?: OverpaymentMode): OverpaymentMode => m ?? 'SHORTEN_TERM';
   const hasOverpayments = Boolean(
     overpayments?.recurringExtra || (overpayments?.lumpSums?.length ?? 0) > 0,
   );
@@ -631,7 +646,7 @@ export function compareSchedules(
 }
 
 /** Whole months from `fromDate` to `toDate` (0 when either is missing) */
-function monthsBetween(fromDate: string | null, toDate: string | null): number {
+export function monthsBetween(fromDate: string | null, toDate: string | null): number {
   if (!fromDate || !toDate) return 0;
   const from = parseIsoDateParts(fromDate);
   const to = parseIsoDateParts(toDate);
@@ -643,7 +658,8 @@ function parseIsoDateParts(isoDate: string): { year: number; month: number } {
   return { year, month };
 }
 
-function round2(value: number): number {
+/** Round to 2 decimals (cents), avoiding floating-point drift. */
+export function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 

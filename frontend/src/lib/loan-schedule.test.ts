@@ -577,13 +577,11 @@ describe('generateLoanSchedule LOWER_INSTALLMENT mode', () => {
     });
     const shorten = generateLoanSchedule({
       ...base,
-      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 50000 }] },
-      overpaymentMode: 'SHORTEN_TERM',
+      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 50000, mode: 'SHORTEN_TERM' }] },
     });
     const lower = generateLoanSchedule({
       ...base,
-      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 50000 }] },
-      overpaymentMode: 'LOWER_INSTALLMENT',
+      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 50000, mode: 'LOWER_INSTALLMENT' }] },
     });
     const baseline = generateLoanSchedule(base);
 
@@ -602,8 +600,7 @@ describe('generateLoanSchedule LOWER_INSTALLMENT mode', () => {
     const baseline = generateLoanSchedule(base);
     const lower = generateLoanSchedule({
       ...base,
-      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 30000 }] },
-      overpaymentMode: 'LOWER_INSTALLMENT',
+      overpayments: { lumpSums: [{ date: '2026-01-15', amount: 30000, mode: 'LOWER_INSTALLMENT' }] },
     });
     const comparison = compareSchedules(baseline, lower);
     expect(comparison.installmentReduction).toBeGreaterThan(0);

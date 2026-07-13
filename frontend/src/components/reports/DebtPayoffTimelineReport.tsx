@@ -17,12 +17,12 @@ import {
 } from 'recharts';
 import { accountsApi } from '@/lib/accounts';
 import { Transaction } from '@/types/transaction';
+import { generateLoanSchedule } from '@/lib/loan-schedule';
 import {
-  ScheduleFrequency,
-  advanceDate,
-  generateLoanSchedule,
-} from '@/lib/loan-schedule';
-import { deriveLoanPaymentHistory, fetchAllAccountTransactions } from '@/lib/loan-history';
+  buildLoanProjectionInput,
+  deriveLoanPaymentHistory,
+  fetchAllAccountTransactions,
+} from '@/lib/loan-history';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useReportData } from '@/hooks/useReportData';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
@@ -121,23 +121,10 @@ export function DebtPayoffTimelineReport() {
     }));
 
     // --- Project future payments ---
-    const canProject =
-      history.currentBalance > 0.01 &&
-      selectedAccount.interestRate != null &&
-      selectedAccount.paymentAmount &&
-      selectedAccount.paymentAmount > 0 &&
-      selectedAccount.paymentFrequency;
-
-    if (canProject) {
-      const frequency = selectedAccount.paymentFrequency as ScheduleFrequency;
+    const projectionInput = buildLoanProjectionInput(selectedAccount, history);
+    if (projectionInput) {
       const projection = generateLoanSchedule({
-        startingBalance: history.currentBalance,
-        annualRate: selectedAccount.interestRate!,
-        paymentAmount: selectedAccount.paymentAmount!,
-        frequency,
-        isCanadian: selectedAccount.isCanadianMortgage || false,
-        isVariableRate: selectedAccount.isVariableRate || false,
-        firstPaymentDate: advanceDate(new Date(), frequency),
+        ...projectionInput,
         initialCumulativePrincipal: history.cumulativePrincipal,
         initialCumulativeInterest: history.cumulativeInterest,
       });

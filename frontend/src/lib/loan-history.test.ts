@@ -400,7 +400,6 @@ describe('deriveCurrentInstallment', () => {
       principal: number;
       interest: number;
       type: 'REGULAR' | 'OVERPAYMENT';
-      interestRecorded?: boolean;
     }>,
   ) => ({
     events: events.map((e, i) => ({
@@ -411,9 +410,6 @@ describe('deriveCurrentInstallment', () => {
       cumulativePrincipal: 0,
       cumulativeInterest: 0,
       type: e.type,
-      // Regular installments here stand for real recorded installments unless a
-      // case overrides it (e.g. analytic interest from a separate booking).
-      interestRecorded: e.interestRecorded ?? e.type === 'REGULAR',
     })),
     startingBalance: 0,
     currentBalance: 0,
@@ -465,8 +461,8 @@ describe('deriveCurrentInstallment', () => {
     // stored payment.
     const result = deriveCurrentInstallment(
       history([
-        { principal: 300, interest: 300, type: 'REGULAR', interestRecorded: false },
-        { principal: 300, interest: 300, type: 'REGULAR', interestRecorded: false },
+        { principal: 300, interest: 300, type: 'REGULAR' },
+        { principal: 300, interest: 300, type: 'REGULAR' },
       ]),
       1279,
     );
@@ -562,7 +558,6 @@ describe('deriveLoanPaymentHistory interest from the rate timeline', () => {
     // Interest tracks balance x rate/12 (~916), NOT capped at the 285 principal.
     expect(events[0].interest).toBeCloseTo(monthly, 0);
     expect(events[0].interest).toBeGreaterThan(events[0].principal);
-    expect(events[0].interestRecorded).toBe(false);
   });
 
   it('reprices each month from the timeline for a variable-rate loan', () => {

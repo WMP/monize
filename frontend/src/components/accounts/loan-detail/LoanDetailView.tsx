@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { format } from 'date-fns';
 import { LoanSummaryCards } from '@/components/accounts/loan-detail/LoanSummaryCards';
 import { AmortizationScheduleTable } from '@/components/accounts/loan-detail/AmortizationScheduleTable';
 import { OverpaymentSimulator } from '@/components/accounts/loan-detail/OverpaymentSimulator';
@@ -11,18 +10,17 @@ import { ComparisonSummaryCards } from '@/components/accounts/loan-detail/Compar
 import { SavedScenariosPanel } from '@/components/accounts/loan-detail/SavedScenariosPanel';
 import { PastImpactSection } from '@/components/accounts/loan-detail/PastImpactSection';
 import { useLoanRateEditing } from '@/components/accounts/loan-detail/useLoanRateEditing';
-import { deriveCurrentInstallment, deriveLoanPaymentHistory } from '@/lib/loan-history';
+import {
+  buildLoanProjectionInput,
+  deriveCurrentInstallment,
+  deriveLoanPaymentHistory,
+} from '@/lib/loan-history';
 import { computePastImpact } from '@/lib/loan-past-impact';
 import {
   OverpaymentPlan,
   ScenarioComparison,
-  ScheduleFrequency,
-  advanceDate,
-  buildRateTimeline,
   compareSchedules,
   generateLoanSchedule,
-  getPeriodicRate,
-  getPeriodsPerYear,
 } from '@/lib/loan-schedule';
 import { scenarioToPlan } from '@/lib/loan-scenarios';
 import type { Account } from '@/types/account';
@@ -93,51 +91,10 @@ export function LoanDetailView({
     return derived > 0 ? derived : account.paymentAmount ?? null;
   }, [history, account.paymentAmount]);
 
-  const projectionInput = useMemo(() => {
-    const canProject =
-      history.currentBalance > 0.01 &&
-      account.interestRate != null &&
-      account.paymentAmount &&
-      account.paymentAmount > 0 &&
-      account.paymentFrequency;
-    if (!canProject) return null;
-
-    const frequency = account.paymentFrequency as ScheduleFrequency;
-    // The account's scalar rate is already current; only future-dated steps
-    // from the rate history bend the projection ahead.
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const futureTimeline = buildRateTimeline(rateChanges, today, account.interestRate!);
-    // Seed the projection from the installment actually in effect (the latest
-    // recorded payment change), not the original contractual paymentAmount --
-    // otherwise a loan whose installment the lender lowered (PL obniżenie raty)
-    // projects too high a payment and too short a remaining term.
-    const installment = deriveCurrentInstallment(history, account.paymentAmount!);
-    const seededPayment = futureTimeline.startingPaymentAmount ?? installment;
-    // A recorded payment amount (stored or from a detected rate row) can be
-    // principal-only for loans that book interest separately -- below the
-    // period's interest, so the projection never amortizes. When it does not
-    // cover the interest, fall back to the real installment (principal +
-    // interest), which always does.
-    const periodicRate = getPeriodicRate(
-      account.interestRate!,
-      getPeriodsPerYear(frequency),
-      account.isCanadianMortgage || false,
-      account.isVariableRate || false,
-    );
-    const firstPeriodInterest = history.currentBalance * periodicRate;
-    const currentPayment =
-      seededPayment > firstPeriodInterest ? seededPayment : installment;
-    return {
-      startingBalance: history.currentBalance,
-      annualRate: account.interestRate!,
-      paymentAmount: currentPayment,
-      frequency,
-      isCanadian: account.isCanadianMortgage || false,
-      isVariableRate: account.isVariableRate || false,
-      firstPaymentDate: advanceDate(new Date(), frequency),
-      rateChanges: futureTimeline.rateChanges,
-    };
-  }, [account, history, rateChanges]);
+  const projectionInput = useMemo(
+    () => buildLoanProjectionInput(account, history, rateChanges),
+    [account, history, rateChanges],
+  );
 
   const baseline = useMemo(
     () => (projectionInput ? generateLoanSchedule(projectionInput) : null),

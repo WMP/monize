@@ -5,13 +5,9 @@ import { Skeleton } from '@/components/ui/LoadingSkeleton';
 import { format, parseISO } from 'date-fns';
 import { accountsApi } from '@/lib/accounts';
 import { Transaction } from '@/types/transaction';
+import { generateLoanSchedule } from '@/lib/loan-schedule';
 import {
-  ScheduleFrequency,
-  advanceDate,
-  generateLoanSchedule,
-} from '@/lib/loan-schedule';
-import {
-  deriveCurrentInstallment,
+  buildLoanProjectionInput,
   deriveLoanPaymentHistory,
   fetchAllAccountTransactions,
 } from '@/lib/loan-history';
@@ -119,30 +115,9 @@ export function LoanAmortizationReport() {
     }));
 
     // --- Project future payments ---
-    const canProject =
-      history.currentBalance > 0.01 &&
-      selectedAccount.interestRate != null &&
-      selectedAccount.paymentAmount &&
-      selectedAccount.paymentAmount > 0 &&
-      selectedAccount.paymentFrequency;
-
-    if (canProject) {
-      const frequency = selectedAccount.paymentFrequency as ScheduleFrequency;
-      // Seed from the installment actually observed in recent history when the
-      // lender lowered it, not the stale contractual paymentAmount.
-      const currentPayment = deriveCurrentInstallment(
-        history,
-        selectedAccount.paymentAmount!,
-      );
-      const projection = generateLoanSchedule({
-        startingBalance: history.currentBalance,
-        annualRate: selectedAccount.interestRate!,
-        paymentAmount: currentPayment,
-        frequency,
-        isCanadian: selectedAccount.isCanadianMortgage || false,
-        isVariableRate: selectedAccount.isVariableRate || false,
-        firstPaymentDate: advanceDate(new Date(), frequency),
-      });
+    const projectionInput = buildLoanProjectionInput(selectedAccount, history);
+    if (projectionInput) {
+      const projection = generateLoanSchedule(projectionInput);
 
       for (const row of projection.rows) {
         payments.push({

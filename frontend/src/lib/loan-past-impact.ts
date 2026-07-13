@@ -1,14 +1,17 @@
 import { Account } from '@/types/account';
 import { LoanHistoryResult } from '@/lib/loan-history';
 import {
+  LoanScheduleInput,
   LoanScheduleResult,
   RateTimelineRow,
   ScheduleFrequency,
   buildRateTimeline,
   calculateMortgagePaymentAmount,
+  firstPeriodInterest,
   generateLoanSchedule,
-  getPeriodicRate,
   getPeriodsPerYear,
+  monthsBetween,
+  round2,
 } from '@/lib/loan-schedule';
 
 /**
@@ -133,12 +136,17 @@ export function computePastImpact(
   // cover the first period's interest is unusable. The fallback path is
   // unchanged from before, so loans that already relied on it are unaffected.
   const configuredTermPeriods = Math.round((configuredTermMonths * periodsPerYear) / 12);
-  const firstPeriodInterest =
-    originalPrincipal *
-    getPeriodicRate(timeline.startingAnnualRate, periodsPerYear, isCanadian, isVariableRate);
   const recordedInstallment = timeline.startingPaymentAmount;
   const useRecordedInstallment =
-    recordedInstallment != null && recordedInstallment > firstPeriodInterest;
+    recordedInstallment != null &&
+    recordedInstallment >
+      firstPeriodInterest(
+        originalPrincipal,
+        timeline.startingAnnualRate,
+        frequency,
+        isCanadian,
+        isVariableRate,
+      );
 
   const contractualPayment = useRecordedInstallment
     ? recordedInstallment
@@ -152,16 +160,19 @@ export function computePastImpact(
       );
   if (contractualPayment <= 0) return null;
 
+  const base: LoanScheduleInput = {
+    startingBalance: originalPrincipal,
+    annualRate: timeline.startingAnnualRate,
+    paymentAmount: contractualPayment,
+    frequency,
+    isCanadian,
+    isVariableRate,
+    firstPaymentDate: parseIsoDate(startDate),
+  };
   const originalSchedule = generateLoanSchedule(
     useRecordedInstallment
       ? {
-          startingBalance: originalPrincipal,
-          annualRate: timeline.startingAnnualRate,
-          paymentAmount: contractualPayment,
-          frequency,
-          isCanadian,
-          isVariableRate,
-          firstPaymentDate: parseIsoDate(startDate),
+          ...base,
           // Keep the timeline's payment steps so the contractual installment
           // tracks the lender period to period (e.g. a variable rate that
           // re-levelled the payment upward), then run to the loan's own payoff.
@@ -173,13 +184,7 @@ export function computePastImpact(
           maxPayments: ORIGINAL_SCHEDULE_MAX_PAYMENTS,
         }
       : {
-          startingBalance: originalPrincipal,
-          annualRate: timeline.startingAnnualRate,
-          paymentAmount: contractualPayment,
-          frequency,
-          isCanadian,
-          isVariableRate,
-          firstPaymentDate: parseIsoDate(startDate),
+          ...base,
           // Keep the recorded rate steps but drop their payment overrides (often
           // principal-only figures that would stall a fixed payment);
           // re-levelling sets the installment instead.
@@ -233,19 +238,7 @@ export function computePastImpact(
   };
 }
 
-/** Whole months from `fromDate` to `toDate` (0 when either is missing) */
-function monthsBetween(fromDate: string | null, toDate: string | null): number {
-  if (!fromDate || !toDate) return 0;
-  const [fromYear, fromMonth] = fromDate.split('-').map(Number);
-  const [toYear, toMonth] = toDate.split('-').map(Number);
-  return (toYear - fromYear) * 12 + (toMonth - fromMonth);
-}
-
 function parseIsoDate(isoDate: string): Date {
   const [year, month, day] = isoDate.split('-').map(Number);
   return new Date(year, month - 1, day);
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
 }

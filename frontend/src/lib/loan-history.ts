@@ -2,11 +2,15 @@ import { Account } from '@/types/account';
 import { Transaction, TransactionSplit } from '@/types/transaction';
 import { transactionsApi } from '@/lib/transactions';
 import {
+  LoanScheduleInput,
   ScheduleFrequency,
   RateTimelineRow,
+  advanceDate,
+  buildRateTimeline,
+  effectiveAnnualRateOn,
+  firstPeriodInterest,
   getPeriodicRate,
   getPeriodsPerYear,
-  effectiveAnnualRateOn,
 } from '@/lib/loan-schedule';
 
 /**
@@ -45,13 +49,6 @@ export interface LoanPaymentEvent {
   cumulativeInterest: number;
   /** REGULAR installment or a standalone OVERPAYMENT (extra principal) */
   type: LoanPaymentType;
-  /**
-   * True only when `interest` came from a real recorded interest split, so
-   * `principal + interest` is a genuine full installment. False for
-   * overpayments and for analytically-derived interest (e.g. interest booked
-   * as a separate transaction), where the sum is not a reliable installment.
-   */
-  interestRecorded: boolean;
   /**
    * The annual interest rate (percentage) for this installment. When the loan
    * has a recorded rate history it is the exact rate in effect on this row's
@@ -167,7 +164,7 @@ export function deriveLoanPaymentHistory(
     let runningBalance = startingBalance;
     for (const transaction of repayments) {
       const principal = Math.abs(Number(transaction.amount));
-      const { interest, type, interestRecorded } = classifyPayment(
+      const { interest, type } = classifyPayment(
         transaction,
         runningBalance,
         account,
@@ -188,7 +185,6 @@ export function deriveLoanPaymentHistory(
         cumulativePrincipal,
         cumulativeInterest,
         type,
-        interestRecorded,
       });
     }
   } else {
@@ -201,7 +197,7 @@ export function deriveLoanPaymentHistory(
       runningSigned += Number(transaction.amount);
       if (Number(transaction.amount) <= 0) continue; // draws move the balance, no row
       const principal = Math.abs(Number(transaction.amount));
-      const { interest, type, interestRecorded } = classifyPayment(
+      const { interest, type } = classifyPayment(
         transaction,
         balanceBefore,
         account,
@@ -221,7 +217,6 @@ export function deriveLoanPaymentHistory(
         cumulativePrincipal,
         cumulativeInterest,
         type,
-        interestRecorded,
       });
     }
   }
@@ -249,7 +244,6 @@ export function deriveLoanPaymentHistory(
     cumulativePrincipal: 0,
     cumulativeInterest: 0,
     type: 'REGULAR' as const,
-    interestRecorded: true,
   }));
   const merged = [...events, ...orphanEvents].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
@@ -316,6 +310,61 @@ export function deriveCurrentInstallment(
 }
 
 /**
+ * The forward-projection input shared by the loan detail view and the loan
+ * reports: a schedule that continues from today's balance at the loan's real
+ * current installment. Returns null when the account cannot be projected (no
+ * remaining balance, rate, payment, or frequency).
+ *
+ * The seed payment is the installment actually in effect -- the latest recorded
+ * payment change from the rate timeline, else the real installment derived from
+ * history (principal + interest of the last regular payment) -- never the stored
+ * contractual `paymentAmount`, which is often stale or principal-only. When that
+ * seed cannot cover the first period's interest (a principal-only figure for
+ * separately-booked interest), it falls back to the derived installment, which
+ * always amortizes. Future-dated rate steps bend the projection ahead; passing
+ * no `rateChanges` simply omits them.
+ */
+export function buildLoanProjectionInput(
+  account: Account,
+  history: LoanHistoryResult,
+  rateChanges: RateTimelineRow[] = [],
+): LoanScheduleInput | null {
+  const canProject =
+    history.currentBalance > 0.01 &&
+    account.interestRate != null &&
+    !!account.paymentAmount &&
+    account.paymentAmount > 0 &&
+    !!account.paymentFrequency;
+  if (!canProject) return null;
+
+  const frequency = account.paymentFrequency as ScheduleFrequency;
+  const isCanadian = account.isCanadianMortgage || false;
+  const isVariableRate = account.isVariableRate || false;
+  // The account's scalar rate is already current; only future-dated steps from
+  // the rate history bend the projection ahead.
+  const today = new Date().toISOString().slice(0, 10);
+  const futureTimeline = buildRateTimeline(rateChanges, today, account.interestRate!);
+  const installment = deriveCurrentInstallment(history, account.paymentAmount!);
+  const seededPayment = futureTimeline.startingPaymentAmount ?? installment;
+  const currentPayment =
+    seededPayment >
+    firstPeriodInterest(history.currentBalance, account.interestRate!, frequency, isCanadian, isVariableRate)
+      ? seededPayment
+      : installment;
+
+  return {
+    startingBalance: history.currentBalance,
+    annualRate: account.interestRate!,
+    paymentAmount: currentPayment,
+    frequency,
+    isCanadian,
+    isVariableRate,
+    firstPaymentDate: advanceDate(new Date(), frequency),
+    rateChanges: futureTimeline.rateChanges,
+  };
+}
+
+/**
  * Classify a positive loan-account transaction into its interest portion and
  * row type. Interest is resolved in order: a recorded interest split of the
  * payment; else the actual separate interest expense paired to this date; else
@@ -333,7 +382,7 @@ function classifyPayment(
   rateChanges: RateTimelineRow[],
   separateInterestByDate: Map<string, number>,
   usedInterestDates: Set<string>,
-): { interest: number; type: LoanPaymentType; interestRecorded: boolean } {
+): { interest: number; type: LoanPaymentType } {
   const dateKey = transaction.transactionDate.split('T')[0];
   // The actual interest expense paired to this date, consumed once.
   const takeSeparateInterest = (): number | null => {
@@ -354,11 +403,7 @@ function classifyPayment(
     )
   ) {
     const paired = takeSeparateInterest();
-    return {
-      interest: paired ?? 0,
-      type: 'OVERPAYMENT',
-      interestRecorded: paired != null,
-    };
+    return { interest: paired ?? 0, type: 'OVERPAYMENT' };
   }
   const recorded = readRecordedInterest(
     transaction,
@@ -366,18 +411,15 @@ function classifyPayment(
     processedParentIds,
   );
   if (recorded !== null) {
-    // A positive recorded split is a real installment leg; 0 means the source
-    // split carried no interest (e.g. an extra-principal sibling), which is not.
-    return { interest: recorded, type: 'REGULAR', interestRecorded: recorded > 0 };
+    return { interest: recorded, type: 'REGULAR' };
   }
   const paired = takeSeparateInterest();
   if (paired != null) {
-    return { interest: paired, type: 'REGULAR', interestRecorded: true };
+    return { interest: paired, type: 'REGULAR' };
   }
   return {
     interest: analyticInterest(balanceBefore, account, transaction, rateChanges),
     type: 'REGULAR',
-    interestRecorded: false,
   };
 }
 
@@ -716,19 +758,18 @@ function assignObservedRates(
     // clock for the following installment.
     if (event.type === 'REGULAR' && event.interest > 0 && balanceBefore > 0 && days > 0) {
       const observed = (event.interest / balanceBefore) * (365 / days) * 100;
-      const timelineRate = effectiveAnnualRateOn(
-        rateChanges,
-        event.date,
-        Number(account.interestRate),
-      );
+      // No rate history here (this branch only runs when rateChanges is empty),
+      // so the account's scalar rate is the only reference to sanity-check the
+      // observed figure against.
+      const fallbackRate = Number(account.interestRate);
       const expectedFullPeriodInterest =
-        timelineRate > 0
-          ? balanceBefore * getPeriodicRate(timelineRate, periodsPerYear, isCanadian, isVariable)
+        fallbackRate > 0
+          ? balanceBefore * getPeriodicRate(fallbackRate, periodsPerYear, isCanadian, isVariable)
           : 0;
       const isFullPeriod =
         expectedFullPeriodInterest <= 0 ||
         event.interest >= expectedFullPeriodInterest * FULL_PERIOD_INTEREST_RATIO;
-      event.annualRate = isFullPeriod ? observed : timelineRate;
+      event.annualRate = isFullPeriod ? observed : fallbackRate;
     } else {
       event.annualRate = null;
     }

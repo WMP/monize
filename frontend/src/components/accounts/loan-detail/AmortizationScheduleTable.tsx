@@ -35,6 +35,62 @@ type ScheduleUnit =
 const sumField = (rows: DisplayRow[], field: keyof DisplayRow): number =>
   rows.reduce((acc, row) => acc + Math.round(Number(row[field]) * 10000), 0) / 10000;
 
+interface ColumnTotals {
+  payment: number;
+  interest: number;
+  principal: number;
+  extra: number;
+}
+
+/**
+ * A summary row spanning the money columns: the whole-loan "Total" in the
+ * footer and the "Paid to date" subtotal above the projected section share this
+ * layout. `balance` is shown only when provided (the paid-to-date row carries
+ * the balance so far; the grand total leaves it blank).
+ */
+function TotalsRow({
+  label,
+  totals,
+  showExtraColumn,
+  currencyCode,
+  rowClassName,
+  balance,
+}: {
+  label: string;
+  totals: ColumnTotals;
+  showExtraColumn: boolean;
+  currencyCode: string;
+  rowClassName: string;
+  balance?: number;
+}) {
+  const { formatCurrency } = useNumberFormat();
+  return (
+    <tr className={rowClassName}>
+      <td colSpan={2} className="px-4 py-3 text-left text-sm">
+        {label}
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
+        {formatCurrency(totals.payment, currencyCode)}
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-orange-600 dark:text-orange-400">
+        {formatCurrency(totals.interest, currencyCode)}
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600 dark:text-green-400">
+        {formatCurrency(totals.principal, currencyCode)}
+      </td>
+      {showExtraColumn && (
+        <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-blue-600 dark:text-blue-400">
+          {totals.extra > 0 ? formatCurrency(totals.extra, currencyCode) : '—'}
+        </td>
+      )}
+      <td className="px-4 py-3" />
+      <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
+        {balance !== undefined ? formatCurrency(balance, currencyCode) : null}
+      </td>
+    </tr>
+  );
+}
+
 /**
  * Loan Schedule for the loan detail page: historical payments followed by the
  * projected rows, with a separator at the transition. Months with more than one
@@ -52,7 +108,6 @@ export function AmortizationScheduleTable({
   editing,
 }: AmortizationScheduleTableProps) {
   const t = useTranslations('accounts');
-  const { formatCurrency } = useNumberFormat();
   const formatMonthLabel = useChartDateFormat();
   const [showAllRows, setShowAllRows] = useState(false);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
@@ -276,29 +331,14 @@ export function AmortizationScheduleTable({
                   const separator = isProjectedUnit && prev !== null && !prevProjected && (
                     <>
                       {paidTotals.any && (
-                        <tr className="bg-gray-50 dark:bg-gray-900/40 font-semibold text-gray-900 dark:text-gray-100">
-                          <td colSpan={2} className="px-4 py-3 text-left text-sm">
-                            {t('loanDetail.schedule.paidToDate')}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
-                            {formatCurrency(paidTotals.payment, currencyCode)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-orange-600 dark:text-orange-400">
-                            {formatCurrency(paidTotals.interest, currencyCode)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600 dark:text-green-400">
-                            {formatCurrency(paidTotals.principal, currencyCode)}
-                          </td>
-                          {showExtraColumn && (
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-blue-600 dark:text-blue-400">
-                              {paidTotals.extra > 0 ? formatCurrency(paidTotals.extra, currencyCode) : '—'}
-                            </td>
-                          )}
-                          <td className="px-4 py-3" />
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
-                            {formatCurrency(paidTotals.balance, currencyCode)}
-                          </td>
-                        </tr>
+                        <TotalsRow
+                          label={t('loanDetail.schedule.paidToDate')}
+                          totals={paidTotals}
+                          showExtraColumn={showExtraColumn}
+                          currencyCode={currencyCode}
+                          rowClassName="bg-gray-50 dark:bg-gray-900/40 font-semibold text-gray-900 dark:text-gray-100"
+                          balance={paidTotals.balance}
+                        />
                       )}
                       <tr className="bg-gray-100 dark:bg-gray-700">
                         <td
@@ -355,27 +395,13 @@ export function AmortizationScheduleTable({
                 })}
               </tbody>
               <tfoot className="bg-gray-50 dark:bg-gray-900/50 border-t-2 border-gray-200 dark:border-gray-700">
-                <tr className="font-semibold text-gray-900 dark:text-gray-100">
-                  <td colSpan={2} className="px-4 py-3 text-left text-sm">
-                    {t('loanDetail.schedule.total')}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
-                    {formatCurrency(totals.payment, currencyCode)}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-orange-600 dark:text-orange-400">
-                    {formatCurrency(totals.interest, currencyCode)}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600 dark:text-green-400">
-                    {formatCurrency(totals.principal, currencyCode)}
-                  </td>
-                  {showExtraColumn && (
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-blue-600 dark:text-blue-400">
-                      {totals.extra > 0 ? formatCurrency(totals.extra, currencyCode) : '—'}
-                    </td>
-                  )}
-                  <td className="px-4 py-3" />
-                  <td className="px-4 py-3" />
-                </tr>
+                <TotalsRow
+                  label={t('loanDetail.schedule.total')}
+                  totals={totals}
+                  showExtraColumn={showExtraColumn}
+                  currencyCode={currencyCode}
+                  rowClassName="font-semibold text-gray-900 dark:text-gray-100"
+                />
               </tfoot>
             </table>
           </div>

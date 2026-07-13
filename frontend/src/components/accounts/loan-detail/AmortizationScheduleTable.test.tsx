@@ -33,7 +33,6 @@ function makeHistoryEvents(count: number, annualRate: number | null = null): Loa
     cumulativePrincipal: 450 * (i + 1),
     cumulativeInterest: 50 * (i + 1),
     type: 'REGULAR' as const,
-    interestRecorded: true,
     annualRate,
   }));
 }
@@ -116,7 +115,6 @@ describe('AmortizationScheduleTable', () => {
         cumulativePrincipal: 1450,
         cumulativeInterest: 50,
         type: 'OVERPAYMENT' as const,
-        interestRecorded: false,
         annualRate: null,
       },
     ];
@@ -206,7 +204,6 @@ describe('AmortizationScheduleTable', () => {
         cumulativePrincipal: 765,
         cumulativeInterest: 154,
         type: 'REGULAR' as const,
-        interestRecorded: true,
         annualRate: 5.5,
       },
       {
@@ -217,7 +214,6 @@ describe('AmortizationScheduleTable', () => {
         cumulativePrincipal: 3299,
         cumulativeInterest: 690,
         type: 'OVERPAYMENT' as const,
-        interestRecorded: false,
         annualRate: null,
       },
     ];
