@@ -79,6 +79,31 @@ export function buildPayoffComparisonSeries(
     a.monthKey.localeCompare(b.monthKey),
   );
 
+  // Carry the actual balance forward across months with no payment (a payment
+  // holiday or a skipped installment) that exist only because the continuous
+  // contractual curve created them. The debt persisted at its last level
+  // through those months, so filling them keeps the curve continuous AND lets
+  // the tooltip show the real balance there, instead of a bare bridged line
+  // with no value. Only interior gaps are filled -- between the first and last
+  // actual-balance point -- so nothing is invented before origination or
+  // projected past "today".
+  const firstHistorical = points.findIndex((p) => p.historicalBalance !== undefined);
+  const lastHistorical = points.reduce(
+    (last, point, index) => (point.historicalBalance !== undefined ? index : last),
+    -1,
+  );
+  if (firstHistorical >= 0) {
+    let carried = points[firstHistorical].historicalBalance as number;
+    points = points.map((point, index) => {
+      if (index < firstHistorical || index > lastHistorical) return point;
+      if (point.historicalBalance === undefined) {
+        return { ...point, historicalBalance: carried };
+      }
+      carried = point.historicalBalance;
+      return point;
+    });
+  }
+
   // Stitch the projections onto the last historical point so the chart areas
   // connect at the transition instead of leaving a gap
   const hasProjection = (baseline?.rows.length ?? 0) > 0 || (scenario?.rows.length ?? 0) > 0;

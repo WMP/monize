@@ -680,9 +680,13 @@ function assignObservedRates(
     // A gap much longer than one payment interval means payments were skipped
     // (e.g. a payment holiday): the interest still covers a single billing
     // period, so cap the accrual span at one interval rather than dividing one
-    // month of interest across the whole gap. Shorter gaps (an overpayment that
-    // settled interest mid-cycle) keep their actual span.
-    const days = gap > periodDays * 1.5 ? periodDays : gap;
+    // month of interest across the whole gap. A non-positive gap means a prior
+    // interest event fell on this very date -- an overpayment that settled
+    // interest the same day as the installment -- so there is no span to
+    // measure; fall back to the nominal period rather than dropping the rate.
+    // Shorter gaps (an overpayment that settled interest mid-cycle) keep their
+    // actual span.
+    const days = gap <= 0 || gap > periodDays * 1.5 ? periodDays : gap;
     // Only a scheduled installment carries a meaningful rate. An overpayment is
     // an ad-hoc extra payment whose attached interest spans an odd partial
     // period, so it shows no rate -- but its interest still settles the accrual
@@ -743,16 +747,31 @@ export async function fetchAllAccountTransactions(accountId: string): Promise<Tr
  * `deriveLoanPaymentHistory` so each row shows the actual interest booked
  * (rather than an analytic estimate) and overpayments show their interest too.
  * Returns [] when the loan has no interest category or source account set.
+ *
+ * Only genuinely standalone interest expenses are returned. The category filter
+ * also matches interest booked as a *split leg* of a payment (the backend
+ * matches `splits.categoryId`), but that interest is already attributed to its
+ * own loan through the payment's recorded interest split -- and a run of
+ * sequential loans that share one interest category and funding account (e.g.
+ * a mortgage refinanced every few years, each paid from the same chequing
+ * account) would otherwise each pull in every sibling loan's split-leg
+ * interest, producing phantom interest-only rows and a bogus payoff timeline.
+ * A standalone expense carries the interest category at the top level
+ * (split parents have a null top-level category) and is not a transfer, so
+ * filtering on that keeps only interest this path is meant to handle.
  */
 export async function fetchLoanInterestTransactions(
   account: Account,
 ): Promise<Transaction[]> {
   if (!account.interestCategoryId || !account.sourceAccountId) return [];
   try {
-    return await transactionsApi.getAllPages({
+    const results = await transactionsApi.getAllPages({
       categoryIds: [account.interestCategoryId],
       accountIds: [account.sourceAccountId],
     });
+    return results.filter(
+      (tx) => tx.categoryId === account.interestCategoryId && !tx.isTransfer,
+    );
   } catch {
     return [];
   }

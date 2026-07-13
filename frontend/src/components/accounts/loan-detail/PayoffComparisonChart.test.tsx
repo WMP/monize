@@ -88,6 +88,50 @@ describe('buildPayoffComparisonSeries', () => {
     expect(march?.historicalBalance).toBeUndefined();
   });
 
+  it('carries the actual balance forward across a payment-holiday gap', () => {
+    // History has no payment in February; the continuous contractual curve
+    // still creates that month. The gap month must carry January's balance so
+    // the curve stays continuous and the tooltip shows a real value there --
+    // but months after the last actual payment stay empty (a projection, not
+    // a carried balance).
+    const history: LoanPaymentEvent[] = [
+      {
+        date: '2026-01-15',
+        principal: 450,
+        interest: 50,
+        balance: 9550,
+        cumulativePrincipal: 450,
+        cumulativeInterest: 50,
+        type: 'REGULAR',
+        interestRecorded: true,
+      },
+      {
+        date: '2026-03-15',
+        principal: 450,
+        interest: 50,
+        balance: 9100,
+        cumulativePrincipal: 900,
+        cumulativeInterest: 100,
+        type: 'REGULAR',
+        interestRecorded: true,
+      },
+    ];
+    const original = generateLoanSchedule({
+      startingBalance: 10000,
+      annualRate: 6,
+      paymentAmount: 500,
+      frequency: 'MONTHLY',
+      firstPaymentDate: new Date(2026, 0, 15),
+    });
+
+    const { points } = buildPayoffComparisonSeries(history, null, null, original);
+
+    expect(points.find((p) => p.monthKey === '2026-02')?.historicalBalance).toBe(9550);
+    expect(points.find((p) => p.monthKey === '2026-03')?.historicalBalance).toBe(9100);
+    // A month past the last actual payment is a projection gap, not carried.
+    expect(points.find((p) => p.monthKey === '2026-04')?.historicalBalance).toBeUndefined();
+  });
+
   it('stitches projections onto the last historical point', () => {
     const baseline = makeProjection();
     const scenario = makeProjection(200);

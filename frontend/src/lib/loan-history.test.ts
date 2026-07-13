@@ -3,6 +3,7 @@ import {
   deriveCurrentInstallment,
   deriveLoanPaymentHistory,
   fetchAllAccountTransactions,
+  fetchLoanInterestTransactions,
 } from './loan-history';
 import { transactionsApi } from '@/lib/transactions';
 import { Account } from '@/types/account';
@@ -11,6 +12,7 @@ import { Transaction, TransactionSplit } from '@/types/transaction';
 vi.mock('@/lib/transactions', () => ({
   transactionsApi: {
     getAll: vi.fn(),
+    getAllPages: vi.fn(),
   },
 }));
 
@@ -503,6 +505,42 @@ describe('fetchAllAccountTransactions', () => {
   });
 });
 
+describe('fetchLoanInterestTransactions', () => {
+  const account = makeAccount({
+    interestCategoryId: 'cat-interest',
+    sourceAccountId: 'src-1',
+  });
+
+  it('keeps only standalone interest expenses, dropping split-leg matches', async () => {
+    // The category filter also matches interest booked as a split leg of a
+    // payment (the backend matches splits.categoryId). A split parent carries a
+    // null top-level category; those must be dropped so sequential loans sharing
+    // one interest category and funding account do not pull each other's
+    // split-leg interest onto this loan.
+    vi.mocked(transactionsApi.getAllPages).mockResolvedValue([
+      // Genuine standalone interest expense -- kept.
+      { id: 'i-1', categoryId: 'cat-interest', isTransfer: false } as Transaction,
+      // Split parent (another loan's payment) matched via a split leg -- dropped.
+      { id: 'p-1', categoryId: null, isTransfer: false } as unknown as Transaction,
+      // A transfer that happens to share the category -- dropped.
+      { id: 't-1', categoryId: 'cat-interest', isTransfer: true } as Transaction,
+    ]);
+
+    const result = await fetchLoanInterestTransactions(account);
+
+    expect(result.map((t) => t.id)).toEqual(['i-1']);
+    expect(transactionsApi.getAllPages).toHaveBeenCalledWith({
+      categoryIds: ['cat-interest'],
+      accountIds: ['src-1'],
+    });
+  });
+
+  it('returns [] when the loan has no interest category or source account', async () => {
+    expect(await fetchLoanInterestTransactions(makeAccount())).toEqual([]);
+    expect(transactionsApi.getAllPages).not.toHaveBeenCalled();
+  });
+});
+
 describe('deriveLoanPaymentHistory interest from the rate timeline', () => {
   it('derives uncapped interest from the effective per-date rate for separately-booked interest', () => {
     // A principal-only loan-side payment (interest booked as a separate
@@ -829,5 +867,40 @@ describe('deriveLoanPaymentHistory with paired separate interest expenses', () =
     });
     const noTimeline = deriveLoanPaymentHistory(rateless, transactions, [], interestTransactions);
     expect(noTimeline.events[1].annualRate).toBeLessThan(2);
+  });
+
+  it('rates a regular installment that shares its date with an interest-bearing overpayment', () => {
+    // An overpayment and the regular installment fall on the same day. The
+    // overpayment settles interest first, so the installment has a zero-day gap
+    // to the previous interest event -- but it still covers a full period, so
+    // its rate must not be dropped. The overpayment itself still shows none.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      openingBalance: -200000,
+      currentBalance: -194500,
+      interestRate: 5.5,
+      overpaymentCategoryId: 'cat-over',
+    });
+    const transactions = [
+      withInterestSplit(makeTransaction({ transactionDate: '2024-01-05', amount: 250 }), 'p-1', 900),
+      makeTransaction({ transactionDate: '2024-02-05', amount: 5000, categoryId: 'cat-over' }),
+      withInterestSplit(makeTransaction({ transactionDate: '2024-02-05', amount: 250 }), 'p-3', 860),
+    ];
+    // A separate interest expense on the overpayment's date, so the overpayment
+    // carries interest and settles the accrual clock on 2024-02-05.
+    const interestTransactions = [
+      { transactionDate: '2024-02-05', amount: -625, isTransfer: false } as Transaction,
+    ];
+
+    const { events } = deriveLoanPaymentHistory(account, transactions, [], interestTransactions);
+
+    const overpayment = events.find((event) => event.type === 'OVERPAYMENT');
+    const sameDayRegular = events.find(
+      (event) => event.type === 'REGULAR' && event.date === '2024-02-05',
+    );
+    expect(overpayment?.annualRate).toBeNull();
+    expect(sameDayRegular?.annualRate).not.toBeNull();
+    expect(sameDayRegular!.annualRate!).toBeGreaterThan(3);
+    expect(sameDayRegular!.annualRate!).toBeLessThan(8);
   });
 });
