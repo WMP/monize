@@ -59,6 +59,22 @@ export interface LoanPaymentEvent {
    * events by hand need not supply it.
    */
   annualRate?: number | null;
+  /**
+   * Diagnostic comparison of how each layer computes this installment's rate,
+   * for a side-by-side column view. All three are the same underlying
+   * `interest / balanceBefore`, differing only in how they annualize:
+   *  - `rateDb`: the recorded rate in effect on this date from the persisted
+   *    rate history (`effectiveAnnualRateOn`); the account scalar when none.
+   *  - `rateDaily`: the frontend reconstruction -- annualized by the actual
+   *    days since interest was last settled (`x 365 / days`).
+   *  - `ratePeriodic`: the backend detection's annualization -- by the nominal
+   *    periods per year, with the Canadian semi-annual inversion for a
+   *    Canadian fixed-rate mortgage.
+   * Null for overpayments and rows without interest. Diagnostic only.
+   */
+  rateDb?: number | null;
+  rateDaily?: number | null;
+  ratePeriodic?: number | null;
 }
 
 export interface LoanHistoryResult {
@@ -223,6 +239,7 @@ export function deriveLoanPaymentHistory(
 
   if (orphanInterest.length === 0) {
     assignObservedRates(events, periodsPerYear, rateChanges, account);
+    assignComparisonRates(events, periodsPerYear, rateChanges, account);
     return {
       events,
       startingBalance,
@@ -265,6 +282,7 @@ export function deriveLoanPaymentHistory(
     }
   }
   assignObservedRates(merged, periodsPerYear, rateChanges, account);
+  assignComparisonRates(merged, periodsPerYear, rateChanges, account);
 
   return {
     events: merged,
@@ -772,6 +790,52 @@ function assignObservedRates(
       event.annualRate = isFullPeriod ? observed : fallbackRate;
     } else {
       event.annualRate = null;
+    }
+    if (event.interest > 0) lastInterestDateKey = dateKey;
+  }
+}
+
+/**
+ * Diagnostic: fill each event's `rateDb` / `rateDaily` / `ratePeriodic` so the
+ * schedule can show the three annualizations of the same observed interest
+ * side by side (see the field docs on LoanPaymentEvent). Mirrors the day-count
+ * gap handling of `assignObservedRates` for `rateDaily` and the backend
+ * `annualizeRate` for `ratePeriodic`. Diagnostic only; does not affect any
+ * calculation. Events must be sorted by date.
+ */
+function assignComparisonRates(
+  events: LoanPaymentEvent[],
+  periodsPerYear: number,
+  rateChanges: RateTimelineRow[],
+  account: Account,
+): void {
+  const periodDays = 365 / periodsPerYear;
+  const fallbackRate = Number(account.interestRate) || 0;
+  const isCanadianFixed =
+    (account.accountType === 'MORTGAGE' || account.accountType === 'LOAN') &&
+    (account.isCanadianMortgage || false) &&
+    !(account.isVariableRate || false);
+  let lastInterestDateKey: string | null = null;
+  for (const event of events) {
+    const balanceBefore = event.balance + event.principal;
+    const dateKey = event.date.split('T')[0];
+    const gap =
+      lastInterestDateKey !== null ? daysBetween(lastInterestDateKey, dateKey) : periodDays;
+    const days = gap <= 0 || gap > periodDays * 1.5 ? periodDays : gap;
+    if (event.type === 'REGULAR' && event.interest > 0 && balanceBefore > 0 && days > 0) {
+      const periodicRate = event.interest / balanceBefore;
+      event.rateDaily = periodicRate * (365 / days) * 100;
+      event.ratePeriodic = isCanadianFixed
+        ? (Math.pow(1 + periodicRate, periodsPerYear / 2) - 1) * 2 * 100
+        : periodicRate * periodsPerYear * 100;
+      event.rateDb =
+        rateChanges.length > 0
+          ? effectiveAnnualRateOn(rateChanges, event.date, fallbackRate)
+          : fallbackRate;
+    } else {
+      event.rateDaily = null;
+      event.ratePeriodic = null;
+      event.rateDb = null;
     }
     if (event.interest > 0) lastInterestDateKey = dateKey;
   }

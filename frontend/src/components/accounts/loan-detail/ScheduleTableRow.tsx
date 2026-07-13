@@ -18,6 +18,11 @@ export interface DisplayRow {
   isProjected: boolean;
   /** Annual rate (percentage) in effect on this row's date, when known */
   annualRate: number | null;
+  /** Diagnostic: the three annualizations of this row's observed interest
+   *  (DB timeline / day-count / periodic). Historical rows only. */
+  rateDb?: number | null;
+  rateDaily?: number | null;
+  ratePeriodic?: number | null;
   /** The rate-change effective exactly on this date, if any (a change point) */
   change?: LoanRateChange;
   /** Historical row tagged as a standalone overpayment (100% principal) */
@@ -126,9 +131,11 @@ export function ScheduleTableRow({
           {row.extraPrincipal > 0 ? formatCurrency(row.extraPrincipal, currencyCode) : '—'}
         </td>
       )}
+      {/* Diagnostic: DB (persisted timeline) rate. Projected rows keep the
+          inline-editable cell here; historical rows show the recorded rate. */}
       <td className={`${cellClass} text-right`}>
         <RateCell
-          annualRate={row.annualRate}
+          annualRate={row.isProjected ? row.annualRate : row.rateDb ?? null}
           editable={!!editing && row.isProjected}
           saving={editing?.savingDate === row.date}
           onCommit={(rate) => editing?.commitInlineRate(row.date, rate, row.change?.id)}
@@ -136,6 +143,14 @@ export function ScheduleTableRow({
             date: formatDate(row.date),
           })}
         />
+      </td>
+      {/* Diagnostic: day-count reconstruction (WMP). */}
+      <td className={`${cellClass} text-right text-gray-500 dark:text-gray-400`}>
+        {row.rateDaily != null ? `${row.rateDaily.toFixed(2)}%` : '—'}
+      </td>
+      {/* Diagnostic: periodic reconstruction (kenlasko / detection). */}
+      <td className={`${cellClass} text-right text-gray-500 dark:text-gray-400`}>
+        {row.ratePeriodic != null ? `${row.ratePeriodic.toFixed(2)}%` : '—'}
       </td>
       <td className={`${cellClass} text-right font-medium text-gray-900 dark:text-gray-100`}>
         {formatCurrency(row.balance, currencyCode)}

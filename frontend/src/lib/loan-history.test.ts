@@ -583,6 +583,58 @@ describe('deriveLoanPaymentHistory interest from the rate timeline', () => {
   });
 });
 
+describe('deriveLoanPaymentHistory diagnostic comparison rates', () => {
+  it('computes rateDb, rateDaily, and ratePeriodic per installment', () => {
+    // Monthly non-Canadian loan at 6%; interest is analytic (balance x 6%/12).
+    // The second payment falls 31 days after the first, so the day-count
+    // annualization (rateDaily) reads slightly below the nominal periodic one.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      openingBalance: -200000,
+      currentBalance: -199400,
+      interestRate: 6,
+    });
+    const rateChanges = [{ effectiveDate: '2024-01-01', annualRate: 6 }];
+    const transactions = [
+      makeTransaction({ transactionDate: '2024-01-15', amount: 300 }),
+      makeTransaction({ transactionDate: '2024-02-15', amount: 300 }),
+    ];
+
+    const { events } = deriveLoanPaymentHistory(account, transactions, rateChanges);
+
+    // DB: the recorded timeline rate in effect on the date.
+    expect(events[1].rateDb).toBeCloseTo(6, 1);
+    // Periodic: interest/balance x periodsPerYear -> the nominal 6%.
+    expect(events[1].ratePeriodic).toBeCloseTo(6, 1);
+    // Daily: annualized over the actual 31-day gap -> a touch under 6%.
+    expect(events[1].rateDaily).toBeCloseTo(5.89, 1);
+    expect(events[1].rateDaily!).toBeLessThan(events[1].ratePeriodic!);
+  });
+
+  it('uses semi-annual compounding for ratePeriodic on a Canadian fixed mortgage', () => {
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      openingBalance: -200000,
+      currentBalance: -199400,
+      interestRate: 6,
+      isCanadianMortgage: true,
+      isVariableRate: false,
+    });
+    const rateChanges = [{ effectiveDate: '2024-01-01', annualRate: 6 }];
+    const transactions = [
+      makeTransaction({ transactionDate: '2024-01-15', amount: 300 }),
+      makeTransaction({ transactionDate: '2024-02-15', amount: 300 }),
+    ];
+
+    const { events } = deriveLoanPaymentHistory(account, transactions, rateChanges);
+
+    // Canadian fixed: interest = balance x semiAnnualPeriodicRate, so annualizing
+    // it back through the semi-annual inversion recovers ~6%, whereas the plain
+    // x12 periodic reading would overshoot.
+    expect(events[1].ratePeriodic).toBeCloseTo(6, 0);
+  });
+});
+
 describe('deriveLoanPaymentHistory rate column with a recorded rate history', () => {
   it('shows the discrete timeline rate on regular rows, not the observed reconstruction', () => {
     // With a recorded rate history the schedule's rate column must show the

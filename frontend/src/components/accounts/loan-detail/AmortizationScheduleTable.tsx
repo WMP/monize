@@ -82,6 +82,9 @@ function TotalsRow({
           {totals.extra > 0 ? formatCurrency(totals.extra, currencyCode) : '—'}
         </td>
       )}
+      {/* Three diagnostic rate columns: DB / day-count / periodic. */}
+      <td className="px-4 py-3" />
+      <td className="px-4 py-3" />
       <td className="px-4 py-3" />
       <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
         {balance !== undefined ? formatCurrency(balance, currencyCode) : null}
@@ -141,6 +144,9 @@ export function AmortizationScheduleTable({
         isProjected: false,
         isOverpayment,
         annualRate: event.annualRate ?? null,
+        rateDb: event.rateDb ?? null,
+        rateDaily: event.rateDaily ?? null,
+        ratePeriodic: event.ratePeriodic ?? null,
         change: changeByDate.get(event.date),
       };
     });
@@ -208,6 +214,9 @@ export function AmortizationScheduleTable({
           balance: last.balance,
           isProjected: false,
           annualRate: regular?.annualRate ?? null,
+          rateDb: regular?.rateDb ?? null,
+          rateDaily: regular?.rateDaily ?? null,
+          ratePeriodic: regular?.ratePeriodic ?? null,
         },
       });
     }
@@ -238,8 +247,8 @@ export function AmortizationScheduleTable({
     return units.slice(start, end);
   }, [showAllRows, units]);
   const hasHiddenRows = displayedUnits.length < units.length;
-  // Nr, Date, Payment, Principal, Interest, [Extra], Rate, Balance
-  const columnCount = showExtraColumn ? 8 : 7;
+  // Nr, Date, Payment, Interest, Principal, [Extra], Rate DB, Rate dni, Rate okr, Balance
+  const columnCount = showExtraColumn ? 10 : 9;
 
   // Whole-loan column totals (every row, not just the visible window), summed
   // in integer ten-thousandths to avoid floating-point drift.
@@ -316,7 +325,9 @@ export function AmortizationScheduleTable({
                       {t('loanDetail.schedule.colExtra')}
                     </th>
                   )}
-                  <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colRate')}</th>
+                  <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colRateDb')}</th>
+                  <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colRateDaily')}</th>
+                  <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colRatePeriodic')}</th>
                   <th className={`${headerClass} text-right`}>{t('loanDetail.schedule.colBalance')}</th>
                 </tr>
               </thead>

@@ -34,6 +34,8 @@ function makeHistoryEvents(count: number, annualRate: number | null = null): Loa
     cumulativeInterest: 50 * (i + 1),
     type: 'REGULAR' as const,
     annualRate,
+    // The DB column reads rateDb; mirror annualRate so fixtures show a rate.
+    rateDb: annualRate,
   }));
 }
 
@@ -266,9 +268,9 @@ describe('AmortizationScheduleTable', () => {
       />,
     );
 
-    expect(screen.getByText('Rate')).toBeInTheDocument();
-    // Historical rate is the rate observed from the interest charged, shown
-    // read-only -- there is no editable cell or controls without `editing`.
+    expect(screen.getByText('Rate (DB)')).toBeInTheDocument();
+    // The DB column shows the recorded rate on that date, read-only, without
+    // an editable cell or controls when `editing` is not supplied.
     expect(screen.getByText('5.50%')).toBeInTheDocument();
     expect(screen.queryByTestId('rate-controls')).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Edit interest rate/)).not.toBeInTheDocument();
