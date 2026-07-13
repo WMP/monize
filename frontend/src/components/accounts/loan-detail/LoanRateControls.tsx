@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { DateInput } from '@/components/ui/DateInput';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useDateFormat } from '@/hooks/useDateFormat';
@@ -38,12 +39,11 @@ export function LoanRateControls({ editing }: LoanRateControlsProps) {
               : t('loanDetail.rateHistory.addTitle')}
           </h3>
           <div className="space-y-4">
-            <Input
-              type="date"
+            <DateInput
               label={t('loanDetail.rateHistory.effectiveDateLabel')}
               value={form.effectiveDate}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, effectiveDate: e.target.value }))
+              onDateChange={(date) =>
+                setForm((f) => ({ ...f, effectiveDate: date }))
               }
             />
             <Input
