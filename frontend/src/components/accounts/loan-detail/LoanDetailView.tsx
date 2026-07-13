@@ -6,6 +6,7 @@ import { LoanSummaryCards } from '@/components/accounts/loan-detail/LoanSummaryC
 import { AmortizationScheduleTable } from '@/components/accounts/loan-detail/AmortizationScheduleTable';
 import { OverpaymentSimulator } from '@/components/accounts/loan-detail/OverpaymentSimulator';
 import { PayoffComparisonChart } from '@/components/accounts/loan-detail/PayoffComparisonChart';
+import { RateHistoryPanel } from '@/components/accounts/loan-detail/RateHistoryPanel';
 import { ComparisonSummaryCards } from '@/components/accounts/loan-detail/ComparisonSummaryCards';
 import { SavedScenariosPanel } from '@/components/accounts/loan-detail/SavedScenariosPanel';
 import { PastImpactSection } from '@/components/accounts/loan-detail/PastImpactSection';
@@ -189,6 +190,12 @@ export function LoanDetailView({
         baseline={baseline}
         scenario={scenario}
         original={impact?.originalSchedule ?? null}
+      />
+
+      <RateHistoryPanel
+        account={account}
+        rateChanges={rateChanges}
+        editing={rateEditing}
       />
 
       <AmortizationScheduleTable

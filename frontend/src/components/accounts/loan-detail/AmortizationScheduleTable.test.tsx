@@ -290,9 +290,10 @@ describe('AmortizationScheduleTable', () => {
       />,
     );
 
-    // Controls are shown, but the historical row's rate is observed, not
-    // editable -- only future (projected) rates can be changed.
-    expect(screen.getByTestId('rate-controls')).toBeInTheDocument();
+    // The historical row's rate is observed, not editable -- only future
+    // (projected) rates can be changed. The Add/Detect controls now live in the
+    // Rate History panel, not the schedule header.
+    expect(screen.queryByTestId('rate-controls')).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Edit interest rate/)).not.toBeInTheDocument();
   });
 
@@ -314,7 +315,6 @@ describe('AmortizationScheduleTable', () => {
       />,
     );
 
-    expect(screen.getByTestId('rate-controls')).toBeInTheDocument();
     // The first projected row is dated 2026-08-15; its rate is editable.
     // Clicking the cell's button swaps it for an input, so re-query after.
     fireEvent.click(screen.getAllByLabelText(/Edit interest rate/)[0]);

@@ -7,7 +7,6 @@ import { ScheduleRow } from '@/lib/loan-schedule';
 import { LoanRateChange } from '@/types/loan-rate-change';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
-import { LoanRateControls } from './LoanRateControls';
 import { LoanRateEditing } from './useLoanRateEditing';
 import { ScheduleTableRow, DisplayRow } from './ScheduleTableRow';
 
@@ -275,7 +274,7 @@ export function AmortizationScheduleTable({
   const operatorClass = 'text-gray-300 dark:text-gray-600 font-normal';
 
   return (
-    <div id="rate-history" className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden scroll-mt-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden scroll-mt-4">
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -288,7 +287,6 @@ export function AmortizationScheduleTable({
             })}
           </p>
         </div>
-        {editing && <LoanRateControls editing={editing} />}
       </div>
 
       {rows.length === 0 ? (
