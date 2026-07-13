@@ -501,6 +501,7 @@
       "detect": "내역에서 검출",
       "empty": "기록된 금리 변경이 없습니다. 금리가 바뀔 때 추가하거나 상환 내역에서 과거 변경을 검출하세요.",
       "rateValue": "{rate}%",
+      "chartLegend": "금리",
       "paymentSummary": "상환액: {payment}",
       "paymentUnchanged": "변경 없음",
       "badgeInferred": "추정",

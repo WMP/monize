@@ -401,6 +401,7 @@
       "detect": "[XX-Detect from history-XX]",
       "empty": "[XX-No rate changes recorded. Add one when your rate changes, or detect past changes from your payment history.-XX]",
       "rateValue": "[XX-{rate}%-XX]",
+      "chartLegend": "[XX-Interest rate-XX]",
       "paymentSummary": "[XX-Payment: {payment}-XX]",
       "paymentUnchanged": "[XX-unchanged-XX]",
       "badgeInferred": "[XX-Inferred-XX]",

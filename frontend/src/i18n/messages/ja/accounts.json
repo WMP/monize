@@ -501,6 +501,7 @@
       "detect": "履歴から検出",
       "empty": "記録された金利変更はありません。金利が変わったときに追加するか、返済履歴から過去の変更を検出してください。",
       "rateValue": "{rate}%",
+      "chartLegend": "金利",
       "paymentSummary": "返済額：{payment}",
       "paymentUnchanged": "変更なし",
       "badgeInferred": "推定",

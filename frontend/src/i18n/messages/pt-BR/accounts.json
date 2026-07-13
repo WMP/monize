@@ -501,6 +501,7 @@
       "detect": "Detectar do histórico",
       "empty": "Nenhuma alteração de taxa registrada. Adicione uma quando a taxa mudar, ou detecte alterações passadas a partir do histórico de pagamentos.",
       "rateValue": "{rate}%",
+      "chartLegend": "Taxa de juros",
       "paymentSummary": "Parcela: {payment}",
       "paymentUnchanged": "sem alteração",
       "badgeInferred": "Inferida",

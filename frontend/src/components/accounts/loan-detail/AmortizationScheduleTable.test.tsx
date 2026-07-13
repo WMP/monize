@@ -308,12 +308,9 @@ describe('AmortizationScheduleTable', () => {
     expect(screen.queryByLabelText(/Edit interest rate/)).not.toBeInTheDocument();
   });
 
-  it('keeps historical rows read-only even when editing is enabled', () => {
-    const editing = {
-      savingDate: null,
-      commitInlineRate: vi.fn(),
-      openEdit: vi.fn(),
-    } as unknown as LoanRateEditing;
+  it('opens the rate-change form pre-filled when a historical rate is clicked', () => {
+    const openAddWith = vi.fn();
+    const editing = { openAddWith } as unknown as LoanRateEditing;
 
     render(
       <AmortizationScheduleTable
@@ -324,20 +321,15 @@ describe('AmortizationScheduleTable', () => {
       />,
     );
 
-    // The historical row's rate is observed, not editable -- only future
-    // (projected) rates can be changed. Rate controls now live in the Rate
-    // History panel, not the schedule header.
-    expect(screen.queryByTestId('rate-controls')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Edit interest rate/)).not.toBeInTheDocument();
+    // The rate value is a button that opens the add form seeded with the row's
+    // date and rate -- no inline editing.
+    fireEvent.click(screen.getByLabelText(/Edit interest rate/));
+    expect(openAddWith).toHaveBeenCalledWith('2025-01-15', 5.5);
   });
 
-  it('edits a projected rate inline and reports the row date and rate', () => {
-    const commitInlineRate = vi.fn();
-    const editing = {
-      savingDate: null,
-      commitInlineRate,
-      openEdit: vi.fn(),
-    } as unknown as LoanRateEditing;
+  it('opens the rate-change form pre-filled when a projected rate is clicked', () => {
+    const openAddWith = vi.fn();
+    const editing = { openAddWith } as unknown as LoanRateEditing;
 
     const projection = makeProjection();
     render(
@@ -349,13 +341,8 @@ describe('AmortizationScheduleTable', () => {
       />,
     );
 
-    // The first projected row is dated 2026-08-15; its rate is editable.
-    // Clicking the cell's button swaps it for an input, so re-query after.
+    // The first projected row is dated 2026-08-15.
     fireEvent.click(screen.getAllByLabelText(/Edit interest rate/)[0]);
-    const input = screen.getAllByLabelText(/Edit interest rate/)[0];
-    fireEvent.change(input, { target: { value: '6.1' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-
-    expect(commitInlineRate).toHaveBeenCalledWith('2026-08-15', 6.1, undefined);
+    expect(openAddWith).toHaveBeenCalledWith('2026-08-15', expect.any(Number));
   });
 });

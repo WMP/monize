@@ -501,6 +501,7 @@
       "detect": "從紀錄中偵測",
       "empty": "尚未記錄利率變更。利率變動時請新增一筆，或從還款紀錄中偵測過去的變更。",
       "rateValue": "{rate}%",
+      "chartLegend": "利率",
       "paymentSummary": "還款額：{payment}",
       "paymentUnchanged": "不變",
       "badgeInferred": "推算",

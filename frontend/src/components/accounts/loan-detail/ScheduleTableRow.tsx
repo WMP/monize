@@ -131,9 +131,11 @@ export function ScheduleTableRow({
       <td className={`${cellClass} text-right`}>
         <RateCell
           annualRate={row.annualRate}
-          editable={!!editing && row.isProjected}
-          saving={editing?.savingDate === row.date}
-          onCommit={(rate) => editing?.commitInlineRate(row.date, rate, row.change?.id)}
+          onEdit={
+            editing && row.annualRate != null
+              ? () => editing.openAddWith(row.date, row.annualRate as number)
+              : undefined
+          }
           editLabel={t('loanDetail.schedule.editRateLabel', {
             date: formatDate(row.date),
           })}

@@ -501,6 +501,7 @@
       "detect": "Wykryj z historii",
       "empty": "Nie zarejestrowano żadnych zmian oprocentowania. Dodaj zmianę, gdy zmieni się Twoje oprocentowanie, lub wykryj wcześniejsze zmiany z historii płatności.",
       "rateValue": "{rate}%",
+      "chartLegend": "Oprocentowanie",
       "paymentSummary": "Rata: {payment}",
       "paymentUnchanged": "bez zmian",
       "badgeInferred": "Wywnioskowane",

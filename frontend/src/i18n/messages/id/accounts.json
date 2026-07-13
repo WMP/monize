@@ -501,6 +501,7 @@
       "detect": "Deteksi dari riwayat",
       "empty": "Belum ada perubahan suku bunga yang tercatat. Tambahkan saat suku bunga Anda berubah, atau deteksi perubahan sebelumnya dari riwayat pembayaran Anda.",
       "rateValue": "{rate}%",
+      "chartLegend": "Suku bunga",
       "paymentSummary": "Angsuran: {payment}",
       "paymentUnchanged": "tidak berubah",
       "badgeInferred": "Diperkirakan",

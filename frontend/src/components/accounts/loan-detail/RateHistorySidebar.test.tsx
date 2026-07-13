@@ -73,6 +73,7 @@ describe('RateHistorySidebar', () => {
     render(<Harness rows={rateChanges} onChanged={() => {}} />);
 
     expect(screen.getByText('Rate History')).toBeInTheDocument();
+    expect(screen.getByText('Interest rate')).toBeInTheDocument(); // chart legend
     expect(screen.getByText('1.75%')).toBeInTheDocument();
     expect(screen.getByText('3.25%')).toBeInTheDocument();
     expect(screen.getByText('Initial')).toBeInTheDocument();

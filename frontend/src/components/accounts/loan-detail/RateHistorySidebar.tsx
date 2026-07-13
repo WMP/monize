@@ -110,7 +110,8 @@ export function RateHistorySidebar({
                 type="stepAfter"
                 dataKey="rate"
                 stroke={chartColors.primary}
-                strokeWidth={0}
+                strokeOpacity={0.55}
+                strokeWidth={1.5}
                 fill="url(#rateHistoryFill)"
                 isAnimationActive={false}
               />
@@ -119,7 +120,20 @@ export function RateHistorySidebar({
         </div>
       )}
 
-      <div className="relative z-10 p-4 flex flex-col gap-3">
+      {/* Small legend in the top strip, over the chart line. */}
+      {showChart && (
+        <div className="absolute top-3 right-4 z-20 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+          <span
+            className="inline-block h-0.5 w-4 rounded"
+            style={{ backgroundColor: chartColors.primary, opacity: 0.55 }}
+          />
+          {t('loanDetail.rateHistory.chartLegend')}
+        </div>
+      )}
+
+      {/* Header starts below the chart line (extra top padding leaves a strip
+          where the gradient shows) when the chart is present. */}
+      <div className={`relative z-10 p-4 flex flex-col gap-3 ${showChart ? 'pt-14' : ''}`}>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <button
             type="button"

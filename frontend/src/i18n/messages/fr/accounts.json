@@ -501,6 +501,7 @@
       "detect": "Détecter à partir de l'historique",
       "empty": "Aucun changement de taux enregistré. Ajoutez-en un lorsque votre taux change, ou détectez les changements passés à partir de votre historique de paiements.",
       "rateValue": "{rate}%",
+      "chartLegend": "Taux d'intérêt",
       "paymentSummary": "Versement : {payment}",
       "paymentUnchanged": "inchangé",
       "badgeInferred": "Déduit",

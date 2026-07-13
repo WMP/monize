@@ -501,6 +501,7 @@
       "detect": "从历史中检测",
       "empty": "尚未记录利率变更。利率变化时请添加一条，或从还款历史中检测过去的变更。",
       "rateValue": "{rate}%",
+      "chartLegend": "利率",
       "paymentSummary": "还款额：{payment}",
       "paymentUnchanged": "不变",
       "badgeInferred": "推算",

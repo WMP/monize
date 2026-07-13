@@ -501,6 +501,7 @@
       "detect": "Phát hiện từ lịch sử",
       "empty": "Chưa ghi nhận thay đổi lãi suất nào. Thêm một mục khi lãi suất của bạn thay đổi, hoặc phát hiện các thay đổi trước đây từ lịch sử thanh toán của bạn.",
       "rateValue": "{rate}%",
+      "chartLegend": "Lãi suất",
       "paymentSummary": "Khoản trả: {payment}",
       "paymentUnchanged": "không đổi",
       "badgeInferred": "Suy ra",

@@ -501,6 +501,7 @@
       "detect": "Detectar del historial",
       "empty": "No hay cambios de tasa registrados. Añada uno cuando cambie su tasa o detecte cambios anteriores a partir de su historial de pagos.",
       "rateValue": "{rate}%",
+      "chartLegend": "Tasa de interés",
       "paymentSummary": "Pago: {payment}",
       "paymentUnchanged": "sin cambios",
       "badgeInferred": "Inferido",

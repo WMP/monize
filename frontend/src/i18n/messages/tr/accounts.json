@@ -501,6 +501,7 @@
       "detect": "Geçmişten algıla",
       "empty": "Kayıtlı faiz değişikliği yok. Faiziniz değiştiğinde bir tane ekleyin veya ödeme geçmişinizden geçmiş değişiklikleri algılayın.",
       "rateValue": "%{rate}",
+      "chartLegend": "Faiz oranı",
       "paymentSummary": "Taksit: {payment}",
       "paymentUnchanged": "değişmedi",
       "badgeInferred": "Çıkarsanan",

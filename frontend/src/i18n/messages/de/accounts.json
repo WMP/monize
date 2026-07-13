@@ -501,6 +501,7 @@
       "detect": "Aus Verlauf erkennen",
       "empty": "Keine Zinssatzänderungen erfasst. Fügen Sie eine hinzu, wenn sich Ihr Zinssatz ändert, oder erkennen Sie vergangene Änderungen aus Ihrer Zahlungshistorie.",
       "rateValue": "{rate}%",
+      "chartLegend": "Zinssatz",
       "paymentSummary": "Rate: {payment}",
       "paymentUnchanged": "unverändert",
       "badgeInferred": "Abgeleitet",

@@ -501,6 +501,7 @@
       "detect": "Detecteren uit geschiedenis",
       "empty": "Geen renteveranderingen vastgelegd. Voeg er een toe wanneer uw rente verandert, of detecteer eerdere veranderingen uit uw betalingsgeschiedenis.",
       "rateValue": "{rate}%",
+      "chartLegend": "Rente",
       "paymentSummary": "Betaling: {payment}",
       "paymentUnchanged": "ongewijzigd",
       "badgeInferred": "Afgeleid",

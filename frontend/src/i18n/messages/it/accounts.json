@@ -501,6 +501,7 @@
       "detect": "Rileva dallo storico",
       "empty": "Nessuna variazione del tasso registrata. Aggiungine una quando cambia il tuo tasso oppure rileva le variazioni passate dallo storico dei pagamenti.",
       "rateValue": "{rate}%",
+      "chartLegend": "Tasso di interesse",
       "paymentSummary": "Rata: {payment}",
       "paymentUnchanged": "invariata",
       "badgeInferred": "Dedotto",

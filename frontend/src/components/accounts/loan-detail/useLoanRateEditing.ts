@@ -28,11 +28,12 @@ const emptyForm = (): RateFormState => ({
 });
 
 /**
- * The rate-timeline editing behaviour shared by the Loan Schedule's inline rate
- * cells, its rate controls (Add / per-change edit + delete), and the Rate
- * History panel: the create/update/delete mutations, the scheduled-payment "ask
- * permission" prompt, and detect-from-history. Kept out of the components so the
- * inline cell, the controls, and the panel all drive one instance.
+ * The rate-timeline editing behaviour shared by the Loan Schedule's rate cells
+ * (each opens the Add form pre-filled with its date and rate), the rate
+ * controls (Add / per-change edit + delete), and the Rate History panel: the
+ * create/update/delete mutations, the scheduled-payment "ask permission"
+ * prompt, and detect-from-history. Kept out of the components so the schedule,
+ * the controls, and the panel all drive one instance.
  */
 export function useLoanRateEditing(account: Account, onChanged: () => void) {
   const t = useTranslations('accounts');
@@ -48,8 +49,6 @@ export function useLoanRateEditing(account: Account, onChanged: () => void) {
   const [isDetecting, setIsDetecting] = useState(false);
   const [scheduledPreview, setScheduledPreview] =
     useState<ScheduledPaymentPreview | null>(null);
-  // The effective date of the row whose rate is currently being saved inline.
-  const [savingDate, setSavingDate] = useState<string | null>(null);
 
   const isMortgage = account.accountType === 'MORTGAGE';
 
@@ -68,6 +67,22 @@ export function useLoanRateEditing(account: Account, onChanged: () => void) {
       note: change.note ?? '',
     });
     setFormModal({ mode: 'edit', change });
+  };
+
+  /**
+   * Open the Add form pre-filled with a date and rate -- used from a schedule
+   * row's rate cell so the user can record a rate change at that point with the
+   * values already in hand. Payment mode defaults to "keep".
+   */
+  const openAddWith = (effectiveDate: string, annualRate: number) => {
+    setForm({
+      effectiveDate: effectiveDate.split('T')[0],
+      annualRate: String(annualRate),
+      paymentMode: 'keep',
+      newPaymentAmount: '',
+      note: '',
+    });
+    setFormModal({ mode: 'add' });
   };
 
   const closeForm = () => setFormModal(null);
@@ -121,43 +136,6 @@ export function useLoanRateEditing(account: Account, onChanged: () => void) {
     }
   };
 
-  /**
-   * Set the rate effective on a schedule row's date straight from the table:
-   * update the change already on that date, or create a rate-only ("keep"
-   * payment) change there. Never touches the payment, so it cannot move the
-   * account's installment.
-   */
-  const commitInlineRate = async (
-    effectiveDate: string,
-    annualRate: number,
-    existingId?: string,
-  ) => {
-    setSavingDate(effectiveDate);
-    try {
-      if (existingId) {
-        await loanRateChangesApi.update(account.id, existingId, { annualRate });
-        toast.success(t('loanDetail.rateHistory.updatedToast'));
-        onChanged();
-        return;
-      }
-      const result = await loanRateChangesApi.create(account.id, {
-        effectiveDate,
-        annualRate,
-        newPaymentAmount: null,
-        recalculatePayment: false,
-        note: null,
-      });
-      toast.success(t('loanDetail.rateHistory.addedToast'));
-      onChanged();
-      if (result.scheduledPaymentPreview) {
-        setScheduledPreview(result.scheduledPaymentPreview);
-      }
-    } catch (err) {
-      toast.error(getErrorMessage(err, t('loanDetail.rateHistory.saveFailed')));
-    } finally {
-      setSavingDate(null);
-    }
-  };
 
   const requestDelete = (change: LoanRateChange) => setChangeToDelete(change);
   const cancelDelete = () => setChangeToDelete(null);
@@ -237,13 +215,11 @@ export function useLoanRateEditing(account: Account, onChanged: () => void) {
 
   return {
     isMortgage,
-    // inline rate cell
-    commitInlineRate,
-    savingDate,
     // header actions
     openAdd,
     // per-change actions
     openEdit,
+    openAddWith,
     requestDelete,
     // add/edit form
     formModal,
