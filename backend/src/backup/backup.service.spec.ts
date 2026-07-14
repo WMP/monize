@@ -1748,7 +1748,10 @@ describe("BackupService", () => {
       expect(enableIdx).toBeGreaterThan(updateIdx);
     });
 
-    it("rejects OIDC users whose ID token does not match the user's oidcSubject", async () => {
+    it("accepts the session-confirmed sentinel for OIDC users (soft re-auth)", async () => {
+      // OIDC restore mirrors account deletion: the live JWT session is the
+      // re-authentication, so any present confirmation token is accepted -- the
+      // frontend sends a non-JWT sentinel it cannot cryptographically sign.
       const oidcModule = {
         ...mockUser,
         authProvider: "oidc",
@@ -1756,17 +1759,13 @@ describe("BackupService", () => {
         oidcSubject: "sub-1",
       };
       mockUserRepo.findOne.mockResolvedValue(oidcModule);
-      // Re-resolve OidcService from the testing module and flip verify to false.
-      const oidc = (
-        service as unknown as {
-          oidcService: { verifyIdTokenClaims: jest.Mock };
-        }
-      ).oidcService;
-      oidc.verifyIdTokenClaims = jest.fn().mockReturnValue(false);
 
-      await expect(
-        service.restoreData(userId, makeInput({ oidcIdToken: "bad-token" })),
-      ).rejects.toThrow(UnauthorizedException);
+      const result = await service.restoreData(
+        userId,
+        makeInput({ oidcIdToken: "oidc-session-confirmed" }),
+      );
+
+      expect(result.message).toBe("Backup restored successfully");
     });
 
     it("rejects backup files that decompress to a non-object", async () => {

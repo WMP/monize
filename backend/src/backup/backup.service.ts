@@ -11,7 +11,6 @@ import * as bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import { createGzip, gunzipSync, gzipSync } from "zlib";
 import { User } from "../users/entities/user.entity";
-import { OidcService } from "../auth/oidc/oidc.service";
 import { AiEncryptionService } from "../ai/ai-encryption.service";
 import {
   encryptBackup,
@@ -164,7 +163,6 @@ export class BackupService {
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
     private readonly dataSource: DataSource,
-    private readonly oidcService: OidcService,
     private readonly aiEncryption: AiEncryptionService,
   ) {}
 
@@ -838,26 +836,18 @@ export class BackupService {
     input: RestoreBackupInput,
   ): Promise<void> {
     if (user.authProvider === "oidc") {
+      // Re-confirm via the authenticated session, mirroring account deletion
+      // (users.service.deleteAccount). The request already passed the JWT
+      // AuthGuard, so a live OIDC session IS the re-authentication. OIDC users
+      // have no local password and cannot mint a fresh signed ID token in the
+      // browser (the login id_token lives only in backend httpOnly cookies), so
+      // the client sends a "session confirmed" sentinel. Cryptographically
+      // verifying that sentinel as an ID token here made OIDC restore impossible.
       if (!input.oidcIdToken) {
         throw new UnauthorizedException(
           tr(
             "errors.backup.oidcReauthRequired",
             "OIDC re-authentication is required to confirm restore",
-          ),
-        );
-      }
-      if (
-        !user.oidcSubject ||
-        !this.oidcService.enabled ||
-        !this.oidcService.verifyIdTokenClaims(
-          input.oidcIdToken,
-          user.oidcSubject,
-        )
-      ) {
-        throw new UnauthorizedException(
-          tr(
-            "errors.backup.oidcTokenInvalid",
-            "Invalid OIDC token: the token must be a valid ID token from your SSO provider",
           ),
         );
       }
