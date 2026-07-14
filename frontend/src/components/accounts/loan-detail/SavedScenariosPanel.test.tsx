@@ -3,7 +3,12 @@ import { render, screen, fireEvent, act } from '@/test/render';
 import toast from 'react-hot-toast';
 import { SavedScenariosPanel } from './SavedScenariosPanel';
 import { LoanScenario } from '@/types/loan-scenario';
+import { exportToCsv } from '@/lib/csv-export';
 import type { ScenarioComparison } from '@/lib/loan-schedule';
+
+vi.mock('@/lib/csv-export', () => ({
+  exportToCsv: vi.fn(),
+}));
 
 const mockCreate = vi.fn();
 const mockUpdate = vi.fn();
@@ -93,6 +98,48 @@ describe('SavedScenariosPanel', () => {
   it('shows an empty state without scenarios', () => {
     renderPanel({ scenarios: [] });
     expect(screen.getByText(/No saved scenarios yet/)).toBeInTheDocument();
+  });
+
+  it('exports the comparison table to CSV as displayed', async () => {
+    const comparison = {
+      scenario: { payoffDate: '2040-06-15', finalPaymentAmount: 500 },
+      paymentsSaved: 24,
+      monthsSaved: 24,
+      interestSaved: 15000,
+      installmentReduction: 0,
+    } as unknown as ScenarioComparison;
+    renderPanel({ comparisons: new Map([['scenario-1', comparison]]) });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Download Saved Scenarios as CSV' }));
+    });
+
+    expect(exportToCsv).toHaveBeenCalledTimes(1);
+    const [filename, headers, rows] = vi.mocked(exportToCsv).mock.calls[0];
+    expect(filename).toBe('saved-scenarios');
+    expect(headers).toEqual([
+      'Scenario name',
+      'Details',
+      'New Payoff Date',
+      'Time Saved',
+      'Interest Saved',
+    ]);
+    expect(rows).toEqual([
+      [
+        'Extra 200',
+        '$200.00 extra per payment + 1 lump sum',
+        expect.stringContaining('2040'),
+        '24 months',
+        '$15000.00',
+      ],
+    ]);
+  });
+
+  it('disables the CSV export without scenarios', () => {
+    renderPanel({ scenarios: [] });
+    expect(
+      screen.getByRole('button', { name: 'Download Saved Scenarios as CSV' }),
+    ).toBeDisabled();
   });
 
   it('disables saving when no plan is active', () => {

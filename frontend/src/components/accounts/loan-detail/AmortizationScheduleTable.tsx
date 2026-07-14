@@ -5,6 +5,9 @@ import { useTranslations } from 'next-intl';
 import { LoanPaymentEvent } from '@/lib/loan-history';
 import { ScheduleRow } from '@/lib/loan-schedule';
 import { LoanRateChange } from '@/types/loan-rate-change';
+import { exportToCsv } from '@/lib/csv-export';
+import { sanitizeFilename } from '@/lib/export-filename';
+import { ExportIconButton } from '@/components/ui/ExportIconButton';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 import { LoanRateEditing } from './useLoanRateEditing';
@@ -140,6 +143,7 @@ export function AmortizationScheduleTable({
   editing,
 }: AmortizationScheduleTableProps) {
   const t = useTranslations('accounts');
+  const tc = useTranslations('common');
   const formatMonthLabel = useChartDateFormat();
   const [showAllRows, setShowAllRows] = useState(false);
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
@@ -312,6 +316,36 @@ export function AmortizationScheduleTable({
     };
   }, [rows]);
 
+  // Every per-payment row (historical and projected), not the collapsed
+  // month-group view, with raw numbers so the file is analysis-ready.
+  const handleExportCsv = () => {
+    const headers = [
+      t('loanDetail.schedule.colNumber'),
+      t('loanDetail.schedule.colDate'),
+      t('loanDetail.schedule.colType'),
+      t('loanDetail.schedule.colPayment'),
+      t('loanDetail.schedule.colInterest'),
+      t('loanDetail.schedule.colPrincipal'),
+      ...(showExtraColumn ? [t('loanDetail.schedule.colExtra')] : []),
+      t('loanDetail.schedule.colRate'),
+      t('loanDetail.schedule.colBalance'),
+    ];
+    const data = rows.map((row) => [
+      row.paymentNumber,
+      row.date.split('T')[0],
+      row.isProjected
+        ? t('loanDetail.schedule.typeProjected')
+        : t('loanDetail.schedule.typeHistorical'),
+      row.payment,
+      row.interest,
+      row.principal,
+      ...(showExtraColumn ? [row.extraPrincipal] : []),
+      row.annualRate ?? '',
+      row.balance,
+    ]);
+    exportToCsv(sanitizeFilename(t('loanDetail.schedule.title')), headers, data);
+  };
+
   const headerClass =
     'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider';
   // Faint arithmetic operators spelling out Payment = Interest + Principal
@@ -320,16 +354,23 @@ export function AmortizationScheduleTable({
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden scroll-mt-4">
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          {t('loanDetail.schedule.title')}
-        </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {t('loanDetail.schedule.subtitle', {
-            historical: historyEvents.length,
-            projected: projectionRows.length,
-          })}
-        </p>
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-start justify-between gap-2">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            {t('loanDetail.schedule.title')}
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {t('loanDetail.schedule.subtitle', {
+              historical: historyEvents.length,
+              projected: projectionRows.length,
+            })}
+          </p>
+        </div>
+        <ExportIconButton
+          onExport={handleExportCsv}
+          title={tc('csvDownload.downloadAsCsv', { filename: t('loanDetail.schedule.title') })}
+          disabled={rows.length === 0}
+        />
       </div>
 
       {rows.length === 0 ? (

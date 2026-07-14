@@ -66,6 +66,9 @@
     "unableToCapture": "Tidak dapat mengambil gambar grafik",
     "failedToDownload": "Gagal mengunduh grafik"
   },
+  "csvDownload": {
+    "downloadAsCsv": "Unduh {filename} sebagai CSV"
+  },
   "chartViewToggle": {
     "pieChart": "Diagram Lingkaran",
     "barChart": "Diagram Batang",

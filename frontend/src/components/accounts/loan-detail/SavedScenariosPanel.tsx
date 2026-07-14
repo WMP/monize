@@ -11,6 +11,9 @@ import { OverpaymentPlan, ScenarioComparison } from '@/lib/loan-schedule';
 import { loanScenariosApi, planToScenarioData, scenarioToPlan } from '@/lib/loan-scenarios';
 import { LoanScenario } from '@/types/loan-scenario';
 import { getErrorMessage } from '@/lib/errors';
+import { exportToCsv } from '@/lib/csv-export';
+import { sanitizeFilename } from '@/lib/export-filename';
+import { ExportIconButton } from '@/components/ui/ExportIconButton';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 
@@ -41,6 +44,7 @@ export function SavedScenariosPanel({
   onScenariosChanged,
 }: SavedScenariosPanelProps) {
   const t = useTranslations('accounts');
+  const tc = useTranslations('common');
   const { formatCurrency } = useNumberFormat();
   const formatChartDate = useChartDateFormat();
 
@@ -139,6 +143,29 @@ export function SavedScenariosPanel({
   const interestSavedLabel = (comparison: ScenarioComparison | null) =>
     comparison ? formatCurrency(Math.max(0, comparison.interestSaved), currencyCode) : '—';
 
+  // The comparison table as displayed: names, the scenario summary, and the
+  // formatted payoff / time-saved / interest-saved outcomes.
+  const handleExportCsv = () => {
+    const headers = [
+      t('loanDetail.scenarios.nameLabel'),
+      t('loanDetail.scenarios.colDetails'),
+      t('loanDetail.comparison.newPayoff'),
+      t('loanDetail.comparison.timeSaved'),
+      t('loanDetail.comparison.interestSaved'),
+    ];
+    const rows = scenarios.map((scenario) => {
+      const comparison = comparisons.get(scenario.id) ?? null;
+      return [
+        scenario.name,
+        describeScenario(scenario),
+        payoffLabel(comparison),
+        timeSavedLabel(comparison),
+        interestSavedLabel(comparison),
+      ];
+    });
+    exportToCsv(sanitizeFilename(t('loanDetail.scenarios.title')), headers, rows);
+  };
+
   const headerCell = 'px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400';
 
   return (
@@ -147,9 +174,16 @@ export function SavedScenariosPanel({
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
           {t('loanDetail.scenarios.title')}
         </h4>
-        <Button variant="outline" size="sm" onClick={openSave} disabled={!activePlan}>
-          {t('loanDetail.scenarios.saveCurrent')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportIconButton
+            onExport={handleExportCsv}
+            title={tc('csvDownload.downloadAsCsv', { filename: t('loanDetail.scenarios.title') })}
+            disabled={scenarios.length === 0}
+          />
+          <Button variant="outline" size="sm" onClick={openSave} disabled={!activePlan}>
+            {t('loanDetail.scenarios.saveCurrent')}
+          </Button>
+        </div>
       </div>
 
       {scenarios.length === 0 ? (

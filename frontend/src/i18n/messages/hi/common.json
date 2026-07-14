@@ -66,6 +66,9 @@
     "unableToCapture": "चार्ट छवि कैप्चर करने में असमर्थ",
     "failedToDownload": "चार्ट डाउनलोड करने में विफल"
   },
+  "csvDownload": {
+    "downloadAsCsv": "{filename} CSV के रूप में डाउनलोड करें"
+  },
   "chartViewToggle": {
     "pieChart": "पाई चार्ट",
     "barChart": "बार चार्ट",

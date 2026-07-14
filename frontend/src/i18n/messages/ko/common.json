@@ -66,6 +66,9 @@
     "unableToCapture": "차트 이미지를 캡처할 수 없습니다",
     "failedToDownload": "차트 다운로드에 실패했습니다"
   },
+  "csvDownload": {
+    "downloadAsCsv": "{filename}을(를) CSV로 다운로드"
+  },
   "chartViewToggle": {
     "pieChart": "파이 차트",
     "barChart": "막대 차트",

@@ -66,6 +66,9 @@
     "unableToCapture": "無法擷取圖表影像",
     "failedToDownload": "下載圖表失敗"
   },
+  "csvDownload": {
+    "downloadAsCsv": "下載 {filename} 為 CSV"
+  },
   "chartViewToggle": {
     "pieChart": "圓餅圖",
     "barChart": "長條圖",

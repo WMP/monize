@@ -66,6 +66,9 @@
     "unableToCapture": "无法捕获图表图像",
     "failedToDownload": "下载图表失败"
   },
+  "csvDownload": {
+    "downloadAsCsv": "将 {filename} 下载为 CSV"
+  },
   "chartViewToggle": {
     "pieChart": "饼图",
     "barChart": "柱状图",

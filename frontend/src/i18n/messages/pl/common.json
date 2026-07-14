@@ -66,6 +66,9 @@
     "unableToCapture": "Nie udało się przechwycić obrazu wykresu",
     "failedToDownload": "Nie udało się pobrać wykresu"
   },
+  "csvDownload": {
+    "downloadAsCsv": "Pobierz {filename} jako CSV"
+  },
   "chartViewToggle": {
     "pieChart": "Wykres kołowy",
     "barChart": "Wykres słupkowy",

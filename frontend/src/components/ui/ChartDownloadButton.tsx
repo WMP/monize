@@ -4,15 +4,11 @@ import { RefObject, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
 import { captureSvgAsImage } from '@/lib/pdf-export-charts';
+import { sanitizeFilename } from '@/lib/export-filename';
 
 interface ChartDownloadButtonProps {
   chartRef: RefObject<HTMLElement | null>;
   filename: string;
-}
-
-function sanitizeFilename(name: string): string {
-  const cleaned = name.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '');
-  return cleaned.toLowerCase() || 'chart';
 }
 
 export function ChartDownloadButton({ chartRef, filename }: ChartDownloadButtonProps) {
@@ -30,7 +26,7 @@ export function ChartDownloadButton({ chartRef, filename }: ChartDownloadButtonP
       }
       const link = document.createElement('a');
       link.href = captured.dataUrl;
-      link.download = `${sanitizeFilename(filename)}.png`;
+      link.download = `${sanitizeFilename(filename, 'chart')}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

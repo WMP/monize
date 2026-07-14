@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { ReactNode } from 'react';
-import { render, screen, fireEvent, waitFor } from '@/test/render';
+import { render, screen, fireEvent, waitFor, act } from '@/test/render';
 import { useLoanRateEditing } from './useLoanRateEditing';
 import { RateHistorySidebar } from './RateHistorySidebar';
 import { Account } from '@/types/account';
 import { LoanRateChange } from '@/types/loan-rate-change';
 import { loanRateChangesApi } from '@/lib/loan-rate-changes';
+import { exportToCsv } from '@/lib/csv-export';
 
 vi.mock('@/lib/loan-rate-changes', () => ({
   loanRateChangesApi: {
@@ -17,14 +17,8 @@ vi.mock('@/lib/loan-rate-changes', () => ({
   },
 }));
 
-// Recharts needs a real layout width; stub it so the table (the part under
-// test) renders deterministically in jsdom.
-vi.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  AreaChart: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  Area: () => null,
-  XAxis: () => null,
-  YAxis: () => null,
+vi.mock('@/lib/csv-export', () => ({
+  exportToCsv: vi.fn(),
 }));
 
 const account = {
@@ -56,14 +50,7 @@ const rateChanges: LoanRateChange[] = [
 
 function Harness({ rows, onChanged }: { rows: LoanRateChange[]; onChanged: () => void }) {
   const editing = useLoanRateEditing(account, onChanged);
-  return (
-    <RateHistorySidebar
-      account={account}
-      rateChanges={rows}
-      editing={editing}
-      endDate="2025-03-28"
-    />
-  );
+  return <RateHistorySidebar account={account} rateChanges={rows} editing={editing} />;
 }
 
 describe('RateHistorySidebar', () => {
@@ -73,7 +60,6 @@ describe('RateHistorySidebar', () => {
     render(<Harness rows={rateChanges} onChanged={() => {}} />);
 
     expect(screen.getByText('Rate History')).toBeInTheDocument();
-    expect(screen.getByText('Interest rate')).toBeInTheDocument(); // chart legend
     expect(screen.getByText('1.75%')).toBeInTheDocument();
     expect(screen.getByText('3.25%')).toBeInTheDocument();
     expect(screen.getByText('Initial')).toBeInTheDocument();
@@ -98,6 +84,31 @@ describe('RateHistorySidebar', () => {
     expect(screen.getByText(/No rate changes recorded/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add rate change' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Detect from history' })).toBeInTheDocument();
+  });
+
+  it('exports the rate timeline to CSV, sorted by effective date', async () => {
+    // Pass the rows newest-first to prove the export re-sorts them.
+    render(<Harness rows={[...rateChanges].reverse()} onChanged={() => {}} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Download Rate History as CSV' }));
+    });
+
+    expect(exportToCsv).toHaveBeenCalledWith(
+      'rate-history',
+      ['Effective date', 'Rate (%)', 'Source', 'Payment', 'Note'],
+      [
+        ['2022-05-13', 1.75, 'Initial', 3200, ''],
+        ['2022-08-05', 3.25, 'Inferred', '', ''],
+      ],
+    );
+  });
+
+  it('disables the CSV export when there are no rate changes', () => {
+    render(<Harness rows={[]} onChanged={() => {}} />);
+    expect(
+      screen.getByRole('button', { name: 'Download Rate History as CSV' }),
+    ).toBeDisabled();
   });
 
   it('detects rate changes from history after confirmation', async () => {

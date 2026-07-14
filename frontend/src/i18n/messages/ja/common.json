@@ -66,6 +66,9 @@
     "unableToCapture": "チャート画像を取得できません",
     "failedToDownload": "チャートのダウンロードに失敗しました"
   },
+  "csvDownload": {
+    "downloadAsCsv": "{filename} を CSV としてダウンロード"
+  },
   "chartViewToggle": {
     "pieChart": "円グラフ",
     "barChart": "棒グラフ",

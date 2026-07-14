@@ -66,6 +66,9 @@
     "unableToCapture": "Diagrammbild konnte nicht erfasst werden",
     "failedToDownload": "Diagramm konnte nicht heruntergeladen werden"
   },
+  "csvDownload": {
+    "downloadAsCsv": "{filename} als CSV herunterladen"
+  },
   "chartViewToggle": {
     "pieChart": "Kreisdiagramm",
     "barChart": "Balkendiagramm",

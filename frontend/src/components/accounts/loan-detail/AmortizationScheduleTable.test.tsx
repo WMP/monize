@@ -1,13 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@/test/render';
+import { render, screen, fireEvent, act } from '@/test/render';
 import { AmortizationScheduleTable } from './AmortizationScheduleTable';
 import { generateLoanSchedule } from '@/lib/loan-schedule';
 import { LoanPaymentEvent } from '@/lib/loan-history';
+import { exportToCsv } from '@/lib/csv-export';
 import type { LoanRateEditing } from './useLoanRateEditing';
 
 // Stub the rate controls (modals) so these tests focus on the table + rate cell.
 vi.mock('./LoanRateControls', () => ({
   LoanRateControls: () => <div data-testid="rate-controls" />,
+}));
+
+vi.mock('@/lib/csv-export', () => ({
+  exportToCsv: vi.fn(),
 }));
 
 vi.mock('@/hooks/useNumberFormat', () => ({
@@ -96,6 +101,49 @@ describe('AmortizationScheduleTable', () => {
     expect(screen.getByText('Projected Future Payments')).toBeInTheDocument();
     expect(screen.getByText('Jan 15, 2025')).toBeInTheDocument();
     expect(screen.getByText('Aug 15, 2026')).toBeInTheDocument();
+  });
+
+  it('exports every historical and projected row to CSV', async () => {
+    const projection = makeProjection();
+    render(
+      <AmortizationScheduleTable
+        historyEvents={makeHistoryEvents(2, 5)}
+        projectionRows={projection.rows}
+        currencyCode="CAD"
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Download Loan Schedule as CSV' }));
+    });
+
+    expect(exportToCsv).toHaveBeenCalledTimes(1);
+    const [filename, headers, rows] = vi.mocked(exportToCsv).mock.calls[0];
+    expect(filename).toBe('loan-schedule');
+    // No overpayments, so no Extra Principal column.
+    expect(headers).toEqual([
+      '#',
+      'Date',
+      'Type',
+      'Payment',
+      'Interest',
+      'Principal',
+      'Rate',
+      'Balance',
+    ]);
+    expect(rows).toHaveLength(2 + projection.rows.length);
+    expect(rows[0]).toEqual([1, '2025-01-15', 'Historical', 500, 50, 450, 5, 9550]);
+    expect(rows[2][0]).toBe(3); // first projected payment continues the numbering
+    expect(rows[2][2]).toBe('Projected');
+  });
+
+  it('disables the CSV export when the schedule is empty', () => {
+    render(
+      <AmortizationScheduleTable historyEvents={[]} projectionRows={[]} currencyCode="CAD" />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Download Loan Schedule as CSV' }),
+    ).toBeDisabled();
   });
 
   it('numbers projected rows after the historical rows', () => {

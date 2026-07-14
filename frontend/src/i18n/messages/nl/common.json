@@ -66,6 +66,9 @@
     "unableToCapture": "Kan grafiekafbeelding niet vastleggen",
     "failedToDownload": "Grafiek downloaden mislukt"
   },
+  "csvDownload": {
+    "downloadAsCsv": "Download {filename} als CSV"
+  },
   "chartViewToggle": {
     "pieChart": "Cirkeldiagram",
     "barChart": "Staafdiagram",

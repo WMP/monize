@@ -66,6 +66,9 @@
     "unableToCapture": "Unable to capture chart image",
     "failedToDownload": "Failed to download chart"
   },
+  "csvDownload": {
+    "downloadAsCsv": "Download {filename} as CSV"
+  },
   "chartViewToggle": {
     "pieChart": "Pie Chart",
     "barChart": "Bar Chart",

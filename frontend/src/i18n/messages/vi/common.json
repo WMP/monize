@@ -66,6 +66,9 @@
     "unableToCapture": "Không thể chụp ảnh biểu đồ",
     "failedToDownload": "Không thể tải biểu đồ"
   },
+  "csvDownload": {
+    "downloadAsCsv": "Tải {filename} dưới dạng CSV"
+  },
   "chartViewToggle": {
     "pieChart": "Biểu đồ tròn",
     "barChart": "Biểu đồ cột",

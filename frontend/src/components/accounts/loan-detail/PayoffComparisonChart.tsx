@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import toast from 'react-hot-toast';
 import {
   AreaChart,
   Area,
@@ -16,7 +17,10 @@ import {
 import { LoanPaymentEvent } from '@/lib/loan-history';
 import { LoanScheduleResult } from '@/lib/loan-schedule';
 import { chartColors } from '@/lib/chart-colors';
+import { captureSvgAsImage } from '@/lib/pdf-export-charts';
+import { sanitizeFilename } from '@/lib/export-filename';
 import { ChartTooltip } from '@/components/reports/ChartTooltip';
+import { ExportIconButton } from '@/components/ui/ExportIconButton';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 
@@ -187,8 +191,10 @@ export function PayoffComparisonChart({
   original = null,
 }: PayoffComparisonChartProps) {
   const t = useTranslations('accounts');
+  const tc = useTranslations('common');
   const formatChartDate = useChartDateFormat();
   const { formatCurrencyCompact, formatCurrencyAxis } = useNumberFormat();
+  const chartRef = useRef<HTMLDivElement>(null);
 
   const { points, projectionStartKey } = useMemo(
     () => buildPayoffComparisonSeries(historyEvents, baseline, scenario, original),
@@ -208,6 +214,27 @@ export function PayoffComparisonChart({
     ? formatChartDate(`${projectionStartKey}-01`, 'MMM yyyy')
     : null;
 
+  const chartTitle = t('loanDetail.chart.title');
+
+  async function handleExportPng() {
+    if (!chartRef.current) return;
+    try {
+      const captured = await captureSvgAsImage(chartRef.current);
+      if (!captured) {
+        toast.error(tc('chartDownload.unableToCapture'));
+        return;
+      }
+      const link = document.createElement('a');
+      link.href = captured.dataUrl;
+      link.download = `${sanitizeFilename(chartTitle, 'chart')}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch {
+      toast.error(tc('chartDownload.failedToDownload'));
+    }
+  }
+
   if (chartData.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">
@@ -220,10 +247,16 @@ export function PayoffComparisonChart({
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 px-2 py-4 sm:p-6">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 px-4 sm:px-0">
-        {t('loanDetail.chart.title')}
-      </h3>
-      <div className="h-80">
+      <div className="flex items-start justify-between gap-2 mb-4 px-4 sm:px-0">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          {chartTitle}
+        </h3>
+        <ExportIconButton
+          onExport={handleExportPng}
+          title={tc('chartDownload.downloadAsPng', { filename: chartTitle })}
+        />
+      </div>
+      <div className="h-80" ref={chartRef}>
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <AreaChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />

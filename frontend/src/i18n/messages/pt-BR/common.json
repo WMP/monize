@@ -66,6 +66,9 @@
     "unableToCapture": "Não foi possível capturar a imagem do gráfico",
     "failedToDownload": "Falha ao baixar o gráfico"
   },
+  "csvDownload": {
+    "downloadAsCsv": "Baixar {filename} como CSV"
+  },
   "chartViewToggle": {
     "pieChart": "Gráfico de pizza",
     "barChart": "Gráfico de barras",

@@ -1,11 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@/test/render';
+import { render, screen, fireEvent, waitFor, act } from '@/test/render';
 import {
   PayoffComparisonChart,
   buildPayoffComparisonSeries,
 } from './PayoffComparisonChart';
 import { generateLoanSchedule } from '@/lib/loan-schedule';
 import { LoanPaymentEvent } from '@/lib/loan-history';
+import { captureSvgAsImage } from '@/lib/pdf-export-charts';
+
+vi.mock('@/lib/pdf-export-charts', () => ({
+  captureSvgAsImage: vi.fn(),
+}));
 
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
@@ -260,6 +265,27 @@ describe('PayoffComparisonChart', () => {
     expect(screen.getByText('Current Projection')).toBeInTheDocument();
     expect(screen.queryByText('With Simulated Overpayments')).not.toBeInTheDocument();
     expect(screen.getByTestId('reference-line')).toHaveTextContent('Today');
+  });
+
+  it('downloads the chart as a PNG from the export button', async () => {
+    vi.mocked(captureSvgAsImage).mockResolvedValue({
+      dataUrl: 'data:image/png;base64,abc',
+      width: 800,
+      height: 320,
+    });
+    render(
+      <PayoffComparisonChart
+        historyEvents={makeHistory()}
+        baseline={makeProjection()}
+        scenario={null}
+      />,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Download Payoff Timeline as PNG' }));
+    });
+
+    await waitFor(() => expect(captureSvgAsImage).toHaveBeenCalledTimes(1));
   });
 
   it('renders the original contractual series when provided', () => {

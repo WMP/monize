@@ -66,6 +66,9 @@
     "unableToCapture": "Grafik görüntüsü yakalanamıyor",
     "failedToDownload": "Grafik indirilemedi"
   },
+  "csvDownload": {
+    "downloadAsCsv": "{filename} dosyasını CSV olarak indir"
+  },
   "chartViewToggle": {
     "pieChart": "Pasta Grafik",
     "barChart": "Çubuk Grafik",

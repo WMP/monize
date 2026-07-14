@@ -140,13 +140,6 @@ export function LoanDetailView({
     [account, history, baseline, rateChanges],
   );
 
-  // Last payment date, so the Rate History chart can hold the final recorded
-  // rate out to the end of the timeline.
-  const rateSeriesEndDate =
-    history.events.length > 0
-      ? history.events[history.events.length - 1].date.split('T')[0]
-      : null;
-
   return (
     <div className="space-y-6">
       <LoanSummaryCards
@@ -200,7 +193,6 @@ export function LoanDetailView({
               account={account}
               rateChanges={rateChanges}
               editing={rateEditing}
-              endDate={rateSeriesEndDate}
               fillHeight
             />
           </div>
@@ -229,7 +221,6 @@ export function LoanDetailView({
           account={account}
           rateChanges={rateChanges}
           editing={rateEditing}
-          endDate={rateSeriesEndDate}
         />
       )}
     </div>

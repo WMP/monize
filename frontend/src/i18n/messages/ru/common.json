@@ -66,6 +66,9 @@
     "unableToCapture": "Не удалось захватить изображение диаграммы",
     "failedToDownload": "Не удалось скачать диаграмму"
   },
+  "csvDownload": {
+    "downloadAsCsv": "Скачать {filename} в формате CSV"
+  },
   "chartViewToggle": {
     "pieChart": "Круговая диаграмма",
     "barChart": "Гистограмма",
