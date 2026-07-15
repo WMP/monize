@@ -488,7 +488,29 @@
       "noLumpSums": "No lump sums added.",
       "lumpSumDate": "Date",
       "lumpSumAmount": "Amount",
-      "removeLumpSum": "Remove"
+      "removeLumpSum": "Remove",
+      "goalSeek": {
+        "title": "Goal seek",
+        "description": "Work backwards: how much extra per payment to hit a target.",
+        "targetInterestLabel": "Target total interest",
+        "targetDateLabel": "Target payoff month",
+        "compute": "Calculate",
+        "apply": "Apply",
+        "required": "Extra needed: {amount} per payment",
+        "effect": "→ interest {interest}, payoff {date}",
+        "alreadyMet": "Already met without any overpayment.",
+        "unreachableInterest": "Out of reach — even a very large overpayment cannot lower the interest that far.",
+        "unreachableDate": "Out of reach — that month is earlier than the soonest possible payoff."
+      }
+    },
+    "scenarioChart": {
+      "title": "Scenario comparison",
+      "description": "Interest cost and payoff date for each saved scenario, against the no-overpayment baseline.",
+      "show": "Show scenario comparison chart",
+      "hide": "Hide scenario comparison chart",
+      "baselineLabel": "No overpayment",
+      "interestSeries": "Total interest",
+      "payoffTooltip": "Payoff: {date}"
     },
     "comparison": {
       "newPayoff": "New Payoff Date",

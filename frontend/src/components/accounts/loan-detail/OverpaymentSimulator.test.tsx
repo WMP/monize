@@ -169,6 +169,41 @@ describe('OverpaymentSimulator', () => {
     expect(screen.getByText('Overpayment Simulator')).toBeInTheDocument();
   });
 
+  it('solves the recurring extra for a target interest and applies it to the plan', async () => {
+    const projectionInput = {
+      startingBalance: 100000,
+      annualRate: 5,
+      paymentAmount: 600,
+      frequency: 'MONTHLY' as const,
+      firstPaymentDate: new Date('2025-01-15'),
+    };
+    const { onPlanChange } = await renderSimulator({ projectionInput });
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Target total interest'), {
+        target: { value: '10000' },
+      });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getAllByText('Calculate')[0]);
+    });
+
+    await waitFor(() => expect(screen.getByText(/Extra needed:/)).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Apply'));
+    });
+
+    const lastPlan = onPlanChange.mock.calls.at(-1)?.[0];
+    expect(lastPlan?.recurringExtra?.mode).toBe('SHORTEN_TERM');
+    expect(lastPlan?.recurringExtra?.amount).toBeGreaterThan(0);
+  });
+
+  it('hides the goal-seek block without a projection input', async () => {
+    await renderSimulator();
+    expect(screen.queryByText('Goal seek')).not.toBeInTheDocument();
+  });
+
   it('applies an externally loaded plan when the version changes', async () => {
     const loaded: OverpaymentPlan = {
       recurringExtra: { amount: 300, startDate: '2026-01-01' },

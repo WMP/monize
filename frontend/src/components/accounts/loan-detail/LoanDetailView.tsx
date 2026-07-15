@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { Button } from '@/components/ui/Button';
 import { LoanSummaryCards } from '@/components/accounts/loan-detail/LoanSummaryCards';
 import { AmortizationScheduleTable } from '@/components/accounts/loan-detail/AmortizationScheduleTable';
 import { OverpaymentSimulator } from '@/components/accounts/loan-detail/OverpaymentSimulator';
@@ -9,6 +10,10 @@ import { PayoffComparisonChart } from '@/components/accounts/loan-detail/PayoffC
 import { RateHistorySidebar } from '@/components/accounts/loan-detail/RateHistorySidebar';
 import { ComparisonSummaryCards } from '@/components/accounts/loan-detail/ComparisonSummaryCards';
 import { SavedScenariosPanel } from '@/components/accounts/loan-detail/SavedScenariosPanel';
+import {
+  ScenarioComparisonChart,
+  ScenarioOutcome,
+} from '@/components/accounts/loan-detail/ScenarioComparisonChart';
 import { PastImpactSection } from '@/components/accounts/loan-detail/PastImpactSection';
 import { useLoanRateEditing } from '@/components/accounts/loan-detail/useLoanRateEditing';
 import {
@@ -62,6 +67,7 @@ export function LoanDetailView({
   const [plan, setPlan] = useState<OverpaymentPlan | null>(null);
   const [loadedPlan, setLoadedPlan] = useState<OverpaymentPlan | null>(null);
   const [loadedPlanVersion, setLoadedPlanVersion] = useState(0);
+  const [showScenarioChart, setShowScenarioChart] = useState(false);
   const rateEditing = useLoanRateEditing(account, onRateChangesChanged);
 
   const handleLoadScenario = useCallback((loaded: OverpaymentPlan | null) => {
@@ -118,18 +124,43 @@ export function LoanDetailView({
   // Each saved scenario's outcome vs the baseline, so the list can show a
   // comparison table without loading each one. Each scenario's overpayments
   // carry their own mode (shorten term / lower installment).
-  const scenarioComparisons = useMemo(() => {
+  const { scenarioComparisons, scenarioOutcomes } = useMemo(() => {
     const map = new Map<string, ScenarioComparison | null>();
-    if (!projectionInput || !baseline) return map;
+    const outcomes: ScenarioOutcome[] = [];
+    if (!projectionInput || !baseline) {
+      return { scenarioComparisons: map, scenarioOutcomes: outcomes };
+    }
     for (const saved of scenarios) {
       const scenarioSchedule = generateLoanSchedule({
         ...projectionInput,
         overpayments: scenarioToPlan(saved) ?? undefined,
       });
       map.set(saved.id, compareSchedules(baseline, scenarioSchedule));
+      outcomes.push({
+        id: saved.id,
+        name: saved.name,
+        totalInterest: scenarioSchedule.totalInterest,
+        payoffDate: scenarioSchedule.payoffDate,
+      });
     }
-    return map;
+    return { scenarioComparisons: map, scenarioOutcomes: outcomes };
   }, [scenarios, projectionInput, baseline]);
+
+  // The comparison chart is only meaningful with more than one saved scenario;
+  // the no-overpayment baseline is prepended as a reference bar.
+  const scenarioChartOutcomes = useMemo<ScenarioOutcome[]>(() => {
+    if (scenarioOutcomes.length < 2 || !baseline) return [];
+    return [
+      {
+        id: '__baseline__',
+        name: t('loanDetail.scenarioChart.baselineLabel'),
+        totalInterest: baseline.totalInterest,
+        payoffDate: baseline.payoffDate,
+        isBaseline: true,
+      },
+      ...scenarioOutcomes,
+    ];
+  }, [scenarioOutcomes, baseline, t]);
 
   // Past impact of overpayments. It reuses the baseline (no-overpayment)
   // projection as the current projection -- computed once here, not twice --
@@ -162,6 +193,7 @@ export function LoanDetailView({
               onPlanChange={setPlan}
               loadedPlan={loadedPlan}
               loadedPlanVersion={loadedPlanVersion}
+              projectionInput={projectionInput}
               footer={
                 <>
                   {comparison && (
@@ -196,6 +228,29 @@ export function LoanDetailView({
               fillHeight
             />
           </div>
+        </div>
+      )}
+
+      {scenarioChartOutcomes.length > 0 && (
+        <div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowScenarioChart((v) => !v)}
+            aria-expanded={showScenarioChart}
+          >
+            {showScenarioChart
+              ? t('loanDetail.scenarioChart.hide')
+              : t('loanDetail.scenarioChart.show')}
+          </Button>
+          {showScenarioChart && (
+            <div className="mt-4">
+              <ScenarioComparisonChart
+                outcomes={scenarioChartOutcomes}
+                currencyCode={account.currencyCode}
+              />
+            </div>
+          )}
         </div>
       )}
 

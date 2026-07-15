@@ -488,7 +488,29 @@
       "noLumpSums": "[XX-No lump sums added.-XX]",
       "lumpSumDate": "[XX-Date-XX]",
       "lumpSumAmount": "[XX-Amount-XX]",
-      "removeLumpSum": "[XX-Remove-XX]"
+      "removeLumpSum": "[XX-Remove-XX]",
+      "goalSeek": {
+        "title": "[XX-Goal seek-XX]",
+        "description": "[XX-Work backwards: how much extra per payment to hit a target.-XX]",
+        "targetInterestLabel": "[XX-Target total interest-XX]",
+        "targetDateLabel": "[XX-Target payoff month-XX]",
+        "compute": "[XX-Calculate-XX]",
+        "apply": "[XX-Apply-XX]",
+        "required": "[XX-Extra needed: {amount} per payment-XX]",
+        "effect": "[XX-→ interest {interest}, payoff {date}-XX]",
+        "alreadyMet": "[XX-Already met without any overpayment.-XX]",
+        "unreachableInterest": "[XX-Out of reach — even a very large overpayment cannot lower the interest that far.-XX]",
+        "unreachableDate": "[XX-Out of reach — that month is earlier than the soonest possible payoff.-XX]"
+      }
+    },
+    "scenarioChart": {
+      "title": "[XX-Scenario comparison-XX]",
+      "description": "[XX-Interest cost and payoff date for each saved scenario, against the no-overpayment baseline.-XX]",
+      "show": "[XX-Show scenario comparison chart-XX]",
+      "hide": "[XX-Hide scenario comparison chart-XX]",
+      "baselineLabel": "[XX-No overpayment-XX]",
+      "interestSeries": "[XX-Total interest-XX]",
+      "payoffTooltip": "[XX-Payoff: {date}-XX]"
     },
     "comparison": {
       "newPayoff": "[XX-New Payoff Date-XX]",

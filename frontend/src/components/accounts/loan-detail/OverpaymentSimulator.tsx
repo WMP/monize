@@ -5,10 +5,16 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { DateInput } from '@/components/ui/DateInput';
-import { OverpaymentMode, OverpaymentPlan } from '@/lib/loan-schedule';
+import { LoanScheduleInput, OverpaymentMode, OverpaymentPlan } from '@/lib/loan-schedule';
+import {
+  SolveResult,
+  solveRecurringForPayoffMonth,
+  solveRecurringForTargetInterest,
+} from '@/lib/loan-overpayment-solver';
 import { accountsApi } from '@/lib/accounts';
 import { getCurrencySymbol } from '@/lib/format';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useDateFormat } from '@/hooks/useDateFormat';
 import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('OverpaymentSimulator');
@@ -49,6 +55,9 @@ interface OverpaymentSimulatorProps {
   /** Externally loaded plan (e.g. a saved scenario); applied when version changes */
   loadedPlan?: OverpaymentPlan | null;
   loadedPlanVersion?: number;
+  /** The no-overpayment projection base. When supplied, the goal-seek block is
+   *  shown (solve the recurring extra for a target interest or payoff month). */
+  projectionInput?: LoanScheduleInput | null;
   /** Extra header content (e.g. a save-scenario button) */
   headerActions?: React.ReactNode;
   /** Content rendered at the bottom of the card (e.g. saved scenarios) */
@@ -111,14 +120,23 @@ export function OverpaymentSimulator({
   loadedPlanVersion = 0,
   headerActions,
   footer,
+  projectionInput = null,
 }: OverpaymentSimulatorProps) {
   const t = useTranslations('accounts');
   const { formatCurrency } = useNumberFormat();
+  const { formatDate } = useDateFormat();
   const currencySymbol = getCurrencySymbol(currencyCode);
 
   const [form, setForm] = useState<SimulatorFormState>(EMPTY_FORM);
   const [nextLumpSumId, setNextLumpSumId] = useState(0);
   const [detectedExtra, setDetectedExtra] = useState<number | null>(null);
+
+  // Goal-seek: solve the recurring extra for a target interest cost or payoff
+  // month. Results are computed on demand (each solve runs the schedule engine).
+  const [goalInterest, setGoalInterest] = useState<number | undefined>(undefined);
+  const [goalDate, setGoalDate] = useState('');
+  const [interestSolve, setInterestSolve] = useState<SolveResult | null>(null);
+  const [dateSolve, setDateSolve] = useState<SolveResult | null>(null);
 
   // Apply an externally loaded plan when its version changes (info-from-
   // previous-render pattern; no setState in effect)
@@ -179,6 +197,29 @@ export function OverpaymentSimulator({
 
   const reset = () => {
     update(EMPTY_FORM);
+  };
+
+  const runInterestSolve = () => {
+    if (!projectionInput || goalInterest === undefined || goalInterest < 0) return;
+    setInterestSolve(solveRecurringForTargetInterest(projectionInput, goalInterest));
+  };
+
+  const runDateSolve = () => {
+    if (!projectionInput || !goalDate) return;
+    setDateSolve(solveRecurringForPayoffMonth(projectionInput, goalDate));
+  };
+
+  // Apply a solved recurring extra to the simulator so the schedule, chart and
+  // savings cards recompute. SHORTEN_TERM with no date window matches how the
+  // solver modelled it.
+  const applySolvedAmount = (amount: number) => {
+    update({
+      ...form,
+      recurringAmount: amount,
+      recurringMode: 'SHORTEN_TERM',
+      recurringStart: '',
+      recurringEnd: '',
+    });
   };
 
   const hasInput =
@@ -308,7 +349,135 @@ export function OverpaymentSimulator({
         )}
       </div>
 
+      {projectionInput && (
+        <div className="mt-6 pt-5 border-t border-gray-200 dark:border-gray-700">
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            {t('loanDetail.simulator.goalSeek.title')}
+          </h4>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+            {t('loanDetail.simulator.goalSeek.description')}
+          </p>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Target total interest -> required recurring extra */}
+            <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[10rem]">
+                  <CurrencyInput
+                    prefix={currencySymbol}
+                    allowNegative={false}
+                    label={t('loanDetail.simulator.goalSeek.targetInterestLabel')}
+                    value={goalInterest}
+                    onChange={setGoalInterest}
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={runInterestSolve}
+                  disabled={goalInterest === undefined}
+                >
+                  {t('loanDetail.simulator.goalSeek.compute')}
+                </Button>
+              </div>
+              <SolveResultLine
+                solve={interestSolve}
+                onApply={applySolvedAmount}
+                formatCurrency={formatCurrency}
+                formatDate={formatDate}
+                currencyCode={currencyCode}
+                unreachableKey="loanDetail.simulator.goalSeek.unreachableInterest"
+              />
+            </div>
+
+            {/* Target payoff month -> required recurring extra */}
+            <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[10rem]">
+                  <DateInput
+                    label={t('loanDetail.simulator.goalSeek.targetDateLabel')}
+                    value={goalDate}
+                    onDateChange={setGoalDate}
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={runDateSolve}
+                  disabled={!goalDate}
+                >
+                  {t('loanDetail.simulator.goalSeek.compute')}
+                </Button>
+              </div>
+              <SolveResultLine
+                solve={dateSolve}
+                onApply={applySolvedAmount}
+                formatCurrency={formatCurrency}
+                formatDate={formatDate}
+                currencyCode={currencyCode}
+                unreachableKey="loanDetail.simulator.goalSeek.unreachableDate"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {footer}
+    </div>
+  );
+}
+
+/** Renders a goal-seek outcome: the required recurring extra with its effect
+ *  and an Apply button, or an already-met / unreachable note. */
+function SolveResultLine({
+  solve,
+  onApply,
+  formatCurrency,
+  formatDate,
+  currencyCode,
+  unreachableKey,
+}: {
+  solve: SolveResult | null;
+  onApply: (amount: number) => void;
+  formatCurrency: (amount: number, currency?: string) => string;
+  formatDate: (date: string) => string;
+  currencyCode: string;
+  unreachableKey: string;
+}) {
+  const t = useTranslations('accounts');
+  if (!solve) return null;
+
+  if (solve.status === 'unreachable') {
+    return <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">{t(unreachableKey)}</p>;
+  }
+  if (solve.status === 'already-met') {
+    return (
+      <p className="mt-2 text-sm text-green-700 dark:text-green-400">
+        {t('loanDetail.simulator.goalSeek.alreadyMet')}
+      </p>
+    );
+  }
+  const result = solve.result!;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+      <span className="font-medium text-gray-900 dark:text-gray-100">
+        {t('loanDetail.simulator.goalSeek.required', {
+          amount: formatCurrency(solve.amount ?? 0, currencyCode),
+        })}
+      </span>
+      <span className="text-gray-500 dark:text-gray-400">
+        {t('loanDetail.simulator.goalSeek.effect', {
+          interest: formatCurrency(result.totalInterest, currencyCode),
+          date: result.payoffDate ? formatDate(result.payoffDate) : '—',
+        })}
+      </span>
+      <button
+        type="button"
+        className="font-medium text-blue-600 dark:text-blue-400 underline hover:no-underline"
+        onClick={() => solve.amount != null && onApply(solve.amount)}
+      >
+        {t('loanDetail.simulator.goalSeek.apply')}
+      </button>
     </div>
   );
 }
