@@ -26,11 +26,14 @@ import {
  *   2. otherwise, if the linked source-account transaction carries an interest
  *      split (the shape ScheduledTransactionLoanService builds), that recorded
  *      interest is used -- exact even on variable-rate loans;
- *   3. otherwise the interest is derived analytically from the running balance
- *      at the rate in effect on that date (`balance * periodicRate`, using the
- *      rate timeline when supplied), so a payment recorded without an interest
- *      split -- including loans whose interest is booked separately -- shows a
- *      realistic interest that tracks the bank rather than 100% principal.
+ *   3. otherwise, for a loan with no separately-booked interest at all, the
+ *      interest is derived analytically from the running balance at the rate in
+ *      effect on that date (`balance * periodicRate`, using the rate timeline
+ *      when supplied), so a plain principal-only transfer shows a realistic
+ *      interest that tracks the bank rather than 100% principal. When the loan
+ *      DOES book interest as separate expenses, a payment with no paired expense
+ *      carried no interest of its own (it is already represented by the booked
+ *      expenses), so it is left at 0 rather than given an analytic estimate.
  *
  * The balance walk is unchanged -- it always tracks the actual ledger amount,
  * so the projected balance still ends at the account's current balance.
@@ -149,6 +152,15 @@ export function deriveLoanPaymentHistory(
       scopedInterestTransactions,
       repayments.map((t) => t.transactionDate.split('T')[0]),
     );
+  // Whether this loan books interest as separate expenses. When it does, a
+  // payment with no paired interest carried none of its own (the interest for
+  // its date is already represented by the booked expenses), so it must not
+  // receive an analytic estimate -- see classifyPayment. Derived from the
+  // pairing output (not the raw list) so all-transfer / zero-amount inputs,
+  // which pairSeparateInterestByDate discards, don't falsely disable the
+  // analytic fallback.
+  const hasSeparateInterest =
+    separateInterestByDate.size > 0 || orphanInterest.length > 0;
   const usedInterestDates = new Set<string>();
   const events: LoanPaymentEvent[] = [];
 
@@ -173,6 +185,7 @@ export function deriveLoanPaymentHistory(
         rateChanges,
         separateInterestByDate,
         usedInterestDates,
+        hasSeparateInterest,
       );
       runningBalance = Math.max(0, runningBalance - principal);
       cumulativePrincipal += principal;
@@ -206,6 +219,7 @@ export function deriveLoanPaymentHistory(
         rateChanges,
         separateInterestByDate,
         usedInterestDates,
+        hasSeparateInterest,
       );
       cumulativePrincipal += principal;
       cumulativeInterest += interest;
@@ -382,6 +396,7 @@ function classifyPayment(
   rateChanges: RateTimelineRow[],
   separateInterestByDate: Map<string, number>,
   usedInterestDates: Set<string>,
+  hasSeparateInterest: boolean,
 ): { interest: number; type: LoanPaymentType } {
   const dateKey = transaction.transactionDate.split('T')[0];
   // The actual interest expense paired to this date, consumed once.
@@ -416,6 +431,16 @@ function classifyPayment(
   const paired = takeSeparateInterest();
   if (paired != null) {
     return { interest: paired, type: 'REGULAR' };
+  }
+  // A loan that books interest as separate expenses has this payment's interest
+  // (if any) already captured by those expenses. When none is paired to this
+  // payment -- e.g. a principal-only leg sharing a date with another payment
+  // that already consumed the date's interest, like an overpayment and a
+  // regular installment on the same day -- it genuinely carried no interest.
+  // Only fall back to an analytic estimate for loans with no separate interest
+  // booking at all, where the interest is not recorded anywhere else.
+  if (hasSeparateInterest) {
+    return { interest: 0, type: 'REGULAR' };
   }
   return {
     interest: analyticInterest(balanceBefore, account, transaction, rateChanges),
