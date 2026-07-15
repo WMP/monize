@@ -758,6 +758,51 @@ describe('deriveLoanPaymentHistory with paired separate interest expenses', () =
     expect(cumulativeInterest).toBeCloseTo(388.14 + 286.49 + 335.92, 2);
   });
 
+  it('does not fabricate analytic interest for a principal-only payment sharing a date (interest booked separately)', () => {
+    // Real case (2023-09-05): two principal payments land on the same day -- an
+    // overpayment (973.11, whose interest is booked separately) and the regular
+    // installment (1097.78, booked with zero interest). The day's two booked
+    // interest expenses (596.89 + 28.28 = 625.17) are the whole month's
+    // interest. The overpayment consumes the paired interest; the principal-only
+    // installment must be left at 0, not given an analytic estimate -- otherwise
+    // the month over-counts interest (previously ~+860).
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      openingBalance: -206718.35,
+      currentBalance: -142332.03,
+      interestRate: 5.5,
+    });
+    const transactions = [
+      makeTransaction({
+        id: 'over',
+        transactionDate: '2023-09-05',
+        amount: 973.11,
+        description: 'Nadpłata 2023-09-05 (kapitał z 1 570; odsetki osobno)',
+      }),
+      makeTransaction({
+        id: 'reg',
+        transactionDate: '2023-09-05',
+        amount: 1097.78,
+        description: 'Kapitał raty 2023-09 (KAPITAL: 1097.78 ODSETKI: 0.00)',
+      }),
+    ];
+    const interestTransactions = [
+      { transactionDate: '2023-09-05', amount: -596.89, isTransfer: false, description: 'Odsetki z nadpłaty 2023-09-05' } as Transaction,
+      { transactionDate: '2023-09-05', amount: -28.28, isTransfer: false } as Transaction,
+    ];
+
+    const { events } = deriveLoanPaymentHistory(account, transactions, [], interestTransactions);
+    const sept = events.filter((e) => e.date.startsWith('2023-09'));
+    const septInterest = sept.reduce((s, e) => s + e.interest, 0);
+
+    // Whole-month interest equals the booked expenses, with no analytic top-up.
+    expect(septInterest).toBeCloseTo(625.17, 2);
+    // The principal-only installment row carries zero interest.
+    const regRow = sept.find((e) => Math.abs(e.principal - 1097.78) < 0.01);
+    expect(regRow).toBeDefined();
+    expect(regRow!.interest).toBe(0);
+  });
+
   it('includes interest booked before the configured start date (interest-only grace period)', () => {
     // Real dataset shape: the interest-only grace period starts 2019-08, but
     // paymentStartDate was set later (2020-04, e.g. guessed at setup). Interest
