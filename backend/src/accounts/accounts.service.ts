@@ -1472,8 +1472,10 @@ export class AccountsService {
 
     let end = endDate || todayYMD();
 
-    // When no explicit endDate, extend to include future transactions
-    if (!endDate) {
+    // When no explicit endDate, extend to include future transactions. Skipped
+    // in all-time mode, where the MIN/MAX probe below already yields the last
+    // transaction date (future-dated ones included) and clamps `end` to it.
+    if (!endDate && !allTime) {
       const maxDateResult = await this.dataSource.query(
         `SELECT MAX(t.transaction_date)::TEXT as max_date
          FROM transactions t
@@ -1502,10 +1504,15 @@ export class AccountsService {
       start = startDate;
     } else if (allTime) {
       // "All time" mirrors the transaction list's default (no start filter):
-      // begin at the account's earliest transaction. Falls back to the
-      // one-year default when the account has no transactions yet.
-      const minDateResult = await this.dataSource.query(
-        `SELECT MIN(t.transaction_date)::TEXT as min_date
+      // span the account's actual activity, from its earliest to its latest
+      // transaction. Ending at the last transaction (rather than today) keeps a
+      // closed or dormant account from trailing a long flat line to today; the
+      // unbounded MAX still includes future-dated transactions, so projections
+      // remain visible. Both fall back to the one-year default / today when the
+      // account has no transactions yet.
+      const range = await this.dataSource.query(
+        `SELECT MIN(t.transaction_date)::TEXT as min_date,
+                MAX(t.transaction_date)::TEXT as max_date
          FROM transactions t
          JOIN accounts a ON a.id = t.account_id
          WHERE a.user_id = $1
@@ -1514,7 +1521,11 @@ export class AccountsService {
            AND t.parent_transaction_id IS NULL`,
         [userId, accountIdsParam],
       );
-      start = minDateResult?.[0]?.min_date || oneYearAgo();
+      start = range?.[0]?.min_date || oneYearAgo();
+      const maxDate = range?.[0]?.max_date;
+      if (!endDate && maxDate) {
+        end = maxDate;
+      }
     } else {
       start = oneYearAgo();
     }

@@ -532,12 +532,13 @@ function TransactionsContent() {
   }, [filters.filterAccountIds, filters.filteredAccounts, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo]);
 
   // Derive chart currency, aggregated per-date balances, and latest per-account balances
-  const { chartBalances, chartCurrency, accountBalances } = useMemo(() => {
+  const { chartBalances, chartCurrency, accountBalances, accountCount } = useMemo(() => {
     if (dailyBalances.length === 0) {
       return {
         chartBalances: [] as Array<{ date: string; balance: number }>,
         chartCurrency: defaultCurrency,
         accountBalances: [] as Array<{ accountId: string; accountName: string; balance: number }>,
+        accountCount: 0,
       };
     }
 
@@ -573,7 +574,7 @@ function TransactionsContent() {
       .filter((a) => Math.round(a.balance * 10000) !== 0)
       .sort((a, b) => b.balance - a.balance);
 
-    return { chartBalances: aggregated, chartCurrency: displayCurrency, accountBalances: perAccount };
+    return { chartBalances: aggregated, chartCurrency: displayCurrency, accountBalances: perAccount, accountCount: latestByAccount.size };
   }, [dailyBalances, accounts, defaultCurrency, convertToDefault]);
 
   // Label appended to the Monthly Totals download filename so it reflects
@@ -845,7 +846,13 @@ function TransactionsContent() {
               ? 'monthlyTotals'
               : accountBalances.length > 1
                 ? 'accountBalances'
-                : 'balanceHistory';
+                // Multiple accounts in scope but every one has a zero balance
+                // (e.g. only closed accounts, which are zeroed at closure): the
+                // bar chart hides zero balances and a summed line reads as a
+                // meaningless flat line, so show a banner instead.
+                : accountCount > 1 && accountBalances.length === 0
+                  ? 'zeroBalances'
+                  : 'balanceHistory';
           // Keyed by kind so swapping chart types remounts the card and plays
           // the fade-in, instead of one chart popping into the other.
           const chart = (
@@ -869,6 +876,19 @@ function TransactionsContent() {
                   currencyCode={chartCurrency}
                   onAccountClick={filters.handleAccountFilterClick}
                 />
+              ) : chartKind === 'zeroBalances' ? (
+                isLoading ? (
+                  <ChartLoadingPlaceholder />
+                ) : (
+                  <div
+                    data-testid="chart-zero-balances"
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-3 sm:p-6 mb-6 min-h-[420px] flex items-center justify-center"
+                  >
+                    <p className="text-gray-500 dark:text-gray-400 text-center max-w-md">
+                      {t('charts.zeroBalances.message')}
+                    </p>
+                  </div>
+                )
               ) : (
                 <BalanceHistoryChart
                   data={chartBalances}

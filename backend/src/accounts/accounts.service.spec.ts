@@ -3068,14 +3068,14 @@ describe("AccountsService", () => {
       expect(params[4]).toBeGreaterThan(1); // ~5479 days / 400 -> step 14
     });
 
-    it("starts at the earliest transaction when allTime and no startDate", async () => {
+    it("spans earliest to latest transaction when allTime and no startDate", async () => {
       const ds = service["dataSource"] as unknown as { query: jest.Mock };
       ds.query = jest
         .fn()
-        // no endDate -> future-extension probe
-        .mockResolvedValueOnce([{ max_date: null }])
-        // allTime -> earliest-transaction probe
-        .mockResolvedValueOnce([{ min_date: "2015-06-01" }])
+        // allTime -> combined MIN/MAX probe (no separate future-extension probe)
+        .mockResolvedValueOnce([
+          { min_date: "2015-06-01", max_date: "2021-03-15" },
+        ])
         // main rows query
         .mockResolvedValueOnce([]);
       await service.getDailyBalances(
@@ -3085,16 +3085,18 @@ describe("AccountsService", () => {
         ["a1"],
         true,
       );
-      const params = ds.query.mock.calls[2][1];
-      expect(params[2]).toBe("2015-06-01");
+      // Only the MIN/MAX probe and the main query run in all-time mode.
+      expect(ds.query).toHaveBeenCalledTimes(2);
+      const params = ds.query.mock.calls[1][1];
+      expect(params[2]).toBe("2015-06-01"); // start = earliest transaction
+      expect(params[3]).toBe("2021-03-15"); // end clamped to latest transaction
     });
 
-    it("falls back to the one-year default when allTime finds no transactions", async () => {
+    it("falls back to the one-year default and today when allTime finds no transactions", async () => {
       const ds = service["dataSource"] as unknown as { query: jest.Mock };
       ds.query = jest
         .fn()
-        .mockResolvedValueOnce([{ max_date: null }])
-        .mockResolvedValueOnce([{ min_date: null }])
+        .mockResolvedValueOnce([{ min_date: null, max_date: null }])
         .mockResolvedValueOnce([]);
       await service.getDailyBalances(
         "user-1",
@@ -3103,8 +3105,9 @@ describe("AccountsService", () => {
         ["a1"],
         true,
       );
-      const params = ds.query.mock.calls[2][1];
-      expect(params[2]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      const params = ds.query.mock.calls[1][1];
+      expect(params[2]).toMatch(/^\d{4}-\d{2}-\d{2}$/); // start = one year ago
+      expect(params[3]).toMatch(/^\d{4}-\d{2}-\d{2}$/); // end = today (not clamped)
     });
 
     it("does not probe for earliest transaction when startDate is given", async () => {
