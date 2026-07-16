@@ -463,7 +463,8 @@
       "saveFailed": "Échec de l'enregistrement du scénario",
       "deleteFailed": "Échec de la suppression du scénario",
       "deleteTitle": "Supprimer le scénario",
-      "deleteMessage": "Supprimer le scénario \"{name}\" ? Cette action est irréversible."
+      "deleteMessage": "Supprimer le scénario \"{name}\" ? Cette action est irréversible.",
+      "loadFailed": "Impossible de charger les scénarios enregistrés. Ils sont toujours stockés — rechargez la page pour réessayer."
     },
     "pastImpact": {
       "title": "Impact des remboursements anticipés effectués",
@@ -539,7 +540,8 @@
       "detectTitle": "Détecter les changements de taux",
       "detectMessage": "Cela analyse votre historique de paiements et remplace les entrées détectées précédemment. Les entrées que vous avez ajoutées ou modifiées vous-même sont conservées.",
       "detectedToast": "{count, plural, =0 {Aucun nouveau changement de taux détecté} one {# changement de taux détecté} other {# changements de taux détectés}}",
-      "detectFailed": "Impossible de détecter les changements de taux à partir de l'historique de paiements"
+      "detectFailed": "Impossible de détecter les changements de taux à partir de l'historique de paiements",
+      "loadFailed": "Impossible de charger l'historique des taux. Il est toujours stocké — rechargez la page pour réessayer."
     },
     "recognitionSettings": {
       "title": "Reconnaissance des paiements"

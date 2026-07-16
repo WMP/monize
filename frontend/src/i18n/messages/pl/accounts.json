@@ -463,7 +463,8 @@
       "saveFailed": "Nie udało się zapisać scenariusza",
       "deleteFailed": "Nie udało się usunąć scenariusza",
       "deleteTitle": "Usuń scenariusz",
-      "deleteMessage": "Usunąć scenariusz \"{name}\"? Tej operacji nie można cofnąć."
+      "deleteMessage": "Usunąć scenariusz \"{name}\"? Tej operacji nie można cofnąć.",
+      "loadFailed": "Nie udało się wczytać zapisanych scenariuszy. Nadal są zapisane — odśwież stronę, aby spróbować ponownie."
     },
     "pastImpact": {
       "title": "Wpływ dokonanych nadpłat",
@@ -539,7 +540,8 @@
       "detectTitle": "Wykryj zmiany oprocentowania",
       "detectMessage": "Analizuje to Twoją historię płatności i zastępuje wcześniej wykryte wpisy. Wpisy dodane lub edytowane przez Ciebie zostają zachowane.",
       "detectedToast": "{count, plural, =0 {Nie wykryto nowych zmian oprocentowania} one {# wykryta zmiana oprocentowania} few {# wykryte zmiany oprocentowania} many {# wykrytych zmian oprocentowania} other {# wykrytej zmiany oprocentowania}}",
-      "detectFailed": "Nie udało się wykryć zmian oprocentowania z historii płatności"
+      "detectFailed": "Nie udało się wykryć zmian oprocentowania z historii płatności",
+      "loadFailed": "Nie udało się wczytać historii oprocentowania. Nadal jest zapisana — odśwież stronę, aby spróbować ponownie."
     },
     "recognitionSettings": {
       "title": "Rozpoznawanie płatności"

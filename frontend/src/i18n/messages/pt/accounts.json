@@ -463,7 +463,8 @@
       "saveFailed": "Não foi possível guardar o cenário",
       "deleteFailed": "Não foi possível eliminar o cenário",
       "deleteTitle": "Eliminar cenário",
-      "deleteMessage": "Eliminar o cenário \"{name}\"? Esta ação não pode ser anulada."
+      "deleteMessage": "Eliminar o cenário \"{name}\"? Esta ação não pode ser anulada.",
+      "loadFailed": "Não foi possível carregar os cenários guardados. Continuam armazenados — recarregue a página para tentar novamente."
     },
     "pastImpact": {
       "title": "Impacto das amortizações antecipadas efetuadas",
@@ -539,7 +540,8 @@
       "detectTitle": "Detetar alterações de taxa",
       "detectMessage": "Isto analisa o seu histórico de pagamentos e substitui as entradas detetadas anteriormente. As entradas que adicionou ou editou manualmente são mantidas.",
       "detectedToast": "{count, plural, =0 {Nenhuma nova alteração de taxa detetada} one {# alteração de taxa detetada} other {# alterações de taxa detetadas}}",
-      "detectFailed": "Não foi possível detetar alterações de taxa a partir do histórico de pagamentos"
+      "detectFailed": "Não foi possível detetar alterações de taxa a partir do histórico de pagamentos",
+      "loadFailed": "Não foi possível carregar o histórico de taxas. Continua armazenado — recarregue a página para tentar novamente."
     },
     "recognitionSettings": {
       "title": "Reconhecimento de pagamentos"

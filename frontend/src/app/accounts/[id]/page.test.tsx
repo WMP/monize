@@ -193,6 +193,25 @@ describe('AccountDetailPage', () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
+  it('surfaces a scenarios/rate-history load failure instead of a silent empty list (issue: saved scenario "gone" but re-save hits 409)', async () => {
+    mockGetById.mockResolvedValue(makeAccount());
+    mockGetAllScenarios.mockRejectedValue(new Error('throttled'));
+    mockGetAllRateChanges.mockRejectedValue(new Error('throttled'));
+
+    await renderPage();
+
+    const toast = (await import('react-hot-toast')).default;
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringContaining("Couldn't load the saved scenarios"),
+    );
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringContaining("Couldn't load the rate history"),
+    );
+    // The page itself stays usable
+    expect(screen.getByText('Car Loan')).toBeInTheDocument();
+    expect(screen.getByText('Loan Schedule')).toBeInTheDocument();
+  });
+
   it('projects future payments from the account terms', async () => {
     mockGetById.mockResolvedValue(makeAccount());
 

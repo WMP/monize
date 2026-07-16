@@ -463,7 +463,8 @@
       "saveFailed": "Không thể lưu kịch bản",
       "deleteFailed": "Không thể xóa kịch bản",
       "deleteTitle": "Xóa kịch bản",
-      "deleteMessage": "Xóa kịch bản \"{name}\"? Không thể hoàn tác thao tác này."
+      "deleteMessage": "Xóa kịch bản \"{name}\"? Không thể hoàn tác thao tác này.",
+      "loadFailed": "Không thể tải các kịch bản đã lưu. Chúng vẫn được lưu trữ — tải lại trang để thử lại."
     },
     "pastImpact": {
       "title": "Tác động của các khoản trả trước hạn đã thực hiện",
@@ -539,7 +540,8 @@
       "detectTitle": "Phát hiện thay đổi lãi suất",
       "detectMessage": "Thao tác này phân tích lịch sử thanh toán của bạn và thay thế các mục đã phát hiện trước đó. Các mục bạn tự thêm hoặc chỉnh sửa sẽ được giữ lại.",
       "detectedToast": "{count, plural, =0 {Không phát hiện thay đổi lãi suất mới nào} one {Đã phát hiện # thay đổi lãi suất} other {Đã phát hiện # thay đổi lãi suất}}",
-      "detectFailed": "Không thể phát hiện thay đổi lãi suất từ lịch sử thanh toán"
+      "detectFailed": "Không thể phát hiện thay đổi lãi suất từ lịch sử thanh toán",
+      "loadFailed": "Không thể tải lịch sử lãi suất. Dữ liệu vẫn được lưu trữ — tải lại trang để thử lại."
     },
     "recognitionSettings": {
       "title": "Nhận dạng thanh toán"

@@ -168,4 +168,14 @@ describe('LoanOverpaymentSimulatorReport', () => {
 
     expect(screen.getByText('Try again')).toBeInTheDocument();
   });
+
+  it('shows the retryable error state when the scenarios request fails, instead of silently rendering none', async () => {
+    mockScenariosGetAll.mockRejectedValue(new Error('throttled'));
+
+    await renderReport();
+    await act(async () => {});
+
+    expect(screen.getByText('Try again')).toBeInTheDocument();
+    expect(screen.queryByTestId('loan-detail-view')).not.toBeInTheDocument();
+  });
 });

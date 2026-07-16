@@ -102,12 +102,21 @@ function AccountDetailContent() {
         setRateChanges([]);
         return;
       }
+      // Scenario/rate-history failures keep the page usable but must not be
+      // silent: an empty panel reads as "my saved scenarios are gone" while
+      // the rows still exist (a retried save then hits the duplicate-name 409).
       const [transactionsData, interestData, scenariosData, rateChangesData] =
         await Promise.all([
           fetchAllAccountTransactions(accountId),
           fetchLoanInterestTransactions(accountData),
-          loanScenariosApi.getAll(accountId).catch(() => [] as LoanScenario[]),
-          loanRateChangesApi.getAll(accountId).catch(() => [] as LoanRateChange[]),
+          loanScenariosApi.getAll(accountId).catch(() => {
+            toast.error(t('loanDetail.scenarios.loadFailed'));
+            return [] as LoanScenario[];
+          }),
+          loanRateChangesApi.getAll(accountId).catch(() => {
+            toast.error(t('loanDetail.rateHistory.loadFailed'));
+            return [] as LoanRateChange[];
+          }),
         ]);
       setAccount(accountData);
       setTransactions(transactionsData);
@@ -134,9 +143,11 @@ function AccountDetailContent() {
     try {
       setScenarios(await loanScenariosApi.getAll(accountId));
     } catch {
-      // The list stays as-is; individual actions already surfaced their error
+      // The list stays as-is (now stale, e.g. missing a just-saved scenario),
+      // so say so instead of letting the user think the save was lost.
+      toast.error(t('loanDetail.scenarios.loadFailed'));
     }
-  }, [accountId]);
+  }, [accountId, t]);
 
   // Rate-change mutations can move the account's current rate/payment, so the
   // account reloads together with the timeline.
@@ -149,9 +160,10 @@ function AccountDetailContent() {
       setAccount(accountData);
       setRateChanges(rateChangesData);
     } catch {
-      // The list stays as-is; individual actions already surfaced their error
+      // The list stays as-is (stale after the mutation), so say so.
+      toast.error(t('loanDetail.rateHistory.loadFailed'));
     }
-  }, [accountId]);
+  }, [accountId, t]);
 
   // Account types without a registered detail view land on their transaction
   // register instead.

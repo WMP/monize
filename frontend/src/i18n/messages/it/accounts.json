@@ -463,7 +463,8 @@
       "saveFailed": "Impossibile salvare lo scenario",
       "deleteFailed": "Impossibile eliminare lo scenario",
       "deleteTitle": "Elimina scenario",
-      "deleteMessage": "Eliminare lo scenario \"{name}\"? Questa operazione non può essere annullata."
+      "deleteMessage": "Eliminare lo scenario \"{name}\"? Questa operazione non può essere annullata.",
+      "loadFailed": "Impossibile caricare gli scenari salvati. Sono ancora memorizzati: ricarica la pagina per riprovare."
     },
     "pastImpact": {
       "title": "Impatto dei rimborsi anticipati effettuati",
@@ -539,7 +540,8 @@
       "detectTitle": "Rileva variazioni del tasso",
       "detectMessage": "Questa operazione analizza il tuo storico dei pagamenti e sostituisce le voci rilevate in precedenza. Le voci che hai aggiunto o modificato manualmente vengono conservate.",
       "detectedToast": "{count, plural, =0 {Nessuna nuova variazione del tasso rilevata} one {# variazione del tasso rilevata} other {# variazioni del tasso rilevate}}",
-      "detectFailed": "Impossibile rilevare le variazioni del tasso dallo storico dei pagamenti"
+      "detectFailed": "Impossibile rilevare le variazioni del tasso dallo storico dei pagamenti",
+      "loadFailed": "Impossibile caricare la cronologia dei tassi. È ancora memorizzata: ricarica la pagina per riprovare."
     },
     "recognitionSettings": {
       "title": "Riconoscimento dei pagamenti"

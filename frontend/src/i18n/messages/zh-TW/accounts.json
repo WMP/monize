@@ -463,7 +463,8 @@
       "saveFailed": "無法儲存情境",
       "deleteFailed": "無法刪除情境",
       "deleteTitle": "刪除情境",
-      "deleteMessage": "刪除情境 \"{name}\"？此操作無法復原。"
+      "deleteMessage": "刪除情境 \"{name}\"？此操作無法復原。",
+      "loadFailed": "無法載入已儲存的方案。它們仍然保存著——請重新載入頁面重試。"
     },
     "pastImpact": {
       "title": "已完成提前還款的影響",
@@ -539,7 +540,8 @@
       "detectTitle": "偵測利率變更",
       "detectMessage": "此操作會分析您的還款紀錄並取代先前偵測到的項目。您自己新增或編輯的項目將予以保留。",
       "detectedToast": "{count, plural, =0 {未偵測到新的利率變更} one {偵測到 # 項利率變更} other {偵測到 # 項利率變更}}",
-      "detectFailed": "無法從還款紀錄中偵測利率變更"
+      "detectFailed": "無法從還款紀錄中偵測利率變更",
+      "loadFailed": "無法載入利率歷史。資料仍然保存著——請重新載入頁面重試。"
     },
     "recognitionSettings": {
       "title": "付款識別"

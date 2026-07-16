@@ -463,7 +463,8 @@
       "saveFailed": "No se pudo guardar el escenario",
       "deleteFailed": "No se pudo eliminar el escenario",
       "deleteTitle": "Eliminar escenario",
-      "deleteMessage": "¿Eliminar el escenario \"{name}\"? Esta acción no se puede deshacer."
+      "deleteMessage": "¿Eliminar el escenario \"{name}\"? Esta acción no se puede deshacer.",
+      "loadFailed": "No se pudieron cargar los escenarios guardados. Siguen almacenados: recargue la página para volver a intentarlo."
     },
     "pastImpact": {
       "title": "Impacto de los pagos anticipados realizados",
@@ -539,7 +540,8 @@
       "detectTitle": "Detectar cambios de tasa",
       "detectMessage": "Esto analiza su historial de pagos y reemplaza las entradas detectadas anteriormente. Las entradas que añadió o editó usted mismo se conservan.",
       "detectedToast": "{count, plural, =0 {No se detectaron nuevos cambios de tasa} one {# cambio de tasa detectado} other {# cambios de tasa detectados}}",
-      "detectFailed": "No se pudieron detectar cambios de tasa a partir del historial de pagos"
+      "detectFailed": "No se pudieron detectar cambios de tasa a partir del historial de pagos",
+      "loadFailed": "No se pudo cargar el historial de tipos. Sigue almacenado: recargue la página para volver a intentarlo."
     },
     "recognitionSettings": {
       "title": "Reconocimiento de pagos"

@@ -70,8 +70,12 @@ export function LoanOverpaymentSimulatorReport() {
           selectedAccount
             ? fetchLoanInterestTransactions(selectedAccount)
             : Promise.resolve([] as Transaction[]),
-          loanScenariosApi.getAll(selectedAccountId).catch(() => [] as LoanScenario[]),
-          loanRateChangesApi.getAll(selectedAccountId).catch(() => [] as LoanRateChange[]),
+          // No silent fallback to []: a failed list here rendered saved
+          // scenarios as gone (while a re-save hits the duplicate-name 409).
+          // Let the failure surface through the report's error + retry state,
+          // exactly like a transactions failure on this surface.
+          loanScenariosApi.getAll(selectedAccountId),
+          loanRateChangesApi.getAll(selectedAccountId),
         ]);
       return { transactions, interestTransactions, scenarios, rateChanges };
     },

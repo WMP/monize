@@ -446,7 +446,8 @@
       "scheduledUpdateSkip": "Leave as-is",
       "scheduledUpdateAppliedToast": "Scheduled payment updated",
       "scheduledUpdateSkippedToast": "Scheduled payment left unchanged",
-      "scheduledUpdateFailed": "Could not update the scheduled payment"
+      "scheduledUpdateFailed": "Could not update the scheduled payment",
+      "loadFailed": "Couldn't load the rate history. It is still stored — reload the page to try again."
     },
     "recognitionSettings": {
       "title": "Payment recognition"
@@ -534,7 +535,8 @@
       "saveFailed": "Failed to save scenario",
       "deleteFailed": "Failed to delete scenario",
       "deleteTitle": "Delete Scenario",
-      "deleteMessage": "Delete the scenario \"{name}\"? This cannot be undone."
+      "deleteMessage": "Delete the scenario \"{name}\"? This cannot be undone.",
+      "loadFailed": "Couldn't load the saved scenarios. They are still stored — reload the page to try again."
     },
     "pastImpact": {
       "title": "Impact of Overpayments Made",
