@@ -420,14 +420,13 @@
       "goalSeek": {
         "title": "Hedef arama",
         "description": "Geriye doğru hesapla: hedefe ulaşmak için taksit başına ne kadar ek ödeme gerekir.",
-        "targetInterestLabel": "Hedef toplam faiz",
+        "targetInterestLabel": "Hedef faiz tasarrufu",
         "targetDateLabel": "Hedef kapanış ayı",
         "compute": "Hesapla",
-        "apply": "Uygula",
         "required": "Gereken ek ödeme: taksit başına {amount}",
-        "effect": "→ faiz {interest}, kapanış {date}",
+        "effect": "→ {interest} tasarruf, kapanış {date}",
         "alreadyMet": "Hiç ek ödeme yapmadan zaten karşılanıyor.",
-        "unreachableInterest": "Ulaşılamaz — çok büyük bir ek ödeme bile faizi o kadar düşüremez.",
+        "unreachableInterest": "Ulaşılamaz — çok büyük bir ek ödeme bile o kadar faiz tasarrufu sağlayamaz.",
         "unreachableDate": "Ulaşılamaz — bu ay, mümkün olan en erken kapanıştan daha önce."
       }
     },

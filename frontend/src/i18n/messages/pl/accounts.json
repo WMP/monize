@@ -420,14 +420,13 @@
       "goalSeek": {
         "title": "Szukanie celu",
         "description": "Od końca: ile nadpłaty na ratę, aby osiągnąć cel.",
-        "targetInterestLabel": "Docelowa suma odsetek",
+        "targetInterestLabel": "Docelowa oszczędność na odsetkach",
         "targetDateLabel": "Docelowy miesiąc spłaty",
         "compute": "Oblicz",
-        "apply": "Zastosuj",
         "required": "Potrzebna nadpłata: {amount} na ratę",
-        "effect": "→ odsetki {interest}, spłata {date}",
+        "effect": "→ oszczędza {interest}, spłata {date}",
         "alreadyMet": "Cel osiągnięty już bez nadpłat.",
-        "unreachableInterest": "Poza zasięgiem — nawet bardzo duża nadpłata nie obniży odsetek do tego poziomu.",
+        "unreachableInterest": "Poza zasięgiem — nawet bardzo duża nadpłata nie da tak dużej oszczędności na odsetkach.",
         "unreachableDate": "Poza zasięgiem — ten miesiąc jest wcześniejszy niż najwcześniejsza możliwa spłata."
       }
     },

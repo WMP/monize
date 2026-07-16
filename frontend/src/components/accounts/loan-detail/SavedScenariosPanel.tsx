@@ -9,6 +9,11 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { OverpaymentPlan, ScenarioComparison } from '@/lib/loan-schedule';
 import { loanScenariosApi, planToScenarioData, scenarioToPlan } from '@/lib/loan-scenarios';
+import {
+  BaselineOutcome,
+  ScenarioComparisonChart,
+  ScenarioOutcome,
+} from '@/components/accounts/loan-detail/ScenarioComparisonChart';
 import { LoanScenario } from '@/types/loan-scenario';
 import { getErrorMessage } from '@/lib/errors';
 import { exportToCsv } from '@/lib/csv-export';
@@ -26,6 +31,11 @@ interface SavedScenariosPanelProps {
   currencyCode: string;
   /** The simulator's current plan; enables saving when non-null */
   activePlan: OverpaymentPlan | null;
+  /** Outcomes for the comparison chart; the chart toggle only shows when
+   *  there are at least two (comparing one scenario has nothing to say). */
+  chartOutcomes?: ScenarioOutcome[];
+  /** No-overpayment baseline for the comparison chart's context marker */
+  chartBaseline?: BaselineOutcome | null;
   onLoad: (plan: OverpaymentPlan | null, scenario: LoanScenario) => void;
   onScenariosChanged: () => void;
 }
@@ -40,6 +50,8 @@ export function SavedScenariosPanel({
   comparisons,
   currencyCode,
   activePlan,
+  chartOutcomes = [],
+  chartBaseline = null,
   onLoad,
   onScenariosChanged,
 }: SavedScenariosPanelProps) {
@@ -56,6 +68,9 @@ export function SavedScenariosPanel({
   const [nameInput, setNameInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scenarioToDelete, setScenarioToDelete] = useState<LoanScenario | null>(null);
+  const [showChart, setShowChart] = useState(false);
+
+  const chartAvailable = chartOutcomes.length > 0 && chartBaseline !== null;
 
   const openSave = () => {
     setNameInput('');
@@ -180,6 +195,18 @@ export function SavedScenariosPanel({
             title={tc('csvDownload.downloadAsCsv', { filename: t('loanDetail.scenarios.title') })}
             disabled={scenarios.length === 0}
           />
+          {chartAvailable && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowChart((v) => !v)}
+              aria-expanded={showChart}
+            >
+              {showChart
+                ? t('loanDetail.scenarioChart.hide')
+                : t('loanDetail.scenarioChart.show')}
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={openSave} disabled={!activePlan}>
             {t('loanDetail.scenarios.saveCurrent')}
           </Button>
@@ -257,6 +284,14 @@ export function SavedScenariosPanel({
             </tbody>
           </table>
         </div>
+      )}
+
+      {chartAvailable && showChart && chartBaseline && (
+        <ScenarioComparisonChart
+          outcomes={chartOutcomes}
+          baseline={chartBaseline}
+          currencyCode={currencyCode}
+        />
       )}
 
       <Modal isOpen={nameModal !== null} onClose={() => setNameModal(null)} maxWidth="sm">

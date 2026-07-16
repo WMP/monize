@@ -1,6 +1,29 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import type { ReactNode } from 'react';
 import { render, screen } from '@/test/render';
 import { ScenarioComparisonChart, ScenarioOutcome } from './ScenarioComparisonChart';
+
+// Recharts needs a real layout; stub it so the chart renders deterministically
+// in jsdom. Lines expose their legend name so the arcs are countable.
+vi.mock('recharts', () => ({
+  ResponsiveContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  LineChart: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Line: ({ name }: { name: string }) => <div data-testid="chart-line">{name}</div>,
+  XAxis: () => null,
+  YAxis: () => null,
+  CartesianGrid: () => null,
+  Legend: () => null,
+  Tooltip: ({ content }: { content: (props: unknown) => ReactNode }) => (
+    <div data-testid="tooltip">
+      {content({
+        active: true,
+        payload: [{ dataKey: 's1' }, { dataKey: 'baseline' }],
+        label: 'Jan 2028',
+      })}
+      {content({ active: false, payload: [], label: '' })}
+    </div>
+  ),
+}));
 
 const outcomes: ScenarioOutcome[] = [
   {
@@ -24,7 +47,7 @@ const outcomes: ScenarioOutcome[] = [
 const baseline = { payoffDate: '2040-01-15' };
 
 describe('ScenarioComparisonChart', () => {
-  it('draws an arc per scenario labelled with all three figures', () => {
+  it('draws a baseline marker and an arc per scenario, named with the overpayment', () => {
     render(
       <ScenarioComparisonChart
         outcomes={outcomes}
@@ -33,23 +56,32 @@ describe('ScenarioComparisonChart', () => {
       />,
     );
 
-    expect(screen.getByText('Scenario comparison')).toBeInTheDocument();
-    expect(screen.getAllByTestId('scenario-arc')).toHaveLength(2);
+    const lines = screen.getAllByTestId('chart-line');
+    // Baseline zero-line + one parabola per scenario
+    expect(lines).toHaveLength(3);
+    expect(lines.map((l) => l.textContent).join('|')).toMatch(/No overpayments/);
+    expect(screen.getByText(/Aggressive · \+.*1,500.*\/ payment/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Moderate · \+.*500.*\/ payment \+ 2 lump sums/),
+    ).toBeInTheDocument();
+  });
 
-    // Apex labels: scenario name + the extra paid per installment (with lump
-    // sums when present); the legend restates them, hence getAllByText.
-    expect(screen.getAllByText('Aggressive').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/\+.*1,500.*\/ payment/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/\+.*500.*\/ payment \+ 2 lump sums/).length).toBeGreaterThan(0);
+  it('shows the real interest saved and payoff date in the tooltip', () => {
+    render(
+      <ScenarioComparisonChart
+        outcomes={outcomes}
+        baseline={baseline}
+        currencyCode="PLN"
+      />,
+    );
 
-    // Interest saved at the apex and the payoff date at the arc's foot
-    expect(screen.getAllByText(/30,000/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/15,000/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Jun 2030').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Mar 2035').length).toBeGreaterThan(0);
-
-    // The no-overpayment baseline is a marker at the original payoff date
-    expect(screen.getByText(/No overpayments/)).toHaveTextContent('Jan 2040');
+    // The tooltip lists only the hovered series (s1) with its true figures,
+    // not the interpolated arc height.
+    const tooltip = screen.getByTestId('tooltip');
+    expect(tooltip).toHaveTextContent(/Aggressive/);
+    expect(tooltip).toHaveTextContent(/30,000/);
+    expect(tooltip).toHaveTextContent('Jun 2030');
+    expect(tooltip).not.toHaveTextContent(/Moderate/);
   });
 
   it('labels a scenario that never pays off within the projection', () => {
@@ -61,6 +93,6 @@ describe('ScenarioComparisonChart', () => {
       />,
     );
 
-    expect(screen.getAllByText('Beyond projection').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('tooltip')).toHaveTextContent('Beyond projection');
   });
 });

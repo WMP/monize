@@ -492,14 +492,13 @@
       "goalSeek": {
         "title": "[XX-Goal seek-XX]",
         "description": "[XX-Work backwards: how much extra per payment to hit a target.-XX]",
-        "targetInterestLabel": "[XX-Target total interest-XX]",
+        "targetInterestLabel": "[XX-Target interest savings-XX]",
         "targetDateLabel": "[XX-Target payoff month-XX]",
         "compute": "[XX-Calculate-XX]",
-        "apply": "[XX-Apply-XX]",
         "required": "[XX-Extra needed: {amount} per payment-XX]",
-        "effect": "[XX-→ interest {interest}, payoff {date}-XX]",
+        "effect": "[XX-→ saves {interest}, payoff {date}-XX]",
         "alreadyMet": "[XX-Already met without any overpayment.-XX]",
-        "unreachableInterest": "[XX-Out of reach — even a very large overpayment cannot lower the interest that far.-XX]",
+        "unreachableInterest": "[XX-Out of reach — even a very large overpayment cannot save that much interest.-XX]",
         "unreachableDate": "[XX-Out of reach — that month is earlier than the soonest possible payoff.-XX]"
       }
     },

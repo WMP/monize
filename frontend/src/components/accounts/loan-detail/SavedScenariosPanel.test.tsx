@@ -36,6 +36,10 @@ vi.mock('@/hooks/useNumberFormat', () => ({
   }),
 }));
 
+vi.mock('@/components/accounts/loan-detail/ScenarioComparisonChart', () => ({
+  ScenarioComparisonChart: () => <div data-testid="scenario-chart" />,
+}));
+
 function makeScenario(overrides: Partial<LoanScenario> = {}): LoanScenario {
   return {
     id: 'scenario-1',
@@ -140,6 +144,28 @@ describe('SavedScenariosPanel', () => {
     expect(
       screen.getByRole('button', { name: 'Download Saved Scenarios as CSV' }),
     ).toBeDisabled();
+  });
+
+  it('shows the chart toggle next to Save current and reveals the chart on click', async () => {
+    renderPanel({
+      chartOutcomes: [
+        { id: 's1', name: 'A', recurringExtra: 100, lumpSumCount: 0, interestSaved: 1000, payoffDate: '2030-01-01' },
+        { id: 's2', name: 'B', recurringExtra: 200, lumpSumCount: 0, interestSaved: 2000, payoffDate: '2029-01-01' },
+      ],
+      chartBaseline: { payoffDate: '2032-01-01' },
+    });
+
+    expect(screen.queryByTestId('scenario-chart')).not.toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByText('Show scenario comparison chart'));
+    });
+    expect(screen.getByTestId('scenario-chart')).toBeInTheDocument();
+    expect(screen.getByText('Hide scenario comparison chart')).toBeInTheDocument();
+  });
+
+  it('offers no chart toggle without chart data', () => {
+    renderPanel();
+    expect(screen.queryByText('Show scenario comparison chart')).not.toBeInTheDocument();
   });
 
   it('disables saving when no plan is active', () => {

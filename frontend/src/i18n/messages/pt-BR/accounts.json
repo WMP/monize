@@ -420,14 +420,13 @@
       "goalSeek": {
         "title": "Busca de meta",
         "description": "Calcule de trás para frente: quanto extra por parcela para atingir uma meta.",
-        "targetInterestLabel": "Juros totais desejados",
+        "targetInterestLabel": "Economia de juros desejada",
         "targetDateLabel": "Mês de quitação desejado",
         "compute": "Calcular",
-        "apply": "Aplicar",
         "required": "Extra necessário: {amount} por parcela",
-        "effect": "→ juros {interest}, quitação {date}",
+        "effect": "→ economiza {interest}, quitação {date}",
         "alreadyMet": "Já alcançado sem nenhum pagamento extra.",
-        "unreachableInterest": "Fora de alcance — nem um pagamento extra muito grande consegue reduzir tanto os juros.",
+        "unreachableInterest": "Fora de alcance — nem um pagamento extra muito grande consegue economizar tantos juros.",
         "unreachableDate": "Fora de alcance — esse mês é anterior à quitação mais cedo possível."
       }
     },

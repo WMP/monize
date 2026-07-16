@@ -420,14 +420,13 @@
       "goalSeek": {
         "title": "Tìm mục tiêu",
         "description": "Tính ngược: cần trả thêm bao nhiêu mỗi kỳ để đạt mục tiêu.",
-        "targetInterestLabel": "Tổng lãi mục tiêu",
+        "targetInterestLabel": "Mục tiêu tiết kiệm lãi",
         "targetDateLabel": "Tháng tất toán mục tiêu",
         "compute": "Tính",
-        "apply": "Áp dụng",
         "required": "Cần trả thêm: {amount} mỗi kỳ",
-        "effect": "→ lãi {interest}, tất toán {date}",
+        "effect": "→ tiết kiệm {interest}, tất toán {date}",
         "alreadyMet": "Đã đạt được mà không cần trả thêm.",
-        "unreachableInterest": "Ngoài tầm với — khoản trả thêm rất lớn cũng không thể giảm lãi đến mức đó.",
+        "unreachableInterest": "Ngoài tầm với — khoản trả thêm rất lớn cũng không thể tiết kiệm được nhiều lãi đến vậy.",
         "unreachableDate": "Ngoài tầm với — tháng đó sớm hơn thời điểm tất toán sớm nhất có thể."
       }
     },

@@ -420,14 +420,13 @@
       "goalSeek": {
         "title": "ゴールシーク",
         "description": "逆算します:目標を達成するには1回あたりいくら追加返済が必要か。",
-        "targetInterestLabel": "目標の利息総額",
+        "targetInterestLabel": "目標の利息節約額",
         "targetDateLabel": "目標の完済月",
         "compute": "計算",
-        "apply": "適用",
         "required": "必要な追加返済:1回あたり {amount}",
-        "effect": "→ 利息 {interest}、完済 {date}",
+        "effect": "→ {interest} 節約、完済 {date}",
         "alreadyMet": "追加返済なしで既に達成しています。",
-        "unreachableInterest": "達成不可 — どれほど大きな追加返済でも利息をそこまで下げられません。",
+        "unreachableInterest": "達成不可 — どれほど大きな追加返済でもそこまで利息を節約できません。",
         "unreachableDate": "達成不可 — その月は最短の完済時期より前です。"
       }
     },

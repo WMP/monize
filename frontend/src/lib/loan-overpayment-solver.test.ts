@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { LoanScheduleInput, generateLoanSchedule } from './loan-schedule';
 import {
-  solveRecurringForTargetInterest,
+  solveRecurringForInterestSavings,
   solveRecurringForPayoffMonth,
+  solveRecurringForTargetInterest,
 } from './loan-overpayment-solver';
 
 function baseInput(overrides: Partial<LoanScheduleInput> = {}): LoanScheduleInput {
@@ -38,6 +39,36 @@ describe('solveRecurringForTargetInterest', () => {
 
   it('returns unreachable when even the maximum extra cannot get interest that low', () => {
     const solved = solveRecurringForTargetInterest(baseInput(), 1);
+    expect(solved.status).toBe('unreachable');
+    expect(solved.amount).toBeNull();
+    expect(solved.interestSaved).toBeNull();
+  });
+});
+
+describe('solveRecurringForInterestSavings', () => {
+  it('finds a recurring extra that saves at least the target vs the baseline', () => {
+    const target = baseline.totalInterest / 2;
+    const solved = solveRecurringForInterestSavings(baseInput(), target);
+
+    expect(solved.status).toBe('ok');
+    expect(solved.amount).toBeGreaterThan(0);
+    expect(solved.interestSaved).toBeGreaterThanOrEqual(target - 0.5);
+    // The savings reported are the baseline-vs-result difference.
+    expect(solved.interestSaved).toBeCloseTo(
+      baseline.totalInterest - solved.result!.totalInterest,
+      2,
+    );
+  });
+
+  it('returns already-met for a zero savings target', () => {
+    const solved = solveRecurringForInterestSavings(baseInput(), 0);
+    expect(solved.status).toBe('already-met');
+    expect(solved.amount).toBe(0);
+    expect(solved.interestSaved).toBe(0);
+  });
+
+  it('returns unreachable when the savings asked for exceed the total interest', () => {
+    const solved = solveRecurringForInterestSavings(baseInput(), baseline.totalInterest);
     expect(solved.status).toBe('unreachable');
     expect(solved.amount).toBeNull();
   });

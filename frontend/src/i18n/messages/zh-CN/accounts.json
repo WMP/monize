@@ -420,14 +420,13 @@
       "goalSeek": {
         "title": "目标求解",
         "description": "反向计算:每期需额外还多少才能达到目标。",
-        "targetInterestLabel": "目标利息总额",
+        "targetInterestLabel": "目标利息节省额",
         "targetDateLabel": "目标还清月份",
         "compute": "计算",
-        "apply": "应用",
         "required": "所需额外还款:每期 {amount}",
-        "effect": "→ 利息 {interest},还清 {date}",
+        "effect": "→ 节省 {interest},还清 {date}",
         "alreadyMet": "无需任何额外还款即已达成。",
-        "unreachableInterest": "无法达成——即使非常大的额外还款也无法把利息降到这么低。",
+        "unreachableInterest": "无法达成——即使非常大的额外还款也无法节省这么多利息。",
         "unreachableDate": "无法达成——该月份早于最早可能的还清时间。"
       }
     },

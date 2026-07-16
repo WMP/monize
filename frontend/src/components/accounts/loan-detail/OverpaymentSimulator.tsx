@@ -8,8 +8,8 @@ import { DateInput } from '@/components/ui/DateInput';
 import { LoanScheduleInput, OverpaymentMode, OverpaymentPlan } from '@/lib/loan-schedule';
 import {
   SolveResult,
+  solveRecurringForInterestSavings,
   solveRecurringForPayoffMonth,
-  solveRecurringForTargetInterest,
 } from '@/lib/loan-overpayment-solver';
 import { accountsApi } from '@/lib/accounts';
 import { getCurrencySymbol } from '@/lib/format';
@@ -131,7 +131,7 @@ export function OverpaymentSimulator({
   const [nextLumpSumId, setNextLumpSumId] = useState(0);
   const [detectedExtra, setDetectedExtra] = useState<number | null>(null);
 
-  // Goal-seek: solve the recurring extra for a target interest cost or payoff
+  // Goal-seek: solve the recurring extra for a target interest saving or payoff
   // month. Results are computed on demand (each solve runs the schedule engine).
   const [goalInterest, setGoalInterest] = useState<number | undefined>(undefined);
   const [goalDate, setGoalDate] = useState('');
@@ -201,17 +201,22 @@ export function OverpaymentSimulator({
 
   const runInterestSolve = () => {
     if (!projectionInput || goalInterest === undefined || goalInterest < 0) return;
-    setInterestSolve(solveRecurringForTargetInterest(projectionInput, goalInterest));
+    const solve = solveRecurringForInterestSavings(projectionInput, goalInterest);
+    setInterestSolve(solve);
+    if (solve.status === 'ok' && solve.amount != null) applySolvedAmount(solve.amount);
   };
 
   const runDateSolve = () => {
     if (!projectionInput || !goalDate) return;
-    setDateSolve(solveRecurringForPayoffMonth(projectionInput, goalDate));
+    const solve = solveRecurringForPayoffMonth(projectionInput, goalDate);
+    setDateSolve(solve);
+    if (solve.status === 'ok' && solve.amount != null) applySolvedAmount(solve.amount);
   };
 
-  // Apply a solved recurring extra to the simulator so the schedule, chart and
-  // savings cards recompute. SHORTEN_TERM with no date window matches how the
-  // solver modelled it.
+  // A solved recurring extra is applied to the simulator immediately -- like
+  // typing into "Extra per payment" -- so the schedule, chart and savings cards
+  // recompute without a separate Apply step. SHORTEN_TERM with no date window
+  // matches how the solver modelled it.
   const applySolvedAmount = (amount: number) => {
     update({
       ...form,
@@ -359,7 +364,7 @@ export function OverpaymentSimulator({
           </p>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Target total interest -> required recurring extra */}
+            {/* Target interest savings -> required recurring extra */}
             <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3">
               <div className="flex flex-wrap items-end gap-2">
                 <div className="flex-1 min-w-[10rem]">
@@ -382,7 +387,6 @@ export function OverpaymentSimulator({
               </div>
               <SolveResultLine
                 solve={interestSolve}
-                onApply={applySolvedAmount}
                 formatCurrency={formatCurrency}
                 formatDate={formatDate}
                 currencyCode={currencyCode}
@@ -411,7 +415,6 @@ export function OverpaymentSimulator({
               </div>
               <SolveResultLine
                 solve={dateSolve}
-                onApply={applySolvedAmount}
                 formatCurrency={formatCurrency}
                 formatDate={formatDate}
                 currencyCode={currencyCode}
@@ -428,17 +431,15 @@ export function OverpaymentSimulator({
 }
 
 /** Renders a goal-seek outcome: the required recurring extra with its effect
- *  and an Apply button, or an already-met / unreachable note. */
+ *  (already applied to the simulator), or an already-met / unreachable note. */
 function SolveResultLine({
   solve,
-  onApply,
   formatCurrency,
   formatDate,
   currencyCode,
   unreachableKey,
 }: {
   solve: SolveResult | null;
-  onApply: (amount: number) => void;
   formatCurrency: (amount: number, currency?: string) => string;
   formatDate: (date: string) => string;
   currencyCode: string;
@@ -467,17 +468,10 @@ function SolveResultLine({
       </span>
       <span className="text-gray-500 dark:text-gray-400">
         {t('loanDetail.simulator.goalSeek.effect', {
-          interest: formatCurrency(result.totalInterest, currencyCode),
+          interest: formatCurrency(solve.interestSaved ?? 0, currencyCode),
           date: result.payoffDate ? formatDate(result.payoffDate) : '—',
         })}
       </span>
-      <button
-        type="button"
-        className="font-medium text-blue-600 dark:text-blue-400 underline hover:no-underline"
-        onClick={() => solve.amount != null && onApply(solve.amount)}
-      >
-        {t('loanDetail.simulator.goalSeek.apply')}
-      </button>
     </div>
   );
 }

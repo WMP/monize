@@ -420,14 +420,13 @@
       "goalSeek": {
         "title": "Búsqueda de objetivo",
         "description": "Calcula hacia atrás: cuánto extra por cuota para alcanzar un objetivo.",
-        "targetInterestLabel": "Interés total objetivo",
+        "targetInterestLabel": "Ahorro de intereses objetivo",
         "targetDateLabel": "Mes objetivo de liquidación",
         "compute": "Calcular",
-        "apply": "Aplicar",
         "required": "Extra necesario: {amount} por cuota",
-        "effect": "→ intereses {interest}, liquidación {date}",
+        "effect": "→ ahorra {interest}, liquidación {date}",
         "alreadyMet": "Ya se cumple sin ningún pago extra.",
-        "unreachableInterest": "Inalcanzable: ni siquiera un pago extra muy grande puede reducir tanto los intereses.",
+        "unreachableInterest": "Inalcanzable: ni siquiera un pago extra muy grande puede ahorrar tantos intereses.",
         "unreachableDate": "Inalcanzable: ese mes es anterior a la liquidación más temprana posible."
       }
     },

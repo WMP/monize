@@ -420,14 +420,13 @@
       "goalSeek": {
         "title": "Pencarian target",
         "description": "Hitung mundur: berapa tambahan per angsuran untuk mencapai target.",
-        "targetInterestLabel": "Target total bunga",
+        "targetInterestLabel": "Target penghematan bunga",
         "targetDateLabel": "Target bulan pelunasan",
         "compute": "Hitung",
-        "apply": "Terapkan",
         "required": "Tambahan yang dibutuhkan: {amount} per angsuran",
-        "effect": "→ bunga {interest}, pelunasan {date}",
+        "effect": "→ menghemat {interest}, pelunasan {date}",
         "alreadyMet": "Sudah tercapai tanpa pembayaran ekstra.",
-        "unreachableInterest": "Tidak terjangkau — pembayaran ekstra yang sangat besar pun tidak dapat menurunkan bunga sejauh itu.",
+        "unreachableInterest": "Tidak terjangkau — pembayaran ekstra yang sangat besar pun tidak dapat menghemat bunga sebanyak itu.",
         "unreachableDate": "Tidak terjangkau — bulan itu lebih awal dari pelunasan tercepat yang mungkin."
       }
     },

@@ -420,14 +420,13 @@
       "goalSeek": {
         "title": "Zielwertsuche",
         "description": "Rückwärts rechnen: wie viel extra pro Rate, um ein Ziel zu erreichen.",
-        "targetInterestLabel": "Zielsumme der Zinsen",
+        "targetInterestLabel": "Ziel-Zinsersparnis",
         "targetDateLabel": "Ziel-Tilgungsmonat",
         "compute": "Berechnen",
-        "apply": "Anwenden",
         "required": "Benötigte Sondertilgung: {amount} pro Rate",
-        "effect": "→ Zinsen {interest}, Tilgung {date}",
+        "effect": "→ spart {interest}, Tilgung {date}",
         "alreadyMet": "Bereits ohne Sondertilgung erreicht.",
-        "unreachableInterest": "Unerreichbar — selbst eine sehr hohe Sondertilgung kann die Zinsen nicht so weit senken.",
+        "unreachableInterest": "Unerreichbar — selbst eine sehr hohe Sondertilgung kann nicht so viel Zinsen sparen.",
         "unreachableDate": "Unerreichbar — dieser Monat liegt vor dem frühestmöglichen Tilgungstermin."
       }
     },

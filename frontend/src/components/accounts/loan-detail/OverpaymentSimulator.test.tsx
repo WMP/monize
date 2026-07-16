@@ -169,7 +169,7 @@ describe('OverpaymentSimulator', () => {
     expect(screen.getByText('Overpayment Simulator')).toBeInTheDocument();
   });
 
-  it('solves the recurring extra for a target interest and applies it to the plan', async () => {
+  it('solves the recurring extra for a target interest saving and applies it immediately', async () => {
     const projectionInput = {
       startingBalance: 100000,
       annualRate: 5,
@@ -180,7 +180,7 @@ describe('OverpaymentSimulator', () => {
     const { onPlanChange } = await renderSimulator({ projectionInput });
 
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('Target total interest'), {
+      fireEvent.change(screen.getByLabelText('Target interest savings'), {
         target: { value: '10000' },
       });
     });
@@ -188,11 +188,10 @@ describe('OverpaymentSimulator', () => {
       fireEvent.click(screen.getAllByText('Calculate')[0]);
     });
 
+    // The solved extra is applied to the plan without a separate Apply step,
+    // exactly like typing into "Extra per payment".
     await waitFor(() => expect(screen.getByText(/Extra needed:/)).toBeInTheDocument());
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Apply'));
-    });
+    expect(screen.queryByText('Apply')).not.toBeInTheDocument();
 
     const lastPlan = onPlanChange.mock.calls.at(-1)?.[0];
     expect(lastPlan?.recurringExtra?.mode).toBe('SHORTEN_TERM');

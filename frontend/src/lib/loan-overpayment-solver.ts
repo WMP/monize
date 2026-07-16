@@ -27,6 +27,9 @@ export interface SolveResult {
   /** Schedule produced by `amount`; for already-met it is the no-overpayment
    *  baseline, and it is null when unreachable */
   result: LoanScheduleResult | null;
+  /** Interest saved vs the no-overpayment baseline by `result`; null when
+   *  unreachable */
+  interestSaved: number | null;
 }
 
 const ITERATIONS = 60;
@@ -73,11 +76,11 @@ export function solveRecurringForTargetInterest(
 ): SolveResult {
   const baseline = scheduleWith(base, 0, mode);
   if (baseline.totalInterest <= targetInterest) {
-    return { status: 'already-met', amount: 0, result: baseline };
+    return { status: 'already-met', amount: 0, result: baseline, interestSaved: 0 };
   }
   const hi0 = upperBound(base);
   if (scheduleWith(base, hi0, mode).totalInterest > targetInterest) {
-    return { status: 'unreachable', amount: null, result: null };
+    return { status: 'unreachable', amount: null, result: null, interestSaved: null };
   }
   let lo = 0;
   let hi = hi0;
@@ -87,7 +90,41 @@ export function solveRecurringForTargetInterest(
     else lo = mid;
   }
   const amount = roundUpTo(hi, step);
-  return { status: 'ok', amount, result: scheduleWith(base, amount, mode) };
+  const result = scheduleWith(base, amount, mode);
+  return {
+    status: 'ok',
+    amount,
+    result,
+    interestSaved: round2(baseline.totalInterest - result.totalInterest),
+  };
+}
+
+/**
+ * Smallest recurring extra that saves at least `targetSavings` of interest vs
+ * the no-overpayment baseline. This is the user-facing framing (the comparison
+ * cards and the scenario chart both speak in "interest saved"), implemented as
+ * a target-interest solve at `baseline - targetSavings`.
+ * - `already-met`: the target is zero or negative, so no extra is needed.
+ * - `unreachable`: even the maximum extra cannot save that much (the savings
+ *   asked for exceed what a near-immediate payoff would save).
+ */
+export function solveRecurringForInterestSavings(
+  base: LoanScheduleInput,
+  targetSavings: number,
+  mode: OverpaymentMode = 'SHORTEN_TERM',
+  step = 1,
+): SolveResult {
+  const baseline = scheduleWith(base, 0, mode);
+  return solveRecurringForTargetInterest(
+    base,
+    baseline.totalInterest - targetSavings,
+    mode,
+    step,
+  );
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 /**
@@ -109,11 +146,11 @@ export function solveRecurringForPayoffMonth(
 
   const baseline = scheduleWith(base, 0, mode);
   if (paysOffBy(baseline)) {
-    return { status: 'already-met', amount: 0, result: baseline };
+    return { status: 'already-met', amount: 0, result: baseline, interestSaved: 0 };
   }
   const hi0 = upperBound(base);
   if (!paysOffBy(scheduleWith(base, hi0, mode))) {
-    return { status: 'unreachable', amount: null, result: null };
+    return { status: 'unreachable', amount: null, result: null, interestSaved: null };
   }
   let lo = 0;
   let hi = hi0;
@@ -123,5 +160,11 @@ export function solveRecurringForPayoffMonth(
     else lo = mid;
   }
   const amount = roundUpTo(hi, step);
-  return { status: 'ok', amount, result: scheduleWith(base, amount, mode) };
+  const result = scheduleWith(base, amount, mode);
+  return {
+    status: 'ok',
+    amount,
+    result,
+    interestSaved: round2(baseline.totalInterest - result.totalInterest),
+  };
 }

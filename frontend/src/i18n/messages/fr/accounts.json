@@ -420,14 +420,13 @@
       "goalSeek": {
         "title": "Recherche d'objectif",
         "description": "Calcul inverse : combien de supplément par échéance pour atteindre un objectif.",
-        "targetInterestLabel": "Intérêts totaux cibles",
+        "targetInterestLabel": "Économie d'intérêts cible",
         "targetDateLabel": "Mois de remboursement cible",
         "compute": "Calculer",
-        "apply": "Appliquer",
         "required": "Supplément nécessaire : {amount} par échéance",
-        "effect": "→ intérêts {interest}, remboursement {date}",
+        "effect": "→ économise {interest}, remboursement {date}",
         "alreadyMet": "Objectif déjà atteint sans aucun remboursement anticipé.",
-        "unreachableInterest": "Hors de portée — même un très gros remboursement anticipé ne peut pas réduire autant les intérêts.",
+        "unreachableInterest": "Hors de portée — même un très gros remboursement anticipé ne peut pas économiser autant d'intérêts.",
         "unreachableDate": "Hors de portée — ce mois est antérieur au remboursement le plus tôt possible."
       }
     },

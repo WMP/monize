@@ -420,14 +420,13 @@
       "goalSeek": {
         "title": "Ricerca obiettivo",
         "description": "Calcolo a ritroso: quanto extra per rata per raggiungere un obiettivo.",
-        "targetInterestLabel": "Interessi totali obiettivo",
+        "targetInterestLabel": "Risparmio di interessi obiettivo",
         "targetDateLabel": "Mese di estinzione obiettivo",
         "compute": "Calcola",
-        "apply": "Applica",
         "required": "Extra necessario: {amount} per rata",
-        "effect": "→ interessi {interest}, estinzione {date}",
+        "effect": "→ risparmia {interest}, estinzione {date}",
         "alreadyMet": "Già raggiunto senza alcun pagamento extra.",
-        "unreachableInterest": "Irraggiungibile: nemmeno un pagamento extra molto grande può ridurre così tanto gli interessi.",
+        "unreachableInterest": "Irraggiungibile: nemmeno un pagamento extra molto grande può far risparmiare così tanti interessi.",
         "unreachableDate": "Irraggiungibile: quel mese è precedente alla prima estinzione possibile."
       }
     },

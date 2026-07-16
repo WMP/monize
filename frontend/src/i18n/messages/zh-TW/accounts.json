@@ -420,14 +420,13 @@
       "goalSeek": {
         "title": "目標搜尋",
         "description": "反向計算:每期需額外還多少才能達成目標。",
-        "targetInterestLabel": "目標利息總額",
+        "targetInterestLabel": "目標利息節省額",
         "targetDateLabel": "目標還清月份",
         "compute": "計算",
-        "apply": "套用",
         "required": "所需額外還款:每期 {amount}",
-        "effect": "→ 利息 {interest},還清 {date}",
+        "effect": "→ 節省 {interest},還清 {date}",
         "alreadyMet": "無需任何額外還款即已達成。",
-        "unreachableInterest": "無法達成——即使非常大的額外還款也無法把利息降到這麼低。",
+        "unreachableInterest": "無法達成——即使非常大的額外還款也無法節省這麼多利息。",
         "unreachableDate": "無法達成——該月份早於最早可能的還清時間。"
       }
     },
