@@ -10,6 +10,7 @@ import {
   buildLoanProjectionInput,
   deriveLoanPaymentHistory,
   fetchAllAccountTransactions,
+  fetchLoanInterestTransactions,
 } from '@/lib/loan-history';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { exportToCsv } from '@/lib/csv-export';
@@ -49,6 +50,7 @@ export function LoanAmortizationReport() {
   };
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [interestTransactions, setInterestTransactions] = useState<Transaction[]>([]);
   const [showAllRows, setShowAllRows] = useState(false);
   const { sortField, sortDirection, handleSort } = useSortableTable<AmortizationSortField>(
     'reports.loan-amortization.sort',
@@ -79,31 +81,40 @@ export function LoanAmortizationReport() {
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
 
-  // Load transactions from the loan account
+  // Load the loan account's transactions plus its separately-booked interest
+  // expenses, so the derived interest matches the loan detail page (see #893).
   useEffect(() => {
     const loadTransactions = async () => {
       if (!selectedAccountId) {
         setTransactions([]);
+        setInterestTransactions([]);
         return;
       }
 
+      const account = accounts.find((a) => a.id === selectedAccountId);
       try {
-        setTransactions(await fetchAllAccountTransactions(selectedAccountId));
+        const [txns, interest] = await Promise.all([
+          fetchAllAccountTransactions(selectedAccountId),
+          account ? fetchLoanInterestTransactions(account) : Promise.resolve([]),
+        ]);
+        setTransactions(txns);
+        setInterestTransactions(interest);
       } catch (error) {
         logger.error('Failed to load transactions:', error);
         setTransactions([]);
+        setInterestTransactions([]);
       }
     };
 
     loadTransactions();
-  }, [selectedAccountId]);
+  }, [selectedAccountId, accounts]);
 
   // Build payment history from actual transactions + projected future payments
   const paymentHistory = useMemo((): PaymentRow[] => {
     if (!selectedAccount) return [];
 
     // --- Historical payments from actual transactions ---
-    const history = deriveLoanPaymentHistory(selectedAccount, transactions);
+    const history = deriveLoanPaymentHistory(selectedAccount, transactions, [], interestTransactions);
     const payments: PaymentRow[] = history.events.map((event, index) => ({
       paymentNumber: index + 1,
       date: event.date,
@@ -133,7 +144,7 @@ export function LoanAmortizationReport() {
     }
 
     return payments;
-  }, [selectedAccount, transactions]);
+  }, [selectedAccount, transactions, interestTransactions]);
 
   const historicalCount = useMemo(() => paymentHistory.filter((r) => !r.isProjected).length, [paymentHistory]);
   const hasProjection = useMemo(() => paymentHistory.some((r) => r.isProjected), [paymentHistory]);
