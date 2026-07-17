@@ -72,10 +72,14 @@ export interface SupportBackupPreview {
 /**
  * A random multiplier in [1.1, 9.99] with 5 decimal places, never an integer,
  * matching the backend contract: > 1 (so nothing rounds to zero) and
- * non-integer (so it can't be trivially guessed from a round value).
+ * non-integer (so it can't be trivially guessed from a round value). Drawn
+ * from the Web Crypto API -- the multiplier is the factor hiding the user's
+ * real amounts, so it must not come from a predictable PRNG.
  */
 export function randomSupportMultiplier(): number {
-  const value = 1.1 + Math.random() * 8.89;
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  const value = 1.1 + (buf[0] / 2 ** 32) * 8.89;
   const rounded = Math.round(value * 1e5) / 1e5;
   return Number.isInteger(rounded) ? rounded + 0.12345 : rounded;
 }

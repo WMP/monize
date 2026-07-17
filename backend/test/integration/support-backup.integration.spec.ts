@@ -62,6 +62,15 @@ describe("Support backup (integration)", () => {
     await module?.close();
   });
 
+  // Columns that exist in the production schema (database/schema.sql) but not
+  // in the TypeORM entities. This suite's database is synchronized from the
+  // entities, so these legacy columns are absent HERE -- yet a real export
+  // (SELECT * against a schema.sql-provisioned database) still carries them,
+  // so the rules registry must keep classifying them.
+  const LEGACY_SCHEMA_ONLY_COLUMNS: Record<string, string[]> = {
+    transactions: ["is_cleared", "is_reconciled"],
+  };
+
   it("classifies every exported column (golden allowlist)", async () => {
     const exported = backupService.getBackedUpTableNames();
     for (const table of exported) {
@@ -76,14 +85,26 @@ describe("Support backup (integration)", () => {
       );
       const schemaColumns = rows.map((r) => r.column_name).sort();
       const ruleColumns = Object.keys(RULES[table] ?? {}).sort();
+      const legacyOnly = LEGACY_SCHEMA_ONLY_COLUMNS[table] ?? [];
 
       const unclassified = schemaColumns.filter(
         (c) => !ruleColumns.includes(c),
       );
-      const stale = ruleColumns.filter((c) => !schemaColumns.includes(c));
+      const stale = ruleColumns.filter(
+        (c) => !schemaColumns.includes(c) && !legacyOnly.includes(c),
+      );
+      // Keep the exception list honest: if an entity gains one of these
+      // columns back, the entry must be removed.
+      const obsoleteExceptions = legacyOnly.filter((c) =>
+        schemaColumns.includes(c),
+      );
 
       expect({ table, unclassified }).toEqual({ table, unclassified: [] });
       expect({ table, stale }).toEqual({ table, stale: [] });
+      expect({ table, obsoleteExceptions }).toEqual({
+        table,
+        obsoleteExceptions: [],
+      });
     }
   });
 
