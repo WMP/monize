@@ -1243,5 +1243,36 @@ describe("UsersService", () => {
       expect(r.deleted.categories).toBe(0);
       expect(r.deleted.exchangeRates).toBe(0);
     });
+
+    it("deletes scheduled transactions before securities (investment_security_id FK)", async () => {
+      const hashedPassword = await bcrypt.hash("CorrectPass123!", 10);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        passwordHash: hashedPassword,
+      });
+
+      await service.deleteData("user-1", {
+        password: "CorrectPass123!",
+      });
+
+      const sqls = mockQueryRunner.query.mock.calls.map(
+        (call: unknown[]) => call[0] as string,
+      );
+      const scheduledIndex = sqls.findIndex((sql) =>
+        sql.includes("DELETE FROM scheduled_transactions WHERE"),
+      );
+      const splitsIndex = sqls.findIndex((sql) =>
+        sql.includes("DELETE FROM scheduled_transaction_splits"),
+      );
+      const securitiesIndex = sqls.findIndex((sql) =>
+        sql.includes("DELETE FROM securities"),
+      );
+
+      expect(scheduledIndex).toBeGreaterThan(-1);
+      expect(splitsIndex).toBeGreaterThan(-1);
+      expect(securitiesIndex).toBeGreaterThan(-1);
+      expect(scheduledIndex).toBeLessThan(securitiesIndex);
+      expect(splitsIndex).toBeLessThan(securitiesIndex);
+    });
   });
 });

@@ -512,6 +512,25 @@ export class UsersService {
     );
     deleted.securityPrices = result[1] ?? 0;
 
+    // Scheduled transactions (before securities: they reference investment_security_id)
+    result = await queryRunner.query(
+      `DELETE FROM scheduled_transaction_overrides WHERE scheduled_transaction_id IN
+         (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
+      [userId],
+    );
+
+    result = await queryRunner.query(
+      `DELETE FROM scheduled_transaction_splits WHERE scheduled_transaction_id IN
+         (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
+      [userId],
+    );
+
+    result = await queryRunner.query(
+      "DELETE FROM scheduled_transactions WHERE user_id = $1",
+      [userId],
+    );
+    deleted.scheduledTransactions = result[1] ?? 0;
+
     result = await queryRunner.query(
       "DELETE FROM securities WHERE user_id = $1",
       [userId],
@@ -588,25 +607,6 @@ export class UsersService {
       userId,
     ]);
     deleted.tags = result[1] ?? 0;
-
-    // Scheduled transactions
-    result = await queryRunner.query(
-      `DELETE FROM scheduled_transaction_overrides WHERE scheduled_transaction_id IN
-         (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
-      [userId],
-    );
-
-    result = await queryRunner.query(
-      `DELETE FROM scheduled_transaction_splits WHERE scheduled_transaction_id IN
-         (SELECT id FROM scheduled_transactions WHERE user_id = $1)`,
-      [userId],
-    );
-
-    result = await queryRunner.query(
-      "DELETE FROM scheduled_transactions WHERE user_id = $1",
-      [userId],
-    );
-    deleted.scheduledTransactions = result[1] ?? 0;
 
     // Monthly account balances
     result = await queryRunner.query(
