@@ -480,13 +480,28 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
   let rateChangeIndex = 0;
 
   const recurringExtra = overpayments?.recurringExtra;
-  // Extra applied on each loan payment: the amount as-is when no cadence is
-  // set, otherwise the per-frequency amount levelled across loan payments.
-  const recurringPerPayment = recurringExtra
-    ? recurringExtra.frequency
-      ? perPaymentExtraAmount(recurringExtra.amount, recurringExtra.frequency, frequency)
-      : recurringExtra.amount
+  // How the recurring extra lands on the schedule:
+  // - no frequency (legacy): the amount on every payment.
+  // - frequency at least as frequent as the loan's payments (e.g. weekly on a
+  //   monthly loan): levelled to an equivalent amount on every payment.
+  // - frequency sparser than the loan's payments (e.g. quarterly on a monthly
+  //   loan): the full amount as a real overpayment every Nth payment, so a
+  //   sparse cadence genuinely pays down less than the same total spread out.
+  const overPerYear = recurringExtra?.frequency
+    ? overpaymentsPerYear(recurringExtra.frequency)
     : 0;
+  const recurringIsSparse = overPerYear > 0 && overPerYear < periodsPerYear;
+  const recurringInterval = recurringIsSparse
+    ? Math.max(1, Math.round(periodsPerYear / overPerYear))
+    : 1;
+  const recurringPerHit = recurringExtra
+    ? recurringIsSparse
+      ? recurringExtra.amount
+      : recurringExtra.frequency
+        ? perPaymentExtraAmount(recurringExtra.amount, recurringExtra.frequency, frequency)
+        : recurringExtra.amount
+    : 0;
+  let recurringHits = 0;
   const lumpSums = [...(overpayments?.lumpSums ?? [])].sort((a, b) =>
     a.date.localeCompare(b.date),
   );
@@ -566,12 +581,17 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     let lowerApplied = false;
     if (
       recurringExtra &&
-      recurringPerPayment > 0 &&
+      recurringPerHit > 0 &&
       (!recurringExtra.startDate || recurringExtra.startDate <= rowDate) &&
       (!recurringExtra.endDate || rowDate <= recurringExtra.endDate)
     ) {
-      extraPrincipal += recurringPerPayment;
-      if (modeOf(recurringExtra.mode) === 'LOWER_INSTALLMENT') lowerApplied = true;
+      // Dense/levelled cadences hit every in-window payment (interval 1); a
+      // sparse cadence lands on the first in-window payment and every Nth after.
+      if (recurringHits % recurringInterval === 0) {
+        extraPrincipal += recurringPerHit;
+        if (modeOf(recurringExtra.mode) === 'LOWER_INSTALLMENT') lowerApplied = true;
+      }
+      recurringHits++;
     }
     // Lump sums land on the first payment on or after their date (sums dated
     // before the first payment attach to row 1)

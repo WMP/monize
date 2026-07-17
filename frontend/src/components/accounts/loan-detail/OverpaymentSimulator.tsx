@@ -10,7 +10,6 @@ import {
   OverpaymentFrequency,
   OverpaymentMode,
   OverpaymentPlan,
-  frequencyAmountFromPerPayment,
 } from '@/lib/loan-schedule';
 import {
   SolveStatus,
@@ -192,9 +191,12 @@ export function OverpaymentSimulator({
       if (next.simType === 'AMOUNT') {
         amount = next.amount;
       } else if (projectionInput) {
+        // The cadence goes to the solver, so it returns the amount per the
+        // chosen frequency (e.g. per quarter), not per payment.
         const window: SolveWindow = {
           ...(next.startDate ? { startDate: next.startDate } : {}),
           ...(next.endDate ? { endDate: next.endDate } : {}),
+          frequency: next.frequency,
         };
         const solve =
           next.simType === 'INTEREST'
@@ -207,11 +209,7 @@ export function OverpaymentSimulator({
         if (solve) {
           status = solve.status;
           if (solve.status === 'ok' && solve.amount != null) {
-            amount = frequencyAmountFromPerPayment(
-              solve.amount,
-              next.frequency,
-              projectionInput.frequency,
-            );
+            amount = solve.amount;
           }
         }
       }

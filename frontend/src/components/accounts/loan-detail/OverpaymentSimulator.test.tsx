@@ -79,8 +79,8 @@ describe('OverpaymentSimulator', () => {
 
     await act(async () => {
       fireEvent.change(screen.getByLabelText('Overpayment amount'), { target: { value: '150' } });
-      fireEvent.change(screen.getByLabelText('Starting'), { target: { value: '2026-08-01' } });
-      fireEvent.change(screen.getByLabelText('Until'), { target: { value: '2027-08-01' } });
+      fireEvent.change(screen.getByLabelText('Starting (optional)'), { target: { value: '2026-08-01' } });
+      fireEvent.change(screen.getByLabelText('Until (optional)'), { target: { value: '2027-08-01' } });
     });
 
     expect(onPlanChange).toHaveBeenLastCalledWith({
@@ -101,8 +101,8 @@ describe('OverpaymentSimulator', () => {
       fireEvent.change(screen.getByLabelText('Frequency'), { target: { value: 'ONE_OFF' } });
     });
     // One-off hides the recurring window and shows a single date field.
-    expect(screen.queryByLabelText('Starting')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Until')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Starting (optional)')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Until (optional)')).not.toBeInTheDocument();
 
     await act(async () => {
       fireEvent.change(screen.getByLabelText('Overpayment amount'), { target: { value: '5000' } });
@@ -203,7 +203,7 @@ describe('OverpaymentSimulator', () => {
       fireEvent.change(screen.getByLabelText('Target payoff month'), {
         target: { value: '2030-01-01' },
       });
-      fireEvent.change(screen.getByLabelText('Starting'), { target: { value: '2025-06-01' } });
+      fireEvent.change(screen.getByLabelText('Starting (optional)'), { target: { value: '2025-06-01' } });
     });
 
     const lastPlan = onPlanChange.mock.calls.at(-1)?.[0];
@@ -239,7 +239,7 @@ describe('OverpaymentSimulator', () => {
 
     expect(screen.getByLabelText('Overpayment amount')).toHaveValue('300.00');
     expect(screen.getByLabelText('Frequency')).toHaveValue('QUARTERLY');
-    expect(screen.getByLabelText('Starting')).toHaveValue('2026-01-01');
+    expect(screen.getByLabelText('Starting (optional)')).toHaveValue('2026-01-01');
   });
 
   it('applies an externally loaded one-off plan when the version changes', async () => {

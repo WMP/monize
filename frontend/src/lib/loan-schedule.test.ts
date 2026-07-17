@@ -690,19 +690,29 @@ describe('effectiveAnnualRateOn', () => {
 });
 
 describe('recurring extra frequency', () => {
-  it('levels a quarterly extra across a monthly loan (approximate cadence)', () => {
+  it('lands a sparse cadence as a real overpayment every Nth payment', () => {
     const base = baseInput({ startingBalance: 100000, paymentAmount: 600 });
-    // A quarterly 300 spreads to 100 per month; equal to a monthly 100.
+    // Quarterly on a monthly loan: the full 300 lands on payment 1, then every
+    // 3rd payment -- not levelled to 100 per month.
     const quarterly = generateLoanSchedule({
       ...base,
       overpayments: { recurringExtra: { amount: 300, frequency: 'QUARTERLY' } },
     });
-    const monthlyEquivalent = generateLoanSchedule({
+    expect(quarterly.rows[0].extraPrincipal).toBeCloseTo(300, 2);
+    expect(quarterly.rows[1].extraPrincipal).toBe(0);
+    expect(quarterly.rows[2].extraPrincipal).toBe(0);
+    expect(quarterly.rows[3].extraPrincipal).toBeCloseTo(300, 2);
+  });
+
+  it('levels a cadence denser than the loan payments across every payment', () => {
+    const base = baseInput({ startingBalance: 100000, paymentAmount: 600 });
+    // Weekly on a monthly loan is approximated: ~100 * 52/12 each month.
+    const weekly = generateLoanSchedule({
       ...base,
-      overpayments: { recurringExtra: { amount: 100, frequency: 'MONTHLY' } },
+      overpayments: { recurringExtra: { amount: 100, frequency: 'WEEKLY' } },
     });
-    expect(quarterly.totalInterest).toBeCloseTo(monthlyEquivalent.totalInterest, 2);
-    expect(quarterly.payoffDate).toBe(monthlyEquivalent.payoffDate);
+    expect(weekly.rows[0].extraPrincipal).toBeCloseTo((100 * 52) / 12, 2);
+    expect(weekly.rows[1].extraPrincipal).toBeCloseTo((100 * 52) / 12, 2);
   });
 
   it('treats an omitted frequency as a per-payment amount (legacy behaviour)', () => {

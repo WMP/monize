@@ -1,6 +1,7 @@
 import {
   LoanScheduleInput,
   LoanScheduleResult,
+  OverpaymentFrequency,
   OverpaymentMode,
   generateLoanSchedule,
 } from '@/lib/loan-schedule';
@@ -34,12 +35,14 @@ export interface SolveResult {
 
 const ITERATIONS = 60;
 
-/** Optional window that limits the recurring extra to a date range. When set,
- *  the solved amount only applies within [startDate, endDate], so a short
- *  window naturally makes tighter targets unreachable. */
+/** Optional constraints on the recurring extra being solved. A date range
+ *  limits when it applies (so a short window makes tighter targets
+ *  unreachable); a frequency sets its cadence, so the solved amount is the
+ *  per-cadence amount (e.g. per quarter) rather than per payment. */
 export interface SolveWindow {
   startDate?: string;
   endDate?: string;
+  frequency?: OverpaymentFrequency;
 }
 
 function scheduleWith(
