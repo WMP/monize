@@ -490,7 +490,8 @@
       "deleteTitle": "परिदृश्य हटाएँ",
       "deleteMessage": "परिदृश्य \"{name}\" हटाएँ? इसे पूर्ववत नहीं किया जा सकता।",
       "loadFailed": "सहेजे गए परिदृश्य लोड नहीं हो सके। वे अभी भी संग्रहीत हैं — पुनः प्रयास के लिए पृष्ठ फिर से लोड करें।",
-      "colMonthlyOverpayment": "मासिक अतिरिक्त भुगतान"
+      "colOverpayment": "अतिरिक्त भुगतान",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "परिदृश्य तुलना",

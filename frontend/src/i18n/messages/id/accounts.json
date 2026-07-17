@@ -490,7 +490,8 @@
       "deleteTitle": "Hapus Skenario",
       "deleteMessage": "Hapus skenario \"{name}\"? Tindakan ini tidak dapat dibatalkan.",
       "loadFailed": "Tidak dapat memuat skenario tersimpan. Skenario masih tersimpan — muat ulang halaman untuk mencoba lagi.",
-      "colMonthlyOverpayment": "Pembayaran ekstra bulanan"
+      "colOverpayment": "Pembayaran ekstra",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "Perbandingan skenario",

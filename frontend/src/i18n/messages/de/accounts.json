@@ -490,7 +490,8 @@
       "deleteTitle": "Szenario löschen",
       "deleteMessage": "Das Szenario \"{name}\" löschen? Dies kann nicht rückgängig gemacht werden.",
       "loadFailed": "Die gespeicherten Szenarien konnten nicht geladen werden. Sie sind weiterhin gespeichert — laden Sie die Seite neu, um es erneut zu versuchen.",
-      "colMonthlyOverpayment": "Monatliche Sondertilgung"
+      "colOverpayment": "Sondertilgung",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "Szenariovergleich",

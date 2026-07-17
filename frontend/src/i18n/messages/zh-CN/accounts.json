@@ -490,7 +490,8 @@
       "deleteTitle": "删除方案",
       "deleteMessage": "删除方案 \"{name}\"？此操作无法撤销。",
       "loadFailed": "无法加载已保存的方案。它们仍然保存着——请重新加载页面重试。",
-      "colMonthlyOverpayment": "每月额外还款"
+      "colOverpayment": "额外还款",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "方案对比",

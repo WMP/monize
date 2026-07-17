@@ -490,7 +490,8 @@
       "deleteTitle": "Eliminar escenario",
       "deleteMessage": "¿Eliminar el escenario \"{name}\"? Esta acción no se puede deshacer.",
       "loadFailed": "No se pudieron cargar los escenarios guardados. Siguen almacenados: recargue la página para volver a intentarlo.",
-      "colMonthlyOverpayment": "Amortización mensual"
+      "colOverpayment": "Amortización",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "Comparación de escenarios",

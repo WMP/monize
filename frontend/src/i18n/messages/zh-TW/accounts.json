@@ -490,7 +490,8 @@
       "deleteTitle": "刪除情境",
       "deleteMessage": "刪除情境 \"{name}\"？此操作無法復原。",
       "loadFailed": "無法載入已儲存的方案。它們仍然保存著——請重新載入頁面重試。",
-      "colMonthlyOverpayment": "每月額外還款"
+      "colOverpayment": "額外還款",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "方案比較",

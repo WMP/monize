@@ -490,7 +490,8 @@
       "deleteTitle": "시나리오 삭제",
       "deleteMessage": "시나리오 \"{name}\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
       "loadFailed": "저장된 시나리오를 불러오지 못했습니다. 데이터는 그대로 저장되어 있습니다. 페이지를 새로고침하여 다시 시도하세요.",
-      "colMonthlyOverpayment": "월 추가 상환액"
+      "colOverpayment": "추가 상환",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "시나리오 비교",

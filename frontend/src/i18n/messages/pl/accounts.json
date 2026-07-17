@@ -490,7 +490,8 @@
       "deleteTitle": "Usuń scenariusz",
       "deleteMessage": "Usunąć scenariusz \"{name}\"? Tej operacji nie można cofnąć.",
       "loadFailed": "Nie udało się wczytać zapisanych scenariuszy. Nadal są zapisane — odśwież stronę, aby spróbować ponownie.",
-      "colMonthlyOverpayment": "Nadpłata miesięczna"
+      "colOverpayment": "Nadpłata",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "Porównanie scenariuszy",

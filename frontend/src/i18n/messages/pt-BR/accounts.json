@@ -490,7 +490,8 @@
       "deleteTitle": "Excluir cenário",
       "deleteMessage": "Excluir o cenário \"{name}\"? Esta ação não pode ser desfeita.",
       "loadFailed": "Não foi possível carregar os cenários salvos. Eles continuam armazenados — recarregue a página para tentar novamente.",
-      "colMonthlyOverpayment": "Pagamento extra mensal"
+      "colOverpayment": "Pagamento extra",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "Comparação de cenários",

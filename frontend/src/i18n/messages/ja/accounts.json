@@ -490,7 +490,8 @@
       "deleteTitle": "シナリオを削除",
       "deleteMessage": "シナリオ \"{name}\" を削除しますか？この操作は元に戻せません。",
       "loadFailed": "保存済みシナリオを読み込めませんでした。データは保存されています。ページを再読み込みして再試行してください。",
-      "colMonthlyOverpayment": "毎月の繰上返済"
+      "colOverpayment": "繰上返済",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "シナリオ比較",

@@ -1,5 +1,16 @@
 import type { LoanScenario } from '@/types/loan-scenario';
-import type { ScenarioComparison } from '@/lib/loan-schedule';
+import type { OverpaymentFrequency, ScenarioComparison } from '@/lib/loan-schedule';
+
+/** i18n key for each overpayment frequency's label, shared across the scenario
+ *  summaries, table, chart and PDF so a saved cadence reads the same way. */
+export const FREQUENCY_LABEL_KEY: Record<OverpaymentFrequency, string> = {
+  ONE_OFF: 'loanDetail.simulator.frequencyOneOff',
+  WEEKLY: 'loanDetail.simulator.frequencyWeekly',
+  BIWEEKLY: 'loanDetail.simulator.frequencyBiweekly',
+  MONTHLY: 'loanDetail.simulator.frequencyMonthly',
+  QUARTERLY: 'loanDetail.simulator.frequencyQuarterly',
+  ANNUALLY: 'loanDetail.simulator.frequencyAnnually',
+};
 
 /**
  * Formatting hooks the labels need, passed in by the caller so the same
@@ -24,10 +35,16 @@ export function createScenarioLabels({
   const describeScenario = (scenario: LoanScenario): string => {
     const parts: string[] = [];
     if (scenario.recurringExtraAmount && scenario.recurringExtraAmount > 0) {
+      const freq = scenario.recurringExtraFrequency;
       parts.push(
-        t('loanDetail.scenarios.recurringSummary', {
-          amount: formatCurrency(scenario.recurringExtraAmount),
-        }),
+        freq && freq !== 'MONTHLY'
+          ? t('loanDetail.scenarios.overpaymentWithFrequency', {
+              amount: formatCurrency(scenario.recurringExtraAmount),
+              frequency: t(FREQUENCY_LABEL_KEY[freq]),
+            })
+          : t('loanDetail.scenarios.recurringSummary', {
+              amount: formatCurrency(scenario.recurringExtraAmount),
+            }),
       );
     }
     if (scenario.lumpSums.length > 0) {
@@ -38,10 +55,19 @@ export function createScenarioLabels({
     return parts.join(' + ') || t('loanDetail.scenarios.emptyScenario');
   };
 
-  const monthlyOverpaymentLabel = (scenario: LoanScenario): string =>
-    scenario.recurringExtraAmount && scenario.recurringExtraAmount > 0
-      ? formatCurrency(scenario.recurringExtraAmount, currencyCode)
-      : '—';
+  // The saved recurring overpayment with its cadence (e.g. "$300.00
+  // (Quarterly)"); a plain amount for a monthly/legacy cadence.
+  const overpaymentLabel = (scenario: LoanScenario): string => {
+    if (!scenario.recurringExtraAmount || scenario.recurringExtraAmount <= 0) return '—';
+    const amount = formatCurrency(scenario.recurringExtraAmount, currencyCode);
+    const freq = scenario.recurringExtraFrequency;
+    return freq && freq !== 'MONTHLY'
+      ? t('loanDetail.scenarios.overpaymentWithFrequency', {
+          amount,
+          frequency: t(FREQUENCY_LABEL_KEY[freq]),
+        })
+      : amount;
+  };
 
   const payoffLabel = (comparison: ScenarioComparison | null): string =>
     comparison
@@ -77,7 +103,7 @@ export function createScenarioLabels({
   ): { headers: string[]; rows: string[][] } => ({
     headers: [
       t('loanDetail.scenarios.nameLabel'),
-      t('loanDetail.scenarios.colMonthlyOverpayment'),
+      t('loanDetail.scenarios.colOverpayment'),
       t('loanDetail.scenarios.colDetails'),
       t('loanDetail.comparison.newPayoff'),
       t('loanDetail.comparison.timeSaved'),
@@ -87,7 +113,7 @@ export function createScenarioLabels({
       const comparison = comparisons.get(scenario.id) ?? null;
       return [
         scenario.name,
-        monthlyOverpaymentLabel(scenario),
+        overpaymentLabel(scenario),
         describeScenario(scenario),
         payoffLabel(comparison),
         timeSavedLabel(comparison),
@@ -98,7 +124,7 @@ export function createScenarioLabels({
 
   return {
     describeScenario,
-    monthlyOverpaymentLabel,
+    overpaymentLabel,
     payoffLabel,
     timeSavedLabel,
     interestSavedLabel,

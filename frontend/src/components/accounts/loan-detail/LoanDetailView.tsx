@@ -177,6 +177,7 @@ export function LoanDetailView({
         id: saved.id,
         name: saved.name,
         recurringExtra: saved.recurringExtraAmount,
+        recurringFrequency: saved.recurringExtraFrequency ?? undefined,
         lumpSumCount: saved.lumpSums.length,
         interestSaved: scenarioComparison.interestSaved,
         payoffDate: scenarioSchedule.payoffDate,

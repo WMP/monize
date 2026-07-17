@@ -490,7 +490,8 @@
       "deleteTitle": "Elimina scenario",
       "deleteMessage": "Eliminare lo scenario \"{name}\"? Questa operazione non può essere annullata.",
       "loadFailed": "Impossibile caricare gli scenari salvati. Sono ancora memorizzati: ricarica la pagina per riprovare.",
-      "colMonthlyOverpayment": "Versamento extra mensile"
+      "colOverpayment": "Versamento extra",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "Confronto scenari",

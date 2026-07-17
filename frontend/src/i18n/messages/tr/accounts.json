@@ -490,7 +490,8 @@
       "deleteTitle": "Senaryoyu Sil",
       "deleteMessage": "\"{name}\" senaryosu silinsin mi? Bu işlem geri alınamaz.",
       "loadFailed": "Kayıtlı senaryolar yüklenemedi. Hâlâ kayıtlılar — tekrar denemek için sayfayı yenileyin.",
-      "colMonthlyOverpayment": "Aylık ek ödeme"
+      "colOverpayment": "Ek ödeme",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "Senaryo karşılaştırması",

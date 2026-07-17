@@ -115,7 +115,7 @@ export function SavedScenariosPanel({
 
   const {
     describeScenario,
-    monthlyOverpaymentLabel,
+    overpaymentLabel,
     payoffLabel,
     timeSavedLabel,
     interestSavedLabel,
@@ -159,7 +159,7 @@ export function SavedScenariosPanel({
               <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
                 <th className={headerCell}>{t('loanDetail.scenarios.nameLabel')}</th>
                 <th className={`${headerCell} text-right`}>
-                  {t('loanDetail.scenarios.colMonthlyOverpayment')}
+                  {t('loanDetail.scenarios.colOverpayment')}
                 </th>
                 <th className={`${headerCell} text-right`}>
                   {t('loanDetail.comparison.newPayoff')}
@@ -187,7 +187,7 @@ export function SavedScenariosPanel({
                       </p>
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap text-gray-900 dark:text-gray-100">
-                      {monthlyOverpaymentLabel(scenario)}
+                      {overpaymentLabel(scenario)}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap text-purple-600 dark:text-purple-400">
                       {payoffLabel(comparison)}

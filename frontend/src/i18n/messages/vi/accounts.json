@@ -490,7 +490,8 @@
       "deleteTitle": "Xóa kịch bản",
       "deleteMessage": "Xóa kịch bản \"{name}\"? Không thể hoàn tác thao tác này.",
       "loadFailed": "Không thể tải các kịch bản đã lưu. Chúng vẫn được lưu trữ — tải lại trang để thử lại.",
-      "colMonthlyOverpayment": "Trả thêm hàng tháng"
+      "colOverpayment": "Trả thêm",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "So sánh kịch bản",

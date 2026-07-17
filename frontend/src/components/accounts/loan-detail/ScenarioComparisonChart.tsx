@@ -19,12 +19,16 @@ import { sanitizeFilename } from '@/lib/export-filename';
 import { ExportIconButton } from '@/components/ui/ExportIconButton';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import type { OverpaymentFrequency } from '@/lib/loan-schedule';
+import { FREQUENCY_LABEL_KEY } from '@/components/accounts/loan-detail/loan-scenario-labels';
 
 export interface ScenarioOutcome {
   id: string;
   name: string;
-  /** Extra paid on top of each installment; null when the scenario has none */
+  /** Recurring overpayment amount at its cadence; null when the scenario has none */
   recurringExtra: number | null;
+  /** Cadence of the recurring overpayment; undefined/MONTHLY reads as per payment */
+  recurringFrequency?: OverpaymentFrequency;
   /** Number of one-time lump sums in the scenario */
   lumpSumCount: number;
   /** Interest saved vs the no-overpayment baseline */
@@ -114,10 +118,16 @@ export function ScenarioComparisonChart({
   const overpaymentLabel = (o: ScenarioOutcome): string => {
     const parts: string[] = [];
     if (o.recurringExtra && o.recurringExtra > 0) {
+      const freq = o.recurringFrequency;
       parts.push(
-        t('loanDetail.scenarioChart.extraShort', {
-          amount: formatCurrency(o.recurringExtra, currencyCode),
-        }),
+        freq && freq !== 'MONTHLY'
+          ? t('loanDetail.scenarios.overpaymentWithFrequency', {
+              amount: formatCurrency(o.recurringExtra, currencyCode),
+              frequency: t(FREQUENCY_LABEL_KEY[freq]),
+            })
+          : t('loanDetail.scenarioChart.extraShort', {
+              amount: formatCurrency(o.recurringExtra, currencyCode),
+            }),
       );
     }
     if (o.lumpSumCount > 0) {

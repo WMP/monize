@@ -46,4 +46,21 @@ describe('createScenarioLabels', () => {
     const table = labels.comparisonTable([scenario], new Map([['s1', null]]));
     expect(table.rows[0].slice(3)).toEqual(['—', '—', '—']);
   });
+
+  it('reflects a non-monthly cadence in the overpayment label and summary', () => {
+    const quarterly = {
+      id: 's2',
+      name: 'Quarterly 300',
+      recurringExtraAmount: 300,
+      recurringExtraFrequency: 'QUARTERLY',
+      lumpSums: [],
+    } as unknown as LoanScenario;
+
+    expect(labels.overpaymentLabel(quarterly)).toBe(
+      'loanDetail.scenarios.overpaymentWithFrequency:$300.00,loanDetail.simulator.frequencyQuarterly',
+    );
+    expect(labels.describeScenario(quarterly)).toBe(
+      'loanDetail.scenarios.overpaymentWithFrequency:$300.00,loanDetail.simulator.frequencyQuarterly',
+    );
+  });
 });

@@ -559,7 +559,6 @@
       "renameTitle": "[XX-Rename Scenario-XX]",
       "nameLabel": "[XX-Scenario name-XX]",
       "colDetails": "[XX-Details-XX]",
-      "colMonthlyOverpayment": "[XX-Monthly overpayment-XX]",
       "recurringSummary": "[XX-{amount} extra per payment-XX]",
       "lumpSumSummary": "[XX-{count, plural, one {# lump sum} other {# lump sums}}-XX]",
       "emptyScenario": "[XX-No overpayments-XX]",
@@ -570,7 +569,9 @@
       "deleteFailed": "[XX-Failed to delete scenario-XX]",
       "deleteTitle": "[XX-Delete Scenario-XX]",
       "deleteMessage": "[XX-Delete the scenario \"{name}\"? This cannot be undone.-XX]",
-      "loadFailed": "[XX-Couldn't load the saved scenarios. They are still stored — reload the page to try again.-XX]"
+      "loadFailed": "[XX-Couldn't load the saved scenarios. They are still stored — reload the page to try again.-XX]",
+      "colOverpayment": "[XX-Overpayment-XX]",
+      "overpaymentWithFrequency": "[XX-{amount} ({frequency})-XX]"
     },
     "pastImpact": {
       "title": "[XX-Impact of Overpayments Made-XX]",

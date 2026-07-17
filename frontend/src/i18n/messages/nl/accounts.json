@@ -490,7 +490,8 @@
       "deleteTitle": "Scenario verwijderen",
       "deleteMessage": "Het scenario \"{name}\" verwijderen? Dit kan niet ongedaan worden gemaakt.",
       "loadFailed": "De opgeslagen scenario's konden niet worden geladen. Ze zijn nog opgeslagen — herlaad de pagina om het opnieuw te proberen.",
-      "colMonthlyOverpayment": "Maandelijkse extra aflossing"
+      "colOverpayment": "Extra aflossing",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "Scenariovergelijking",

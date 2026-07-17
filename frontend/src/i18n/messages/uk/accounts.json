@@ -490,7 +490,8 @@
       "deleteTitle": "Видалити сценарій",
       "deleteMessage": "Видалити сценарій \"{name}\"? Цю дію не можна скасувати.",
       "loadFailed": "Не вдалося завантажити збережені сценарії. Вони й далі збережені — оновіть сторінку, щоб спробувати ще раз.",
-      "colMonthlyOverpayment": "Щомісячний достроковий платіж"
+      "colOverpayment": "Достроковий платіж",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "Порівняння сценаріїв",

@@ -490,7 +490,8 @@
       "deleteTitle": "Supprimer le scénario",
       "deleteMessage": "Supprimer le scénario \"{name}\" ? Cette action est irréversible.",
       "loadFailed": "Impossible de charger les scénarios enregistrés. Ils sont toujours stockés — rechargez la page pour réessayer.",
-      "colMonthlyOverpayment": "Remboursement mensuel"
+      "colOverpayment": "Remboursement",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "Comparaison des scénarios",

@@ -490,7 +490,8 @@
       "deleteTitle": "Удалить сценарий",
       "deleteMessage": "Удалить сценарий \"{name}\"? Это действие нельзя отменить.",
       "loadFailed": "Не удалось загрузить сохранённые сценарии. Они по-прежнему сохранены — обновите страницу, чтобы повторить попытку.",
-      "colMonthlyOverpayment": "Ежемесячный досрочный платёж"
+      "colOverpayment": "Досрочный платёж",
+      "overpaymentWithFrequency": "{amount} ({frequency})"
     },
     "scenarioChart": {
       "title": "Сравнение сценариев",
