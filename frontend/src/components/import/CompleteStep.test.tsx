@@ -2,6 +2,45 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@/test/render';
 import { CompleteStep } from './CompleteStep';
 import { Account } from '@/types/account';
+import { ImportFileData } from '@/app/import/import-utils';
+
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+    replace: vi.fn(),
+    back: vi.fn(),
+    prefetch: vi.fn(),
+    refresh: vi.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+function createImportFile(
+  fileName: string,
+  selectedAccountId: string,
+  accountType = 'CHEQUING',
+): ImportFileData {
+  return {
+    fileName,
+    fileContent: '',
+    fileType: 'qif',
+    parsedData: {
+      accountType,
+      accountName: '',
+      transactionCount: 1,
+      categories: [],
+      transferAccounts: [],
+      securities: [],
+      dateRange: { start: '2024-01-01', end: '2024-01-31' },
+      detectedDateFormat: 'YYYY-MM-DD',
+      sampleDates: [],
+    },
+    selectedAccountId,
+    matchConfidence: 'exact',
+  };
+}
 
 vi.mock('@/lib/accounts', () => ({
   accountsApi: {
@@ -146,6 +185,120 @@ describe('CompleteStep', () => {
     ];
     render(<CompleteStep {...defaultProps} importFiles={importFiles} />);
     expect(screen.getByText(/View Investments/i)).toBeInTheDocument();
+  });
+
+  // --- View destination navigation (issue #911) ---
+
+  it('navigates to the just-imported account, not the last-viewed one', () => {
+    render(
+      <CompleteStep
+        {...defaultProps}
+        importFiles={[createImportFile('b.qif', 'acc-1')]}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /View Transactions/i }));
+    expect(mockPush).toHaveBeenCalledWith('/transactions?accountId=acc-1');
+  });
+
+  it('falls back to the selectedAccountId when importFiles is empty', () => {
+    render(<CompleteStep {...defaultProps} selectedAccountId="acc-1" />);
+    fireEvent.click(screen.getByRole('button', { name: /View Transactions/i }));
+    expect(mockPush).toHaveBeenCalledWith('/transactions?accountId=acc-1');
+  });
+
+  it('filters to every account touched by a bulk import', () => {
+    const accounts = [
+      createAccount({ id: 'acc-1', name: 'Chequing' }),
+      createAccount({ id: 'acc-2', name: 'Savings' }),
+    ];
+    render(
+      <CompleteStep
+        {...defaultProps}
+        accounts={accounts}
+        importResult={null}
+        isBulkImport
+        bulkImportResult={{
+          totalImported: 5, totalSkipped: 0, totalErrors: 0,
+          categoriesCreated: 0, accountsCreated: 0, payeesCreated: 0, securitiesCreated: 0,
+          fileResults: [],
+        }}
+        importFiles={[
+          createImportFile('checking.qif', 'acc-1'),
+          createImportFile('savings.qif', 'acc-2'),
+        ]}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /View Transactions/i }));
+    const url = mockPush.mock.calls[0][0] as string;
+    expect(url.startsWith('/transactions?')).toBe(true);
+    const params = new URLSearchParams(url.split('?')[1]);
+    expect(params.get('accountIds')).toBe('acc-1,acc-2');
+  });
+
+  it('deduplicates accounts when a bulk import targets one account twice', () => {
+    render(
+      <CompleteStep
+        {...defaultProps}
+        importResult={null}
+        isBulkImport
+        bulkImportResult={{
+          totalImported: 5, totalSkipped: 0, totalErrors: 0,
+          categoriesCreated: 0, accountsCreated: 0, payeesCreated: 0, securitiesCreated: 0,
+          fileResults: [],
+        }}
+        importFiles={[
+          createImportFile('jan.qif', 'acc-1'),
+          createImportFile('feb.qif', 'acc-1'),
+        ]}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /View Transactions/i }));
+    expect(mockPush).toHaveBeenCalledWith('/transactions?accountId=acc-1');
+  });
+
+  it('forces the Show Accounts filter to All for a closed target account', () => {
+    render(
+      <CompleteStep
+        {...defaultProps}
+        accounts={[createAccount({ id: 'acc-1', isClosed: true })]}
+        importFiles={[createImportFile('b.qif', 'acc-1')]}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /View Transactions/i }));
+    expect(mockPush).toHaveBeenCalledWith('/transactions?accountId=acc-1&accountStatus=all');
+  });
+
+  it('filters investments to the imported brokerage account', () => {
+    render(
+      <CompleteStep
+        {...defaultProps}
+        importFiles={[createImportFile('portfolio.qif', 'brokerage-1', 'INVESTMENT')]}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /View Investments/i }));
+    expect(mockPush).toHaveBeenCalledWith('/investments?accountId=brokerage-1');
+  });
+
+  it('filters to accounts created by a multi-account QIF import', () => {
+    render(
+      <CompleteStep
+        {...defaultProps}
+        importFiles={[]}
+        selectedAccountId=""
+        importResult={{
+          imported: 20, skipped: 0, errors: 0, errorMessages: [],
+          categoriesCreated: 0, accountsCreated: 2, payeesCreated: 0, securitiesCreated: 0,
+          createdMappings: {
+            categories: {},
+            accounts: { Chequing: 'acc-1' },
+            loans: {},
+            securities: {},
+          },
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /View Transactions/i }));
+    expect(mockPush).toHaveBeenCalledWith('/transactions?accountId=acc-1');
   });
 
   // --- Bulk import results ---
