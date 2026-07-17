@@ -27,7 +27,7 @@ A comprehensive personal finance management application built with NestJS and Ne
 
 <div align="center">
 
-### [**Live Demo**](https://monize-demo.laskonet.com) | [**Wiki**](https://github.com/kenlasko/monize/wiki)
+### [**Live Demo**](https://demo.monize.net) | [**Wiki**](https://github.com/kenlasko/monize/wiki)
 
 </div>
 
