@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { DateInput } from '@/components/ui/DateInput';
 import { JsonHighlight } from '@/components/ui/JsonHighlight';
+import { downloadBlob } from '@/lib/download';
 import {
   backupApi,
   randomSupportMultiplier,
@@ -35,13 +36,25 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
   const [enabledSections, setEnabledSections] = useState<Set<SupportBackupSection>>(
     new Set(SUPPORT_BACKUP_SECTIONS),
   );
-  const [multiplier, setMultiplier] = useState<number>(() => randomSupportMultiplier());
+  // Raw input string so typing intermediate states ('', '1.') doesn't fight
+  // a number round-trip; the numeric value is derived below.
+  const [multiplierText, setMultiplierText] = useState<string>(() =>
+    String(randomSupportMultiplier()),
+  );
   const [password, setPassword] = useState<string>(() => randomSupportPassword());
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [preview, setPreview] = useState<SupportBackupPreview | null>(null);
+  const [includePriceHistory, setIncludePriceHistory] = useState(false);
+  // The preview stores the input it was computed for; it is only rendered
+  // while that input still matches, so no handler has to remember to reset it.
+  const [preview, setPreview] = useState<{
+    key: string;
+    data: SupportBackupPreview;
+  } | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const multiplier = Number(multiplierText);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -65,10 +78,12 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
     accountIds: selectedAccountIds.length > 0 ? selectedAccountIds : undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
+    includePriceHistory,
     password,
   });
 
-  const invalidatePreview = () => setPreview(null);
+  const currentInputKey = JSON.stringify(buildInput());
+  const freshPreview = preview && preview.key === currentInputKey ? preview.data : null;
 
   const toggleSection = (section: SupportBackupSection) => {
     setEnabledSections((prev) => {
@@ -77,19 +92,12 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
       else next.add(section);
       return next;
     });
-    invalidatePreview();
   };
 
   const toggleAccount = (id: string) => {
     setSelectedAccountIds((prev) =>
       prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id],
     );
-    invalidatePreview();
-  };
-
-  const regenerateMultiplier = () => {
-    setMultiplier(randomSupportMultiplier());
-    invalidatePreview();
   };
 
   const multiplierValid =
@@ -101,7 +109,9 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
     if (!canRun) return;
     setIsPreviewing(true);
     try {
-      setPreview(await backupApi.supportExportPreview(buildInput()));
+      const input = buildInput();
+      const data = await backupApi.supportExportPreview(input);
+      setPreview({ key: JSON.stringify(input), data });
     } catch (err) {
       toast.error(getErrorMessage(err, t('previewFailed')));
     } finally {
@@ -113,17 +123,11 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
     if (!canRun) return;
     setIsGenerating(true);
     try {
-      const blob = await backupApi.supportExport(buildInput());
-      const url = URL.createObjectURL(blob);
+      const { blob, filename } = await backupApi.supportExport(buildInput());
+      // Prefer the server-chosen name; fall back to the same convention
+      // (always encrypted, so always the encrypted-envelope extension).
       const today = new Date().toISOString().slice(0, 10);
-      const link = document.createElement('a');
-      link.href = url;
-      // Always encrypted, so always the encrypted-envelope extension
-      link.download = `monize-support-backup-${today}.mzbe`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, filename ?? `monize-support-backup-${today}.mzbe`);
       toast.success(t('generatedToast'));
       onClose();
     } catch (err) {
@@ -166,6 +170,18 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
               </label>
             ))}
           </div>
+          <label className="mt-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={includePriceHistory}
+              onChange={() => setIncludePriceHistory((v) => !v)}
+              className="rounded border-gray-300 dark:border-gray-600"
+            />
+            {t('priceHistoryLabel')}
+          </label>
+          <p className="ml-6 text-xs text-gray-500 dark:text-gray-400">
+            {t('priceHistoryHint')}
+          </p>
         </fieldset>
 
         {/* Account scope */}
@@ -208,18 +224,12 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
             <DateInput
               label={t('dateFromLabel')}
               value={dateFrom}
-              onDateChange={(date) => {
-                setDateFrom(date);
-                invalidatePreview();
-              }}
+              onDateChange={setDateFrom}
             />
             <DateInput
               label={t('dateToLabel')}
               value={dateTo}
-              onDateChange={(date) => {
-                setDateTo(date);
-                invalidatePreview();
-              }}
+              onDateChange={setDateTo}
             />
           </div>
         </div>
@@ -235,15 +245,15 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
                 type="number"
                 step="0.00001"
                 min="1.00001"
-                value={String(multiplier)}
-                onChange={(e) => {
-                  setMultiplier(Number(e.target.value));
-                  invalidatePreview();
-                }}
+                value={multiplierText}
+                onChange={(e) => setMultiplierText(e.target.value)}
                 error={!multiplierValid ? t('multiplierInvalid') : undefined}
               />
             </div>
-            <Button variant="outline" onClick={regenerateMultiplier}>
+            <Button
+              variant="outline"
+              onClick={() => setMultiplierText(String(randomSupportMultiplier()))}
+            >
               {t('regenerate')}
             </Button>
           </div>
@@ -278,12 +288,12 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
         </div>
 
         {/* Preview */}
-        {preview && (
+        {freshPreview && (
           <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3 max-h-72 overflow-auto">
-            {preview.samples.length === 0 ? (
+            {freshPreview.samples.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">{t('previewEmpty')}</p>
             ) : (
-              preview.samples.map((sample) => (
+              freshPreview.samples.map((sample) => (
                 <div key={sample.table} className="mb-4 last:mb-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
                     {sample.table}

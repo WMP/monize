@@ -69,7 +69,10 @@ describe('SupportBackupModal', () => {
   });
 
   it('generates and downloads the file, passing multiplier and sections', async () => {
-    mockExport.mockResolvedValue(new Blob(['x'], { type: 'application/gzip' }));
+    mockExport.mockResolvedValue({
+      blob: new Blob(['x'], { type: 'application/octet-stream' }),
+      filename: 'monize-support-backup-2026-07-17.mzbe',
+    });
     const createObjectURL = vi.fn().mockReturnValue('blob:url');
     const revokeObjectURL = vi.fn();
     global.URL.createObjectURL = createObjectURL;
@@ -94,11 +97,50 @@ describe('SupportBackupModal', () => {
     // The encryption password is required and pre-filled with a random value
     expect(typeof input.password).toBe('string');
     expect(input.password.length).toBeGreaterThanOrEqual(8);
+    // Price history stays out unless the user opts in
+    expect(input.includePriceHistory).toBe(false);
     expect(createObjectURL).toHaveBeenCalled();
   });
 
+  it('sends includePriceHistory when the user opts in', async () => {
+    mockExport.mockResolvedValue({ blob: new Blob(['x']), filename: null });
+    global.URL.createObjectURL = vi.fn().mockReturnValue('blob:url');
+    global.URL.revokeObjectURL = vi.fn();
+    await open();
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Include security price history'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
+    });
+
+    await waitFor(() => expect(mockExport).toHaveBeenCalledTimes(1));
+    expect(mockExport.mock.calls[0][0].includePriceHistory).toBe(true);
+  });
+
+  it('hides a stale preview when any option changes', async () => {
+    mockPreview.mockResolvedValue({
+      samples: [
+        { table: 'payees', before: [{ name: 'Biedronka' }], after: [{ name: 'Bi*****ka' }] },
+      ],
+    });
+    await open();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    });
+    await waitFor(() => expect(screen.getByText(/Biedronka/)).toBeInTheDocument());
+
+    // Changing an input invalidates the rendered preview without any manual reset
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('Include security price history'));
+    });
+    expect(screen.queryByText(/Biedronka/)).not.toBeInTheDocument();
+  });
+
   it('renders the date range inputs and passes chosen bounds to the export', async () => {
-    mockExport.mockResolvedValue(new Blob(['x']));
+    mockExport.mockResolvedValue({ blob: new Blob(['x']), filename: null });
     global.URL.createObjectURL = vi.fn().mockReturnValue('blob:url');
     global.URL.revokeObjectURL = vi.fn();
     await open();

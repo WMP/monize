@@ -1,4 +1,5 @@
 import apiClient from './api';
+import { filenameFromContentDisposition } from './download';
 import { AutoBackupSettings, UpdateAutoBackupSettingsData } from '@/types/auth';
 
 // HTTP header values have their leading and trailing whitespace stripped in
@@ -45,8 +46,17 @@ export interface SupportBackupInput {
   /** Inclusive yyyy-MM-dd bounds on exported history. */
   dateFrom?: string;
   dateTo?: string;
+  /** Price history is excluded by default: a full series can identify a
+   *  masked ticker against public market data. */
+  includePriceHistory?: boolean;
   /** Required: support backups always leave the machine encrypted. */
   password: string;
+}
+
+export interface SupportBackupFile {
+  blob: Blob;
+  /** Server-chosen filename (Content-Disposition), or null when absent. */
+  filename: string | null;
 }
 
 export interface SupportBackupPreviewSample {
@@ -154,13 +164,18 @@ export const backupApi = {
     return response.data;
   },
 
-  supportExport: async (input: SupportBackupInput): Promise<Blob> => {
+  supportExport: async (input: SupportBackupInput): Promise<SupportBackupFile> => {
     try {
       const response = await apiClient.post('/backup/support-export', input, {
         responseType: 'blob',
         timeout: 120000,
       });
-      return response.data;
+      return {
+        blob: response.data,
+        filename: filenameFromContentDisposition(
+          response.headers['content-disposition'] as string | undefined,
+        ),
+      };
     } catch (error) {
       return normalizeBlobError(error);
     }

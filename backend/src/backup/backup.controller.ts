@@ -57,6 +57,22 @@ export class BackupController {
     private readonly supportBackupService: SupportBackupService,
   ) {}
 
+  /** Download headers shared by the plain and support export endpoints, so
+   *  the filename/content-type convention lives in one place. */
+  private setBackupDownloadHeaders(
+    res: Response,
+    encrypted: boolean,
+    prefix: string,
+  ): void {
+    const today = new Date().toISOString().slice(0, 10);
+    const filename = `${prefix}-${today}.${encrypted ? "mzbe" : "json.gz"}`;
+    res.setHeader(
+      "Content-Type",
+      encrypted ? "application/octet-stream" : "application/gzip",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  }
+
   @Post("export")
   @DemoRestricted()
   @ApiOperation({ summary: "Export all user data as JSON backup" })
@@ -69,16 +85,7 @@ export class BackupController {
       req.headers["x-export-password"] as string | undefined,
     );
 
-    const today = new Date().toISOString().slice(0, 10);
-    const filename = encryptionPassword
-      ? `monize-backup-${today}.mzbe`
-      : `monize-backup-${today}.json.gz`;
-    const contentType = encryptionPassword
-      ? "application/octet-stream"
-      : "application/gzip";
-
-    res.setHeader("Content-Type", contentType);
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    this.setBackupDownloadHeaders(res, !!encryptionPassword, "monize-backup");
     await this.backupService.streamExport(req.user.id, res, encryptionPassword);
   }
 
@@ -98,15 +105,7 @@ export class BackupController {
       req.user.id,
       dto,
     );
-    const today = new Date().toISOString().slice(0, 10);
-    const filename = encrypted
-      ? `monize-support-backup-${today}.mzbe`
-      : `monize-support-backup-${today}.json.gz`;
-    res.setHeader(
-      "Content-Type",
-      encrypted ? "application/octet-stream" : "application/gzip",
-    );
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    this.setBackupDownloadHeaders(res, encrypted, "monize-support-backup");
     res.send(buffer);
   }
 

@@ -18,6 +18,7 @@ const TXM = "dddddddd-5555-4111-8111-111111111111";
 const SP3 = "eeeeeeee-3333-4111-8111-111111111111";
 const SCH1 = "12121212-1111-4111-8111-111111111111";
 const MC1 = "34343434-1111-4111-8111-111111111111";
+const SEC1 = "56565656-1111-4111-8111-111111111111";
 
 function fixtureTables(): Record<string, Record<string, unknown>[]> {
   return {
@@ -224,8 +225,27 @@ function fixtureTables(): Record<string, Record<string, unknown>[]> {
     scheduled_transaction_splits: [],
     scheduled_transaction_overrides: [],
     scheduled_transaction_split_tags: [],
-    securities: [],
-    security_prices: [],
+    securities: [
+      {
+        id: SEC1,
+        user_id: USER,
+        symbol: "AAPL",
+        name: "Apple Inc",
+        security_type: "STOCK",
+        currency_code: "USD",
+        description: null,
+        msn_instrument_id: "a1b2c3",
+      },
+    ],
+    security_prices: [
+      {
+        id: 1,
+        security_id: SEC1,
+        price_date: "2026-01-02",
+        close_price: 250.12,
+        volume: 1000,
+      },
+    ],
     holdings: [],
     investment_transactions: [],
     loan_rate_changes: [],
@@ -433,6 +453,23 @@ describe("SupportBackupService.generate", () => {
     ]) {
       expect(json).not.toContain(secret);
     }
+  });
+
+  it("excludes the price history unless explicitly opted in", async () => {
+    const withoutPrices = await generateParsed(makeService(), {
+      multiplier: 2.5,
+    });
+    expect(withoutPrices.security_prices).toBeUndefined();
+    // the security itself stays (masked), only its price series is withheld
+    expect(withoutPrices.securities[0].symbol).toBe("****");
+
+    const withPrices = await generateParsed(makeService(), {
+      multiplier: 2.5,
+      includePriceHistory: true,
+    });
+    expect(withPrices.security_prices).toHaveLength(1);
+    // public price values are untouched even when included
+    expect(withPrices.security_prices[0].close_price).toBe(250.12);
   });
 
   it("encrypts the file when a password is given", async () => {

@@ -246,6 +246,8 @@
       "importMappings": "Import column mappings",
       "autoBackup": "Auto-backup settings"
     },
+    "priceHistoryLabel": "Include security price history",
+    "priceHistoryHint": "Off by default: a full price series matches public market data and can identify a masked ticker. Turn on only when the bug concerns prices or valuations.",
     "accountsLabel": "Limit to specific accounts",
     "accountsHint": "Leave all unchecked to include every account. Picking a subset also pulls in the accounts and payees they reference.",
     "dateRangeLabel": "Date range (optional)",

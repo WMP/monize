@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsIn,
   IsNumber,
   IsOptional,
@@ -71,6 +72,14 @@ export class CreateSupportBackupDto {
   @IsArray()
   @IsUUID("4", { each: true })
   accountIds?: string[];
+
+  /**
+   * Include the securities price history. Defaults to excluded: a full price
+   * series fingerprints a masked ticker against public market data.
+   */
+  @IsOptional()
+  @IsBoolean()
+  includePriceHistory?: boolean;
 
   /** Optional inclusive lower bound (yyyy-MM-dd) on exported history. */
   @IsOptional()

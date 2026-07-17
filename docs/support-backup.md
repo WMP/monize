@@ -31,6 +31,9 @@ Starting from the same rows the normal export produces, the support backup:
   transactions — so nothing drifts by a rounding cent.
 - **Remaps** every identifier (and the user's own id) to fresh UUIDs, so a
   shared file can't be correlated with the account or with another shared file.
+- **Excludes the securities price history by default**: a full OHLCV series
+  matches public market data exactly and would identify a masked ticker. An
+  explicit opt-in checkbox includes it for price/valuation bugs.
 - **Always encrypts** the file: the modal pre-fills a random password (editable,
   regenerable) and the export refuses to run without one -- a support backup is
   made to leave the user's machine, so it never ships in the clear. Share the

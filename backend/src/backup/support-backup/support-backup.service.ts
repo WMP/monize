@@ -4,6 +4,7 @@ import { gzipSync } from "zlib";
 import { BackupService } from "../backup.service";
 import { encryptBackup } from "../backup-crypto.util";
 import { applyJsonbHandler } from "./support-backup-jsonb";
+import { collectRowIdRemap, deepRemapIds } from "../backup-id-remap.util";
 import { scrubDanglingRefs } from "./support-backup-integrity";
 import {
   applyDateRange,
@@ -23,9 +24,6 @@ import {
 
 const ALL_SECTIONS = Object.keys(SECTION_TABLES) as SupportBackupSection[];
 
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export interface SupportBackupOptions {
   multiplier: number;
   sections?: SupportBackupSection[];
@@ -33,6 +31,13 @@ export interface SupportBackupOptions {
   /** Inclusive yyyy-MM-dd bounds on transaction/price/balance history. */
   dateFrom?: string;
   dateTo?: string;
+  /**
+   * Whether to include the securities price history. Off by default: a full
+   * OHLCV series matches public market data exactly and can identify a
+   * masked ticker, undoing the symbol masking. Opt in when the bug being
+   * reproduced concerns prices or valuations.
+   */
+  includePriceHistory?: boolean;
   password?: string;
 }
 
@@ -147,6 +152,7 @@ export class SupportBackupService {
       }
     }
     for (const table of ALWAYS_EXCLUDED_TABLES) delete tables[table];
+    if (!options.includePriceHistory) delete tables.security_prices;
 
     return scrubDanglingRefs(tables);
   }
@@ -270,40 +276,19 @@ export class SupportBackupService {
    */
   private remapIdentifiers(tables: TableMap, userId: string): TableMap {
     const remap = new Map<string, string>();
+    // Unlike the restore-side remap, the user's own id is remapped too (it is
+    // never rescoped here) and currencies need no exception: their rows carry
+    // no `id` column, so the shared collector skips them naturally.
     remap.set(userId, randomUUID());
     for (const rows of Object.values(tables)) {
-      for (const row of rows) {
-        const id = row.id;
-        if (typeof id === "string" && UUID_REGEX.test(id) && !remap.has(id)) {
-          remap.set(id, randomUUID());
-        }
-      }
+      collectRowIdRemap(rows, remap, randomUUID);
     }
     const result: TableMap = {};
     for (const [table, rows] of Object.entries(tables)) {
       result[table] = rows.map(
-        (row) => this.deepRemap(row, remap) as Record<string, unknown>,
+        (row) => deepRemapIds(row, remap) as Record<string, unknown>,
       );
     }
     return result;
-  }
-
-  private deepRemap(value: unknown, remap: Map<string, string>): unknown {
-    if (typeof value === "string") {
-      return remap.get(value) ?? value;
-    }
-    if (Array.isArray(value)) {
-      return value.map((item) => this.deepRemap(item, remap));
-    }
-    if (
-      value !== null &&
-      typeof value === "object" &&
-      !(value instanceof Date)
-    ) {
-      return Object.fromEntries(
-        Object.entries(value).map(([k, v]) => [k, this.deepRemap(v, remap)]),
-      );
-    }
-    return value;
   }
 }
