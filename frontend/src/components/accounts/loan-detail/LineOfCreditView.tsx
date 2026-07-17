@@ -124,6 +124,7 @@ export function LineOfCreditView({ account }: LineOfCreditViewProps) {
             isLoading={isLoading}
             currencyCode={currency}
             accountName={account.name}
+            isLiability
           />
         )}
       </div>

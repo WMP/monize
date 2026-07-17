@@ -12,6 +12,23 @@ export type AccountType =
 
 export type AccountSubType = 'INVESTMENT_CASH' | 'INVESTMENT_BROKERAGE' | null;
 
+/**
+ * Account types whose balances represent money owed rather than money held.
+ * A negative balance on these is the normal, expected state -- not something
+ * to flag as an anomaly.
+ */
+export const LIABILITY_ACCOUNT_TYPES: ReadonlySet<AccountType> = new Set<AccountType>([
+  'CREDIT_CARD',
+  'LOAN',
+  'MORTGAGE',
+  'LINE_OF_CREDIT',
+]);
+
+/** True when the account type is a liability (credit card, loan, mortgage, line of credit). */
+export function isLiabilityAccountType(type: AccountType | undefined | null): boolean {
+  return type != null && LIABILITY_ACCOUNT_TYPES.has(type);
+}
+
 /** How a loan/mortgage's interest is recorded, for rate detection. */
 export type InterestBookingMode = 'AUTO' | 'SPLIT' | 'SEPARATE';
 export const INTEREST_BOOKING_MODES: InterestBookingMode[] = ['AUTO', 'SPLIT', 'SEPARATE'];

@@ -148,6 +148,7 @@ export function CreditCardDetailView({ account }: CreditCardDetailViewProps) {
               isLoading={isLoading}
               currencyCode={currency}
               accountName={account.name}
+              isLiability
             />
           )}
         </div>

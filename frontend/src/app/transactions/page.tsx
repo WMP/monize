@@ -39,7 +39,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useTransactionSelection } from '@/hooks/useTransactionSelection';
 import { useTransactionFilters } from '@/hooks/useTransactionFilters';
 import { BulkSelectionBanner } from '@/components/transactions/BulkSelectionBanner';
-import { Account } from '@/types/account';
+import { Account, isLiabilityAccountType } from '@/types/account';
 import { Institution } from '@/types/institution';
 import { Category } from '@/types/category';
 import { Payee } from '@/types/payee';
@@ -895,6 +895,9 @@ function TransactionsContent() {
                   isLoading={isLoading}
                   currencyCode={chartCurrency}
                   accountName={balanceHistoryAccountName}
+                  // Only when narrowed to a single liability account is a
+                  // negative balance expected; an aggregate of accounts is not.
+                  isLiability={isLiabilityAccountType(singleFilteredAccount?.accountType)}
                 />
               )}
             </div>

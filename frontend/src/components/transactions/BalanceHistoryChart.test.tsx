@@ -153,6 +153,56 @@ describe('BalanceHistoryChart', () => {
     expect(screen.getByText('!')).toBeInTheDocument();
   });
 
+  it('omits the "Lowest" alarm styling for liability accounts with a negative balance', () => {
+    render(
+      <BalanceHistoryChart
+        data={[
+          { date: '2025-01-01', balance: -100 },
+          { date: '2025-01-02', balance: -250 },
+        ]}
+        isLoading={false}
+        isLiability
+      />
+    );
+
+    // A negative balance is expected for a credit card / loan, so the footer
+    // keeps the neutral "Min Balance" label and shows no warning marker.
+    expect(screen.getByText('Min Balance')).toBeInTheDocument();
+    expect(screen.queryByText('Lowest')).not.toBeInTheDocument();
+    expect(screen.queryByText('!')).not.toBeInTheDocument();
+    // The value is still coloured red because it is negative (Current and Min
+    // are both -250 here).
+    screen
+      .getAllByText('$-250.00')
+      .forEach((el) => expect(el.className).toContain('text-red-600'));
+  });
+
+  it('colours each summary figure green or red by sign', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-04-10T12:00:00Z'));
+    try {
+      render(
+        <BalanceHistoryChart
+          data={[
+            { date: '2026-01-01', balance: 100 }, // Starting: positive -> green
+            { date: '2026-03-01', balance: -50 }, // Current/Min: negative -> red
+            { date: '2026-06-01', balance: 200 }, // Ending: positive -> green
+          ]}
+          isLoading={false}
+        />
+      );
+
+      expect(screen.getByText('$100.00').className).toContain('text-green-600');
+      expect(screen.getByText('$200.00').className).toContain('text-green-600');
+      // Current and Min are both -50 here; both render red.
+      const negatives = screen.getAllByText('$-50.00');
+      expect(negatives).toHaveLength(2);
+      negatives.forEach((el) => expect(el.className).toContain('text-red-600'));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('shows Ending balance when future transactions exist', () => {
     // Lock "today" so the data points after it stay in the future forever;
     // with a real clock this test started failing the day the last hardcoded
