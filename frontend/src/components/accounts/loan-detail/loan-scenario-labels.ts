@@ -39,11 +39,11 @@ export function createScenarioLabels({
       parts.push(
         freq && freq !== 'MONTHLY'
           ? t('loanDetail.scenarios.overpaymentWithFrequency', {
-              amount: formatCurrency(scenario.recurringExtraAmount),
+              amount: formatCurrency(scenario.recurringExtraAmount, currencyCode),
               frequency: t(FREQUENCY_LABEL_KEY[freq]),
             })
           : t('loanDetail.scenarios.recurringSummary', {
-              amount: formatCurrency(scenario.recurringExtraAmount),
+              amount: formatCurrency(scenario.recurringExtraAmount, currencyCode),
             }),
       );
     }

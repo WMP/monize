@@ -11,6 +11,7 @@ import {
 } from '@/lib/loan-schedule';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useChartDateFormat } from '@/hooks/useChartDateFormat';
+import { FREQUENCY_LABEL_KEY } from '@/components/accounts/loan-detail/loan-scenario-labels';
 
 interface ComparisonSummaryCardsProps {
   comparison: ScenarioComparison;
@@ -20,15 +21,6 @@ interface ComparisonSummaryCardsProps {
   /** The loan's own payment cadence, needed to place a recurring overpayment. */
   loanFrequency?: ScheduleFrequency;
 }
-
-const FREQUENCY_LABEL_KEY: Record<OverpaymentFrequency, string> = {
-  ONE_OFF: 'loanDetail.simulator.frequencyOneOff',
-  WEEKLY: 'loanDetail.simulator.frequencyWeekly',
-  BIWEEKLY: 'loanDetail.simulator.frequencyBiweekly',
-  MONTHLY: 'loanDetail.simulator.frequencyMonthly',
-  QUARTERLY: 'loanDetail.simulator.frequencyQuarterly',
-  ANNUALLY: 'loanDetail.simulator.frequencyAnnually',
-};
 
 /**
  * Baseline-versus-scenario outcome cards: the new payoff date, time saved,

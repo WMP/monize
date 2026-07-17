@@ -1,7 +1,8 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { InstitutionLogo, InstitutionLogoData } from '@/components/institutions/InstitutionLogo';
@@ -55,14 +56,22 @@ export function AccountDetailShell({
   const t = useTranslations('accountDetail');
   const tc = useTranslations('common');
   const [isExporting, setIsExporting] = useState(false);
+  // Guards the async export's setState against an unmount mid-generation.
+  const mountedRef = useRef(true);
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
 
   const handleExport = async () => {
     if (!onExport) return;
     setIsExporting(true);
     try {
       await onExport();
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      toast.error(tc('exportDropdown.failedPdf'));
     } finally {
-      setIsExporting(false);
+      if (mountedRef.current) setIsExporting(false);
     }
   };
 
