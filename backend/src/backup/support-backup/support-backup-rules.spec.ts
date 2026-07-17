@@ -1,7 +1,7 @@
 import {
   ALWAYS_EXCLUDED_TABLES,
   RULES,
-  SECTION_FK_CLEANUP,
+  SECTION_NONFK_CLEANUP,
   SECTION_TABLES,
 } from "./support-backup-rules";
 
@@ -23,9 +23,9 @@ describe("support backup rules registry", () => {
     }
   });
 
-  it("every FK-cleanup target exists in the rules registry", () => {
-    for (const cleanups of Object.values(SECTION_FK_CLEANUP)) {
-      for (const { table, column } of cleanups) {
+  it("every non-FK cleanup target exists in the rules registry", () => {
+    for (const cleanups of Object.values(SECTION_NONFK_CLEANUP)) {
+      for (const { table, column } of cleanups ?? []) {
         expect(RULES[table]).toBeDefined();
         expect(RULES[table][column]).toBeDefined();
       }

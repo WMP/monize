@@ -572,7 +572,8 @@ export const RULES: Record<string, TableRules> = {
 /**
  * Optional content sections the user can exclude. Each maps to the tables it
  * owns; when off, those tables are omitted and the FK columns pointing into
- * them are reset (see SECTION_FK_CLEANUP) so the trimmed backup still restores.
+ * them are repaired by the referential-integrity scrub; non-FK references are
+ * reset via SECTION_NONFK_CLEANUP so the trimmed backup still restores.
  * Tables not owned by any section are always included (the account core).
  */
 export type SupportBackupSection =
@@ -615,41 +616,25 @@ export const SECTION_TABLES: Record<SupportBackupSection, string[]> = {
 };
 
 /**
- * When a section is excluded, FK columns in surviving tables that reference the
- * removed tables must be reset to a safe value, or the restore's deferred-FK
- * pass would point at a row that no longer exists.
+ * Cleanups a disabled section needs that the referential-integrity scrub can't
+ * do on its own. The scrub already nulls/drops every real FK pointing at a
+ * removed table, so those cases are NOT listed here (that would duplicate it).
+ * What remains is non-FK references the scrub can't see: id arrays and JSONB
+ * blobs. Today the only one is `favourite_report_ids` (a UUID text[] with no
+ * FK), reset when the reports section is off.
  */
-export interface SectionFkCleanup {
+export interface SectionCleanup {
   table: string;
   column: string;
   resetTo: unknown;
 }
 
-export const SECTION_FK_CLEANUP: Record<
-  SupportBackupSection,
-  SectionFkCleanup[]
+export const SECTION_NONFK_CLEANUP: Partial<
+  Record<SupportBackupSection, SectionCleanup[]>
 > = {
-  investments: [
-    {
-      table: "scheduled_transactions",
-      column: "investment_security_id",
-      resetTo: null,
-    },
-    {
-      table: "scheduled_transaction_splits",
-      column: "investment_security_id",
-      resetTo: null,
-    },
-  ],
-  scheduled: [
-    { table: "accounts", column: "scheduled_transaction_id", resetTo: null },
-  ],
-  budgets: [],
   reports: [
     { table: "user_preferences", column: "favourite_report_ids", resetTo: [] },
   ],
-  importMappings: [],
-  autoBackup: [],
 };
 
 /** All tables owned by any section (i.e. not part of the always-in core). */

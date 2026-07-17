@@ -71,10 +71,23 @@ Backend, under `backend/src/backup/support-backup/`:
   reconciliation and id remap. It holds the whole export in memory (like the
   existing encrypted path) because reconciliation needs every table at once, so
   it does not stream.
-- `support-backup-scope.ts` — optional account scoping with referential
-  closure; dimension tables (categories, payees, tags, securities, …) are kept
-  whole while account-specific tables are trimmed and dangling account FKs are
-  reset so the file still restores.
+- `support-backup-scope.ts` — optional account scoping and date-range trimming.
+  Dimension tables (categories, payees, tags, securities, …) are kept whole
+  while account-specific tables are trimmed; a date range also advances each
+  account's opening balance by the removed transactions so the file still
+  reconciles.
+- `support-backup-integrity.ts` — the referential-integrity scrub run after any
+  trimming: a declarative FK map (`REFS`) nulls or drops every reference whose
+  target was removed, so a scoped/date-ranged/section-trimmed file always
+  restores. An integration test asserts `REFS` covers every foreign key between
+  exported tables (`information_schema`), the same completeness guard the golden
+  test gives the column rules — so a future migration can't add an FK the scrub
+  silently ignores. The scrub is skipped for a full untrimmed export (nothing
+  can dangle).
+
+A short-lived per-user cache holds the raw export so a preview followed by
+generate collects the database once, and the preview obfuscates only the rows
+it displays (plus each shown account's ledger, to keep balances exact).
 
 Endpoints (`POST /backup/support-export`, `POST /backup/support-export/preview`)
 and the **Create support backup** modal live under Settings → Help & Support.

@@ -124,7 +124,6 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
   };
 
   const runGenerate = async () => {
-    setConfirmPasswordSaved(false);
     if (!canRun) return;
     setIsGenerating(true);
     try {
@@ -303,14 +302,18 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
                     {sample.table}
                   </p>
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {t('previewBefore')}
-                  </p>
-                  <JsonHighlight value={sample.before[0] ?? {}} className="mb-2" />
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {t('previewAfter')}
-                  </p>
-                  <JsonHighlight value={sample.after[0] ?? {}} />
+                  {sample.before.map((beforeRow, i) => (
+                    <div key={i} className="mb-2 last:mb-0">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {t('previewBefore')}
+                      </p>
+                      <JsonHighlight value={beforeRow} className="mb-1" />
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {t('previewAfter')}
+                      </p>
+                      <JsonHighlight value={sample.after[i] ?? {}} />
+                    </div>
+                  ))}
                 </div>
               ))
             )}
@@ -346,7 +349,10 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
         confirmLabel={t('confirmPasswordConfirm')}
         cancelLabel={tc('cancel')}
         variant="warning"
-        onConfirm={runGenerate}
+        onConfirm={() => {
+          setConfirmPasswordSaved(false);
+          void runGenerate();
+        }}
         onCancel={() => setConfirmPasswordSaved(false)}
       />
     </Modal>

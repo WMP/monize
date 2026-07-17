@@ -1,3 +1,5 @@
+import { formatDateYMD } from "../../common/date-utils";
+
 export type TableMap = Record<string, Record<string, unknown>[]>;
 
 const str = (value: unknown): string | null =>
@@ -5,7 +7,7 @@ const str = (value: unknown): string | null =>
 
 /** Normalizes a DATE column value (string or Date) to its yyyy-MM-dd key. */
 const dateKey = (value: unknown): string | null => {
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (value instanceof Date) return formatDateYMD(value);
   if (typeof value === "string" && value.length >= 10)
     return value.slice(0, 10);
   return null;
@@ -36,7 +38,9 @@ export function applyDateRange(
   from?: string,
   to?: string,
 ): TableMap {
-  if (!from && !to) return tables;
+  // Always hand back a fresh top-level map so the caller owns the only copy
+  // of the export it then mutates (deletes/replaces per section and scope).
+  if (!from && !to) return { ...tables };
   const within = (value: unknown): boolean => {
     const key = dateKey(value);
     if (key === null) return true;
@@ -71,6 +75,13 @@ export function applyDateRange(
     });
   }
 
+  // The tables trimmed by the window are curated deliberately: these are the
+  // high-volume, event-dated histories. Config-like dated tables
+  // (loan_rate_changes, budget_periods, scheduled_transactions) are kept whole
+  // on purpose -- they define behavior the bug may depend on. A future dated
+  // history table must be added here consciously; until then its rows still
+  // ship masked/scaled, so this is an over-export of an already de-identified
+  // table, not a data leak.
   out.transactions = (tables.transactions ?? []).filter((t) =>
     within(t.transaction_date),
   );

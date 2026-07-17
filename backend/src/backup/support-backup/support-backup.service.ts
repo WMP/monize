@@ -17,12 +17,23 @@ import {
   ALWAYS_EXCLUDED_TABLES,
   ColumnRule,
   RULES,
-  SECTION_FK_CLEANUP,
+  SECTION_NONFK_CLEANUP,
   SECTION_TABLES,
   SupportBackupSection,
 } from "./support-backup-rules";
 
 const ALL_SECTIONS = Object.keys(SECTION_TABLES) as SupportBackupSection[];
+
+/** How long a collected raw export is reused across preview/generate calls.
+ *  A support snapshot being up to this stale is harmless, and it turns the
+ *  typical tweak-preview-preview-generate flow into a single full dump. */
+const RAW_EXPORT_TTL_MS = 60_000;
+
+interface RawExport {
+  version: number;
+  exportedAt: string;
+  tables: Record<string, Record<string, unknown>[]>;
+}
 
 export interface SupportBackupOptions {
   multiplier: number;
@@ -48,12 +59,6 @@ export interface SupportBackupPreviewSample {
 }
 
 const PREVIEW_TABLES = ["transactions", "accounts", "payees"];
-/** Tables the preview must obfuscate: the shown ones plus the splits that the
- *  balance reconciliation folds into split parents. */
-const PREVIEW_PIPELINE_TABLES = new Set([
-  ...PREVIEW_TABLES,
-  "transaction_splits",
-]);
 const PREVIEW_ROWS = 5;
 
 /**
@@ -69,11 +74,33 @@ const PREVIEW_ROWS = 5;
 export class SupportBackupService {
   constructor(private readonly backupService: BackupService) {}
 
+  /** Short-lived per-user cache of the raw export (the dump does not depend on
+   *  any option), so preview and the eventual generate reuse one collection. */
+  private readonly rawCache = new Map<
+    string,
+    { expires: number; promise: Promise<RawExport> }
+  >();
+
+  private collectRawExport(userId: string): Promise<RawExport> {
+    const now = Date.now();
+    for (const [key, entry] of this.rawCache) {
+      if (entry.expires <= now) this.rawCache.delete(key);
+    }
+    const cached = this.rawCache.get(userId);
+    if (cached && cached.expires > now) return cached.promise;
+
+    const promise = this.backupService.collectRawExport(userId);
+    this.rawCache.set(userId, { expires: now + RAW_EXPORT_TTL_MS, promise });
+    // A failed dump must not be cached as a poisoned promise.
+    promise.catch(() => this.rawCache.delete(userId));
+    return promise;
+  }
+
   async generate(
     userId: string,
     options: SupportBackupOptions,
   ): Promise<{ buffer: Buffer; encrypted: boolean }> {
-    const raw = await this.backupService.collectRawExport(userId);
+    const raw = await this.collectRawExport(userId);
     const sections = this.resolveSections(options.sections);
     const scoped = this.scopeAndSection(raw.tables, sections, options);
     const obfuscated = this.obfuscate(scoped, options.multiplier);
@@ -96,25 +123,52 @@ export class SupportBackupService {
     userId: string,
     options: SupportBackupOptions,
   ): Promise<{ samples: SupportBackupPreviewSample[] }> {
-    const raw = await this.backupService.collectRawExport(userId);
+    const raw = await this.collectRawExport(userId);
     const sections = this.resolveSections(options.sections);
     const scoped = this.scopeAndSection(raw.tables, sections, options);
-    // The preview only shows a handful of rows from a few tables, so only
-    // those tables (plus the splits reconciliation needs) run the pipeline.
-    const obfuscated = this.obfuscate(
-      scoped,
-      options.multiplier,
-      PREVIEW_PIPELINE_TABLES,
-    );
+    // The preview shows a handful of rows from a few tables. Narrow the scoped
+    // map to just those rows (plus what reconciliation needs to keep the shown
+    // accounts' balances and split parents exact) before obfuscating, so a
+    // huge ledger isn't rule-rewritten to display five rows.
+    const previewInput = this.slicePreviewInput(scoped);
+    const obfuscated = this.obfuscate(previewInput, options.multiplier);
 
     const samples = PREVIEW_TABLES.filter(
-      (t) => (scoped[t]?.length ?? 0) > 0,
+      (t) => (previewInput[t]?.length ?? 0) > 0,
     ).map((table) => ({
       table,
-      before: (scoped[table] ?? []).slice(0, PREVIEW_ROWS),
+      before: (previewInput[table] ?? []).slice(0, PREVIEW_ROWS),
       after: (obfuscated[table] ?? []).slice(0, PREVIEW_ROWS),
     }));
     return { samples };
+  }
+
+  /**
+   * Reduces a scoped map to the minimum the preview needs: the shown accounts'
+   * full ledgers (so their reconciled balances stay exact) plus the shown
+   * transactions and payees, and the splits of the kept transactions (so
+   * split-parent amounts stay exact). Everything else is dropped.
+   */
+  private slicePreviewInput(scoped: TableMap): TableMap {
+    const accounts = (scoped.accounts ?? []).slice(0, PREVIEW_ROWS);
+    const accountIds = new Set(accounts.map((a) => String(a.id)));
+    const allTx = scoped.transactions ?? [];
+    const shownTx = allTx.slice(0, PREVIEW_ROWS);
+    const shownTxIds = new Set(shownTx.map((t) => String(t.id)));
+    const transactions = allTx.filter(
+      (t) =>
+        accountIds.has(String(t.account_id)) || shownTxIds.has(String(t.id)),
+    );
+    const keptTxIds = new Set(transactions.map((t) => String(t.id)));
+    const transaction_splits = (scoped.transaction_splits ?? []).filter((s) =>
+      keptTxIds.has(String(s.transaction_id)),
+    );
+    return {
+      accounts,
+      transactions,
+      transaction_splits,
+      payees: (scoped.payees ?? []).slice(0, PREVIEW_ROWS),
+    };
   }
 
   private resolveSections(
@@ -134,16 +188,21 @@ export class SupportBackupService {
     sections: SupportBackupSection[],
     options: SupportBackupOptions,
   ): TableMap {
-    let tables: TableMap = { ...rawTables };
-    tables = applyDateRange(tables, options.dateFrom, options.dateTo);
+    // applyDateRange owns the defensive copy of the raw export (it always
+    // returns a fresh top-level map), so the deletes/maps below never touch
+    // BackupService's collected data.
+    const tables = applyDateRange(rawTables, options.dateFrom, options.dateTo);
+    const trimmedByDate = !!(options.dateFrom || options.dateTo);
     if (options.accountIds && options.accountIds.length > 0) {
-      tables = scopeToAccounts(tables, options.accountIds);
+      Object.assign(tables, scopeToAccounts(tables, options.accountIds));
     }
+    const scopedByAccount = !!(options.accountIds && options.accountIds.length);
 
     const disabled = ALL_SECTIONS.filter((s) => !sections.includes(s));
     for (const section of disabled) {
       for (const table of SECTION_TABLES[section]) delete tables[table];
-      for (const { table, column, resetTo } of SECTION_FK_CLEANUP[section]) {
+      for (const { table, column, resetTo } of SECTION_NONFK_CLEANUP[section] ??
+        []) {
         if (!tables[table]) continue;
         tables[table] = tables[table].map((row) => ({
           ...row,
@@ -154,22 +213,18 @@ export class SupportBackupService {
     for (const table of ALWAYS_EXCLUDED_TABLES) delete tables[table];
     if (!options.includePriceHistory) delete tables.security_prices;
 
-    return scrubDanglingRefs(tables);
+    // The scrub only has work to do when trimming could have severed an FK.
+    // A full export (all sections, no date range, no account scope) is closed
+    // by the live FK constraints -- the only removals (ai_provider_configs,
+    // security_prices) are targets of no exported FK -- so skip it.
+    const couldDangle = trimmedByDate || scopedByAccount || disabled.length > 0;
+    return couldDangle ? scrubDanglingRefs(tables) : tables;
   }
 
-  /**
-   * Applies the per-column rules and reconciles derived money. `only` limits
-   * the work to a subset of tables (the preview path); omitted tables are
-   * excluded from the result.
-   */
-  private obfuscate(
-    scoped: TableMap,
-    multiplier: number,
-    only?: ReadonlySet<string>,
-  ): TableMap {
+  /** Applies the per-column rules and reconciles derived money. */
+  private obfuscate(scoped: TableMap, multiplier: number): TableMap {
     const result: TableMap = {};
     for (const [table, rows] of Object.entries(scoped)) {
-      if (only && !only.has(table)) continue;
       const rules = RULES[table];
       if (!rules) continue; // unclassified table: never emitted (allowlist)
       result[table] = rows.map((row) =>

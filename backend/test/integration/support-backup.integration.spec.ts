@@ -9,10 +9,14 @@ import {
   ALWAYS_EXCLUDED_TABLES,
   RULES,
 } from "@/backup/support-backup/support-backup-rules";
+import { REFS_FOR_TEST } from "@/backup/support-backup/support-backup-integrity";
 import { User } from "@/users/entities/user.entity";
 import { OidcService } from "@/auth/oidc/oidc.service";
 import { AiEncryptionService } from "@/ai/ai-encryption.service";
-import { createTestUserDirect } from "../helpers/integration-setup";
+import {
+  createTestUserDirect,
+  INTEGRATION_TYPEORM_OPTIONS,
+} from "../helpers/integration-setup";
 
 /**
  * Support (de-identified) backup against a real database. Covers the two
@@ -32,17 +36,7 @@ describe("Support backup (integration)", () => {
     module = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
-        TypeOrmModule.forRoot({
-          type: "postgres",
-          host: process.env.DATABASE_HOST || "localhost",
-          port: parseInt(process.env.DATABASE_PORT || "5432"),
-          username: process.env.DATABASE_USER || "monize_user",
-          password: process.env.DATABASE_PASSWORD || "monize_password",
-          database: process.env.DATABASE_NAME || "monize_test",
-          entities: [__dirname + "/../../src/**/*.entity{.ts,.js}"],
-          synchronize: true,
-          dropSchema: true,
-        }),
+        TypeOrmModule.forRoot(INTEGRATION_TYPEORM_OPTIONS),
         TypeOrmModule.forFeature([User]),
       ],
       providers: [
@@ -106,6 +100,61 @@ describe("Support backup (integration)", () => {
         obsoleteExceptions: [],
       });
     }
+  });
+
+  it("covers every foreign key between exported tables (REFS allowlist)", async () => {
+    const exported = new Set(backupService.getBackedUpTableNames());
+    // FKs to these targets are intentionally outside the scrub: users is never
+    // exported (restore rescopes user_id) and currencies are restored by code,
+    // keyed by code rather than id.
+    const IGNORED_REF_TABLES = new Set(["users", "currencies"]);
+
+    const fks: Array<{
+      table: string;
+      column: string;
+      refTable: string;
+    }> = await dataSource.query(
+      `SELECT tc.table_name AS table, kcu.column_name AS column,
+              ccu.table_name AS "refTable"
+       FROM information_schema.table_constraints tc
+       JOIN information_schema.key_column_usage kcu
+         ON tc.constraint_name = kcu.constraint_name
+        AND tc.table_schema = kcu.table_schema
+       JOIN information_schema.constraint_column_usage ccu
+         ON tc.constraint_name = ccu.constraint_name
+        AND tc.table_schema = ccu.table_schema
+       WHERE tc.constraint_type = 'FOREIGN KEY'
+         AND tc.table_schema = 'public'`,
+    );
+
+    const covered = (table: string, column: string): boolean =>
+      (REFS_FOR_TEST.get(table) ?? []).some((r) => r.column === column);
+
+    const uncoveredFks = fks
+      .filter(
+        (fk) =>
+          exported.has(fk.table) &&
+          exported.has(fk.refTable) &&
+          !IGNORED_REF_TABLES.has(fk.refTable),
+      )
+      .filter((fk) => !covered(fk.table, fk.column))
+      .map((fk) => `${fk.table}.${fk.column} -> ${fk.refTable}`);
+
+    // Reverse guard: a REFS entry that no longer matches a real FK is stale.
+    const realFkKeys = new Set(
+      fks.map((fk) => `${fk.table}.${fk.column}->${fk.refTable}`),
+    );
+    const staleRefs: string[] = [];
+    for (const [table, rules] of REFS_FOR_TEST) {
+      for (const r of rules) {
+        if (!realFkKeys.has(`${table}.${r.column}->${r.refTable}`)) {
+          staleRefs.push(`${table}.${r.column} -> ${r.refTable}`);
+        }
+      }
+    }
+
+    expect({ uncoveredFks }).toEqual({ uncoveredFks: [] });
+    expect({ staleRefs }).toEqual({ staleRefs: [] });
   });
 
   it("generates a de-identified backup that restores into another user", async () => {

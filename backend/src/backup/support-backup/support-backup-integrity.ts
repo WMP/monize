@@ -246,6 +246,21 @@ const REFS: Record<string, RefRule[]> = {
   ],
 };
 
+/**
+ * Exposed for the integration completeness guard, which asserts REFS covers
+ * every foreign key between exported tables (mirroring the golden column test
+ * for RULES). Not part of the runtime API.
+ */
+export const REFS_FOR_TEST: ReadonlyMap<
+  string,
+  ReadonlyArray<{ column: string; refTable: string }>
+> = new Map(
+  Object.entries(REFS).map(([table, rules]) => [
+    table,
+    rules.map((r) => ({ column: r.column, refTable: r.refTable })),
+  ]),
+);
+
 const str = (value: unknown): string | null =>
   typeof value === "string" ? value : null;
 
@@ -264,52 +279,61 @@ const str = (value: unknown): string | null =>
 export function scrubDanglingRefs(tables: TableMap): TableMap {
   const out: TableMap = { ...tables };
 
-  for (let pass = 0; pass < 10; pass++) {
-    let changed = false;
+  // Present-id sets are cached across passes and only the tables that actually
+  // lost rows in a pass are invalidated -- a late pass typically drops a few
+  // junction rows and shouldn't rebuild the (large, unchanged) transactions
+  // set. `changedTables` also drives convergence: an empty set means fixpoint.
+  const idSets = new Map<string, Set<string>>();
+  const idsOf = (table: string): Set<string> => {
+    let ids = idSets.get(table);
+    if (!ids) {
+      ids = new Set(
+        (out[table] ?? [])
+          .map((row) => str(row.id))
+          .filter((id): id is string => id !== null),
+      );
+      idSets.set(table, ids);
+    }
+    return ids;
+  };
 
-    const presentIds = new Map<string, Set<string>>();
-    const idsOf = (table: string): Set<string> => {
-      let ids = presentIds.get(table);
-      if (!ids) {
-        ids = new Set(
-          (out[table] ?? [])
-            .map((row) => str(row.id))
-            .filter((id): id is string => id !== null),
-        );
-        presentIds.set(table, ids);
-      }
-      return ids;
-    };
+  for (let pass = 0; pass < 10; pass++) {
+    const changedTables = new Set<string>();
 
     for (const [table, rules] of Object.entries(REFS)) {
       const rows = out[table];
       if (!rows || rows.length === 0) continue;
 
+      let tableChanged = false;
       const next: Record<string, unknown>[] = [];
       for (const row of rows) {
-        let kept: Record<string, unknown> | null = row;
-        for (const rule of rules) {
+        const toNull = rules.filter((rule) => {
           const ref = str(row[rule.column]);
-          if (ref === null || idsOf(rule.refTable).has(ref)) continue;
-          if (rule.onMissing === "dropRow") {
-            kept = null;
-            break;
-          }
-          kept = kept === row ? { ...row } : kept;
-          kept[rule.column] = null;
+          return ref !== null && !idsOf(rule.refTable).has(ref);
+        });
+        if (toNull.some((rule) => rule.onMissing === "dropRow")) {
+          tableChanged = true;
+          continue;
         }
-        if (kept !== null) {
-          next.push(kept);
-          if (kept !== row) changed = true;
-        } else {
-          changed = true;
+        if (toNull.length === 0) {
+          next.push(row);
+          continue;
         }
+        tableChanged = true;
+        next.push({
+          ...row,
+          ...Object.fromEntries(toNull.map((rule) => [rule.column, null])),
+        });
       }
-      if (next.length !== rows.length || changed) out[table] = next;
+      if (tableChanged) {
+        out[table] = next;
+        // This table's id set shrank, so any reference to it must re-check.
+        idSets.delete(table);
+        changedTables.add(table);
+      }
     }
 
-    if (!changed) break;
-    presentIds.clear();
+    if (changedTables.size === 0) break;
   }
 
   const accountIds = new Set(
