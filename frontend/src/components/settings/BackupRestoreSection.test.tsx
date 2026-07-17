@@ -42,6 +42,7 @@ vi.mock('@/lib/errors', () => ({
 }));
 
 import { backupApi } from '@/lib/backupApi';
+import { getLocalDateString } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 const localUser: User = {
@@ -113,6 +114,42 @@ describe('BackupRestoreSection', () => {
       expect(backupApi.exportBackup).toHaveBeenCalled();
       expect(toast.success).toHaveBeenCalledWith('Backup downloaded successfully');
     });
+  });
+
+  it('names the download using the local calendar date, not UTC', async () => {
+    const mockBlob = new Blob(['{}'], { type: 'application/json' });
+    (backupApi.exportBackup as ReturnType<typeof vi.fn>).mockResolvedValue(mockBlob);
+    global.URL.createObjectURL = vi
+      .fn()
+      .mockReturnValue('blob:http://localhost/mock-url');
+    global.URL.revokeObjectURL = vi.fn();
+
+    // Force the UTC representation to a date that can never match the local
+    // calendar date. The old filename was built from `toISOString().slice(0, 10)`
+    // (UTC), so this catches a regression regardless of the machine's timezone.
+    const isoSpy = vi
+      .spyOn(Date.prototype, 'toISOString')
+      .mockReturnValue('2099-12-31T00:00:00.000Z');
+
+    let capturedDownload = '';
+    HTMLAnchorElement.prototype.click = vi.fn(function (
+      this: HTMLAnchorElement,
+    ) {
+      capturedDownload = this.download;
+    });
+
+    await renderSection(localUser);
+
+    fireEvent.click(screen.getByText('Download Backup'));
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Backup downloaded successfully');
+    });
+
+    expect(capturedDownload).toBe(`monize-backup-${getLocalDateString()}.json.gz`);
+    expect(capturedDownload).not.toContain('2099-12-31');
+
+    isoSpy.mockRestore();
   });
 
   it('shows error toast on export failure', async () => {

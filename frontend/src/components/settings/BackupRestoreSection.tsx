@@ -15,6 +15,7 @@ import {
   RestoreResult,
 } from '@/lib/backupApi';
 import { getErrorMessage } from '@/lib/errors';
+import { getLocalDateString } from '@/lib/utils';
 import { User } from '@/types/auth';
 
 const RESTORE_LABELS: Record<string, string> = {
@@ -114,7 +115,10 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
     try {
       const blob = await backupApi.exportBackup(encryptionPassword);
       const url = URL.createObjectURL(blob);
-      const today = new Date().toISOString().slice(0, 10);
+      // Use the user's local calendar date, not UTC. `toISOString()` renders in
+      // UTC, so for negative-offset timezones (e.g. North America) an evening
+      // export would be stamped with tomorrow's date.
+      const today = getLocalDateString();
       const filename = encryptionPassword
         ? `monize-backup-${today}.mzbe`
         : `monize-backup-${today}.json.gz`;
