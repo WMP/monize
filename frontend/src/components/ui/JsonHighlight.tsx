@@ -13,12 +13,11 @@ const TOKEN_REGEX =
   /("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g;
 
 /**
- * Pretty-prints a value as indented JSON with lightweight syntax colouring
- * (keys, strings, numbers, literals), dependency-free so it stays CSP-safe.
- * Colours follow the theme via Tailwind dark variants.
+ * Tokenises a JSON string into syntax-coloured spans (keys, strings, numbers,
+ * literals), dependency-free so it stays CSP-safe. Colours follow the theme via
+ * Tailwind dark variants. Shared by {@link JsonHighlight} and the diff view.
  */
-export function JsonHighlight({ value, className = '' }: JsonHighlightProps) {
-  const json = JSON.stringify(value, null, 2) ?? 'null';
+export function highlightJson(json: string): ReactNode[] {
   const parts: ReactNode[] = [];
   let cursor = 0;
   let key = 0;
@@ -62,12 +61,19 @@ export function JsonHighlight({ value, className = '' }: JsonHighlightProps) {
   if (cursor < json.length) {
     parts.push(json.slice(cursor));
   }
+  return parts;
+}
 
+/**
+ * Pretty-prints a value as indented JSON with lightweight syntax colouring.
+ */
+export function JsonHighlight({ value, className = '' }: JsonHighlightProps) {
+  const json = JSON.stringify(value, null, 2) ?? 'null';
   return (
     <pre
       className={`whitespace-pre-wrap break-all font-mono text-xs text-gray-600 dark:text-gray-300 ${className}`}
     >
-      {parts}
+      {highlightJson(json)}
     </pre>
   );
 }

@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { DateInput } from '@/components/ui/DateInput';
-import { JsonHighlight } from '@/components/ui/JsonHighlight';
+import { JsonDiff } from '@/components/ui/JsonDiff';
 import { downloadBlob } from '@/lib/download';
 import {
   backupApi,
@@ -306,16 +306,14 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
                     {sample.table}
                   </p>
                   {sample.before.map((beforeRow, i) => (
-                    <div key={i} className="mb-2 last:mb-0">
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        {t('previewBefore')}
-                      </p>
-                      <JsonHighlight value={beforeRow} className="mb-1" />
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        {t('previewAfter')}
-                      </p>
-                      <JsonHighlight value={sample.after[i] ?? {}} />
-                    </div>
+                    <JsonDiff
+                      key={i}
+                      before={beforeRow}
+                      after={sample.after[i] ?? {}}
+                      beforeLabel={t('previewBefore')}
+                      afterLabel={t('previewAfter')}
+                      className="mb-2 last:mb-0"
+                    />
                   ))}
                 </div>
               ))
