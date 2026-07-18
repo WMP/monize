@@ -261,6 +261,7 @@
     "regenerate": "Regenerar",
     "passwordLabel": "Palavra-passe de cifragem",
     "preview": "Pré-visualização",
+    "previewLabel": "Pré-visualização",
     "previewBefore": "Antes",
     "previewAfter": "Depois",
     "previewEmpty": "Sem linhas de exemplo para esta seleção.",

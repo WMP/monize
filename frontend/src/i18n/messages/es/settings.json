@@ -261,6 +261,7 @@
     "regenerate": "Regenerar",
     "passwordLabel": "Contraseña de cifrado",
     "preview": "Vista previa",
+    "previewLabel": "Vista previa",
     "previewBefore": "Antes",
     "previewAfter": "Después",
     "previewEmpty": "No hay filas de ejemplo para esta selección.",

@@ -261,6 +261,7 @@
     "regenerate": "다시 생성",
     "passwordLabel": "암호화 비밀번호",
     "preview": "미리보기",
+    "previewLabel": "미리보기",
     "previewBefore": "변환 전",
     "previewAfter": "변환 후",
     "previewEmpty": "이 선택에는 미리 볼 샘플 행이 없습니다.",

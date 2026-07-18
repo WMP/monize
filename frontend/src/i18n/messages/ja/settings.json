@@ -261,6 +261,7 @@
     "regenerate": "再生成",
     "passwordLabel": "暗号化パスワード",
     "preview": "プレビュー",
+    "previewLabel": "プレビュー",
     "previewBefore": "変換前",
     "previewAfter": "変換後",
     "previewEmpty": "この選択ではプレビューできる行がありません。",

@@ -261,6 +261,7 @@
     "regenerate": "重新生成",
     "passwordLabel": "加密密码",
     "preview": "预览",
+    "previewLabel": "预览",
     "previewBefore": "之前",
     "previewAfter": "之后",
     "previewEmpty": "当前选择没有可预览的示例行。",

@@ -261,6 +261,7 @@
     "regenerate": "Yeniden üret",
     "passwordLabel": "Şifreleme parolası",
     "preview": "Önizleme",
+    "previewLabel": "Önizleme",
     "previewBefore": "Önce",
     "previewAfter": "Sonra",
     "previewEmpty": "Bu seçim için önizlenecek örnek satır yok.",

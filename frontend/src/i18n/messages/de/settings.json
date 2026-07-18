@@ -261,6 +261,7 @@
     "regenerate": "Neu generieren",
     "passwordLabel": "Verschlüsselungspasswort",
     "preview": "Vorschau",
+    "previewLabel": "Vorschau",
     "previewBefore": "Vorher",
     "previewAfter": "Nachher",
     "previewEmpty": "Keine Beispielzeilen für diese Auswahl.",

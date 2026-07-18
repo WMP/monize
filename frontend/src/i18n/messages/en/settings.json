@@ -261,6 +261,7 @@
     "regenerate": "Regenerate",
     "passwordLabel": "Encryption password",
     "preview": "Preview",
+    "previewLabel": "Preview",
     "previewBefore": "Before",
     "previewAfter": "After",
     "previewEmpty": "No sample rows to preview for this selection.",

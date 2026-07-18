@@ -143,7 +143,7 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="2xl">
-      <div className="p-6 space-y-5">
+      <div className="p-6 space-y-6">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {t('title')}
@@ -296,28 +296,33 @@ export function SupportBackupModal({ isOpen, onClose }: SupportBackupModalProps)
 
         {/* Preview */}
         {freshPreview && (
-          <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3 max-h-72 overflow-auto">
-            {freshPreview.samples.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">{t('previewEmpty')}</p>
-            ) : (
-              freshPreview.samples.map((sample) => (
-                <div key={sample.table} className="mb-4 last:mb-0">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
-                    {sample.table}
-                  </p>
-                  {sample.before.map((beforeRow, i) => (
-                    <JsonDiff
-                      key={i}
-                      before={beforeRow}
-                      after={sample.after[i] ?? {}}
-                      beforeLabel={t('previewBefore')}
-                      afterLabel={t('previewAfter')}
-                      className="mb-2 last:mb-0"
-                    />
-                  ))}
-                </div>
-              ))
-            )}
+          <div>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {t('previewLabel')}
+            </p>
+            <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3 max-h-72 overflow-auto">
+              {freshPreview.samples.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('previewEmpty')}</p>
+              ) : (
+                freshPreview.samples.map((sample) => (
+                  <div key={sample.table} className="mb-4 last:mb-0">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                      {sample.table}
+                    </p>
+                    {sample.before.map((beforeRow, i) => (
+                      <JsonDiff
+                        key={i}
+                        before={beforeRow}
+                        after={sample.after[i] ?? {}}
+                        beforeLabel={t('previewBefore')}
+                        afterLabel={t('previewAfter')}
+                        className="mb-2 last:mb-0"
+                      />
+                    ))}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 

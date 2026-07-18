@@ -261,6 +261,7 @@
     "regenerate": "Згенерувати знову",
     "passwordLabel": "Пароль шифрування",
     "preview": "Попередній перегляд",
+    "previewLabel": "Попередній перегляд",
     "previewBefore": "До",
     "previewAfter": "Після",
     "previewEmpty": "Немає рядків для перегляду за цим вибором.",

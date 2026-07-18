@@ -261,6 +261,7 @@
     "regenerate": "Wygeneruj ponownie",
     "passwordLabel": "Hasło szyfrowania",
     "preview": "Podgląd",
+    "previewLabel": "Podgląd",
     "previewBefore": "Przed",
     "previewAfter": "Po",
     "previewEmpty": "Brak przykładowych wierszy do podglądu dla tego wyboru.",

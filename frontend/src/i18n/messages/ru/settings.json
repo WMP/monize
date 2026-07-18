@@ -261,6 +261,7 @@
     "regenerate": "Сгенерировать заново",
     "passwordLabel": "Пароль шифрования",
     "preview": "Предпросмотр",
+    "previewLabel": "Предпросмотр",
     "previewBefore": "До",
     "previewAfter": "После",
     "previewEmpty": "Нет строк для предпросмотра при этом выборе.",

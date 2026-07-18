@@ -261,6 +261,7 @@
     "regenerate": "重新產生",
     "passwordLabel": "加密密碼",
     "preview": "預覽",
+    "previewLabel": "預覽",
     "previewBefore": "之前",
     "previewAfter": "之後",
     "previewEmpty": "目前選擇沒有可預覽的範例列。",

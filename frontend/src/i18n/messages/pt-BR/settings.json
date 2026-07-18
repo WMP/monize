@@ -261,6 +261,7 @@
     "regenerate": "Gerar novamente",
     "passwordLabel": "Senha de criptografia",
     "preview": "Pré-visualizar",
+    "previewLabel": "Pré-visualizar",
     "previewBefore": "Antes",
     "previewAfter": "Depois",
     "previewEmpty": "Sem linhas de exemplo para esta seleção.",
