@@ -7,6 +7,7 @@ import { ResultChart } from './ResultChart';
 import { TransactionConfirmationCard } from './TransactionConfirmationCard';
 import { BulkConfirmationCard } from './BulkConfirmationCard';
 import { MessageAttachmentChips } from './AttachmentChips';
+import { JsonHighlight } from '@/components/ui/JsonHighlight';
 import { useAiChatStore } from '@/store/aiChatStore';
 import type { PendingAction, ChatAttachmentMeta } from '@/types/ai';
 
@@ -147,9 +148,7 @@ function ToolDetails({ tool }: { tool: ToolInfo }) {
           {hasInput && (
             <div>
               <div className={labelClasses}>{t('toolDetails.inputLabel')}</div>
-              <pre className="text-[11px] text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words font-mono">
-                {JSON.stringify(tool.input, null, 2)}
-              </pre>
+              <JsonHighlight value={tool.input} className="text-[11px]" />
             </div>
           )}
           {hasSummary && (

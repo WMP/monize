@@ -17,6 +17,7 @@ import {
 import { getErrorMessage } from '@/lib/errors';
 import { getDateStringInTimezone, resolveTimezone } from '@/lib/utils';
 import { usePreferencesStore } from '@/store/preferencesStore';
+import { downloadBlob } from '@/lib/download';
 import { User } from '@/types/auth';
 
 const RESTORE_LABELS: Record<string, string> = {
@@ -116,7 +117,6 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
     setIsExporting(true);
     try {
       const blob = await backupApi.exportBackup(encryptionPassword);
-      const url = URL.createObjectURL(blob);
       // Date the filename by the user's configured timezone preference, not UTC
       // or the browser's timezone. `toISOString()` renders in UTC (an evening
       // export in a negative-offset zone would be stamped with tomorrow), and
@@ -126,14 +126,7 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
       const filename = encryptionPassword
         ? `monize-backup-${today}.mzbe`
         : `monize-backup-${today}.json.gz`;
-
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, filename);
 
       toast.success(t('export.toasts.success'));
       setExportPasswordPrompt(false);

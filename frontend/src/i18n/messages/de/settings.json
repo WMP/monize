@@ -228,7 +228,51 @@
     "wiki": {
       "label": "Wiki",
       "description": "Anleitungen und Dokumentation durchsuchen."
+    },
+    "supportBackup": {
+      "label": "Support-Backup erstellen",
+      "description": "Teilen Sie eine de-identifizierte, verschlüsselte Kopie Ihrer Daten, damit ein Maintainer einen Fehler reproduzieren kann, ohne Ihre echten Namen oder Beträge zu sehen."
     }
+  },
+  "supportBackup": {
+    "title": "Support-Backup erstellen",
+    "howItWorks": "Es entsteht eine de-identifizierte Kopie Ihres Backups: Namen werden maskiert (erste und letzte zwei Zeichen bleiben), Notizen/Beschreibungen/Kontonummern werden entfernt, und jeder Betrag wird mit einem einzigen verborgenen Faktor multipliziert, während öffentliche Werte (Wechselkurse, Kurse, Zinssätze) unangetastet bleiben. Die Datei wird immer mit dem untenstehenden Passwort verschlüsselt und lässt sich wie ein normales Backup wiederherstellen. Das schützt vor beiläufiger Einsichtnahme, nicht vor jemandem, der Sie bereits kennt — Daten, Häufigkeiten und Struktur bleiben erhalten, damit Fehler reproduzierbar sind.",
+    "sectionsLabel": "Was einschließen",
+    "sections": {
+      "investments": "Investitionen (Wertpapiere, Bestände, Kurse)",
+      "scheduled": "Geplante Transaktionen",
+      "budgets": "Budgets",
+      "reports": "Berichte & Projektionen",
+      "importMappings": "Import-Spaltenzuordnungen",
+      "autoBackup": "Auto-Backup-Einstellungen"
+    },
+    "priceHistoryLabel": "Kurshistorie der Wertpapiere einschließen",
+    "priceHistoryHint": "Standardmäßig aus: Eine vollständige Kursreihe entspricht öffentlichen Marktdaten und kann einen maskierten Ticker identifizieren. Nur aktivieren, wenn der Fehler Kurse oder Bewertungen betrifft.",
+    "accountsLabel": "Auf bestimmte Konten begrenzen",
+    "accountsHint": "Alles abgewählt lassen, um jedes Konto einzuschließen. Eine Teilauswahl zieht auch die referenzierten Konten und Zahlungsempfänger mit hinein.",
+    "dateRangeLabel": "Zeitraum (optional)",
+    "dateRangeHint": "Exportierte Historie auf diese Daten begrenzen. Anfangssalden werden angepasst, damit die gekürzte Datei weiterhin aufgeht.",
+    "dateFromLabel": "Von",
+    "dateToLabel": "Bis",
+    "multiplierLabel": "Betragsmultiplikator",
+    "multiplierHint": "Jeder private Betrag wird mit dieser Zahl multipliziert, um die echten Werte zu verbergen und dabei alles konsistent zu halten. Jede nicht-ganze Zahl größer als 1 funktioniert; „Neu generieren\" wählt eine neue.",
+    "multiplierWarning": "Geben Sie den Multiplikator an niemanden weiter — er ist der Schlüssel, der die verborgenen Beträge umkehrt.",
+    "multiplierInvalid": "Geben Sie eine nicht-ganze Zahl größer als 1 ein.",
+    "regenerate": "Neu generieren",
+    "passwordLabel": "Verschlüsselungspasswort",
+    "preview": "Vorschau",
+    "previewBefore": "Vorher",
+    "previewAfter": "Nachher",
+    "previewEmpty": "Keine Beispielzeilen für diese Auswahl.",
+    "previewFailed": "Vorschau konnte nicht erstellt werden. Bitte erneut versuchen.",
+    "generate": "Generieren",
+    "confirmPasswordTitle": "Haben Sie das Passwort gespeichert?",
+    "confirmPasswordMessage": "Die Datei lässt sich nur mit dem oben gezeigten Verschlüsselungspasswort öffnen. Es wird nirgends gespeichert und kann später nicht wiederhergestellt werden — sichern Sie es, bevor Sie generieren.",
+    "confirmPasswordConfirm": "Gespeichert — generieren",
+    "generatedToast": "Support-Backup heruntergeladen.",
+    "generateFailed": "Support-Backup konnte nicht erstellt werden. Bitte erneut versuchen.",
+    "passwordHint": "Die Datei ist immer verschlüsselt. Geben Sie dieses Passwort über einen separaten Kanal weiter, nicht zusammen mit der Datei.",
+    "passwordInvalid": "Mindestens 8 Zeichen eingeben."
   },
   "dangerZone": {
     "heading": "Gefahrenbereich",

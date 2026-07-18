@@ -228,7 +228,51 @@
     "wiki": {
       "label": "Wiki",
       "description": "Kılavuzlara ve belgelere göz atın."
+    },
+    "supportBackup": {
+      "label": "Destek yedeği oluştur",
+      "description": "Bir bakımcının gerçek adlarınızı veya tutarlarınızı görmeden bir hatayı yeniden üretebilmesi için verilerinizin şifrelenmiş, kimliksizleştirilmiş bir kopyasını paylaşın."
     }
+  },
+  "supportBackup": {
+    "title": "Destek yedeği oluştur",
+    "howItWorks": "Yedeğinizin kimliksizleştirilmiş bir kopyasını üretir: adlar maskelenir (ilk ve son iki karakter kalır), notlar/açıklamalar/hesap numaraları kaldırılır ve her tutar tek bir gizli çarpanla çarpılırken kamuya açık değerler (döviz kurları, fiyatlar, faiz oranları) olduğu gibi kalır. Dosya her zaman aşağıdaki parolayla şifrelenir ve normal bir yedek gibi geri yüklenir. Bu, sıradan ifşaya karşı korur; sizi zaten tanıyan birine karşı değil — hatalar yeniden üretilebilsin diye tarihler, sıklıklar ve yapı korunur.",
+    "sectionsLabel": "Neler dahil edilsin",
+    "sections": {
+      "investments": "Yatırımlar (menkul kıymetler, pozisyonlar, fiyatlar)",
+      "scheduled": "Planlı işlemler",
+      "budgets": "Bütçeler",
+      "reports": "Raporlar ve projeksiyonlar",
+      "importMappings": "İçe aktarma sütun eşlemeleri",
+      "autoBackup": "Otomatik yedek ayarları"
+    },
+    "priceHistoryLabel": "Menkul kıymet fiyat geçmişini dahil et",
+    "priceHistoryHint": "Varsayılan olarak kapalı: tam fiyat serisi halka açık piyasa verileriyle eşleşir ve maskelenmiş bir sembolü açığa çıkarabilir. Yalnızca hata fiyatlar veya değerlemelerle ilgiliyse açın.",
+    "accountsLabel": "Belirli hesaplarla sınırla",
+    "accountsHint": "Her hesabı dahil etmek için tümünü işaretsiz bırakın. Bir alt küme seçmek, başvurulan hesapları ve alacaklıları da içeri çeker.",
+    "dateRangeLabel": "Tarih aralığı (isteğe bağlı)",
+    "dateRangeHint": "Dışa aktarılan geçmişi bu tarihlerle sınırlayın. Kırpılmış dosya tutarlı kalsın diye açılış bakiyeleri ayarlanır.",
+    "dateFromLabel": "Başlangıç",
+    "dateToLabel": "Bitiş",
+    "multiplierLabel": "Tutar çarpanı",
+    "multiplierHint": "Her özel tutar, gerçek değerleri gizlemek ve tutarlılığı korumak için bu sayıyla çarpılır. 1’den büyük, tam sayı olmayan herhangi bir sayı olur; “Yeniden üret” yenisini seçer.",
+    "multiplierWarning": "Çarpanı kimseyle paylaşmayın — gizlenen tutarları geri çeviren anahtar odur.",
+    "multiplierInvalid": "1’den büyük, tam sayı olmayan bir sayı girin.",
+    "regenerate": "Yeniden üret",
+    "passwordLabel": "Şifreleme parolası",
+    "preview": "Önizleme",
+    "previewBefore": "Önce",
+    "previewAfter": "Sonra",
+    "previewEmpty": "Bu seçim için önizlenecek örnek satır yok.",
+    "previewFailed": "Önizleme oluşturulamadı. Lütfen tekrar deneyin.",
+    "generate": "Oluştur",
+    "confirmPasswordTitle": "Parolayı kaydettiniz mi?",
+    "confirmPasswordMessage": "Dosya yalnızca yukarıda gösterilen şifreleme parolasıyla açılabilir. Hiçbir yerde saklanmaz ve sonradan kurtarılamaz — oluşturmadan önce kaydettiğinizden emin olun.",
+    "confirmPasswordConfirm": "Kaydettim — oluştur",
+    "generatedToast": "Destek yedeği indirildi.",
+    "generateFailed": "Destek yedeği oluşturulamadı. Lütfen tekrar deneyin.",
+    "passwordHint": "Dosya her zaman şifrelidir. Bu parolayı incelemeyi yapacak kişiye dosyayla birlikte değil, ayrı bir kanaldan iletin.",
+    "passwordInvalid": "En az 8 karakter girin."
   },
   "dangerZone": {
     "heading": "Tehlikeli Alan",

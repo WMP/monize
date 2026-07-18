@@ -18,6 +18,7 @@ import {
   isEncryptedBackup,
   BackupDecryptionError,
 } from "./backup-crypto.util";
+import { collectRowIdRemap, deepRemapIds } from "./backup-id-remap.util";
 import { tr } from "../i18n/translate";
 
 export interface RestoreBackupInput {
@@ -37,9 +38,6 @@ export class BackupPasswordRequiredError extends BadRequestException {
 }
 
 const BACKUP_VERSION = 1;
-
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Tables that `insertRows` is permitted to write during a restore. This is the
@@ -268,6 +266,29 @@ export class BackupService {
     return Array.from(INTENTIONALLY_EXCLUDED_TABLES);
   }
 
+  /**
+   * Collects the full export as an in-memory map of table -> rows, using the
+   * same queries as the streamed/gzipped export. Consumed by the support
+   * (de-identified) backup, which must hold every table at once to reconcile
+   * scaled balances before serializing. Returns the same version/exportedAt
+   * envelope fields the file format uses.
+   */
+  async collectRawExport(userId: string): Promise<{
+    version: number;
+    exportedAt: string;
+    tables: Record<string, Record<string, unknown>[]>;
+  }> {
+    const tables: Record<string, Record<string, unknown>[]> = {};
+    for (const { key, sql } of this.getTableQueries()) {
+      tables[key] = await this.query(sql, [userId]);
+    }
+    return {
+      version: BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      tables,
+    };
+  }
+
   private getTableQueries(): Array<{ key: string; sql: string }> {
     return [
       {
@@ -488,6 +509,15 @@ export class BackupService {
     const gzippedPayload = this.maybeDecrypt(input, user);
     const rawData = this.decompressAndParse(gzippedPayload);
     this.validateBackupFormat(rawData);
+
+    // A support (de-identified) backup restores like any other, but the data
+    // is synthetic -- masked names, amounts scaled by a hidden factor. Log it
+    // so scaled balances aren't mistaken for corruption later.
+    if ((rawData as { supportBackup?: unknown }).supportBackup === true) {
+      this.logger.log(
+        `Restoring a de-identified support backup for user ${userId} (names masked, amounts scaled)`,
+      );
+    }
 
     // Remap every primary key in the backup to a fresh UUID (and rewrite all
     // references to those keys, including ids embedded in JSONB columns) so the
@@ -911,13 +941,7 @@ export class BackupService {
     const remap = new Map<string, string>();
     for (const [table, rows] of Object.entries(data)) {
       if (table === "currencies" || !Array.isArray(rows)) continue;
-      for (const row of rows) {
-        if (!row || typeof row !== "object") continue;
-        const id = (row as Record<string, unknown>).id;
-        if (typeof id === "string" && UUID_REGEX.test(id) && !remap.has(id)) {
-          remap.set(id, randomUUID());
-        }
-      }
+      collectRowIdRemap(rows, remap, randomUUID);
     }
     return remap;
   }
@@ -943,32 +967,10 @@ export class BackupService {
     return result as unknown as BackupData;
   }
 
-  /**
-   * Recursively rewrites any string that matches a remapped id. Recurses into
-   * arrays and plain objects (e.g. JSONB columns) so ids nested inside JSON are
-   * remapped too. Because the remap only contains genuine backup primary keys
-   * (random UUIDs), non-id strings such as names or memos are left untouched.
-   */
+  /** See backup-id-remap.util.ts -- shared with the support (de-identified)
+   *  export so the two walkers cannot drift. */
   private deepRemapIds(value: unknown, remap: Map<string, string>): unknown {
-    if (typeof value === "string") {
-      return remap.get(value) ?? value;
-    }
-    if (Array.isArray(value)) {
-      return value.map((item) => this.deepRemapIds(item, remap));
-    }
-    if (
-      value !== null &&
-      typeof value === "object" &&
-      !(value instanceof Date)
-    ) {
-      return Object.fromEntries(
-        Object.entries(value).map(([key, val]) => [
-          key,
-          this.deepRemapIds(val, remap),
-        ]),
-      );
-    }
-    return value;
+    return deepRemapIds(value, remap);
   }
 
   private async deleteAllUserData(
