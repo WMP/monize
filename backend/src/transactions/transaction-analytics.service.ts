@@ -802,177 +802,36 @@ export class TransactionAnalyticsService {
     amountTo?: number,
     tagIds?: string[],
   ): Promise<Array<{ month: string; total: number; count: number }>> {
-    const queryBuilder = this.transactionsRepository
-      .createQueryBuilder("transaction")
-      .where("transaction.userId = :userId", { userId });
+    // Reuse the same filtered query builder as getSummary so the chart's
+    // per-month totals and counts reconcile exactly with the category/payee
+    // info widget's headline summary -- identical brokerage exclusion, split
+    // expansion, and transfer-split handling. Previously this method duplicated
+    // the filter logic with slightly different semantics (no transfer-split
+    // exclusion, conditional split join), which let the chart footer count and
+    // the widget count diverge and read as a stale/"caching" mismatch.
+    // getMonthlyTotals is only called when filters are active (the frontend
+    // switches to daily balances otherwise).
+    const queryBuilder = await this.createFilteredAnalyticsQuery(userId, {
+      accountIds,
+      startDate,
+      endDate,
+      categoryIds,
+      payeeIds,
+      search,
+      amountFrom,
+      amountTo,
+      tagIds,
+    });
 
-    // Join account for filtering.  Use the same exclusion logic as
-    // findAll() so the chart counts/totals match the transaction list.
-    // getMonthlyTotals is only called when filters are active (the
-    // frontend switches to daily balances otherwise).
-    queryBuilder.leftJoin("transaction.account", "summaryAccount");
-
-    queryBuilder.andWhere(
-      "(summaryAccount.accountSubType IS NULL OR summaryAccount.accountSubType != 'INVESTMENT_BROKERAGE')",
-    );
-
-    if (accountIds && accountIds.length > 0) {
-      queryBuilder.andWhere("transaction.accountId IN (:...accountIds)", {
-        accountIds,
-      });
-    }
-
-    if (startDate) {
-      queryBuilder.andWhere("transaction.transactionDate >= :startDate", {
-        startDate,
-      });
-    }
-
-    if (endDate) {
-      queryBuilder.andWhere("transaction.transactionDate <= :endDate", {
-        endDate,
-      });
-    }
-
-    let splitsJoined = false;
-
-    if (categoryIds && categoryIds.length > 0) {
-      const hasUncategorized = categoryIds.includes("uncategorized");
-      const hasTransfer = categoryIds.includes("transfer");
-      const regularCategoryIds = categoryIds.filter(
-        (id) => id !== "uncategorized" && id !== "transfer",
-      );
-
-      let hasCondition = false;
-
-      if (hasUncategorized || hasTransfer || regularCategoryIds.length > 0) {
-        const uniqueCategoryIds =
-          regularCategoryIds.length > 0
-            ? await getAllCategoryIdsWithChildren(
-                this.categoriesRepository,
-                userId,
-                regularCategoryIds,
-              )
-            : [];
-
-        if (hasUncategorized || uniqueCategoryIds.length > 0) {
-          queryBuilder.leftJoin("transaction.splits", "splits");
-          splitsJoined = true;
-        }
-
-        queryBuilder.andWhere(
-          new Brackets((qb) => {
-            if (hasUncategorized) {
-              const method = hasCondition ? "orWhere" : "where";
-              hasCondition = true;
-              qb[method](
-                new Brackets((unc) => {
-                  unc
-                    .where(
-                      "transaction.categoryId IS NULL AND transaction.isSplit = false AND transaction.isTransfer = false AND summaryAccount.accountType != 'INVESTMENT'",
-                    )
-                    // A split transaction counts as uncategorised when any of
-                    // its non-transfer split lines has no category, matching the
-                    // category breakdown grouping.
-                    .orWhere(
-                      "transaction.isSplit = true AND transaction.isTransfer = false AND summaryAccount.accountType != 'INVESTMENT' AND splits.categoryId IS NULL AND splits.transferAccountId IS NULL",
-                    );
-                }),
-              );
-            }
-            if (hasTransfer) {
-              const method = hasCondition ? "orWhere" : "where";
-              hasCondition = true;
-              qb[method]("transaction.isTransfer = true");
-            }
-            if (uniqueCategoryIds.length > 0) {
-              const method = hasCondition ? "orWhere" : "where";
-              hasCondition = true;
-              qb[method](
-                new Brackets((inner) => {
-                  inner
-                    .where(
-                      "transaction.categoryId IN (:...monthlyCategoryIds)",
-                      { monthlyCategoryIds: uniqueCategoryIds },
-                    )
-                    .orWhere("splits.categoryId IN (:...monthlyCategoryIds)", {
-                      monthlyCategoryIds: uniqueCategoryIds,
-                    });
-                }),
-              );
-            }
-          }),
-        );
-      }
-    }
-
-    if (payeeIds && payeeIds.length > 0) {
-      queryBuilder.andWhere("transaction.payeeId IN (:...payeeIds)", {
-        payeeIds,
-      });
-    }
-
-    if (search && search.trim()) {
-      const searchPattern = `%${escapeLikePattern(search.trim())}%`;
-      const parsedSearch = await this.resolveSearchTerm(userId, search);
-      if (!splitsJoined) {
-        queryBuilder.leftJoin("transaction.splits", "splits");
-        splitsJoined = true;
-      }
-      queryBuilder.andWhere(
-        buildTransactionSearchClause({
-          transaction: "transaction",
-          splits: "splits",
-        }),
-        {
-          search: searchPattern,
-          searchAmount: parsedSearch.amount,
-          searchDate: parsedSearch.date,
-        },
-      );
-    }
-
-    if (amountFrom !== undefined) {
-      queryBuilder.andWhere("transaction.amount >= :amountFrom", {
-        amountFrom,
-      });
-    }
-
-    if (amountTo !== undefined) {
-      queryBuilder.andWhere("transaction.amount <= :amountTo", { amountTo });
-    }
-
-    if (tagIds && tagIds.length > 0) {
-      if (!splitsJoined) {
-        queryBuilder.leftJoin("transaction.splits", "splits");
-        splitsJoined = true;
-      }
-      queryBuilder.leftJoin("transaction.tags", "filterTags");
-      queryBuilder.leftJoin("splits.tags", "filterSplitTags");
-      queryBuilder.andWhere(
-        new Brackets((qb) => {
-          qb.where("filterTags.id IN (:...monthlyTagIds)", {
-            monthlyTagIds: tagIds,
-          }).orWhere("filterSplitTags.id IN (:...monthlyTagIds)", {
-            monthlyTagIds: tagIds,
-          });
-        }),
-      );
-    }
-
-    // When category or tag filter joins splits, use the split amount for split
-    // transactions so we only count the matching split, not the full parent.
-    const amountExpr = splitsJoined
-      ? "COALESCE(splits.amount, transaction.amount)"
-      : "transaction.amount";
+    // The splits join is always present, so use the split amount for split
+    // transactions (COALESCE falls back to the transaction amount for
+    // non-split rows), keeping the per-month total signed for the bar chart.
+    const amountExpr = "COALESCE(splits.amount, transaction.amount)";
 
     queryBuilder
       .select("TO_CHAR(transaction.transactionDate, 'YYYY-MM')", "month")
       .addSelect(`SUM(${amountExpr})`, "total")
-      .addSelect(
-        splitsJoined ? "COUNT(DISTINCT transaction.id)" : "COUNT(*)",
-        "count",
-      )
+      .addSelect("COUNT(DISTINCT transaction.id)", "count")
       .groupBy("month")
       .orderBy("month", "ASC");
 

@@ -35,6 +35,8 @@ interface PayeeInfoWidgetProps {
   scheduledTransactions?: ScheduledTransaction[];
   /** Active page filters (date range, accounts, ...) minus any payee ids. */
   filterParams: WidgetFilterParams;
+  /** Bumped by the page on every reload so the summary refetches in lockstep. */
+  refreshKey?: number;
   /** Open the shared payee edit modal for this payee. */
   onEdit: () => void;
   /** Collapse the widget so the chart can use the full width. */
@@ -54,6 +56,7 @@ export function PayeeInfoWidget({
   categories,
   scheduledTransactions = [],
   filterParams,
+  refreshKey,
   onEdit,
   onCollapse,
   onCategoryClick,
@@ -125,7 +128,7 @@ export function PayeeInfoWidget({
     return () => {
       cancelled = true;
     };
-  }, [payee.id, filterKey]);
+  }, [payee.id, filterKey, refreshKey]);
 
   const nextBill = useMemo(
     () =>

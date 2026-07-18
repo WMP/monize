@@ -9,6 +9,8 @@ import { GroupedTotal, MonthlyTotal, TransactionSummary } from '@/types/transact
 import { CategoryBudgetStatus } from '@/types/budget';
 import { transactionsApi } from '@/lib/transactions';
 import { budgetsApi } from '@/lib/budgets';
+import { countElapsedPeriods } from '@/lib/chart-buckets';
+import { sumMoney } from '@/lib/format';
 import { getNextScheduled } from '@/lib/scheduled-utils';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useDateFormat } from '@/hooks/useDateFormat';
@@ -32,6 +34,8 @@ interface CategoryInfoWidgetProps {
   monthlyTotals?: MonthlyTotal[];
   /** Active page filters (date range, accounts, ...) minus any category ids. */
   filterParams: WidgetFilterParams;
+  /** Bumped by the page on every reload so the summary refetches in lockstep. */
+  refreshKey?: number;
   /** Open the shared category edit modal for this category. */
   onEdit: () => void;
   /** Collapse the widget so the chart can use the full width. */
@@ -54,6 +58,7 @@ export function CategoryInfoWidget({
   scheduledTransactions = [],
   monthlyTotals = [],
   filterParams,
+  refreshKey,
   onEdit,
   onCollapse,
   onSubcategoryClick,
@@ -112,7 +117,7 @@ export function CategoryInfoWidget({
     return () => {
       cancelled = true;
     };
-  }, [category.id, filterKey]);
+  }, [category.id, filterKey, refreshKey]);
 
   const parentCategory = useMemo(
     () => (category.parentId ? categories.find((c) => c.id === category.parentId) : undefined),
@@ -206,12 +211,15 @@ export function CategoryInfoWidget({
   const averageAmount =
     totals && transactionCount > 0 ? (totals.income + totals.expenses) / transactionCount : null;
 
-  // Average of the months the page's chart already covers; the chart data
-  // carries the same filters as this widget, so the figures reconcile.
+  // Average spend per elapsed month over the period the chart covers. Dividing
+  // by elapsed months (including months with no transaction) rather than only
+  // the months that had activity matches the chart's "Monthly Avg" and reads
+  // as the intuitive "total spend / months elapsed".
   const monthlyAverage = useMemo(() => {
     if (monthlyTotals.length === 0) return null;
-    const sum = monthlyTotals.reduce((acc, m) => acc + Math.abs(m.total), 0);
-    return sum / monthlyTotals.length;
+    const sum = sumMoney(monthlyTotals.map((m) => Math.abs(m.total)));
+    const elapsedMonths = countElapsedPeriods(monthlyTotals, 'month');
+    return elapsedMonths > 0 ? sum / elapsedMonths : null;
   }, [monthlyTotals]);
 
   const headlineTotal = totals ? (category.isIncome ? totals.income : totals.expenses) : null;

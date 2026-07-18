@@ -193,8 +193,40 @@ describe('CategoryInfoWidget', () => {
 
     // average = 800 / 20
     expect(screen.getByText('CAD 40.00')).toBeInTheDocument();
-    // monthly average = (300+200+300)/3
+    // monthly average = (300+200+300)/3 (3 consecutive, gap-free months)
     expect(screen.getByText('CAD 266.67')).toBeInTheDocument();
+  });
+
+  it('averages spend over elapsed months, including gap months', async () => {
+    await renderWidget({
+      monthlyTotals: [
+        { month: '2026-01', total: -300, count: 4 },
+        { month: '2026-04', total: -300, count: 4 },
+      ],
+    });
+
+    // 4 elapsed months (Jan..Apr): 600 / 4 = 150, not 600 / 2 = 300.
+    expect(screen.getByText('CAD 150.00')).toBeInTheDocument();
+  });
+
+  it('refetches the summary when refreshKey changes', async () => {
+    const { rerender } = await renderWidget({ refreshKey: 0 });
+    expect(mockedTransactions.getSummary).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      rerender(
+        <CategoryInfoWidget
+          category={makeCategory()}
+          categories={categories}
+          filterParams={{}}
+          refreshKey={1}
+          onEdit={vi.fn()}
+          onCollapse={vi.fn()}
+        />,
+      );
+    });
+
+    expect(mockedTransactions.getSummary).toHaveBeenCalledTimes(2);
   });
 
   it('surfaces the next scheduled transaction in the category subtree', async () => {

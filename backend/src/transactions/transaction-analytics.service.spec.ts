@@ -1242,11 +1242,17 @@ describe("TransactionAnalyticsService", () => {
       );
     });
 
-    it("does not exclude transfers", async () => {
+    it("keeps whole transfers but excludes transfer split lines (matching getSummary)", async () => {
       await service.getMonthlyTotals(userId);
 
+      // Whole transfer transactions are still counted.
       expect(mockQueryBuilder.andWhere).not.toHaveBeenCalledWith(
         "transaction.isTransfer = false",
+      );
+      // Transfer split lines are excluded so the chart totals/counts reconcile
+      // with the category/payee summary, which shares this query builder.
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        "(splits.transferAccountId IS NULL OR splits.id IS NULL)",
       );
     });
 
@@ -1288,9 +1294,9 @@ describe("TransactionAnalyticsService", () => {
       ]);
 
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-        "transaction.categoryId IN (:...monthlyCategoryIds)",
+        "transaction.categoryId IN (:...summaryCategoryIds)",
         {
-          monthlyCategoryIds: expect.arrayContaining(["cat-1", "cat-child"]),
+          summaryCategoryIds: expect.arrayContaining(["cat-1", "cat-child"]),
         },
       );
     });
@@ -1316,16 +1322,16 @@ describe("TransactionAnalyticsService", () => {
       );
     });
 
-    it("uses transaction.amount when no category filter is active", async () => {
+    it("always uses split-aware amounts via the shared summary query", async () => {
       await service.getMonthlyTotals(userId);
 
-      // Should NOT use COALESCE
-      const addSelectCalls = mockQueryBuilder.addSelect.mock.calls;
-      const coalesceUsed = addSelectCalls.some(
-        (call: unknown[]) =>
-          typeof call[0] === "string" && call[0].includes("COALESCE"),
+      // The shared query always expands splits, so the per-month total uses
+      // COALESCE(splits.amount, transaction.amount) even with no category
+      // filter -- keeping the chart total consistent with the summary.
+      expect(mockQueryBuilder.addSelect).toHaveBeenCalledWith(
+        expect.stringContaining("COALESCE(splits.amount, transaction.amount)"),
+        "total",
       );
-      expect(coalesceUsed).toBe(false);
     });
 
     it("applies payeeIds filter when provided", async () => {
@@ -1411,12 +1417,12 @@ describe("TransactionAnalyticsService", () => {
           expect.any(Brackets),
         );
         expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-          "filterTags.id IN (:...monthlyTagIds)",
-          { monthlyTagIds: ["tag-1", "tag-2"] },
+          "filterTags.id IN (:...summaryTagIds)",
+          { summaryTagIds: ["tag-1", "tag-2"] },
         );
         expect(mockQueryBuilder.orWhere).toHaveBeenCalledWith(
-          "filterSplitTags.id IN (:...monthlyTagIds)",
-          { monthlyTagIds: ["tag-1", "tag-2"] },
+          "filterSplitTags.id IN (:...summaryTagIds)",
+          { summaryTagIds: ["tag-1", "tag-2"] },
         );
       });
 

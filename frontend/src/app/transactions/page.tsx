@@ -149,6 +149,12 @@ function TransactionsContent() {
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [startingBalance, setStartingBalance] = useState<number | undefined>();
 
+  // Bumped after every transaction reload so the entity info widgets (which
+  // fetch their own summaries) refetch in lockstep with the chart and list,
+  // instead of showing a stale count after a mutation, undo/redo, or AI write
+  // until a full page refresh.
+  const [reloadKey, setReloadKey] = useState(0);
+
   // Budget context for category indicators
   const [budgetStatusMap, setBudgetStatusMap] = useState<Record<string, CategoryBudgetStatus>>({});
 
@@ -274,6 +280,9 @@ function TransactionsContent() {
       logger.error(error);
     } finally {
       setIsLoading(false);
+      // Signal the entity info widgets to refetch their summaries in lockstep
+      // with the freshly loaded chart/list data.
+      setReloadKey((k) => k + 1);
     }
   }, [accountIdsForQuery, filters.filterAccountStatus, filters.filterCategoryIds, filters.filterPayeeIds, filters.filterTagIds, filters.filterStartDate, filters.filterEndDate, filters.filterSearch, filters.filterAmountFrom, filters.filterAmountTo, filters.filterStatuses, filters.filterTagKey, filters.filterTagKeyOp, filters.filterTagKeyValue, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -956,6 +965,7 @@ function TransactionsContent() {
                       categories={categories}
                       scheduledTransactions={scheduledTransactions}
                       filterParams={widgetFilterParams}
+                      refreshKey={reloadKey}
                       onEdit={() => handlePayeeClick(retainedWidget.payee.id)}
                       onCollapse={() => setPayeeWidgetCollapsed(true)}
                       onCategoryClick={filters.handleCategoryClick}
@@ -967,6 +977,7 @@ function TransactionsContent() {
                       scheduledTransactions={scheduledTransactions}
                       monthlyTotals={monthlyTotals}
                       filterParams={widgetFilterParams}
+                      refreshKey={reloadKey}
                       onEdit={() => categoryModal.openEdit(retainedWidget.category)}
                       onCollapse={() => setCategoryWidgetCollapsed(true)}
                       onSubcategoryClick={filters.handleCategoryClick}

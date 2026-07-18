@@ -151,6 +151,26 @@ describe('PayeeInfoWidget', () => {
     expect(screen.getByText('Inactive')).toBeInTheDocument();
   });
 
+  it('refetches the summary when refreshKey changes', async () => {
+    const { rerender } = await renderWidget({ refreshKey: 0 });
+    expect(mockedTransactions.getSummary).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      rerender(
+        <PayeeInfoWidget
+          payee={makePayee()}
+          categories={categories}
+          filterParams={{}}
+          refreshKey={1}
+          onEdit={vi.fn()}
+          onCollapse={vi.fn()}
+        />,
+      );
+    });
+
+    expect(mockedTransactions.getSummary).toHaveBeenCalledTimes(2);
+  });
+
   it('renders the top categories with full labels and fires the filter callback', async () => {
     const onCategoryClick = vi.fn();
     await renderWidget({ onCategoryClick });

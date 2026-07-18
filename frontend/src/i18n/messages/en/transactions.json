@@ -472,9 +472,22 @@
       "title": "Monthly Totals",
       "noData": "No transaction data available",
       "monthlyAvg": "Monthly Avg",
+      "quarterlyAvg": "Quarterly Avg",
+      "yearlyAvg": "Yearly Avg",
       "total": "Total",
       "transactions": "Transactions",
-      "tooltip": "{count, plural, one {# transaction} other {# transactions}}"
+      "tooltip": "{count, plural, one {# transaction} other {# transactions}}",
+      "quarterLabel": "Q{quarter} {year}",
+      "quarterTick": "Q{quarter} {year}",
+      "granularityLabel": "Bucket size",
+      "granularity": {
+        "auto": "Auto",
+        "month": "Month",
+        "quarter": "Quarter",
+        "year": "Year"
+      },
+      "granularityAutoTitle": "Auto ({granularity})",
+      "granularityTitle": "{label} view"
     },
     "accountBalances": {
       "title": "Account Balances",
