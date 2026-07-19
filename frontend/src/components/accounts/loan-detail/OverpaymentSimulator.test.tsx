@@ -264,4 +264,43 @@ describe('OverpaymentSimulator', () => {
     expect(screen.getByLabelText('Overpayment amount')).toHaveValue('5,000.00');
     expect(screen.getByLabelText('Date')).toHaveValue('2026-06-01');
   });
+
+  it('emits a fixed monthly budget plan and hides the cadence/window', async () => {
+    const { onPlanChange } = await renderSimulator({ projectionInput });
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Simulation type'), { target: { value: 'BUDGET' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Total monthly payment'), { target: { value: '4000' } });
+    });
+
+    expect(onPlanChange).toHaveBeenLastCalledWith({
+      targetMonthlyPayment: 4000,
+      targetMonthlyPaymentMode: 'SHORTEN_TERM',
+    });
+    // A budget hides the cadence and the window (but keeps the mode).
+    expect(screen.queryByLabelText('Frequency')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Starting (optional)')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('After an overpayment')).toBeInTheDocument();
+  });
+
+  it('carries the budget mode (shorten vs lower installment)', async () => {
+    const { onPlanChange } = await renderSimulator({ projectionInput });
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Simulation type'), { target: { value: 'BUDGET' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Total monthly payment'), { target: { value: '4000' } });
+      fireEvent.change(screen.getByLabelText('After an overpayment'), {
+        target: { value: 'LOWER_INSTALLMENT' },
+      });
+    });
+
+    expect(onPlanChange).toHaveBeenLastCalledWith({
+      targetMonthlyPayment: 4000,
+      targetMonthlyPaymentMode: 'LOWER_INSTALLMENT',
+    });
+  });
 });

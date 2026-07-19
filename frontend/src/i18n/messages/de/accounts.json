@@ -442,7 +442,10 @@
       "frequencyMonthly": "Monatlich",
       "frequencyQuarterly": "Vierteljährlich",
       "frequencyAnnually": "Jährlich",
-      "oneOffDateLabel": "Datum"
+      "oneOffDateLabel": "Datum",
+      "budgetLabel": "Monatliche Gesamtzahlung",
+      "budgetHint": "Gib jeden Monat einen festen Gesamtbetrag für den Kredit aus; die Sondertilgung ist der Rest nach der Rate. Sinkt die Rate, wächst die Sondertilgung, damit der Gesamtbetrag gleich bleibt.",
+      "budgetBelowInstallment": "Das liegt unter der aktuellen Rate ({amount}); erhöhe den Betrag, um zusätzlich zu tilgen."
     },
     "comparison": {
       "newPayoff": "Neues Tilgungsdatum",
@@ -495,7 +498,8 @@
       "loadFailed": "Die gespeicherten Szenarien konnten nicht geladen werden. Sie sind weiterhin gespeichert — laden Sie die Seite neu, um es erneut zu versuchen.",
       "colOverpayment": "Sondertilgung",
       "overpaymentWithFrequency": "{amount} ({frequency})",
-      "loadAria": "Szenario „{name}“ laden"
+      "loadAria": "Szenario „{name}“ laden",
+      "saveBudgetUnsupported": "Budget-Szenarien können noch nicht gespeichert werden."
     },
     "scenarioChart": {
       "title": "Szenariovergleich",

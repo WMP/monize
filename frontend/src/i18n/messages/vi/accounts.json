@@ -442,7 +442,10 @@
       "frequencyMonthly": "Hàng tháng",
       "frequencyQuarterly": "Hàng quý",
       "frequencyAnnually": "Hàng năm",
-      "oneOffDateLabel": "Ngày"
+      "oneOffDateLabel": "Ngày",
+      "budgetLabel": "Tổng thanh toán hàng tháng",
+      "budgetHint": "Mỗi tháng chi một tổng cố định cho khoản vay; phần trả thêm là phần còn lại sau khoản trả. Khi khoản trả giảm, phần trả thêm tăng để giữ tổng không đổi.",
+      "budgetBelowInstallment": "Thấp hơn khoản trả hiện tại ({amount}); tăng lên để trả thêm."
     },
     "comparison": {
       "newPayoff": "Ngày trả hết mới",
@@ -495,7 +498,8 @@
       "loadFailed": "Không thể tải các kịch bản đã lưu. Chúng vẫn được lưu trữ — tải lại trang để thử lại.",
       "colOverpayment": "Trả thêm",
       "overpaymentWithFrequency": "{amount} ({frequency})",
-      "loadAria": "Tải kịch bản \"{name}\""
+      "loadAria": "Tải kịch bản \"{name}\"",
+      "saveBudgetUnsupported": "Chưa hỗ trợ lưu kịch bản ngân sách."
     },
     "scenarioChart": {
       "title": "So sánh kịch bản",

@@ -442,7 +442,10 @@
       "frequencyMonthly": "मासिक",
       "frequencyQuarterly": "त्रैमासिक",
       "frequencyAnnually": "वार्षिक",
-      "oneOffDateLabel": "तारीख"
+      "oneOffDateLabel": "तारीख",
+      "budgetLabel": "कुल मासिक भुगतान",
+      "budgetHint": "हर महीने ऋण पर एक निश्चित कुल राशि खर्च करें; किस्त के बाद जो बचता है वही अतिरिक्त भुगतान है। किस्त घटने पर अतिरिक्त भुगतान बढ़ता है ताकि कुल वही रहे।",
+      "budgetBelowInstallment": "यह मौजूदा किस्त ({amount}) से कम है; अतिरिक्त भुगतान के लिए इसे बढ़ाएँ।"
     },
     "comparison": {
       "newPayoff": "नई चुकौती तिथि",
@@ -495,7 +498,8 @@
       "loadFailed": "सहेजे गए परिदृश्य लोड नहीं हो सके। वे अभी भी संग्रहीत हैं — पुनः प्रयास के लिए पृष्ठ फिर से लोड करें।",
       "colOverpayment": "अतिरिक्त भुगतान",
       "overpaymentWithFrequency": "{amount} ({frequency})",
-      "loadAria": "परिदृश्य \"{name}\" लोड करें"
+      "loadAria": "परिदृश्य \"{name}\" लोड करें",
+      "saveBudgetUnsupported": "बजट परिदृश्य अभी सहेजे नहीं जा सकते।"
     },
     "scenarioChart": {
       "title": "परिदृश्य तुलना",

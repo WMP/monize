@@ -442,7 +442,10 @@
       "frequencyMonthly": "Mensile",
       "frequencyQuarterly": "Trimestrale",
       "frequencyAnnually": "Annuale",
-      "oneOffDateLabel": "Data"
+      "oneOffDateLabel": "Data",
+      "budgetLabel": "Pagamento mensile totale",
+      "budgetHint": "Destina ogni mese un totale fisso al prestito; il versamento extra è ciò che resta dopo la rata. Quando la rata cala, il versamento cresce per mantenere lo stesso totale.",
+      "budgetBelowInstallment": "È inferiore alla rata attuale ({amount}); aumentalo per versare di più."
     },
     "comparison": {
       "newPayoff": "Nuova data di estinzione",
@@ -495,7 +498,8 @@
       "loadFailed": "Impossibile caricare gli scenari salvati. Sono ancora memorizzati: ricarica la pagina per riprovare.",
       "colOverpayment": "Versamento extra",
       "overpaymentWithFrequency": "{amount} ({frequency})",
-      "loadAria": "Carica lo scenario \"{name}\""
+      "loadAria": "Carica lo scenario \"{name}\"",
+      "saveBudgetUnsupported": "Il salvataggio degli scenari di budget non è ancora supportato."
     },
     "scenarioChart": {
       "title": "Confronto scenari",

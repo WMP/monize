@@ -486,6 +486,9 @@
       "optionalGroup": "[XX-Optional-XX]",
       "simulationTypeLabel": "[XX-Simulation type-XX]",
       "overpaymentAmount": "[XX-Overpayment amount-XX]",
+      "budgetLabel": "[XX-Total monthly payment-XX]",
+      "budgetHint": "[XX-Spend a fixed total on the loan each month; the overpayment is whatever is left after the installment. As the installment falls, the overpayment grows to keep the total the same.-XX]",
+      "budgetBelowInstallment": "[XX-That's below the current installment ({amount}); raise it above to overpay.-XX]",
       "frequencyLabel": "[XX-Frequency-XX]",
       "frequencyOneOff": "[XX-One-off-XX]",
       "frequencyWeekly": "[XX-Weekly-XX]",
@@ -577,7 +580,8 @@
       "loadFailed": "[XX-Couldn't load the saved scenarios. They are still stored — reload the page to try again.-XX]",
       "colOverpayment": "[XX-Overpayment-XX]",
       "overpaymentWithFrequency": "[XX-{amount} ({frequency})-XX]",
-      "loadAria": "[XX-Load scenario \"{name}\"-XX]"
+      "loadAria": "[XX-Load scenario \"{name}\"-XX]",
+      "saveBudgetUnsupported": "[XX-Saving budget scenarios isn't supported yet.-XX]"
     },
     "pastImpact": {
       "title": "[XX-Impact of Overpayments Made-XX]",

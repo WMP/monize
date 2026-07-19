@@ -442,7 +442,10 @@
       "frequencyMonthly": "Miesięczna",
       "frequencyQuarterly": "Kwartalna",
       "frequencyAnnually": "Roczna",
-      "oneOffDateLabel": "Data"
+      "oneOffDateLabel": "Data",
+      "budgetLabel": "Łączna miesięczna płatność",
+      "budgetHint": "Przeznacz co miesiąc stałą łączną kwotę na kredyt; nadpłata to reszta po racie. Gdy rata maleje, nadpłata rośnie, żeby łączna kwota była taka sama.",
+      "budgetBelowInstallment": "To mniej niż obecna rata ({amount}); zwiększ, aby nadpłacać."
     },
     "comparison": {
       "newPayoff": "Nowa data spłaty",
@@ -495,7 +498,8 @@
       "loadFailed": "Nie udało się wczytać zapisanych scenariuszy. Nadal są zapisane — odśwież stronę, aby spróbować ponownie.",
       "colOverpayment": "Nadpłata",
       "overpaymentWithFrequency": "{amount} ({frequency})",
-      "loadAria": "Wczytaj scenariusz „{name}“"
+      "loadAria": "Wczytaj scenariusz „{name}“",
+      "saveBudgetUnsupported": "Zapisywanie scenariuszy budżetu nie jest jeszcze obsługiwane."
     },
     "scenarioChart": {
       "title": "Porównanie scenariuszy",

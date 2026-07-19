@@ -701,11 +701,11 @@ describe('generateBudgetSchedule (fixed monthly budget)', () => {
     });
   };
 
-  it('spends the whole budget each period, splitting into a shrinking installment and a growing overpayment', () => {
+  it('lower-installment: shrinking installment, growing overpayment, constant total', () => {
     const budget = 4000;
     const result = generateLoanSchedule({
       ...budgetInput(),
-      overpayments: { targetMonthlyPayment: budget },
+      overpayments: { targetMonthlyPayment: budget, targetMonthlyPaymentMode: 'LOWER_INSTALLMENT' },
     });
 
     expect(result.paidOff).toBe(true);
@@ -723,6 +723,32 @@ describe('generateBudgetSchedule (fixed monthly budget)', () => {
     const later = result.rows[result.rows.length - 5];
     expect(later.payment).toBeLessThan(first.payment);
     expect(later.extraPrincipal).toBeGreaterThan(first.extraPrincipal);
+  });
+
+  it('shorten-term: fixed installment, constant overpayment, same payoff as lower-installment', () => {
+    const budget = 4000;
+    const base = budgetInput();
+    const shorten = generateLoanSchedule({
+      ...base,
+      overpayments: { targetMonthlyPayment: budget, targetMonthlyPaymentMode: 'SHORTEN_TERM' },
+    });
+    const lower = generateLoanSchedule({
+      ...base,
+      overpayments: { targetMonthlyPayment: budget, targetMonthlyPaymentMode: 'LOWER_INSTALLMENT' },
+    });
+
+    // Both modes pay the same total each period, so the schedule is identical.
+    expect(shorten.numPayments).toBe(lower.numPayments);
+    expect(shorten.totalInterest).toBeCloseTo(lower.totalInterest, 2);
+
+    // Shorten-term keeps the contractual installment fixed and the overpayment
+    // constant (only the split differs from lower-installment).
+    const nonFinal = shorten.rows.slice(0, -1);
+    for (const row of nonFinal) {
+      expect(row.payment).toBeCloseTo(base.paymentAmount, 1);
+      expect(row.payment + row.extraPrincipal).toBeCloseTo(budget, 1);
+    }
+    expect(nonFinal[0].extraPrincipal).toBeCloseTo(nonFinal[nonFinal.length - 1].extraPrincipal, 1);
   });
 
   it('never lets the total exceed the budget and pays off on the last row', () => {

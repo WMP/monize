@@ -486,6 +486,9 @@
       "optionalGroup": "Optional",
       "simulationTypeLabel": "Simulation type",
       "overpaymentAmount": "Overpayment amount",
+      "budgetLabel": "Total monthly payment",
+      "budgetHint": "Spend a fixed total on the loan each month; the overpayment is whatever is left after the installment. As the installment falls, the overpayment grows to keep the total the same.",
+      "budgetBelowInstallment": "That's below the current installment ({amount}); raise it above to overpay.",
       "frequencyLabel": "Frequency",
       "frequencyOneOff": "One-off",
       "frequencyWeekly": "Weekly",
@@ -577,7 +580,8 @@
       "loadFailed": "Couldn't load the saved scenarios. They are still stored — reload the page to try again.",
       "colOverpayment": "Overpayment",
       "overpaymentWithFrequency": "{amount} ({frequency})",
-      "loadAria": "Load scenario \"{name}\""
+      "loadAria": "Load scenario \"{name}\"",
+      "saveBudgetUnsupported": "Saving budget scenarios isn't supported yet."
     },
     "pastImpact": {
       "title": "Impact of Overpayments Made",

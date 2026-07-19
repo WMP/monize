@@ -20,6 +20,8 @@ interface ComparisonSummaryCardsProps {
   recurringOverpayment?: { amount: number; frequency?: OverpaymentFrequency };
   /** The loan's own payment cadence, needed to place a recurring overpayment. */
   loanFrequency?: ScheduleFrequency;
+  /** A fixed total monthly spend (budget mode): shown as the monthly payment. */
+  fixedMonthlyPayment?: number;
 }
 
 /**
@@ -32,6 +34,7 @@ export function ComparisonSummaryCards({
   currencyCode,
   recurringOverpayment,
   loanFrequency,
+  fixedMonthlyPayment,
 }: ComparisonSummaryCardsProps) {
   const t = useTranslations('accounts');
   const { formatCurrency } = useNumberFormat();
@@ -63,14 +66,18 @@ export function ComparisonSummaryCards({
         : opAmount
       : 0;
 
-  // The resulting monthly outlay: for lower-installment the recomputed smaller
-  // installment; otherwise the unchanged installment plus any per-payment extra.
-  const monthlyPayment = isLowerInstallment
-    ? scenario.finalPaymentAmount
-    : Math.round((scenario.finalPaymentAmount + perPaymentExtra) * 100) / 100;
+  // The resulting monthly outlay: a fixed budget shows that budget as-is;
+  // for lower-installment the recomputed smaller installment; otherwise the
+  // unchanged installment plus any per-payment extra.
+  const monthlyPayment =
+    fixedMonthlyPayment != null
+      ? fixedMonthlyPayment
+      : isLowerInstallment
+        ? scenario.finalPaymentAmount
+        : Math.round((scenario.finalPaymentAmount + perPaymentExtra) * 100) / 100;
 
   const overpaymentNote =
-    !isLowerInstallment && opAmount > 0
+    fixedMonthlyPayment == null && !isLowerInstallment && opAmount > 0
       ? t('loanDetail.comparison.overpaymentAtFrequency', {
           frequency: t(FREQUENCY_LABEL_KEY[opFrequency ?? 'MONTHLY']),
           amount: formatCurrency(opAmount, currencyCode),

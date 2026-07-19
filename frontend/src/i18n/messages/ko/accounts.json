@@ -442,7 +442,10 @@
       "frequencyMonthly": "매월",
       "frequencyQuarterly": "분기별",
       "frequencyAnnually": "매년",
-      "oneOffDateLabel": "날짜"
+      "oneOffDateLabel": "날짜",
+      "budgetLabel": "월 총 상환액",
+      "budgetHint": "매달 대출에 고정된 총액을 지출합니다. 추가 상환액은 상환액을 뺀 나머지입니다. 상환액이 줄면 총액을 유지하도록 추가 상환액이 늘어납니다.",
+      "budgetBelowInstallment": "현재 상환액({amount})보다 적습니다. 추가 상환하려면 늘리세요."
     },
     "comparison": {
       "newPayoff": "새 완납일",
@@ -495,7 +498,8 @@
       "loadFailed": "저장된 시나리오를 불러오지 못했습니다. 데이터는 그대로 저장되어 있습니다. 페이지를 새로고침하여 다시 시도하세요.",
       "colOverpayment": "추가 상환",
       "overpaymentWithFrequency": "{amount} ({frequency})",
-      "loadAria": "시나리오 \"{name}\" 불러오기"
+      "loadAria": "시나리오 \"{name}\" 불러오기",
+      "saveBudgetUnsupported": "예산 시나리오 저장은 아직 지원되지 않습니다."
     },
     "scenarioChart": {
       "title": "시나리오 비교",

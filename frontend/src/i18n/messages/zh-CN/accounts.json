@@ -442,7 +442,10 @@
       "frequencyMonthly": "每月",
       "frequencyQuarterly": "每季度",
       "frequencyAnnually": "每年",
-      "oneOffDateLabel": "日期"
+      "oneOffDateLabel": "日期",
+      "budgetLabel": "每月总还款",
+      "budgetHint": "每月为贷款支出固定总额；还款之外剩下的就是额外还款。还款额下降时，额外还款增加以保持总额不变。",
+      "budgetBelowInstallment": "低于当前还款额（{amount}）；提高金额才能额外还款。"
     },
     "comparison": {
       "newPayoff": "新的还清日期",
@@ -495,7 +498,8 @@
       "loadFailed": "无法加载已保存的方案。它们仍然保存着——请重新加载页面重试。",
       "colOverpayment": "额外还款",
       "overpaymentWithFrequency": "{amount} ({frequency})",
-      "loadAria": "加载方案“{name}”"
+      "loadAria": "加载方案“{name}”",
+      "saveBudgetUnsupported": "暂不支持保存预算方案。"
     },
     "scenarioChart": {
       "title": "方案对比",

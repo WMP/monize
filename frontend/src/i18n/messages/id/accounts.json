@@ -442,7 +442,10 @@
       "frequencyMonthly": "Bulanan",
       "frequencyQuarterly": "Triwulanan",
       "frequencyAnnually": "Tahunan",
-      "oneOffDateLabel": "Tanggal"
+      "oneOffDateLabel": "Tanggal",
+      "budgetLabel": "Total pembayaran bulanan",
+      "budgetHint": "Keluarkan total tetap untuk pinjaman tiap bulan; pembayaran ekstra adalah sisa setelah angsuran. Saat angsuran turun, pembayaran ekstra naik agar totalnya tetap.",
+      "budgetBelowInstallment": "Ini di bawah angsuran saat ini ({amount}); naikkan agar bisa membayar lebih."
     },
     "comparison": {
       "newPayoff": "Tanggal Lunas Baru",
@@ -495,7 +498,8 @@
       "loadFailed": "Tidak dapat memuat skenario tersimpan. Skenario masih tersimpan — muat ulang halaman untuk mencoba lagi.",
       "colOverpayment": "Pembayaran ekstra",
       "overpaymentWithFrequency": "{amount} ({frequency})",
-      "loadAria": "Muat skenario \"{name}\""
+      "loadAria": "Muat skenario \"{name}\"",
+      "saveBudgetUnsupported": "Menyimpan skenario anggaran belum didukung."
     },
     "scenarioChart": {
       "title": "Perbandingan skenario",

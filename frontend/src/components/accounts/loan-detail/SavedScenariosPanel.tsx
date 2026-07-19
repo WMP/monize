@@ -142,7 +142,17 @@ export function SavedScenariosPanel({
                 : t('loanDetail.scenarioChart.show')}
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={openSave} disabled={!activePlan}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openSave}
+            disabled={!activePlan || activePlan.targetMonthlyPayment != null}
+            title={
+              activePlan?.targetMonthlyPayment != null
+                ? t('loanDetail.scenarios.saveBudgetUnsupported')
+                : undefined
+            }
+          >
             {t('loanDetail.scenarios.saveCurrent')}
           </Button>
         </div>

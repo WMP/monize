@@ -116,6 +116,14 @@ export interface OverpaymentPlan {
    * total constant. When set, recurringExtra and lumpSums are ignored.
    */
   targetMonthlyPayment?: number;
+  /**
+   * How the budget's installment/overpayment split is shown. LOWER_INSTALLMENT
+   * re-amortizes the installment each period (it shrinks, the overpayment
+   * grows); SHORTEN_TERM (default) keeps the contractual installment fixed and
+   * the overpayment constant. The balance and payoff are identical either way --
+   * only the split differs.
+   */
+  targetMonthlyPaymentMode?: OverpaymentMode;
 }
 
 /**
@@ -418,10 +426,12 @@ function solvePayment(principal: number, periodicRate: number, totalPayments: nu
 export function generateBudgetSchedule(
   input: LoanScheduleInput,
   budget: number,
+  mode: OverpaymentMode = 'SHORTEN_TERM',
 ): LoanScheduleResult {
   const {
     startingBalance,
     annualRate,
+    paymentAmount,
     frequency,
     isCanadian = false,
     isVariableRate = false,
@@ -434,11 +444,14 @@ export function generateBudgetSchedule(
   const periodsPerYear = getPeriodsPerYear(frequency);
   const cap = Math.min(maxPayments ?? DEFAULT_MAX_PAYMENTS, HARD_MAX_PAYMENTS);
 
-  // The remaining contractual term: how long the loan would run at its current
-  // installment with no overpayments. The installment is re-amortized over this
-  // many periods (minus those elapsed), so it steps down as the balance falls.
-  const contractual = generateLoanSchedule({ ...input, overpayments: undefined });
-  const contractualPeriods = Math.max(1, contractual.numPayments);
+  // LOWER_INSTALLMENT re-amortizes the installment over the remaining
+  // contractual term (it steps down as the balance falls); SHORTEN_TERM keeps
+  // the contractual installment fixed and the overpayment constant. Either way
+  // the total paid is the budget, so the balance/payoff are identical.
+  const lowerInstallment = mode === 'LOWER_INSTALLMENT';
+  const contractualPeriods = lowerInstallment
+    ? Math.max(1, generateLoanSchedule({ ...input, overpayments: undefined }).numPayments)
+    : 0;
 
   const rateChanges = [...(input.rateChanges ?? [])].sort((a, b) =>
     a.effectiveDate.localeCompare(b.effectiveDate),
@@ -487,17 +500,19 @@ export function generateBudgetSchedule(
       break;
     }
 
-    // Installment re-amortized over the remaining contractual term (steps down
-    // as the balance drops); the overpayment is the rest of the budget.
-    const remaining = Math.max(1, contractualPeriods - paymentNumber);
-    const installment = calculatePaymentForTerm(
-      balance,
-      currentAnnualRate,
-      remaining,
-      frequency,
-      isCanadian,
-      isVariableRate,
-    );
+    // The installment for the split: re-amortized over the remaining
+    // contractual term (LOWER_INSTALLMENT) or the fixed contractual installment
+    // (SHORTEN_TERM). The overpayment is whatever is left of the budget.
+    const installment = lowerInstallment
+      ? calculatePaymentForTerm(
+          balance,
+          currentAnnualRate,
+          Math.max(1, contractualPeriods - paymentNumber),
+          frequency,
+          isCanadian,
+          isVariableRate,
+        )
+      : paymentAmount;
 
     // Total cash this period is the budget, except the final period pays only
     // the remaining balance plus its interest.
@@ -554,7 +569,11 @@ export function generateBudgetSchedule(
 export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResult {
   const budget = input.overpayments?.targetMonthlyPayment;
   if (budget && budget > 0) {
-    return generateBudgetSchedule(input, budget);
+    return generateBudgetSchedule(
+      input,
+      budget,
+      input.overpayments?.targetMonthlyPaymentMode ?? 'SHORTEN_TERM',
+    );
   }
   const {
     startingBalance,

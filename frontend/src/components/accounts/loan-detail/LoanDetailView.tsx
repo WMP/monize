@@ -312,6 +312,7 @@ export function LoanDetailView({
                             : undefined
                         }
                         loanFrequency={projectionInput?.frequency}
+                        fixedMonthlyPayment={plan?.targetMonthlyPayment}
                       />
                     </div>
                   )}

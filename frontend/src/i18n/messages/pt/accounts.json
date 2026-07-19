@@ -442,7 +442,10 @@
       "frequencyMonthly": "Mensal",
       "frequencyQuarterly": "Trimestral",
       "frequencyAnnually": "Anual",
-      "oneOffDateLabel": "Data"
+      "oneOffDateLabel": "Data",
+      "budgetLabel": "Pagamento mensal total",
+      "budgetHint": "Gaste um total fixo no empréstimo todos os meses; a amortização é o que sobra depois da prestação. Quando a prestação desce, a amortização cresce para manter o total.",
+      "budgetBelowInstallment": "É inferior à prestação atual ({amount}); aumente para amortizar."
     },
     "comparison": {
       "newPayoff": "Nova data de liquidação",
@@ -495,7 +498,8 @@
       "loadFailed": "Não foi possível carregar os cenários guardados. Continuam armazenados — recarregue a página para tentar novamente.",
       "colOverpayment": "Pagamento extra",
       "overpaymentWithFrequency": "{amount} ({frequency})",
-      "loadAria": "Carregar cenário \"{name}\""
+      "loadAria": "Carregar cenário \"{name}\"",
+      "saveBudgetUnsupported": "Ainda não é possível guardar cenários de orçamento."
     },
     "scenarioChart": {
       "title": "Comparação de cenários",
