@@ -530,10 +530,14 @@ export function generateBudgetSchedule(
       coveredInterest = false;
       break;
     }
-    // The installment can't exceed the total actually paid this period.
+    // The installment can't exceed the total actually paid this period. When
+    // the installment is below the period's interest (e.g. a sharp rate rise on
+    // a fixed installment), it covers no principal -- interest is settled first
+    // from the total, and only what's left over is principal overpayment, so
+    // unpaid interest is never miscounted as principal.
     const regularInstallment = Math.min(installment, payment);
     const regularPrincipal = Math.max(0, regularInstallment - interest);
-    const overpayment = Math.max(0, payment - regularInstallment);
+    const overpayment = Math.max(0, payment - interest - regularPrincipal);
 
     balance = Math.max(0, balance - (regularPrincipal + overpayment));
     cumulativePrincipal += regularPrincipal + overpayment;

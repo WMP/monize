@@ -790,6 +790,28 @@ describe('generateBudgetSchedule (fixed monthly budget)', () => {
     for (const r of after) expect(r.extraPrincipal).toBe(0);
   });
 
+  it('never counts unpaid interest as principal when the installment is below the interest', () => {
+    // Contractual installment (100) deliberately below the period interest, as a
+    // sharp rate rise on a fixed installment would cause; the budget still
+    // covers the interest.
+    const result = generateLoanSchedule({
+      startingBalance: 200000,
+      annualRate: 8,
+      paymentAmount: 100,
+      frequency: 'MONTHLY',
+      firstPaymentDate: new Date('2025-01-15'),
+      overpayments: { targetMonthlyPayment: 4000, targetMonthlyPaymentMode: 'SHORTEN_TERM' },
+    });
+
+    const first = result.rows[0];
+    const interest0 = (200000 * 8) / 100 / 12; // 1333.33
+    // Total paid is the budget, and the balance drops by exactly budget minus
+    // interest -- not by more (which the old split would have done).
+    expect(first.payment + first.extraPrincipal).toBeCloseTo(4000, 1);
+    expect(200000 - first.balance).toBeCloseTo(4000 - interest0, 1);
+    expect(first.interest).toBeCloseTo(interest0, 1);
+  });
+
   it('does not amortize when the budget cannot cover the first period interest', () => {
     const result = generateLoanSchedule({
       ...budgetInput(),
