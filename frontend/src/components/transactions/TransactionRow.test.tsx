@@ -19,6 +19,8 @@ function makeTx(overrides: Partial<Transaction> = {}): Transaction {
     amount: -25.5,
     currencyCode: 'CAD',
     exchangeRate: 1,
+    originalAmount: null,
+    originalCurrencyCode: null,
     description: 'Latte',
     referenceNumber: null,
     status: TransactionStatus.UNRECONCILED,

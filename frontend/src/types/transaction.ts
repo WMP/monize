@@ -34,6 +34,8 @@ export interface TransactionSplit {
   linkedTransactionId: string | null;
   amount: number;
   memo: string | null;
+  /** Marks the auto-generated foreign-transaction fee split (read-only in the UI). */
+  isFxFee?: boolean;
   tags?: Tag[];
   /** Present when kind === 'investment' */
   investmentTransaction?: {
@@ -63,6 +65,14 @@ export interface Transaction {
   amount: number;
   currencyCode: string;
   exchangeRate: number;
+  /**
+   * Foreign-currency entry: the amount the user actually paid and the currency
+   * they paid in. Null for an ordinary transaction (amount/currencyCode are the
+   * account currency); exchangeRate is account-currency units per 1 unit of
+   * originalCurrencyCode.
+   */
+  originalAmount: number | null;
+  originalCurrencyCode: string | null;
   description: string | null;
   referenceNumber: string | null;
   status: TransactionStatus;
@@ -91,6 +101,7 @@ export interface CreateSplitData {
   investment?: InvestmentSplitDetails;
   amount: number;
   memo?: string;
+  isFxFee?: boolean;
   tagIds?: string[];
 }
 
@@ -103,6 +114,9 @@ export interface CreateTransactionData {
   amount: number;
   currencyCode: string;
   exchangeRate?: number;
+  /** Foreign-currency entry (both provided together, or null to clear on update). */
+  originalAmount?: number | null;
+  originalCurrencyCode?: string | null;
   description?: string | null;
   referenceNumber?: string | null;
   status?: TransactionStatus;

@@ -156,7 +156,13 @@
       "other": "Other"
     },
     "statementDueDayPlaceholder": "e.g. 15",
-    "statementSettlementDayPlaceholder": "e.g. 25"
+    "statementSettlementDayPlaceholder": "e.g. 25",
+    "fxFeeTitle": "Foreign Currency Conversion Fee",
+    "fxFeePercent": "Fee Percentage",
+    "fxFeeCategory": "Fee Category",
+    "fxFeePercentPlaceholder": "e.g. 2.5",
+    "fxFeeHelp": "Your bank's fee for converting foreign purchases. When set, a foreign-currency transaction on this account automatically books the fee as an expense in the chosen category.",
+    "fxFeeCategoryPlaceholder": "Select or create a category"
   },
   "exportModal": {
     "title": "Export {name}",
@@ -341,7 +347,8 @@
     "paymentFrequencyRequired": "Payment frequency is required",
     "paymentStartDateRequired": "First payment date is required",
     "paymentAccountRequired": "Payment account is required",
-    "amortizationRequired": "Amortization period is required"
+    "amortizationRequired": "Amortization period is required",
+    "fxFeeCategoryRequired": "A fee category is required when a fee percentage is set"
   },
   "loanDetail": {
     "backToAccounts": "Back to Accounts",

@@ -220,7 +220,8 @@
       "search": "[XX-Search-XX]",
       "tagKey": "[XX-Tag key-XX]",
       "tagKeyOp": "[XX-Condition-XX]",
-      "tagKeyValue": "[XX-Value-XX]"
+      "tagKeyValue": "[XX-Value-XX]",
+      "currency": "[XX-Currency-XX]"
     },
     "placeholders": {
       "accounts": "[XX-All accounts-XX]",
@@ -251,7 +252,8 @@
       "dateFrom": "[XX-From {date}-XX]",
       "dateUntil": "[XX-Until {date}-XX]",
       "amountFrom": "[XX-From {amount}-XX]",
-      "amountUpTo": "[XX-Up to {amount}-XX]"
+      "amountUpTo": "[XX-Up to {amount}-XX]",
+      "removeCurrency": "[XX-Remove {name} currency filter-XX]"
     },
     "bulkUpdate": "[XX-Bulk Update-XX]",
     "cancelBulk": "[XX-Cancel Bulk-XX]",
@@ -388,11 +390,32 @@
       "payeeReactivateFailed": "[XX-Failed to reactivate payee-XX]",
       "categoryCreated": "[XX-Category \"{name}\" created-XX]",
       "categoryCreateFailed": "[XX-Failed to create category-XX]",
-      "tagCreated": "[XX-Tag \"{name}\" created-XX]"
+      "tagCreated": "[XX-Tag \"{name}\" created-XX]",
+      "fxRateRequired": "[XX-Enter an exchange rate or the converted amount before saving a foreign-currency transaction.-XX]"
     },
     "ariaHistory": "[XX-Show recent transactions-XX]",
     "ariaHistoryForPayee": "[XX-Show recent transactions for this payee-XX]",
-    "historyTitle": "[XX-Quick fill from a recent transaction-XX]"
+    "historyTitle": "[XX-Quick fill from a recent transaction-XX]",
+    "currencyPicker": {
+      "label": "[XX-Entry currency-XX]",
+      "ariaLabel": "[XX-Change entry currency-XX]",
+      "title": "[XX-Enter amount in-XX]",
+      "accountCurrency": "[XX-Account currency ({code})-XX]",
+      "addCurrency": "[XX-Add currency...-XX]",
+      "optionLabel": "[XX-{symbol} -- {code} {name}-XX]"
+    },
+    "fx": {
+      "convertedAmount": "[XX-Converted amount ({currency})-XX]",
+      "rateCaption": "[XX-1 {from} = {rate} {to} ({date})-XX]",
+      "noRateWarning": "[XX-No exchange rate found for {from} to {to} on {date}. Enter the converted amount manually.-XX]",
+      "usingLatestRateHint": "[XX-Using the latest available rate (not dated {date}).-XX]",
+      "feeSplitMemo": "[XX-Foreign transaction fee-XX]",
+      "feeAutoBadge": "[XX-auto-XX]",
+      "displayToggle": {
+        "account": "[XX-Account-XX]",
+        "original": "[XX-Original-XX]"
+      }
+    }
   },
   "splitEditor": {
     "header": "[XX-Split Details-XX]",

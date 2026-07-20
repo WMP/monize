@@ -89,6 +89,10 @@ export interface Account {
   // Payee whose payments count as standalone overpayments (extra principal),
   // usable with or instead of the overpayment category / memo.
   overpaymentPayeeId: string | null;
+  // Foreign-transaction fee: the bank's FX conversion fee (percent) booked as an
+  // expense split under fxFeeCategoryId on foreign-entered transactions.
+  fxFeePercent: number | null;
+  fxFeeCategoryId: string | null;
   scheduledTransactionId: string | null;
   // Asset-specific fields
   assetCategoryId: string | null;
@@ -136,6 +140,9 @@ export interface CreateAccountData {
   overpaymentCategoryId?: string | null;
   overpaymentMemo?: string | null;
   overpaymentPayeeId?: string | null;
+  // Foreign-transaction fee fields (percent requires a category; null clears).
+  fxFeePercent?: number | null;
+  fxFeeCategoryId?: string | null;
   // Asset-specific fields
   assetCategoryId?: string;
   dateAcquired?: string;

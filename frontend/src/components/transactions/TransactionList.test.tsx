@@ -47,6 +47,8 @@ function createTransaction(overrides: Partial<Transaction> = {}): Transaction {
     amount: -50.0,
     currencyCode: 'CAD',
     exchangeRate: 1,
+    originalAmount: null,
+    originalCurrencyCode: null,
     description: 'Weekly groceries',
     referenceNumber: null,
     status: TransactionStatus.UNRECONCILED,

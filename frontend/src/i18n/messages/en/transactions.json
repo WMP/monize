@@ -220,7 +220,8 @@
       "search": "Search",
       "tagKey": "Tag key",
       "tagKeyOp": "Condition",
-      "tagKeyValue": "Value"
+      "tagKeyValue": "Value",
+      "currency": "Currency"
     },
     "placeholders": {
       "accounts": "All accounts",
@@ -251,7 +252,8 @@
       "dateFrom": "From {date}",
       "dateUntil": "Until {date}",
       "amountFrom": "From {amount}",
-      "amountUpTo": "Up to {amount}"
+      "amountUpTo": "Up to {amount}",
+      "removeCurrency": "Remove {name} currency filter"
     },
     "bulkUpdate": "Bulk Update",
     "cancelBulk": "Cancel Bulk",
@@ -388,11 +390,32 @@
       "payeeReactivateFailed": "Failed to reactivate payee",
       "categoryCreated": "Category \"{name}\" created",
       "categoryCreateFailed": "Failed to create category",
-      "tagCreated": "Tag \"{name}\" created"
+      "tagCreated": "Tag \"{name}\" created",
+      "fxRateRequired": "Enter an exchange rate or the converted amount before saving a foreign-currency transaction."
     },
     "ariaHistory": "Show recent transactions",
     "ariaHistoryForPayee": "Show recent transactions for this payee",
-    "historyTitle": "Quick fill from a recent transaction"
+    "historyTitle": "Quick fill from a recent transaction",
+    "currencyPicker": {
+      "label": "Entry currency",
+      "ariaLabel": "Change entry currency",
+      "title": "Enter amount in",
+      "accountCurrency": "Account currency ({code})",
+      "addCurrency": "Add currency...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "Converted amount ({currency})",
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "noRateWarning": "No exchange rate found for {from} to {to} on {date}. Enter the converted amount manually.",
+      "usingLatestRateHint": "Using the latest available rate (not dated {date}).",
+      "feeSplitMemo": "Foreign transaction fee",
+      "feeAutoBadge": "auto",
+      "displayToggle": {
+        "account": "Account",
+        "original": "Original"
+      }
+    }
   },
   "splitEditor": {
     "header": "Split Details",

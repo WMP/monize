@@ -31,6 +31,7 @@ function buildFilterParams(params?: {
   payeeId?: string;
   payeeIds?: string[];
   tagIds?: string[];
+  originalCurrencyCodes?: string[];
 }): Record<string, string | undefined> {
   const result: Record<string, string | undefined> = {};
 
@@ -56,6 +57,10 @@ function buildFilterParams(params?: {
     result.tagIds = params.tagIds.join(',');
   }
 
+  if (params?.originalCurrencyCodes && params.originalCurrencyCodes.length > 0) {
+    result.originalCurrencyCodes = params.originalCurrencyCodes.join(',');
+  }
+
   return result;
 }
 
@@ -76,6 +81,8 @@ export interface TransactionsGetAllParams {
   amountTo?: number;
   tagIds?: string[];
   statuses?: TransactionStatus[];
+  /** Filter to transactions entered in these currencies (foreign-entry only). */
+  originalCurrencyCodes?: string[];
   /** KEY:VALUE tag filter: the key to filter on (e.g. "country"). */
   tagKey?: string;
   /** KEY:VALUE tag filter operator. */
