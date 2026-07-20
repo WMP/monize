@@ -527,6 +527,16 @@ export const TransactionRow = memo(function TransactionRow({
         ) : (
           formatAmount(transaction.amount, transaction.currencyCode)
         )}
+        {transaction.originalCurrencyCode &&
+          transaction.originalAmount !== null && (
+            <div className="text-xs font-normal text-gray-500 dark:text-gray-400">
+              {transaction.originalCurrencyCode}{' '}
+              {formatAmountWithCommas(
+                Math.abs(Number(transaction.originalAmount)),
+                getDecimalPlacesForCurrency(transaction.originalCurrencyCode),
+              )}
+            </div>
+          )}
       </td>
       {showRunningBalance && (
         <td className={`${cellPadding} whitespace-nowrap text-sm font-medium text-right`}>
