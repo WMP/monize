@@ -1,10 +1,6 @@
 {
   "title": "Opłaty za transakcje w obcej walucie",
-  "currencyFilter": {
-    "label": "Waluty",
-    "placeholder": "Wszystkie waluty",
-    "remove": "Usuń filtr {code}"
-  },
+  "currencyFilter": { "label": "Waluty", "placeholder": "Wszystkie waluty" },
   "chart": {
     "title": "Opłaty w czasie",
     "noData": "Brak transakcji w obcej walucie",
@@ -17,12 +13,7 @@
     "quarterLabel": "K{quarter} {year}",
     "quarterTick": "K{quarter} {year}",
     "granularityLabel": "Grupowanie",
-    "granularity": {
-      "auto": "Auto",
-      "month": "Miesiąc",
-      "quarter": "Kwartał",
-      "year": "Rok"
-    },
+    "granularity": { "auto": "Auto", "month": "Miesiąc", "quarter": "Kwartał", "year": "Rok" },
     "granularityAutoTitle": "Auto ({granularity})",
     "granularityTitle": "Widok: {label}"
   },

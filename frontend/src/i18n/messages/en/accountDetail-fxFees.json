@@ -2,8 +2,7 @@
   "title": "Foreign Currency Transaction Fees",
   "currencyFilter": {
     "label": "Currencies",
-    "placeholder": "All currencies",
-    "remove": "Remove {code} filter"
+    "placeholder": "All currencies"
   },
   "chart": {
     "title": "Fees Over Time",

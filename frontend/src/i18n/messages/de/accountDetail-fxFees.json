@@ -1,10 +1,6 @@
 {
   "title": "Fremdwährungs-Transaktionsgebühren",
-  "currencyFilter": {
-    "label": "Währungen",
-    "placeholder": "Alle Währungen",
-    "remove": "{code}-Filter entfernen"
-  },
+  "currencyFilter": { "label": "Währungen", "placeholder": "Alle Währungen" },
   "chart": {
     "title": "Gebühren im Zeitverlauf",
     "noData": "Noch keine Fremdwährungsbuchungen",
@@ -17,12 +13,7 @@
     "quarterLabel": "Q{quarter} {year}",
     "quarterTick": "Q{quarter} {year}",
     "granularityLabel": "Gruppierung",
-    "granularity": {
-      "auto": "Auto",
-      "month": "Monat",
-      "quarter": "Quartal",
-      "year": "Jahr"
-    },
+    "granularity": { "auto": "Auto", "month": "Monat", "quarter": "Quartal", "year": "Jahr" },
     "granularityAutoTitle": "Auto ({granularity})",
     "granularityTitle": "{label}-Ansicht"
   },

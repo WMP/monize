@@ -1,10 +1,6 @@
 {
   "title": "विदेशी मुद्रा लेन-देन शुल्क",
-  "currencyFilter": {
-    "label": "मुद्राएँ",
-    "placeholder": "सभी मुद्राएँ",
-    "remove": "{code} फ़िल्टर हटाएँ"
-  },
+  "currencyFilter": { "label": "मुद्राएँ", "placeholder": "सभी मुद्राएँ" },
   "chart": {
     "title": "समय के साथ शुल्क",
     "noData": "अभी तक कोई विदेशी मुद्रा लेन-देन नहीं",
@@ -17,12 +13,7 @@
     "quarterLabel": "Q{quarter} {year}",
     "quarterTick": "Q{quarter} {year}",
     "granularityLabel": "समूहन",
-    "granularity": {
-      "auto": "ऑटो",
-      "month": "माह",
-      "quarter": "तिमाही",
-      "year": "वर्ष"
-    },
+    "granularity": { "auto": "ऑटो", "month": "माह", "quarter": "तिमाही", "year": "वर्ष" },
     "granularityAutoTitle": "ऑटो ({granularity})",
     "granularityTitle": "{label} दृश्य"
   },

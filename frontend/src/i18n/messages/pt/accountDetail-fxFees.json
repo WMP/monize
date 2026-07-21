@@ -1,10 +1,6 @@
 {
   "title": "Comissões de transação em moeda estrangeira",
-  "currencyFilter": {
-    "label": "Moedas",
-    "placeholder": "Todas as moedas",
-    "remove": "Remover o filtro {code}"
-  },
+  "currencyFilter": { "label": "Moedas", "placeholder": "Todas as moedas" },
   "chart": {
     "title": "Comissões ao longo do tempo",
     "noData": "Ainda sem transações em moeda estrangeira",
@@ -17,12 +13,7 @@
     "quarterLabel": "T{quarter} {year}",
     "quarterTick": "T{quarter} {year}",
     "granularityLabel": "Agrupamento",
-    "granularity": {
-      "auto": "Auto",
-      "month": "Mês",
-      "quarter": "Trimestre",
-      "year": "Ano"
-    },
+    "granularity": { "auto": "Auto", "month": "Mês", "quarter": "Trimestre", "year": "Ano" },
     "granularityAutoTitle": "Auto ({granularity})",
     "granularityTitle": "Ver por {label}"
   },

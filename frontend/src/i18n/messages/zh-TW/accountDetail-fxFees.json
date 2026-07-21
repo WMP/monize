@@ -1,10 +1,6 @@
 {
   "title": "境外交易手續費",
-  "currencyFilter": {
-    "label": "幣別",
-    "placeholder": "所有幣別",
-    "remove": "移除 {code} 篩選"
-  },
+  "currencyFilter": { "label": "幣別", "placeholder": "所有幣別" },
   "chart": {
     "title": "手續費趨勢",
     "noData": "尚無外幣交易",
@@ -17,12 +13,7 @@
     "quarterLabel": "{year}年Q{quarter}",
     "quarterTick": "{year}年Q{quarter}",
     "granularityLabel": "分組方式",
-    "granularity": {
-      "auto": "自動",
-      "month": "月",
-      "quarter": "季度",
-      "year": "年"
-    },
+    "granularity": { "auto": "自動", "month": "月", "quarter": "季度", "year": "年" },
     "granularityAutoTitle": "自動（{granularity}）",
     "granularityTitle": "{label}檢視"
   },

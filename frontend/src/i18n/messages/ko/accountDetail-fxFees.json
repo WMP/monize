@@ -1,10 +1,6 @@
 {
   "title": "해외 거래 수수료",
-  "currencyFilter": {
-    "label": "통화",
-    "placeholder": "모든 통화",
-    "remove": "{code} 필터 제거"
-  },
+  "currencyFilter": { "label": "통화", "placeholder": "모든 통화" },
   "chart": {
     "title": "수수료 추이",
     "noData": "아직 외화 거래가 없습니다",
@@ -17,12 +13,7 @@
     "quarterLabel": "{year}년 Q{quarter}",
     "quarterTick": "{year}년 Q{quarter}",
     "granularityLabel": "그룹화",
-    "granularity": {
-      "auto": "자동",
-      "month": "월",
-      "quarter": "분기",
-      "year": "연"
-    },
+    "granularity": { "auto": "자동", "month": "월", "quarter": "분기", "year": "연" },
     "granularityAutoTitle": "자동 ({granularity})",
     "granularityTitle": "{label} 보기"
   },

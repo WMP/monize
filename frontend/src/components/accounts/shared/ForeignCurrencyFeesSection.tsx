@@ -13,7 +13,6 @@ import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { TransactionList } from '@/components/transactions/TransactionList';
 import { ForeignCurrencyFeeChart } from './ForeignCurrencyFeeChart';
-import { CurrencyFilterChips } from './CurrencyFilterChips';
 import { useFormModal } from '@/hooks/useFormModal';
 import type { Account } from '@/types/account';
 import type {
@@ -241,20 +240,14 @@ export function ForeignCurrencyFeesSection({ account }: ForeignCurrencyFeesSecti
             accountName={account.name}
             hideTitle
             leftControls={
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="w-52 max-w-full">
-                  <MultiSelect
-                    ariaLabel={t('currencyFilter.label')}
-                    options={currencyOptions}
-                    value={selectedCurrencies}
-                    onChange={handleCurrencyFilterChange}
-                    placeholder={t('currencyFilter.placeholder')}
-                    disabled={currencyOptions.length === 0}
-                  />
-                </div>
-                <CurrencyFilterChips
-                  selected={selectedCurrencies}
+              <div className="w-52 max-w-full">
+                <MultiSelect
+                  ariaLabel={t('currencyFilter.label')}
+                  options={currencyOptions}
+                  value={selectedCurrencies}
                   onChange={handleCurrencyFilterChange}
+                  placeholder={t('currencyFilter.placeholder')}
+                  disabled={currencyOptions.length === 0}
                 />
               </div>
             }

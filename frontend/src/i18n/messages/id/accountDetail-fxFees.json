@@ -1,10 +1,6 @@
 {
   "title": "Biaya Transaksi Mata Uang Asing",
-  "currencyFilter": {
-    "label": "Mata Uang",
-    "placeholder": "Semua mata uang",
-    "remove": "Hapus filter {code}"
-  },
+  "currencyFilter": { "label": "Mata Uang", "placeholder": "Semua mata uang" },
   "chart": {
     "title": "Biaya Seiring Waktu",
     "noData": "Belum ada transaksi mata uang asing",
@@ -17,12 +13,7 @@
     "quarterLabel": "K{quarter} {year}",
     "quarterTick": "K{quarter} {year}",
     "granularityLabel": "Pengelompokan",
-    "granularity": {
-      "auto": "Otomatis",
-      "month": "Bulan",
-      "quarter": "Kuartal",
-      "year": "Tahun"
-    },
+    "granularity": { "auto": "Otomatis", "month": "Bulan", "quarter": "Kuartal", "year": "Tahun" },
     "granularityAutoTitle": "Otomatis ({granularity})",
     "granularityTitle": "Tampilan {label}"
   },

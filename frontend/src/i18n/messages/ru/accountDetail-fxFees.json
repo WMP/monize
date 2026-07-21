@@ -1,10 +1,6 @@
 {
   "title": "Комиссии за проводки в иностранной валюте",
-  "currencyFilter": {
-    "label": "Валюты",
-    "placeholder": "Все валюты",
-    "remove": "Удалить фильтр {code}"
-  },
+  "currencyFilter": { "label": "Валюты", "placeholder": "Все валюты" },
   "chart": {
     "title": "Комиссии за период",
     "noData": "Пока нет проводок в иностранной валюте",
@@ -17,12 +13,7 @@
     "quarterLabel": "{quarter} кв. {year}",
     "quarterTick": "{quarter} кв. {year}",
     "granularityLabel": "Группировка",
-    "granularity": {
-      "auto": "Авто",
-      "month": "Месяц",
-      "quarter": "Квартал",
-      "year": "Год"
-    },
+    "granularity": { "auto": "Авто", "month": "Месяц", "quarter": "Квартал", "year": "Год" },
     "granularityAutoTitle": "Авто ({granularity})",
     "granularityTitle": "Вид: {label}"
   },

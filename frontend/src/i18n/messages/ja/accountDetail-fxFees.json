@@ -1,10 +1,6 @@
 {
   "title": "外貨取引手数料",
-  "currencyFilter": {
-    "label": "通貨",
-    "placeholder": "すべての通貨",
-    "remove": "{code} フィルターを削除"
-  },
+  "currencyFilter": { "label": "通貨", "placeholder": "すべての通貨" },
   "chart": {
     "title": "手数料の推移",
     "noData": "外貨取引はまだありません",
@@ -17,12 +13,7 @@
     "quarterLabel": "{year}年Q{quarter}",
     "quarterTick": "{year}年Q{quarter}",
     "granularityLabel": "グループ化",
-    "granularity": {
-      "auto": "自動",
-      "month": "月",
-      "quarter": "四半期",
-      "year": "年"
-    },
+    "granularity": { "auto": "自動", "month": "月", "quarter": "四半期", "year": "年" },
     "granularityAutoTitle": "自動（{granularity}）",
     "granularityTitle": "{label}表示"
   },

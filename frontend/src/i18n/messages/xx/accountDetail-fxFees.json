@@ -2,8 +2,7 @@
   "title": "[XX-Foreign Currency Transaction Fees-XX]",
   "currencyFilter": {
     "label": "[XX-Currencies-XX]",
-    "placeholder": "[XX-All currencies-XX]",
-    "remove": "[XX-Remove {code} filter-XX]"
+    "placeholder": "[XX-All currencies-XX]"
   },
   "chart": {
     "title": "[XX-Fees Over Time-XX]",

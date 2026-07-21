@@ -1,10 +1,6 @@
 {
   "title": "Transactiekosten in vreemde valuta",
-  "currencyFilter": {
-    "label": "Valuta's",
-    "placeholder": "Alle valuta's",
-    "remove": "{code}-filter verwijderen"
-  },
+  "currencyFilter": { "label": "Valuta's", "placeholder": "Alle valuta's" },
   "chart": {
     "title": "Kosten in de tijd",
     "noData": "Nog geen transacties in vreemde valuta",
@@ -17,12 +13,7 @@
     "quarterLabel": "K{quarter} {year}",
     "quarterTick": "K{quarter} {year}",
     "granularityLabel": "Groepering",
-    "granularity": {
-      "auto": "Auto",
-      "month": "Maand",
-      "quarter": "Kwartaal",
-      "year": "Jaar"
-    },
+    "granularity": { "auto": "Auto", "month": "Maand", "quarter": "Kwartaal", "year": "Jaar" },
     "granularityAutoTitle": "Auto ({granularity})",
     "granularityTitle": "Weergave per {label}"
   },
