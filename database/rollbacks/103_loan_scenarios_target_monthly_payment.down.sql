@@ -1,7 +1,7 @@
--- Rollback for migration 100_loan_scenarios_target_monthly_payment.sql
+-- Rollback for migration 103_loan_scenarios_target_monthly_payment.sql
 --
 -- Run this manually if the fixed monthly-budget feature is NOT merged and you
--- want to remove its columns from a database where migration 100 was applied.
+-- want to remove its columns from a database where migration 103 was applied.
 --
 -- Safe and idempotent:
 --   * the four columns are nullable and additive, so dropping them does not
@@ -9,7 +9,7 @@
 --   * DROP ... IF EXISTS makes it safe to run more than once.
 --
 -- IMPORTANT: only run this AFTER the backend that added these columns is no
--- longer running against this database. If the branch that ships migration 100
+-- longer running against this database. If the branch that ships migration 103
 -- is still deployed, the next startup will re-apply it and re-add the columns.
 
 ALTER TABLE loan_scenarios
@@ -20,4 +20,4 @@ ALTER TABLE loan_scenarios
 
 -- Forget the migration so it re-applies cleanly if the feature returns later.
 DELETE FROM schema_migrations
-  WHERE filename = '100_loan_scenarios_target_monthly_payment.sql';
+  WHERE filename = '103_loan_scenarios_target_monthly_payment.sql';
