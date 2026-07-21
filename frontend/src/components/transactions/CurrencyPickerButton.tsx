@@ -14,6 +14,7 @@ import {
 } from '@/lib/exchange-rates';
 import { getCurrencySymbol } from '@/lib/format';
 import { createLogger } from '@/lib/logger';
+import { getErrorCode, getErrorMessage } from '@/lib/errors';
 
 const CurrencyForm = dynamic(
   () => import('@/components/currencies/CurrencyForm').then((m) => m.CurrencyForm),
@@ -100,10 +101,25 @@ export function CurrencyPickerButton({
         </h2>
         <CurrencyForm
           onSubmit={async (data: CreateCurrencyData) => {
-            const created = await exchangeRatesApi.createCurrency(data);
+            try {
+              const created = await exchangeRatesApi.createCurrency(data);
+              setShowAddModal(false);
+              // Select the newly created currency for entry.
+              onChange(created.code);
+            } catch (error) {
+              // The inactive case is handled inline by CurrencyForm (it shows a
+              // reactivation note), so only toast other failures here.
+              if (getErrorCode(error) !== 'CURRENCY_INACTIVE') {
+                toast.error(getErrorMessage(error, t('form.currencyPicker.createFailed')));
+              }
+              throw error;
+            }
+          }}
+          onReactivate={async (code: string) => {
+            const activated = await exchangeRatesApi.activateCurrency(code);
             setShowAddModal(false);
-            // Select the newly created currency for entry.
-            onChange(created.code);
+            onChange(activated.code);
+            toast.success(t('form.currencyPicker.reactivated', { code: activated.code }));
           }}
           onCancel={() => setShowAddModal(false)}
         />

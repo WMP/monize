@@ -402,10 +402,11 @@
       "title": "Ввести суму в",
       "accountCurrency": "Валюта рахунку ({code})",
       "addCurrency": "Додати валюту...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "Не вдалося додати валюту",
+      "reactivated": "{code} знову активовано"
     },
     "fx": {
-      "convertedAmount": "Конвертована сума ({currency})",
       "noRateWarning": "Не знайдено курс обміну {from} на {to} на {date}. Введіть конвертовану суму вручну.",
       "usingLatestRateHint": "Використовується останній доступний курс (не на дату {date}).",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "Включає комісію за закордонну операцію {percent}% ({fee})."
+      "feeCaption": "Включає комісію за закордонну операцію {percent}% ({fee}).",
+      "totalInCurrency": "Разом у {currency}"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "Оберіть рахунок...",
     "memoPlaceholder": "Необов'язкова примітка",
     "mobileMemoPlaceholder": "Примітка",
-    "tagsPlaceholder": "Теги..."
+    "tagsPlaceholder": "Теги...",
+    "currencyToggle": {
+      "title": "Змінити валюту, у якій відображаються та редагуються суми розбиття",
+      "ariaAmountsIn": "Показувати та редагувати суми розбиття в {code}"
+    }
   },
   "recentPopover": {
     "recentForPayee": "Нещодавні для {name}",

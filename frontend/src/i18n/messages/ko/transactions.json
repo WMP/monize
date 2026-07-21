@@ -402,10 +402,11 @@
       "title": "금액 입력 통화",
       "accountCurrency": "계좌 통화 ({code})",
       "addCurrency": "통화 추가...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "통화를 추가하지 못했습니다",
+      "reactivated": "{code}이(가) 다시 활성화되었습니다"
     },
     "fx": {
-      "convertedAmount": "환산 금액 ({currency})",
       "noRateWarning": "{date}에 {from}에서 {to}로의 환율을 찾을 수 없습니다. 환산 금액을 직접 입력하세요.",
       "usingLatestRateHint": "사용 가능한 최신 환율을 사용 중입니다({date} 기준 아님).",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "{percent}% 해외 거래 수수료({fee})가 포함됩니다."
+      "feeCaption": "{percent}% 해외 거래 수수료({fee})가 포함됩니다.",
+      "totalInCurrency": "{currency} 기준 총액"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "계정 선택...",
     "memoPlaceholder": "선택적 메모",
     "mobileMemoPlaceholder": "메모",
-    "tagsPlaceholder": "태그..."
+    "tagsPlaceholder": "태그...",
+    "currencyToggle": {
+      "title": "분할 금액을 표시하고 편집하는 통화를 전환합니다",
+      "ariaAmountsIn": "{code}(으)로 분할 금액 표시 및 편집"
+    }
   },
   "recentPopover": {
     "recentForPayee": "{name}의 최근 거래",

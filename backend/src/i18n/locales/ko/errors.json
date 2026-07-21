@@ -228,7 +228,8 @@
     "cannotModifySystem": "시스템 통화 메타데이터는 수정할 수 없습니다",
     "cannotModifyOther": "다른 사용자의 통화는 수정할 수 없습니다",
     "inUse": "통화 \"{{ code }}\"이(가) 계정, 증권 또는 기타 레코드에서 사용 중입니다. 대신 비활성화하세요.",
-    "invalidRateDate": "date는 YYYY-MM-DD 형식이어야 합니다"
+    "invalidRateDate": "date는 YYYY-MM-DD 형식이어야 합니다",
+    "alreadyInListInactive": "통화 \"{{ code }}\"이(가) 이미 목록에 있지만 현재 비활성 상태입니다. 사용하려면 다시 활성화하세요."
   },
   "delegation": {
     "delegatedAccessInvalid": "위임된 접근 권한이 더 이상 유효하지 않습니다",

@@ -402,10 +402,11 @@
       "title": "Betrag eingeben in",
       "accountCurrency": "Kontowährung ({code})",
       "addCurrency": "Währung hinzufügen...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "Währung konnte nicht hinzugefügt werden",
+      "reactivated": "{code} reaktiviert"
     },
     "fx": {
-      "convertedAmount": "Umgerechneter Betrag ({currency})",
       "noRateWarning": "Kein Wechselkurs für {from} zu {to} am {date} gefunden. Bitte den umgerechneten Betrag manuell eingeben.",
       "usingLatestRateHint": "Es wird der neueste verfügbare Kurs verwendet (nicht vom {date}).",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "Enthält eine Fremdwährungsgebühr von {percent}% ({fee})."
+      "feeCaption": "Enthält eine Fremdwährungsgebühr von {percent}% ({fee}).",
+      "totalInCurrency": "Gesamt in {currency}"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "Konto auswählen...",
     "memoPlaceholder": "Optionales Memo",
     "mobileMemoPlaceholder": "Memo",
-    "tagsPlaceholder": "Tags..."
+    "tagsPlaceholder": "Tags...",
+    "currencyToggle": {
+      "title": "Währung wechseln, in der die Teilbeträge angezeigt und bearbeitet werden",
+      "ariaAmountsIn": "Teilbeträge in {code} anzeigen und bearbeiten"
+    }
   },
   "recentPopover": {
     "recentForPayee": "Zuletzt für {name}",

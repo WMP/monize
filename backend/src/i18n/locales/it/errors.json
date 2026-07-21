@@ -228,7 +228,8 @@
     "cannotModifySystem": "Impossibile modificare i metadati della valuta di sistema",
     "cannotModifyOther": "Impossibile modificare la valuta di un altro utente",
     "inUse": "La valuta \"{{ code }}\" è in uso dai tuoi conti, titoli o altri record. Disattivala invece.",
-    "invalidRateDate": "date deve essere nel formato AAAA-MM-GG"
+    "invalidRateDate": "date deve essere nel formato AAAA-MM-GG",
+    "alreadyInListInactive": "La valuta \"{{ code }}\" è già nella tua lista, ma attualmente non è attiva. Riattivala per usarla."
   },
   "delegation": {
     "delegatedAccessInvalid": "L'accesso delegato non è più valido",

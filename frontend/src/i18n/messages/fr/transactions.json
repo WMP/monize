@@ -402,10 +402,11 @@
       "title": "Saisir le montant en",
       "accountCurrency": "Devise du compte ({code})",
       "addCurrency": "Ajouter une devise...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "Échec de l'ajout de la devise",
+      "reactivated": "{code} réactivée"
     },
     "fx": {
-      "convertedAmount": "Montant converti ({currency})",
       "noRateWarning": "Aucun taux de change trouvé de {from} vers {to} le {date}. Saisissez le montant converti manuellement.",
       "usingLatestRateHint": "Utilisation du dernier taux disponible (non daté du {date}).",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "Comprend des frais de transaction à l'étranger de {percent}% ({fee})."
+      "feeCaption": "Comprend des frais de transaction à l'étranger de {percent}% ({fee}).",
+      "totalInCurrency": "Total en {currency}"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "Sélectionner un compte...",
     "memoPlaceholder": "Note facultative",
     "mobileMemoPlaceholder": "Note",
-    "tagsPlaceholder": "Étiquettes..."
+    "tagsPlaceholder": "Étiquettes...",
+    "currencyToggle": {
+      "title": "Changer la devise dans laquelle les montants ventilés sont affichés et modifiés",
+      "ariaAmountsIn": "Afficher et modifier les montants ventilés en {code}"
+    }
   },
   "recentPopover": {
     "recentForPayee": "Récent pour {name}",

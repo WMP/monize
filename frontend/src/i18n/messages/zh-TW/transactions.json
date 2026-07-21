@@ -402,10 +402,11 @@
       "title": "輸入金額的幣別",
       "accountCurrency": "帳戶幣別（{code}）",
       "addCurrency": "新增幣別...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "新增貨幣失敗",
+      "reactivated": "已重新啟用 {code}"
     },
     "fx": {
-      "convertedAmount": "換算後金額（{currency}）",
       "noRateWarning": "找不到 {date} 從 {from} 到 {to} 的匯率。請手動輸入換算後的金額。",
       "usingLatestRateHint": "正在使用最新可用匯率（非 {date} 當天）。",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "包含 {percent}% 境外交易手續費（{fee}）。"
+      "feeCaption": "包含 {percent}% 境外交易手續費（{fee}）。",
+      "totalInCurrency": "以 {currency} 計的總額"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "選擇科目...",
     "memoPlaceholder": "選填備註",
     "mobileMemoPlaceholder": "備註",
-    "tagsPlaceholder": "標籤..."
+    "tagsPlaceholder": "標籤...",
+    "currencyToggle": {
+      "title": "切換拆分金額的顯示和編輯貨幣",
+      "ariaAmountsIn": "以 {code} 顯示和編輯拆分金額"
+    }
   },
   "recentPopover": {
     "recentForPayee": "{name} 的最近記錄",

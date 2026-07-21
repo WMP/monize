@@ -402,10 +402,11 @@
       "title": "Ввести сумму в",
       "accountCurrency": "Валюта счёта ({code})",
       "addCurrency": "Добавить валюту...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "Не удалось добавить валюту",
+      "reactivated": "{code} снова активирована"
     },
     "fx": {
-      "convertedAmount": "Конвертированная сумма ({currency})",
       "noRateWarning": "Не найден курс обмена {from} в {to} на {date}. Введите конвертированную сумму вручную.",
       "usingLatestRateHint": "Используется последний доступный курс (не на дату {date}).",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "Включает комиссию за зарубежную операцию {percent}% ({fee})."
+      "feeCaption": "Включает комиссию за зарубежную операцию {percent}% ({fee}).",
+      "totalInCurrency": "Итого в {currency}"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "Выберите счёт...",
     "memoPlaceholder": "Необязательная памятка",
     "mobileMemoPlaceholder": "Памятка",
-    "tagsPlaceholder": "Теги..."
+    "tagsPlaceholder": "Теги...",
+    "currencyToggle": {
+      "title": "Переключить валюту, в которой отображаются и редактируются суммы разбивки",
+      "ariaAmountsIn": "Показать и редактировать суммы разбивки в {code}"
+    }
   },
   "recentPopover": {
     "recentForPayee": "Последние для {name}",

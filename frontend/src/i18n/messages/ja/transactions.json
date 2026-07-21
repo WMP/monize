@@ -402,10 +402,11 @@
       "title": "金額の入力通貨",
       "accountCurrency": "口座通貨（{code}）",
       "addCurrency": "通貨を追加...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "通貨を追加できませんでした",
+      "reactivated": "{code} を再有効化しました"
     },
     "fx": {
-      "convertedAmount": "換算後の金額（{currency}）",
       "noRateWarning": "{date} の {from} から {to} への為替レートが見つかりません。換算後の金額を手動で入力してください。",
       "usingLatestRateHint": "最新の利用可能なレートを使用しています（{date} 時点ではありません）。",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "{percent}% の外貨取引手数料（{fee}）が含まれます。"
+      "feeCaption": "{percent}% の外貨取引手数料（{fee}）が含まれます。",
+      "totalInCurrency": "{currency} での合計"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "口座を選択...",
     "memoPlaceholder": "任意のメモ",
     "mobileMemoPlaceholder": "メモ",
-    "tagsPlaceholder": "タグ..."
+    "tagsPlaceholder": "タグ...",
+    "currencyToggle": {
+      "title": "分割金額を表示・編集する通貨を切り替えます",
+      "ariaAmountsIn": "{code} で分割金額を表示・編集"
+    }
   },
   "recentPopover": {
     "recentForPayee": "{name}の最近の取引",

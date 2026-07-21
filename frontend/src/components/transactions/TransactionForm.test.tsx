@@ -255,6 +255,7 @@ vi.mock('@/hooks/useNumberFormat', () => ({
     defaultCurrency: 'CAD',
     formatCurrency: (amount: number, currency: string) =>
       `${currency} ${(Math.round(amount * 100) / 100).toFixed(2)}`,
+    formatNumber: (value: number, decimals: number = 2) => value.toFixed(decimals),
   }),
 }));
 
@@ -3586,9 +3587,9 @@ describe('TransactionForm', () => {
       await act(async () => {
         fireEvent.click(screen.getByLabelText('Change entry currency'));
       });
-      await waitFor(() => expect(screen.getByText(/EUR Euro/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Euro \(EUR\)/)).toBeInTheDocument());
       await act(async () => {
-        fireEvent.click(screen.getByText(/EUR Euro/));
+        fireEvent.click(screen.getByText(/Euro \(EUR\)/));
       });
 
       // The rate is fetched for EUR -> account currency (CAD), and the FX panel
@@ -3601,7 +3602,14 @@ describe('TransactionForm', () => {
         ),
       );
       await waitFor(() =>
-        expect(screen.getByText(/Converted amount \(CAD\)/)).toBeInTheDocument(),
+        expect(screen.getByText('Total in CAD')).toBeInTheDocument(),
+      );
+      // The primary amount field is relabelled to the entry currency.
+      expect(screen.getByText('Total in EUR')).toBeInTheDocument();
+      // The rate caption renders the rate through the number formatter (4 dp)
+      // and the date through the user's date formatter.
+      await waitFor(() =>
+        expect(screen.getByText(/1 EUR = 1\.5000 CAD/)).toBeInTheDocument(),
       );
     });
 
@@ -3623,9 +3631,9 @@ describe('TransactionForm', () => {
       await act(async () => {
         fireEvent.click(screen.getByLabelText('Change entry currency'));
       });
-      await waitFor(() => expect(screen.getByText(/EUR Euro/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Euro \(EUR\)/)).toBeInTheDocument());
       await act(async () => {
-        fireEvent.click(screen.getByText(/EUR Euro/));
+        fireEvent.click(screen.getByText(/Euro \(EUR\)/));
       });
       await waitFor(() => expect(mockGetRateForDate).toHaveBeenCalled());
 
@@ -3659,9 +3667,9 @@ describe('TransactionForm', () => {
       await act(async () => {
         fireEvent.click(screen.getByLabelText('Change entry currency'));
       });
-      await waitFor(() => expect(screen.getByText(/EUR Euro/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Euro \(EUR\)/)).toBeInTheDocument());
       await act(async () => {
-        fireEvent.click(screen.getByText(/EUR Euro/));
+        fireEvent.click(screen.getByText(/Euro \(EUR\)/));
       });
       await waitFor(() => expect(mockGetRateForDate).toHaveBeenCalled());
 
@@ -3697,9 +3705,9 @@ describe('TransactionForm', () => {
       await act(async () => {
         fireEvent.click(screen.getByLabelText('Change entry currency'));
       });
-      await waitFor(() => expect(screen.getByText(/EUR Euro/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/Euro \(EUR\)/)).toBeInTheDocument());
       await act(async () => {
-        fireEvent.click(screen.getByText(/EUR Euro/));
+        fireEvent.click(screen.getByText(/Euro \(EUR\)/));
       });
       await waitFor(() => expect(mockGetRateForDate).toHaveBeenCalled());
 

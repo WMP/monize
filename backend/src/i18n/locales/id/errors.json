@@ -228,7 +228,8 @@
     "cannotModifySystem": "Tidak dapat mengubah metadata mata uang sistem",
     "cannotModifyOther": "Tidak dapat mengubah mata uang pengguna lain",
     "inUse": "Mata uang \"{{ code }}\" sedang digunakan oleh akun, sekuritas, atau catatan lain Anda. Nonaktifkan saja.",
-    "invalidRateDate": "date harus dalam format YYYY-MM-DD"
+    "invalidRateDate": "date harus dalam format YYYY-MM-DD",
+    "alreadyInListInactive": "Mata uang \"{{ code }}\" sudah ada dalam daftar Anda, tetapi saat ini tidak aktif. Aktifkan kembali untuk menggunakannya."
   },
   "delegation": {
     "delegatedAccessInvalid": "Akses yang didelegasikan tidak lagi valid",

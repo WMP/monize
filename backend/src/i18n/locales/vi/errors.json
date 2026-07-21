@@ -228,7 +228,8 @@
     "cannotModifySystem": "Không thể sửa đổi siêu dữ liệu tiền tệ hệ thống",
     "cannotModifyOther": "Không thể sửa đổi tiền tệ của người dùng khác",
     "inUse": "Tiền tệ \"{{ code }}\" đang được sử dụng bởi tài khoản, chứng khoán hoặc hồ sơ khác của bạn. Hãy hủy kích hoạt thay thế.",
-    "invalidRateDate": "date phải theo định dạng YYYY-MM-DD"
+    "invalidRateDate": "date phải theo định dạng YYYY-MM-DD",
+    "alreadyInListInactive": "Tiền tệ \"{{ code }}\" đã có trong danh sách của bạn nhưng hiện đang không hoạt động. Kích hoạt lại để sử dụng."
   },
   "delegation": {
     "delegatedAccessInvalid": "Quyền truy cập được ủy quyền không còn hợp lệ",

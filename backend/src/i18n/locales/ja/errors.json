@@ -228,7 +228,8 @@
     "cannotModifySystem": "システム通貨メタデータは変更できません",
     "cannotModifyOther": "他のユーザーの通貨は変更できません",
     "inUse": "通貨「{{ code }}」はあなたの口座、有価証券、またはその他の記録で使用されています。代わりに非アクティブにしてください。",
-    "invalidRateDate": "date は YYYY-MM-DD 形式で指定してください"
+    "invalidRateDate": "date は YYYY-MM-DD 形式で指定してください",
+    "alreadyInListInactive": "通貨「{{ code }}」はすでにリストに含まれていますが、現在無効になっています。使用するには再有効化してください。"
   },
   "delegation": {
     "delegatedAccessInvalid": "委任アクセスが有効ではなくなりました",

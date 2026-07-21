@@ -402,10 +402,11 @@
       "title": "Inserir o valor em",
       "accountCurrency": "Moeda da conta ({code})",
       "addCurrency": "Adicionar moeda...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "Falha ao adicionar a moeda",
+      "reactivated": "{code} reativada"
     },
     "fx": {
-      "convertedAmount": "Valor convertido ({currency})",
       "noRateWarning": "Nenhuma taxa de câmbio encontrada de {from} para {to} em {date}. Insira o valor convertido manualmente.",
       "usingLatestRateHint": "Usando a taxa mais recente disponível (não com data {date}).",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "Inclui uma taxa de transação no exterior de {percent}% ({fee})."
+      "feeCaption": "Inclui uma taxa de transação no exterior de {percent}% ({fee}).",
+      "totalInCurrency": "Total em {currency}"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "Selecionar conta...",
     "memoPlaceholder": "Nota opcional",
     "mobileMemoPlaceholder": "Nota",
-    "tagsPlaceholder": "Etiquetas..."
+    "tagsPlaceholder": "Etiquetas...",
+    "currencyToggle": {
+      "title": "Alternar a moeda em que os valores da divisão são exibidos e editados",
+      "ariaAmountsIn": "Exibir e editar os valores da divisão em {code}"
+    }
   },
   "recentPopover": {
     "recentForPayee": "Recentes para {name}",

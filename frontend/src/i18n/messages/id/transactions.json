@@ -402,10 +402,11 @@
       "title": "Masukkan jumlah dalam",
       "accountCurrency": "Mata uang akun ({code})",
       "addCurrency": "Tambah mata uang...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "Gagal menambahkan mata uang",
+      "reactivated": "{code} diaktifkan kembali"
     },
     "fx": {
-      "convertedAmount": "Jumlah terkonversi ({currency})",
       "noRateWarning": "Tidak ada nilai tukar untuk {from} ke {to} pada {date}. Masukkan jumlah terkonversi secara manual.",
       "usingLatestRateHint": "Menggunakan nilai tukar terbaru yang tersedia (bukan tertanggal {date}).",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "Termasuk biaya transaksi luar negeri {percent}% ({fee})."
+      "feeCaption": "Termasuk biaya transaksi luar negeri {percent}% ({fee}).",
+      "totalInCurrency": "Total dalam {currency}"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "Pilih akun...",
     "memoPlaceholder": "Memo opsional",
     "mobileMemoPlaceholder": "Memo",
-    "tagsPlaceholder": "Tag..."
+    "tagsPlaceholder": "Tag...",
+    "currencyToggle": {
+      "title": "Ganti mata uang untuk menampilkan dan mengedit jumlah pembagian",
+      "ariaAmountsIn": "Tampilkan dan edit jumlah pembagian dalam {code}"
+    }
   },
   "recentPopover": {
     "recentForPayee": "Terbaru untuk {name}",

@@ -402,10 +402,11 @@
       "title": "Bedrag invoeren in",
       "accountCurrency": "Rekeningvaluta ({code})",
       "addCurrency": "Valuta toevoegen...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "Kan valuta niet toevoegen",
+      "reactivated": "{code} opnieuw geactiveerd"
     },
     "fx": {
-      "convertedAmount": "Omgerekend bedrag ({currency})",
       "noRateWarning": "Geen wisselkoers gevonden voor {from} naar {to} op {date}. Voer het omgerekende bedrag handmatig in.",
       "usingLatestRateHint": "De laatst beschikbare koers wordt gebruikt (niet van {date}).",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "Inclusief {percent}% kosten voor buitenlandse transactie ({fee})."
+      "feeCaption": "Inclusief {percent}% kosten voor buitenlandse transactie ({fee}).",
+      "totalInCurrency": "Totaal in {currency}"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "Selecteer rekening...",
     "memoPlaceholder": "Optionele memo",
     "mobileMemoPlaceholder": "Memo",
-    "tagsPlaceholder": "Labels..."
+    "tagsPlaceholder": "Labels...",
+    "currencyToggle": {
+      "title": "Wissel de valuta waarin de splitsbedragen worden getoond en bewerkt",
+      "ariaAmountsIn": "Splitsbedragen tonen en bewerken in {code}"
+    }
   },
   "recentPopover": {
     "recentForPayee": "Recent voor {name}",

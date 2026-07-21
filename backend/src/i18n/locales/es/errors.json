@@ -228,7 +228,8 @@
     "cannotModifySystem": "No se pueden modificar los metadatos de la divisa del sistema",
     "cannotModifyOther": "No se pueden modificar las divisas de otro usuario",
     "inUse": "La divisa \"{{ code }}\" está en uso por tus cuentas, valores u otros registros. Desactívala en su lugar.",
-    "invalidRateDate": "date debe tener el formato AAAA-MM-DD"
+    "invalidRateDate": "date debe tener el formato AAAA-MM-DD",
+    "alreadyInListInactive": "La divisa \"{{ code }}\" ya está en tu lista, pero actualmente está inactiva. Reactívala para usarla."
   },
   "delegation": {
     "delegatedAccessInvalid": "El acceso delegado ya no es válido",

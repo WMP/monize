@@ -402,10 +402,11 @@
       "title": "Inserisci l'importo in",
       "accountCurrency": "Valuta del conto ({code})",
       "addCurrency": "Aggiungi valuta...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "Impossibile aggiungere la valuta",
+      "reactivated": "{code} riattivata"
     },
     "fx": {
-      "convertedAmount": "Importo convertito ({currency})",
       "noRateWarning": "Nessun tasso di cambio trovato da {from} a {to} il {date}. Inserisci manualmente l'importo convertito.",
       "usingLatestRateHint": "Viene usato l'ultimo tasso disponibile (non alla data {date}).",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "Include una commissione per transazione estera del {percent}% ({fee})."
+      "feeCaption": "Include una commissione per transazione estera del {percent}% ({fee}).",
+      "totalInCurrency": "Totale in {currency}"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "Seleziona conto...",
     "memoPlaceholder": "Memo facoltativo",
     "mobileMemoPlaceholder": "Memo",
-    "tagsPlaceholder": "Etichette..."
+    "tagsPlaceholder": "Etichette...",
+    "currencyToggle": {
+      "title": "Cambia la valuta in cui gli importi suddivisi vengono mostrati e modificati",
+      "ariaAmountsIn": "Mostra e modifica gli importi suddivisi in {code}"
+    }
   },
   "recentPopover": {
     "recentForPayee": "Recenti per {name}",

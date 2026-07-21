@@ -228,7 +228,8 @@
     "cannotModifySystem": "无法修改系统货币元数据",
     "cannotModifyOther": "无法修改其他用户的货币",
     "inUse": "货币\"{{ code }}\"正在您的账户、证券或其他记录中使用。请改为停用它。",
-    "invalidRateDate": "date 必须为 YYYY-MM-DD 格式"
+    "invalidRateDate": "date 必须为 YYYY-MM-DD 格式",
+    "alreadyInListInactive": "货币\"{{ code }}\"已在您的列表中，但当前处于未启用状态。请重新启用后使用。"
   },
   "delegation": {
     "delegatedAccessInvalid": "委托访问权限已不再有效",

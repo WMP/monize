@@ -402,10 +402,12 @@
       "title": "Enter amount in",
       "accountCurrency": "Account currency ({code})",
       "addCurrency": "Add currency...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "Failed to add currency",
+      "reactivated": "Reactivated {code}"
     },
     "fx": {
-      "convertedAmount": "Converted amount ({currency})",
+      "totalInCurrency": "Total in {currency}",
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "noRateWarning": "No exchange rate found for {from} to {to} on {date}. Enter the converted amount manually.",
       "usingLatestRateHint": "Using the latest available rate (not dated {date}).",
@@ -438,6 +440,10 @@
     "remaining": "Remaining: {symbol}{amount}",
     "needAmount": "Need {symbol}{amount} (remaining: {symbol}{remaining})",
     "setTotal": "Set total to {symbol}{amount}",
+    "currencyToggle": {
+      "title": "Switch the currency the split amounts are shown and edited in",
+      "ariaAmountsIn": "Show and edit split amounts in {code}"
+    },
     "splitLabel": "Split {number}",
     "columns": {
       "type": "Type",

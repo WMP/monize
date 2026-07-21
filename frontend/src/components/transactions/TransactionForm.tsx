@@ -128,7 +128,7 @@ type TransactionMode = 'normal' | 'split' | 'transfer';
 
 export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, onSuccess, onCancel, onDirtyChange, submitRef }: TransactionFormProps) {
   const t = useTranslations('transactions');
-  const { defaultCurrency, formatCurrency } = useNumberFormat();
+  const { defaultCurrency, formatCurrency, formatNumber } = useNumberFormat();
   const showCreatedAt = usePreferencesStore((s) => s.preferences?.showCreatedAt ?? false);
   const timeFormat = usePreferencesStore((s) => s.preferences?.timeFormat ?? '24h');
   const timezonePref = usePreferencesStore((s) => s.preferences?.timezone);
@@ -899,7 +899,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
 
   // Created At override (only when editing and preference is enabled)
   const userTimezone = resolveTimezone(timezonePref);
-  const { dateFormat } = useDateFormat();
+  const { dateFormat, formatDate } = useDateFormat();
   const [createdAtValue, setCreatedAtValue] = useState(() => {
     if (!transaction?.createdAt) return '';
     return isoToDatetimeLocal(transaction.createdAt, userTimezone);
@@ -1167,7 +1167,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
   // and fee text render together on one line below, spanning both columns.
   const convertedAmountSlot = isForeign ? (
     <CurrencyInput
-      label={t('form.fx.convertedAmount', { currency: accountCurrency })}
+      label={t('form.fx.totalInCurrency', { currency: accountCurrency })}
       prefix={getCurrencySymbol(accountCurrency)}
       value={fxTotal}
       onChange={handleConvertedTotalOverride}
@@ -1181,9 +1181,9 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
         <span>
           {t('form.fx.rateCaption', {
             from: entryCurrency,
-            rate: fxRate.toFixed(4),
+            rate: formatNumber(fxRate, 4),
             to: accountCurrency,
-            date: watchedDate,
+            date: watchedDate ? formatDate(watchedDate) : watchedDate,
           })}
         </span>
       ) : !fxRateLoading ? (
@@ -1191,7 +1191,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           {t('form.fx.noRateWarning', {
             from: entryCurrency,
             to: accountCurrency,
-            date: watchedDate,
+            date: watchedDate ? formatDate(watchedDate) : watchedDate,
           })}
         </span>
       ) : null}
@@ -1199,7 +1199,12 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
         <span>
           {' '}
           {t('form.fx.feeCaption', {
-            percent: fxFeePercent as number,
+            percent: formatNumber(
+              fxFeePercent as number,
+              // Keep the fee percent's own precision (up to 4 dp) instead of
+              // forcing trailing zeros, while still using the locale separators.
+              Math.min(4, (String(fxFeePercent).split('.')[1] || '').length),
+            ),
             fee: formatCurrency(Math.abs(fxFeeAmount), accountCurrency),
           })}
         </span>
@@ -1289,6 +1294,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           fxCaptionSlot={fxCaptionSlot}
           amountValue={isForeign ? foreignAmount : undefined}
           amountCurrencyCode={isForeign ? entryCurrency : undefined}
+          amountLabel={isForeign ? t('form.fx.totalInCurrency', { currency: entryCurrency }) : undefined}
         />
       )}
 
@@ -1315,6 +1321,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           fxCaptionSlot={fxCaptionSlot}
           amountValue={isForeign ? foreignAmount : undefined}
           amountCurrencyCode={isForeign ? entryCurrency : undefined}
+          amountLabel={isForeign ? t('form.fx.totalInCurrency', { currency: entryCurrency }) : undefined}
         />
       )}
 
@@ -1375,6 +1382,8 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
             onTransactionAmountChange={(amount) => setValue('amount', amount, { shouldDirty: true, shouldValidate: true })}
             currencyCode={watchedCurrencyCode || defaultCurrency}
             onConvertToRegular={handleConvertToRegular}
+            displayCurrencyCode={isForeign ? entryCurrency : undefined}
+            displayRate={isForeign ? (fxRate ?? undefined) : undefined}
           />
         </div>
       )}

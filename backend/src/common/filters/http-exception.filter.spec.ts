@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  ConflictException,
 } from "@nestjs/common";
 import { QueryFailedError } from "typeorm";
 import { GlobalExceptionFilter } from "./http-exception.filter";
@@ -44,6 +45,34 @@ describe("GlobalExceptionFilter", () => {
         message: "Invalid input",
       }),
     );
+  });
+
+  it("forwards a machine-readable errorCode from an object response", () => {
+    const exception = new ConflictException({
+      message: "Currency is inactive",
+      errorCode: "CURRENCY_INACTIVE",
+      currencyCode: "CAD",
+    });
+
+    filter.catch(exception, mockHost);
+
+    expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
+    expect(mockResponse.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: HttpStatus.CONFLICT,
+        message: "Currency is inactive",
+        errorCode: "CURRENCY_INACTIVE",
+      }),
+    );
+  });
+
+  it("omits errorCode when the object response has none", () => {
+    const exception = new ConflictException("Plain conflict");
+
+    filter.catch(exception, mockHost);
+
+    const jsonCall = mockResponse.json.mock.calls[0][0];
+    expect(jsonCall).not.toHaveProperty("errorCode");
   });
 
   it("returns structured response for NotFoundException", () => {

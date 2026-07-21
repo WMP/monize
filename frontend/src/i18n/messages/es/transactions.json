@@ -402,10 +402,11 @@
       "title": "Introducir importe en",
       "accountCurrency": "Moneda de la cuenta ({code})",
       "addCurrency": "Añadir moneda...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "No se pudo añadir la divisa",
+      "reactivated": "{code} reactivada"
     },
     "fx": {
-      "convertedAmount": "Importe convertido ({currency})",
       "noRateWarning": "No se encontró un tipo de cambio de {from} a {to} el {date}. Introduce el importe convertido manualmente.",
       "usingLatestRateHint": "Se usa el último tipo disponible (no con fecha {date}).",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "Incluye una comisión por transacción en el extranjero del {percent}% ({fee})."
+      "feeCaption": "Incluye una comisión por transacción en el extranjero del {percent}% ({fee}).",
+      "totalInCurrency": "Total en {currency}"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "Seleccionar cuenta...",
     "memoPlaceholder": "Nota opcional",
     "mobileMemoPlaceholder": "Nota",
-    "tagsPlaceholder": "Etiquetas..."
+    "tagsPlaceholder": "Etiquetas...",
+    "currencyToggle": {
+      "title": "Cambiar la divisa en la que se muestran y editan los importes de la división",
+      "ariaAmountsIn": "Mostrar y editar los importes de la división en {code}"
+    }
   },
   "recentPopover": {
     "recentForPayee": "Recientes de {name}",

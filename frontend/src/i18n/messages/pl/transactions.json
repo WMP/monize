@@ -402,10 +402,11 @@
       "title": "Wprowadź kwotę w",
       "accountCurrency": "Waluta konta ({code})",
       "addCurrency": "Dodaj walutę...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "Nie udało się dodać waluty",
+      "reactivated": "Ponownie aktywowano {code}"
     },
     "fx": {
-      "convertedAmount": "Kwota przeliczona ({currency})",
       "noRateWarning": "Nie znaleziono kursu wymiany z {from} na {to} w dniu {date}. Wprowadź przeliczoną kwotę ręcznie.",
       "usingLatestRateHint": "Używany jest najnowszy dostępny kurs (nie z dnia {date}).",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "Zawiera opłatę za transakcję zagraniczną {percent}% ({fee})."
+      "feeCaption": "Zawiera opłatę za transakcję zagraniczną {percent}% ({fee}).",
+      "totalInCurrency": "Razem w {currency}"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "Wybierz konto...",
     "memoPlaceholder": "Opcjonalna notatka",
     "mobileMemoPlaceholder": "Notatka",
-    "tagsPlaceholder": "Tagi..."
+    "tagsPlaceholder": "Tagi...",
+    "currencyToggle": {
+      "title": "Zmień walutę, w której wyświetlane i edytowane są kwoty podziału",
+      "ariaAmountsIn": "Pokaż i edytuj kwoty podziału w {code}"
+    }
   },
   "recentPopover": {
     "recentForPayee": "Ostatnie dla {name}",

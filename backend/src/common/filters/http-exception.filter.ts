@@ -25,6 +25,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     let status: number;
     let message: string | string[];
+    // Optional machine-readable error code forwarded from an HttpException's
+    // object response (e.g. "CURRENCY_INACTIVE"), letting the client branch on
+    // the specific failure without parsing the localized message.
+    let errorCode: string | undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -45,6 +49,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         ) {
           const resp = exceptionResponse as Record<string, unknown>;
           message = (resp.message as string | string[]) || exception.message;
+          if (typeof resp.errorCode === "string") {
+            errorCode = resp.errorCode;
+          }
         } else {
           message = exception.message;
         }
@@ -81,6 +88,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     response.status(status).json({
       statusCode: status,
       message,
+      ...(errorCode ? { errorCode } : {}),
       ...(this.isProduction ? {} : { timestamp: new Date().toISOString() }),
     });
   }

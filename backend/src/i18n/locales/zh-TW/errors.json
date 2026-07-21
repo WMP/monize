@@ -228,7 +228,8 @@
     "cannotModifySystem": "無法修改系統貨幣中繼資料",
     "cannotModifyOther": "無法修改其他使用者的貨幣",
     "inUse": "貨幣「{{ code }}」正在您的科目、證券或其他記錄中使用。請改為停用它。",
-    "invalidRateDate": "date 必須為 YYYY-MM-DD 格式"
+    "invalidRateDate": "date 必須為 YYYY-MM-DD 格式",
+    "alreadyInListInactive": "貨幣「{{ code }}」已在您的清單中，但目前處於未啟用狀態。請重新啟用後使用。"
   },
   "delegation": {
     "delegatedAccessInvalid": "委派存取已失效",

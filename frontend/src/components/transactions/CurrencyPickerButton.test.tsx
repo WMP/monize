@@ -52,10 +52,10 @@ describe('CurrencyPickerButton', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/US\$ -- USD US Dollar/)).toBeInTheDocument();
+      expect(screen.getByText(/US\$ - US Dollar \(USD\)/)).toBeInTheDocument();
     });
     // Euro is offered; the account currency (CAD) and inactive OLD are not listed as options.
-    expect(screen.getByText(/€ -- EUR Euro/)).toBeInTheDocument();
+    expect(screen.getByText(/€ - Euro \(EUR\)/)).toBeInTheDocument();
     expect(screen.queryByText(/OLD Retired/)).not.toBeInTheDocument();
   });
 
@@ -64,9 +64,9 @@ describe('CurrencyPickerButton', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button'));
     });
-    await waitFor(() => screen.getByText(/EUR Euro/));
+    await waitFor(() => screen.getByText(/Euro \(EUR\)/));
     await act(async () => {
-      fireEvent.click(screen.getByText(/EUR Euro/));
+      fireEvent.click(screen.getByText(/Euro \(EUR\)/));
     });
     expect(onChange).toHaveBeenCalledWith('EUR');
   });

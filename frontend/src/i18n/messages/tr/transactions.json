@@ -402,10 +402,11 @@
       "title": "Tutarı şu birimde girin",
       "accountCurrency": "Hesap para birimi ({code})",
       "addCurrency": "Para birimi ekle...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "Para birimi eklenemedi",
+      "reactivated": "{code} yeniden etkinleştirildi"
     },
     "fx": {
-      "convertedAmount": "Dönüştürülen tutar ({currency})",
       "noRateWarning": "{date} tarihinde {from} biriminden {to} birimine döviz kuru bulunamadı. Dönüştürülen tutarı elle girin.",
       "usingLatestRateHint": "Mevcut en son kur kullanılıyor ({date} tarihli değil).",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "%{percent} yurt dışı işlem ücreti ({fee}) içerir."
+      "feeCaption": "%{percent} yurt dışı işlem ücreti ({fee}) içerir.",
+      "totalInCurrency": "{currency} cinsinden toplam"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "Hesap seçin...",
     "memoPlaceholder": "İsteğe bağlı not",
     "mobileMemoPlaceholder": "Not",
-    "tagsPlaceholder": "Etiketler..."
+    "tagsPlaceholder": "Etiketler...",
+    "currencyToggle": {
+      "title": "Bölünmüş tutarların gösterildiği ve düzenlendiği para birimini değiştirin",
+      "ariaAmountsIn": "Bölünmüş tutarları {code} cinsinden göster ve düzenle"
+    }
   },
   "recentPopover": {
     "recentForPayee": "{name} için son işlemler",

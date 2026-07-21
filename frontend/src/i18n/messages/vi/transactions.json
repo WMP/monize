@@ -402,10 +402,11 @@
       "title": "Nhập số tiền bằng",
       "accountCurrency": "Tiền tệ tài khoản ({code})",
       "addCurrency": "Thêm tiền tệ...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "Không thể thêm tiền tệ",
+      "reactivated": "Đã kích hoạt lại {code}"
     },
     "fx": {
-      "convertedAmount": "Số tiền đã quy đổi ({currency})",
       "noRateWarning": "Không tìm thấy tỷ giá từ {from} sang {to} vào {date}. Vui lòng nhập số tiền đã quy đổi theo cách thủ công.",
       "usingLatestRateHint": "Đang dùng tỷ giá mới nhất hiện có (không phải ngày {date}).",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "Bao gồm phí giao dịch nước ngoài {percent}% ({fee})."
+      "feeCaption": "Bao gồm phí giao dịch nước ngoài {percent}% ({fee}).",
+      "totalInCurrency": "Tổng bằng {currency}"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "Chọn tài khoản...",
     "memoPlaceholder": "Ghi nhớ tùy chọn",
     "mobileMemoPlaceholder": "Ghi nhớ",
-    "tagsPlaceholder": "Thẻ..."
+    "tagsPlaceholder": "Thẻ...",
+    "currencyToggle": {
+      "title": "Chuyển đổi tiền tệ dùng để hiển thị và chỉnh sửa các khoản chia",
+      "ariaAmountsIn": "Hiển thị và chỉnh sửa các khoản chia bằng {code}"
+    }
   },
   "recentPopover": {
     "recentForPayee": "Gần đây cho {name}",

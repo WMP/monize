@@ -44,6 +44,9 @@ interface SplitTransactionFieldsProps {
   amountValue?: number;
   /** Overrides the currency whose symbol prefixes the Total Amount input. */
   amountCurrencyCode?: string;
+  /** Overrides the Total Amount input's label (e.g. "Total in USD" when entering
+   *  a foreign currency). Defaults to the plain "Total Amount" label. */
+  amountLabel?: string;
 }
 
 export function SplitTransactionFields({
@@ -68,6 +71,7 @@ export function SplitTransactionFields({
   fxCaptionSlot,
   amountValue,
   amountCurrencyCode,
+  amountLabel,
 }: SplitTransactionFieldsProps) {
   const t = useTranslations('transactions');
   const historyButtonRef = useRef<HTMLButtonElement>(null);
@@ -101,8 +105,10 @@ export function SplitTransactionFields({
         {createdAtSlot}
       </div>
 
-      {/* Row 2: Payee and Total Amount */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Row 2: Payee and Total Amount. items-start keeps the Payee column its
+          natural height so the taller amount column (converted field + note in
+          foreign mode) does not stretch the Payee history button. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
         <div className="flex items-stretch space-x-2">
           <div className="flex-1 min-w-0">
             <Combobox
@@ -166,30 +172,38 @@ export function SplitTransactionFields({
           )}
         </div>
         <div>
-          <div className="flex items-stretch space-x-2">
-            {currencyPickerSlot}
-            {(() => {
-              const totalInput = (
-                <CurrencyInput
-                  label={t('form.fields.totalAmount')}
-                  prefix={getCurrencySymbol(amountCurrencyCode || watchedCurrencyCode)}
-                  value={amountValue !== undefined ? amountValue : watchedAmount}
-                  onChange={handleAmountChange}
-                  error={errors.amount?.message as string | undefined}
-                />
-              );
-              // In foreign mode the converted amount sits beside the total at
-              // equal width; otherwise the total fills the column.
-              return convertedAmountSlot ? (
-                <div className="grid grid-cols-2 gap-4 flex-1 min-w-0">
-                  {totalInput}
-                  {convertedAmountSlot}
-                </div>
-              ) : (
+          {(() => {
+            const totalInput = (
+              <CurrencyInput
+                label={amountLabel ?? t('form.fields.totalAmount')}
+                prefix={getCurrencySymbol(amountCurrencyCode || watchedCurrencyCode)}
+                value={amountValue !== undefined ? amountValue : watchedAmount}
+                onChange={handleAmountChange}
+                error={errors.amount?.message as string | undefined}
+              />
+            );
+            // The currency picker stays attached to the total input.
+            const pickerAndTotal = (
+              <div className="flex items-stretch space-x-2">
+                {currencyPickerSlot}
                 <div className="flex-1 min-w-0">{totalInput}</div>
-              );
-            })()}
-          </div>
+              </div>
+            );
+            // In foreign mode the total and converted amount each sit on their
+            // own line on mobile and share a row from md up; the conversion note
+            // renders below the pair so it spans both on desktop. Otherwise the
+            // total fills the column.
+            return convertedAmountSlot ? (
+              // items-start keeps each column its natural height so the columns
+              // do not stretch the total input or its attached currency picker.
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                {pickerAndTotal}
+                {convertedAmountSlot}
+              </div>
+            ) : (
+              pickerAndTotal
+            );
+          })()}
           {fxCaptionSlot}
         </div>
       </div>

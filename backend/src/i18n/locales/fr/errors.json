@@ -228,7 +228,8 @@
     "cannotModifySystem": "Impossible de modifier les métadonnées de devise système",
     "cannotModifyOther": "Impossible de modifier la devise d'un autre utilisateur",
     "inUse": "La devise « {{ code }} » est utilisée par vos comptes, titres ou autres enregistrements. Désactivez-la à la place.",
-    "invalidRateDate": "date doit être au format AAAA-MM-JJ"
+    "invalidRateDate": "date doit être au format AAAA-MM-JJ",
+    "alreadyInListInactive": "La devise « {{ code }} » est déjà dans votre liste, mais est actuellement inactive. Réactivez-la pour l'utiliser."
   },
   "delegation": {
     "delegatedAccessInvalid": "L'accès délégué n'est plus valide",

@@ -228,7 +228,8 @@
     "cannotModifySystem": "Nie można modyfikować metadanych waluty systemowej",
     "cannotModifyOther": "Nie można modyfikować waluty innego użytkownika",
     "inUse": "Waluta \"{{ code }}\" jest używana przez Twoje konta, papiery wartościowe lub inne rekordy. Zamiast tego ją dezaktywuj.",
-    "invalidRateDate": "date musi mieć format RRRR-MM-DD"
+    "invalidRateDate": "date musi mieć format RRRR-MM-DD",
+    "alreadyInListInactive": "Waluta \"{{ code }}\" już jest na Twojej liście, ale jest obecnie nieaktywna. Aktywuj ją ponownie, aby jej używać."
   },
   "delegation": {
     "delegatedAccessInvalid": "Dostęp delegowany nie jest już ważny",

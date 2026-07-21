@@ -402,10 +402,11 @@
       "title": "राशि दर्ज करें",
       "accountCurrency": "खाता मुद्रा ({code})",
       "addCurrency": "मुद्रा जोड़ें...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "मुद्रा जोड़ने में विफल",
+      "reactivated": "{code} पुनः सक्रिय किया गया"
     },
     "fx": {
-      "convertedAmount": "रूपांतरित राशि ({currency})",
       "noRateWarning": "{date} को {from} से {to} के लिए कोई विनिमय दर नहीं मिली। रूपांतरित राशि मैन्युअल रूप से दर्ज करें।",
       "usingLatestRateHint": "नवीनतम उपलब्ध दर का उपयोग किया जा रहा है ({date} की नहीं)।",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "इसमें {percent}% विदेशी लेनदेन शुल्क ({fee}) शामिल है।"
+      "feeCaption": "इसमें {percent}% विदेशी लेनदेन शुल्क ({fee}) शामिल है।",
+      "totalInCurrency": "{currency} में कुल"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "खाता चुनें...",
     "memoPlaceholder": "वैकल्पिक मेमो",
     "mobileMemoPlaceholder": "मेमो",
-    "tagsPlaceholder": "टैग..."
+    "tagsPlaceholder": "टैग...",
+    "currencyToggle": {
+      "title": "वह मुद्रा बदलें जिसमें विभाजित राशियाँ दिखाई और संपादित की जाती हैं",
+      "ariaAmountsIn": "{code} में विभाजित राशियाँ दिखाएँ और संपादित करें"
+    }
   },
   "recentPopover": {
     "recentForPayee": "{name} के हाल के लेन-देन",

@@ -228,7 +228,8 @@
     "cannotModifySystem": "Não é possível modificar metadados de moeda do sistema",
     "cannotModifyOther": "Não é possível modificar a moeda de outro usuário",
     "inUse": "A moeda \"{{ code }}\" está em uso pelas suas contas, títulos ou outros registros. Desative-a em vez disso.",
-    "invalidRateDate": "date deve estar no formato AAAA-MM-DD"
+    "invalidRateDate": "date deve estar no formato AAAA-MM-DD",
+    "alreadyInListInactive": "A moeda \"{{ code }}\" já está na sua lista, mas está atualmente inativa. Reative-a para usá-la."
   },
   "delegation": {
     "delegatedAccessInvalid": "O acesso delegado não é mais válido",

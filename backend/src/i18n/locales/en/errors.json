@@ -224,6 +224,7 @@
   },
   "currencies": {
     "alreadyInList": "Currency \"{{ code }}\" is already in your list",
+    "alreadyInListInactive": "Currency \"{{ code }}\" is already in your list but currently inactive. Reactivate it to use it.",
     "notFound": "Currency \"{{ code }}\" not found",
     "cannotModifySystem": "Cannot modify system currency metadata",
     "cannotModifyOther": "Cannot modify another user's currency",

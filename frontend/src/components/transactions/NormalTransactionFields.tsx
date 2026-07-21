@@ -54,6 +54,9 @@ interface NormalTransactionFieldsProps {
   /** Overrides the currency whose symbol prefixes the Amount input. Defaults to
    *  watchedCurrencyCode (the account currency). */
   amountCurrencyCode?: string;
+  /** Overrides the Amount input's label (e.g. "Total in USD" when entering a
+   *  foreign currency). Defaults to the plain "Amount" label. */
+  amountLabel?: string;
 }
 
 export function NormalTransactionFields({
@@ -84,6 +87,7 @@ export function NormalTransactionFields({
   fxCaptionSlot,
   amountValue,
   amountCurrencyCode,
+  amountLabel,
 }: NormalTransactionFieldsProps) {
   const t = useTranslations('transactions');
   const historyButtonRef = useRef<HTMLButtonElement>(null);
@@ -226,7 +230,7 @@ export function NormalTransactionFields({
       {(() => {
         const amountInput = (
           <CurrencyInput
-            label={t('form.fields.amount')}
+            label={amountLabel ?? t('form.fields.amount')}
             prefix={getCurrencySymbol(amountCurrencyCode || watchedCurrencyCode)}
             value={amountValue !== undefined ? amountValue : watchedAmount}
             onChange={handleAmountChange}
@@ -244,16 +248,26 @@ export function NormalTransactionFields({
           />
         );
         return convertedAmountSlot ? (
-          <div>
-            <div className="flex items-stretch space-x-2">
-              {currencyPickerSlot}
-              <div className="grid grid-cols-3 gap-4 flex-1 min-w-0">
-                {amountInput}
+          // On mobile each currency field and Reference Number sits on its own
+          // line; on md+ the two currency fields share a row and Reference
+          // Number takes the third column. items-start keeps each column its
+          // natural height so the taller currency group does not stretch the
+          // Reference Number field.
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+            {/* Source + target currency fields, with the conversion note below
+                the pair (a sibling, not a grid row, so only its own small
+                margin separates it) spanning both on desktop (md:col-span-2). */}
+            <div className="md:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                <div className="flex items-stretch space-x-2">
+                  {currencyPickerSlot}
+                  <div className="flex-1 min-w-0">{amountInput}</div>
+                </div>
                 {convertedAmountSlot}
-                {referenceInput}
               </div>
+              {fxCaptionSlot}
             </div>
-            {fxCaptionSlot}
+            {referenceInput}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

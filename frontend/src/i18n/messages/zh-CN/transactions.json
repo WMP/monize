@@ -402,10 +402,11 @@
       "title": "输入金额的币种",
       "accountCurrency": "账户币种（{code}）",
       "addCurrency": "添加币种...",
-      "optionLabel": "{symbol} -- {code} {name}"
+      "optionLabel": "{symbol} - {name} ({code})",
+      "createFailed": "添加货币失败",
+      "reactivated": "已重新启用 {code}"
     },
     "fx": {
-      "convertedAmount": "换算后的金额（{currency}）",
       "noRateWarning": "未找到 {date} 从 {from} 到 {to} 的汇率。请手动输入换算后的金额。",
       "usingLatestRateHint": "正在使用最新可用汇率（非 {date} 当天）。",
       "displayToggle": {
@@ -414,7 +415,8 @@
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeAutoBadge": "auto",
-      "feeCaption": "包含 {percent}% 境外交易手续费（{fee}）。"
+      "feeCaption": "包含 {percent}% 境外交易手续费（{fee}）。",
+      "totalInCurrency": "以 {currency} 计的总额"
     }
   },
   "splitEditor": {
@@ -456,7 +458,11 @@
     "selectAccount": "选择账户...",
     "memoPlaceholder": "可选备注",
     "mobileMemoPlaceholder": "备注",
-    "tagsPlaceholder": "标签..."
+    "tagsPlaceholder": "标签...",
+    "currencyToggle": {
+      "title": "切换拆分金额的显示和编辑货币",
+      "ariaAmountsIn": "以 {code} 显示和编辑拆分金额"
+    }
   },
   "recentPopover": {
     "recentForPayee": "{name} 的近期交易",

@@ -228,7 +228,8 @@
     "cannotModifySystem": "Kan systeemvalutametadata niet wijzigen",
     "cannotModifyOther": "Kan de valuta van een andere gebruiker niet wijzigen",
     "inUse": "Valuta \"{{ code }}\" is in gebruik door je rekeningen, waardepapieren of andere records. Deactiveer deze in plaats daarvan.",
-    "invalidRateDate": "date moet de indeling JJJJ-MM-DD hebben"
+    "invalidRateDate": "date moet de indeling JJJJ-MM-DD hebben",
+    "alreadyInListInactive": "Valuta \"{{ code }}\" staat al in je lijst, maar is momenteel inactief. Activeer deze opnieuw om te gebruiken."
   },
   "delegation": {
     "delegatedAccessInvalid": "Gedelegeerde toegang is niet meer geldig",

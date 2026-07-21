@@ -228,7 +228,8 @@
     "cannotModifySystem": "Sistem para birimi meta verileri değiştirilemez",
     "cannotModifyOther": "Başka bir kullanıcının para birimi değiştirilemez",
     "inUse": "\"{{ code }}\" para birimi hesaplarınız, menkul kıymetleriniz veya diğer kayıtlarınız tarafından kullanılıyor. Bunun yerine devre dışı bırakın.",
-    "invalidRateDate": "date, YYYY-AA-GG biçiminde olmalıdır"
+    "invalidRateDate": "date, YYYY-AA-GG biçiminde olmalıdır",
+    "alreadyInListInactive": "\"{{ code }}\" para birimi zaten listenizde mevcut ancak şu anda etkin değil. Kullanmak için yeniden etkinleştirin."
   },
   "delegation": {
     "delegatedAccessInvalid": "Delege erişimi artık geçerli değil",
