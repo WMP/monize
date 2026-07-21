@@ -336,6 +336,25 @@ describe("CurrenciesService", () => {
     });
   });
 
+  describe("onApplicationBootstrap()", () => {
+    it("ensures the default USD currency exists on startup", async () => {
+      mockCurrencyRepo.findOne!.mockResolvedValue(null);
+
+      await service.onApplicationBootstrap();
+
+      expect(mockDataSource.query).toHaveBeenCalledWith(
+        expect.stringContaining("INSERT INTO currencies"),
+        ["USD", "US Dollar", "$", 2],
+      );
+    });
+
+    it("does not throw when the startup ensure fails", async () => {
+      mockCurrencyRepo.findOne!.mockRejectedValue(new Error("db down"));
+
+      await expect(service.onApplicationBootstrap()).resolves.toBeUndefined();
+    });
+  });
+
   describe("ensureSystemCurrency()", () => {
     it("creates a missing currency as a system currency with a proper symbol", async () => {
       mockCurrencyRepo.findOne!.mockResolvedValue(null);

@@ -4,6 +4,7 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  OnApplicationBootstrap,
 } from "@nestjs/common";
 import { tr } from "../i18n/translate";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -40,8 +41,13 @@ export interface UserCurrencyView {
   createdAt: Date;
 }
 
+// The currency every new user's preferences default to (see
+// buildDefaultPreferences). It must exist because user_preferences.default_currency
+// has a foreign key to currencies(code).
+const DEFAULT_CURRENCY_CODE = "USD";
+
 @Injectable()
-export class CurrenciesService {
+export class CurrenciesService implements OnApplicationBootstrap {
   private readonly logger = new Logger(CurrenciesService.name);
 
   constructor(
@@ -51,6 +57,23 @@ export class CurrenciesService {
     private userCurrencyPrefRepository: Repository<UserCurrencyPreference>,
     private dataSource: DataSource,
   ) {}
+
+  /**
+   * Currencies are created on demand rather than pre-seeded, but a brand-new
+   * instance still needs the default-preference currency to exist: registration
+   * writes user_preferences.default_currency = 'USD', which has a foreign key to
+   * currencies(code). Guarantee that single currency on startup so the first
+   * user can register before anyone picks a currency at onboarding. Idempotent.
+   */
+  async onApplicationBootstrap(): Promise<void> {
+    try {
+      await this.ensureSystemCurrency(DEFAULT_CURRENCY_CODE);
+    } catch (err) {
+      this.logger.warn(
+        `Could not ensure default currency ${DEFAULT_CURRENCY_CODE} on startup: ${err?.message ?? err}`,
+      );
+    }
+  }
 
   async create(
     userId: string,
