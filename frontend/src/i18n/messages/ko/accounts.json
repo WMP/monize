@@ -156,7 +156,13 @@
       "other": "기타"
     },
     "statementDueDayPlaceholder": "예: 15",
-    "statementSettlementDayPlaceholder": "예: 25"
+    "statementSettlementDayPlaceholder": "예: 25",
+    "fxFeeTitle": "외화 환전 수수료",
+    "fxFeePercent": "수수료 비율",
+    "fxFeeCategory": "수수료 카테고리",
+    "fxFeePercentPlaceholder": "예: 2.5",
+    "fxFeeHelp": "해외 결제를 환전할 때 은행이 부과하는 수수료입니다. 설정하면 이 계좌의 외화 거래에서 수수료가 선택한 카테고리의 지출로 자동 기록됩니다.",
+    "fxFeeCategoryPlaceholder": "카테고리 선택 또는 생성"
   },
   "exportModal": {
     "title": "{name} 내보내기",
@@ -341,7 +347,8 @@
     "paymentFrequencyRequired": "납부 주기는 필수입니다",
     "paymentStartDateRequired": "첫 납부일은 필수입니다",
     "paymentAccountRequired": "납부 출금 계정은 필수입니다",
-    "amortizationRequired": "상환 기간은 필수입니다"
+    "amortizationRequired": "상환 기간은 필수입니다",
+    "fxFeeCategoryRequired": "수수료 비율을 설정하면 수수료 카테고리가 필요합니다"
   },
   "loanDetail": {
     "backToAccounts": "계좌 목록으로 돌아가기",

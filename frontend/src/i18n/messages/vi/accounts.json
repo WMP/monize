@@ -156,7 +156,13 @@
       "other": "Khác"
     },
     "statementDueDayPlaceholder": "vd. 15",
-    "statementSettlementDayPlaceholder": "vd. 25"
+    "statementSettlementDayPlaceholder": "vd. 25",
+    "fxFeeTitle": "Phí chuyển đổi ngoại tệ",
+    "fxFeePercent": "Phần trăm phí",
+    "fxFeeCategory": "Danh mục phí",
+    "fxFeePercentPlaceholder": "vd. 2,5",
+    "fxFeeHelp": "Phí ngân hàng của bạn để chuyển đổi các giao dịch mua ở nước ngoài. Khi được đặt, một giao dịch ngoại tệ trên tài khoản này sẽ tự động ghi nhận phí như một khoản chi trong danh mục đã chọn.",
+    "fxFeeCategoryPlaceholder": "Chọn hoặc tạo danh mục"
   },
   "exportModal": {
     "title": "Xuất {name}",
@@ -341,7 +347,8 @@
     "paymentFrequencyRequired": "Tần suất thanh toán là bắt buộc",
     "paymentStartDateRequired": "Ngày thanh toán đầu tiên là bắt buộc",
     "paymentAccountRequired": "Tài khoản thanh toán là bắt buộc",
-    "amortizationRequired": "Thời gian khấu hao là bắt buộc"
+    "amortizationRequired": "Thời gian khấu hao là bắt buộc",
+    "fxFeeCategoryRequired": "Cần có danh mục phí khi đã đặt phần trăm phí"
   },
   "loanDetail": {
     "backToAccounts": "Quay lại danh sách tài khoản",

@@ -220,7 +220,8 @@
       "search": "Cerca",
       "tagKey": "Chiave tag",
       "tagKeyOp": "Condizione",
-      "tagKeyValue": "Valore"
+      "tagKeyValue": "Valore",
+      "currency": "Valuta"
     },
     "placeholders": {
       "accounts": "Tutti i conti",
@@ -244,7 +245,8 @@
       "dateFrom": "Dal {date}",
       "dateUntil": "Fino al {date}",
       "amountFrom": "Da {amount}",
-      "amountUpTo": "Fino a {amount}"
+      "amountUpTo": "Fino a {amount}",
+      "removeCurrency": "Rimuovi il filtro valuta {name}"
     },
     "bulkUpdate": "Aggiornamento multiplo",
     "cancelBulk": "Annulla multiplo",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "Riattivazione beneficiario non riuscita",
       "categoryCreated": "Categoria \"{name}\" creata",
       "categoryCreateFailed": "Creazione categoria non riuscita",
-      "tagCreated": "Etichetta \"{name}\" creata"
+      "tagCreated": "Etichetta \"{name}\" creata",
+      "fxRateRequired": "Inserisci un tasso di cambio o l'importo convertito prima di salvare una transazione in valuta estera."
     },
     "ariaHistory": "Mostra transazioni recenti",
     "ariaHistoryForPayee": "Mostra transazioni recenti per questo beneficiario",
     "historyTitle": "Compilazione rapida da una transazione recente",
-    "transferCategoryNote": "Facoltativo. Il trasferimento continuerà a non contare come entrata o uscita, ma questa categoria gli consente di comparire nel riepilogo mensile per categoria (ad es. contributi di investimento mensili)."
+    "transferCategoryNote": "Facoltativo. Il trasferimento continuerà a non contare come entrata o uscita, ma questa categoria gli consente di comparire nel riepilogo mensile per categoria (ad es. contributi di investimento mensili).",
+    "currencyPicker": {
+      "label": "Valuta di inserimento",
+      "ariaLabel": "Cambia la valuta di inserimento",
+      "title": "Inserisci l'importo in",
+      "accountCurrency": "Valuta del conto ({code})",
+      "addCurrency": "Aggiungi valuta...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "Importo convertito ({currency})",
+      "noRateWarning": "Nessun tasso di cambio trovato da {from} a {to} il {date}. Inserisci manualmente l'importo convertito.",
+      "usingLatestRateHint": "Viene usato l'ultimo tasso disponibile (non alla data {date}).",
+      "feeSplitMemo": "Commissione per transazione estera",
+      "displayToggle": {
+        "account": "Conto",
+        "original": "Originale"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "Dettagli suddivisione",

@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "「{{ query }}」は複数の証券口座に一致します: {{ list }}。正確な口座名を使用してください。",
     "unknownInvestmentAccount": "不明な口座: {{ name }}。ユーザーの口座リストから正確な名前を使用してください。",
     "notACreditCard": "請求サイクルはクレジットカードの勘定科目でのみ利用できます",
-    "noStatementSettlementDay": "このクレジットカードには請求締め日が設定されていません"
+    "noStatementSettlementDay": "このクレジットカードには請求締め日が設定されていません",
+    "fxFeeCategoryRequired": "手数料率を設定する場合は外貨手数料カテゴリが必要です"
   },
   "actionHistory": {
     "nothingToUndo": "元に戻すものがありません",
@@ -219,14 +220,16 @@
     "csrfInvalid": "無効なCSRFトークンです",
     "demoModeRestricted": "このアクションはデモモードでは使用できません。",
     "serviceNotReady": "サービスが準備できていません",
-    "oauthProviderNotInitialized": "OAuthプロバイダーが初期化されていません"
+    "oauthProviderNotInitialized": "OAuthプロバイダーが初期化されていません",
+    "invalidCurrencyCode": "無効な通貨コード: {{ code }}"
   },
   "currencies": {
     "alreadyInList": "通貨「{{ code }}」はすでにリストに含まれています",
     "notFound": "通貨「{{ code }}」が見つかりません",
     "cannotModifySystem": "システム通貨メタデータは変更できません",
     "cannotModifyOther": "他のユーザーの通貨は変更できません",
-    "inUse": "通貨「{{ code }}」はあなたの口座、有価証券、またはその他の記録で使用されています。代わりに非アクティブにしてください。"
+    "inUse": "通貨「{{ code }}」はあなたの口座、有価証券、またはその他の記録で使用されています。代わりに非アクティブにしてください。",
+    "invalidRateDate": "date は YYYY-MM-DD 形式で指定してください"
   },
   "delegation": {
     "delegatedAccessInvalid": "委任アクセスが有効ではなくなりました",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey は100文字を超えてはいけません",
     "invalidTagKeyOp": "無効な tagKeyOp: {{ op }}",
     "tagKeyValueRequired": "contains / notContains には tagKeyValue が必要です",
-    "tagKeyRequired": "タグキー（1〜100文字）が必要です"
+    "tagKeyRequired": "タグキー（1〜100文字）が必要です",
+    "fxFieldsIncomplete": "originalAmount と originalCurrencyCode は一緒に指定する必要があります",
+    "fxRateRequired": "外貨取引には正の為替レートが必要です",
+    "fxSignMismatch": "originalAmount と amount は同じ符号である必要があります",
+    "multipleFxFeeSplits": "1 件の取引に含められる外貨手数料の分割は 1 つまでです",
+    "fxFeeSplitMustBeCategory": "外貨手数料の分割はカテゴリ分割である必要があります"
   },
   "users": {
     "userNotFound": "ユーザーが見つかりません",

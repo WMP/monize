@@ -220,7 +220,8 @@
       "search": "Cari",
       "tagKey": "Kunci tag",
       "tagKeyOp": "Kondisi",
-      "tagKeyValue": "Nilai"
+      "tagKeyValue": "Nilai",
+      "currency": "Mata uang"
     },
     "placeholders": {
       "accounts": "Semua akun",
@@ -244,7 +245,8 @@
       "dateFrom": "Dari {date}",
       "dateUntil": "Hingga {date}",
       "amountFrom": "Dari {amount}",
-      "amountUpTo": "Hingga {amount}"
+      "amountUpTo": "Hingga {amount}",
+      "removeCurrency": "Hapus filter mata uang {name}"
     },
     "bulkUpdate": "Perbarui Massal",
     "cancelBulk": "Batalkan Massal",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "Gagal mengaktifkan kembali penerima",
       "categoryCreated": "Kategori \"{name}\" dibuat",
       "categoryCreateFailed": "Gagal membuat kategori",
-      "tagCreated": "Tag \"{name}\" dibuat"
+      "tagCreated": "Tag \"{name}\" dibuat",
+      "fxRateRequired": "Masukkan nilai tukar atau jumlah terkonversi sebelum menyimpan transaksi mata uang asing."
     },
     "ariaHistory": "Tampilkan transaksi terbaru",
     "ariaHistoryForPayee": "Tampilkan transaksi terbaru untuk penerima ini",
     "historyTitle": "Isi cepat dari transaksi terbaru",
-    "transferCategoryNote": "Opsional. Transfer tetap tidak dihitung sebagai pemasukan atau pengeluaran, tetapi kategori ini membuatnya muncul dalam rincian kategori bulanan (mis. kontribusi investasi bulanan)."
+    "transferCategoryNote": "Opsional. Transfer tetap tidak dihitung sebagai pemasukan atau pengeluaran, tetapi kategori ini membuatnya muncul dalam rincian kategori bulanan (mis. kontribusi investasi bulanan).",
+    "currencyPicker": {
+      "label": "Mata uang entri",
+      "ariaLabel": "Ubah mata uang entri",
+      "title": "Masukkan jumlah dalam",
+      "accountCurrency": "Mata uang akun ({code})",
+      "addCurrency": "Tambah mata uang...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "Jumlah terkonversi ({currency})",
+      "noRateWarning": "Tidak ada nilai tukar untuk {from} ke {to} pada {date}. Masukkan jumlah terkonversi secara manual.",
+      "usingLatestRateHint": "Menggunakan nilai tukar terbaru yang tersedia (bukan tertanggal {date}).",
+      "feeSplitMemo": "Biaya transaksi luar negeri",
+      "displayToggle": {
+        "account": "Akun",
+        "original": "Asli"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "Detail Pembagian",

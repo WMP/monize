@@ -156,7 +156,13 @@
       "other": "Autre"
     },
     "statementDueDayPlaceholder": "ex. 15",
-    "statementSettlementDayPlaceholder": "ex. 25"
+    "statementSettlementDayPlaceholder": "ex. 25",
+    "fxFeeTitle": "Frais de conversion en devise étrangère",
+    "fxFeePercent": "Pourcentage des frais",
+    "fxFeeCategory": "Catégorie des frais",
+    "fxFeePercentPlaceholder": "p. ex. 2,5",
+    "fxFeeHelp": "Les frais de votre banque pour la conversion des achats à l'étranger. Lorsqu'ils sont définis, une transaction en devise étrangère sur ce compte enregistre automatiquement les frais comme une dépense dans la catégorie choisie.",
+    "fxFeeCategoryPlaceholder": "Sélectionnez ou créez une catégorie"
   },
   "exportModal": {
     "title": "Exporter {name}",
@@ -341,7 +347,8 @@
     "paymentFrequencyRequired": "La fréquence de paiement est obligatoire",
     "paymentStartDateRequired": "La date du premier paiement est obligatoire",
     "paymentAccountRequired": "Le compte de paiement est obligatoire",
-    "amortizationRequired": "La période d'amortissement est obligatoire"
+    "amortizationRequired": "La période d'amortissement est obligatoire",
+    "fxFeeCategoryRequired": "Une catégorie de frais est requise lorsqu'un pourcentage de frais est défini"
   },
   "loanDetail": {
     "backToAccounts": "Retour aux comptes",

@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "\"{{ query }}\" cocok dengan beberapa akun pialang: {{ list }}. Gunakan nama akun yang tepat.",
     "unknownInvestmentAccount": "Akun tidak dikenal: {{ name }}. Gunakan nama yang tepat dari daftar akun pengguna.",
     "notACreditCard": "Siklus laporan hanya tersedia untuk akun kartu kredit",
-    "noStatementSettlementDay": "Kartu kredit ini tidak memiliki hari penyelesaian laporan yang dikonfigurasi"
+    "noStatementSettlementDay": "Kartu kredit ini tidak memiliki hari penyelesaian laporan yang dikonfigurasi",
+    "fxFeeCategoryRequired": "Kategori biaya transaksi asing diperlukan bila persentase biaya diatur"
   },
   "actionHistory": {
     "nothingToUndo": "Tidak ada yang dapat dibatalkan",
@@ -219,14 +220,16 @@
     "csrfInvalid": "Token CSRF tidak valid",
     "demoModeRestricted": "Tindakan ini tidak tersedia dalam mode demo.",
     "serviceNotReady": "Layanan belum siap",
-    "oauthProviderNotInitialized": "Penyedia OAuth belum diinisialisasi"
+    "oauthProviderNotInitialized": "Penyedia OAuth belum diinisialisasi",
+    "invalidCurrencyCode": "Kode mata uang tidak valid: {{ code }}"
   },
   "currencies": {
     "alreadyInList": "Mata uang \"{{ code }}\" sudah ada dalam daftar Anda",
     "notFound": "Mata uang \"{{ code }}\" tidak ditemukan",
     "cannotModifySystem": "Tidak dapat mengubah metadata mata uang sistem",
     "cannotModifyOther": "Tidak dapat mengubah mata uang pengguna lain",
-    "inUse": "Mata uang \"{{ code }}\" sedang digunakan oleh akun, sekuritas, atau catatan lain Anda. Nonaktifkan saja."
+    "inUse": "Mata uang \"{{ code }}\" sedang digunakan oleh akun, sekuritas, atau catatan lain Anda. Nonaktifkan saja.",
+    "invalidRateDate": "date harus dalam format YYYY-MM-DD"
   },
   "delegation": {
     "delegatedAccessInvalid": "Akses yang didelegasikan tidak lagi valid",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey tidak boleh melebihi 100 karakter",
     "invalidTagKeyOp": "tagKeyOp tidak valid: {{ op }}",
     "tagKeyValueRequired": "tagKeyValue diperlukan untuk contains / notContains",
-    "tagKeyRequired": "Kunci tag (1-100 karakter) diperlukan"
+    "tagKeyRequired": "Kunci tag (1-100 karakter) diperlukan",
+    "fxFieldsIncomplete": "originalAmount dan originalCurrencyCode harus diberikan bersama",
+    "fxRateRequired": "Nilai tukar positif diperlukan untuk transaksi mata uang asing",
+    "fxSignMismatch": "originalAmount dan amount harus memiliki tanda yang sama",
+    "multipleFxFeeSplits": "Sebuah transaksi hanya boleh memiliki paling banyak satu pembagian biaya transaksi asing",
+    "fxFeeSplitMustBeCategory": "Pembagian biaya transaksi asing harus berupa pembagian kategori"
   },
   "users": {
     "userNotFound": "Pengguna tidak ditemukan",

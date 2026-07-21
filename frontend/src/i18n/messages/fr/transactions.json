@@ -220,7 +220,8 @@
       "search": "Rechercher",
       "tagKey": "Clé d'étiquette",
       "tagKeyOp": "Condition",
-      "tagKeyValue": "Valeur"
+      "tagKeyValue": "Valeur",
+      "currency": "Devise"
     },
     "placeholders": {
       "accounts": "Tous les comptes",
@@ -244,7 +245,8 @@
       "dateFrom": "Depuis {date}",
       "dateUntil": "Jusqu'au {date}",
       "amountFrom": "Depuis {amount}",
-      "amountUpTo": "Jusqu'à {amount}"
+      "amountUpTo": "Jusqu'à {amount}",
+      "removeCurrency": "Retirer le filtre de devise {name}"
     },
     "bulkUpdate": "Mise à jour groupée",
     "cancelBulk": "Annuler la sélection",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "Échec de la réactivation du bénéficiaire",
       "categoryCreated": "Catégorie « {name} » créée",
       "categoryCreateFailed": "Échec de la création de la catégorie",
-      "tagCreated": "Étiquette « {name} » créée"
+      "tagCreated": "Étiquette « {name} » créée",
+      "fxRateRequired": "Saisissez un taux de change ou le montant converti avant d'enregistrer une transaction en devise étrangère."
     },
     "ariaHistory": "Afficher les transactions récentes",
     "ariaHistoryForPayee": "Afficher les transactions récentes pour ce bénéficiaire",
     "historyTitle": "Remplissage rapide depuis une transaction récente",
-    "transferCategoryNote": "Facultatif. Le transfert ne comptera toujours pas comme un revenu ni une dépense, mais cette catégorie lui permet d'apparaître dans la répartition mensuelle par catégorie (par exemple des versements d'investissement mensuels)."
+    "transferCategoryNote": "Facultatif. Le transfert ne comptera toujours pas comme un revenu ni une dépense, mais cette catégorie lui permet d'apparaître dans la répartition mensuelle par catégorie (par exemple des versements d'investissement mensuels).",
+    "currencyPicker": {
+      "label": "Devise de saisie",
+      "ariaLabel": "Changer la devise de saisie",
+      "title": "Saisir le montant en",
+      "accountCurrency": "Devise du compte ({code})",
+      "addCurrency": "Ajouter une devise...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "Montant converti ({currency})",
+      "noRateWarning": "Aucun taux de change trouvé de {from} vers {to} le {date}. Saisissez le montant converti manuellement.",
+      "usingLatestRateHint": "Utilisation du dernier taux disponible (non daté du {date}).",
+      "feeSplitMemo": "Frais de transaction à l'étranger",
+      "displayToggle": {
+        "account": "Compte",
+        "original": "Original"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "Détails de la répartition",

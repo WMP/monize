@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "\"{{ query }}\" कई ब्रोकरेज खातों से मेल खाता है: {{ list }}. सटीक खाता नाम का उपयोग करें।",
     "unknownInvestmentAccount": "अज्ञात खाता: {{ name }}. उपयोगकर्ता की खाता सूची से सटीक नाम का उपयोग करें।",
     "notACreditCard": "स्टेटमेंट चक्र केवल क्रेडिट कार्ड खातों के लिए उपलब्ध हैं",
-    "noStatementSettlementDay": "इस क्रेडिट कार्ड में कोई स्टेटमेंट निपटान दिन कॉन्फ़िगर नहीं किया गया है"
+    "noStatementSettlementDay": "इस क्रेडिट कार्ड में कोई स्टेटमेंट निपटान दिन कॉन्फ़िगर नहीं किया गया है",
+    "fxFeeCategoryRequired": "शुल्क प्रतिशत सेट होने पर विदेशी-लेनदेन शुल्क श्रेणी आवश्यक है"
   },
   "actionHistory": {
     "nothingToUndo": "पूर्ववत करने के लिए कुछ नहीं है",
@@ -219,14 +220,16 @@
     "csrfInvalid": "अमान्य CSRF टोकन",
     "demoModeRestricted": "यह क्रिया डेमो मोड में उपलब्ध नहीं है।",
     "serviceNotReady": "सेवा तैयार नहीं है",
-    "oauthProviderNotInitialized": "OAuth प्रदाता प्रारंभ नहीं किया गया"
+    "oauthProviderNotInitialized": "OAuth प्रदाता प्रारंभ नहीं किया गया",
+    "invalidCurrencyCode": "अमान्य मुद्रा कोड: {{ code }}"
   },
   "currencies": {
     "alreadyInList": "मुद्रा \"{{ code }}\" पहले से आपकी सूची में है",
     "notFound": "मुद्रा \"{{ code }}\" नहीं मिली",
     "cannotModifySystem": "सिस्टम मुद्रा मेटाडेटा संशोधित नहीं किया जा सकता",
     "cannotModifyOther": "किसी अन्य उपयोगकर्ता की मुद्रा संशोधित नहीं की जा सकती",
-    "inUse": "मुद्रा \"{{ code }}\" आपके खातों, प्रतिभूतियों या अन्य अभिलेखों में उपयोग में है। इसके बजाय इसे निष्क्रिय करें।"
+    "inUse": "मुद्रा \"{{ code }}\" आपके खातों, प्रतिभूतियों या अन्य अभिलेखों में उपयोग में है। इसके बजाय इसे निष्क्रिय करें।",
+    "invalidRateDate": "date YYYY-MM-DD प्रारूप में होना चाहिए"
   },
   "delegation": {
     "delegatedAccessInvalid": "प्रत्यायोजित एक्सेस अब मान्य नहीं है",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey 100 अक्षरों से अधिक नहीं होना चाहिए",
     "invalidTagKeyOp": "अमान्य tagKeyOp: {{ op }}",
     "tagKeyValueRequired": "contains / notContains के लिए tagKeyValue आवश्यक है",
-    "tagKeyRequired": "एक टैग कुंजी (1-100 अक्षर) आवश्यक है"
+    "tagKeyRequired": "एक टैग कुंजी (1-100 अक्षर) आवश्यक है",
+    "fxFieldsIncomplete": "originalAmount और originalCurrencyCode एक साथ दिए जाने चाहिए",
+    "fxRateRequired": "विदेशी मुद्रा लेनदेन के लिए एक धनात्मक विनिमय दर आवश्यक है",
+    "fxSignMismatch": "originalAmount और amount का चिह्न समान होना चाहिए",
+    "multipleFxFeeSplits": "एक लेनदेन में अधिकतम एक विदेशी-लेनदेन शुल्क विभाजन हो सकता है",
+    "fxFeeSplitMustBeCategory": "विदेशी-लेनदेन शुल्क विभाजन एक श्रेणी विभाजन होना चाहिए"
   },
   "users": {
     "userNotFound": "उपयोगकर्ता नहीं मिला",

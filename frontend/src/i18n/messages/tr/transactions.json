@@ -220,7 +220,8 @@
       "search": "Ara",
       "tagKey": "Etiket anahtarı",
       "tagKeyOp": "Koşul",
-      "tagKeyValue": "Değer"
+      "tagKeyValue": "Değer",
+      "currency": "Para birimi"
     },
     "placeholders": {
       "accounts": "Tüm hesaplar",
@@ -244,7 +245,8 @@
       "dateFrom": "{date} tarihinden",
       "dateUntil": "{date} tarihine kadar",
       "amountFrom": "{amount} tutarından",
-      "amountUpTo": "{amount} tutarına kadar"
+      "amountUpTo": "{amount} tutarına kadar",
+      "removeCurrency": "{name} para birimi filtresini kaldır"
     },
     "bulkUpdate": "Toplu Güncelle",
     "cancelBulk": "Toplu İptal",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "Alacaklı yeniden etkinleştirilemedi",
       "categoryCreated": "\"{name}\" kategorisi oluşturuldu",
       "categoryCreateFailed": "Kategori oluşturulamadı",
-      "tagCreated": "\"{name}\" etiketi oluşturuldu"
+      "tagCreated": "\"{name}\" etiketi oluşturuldu",
+      "fxRateRequired": "Yabancı para birimi işlemini kaydetmeden önce bir döviz kuru veya dönüştürülen tutarı girin."
     },
     "ariaHistory": "Son işlemleri göster",
     "ariaHistoryForPayee": "Bu alacaklının son işlemlerini göster",
     "historyTitle": "Son işlemden hızlı doldur",
-    "transferCategoryNote": "İsteğe bağlı. Transfer yine de gelir veya gider olarak sayılmaz, ancak bu kategori onun aylık kategori dökümünde görünmesini sağlar (ör. aylık yatırım katkıları)."
+    "transferCategoryNote": "İsteğe bağlı. Transfer yine de gelir veya gider olarak sayılmaz, ancak bu kategori onun aylık kategori dökümünde görünmesini sağlar (ör. aylık yatırım katkıları).",
+    "currencyPicker": {
+      "label": "Giriş para birimi",
+      "ariaLabel": "Giriş para birimini değiştir",
+      "title": "Tutarı şu birimde girin",
+      "accountCurrency": "Hesap para birimi ({code})",
+      "addCurrency": "Para birimi ekle...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "Dönüştürülen tutar ({currency})",
+      "noRateWarning": "{date} tarihinde {from} biriminden {to} birimine döviz kuru bulunamadı. Dönüştürülen tutarı elle girin.",
+      "usingLatestRateHint": "Mevcut en son kur kullanılıyor ({date} tarihli değil).",
+      "feeSplitMemo": "Yurt dışı işlem ücreti",
+      "displayToggle": {
+        "account": "Hesap",
+        "original": "Orijinal"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "Bölüm Ayrıntıları",

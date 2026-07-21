@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "\"{{ query }}\" komt overeen met meerdere effectenrekeningen: {{ list }}. Gebruik de exacte rekeningnaam.",
     "unknownInvestmentAccount": "Onbekende rekening: {{ name }}. Gebruik een exacte naam uit de rekeninglijst van de gebruiker.",
     "notACreditCard": "Afschriftperiodes zijn alleen beschikbaar voor creditcardrekeningen",
-    "noStatementSettlementDay": "Voor deze creditcard is geen afsluitdag van het afschrift ingesteld"
+    "noStatementSettlementDay": "Voor deze creditcard is geen afsluitdag van het afschrift ingesteld",
+    "fxFeeCategoryRequired": "Een categorie voor buitenlandse transactiekosten is vereist wanneer een kostenpercentage is ingesteld"
   },
   "actionHistory": {
     "nothingToUndo": "Niets om ongedaan te maken",
@@ -219,14 +220,16 @@
     "csrfInvalid": "Ongeldig CSRF-token",
     "demoModeRestricted": "Deze actie is niet beschikbaar in de demomodus.",
     "serviceNotReady": "Service niet gereed",
-    "oauthProviderNotInitialized": "OAuth-provider niet geïnitialiseerd"
+    "oauthProviderNotInitialized": "OAuth-provider niet geïnitialiseerd",
+    "invalidCurrencyCode": "Ongeldige valutacode: {{ code }}"
   },
   "currencies": {
     "alreadyInList": "Valuta \"{{ code }}\" staat al in je lijst",
     "notFound": "Valuta \"{{ code }}\" niet gevonden",
     "cannotModifySystem": "Kan systeemvalutametadata niet wijzigen",
     "cannotModifyOther": "Kan de valuta van een andere gebruiker niet wijzigen",
-    "inUse": "Valuta \"{{ code }}\" is in gebruik door je rekeningen, waardepapieren of andere records. Deactiveer deze in plaats daarvan."
+    "inUse": "Valuta \"{{ code }}\" is in gebruik door je rekeningen, waardepapieren of andere records. Deactiveer deze in plaats daarvan.",
+    "invalidRateDate": "date moet de indeling JJJJ-MM-DD hebben"
   },
   "delegation": {
     "delegatedAccessInvalid": "Gedelegeerde toegang is niet meer geldig",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey mag niet langer zijn dan 100 tekens",
     "invalidTagKeyOp": "Ongeldige tagKeyOp: {{ op }}",
     "tagKeyValueRequired": "tagKeyValue is vereist voor contains / notContains",
-    "tagKeyRequired": "Een tagsleutel (1-100 tekens) is vereist"
+    "tagKeyRequired": "Een tagsleutel (1-100 tekens) is vereist",
+    "fxFieldsIncomplete": "originalAmount en originalCurrencyCode moeten samen worden opgegeven",
+    "fxRateRequired": "Een positieve wisselkoers is vereist voor een transactie in vreemde valuta",
+    "fxSignMismatch": "originalAmount en amount moeten hetzelfde teken hebben",
+    "multipleFxFeeSplits": "Een transactie mag hoogstens één splitsing voor buitenlandse transactiekosten hebben",
+    "fxFeeSplitMustBeCategory": "De splitsing voor buitenlandse transactiekosten moet een categoriesplitsing zijn"
   },
   "users": {
     "userNotFound": "Gebruiker niet gevonden",

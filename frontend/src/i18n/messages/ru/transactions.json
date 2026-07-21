@@ -220,7 +220,8 @@
       "search": "Поиск",
       "tagKey": "Ключ тега",
       "tagKeyOp": "Условие",
-      "tagKeyValue": "Значение"
+      "tagKeyValue": "Значение",
+      "currency": "Валюта"
     },
     "placeholders": {
       "accounts": "Все счета",
@@ -244,7 +245,8 @@
       "dateFrom": "С {date}",
       "dateUntil": "До {date}",
       "amountFrom": "От {amount}",
-      "amountUpTo": "До {amount}"
+      "amountUpTo": "До {amount}",
+      "removeCurrency": "Удалить фильтр по валюте {name}"
     },
     "bulkUpdate": "Массовое обновление",
     "cancelBulk": "Отменить массовое",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "Не удалось реактивировать получателя",
       "categoryCreated": "Категория \"{name}\" создана",
       "categoryCreateFailed": "Не удалось создать категорию",
-      "tagCreated": "Тег \"{name}\" создан"
+      "tagCreated": "Тег \"{name}\" создан",
+      "fxRateRequired": "Введите курс обмена или конвертированную сумму перед сохранением операции в иностранной валюте."
     },
     "ariaHistory": "Показать последние проводки",
     "ariaHistoryForPayee": "Показать последние проводки для этого получателя",
     "historyTitle": "Быстрое заполнение из последней проводки",
-    "transferCategoryNote": "Необязательно. Перевод по-прежнему не будет учитываться как доход или расход, но эта категория позволяет ему отображаться в ежемесячной разбивке по категориям (например, ежемесячные инвестиционные взносы)."
+    "transferCategoryNote": "Необязательно. Перевод по-прежнему не будет учитываться как доход или расход, но эта категория позволяет ему отображаться в ежемесячной разбивке по категориям (например, ежемесячные инвестиционные взносы).",
+    "currencyPicker": {
+      "label": "Валюта ввода",
+      "ariaLabel": "Изменить валюту ввода",
+      "title": "Ввести сумму в",
+      "accountCurrency": "Валюта счёта ({code})",
+      "addCurrency": "Добавить валюту...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "Конвертированная сумма ({currency})",
+      "noRateWarning": "Не найден курс обмена {from} в {to} на {date}. Введите конвертированную сумму вручную.",
+      "usingLatestRateHint": "Используется последний доступный курс (не на дату {date}).",
+      "feeSplitMemo": "Комиссия за зарубежную операцию",
+      "displayToggle": {
+        "account": "Счёт",
+        "original": "Оригинал"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "Детали разбивки",

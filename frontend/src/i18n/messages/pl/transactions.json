@@ -220,7 +220,8 @@
       "search": "Szukaj",
       "tagKey": "Klucz tagu",
       "tagKeyOp": "Warunek",
-      "tagKeyValue": "Wartość"
+      "tagKeyValue": "Wartość",
+      "currency": "Waluta"
     },
     "placeholders": {
       "accounts": "Wszystkie konta",
@@ -244,7 +245,8 @@
       "dateFrom": "Od {date}",
       "dateUntil": "Do {date}",
       "amountFrom": "Od {amount}",
-      "amountUpTo": "Do {amount}"
+      "amountUpTo": "Do {amount}",
+      "removeCurrency": "Usuń filtr waluty {name}"
     },
     "bulkUpdate": "Aktualizacja zbiorcza",
     "cancelBulk": "Anuluj zbiorczą",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "Nie udało się przywrócić odbiorcy",
       "categoryCreated": "Utworzono kategorię \"{name}\"",
       "categoryCreateFailed": "Nie udało się utworzyć kategorii",
-      "tagCreated": "Tag \"{name}\" utworzony"
+      "tagCreated": "Tag \"{name}\" utworzony",
+      "fxRateRequired": "Wprowadź kurs wymiany lub przeliczoną kwotę przed zapisaniem transakcji w obcej walucie."
     },
     "ariaHistory": "Pokaż ostatnie transakcje",
     "ariaHistoryForPayee": "Pokaż ostatnie transakcje dla tego odbiorcy",
     "historyTitle": "Szybkie wypełnienie z ostatniej transakcji",
-    "transferCategoryNote": "Opcjonalnie. Transfer nadal nie będzie liczony jako przychód ani wydatek, ale ta kategoria pozwala mu pojawić się w miesięcznym zestawieniu według kategorii (np. comiesięczne wpłaty inwestycyjne)."
+    "transferCategoryNote": "Opcjonalnie. Transfer nadal nie będzie liczony jako przychód ani wydatek, ale ta kategoria pozwala mu pojawić się w miesięcznym zestawieniu według kategorii (np. comiesięczne wpłaty inwestycyjne).",
+    "currencyPicker": {
+      "label": "Waluta wprowadzania",
+      "ariaLabel": "Zmień walutę wprowadzania",
+      "title": "Wprowadź kwotę w",
+      "accountCurrency": "Waluta konta ({code})",
+      "addCurrency": "Dodaj walutę...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "Kwota przeliczona ({currency})",
+      "noRateWarning": "Nie znaleziono kursu wymiany z {from} na {to} w dniu {date}. Wprowadź przeliczoną kwotę ręcznie.",
+      "usingLatestRateHint": "Używany jest najnowszy dostępny kurs (nie z dnia {date}).",
+      "feeSplitMemo": "Opłata za transakcję zagraniczną",
+      "displayToggle": {
+        "account": "Konto",
+        "original": "Oryginał"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "Szczegóły podziału",

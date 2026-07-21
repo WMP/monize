@@ -156,7 +156,13 @@
       "other": "Overig"
     },
     "statementDueDayPlaceholder": "bijv. 15",
-    "statementSettlementDayPlaceholder": "bijv. 25"
+    "statementSettlementDayPlaceholder": "bijv. 25",
+    "fxFeeTitle": "Kosten voor omrekening van vreemde valuta",
+    "fxFeePercent": "Kostenpercentage",
+    "fxFeeCategory": "Kostencategorie",
+    "fxFeePercentPlaceholder": "bijv. 2,5",
+    "fxFeeHelp": "De kosten van je bank voor het omrekenen van buitenlandse aankopen. Indien ingesteld, boekt een transactie in vreemde valuta op deze rekening de kosten automatisch als uitgave in de gekozen categorie.",
+    "fxFeeCategoryPlaceholder": "Selecteer of maak een categorie"
   },
   "exportModal": {
     "title": "{name} exporteren",
@@ -341,7 +347,8 @@
     "paymentFrequencyRequired": "Betalingsfrequentie is vereist",
     "paymentStartDateRequired": "Datum eerste betaling is vereist",
     "paymentAccountRequired": "Betaalrekening is vereist",
-    "amortizationRequired": "Afschrijvingstermijn is vereist"
+    "amortizationRequired": "Afschrijvingstermijn is vereist",
+    "fxFeeCategoryRequired": "Een kostencategorie is vereist wanneer een kostenpercentage is ingesteld"
   },
   "loanDetail": {
     "backToAccounts": "Terug naar rekeningen",

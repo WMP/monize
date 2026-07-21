@@ -220,7 +220,8 @@
       "search": "Buscar",
       "tagKey": "Clave de etiqueta",
       "tagKeyOp": "Condición",
-      "tagKeyValue": "Valor"
+      "tagKeyValue": "Valor",
+      "currency": "Moneda"
     },
     "placeholders": {
       "accounts": "Todas las cuentas",
@@ -244,7 +245,8 @@
       "dateFrom": "Desde {date}",
       "dateUntil": "Hasta {date}",
       "amountFrom": "Desde {amount}",
-      "amountUpTo": "Hasta {amount}"
+      "amountUpTo": "Hasta {amount}",
+      "removeCurrency": "Quitar el filtro de moneda {name}"
     },
     "bulkUpdate": "Actualización masiva",
     "cancelBulk": "Cancelar masiva",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "Error al reactivar el beneficiario",
       "categoryCreated": "Categoría \"{name}\" creada",
       "categoryCreateFailed": "Error al crear la categoría",
-      "tagCreated": "Etiqueta \"{name}\" creada"
+      "tagCreated": "Etiqueta \"{name}\" creada",
+      "fxRateRequired": "Introduce un tipo de cambio o el importe convertido antes de guardar una transacción en moneda extranjera."
     },
     "ariaHistory": "Mostrar transacciones recientes",
     "ariaHistoryForPayee": "Mostrar transacciones recientes de este beneficiario",
     "historyTitle": "Completar rápidamente desde una transacción reciente",
-    "transferCategoryNote": "Opcional. La transferencia seguirá sin contar como ingreso o gasto, pero esta categoría permite que aparezca en el desglose mensual por categorías (p. ej., aportaciones mensuales de inversión)."
+    "transferCategoryNote": "Opcional. La transferencia seguirá sin contar como ingreso o gasto, pero esta categoría permite que aparezca en el desglose mensual por categorías (p. ej., aportaciones mensuales de inversión).",
+    "currencyPicker": {
+      "label": "Moneda de entrada",
+      "ariaLabel": "Cambiar la moneda de entrada",
+      "title": "Introducir importe en",
+      "accountCurrency": "Moneda de la cuenta ({code})",
+      "addCurrency": "Añadir moneda...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "Importe convertido ({currency})",
+      "noRateWarning": "No se encontró un tipo de cambio de {from} a {to} el {date}. Introduce el importe convertido manualmente.",
+      "usingLatestRateHint": "Se usa el último tipo disponible (no con fecha {date}).",
+      "feeSplitMemo": "Comisión por transacción en el extranjero",
+      "displayToggle": {
+        "account": "Cuenta",
+        "original": "Original"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "Detalles del desglose",

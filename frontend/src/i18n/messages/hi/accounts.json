@@ -156,7 +156,13 @@
       "other": "अन्य"
     },
     "statementDueDayPlaceholder": "उदा. 15",
-    "statementSettlementDayPlaceholder": "उदा. 25"
+    "statementSettlementDayPlaceholder": "उदा. 25",
+    "fxFeeTitle": "विदेशी मुद्रा रूपांतरण शुल्क",
+    "fxFeePercent": "शुल्क प्रतिशत",
+    "fxFeeCategory": "शुल्क श्रेणी",
+    "fxFeePercentPlaceholder": "उदा. 2.5",
+    "fxFeeHelp": "विदेशी खरीदारी को रूपांतरित करने के लिए आपके बैंक का शुल्क। सेट होने पर, इस खाते में विदेशी मुद्रा लेनदेन चुनी गई श्रेणी में शुल्क को स्वचालित रूप से व्यय के रूप में दर्ज करता है।",
+    "fxFeeCategoryPlaceholder": "श्रेणी चुनें या बनाएँ"
   },
   "exportModal": {
     "title": "{name} निर्यात करें",
@@ -341,7 +347,8 @@
     "paymentFrequencyRequired": "भुगतान आवृत्ति आवश्यक है",
     "paymentStartDateRequired": "पहली भुगतान तिथि आवश्यक है",
     "paymentAccountRequired": "भुगतान खाता आवश्यक है",
-    "amortizationRequired": "परिशोधन अवधि आवश्यक है"
+    "amortizationRequired": "परिशोधन अवधि आवश्यक है",
+    "fxFeeCategoryRequired": "शुल्क प्रतिशत सेट होने पर शुल्क श्रेणी आवश्यक है"
   },
   "loanDetail": {
     "backToAccounts": "खातों पर वापस जाएँ",

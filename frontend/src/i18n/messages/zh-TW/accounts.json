@@ -156,7 +156,13 @@
       "other": "其他"
     },
     "statementDueDayPlaceholder": "例如 15",
-    "statementSettlementDayPlaceholder": "例如 25"
+    "statementSettlementDayPlaceholder": "例如 25",
+    "fxFeeTitle": "外幣兌換手續費",
+    "fxFeePercent": "手續費百分比",
+    "fxFeeCategory": "手續費類別",
+    "fxFeePercentPlaceholder": "例如 2.5",
+    "fxFeeHelp": "您的銀行為兌換境外消費收取的費用。設定後，此帳戶上的外幣交易會自動將該費用記為所選類別中的一筆支出。",
+    "fxFeeCategoryPlaceholder": "選擇或建立類別"
   },
   "exportModal": {
     "title": "匯出 {name}",
@@ -341,7 +347,8 @@
     "paymentFrequencyRequired": "還款頻率為必填",
     "paymentStartDateRequired": "首次還款日期為必填",
     "paymentAccountRequired": "付款科目為必填",
-    "amortizationRequired": "攤還期為必填"
+    "amortizationRequired": "攤還期為必填",
+    "fxFeeCategoryRequired": "設定手續費百分比時必須選擇手續費類別"
   },
   "loanDetail": {
     "backToAccounts": "返回帳戶",

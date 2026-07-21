@@ -220,7 +220,8 @@
       "search": "Pesquisar",
       "tagKey": "Chave de etiqueta",
       "tagKeyOp": "Condição",
-      "tagKeyValue": "Valor"
+      "tagKeyValue": "Valor",
+      "currency": "Moeda"
     },
     "placeholders": {
       "accounts": "Todas as contas",
@@ -244,7 +245,8 @@
       "dateFrom": "A partir de {date}",
       "dateUntil": "Até {date}",
       "amountFrom": "A partir de {amount}",
-      "amountUpTo": "Até {amount}"
+      "amountUpTo": "Até {amount}",
+      "removeCurrency": "Remover o filtro de moeda {name}"
     },
     "bulkUpdate": "Atualização em Massa",
     "cancelBulk": "Cancelar Massa",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "Falha ao reativar beneficiário",
       "categoryCreated": "Categoria \"{name}\" criada",
       "categoryCreateFailed": "Falha ao criar categoria",
-      "tagCreated": "Etiqueta \"{name}\" criada"
+      "tagCreated": "Etiqueta \"{name}\" criada",
+      "fxRateRequired": "Introduza uma taxa de câmbio ou o montante convertido antes de guardar uma transação em moeda estrangeira."
     },
     "ariaHistory": "Mostrar transações recentes",
     "ariaHistoryForPayee": "Mostrar transações recentes deste beneficiário",
     "historyTitle": "Preenchimento rápido a partir de uma transação recente",
-    "transferCategoryNote": "Opcional. A transferência continuará a não contar como receita ou despesa, mas esta categoria permite que apareça na repartição mensal por categoria (por exemplo, contribuições mensais de investimento)."
+    "transferCategoryNote": "Opcional. A transferência continuará a não contar como receita ou despesa, mas esta categoria permite que apareça na repartição mensal por categoria (por exemplo, contribuições mensais de investimento).",
+    "currencyPicker": {
+      "label": "Moeda de introdução",
+      "ariaLabel": "Alterar a moeda de introdução",
+      "title": "Introduzir o montante em",
+      "accountCurrency": "Moeda da conta ({code})",
+      "addCurrency": "Adicionar moeda...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "Montante convertido ({currency})",
+      "noRateWarning": "Não foi encontrada uma taxa de câmbio de {from} para {to} em {date}. Introduza o montante convertido manualmente.",
+      "usingLatestRateHint": "A usar a taxa mais recente disponível (não com data {date}).",
+      "feeSplitMemo": "Comissão de transação estrangeira",
+      "displayToggle": {
+        "account": "Conta",
+        "original": "Original"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "Detalhes das Parcelas",

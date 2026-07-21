@@ -220,7 +220,8 @@
       "search": "Tìm kiếm",
       "tagKey": "Khóa thẻ",
       "tagKeyOp": "Điều kiện",
-      "tagKeyValue": "Giá trị"
+      "tagKeyValue": "Giá trị",
+      "currency": "Tiền tệ"
     },
     "placeholders": {
       "accounts": "Tất cả tài khoản",
@@ -244,7 +245,8 @@
       "dateFrom": "Từ {date}",
       "dateUntil": "Đến {date}",
       "amountFrom": "Từ {amount}",
-      "amountUpTo": "Đến {amount}"
+      "amountUpTo": "Đến {amount}",
+      "removeCurrency": "Xóa bộ lọc tiền tệ {name}"
     },
     "bulkUpdate": "Cập nhật hàng loạt",
     "cancelBulk": "Hủy hàng loạt",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "Không thể kích hoạt lại người nhận",
       "categoryCreated": "Danh mục \"{name}\" đã được tạo",
       "categoryCreateFailed": "Không thể tạo danh mục",
-      "tagCreated": "Thẻ \"{name}\" đã được tạo"
+      "tagCreated": "Thẻ \"{name}\" đã được tạo",
+      "fxRateRequired": "Nhập tỷ giá hoặc số tiền đã quy đổi trước khi lưu giao dịch bằng ngoại tệ."
     },
     "ariaHistory": "Hiển thị giao tác gần đây",
     "ariaHistoryForPayee": "Hiển thị giao tác gần đây cho người nhận này",
     "historyTitle": "Điền nhanh từ giao tác gần đây",
-    "transferCategoryNote": "Tùy chọn. Giao dịch chuyển khoản vẫn không được tính là thu nhập hay chi phí, nhưng danh mục này giúp nó xuất hiện trong bảng phân tích danh mục hằng tháng (ví dụ: khoản đóng góp đầu tư hằng tháng)."
+    "transferCategoryNote": "Tùy chọn. Giao dịch chuyển khoản vẫn không được tính là thu nhập hay chi phí, nhưng danh mục này giúp nó xuất hiện trong bảng phân tích danh mục hằng tháng (ví dụ: khoản đóng góp đầu tư hằng tháng).",
+    "currencyPicker": {
+      "label": "Tiền tệ nhập",
+      "ariaLabel": "Thay đổi tiền tệ nhập",
+      "title": "Nhập số tiền bằng",
+      "accountCurrency": "Tiền tệ tài khoản ({code})",
+      "addCurrency": "Thêm tiền tệ...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "Số tiền đã quy đổi ({currency})",
+      "noRateWarning": "Không tìm thấy tỷ giá từ {from} sang {to} vào {date}. Vui lòng nhập số tiền đã quy đổi theo cách thủ công.",
+      "usingLatestRateHint": "Đang dùng tỷ giá mới nhất hiện có (không phải ngày {date}).",
+      "feeSplitMemo": "Phí giao dịch nước ngoài",
+      "displayToggle": {
+        "account": "Tài khoản",
+        "original": "Gốc"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "Chi tiết phần chia",

@@ -220,7 +220,8 @@
       "search": "खोज",
       "tagKey": "टैग कुंजी",
       "tagKeyOp": "शर्त",
-      "tagKeyValue": "मान"
+      "tagKeyValue": "मान",
+      "currency": "मुद्रा"
     },
     "placeholders": {
       "accounts": "सभी खाते",
@@ -244,7 +245,8 @@
       "dateFrom": "{date} से",
       "dateUntil": "{date} तक",
       "amountFrom": "{amount} से",
-      "amountUpTo": "{amount} तक"
+      "amountUpTo": "{amount} तक",
+      "removeCurrency": "{name} मुद्रा फ़िल्टर हटाएँ"
     },
     "bulkUpdate": "बल्क अपडेट",
     "cancelBulk": "बल्क रद्द करें",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "भुगतानकर्ता पुनः सक्रिय करने में विफल",
       "categoryCreated": "श्रेणी \"{name}\" बनाई गई",
       "categoryCreateFailed": "श्रेणी बनाने में विफल",
-      "tagCreated": "टैग \"{name}\" बनाया गया"
+      "tagCreated": "टैग \"{name}\" बनाया गया",
+      "fxRateRequired": "विदेशी मुद्रा लेनदेन सहेजने से पहले विनिमय दर या रूपांतरित राशि दर्ज करें।"
     },
     "ariaHistory": "हाल के लेन-देन दिखाएं",
     "ariaHistoryForPayee": "इस भुगतानकर्ता के हाल के लेन-देन दिखाएं",
     "historyTitle": "हाल के लेन-देन से त्वरित भरण",
-    "transferCategoryNote": "वैकल्पिक। ट्रांसफर अब भी आय या व्यय के रूप में नहीं गिना जाएगा, लेकिन यह श्रेणी इसे मासिक श्रेणी विवरण में दिखने देती है (जैसे, मासिक निवेश योगदान)।"
+    "transferCategoryNote": "वैकल्पिक। ट्रांसफर अब भी आय या व्यय के रूप में नहीं गिना जाएगा, लेकिन यह श्रेणी इसे मासिक श्रेणी विवरण में दिखने देती है (जैसे, मासिक निवेश योगदान)।",
+    "currencyPicker": {
+      "label": "प्रविष्टि मुद्रा",
+      "ariaLabel": "प्रविष्टि मुद्रा बदलें",
+      "title": "राशि दर्ज करें",
+      "accountCurrency": "खाता मुद्रा ({code})",
+      "addCurrency": "मुद्रा जोड़ें...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "रूपांतरित राशि ({currency})",
+      "noRateWarning": "{date} को {from} से {to} के लिए कोई विनिमय दर नहीं मिली। रूपांतरित राशि मैन्युअल रूप से दर्ज करें।",
+      "usingLatestRateHint": "नवीनतम उपलब्ध दर का उपयोग किया जा रहा है ({date} की नहीं)।",
+      "feeSplitMemo": "विदेशी लेनदेन शुल्क",
+      "displayToggle": {
+        "account": "खाता",
+        "original": "मूल"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "विभाजन विवरण",

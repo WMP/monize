@@ -220,7 +220,8 @@
       "search": "검색",
       "tagKey": "태그 키",
       "tagKeyOp": "조건",
-      "tagKeyValue": "값"
+      "tagKeyValue": "값",
+      "currency": "통화"
     },
     "placeholders": {
       "accounts": "모든 계정",
@@ -244,7 +245,8 @@
       "dateFrom": "{date}부터",
       "dateUntil": "{date}까지",
       "amountFrom": "{amount}부터",
-      "amountUpTo": "{amount}까지"
+      "amountUpTo": "{amount}까지",
+      "removeCurrency": "{name} 통화 필터 제거"
     },
     "bulkUpdate": "일괄 업데이트",
     "cancelBulk": "일괄 취소",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "수취인 재활성화에 실패했습니다",
       "categoryCreated": "카테고리 \"{name}\"이(가) 생성되었습니다",
       "categoryCreateFailed": "카테고리 생성에 실패했습니다",
-      "tagCreated": "태그 \"{name}\"이(가) 생성되었습니다"
+      "tagCreated": "태그 \"{name}\"이(가) 생성되었습니다",
+      "fxRateRequired": "외화 거래를 저장하기 전에 환율 또는 환산 금액을 입력하세요."
     },
     "ariaHistory": "최근 거래 보기",
     "ariaHistoryForPayee": "이 수취인의 최근 거래 보기",
     "historyTitle": "최근 거래에서 자동 완성",
-    "transferCategoryNote": "선택사항. 이체는 여전히 수입이나 지출로 집계되지 않지만, 이 카테고리를 지정하면 월별 카테고리 분석에 표시됩니다(예: 매월 투자 납입)."
+    "transferCategoryNote": "선택사항. 이체는 여전히 수입이나 지출로 집계되지 않지만, 이 카테고리를 지정하면 월별 카테고리 분석에 표시됩니다(예: 매월 투자 납입).",
+    "currencyPicker": {
+      "label": "입력 통화",
+      "ariaLabel": "입력 통화 변경",
+      "title": "금액 입력 통화",
+      "accountCurrency": "계좌 통화 ({code})",
+      "addCurrency": "통화 추가...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "환산 금액 ({currency})",
+      "noRateWarning": "{date}에 {from}에서 {to}로의 환율을 찾을 수 없습니다. 환산 금액을 직접 입력하세요.",
+      "usingLatestRateHint": "사용 가능한 최신 환율을 사용 중입니다({date} 기준 아님).",
+      "feeSplitMemo": "해외 거래 수수료",
+      "displayToggle": {
+        "account": "계좌",
+        "original": "원 통화"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "분할 세부 정보",

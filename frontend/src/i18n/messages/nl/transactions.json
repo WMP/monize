@@ -220,7 +220,8 @@
       "search": "Zoeken",
       "tagKey": "Tagsleutel",
       "tagKeyOp": "Voorwaarde",
-      "tagKeyValue": "Waarde"
+      "tagKeyValue": "Waarde",
+      "currency": "Valuta"
     },
     "placeholders": {
       "accounts": "Alle rekeningen",
@@ -244,7 +245,8 @@
       "dateFrom": "Vanaf {date}",
       "dateUntil": "Tot {date}",
       "amountFrom": "Vanaf {amount}",
-      "amountUpTo": "Tot {amount}"
+      "amountUpTo": "Tot {amount}",
+      "removeCurrency": "Valutafilter {name} verwijderen"
     },
     "bulkUpdate": "Bulk bijwerken",
     "cancelBulk": "Bulk annuleren",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "Opnieuw activeren van begunstigde mislukt",
       "categoryCreated": "Categorie \"{name}\" aangemaakt",
       "categoryCreateFailed": "Aanmaken van categorie mislukt",
-      "tagCreated": "Label \"{name}\" aangemaakt"
+      "tagCreated": "Label \"{name}\" aangemaakt",
+      "fxRateRequired": "Voer een wisselkoers of het omgerekende bedrag in voordat je een transactie in vreemde valuta opslaat."
     },
     "ariaHistory": "Recente transacties tonen",
     "ariaHistoryForPayee": "Recente transacties voor deze begunstigde tonen",
     "historyTitle": "Snel invullen vanuit een recente transactie",
-    "transferCategoryNote": "Optioneel. De overboeking telt nog steeds niet mee als inkomsten of uitgaven, maar met deze categorie verschijnt hij wel in het maandelijkse categorieoverzicht (bijv. maandelijkse beleggingsinleg)."
+    "transferCategoryNote": "Optioneel. De overboeking telt nog steeds niet mee als inkomsten of uitgaven, maar met deze categorie verschijnt hij wel in het maandelijkse categorieoverzicht (bijv. maandelijkse beleggingsinleg).",
+    "currencyPicker": {
+      "label": "Invoervaluta",
+      "ariaLabel": "Invoervaluta wijzigen",
+      "title": "Bedrag invoeren in",
+      "accountCurrency": "Rekeningvaluta ({code})",
+      "addCurrency": "Valuta toevoegen...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "Omgerekend bedrag ({currency})",
+      "noRateWarning": "Geen wisselkoers gevonden voor {from} naar {to} op {date}. Voer het omgerekende bedrag handmatig in.",
+      "usingLatestRateHint": "De laatst beschikbare koers wordt gebruikt (niet van {date}).",
+      "feeSplitMemo": "Kosten buitenlandse transactie",
+      "displayToggle": {
+        "account": "Rekening",
+        "original": "Origineel"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "Splitsingsdetails",

@@ -220,7 +220,8 @@
       "search": "Suche",
       "tagKey": "Tag-Schlüssel",
       "tagKeyOp": "Bedingung",
-      "tagKeyValue": "Wert"
+      "tagKeyValue": "Wert",
+      "currency": "Währung"
     },
     "placeholders": {
       "accounts": "Alle Konten",
@@ -244,7 +245,8 @@
       "dateFrom": "Ab {date}",
       "dateUntil": "Bis {date}",
       "amountFrom": "Ab {amount}",
-      "amountUpTo": "Bis zu {amount}"
+      "amountUpTo": "Bis zu {amount}",
+      "removeCurrency": "Währungsfilter {name} entfernen"
     },
     "bulkUpdate": "Massenaktualisierung",
     "cancelBulk": "Massenauswahl abbrechen",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "Zahlungsempfänger konnte nicht reaktiviert werden",
       "categoryCreated": "Kategorie „{name}” erstellt",
       "categoryCreateFailed": "Kategorie konnte nicht erstellt werden",
-      "tagCreated": "Tag „{name}” erstellt"
+      "tagCreated": "Tag „{name}” erstellt",
+      "fxRateRequired": "Geben Sie einen Wechselkurs oder den umgerechneten Betrag ein, bevor Sie eine Fremdwährungstransaktion speichern."
     },
     "ariaHistory": "Letzte Buchungen anzeigen",
     "ariaHistoryForPayee": "Letzte Buchungen für diesen Zahlungsempfänger anzeigen",
     "historyTitle": "Aus einer aktuellen Buchung übernehmen",
-    "transferCategoryNote": "Optional. Der Transfer zählt weiterhin nicht als Einnahme oder Ausgabe, aber diese Kategorie lässt ihn in der monatlichen Kategorienübersicht erscheinen (z. B. monatliche Investitionsbeiträge)."
+    "transferCategoryNote": "Optional. Der Transfer zählt weiterhin nicht als Einnahme oder Ausgabe, aber diese Kategorie lässt ihn in der monatlichen Kategorienübersicht erscheinen (z. B. monatliche Investitionsbeiträge).",
+    "currencyPicker": {
+      "label": "Eingabewährung",
+      "ariaLabel": "Eingabewährung ändern",
+      "title": "Betrag eingeben in",
+      "accountCurrency": "Kontowährung ({code})",
+      "addCurrency": "Währung hinzufügen...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "Umgerechneter Betrag ({currency})",
+      "noRateWarning": "Kein Wechselkurs für {from} zu {to} am {date} gefunden. Bitte den umgerechneten Betrag manuell eingeben.",
+      "usingLatestRateHint": "Es wird der neueste verfügbare Kurs verwendet (nicht vom {date}).",
+      "feeSplitMemo": "Fremdwährungsgebühr",
+      "displayToggle": {
+        "account": "Konto",
+        "original": "Original"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "Details der Buchungsteile",

@@ -220,7 +220,8 @@
       "search": "搜索",
       "tagKey": "标签键",
       "tagKeyOp": "条件",
-      "tagKeyValue": "值"
+      "tagKeyValue": "值",
+      "currency": "币种"
     },
     "placeholders": {
       "accounts": "所有账户",
@@ -244,7 +245,8 @@
       "dateFrom": "从 {date}",
       "dateUntil": "至 {date}",
       "amountFrom": "从 {amount}",
-      "amountUpTo": "最多 {amount}"
+      "amountUpTo": "最多 {amount}",
+      "removeCurrency": "移除 {name} 币种筛选"
     },
     "bulkUpdate": "批量更新",
     "cancelBulk": "取消批量",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "重新激活收款人失败",
       "categoryCreated": "分类\"{name}\"已创建",
       "categoryCreateFailed": "创建分类失败",
-      "tagCreated": "标签\"{name}\"已创建"
+      "tagCreated": "标签\"{name}\"已创建",
+      "fxRateRequired": "在保存外币交易前，请输入汇率或换算后的金额。"
     },
     "ariaHistory": "显示近期交易",
     "ariaHistoryForPayee": "显示此收款人的近期交易",
     "historyTitle": "从近期交易快速填充",
-    "transferCategoryNote": "可选。该转账仍不计为收入或支出，但此类别可让它显示在每月类别细分中（例如每月投资缴款）。"
+    "transferCategoryNote": "可选。该转账仍不计为收入或支出，但此类别可让它显示在每月类别细分中（例如每月投资缴款）。",
+    "currencyPicker": {
+      "label": "输入币种",
+      "ariaLabel": "更改输入币种",
+      "title": "输入金额的币种",
+      "accountCurrency": "账户币种（{code}）",
+      "addCurrency": "添加币种...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "换算后的金额（{currency}）",
+      "noRateWarning": "未找到 {date} 从 {from} 到 {to} 的汇率。请手动输入换算后的金额。",
+      "usingLatestRateHint": "正在使用最新可用汇率（非 {date} 当天）。",
+      "feeSplitMemo": "境外交易手续费",
+      "displayToggle": {
+        "account": "账户",
+        "original": "原币种"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "拆分详情",

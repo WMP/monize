@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "\"{{ query }}\" khớp với nhiều tài khoản môi giới: {{ list }}. Hãy dùng tên tài khoản chính xác.",
     "unknownInvestmentAccount": "Tài khoản không xác định: {{ name }}. Hãy dùng tên chính xác từ danh sách tài khoản của người dùng.",
     "notACreditCard": "Chu kỳ sao kê chỉ khả dụng cho tài khoản thẻ tín dụng",
-    "noStatementSettlementDay": "Thẻ tín dụng này chưa được cấu hình ngày chốt sao kê"
+    "noStatementSettlementDay": "Thẻ tín dụng này chưa được cấu hình ngày chốt sao kê",
+    "fxFeeCategoryRequired": "Cần có danh mục phí giao dịch nước ngoài khi đã đặt phần trăm phí"
   },
   "actionHistory": {
     "nothingToUndo": "Không có gì để hoàn tác",
@@ -219,14 +220,16 @@
     "csrfInvalid": "Mã thông báo CSRF không hợp lệ",
     "demoModeRestricted": "Hành động này không khả dụng trong chế độ trình diễn.",
     "serviceNotReady": "Dịch vụ chưa sẵn sàng",
-    "oauthProviderNotInitialized": "Nhà cung cấp OAuth chưa được khởi tạo"
+    "oauthProviderNotInitialized": "Nhà cung cấp OAuth chưa được khởi tạo",
+    "invalidCurrencyCode": "Mã tiền tệ không hợp lệ: {{ code }}"
   },
   "currencies": {
     "alreadyInList": "Tiền tệ \"{{ code }}\" đã có trong danh sách của bạn",
     "notFound": "Không tìm thấy tiền tệ \"{{ code }}\"",
     "cannotModifySystem": "Không thể sửa đổi siêu dữ liệu tiền tệ hệ thống",
     "cannotModifyOther": "Không thể sửa đổi tiền tệ của người dùng khác",
-    "inUse": "Tiền tệ \"{{ code }}\" đang được sử dụng bởi tài khoản, chứng khoán hoặc hồ sơ khác của bạn. Hãy hủy kích hoạt thay thế."
+    "inUse": "Tiền tệ \"{{ code }}\" đang được sử dụng bởi tài khoản, chứng khoán hoặc hồ sơ khác của bạn. Hãy hủy kích hoạt thay thế.",
+    "invalidRateDate": "date phải theo định dạng YYYY-MM-DD"
   },
   "delegation": {
     "delegatedAccessInvalid": "Quyền truy cập được ủy quyền không còn hợp lệ",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey không được vượt quá 100 ký tự",
     "invalidTagKeyOp": "tagKeyOp không hợp lệ: {{ op }}",
     "tagKeyValueRequired": "tagKeyValue là bắt buộc cho contains / notContains",
-    "tagKeyRequired": "Cần có khóa thẻ (1-100 ký tự)"
+    "tagKeyRequired": "Cần có khóa thẻ (1-100 ký tự)",
+    "fxFieldsIncomplete": "originalAmount và originalCurrencyCode phải được cung cấp cùng nhau",
+    "fxRateRequired": "Cần một tỷ giá hối đoái dương cho giao dịch bằng ngoại tệ",
+    "fxSignMismatch": "originalAmount và amount phải cùng dấu",
+    "multipleFxFeeSplits": "Một giao dịch chỉ có thể có tối đa một phần tách phí giao dịch nước ngoài",
+    "fxFeeSplitMustBeCategory": "Phần tách phí giao dịch nước ngoài phải là phần tách theo danh mục"
   },
   "users": {
     "userNotFound": "Không tìm thấy người dùng",

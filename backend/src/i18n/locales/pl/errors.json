@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "„{{ query }}\" pasuje do wielu kont maklerskich: {{ list }}. Użyj dokładnej nazwy konta.",
     "unknownInvestmentAccount": "Nieznane konto: {{ name }}. Użyj dokładnej nazwy z listy kont użytkownika.",
     "notACreditCard": "Cykle rozliczeniowe są dostępne tylko dla kont kart kredytowych",
-    "noStatementSettlementDay": "Ta karta kredytowa nie ma skonfigurowanego dnia rozliczenia wyciągu"
+    "noStatementSettlementDay": "Ta karta kredytowa nie ma skonfigurowanego dnia rozliczenia wyciągu",
+    "fxFeeCategoryRequired": "Kategoria opłaty za transakcję zagraniczną jest wymagana, gdy ustawiono procent opłaty"
   },
   "actionHistory": {
     "nothingToUndo": "Nie ma nic do cofnięcia",
@@ -219,14 +220,16 @@
     "csrfInvalid": "Nieprawidłowy token CSRF",
     "demoModeRestricted": "Ta akcja nie jest dostępna w trybie demo.",
     "serviceNotReady": "Usługa nie jest gotowa",
-    "oauthProviderNotInitialized": "Dostawca OAuth nie został zainicjowany"
+    "oauthProviderNotInitialized": "Dostawca OAuth nie został zainicjowany",
+    "invalidCurrencyCode": "Nieprawidłowy kod waluty: {{ code }}"
   },
   "currencies": {
     "alreadyInList": "Waluta \"{{ code }}\" już jest na Twojej liście",
     "notFound": "Nie znaleziono waluty \"{{ code }}\"",
     "cannotModifySystem": "Nie można modyfikować metadanych waluty systemowej",
     "cannotModifyOther": "Nie można modyfikować waluty innego użytkownika",
-    "inUse": "Waluta \"{{ code }}\" jest używana przez Twoje konta, papiery wartościowe lub inne rekordy. Zamiast tego ją dezaktywuj."
+    "inUse": "Waluta \"{{ code }}\" jest używana przez Twoje konta, papiery wartościowe lub inne rekordy. Zamiast tego ją dezaktywuj.",
+    "invalidRateDate": "date musi mieć format RRRR-MM-DD"
   },
   "delegation": {
     "delegatedAccessInvalid": "Dostęp delegowany nie jest już ważny",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey nie może przekraczać 100 znaków",
     "invalidTagKeyOp": "Nieprawidłowy tagKeyOp: {{ op }}",
     "tagKeyValueRequired": "tagKeyValue jest wymagany dla contains / notContains",
-    "tagKeyRequired": "Wymagany jest klucz tagu (1–100 znaków)"
+    "tagKeyRequired": "Wymagany jest klucz tagu (1–100 znaków)",
+    "fxFieldsIncomplete": "originalAmount i originalCurrencyCode muszą być podane razem",
+    "fxRateRequired": "Do transakcji w obcej walucie wymagany jest dodatni kurs wymiany",
+    "fxSignMismatch": "originalAmount i amount muszą mieć ten sam znak",
+    "multipleFxFeeSplits": "Transakcja może mieć co najwyżej jeden podział opłaty za transakcję zagraniczną",
+    "fxFeeSplitMustBeCategory": "Podział opłaty za transakcję zagraniczną musi być podziałem kategorii"
   },
   "users": {
     "userNotFound": "Nie znaleziono użytkownika",

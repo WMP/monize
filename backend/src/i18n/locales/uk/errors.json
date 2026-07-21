@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "«{{ query }}» відповідає кільком брокерським рахункам: {{ list }}. Використовуйте точну назву рахунку.",
     "unknownInvestmentAccount": "Невідомий рахунок: {{ name }}. Використовуйте точну назву зі списку рахунків користувача.",
     "notACreditCard": "Розрахункові цикли доступні лише для рахунків кредитних карток",
-    "noStatementSettlementDay": "Для цієї кредитної картки не налаштовано розрахунковий день виписки"
+    "noStatementSettlementDay": "Для цієї кредитної картки не налаштовано розрахунковий день виписки",
+    "fxFeeCategoryRequired": "Категорія комісії за закордонну операцію обов'язкова, якщо задано відсоток комісії"
   },
   "actionHistory": {
     "nothingToUndo": "Нічого скасовувати",
@@ -219,14 +220,16 @@
     "csrfInvalid": "Недійсний токен CSRF",
     "demoModeRestricted": "Ця дія недоступна в демонстраційному режимі.",
     "serviceNotReady": "Служба не готова",
-    "oauthProviderNotInitialized": "Постачальника OAuth не ініціалізовано"
+    "oauthProviderNotInitialized": "Постачальника OAuth не ініціалізовано",
+    "invalidCurrencyCode": "Недійсний код валюти: {{ code }}"
   },
   "currencies": {
     "alreadyInList": "Валюта «{{ code }}» вже є у вашому списку",
     "notFound": "Валюту «{{ code }}» не знайдено",
     "cannotModifySystem": "Неможливо змінити метадані системної валюти",
     "cannotModifyOther": "Неможливо змінити валюту іншого користувача",
-    "inUse": "Валюта «{{ code }}» використовується вашими рахунками, цінними паперами або іншими записами. Натомість деактивуйте її."
+    "inUse": "Валюта «{{ code }}» використовується вашими рахунками, цінними паперами або іншими записами. Натомість деактивуйте її.",
+    "invalidRateDate": "date має бути у форматі РРРР-ММ-ДД"
   },
   "delegation": {
     "delegatedAccessInvalid": "Делегований доступ більше не дійсний",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey не має перевищувати 100 символів",
     "invalidTagKeyOp": "Недійсний tagKeyOp: {{ op }}",
     "tagKeyValueRequired": "tagKeyValue обов'язковий для contains / notContains",
-    "tagKeyRequired": "Потрібен ключ тегу (1–100 символів)"
+    "tagKeyRequired": "Потрібен ключ тегу (1–100 символів)",
+    "fxFieldsIncomplete": "originalAmount і originalCurrencyCode потрібно вказувати разом",
+    "fxRateRequired": "Для операції в іноземній валюті потрібен додатний курс обміну",
+    "fxSignMismatch": "originalAmount і amount повинні мати однаковий знак",
+    "multipleFxFeeSplits": "Операція може містити щонайбільше одну частину з комісією за закордонну операцію",
+    "fxFeeSplitMustBeCategory": "Частина з комісією за закордонну операцію має бути частиною за категорією"
   },
   "users": {
     "userNotFound": "Користувача не знайдено",

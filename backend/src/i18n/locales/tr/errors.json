@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "\"{{ query }}\" birden fazla aracı kurum hesabıyla eşleşiyor: {{ list }}. Tam hesap adını kullanın.",
     "unknownInvestmentAccount": "Bilinmeyen hesap: {{ name }}. Kullanıcının hesap listesinden tam bir ad kullanın.",
     "notACreditCard": "Ekstre dönemleri yalnızca kredi kartı hesapları için kullanılabilir",
-    "noStatementSettlementDay": "Bu kredi kartı için yapılandırılmış bir ekstre kesim günü yok"
+    "noStatementSettlementDay": "Bu kredi kartı için yapılandırılmış bir ekstre kesim günü yok",
+    "fxFeeCategoryRequired": "Ücret yüzdesi ayarlandığında bir yurt dışı işlem ücreti kategorisi gereklidir"
   },
   "actionHistory": {
     "nothingToUndo": "Geri alınacak işlem yok",
@@ -219,14 +220,16 @@
     "csrfInvalid": "Geçersiz CSRF kodu",
     "demoModeRestricted": "Bu işlem demo modunda kullanılamaz.",
     "serviceNotReady": "Servis hazır değil",
-    "oauthProviderNotInitialized": "OAuth sağlayıcısı başlatılmadı"
+    "oauthProviderNotInitialized": "OAuth sağlayıcısı başlatılmadı",
+    "invalidCurrencyCode": "Geçersiz para birimi kodu: {{ code }}"
   },
   "currencies": {
     "alreadyInList": "\"{{ code }}\" para birimi zaten listenizde mevcut",
     "notFound": "\"{{ code }}\" para birimi bulunamadı",
     "cannotModifySystem": "Sistem para birimi meta verileri değiştirilemez",
     "cannotModifyOther": "Başka bir kullanıcının para birimi değiştirilemez",
-    "inUse": "\"{{ code }}\" para birimi hesaplarınız, menkul kıymetleriniz veya diğer kayıtlarınız tarafından kullanılıyor. Bunun yerine devre dışı bırakın."
+    "inUse": "\"{{ code }}\" para birimi hesaplarınız, menkul kıymetleriniz veya diğer kayıtlarınız tarafından kullanılıyor. Bunun yerine devre dışı bırakın.",
+    "invalidRateDate": "date, YYYY-AA-GG biçiminde olmalıdır"
   },
   "delegation": {
     "delegatedAccessInvalid": "Delege erişimi artık geçerli değil",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey 100 karakteri aşmamalıdır",
     "invalidTagKeyOp": "Geçersiz tagKeyOp: {{ op }}",
     "tagKeyValueRequired": "contains / notContains için tagKeyValue gereklidir",
-    "tagKeyRequired": "Bir etiket anahtarı (1-100 karakter) gereklidir"
+    "tagKeyRequired": "Bir etiket anahtarı (1-100 karakter) gereklidir",
+    "fxFieldsIncomplete": "originalAmount ve originalCurrencyCode birlikte sağlanmalıdır",
+    "fxRateRequired": "Yabancı para birimi işlemi için pozitif bir döviz kuru gereklidir",
+    "fxSignMismatch": "originalAmount ve amount aynı işarete sahip olmalıdır",
+    "multipleFxFeeSplits": "Bir işlemde en fazla bir yurt dışı işlem ücreti bölümü olabilir",
+    "fxFeeSplitMustBeCategory": "Yurt dışı işlem ücreti bölümü bir kategori bölümü olmalıdır"
   },
   "users": {
     "userNotFound": "Kullanıcı bulunamadı",

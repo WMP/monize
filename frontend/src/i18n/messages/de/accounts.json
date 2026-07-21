@@ -156,7 +156,13 @@
       "other": "Sonstiges"
     },
     "statementDueDayPlaceholder": "z. B. 15",
-    "statementSettlementDayPlaceholder": "z. B. 25"
+    "statementSettlementDayPlaceholder": "z. B. 25",
+    "fxFeeTitle": "Fremdwährungsumrechnungsgebühr",
+    "fxFeePercent": "Gebührensatz",
+    "fxFeeCategory": "Gebührenkategorie",
+    "fxFeePercentPlaceholder": "z. B. 2,5",
+    "fxFeeHelp": "Die Gebühr Ihrer Bank für die Umrechnung von Fremdwährungskäufen. Wenn festgelegt, bucht eine Fremdwährungstransaktion auf diesem Konto die Gebühr automatisch als Ausgabe in der gewählten Kategorie.",
+    "fxFeeCategoryPlaceholder": "Kategorie auswählen oder erstellen"
   },
   "exportModal": {
     "title": "{name} exportieren",
@@ -341,7 +347,8 @@
     "paymentFrequencyRequired": "Zahlungsintervall ist erforderlich",
     "paymentStartDateRequired": "Datum der ersten Zahlung ist erforderlich",
     "paymentAccountRequired": "Zahlungskonto ist erforderlich",
-    "amortizationRequired": "Tilgungszeitraum ist erforderlich"
+    "amortizationRequired": "Tilgungszeitraum ist erforderlich",
+    "fxFeeCategoryRequired": "Eine Gebührenkategorie ist erforderlich, wenn ein Gebührensatz festgelegt ist"
   },
   "loanDetail": {
     "backToAccounts": "Zurück zu den Konten",

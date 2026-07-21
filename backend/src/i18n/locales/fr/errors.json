@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "« {{ query }} » correspond à plusieurs comptes de courtage : {{ list }}. Utilisez le nom exact du compte.",
     "unknownInvestmentAccount": "Compte inconnu : {{ name }}. Utilisez un nom exact de la liste des comptes de l'utilisateur.",
     "notACreditCard": "Les cycles de facturation ne sont disponibles que pour les comptes de carte de crédit",
-    "noStatementSettlementDay": "Cette carte de crédit n'a aucun jour de clôture de relevé configuré"
+    "noStatementSettlementDay": "Cette carte de crédit n'a aucun jour de clôture de relevé configuré",
+    "fxFeeCategoryRequired": "Une catégorie de frais de change est requise lorsqu'un pourcentage de frais est défini"
   },
   "actionHistory": {
     "nothingToUndo": "Rien à annuler",
@@ -219,14 +220,16 @@
     "csrfInvalid": "Jeton CSRF invalide",
     "demoModeRestricted": "Cette action n'est pas disponible en mode démo.",
     "serviceNotReady": "Service non prêt",
-    "oauthProviderNotInitialized": "Fournisseur OAuth non initialisé"
+    "oauthProviderNotInitialized": "Fournisseur OAuth non initialisé",
+    "invalidCurrencyCode": "Code de devise non valide : {{ code }}"
   },
   "currencies": {
     "alreadyInList": "La devise « {{ code }} » est déjà dans votre liste",
     "notFound": "Devise « {{ code }} » introuvable",
     "cannotModifySystem": "Impossible de modifier les métadonnées de devise système",
     "cannotModifyOther": "Impossible de modifier la devise d'un autre utilisateur",
-    "inUse": "La devise « {{ code }} » est utilisée par vos comptes, titres ou autres enregistrements. Désactivez-la à la place."
+    "inUse": "La devise « {{ code }} » est utilisée par vos comptes, titres ou autres enregistrements. Désactivez-la à la place.",
+    "invalidRateDate": "date doit être au format AAAA-MM-JJ"
   },
   "delegation": {
     "delegatedAccessInvalid": "L'accès délégué n'est plus valide",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey ne doit pas dépasser 100 caractères",
     "invalidTagKeyOp": "tagKeyOp non valide : {{ op }}",
     "tagKeyValueRequired": "tagKeyValue est requis pour contains / notContains",
-    "tagKeyRequired": "Une clé d'étiquette (1 à 100 caractères) est requise"
+    "tagKeyRequired": "Une clé d'étiquette (1 à 100 caractères) est requise",
+    "fxFieldsIncomplete": "originalAmount et originalCurrencyCode doivent être fournis ensemble",
+    "fxRateRequired": "Un taux de change positif est requis pour une transaction en devise étrangère",
+    "fxSignMismatch": "originalAmount et amount doivent avoir le même signe",
+    "multipleFxFeeSplits": "Une transaction ne peut avoir qu'une seule ventilation de frais de change",
+    "fxFeeSplitMustBeCategory": "La ventilation des frais de change doit être une ventilation par catégorie"
   },
   "users": {
     "userNotFound": "Utilisateur introuvable",

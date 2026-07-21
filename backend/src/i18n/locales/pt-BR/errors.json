@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "\"{{ query }}\" corresponde a várias contas de corretagem: {{ list }}. Use o nome exato da conta.",
     "unknownInvestmentAccount": "Conta desconhecida: {{ name }}. Use um nome exato da lista de contas do usuário.",
     "notACreditCard": "Os ciclos de fatura só estão disponíveis para contas de cartão de crédito",
-    "noStatementSettlementDay": "Este cartão de crédito não tem um dia de liquidação da fatura configurado"
+    "noStatementSettlementDay": "Este cartão de crédito não tem um dia de liquidação da fatura configurado",
+    "fxFeeCategoryRequired": "É necessária uma categoria de taxa de moeda estrangeira quando um percentual de taxa está definido"
   },
   "actionHistory": {
     "nothingToUndo": "Nada para desfazer",
@@ -219,14 +220,16 @@
     "csrfInvalid": "Token CSRF inválido",
     "demoModeRestricted": "Esta ação não está disponível no modo de demonstração.",
     "serviceNotReady": "Serviço não está pronto",
-    "oauthProviderNotInitialized": "Provedor OAuth não inicializado"
+    "oauthProviderNotInitialized": "Provedor OAuth não inicializado",
+    "invalidCurrencyCode": "Código de moeda inválido: {{ code }}"
   },
   "currencies": {
     "alreadyInList": "A moeda \"{{ code }}\" já está na sua lista",
     "notFound": "Moeda \"{{ code }}\" não encontrada",
     "cannotModifySystem": "Não é possível modificar metadados de moeda do sistema",
     "cannotModifyOther": "Não é possível modificar a moeda de outro usuário",
-    "inUse": "A moeda \"{{ code }}\" está em uso pelas suas contas, títulos ou outros registros. Desative-a em vez disso."
+    "inUse": "A moeda \"{{ code }}\" está em uso pelas suas contas, títulos ou outros registros. Desative-a em vez disso.",
+    "invalidRateDate": "date deve estar no formato AAAA-MM-DD"
   },
   "delegation": {
     "delegatedAccessInvalid": "O acesso delegado não é mais válido",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey não deve exceder 100 caracteres",
     "invalidTagKeyOp": "tagKeyOp inválido: {{ op }}",
     "tagKeyValueRequired": "tagKeyValue é obrigatório para contains / notContains",
-    "tagKeyRequired": "É necessária uma chave de tag (1-100 caracteres)"
+    "tagKeyRequired": "É necessária uma chave de tag (1-100 caracteres)",
+    "fxFieldsIncomplete": "originalAmount e originalCurrencyCode devem ser fornecidos juntos",
+    "fxRateRequired": "É necessária uma taxa de câmbio positiva para uma transação em moeda estrangeira",
+    "fxSignMismatch": "originalAmount e amount devem ter o mesmo sinal",
+    "multipleFxFeeSplits": "Uma transação pode ter no máximo uma divisão de taxa de moeda estrangeira",
+    "fxFeeSplitMustBeCategory": "A divisão da taxa de moeda estrangeira deve ser uma divisão por categoria"
   },
   "users": {
     "userNotFound": "Usuário não encontrado",

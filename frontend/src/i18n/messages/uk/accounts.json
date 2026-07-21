@@ -156,7 +156,13 @@
       "other": "Інший"
     },
     "statementDueDayPlaceholder": "напр. 15",
-    "statementSettlementDayPlaceholder": "напр. 25"
+    "statementSettlementDayPlaceholder": "напр. 25",
+    "fxFeeTitle": "Комісія за конвертацію валюти",
+    "fxFeePercent": "Відсоток комісії",
+    "fxFeeCategory": "Категорія комісії",
+    "fxFeePercentPlaceholder": "напр. 2,5",
+    "fxFeeHelp": "Комісія вашого банку за конвертацію закордонних покупок. Якщо задано, операція в іноземній валюті на цьому рахунку автоматично проводить комісію як витрату у вибраній категорії.",
+    "fxFeeCategoryPlaceholder": "Виберіть або створіть категорію"
   },
   "exportModal": {
     "title": "Експорт {name}",
@@ -341,7 +347,8 @@
     "paymentFrequencyRequired": "Частота платежів є обов'язковою",
     "paymentStartDateRequired": "Дата першого платежу є обов'язковою",
     "paymentAccountRequired": "Рахунок списання є обов'язковим",
-    "amortizationRequired": "Амортизаційний період є обов'язковим"
+    "amortizationRequired": "Амортизаційний період є обов'язковим",
+    "fxFeeCategoryRequired": "Категорія комісії обов'язкова, коли задано відсоток комісії"
   },
   "loanDetail": {
     "backToAccounts": "Назад до рахунків",

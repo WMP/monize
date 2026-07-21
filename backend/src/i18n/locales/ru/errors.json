@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "«{{ query }}» соответствует нескольким брокерским счетам: {{ list }}. Используйте точное название счёта.",
     "unknownInvestmentAccount": "Неизвестный счёт: {{ name }}. Используйте точное название из списка счетов пользователя.",
     "notACreditCard": "Расчётные периоды доступны только для счетов кредитных карт",
-    "noStatementSettlementDay": "Для этой кредитной карты не настроен день расчёта по выписке"
+    "noStatementSettlementDay": "Для этой кредитной карты не настроен день расчёта по выписке",
+    "fxFeeCategoryRequired": "Категория комиссии за зарубежную операцию обязательна, если задан процент комиссии"
   },
   "actionHistory": {
     "nothingToUndo": "Нечего отменять",
@@ -219,14 +220,16 @@
     "csrfInvalid": "Недопустимый токен CSRF",
     "demoModeRestricted": "Это действие недоступно в демо-режиме.",
     "serviceNotReady": "Сервис не готов",
-    "oauthProviderNotInitialized": "Провайдер OAuth не инициализирован"
+    "oauthProviderNotInitialized": "Провайдер OAuth не инициализирован",
+    "invalidCurrencyCode": "Недопустимый код валюты: {{ code }}"
   },
   "currencies": {
     "alreadyInList": "Валюта \"{{ code }}\" уже в вашем списке",
     "notFound": "Валюта \"{{ code }}\" не найдена",
     "cannotModifySystem": "Невозможно изменить системные метаданные валюты",
     "cannotModifyOther": "Невозможно изменить валюту другого пользователя",
-    "inUse": "Валюта \"{{ code }}\" используется в ваших счетах, ценных бумагах или других записях. Деактивируйте её вместо удаления."
+    "inUse": "Валюта \"{{ code }}\" используется в ваших счетах, ценных бумагах или других записях. Деактивируйте её вместо удаления.",
+    "invalidRateDate": "date должна быть в формате ГГГГ-ММ-ДД"
   },
   "delegation": {
     "delegatedAccessInvalid": "Делегированный доступ больше не действителен",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey не должен превышать 100 символов",
     "invalidTagKeyOp": "Недопустимый tagKeyOp: {{ op }}",
     "tagKeyValueRequired": "tagKeyValue обязателен для contains / notContains",
-    "tagKeyRequired": "Требуется ключ тега (1–100 символов)"
+    "tagKeyRequired": "Требуется ключ тега (1–100 символов)",
+    "fxFieldsIncomplete": "originalAmount и originalCurrencyCode должны указываться вместе",
+    "fxRateRequired": "Для операции в иностранной валюте требуется положительный курс обмена",
+    "fxSignMismatch": "originalAmount и amount должны иметь одинаковый знак",
+    "multipleFxFeeSplits": "Операция может содержать не более одной части с комиссией за зарубежную операцию",
+    "fxFeeSplitMustBeCategory": "Часть с комиссией за зарубежную операцию должна быть частью по категории"
   },
   "users": {
     "userNotFound": "Пользователь не найден",

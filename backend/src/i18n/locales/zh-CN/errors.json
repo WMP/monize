@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "\"{{ query }}\" 匹配多个经纪账户：{{ list }}。请使用准确的账户名称。",
     "unknownInvestmentAccount": "未知账户：{{ name }}。请使用用户账户列表中的准确名称。",
     "notACreditCard": "账单周期仅适用于信用卡账户",
-    "noStatementSettlementDay": "此信用卡未配置账单结算日"
+    "noStatementSettlementDay": "此信用卡未配置账单结算日",
+    "fxFeeCategoryRequired": "设置手续费百分比时需要境外交易手续费类别"
   },
   "actionHistory": {
     "nothingToUndo": "没有可撤销的操作",
@@ -219,14 +220,16 @@
     "csrfInvalid": "CSRF 令牌无效",
     "demoModeRestricted": "此操作在演示模式下不可用。",
     "serviceNotReady": "服务未就绪",
-    "oauthProviderNotInitialized": "OAuth 提供商未初始化"
+    "oauthProviderNotInitialized": "OAuth 提供商未初始化",
+    "invalidCurrencyCode": "无效的货币代码：{{ code }}"
   },
   "currencies": {
     "alreadyInList": "货币\"{{ code }}\"已在您的列表中",
     "notFound": "未找到货币\"{{ code }}\"",
     "cannotModifySystem": "无法修改系统货币元数据",
     "cannotModifyOther": "无法修改其他用户的货币",
-    "inUse": "货币\"{{ code }}\"正在您的账户、证券或其他记录中使用。请改为停用它。"
+    "inUse": "货币\"{{ code }}\"正在您的账户、证券或其他记录中使用。请改为停用它。",
+    "invalidRateDate": "date 必须为 YYYY-MM-DD 格式"
   },
   "delegation": {
     "delegatedAccessInvalid": "委托访问权限已不再有效",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey 不得超过 100 个字符",
     "invalidTagKeyOp": "无效的 tagKeyOp：{{ op }}",
     "tagKeyValueRequired": "contains / notContains 需要 tagKeyValue",
-    "tagKeyRequired": "需要标签键（1-100 个字符）"
+    "tagKeyRequired": "需要标签键（1-100 个字符）",
+    "fxFieldsIncomplete": "originalAmount 和 originalCurrencyCode 必须同时提供",
+    "fxRateRequired": "外币交易需要一个正的汇率",
+    "fxSignMismatch": "originalAmount 和 amount 的符号必须相同",
+    "multipleFxFeeSplits": "一笔交易最多只能有一个境外交易手续费拆分",
+    "fxFeeSplitMustBeCategory": "境外交易手续费拆分必须是类别拆分"
   },
   "users": {
     "userNotFound": "未找到用户",

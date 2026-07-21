@@ -156,7 +156,13 @@
       "other": "其他"
     },
     "statementDueDayPlaceholder": "例如 15",
-    "statementSettlementDayPlaceholder": "例如 25"
+    "statementSettlementDayPlaceholder": "例如 25",
+    "fxFeeTitle": "外币兑换手续费",
+    "fxFeePercent": "手续费百分比",
+    "fxFeeCategory": "手续费类别",
+    "fxFeePercentPlaceholder": "例如 2.5",
+    "fxFeeHelp": "您的银行为兑换境外消费收取的费用。设置后，此账户上的外币交易会自动将该费用记为所选类别中的一笔支出。",
+    "fxFeeCategoryPlaceholder": "选择或创建类别"
   },
   "exportModal": {
     "title": "导出 {name}",
@@ -341,7 +347,8 @@
     "paymentFrequencyRequired": "还款频率为必填项",
     "paymentStartDateRequired": "首次还款日期为必填项",
     "paymentAccountRequired": "还款来源账户为必填项",
-    "amortizationRequired": "摊销期为必填项"
+    "amortizationRequired": "摊销期为必填项",
+    "fxFeeCategoryRequired": "设置手续费百分比时必须选择手续费类别"
   },
   "loanDetail": {
     "backToAccounts": "返回账户",

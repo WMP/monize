@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "\"{{ query }}\" corrisponde a più conti di intermediazione: {{ list }}. Usa il nome esatto del conto.",
     "unknownInvestmentAccount": "Conto sconosciuto: {{ name }}. Usa un nome esatto dall'elenco dei conti dell'utente.",
     "notACreditCard": "I cicli di fatturazione sono disponibili solo per i conti carta di credito",
-    "noStatementSettlementDay": "Questa carta di credito non ha un giorno di chiusura dell'estratto conto configurato"
+    "noStatementSettlementDay": "Questa carta di credito non ha un giorno di chiusura dell'estratto conto configurato",
+    "fxFeeCategoryRequired": "È richiesta una categoria per la commissione in valuta estera quando è impostata una percentuale di commissione"
   },
   "actionHistory": {
     "nothingToUndo": "Niente da annullare",
@@ -219,14 +220,16 @@
     "csrfInvalid": "Token CSRF non valido",
     "demoModeRestricted": "Questa azione non è disponibile in modalità demo.",
     "serviceNotReady": "Servizio non pronto",
-    "oauthProviderNotInitialized": "Provider OAuth non inizializzato"
+    "oauthProviderNotInitialized": "Provider OAuth non inizializzato",
+    "invalidCurrencyCode": "Codice valuta non valido: {{ code }}"
   },
   "currencies": {
     "alreadyInList": "La valuta \"{{ code }}\" è già nella tua lista",
     "notFound": "Valuta \"{{ code }}\" non trovata",
     "cannotModifySystem": "Impossibile modificare i metadati della valuta di sistema",
     "cannotModifyOther": "Impossibile modificare la valuta di un altro utente",
-    "inUse": "La valuta \"{{ code }}\" è in uso dai tuoi conti, titoli o altri record. Disattivala invece."
+    "inUse": "La valuta \"{{ code }}\" è in uso dai tuoi conti, titoli o altri record. Disattivala invece.",
+    "invalidRateDate": "date deve essere nel formato AAAA-MM-GG"
   },
   "delegation": {
     "delegatedAccessInvalid": "L'accesso delegato non è più valido",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey non deve superare i 100 caratteri",
     "invalidTagKeyOp": "tagKeyOp non valido: {{ op }}",
     "tagKeyValueRequired": "tagKeyValue è obbligatorio per contains / notContains",
-    "tagKeyRequired": "È richiesta una chiave tag (1-100 caratteri)"
+    "tagKeyRequired": "È richiesta una chiave tag (1-100 caratteri)",
+    "fxFieldsIncomplete": "originalAmount e originalCurrencyCode devono essere forniti insieme",
+    "fxRateRequired": "È richiesto un tasso di cambio positivo per una transazione in valuta estera",
+    "fxSignMismatch": "originalAmount e amount devono avere lo stesso segno",
+    "multipleFxFeeSplits": "Una transazione può avere al massimo una suddivisione per commissione in valuta estera",
+    "fxFeeSplitMustBeCategory": "La suddivisione della commissione in valuta estera deve essere una suddivisione per categoria"
   },
   "users": {
     "userNotFound": "Utente non trovato",

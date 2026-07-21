@@ -156,7 +156,13 @@
       "other": "Outro"
     },
     "statementDueDayPlaceholder": "ex.: 15",
-    "statementSettlementDayPlaceholder": "ex.: 25"
+    "statementSettlementDayPlaceholder": "ex.: 25",
+    "fxFeeTitle": "Comissão de conversão de moeda estrangeira",
+    "fxFeePercent": "Percentagem da comissão",
+    "fxFeeCategory": "Categoria da comissão",
+    "fxFeePercentPlaceholder": "ex.: 2,5",
+    "fxFeeHelp": "A comissão do seu banco pela conversão de compras no estrangeiro. Quando definida, uma transação em moeda estrangeira nesta conta regista automaticamente a comissão como uma despesa na categoria escolhida.",
+    "fxFeeCategoryPlaceholder": "Selecione ou crie uma categoria"
   },
   "exportModal": {
     "title": "Exportar {name}",
@@ -341,7 +347,8 @@
     "paymentFrequencyRequired": "A frequência do pagamento é obrigatória",
     "paymentStartDateRequired": "A data do primeiro pagamento é obrigatória",
     "paymentAccountRequired": "A conta de pagamento é obrigatória",
-    "amortizationRequired": "O período de amortização é obrigatório"
+    "amortizationRequired": "O período de amortização é obrigatório",
+    "fxFeeCategoryRequired": "É necessária uma categoria de comissão quando uma percentagem de comissão está definida"
   },
   "loanDetail": {
     "backToAccounts": "Voltar às contas",

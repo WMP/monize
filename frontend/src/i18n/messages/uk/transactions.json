@@ -220,7 +220,8 @@
       "search": "Пошук",
       "tagKey": "Ключ тегу",
       "tagKeyOp": "Умова",
-      "tagKeyValue": "Значення"
+      "tagKeyValue": "Значення",
+      "currency": "Валюта"
     },
     "placeholders": {
       "accounts": "Всі рахунки",
@@ -244,7 +245,8 @@
       "dateFrom": "Від {date}",
       "dateUntil": "До {date}",
       "amountFrom": "Від {amount}",
-      "amountUpTo": "До {amount}"
+      "amountUpTo": "До {amount}",
+      "removeCurrency": "Видалити фільтр за валютою {name}"
     },
     "bulkUpdate": "Масове оновлення",
     "cancelBulk": "Скасувати масове",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "Не вдалося реактивувати одержувача платежу",
       "categoryCreated": "Категорію «{name}» створено",
       "categoryCreateFailed": "Не вдалося створити категорію",
-      "tagCreated": "Тег «{name}» створено"
+      "tagCreated": "Тег «{name}» створено",
+      "fxRateRequired": "Введіть курс обміну або конвертовану суму перед збереженням операції в іноземній валюті."
     },
     "ariaHistory": "Показати нещодавні транзакції",
     "ariaHistoryForPayee": "Показати нещодавні транзакції для цього одержувача",
     "historyTitle": "Швидке заповнення з нещодавньої транзакції",
-    "transferCategoryNote": "Необов'язково. Переказ і надалі не враховуватиметься як дохід чи витрата, але ця категорія дозволяє йому з'являтися в щомісячному розподілі за категоріями (наприклад, щомісячні інвестиційні внески)."
+    "transferCategoryNote": "Необов'язково. Переказ і надалі не враховуватиметься як дохід чи витрата, але ця категорія дозволяє йому з'являтися в щомісячному розподілі за категоріями (наприклад, щомісячні інвестиційні внески).",
+    "currencyPicker": {
+      "label": "Валюта введення",
+      "ariaLabel": "Змінити валюту введення",
+      "title": "Ввести суму в",
+      "accountCurrency": "Валюта рахунку ({code})",
+      "addCurrency": "Додати валюту...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "Конвертована сума ({currency})",
+      "noRateWarning": "Не знайдено курс обміну {from} на {to} на {date}. Введіть конвертовану суму вручну.",
+      "usingLatestRateHint": "Використовується останній доступний курс (не на дату {date}).",
+      "feeSplitMemo": "Комісія за закордонну операцію",
+      "displayToggle": {
+        "account": "Рахунок",
+        "original": "Оригінал"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "Деталі розподілу",

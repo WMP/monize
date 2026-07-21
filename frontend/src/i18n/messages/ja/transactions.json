@@ -220,7 +220,8 @@
       "search": "検索",
       "tagKey": "タグキー",
       "tagKeyOp": "条件",
-      "tagKeyValue": "値"
+      "tagKeyValue": "値",
+      "currency": "通貨"
     },
     "placeholders": {
       "accounts": "すべての口座",
@@ -244,7 +245,8 @@
       "dateFrom": "{date}以降",
       "dateUntil": "{date}まで",
       "amountFrom": "{amount}以上",
-      "amountUpTo": "{amount}以下"
+      "amountUpTo": "{amount}以下",
+      "removeCurrency": "{name} の通貨フィルターを削除"
     },
     "bulkUpdate": "一括更新",
     "cancelBulk": "一括操作をキャンセル",
@@ -387,12 +389,33 @@
       "payeeReactivateFailed": "支払先の再有効化に失敗しました",
       "categoryCreated": "カテゴリ「{name}」を作成しました",
       "categoryCreateFailed": "カテゴリの作成に失敗しました",
-      "tagCreated": "タグ「{name}」を作成しました"
+      "tagCreated": "タグ「{name}」を作成しました",
+      "fxRateRequired": "外貨取引を保存する前に、為替レートまたは換算後の金額を入力してください。"
     },
     "ariaHistory": "最近の取引を表示",
     "ariaHistoryForPayee": "この支払先の最近の取引を表示",
     "historyTitle": "最近の取引からクイック入力",
-    "transferCategoryNote": "任意。この振替は引き続き収入や支出として計上されませんが、このカテゴリを設定すると月次カテゴリ内訳に表示されます（例: 毎月の投資拠出）。"
+    "transferCategoryNote": "任意。この振替は引き続き収入や支出として計上されませんが、このカテゴリを設定すると月次カテゴリ内訳に表示されます（例: 毎月の投資拠出）。",
+    "currencyPicker": {
+      "label": "入力通貨",
+      "ariaLabel": "入力通貨を変更",
+      "title": "金額の入力通貨",
+      "accountCurrency": "口座通貨（{code}）",
+      "addCurrency": "通貨を追加...",
+      "optionLabel": "{symbol} -- {code} {name}"
+    },
+    "fx": {
+      "convertedAmount": "換算後の金額（{currency}）",
+      "noRateWarning": "{date} の {from} から {to} への為替レートが見つかりません。換算後の金額を手動で入力してください。",
+      "usingLatestRateHint": "最新の利用可能なレートを使用しています（{date} 時点ではありません）。",
+      "feeSplitMemo": "外貨取引手数料",
+      "displayToggle": {
+        "account": "口座",
+        "original": "元の通貨"
+      },
+      "rateCaption": "1 {from} = {rate} {to} ({date})",
+      "feeAutoBadge": "auto"
+    }
   },
   "splitEditor": {
     "header": "分割の詳細",

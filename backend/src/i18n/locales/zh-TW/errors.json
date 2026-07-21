@@ -34,7 +34,8 @@
     "ambiguousBrokerage": "「{{ query }}」符合多個券商帳戶：{{ list }}。請使用準確的帳戶名稱。",
     "unknownInvestmentAccount": "未知帳戶：{{ name }}。請使用使用者帳戶清單中的準確名稱。",
     "notACreditCard": "對帳單週期僅適用於信用卡科目",
-    "noStatementSettlementDay": "此信用卡未設定對帳單結算日"
+    "noStatementSettlementDay": "此信用卡未設定對帳單結算日",
+    "fxFeeCategoryRequired": "設定手續費百分比時需要境外交易手續費類別"
   },
   "actionHistory": {
     "nothingToUndo": "沒有可復原的操作",
@@ -219,14 +220,16 @@
     "csrfInvalid": "無效的 CSRF 令牌",
     "demoModeRestricted": "此操作在示範模式下不可用。",
     "serviceNotReady": "服務尚未就緒",
-    "oauthProviderNotInitialized": "OAuth 提供者未初始化"
+    "oauthProviderNotInitialized": "OAuth 提供者未初始化",
+    "invalidCurrencyCode": "無效的貨幣代碼：{{ code }}"
   },
   "currencies": {
     "alreadyInList": "貨幣「{{ code }}」已在您的清單中",
     "notFound": "找不到貨幣「{{ code }}」",
     "cannotModifySystem": "無法修改系統貨幣中繼資料",
     "cannotModifyOther": "無法修改其他使用者的貨幣",
-    "inUse": "貨幣「{{ code }}」正在您的科目、證券或其他記錄中使用。請改為停用它。"
+    "inUse": "貨幣「{{ code }}」正在您的科目、證券或其他記錄中使用。請改為停用它。",
+    "invalidRateDate": "date 必須為 YYYY-MM-DD 格式"
   },
   "delegation": {
     "delegatedAccessInvalid": "委派存取已失效",
@@ -441,7 +444,12 @@
     "tagKeyTooLong": "tagKey 不得超過 100 個字元",
     "invalidTagKeyOp": "無效的 tagKeyOp：{{ op }}",
     "tagKeyValueRequired": "contains / notContains 需要 tagKeyValue",
-    "tagKeyRequired": "需要標籤鍵（1-100 個字元）"
+    "tagKeyRequired": "需要標籤鍵（1-100 個字元）",
+    "fxFieldsIncomplete": "originalAmount 和 originalCurrencyCode 必須同時提供",
+    "fxRateRequired": "外幣交易需要一個正的匯率",
+    "fxSignMismatch": "originalAmount 和 amount 的符號必須相同",
+    "multipleFxFeeSplits": "一筆交易最多只能有一個境外交易手續費拆分",
+    "fxFeeSplitMustBeCategory": "境外交易手續費拆分必須是類別拆分"
   },
   "users": {
     "userNotFound": "找不到使用者",
