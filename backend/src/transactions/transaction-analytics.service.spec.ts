@@ -2780,8 +2780,8 @@ describe("TransactionAnalyticsService", () => {
       expect(expr).toContain(
         "ROUND(transaction.originalAmount * transaction.exchangeRate, 2) - transaction.amount",
       );
-      // Split transaction: explicit is_fx_fee split.
-      expect(expr).toContain("COALESCE(-fxFeeSplit.amount, 0)");
+      // Split transaction: explicit is_fx_fee split (quoted join alias).
+      expect(expr).toContain('COALESCE(-"fxFeeSplit"."amount", 0)');
       expect(expr).toContain("transaction.isSplit = true");
     });
   });

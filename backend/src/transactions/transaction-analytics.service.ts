@@ -872,9 +872,13 @@ export class TransactionAnalyticsService {
     userId: string,
     accountId: string,
   ): Promise<FxFeeMonthlySummaryRow[]> {
+    // The join alias is referenced with its explicit quoted form: TypeORM
+    // rewrites `alias.property` tokens in raw expressions for the main entity,
+    // but not for a bare leftJoin alias, so an unquoted `fxFeeSplit.amount`
+    // reaches Postgres folded to lowercase and misses the "fxFeeSplit" join.
     const feeExpr =
       "CASE WHEN transaction.isSplit = true " +
-      "THEN COALESCE(-fxFeeSplit.amount, 0) " +
+      'THEN COALESCE(-"fxFeeSplit"."amount", 0) ' +
       "WHEN transaction.originalAmount IS NULL THEN 0 " +
       "ELSE ROUND(transaction.originalAmount * transaction.exchangeRate, 2) - transaction.amount " +
       "END";
