@@ -220,14 +220,17 @@ describe('NormalTransactionFields', () => {
       />,
     );
 
-    // The note's wrapper spans both currency columns (md:col-span-2), and it
-    // lives in the same currency group as the converted field (below the pair),
-    // separate from the Reference Number column.
-    const noteWrapper = screen.getByTestId('fx-caption').parentElement;
-    expect(noteWrapper?.className).toContain('md:col-span-2');
-    const group = screen.getByTestId('converted-slot').parentElement;
-    expect(group).toContainElement(screen.getByTestId('fx-caption'));
-    expect(group?.className).toContain('md:grid-cols-2');
+    // The note is a sibling below the two-column currency grid (not a grid row,
+    // so only its own margin separates it), inside the span container that
+    // covers both currency columns on desktop (md:col-span-2).
+    const currencyGrid = screen.getByTestId('converted-slot').parentElement;
+    expect(currencyGrid?.className).toContain('md:grid-cols-2');
+    expect(currencyGrid).not.toContainElement(screen.getByTestId('fx-caption'));
+
+    const spanContainer = screen.getByTestId('fx-caption').parentElement;
+    expect(spanContainer?.className).toContain('md:col-span-2');
+    expect(spanContainer).toContainElement(screen.getByTestId('converted-slot'));
+    expect(spanContainer).toContainElement(screen.getByTestId('fx-caption'));
   });
 
   // --- New tests below ---

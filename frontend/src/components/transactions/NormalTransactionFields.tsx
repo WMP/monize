@@ -254,15 +254,18 @@ export function NormalTransactionFields({
           // natural height so the taller currency group does not stretch the
           // Reference Number field.
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-            {/* Source + target currency fields. The conversion note spans both
-                of them (md:col-span-2) so on desktop it sits below the pair. */}
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-              <div className="flex items-stretch space-x-2">
-                {currencyPickerSlot}
-                <div className="flex-1 min-w-0">{amountInput}</div>
+            {/* Source + target currency fields, with the conversion note below
+                the pair (a sibling, not a grid row, so only its own small
+                margin separates it) spanning both on desktop (md:col-span-2). */}
+            <div className="md:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                <div className="flex items-stretch space-x-2">
+                  {currencyPickerSlot}
+                  <div className="flex-1 min-w-0">{amountInput}</div>
+                </div>
+                {convertedAmountSlot}
               </div>
-              {convertedAmountSlot}
-              {fxCaptionSlot && <div className="md:col-span-2">{fxCaptionSlot}</div>}
+              {fxCaptionSlot}
             </div>
             {referenceInput}
           </div>
