@@ -321,24 +321,22 @@ export function ForeignCurrencyFeesReport() {
     <div className="space-y-6">
       {/* Controls */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-4">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap gap-3 items-center">
-            <ReportAccountMultiSelect
-              accounts={accounts}
-              value={selectedAccountIds}
-              onChange={handleAccountChange}
-              filter={hasFxFee}
+        <div className="flex flex-wrap gap-3 items-center">
+          <ReportAccountMultiSelect
+            accounts={accounts}
+            value={selectedAccountIds}
+            onChange={handleAccountChange}
+            filter={hasFxFee}
+          />
+          <div className="w-52 max-w-full">
+            <MultiSelect
+              ariaLabel={t('currencyFilter.label')}
+              options={currencyOptions}
+              value={selectedCurrencies}
+              onChange={handleCurrencyFilterChange}
+              placeholder={t('currencyFilter.placeholder')}
+              disabled={currencyOptions.length === 0}
             />
-            <div className="w-52 max-w-full">
-              <MultiSelect
-                ariaLabel={t('currencyFilter.label')}
-                options={currencyOptions}
-                value={selectedCurrencies}
-                onChange={handleCurrencyFilterChange}
-                placeholder={t('currencyFilter.placeholder')}
-                disabled={currencyOptions.length === 0}
-              />
-            </div>
           </div>
           <CurrencyFilterChips
             selected={selectedCurrencies}
