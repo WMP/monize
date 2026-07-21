@@ -244,21 +244,17 @@ export function NormalTransactionFields({
           />
         );
         return convertedAmountSlot ? (
-          <>
-            <div>
-              <div className="flex items-stretch space-x-2">
-                {currencyPickerSlot}
-                <div className="grid grid-cols-2 gap-4 flex-1 min-w-0">
-                  {amountInput}
-                  {convertedAmountSlot}
-                </div>
+          <div>
+            <div className="flex items-stretch space-x-2">
+              {currencyPickerSlot}
+              <div className="grid grid-cols-3 gap-4 flex-1 min-w-0">
+                {amountInput}
+                {convertedAmountSlot}
+                {referenceInput}
               </div>
-              {fxCaptionSlot}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {referenceInput}
-            </div>
-          </>
+            {fxCaptionSlot}
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-stretch space-x-2">
