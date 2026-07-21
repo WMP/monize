@@ -3641,5 +3641,86 @@ describe('TransactionForm', () => {
       );
       expect(screen.queryByTestId('split-editor')).not.toBeInTheDocument();
     });
+
+    it('signs the foreign amount by the selected expense category, like account-currency entry', async () => {
+      render(
+        <TransactionForm
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+          defaultAccountId="acc-1"
+        />,
+      );
+      await waitFor(() => expect(screen.getByTestId('combobox-Category')).toBeInTheDocument());
+
+      // Choose the expense category "Groceries" (cat-1, isIncome=false) first.
+      fireEvent.change(screen.getByTestId('combobox-input-Category'), { target: { value: 'Groceries' } });
+
+      // Pick EUR and type a positive foreign amount.
+      await act(async () => {
+        fireEvent.click(screen.getByLabelText('Change entry currency'));
+      });
+      await waitFor(() => expect(screen.getByText(/EUR Euro/)).toBeInTheDocument());
+      await act(async () => {
+        fireEvent.click(screen.getByText(/EUR Euro/));
+      });
+      await waitFor(() => expect(mockGetRateForDate).toHaveBeenCalled());
+
+      const amountInput = screen.getAllByPlaceholderText('0.00')[0];
+      await act(async () => {
+        fireEvent.change(amountInput, { target: { value: '100' } });
+        fireEvent.blur(amountInput);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Create Transaction/i }));
+      });
+      await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+      const payload = mockCreate.mock.calls[0][0];
+      // Expense category negates the foreign amount, and the converted
+      // account-currency amount follows (rate 1.5): -100 EUR -> -150 CAD.
+      expect(payload.originalAmount).toBe(-100);
+      expect(payload.originalCurrencyCode).toBe('EUR');
+      expect(payload.amount).toBe(-150);
+    });
+
+    it('re-signs the foreign amount when an expense category is chosen after entry', async () => {
+      render(
+        <TransactionForm
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+          defaultAccountId="acc-1"
+        />,
+      );
+      await waitFor(() => expect(screen.getByTestId('combobox-Category')).toBeInTheDocument());
+
+      // Pick EUR and enter the amount BEFORE choosing a category.
+      await act(async () => {
+        fireEvent.click(screen.getByLabelText('Change entry currency'));
+      });
+      await waitFor(() => expect(screen.getByText(/EUR Euro/)).toBeInTheDocument());
+      await act(async () => {
+        fireEvent.click(screen.getByText(/EUR Euro/));
+      });
+      await waitFor(() => expect(mockGetRateForDate).toHaveBeenCalled());
+
+      const amountInput = screen.getAllByPlaceholderText('0.00')[0];
+      await act(async () => {
+        fireEvent.change(amountInput, { target: { value: '100' } });
+        fireEvent.blur(amountInput);
+      });
+
+      // Now choose the expense category -> the foreign amount flips negative.
+      await act(async () => {
+        fireEvent.change(screen.getByTestId('combobox-input-Category'), { target: { value: 'Groceries' } });
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Create Transaction/i }));
+      });
+      await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+      const payload = mockCreate.mock.calls[0][0];
+      expect(payload.originalAmount).toBe(-100);
+      expect(payload.amount).toBe(-150);
+    });
   });
 });

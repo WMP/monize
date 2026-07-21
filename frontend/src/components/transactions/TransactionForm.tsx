@@ -70,6 +70,25 @@ const buildTransactionSchema = (t: (key: string) => string) => z.object({
 type TransactionFormData = z.infer<ReturnType<typeof buildTransactionSchema>>;
 
 /**
+ * Sign a freshly entered amount magnitude according to a category: an income
+ * category makes it positive, an expense category negative. An explicit sign
+ * toggle -- the magnitude is unchanged from `reference`, so the user just
+ * flipped the sign -- is preserved so a manual override is respected. Shared by
+ * the account-currency and foreign-currency amount inputs so both behave
+ * identically. With no category (or no reference), the value is returned as-is.
+ */
+function signAmountByCategory(
+  value: number,
+  reference: number | undefined,
+  category: Category | undefined,
+): number {
+  const referenceAbs = reference !== undefined ? Math.abs(reference) : 0;
+  const isJustSignChange = referenceAbs === Math.abs(value) && referenceAbs !== 0;
+  if (isJustSignChange || !category) return value;
+  return category.isIncome ? Math.abs(value) : -Math.abs(value);
+}
+
+/**
  * A reconciled transaction was matched against a statement during
  * reconciliation. Only the date and amount feed that match, so editing other
  * fields (payee, category, notes, reference) leaves the reconciliation intact
@@ -498,14 +517,11 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
         setValue('categoryId', payee.defaultCategoryId, { shouldDirty: true });
         categoryWasAutoSetRef.current = false;
 
-        // Adjust amount sign based on default category type
+        // Adjust amount sign based on default category type (re-signs the
+        // foreign amount too when entering a foreign currency).
         const category = categories.find(c => c.id === payee.defaultCategoryId);
-        if (category && watchedAmount !== undefined && watchedAmount !== 0) {
-          const absAmount = Math.abs(watchedAmount);
-          const newAmount = category.isIncome ? absAmount : -absAmount;
-          if (newAmount !== watchedAmount) {
-            setValue('amount', newAmount, { shouldDirty: true });
-          }
+        if (category) {
+          resignActiveAmount(category);
         }
       }
     } else {
@@ -601,19 +617,11 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
       // as a positive number (the legs' signs are derived on save), so an
       // expense category must not flip it negative or the transfer fails the
       // "amount must be positive" check. Mirrors the mode guard in
-      // handleAmountChange.
+      // handleAmountChange. Re-signs the foreign amount when entering a foreign
+      // currency, so the behaviour matches account-currency entry.
       const category = categories.find(c => c.id === categoryId);
-      if (
-        category &&
-        mode === 'normal' &&
-        watchedAmount !== undefined &&
-        watchedAmount !== 0
-      ) {
-        const absAmount = Math.abs(watchedAmount);
-        const newAmount = category.isIncome ? absAmount : -absAmount;
-        if (newAmount !== watchedAmount) {
-          setValue('amount', newAmount, { shouldDirty: true, shouldValidate: true });
-        }
+      if (category && mode === 'normal') {
+        resignActiveAmount(category);
       }
     } else {
       // Custom value being typed - don't create yet, just track the name
@@ -623,6 +631,19 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
     }
   };
 
+  // The category whose income/expense flag drives the amount sign: the selected
+  // category in normal mode, the first split's category in split mode.
+  const activeSigningCategory = (): Category | undefined => {
+    if (mode === 'split') {
+      return splits.length > 0 && splits[0].categoryId
+        ? categories.find((c) => c.id === splits[0].categoryId)
+        : undefined;
+    }
+    return selectedCategoryId
+      ? categories.find((c) => c.id === selectedCategoryId)
+      : undefined;
+  };
+
   // Handle amount change - adjust sign based on selected category
   // Only auto-adjust when the absolute value changes, not when user explicitly changes sign
   const handleAmountChange = (value: number | undefined) => {
@@ -630,31 +651,10 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
       setValue('amount', value ?? 0, { shouldValidate: true });
       return;
     }
-
-    // Check if user is just changing the sign (same absolute value)
-    const currentAbsAmount = watchedAmount !== undefined ? Math.abs(watchedAmount) : 0;
-    const newAbsAmount = Math.abs(value);
-    const isJustSignChange = currentAbsAmount === newAbsAmount && currentAbsAmount !== 0;
-
-    // If user explicitly changed the sign, respect their choice
-    if (isJustSignChange) {
-      setValue('amount', value, { shouldValidate: true });
-      return;
-    }
-
-    // If a category is selected, adjust sign based on category type
-    if (selectedCategoryId && mode === 'normal') {
-      const category = categories.find(c => c.id === selectedCategoryId);
-      if (category) {
-        const absAmount = Math.abs(value);
-        const newAmount = category.isIncome ? absAmount : -absAmount;
-        setValue('amount', newAmount, { shouldValidate: true });
-        return;
-      }
-    }
-
-    // No category selected or not normal mode, use value as-is
-    setValue('amount', value, { shouldValidate: true });
+    const category = mode === 'normal' ? activeSigningCategory() : undefined;
+    setValue('amount', signAmountByCategory(value, watchedAmount, category), {
+      shouldValidate: true,
+    });
   };
 
   // Handle split total amount change - same pattern as handleAmountChange
@@ -664,31 +664,13 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
       setValue('amount', value ?? 0, { shouldValidate: true });
       return;
     }
-
-    // Check if user is just changing the sign (same absolute value)
-    const currentAbsAmount = watchedAmount !== undefined ? Math.abs(watchedAmount) : 0;
-    const newAbsAmount = Math.abs(value);
-    const isJustSignChange = currentAbsAmount === newAbsAmount && currentAbsAmount !== 0;
-
-    // If user explicitly changed the sign, respect their choice
-    if (isJustSignChange) {
-      setValue('amount', value, { shouldValidate: true });
-      return;
-    }
-
-    // Infer sign from first split's category
-    if (splits.length > 0 && splits[0].categoryId) {
-      const category = categories.find(c => c.id === splits[0].categoryId);
-      if (category) {
-        const absAmount = Math.abs(value);
-        const newAmount = category.isIncome ? absAmount : -absAmount;
-        setValue('amount', newAmount, { shouldValidate: true });
-        return;
-      }
-    }
-
-    // No category on first split, use value as-is
-    setValue('amount', value, { shouldValidate: true });
+    const category =
+      splits.length > 0 && splits[0].categoryId
+        ? categories.find((c) => c.id === splits[0].categoryId)
+        : undefined;
+    setValue('amount', signAmountByCategory(value, watchedAmount, category), {
+      shouldValidate: true,
+    });
   };
 
   // ── Foreign-currency entry helpers ──────────────────────────────────────
@@ -741,10 +723,46 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
     });
   };
 
-  // Amount input change while entering in a foreign currency.
+  // Amount input change while entering in a foreign currency. The foreign amount
+  // is signed by the active category exactly as the account-currency input does
+  // (income positive, expense negative, explicit sign toggle preserved), then
+  // the converted account-currency amount is derived from it.
   const handleForeignAmountChange = (value: number | undefined) => {
-    setForeignAmount(value);
-    recomputeFx(value, fxRate);
+    if (value === undefined || value === 0) {
+      setForeignAmount(value);
+      recomputeFx(value, fxRate);
+      return;
+    }
+    const category = mode === 'transfer' ? undefined : activeSigningCategory();
+    const signed = signAmountByCategory(value, foreignAmount, category);
+    setForeignAmount(signed);
+    recomputeFx(signed, fxRate);
+  };
+
+  // Re-sign the amount already entered when the category changes, so choosing an
+  // expense category flips it negative (income positive). Operates on the
+  // foreign amount when entering a foreign currency (and re-derives the
+  // converted amount), otherwise on the account-currency amount. Mirrors the
+  // sign adjustment the account-currency flow applies on category change.
+  const resignActiveAmount = (category: Category) => {
+    if (isForeign) {
+      if (foreignAmount === undefined || foreignAmount === 0) return;
+      const signed = category.isIncome
+        ? Math.abs(foreignAmount)
+        : -Math.abs(foreignAmount);
+      if (signed !== foreignAmount) {
+        setForeignAmount(signed);
+        recomputeFx(signed, fxRate);
+      }
+      return;
+    }
+    if (watchedAmount === undefined || watchedAmount === 0) return;
+    const signed = category.isIncome
+      ? Math.abs(watchedAmount)
+      : -Math.abs(watchedAmount);
+    if (signed !== watchedAmount) {
+      setValue('amount', signed, { shouldDirty: true, shouldValidate: true });
+    }
   };
 
   // User edited the converted account-currency total (fee included) directly ->
