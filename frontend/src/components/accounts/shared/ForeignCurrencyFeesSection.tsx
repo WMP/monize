@@ -241,7 +241,7 @@ export function ForeignCurrencyFeesSection({ account }: ForeignCurrencyFeesSecti
             accountName={account.name}
             hideTitle
             leftControls={
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex flex-col gap-2 items-start">
                 <div className="w-52 max-w-full">
                   <MultiSelect
                     ariaLabel={t('currencyFilter.label')}
