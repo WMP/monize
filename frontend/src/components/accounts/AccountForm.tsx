@@ -895,7 +895,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
             max="100"
             placeholder={t('form.fxFeePercentPlaceholder')}
             error={errors.fxFeePercent?.message}
-            {...register('fxFeePercent')}
+            {...register('fxFeePercent', { valueAsNumber: true })}
           />
           <Combobox
             label={t('form.fxFeeCategory')}
