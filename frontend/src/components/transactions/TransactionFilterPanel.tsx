@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { MultiSelect, MultiSelectOption } from '@/components/ui/MultiSelect';
+import { exchangeRatesApi } from '@/lib/exchange-rates';
 import { Input } from '@/components/ui/Input';
 import { DateInput } from '@/components/ui/DateInput';
 import { Select } from '@/components/ui/Select';
@@ -30,6 +32,7 @@ interface TransactionFilterPanelProps {
   filterAmountTo: string;
   filterTagIds: string[];
   filterStatuses: TransactionStatus[];
+  filterOriginalCurrencyCodes: string[];
   filterTagKey: string;
   filterTagKeyOp: TagKeyOp;
   filterTagKeyValue: string;
@@ -49,6 +52,7 @@ interface TransactionFilterPanelProps {
   setFilterAmountTo: (value: string) => void;
   setFilterTagIds: (value: string[]) => void;
   setFilterStatuses: (value: TransactionStatus[]) => void;
+  setFilterOriginalCurrencyCodes: (value: string[]) => void;
   setFilterTagKey: (value: string) => void;
   setFilterTagKeyOp: (value: TagKeyOp) => void;
   setFilterTagKeyValue: (value: string) => void;
@@ -84,6 +88,7 @@ export function TransactionFilterPanel({
   filterAmountTo,
   filterTagIds,
   filterStatuses,
+  filterOriginalCurrencyCodes,
   filterTagKey,
   filterTagKeyOp,
   filterTagKeyValue,
@@ -103,6 +108,7 @@ export function TransactionFilterPanel({
   setFilterAmountTo,
   setFilterTagIds,
   setFilterStatuses,
+  setFilterOriginalCurrencyCodes,
   setFilterTagKey,
   setFilterTagKeyOp,
   setFilterTagKeyValue,
@@ -150,6 +156,31 @@ export function TransactionFilterPanel({
     { value: TransactionStatus.RECONCILED, label: STATUS_LABELS[TransactionStatus.RECONCILED] },
     { value: TransactionStatus.VOID, label: STATUS_LABELS[TransactionStatus.VOID] },
   ];
+
+  // Currency filter options: the user's active currencies, merged with any codes
+  // already selected (so a filter restored from the URL still shows its chips).
+  const [activeCurrencyCodes, setActiveCurrencyCodes] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    exchangeRatesApi
+      .getCurrencies()
+      .then((rows) => {
+        if (!cancelled) {
+          setActiveCurrencyCodes(rows.filter((c) => c.isActive).map((c) => c.code));
+        }
+      })
+      .catch(() => {
+        /* leave options to the selected codes only */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const CURRENCY_FILTER_OPTIONS: MultiSelectOption[] = Array.from(
+    new Set([...activeCurrencyCodes, ...filterOriginalCurrencyCodes]),
+  )
+    .sort()
+    .map((code) => ({ value: code, label: code }));
 
   return (
     <>
@@ -616,6 +647,16 @@ export function TransactionFilterPanel({
                   placeholder={t('filter.placeholders.statuses')}
                   showSearch={false}
                 />
+
+                {CURRENCY_FILTER_OPTIONS.length > 0 && (
+                  <MultiSelect
+                    label={t('filter.fields.currency')}
+                    options={CURRENCY_FILTER_OPTIONS}
+                    value={filterOriginalCurrencyCodes}
+                    onChange={(values) => handleArrayFilterChange(setFilterOriginalCurrencyCodes, values as string[])}
+                    placeholder={t('filter.fields.currency')}
+                  />
+                )}
 
                 <Input
                   label={t('filter.fields.search')}

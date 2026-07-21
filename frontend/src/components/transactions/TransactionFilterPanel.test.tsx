@@ -103,6 +103,8 @@ describe('TransactionFilterPanel', () => {
     tagFilterOptions: [],
     filterStatuses: [] as never[],
     setFilterStatuses: vi.fn(),
+    filterOriginalCurrencyCodes: [] as string[],
+    setFilterOriginalCurrencyCodes: vi.fn(),
     filterTagKey: '',
     filterTagKeyOp: 'hasValue' as const,
     filterTagKeyValue: '',

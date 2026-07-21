@@ -582,6 +582,7 @@ describe('useTransactionFilters - URL update', () => {
         amountFrom: '1',
         amountTo: '5',
         statuses: [],
+        originalCurrencyCodes: [],
         tagKey: '', tagKeyOp: 'hasValue', tagKeyValue: '',
       });
     });
@@ -599,6 +600,7 @@ describe('useTransactionFilters - URL update', () => {
         accountIds: [], categoryIds: [], payeeIds: [], tagIds: [],
         startDate: '', endDate: '', search: '', amountFrom: '', amountTo: '',
         statuses: [],
+        originalCurrencyCodes: [],
         tagKey: '', tagKeyOp: 'hasValue', tagKeyValue: '',
       }, true);
     });
@@ -828,6 +830,7 @@ describe('useTransactionFilters - filter persistence', () => {
         accountIds: [], categoryIds: [], payeeIds: [], tagIds: [],
         startDate: '', endDate: '', search: '', amountFrom: '', amountTo: '',
         statuses: result.current.filterStatuses,
+        originalCurrencyCodes: result.current.filterOriginalCurrencyCodes,
         tagKey: '', tagKeyOp: 'hasValue', tagKeyValue: '',
       });
     });
