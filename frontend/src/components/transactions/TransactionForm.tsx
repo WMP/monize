@@ -1375,6 +1375,8 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
             onTransactionAmountChange={(amount) => setValue('amount', amount, { shouldDirty: true, shouldValidate: true })}
             currencyCode={watchedCurrencyCode || defaultCurrency}
             onConvertToRegular={handleConvertToRegular}
+            displayCurrencyCode={isForeign ? entryCurrency : undefined}
+            displayRate={isForeign ? (fxRate ?? undefined) : undefined}
           />
         </div>
       )}

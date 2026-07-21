@@ -438,6 +438,10 @@
     "remaining": "[XX-Remaining: {symbol}{amount}-XX]",
     "needAmount": "[XX-Need {symbol}{amount} (remaining: {symbol}{remaining})-XX]",
     "setTotal": "[XX-Set total to {symbol}{amount}-XX]",
+    "currencyToggle": {
+      "title": "[XX-Switch the currency the split amounts are shown and edited in-XX]",
+      "ariaAmountsIn": "[XX-Show and edit split amounts in {code}-XX]"
+    },
     "splitLabel": "[XX-Split {number}-XX]",
     "columns": {
       "type": "[XX-Type-XX]",
