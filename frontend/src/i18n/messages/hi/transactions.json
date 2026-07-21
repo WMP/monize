@@ -414,7 +414,8 @@
         "original": "मूल"
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
-      "feeAutoBadge": "auto"
+      "feeAutoBadge": "auto",
+      "feeCaption": "इसमें {percent}% विदेशी लेनदेन शुल्क ({fee}) शामिल है। कुल: {total}।"
     }
   },
   "splitEditor": {

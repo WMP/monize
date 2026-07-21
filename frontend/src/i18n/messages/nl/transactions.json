@@ -414,7 +414,8 @@
         "original": "Origineel"
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
-      "feeAutoBadge": "auto"
+      "feeAutoBadge": "auto",
+      "feeCaption": "Inclusief {percent}% kosten voor buitenlandse transactie ({fee}). Totaal: {total}."
     }
   },
   "splitEditor": {

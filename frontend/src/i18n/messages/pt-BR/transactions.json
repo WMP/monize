@@ -414,7 +414,8 @@
         "original": "Original"
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
-      "feeAutoBadge": "auto"
+      "feeAutoBadge": "auto",
+      "feeCaption": "Inclui uma taxa de transação no exterior de {percent}% ({fee}). Total: {total}."
     }
   },
   "splitEditor": {

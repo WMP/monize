@@ -109,7 +109,7 @@ type TransactionMode = 'normal' | 'split' | 'transfer';
 
 export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, defaultCategoryId, onSuccess, onCancel, onDirtyChange, submitRef }: TransactionFormProps) {
   const t = useTranslations('transactions');
-  const { defaultCurrency } = useNumberFormat();
+  const { defaultCurrency, formatCurrency } = useNumberFormat();
   const showCreatedAt = usePreferencesStore((s) => s.preferences?.showCreatedAt ?? false);
   const timeFormat = usePreferencesStore((s) => s.preferences?.timeFormat ?? '24h');
   const timezonePref = usePreferencesStore((s) => s.preferences?.timezone);
@@ -695,22 +695,33 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
   //
   // When a foreign currency is chosen, the Amount input edits the foreign total
   // (`foreignAmount`); the account-currency `amount` is derived from it and the
-  // fetched rate. When the account has a foreign-transaction fee configured, the
-  // transaction is switched into split mode seeded with a purchase row (the
-  // converted base) and a read-only fee row.
+  // fetched rate. When the account has a foreign-transaction fee configured, that
+  // fee is folded into the amount (no split is created):
   //   base = round(foreignAmount x rate)
   //   fee  = -round(|base| x feePercent / 100)
   //   amount = base + fee
 
-  // The converted account-currency base shown in the FX panel (before fee).
+  // The converted account-currency base shown in the FX panel (before fee), the
+  // fee itself, and the resulting total charged to the account.
   const convertedBase =
     isForeign && foreignAmount !== undefined && fxRate != null
       ? roundToCents(foreignAmount * fxRate)
       : undefined;
+  const fxFeePercent = selectedAccount?.fxFeePercent ?? undefined;
+  const fxFeeApplies =
+    isForeign && convertedBase !== undefined && !!fxFeePercent && fxFeePercent > 0;
+  const fxFeeAmount = fxFeeApplies
+    ? -roundToCents((Math.abs(convertedBase as number) * (fxFeePercent as number)) / 100)
+    : 0;
+  const fxTotal =
+    convertedBase !== undefined
+      ? roundToCents(convertedBase + fxFeeAmount)
+      : undefined;
 
-  // Recompute `amount` (and, when a fee applies, the seeded split rows) from the
-  // foreign amount and rate. `overrideBase` forces the converted base (used when
-  // the user edits the converted-base field directly).
+  // Recompute the account-currency `amount` from the foreign amount and rate.
+  // The bank's foreign-transaction fee (when the account has one) is folded into
+  // the amount; no split is created. `overrideBase` forces the converted base
+  // (used when the user edits the converted-base field directly).
   const recomputeFx = (
     fAmount: number | undefined,
     rate: number | null,
@@ -720,52 +731,14 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
     const base =
       overrideBase !== undefined ? overrideBase : roundToCents(fAmount * rate);
     const feePercent = selectedAccount?.fxFeePercent;
-    const feeCategoryId = selectedAccount?.fxFeeCategoryId;
-
-    if (feePercent && feePercent > 0 && feeCategoryId) {
-      const fee = -roundToCents((Math.abs(base) * feePercent) / 100);
-      const amount = roundToCents(base + fee);
-      const feeMemo = t('form.fx.feeSplitMemo');
-      setSplits((prev) => {
-        const hasFee = prev.some((s) => s.isFxFee);
-        if (!hasFee) {
-          // Seed the purchase + fee pair.
-          return [
-            {
-              id: `fx-purchase-${Date.now()}`,
-              splitType: 'category',
-              categoryId: selectedCategoryId || undefined,
-              amount: base,
-              memo: '',
-            },
-            {
-              id: `fx-fee-${Date.now() + 1}`,
-              splitType: 'category',
-              categoryId: feeCategoryId,
-              amount: fee,
-              memo: feeMemo,
-              isFxFee: true,
-            },
-          ];
-        }
-        // Always update the fee row; with exactly two rows also update the
-        // purchase row, otherwise leave the extra manual rows to the user.
-        const editableCount = prev.filter((s) => !s.isFxFee).length;
-        return prev.map((s) => {
-          if (s.isFxFee) return { ...s, amount: fee, categoryId: feeCategoryId };
-          if (editableCount === 1) return { ...s, amount: base };
-          return s;
-        });
-      });
-      setMode('split');
-      setIsSplitMode(true);
-      setValue('amount', amount, { shouldDirty: true, shouldValidate: true });
-    } else {
-      setValue('amount', roundToCents(base), {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
-    }
+    const fee =
+      feePercent && feePercent > 0
+        ? -roundToCents((Math.abs(base) * feePercent) / 100)
+        : 0;
+    setValue('amount', roundToCents(base + fee), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
   // Amount input change while entering in a foreign currency.
@@ -785,21 +758,13 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
   };
 
   // Currency picker selection. '' (or the account currency) resets to an
-  // ordinary account-currency transaction, clearing the FX fields and fee row.
+  // ordinary account-currency transaction, clearing the FX fields.
   const handleEntryCurrencyChange = (code: string) => {
     rateOverriddenRef.current = false;
     if (!code || code.toUpperCase() === accountCurrency.toUpperCase()) {
       setEntryCurrency('');
       setForeignAmount(undefined);
       setFxRate(null);
-      // Drop the auto fee row; collapse to a normal transaction when a single
-      // category row remains.
-      const editable = splits.filter((s) => !s.isFxFee);
-      if (editable.length <= 1) {
-        handleConvertToRegular(editable[0]?.categoryId);
-      } else {
-        setSplits(editable);
-      }
       return;
     }
     setEntryCurrency(code);
@@ -1172,8 +1137,9 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
     ) : undefined;
 
   // FX panel shown beneath the Amount input while entering a foreign currency:
-  // the editable converted account-currency base, the rate caption, and a
-  // no-rate warning when the pair/date could not be resolved.
+  // the editable converted account-currency base, the rate caption, a no-rate
+  // warning when the pair/date could not be resolved, and -- when the account
+  // has a foreign-transaction fee -- the fee and resulting total.
   const fxPanelSlot = isForeign ? (
     <div className="mt-2 space-y-1">
       <CurrencyInput
@@ -1201,6 +1167,15 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           })}
         </p>
       ) : null}
+      {fxFeeApplies && fxTotal !== undefined && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {t('form.fx.feeCaption', {
+            percent: fxFeePercent as number,
+            fee: formatCurrency(Math.abs(fxFeeAmount), accountCurrency),
+            total: formatCurrency(fxTotal, accountCurrency),
+          })}
+        </p>
+      )}
     </div>
   ) : undefined;
 

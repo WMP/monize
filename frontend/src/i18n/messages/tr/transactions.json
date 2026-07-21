@@ -414,7 +414,8 @@
         "original": "Orijinal"
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
-      "feeAutoBadge": "auto"
+      "feeAutoBadge": "auto",
+      "feeCaption": "%{percent} yurt dışı işlem ücreti ({fee}) içerir. Toplam: {total}."
     }
   },
   "splitEditor": {

@@ -414,7 +414,8 @@
         "original": "Asli"
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
-      "feeAutoBadge": "auto"
+      "feeAutoBadge": "auto",
+      "feeCaption": "Termasuk biaya transaksi luar negeri {percent}% ({fee}). Total: {total}."
     }
   },
   "splitEditor": {

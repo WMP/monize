@@ -251,7 +251,11 @@ vi.mock('@/lib/exchange-rates', () => ({
 }));
 
 vi.mock('@/hooks/useNumberFormat', () => ({
-  useNumberFormat: () => ({ defaultCurrency: 'CAD' }),
+  useNumberFormat: () => ({
+    defaultCurrency: 'CAD',
+    formatCurrency: (amount: number, currency: string) =>
+      `${currency} ${(Math.round(amount * 100) / 100).toFixed(2)}`,
+  }),
 }));
 
 vi.mock('@/lib/format', () => ({
@@ -3599,6 +3603,43 @@ describe('TransactionForm', () => {
       await waitFor(() =>
         expect(screen.getByText(/Converted amount \(CAD\)/)).toBeInTheDocument(),
       );
+    });
+
+    it('folds the bank fee into the amount without creating a split', async () => {
+      // acc-1 configured with a 2.5% foreign-transaction fee.
+      const feeAccount = { ...mockAccounts[0], fxFeePercent: 2.5, fxFeeCategoryId: 'cat-1' };
+      mockAccountsGetAll.mockResolvedValue([feeAccount, ...mockAccounts.slice(1)]);
+
+      render(
+        <TransactionForm
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+          defaultAccountId="acc-1"
+        />,
+      );
+      await waitFor(() => expect(mockAccountsGetAll).toHaveBeenCalled());
+
+      // Pick EUR, then type a foreign amount into the Amount field.
+      await act(async () => {
+        fireEvent.click(screen.getByLabelText('Change entry currency'));
+      });
+      await waitFor(() => expect(screen.getByText(/EUR Euro/)).toBeInTheDocument());
+      await act(async () => {
+        fireEvent.click(screen.getByText(/EUR Euro/));
+      });
+      await waitFor(() => expect(mockGetRateForDate).toHaveBeenCalled());
+
+      const amountInput = screen.getAllByPlaceholderText('0.00')[0];
+      await act(async () => {
+        fireEvent.change(amountInput, { target: { value: '100' } });
+        fireEvent.blur(amountInput);
+      });
+
+      // The fee is shown as a caption, and NO split editor was created.
+      await waitFor(() =>
+        expect(screen.getByText(/foreign transaction fee/i)).toBeInTheDocument(),
+      );
+      expect(screen.queryByTestId('split-editor')).not.toBeInTheDocument();
     });
   });
 });

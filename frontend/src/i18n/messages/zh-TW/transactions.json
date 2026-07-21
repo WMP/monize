@@ -414,7 +414,8 @@
         "original": "原幣別"
       },
       "rateCaption": "1 {from} = {rate} {to} ({date})",
-      "feeAutoBadge": "auto"
+      "feeAutoBadge": "auto",
+      "feeCaption": "包含 {percent}% 境外交易手續費（{fee}）。合計：{total}。"
     }
   },
   "splitEditor": {

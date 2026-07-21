@@ -414,7 +414,8 @@
       "displayToggle": {
         "account": "Account",
         "original": "Original"
-      }
+      },
+      "feeCaption": "Includes a {percent}% foreign transaction fee ({fee}). Total: {total}."
     }
   },
   "splitEditor": {
