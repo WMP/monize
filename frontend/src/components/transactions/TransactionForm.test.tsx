@@ -255,6 +255,7 @@ vi.mock('@/hooks/useNumberFormat', () => ({
     defaultCurrency: 'CAD',
     formatCurrency: (amount: number, currency: string) =>
       `${currency} ${(Math.round(amount * 100) / 100).toFixed(2)}`,
+    formatNumber: (value: number, decimals: number = 2) => value.toFixed(decimals),
   }),
 }));
 
@@ -3605,6 +3606,11 @@ describe('TransactionForm', () => {
       );
       // The primary amount field is relabelled to the entry currency.
       expect(screen.getByText('Total in EUR')).toBeInTheDocument();
+      // The rate caption renders the rate through the number formatter (4 dp)
+      // and the date through the user's date formatter.
+      await waitFor(() =>
+        expect(screen.getByText(/1 EUR = 1\.5000 CAD/)).toBeInTheDocument(),
+      );
     });
 
     it('folds the bank fee into the amount without creating a split', async () => {
