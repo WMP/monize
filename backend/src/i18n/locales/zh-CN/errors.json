@@ -467,7 +467,8 @@
   "loanScenarios": {
     "notFound": "未找到 ID 为 {{ id }} 的贷款方案",
     "nameConflict": "此账户已存在名为\"{{ name }}\"的方案",
-    "notLoanAccount": "贷款方案仅适用于贷款、抵押贷款和信用额度账户"
+    "notLoanAccount": "贷款方案仅适用于贷款、抵押贷款和信用额度账户",
+    "budgetWindowInverted": "预算期间的开始日期必须不晚于其结束日期"
   },
   "loanRateChanges": {
     "notFound": "未找到 ID 为 {{ id }} 的利率变更",

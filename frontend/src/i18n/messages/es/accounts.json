@@ -445,7 +445,8 @@
       "oneOffDateLabel": "Fecha",
       "budgetLabel": "Pago mensual total",
       "budgetHint": "Destina cada mes un total fijo al préstamo; la amortización es lo que queda tras la cuota. Al bajar la cuota, la amortización crece para mantener el total.",
-      "budgetBelowInstallment": "Es inferior a la cuota actual ({amount}); auméntalo para amortizar de más."
+      "budgetBelowInstallment": "Es inferior a la cuota actual ({amount}); auméntalo para amortizar de más.",
+      "windowInverted": "La fecha de inicio es posterior a la fecha final, por lo que este plan nunca se aplica."
     },
     "comparison": {
       "newPayoff": "Nueva fecha de liquidación",

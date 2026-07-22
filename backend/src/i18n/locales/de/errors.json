@@ -467,7 +467,8 @@
   "loanScenarios": {
     "notFound": "Kreditszenario mit ID {{ id }} nicht gefunden",
     "nameConflict": "Ein Szenario namens \"{{ name }}\" existiert bereits für dieses Konto",
-    "notLoanAccount": "Kreditszenarien sind nur für Kredit-, Hypotheken- und Kreditlinienkonten verfügbar"
+    "notLoanAccount": "Kreditszenarien sind nur für Kredit-, Hypotheken- und Kreditlinienkonten verfügbar",
+    "budgetWindowInverted": "Das Startdatum des Budgetzeitraums darf nicht nach dem Enddatum liegen"
   },
   "loanRateChanges": {
     "notFound": "Zinssatzänderung mit ID {{ id }} nicht gefunden",

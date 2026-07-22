@@ -445,7 +445,8 @@
       "oneOffDateLabel": "日期",
       "budgetLabel": "每月总还款",
       "budgetHint": "每月为贷款支出固定总额；还款之外剩下的就是额外还款。还款额下降时，额外还款增加以保持总额不变。",
-      "budgetBelowInstallment": "低于当前还款额（{amount}）；提高金额才能额外还款。"
+      "budgetBelowInstallment": "低于当前还款额（{amount}）；提高金额才能额外还款。",
+      "windowInverted": "开始日期晚于结束日期，因此此计划永远不会生效。"
     },
     "comparison": {
       "newPayoff": "新的还清日期",

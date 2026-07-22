@@ -467,7 +467,8 @@
   "loanScenarios": {
     "notFound": "Cenário de empréstimo com o ID {{ id }} não encontrado",
     "nameConflict": "Já existe um cenário chamado \"{{ name }}\" para esta conta",
-    "notLoanAccount": "Os cenários de empréstimo só estão disponíveis para contas de empréstimo, hipoteca e linha de crédito"
+    "notLoanAccount": "Os cenários de empréstimo só estão disponíveis para contas de empréstimo, hipoteca e linha de crédito",
+    "budgetWindowInverted": "A data de início do período do orçamento deve ser igual ou anterior à data final"
   },
   "loanRateChanges": {
     "notFound": "Alteração de taxa com ID {{ id }} não encontrada",

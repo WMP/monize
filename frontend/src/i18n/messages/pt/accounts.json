@@ -445,7 +445,8 @@
       "oneOffDateLabel": "Data",
       "budgetLabel": "Pagamento mensal total",
       "budgetHint": "Gaste um total fixo no empréstimo todos os meses; a amortização é o que sobra depois da prestação. Quando a prestação desce, a amortização cresce para manter o total.",
-      "budgetBelowInstallment": "É inferior à prestação atual ({amount}); aumente para amortizar."
+      "budgetBelowInstallment": "É inferior à prestação atual ({amount}); aumente para amortizar.",
+      "windowInverted": "A data de início é posterior à data final, pelo que este plano nunca se aplica."
     },
     "comparison": {
       "newPayoff": "Nova data de liquidação",

@@ -445,7 +445,8 @@
       "oneOffDateLabel": "日付",
       "budgetLabel": "毎月の支払い総額",
       "budgetHint": "毎月、ローンに一定の総額を充てます。繰上返済は返済額を差し引いた残りです。返済額が下がると、総額を保つよう繰上返済が増えます。",
-      "budgetBelowInstallment": "現在の返済額（{amount}）を下回っています。繰上返済するには増やしてください。"
+      "budgetBelowInstallment": "現在の返済額（{amount}）を下回っています。繰上返済するには増やしてください。",
+      "windowInverted": "開始日が終了日より後のため、このプランは適用されません。"
     },
     "comparison": {
       "newPayoff": "新しい完済日",

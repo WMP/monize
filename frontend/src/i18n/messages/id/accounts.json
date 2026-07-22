@@ -445,7 +445,8 @@
       "oneOffDateLabel": "Tanggal",
       "budgetLabel": "Total pembayaran bulanan",
       "budgetHint": "Keluarkan total tetap untuk pinjaman tiap bulan; pembayaran ekstra adalah sisa setelah angsuran. Saat angsuran turun, pembayaran ekstra naik agar totalnya tetap.",
-      "budgetBelowInstallment": "Ini di bawah angsuran saat ini ({amount}); naikkan agar bisa membayar lebih."
+      "budgetBelowInstallment": "Ini di bawah angsuran saat ini ({amount}); naikkan agar bisa membayar lebih.",
+      "windowInverted": "Tanggal mulai berada setelah tanggal akhir, sehingga rencana ini tidak akan pernah berlaku."
     },
     "comparison": {
       "newPayoff": "Tanggal Lunas Baru",

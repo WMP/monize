@@ -445,7 +445,8 @@
       "oneOffDateLabel": "Ngày",
       "budgetLabel": "Tổng thanh toán hàng tháng",
       "budgetHint": "Mỗi tháng chi một tổng cố định cho khoản vay; phần trả thêm là phần còn lại sau khoản trả. Khi khoản trả giảm, phần trả thêm tăng để giữ tổng không đổi.",
-      "budgetBelowInstallment": "Thấp hơn khoản trả hiện tại ({amount}); tăng lên để trả thêm."
+      "budgetBelowInstallment": "Thấp hơn khoản trả hiện tại ({amount}); tăng lên để trả thêm.",
+      "windowInverted": "Ngày bắt đầu nằm sau ngày kết thúc nên kế hoạch này không bao giờ được áp dụng."
     },
     "comparison": {
       "newPayoff": "Ngày trả hết mới",

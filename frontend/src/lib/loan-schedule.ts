@@ -118,10 +118,10 @@ export interface OverpaymentPlan {
   targetMonthlyPayment?: number;
   /**
    * How the budget's installment/overpayment split is shown. LOWER_INSTALLMENT
-   * re-amortizes the installment each period (it shrinks, the overpayment
-   * grows); SHORTEN_TERM (default) keeps the contractual installment fixed and
-   * the overpayment constant. The balance and payoff are identical either way --
-   * only the split differs.
+   * (default, matching how banks apply overpayments) re-amortizes the
+   * installment each period (it shrinks, the overpayment grows); SHORTEN_TERM
+   * keeps the contractual installment fixed and the overpayment constant. The
+   * balance and payoff are identical either way -- only the split differs.
    */
   targetMonthlyPaymentMode?: OverpaymentMode;
   /** ISO date (yyyy-MM-dd); the budget applies from the first payment when
@@ -432,7 +432,7 @@ function solvePayment(principal: number, periodicRate: number, totalPayments: nu
 export function generateBudgetSchedule(
   input: LoanScheduleInput,
   budget: number,
-  mode: OverpaymentMode = 'SHORTEN_TERM',
+  mode: OverpaymentMode = 'LOWER_INSTALLMENT',
   window: { startDate?: string; endDate?: string } = {},
 ): LoanScheduleResult {
   const {
@@ -544,7 +544,11 @@ export function generateBudgetSchedule(
     cumulativeInterest += interest;
     totalPaid += payment;
     totalExtraPrincipal += overpayment;
-    lastInstallment = regularInstallment;
+    // Track the level installment (contractual for SHORTEN_TERM, re-amortized
+    // for LOWER_INSTALLMENT) rather than the payoff-capped split, so
+    // finalPaymentAmount matches the normal loop's semantics and the
+    // comparison table never reports the residual catch-up as "the payment".
+    lastInstallment = installment;
     paymentNumber++;
 
     rows.push({
@@ -588,7 +592,7 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
     return generateBudgetSchedule(
       input,
       budget,
-      input.overpayments?.targetMonthlyPaymentMode ?? 'SHORTEN_TERM',
+      input.overpayments?.targetMonthlyPaymentMode ?? 'LOWER_INSTALLMENT',
       {
         startDate: input.overpayments?.targetMonthlyPaymentStart,
         endDate: input.overpayments?.targetMonthlyPaymentEnd,

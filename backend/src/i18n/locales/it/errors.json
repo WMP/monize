@@ -467,7 +467,8 @@
   "loanScenarios": {
     "notFound": "Scenario di prestito con ID {{ id }} non trovato",
     "nameConflict": "Uno scenario denominato \"{{ name }}\" esiste già per questo conto",
-    "notLoanAccount": "Gli scenari di prestito sono disponibili solo per conti di prestito, mutuo e linea di credito"
+    "notLoanAccount": "Gli scenari di prestito sono disponibili solo per conti di prestito, mutuo e linea di credito",
+    "budgetWindowInverted": "La data di inizio del periodo del budget deve essere uguale o precedente alla data di fine"
   },
   "loanRateChanges": {
     "notFound": "Variazione del tasso con ID {{ id }} non trovata",

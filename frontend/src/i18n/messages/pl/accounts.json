@@ -445,7 +445,8 @@
       "oneOffDateLabel": "Data",
       "budgetLabel": "Łączna miesięczna płatność",
       "budgetHint": "Przeznacz co miesiąc stałą łączną kwotę na kredyt; nadpłata to reszta po racie. Gdy rata maleje, nadpłata rośnie, żeby łączna kwota była taka sama.",
-      "budgetBelowInstallment": "To mniej niż obecna rata ({amount}); zwiększ, aby nadpłacać."
+      "budgetBelowInstallment": "To mniej niż obecna rata ({amount}); zwiększ, aby nadpłacać.",
+      "windowInverted": "Data początkowa jest późniejsza niż końcowa, więc ten plan nigdy nie zadziała."
     },
     "comparison": {
       "newPayoff": "Nowa data spłaty",

@@ -157,7 +157,8 @@ export function OverpaymentSimulator({
 
   const isOneOff = form.frequency === 'ONE_OFF';
   const isBudget = form.simType === 'BUDGET';
-  const canGoalSeek = !!projectionInput;
+  // Goal-seeking and the budget simulation both need a projection to work from.
+  const hasProjection = !!projectionInput;
 
   // Apply an externally loaded plan when its version changes (info-from-
   // previous-render pattern; no setState in effect)
@@ -309,6 +310,11 @@ export function OverpaymentSimulator({
     projectionInput != null &&
     form.budget < projectionInput.paymentAmount;
 
+  // An inverted window (start after end) is never true, so the plan would
+  // silently do nothing; warn instead of leaving the chart unchanged.
+  const windowInverted =
+    form.startDate !== '' && form.endDate !== '' && form.startDate > form.endDate;
+
   const showDetectedHint =
     detectedExtra !== null &&
     form.simType === 'AMOUNT' &&
@@ -397,8 +403,8 @@ export function OverpaymentSimulator({
             label={t('loanDetail.simulator.simulationTypeLabel')}
             value={form.simType}
             onChange={handleSimTypeChange}
-            goalSeekAvailable={canGoalSeek && !isOneOff}
-            budgetAvailable={canGoalSeek}
+            goalSeekAvailable={hasProjection && !isOneOff}
+            budgetAvailable={hasProjection}
           />
         </div>
 
@@ -465,6 +471,11 @@ export function OverpaymentSimulator({
           {t('loanDetail.simulator.budgetBelowInstallment', {
             amount: formatCurrency(projectionInput.paymentAmount, currencyCode),
           })}
+        </p>
+      )}
+      {windowInverted && (
+        <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
+          {t('loanDetail.simulator.windowInverted')}
         </p>
       )}
 

@@ -445,7 +445,8 @@
       "oneOffDateLabel": "Datum",
       "budgetLabel": "Totale maandelijkse betaling",
       "budgetHint": "Besteed elke maand een vast totaal aan de lening; de extra aflossing is wat er na de termijn overblijft. Daalt de termijn, dan groeit de extra aflossing zodat het totaal gelijk blijft.",
-      "budgetBelowInstallment": "Dat is lager dan de huidige termijn ({amount}); verhoog het om extra af te lossen."
+      "budgetBelowInstallment": "Dat is lager dan de huidige termijn ({amount}); verhoog het om extra af te lossen.",
+      "windowInverted": "De startdatum ligt na de einddatum, dus dit plan wordt nooit toegepast."
     },
     "comparison": {
       "newPayoff": "Nieuwe aflossingsdatum",

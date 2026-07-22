@@ -303,4 +303,25 @@ describe('OverpaymentSimulator', () => {
       targetMonthlyPaymentMode: 'SHORTEN_TERM',
     });
   });
+
+  it('warns when the window is inverted (start after end)', async () => {
+    await renderSimulator({ projectionInput });
+
+    const warning = 'The starting date is after the until date, so this plan never applies.';
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Simulation type'), { target: { value: 'BUDGET' } });
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Total monthly payment'), { target: { value: '4000' } });
+      fireEvent.change(screen.getByLabelText('Starting (optional)'), { target: { value: '2027-08-01' } });
+      fireEvent.change(screen.getByLabelText('Until (optional)'), { target: { value: '2026-08-01' } });
+    });
+    expect(screen.getByText(warning)).toBeInTheDocument();
+
+    // Fixing the order clears the warning.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Until (optional)'), { target: { value: '2027-12-01' } });
+    });
+    expect(screen.queryByText(warning)).not.toBeInTheDocument();
+  });
 });

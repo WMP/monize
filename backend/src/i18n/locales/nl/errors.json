@@ -467,7 +467,8 @@
   "loanScenarios": {
     "notFound": "Leningscenario met ID {{ id }} niet gevonden",
     "nameConflict": "Er bestaat al een scenario met de naam \"{{ name }}\" voor deze rekening",
-    "notLoanAccount": "Leningscenario's zijn alleen beschikbaar voor lening-, hypotheek- en kredietlijnrekeningen"
+    "notLoanAccount": "Leningscenario's zijn alleen beschikbaar voor lening-, hypotheek- en kredietlijnrekeningen",
+    "budgetWindowInverted": "De startdatum van de budgetperiode moet op of voor de einddatum liggen"
   },
   "loanRateChanges": {
     "notFound": "Renteverandering met ID {{ id }} niet gevonden",

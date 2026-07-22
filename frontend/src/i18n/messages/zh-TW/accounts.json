@@ -445,7 +445,8 @@
       "oneOffDateLabel": "日期",
       "budgetLabel": "每月總還款",
       "budgetHint": "每月為貸款支出固定總額；還款之外剩下的就是額外還款。還款額下降時，額外還款增加以保持總額不變。",
-      "budgetBelowInstallment": "低於目前的還款額（{amount}）；提高金額才能額外還款。"
+      "budgetBelowInstallment": "低於目前的還款額（{amount}）；提高金額才能額外還款。",
+      "windowInverted": "開始日期晚於結束日期，因此此計畫永遠不會生效。"
     },
     "comparison": {
       "newPayoff": "新的還清日期",

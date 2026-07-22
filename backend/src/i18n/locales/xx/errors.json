@@ -467,7 +467,8 @@
   "loanScenarios": {
     "notFound": "[XX-Loan scenario with ID {{ id }} not found-XX]",
     "nameConflict": "[XX-A scenario named \"{{ name }}\" already exists for this account-XX]",
-    "notLoanAccount": "[XX-Loan scenarios are only available for loan, mortgage, and line of credit accounts-XX]"
+    "notLoanAccount": "[XX-Loan scenarios are only available for loan, mortgage, and line of credit accounts-XX]",
+    "budgetWindowInverted": "[XX-The budget window's starting date must be on or before its until date-XX]"
   },
   "loanRateChanges": {
     "notFound": "[XX-Rate change with ID {{ id }} not found-XX]",

@@ -489,6 +489,7 @@
       "budgetLabel": "Total monthly payment",
       "budgetHint": "Spend a fixed total on the loan each month; the overpayment is whatever is left after the installment. As the installment falls, the overpayment grows to keep the total the same.",
       "budgetBelowInstallment": "That's below the current installment ({amount}); raise it above to overpay.",
+      "windowInverted": "The starting date is after the until date, so this plan never applies.",
       "frequencyLabel": "Frequency",
       "frequencyOneOff": "One-off",
       "frequencyWeekly": "Weekly",

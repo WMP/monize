@@ -467,7 +467,8 @@
   "loanScenarios": {
     "notFound": "Nie znaleziono scenariusza kredytu o identyfikatorze {{ id }}",
     "nameConflict": "Scenariusz o nazwie \"{{ name }}\" już istnieje dla tego konta",
-    "notLoanAccount": "Scenariusze kredytowe są dostępne tylko dla kont kredytów, hipotek i linii kredytowych"
+    "notLoanAccount": "Scenariusze kredytowe są dostępne tylko dla kont kredytów, hipotek i linii kredytowych",
+    "budgetWindowInverted": "Data początkowa okresu budżetu musi przypadać najpóźniej w dniu daty końcowej"
   },
   "loanRateChanges": {
     "notFound": "Nie znaleziono zmiany oprocentowania o ID {{ id }}",

@@ -751,6 +751,44 @@ describe('generateBudgetSchedule (fixed monthly budget)', () => {
     expect(nonFinal[0].extraPrincipal).toBeCloseTo(nonFinal[nonFinal.length - 1].extraPrincipal, 1);
   });
 
+  it('reports the level installment as finalPaymentAmount, never the payoff residual', () => {
+    const budget = 4000;
+    const base = budgetInput();
+    const shorten = generateLoanSchedule({
+      ...base,
+      overpayments: { targetMonthlyPayment: budget, targetMonthlyPaymentMode: 'SHORTEN_TERM' },
+    });
+    // Shorten-term never re-amortizes: the comparison table must see the
+    // contractual installment, not the final row's small catch-up total.
+    expect(shorten.finalPaymentAmount).toBeCloseTo(base.paymentAmount, 2);
+
+    const lower = generateLoanSchedule({
+      ...base,
+      overpayments: { targetMonthlyPayment: budget, targetMonthlyPaymentMode: 'LOWER_INSTALLMENT' },
+    });
+    // Lower-installment reports the last re-amortized installment -- the same
+    // uncapped level the second-to-last row shows, not the payoff-capped split.
+    const secondToLast = lower.rows[lower.rows.length - 2];
+    expect(lower.finalPaymentAmount).toBeLessThanOrEqual(secondToLast.payment);
+    expect(lower.finalPaymentAmount).toBeGreaterThan(0);
+  });
+
+  it('defaults the mode to lower-installment when the plan omits it', () => {
+    const base = budgetInput();
+    const omitted = generateLoanSchedule({
+      ...base,
+      overpayments: { targetMonthlyPayment: 4000 },
+    });
+    const lower = generateLoanSchedule({
+      ...base,
+      overpayments: { targetMonthlyPayment: 4000, targetMonthlyPaymentMode: 'LOWER_INSTALLMENT' },
+    });
+    // The omitted-mode split matches lower-installment (the product default),
+    // not shorten-term's fixed contractual installment.
+    expect(omitted.rows[5].payment).toBeCloseTo(lower.rows[5].payment, 2);
+    expect(omitted.rows[5].payment).toBeLessThan(base.paymentAmount);
+  });
+
   it('never lets the total exceed the budget and pays off on the last row', () => {
     const budget = 3000;
     const result = generateLoanSchedule({

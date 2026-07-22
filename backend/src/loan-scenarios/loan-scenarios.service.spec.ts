@@ -169,6 +169,47 @@ describe("LoanScenariosService", () => {
       expect(result.lumpSums).toEqual([]);
     });
 
+    it("persists a full budget scenario (amount, mode and window)", async () => {
+      queryBuilderMock.getOne.mockResolvedValue(null);
+      scenariosRepository.create.mockImplementation((data) => data);
+      scenariosRepository.save.mockImplementation((data) =>
+        Promise.resolve({ ...data, id: "scenario-budget" }),
+      );
+
+      const result = await service.create(userId, accountId, {
+        name: "Budget 4000",
+        targetMonthlyPayment: 4000,
+        targetMonthlyPaymentMode: "LOWER_INSTALLMENT",
+        targetMonthlyPaymentStartDate: "2026-08-01",
+        targetMonthlyPaymentEndDate: "2027-08-01",
+      });
+
+      expect(scenariosRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetMonthlyPayment: 4000,
+          targetMonthlyPaymentMode: "LOWER_INSTALLMENT",
+          targetMonthlyPaymentStartDate: "2026-08-01",
+          targetMonthlyPaymentEndDate: "2027-08-01",
+        }),
+      );
+      expect(result.targetMonthlyPayment).toBe(4000);
+      expect(result.targetMonthlyPaymentMode).toBe("LOWER_INSTALLMENT");
+    });
+
+    it("rejects an inverted budget window (start after end)", async () => {
+      queryBuilderMock.getOne.mockResolvedValue(null);
+
+      await expect(
+        service.create(userId, accountId, {
+          name: "Bad window",
+          targetMonthlyPayment: 4000,
+          targetMonthlyPaymentStartDate: "2027-08-01",
+          targetMonthlyPaymentEndDate: "2026-08-01",
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(scenariosRepository.save).not.toHaveBeenCalled();
+    });
+
     it("rejects a duplicate name case-insensitively", async () => {
       queryBuilderMock.getOne.mockResolvedValue(mockScenario);
 
@@ -215,6 +256,31 @@ describe("LoanScenariosService", () => {
       });
 
       expect(result.recurringExtraAmount).toBeNull();
+    });
+
+    it("persists the budget fields it is given", async () => {
+      const result = await service.update(userId, accountId, "scenario-1", {
+        targetMonthlyPayment: 3500,
+        targetMonthlyPaymentMode: "SHORTEN_TERM",
+      });
+
+      expect(result.targetMonthlyPayment).toBe(3500);
+      expect(result.targetMonthlyPaymentMode).toBe("SHORTEN_TERM");
+    });
+
+    it("rejects a partial update that inverts the stored window", async () => {
+      scenariosRepository.findOne.mockResolvedValue({
+        ...mockScenario,
+        targetMonthlyPaymentStartDate: "2026-08-01",
+        targetMonthlyPaymentEndDate: "2027-08-01",
+      });
+
+      await expect(
+        service.update(userId, accountId, "scenario-1", {
+          targetMonthlyPaymentEndDate: "2026-01-01",
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(scenariosRepository.save).not.toHaveBeenCalled();
     });
 
     it("checks the new name for conflicts", async () => {

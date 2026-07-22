@@ -467,7 +467,8 @@
   "loanScenarios": {
     "notFound": "找不到 ID 為 {{ id }} 的貸款情境",
     "nameConflict": "此帳戶已存在名為「{{ name }}」的情境",
-    "notLoanAccount": "貸款情境僅適用於貸款、抵押貸款和信用額度帳戶"
+    "notLoanAccount": "貸款情境僅適用於貸款、抵押貸款和信用額度帳戶",
+    "budgetWindowInverted": "預算期間的開始日期必須不晚於其結束日期"
   },
   "loanRateChanges": {
     "notFound": "找不到 ID 為 {{ id }} 的利率變更",

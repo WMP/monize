@@ -445,7 +445,8 @@
       "oneOffDateLabel": "Data",
       "budgetLabel": "Pagamento mensile totale",
       "budgetHint": "Destina ogni mese un totale fisso al prestito; il versamento extra è ciò che resta dopo la rata. Quando la rata cala, il versamento cresce per mantenere lo stesso totale.",
-      "budgetBelowInstallment": "È inferiore alla rata attuale ({amount}); aumentalo per versare di più."
+      "budgetBelowInstallment": "È inferiore alla rata attuale ({amount}); aumentalo per versare di più.",
+      "windowInverted": "La data di inizio è successiva alla data di fine, quindi questo piano non si applica mai."
     },
     "comparison": {
       "newPayoff": "Nuova data di estinzione",

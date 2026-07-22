@@ -42,6 +42,10 @@ export class LoanScenariosService {
   ): Promise<LoanScenario> {
     await this.verifyLoanAccount(userId, accountId);
     await this.rejectDuplicateName(userId, accountId, dto.name);
+    this.rejectInvertedBudgetWindow(
+      dto.targetMonthlyPaymentStartDate ?? null,
+      dto.targetMonthlyPaymentEndDate ?? null,
+    );
 
     const scenario = this.scenariosRepository.create({
       name: dto.name,
@@ -104,7 +108,32 @@ export class LoanScenariosService {
         : {}),
       ...(dto.lumpSums !== undefined ? { lumpSums: dto.lumpSums } : {}),
     });
+    // Validate the merged state, so a partial update cannot invert the window
+    // that the other, unchanged date still forms.
+    this.rejectInvertedBudgetWindow(
+      updated.targetMonthlyPaymentStartDate,
+      updated.targetMonthlyPaymentEndDate,
+    );
     return this.scenariosRepository.save(updated);
+  }
+
+  /**
+   * An inverted budget window (start after end) can never be true, so the
+   * engine would silently ignore the budget; reject it instead of storing a
+   * scenario that does nothing.
+   */
+  private rejectInvertedBudgetWindow(
+    startDate: string | null,
+    endDate: string | null,
+  ): void {
+    if (startDate && endDate && startDate > endDate) {
+      throw new BadRequestException(
+        tr(
+          "errors.loanScenarios.budgetWindowInverted",
+          "The budget window's starting date must be on or before its until date",
+        ),
+      );
+    }
   }
 
   async remove(userId: string, accountId: string, id: string): Promise<void> {

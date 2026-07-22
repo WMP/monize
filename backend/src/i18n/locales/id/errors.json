@@ -467,7 +467,8 @@
   "loanScenarios": {
     "notFound": "Skenario pinjaman dengan ID {{ id }} tidak ditemukan",
     "nameConflict": "Skenario bernama \"{{ name }}\" sudah ada untuk akun ini",
-    "notLoanAccount": "Skenario pinjaman hanya tersedia untuk akun pinjaman, hipotek, dan jalur kredit"
+    "notLoanAccount": "Skenario pinjaman hanya tersedia untuk akun pinjaman, hipotek, dan jalur kredit",
+    "budgetWindowInverted": "Tanggal mulai periode anggaran harus pada atau sebelum tanggal akhirnya"
   },
   "loanRateChanges": {
     "notFound": "Perubahan suku bunga dengan ID {{ id }} tidak ditemukan",

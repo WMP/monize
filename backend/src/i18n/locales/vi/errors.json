@@ -467,7 +467,8 @@
   "loanScenarios": {
     "notFound": "Không tìm thấy kịch bản khoản vay có ID {{ id }}",
     "nameConflict": "Kịch bản có tên \"{{ name }}\" đã tồn tại cho tài khoản này",
-    "notLoanAccount": "Kịch bản khoản vay chỉ khả dụng cho tài khoản khoản vay, thế chấp và hạn mức tín dụng"
+    "notLoanAccount": "Kịch bản khoản vay chỉ khả dụng cho tài khoản khoản vay, thế chấp và hạn mức tín dụng",
+    "budgetWindowInverted": "Ngày bắt đầu của giai đoạn ngân sách phải trùng hoặc trước ngày kết thúc"
   },
   "loanRateChanges": {
     "notFound": "Không tìm thấy thay đổi lãi suất có ID {{ id }}",

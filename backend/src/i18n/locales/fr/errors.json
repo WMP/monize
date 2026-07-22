@@ -467,7 +467,8 @@
   "loanScenarios": {
     "notFound": "Scénario de prêt avec l'ID {{ id }} introuvable",
     "nameConflict": "Un scénario nommé « {{ name }} » existe déjà pour ce compte",
-    "notLoanAccount": "Les scénarios de prêt ne sont disponibles que pour les comptes de prêt, d'hypothèque et de marge de crédit"
+    "notLoanAccount": "Les scénarios de prêt ne sont disponibles que pour les comptes de prêt, d'hypothèque et de marge de crédit",
+    "budgetWindowInverted": "La date de début de la période du budget doit être antérieure ou égale à sa date de fin"
   },
   "loanRateChanges": {
     "notFound": "Changement de taux avec l'ID {{ id }} introuvable",
