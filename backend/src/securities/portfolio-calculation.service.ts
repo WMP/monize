@@ -6,7 +6,12 @@ import {
   InvestmentTransaction,
   InvestmentAction,
 } from "./entities/investment-transaction.entity";
-import { Account, AccountSubType } from "../accounts/entities/account.entity";
+import {
+  Account,
+  AccountSubType,
+  CapitalGainsTaxMode,
+} from "../accounts/entities/account.entity";
+import { estimateCapitalGainsTax } from "../accounts/investment-tax.util";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import {
   HoldingWithMarketValue,
@@ -68,6 +73,18 @@ export interface RealizedGainEntry {
   proceeds: number;
   costBasis: number;
   realizedGain: number;
+  /**
+   * Simplified estimate of the tax on this disposal, derived from the tax
+   * settings of the account that held the position. Each account is estimated
+   * against its own settings, so a portfolio spanning a taxable brokerage
+   * account and an IKE never has one rate applied across the whole of it.
+   */
+  capitalGainsTaxMode: CapitalGainsTaxMode;
+  /** Percentage applied; 0 when the account charges no capital gains tax. */
+  capitalGainsTaxRate: number;
+  /** The amount the rate was applied to: the positive profit, or the sale value. */
+  taxableBase: number;
+  estimatedTax: number;
 }
 
 /**
@@ -745,6 +762,18 @@ export class PortfolioCalculationService {
             const realizedGain = proceeds - costBasisSold;
 
             if (!startDate || tx.transactionDate >= startDate) {
+              // totalAmount is net of commission, so the commission is already
+              // out of the profit; passing it again as an eligible fee would
+              // deduct it twice.
+              const tax = estimateCapitalGainsTax(
+                {
+                  capitalGainsTaxMode:
+                    tx.account?.capitalGainsTaxMode ?? "none",
+                  capitalGainsTaxRate: tx.account?.capitalGainsTaxRate ?? null,
+                },
+                { saleValue: proceeds, acquisitionCost: costBasisSold },
+              );
+
               results.push({
                 transactionId: tx.id,
                 transactionDate: tx.transactionDate,
@@ -761,6 +790,10 @@ export class PortfolioCalculationService {
                 proceeds: roundMoney(proceeds),
                 costBasis: roundMoney(costBasisSold),
                 realizedGain: roundMoney(realizedGain),
+                capitalGainsTaxMode: tax.mode,
+                capitalGainsTaxRate: tax.rate,
+                taxableBase: tax.taxableBase,
+                estimatedTax: tax.estimatedTax,
               });
             }
           }

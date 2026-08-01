@@ -224,6 +224,170 @@ describe("PortfolioCalculationService.calculateRealizedGains", () => {
     expect(result[0].proceeds).toBe(500);
     expect(result[0].realizedGain).toBe(500);
   });
+
+  describe("estimated tax, taken from the account that held the position", () => {
+    const taxableAccount = {
+      id: accountId,
+      name: "Standard brokerage account",
+      currencyCode: "PLN",
+      capitalGainsTaxMode: "percentage_of_profit",
+      capitalGainsTaxRate: 19,
+    } as Partial<Account>;
+
+    const buyAndSell = (account: Partial<Account>) => [
+      makeTx({
+        id: "buy",
+        action: InvestmentAction.BUY,
+        transactionDate: "2024-01-10",
+        quantity: 100,
+        price: 250,
+        totalAmount: 25000,
+        account: account as never,
+      }),
+      makeTx({
+        id: "sell",
+        action: InvestmentAction.SELL,
+        transactionDate: "2024-06-10",
+        quantity: 100,
+        price: 300,
+        commission: 205.1,
+        totalAmount: 29794.9, // 100 * 300 - 205.10 commission
+        account: account as never,
+      }),
+    ];
+
+    it("taxes a profitable sale at the account's rate", async () => {
+      txRepo.find.mockResolvedValue(buyAndSell(taxableAccount));
+
+      const [sell] = await service.calculateRealizedGains(userId);
+
+      expect(sell.realizedGain).toBe(4794.9);
+      expect(sell.capitalGainsTaxMode).toBe("percentage_of_profit");
+      expect(sell.capitalGainsTaxRate).toBe(19);
+      expect(sell.taxableBase).toBe(4794.9);
+      expect(sell.estimatedTax).toBe(911.031);
+    });
+
+    it("estimates no tax on an account configured with none (IKE/IKZE)", async () => {
+      txRepo.find.mockResolvedValue(
+        buyAndSell({
+          ...taxableAccount,
+          name: "IKE",
+          capitalGainsTaxMode: "none",
+          capitalGainsTaxRate: null,
+        } as Partial<Account>),
+      );
+
+      const [sell] = await service.calculateRealizedGains(userId);
+
+      expect(sell.realizedGain).toBe(4794.9);
+      expect(sell.capitalGainsTaxMode).toBe("none");
+      expect(sell.estimatedTax).toBe(0);
+    });
+
+    it("estimates no tax on a loss rather than a negative tax", async () => {
+      txRepo.find.mockResolvedValue([
+        makeTx({
+          id: "buy",
+          action: InvestmentAction.BUY,
+          transactionDate: "2024-01-10",
+          quantity: 100,
+          price: 300,
+          totalAmount: 30000,
+          account: taxableAccount as never,
+        }),
+        makeTx({
+          id: "sell",
+          action: InvestmentAction.SELL,
+          transactionDate: "2024-06-10",
+          quantity: 100,
+          price: 250,
+          totalAmount: 25000,
+          account: taxableAccount as never,
+        }),
+      ]);
+
+      const [sell] = await service.calculateRealizedGains(userId);
+
+      expect(sell.realizedGain).toBe(-5000);
+      expect(sell.taxableBase).toBe(0);
+      expect(sell.estimatedTax).toBe(0);
+    });
+
+    it("taxes the sale value when the account is configured that way", async () => {
+      txRepo.find.mockResolvedValue(
+        buyAndSell({
+          ...taxableAccount,
+          capitalGainsTaxMode: "percentage_of_sale_value",
+          capitalGainsTaxRate: 0.5,
+        } as Partial<Account>),
+      );
+
+      const [sell] = await service.calculateRealizedGains(userId);
+
+      expect(sell.taxableBase).toBe(29794.9);
+      expect(sell.estimatedTax).toBe(148.9745);
+    });
+
+    it("estimates each account separately rather than applying one rate to the portfolio", async () => {
+      const ike = {
+        id: "acct-ike",
+        name: "IKE",
+        currencyCode: "PLN",
+        capitalGainsTaxMode: "none",
+        capitalGainsTaxRate: null,
+      } as Partial<Account>;
+
+      txRepo.find.mockResolvedValue([
+        ...buyAndSell(taxableAccount),
+        makeTx({
+          id: "ike-buy",
+          accountId: "acct-ike",
+          action: InvestmentAction.BUY,
+          transactionDate: "2024-01-10",
+          quantity: 100,
+          price: 250,
+          totalAmount: 25000,
+          account: ike as never,
+        }),
+        makeTx({
+          id: "ike-sell",
+          accountId: "acct-ike",
+          action: InvestmentAction.SELL,
+          transactionDate: "2024-06-10",
+          quantity: 100,
+          price: 300,
+          commission: 205.1,
+          totalAmount: 29794.9,
+          account: ike as never,
+        }),
+      ]);
+
+      const result = await service.calculateRealizedGains(userId);
+      const taxable = result.find((r) => r.transactionId === "sell");
+      const sheltered = result.find((r) => r.transactionId === "ike-sell");
+
+      // Identical trades, identical realized gain, different estimated tax.
+      expect(taxable?.realizedGain).toBe(sheltered?.realizedGain);
+      expect(taxable?.estimatedTax).toBe(911.031);
+      expect(sheltered?.estimatedTax).toBe(0);
+    });
+
+    it("treats an account with no settings loaded as untaxed rather than guessing", async () => {
+      txRepo.find.mockResolvedValue(
+        buyAndSell({
+          id: accountId,
+          name: "Legacy",
+          currencyCode: "PLN",
+        } as Partial<Account>),
+      );
+
+      const [sell] = await service.calculateRealizedGains(userId);
+
+      expect(sell.capitalGainsTaxMode).toBe("none");
+      expect(sell.estimatedTax).toBe(0);
+    });
+  });
 });
 
 describe("PortfolioCalculationService.calculateCapitalGainsByMonth", () => {
