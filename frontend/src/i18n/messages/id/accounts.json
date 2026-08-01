@@ -322,6 +322,26 @@
     "dateAcquired": "Tanggal Perolehan",
     "dateAcquiredNote": "Aset akan dikecualikan dari perhitungan nilai bersih sebelum tanggal ini."
   },
+  "taxFields": {
+    "title": "Estimasi pajak",
+    "capitalGains": "Keuntungan modal",
+    "dividends": "Dividen",
+    "calculation": "Perhitungan",
+    "taxRate": "Tarif pajak",
+    "capitalGainsModes": {
+      "none": "Tanpa pajak",
+      "percentage_of_profit": "Persentase dari laba terealisasi",
+      "percentage_of_sale_value": "Persentase dari nilai penjualan"
+    },
+    "dividendModes": {
+      "none": "Tanpa pajak tambahan",
+      "percentage_of_gross_dividend": "Persentase dari dividen bruto"
+    },
+    "withholdingTaxRate": "Pajak yang sudah dipotong di sumber",
+    "withholdingTaxRateHelp": "Persentase yang sudah dipotong broker Anda dari dividen bruto. Kosongkan jika tidak ada pemotongan.",
+    "deductWithholding": "Kurangi pajak potongan yang sudah tercatat di transaksi",
+    "disclaimer": "Ini adalah estimasi sederhana berdasarkan pengaturan akun. Pajak sebenarnya dapat bergantung pada domisili pajak Anda, kerugian, keringanan, masa kepemilikan, dan penghasilan lain. Ini bukan nasihat pajak."
+  },
   "toasts": {
     "categoryCreatedNested": "Kategori \"{parent}: {name}\" dibuat",
     "categoryCreated": "Kategori \"{name}\" dibuat",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "Frekuensi pembayaran wajib dipilih",
     "paymentStartDateRequired": "Tanggal pembayaran pertama wajib diisi",
     "paymentAccountRequired": "Akun pembayaran wajib dipilih",
-    "amortizationRequired": "Periode amortisasi wajib diisi"
+    "amortizationRequired": "Periode amortisasi wajib diisi",
+    "taxRateRange": "Tarif pajak harus antara 0% dan 100%",
+    "taxRateRequired": "Tarif pajak diperlukan untuk perhitungan persentase"
   },
   "loanDetail": {
     "backToAccounts": "Kembali ke Akun",

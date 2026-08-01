@@ -322,6 +322,26 @@
     "dateAcquired": "Date d'acquisition",
     "dateAcquiredNote": "L'actif sera exclu des calculs du valeur nette avant cette date."
   },
+  "taxFields": {
+    "title": "Estimation fiscale",
+    "capitalGains": "Plus-values",
+    "dividends": "Dividendes",
+    "calculation": "Calcul",
+    "taxRate": "Taux d'imposition",
+    "capitalGainsModes": {
+      "none": "Aucune imposition",
+      "percentage_of_profit": "Pourcentage du gain réalisé",
+      "percentage_of_sale_value": "Pourcentage de la valeur de vente"
+    },
+    "dividendModes": {
+      "none": "Aucune imposition supplémentaire",
+      "percentage_of_gross_dividend": "Pourcentage du dividende brut"
+    },
+    "withholdingTaxRate": "Retenue déjà prélevée à la source",
+    "withholdingTaxRateHelp": "Le pourcentage que votre courtier retient déjà sur un dividende brut. Laissez vide si rien n'est retenu.",
+    "deductWithholding": "Déduire la retenue à la source déjà enregistrée dans les transactions",
+    "disclaimer": "Il s'agit d'une estimation simplifiée fondée sur les paramètres du compte. L'impôt réel peut dépendre de votre résidence fiscale, de vos pertes, des abattements, de la durée de détention et de vos autres revenus. Ceci ne constitue pas un conseil fiscal."
+  },
   "toasts": {
     "categoryCreatedNested": "Catégorie « {parent} : {name} » créée",
     "categoryCreated": "Catégorie « {name} » créée",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "La fréquence de paiement est obligatoire",
     "paymentStartDateRequired": "La date du premier paiement est obligatoire",
     "paymentAccountRequired": "Le compte de paiement est obligatoire",
-    "amortizationRequired": "La période d'amortissement est obligatoire"
+    "amortizationRequired": "La période d'amortissement est obligatoire",
+    "taxRateRange": "Le taux d'imposition doit être compris entre 0 % et 100 %",
+    "taxRateRequired": "Un taux d'imposition est requis pour un calcul en pourcentage"
   },
   "loanDetail": {
     "backToAccounts": "Retour aux comptes",

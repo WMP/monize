@@ -322,6 +322,26 @@
     "dateAcquired": "Data nabycia",
     "dateAcquiredNote": "Aktywo będzie wykluczone z obliczeń wartości netto przed tą datą."
   },
+  "taxFields": {
+    "title": "Szacowanie podatku",
+    "capitalGains": "Zyski kapitałowe",
+    "dividends": "Dywidendy",
+    "calculation": "Sposób obliczania",
+    "taxRate": "Stawka podatku",
+    "capitalGainsModes": {
+      "none": "Brak podatku",
+      "percentage_of_profit": "Procent zrealizowanego zysku",
+      "percentage_of_sale_value": "Procent wartości sprzedaży"
+    },
+    "dividendModes": {
+      "none": "Brak dodatkowego podatku",
+      "percentage_of_gross_dividend": "Procent dywidendy brutto"
+    },
+    "withholdingTaxRate": "Podatek już pobrany u źródła",
+    "withholdingTaxRateHelp": "Procent, który broker już pobiera z dywidendy brutto. Pozostaw puste, jeśli nic nie jest pobierane.",
+    "deductWithholding": "Odejmij podatek u źródła już zapisany w transakcjach",
+    "disclaimer": "To uproszczony szacunek oparty na ustawieniach konta. Rzeczywisty podatek może zależeć od rezydencji podatkowej, strat, kwot wolnych, okresu posiadania i innych dochodów. To nie jest porada podatkowa."
+  },
   "toasts": {
     "categoryCreatedNested": "Utworzono kategorię \"{parent}: {name}\"",
     "categoryCreated": "Utworzono kategorię \"{name}\"",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "Częstotliwość płatności jest wymagana",
     "paymentStartDateRequired": "Data pierwszej płatności jest wymagana",
     "paymentAccountRequired": "Konto płatności jest wymagane",
-    "amortizationRequired": "Okres spłaty jest wymagany"
+    "amortizationRequired": "Okres spłaty jest wymagany",
+    "taxRateRange": "Stawka podatku musi mieścić się w przedziale od 0% do 100%",
+    "taxRateRequired": "Dla obliczenia procentowego wymagana jest stawka podatku"
   },
   "loanDetail": {
     "backToAccounts": "Powrót do kont",

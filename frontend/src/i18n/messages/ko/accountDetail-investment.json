@@ -5,6 +5,11 @@
     "dividendsInterest": "배당 및 이자",
     "realizedGains": "실현 손익",
     "ytd": "연초 이후",
-    "empty": "올해 투자 수익이 없습니다"
+    "empty": "올해 투자 수익이 없습니다",
+    "dividendTaxTitle": "배당세 추정",
+    "estimatedDividendTax": "예상 배당세",
+    "taxAlreadyWithheld": "이미 징수된 세금",
+    "estimatedAdditionalTax": "예상 추가 세금",
+    "taxDisclaimer": "계좌 설정에 기반한 간략한 추정치입니다. 실제 세금은 세무 거주지, 손실, 공제, 보유 기간 및 기타 소득에 따라 달라질 수 있습니다. 세무 자문이 아닙니다."
   }
 }

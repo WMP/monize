@@ -120,7 +120,10 @@ describe("estimateCapitalGainsTax", () => {
 
   it("treats a percentage mode with no rate configured as zero tax", () => {
     const result = estimateCapitalGainsTax(
-      { capitalGainsTaxMode: "percentage_of_profit", capitalGainsTaxRate: null },
+      {
+        capitalGainsTaxMode: "percentage_of_profit",
+        capitalGainsTaxRate: null,
+      },
       { saleValue: 2000, acquisitionCost: 1000 },
     );
 
@@ -283,9 +286,9 @@ describe("estimateDividendTax", () => {
     const dividend = { grossDividend: 500 };
     const ike: InvestmentTaxSettings = { ...noTax };
 
-    expect(estimateDividendTax(polishBrokerage, dividend).estimatedDividendTax).toBe(
-      95,
-    );
+    expect(
+      estimateDividendTax(polishBrokerage, dividend).estimatedDividendTax,
+    ).toBe(95);
     expect(estimateDividendTax(ike, dividend).estimatedDividendTax).toBe(0);
   });
 });

@@ -1676,5 +1676,17 @@
     "labelSelectAccount": "Sélectionner un compte de prêt",
     "viewTransactions": "Voir les transactions",
     "empty": "Aucun compte de prêt, d'hypothèque ou de marge de crédit trouvé."
+  },
+  "estimatedTax": {
+    "title": "Impact fiscal estimé",
+    "account": "Compte",
+    "estimatedGainOnSale": "Gain estimé à la vente",
+    "estimatedTax": "Impôt estimé",
+    "calculation": "Calcul",
+    "calculationNone": "Ce compte est configuré sans imposition des plus-values.",
+    "calculationOfProfit": "{rate} du gain estimé",
+    "calculationOfSaleValue": "{rate} de la valeur de vente",
+    "unknownAccount": "Compte inconnu",
+    "disclaimer": "Il s'agit d'une estimation simplifiée fondée sur les paramètres de chaque compte. L'impôt réel peut dépendre de votre résidence fiscale, de vos pertes, des abattements, de la durée de détention et de vos autres revenus. Ceci ne constitue pas un conseil fiscal."
   }
 }

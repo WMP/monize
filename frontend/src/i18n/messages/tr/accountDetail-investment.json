@@ -5,6 +5,11 @@
     "dividendsInterest": "Temettü ve Faiz",
     "realizedGains": "Gerçekleşen Kazançlar",
     "ytd": "Yıl başından bugüne",
-    "empty": "Bu yıl yatırım geliri yok"
+    "empty": "Bu yıl yatırım geliri yok",
+    "dividendTaxTitle": "Temettü vergisi tahmini",
+    "estimatedDividendTax": "Tahmini temettü vergisi",
+    "taxAlreadyWithheld": "Zaten kesilen vergi",
+    "estimatedAdditionalTax": "Tahmini ek vergi",
+    "taxDisclaimer": "Bu, hesap ayarlarına dayalı basitleştirilmiş bir tahmindir. Gerçek vergi; vergi ikametgâhınıza, zararlarınıza, istisnalara, elde tutma süresine ve diğer gelirlerinize bağlı olabilir. Bu bir vergi tavsiyesi değildir."
   }
 }

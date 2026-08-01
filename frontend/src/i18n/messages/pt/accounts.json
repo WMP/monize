@@ -322,6 +322,26 @@
     "dateAcquired": "Data de Aquisição",
     "dateAcquiredNote": "O ativo será excluído dos cálculos de valor líquido antes desta data."
   },
+  "taxFields": {
+    "title": "Estimativa de impostos",
+    "capitalGains": "Mais-valias",
+    "dividends": "Dividendos",
+    "calculation": "Cálculo",
+    "taxRate": "Taxa de imposto",
+    "capitalGainsModes": {
+      "none": "Sem imposto",
+      "percentage_of_profit": "Percentagem do lucro realizado",
+      "percentage_of_sale_value": "Percentagem do valor de venda"
+    },
+    "dividendModes": {
+      "none": "Sem imposto adicional",
+      "percentage_of_gross_dividend": "Percentagem do dividendo bruto"
+    },
+    "withholdingTaxRate": "Retenção já efetuada na fonte",
+    "withholdingTaxRateHelp": "A percentagem que a sua corretora já retém de um dividendo bruto. Deixe em branco se nada for retido.",
+    "deductWithholding": "Deduzir a retenção na fonte já registada nas transações",
+    "disclaimer": "Esta é uma estimativa simplificada baseada nas definições da conta. O imposto real pode depender da sua residência fiscal, perdas, isenções, período de detenção e outros rendimentos. Isto não é aconselhamento fiscal."
+  },
   "toasts": {
     "categoryCreatedNested": "Categoria \"{parent}: {name}\" criada",
     "categoryCreated": "Categoria \"{name}\" criada",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "A frequência do pagamento é obrigatória",
     "paymentStartDateRequired": "A data do primeiro pagamento é obrigatória",
     "paymentAccountRequired": "A conta de pagamento é obrigatória",
-    "amortizationRequired": "O período de amortização é obrigatório"
+    "amortizationRequired": "O período de amortização é obrigatório",
+    "taxRateRange": "A taxa de imposto deve estar entre 0% e 100%",
+    "taxRateRequired": "É necessária uma taxa de imposto para um cálculo percentual"
   },
   "loanDetail": {
     "backToAccounts": "Voltar às contas",

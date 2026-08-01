@@ -322,6 +322,26 @@
     "dateAcquired": "취득일",
     "dateAcquiredNote": "이 날짜 이전에는 자산이 순자산가액 계산에서 제외됩니다."
   },
+  "taxFields": {
+    "title": "세금 추정",
+    "capitalGains": "양도차익",
+    "dividends": "배당",
+    "calculation": "계산 방식",
+    "taxRate": "세율",
+    "capitalGainsModes": {
+      "none": "세금 없음",
+      "percentage_of_profit": "실현 이익의 비율",
+      "percentage_of_sale_value": "매도 금액의 비율"
+    },
+    "dividendModes": {
+      "none": "추가 세금 없음",
+      "percentage_of_gross_dividend": "세전 배당금의 비율"
+    },
+    "withholdingTaxRate": "원천에서 이미 징수된 세금",
+    "withholdingTaxRateHelp": "증권사가 세전 배당금에서 이미 원천징수하는 비율입니다. 징수가 없으면 비워 두세요.",
+    "deductWithholding": "거래에 기록된 원천징수세를 차감",
+    "disclaimer": "계좌 설정에 기반한 간략한 추정치입니다. 실제 세금은 세무 거주지, 손실, 공제, 보유 기간 및 기타 소득에 따라 달라질 수 있습니다. 세무 자문이 아닙니다."
+  },
   "toasts": {
     "categoryCreatedNested": "카테고리 \"{parent}: {name}\"이(가) 생성되었습니다",
     "categoryCreated": "카테고리 \"{name}\"이(가) 생성되었습니다",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "납부 주기는 필수입니다",
     "paymentStartDateRequired": "첫 납부일은 필수입니다",
     "paymentAccountRequired": "납부 출금 계정은 필수입니다",
-    "amortizationRequired": "상환 기간은 필수입니다"
+    "amortizationRequired": "상환 기간은 필수입니다",
+    "taxRateRange": "세율은 0%에서 100% 사이여야 합니다",
+    "taxRateRequired": "비율 계산에는 세율이 필요합니다"
   },
   "loanDetail": {
     "backToAccounts": "계좌 목록으로 돌아가기",

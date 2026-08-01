@@ -5,6 +5,11 @@
     "dividendsInterest": "Dividenden & rente",
     "realizedGains": "Gerealiseerde winsten",
     "ytd": "Jaar tot nu",
-    "empty": "Dit jaar geen beleggingsinkomsten"
+    "empty": "Dit jaar geen beleggingsinkomsten",
+    "dividendTaxTitle": "Schatting dividendbelasting",
+    "estimatedDividendTax": "Geschatte dividendbelasting",
+    "taxAlreadyWithheld": "Reeds ingehouden belasting",
+    "estimatedAdditionalTax": "Geschatte aanvullende belasting",
+    "taxDisclaimer": "Dit is een vereenvoudigde schatting op basis van de rekeninginstellingen. De werkelijke belasting kan afhangen van uw fiscale woonplaats, verliezen, vrijstellingen, bezitsduur en andere inkomsten. Dit is geen belastingadvies."
   }
 }

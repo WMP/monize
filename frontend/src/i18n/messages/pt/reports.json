@@ -1676,5 +1676,17 @@
     "labelSelectAccount": "Selecionar conta de empréstimo",
     "viewTransactions": "Ver transações",
     "empty": "Nenhuma conta de empréstimo, hipoteca ou linha de crédito encontrada."
+  },
+  "estimatedTax": {
+    "title": "Impacto fiscal estimado",
+    "account": "Conta",
+    "estimatedGainOnSale": "Ganho estimado na venda",
+    "estimatedTax": "Imposto estimado",
+    "calculation": "Cálculo",
+    "calculationNone": "Esta conta está configurada sem imposto sobre mais-valias.",
+    "calculationOfProfit": "{rate} do lucro estimado",
+    "calculationOfSaleValue": "{rate} do valor de venda",
+    "unknownAccount": "Conta desconhecida",
+    "disclaimer": "Esta é uma estimativa simplificada baseada nas definições de cada conta. O imposto real pode depender da sua residência fiscal, perdas, isenções, período de detenção e outros rendimentos. Isto não é aconselhamento fiscal."
   }
 }

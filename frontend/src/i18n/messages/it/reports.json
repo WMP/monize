@@ -1676,5 +1676,17 @@
     "labelSelectAccount": "Seleziona conto di prestito",
     "viewTransactions": "Vedi transazioni",
     "empty": "Nessun conto di prestito, mutuo o linea di credito trovato."
+  },
+  "estimatedTax": {
+    "title": "Impatto fiscale stimato",
+    "account": "Conto",
+    "estimatedGainOnSale": "Guadagno stimato sulla vendita",
+    "estimatedTax": "Imposta stimata",
+    "calculation": "Calcolo",
+    "calculationNone": "Questo conto è configurato senza imposta sulle plusvalenze.",
+    "calculationOfProfit": "{rate} dell'utile stimato",
+    "calculationOfSaleValue": "{rate} del valore di vendita",
+    "unknownAccount": "Conto sconosciuto",
+    "disclaimer": "Questa è una stima semplificata basata sulle impostazioni di ciascun conto. L'imposta effettiva può dipendere dalla tua residenza fiscale, dalle perdite, dalle franchigie, dal periodo di detenzione e da altri redditi. Non costituisce consulenza fiscale."
   }
 }

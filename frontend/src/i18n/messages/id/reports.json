@@ -1676,5 +1676,17 @@
     "labelSelectAccount": "Pilih Akun Pinjaman",
     "viewTransactions": "Lihat Transaksi",
     "empty": "Tidak ada akun pinjaman, hipotek, atau jalur kredit yang ditemukan."
+  },
+  "estimatedTax": {
+    "title": "Perkiraan dampak pajak",
+    "account": "Akun",
+    "estimatedGainOnSale": "Perkiraan keuntungan penjualan",
+    "estimatedTax": "Perkiraan pajak",
+    "calculation": "Perhitungan",
+    "calculationNone": "Akun ini dikonfigurasi tanpa pajak keuntungan modal.",
+    "calculationOfProfit": "{rate} dari perkiraan laba",
+    "calculationOfSaleValue": "{rate} dari nilai penjualan",
+    "unknownAccount": "Akun tidak dikenal",
+    "disclaimer": "Ini adalah estimasi sederhana berdasarkan pengaturan masing-masing akun. Pajak sebenarnya dapat bergantung pada domisili pajak Anda, kerugian, keringanan, masa kepemilikan, dan penghasilan lain. Ini bukan nasihat pajak."
   }
 }

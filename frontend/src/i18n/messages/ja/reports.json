@@ -1676,5 +1676,17 @@
     "labelSelectAccount": "ローン勘定科目を選択",
     "viewTransactions": "取引を表示",
     "empty": "ローン、住宅ローン、与信枠の勘定科目が見つかりません。"
+  },
+  "estimatedTax": {
+    "title": "税額への影響の概算",
+    "account": "口座",
+    "estimatedGainOnSale": "売却による概算利益",
+    "estimatedTax": "概算税額",
+    "calculation": "計算方法",
+    "calculationNone": "この口座は譲渡益課税なしで設定されています。",
+    "calculationOfProfit": "概算利益の{rate}",
+    "calculationOfSaleValue": "売却額の{rate}",
+    "unknownAccount": "不明な口座",
+    "disclaimer": "これは各口座の設定に基づく簡易的な概算です。実際の税額は、居住地の税制、損失、控除、保有期間、その他の所得によって異なる場合があります。税務上の助言ではありません。"
   }
 }

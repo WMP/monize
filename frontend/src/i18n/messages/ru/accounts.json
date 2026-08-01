@@ -322,6 +322,26 @@
     "dateAcquired": "Дата приобретения",
     "dateAcquiredNote": "Актив будет исключён из расчёта чистой стоимости до этой даты."
   },
+  "taxFields": {
+    "title": "Оценка налога",
+    "capitalGains": "Прирост капитала",
+    "dividends": "Дивиденды",
+    "calculation": "Расчёт",
+    "taxRate": "Ставка налога",
+    "capitalGainsModes": {
+      "none": "Без налога",
+      "percentage_of_profit": "Процент от реализованной прибыли",
+      "percentage_of_sale_value": "Процент от суммы продажи"
+    },
+    "dividendModes": {
+      "none": "Без дополнительного налога",
+      "percentage_of_gross_dividend": "Процент от валовых дивидендов"
+    },
+    "withholdingTaxRate": "Налог, уже удержанный у источника",
+    "withholdingTaxRateHelp": "Процент, который брокер уже удерживает из валовых дивидендов. Оставьте пустым, если удержания нет.",
+    "deductWithholding": "Вычитать налог у источника, уже записанный в транзакциях",
+    "disclaimer": "Это упрощённая оценка на основе настроек счёта. Фактический налог может зависеть от вашего налогового резидентства, убытков, вычетов, срока владения и других доходов. Это не налоговая консультация."
+  },
   "toasts": {
     "categoryCreatedNested": "Категория «{parent}: {name}» создана",
     "categoryCreated": "Категория «{name}» создана",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "Периодичность платежей обязательна",
     "paymentStartDateRequired": "Дата первого платежа обязательна",
     "paymentAccountRequired": "Счёт списания обязателен",
-    "amortizationRequired": "Период амортизации обязателен"
+    "amortizationRequired": "Период амортизации обязателен",
+    "taxRateRange": "Ставка налога должна быть от 0% до 100%",
+    "taxRateRequired": "Для процентного расчёта необходима ставка налога"
   },
   "loanDetail": {
     "backToAccounts": "Назад к счетам",

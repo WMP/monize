@@ -5,6 +5,11 @@
     "dividendsInterest": "Dividen & Bunga",
     "realizedGains": "Keuntungan Terealisasi",
     "ytd": "Sejak awal tahun",
-    "empty": "Tidak ada pendapatan investasi tahun ini"
+    "empty": "Tidak ada pendapatan investasi tahun ini",
+    "dividendTaxTitle": "Estimasi pajak dividen",
+    "estimatedDividendTax": "Perkiraan pajak dividen",
+    "taxAlreadyWithheld": "Pajak yang sudah dipotong",
+    "estimatedAdditionalTax": "Perkiraan pajak tambahan",
+    "taxDisclaimer": "Ini adalah estimasi sederhana berdasarkan pengaturan akun. Pajak sebenarnya dapat bergantung pada domisili pajak Anda, kerugian, keringanan, masa kepemilikan, dan penghasilan lain. Ini bukan nasihat pajak."
   }
 }

@@ -1676,5 +1676,17 @@
     "labelSelectAccount": "Chọn tài khoản khoản vay",
     "viewTransactions": "Xem giao dịch",
     "empty": "Không tìm thấy tài khoản khoản vay, thế chấp hoặc hạn mức tín dụng."
+  },
+  "estimatedTax": {
+    "title": "Tác động thuế ước tính",
+    "account": "Tài khoản",
+    "estimatedGainOnSale": "Lợi nhuận ước tính khi bán",
+    "estimatedTax": "Thuế ước tính",
+    "calculation": "Cách tính",
+    "calculationNone": "Tài khoản này được thiết lập không có thuế lãi vốn.",
+    "calculationOfProfit": "{rate} lợi nhuận ước tính",
+    "calculationOfSaleValue": "{rate} giá trị bán",
+    "unknownAccount": "Tài khoản không xác định",
+    "disclaimer": "Đây là ước tính đơn giản dựa trên thiết lập của từng tài khoản. Thuế thực tế có thể phụ thuộc vào nơi cư trú thuế, khoản lỗ, mức miễn trừ, thời gian nắm giữ và các khoản thu nhập khác của bạn. Đây không phải là tư vấn thuế."
   }
 }

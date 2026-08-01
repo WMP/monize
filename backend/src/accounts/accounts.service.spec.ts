@@ -383,9 +383,8 @@ describe("AccountsService", () => {
         capitalGainsTaxRate: 19,
       } as any);
 
-      const [cashCall, brokerageCall] = accountsRepository.create.mock.calls.map(
-        (call) => call[0],
-      );
+      const [cashCall, brokerageCall] =
+        accountsRepository.create.mock.calls.map((call) => call[0]);
       expect(cashCall.accountSubType).toBe(AccountSubType.INVESTMENT_CASH);
       expect(cashCall.capitalGainsTaxMode).toBeUndefined();
       expect(brokerageCall.accountSubType).toBe(

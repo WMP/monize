@@ -322,6 +322,26 @@
     "dateAcquired": "Erwerbsdatum",
     "dateAcquiredNote": "Das Aktiva wird bei der Reinvermögensberechnung vor diesem Datum nicht berücksichtigt."
   },
+  "taxFields": {
+    "title": "Steuerschätzung",
+    "capitalGains": "Kapitalerträge",
+    "dividends": "Dividenden",
+    "calculation": "Berechnung",
+    "taxRate": "Steuersatz",
+    "capitalGainsModes": {
+      "none": "Keine Steuer",
+      "percentage_of_profit": "Prozentsatz des realisierten Gewinns",
+      "percentage_of_sale_value": "Prozentsatz des Verkaufswerts"
+    },
+    "dividendModes": {
+      "none": "Keine zusätzliche Steuer",
+      "percentage_of_gross_dividend": "Prozentsatz der Bruttodividende"
+    },
+    "withholdingTaxRate": "Bereits an der Quelle einbehaltene Steuer",
+    "withholdingTaxRateHelp": "Der Prozentsatz, den Ihr Broker bereits von einer Bruttodividende einbehält. Leer lassen, wenn nichts einbehalten wird.",
+    "deductWithholding": "Bereits in Transaktionen erfasste Quellensteuer abziehen",
+    "disclaimer": "Dies ist eine vereinfachte Schätzung auf Basis der Kontoeinstellungen. Die tatsächliche Steuer kann von Ihrer Steueransässigkeit, Verlusten, Freibeträgen, Haltedauer und anderen Einkünften abhängen. Dies ist keine Steuerberatung."
+  },
   "toasts": {
     "categoryCreatedNested": "Kategorie „{parent}: {name}” erstellt",
     "categoryCreated": "Kategorie „{name}” erstellt",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "Zahlungsintervall ist erforderlich",
     "paymentStartDateRequired": "Datum der ersten Zahlung ist erforderlich",
     "paymentAccountRequired": "Zahlungskonto ist erforderlich",
-    "amortizationRequired": "Tilgungszeitraum ist erforderlich"
+    "amortizationRequired": "Tilgungszeitraum ist erforderlich",
+    "taxRateRange": "Der Steuersatz muss zwischen 0 % und 100 % liegen",
+    "taxRateRequired": "Für eine prozentuale Berechnung ist ein Steuersatz erforderlich"
   },
   "loanDetail": {
     "backToAccounts": "Zurück zu den Konten",

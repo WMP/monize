@@ -5,6 +5,11 @@
     "dividendsInterest": "Dividendos e Juros",
     "realizedGains": "Mais-valias Realizadas",
     "ytd": "Desde o início do ano",
-    "empty": "Sem rendimento de investimentos este ano"
+    "empty": "Sem rendimento de investimentos este ano",
+    "dividendTaxTitle": "Estimativa do imposto sobre dividendos",
+    "estimatedDividendTax": "Imposto estimado sobre dividendos",
+    "taxAlreadyWithheld": "Imposto já retido",
+    "estimatedAdditionalTax": "Imposto adicional estimado",
+    "taxDisclaimer": "Esta é uma estimativa simplificada baseada nas definições da conta. O imposto real pode depender da sua residência fiscal, perdas, isenções, período de detenção e outros rendimentos. Isto não é aconselhamento fiscal."
   }
 }

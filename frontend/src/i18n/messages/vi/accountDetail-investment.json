@@ -5,6 +5,11 @@
     "dividendsInterest": "Cổ tức & Lãi",
     "realizedGains": "Lãi đã thực hiện",
     "ytd": "Từ đầu năm đến nay",
-    "empty": "Không có thu nhập đầu tư nào trong năm nay"
+    "empty": "Không có thu nhập đầu tư nào trong năm nay",
+    "dividendTaxTitle": "Ước tính thuế cổ tức",
+    "estimatedDividendTax": "Thuế cổ tức ước tính",
+    "taxAlreadyWithheld": "Thuế đã khấu trừ",
+    "estimatedAdditionalTax": "Thuế bổ sung ước tính",
+    "taxDisclaimer": "Đây là ước tính đơn giản dựa trên thiết lập của tài khoản. Thuế thực tế có thể phụ thuộc vào nơi cư trú thuế, khoản lỗ, mức miễn trừ, thời gian nắm giữ và các khoản thu nhập khác của bạn. Đây không phải là tư vấn thuế."
   }
 }

@@ -322,6 +322,26 @@
     "dateAcquired": "Verwervingsdatum",
     "dateAcquiredNote": "Het actief wordt uitgesloten van nettowaardeberekkeningen vóór deze datum."
   },
+  "taxFields": {
+    "title": "Belastingschatting",
+    "capitalGains": "Vermogenswinst",
+    "dividends": "Dividenden",
+    "calculation": "Berekening",
+    "taxRate": "Belastingtarief",
+    "capitalGainsModes": {
+      "none": "Geen belasting",
+      "percentage_of_profit": "Percentage van de gerealiseerde winst",
+      "percentage_of_sale_value": "Percentage van de verkoopwaarde"
+    },
+    "dividendModes": {
+      "none": "Geen aanvullende belasting",
+      "percentage_of_gross_dividend": "Percentage van het brutodividend"
+    },
+    "withholdingTaxRate": "Reeds aan de bron ingehouden belasting",
+    "withholdingTaxRateHelp": "Het percentage dat uw broker al inhoudt op een brutodividend. Laat leeg als er niets wordt ingehouden.",
+    "deductWithholding": "Reeds in transacties vastgelegde bronbelasting aftrekken",
+    "disclaimer": "Dit is een vereenvoudigde schatting op basis van de rekeninginstellingen. De werkelijke belasting kan afhangen van uw fiscale woonplaats, verliezen, vrijstellingen, bezitsduur en andere inkomsten. Dit is geen belastingadvies."
+  },
   "toasts": {
     "categoryCreatedNested": "Categorie \"{parent}: {name}\" aangemaakt",
     "categoryCreated": "Categorie \"{name}\" aangemaakt",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "Betalingsfrequentie is vereist",
     "paymentStartDateRequired": "Datum eerste betaling is vereist",
     "paymentAccountRequired": "Betaalrekening is vereist",
-    "amortizationRequired": "Afschrijvingstermijn is vereist"
+    "amortizationRequired": "Afschrijvingstermijn is vereist",
+    "taxRateRange": "Het belastingtarief moet tussen 0% en 100% liggen",
+    "taxRateRequired": "Een belastingtarief is vereist voor een procentuele berekening"
   },
   "loanDetail": {
     "backToAccounts": "Terug naar rekeningen",

@@ -322,6 +322,26 @@
     "dateAcquired": "Edinme Tarihi",
     "dateAcquiredNote": "Varlık, bu tarihten önce net değer hesaplamalarına dahil edilmez."
   },
+  "taxFields": {
+    "title": "Vergi tahmini",
+    "capitalGains": "Sermaye kazançları",
+    "dividends": "Temettüler",
+    "calculation": "Hesaplama",
+    "taxRate": "Vergi oranı",
+    "capitalGainsModes": {
+      "none": "Vergi yok",
+      "percentage_of_profit": "Gerçekleşen kârın yüzdesi",
+      "percentage_of_sale_value": "Satış tutarının yüzdesi"
+    },
+    "dividendModes": {
+      "none": "Ek vergi yok",
+      "percentage_of_gross_dividend": "Brüt temettünün yüzdesi"
+    },
+    "withholdingTaxRate": "Kaynağında zaten kesilen vergi",
+    "withholdingTaxRateHelp": "Aracı kurumunuzun brüt temettüden hâlihazırda kestiği yüzde. Kesinti yoksa boş bırakın.",
+    "deductWithholding": "İşlemlerde kayıtlı stopajı düş",
+    "disclaimer": "Bu, hesap ayarlarına dayalı basitleştirilmiş bir tahmindir. Gerçek vergi; vergi ikametgâhınıza, zararlarınıza, istisnalara, elde tutma süresine ve diğer gelirlerinize bağlı olabilir. Bu bir vergi tavsiyesi değildir."
+  },
   "toasts": {
     "categoryCreatedNested": "\"{parent}: {name}\" kategorisi oluşturuldu",
     "categoryCreated": "\"{name}\" kategorisi oluşturuldu",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "Ödeme sıklığı zorunludur",
     "paymentStartDateRequired": "İlk ödeme tarihi zorunludur",
     "paymentAccountRequired": "Ödeme hesabı zorunludur",
-    "amortizationRequired": "Amortisman süresi zorunludur"
+    "amortizationRequired": "Amortisman süresi zorunludur",
+    "taxRateRange": "Vergi oranı %0 ile %100 arasında olmalıdır",
+    "taxRateRequired": "Yüzdesel hesaplama için vergi oranı gereklidir"
   },
   "loanDetail": {
     "backToAccounts": "Hesaplara Dön",

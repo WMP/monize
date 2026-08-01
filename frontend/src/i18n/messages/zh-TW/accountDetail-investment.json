@@ -5,6 +5,11 @@
     "dividendsInterest": "股息與利息",
     "realizedGains": "已實現收益",
     "ytd": "年初至今",
-    "empty": "本年度無投資收益"
+    "empty": "本年度無投資收益",
+    "dividendTaxTitle": "股息稅估算",
+    "estimatedDividendTax": "預估股息稅",
+    "taxAlreadyWithheld": "已代扣稅款",
+    "estimatedAdditionalTax": "預估補繳稅款",
+    "taxDisclaimer": "這是依帳戶設定得出的簡化估算。實際稅額可能取決於您的稅務居民身分、虧損、免稅額、持有期間及其他所得。本內容不構成稅務建議。"
   }
 }

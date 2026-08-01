@@ -137,7 +137,8 @@ export class AccountsService {
       );
     }
 
-    const dividendMode = dto.dividendTaxMode ?? current?.dividendTaxMode ?? "none";
+    const dividendMode =
+      dto.dividendTaxMode ?? current?.dividendTaxMode ?? "none";
     const dividendRate =
       dto.dividendTaxRate !== undefined
         ? dto.dividendTaxRate

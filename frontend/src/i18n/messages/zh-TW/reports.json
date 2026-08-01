@@ -1676,5 +1676,17 @@
     "labelSelectAccount": "選擇貸款帳戶",
     "viewTransactions": "檢視交易",
     "empty": "找不到貸款、抵押貸款或信用額度帳戶。"
+  },
+  "estimatedTax": {
+    "title": "預估稅額影響",
+    "account": "帳戶",
+    "estimatedGainOnSale": "賣出的預估收益",
+    "estimatedTax": "預估稅額",
+    "calculation": "計算方式",
+    "calculationNone": "此帳戶設定為不課資本利得稅。",
+    "calculationOfProfit": "預估利潤的 {rate}",
+    "calculationOfSaleValue": "賣出金額的 {rate}",
+    "unknownAccount": "未知帳戶",
+    "disclaimer": "這是依各帳戶設定得出的簡化估算。實際稅額可能取決於您的稅務居民身分、虧損、免稅額、持有期間及其他所得。本內容不構成稅務建議。"
   }
 }

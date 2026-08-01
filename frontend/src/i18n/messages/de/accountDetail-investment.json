@@ -5,6 +5,11 @@
     "dividendsInterest": "Dividenden & Zinsen",
     "realizedGains": "Realisierte Gewinne",
     "ytd": "Seit Jahresbeginn",
-    "empty": "Keine Anlageerträge in diesem Jahr"
+    "empty": "Keine Anlageerträge in diesem Jahr",
+    "dividendTaxTitle": "Dividendensteuer-Schätzung",
+    "estimatedDividendTax": "Geschätzte Dividendensteuer",
+    "taxAlreadyWithheld": "Bereits einbehaltene Steuer",
+    "estimatedAdditionalTax": "Geschätzte zusätzliche Steuer",
+    "taxDisclaimer": "Dies ist eine vereinfachte Schätzung auf Basis der Kontoeinstellungen. Die tatsächliche Steuer kann von Ihrer Steueransässigkeit, Verlusten, Freibeträgen, Haltedauer und anderen Einkünften abhängen. Dies ist keine Steuerberatung."
   }
 }

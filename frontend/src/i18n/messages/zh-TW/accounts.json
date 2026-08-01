@@ -322,6 +322,26 @@
     "dateAcquired": "取得日期",
     "dateAcquiredNote": "此日期之前，該資產將排除於資產淨值計算之外。"
   },
+  "taxFields": {
+    "title": "稅額估算",
+    "capitalGains": "資本利得",
+    "dividends": "股息",
+    "calculation": "計算方式",
+    "taxRate": "稅率",
+    "capitalGainsModes": {
+      "none": "不課稅",
+      "percentage_of_profit": "已實現利潤的百分比",
+      "percentage_of_sale_value": "賣出金額的百分比"
+    },
+    "dividendModes": {
+      "none": "不課額外稅",
+      "percentage_of_gross_dividend": "股息總額的百分比"
+    },
+    "withholdingTaxRate": "已於來源地代扣的稅款",
+    "withholdingTaxRateHelp": "券商已從股息總額中代扣的百分比。若無代扣，請留空。",
+    "deductWithholding": "扣除交易中已記錄的代扣稅",
+    "disclaimer": "這是依帳戶設定得出的簡化估算。實際稅額可能取決於您的稅務居民身分、虧損、免稅額、持有期間及其他所得。本內容不構成稅務建議。"
+  },
   "toasts": {
     "categoryCreatedNested": "類別「{parent}：{name}」已建立",
     "categoryCreated": "類別「{name}」已建立",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "還款頻率為必填",
     "paymentStartDateRequired": "首次還款日期為必填",
     "paymentAccountRequired": "付款科目為必填",
-    "amortizationRequired": "攤還期為必填"
+    "amortizationRequired": "攤還期為必填",
+    "taxRateRange": "稅率必須介於 0% 與 100% 之間",
+    "taxRateRequired": "依百分比計算時必須填寫稅率"
   },
   "loanDetail": {
     "backToAccounts": "返回帳戶",

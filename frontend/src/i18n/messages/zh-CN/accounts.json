@@ -322,6 +322,26 @@
     "dateAcquired": "获取日期",
     "dateAcquiredNote": "此日期之前，该资产将不计入资产净值计算。"
   },
+  "taxFields": {
+    "title": "税费估算",
+    "capitalGains": "资本利得",
+    "dividends": "股息",
+    "calculation": "计算方式",
+    "taxRate": "税率",
+    "capitalGainsModes": {
+      "none": "不计税",
+      "percentage_of_profit": "已实现利润的百分比",
+      "percentage_of_sale_value": "卖出金额的百分比"
+    },
+    "dividendModes": {
+      "none": "不计额外税",
+      "percentage_of_gross_dividend": "股息总额的百分比"
+    },
+    "withholdingTaxRate": "已在来源地代扣的税款",
+    "withholdingTaxRateHelp": "券商已从股息总额中代扣的百分比。若无代扣，请留空。",
+    "deductWithholding": "扣除交易中已记录的代扣税",
+    "disclaimer": "这是根据账户设置得出的简化估算。实际税款可能取决于您的税务居民身份、亏损、免税额、持有期限及其他收入。本内容不构成税务建议。"
+  },
   "toasts": {
     "categoryCreatedNested": "科目\"{parent}：{name}\"已创建",
     "categoryCreated": "科目\"{name}\"已创建",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "还款频率为必填项",
     "paymentStartDateRequired": "首次还款日期为必填项",
     "paymentAccountRequired": "还款来源账户为必填项",
-    "amortizationRequired": "摊销期为必填项"
+    "amortizationRequired": "摊销期为必填项",
+    "taxRateRange": "税率必须介于 0% 与 100% 之间",
+    "taxRateRequired": "按百分比计算时必须填写税率"
   },
   "loanDetail": {
     "backToAccounts": "返回账户",

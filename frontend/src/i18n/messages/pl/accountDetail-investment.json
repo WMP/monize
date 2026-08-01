@@ -5,6 +5,11 @@
     "dividendsInterest": "Dywidendy i odsetki",
     "realizedGains": "Zrealizowane zyski",
     "ytd": "Od początku roku",
-    "empty": "Brak dochodu z inwestycji w tym roku"
+    "empty": "Brak dochodu z inwestycji w tym roku",
+    "dividendTaxTitle": "Szacowanie podatku od dywidend",
+    "estimatedDividendTax": "Szacowany podatek od dywidendy",
+    "taxAlreadyWithheld": "Podatek już pobrany",
+    "estimatedAdditionalTax": "Szacowana dopłata podatku",
+    "taxDisclaimer": "To uproszczony szacunek oparty na ustawieniach konta. Rzeczywisty podatek może zależeć od rezydencji podatkowej, strat, kwot wolnych, okresu posiadania i innych dochodów. To nie jest porada podatkowa."
   }
 }

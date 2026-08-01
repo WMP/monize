@@ -322,6 +322,26 @@
     "dateAcquired": "取得日",
     "dateAcquiredNote": "この日付より前は、資産は純資産の計算から除外されます。"
   },
+  "taxFields": {
+    "title": "税額の概算",
+    "capitalGains": "譲渡益",
+    "dividends": "配当",
+    "calculation": "計算方法",
+    "taxRate": "税率",
+    "capitalGainsModes": {
+      "none": "課税なし",
+      "percentage_of_profit": "実現利益に対する割合",
+      "percentage_of_sale_value": "売却額に対する割合"
+    },
+    "dividendModes": {
+      "none": "追加課税なし",
+      "percentage_of_gross_dividend": "配当総額に対する割合"
+    },
+    "withholdingTaxRate": "源泉ですでに徴収された税",
+    "withholdingTaxRateHelp": "証券会社が配当総額からすでに源泉徴収している割合です。徴収がない場合は空欄にしてください。",
+    "deductWithholding": "取引に記録済みの源泉徴収税を差し引く",
+    "disclaimer": "これは口座の設定に基づく簡易的な概算です。実際の税額は、居住地の税制、損失、控除、保有期間、その他の所得によって異なる場合があります。税務上の助言ではありません。"
+  },
   "toasts": {
     "categoryCreatedNested": "カテゴリ「{parent}：{name}」が作成されました",
     "categoryCreated": "カテゴリ「{name}」が作成されました",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "支払い頻度は必須です",
     "paymentStartDateRequired": "初回支払日は必須です",
     "paymentAccountRequired": "支払い元勘定科目は必須です",
-    "amortizationRequired": "償却期間は必須です"
+    "amortizationRequired": "償却期間は必須です",
+    "taxRateRange": "税率は0%から100%の範囲で指定してください",
+    "taxRateRequired": "割合による計算には税率が必要です"
   },
   "loanDetail": {
     "backToAccounts": "勘定科目一覧に戻る",

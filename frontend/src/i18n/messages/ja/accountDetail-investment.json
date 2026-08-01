@@ -5,6 +5,11 @@
     "dividendsInterest": "配当・利息",
     "realizedGains": "実現利益",
     "ytd": "年初来",
-    "empty": "今年の投資収益はありません"
+    "empty": "今年の投資収益はありません",
+    "dividendTaxTitle": "配当課税の概算",
+    "estimatedDividendTax": "概算の配当税額",
+    "taxAlreadyWithheld": "徴収済みの税額",
+    "estimatedAdditionalTax": "概算の追加税額",
+    "taxDisclaimer": "これは口座の設定に基づく簡易的な概算です。実際の税額は、居住地の税制、損失、控除、保有期間、その他の所得によって異なる場合があります。税務上の助言ではありません。"
   }
 }

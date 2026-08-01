@@ -322,6 +322,26 @@
     "dateAcquired": "Data acquisizione",
     "dateAcquiredNote": "L'attività verrà esclusa dai calcoli del patrimonio netto prima di questa data."
   },
+  "taxFields": {
+    "title": "Stima delle imposte",
+    "capitalGains": "Plusvalenze",
+    "dividends": "Dividendi",
+    "calculation": "Calcolo",
+    "taxRate": "Aliquota fiscale",
+    "capitalGainsModes": {
+      "none": "Nessuna imposta",
+      "percentage_of_profit": "Percentuale dell'utile realizzato",
+      "percentage_of_sale_value": "Percentuale del valore di vendita"
+    },
+    "dividendModes": {
+      "none": "Nessuna imposta aggiuntiva",
+      "percentage_of_gross_dividend": "Percentuale del dividendo lordo"
+    },
+    "withholdingTaxRate": "Ritenuta già applicata alla fonte",
+    "withholdingTaxRateHelp": "La percentuale che il tuo broker trattiene già da un dividendo lordo. Lascia vuoto se non viene trattenuto nulla.",
+    "deductWithholding": "Detrarre la ritenuta già registrata nelle transazioni",
+    "disclaimer": "Questa è una stima semplificata basata sulle impostazioni del conto. L'imposta effettiva può dipendere dalla tua residenza fiscale, dalle perdite, dalle franchigie, dal periodo di detenzione e da altri redditi. Non costituisce consulenza fiscale."
+  },
   "toasts": {
     "categoryCreatedNested": "Categoria \"{parent}: {name}\" creata",
     "categoryCreated": "Categoria \"{name}\" creata",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "La frequenza di pagamento è obbligatoria",
     "paymentStartDateRequired": "La data del primo pagamento è obbligatoria",
     "paymentAccountRequired": "Il conto di pagamento è obbligatorio",
-    "amortizationRequired": "Il periodo di ammortamento è obbligatorio"
+    "amortizationRequired": "Il periodo di ammortamento è obbligatorio",
+    "taxRateRange": "L'aliquota fiscale deve essere compresa tra 0% e 100%",
+    "taxRateRequired": "È richiesta un'aliquota fiscale per un calcolo percentuale"
   },
   "loanDetail": {
     "backToAccounts": "Torna ai conti",

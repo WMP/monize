@@ -1676,5 +1676,17 @@
     "labelSelectAccount": "Kreditkonto auswählen",
     "viewTransactions": "Transaktionen anzeigen",
     "empty": "Keine Kredit-, Hypotheken- oder Kreditlinienkonten gefunden."
+  },
+  "estimatedTax": {
+    "title": "Geschätzte steuerliche Auswirkung",
+    "account": "Konto",
+    "estimatedGainOnSale": "Geschätzter Gewinn beim Verkauf",
+    "estimatedTax": "Geschätzte Steuer",
+    "calculation": "Berechnung",
+    "calculationNone": "Für dieses Konto ist keine Kapitalertragsteuer konfiguriert.",
+    "calculationOfProfit": "{rate} des geschätzten Gewinns",
+    "calculationOfSaleValue": "{rate} des Verkaufswerts",
+    "unknownAccount": "Unbekanntes Konto",
+    "disclaimer": "Dies ist eine vereinfachte Schätzung auf Basis der Einstellungen des jeweiligen Kontos. Die tatsächliche Steuer kann von Ihrer Steueransässigkeit, Verlusten, Freibeträgen, Haltedauer und anderen Einkünften abhängen. Dies ist keine Steuerberatung."
   }
 }

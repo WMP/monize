@@ -5,6 +5,11 @@
     "dividendsInterest": "Dividendi e interessi",
     "realizedGains": "Plusvalenze realizzate",
     "ytd": "Da inizio anno",
-    "empty": "Nessun reddito da investimenti quest'anno"
+    "empty": "Nessun reddito da investimenti quest'anno",
+    "dividendTaxTitle": "Stima dell'imposta sui dividendi",
+    "estimatedDividendTax": "Imposta stimata sui dividendi",
+    "taxAlreadyWithheld": "Imposta già trattenuta",
+    "estimatedAdditionalTax": "Imposta aggiuntiva stimata",
+    "taxDisclaimer": "Questa è una stima semplificata basata sulle impostazioni del conto. L'imposta effettiva può dipendere dalla tua residenza fiscale, dalle perdite, dalle franchigie, dal periodo di detenzione e da altri redditi. Non costituisce consulenza fiscale."
   }
 }

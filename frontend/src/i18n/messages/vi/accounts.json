@@ -322,6 +322,26 @@
     "dateAcquired": "Ngày mua",
     "dateAcquiredNote": "Tài sản sẽ bị loại khỏi tính toán tài sản ròng trước ngày này."
   },
+  "taxFields": {
+    "title": "Ước tính thuế",
+    "capitalGains": "Lãi vốn",
+    "dividends": "Cổ tức",
+    "calculation": "Cách tính",
+    "taxRate": "Thuế suất",
+    "capitalGainsModes": {
+      "none": "Không thuế",
+      "percentage_of_profit": "Phần trăm lợi nhuận đã thực hiện",
+      "percentage_of_sale_value": "Phần trăm giá trị bán"
+    },
+    "dividendModes": {
+      "none": "Không có thuế bổ sung",
+      "percentage_of_gross_dividend": "Phần trăm cổ tức gộp"
+    },
+    "withholdingTaxRate": "Thuế đã khấu trừ tại nguồn",
+    "withholdingTaxRateHelp": "Tỷ lệ phần trăm mà công ty môi giới đã khấu trừ từ cổ tức gộp. Để trống nếu không có khấu trừ.",
+    "deductWithholding": "Trừ thuế khấu trừ đã ghi nhận trong giao dịch",
+    "disclaimer": "Đây là ước tính đơn giản dựa trên thiết lập của tài khoản. Thuế thực tế có thể phụ thuộc vào nơi cư trú thuế, khoản lỗ, mức miễn trừ, thời gian nắm giữ và các khoản thu nhập khác của bạn. Đây không phải là tư vấn thuế."
+  },
   "toasts": {
     "categoryCreatedNested": "Đã tạo danh mục \"{parent}: {name}\"",
     "categoryCreated": "Đã tạo danh mục \"{name}\"",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "Tần suất thanh toán là bắt buộc",
     "paymentStartDateRequired": "Ngày thanh toán đầu tiên là bắt buộc",
     "paymentAccountRequired": "Tài khoản thanh toán là bắt buộc",
-    "amortizationRequired": "Thời gian khấu hao là bắt buộc"
+    "amortizationRequired": "Thời gian khấu hao là bắt buộc",
+    "taxRateRange": "Thuế suất phải nằm trong khoảng từ 0% đến 100%",
+    "taxRateRequired": "Cần có thuế suất cho cách tính theo phần trăm"
   },
   "loanDetail": {
     "backToAccounts": "Quay lại danh sách tài khoản",

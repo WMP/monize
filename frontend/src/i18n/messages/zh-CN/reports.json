@@ -1676,5 +1676,17 @@
     "labelSelectAccount": "选择贷款账户",
     "viewTransactions": "查看交易",
     "empty": "未找到贷款、抵押贷款或信用额度账户。"
+  },
+  "estimatedTax": {
+    "title": "预计税费影响",
+    "account": "账户",
+    "estimatedGainOnSale": "卖出的预计收益",
+    "estimatedTax": "预计税款",
+    "calculation": "计算方式",
+    "calculationNone": "此账户设置为不计资本利得税。",
+    "calculationOfProfit": "预计利润的 {rate}",
+    "calculationOfSaleValue": "卖出金额的 {rate}",
+    "unknownAccount": "未知账户",
+    "disclaimer": "这是根据各账户设置得出的简化估算。实际税款可能取决于您的税务居民身份、亏损、免税额、持有期限及其他收入。本内容不构成税务建议。"
   }
 }

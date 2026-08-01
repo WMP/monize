@@ -322,6 +322,26 @@
     "dateAcquired": "अधिग्रहण तिथि",
     "dateAcquiredNote": "इस तिथि से पहले संपत्ति को शुद्ध संपत्ति गणना से बाहर रखा जाएगा।"
   },
+  "taxFields": {
+    "title": "कर अनुमान",
+    "capitalGains": "पूंजीगत लाभ",
+    "dividends": "लाभांश",
+    "calculation": "गणना",
+    "taxRate": "कर दर",
+    "capitalGainsModes": {
+      "none": "कोई कर नहीं",
+      "percentage_of_profit": "वसूल किए गए लाभ का प्रतिशत",
+      "percentage_of_sale_value": "बिक्री मूल्य का प्रतिशत"
+    },
+    "dividendModes": {
+      "none": "कोई अतिरिक्त कर नहीं",
+      "percentage_of_gross_dividend": "सकल लाभांश का प्रतिशत"
+    },
+    "withholdingTaxRate": "स्रोत पर पहले से काटा गया कर",
+    "withholdingTaxRateHelp": "वह प्रतिशत जो आपका ब्रोकर सकल लाभांश से पहले ही काट लेता है। कुछ न कटता हो तो खाली छोड़ें।",
+    "deductWithholding": "लेन-देन में पहले से दर्ज स्रोत कर घटाएँ",
+    "disclaimer": "यह खाता सेटिंग्स पर आधारित एक सरलीकृत अनुमान है। वास्तविक कर आपकी कर निवास स्थिति, हानियों, छूटों, धारण अवधि और अन्य आय पर निर्भर कर सकता है। यह कर सलाह नहीं है।"
+  },
   "toasts": {
     "categoryCreatedNested": "श्रेणी \"{parent}: {name}\" बनाई गई",
     "categoryCreated": "श्रेणी \"{name}\" बनाई गई",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "भुगतान आवृत्ति आवश्यक है",
     "paymentStartDateRequired": "पहली भुगतान तिथि आवश्यक है",
     "paymentAccountRequired": "भुगतान खाता आवश्यक है",
-    "amortizationRequired": "परिशोधन अवधि आवश्यक है"
+    "amortizationRequired": "परिशोधन अवधि आवश्यक है",
+    "taxRateRange": "कर दर 0% और 100% के बीच होनी चाहिए",
+    "taxRateRequired": "प्रतिशत गणना के लिए कर दर आवश्यक है"
   },
   "loanDetail": {
     "backToAccounts": "खातों पर वापस जाएँ",

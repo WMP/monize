@@ -76,9 +76,9 @@ describe("dividend tax settings", () => {
   );
 
   it("rejects an unknown mode", async () => {
-    expect(await failures(create({ dividendTaxMode: "percentage_of_net" }))).toEqual(
-      ["dividendTaxMode"],
-    );
+    expect(
+      await failures(create({ dividendTaxMode: "percentage_of_net" })),
+    ).toEqual(["dividendTaxMode"]);
   });
 
   it.each([

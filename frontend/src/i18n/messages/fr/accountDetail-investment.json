@@ -5,6 +5,11 @@
     "dividendsInterest": "Dividendes et intérêts",
     "realizedGains": "Gains réalisés",
     "ytd": "Depuis le début de l'année",
-    "empty": "Aucun revenu de placement cette année"
+    "empty": "Aucun revenu de placement cette année",
+    "dividendTaxTitle": "Estimation de l'impôt sur les dividendes",
+    "estimatedDividendTax": "Impôt estimé sur les dividendes",
+    "taxAlreadyWithheld": "Impôt déjà retenu",
+    "estimatedAdditionalTax": "Impôt supplémentaire estimé",
+    "taxDisclaimer": "Il s'agit d'une estimation simplifiée fondée sur les paramètres du compte. L'impôt réel peut dépendre de votre résidence fiscale, de vos pertes, des abattements, de la durée de détention et de vos autres revenus. Ceci ne constitue pas un conseil fiscal."
   }
 }
