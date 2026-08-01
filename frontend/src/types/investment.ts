@@ -1,4 +1,5 @@
 import { Tag } from './tag';
+import { CapitalGainsTaxMode } from './account';
 
 export type InvestmentAction =
   | 'BUY'
@@ -512,6 +513,15 @@ export interface RealizedGainEntry {
   proceeds: number;
   costBasis: number;
   realizedGain: number;
+  /**
+   * Simplified estimate from the tax settings of the account that held the
+   * position. Each account is estimated against its own settings, so a
+   * portfolio spanning several accounts never gets one blended rate.
+   */
+  capitalGainsTaxMode: CapitalGainsTaxMode;
+  capitalGainsTaxRate: number;
+  taxableBase: number;
+  estimatedTax: number;
 }
 
 /**

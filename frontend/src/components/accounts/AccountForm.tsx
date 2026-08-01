@@ -18,7 +18,14 @@ import { institutionsApi } from '@/lib/institutions';
 import { Institution } from '@/types/institution';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
-import { Account, PaymentFrequency, InterestBookingMode } from '@/types/account';
+import {
+  Account,
+  PaymentFrequency,
+  InterestBookingMode,
+  CapitalGainsTaxMode,
+  DividendTaxMode,
+  accountHoldsSecurities,
+} from '@/types/account';
 import { Category } from '@/types/category';
 import { accountsApi } from '@/lib/accounts';
 import { categoriesApi } from '@/lib/categories';
@@ -32,6 +39,7 @@ import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
 import { LoanFields } from './LoanFields';
 import { MortgageFields } from './MortgageFields';
 import { AssetFields } from './AssetFields';
+import { InvestmentTaxFields } from './InvestmentTaxFields';
 import { AccountExportModal } from './AccountExportModal';
 import { LoanPaymentSetupDialog } from './LoanPaymentSetupDialog';
 
@@ -52,6 +60,20 @@ const optionalNumberWithRange = (min: number, max: number) =>
   z.preprocess(
     (val: unknown) => (val === '' || val === undefined || (typeof val === 'number' && isNaN(val)) ? undefined : val),
     z.number().min(min).max(max).optional()
+  );
+
+// A tax rate is a percentage bounded at both ends, and both ends are reachable
+// by a typo, so it carries a localized message rather than Zod's default. The
+// "a percentage mode needs a rate" half is in the superRefine below, since it
+// depends on the mode.
+const optionalTaxRate = (t: (key: string) => string) =>
+  z.preprocess(
+    (val: unknown) => (val === '' || val === undefined || (typeof val === 'number' && isNaN(val)) ? undefined : val),
+    z
+      .number()
+      .min(0, t('validation.taxRateRange'))
+      .max(100, t('validation.taxRateRange'))
+      .optional()
   );
 
 const paymentFrequencies = ['WEEKLY', 'BIWEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY'] as const;
@@ -118,6 +140,13 @@ const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z
   overpaymentPayeeId: z.string().optional(),
   // Foreign-transaction fee (percentage)
   fxFeePercent: optionalNumberWithRange(0, 100),
+  // Simplified tax estimation (investment accounts that hold securities only)
+  capitalGainsTaxMode: z.enum(['none', 'percentage_of_profit', 'percentage_of_sale_value']).optional(),
+  capitalGainsTaxRate: optionalTaxRate(t),
+  dividendTaxMode: z.enum(['none', 'percentage_of_gross_dividend']).optional(),
+  dividendTaxRate: optionalTaxRate(t),
+  dividendWithholdingTaxRate: optionalTaxRate(t),
+  deductRecordedWithholdingTax: z.boolean().optional(),
   // Asset-specific fields
   assetCategoryId: z.string().optional(),
   dateAcquired: z.string().optional(),
@@ -128,6 +157,25 @@ const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z
   amortizationMonths: optionalNumber,
   mortgagePaymentFrequency: optionalEnum(mortgagePaymentFrequencies),
 }).superRefine((data, ctx) => {
+  // A percentage tax mode with no rate would silently estimate zero tax, which
+  // reads as "this account is tax free" rather than "you left a field blank".
+  // Enforced on create and on edit alike -- unlike the loan/mortgage payment
+  // fields below, the tax section is rendered in both.
+  if (data.capitalGainsTaxMode && data.capitalGainsTaxMode !== 'none' && data.capitalGainsTaxRate === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['capitalGainsTaxRate'],
+      message: t('validation.taxRateRequired'),
+    });
+  }
+  if (data.dividendTaxMode && data.dividendTaxMode !== 'none' && data.dividendTaxRate === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['dividendTaxRate'],
+      message: t('validation.taxRateRequired'),
+    });
+  }
+
   // Loan and mortgage payment setup is only collected when creating the account
   // (the payment fields are hidden while editing), so only enforce these on
   // create. The backend rejects the same gaps, but validating here gives clean,
@@ -260,6 +308,12 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           overpaymentMemo: account.overpaymentMemo || undefined,
           overpaymentPayeeId: account.overpaymentPayeeId || undefined,
           fxFeePercent: account.fxFeePercent ?? undefined,
+          capitalGainsTaxMode: account.capitalGainsTaxMode || 'none',
+          capitalGainsTaxRate: account.capitalGainsTaxRate ?? undefined,
+          dividendTaxMode: account.dividendTaxMode || 'none',
+          dividendTaxRate: account.dividendTaxRate ?? undefined,
+          dividendWithholdingTaxRate: account.dividendWithholdingTaxRate ?? undefined,
+          deductRecordedWithholdingTax: account.deductRecordedWithholdingTax || false,
           assetCategoryId: account.assetCategoryId || undefined,
           dateAcquired: account.dateAcquired?.split('T')[0] || undefined,
           isCanadianMortgage: account.isCanadianMortgage || false,
@@ -275,6 +329,9 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           excludeFromNetWorth: false,
           paymentFrequency: 'MONTHLY' as PaymentFrequency,
           createInvestmentPair: true,
+          capitalGainsTaxMode: 'none',
+          dividendTaxMode: 'none',
+          deductRecordedWithholdingTax: false,
         },
   });
 
@@ -318,6 +375,21 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
 
   // Show investment pair checkbox only when creating a new INVESTMENT account
   const showInvestmentPairOption = !account && watchedAccountType === 'INVESTMENT';
+
+  // Tax estimation belongs to accounts that hold instruments -- a brokerage
+  // account, IKE/IKZE, a foreign investment account. Never a bank, cash, credit
+  // or loan account, and never the auto-created cash half of an investment
+  // pair, whose sells and dividends belong to the brokerage half.
+  const showTaxFields = accountHoldsSecurities({
+    accountType: watchedAccountType,
+    accountSubType: account?.accountSubType,
+  });
+  const watchedCapitalGainsTaxMode = useWatch({ control, name: 'capitalGainsTaxMode' });
+  const watchedCapitalGainsTaxRate = useWatch({ control, name: 'capitalGainsTaxRate' });
+  const watchedDividendTaxMode = useWatch({ control, name: 'dividendTaxMode' });
+  const watchedDividendTaxRate = useWatch({ control, name: 'dividendTaxRate' });
+  const watchedDividendWithholdingTaxRate = useWatch({ control, name: 'dividendWithholdingTaxRate' });
+  const watchedDeductWithholding = useWatch({ control, name: 'deductRecordedWithholdingTax' });
 
   // Show credit card fields for CREDIT_CARD account type
   const isCreditCardAccount = watchedAccountType === 'CREDIT_CARD';
@@ -801,6 +873,19 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           />
         </div>
       </div>
+
+      {showTaxFields && (
+        <InvestmentTaxFields
+          capitalGainsTaxMode={(watchedCapitalGainsTaxMode as CapitalGainsTaxMode) || 'none'}
+          capitalGainsTaxRate={watchedCapitalGainsTaxRate}
+          dividendTaxMode={(watchedDividendTaxMode as DividendTaxMode) || 'none'}
+          dividendTaxRate={watchedDividendTaxRate}
+          dividendWithholdingTaxRate={watchedDividendWithholdingTaxRate}
+          deductRecordedWithholdingTax={!!watchedDeductWithholding}
+          setValue={setValue}
+          errors={errors}
+        />
+      )}
 
       {isLoanAccount && !account && (
         <LoanFields

@@ -1922,4 +1922,207 @@ describe('AccountForm', () => {
       expect(categoriesApi.create).toHaveBeenCalled();
     });
   });
+  describe('tax estimation section', () => {
+    it('is hidden on a plain bank account', async () => {
+      render(<AccountForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+
+      const typeSelect = screen.getByLabelText('Account Type') as HTMLSelectElement;
+      await act(async () => {
+        fireEvent.change(typeSelect, { target: { value: 'CHEQUING' } });
+      });
+
+      expect(screen.queryByText('Tax estimation')).not.toBeInTheDocument();
+    });
+
+    it.each(['SAVINGS', 'CREDIT_CARD', 'CASH', 'LOAN', 'MORTGAGE', 'LINE_OF_CREDIT', 'ASSET', 'OTHER'])(
+      'is hidden on a %s account',
+      async (accountType) => {
+        render(<AccountForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+
+        const typeSelect = screen.getByLabelText('Account Type') as HTMLSelectElement;
+        await act(async () => {
+          fireEvent.change(typeSelect, { target: { value: accountType } });
+        });
+
+        expect(screen.queryByText('Tax estimation')).not.toBeInTheDocument();
+      },
+    );
+
+    it('is shown on a brokerage account', async () => {
+      render(<AccountForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+
+      const typeSelect = screen.getByLabelText('Account Type') as HTMLSelectElement;
+      await act(async () => {
+        fireEvent.change(typeSelect, { target: { value: 'INVESTMENT' } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Tax estimation')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Capital gains')).toBeInTheDocument();
+      expect(screen.getByText('Dividends')).toBeInTheDocument();
+      expect(screen.getByText(/This is not tax advice/i)).toBeInTheDocument();
+    });
+
+    it('is shown when editing the brokerage half of an investment pair', async () => {
+      render(
+        <AccountForm
+          account={createExistingAccount({
+            accountType: 'INVESTMENT',
+            accountSubType: 'INVESTMENT_BROKERAGE',
+          })}
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Tax estimation')).toBeInTheDocument();
+      });
+    });
+
+    it('is hidden on the cash half of an investment pair', async () => {
+      render(
+        <AccountForm
+          account={createExistingAccount({
+            accountType: 'INVESTMENT',
+            accountSubType: 'INVESTMENT_CASH',
+          })}
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Update Account/i })).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Tax estimation')).not.toBeInTheDocument();
+    });
+
+    it('hides the rate field while a mode charges no tax, and shows it otherwise', async () => {
+      render(<AccountForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+
+      const typeSelect = screen.getByLabelText('Account Type') as HTMLSelectElement;
+      await act(async () => {
+        fireEvent.change(typeSelect, { target: { value: 'INVESTMENT' } });
+      });
+      await waitFor(() => {
+        expect(screen.getByText('Tax estimation')).toBeInTheDocument();
+      });
+
+      // Both modes default to "no tax", so neither rate field is rendered.
+      expect(screen.queryByText('Tax rate')).not.toBeInTheDocument();
+
+      const [capitalGainsMode] = screen.getAllByLabelText('Calculation') as HTMLSelectElement[];
+      await act(async () => {
+        fireEvent.change(capitalGainsMode, { target: { value: 'percentage_of_profit' } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Tax rate')).toHaveLength(1);
+      });
+    });
+
+    it('rejects a percentage mode saved with no rate', async () => {
+      render(
+        <AccountForm
+          account={createExistingAccount({
+            accountType: 'INVESTMENT',
+            accountSubType: 'INVESTMENT_BROKERAGE',
+          })}
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Tax estimation')).toBeInTheDocument();
+      });
+
+      const [capitalGainsMode] = screen.getAllByLabelText('Calculation') as HTMLSelectElement[];
+      await act(async () => {
+        fireEvent.change(capitalGainsMode, { target: { value: 'percentage_of_profit' } });
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Account/i }));
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Tax rate is required for a percentage calculation'),
+        ).toBeInTheDocument();
+      });
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+    });
+
+    it('rejects a rate above 100%', async () => {
+      render(
+        <AccountForm
+          account={createExistingAccount({
+            accountType: 'INVESTMENT',
+            accountSubType: 'INVESTMENT_BROKERAGE',
+            capitalGainsTaxMode: 'percentage_of_profit',
+            capitalGainsTaxRate: 19,
+          })}
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Tax estimation')).toBeInTheDocument();
+      });
+
+      const rate = screen.getByLabelText('Tax rate') as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(rate, { target: { value: '120' } });
+        fireEvent.blur(rate);
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Account/i }));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Tax rate must be between 0% and 100%')).toBeInTheDocument();
+      });
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+    });
+
+    it('submits the configured rates for a Polish brokerage account', async () => {
+      render(
+        <AccountForm
+          account={createExistingAccount({
+            accountType: 'INVESTMENT',
+            accountSubType: 'INVESTMENT_BROKERAGE',
+            capitalGainsTaxMode: 'percentage_of_profit',
+            capitalGainsTaxRate: 19,
+            dividendTaxMode: 'percentage_of_gross_dividend',
+            dividendTaxRate: 19,
+            deductRecordedWithholdingTax: true,
+          })}
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Tax estimation')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Account/i }));
+      });
+
+      await waitFor(() => {
+        expect(mockOnSubmit).toHaveBeenCalled();
+      });
+      expect(mockOnSubmit.mock.calls[0][0]).toMatchObject({
+        capitalGainsTaxMode: 'percentage_of_profit',
+        capitalGainsTaxRate: 19,
+        dividendTaxMode: 'percentage_of_gross_dividend',
+        dividendTaxRate: 19,
+        deductRecordedWithholdingTax: true,
+      });
+    });
+  });
 });

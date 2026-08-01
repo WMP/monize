@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { Modal } from '@/components/ui/Modal';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import { accountsApi } from '@/lib/accounts';
-import { Account } from '@/types/account';
+import { Account, accountHoldsSecurities } from '@/types/account';
 import { showErrorToast } from '@/lib/errors';
 import { UseFormModalReturn } from '@/hooks/useFormModal';
 
@@ -118,6 +118,41 @@ export function AccountFormModal({ formModal, onSaved }: AccountFormModalProps) 
             isNaN(cleanedData.fxFeePercent));
         if (feePercentEmpty && editingItem.fxFeePercent != null) {
           cleanedData.fxFeePercent = null;
+        }
+
+        // Tax rates behave the same way: an emptied rate must reach the backend
+        // as null, or the strip-empties cleanup below would drop it and the
+        // stored rate would silently survive.
+        const taxRateFields = [
+          'capitalGainsTaxRate',
+          'dividendTaxRate',
+          'dividendWithholdingTaxRate',
+        ] as const;
+        for (const key of taxRateFields) {
+          const emptied =
+            cleanedData[key] === undefined ||
+            cleanedData[key] === '' ||
+            (typeof cleanedData[key] === 'number' && isNaN(cleanedData[key]));
+          if (emptied && editingItem[key] != null) {
+            cleanedData[key] = null;
+          }
+        }
+      }
+
+      // Tax estimation exists only on accounts that hold securities. The form
+      // hides the section for every other type, but react-hook-form still
+      // carries its defaults, and the backend rejects the whole request rather
+      // than ignoring settings it cannot honour.
+      if (!accountHoldsSecurities({ accountType: effectiveType, accountSubType: editingItem?.accountSubType })) {
+        for (const key of [
+          'capitalGainsTaxMode',
+          'capitalGainsTaxRate',
+          'dividendTaxMode',
+          'dividendTaxRate',
+          'dividendWithholdingTaxRate',
+          'deductRecordedWithholdingTax',
+        ]) {
+          delete cleanedData[key];
         }
       }
 

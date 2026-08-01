@@ -215,4 +215,117 @@ describe('AccountFormModal', () => {
     const [, payload] = mockUpdate.mock.calls[0];
     expect(payload).not.toHaveProperty('description');
   });
+  it('strips tax settings from a non-investment account payload', async () => {
+    // The form hides the tax section for these types, but react-hook-form still
+    // carries its defaults, and the backend rejects the whole request rather
+    // than ignoring settings it cannot honour.
+    mockCreate.mockResolvedValue({ id: 'new' });
+    render(<AccountFormModal formModal={buildFormModal()} onSaved={vi.fn()} />);
+
+    await waitFor(() => expect(capturedOnSubmit).not.toBeNull());
+    await act(async () => {
+      await capturedOnSubmit!({
+        name: 'Chequing',
+        accountType: 'CHEQUING',
+        capitalGainsTaxMode: 'none',
+        dividendTaxMode: 'none',
+        deductRecordedWithholdingTax: false,
+      });
+    });
+
+    const [payload] = mockCreate.mock.calls[0];
+    expect(payload).not.toHaveProperty('capitalGainsTaxMode');
+    expect(payload).not.toHaveProperty('dividendTaxMode');
+    expect(payload).not.toHaveProperty('deductRecordedWithholdingTax');
+  });
+
+  it('keeps tax settings on an investment account payload', async () => {
+    mockCreate.mockResolvedValue({ id: 'new' });
+    render(<AccountFormModal formModal={buildFormModal()} onSaved={vi.fn()} />);
+
+    await waitFor(() => expect(capturedOnSubmit).not.toBeNull());
+    await act(async () => {
+      await capturedOnSubmit!({
+        name: 'Brokerage',
+        accountType: 'INVESTMENT',
+        capitalGainsTaxMode: 'percentage_of_profit',
+        capitalGainsTaxRate: 19,
+        dividendTaxMode: 'percentage_of_gross_dividend',
+        dividendTaxRate: 19,
+        deductRecordedWithholdingTax: true,
+      });
+    });
+
+    expect(mockCreate.mock.calls[0][0]).toMatchObject({
+      capitalGainsTaxMode: 'percentage_of_profit',
+      capitalGainsTaxRate: 19,
+      dividendTaxMode: 'percentage_of_gross_dividend',
+      dividendTaxRate: 19,
+      deductRecordedWithholdingTax: true,
+    });
+  });
+
+  it('strips tax settings from the cash half of an investment pair', async () => {
+    mockUpdate.mockResolvedValue({});
+    render(
+      <AccountFormModal
+        formModal={buildFormModal({
+          editingItem: {
+            id: 'a-1',
+            accountType: 'INVESTMENT',
+            accountSubType: 'INVESTMENT_CASH',
+          } as Account,
+          isEditing: true,
+        })}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(capturedOnSubmit).not.toBeNull());
+    await act(async () => {
+      await capturedOnSubmit!({
+        name: 'Cash',
+        accountType: 'INVESTMENT',
+        capitalGainsTaxMode: 'none',
+        dividendTaxMode: 'none',
+      });
+    });
+
+    const [, payload] = mockUpdate.mock.calls[0];
+    expect(payload).not.toHaveProperty('capitalGainsTaxMode');
+    expect(payload).not.toHaveProperty('dividendTaxMode');
+  });
+
+  it('clears a stored tax rate by sending null when blanked on edit', async () => {
+    mockUpdate.mockResolvedValue({});
+    render(
+      <AccountFormModal
+        formModal={buildFormModal({
+          editingItem: {
+            id: 'a-1',
+            accountType: 'INVESTMENT',
+            accountSubType: 'INVESTMENT_BROKERAGE',
+            capitalGainsTaxRate: 19,
+          } as Account,
+          isEditing: true,
+        })}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(capturedOnSubmit).not.toBeNull());
+    await act(async () => {
+      await capturedOnSubmit!({
+        name: 'Brokerage',
+        accountType: 'INVESTMENT',
+        capitalGainsTaxMode: 'none',
+        capitalGainsTaxRate: undefined,
+      });
+    });
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      'a-1',
+      expect.objectContaining({ capitalGainsTaxRate: null }),
+    );
+  });
 });

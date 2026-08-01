@@ -322,6 +322,26 @@
     "dateAcquired": "Date Acquired",
     "dateAcquiredNote": "The asset will be excluded from net worth calculations before this date."
   },
+  "taxFields": {
+    "title": "Tax estimation",
+    "capitalGains": "Capital gains",
+    "dividends": "Dividends",
+    "calculation": "Calculation",
+    "taxRate": "Tax rate",
+    "capitalGainsModes": {
+      "none": "No tax",
+      "percentage_of_profit": "Percentage of realized profit",
+      "percentage_of_sale_value": "Percentage of sale value"
+    },
+    "dividendModes": {
+      "none": "No additional tax",
+      "percentage_of_gross_dividend": "Percentage of gross dividend"
+    },
+    "withholdingTaxRate": "Withholding tax already taken at source",
+    "withholdingTaxRateHelp": "The percentage your broker already withholds from a gross dividend. Leave blank if nothing is withheld.",
+    "deductWithholding": "Deduct withholding tax already recorded in transactions",
+    "disclaimer": "This is a simplified estimate based on the account settings. Actual tax may depend on your tax residency, losses, allowances, holding period and other income. This is not tax advice."
+  },
   "toasts": {
     "categoryCreatedNested": "Category \"{parent}: {name}\" created",
     "categoryCreated": "Category \"{name}\" created",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "Payment frequency is required",
     "paymentStartDateRequired": "First payment date is required",
     "paymentAccountRequired": "Payment account is required",
-    "amortizationRequired": "Amortization period is required"
+    "amortizationRequired": "Amortization period is required",
+    "taxRateRange": "Tax rate must be between 0% and 100%",
+    "taxRateRequired": "Tax rate is required for a percentage calculation"
   },
   "loanDetail": {
     "backToAccounts": "Back to Accounts",

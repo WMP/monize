@@ -33,6 +33,37 @@ export function isLiabilityAccountType(type: AccountType | undefined | null): bo
 export type InterestBookingMode = 'AUTO' | 'SPLIT' | 'SEPARATE';
 export const INTEREST_BOOKING_MODES: InterestBookingMode[] = ['AUTO', 'SPLIT', 'SEPARATE'];
 
+/**
+ * How the estimated tax on selling an instrument is derived. Simplified on
+ * purpose: no brackets, allowances, holding-period rates or tax-lot matching.
+ */
+export type CapitalGainsTaxMode = 'none' | 'percentage_of_profit' | 'percentage_of_sale_value';
+export const CAPITAL_GAINS_TAX_MODES: CapitalGainsTaxMode[] = [
+  'none',
+  'percentage_of_profit',
+  'percentage_of_sale_value',
+];
+
+/** How the estimated tax on a dividend is derived. */
+export type DividendTaxMode = 'none' | 'percentage_of_gross_dividend';
+export const DIVIDEND_TAX_MODES: DividendTaxMode[] = ['none', 'percentage_of_gross_dividend'];
+
+/**
+ * Accounts that can hold securities carry the tax-estimation settings: a plain
+ * brokerage account, IKE/IKZE, a foreign investment account. The auto-created
+ * cash side of an investment pair holds no instruments, so its sells and
+ * dividends belong to the brokerage side and it gets no settings of its own.
+ *
+ * This is the single place the "which accounts show the tax section" question
+ * is answered; the account form and the backend service both defer to it.
+ */
+export function accountHoldsSecurities(account: {
+  accountType: AccountType | undefined | null;
+  accountSubType?: AccountSubType;
+}): boolean {
+  return account.accountType === 'INVESTMENT' && account.accountSubType !== 'INVESTMENT_CASH';
+}
+
 export type PaymentFrequency = 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
 
 export type MortgagePaymentFrequency =
@@ -92,6 +123,15 @@ export interface Account {
   // Foreign-transaction fee: the bank's FX conversion fee (percent) booked as an
   // percentage folded into the converted amount on foreign-entered transactions.
   fxFeePercent: number | null;
+  // Simplified tax estimation, present on accounts that hold securities.
+  // Always set by the backend (both modes default to 'none'); optional here so
+  // fixtures and non-investment accounts need not specify them.
+  capitalGainsTaxMode?: CapitalGainsTaxMode;
+  capitalGainsTaxRate?: number | null;
+  dividendTaxMode?: DividendTaxMode;
+  dividendTaxRate?: number | null;
+  dividendWithholdingTaxRate?: number | null;
+  deductRecordedWithholdingTax?: boolean;
   scheduledTransactionId: string | null;
   // Asset-specific fields
   assetCategoryId: string | null;
@@ -141,6 +181,13 @@ export interface CreateAccountData {
   overpaymentPayeeId?: string | null;
   // Foreign-transaction fee percentage (null clears).
   fxFeePercent?: number | null;
+  // Simplified tax estimation (investment accounts that hold securities only).
+  capitalGainsTaxMode?: CapitalGainsTaxMode;
+  capitalGainsTaxRate?: number | null;
+  dividendTaxMode?: DividendTaxMode;
+  dividendTaxRate?: number | null;
+  dividendWithholdingTaxRate?: number | null;
+  deductRecordedWithholdingTax?: boolean;
   // Asset-specific fields
   assetCategoryId?: string;
   dateAcquired?: string;

@@ -322,6 +322,26 @@
     "dateAcquired": "[XX-Date Acquired-XX]",
     "dateAcquiredNote": "[XX-The asset will be excluded from net worth calculations before this date.-XX]"
   },
+  "taxFields": {
+    "title": "[XX-Tax estimation-XX]",
+    "capitalGains": "[XX-Capital gains-XX]",
+    "dividends": "[XX-Dividends-XX]",
+    "calculation": "[XX-Calculation-XX]",
+    "taxRate": "[XX-Tax rate-XX]",
+    "capitalGainsModes": {
+      "none": "[XX-No tax-XX]",
+      "percentage_of_profit": "[XX-Percentage of realized profit-XX]",
+      "percentage_of_sale_value": "[XX-Percentage of sale value-XX]"
+    },
+    "dividendModes": {
+      "none": "[XX-No additional tax-XX]",
+      "percentage_of_gross_dividend": "[XX-Percentage of gross dividend-XX]"
+    },
+    "withholdingTaxRate": "[XX-Withholding tax already taken at source-XX]",
+    "withholdingTaxRateHelp": "[XX-The percentage your broker already withholds from a gross dividend. Leave blank if nothing is withheld.-XX]",
+    "deductWithholding": "[XX-Deduct withholding tax already recorded in transactions-XX]",
+    "disclaimer": "[XX-This is a simplified estimate based on the account settings. Actual tax may depend on your tax residency, losses, allowances, holding period and other income. This is not tax advice.-XX]"
+  },
   "toasts": {
     "categoryCreatedNested": "[XX-Category \"{parent}: {name}\" created-XX]",
     "categoryCreated": "[XX-Category \"{name}\" created-XX]",
@@ -340,7 +360,9 @@
     "paymentFrequencyRequired": "[XX-Payment frequency is required-XX]",
     "paymentStartDateRequired": "[XX-First payment date is required-XX]",
     "paymentAccountRequired": "[XX-Payment account is required-XX]",
-    "amortizationRequired": "[XX-Amortization period is required-XX]"
+    "amortizationRequired": "[XX-Amortization period is required-XX]",
+    "taxRateRange": "[XX-Tax rate must be between 0% and 100%-XX]",
+    "taxRateRequired": "[XX-Tax rate is required for a percentage calculation-XX]"
   },
   "loanDetail": {
     "backToAccounts": "[XX-Back to Accounts-XX]",
