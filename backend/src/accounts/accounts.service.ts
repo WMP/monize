@@ -11,6 +11,7 @@ import {
   Account,
   AccountType,
   AccountSubType,
+  accountHoldsSecurities,
 } from "./entities/account.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
@@ -82,6 +83,76 @@ export class AccountsService {
   }
 
   /**
+   * Guard the simplified tax-estimation settings.
+   *
+   * Two rules: they only exist on accounts that hold securities (a brokerage
+   * account, IKE/IKZE, a foreign investment account -- never a bank, cash,
+   * credit or loan account, nor the cash side of an investment pair), and a
+   * percentage mode is meaningless without a rate. The 0-100 bound is enforced
+   * by the DTO and by a CHECK constraint; this is the cross-field half.
+   *
+   * On update the effective value is the incoming one when supplied and the
+   * stored one otherwise, so switching a mode on an account that already has a
+   * rate does not require resending it.
+   */
+  private assertTaxSettingsValid(
+    dto: CreateAccountDto | UpdateAccountDto,
+    current?: Account,
+  ): void {
+    const supplied =
+      dto.capitalGainsTaxMode !== undefined ||
+      dto.capitalGainsTaxRate !== undefined ||
+      dto.dividendTaxMode !== undefined ||
+      dto.dividendTaxRate !== undefined ||
+      dto.dividendWithholdingTaxRate !== undefined ||
+      dto.deductRecordedWithholdingTax !== undefined;
+    if (!supplied) return;
+
+    const accountType = dto.accountType ?? current?.accountType;
+    const accountSubType = current?.accountSubType ?? null;
+    if (
+      !accountType ||
+      !accountHoldsSecurities({ accountType, accountSubType })
+    ) {
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.taxSettingsNotSupported",
+          "Tax estimation settings are only available on investment accounts that hold securities.",
+        ),
+      );
+    }
+
+    const capitalGainsMode =
+      dto.capitalGainsTaxMode ?? current?.capitalGainsTaxMode ?? "none";
+    const capitalGainsRate =
+      dto.capitalGainsTaxRate !== undefined
+        ? dto.capitalGainsTaxRate
+        : (current?.capitalGainsTaxRate ?? null);
+    if (capitalGainsMode !== "none" && capitalGainsRate === null) {
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.capitalGainsTaxRateRequired",
+          "A capital gains tax rate is required when a percentage calculation is selected.",
+        ),
+      );
+    }
+
+    const dividendMode = dto.dividendTaxMode ?? current?.dividendTaxMode ?? "none";
+    const dividendRate =
+      dto.dividendTaxRate !== undefined
+        ? dto.dividendTaxRate
+        : (current?.dividendTaxRate ?? null);
+    if (dividendMode !== "none" && dividendRate === null) {
+      throw new BadRequestException(
+        tr(
+          "errors.accounts.dividendTaxRateRequired",
+          "A dividend tax rate is required when a percentage calculation is selected.",
+        ),
+      );
+    }
+  }
+
+  /**
    * Create a new account for a user
    */
   async create(
@@ -95,6 +166,7 @@ export class AccountsService {
     } = createAccountDto;
 
     await this.assertInstitutionOwned(userId, accountData.institutionId);
+    this.assertTaxSettingsValid(createAccountDto);
 
     // If creating an investment account pair, delegate to the pair creation method
     if (
@@ -164,7 +236,29 @@ export class AccountsService {
     userId: string,
     createAccountDto: CreateAccountDto,
   ): Promise<{ cashAccount: Account; brokerageAccount: Account }> {
-    const { openingBalance = 0, name, ...accountData } = createAccountDto;
+    const {
+      openingBalance = 0,
+      name,
+      // The cash half of the pair holds no instruments, so tax settings belong
+      // to the brokerage half only -- otherwise both sides would answer for the
+      // same sale and the same dividend.
+      capitalGainsTaxMode,
+      capitalGainsTaxRate,
+      dividendTaxMode,
+      dividendTaxRate,
+      dividendWithholdingTaxRate,
+      deductRecordedWithholdingTax,
+      ...accountData
+    } = createAccountDto;
+
+    const taxSettings = {
+      capitalGainsTaxMode,
+      capitalGainsTaxRate,
+      dividendTaxMode,
+      dividendTaxRate,
+      dividendWithholdingTaxRate,
+      deductRecordedWithholdingTax,
+    };
 
     return withScopedDb(this.dataSource, async (m) => {
       const repo = m.getRepository(Account);
@@ -190,6 +284,7 @@ export class AccountsService {
       // Create the brokerage account linked to the cash account
       const brokerageAccount = repo.create({
         ...accountData,
+        ...taxSettings,
         name: `${name} - ${brokerageSuffixWord}`,
         userId,
         openingBalance: 0,
@@ -643,6 +738,8 @@ export class AccountsService {
           }
         }
 
+        this.assertTaxSettingsValid(updateAccountDto, account);
+
         const before = { ...account };
 
         // If openingBalance is being changed, we need to recalculate currentBalance
@@ -738,6 +835,22 @@ export class AccountsService {
           account.overpaymentPayeeId = updateAccountDto.overpaymentPayeeId;
         if (updateAccountDto.fxFeePercent !== undefined)
           account.fxFeePercent = updateAccountDto.fxFeePercent;
+        // Tax estimation. A rate is kept when its mode is switched to 'none' so
+        // switching back restores it; only an explicit null clears it.
+        if (updateAccountDto.capitalGainsTaxMode !== undefined)
+          account.capitalGainsTaxMode = updateAccountDto.capitalGainsTaxMode;
+        if (updateAccountDto.capitalGainsTaxRate !== undefined)
+          account.capitalGainsTaxRate = updateAccountDto.capitalGainsTaxRate;
+        if (updateAccountDto.dividendTaxMode !== undefined)
+          account.dividendTaxMode = updateAccountDto.dividendTaxMode;
+        if (updateAccountDto.dividendTaxRate !== undefined)
+          account.dividendTaxRate = updateAccountDto.dividendTaxRate;
+        if (updateAccountDto.dividendWithholdingTaxRate !== undefined)
+          account.dividendWithholdingTaxRate =
+            updateAccountDto.dividendWithholdingTaxRate;
+        if (updateAccountDto.deductRecordedWithholdingTax !== undefined)
+          account.deductRecordedWithholdingTax =
+            updateAccountDto.deductRecordedWithholdingTax;
         if (updateAccountDto.assetCategoryId !== undefined)
           account.assetCategoryId = updateAccountDto.assetCategoryId;
         if (updateAccountDto.dateAcquired !== undefined)

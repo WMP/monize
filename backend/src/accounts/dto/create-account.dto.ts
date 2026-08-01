@@ -15,6 +15,10 @@ import {
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   AccountType,
+  CAPITAL_GAINS_TAX_MODES,
+  CapitalGainsTaxMode,
+  DIVIDEND_TAX_MODES,
+  DividendTaxMode,
   INTEREST_BOOKING_MODES,
   InterestBookingMode,
 } from "../entities/account.entity";
@@ -276,6 +280,71 @@ export class CreateAccountDto {
   @Min(0)
   @Max(100)
   fxFeePercent?: number;
+
+  // Simplified tax estimation. Accepted only on accounts that hold securities;
+  // the service rejects them on any other account type.
+  @ApiPropertyOptional({
+    description:
+      "How the estimated tax on selling an instrument is derived. 'percentage_of_profit' and 'percentage_of_sale_value' require capitalGainsTaxRate.",
+    enum: CAPITAL_GAINS_TAX_MODES,
+    default: "none",
+  })
+  @IsOptional()
+  @IsIn(CAPITAL_GAINS_TAX_MODES)
+  capitalGainsTaxMode?: CapitalGainsTaxMode;
+
+  @ApiPropertyOptional({
+    example: 19,
+    description:
+      "Capital gains tax rate as a percentage (0-100). Required by the percentage modes, ignored by 'none'.",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  @Max(100)
+  capitalGainsTaxRate?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "How the estimated tax on a dividend is derived. 'percentage_of_gross_dividend' requires dividendTaxRate.",
+    enum: DIVIDEND_TAX_MODES,
+    default: "none",
+  })
+  @IsOptional()
+  @IsIn(DIVIDEND_TAX_MODES)
+  dividendTaxMode?: DividendTaxMode;
+
+  @ApiPropertyOptional({
+    example: 19,
+    description:
+      "Dividend tax rate as a percentage (0-100). Required by 'percentage_of_gross_dividend', ignored by 'none'.",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  @Max(100)
+  dividendTaxRate?: number;
+
+  @ApiPropertyOptional({
+    example: 15,
+    description:
+      "Percentage of a gross dividend assumed to have already been withheld at source (0-100). User-supplied; never inferred from the security's country, exchange or currency.",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  @Max(100)
+  dividendWithholdingTaxRate?: number;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      "Reduce the estimated dividend tax by the tax already withheld (never below zero).",
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  deductRecordedWithholdingTax?: boolean;
 
   // Asset-specific fields
   @ApiPropertyOptional({

@@ -286,6 +286,115 @@ describe("AccountsService", () => {
       expect(createCall.currentBalance).toBe(0);
     });
 
+    it("creates an investment account with tax estimation settings", async () => {
+      await service.create("user-1", {
+        name: "Brokerage",
+        accountType: AccountType.INVESTMENT,
+        currencyCode: "PLN",
+        capitalGainsTaxMode: "percentage_of_profit",
+        capitalGainsTaxRate: 19,
+        dividendTaxMode: "percentage_of_gross_dividend",
+        dividendTaxRate: 19,
+        deductRecordedWithholdingTax: true,
+      } as any);
+
+      const createCall = accountsRepository.create.mock.calls[0][0];
+      expect(createCall.capitalGainsTaxMode).toBe("percentage_of_profit");
+      expect(createCall.capitalGainsTaxRate).toBe(19);
+      expect(createCall.dividendTaxMode).toBe("percentage_of_gross_dividend");
+      expect(createCall.dividendTaxRate).toBe(19);
+      expect(createCall.deductRecordedWithholdingTax).toBe(true);
+    });
+
+    it("rejects tax estimation settings on a bank account", async () => {
+      await expect(
+        service.create("user-1", {
+          name: "Chequing",
+          accountType: AccountType.CHEQUING,
+          currencyCode: "PLN",
+          capitalGainsTaxMode: "percentage_of_profit",
+          capitalGainsTaxRate: 19,
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(accountsRepository.save).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      AccountType.CASH,
+      AccountType.CREDIT_CARD,
+      AccountType.LOAN,
+      AccountType.ASSET,
+      AccountType.OTHER,
+    ])("rejects tax estimation settings on a %s account", async (type) => {
+      await expect(
+        service.create("user-1", {
+          name: "Not investable",
+          accountType: type,
+          currencyCode: "PLN",
+          dividendTaxMode: "percentage_of_gross_dividend",
+          dividendTaxRate: 19,
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects a percentage capital gains mode with no rate", async () => {
+      await expect(
+        service.create("user-1", {
+          name: "Brokerage",
+          accountType: AccountType.INVESTMENT,
+          currencyCode: "PLN",
+          capitalGainsTaxMode: "percentage_of_sale_value",
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects a percentage dividend mode with no rate", async () => {
+      await expect(
+        service.create("user-1", {
+          name: "Brokerage",
+          accountType: AccountType.INVESTMENT,
+          currencyCode: "PLN",
+          dividendTaxMode: "percentage_of_gross_dividend",
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("accepts a no-tax investment account with no rates (IKE/IKZE)", async () => {
+      await service.create("user-1", {
+        name: "IKE",
+        accountType: AccountType.INVESTMENT,
+        currencyCode: "PLN",
+        capitalGainsTaxMode: "none",
+        dividendTaxMode: "none",
+      } as any);
+
+      const createCall = accountsRepository.create.mock.calls[0][0];
+      expect(createCall.capitalGainsTaxMode).toBe("none");
+      expect(createCall.dividendTaxMode).toBe("none");
+    });
+
+    it("puts tax settings on the brokerage half of an investment pair only", async () => {
+      await service.create("user-1", {
+        name: "Pair",
+        accountType: AccountType.INVESTMENT,
+        currencyCode: "PLN",
+        createInvestmentPair: true,
+        capitalGainsTaxMode: "percentage_of_profit",
+        capitalGainsTaxRate: 19,
+      } as any);
+
+      const [cashCall, brokerageCall] = accountsRepository.create.mock.calls.map(
+        (call) => call[0],
+      );
+      expect(cashCall.accountSubType).toBe(AccountSubType.INVESTMENT_CASH);
+      expect(cashCall.capitalGainsTaxMode).toBeUndefined();
+      expect(brokerageCall.accountSubType).toBe(
+        AccountSubType.INVESTMENT_BROKERAGE,
+      );
+      expect(brokerageCall.capitalGainsTaxMode).toBe("percentage_of_profit");
+      expect(brokerageCall.capitalGainsTaxRate).toBe(19);
+    });
+
     it("creates an account with a foreign-transaction fee percentage", async () => {
       await service.create("user-1", {
         name: "Travel Card",
@@ -523,6 +632,96 @@ describe("AccountsService", () => {
         service.update("user-1", "account-1", { institutionId: "x" }),
       ).rejects.toThrow(BadRequestException);
       expect(mockDataSource.transaction).toHaveBeenCalled();
+    });
+
+    it("updates tax estimation settings on an investment account", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: AccountType.INVESTMENT,
+        accountSubType: AccountSubType.INVESTMENT_BROKERAGE,
+        capitalGainsTaxMode: "none",
+        capitalGainsTaxRate: null,
+        dividendTaxMode: "none",
+        dividendTaxRate: null,
+        dividendWithholdingTaxRate: null,
+        deductRecordedWithholdingTax: false,
+      });
+
+      await service.update("user-1", "account-1", {
+        capitalGainsTaxMode: "percentage_of_profit",
+        capitalGainsTaxRate: 19,
+        dividendTaxMode: "percentage_of_gross_dividend",
+        dividendTaxRate: 19,
+        dividendWithholdingTaxRate: 15,
+        deductRecordedWithholdingTax: true,
+      });
+
+      const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+      expect(saved.capitalGainsTaxMode).toBe("percentage_of_profit");
+      expect(saved.capitalGainsTaxRate).toBe(19);
+      expect(saved.dividendWithholdingTaxRate).toBe(15);
+      expect(saved.deductRecordedWithholdingTax).toBe(true);
+    });
+
+    it("rejects tax estimation settings on a non-investment account", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({ ...mockAccount });
+
+      await expect(
+        service.update("user-1", "account-1", {
+          capitalGainsTaxMode: "percentage_of_profit",
+          capitalGainsTaxRate: 19,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+    });
+
+    it("rejects tax estimation settings on the cash half of an investment pair", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: AccountType.INVESTMENT,
+        accountSubType: AccountSubType.INVESTMENT_CASH,
+      });
+
+      await expect(
+        service.update("user-1", "account-1", {
+          dividendTaxMode: "percentage_of_gross_dividend",
+          dividendTaxRate: 19,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("keeps the stored rate when only the mode is switched", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: AccountType.INVESTMENT,
+        accountSubType: null,
+        capitalGainsTaxMode: "percentage_of_profit",
+        capitalGainsTaxRate: 19,
+      });
+
+      await service.update("user-1", "account-1", {
+        capitalGainsTaxMode: "percentage_of_sale_value",
+      });
+
+      const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+      expect(saved.capitalGainsTaxMode).toBe("percentage_of_sale_value");
+      expect(saved.capitalGainsTaxRate).toBe(19);
+    });
+
+    it("rejects switching to a percentage mode when no rate is stored", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: AccountType.INVESTMENT,
+        accountSubType: null,
+        capitalGainsTaxMode: "none",
+        capitalGainsTaxRate: null,
+      });
+
+      await expect(
+        service.update("user-1", "account-1", {
+          capitalGainsTaxMode: "percentage_of_profit",
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it("links and unlinks a loan account for the equity view", async () => {
