@@ -154,15 +154,20 @@ export function InvestmentTaxFields({
           {t('taxFields.withholdingTaxRateHelp')}
         </p>
 
+        {/* labelledBy, not label: the text is visible beside the switch, and an
+            aria-label duplicating it announces the name twice. */}
         <div className="flex items-center gap-3">
           <ToggleSwitch
             checked={deductRecordedWithholdingTax}
             onChange={(next) =>
               setValue('deductRecordedWithholdingTax', next, { shouldDirty: true })
             }
-            label={t('taxFields.deductWithholding')}
+            labelledBy="deduct-withholding-label"
           />
-          <span className="text-sm text-gray-700 dark:text-gray-300">
+          <span
+            id="deduct-withholding-label"
+            className="text-sm text-gray-700 dark:text-gray-300"
+          >
             {t('taxFields.deductWithholding')}
           </span>
         </div>

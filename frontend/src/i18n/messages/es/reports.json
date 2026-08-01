@@ -1681,12 +1681,14 @@
     "title": "Impacto fiscal estimado",
     "account": "Cuenta",
     "estimatedGainOnSale": "Ganancia estimada en la venta",
+    "taxableBase": "Base imponible",
     "estimatedTax": "Impuesto estimado",
     "calculation": "Cálculo",
     "calculationNone": "Esta cuenta está configurada sin impuesto sobre ganancias de capital.",
     "calculationOfProfit": "{rate} del beneficio estimado",
     "calculationOfSaleValue": "{rate} del valor de venta",
     "unknownAccount": "Cuenta desconocida",
-    "disclaimer": "Esta es una estimación simplificada basada en la configuración de cada cuenta. El impuesto real puede depender de su residencia fiscal, pérdidas, exenciones, periodo de tenencia y otros ingresos. Esto no es asesoramiento fiscal."
+    "disclaimer": "Esta es una estimación simplificada basada en la configuración de cada cuenta. El impuesto real puede depender de su residencia fiscal, pérdidas, exenciones, periodo de tenencia y otros ingresos. Esto no es asesoramiento fiscal.",
+    "lossesNotOffset": "Las pérdidas no se compensan con las ganancias, por lo que la base imponible puede superar la ganancia neta."
   }
 }

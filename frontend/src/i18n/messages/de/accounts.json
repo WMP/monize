@@ -339,7 +339,7 @@
     },
     "withholdingTaxRate": "Bereits an der Quelle einbehaltene Steuer",
     "withholdingTaxRateHelp": "Der Prozentsatz, den Ihr Broker bereits von einer Bruttodividende einbehält. Leer lassen, wenn nichts einbehalten wird.",
-    "deductWithholding": "Bereits in Transaktionen erfasste Quellensteuer abziehen",
+    "deductWithholding": "Bereits an der Quelle einbehaltene Quellensteuer abziehen",
     "disclaimer": "Dies ist eine vereinfachte Schätzung auf Basis der Kontoeinstellungen. Die tatsächliche Steuer kann von Ihrer Steueransässigkeit, Verlusten, Freibeträgen, Haltedauer und anderen Einkünften abhängen. Dies ist keine Steuerberatung."
   },
   "toasts": {

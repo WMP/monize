@@ -102,6 +102,16 @@ transactionDate: string;
 
 This class of bug is invisible to unit tests, which construct payloads by hand and never send what the form sends. It surfaces in E2E or in production.
 
+### A field that belongs to one account type is cleared when the type changes
+
+`AccountsService.update` maps properties explicitly, and a type change has to
+clear the columns that no longer apply -- the credit card statement fields and
+the tax-estimation settings both do this at the end of the mapping. Left behind,
+those values are unreachable from the UI (the form hides their section) yet
+still read by services, so they silently come back into force the moment the
+type is switched back. Guard on the *effective* type (`dto.accountType ??
+account.accountType`), and clear after the assignments, not before.
+
 ## Testing Conventions
 
 Mock repositories use `Record<string, jest.Mock>`; tests use `Test.createTestingModule` with mocks injected via `getRepositoryToken()`. E2E tests live in `test/` with helpers under `test/helpers/` (`auth-helper.ts`, `test-database.ts`, `test-factories.ts`).

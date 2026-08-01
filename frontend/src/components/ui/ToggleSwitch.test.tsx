@@ -48,4 +48,32 @@ describe('ToggleSwitch', () => {
     expect(sw.className).toMatch(/h-4/);
     expect(sw.className).toMatch(/w-7/);
   });
+  it('takes its accessible name from visible text via labelledBy', () => {
+    // A switch with text beside it must not also carry an aria-label: screen
+    // readers would announce the name twice.
+    render(
+      <>
+        <ToggleSwitch checked onChange={() => {}} labelledBy="deduct-label" />
+        <span id="deduct-label">Deduct withholding tax already taken at source</span>
+      </>,
+    );
+
+    const sw = screen.getByRole('switch');
+    expect(sw).not.toHaveAttribute('aria-label');
+    expect(sw).toHaveAttribute('aria-labelledby', 'deduct-label');
+    expect(sw).toHaveAccessibleName('Deduct withholding tax already taken at source');
+  });
+
+  it('lets labelledBy win over a label passed alongside it', () => {
+    render(
+      <>
+        <ToggleSwitch checked onChange={() => {}} label="Ignored" labelledBy="visible" />
+        <span id="visible">Visible name</span>
+      </>,
+    );
+
+    const sw = screen.getByRole('switch');
+    expect(sw).not.toHaveAttribute('aria-label');
+    expect(sw).toHaveAccessibleName('Visible name');
+  });
 });

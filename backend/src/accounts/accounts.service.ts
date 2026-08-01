@@ -852,6 +852,24 @@ export class AccountsService {
         if (updateAccountDto.deductRecordedWithholdingTax !== undefined)
           account.deductRecordedWithholdingTax =
             updateAccountDto.deductRecordedWithholdingTax;
+        // Tax estimation only exists on accounts that hold securities, so a
+        // type change away from one clears it -- the same convention the credit
+        // card statement fields follow above. Settings left behind on a
+        // CHEQUING account are unreachable from the UI and would silently come
+        // back into force if the type were ever switched back.
+        if (
+          !accountHoldsSecurities({
+            accountType: effectiveType,
+            accountSubType: account.accountSubType,
+          })
+        ) {
+          account.capitalGainsTaxMode = "none";
+          account.capitalGainsTaxRate = null;
+          account.dividendTaxMode = "none";
+          account.dividendTaxRate = null;
+          account.dividendWithholdingTaxRate = null;
+          account.deductRecordedWithholdingTax = false;
+        }
         if (updateAccountDto.assetCategoryId !== undefined)
           account.assetCategoryId = updateAccountDto.assetCategoryId;
         if (updateAccountDto.dateAcquired !== undefined)

@@ -339,7 +339,7 @@
     },
     "withholdingTaxRate": "Podatek już pobrany u źródła",
     "withholdingTaxRateHelp": "Procent, który broker już pobiera z dywidendy brutto. Pozostaw puste, jeśli nic nie jest pobierane.",
-    "deductWithholding": "Odejmij podatek u źródła już zapisany w transakcjach",
+    "deductWithholding": "Odejmij podatek już pobrany u źródła",
     "disclaimer": "To uproszczony szacunek oparty na ustawieniach konta. Rzeczywisty podatek może zależeć od rezydencji podatkowej, strat, kwot wolnych, okresu posiadania i innych dochodów. To nie jest porada podatkowa."
   },
   "toasts": {

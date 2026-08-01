@@ -339,7 +339,7 @@
     },
     "withholdingTaxRate": "已在来源地代扣的税款",
     "withholdingTaxRateHelp": "券商已从股息总额中代扣的百分比。若无代扣，请留空。",
-    "deductWithholding": "扣除交易中已记录的代扣税",
+    "deductWithholding": "扣除已在来源地代扣的税款",
     "disclaimer": "这是根据账户设置得出的简化估算。实际税款可能取决于您的税务居民身份、亏损、免税额、持有期限及其他收入。本内容不构成税务建议。"
   },
   "toasts": {

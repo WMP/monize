@@ -17,6 +17,7 @@ interface AccountTaxRow {
   accountId: string;
   accountName: string;
   estimatedGain: number;
+  taxableBase: number;
   estimatedTax: number;
   mode: CapitalGainsTaxMode;
   rate: number;
@@ -50,6 +51,7 @@ export function EstimatedTaxByAccountPanel({
           accountId: entry.accountId,
           accountName: entry.accountName || t('estimatedTax.unknownAccount'),
           estimatedGain: 0,
+          taxableBase: 0,
           estimatedTax: 0,
           mode: entry.capitalGainsTaxMode,
           rate: entry.capitalGainsTaxRate,
@@ -57,13 +59,25 @@ export function EstimatedTaxByAccountPanel({
         map.set(entry.accountId, row);
       }
       row.estimatedGain += toDisplay(entry.realizedGain, entry.accountCurrencyCode);
+      row.taxableBase += toDisplay(entry.taxableBase, entry.accountCurrencyCode);
       row.estimatedTax += toDisplay(entry.estimatedTax, entry.accountCurrencyCode);
     }
 
     return Array.from(map.values()).sort((a, b) => b.estimatedTax - a.estimatedTax);
   }, [entries, toDisplay, t]);
 
-  if (rows.length === 0) return null;
+  // Nothing to say when no account in the report charges tax: a table of zeros
+  // plus a disclaimer is noise on the report of every user who has not
+  // configured any of this. A mixed portfolio still shows its untaxed accounts,
+  // because there the zero is the informative part.
+  if (rows.length === 0 || rows.every((row) => row.mode === 'none')) return null;
+
+  // A losing sale contributes to the gain column but not to the taxable base,
+  // so the two diverge exactly when losses went unoffset. Saying so keeps
+  // "gain 0.00 / taxable base 1,000.00" from reading as an arithmetic fault.
+  const hasOffsetLosses = rows.some(
+    (row) => row.mode === 'percentage_of_profit' && row.taxableBase > row.estimatedGain + 0.005,
+  );
 
   const calculationLabel = (row: AccountTaxRow): string => {
     if (row.mode === 'none') return t('estimatedTax.calculationNone');
@@ -81,6 +95,11 @@ export function EstimatedTaxByAccountPanel({
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
         {t('estimatedTax.disclaimer')}
       </p>
+      {hasOffsetLosses && (
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          {t('estimatedTax.lossesNotOffset')}
+        </p>
+      )}
 
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
@@ -89,6 +108,9 @@ export function EstimatedTaxByAccountPanel({
               <th className="py-2 pr-4 font-medium">{t('estimatedTax.account')}</th>
               <th className="py-2 pr-4 font-medium text-right">
                 {t('estimatedTax.estimatedGainOnSale')}
+              </th>
+              <th className="py-2 pr-4 font-medium text-right">
+                {t('estimatedTax.taxableBase')}
               </th>
               <th className="py-2 pr-4 font-medium text-right">
                 {t('estimatedTax.estimatedTax')}
@@ -105,6 +127,9 @@ export function EstimatedTaxByAccountPanel({
                 <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{row.accountName}</td>
                 <td className="py-2 pr-4 text-right text-gray-900 dark:text-gray-100">
                   {fmtValue(row.estimatedGain)}
+                </td>
+                <td className="py-2 pr-4 text-right text-gray-900 dark:text-gray-100">
+                  {fmtValue(row.taxableBase)}
                 </td>
                 <td className="py-2 pr-4 text-right font-medium text-gray-900 dark:text-gray-100">
                   {fmtValue(row.estimatedTax)}

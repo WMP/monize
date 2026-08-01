@@ -339,7 +339,7 @@
     },
     "withholdingTaxRate": "Reeds aan de bron ingehouden belasting",
     "withholdingTaxRateHelp": "Het percentage dat uw broker al inhoudt op een brutodividend. Laat leeg als er niets wordt ingehouden.",
-    "deductWithholding": "Reeds in transacties vastgelegde bronbelasting aftrekken",
+    "deductWithholding": "Reeds aan de bron ingehouden bronbelasting aftrekken",
     "disclaimer": "Dit is een vereenvoudigde schatting op basis van de rekeninginstellingen. De werkelijke belasting kan afhangen van uw fiscale woonplaats, verliezen, vrijstellingen, bezitsduur en andere inkomsten. Dit is geen belastingadvies."
   },
   "toasts": {

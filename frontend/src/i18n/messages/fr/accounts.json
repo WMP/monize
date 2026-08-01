@@ -339,7 +339,7 @@
     },
     "withholdingTaxRate": "Retenue déjà prélevée à la source",
     "withholdingTaxRateHelp": "Le pourcentage que votre courtier retient déjà sur un dividende brut. Laissez vide si rien n'est retenu.",
-    "deductWithholding": "Déduire la retenue à la source déjà enregistrée dans les transactions",
+    "deductWithholding": "Déduire la retenue déjà prélevée à la source",
     "disclaimer": "Il s'agit d'une estimation simplifiée fondée sur les paramètres du compte. L'impôt réel peut dépendre de votre résidence fiscale, de vos pertes, des abattements, de la durée de détention et de vos autres revenus. Ceci ne constitue pas un conseil fiscal."
   },
   "toasts": {

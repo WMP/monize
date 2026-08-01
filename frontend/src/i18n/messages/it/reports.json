@@ -1681,12 +1681,14 @@
     "title": "Impatto fiscale stimato",
     "account": "Conto",
     "estimatedGainOnSale": "Guadagno stimato sulla vendita",
+    "taxableBase": "Base imponibile",
     "estimatedTax": "Imposta stimata",
     "calculation": "Calcolo",
     "calculationNone": "Questo conto è configurato senza imposta sulle plusvalenze.",
     "calculationOfProfit": "{rate} dell'utile stimato",
     "calculationOfSaleValue": "{rate} del valore di vendita",
     "unknownAccount": "Conto sconosciuto",
-    "disclaimer": "Questa è una stima semplificata basata sulle impostazioni di ciascun conto. L'imposta effettiva può dipendere dalla tua residenza fiscale, dalle perdite, dalle franchigie, dal periodo di detenzione e da altri redditi. Non costituisce consulenza fiscale."
+    "disclaimer": "Questa è una stima semplificata basata sulle impostazioni di ciascun conto. L'imposta effettiva può dipendere dalla tua residenza fiscale, dalle perdite, dalle franchigie, dal periodo di detenzione e da altri redditi. Non costituisce consulenza fiscale.",
+    "lossesNotOffset": "Le perdite non sono compensate con le plusvalenze, quindi la base imponibile può superare il guadagno netto."
   }
 }

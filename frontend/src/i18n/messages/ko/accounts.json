@@ -339,7 +339,7 @@
     },
     "withholdingTaxRate": "원천에서 이미 징수된 세금",
     "withholdingTaxRateHelp": "증권사가 세전 배당금에서 이미 원천징수하는 비율입니다. 징수가 없으면 비워 두세요.",
-    "deductWithholding": "거래에 기록된 원천징수세를 차감",
+    "deductWithholding": "원천에서 이미 징수된 세금을 차감",
     "disclaimer": "계좌 설정에 기반한 간략한 추정치입니다. 실제 세금은 세무 거주지, 손실, 공제, 보유 기간 및 기타 소득에 따라 달라질 수 있습니다. 세무 자문이 아닙니다."
   },
   "toasts": {

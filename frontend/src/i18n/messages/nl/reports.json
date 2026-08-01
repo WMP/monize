@@ -1681,12 +1681,14 @@
     "title": "Geschatte belastingimpact",
     "account": "Rekening",
     "estimatedGainOnSale": "Geschatte winst bij verkoop",
+    "taxableBase": "Belastbare grondslag",
     "estimatedTax": "Geschatte belasting",
     "calculation": "Berekening",
     "calculationNone": "Deze rekening is ingesteld zonder vermogenswinstbelasting.",
     "calculationOfProfit": "{rate} van de geschatte winst",
     "calculationOfSaleValue": "{rate} van de verkoopwaarde",
     "unknownAccount": "Onbekende rekening",
-    "disclaimer": "Dit is een vereenvoudigde schatting op basis van de instellingen van elke rekening. De werkelijke belasting kan afhangen van uw fiscale woonplaats, verliezen, vrijstellingen, bezitsduur en andere inkomsten. Dit is geen belastingadvies."
+    "disclaimer": "Dit is een vereenvoudigde schatting op basis van de instellingen van elke rekening. De werkelijke belasting kan afhangen van uw fiscale woonplaats, verliezen, vrijstellingen, bezitsduur en andere inkomsten. Dit is geen belastingadvies.",
+    "lossesNotOffset": "Verliezen worden niet verrekend met winsten, dus de belastbare grondslag kan hoger zijn dan de nettowinst."
   }
 }

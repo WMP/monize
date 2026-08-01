@@ -339,7 +339,7 @@
     },
     "withholdingTaxRate": "Retenção já efetuada na fonte",
     "withholdingTaxRateHelp": "A percentagem que a sua corretora já retém de um dividendo bruto. Deixe em branco se nada for retido.",
-    "deductWithholding": "Deduzir a retenção na fonte já registada nas transações",
+    "deductWithholding": "Deduzir a retenção já efetuada na fonte",
     "disclaimer": "Esta é uma estimativa simplificada baseada nas definições da conta. O imposto real pode depender da sua residência fiscal, perdas, isenções, período de detenção e outros rendimentos. Isto não é aconselhamento fiscal."
   },
   "toasts": {

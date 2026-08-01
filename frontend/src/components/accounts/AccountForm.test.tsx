@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act } from '@testing-library/react';
 import { render, screen, fireEvent, waitFor } from '@/test/render';
-import { AccountForm } from './AccountForm';
+import { AccountForm, buildAccountSchema } from './AccountForm';
 import { Account } from '@/types/account';
 import { exchangeRatesApi } from '@/lib/exchange-rates';
 import { accountsApi } from '@/lib/accounts';
@@ -2122,6 +2122,86 @@ describe('AccountForm', () => {
         dividendTaxMode: 'percentage_of_gross_dividend',
         dividendTaxRate: 19,
         deductRecordedWithholdingTax: true,
+      });
+    });
+    it('does not block Save when a percentage mode is left behind on a non-investment type', () => {
+      // The regression: the form keeps values of fields it has unmounted, so a
+      // percentage mode picked on INVESTMENT survived a switch to CHEQUING and
+      // attached a "rate required" error to an invisible field. Save then did
+      // nothing at all, with no error anywhere on screen.
+      const schema = buildAccountSchema((k: string) => k, false);
+      const result = schema.safeParse({
+        name: 'Chequing',
+        accountType: 'CHEQUING',
+        currencyCode: 'CAD',
+        capitalGainsTaxMode: 'percentage_of_profit',
+        capitalGainsTaxRate: undefined,
+        dividendTaxMode: 'percentage_of_gross_dividend',
+        dividendTaxRate: undefined,
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('still requires the rate while the section is on screen', () => {
+      const schema = buildAccountSchema((k: string) => k, false);
+      const result = schema.safeParse({
+        name: 'Brokerage',
+        accountType: 'INVESTMENT',
+        currencyCode: 'PLN',
+        capitalGainsTaxMode: 'percentage_of_profit',
+        capitalGainsTaxRate: undefined,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues.map((i) => i.path.join('.'))).toContain(
+        'capitalGainsTaxRate',
+      );
+    });
+
+    it('does not require a rate on the cash half of an investment pair', () => {
+      // INVESTMENT, but the section is never rendered for it.
+      const schema = buildAccountSchema((k: string) => k, true, 'INVESTMENT_CASH');
+      const result = schema.safeParse({
+        name: 'Cash',
+        accountType: 'INVESTMENT',
+        currencyCode: 'PLN',
+        capitalGainsTaxMode: 'percentage_of_profit',
+        capitalGainsTaxRate: undefined,
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('saves after switching an investment account with a blank rate to a bank type', async () => {
+      render(<AccountForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+
+      const typeSelect = screen.getByLabelText('Account Type') as HTMLSelectElement;
+      await act(async () => {
+        fireEvent.change(typeSelect, { target: { value: 'INVESTMENT' } });
+      });
+      await waitFor(() => {
+        expect(screen.getByText('Tax estimation')).toBeInTheDocument();
+      });
+
+      const [capitalGainsMode] = screen.getAllByLabelText('Calculation') as HTMLSelectElement[];
+      await act(async () => {
+        fireEvent.change(capitalGainsMode, { target: { value: 'percentage_of_profit' } });
+      });
+      await act(async () => {
+        fireEvent.change(typeSelect, { target: { value: 'CHEQUING' } });
+      });
+      expect(screen.queryByText('Tax estimation')).not.toBeInTheDocument();
+
+      fireEvent.change(screen.getByLabelText('Account Name'), {
+        target: { value: 'My Chequing' },
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
+      });
+
+      await waitFor(() => {
+        expect(mockOnSubmit).toHaveBeenCalled();
       });
     });
   });

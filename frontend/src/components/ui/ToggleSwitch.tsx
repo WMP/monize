@@ -10,6 +10,12 @@ interface ToggleSwitchProps {
    * adjacent text label.
    */
   label?: string;
+  /**
+   * Id of the element holding the switch's visible label. Use this instead of
+   * `label` when the text is rendered beside the switch: an `aria-label`
+   * duplicating visible text makes screen readers announce the name twice.
+   */
+  labelledBy?: string;
   /** Visual size; default is the standard 36px wide switch. */
   size?: 'sm' | 'md';
   className?: string;
@@ -28,6 +34,7 @@ export function ToggleSwitch({
   onChange,
   disabled,
   label,
+  labelledBy,
   size = 'md',
   className,
 }: ToggleSwitchProps) {
@@ -41,7 +48,8 @@ export function ToggleSwitch({
       type="button"
       role="switch"
       aria-checked={checked}
-      aria-label={label}
+      aria-label={labelledBy ? undefined : label}
+      aria-labelledby={labelledBy}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={[

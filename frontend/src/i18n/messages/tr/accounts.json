@@ -339,7 +339,7 @@
     },
     "withholdingTaxRate": "Kaynağında zaten kesilen vergi",
     "withholdingTaxRateHelp": "Aracı kurumunuzun brüt temettüden hâlihazırda kestiği yüzde. Kesinti yoksa boş bırakın.",
-    "deductWithholding": "İşlemlerde kayıtlı stopajı düş",
+    "deductWithholding": "Kaynağında zaten kesilen stopajı düş",
     "disclaimer": "Bu, hesap ayarlarına dayalı basitleştirilmiş bir tahmindir. Gerçek vergi; vergi ikametgâhınıza, zararlarınıza, istisnalara, elde tutma süresine ve diğer gelirlerinize bağlı olabilir. Bu bir vergi tavsiyesi değildir."
   },
   "toasts": {

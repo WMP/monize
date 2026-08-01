@@ -339,7 +339,7 @@
     },
     "withholdingTaxRate": "Retención ya practicada en origen",
     "withholdingTaxRateHelp": "El porcentaje que su bróker ya retiene de un dividendo bruto. Déjelo en blanco si no se retiene nada.",
-    "deductWithholding": "Descontar la retención ya registrada en las transacciones",
+    "deductWithholding": "Descontar la retención ya practicada en origen",
     "disclaimer": "Esta es una estimación simplificada basada en la configuración de la cuenta. El impuesto real puede depender de su residencia fiscal, pérdidas, exenciones, periodo de tenencia y otros ingresos. Esto no es asesoramiento fiscal."
   },
   "toasts": {

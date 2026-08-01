@@ -707,6 +707,50 @@ describe("AccountsService", () => {
       expect(saved.capitalGainsTaxRate).toBe(19);
     });
 
+    it("clears tax settings when the account type changes away from investment", async () => {
+      // Left behind, they are unreachable from the UI and would silently come
+      // back into force if the type were ever switched back.
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: AccountType.INVESTMENT,
+        accountSubType: null,
+        capitalGainsTaxMode: "percentage_of_profit",
+        capitalGainsTaxRate: 19,
+        dividendTaxMode: "percentage_of_gross_dividend",
+        dividendTaxRate: 19,
+        dividendWithholdingTaxRate: 15,
+        deductRecordedWithholdingTax: true,
+      });
+
+      await service.update("user-1", "account-1", {
+        accountType: AccountType.CHEQUING,
+      });
+
+      const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+      expect(saved.capitalGainsTaxMode).toBe("none");
+      expect(saved.capitalGainsTaxRate).toBeNull();
+      expect(saved.dividendTaxMode).toBe("none");
+      expect(saved.dividendTaxRate).toBeNull();
+      expect(saved.dividendWithholdingTaxRate).toBeNull();
+      expect(saved.deductRecordedWithholdingTax).toBe(false);
+    });
+
+    it("keeps tax settings when an unrelated field is edited", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        ...mockAccount,
+        accountType: AccountType.INVESTMENT,
+        accountSubType: null,
+        capitalGainsTaxMode: "percentage_of_profit",
+        capitalGainsTaxRate: 19,
+      });
+
+      await service.update("user-1", "account-1", { name: "Renamed" });
+
+      const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+      expect(saved.capitalGainsTaxMode).toBe("percentage_of_profit");
+      expect(saved.capitalGainsTaxRate).toBe(19);
+    });
+
     it("rejects switching to a percentage mode when no rate is stored", async () => {
       mockQueryRunner.manager.findOne.mockResolvedValue({
         ...mockAccount,

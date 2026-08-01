@@ -74,6 +74,29 @@ A raw `<input type="number">` gets none of this and adds spinner arrows, scroll-
 
 Note that unlike `DateInput`, this rule has no guard test in `ui-conventions.test.ts` yet -- add one there if a raw number input slips in.
 
+### A toggle with visible text beside it -- `labelledBy`, never `label`
+
+`ToggleSwitch` takes `label` (an `aria-label`) *or* `labelledBy` (the id of the
+element holding the visible text), and which one is correct depends entirely on
+whether the name is already on screen. A switch rendered next to a `<span>`
+saying what it does must use `labelledBy` and point at that span's id: an
+`aria-label` repeating visible text makes a screen reader announce the name
+twice, and the visible text is not a bound `<label>`, so it looks clickable and
+is not. Reserve `label` for a bare switch in a toolbar or a table cell, which is
+what the prop's own doc comment says.
+
+### A validation rule for a conditional section must be gated the same way
+
+react-hook-form keeps the values of fields it has unmounted. A `superRefine`
+rule over a section the form only sometimes renders therefore keeps firing after
+the section disappears, attaching an error to a field nobody can see -- and
+because there is no `onInvalid` handler, the submit button then silently does
+nothing. `buildAccountSchema` is the worked example: the loan, mortgage and tax
+rules each re-check the condition that put their section on screen before adding
+an issue. If a section's visibility is a function of more than the submitted
+data (an account's `accountSubType`, which the form cannot change), pass that
+into the schema builder rather than leaving the rule ungated.
+
 ### A clickable table row -- `useLongPress({ onClick })`
 
 `useLongPress` takes an `onClick` alongside `onLongPress` for exactly this: a plain click runs the row's primary action, a 750ms press (or right-click) opens the mobile action sheet, and a click that followed a long-press is suppressed. Spread `getRowHandlers(item)` on the `<tr>` and add `cursor-pointer`. The accounts, payees, tags, categories and securities lists all do this.

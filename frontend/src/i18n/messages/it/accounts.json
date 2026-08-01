@@ -339,7 +339,7 @@
     },
     "withholdingTaxRate": "Ritenuta già applicata alla fonte",
     "withholdingTaxRateHelp": "La percentuale che il tuo broker trattiene già da un dividendo lordo. Lascia vuoto se non viene trattenuto nulla.",
-    "deductWithholding": "Detrarre la ritenuta già registrata nelle transazioni",
+    "deductWithholding": "Detrarre la ritenuta già applicata alla fonte",
     "disclaimer": "Questa è una stima semplificata basata sulle impostazioni del conto. L'imposta effettiva può dipendere dalla tua residenza fiscale, dalle perdite, dalle franchigie, dal periodo di detenzione e da altri redditi. Non costituisce consulenza fiscale."
   },
   "toasts": {

@@ -339,7 +339,7 @@
     },
     "withholdingTaxRate": "Pajak yang sudah dipotong di sumber",
     "withholdingTaxRateHelp": "Persentase yang sudah dipotong broker Anda dari dividen bruto. Kosongkan jika tidak ada pemotongan.",
-    "deductWithholding": "Kurangi pajak potongan yang sudah tercatat di transaksi",
+    "deductWithholding": "Kurangi pajak yang sudah dipotong di sumber",
     "disclaimer": "Ini adalah estimasi sederhana berdasarkan pengaturan akun. Pajak sebenarnya dapat bergantung pada domisili pajak Anda, kerugian, keringanan, masa kepemilikan, dan penghasilan lain. Ini bukan nasihat pajak."
   },
   "toasts": {

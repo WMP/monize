@@ -1681,12 +1681,14 @@
     "title": "Tahmini vergi etkisi",
     "account": "Hesap",
     "estimatedGainOnSale": "Satıştan tahmini kazanç",
+    "taxableBase": "Vergi matrahı",
     "estimatedTax": "Tahmini vergi",
     "calculation": "Hesaplama",
     "calculationNone": "Bu hesap sermaye kazancı vergisi olmadan yapılandırılmıştır.",
     "calculationOfProfit": "Tahmini kârın {rate} kadarı",
     "calculationOfSaleValue": "Satış tutarının {rate} kadarı",
     "unknownAccount": "Bilinmeyen hesap",
-    "disclaimer": "Bu, her hesabın ayarlarına dayalı basitleştirilmiş bir tahmindir. Gerçek vergi; vergi ikametgâhınıza, zararlarınıza, istisnalara, elde tutma süresine ve diğer gelirlerinize bağlı olabilir. Bu bir vergi tavsiyesi değildir."
+    "disclaimer": "Bu, her hesabın ayarlarına dayalı basitleştirilmiş bir tahmindir. Gerçek vergi; vergi ikametgâhınıza, zararlarınıza, istisnalara, elde tutma süresine ve diğer gelirlerinize bağlı olabilir. Bu bir vergi tavsiyesi değildir.",
+    "lossesNotOffset": "Zararlar kazançlardan mahsup edilmez, bu nedenle vergi matrahı net kazancı aşabilir."
   }
 }

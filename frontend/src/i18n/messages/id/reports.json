@@ -1681,12 +1681,14 @@
     "title": "Perkiraan dampak pajak",
     "account": "Akun",
     "estimatedGainOnSale": "Perkiraan keuntungan penjualan",
+    "taxableBase": "Dasar pengenaan pajak",
     "estimatedTax": "Perkiraan pajak",
     "calculation": "Perhitungan",
     "calculationNone": "Akun ini dikonfigurasi tanpa pajak keuntungan modal.",
     "calculationOfProfit": "{rate} dari perkiraan laba",
     "calculationOfSaleValue": "{rate} dari nilai penjualan",
     "unknownAccount": "Akun tidak dikenal",
-    "disclaimer": "Ini adalah estimasi sederhana berdasarkan pengaturan masing-masing akun. Pajak sebenarnya dapat bergantung pada domisili pajak Anda, kerugian, keringanan, masa kepemilikan, dan penghasilan lain. Ini bukan nasihat pajak."
+    "disclaimer": "Ini adalah estimasi sederhana berdasarkan pengaturan masing-masing akun. Pajak sebenarnya dapat bergantung pada domisili pajak Anda, kerugian, keringanan, masa kepemilikan, dan penghasilan lain. Ini bukan nasihat pajak.",
+    "lossesNotOffset": "Kerugian tidak dikompensasikan dengan keuntungan, sehingga dasar pengenaan pajak dapat melebihi keuntungan bersih."
   }
 }

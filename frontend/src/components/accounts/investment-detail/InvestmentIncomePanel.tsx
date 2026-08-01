@@ -6,7 +6,13 @@ import { Account } from '@/types/account';
 import { estimateDividendTax, taxSettingsOf } from '@/lib/investment-tax';
 
 interface InvestmentIncomePanelProps {
+  /** Dividends plus interest, shown as a single income figure. */
   dividendInterestYtd: number;
+  /**
+   * Dividends alone. Interest is not subject to the account's dividend tax, so
+   * the estimate must never be driven by the combined income figure above.
+   */
+  grossDividendYtd?: number;
   realizedGainsYtd: number;
   currencyCode: string;
   isLoading: boolean;
@@ -32,6 +38,7 @@ function gainClass(value: number): string {
 /** Year-to-date investment income: dividends/interest plus realized gains. */
 export function InvestmentIncomePanel({
   dividendInterestYtd,
+  grossDividendYtd,
   realizedGainsYtd,
   currencyCode,
   isLoading,
@@ -43,8 +50,11 @@ export function InvestmentIncomePanel({
 
   const hasIncome = dividendInterestYtd !== 0 || realizedGainsYtd !== 0;
 
+  // Interest is deliberately excluded: it is not a dividend, and taxing it at
+  // the dividend rate would overstate the estimate on any account earning both.
+  const grossDividend = grossDividendYtd ?? 0;
   const dividendTax = estimateDividendTax(taxSettingsOf(account), {
-    grossDividend: dividendInterestYtd,
+    grossDividend,
     recordedWithholdingTax: recordedWithholdingTaxYtd,
   });
 
@@ -52,7 +62,7 @@ export function InvestmentIncomePanel({
   // no dividend tax of its own -- it is money gone either way, and hiding it
   // would make a tax-exempt account look like it received the gross amount.
   const showTax =
-    hasIncome &&
+    grossDividend > 0 &&
     (dividendTax.estimatedDividendTax > 0 || dividendTax.taxAlreadyWithheld > 0);
 
   return (

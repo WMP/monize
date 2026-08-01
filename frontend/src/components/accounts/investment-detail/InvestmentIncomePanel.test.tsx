@@ -48,6 +48,7 @@ describe('InvestmentIncomePanel', () => {
       render(
         <InvestmentIncomePanel
           dividendInterestYtd={1000}
+          grossDividendYtd={1000}
           realizedGainsYtd={0}
           currencyCode="PLN"
           isLoading={false}
@@ -61,6 +62,7 @@ describe('InvestmentIncomePanel', () => {
       render(
         <InvestmentIncomePanel
           dividendInterestYtd={1000}
+          grossDividendYtd={1000}
           realizedGainsYtd={0}
           currencyCode="PLN"
           isLoading={false}
@@ -82,6 +84,7 @@ describe('InvestmentIncomePanel', () => {
       render(
         <InvestmentIncomePanel
           dividendInterestYtd={1000}
+          grossDividendYtd={1000}
           realizedGainsYtd={0}
           currencyCode="PLN"
           isLoading={false}
@@ -103,6 +106,7 @@ describe('InvestmentIncomePanel', () => {
       render(
         <InvestmentIncomePanel
           dividendInterestYtd={1000}
+          grossDividendYtd={1000}
           realizedGainsYtd={500}
           currencyCode="PLN"
           isLoading={false}
@@ -123,6 +127,7 @@ describe('InvestmentIncomePanel', () => {
       render(
         <InvestmentIncomePanel
           dividendInterestYtd={1000}
+          grossDividendYtd={1000}
           realizedGainsYtd={500}
           currencyCode="PLN"
           isLoading={false}
@@ -140,6 +145,7 @@ describe('InvestmentIncomePanel', () => {
       render(
         <InvestmentIncomePanel
           dividendInterestYtd={1000}
+          grossDividendYtd={1000}
           realizedGainsYtd={0}
           currencyCode="PLN"
           isLoading={false}
@@ -148,6 +154,63 @@ describe('InvestmentIncomePanel', () => {
       );
 
       expect(screen.getByText('$150.00')).toBeInTheDocument();
+    });
+    it('taxes dividends only, never the interest bundled into the income figure', () => {
+      // The regression: dividendInterestYtd sums DIVIDEND *and* INTEREST, and
+      // was passed whole as the gross dividend, so interest was taxed at the
+      // dividend rate. 1000 dividends + 500 interest at 19% reported 285.
+      render(
+        <InvestmentIncomePanel
+          dividendInterestYtd={1500}
+          grossDividendYtd={1000}
+          realizedGainsYtd={0}
+          currencyCode="PLN"
+          isLoading={false}
+          account={brokerage({
+            dividendTaxMode: 'percentage_of_gross_dividend',
+            dividendTaxRate: 19,
+          })}
+        />,
+      );
+
+      expect(screen.getByText('$1500.00')).toBeInTheDocument(); // income, both kinds
+      expect(screen.getAllByText('$190.00')).toHaveLength(2); // tax on dividends alone
+      expect(screen.queryByText('$285.00')).not.toBeInTheDocument();
+    });
+
+    it('does not tax interest on an account earning no dividends', () => {
+      render(
+        <InvestmentIncomePanel
+          dividendInterestYtd={900}
+          grossDividendYtd={0}
+          realizedGainsYtd={0}
+          currencyCode="PLN"
+          isLoading={false}
+          account={brokerage({
+            dividendTaxMode: 'percentage_of_gross_dividend',
+            dividendTaxRate: 19,
+          })}
+        />,
+      );
+
+      expect(screen.getByText('$900.00')).toBeInTheDocument();
+      expect(screen.queryByText('Dividend tax estimation')).not.toBeInTheDocument();
+    });
+
+    it('withholds against dividends only, not the combined income', () => {
+      render(
+        <InvestmentIncomePanel
+          dividendInterestYtd={1500}
+          grossDividendYtd={1000}
+          realizedGainsYtd={0}
+          currencyCode="PLN"
+          isLoading={false}
+          account={brokerage({ dividendWithholdingTaxRate: 15 })}
+        />,
+      );
+
+      expect(screen.getByText('$150.00')).toBeInTheDocument();
+      expect(screen.queryByText('$225.00')).not.toBeInTheDocument();
     });
   });
 });

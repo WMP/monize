@@ -31,6 +31,13 @@ function entry(overrides: Partial<RealizedGainEntry> = {}): RealizedGainEntry {
   };
 }
 
+/** The cells of the row for `accountName`, in column order. */
+function rowCells(accountName: string): string[] {
+  const cell = screen.getByText(accountName);
+  const row = cell.closest('tr');
+  return Array.from(row!.querySelectorAll('td')).map((td) => td.textContent ?? '');
+}
+
 function renderPanel(entries: RealizedGainEntry[]) {
   return render(
     <EstimatedTaxByAccountPanel entries={entries} toDisplay={toDisplay} fmtValue={fmtValue} />,
@@ -47,14 +54,19 @@ describe('EstimatedTaxByAccountPanel', () => {
     renderPanel([entry()]);
 
     expect(screen.getByText('Estimated tax impact')).toBeInTheDocument();
-    expect(screen.getByText('Standard brokerage account')).toBeInTheDocument();
-    expect(screen.getByText('4794.90 PLN')).toBeInTheDocument();
-    expect(screen.getByText('911.03 PLN')).toBeInTheDocument();
-    expect(screen.getByText('19% of estimated profit')).toBeInTheDocument();
+    expect(rowCells('Standard brokerage account')).toEqual([
+      'Standard brokerage account',
+      '4794.90 PLN', // estimated gain
+      '4794.90 PLN', // taxable base
+      '911.03 PLN', // estimated tax
+      '19% of estimated profit',
+    ]);
   });
 
-  it('explains a no-tax account instead of leaving the calculation blank', () => {
-    renderPanel([
+  it('renders nothing when no account in the report charges tax', () => {
+    // Otherwise every user who has configured none of this gets a table of
+    // zeros and a tax disclaimer bolted onto their Realized Gains report.
+    const { container } = renderPanel([
       entry({
         accountName: 'IKE',
         capitalGainsTaxMode: 'none',
@@ -64,7 +76,23 @@ describe('EstimatedTaxByAccountPanel', () => {
       }),
     ]);
 
-    expect(screen.getByText('0.00 PLN')).toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('explains a no-tax account alongside a taxed one', () => {
+    renderPanel([
+      entry(),
+      entry({
+        transactionId: 'tx-2',
+        accountId: 'acct-ike',
+        accountName: 'IKE',
+        capitalGainsTaxMode: 'none',
+        capitalGainsTaxRate: 0,
+        taxableBase: 0,
+        estimatedTax: 0,
+      }),
+    ]);
+
     expect(
       screen.getByText('This account is configured with no capital gains tax.'),
     ).toBeInTheDocument();
@@ -97,10 +125,9 @@ describe('EstimatedTaxByAccountPanel', () => {
       }),
     ]);
 
-    expect(screen.getByText('Standard brokerage account')).toBeInTheDocument();
-    expect(screen.getByText('IKE')).toBeInTheDocument();
-    expect(screen.getByText('911.03 PLN')).toBeInTheDocument();
-    expect(screen.getByText('0.00 PLN')).toBeInTheDocument();
+    // Identical trades, one taxed and one not: the estimate is per account.
+    expect(rowCells('Standard brokerage account')[3]).toBe('911.03 PLN');
+    expect(rowCells('IKE')[3]).toBe('0.00 PLN');
     expect(
       screen.getByText('This account is configured with no capital gains tax.'),
     ).toBeInTheDocument();
@@ -112,8 +139,9 @@ describe('EstimatedTaxByAccountPanel', () => {
       entry({ transactionId: 'tx-2', realizedGain: 1000, estimatedTax: 190 }),
     ]);
 
-    expect(screen.getByText('5794.90 PLN')).toBeInTheDocument();
-    expect(screen.getByText('1101.03 PLN')).toBeInTheDocument();
+    const cells = rowCells('Standard brokerage account');
+    expect(cells[1]).toBe('5794.90 PLN');
+    expect(cells[3]).toBe('1101.03 PLN');
   });
 
   it('never presents the estimate as a settled amount', () => {
@@ -122,5 +150,31 @@ describe('EstimatedTaxByAccountPanel', () => {
     expect(screen.getByText(/This is not tax advice/)).toBeInTheDocument();
     expect(screen.queryByText(/Tax due/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Tax return/i)).not.toBeInTheDocument();
+  });
+
+  it('shows the taxable base so a net gain of zero reconciles with a non-zero tax', () => {
+    // A winning and a losing sale in the same account: the gain column nets to
+    // zero while the tax is charged on the winner alone, because losses are not
+    // offset. Without the taxable base column that reads as an arithmetic fault.
+    renderPanel([
+      entry({ realizedGain: 1000, taxableBase: 1000, estimatedTax: 190 }),
+      entry({ transactionId: 'tx-2', realizedGain: -1000, taxableBase: 0, estimatedTax: 0 }),
+    ]);
+
+    const cells = rowCells('Standard brokerage account');
+    expect(cells[1]).toBe('0.00 PLN'); // net gain: +1000 and -1000
+    expect(cells[2]).toBe('1000.00 PLN'); // taxable base: the winner alone
+    expect(cells[3]).toBe('190.00 PLN'); // tax on that base
+    expect(
+      screen.getByText(
+        'Losses are not offset against gains, so the taxable base can exceed the net gain.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('omits the losses note when nothing diverges', () => {
+    renderPanel([entry()]);
+
+    expect(screen.queryByText(/Losses are not offset/)).not.toBeInTheDocument();
   });
 });

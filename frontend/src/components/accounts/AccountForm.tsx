@@ -20,6 +20,7 @@ import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import {
   Account,
+  AccountSubType,
   PaymentFrequency,
   InterestBookingMode,
   CapitalGainsTaxMode,
@@ -101,7 +102,14 @@ const optionalEnum = <T extends readonly [string, ...string[]]>(values: T) =>
     z.enum(values).optional(),
   );
 
-const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z.object({
+export const buildAccountSchema = (
+  t: (key: string) => string,
+  isEditing: boolean,
+  // The edited account's sub-type, which the form cannot change. Needed so the
+  // tax rules below know whether the tax section is on screen: the cash half of
+  // an investment pair is an INVESTMENT account that never shows it.
+  accountSubType?: AccountSubType,
+) => z.object({
   name: z.string().min(1, t('validation.nameRequired')).max(255),
   accountType: z.enum([
     'CHEQUING',
@@ -161,19 +169,27 @@ const buildAccountSchema = (t: (key: string) => string, isEditing: boolean) => z
   // reads as "this account is tax free" rather than "you left a field blank".
   // Enforced on create and on edit alike -- unlike the loan/mortgage payment
   // fields below, the tax section is rendered in both.
-  if (data.capitalGainsTaxMode && data.capitalGainsTaxMode !== 'none' && data.capitalGainsTaxRate === undefined) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['capitalGainsTaxRate'],
-      message: t('validation.taxRateRequired'),
-    });
-  }
-  if (data.dividendTaxMode && data.dividendTaxMode !== 'none' && data.dividendTaxRate === undefined) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['dividendTaxRate'],
-      message: t('validation.taxRateRequired'),
-    });
+  //
+  // Gated on the section actually being on screen, and for the same reason the
+  // loan/mortgage rules below gate themselves: the form keeps the values of
+  // fields it has unmounted, so picking a percentage mode on an INVESTMENT
+  // account and then switching the type to CHEQUING would otherwise attach an
+  // error to a field nobody can see and make Save silently do nothing.
+  if (accountHoldsSecurities({ accountType: data.accountType, accountSubType })) {
+    if (data.capitalGainsTaxMode && data.capitalGainsTaxMode !== 'none' && data.capitalGainsTaxRate === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['capitalGainsTaxRate'],
+        message: t('validation.taxRateRequired'),
+      });
+    }
+    if (data.dividendTaxMode && data.dividendTaxMode !== 'none' && data.dividendTaxRate === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dividendTaxRate'],
+        message: t('validation.taxRateRequired'),
+      });
+    }
   }
 
   // Loan and mortgage payment setup is only collected when creating the account
@@ -274,7 +290,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
     getValues,
     formState: { errors, isSubmitting, isDirty, dirtyFields },
   } = useForm<AccountFormData>({
-    resolver: zodResolver(buildAccountSchema(t, !!account)) as Resolver<AccountFormData>,
+    resolver: zodResolver(buildAccountSchema(t, !!account, account?.accountSubType)) as Resolver<AccountFormData>,
     defaultValues: account
       ? {
           name: account.name,

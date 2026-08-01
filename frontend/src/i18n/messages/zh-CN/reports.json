@@ -1681,12 +1681,14 @@
     "title": "预计税费影响",
     "account": "账户",
     "estimatedGainOnSale": "卖出的预计收益",
+    "taxableBase": "计税基数",
     "estimatedTax": "预计税款",
     "calculation": "计算方式",
     "calculationNone": "此账户设置为不计资本利得税。",
     "calculationOfProfit": "预计利润的 {rate}",
     "calculationOfSaleValue": "卖出金额的 {rate}",
     "unknownAccount": "未知账户",
-    "disclaimer": "这是根据各账户设置得出的简化估算。实际税款可能取决于您的税务居民身份、亏损、免税额、持有期限及其他收入。本内容不构成税务建议。"
+    "disclaimer": "这是根据各账户设置得出的简化估算。实际税款可能取决于您的税务居民身份、亏损、免税额、持有期限及其他收入。本内容不构成税务建议。",
+    "lossesNotOffset": "亏损不与收益相互抵扣，因此计税基数可能高于净收益。"
   }
 }

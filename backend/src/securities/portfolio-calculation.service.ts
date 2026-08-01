@@ -762,16 +762,25 @@ export class PortfolioCalculationService {
             const realizedGain = proceeds - costBasisSold;
 
             if (!startDate || tx.transactionDate >= startDate) {
-              // totalAmount is net of commission, so the commission is already
-              // out of the profit; passing it again as an eligible fee would
-              // deduct it twice.
+              // The estimator wants the GROSS sale value and the fee separately:
+              // 'percentage_of_sale_value' taxes what the instrument sold for,
+              // not what landed in the account after the broker took its cut.
+              // totalAmount is already net of commission, so add the commission
+              // back and hand it over as the eligible fee -- the profit is
+              // identical either way (gross - fee - cost === net - cost), but
+              // the sale-value base is now right.
+              const commission = (Number(tx.commission) || 0) * exchangeRate;
               const tax = estimateCapitalGainsTax(
                 {
                   capitalGainsTaxMode:
                     tx.account?.capitalGainsTaxMode ?? "none",
                   capitalGainsTaxRate: tx.account?.capitalGainsTaxRate ?? null,
                 },
-                { saleValue: proceeds, acquisitionCost: costBasisSold },
+                {
+                  saleValue: proceeds + commission,
+                  acquisitionCost: costBasisSold,
+                  eligibleFees: commission,
+                },
               );
 
               results.push({

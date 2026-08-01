@@ -1681,12 +1681,14 @@
     "title": "Szacowany wpływ podatku",
     "account": "Konto",
     "estimatedGainOnSale": "Szacowany zysk ze sprzedaży",
+    "taxableBase": "Podstawa opodatkowania",
     "estimatedTax": "Szacowany podatek",
     "calculation": "Sposób obliczania",
     "calculationNone": "To konto jest skonfigurowane bez podatku od zysków kapitałowych.",
     "calculationOfProfit": "{rate} szacowanego zysku",
     "calculationOfSaleValue": "{rate} wartości sprzedaży",
     "unknownAccount": "Nieznane konto",
-    "disclaimer": "To uproszczony szacunek oparty na ustawieniach poszczególnych kont. Rzeczywisty podatek może zależeć od rezydencji podatkowej, strat, kwot wolnych, okresu posiadania i innych dochodów. To nie jest porada podatkowa."
+    "disclaimer": "To uproszczony szacunek oparty na ustawieniach poszczególnych kont. Rzeczywisty podatek może zależeć od rezydencji podatkowej, strat, kwot wolnych, okresu posiadania i innych dochodów. To nie jest porada podatkowa.",
+    "lossesNotOffset": "Straty nie są kompensowane z zyskami, więc podstawa opodatkowania może przewyższać zysk netto."
   }
 }

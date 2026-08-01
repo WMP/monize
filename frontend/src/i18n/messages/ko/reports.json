@@ -1681,12 +1681,14 @@
     "title": "예상 세금 영향",
     "account": "계좌",
     "estimatedGainOnSale": "매도 시 예상 이익",
+    "taxableBase": "과세 대상 금액",
     "estimatedTax": "예상 세금",
     "calculation": "계산 방식",
     "calculationNone": "이 계좌는 양도차익세 없이 설정되어 있습니다.",
     "calculationOfProfit": "예상 이익의 {rate}",
     "calculationOfSaleValue": "매도 금액의 {rate}",
     "unknownAccount": "알 수 없는 계좌",
-    "disclaimer": "각 계좌 설정에 기반한 간략한 추정치입니다. 실제 세금은 세무 거주지, 손실, 공제, 보유 기간 및 기타 소득에 따라 달라질 수 있습니다. 세무 자문이 아닙니다."
+    "disclaimer": "각 계좌 설정에 기반한 간략한 추정치입니다. 실제 세금은 세무 거주지, 손실, 공제, 보유 기간 및 기타 소득에 따라 달라질 수 있습니다. 세무 자문이 아닙니다.",
+    "lossesNotOffset": "손실은 이익과 상계되지 않으므로 과세 대상 금액이 순이익을 초과할 수 있습니다."
   }
 }

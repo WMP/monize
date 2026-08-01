@@ -339,7 +339,7 @@
     },
     "withholdingTaxRate": "Thuế đã khấu trừ tại nguồn",
     "withholdingTaxRateHelp": "Tỷ lệ phần trăm mà công ty môi giới đã khấu trừ từ cổ tức gộp. Để trống nếu không có khấu trừ.",
-    "deductWithholding": "Trừ thuế khấu trừ đã ghi nhận trong giao dịch",
+    "deductWithholding": "Trừ thuế đã khấu trừ tại nguồn",
     "disclaimer": "Đây là ước tính đơn giản dựa trên thiết lập của tài khoản. Thuế thực tế có thể phụ thuộc vào nơi cư trú thuế, khoản lỗ, mức miễn trừ, thời gian nắm giữ và các khoản thu nhập khác của bạn. Đây không phải là tư vấn thuế."
   },
   "toasts": {

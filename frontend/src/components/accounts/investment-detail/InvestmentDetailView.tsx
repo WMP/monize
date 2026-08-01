@@ -40,6 +40,7 @@ export function InvestmentDetailView({ account }: InvestmentDetailViewProps) {
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [recentTx, setRecentTx] = useState<InvestmentTransaction[]>([]);
   const [dividendInterestYtd, setDividendInterestYtd] = useState(0);
+  const [grossDividendYtd, setGrossDividendYtd] = useState(0);
   const [realizedGainsYtd, setRealizedGainsYtd] = useState(0);
   const [loadedForId, setLoadedForId] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -83,10 +84,18 @@ export function InvestmentDetailView({ account }: InvestmentDetailViewProps) {
       setCash(resolvedCash);
       setSummary(summaryData);
       setRecentTx(recent.data);
+      // Dividends are tracked apart from interest even though the panel shows
+      // them as one income figure: only dividends are subject to the account's
+      // dividend tax, and taxing interest at the dividend rate would overstate
+      // the estimate on any account earning both.
+      const dividendOnly = incomeTx.data
+        .filter((tx) => tx.action === 'DIVIDEND')
+        .reduce((sum, tx) => sum + (Number(tx.totalAmount) || 0), 0);
       const income = incomeTx.data
         .filter((tx) => tx.action === 'DIVIDEND' || tx.action === 'INTEREST')
         .reduce((sum, tx) => sum + (Number(tx.totalAmount) || 0), 0);
       setDividendInterestYtd(round2(income));
+      setGrossDividendYtd(round2(dividendOnly));
       setRealizedGainsYtd(round2(realized.reduce((sum, r) => sum + (Number(r.realizedGain) || 0), 0)));
       setLoadedForId(account.id);
     })();
@@ -136,6 +145,7 @@ export function InvestmentDetailView({ account }: InvestmentDetailViewProps) {
 
       <InvestmentIncomePanel
         dividendInterestYtd={dividendInterestYtd}
+        grossDividendYtd={grossDividendYtd}
         realizedGainsYtd={realizedGainsYtd}
         currencyCode={currency}
         isLoading={isLoading}

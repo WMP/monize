@@ -314,7 +314,10 @@ describe("PortfolioCalculationService.calculateRealizedGains", () => {
       expect(sell.estimatedTax).toBe(0);
     });
 
-    it("taxes the sale value when the account is configured that way", async () => {
+    it("taxes the gross sale value, not the proceeds net of commission", async () => {
+      // totalAmount is stored net of commission. 'percentage_of_sale_value'
+      // taxes what the instrument sold for -- 100 * 300 = 30000 -- not the
+      // 29794.90 that landed in the account after the broker took its cut.
       txRepo.find.mockResolvedValue(
         buyAndSell({
           ...taxableAccount,
@@ -325,8 +328,57 @@ describe("PortfolioCalculationService.calculateRealizedGains", () => {
 
       const [sell] = await service.calculateRealizedGains(userId);
 
-      expect(sell.taxableBase).toBe(29794.9);
-      expect(sell.estimatedTax).toBe(148.9745);
+      expect(sell.taxableBase).toBe(30000);
+      expect(sell.estimatedTax).toBe(150);
+    });
+
+    it("still deducts the commission from the profit in percentage_of_profit mode", async () => {
+      // Adding the commission back into the sale value must not inflate the
+      // profit: it is handed over as an eligible fee in the same call.
+      txRepo.find.mockResolvedValue(buyAndSell(taxableAccount));
+
+      const [sell] = await service.calculateRealizedGains(userId);
+
+      expect(sell.taxableBase).toBe(4794.9);
+      expect(sell.estimatedTax).toBe(911.031);
+    });
+
+    it("converts the commission at the transaction's exchange rate", async () => {
+      const account = {
+        ...taxableAccount,
+        capitalGainsTaxMode: "percentage_of_sale_value",
+        capitalGainsTaxRate: 1,
+      } as Partial<Account>;
+
+      txRepo.find.mockResolvedValue([
+        makeTx({
+          id: "buy",
+          action: InvestmentAction.BUY,
+          transactionDate: "2024-01-10",
+          quantity: 10,
+          price: 100,
+          totalAmount: 1000,
+          exchangeRate: 4,
+          account: account as never,
+        }),
+        makeTx({
+          id: "sell",
+          action: InvestmentAction.SELL,
+          transactionDate: "2024-06-10",
+          quantity: 10,
+          price: 150,
+          commission: 20,
+          totalAmount: 1480, // 10 * 150 - 20 commission, in the security currency
+          exchangeRate: 4,
+          account: account as never,
+        }),
+      ]);
+
+      const [sell] = await service.calculateRealizedGains(userId);
+
+      // Gross sale value = (1480 + 20) * 4 = 6000, taxed at 1%.
+      expect(sell.taxableBase).toBe(6000);
+      expect(sell.estimatedTax).toBe(60);
     });
 
     it("estimates each account separately rather than applying one rate to the portfolio", async () => {

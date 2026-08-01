@@ -339,7 +339,7 @@
     },
     "withholdingTaxRate": "Withholding tax already taken at source",
     "withholdingTaxRateHelp": "The percentage your broker already withholds from a gross dividend. Leave blank if nothing is withheld.",
-    "deductWithholding": "Deduct withholding tax already recorded in transactions",
+    "deductWithholding": "Deduct withholding tax already taken at source",
     "disclaimer": "This is a simplified estimate based on the account settings. Actual tax may depend on your tax residency, losses, allowances, holding period and other income. This is not tax advice."
   },
   "toasts": {
