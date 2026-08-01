@@ -144,6 +144,14 @@ CREATE TABLE accounts (
     -- Foreign-transaction fee: the bank's FX conversion fee (a percentage) folded
     -- into the converted amount on foreign-entered transactions.
     fx_fee_percent NUMERIC(8, 4), -- foreign-currency conversion fee as a percentage
+    -- Simplified tax estimation, for accounts that hold securities only. Drives an
+    -- estimate: no brackets, allowances, loss carry-forward or tax-lot matching.
+    capital_gains_tax_mode VARCHAR(32) NOT NULL DEFAULT 'none', -- 'none' | 'percentage_of_profit' | 'percentage_of_sale_value'
+    capital_gains_tax_rate NUMERIC(8, 4), -- percentage (19.0000 = 19%); required by the percentage modes
+    dividend_tax_mode VARCHAR(32) NOT NULL DEFAULT 'none', -- 'none' | 'percentage_of_gross_dividend'
+    dividend_tax_rate NUMERIC(8, 4), -- percentage (19.0000 = 19%); required by the percentage mode
+    dividend_withholding_tax_rate NUMERIC(8, 4), -- percentage assumed already withheld at source; user-supplied, never inferred
+    deduct_recorded_withholding_tax BOOLEAN NOT NULL DEFAULT false, -- subtract tax already withheld from the dividend estimate
     scheduled_transaction_id UUID, -- linked scheduled transaction for payments (FK added after scheduled_transactions table)
     -- Asset-specific fields
     asset_category_id UUID, -- category for tracking value changes on asset accounts (FK added after categories table)
@@ -165,7 +173,17 @@ CREATE TABLE accounts (
     CONSTRAINT chk_statement_due_day_cc_only
       CHECK (account_type = 'CREDIT_CARD' OR statement_due_day IS NULL),
     CONSTRAINT chk_statement_settlement_day_cc_only
-      CHECK (account_type = 'CREDIT_CARD' OR statement_settlement_day IS NULL)
+      CHECK (account_type = 'CREDIT_CARD' OR statement_settlement_day IS NULL),
+    CONSTRAINT chk_capital_gains_tax_mode
+      CHECK (capital_gains_tax_mode IN ('none', 'percentage_of_profit', 'percentage_of_sale_value')),
+    CONSTRAINT chk_dividend_tax_mode
+      CHECK (dividend_tax_mode IN ('none', 'percentage_of_gross_dividend')),
+    CONSTRAINT chk_capital_gains_tax_rate_range
+      CHECK (capital_gains_tax_rate IS NULL OR (capital_gains_tax_rate >= 0 AND capital_gains_tax_rate <= 100)),
+    CONSTRAINT chk_dividend_tax_rate_range
+      CHECK (dividend_tax_rate IS NULL OR (dividend_tax_rate >= 0 AND dividend_tax_rate <= 100)),
+    CONSTRAINT chk_dividend_withholding_tax_rate_range
+      CHECK (dividend_withholding_tax_rate IS NULL OR (dividend_withholding_tax_rate >= 0 AND dividend_withholding_tax_rate <= 100))
 );
 
 CREATE INDEX idx_accounts_user ON accounts(user_id);

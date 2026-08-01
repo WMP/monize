@@ -37,6 +37,40 @@ export enum AccountSubType {
 export const INTEREST_BOOKING_MODES = ["AUTO", "SPLIT", "SEPARATE"] as const;
 export type InterestBookingMode = (typeof INTEREST_BOOKING_MODES)[number];
 
+/**
+ * How the estimated tax on selling an instrument is derived. Simplified on
+ * purpose: no brackets, allowances, holding-period rates or tax-lot matching.
+ */
+export const CAPITAL_GAINS_TAX_MODES = [
+  "none",
+  "percentage_of_profit",
+  "percentage_of_sale_value",
+] as const;
+export type CapitalGainsTaxMode = (typeof CAPITAL_GAINS_TAX_MODES)[number];
+
+/** How the estimated tax on a dividend is derived. */
+export const DIVIDEND_TAX_MODES = [
+  "none",
+  "percentage_of_gross_dividend",
+] as const;
+export type DividendTaxMode = (typeof DIVIDEND_TAX_MODES)[number];
+
+/**
+ * Account types that can hold securities and therefore carry tax-estimation
+ * settings: a plain brokerage account, IKE/IKZE, a foreign investment account.
+ * The auto-created cash side of an investment pair holds no instruments, so it
+ * is excluded -- its sells and dividends belong to the brokerage account.
+ */
+export function accountHoldsSecurities(account: {
+  accountType: AccountType;
+  accountSubType?: AccountSubType | null;
+}): boolean {
+  return (
+    account.accountType === AccountType.INVESTMENT &&
+    account.accountSubType !== AccountSubType.INVESTMENT_CASH
+  );
+}
+
 const numericTransformer = {
   to: (value: number | null): number | null => value,
   from: (value: string | null): number | null =>
@@ -264,6 +298,63 @@ export class Account {
     transformer: numericTransformer,
   })
   fxFeePercent: number | null;
+
+  // Simplified tax estimation, for accounts that hold securities only (see
+  // accountHoldsSecurities). Capital gains and dividends are configured
+  // independently so a tax-deferred account can suppress one without the other.
+  @Column({
+    type: "varchar",
+    length: 32,
+    name: "capital_gains_tax_mode",
+    default: "none",
+  })
+  capitalGainsTaxMode: CapitalGainsTaxMode;
+
+  // Percentage, matching interestRate/fxFeePercent (19 = 19%).
+  @Column({
+    type: "decimal",
+    precision: 8,
+    scale: 4,
+    name: "capital_gains_tax_rate",
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  capitalGainsTaxRate: number | null;
+
+  @Column({
+    type: "varchar",
+    length: 32,
+    name: "dividend_tax_mode",
+    default: "none",
+  })
+  dividendTaxMode: DividendTaxMode;
+
+  @Column({
+    type: "decimal",
+    precision: 8,
+    scale: 4,
+    name: "dividend_tax_rate",
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  dividendTaxRate: number | null;
+
+  // Percentage assumed to have already been withheld at source on a gross
+  // dividend. Always user-supplied -- never inferred from the security's
+  // country, exchange or currency. A per-transaction amount, once such a field
+  // exists, takes precedence over this rate.
+  @Column({
+    type: "decimal",
+    precision: 8,
+    scale: 4,
+    name: "dividend_withholding_tax_rate",
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  dividendWithholdingTaxRate: number | null;
+
+  @Column({ name: "deduct_recorded_withholding_tax", default: false })
+  deductRecordedWithholdingTax: boolean;
 
   // Asset-specific fields
   @Column({ type: "uuid", name: "asset_category_id", nullable: true })

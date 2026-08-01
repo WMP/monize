@@ -154,6 +154,12 @@ export const RULES: Record<string, TableRules> = {
     credit_limit: scale,
     interest_rate: keep, // public rate
     fx_fee_percent: keep, // public foreign-transaction fee rate
+    capital_gains_tax_mode: keep,
+    capital_gains_tax_rate: keep, // public statutory-style rate, not identifying
+    dividend_tax_mode: keep,
+    dividend_tax_rate: keep,
+    dividend_withholding_tax_rate: keep,
+    deduct_recorded_withholding_tax: keep,
     statement_due_day: keep,
     statement_settlement_day: keep,
     is_closed: keep,
