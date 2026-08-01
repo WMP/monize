@@ -139,6 +139,7 @@ export function InvestmentDetailView({ account }: InvestmentDetailViewProps) {
         realizedGainsYtd={realizedGainsYtd}
         currencyCode={currency}
         isLoading={isLoading}
+        account={brokerage}
       />
 
       <InvestmentTransactionList

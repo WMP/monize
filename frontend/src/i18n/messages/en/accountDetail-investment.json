@@ -5,6 +5,11 @@
     "dividendsInterest": "Dividends & Interest",
     "realizedGains": "Realized Gains",
     "ytd": "Year to date",
-    "empty": "No investment income this year"
+    "empty": "No investment income this year",
+    "dividendTaxTitle": "Dividend tax estimation",
+    "estimatedDividendTax": "Estimated dividend tax",
+    "taxAlreadyWithheld": "Tax already withheld",
+    "estimatedAdditionalTax": "Estimated additional tax",
+    "taxDisclaimer": "This is a simplified estimate based on the account settings. Actual tax may depend on your tax residency, losses, allowances, holding period and other income. This is not tax advice."
   }
 }

@@ -1676,5 +1676,17 @@
   },
   "foreignCurrencyFees": {
     "noEligibleAccounts": "[XX-No accounts have a foreign-transaction fee configured. Set a fee percentage on an account to track its foreign currency fees here.-XX]"
+  },
+  "estimatedTax": {
+    "title": "[XX-Estimated tax impact-XX]",
+    "account": "[XX-Account-XX]",
+    "estimatedGainOnSale": "[XX-Estimated gain on sale-XX]",
+    "estimatedTax": "[XX-Estimated tax-XX]",
+    "calculation": "[XX-Calculation-XX]",
+    "calculationNone": "[XX-This account is configured with no capital gains tax.-XX]",
+    "calculationOfProfit": "[XX-{rate} of estimated profit-XX]",
+    "calculationOfSaleValue": "[XX-{rate} of sale value-XX]",
+    "unknownAccount": "[XX-Unknown account-XX]",
+    "disclaimer": "[XX-This is a simplified estimate based on each account’s settings. Actual tax may depend on your tax residency, losses, allowances, holding period and other income. This is not tax advice.-XX]"
   }
 }

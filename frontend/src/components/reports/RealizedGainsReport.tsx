@@ -29,6 +29,7 @@ import { DateRangeSelector } from '@/components/ui/DateRangeSelector';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
 import { RefreshPricesButton } from '@/components/reports/RefreshPricesButton';
+import { EstimatedTaxByAccountPanel } from '@/components/reports/EstimatedTaxByAccountPanel';
 import { exportToCsv } from '@/lib/csv-export';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { useSortableTable, compareValues } from '@/hooks/useSortableTable';
@@ -380,6 +381,10 @@ export function RealizedGainsReport() {
           </div>
         </div>
       </div>
+
+      {/* Estimated tax, grouped by the account that held each position: each
+          account carries its own settings, so there is no one blended rate. */}
+      <EstimatedTaxByAccountPanel entries={entries} toDisplay={toDisplay} fmtValue={fmtValue} />
 
       {entries.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 p-6">

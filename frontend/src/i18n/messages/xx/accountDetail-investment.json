@@ -5,6 +5,11 @@
     "dividendsInterest": "[XX-Dividends & Interest-XX]",
     "realizedGains": "[XX-Realized Gains-XX]",
     "ytd": "[XX-Year to date-XX]",
-    "empty": "[XX-No investment income this year-XX]"
+    "empty": "[XX-No investment income this year-XX]",
+    "dividendTaxTitle": "[XX-Dividend tax estimation-XX]",
+    "estimatedDividendTax": "[XX-Estimated dividend tax-XX]",
+    "taxAlreadyWithheld": "[XX-Tax already withheld-XX]",
+    "estimatedAdditionalTax": "[XX-Estimated additional tax-XX]",
+    "taxDisclaimer": "[XX-This is a simplified estimate based on the account settings. Actual tax may depend on your tax residency, losses, allowances, holding period and other income. This is not tax advice.-XX]"
   }
 }
