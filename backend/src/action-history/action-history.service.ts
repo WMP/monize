@@ -283,9 +283,21 @@ export class ActionHistoryService {
 
       return saved;
     } catch (error) {
-      // Recording is best-effort -- never fail the original operation
-      this.logger.warn(
-        `Failed to record action history: ${error instanceof Error ? error.message : String(error)}`,
+      // Best-effort by design: recording an undo entry must never fail the
+      // operation the user actually asked for, and every caller invokes this
+      // AFTER its own transaction committed (a source-scan guard in
+      // common/db/derived-state-writers.guard.spec.ts keeps it that way -- called
+      // inside a transaction, this swallow would hide the abort and the caller's
+      // next statement would die with 25P02).
+      //
+      // But `error`, not `warn`: the operation succeeded and its undo entry did
+      // not, so the user will look for an undo that is not there. Name the entity
+      // so the gap can be tied to what happened.
+      this.logger.error(
+        `Failed to record action history for ${params.action} on ${params.entityType} ${params.entityId} (the operation itself succeeded; it cannot be undone): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error.stack : undefined,
       );
       return null;
     }

@@ -148,4 +148,45 @@ describe("derived financial state has one set of writers", () => {
 
     expect(offenders).toEqual([]);
   });
+
+  /**
+   * `ActionHistoryService.record` swallows its own failures on purpose: recording
+   * an undo entry must never fail the operation the user actually asked for. That
+   * is only safe *outside* a transaction. Called inside one, a failed insert has
+   * already aborted the caller's transaction, and swallowing the error hides it
+   * until the next statement dies with `25P02 in_failed_sql_transaction` -- so
+   * the user's write fails, with a message about the audit trail.
+   *
+   * Nothing about the call site says which side of the boundary it is on, which is
+   * exactly the kind of mistake prose does not prevent. Currently zero call sites
+   * are inside a transaction; this keeps it that way.
+   */
+  it("records action history outside the caller's transaction, never inside it", () => {
+    /** The body of each `withScopedDb(...)` call in a file, by paren matching. */
+    function scopedDbCallbacks(source: string): string[] {
+      const bodies: string[] = [];
+      for (const match of source.matchAll(/withScopedDb\s*\(/g)) {
+        let depth = 0;
+        let i = match.index! + match[0].length - 1;
+        const start = i;
+        while (i < source.length) {
+          if (source[i] === "(") depth++;
+          else if (source[i] === ")" && --depth === 0) break;
+          i++;
+        }
+        bodies.push(source.slice(start, i));
+      }
+      return bodies;
+    }
+
+    const offenders = sourceFiles()
+      .filter((file) =>
+        scopedDbCallbacks(read(file)).some((body) =>
+          /\bactionHistory\w*\s*\.\s*record\s*\(/.test(body),
+        ),
+      )
+      .map(relative);
+
+    expect(offenders).toEqual([]);
+  });
 });
