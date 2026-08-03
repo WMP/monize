@@ -356,7 +356,8 @@
       "toasts": {
         "downgraded": "Data Anda sendiri dihapus. Login dan akses bersama Anda disimpan sehingga delegasi tetap berlaku.",
         "deleted": "Akun dihapus",
-        "failed": "Gagal menghapus akun"
+        "failed": "Gagal menghapus akun",
+        "reauthRedirect": "Anda akan diarahkan ke penyedia identitas untuk memastikan ini benar Anda. Setelah itu Anda kembali ke sini."
       },
       "errors": {
         "typeDelete": "Silakan ketik DELETE untuk mengonfirmasi",
@@ -559,7 +560,8 @@
         "pleaseSelectFile": "Silakan pilih berkas cadangan",
         "pleaseEnterPassword": "Silakan masukkan kata sandi Anda untuk mengonfirmasi",
         "encryptedNeedsPassword": "Cadangan ini dienkripsi. Masukkan kata sandi yang digunakan saat membuatnya di kolom \"Kata sandi cadangan\", lalu coba lagi.",
-        "failed": "Gagal memulihkan cadangan"
+        "failed": "Gagal memulihkan cadangan",
+        "reauthRedirect": "Anda akan diarahkan ke penyedia identitas untuk memastikan ini benar Anda. Pilih kembali berkas cadangan setelah Anda kembali."
       }
     },
     "restoreResult": {

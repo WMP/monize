@@ -148,7 +148,10 @@
     "insufficientTokenScope": "Yetersiz kod kapsamı. Gerekli: {{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "Bu kaynağa erişmeden önce şifre değişikliği gerekli",
     "invalidAuthenticatorCode": "Geçersiz kimlik doğrulama kodu",
-    "incorrectPassword": "Yanlış şifre"
+    "incorrectPassword": "Yanlış şifre",
+    "oidcReauthRequired": "Bu işlemi onaylamak için kimlik sağlayıcınızda yeniden kimlik doğrulaması yapın.",
+    "oidcReauthUnknownPurpose": "Bilinmeyen yeniden kimlik doğrulama amacı",
+    "oidcReauthNotOidcAccount": "Bu hesap bir kimlik sağlayıcısıyla oturum açmıyor"
   },
   "backup": {
     "folderNotExist": "Klasör mevcut değil: {{ safePath }}",
@@ -171,7 +174,7 @@
     "backupPasswordRequired": "Bu yedek şifrelenmiş. Oluşturulurken kullanılan şifreyi girin.",
     "decompressFailed": "Yedek dosyası açılamadı. Dosyanın gzip ile sıkıştırılmış olduğundan emin olun.",
     "invalidJsonBackup": "Geçersiz yedek dosyası: sıkıştırması açılan içerik geçerli JSON değil",
-    "oidcReauthRequired": "Geri yüklemeyi onaylamak için OIDC yeniden kimlik doğrulaması gerekli",
+    "oidcReauthRequired": "Geri yüklemeyi onaylamak için kimlik sağlayıcınızda yeniden kimlik doğrulaması yapın",
     "oidcTokenInvalid": "Geçersiz OIDC kodu: kod, SSO sağlayıcınızdan geçerli bir kimlik kodu olmalıdır",
     "passwordRequiredForRestore": "Geri yüklemeyi onaylamak için şifre gereklidir",
     "invalidPassword": "Geçersiz şifre",
@@ -183,7 +186,8 @@
     "backupPasswordOidcOnly": "Yedek şifresi yalnızca OIDC kullanıcıları için yapılandırılabilir; yerel kullanıcılar giriş şifrelerini kullanır",
     "backupPasswordTooShort": "Yedek şifresi en az {{ minLength }} karakter olmalıdır",
     "backupPasswordBreached": "Bu şifre bir veri ihlalinde bulundu. Lütfen farklı bir şifre seçin.",
-    "restoreBodyMustBeFile": "İstek gövdesi bir yedek dosyası olmalıdır"
+    "restoreBodyMustBeFile": "İstek gövdesi bir yedek dosyası olmalıdır",
+    "reauthUnavailable": "Bir yedeği geri yüklemeden önce hesap şifrenizi ayarlamayı tamamlayın."
   },
   "budgets": {
     "notFound": "{{ id }} kimliğine sahip bütçe bulunamadı",
@@ -485,12 +489,13 @@
     "emailInUse": "E-posta adresi zaten kullanımda",
     "noPasswordSet": "Bu hesap için şifre belirlenmemiş",
     "passwordBreached": "Bu şifre bir veri ihlalinde bulundu. Lütfen farklı bir şifre seçin.",
-    "oidcReauthRequired": "Hesap silmeyi onaylamak için OIDC yeniden kimlik doğrulaması gerekli",
+    "oidcReauthRequired": "Hesap silmeyi onaylamak için kimlik sağlayıcınızda yeniden kimlik doğrulaması yapın",
     "passwordRequiredForDelete": "Hesap silmeyi onaylamak için şifre gereklidir",
     "invalidPassword": "Geçersiz şifre",
     "deleteLastAdmin": "Son yönetici hesabı silinemez. Önce başka bir kullanıcıyı yönetici yapın.",
-    "oidcReauthRequiredForDataDelete": "Veri silmeyi onaylamak için OIDC yeniden kimlik doğrulaması gerekli",
-    "passwordRequiredForDataDelete": "Veri silmeyi onaylamak için şifre gereklidir"
+    "oidcReauthRequiredForDataDelete": "Veri silmeyi onaylamak için kimlik sağlayıcınızda yeniden kimlik doğrulaması yapın",
+    "passwordRequiredForDataDelete": "Veri silmeyi onaylamak için şifre gereklidir",
+    "reauthUnavailable": "Bu işlemi kullanmadan önce hesap şifrenizi ayarlamayı tamamlayın."
   },
   "loanScenarios": {
     "notFound": "{{ id }} kimlikli kredi senaryosu bulunamadı",

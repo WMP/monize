@@ -356,7 +356,8 @@
       "toasts": {
         "downgraded": "I tuoi dati sono stati rimossi. Il tuo accesso e l'accesso condiviso sono mantenuti per conservare la delega.",
         "deleted": "Account eliminato",
-        "failed": "Impossibile eliminare l'account"
+        "failed": "Impossibile eliminare l'account",
+        "reauthRedirect": "Ti portiamo al tuo provider di identità per confermare la tua identità. Poi tornerai qui."
       },
       "errors": {
         "typeDelete": "Digita DELETE per confermare",
@@ -559,7 +560,8 @@
         "pleaseSelectFile": "Seleziona un file di backup",
         "pleaseEnterPassword": "Inserisci la tua password per confermare",
         "encryptedNeedsPassword": "Questo backup è cifrato. Inserisci la password con cui è stato creato nel campo \"Password backup\" e riprova.",
-        "failed": "Impossibile ripristinare il backup"
+        "failed": "Impossibile ripristinare il backup",
+        "reauthRedirect": "Ti portiamo al tuo provider di identità per confermare la tua identità. Al ritorno, seleziona di nuovo il file di backup."
       }
     },
     "restoreResult": {

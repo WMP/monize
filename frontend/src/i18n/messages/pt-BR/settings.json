@@ -356,7 +356,8 @@
       "toasts": {
         "downgraded": "Seus próprios dados foram removidos. Seu login e acesso compartilhado são mantidos para que a delegação continue em vigor.",
         "deleted": "Conta excluída",
-        "failed": "Falha ao excluir a conta"
+        "failed": "Falha ao excluir a conta",
+        "reauthRedirect": "Vamos levar você ao seu provedor de identidade para confirmar que é você. Depois você volta para cá."
       },
       "errors": {
         "typeDelete": "Por favor digite DELETE para confirmar",
@@ -559,7 +560,8 @@
         "pleaseSelectFile": "Por favor selecione um arquivo de backup",
         "pleaseEnterPassword": "Por favor digite sua senha para confirmar",
         "encryptedNeedsPassword": "Este backup está criptografado. Digite a senha com que foi criado no campo \"Senha do backup\" e tente novamente.",
-        "failed": "Falha ao restaurar o backup"
+        "failed": "Falha ao restaurar o backup",
+        "reauthRedirect": "Vamos levar você ao seu provedor de identidade para confirmar que é você. Ao voltar, escolha o arquivo de backup novamente."
       }
     },
     "restoreResult": {

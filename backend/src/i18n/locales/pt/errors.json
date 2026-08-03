@@ -148,7 +148,10 @@
     "insufficientTokenScope": "Âmbito do token insuficiente. Necessário: {{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "É necessário alterar a palavra-passe antes de aceder a este recurso",
     "invalidAuthenticatorCode": "Código do autenticador inválido",
-    "incorrectPassword": "Palavra-passe incorreta"
+    "incorrectPassword": "Palavra-passe incorreta",
+    "oidcReauthRequired": "Autentique-se novamente no seu provedor de identidade para confirmar esta ação.",
+    "oidcReauthUnknownPurpose": "Finalidade de reautenticação desconhecida",
+    "oidcReauthNotOidcAccount": "Esta conta não inicia sessão com um provedor de identidade"
   },
   "backup": {
     "folderNotExist": "A pasta não existe: {{ safePath }}",
@@ -171,7 +174,7 @@
     "backupPasswordRequired": "Esta cópia de segurança está encriptada. Forneça a palavra-passe que foi utilizada quando a cópia foi criada.",
     "decompressFailed": "Falha ao descomprimir o ficheiro de cópia de segurança. Certifique-se de que o ficheiro está comprimido em gzip.",
     "invalidJsonBackup": "Ficheiro de cópia de segurança inválido: o conteúdo descomprimido não é JSON válido",
-    "oidcReauthRequired": "É necessária a reautenticação OIDC para confirmar o restauro",
+    "oidcReauthRequired": "Autentique-se novamente no seu provedor de identidade para confirmar a restauração",
     "oidcTokenInvalid": "Token OIDC inválido: o token deve ser um token de ID válido do seu fornecedor SSO",
     "passwordRequiredForRestore": "É necessária uma palavra-passe para confirmar o restauro",
     "invalidPassword": "Palavra-passe inválida",
@@ -183,7 +186,8 @@
     "backupPasswordOidcOnly": "A palavra-passe de cópia de segurança só é configurável para utilizadores OIDC; os utilizadores locais utilizam a palavra-passe de início de sessão",
     "backupPasswordTooShort": "A palavra-passe de cópia de segurança deve ter pelo menos {{ minLength }} caracteres",
     "backupPasswordBreached": "Esta palavra-passe foi encontrada numa fuga de dados. Escolha uma palavra-passe diferente.",
-    "restoreBodyMustBeFile": "O corpo do pedido deve ser um ficheiro de cópia de segurança"
+    "restoreBodyMustBeFile": "O corpo do pedido deve ser um ficheiro de cópia de segurança",
+    "reauthUnavailable": "Conclua a definição da palavra-passe da sua conta antes de restaurar uma cópia de segurança."
   },
   "budgets": {
     "notFound": "Orçamento com ID {{ id }} não encontrado",
@@ -485,12 +489,13 @@
     "emailInUse": "E-mail já em uso",
     "noPasswordSet": "Não há palavra-passe definida para esta conta",
     "passwordBreached": "Esta palavra-passe foi encontrada numa fuga de dados. Escolha uma palavra-passe diferente.",
-    "oidcReauthRequired": "É necessária a reautenticação OIDC para confirmar a eliminação da conta",
+    "oidcReauthRequired": "Autentique-se novamente no seu provedor de identidade para confirmar a eliminação da conta",
     "passwordRequiredForDelete": "É necessária uma palavra-passe para confirmar a eliminação da conta",
     "invalidPassword": "Palavra-passe inválida",
     "deleteLastAdmin": "Não é possível eliminar a última conta de administrador. Promova outro utilizador primeiro.",
-    "oidcReauthRequiredForDataDelete": "É necessária a reautenticação OIDC para confirmar a eliminação de dados",
-    "passwordRequiredForDataDelete": "É necessária uma palavra-passe para confirmar a eliminação de dados"
+    "oidcReauthRequiredForDataDelete": "Autentique-se novamente no seu provedor de identidade para confirmar a eliminação dos dados",
+    "passwordRequiredForDataDelete": "É necessária uma palavra-passe para confirmar a eliminação de dados",
+    "reauthUnavailable": "Conclua a definição da palavra-passe da sua conta antes de usar esta ação."
   },
   "loanScenarios": {
     "notFound": "Cenário de empréstimo com o ID {{ id }} não encontrado",

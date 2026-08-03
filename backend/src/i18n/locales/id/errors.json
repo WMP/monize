@@ -148,7 +148,10 @@
     "insufficientTokenScope": "Cakupan token tidak mencukupi. Diperlukan: {{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "Perubahan kata sandi diperlukan sebelum mengakses sumber daya ini",
     "invalidAuthenticatorCode": "Kode autentikator tidak valid",
-    "incorrectPassword": "Kata sandi salah"
+    "incorrectPassword": "Kata sandi salah",
+    "oidcReauthRequired": "Autentikasi ulang dengan penyedia identitas Anda untuk mengonfirmasi tindakan ini.",
+    "oidcReauthUnknownPurpose": "Tujuan autentikasi ulang tidak dikenal",
+    "oidcReauthNotOidcAccount": "Akun ini tidak masuk menggunakan penyedia identitas"
   },
   "backup": {
     "folderNotExist": "Folder tidak ada: {{ safePath }}",
@@ -171,7 +174,7 @@
     "backupPasswordRequired": "Cadangan ini terenkripsi. Masukkan kata sandi yang digunakan saat cadangan dibuat.",
     "decompressFailed": "Gagal mendekompresi file cadangan. Pastikan file dikompresi dengan gzip.",
     "invalidJsonBackup": "File cadangan tidak valid: konten yang didekompresi bukan JSON yang valid",
-    "oidcReauthRequired": "Autentikasi ulang OIDC diperlukan untuk mengonfirmasi pemulihan",
+    "oidcReauthRequired": "Autentikasi ulang dengan penyedia identitas Anda untuk mengonfirmasi pemulihan",
     "oidcTokenInvalid": "Token OIDC tidak valid: token harus berupa ID token yang valid dari penyedia SSO Anda",
     "passwordRequiredForRestore": "Kata sandi diperlukan untuk mengonfirmasi pemulihan",
     "invalidPassword": "Kata sandi tidak valid",
@@ -183,7 +186,8 @@
     "backupPasswordOidcOnly": "Kata sandi cadangan hanya dapat dikonfigurasi untuk pengguna OIDC; pengguna lokal menggunakan kata sandi masuk mereka",
     "backupPasswordTooShort": "Kata sandi cadangan harus minimal {{ minLength }} karakter",
     "backupPasswordBreached": "Kata sandi ini ditemukan dalam kebocoran data. Pilih kata sandi yang berbeda.",
-    "restoreBodyMustBeFile": "Isi permintaan harus berupa file cadangan"
+    "restoreBodyMustBeFile": "Isi permintaan harus berupa file cadangan",
+    "reauthUnavailable": "Selesaikan pengaturan kata sandi akun Anda sebelum memulihkan cadangan."
   },
   "budgets": {
     "notFound": "Anggaran dengan ID {{ id }} tidak ditemukan",
@@ -485,12 +489,13 @@
     "emailInUse": "Email sudah digunakan",
     "noPasswordSet": "Tidak ada kata sandi yang ditetapkan untuk akun ini",
     "passwordBreached": "Kata sandi ini ditemukan dalam kebocoran data. Pilih kata sandi yang berbeda.",
-    "oidcReauthRequired": "Autentikasi ulang OIDC diperlukan untuk mengonfirmasi penghapusan akun",
+    "oidcReauthRequired": "Autentikasi ulang dengan penyedia identitas Anda untuk mengonfirmasi penghapusan akun",
     "passwordRequiredForDelete": "Kata sandi diperlukan untuk mengonfirmasi penghapusan akun",
     "invalidPassword": "Kata sandi tidak valid",
     "deleteLastAdmin": "Tidak dapat menghapus akun admin terakhir. Promosikan pengguna lain terlebih dahulu.",
-    "oidcReauthRequiredForDataDelete": "Autentikasi ulang OIDC diperlukan untuk mengonfirmasi penghapusan data",
-    "passwordRequiredForDataDelete": "Kata sandi diperlukan untuk mengonfirmasi penghapusan data"
+    "oidcReauthRequiredForDataDelete": "Autentikasi ulang dengan penyedia identitas Anda untuk mengonfirmasi penghapusan data",
+    "passwordRequiredForDataDelete": "Kata sandi diperlukan untuk mengonfirmasi penghapusan data",
+    "reauthUnavailable": "Selesaikan pengaturan kata sandi akun Anda sebelum menggunakan tindakan ini."
   },
   "loanScenarios": {
     "notFound": "Skenario pinjaman dengan ID {{ id }} tidak ditemukan",

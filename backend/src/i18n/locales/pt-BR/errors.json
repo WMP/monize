@@ -148,7 +148,10 @@
     "insufficientTokenScope": "Escopo do token insuficiente. Necessário: {{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "É necessário alterar a senha antes de acessar este recurso",
     "invalidAuthenticatorCode": "Código do autenticador inválido",
-    "incorrectPassword": "Senha incorreta"
+    "incorrectPassword": "Senha incorreta",
+    "oidcReauthRequired": "Autentique-se novamente no seu provedor de identidade para confirmar esta ação.",
+    "oidcReauthUnknownPurpose": "Finalidade de reautenticação desconhecida",
+    "oidcReauthNotOidcAccount": "Esta conta não faz login com um provedor de identidade"
   },
   "backup": {
     "folderNotExist": "A pasta não existe: {{ safePath }}",
@@ -171,7 +174,7 @@
     "backupPasswordRequired": "Este backup está criptografado. Forneça a senha que foi utilizada quando o backup foi criado.",
     "decompressFailed": "Falha ao descompactar o arquivo de backup. Certifique-se de que o arquivo está comprimido em gzip.",
     "invalidJsonBackup": "Arquivo de backup inválido: o conteúdo descompactado não é JSON válido",
-    "oidcReauthRequired": "É necessária a reautenticação OIDC para confirmar a restauração",
+    "oidcReauthRequired": "Autentique-se novamente no seu provedor de identidade para confirmar a restauração",
     "oidcTokenInvalid": "Token OIDC inválido: o token deve ser um token de ID válido do seu provedor SSO",
     "passwordRequiredForRestore": "É necessária uma senha para confirmar a restauração",
     "invalidPassword": "Senha inválida",
@@ -183,7 +186,8 @@
     "backupPasswordOidcOnly": "A senha de backup só é configurável para usuários OIDC; os usuários locais utilizam a senha de login",
     "backupPasswordTooShort": "A senha de backup deve ter pelo menos {{ minLength }} caracteres",
     "backupPasswordBreached": "Esta senha foi encontrada em uma violação de dados. Escolha uma senha diferente.",
-    "restoreBodyMustBeFile": "O corpo da requisição deve ser um arquivo de backup"
+    "restoreBodyMustBeFile": "O corpo da requisição deve ser um arquivo de backup",
+    "reauthUnavailable": "Conclua a definição da senha da sua conta antes de restaurar um backup."
   },
   "budgets": {
     "notFound": "Orçamento com ID {{ id }} não encontrado",
@@ -485,12 +489,13 @@
     "emailInUse": "E-mail já em uso",
     "noPasswordSet": "Não há senha definida para esta conta",
     "passwordBreached": "Esta senha foi encontrada em uma violação de dados. Escolha uma senha diferente.",
-    "oidcReauthRequired": "É necessária a reautenticação OIDC para confirmar a exclusão da conta",
+    "oidcReauthRequired": "Autentique-se novamente no seu provedor de identidade para confirmar a exclusão da conta",
     "passwordRequiredForDelete": "É necessária uma senha para confirmar a exclusão da conta",
     "invalidPassword": "Senha inválida",
     "deleteLastAdmin": "Não é possível excluir a última conta de administrador. Promova outro usuário primeiro.",
-    "oidcReauthRequiredForDataDelete": "É necessária a reautenticação OIDC para confirmar a exclusão de dados",
-    "passwordRequiredForDataDelete": "É necessária uma senha para confirmar a exclusão de dados"
+    "oidcReauthRequiredForDataDelete": "Autentique-se novamente no seu provedor de identidade para confirmar a exclusão dos dados",
+    "passwordRequiredForDataDelete": "É necessária uma senha para confirmar a exclusão de dados",
+    "reauthUnavailable": "Conclua a definição da senha da sua conta antes de usar esta ação."
   },
   "loanScenarios": {
     "notFound": "Cenário de empréstimo com o ID {{ id }} não encontrado",

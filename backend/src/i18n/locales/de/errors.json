@@ -148,7 +148,10 @@
     "insufficientTokenScope": "Unzureichender Token-Scope. Erforderlich: {{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "Passwortänderung erforderlich, bevor auf diese Ressource zugegriffen werden kann",
     "invalidAuthenticatorCode": "Ungültiger Authentifizierungscode",
-    "incorrectPassword": "Falsches Passwort"
+    "incorrectPassword": "Falsches Passwort",
+    "oidcReauthRequired": "Authentifizieren Sie sich erneut bei Ihrem Identitätsanbieter, um diese Aktion zu bestätigen.",
+    "oidcReauthUnknownPurpose": "Unbekannter Zweck für die erneute Authentifizierung",
+    "oidcReauthNotOidcAccount": "Dieses Konto melden sich nicht über einen Identitätsanbieter an"
   },
   "backup": {
     "folderNotExist": "Ordner existiert nicht: {{ safePath }}",
@@ -171,7 +174,7 @@
     "backupPasswordRequired": "Diese Sicherung ist verschlüsselt. Geben Sie das Passwort an, das beim Erstellen der Sicherung verwendet wurde.",
     "decompressFailed": "Sicherungsdatei konnte nicht dekomprimiert werden. Stellen Sie sicher, dass die Datei gzip-komprimiert ist.",
     "invalidJsonBackup": "Ungültige Sicherungsdatei: Dekomprimierter Inhalt ist kein gültiges JSON",
-    "oidcReauthRequired": "OIDC-Neuauthentifizierung ist zur Bestätigung der Wiederherstellung erforderlich",
+    "oidcReauthRequired": "Authentifizieren Sie sich erneut bei Ihrem Identitätsanbieter, um die Wiederherstellung zu bestätigen",
     "oidcTokenInvalid": "Ungültiger OIDC-Token: Der Token muss ein gültiges ID-Token Ihres SSO-Anbieters sein",
     "passwordRequiredForRestore": "Passwort ist zur Bestätigung der Wiederherstellung erforderlich",
     "invalidPassword": "Ungültiges Passwort",
@@ -183,7 +186,8 @@
     "backupPasswordOidcOnly": "Sicherungspasswort ist nur für OIDC-Benutzer konfigurierbar; lokale Benutzer verwenden ihr Anmeldepasswort",
     "backupPasswordTooShort": "Sicherungspasswort muss mindestens {{ minLength }} Zeichen lang sein",
     "backupPasswordBreached": "Dieses Passwort wurde in einem Datenleck gefunden. Bitte wählen Sie ein anderes Passwort.",
-    "restoreBodyMustBeFile": "Anfrage-Body muss eine Sicherungsdatei sein"
+    "restoreBodyMustBeFile": "Anfrage-Body muss eine Sicherungsdatei sein",
+    "reauthUnavailable": "Legen Sie zuerst das Passwort für Ihr Konto fest, bevor Sie ein Backup wiederherstellen."
   },
   "budgets": {
     "notFound": "Budget mit ID {{ id }} nicht gefunden",
@@ -485,12 +489,13 @@
     "emailInUse": "E-Mail-Adresse wird bereits verwendet",
     "noPasswordSet": "Kein Passwort für dieses Konto festgelegt",
     "passwordBreached": "Dieses Passwort wurde in einem Datenleck gefunden. Bitte wählen Sie ein anderes Passwort.",
-    "oidcReauthRequired": "OIDC-Neuauthentifizierung ist zur Bestätigung der Kontolöschung erforderlich",
+    "oidcReauthRequired": "Authentifizieren Sie sich erneut bei Ihrem Identitätsanbieter, um das Löschen des Kontos zu bestätigen",
     "passwordRequiredForDelete": "Passwort ist zur Bestätigung der Kontolöschung erforderlich",
     "invalidPassword": "Ungültiges Passwort",
     "deleteLastAdmin": "Das letzte Administratorkonto kann nicht gelöscht werden. Befördern Sie zuerst einen anderen Benutzer.",
-    "oidcReauthRequiredForDataDelete": "OIDC-Neuauthentifizierung ist zur Bestätigung der Datenlöschung erforderlich",
-    "passwordRequiredForDataDelete": "Passwort ist zur Bestätigung der Datenlöschung erforderlich"
+    "oidcReauthRequiredForDataDelete": "Authentifizieren Sie sich erneut bei Ihrem Identitätsanbieter, um das Löschen der Daten zu bestätigen",
+    "passwordRequiredForDataDelete": "Passwort ist zur Bestätigung der Datenlöschung erforderlich",
+    "reauthUnavailable": "Legen Sie zuerst das Passwort für Ihr Konto fest, bevor Sie diese Aktion verwenden."
   },
   "loanScenarios": {
     "notFound": "Kreditszenario mit ID {{ id }} nicht gefunden",

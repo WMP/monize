@@ -356,7 +356,8 @@
       "toasts": {
         "downgraded": "Jouw eigen gegevens zijn verwijderd. Jouw aanmelding en gedeelde toegang blijven behouden zodat de delegatie in stand blijft.",
         "deleted": "Account verwijderd",
-        "failed": "Verwijderen van account mislukt"
+        "failed": "Verwijderen van account mislukt",
+        "reauthRedirect": "Je gaat naar je identiteitsprovider om te bevestigen dat jij het bent. Daarna kom je hier terug."
       },
       "errors": {
         "typeDelete": "Typ DELETE om te bevestigen",
@@ -559,7 +560,8 @@
         "pleaseSelectFile": "Selecteer een back-upbestand",
         "pleaseEnterPassword": "Voer jouw wachtwoord in om te bevestigen",
         "encryptedNeedsPassword": "Deze back-up is versleuteld. Voer het wachtwoord waarmee deze is aangemaakt in het veld \"Back-upwachtwoord\" in en probeer het opnieuw.",
-        "failed": "Terugzetten van back-up mislukt"
+        "failed": "Terugzetten van back-up mislukt",
+        "reauthRedirect": "Je gaat naar je identiteitsprovider om te bevestigen dat jij het bent. Kies het back-upbestand opnieuw wanneer je terugkomt."
       }
     },
     "restoreResult": {

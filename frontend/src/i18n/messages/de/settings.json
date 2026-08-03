@@ -356,7 +356,8 @@
       "toasts": {
         "downgraded": "Ihre eigenen Daten wurden entfernt. Ihre Anmeldung und der gemeinsame Zugriff bleiben erhalten, damit die Delegierung bestehen bleibt.",
         "deleted": "Konto gelöscht",
-        "failed": "Konto konnte nicht gelöscht werden"
+        "failed": "Konto konnte nicht gelöscht werden",
+        "reauthRedirect": "Sie werden zu Ihrem Identitätsanbieter weitergeleitet, um Ihre Identität zu bestätigen. Danach kehren Sie hierher zurück."
       },
       "errors": {
         "typeDelete": "Bitte geben Sie DELETE zur Bestätigung ein",
@@ -559,7 +560,8 @@
         "pleaseSelectFile": "Bitte wählen Sie eine Backup-Datei aus",
         "pleaseEnterPassword": "Bitte geben Sie Ihr Passwort zur Bestätigung ein",
         "encryptedNeedsPassword": "Dieses Backup ist verschlüsselt. Geben Sie das Passwort, mit dem es erstellt wurde, im Feld \"Backup-Passwort\" ein und versuchen Sie es erneut.",
-        "failed": "Backup konnte nicht wiederhergestellt werden"
+        "failed": "Backup konnte nicht wiederhergestellt werden",
+        "reauthRedirect": "Sie werden zu Ihrem Identitätsanbieter weitergeleitet, um Ihre Identität zu bestätigen. Wählen Sie die Backup-Datei nach Ihrer Rückkehr erneut aus."
       }
     },
     "restoreResult": {

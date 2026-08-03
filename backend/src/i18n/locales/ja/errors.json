@@ -148,7 +148,10 @@
     "insufficientTokenScope": "トークンのスコープが不足しています。必要なスコープ：{{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "このリソースにアクセスする前にパスワードを変更してください",
     "invalidAuthenticatorCode": "無効な認証コードです",
-    "incorrectPassword": "パスワードが正しくありません"
+    "incorrectPassword": "パスワードが正しくありません",
+    "oidcReauthRequired": "この操作を確認するには、IDプロバイダーで再認証してください。",
+    "oidcReauthUnknownPurpose": "再認証の目的が不明です",
+    "oidcReauthNotOidcAccount": "このアカウントはIDプロバイダーでサインインしていません"
   },
   "backup": {
     "folderNotExist": "フォルダーが存在しません：{{ safePath }}",
@@ -171,7 +174,7 @@
     "backupPasswordRequired": "このバックアップは暗号化されています。バックアップ作成時に使用したパスワードを入力してください。",
     "decompressFailed": "バックアップファイルの解凍に失敗しました。ファイルがgzip圧縮されていることを確認してください。",
     "invalidJsonBackup": "無効なバックアップファイル：解凍されたコンテンツが有効なJSONではありません",
-    "oidcReauthRequired": "復元を確認するにはOIDC再認証が必要です",
+    "oidcReauthRequired": "復元を確認するには、IDプロバイダーで再認証してください",
     "oidcTokenInvalid": "無効なOIDCトークン：トークンはSSOプロバイダーからの有効なIDトークンでなければなりません",
     "passwordRequiredForRestore": "復元を確認するにはパスワードが必要です",
     "invalidPassword": "無効なパスワードです",
@@ -183,7 +186,8 @@
     "backupPasswordOidcOnly": "バックアップパスワードはOIDCユーザーのみ設定可能です。ローカルユーザーはログインパスワードを使用します",
     "backupPasswordTooShort": "バックアップパスワードは少なくとも {{ minLength }} 文字必要です",
     "backupPasswordBreached": "このパスワードはデータ侵害で発見されています。別のパスワードを選択してください。",
-    "restoreBodyMustBeFile": "リクエストボディはバックアップファイルでなければなりません"
+    "restoreBodyMustBeFile": "リクエストボディはバックアップファイルでなければなりません",
+    "reauthUnavailable": "バックアップを復元する前に、アカウントのパスワード設定を完了してください。"
   },
   "budgets": {
     "notFound": "ID {{ id }} の予算が見つかりません",
@@ -485,12 +489,13 @@
     "emailInUse": "メールアドレスはすでに使用されています",
     "noPasswordSet": "このアカウントにはパスワードが設定されていません",
     "passwordBreached": "このパスワードはデータ侵害で発見されています。別のパスワードを選択してください。",
-    "oidcReauthRequired": "アカウント削除を確認するにはOIDC再認証が必要です",
+    "oidcReauthRequired": "アカウントの削除を確認するには、IDプロバイダーで再認証してください",
     "passwordRequiredForDelete": "アカウント削除を確認するにはパスワードが必要です",
     "invalidPassword": "無効なパスワードです",
     "deleteLastAdmin": "最後の管理者アカウントは削除できません。まず別のユーザーを管理者に昇格させてください。",
-    "oidcReauthRequiredForDataDelete": "データ削除を確認するにはOIDC再認証が必要です",
-    "passwordRequiredForDataDelete": "データ削除を確認するにはパスワードが必要です"
+    "oidcReauthRequiredForDataDelete": "データの削除を確認するには、IDプロバイダーで再認証してください",
+    "passwordRequiredForDataDelete": "データ削除を確認するにはパスワードが必要です",
+    "reauthUnavailable": "この操作を使用する前に、アカウントのパスワード設定を完了してください。"
   },
   "loanScenarios": {
     "notFound": "ID {{ id }} のローンシナリオが見つかりません",

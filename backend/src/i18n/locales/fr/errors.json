@@ -148,7 +148,10 @@
     "insufficientTokenScope": "Portée du jeton insuffisante. Requise : {{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "Changement de mot de passe requis avant d'accéder à cette ressource",
     "invalidAuthenticatorCode": "Code d'authentification invalide",
-    "incorrectPassword": "Mot de passe incorrect"
+    "incorrectPassword": "Mot de passe incorrect",
+    "oidcReauthRequired": "Authentifiez-vous à nouveau auprès de votre fournisseur d'identité pour confirmer cette action.",
+    "oidcReauthUnknownPurpose": "Objet de réauthentification inconnu",
+    "oidcReauthNotOidcAccount": "Ce compte ne se connecte pas via un fournisseur d'identité"
   },
   "backup": {
     "folderNotExist": "Le dossier n'existe pas : {{ safePath }}",
@@ -171,7 +174,7 @@
     "backupPasswordRequired": "Cette sauvegarde est chiffrée. Fournissez le mot de passe utilisé lors de sa création.",
     "decompressFailed": "Échec de la décompression du fichier de sauvegarde. Assurez-vous que le fichier est compressé en gzip.",
     "invalidJsonBackup": "Fichier de sauvegarde invalide : le contenu décompressé n'est pas un JSON valide",
-    "oidcReauthRequired": "Une ré-authentification OIDC est requise pour confirmer la restauration",
+    "oidcReauthRequired": "Authentifiez-vous à nouveau auprès de votre fournisseur d'identité pour confirmer la restauration",
     "oidcTokenInvalid": "Jeton OIDC invalide : le jeton doit être un ID token valide de votre fournisseur SSO",
     "passwordRequiredForRestore": "Un mot de passe est requis pour confirmer la restauration",
     "invalidPassword": "Mot de passe invalide",
@@ -183,7 +186,8 @@
     "backupPasswordOidcOnly": "Le mot de passe de sauvegarde n'est configurable que pour les utilisateurs OIDC ; les utilisateurs locaux utilisent leur mot de passe de connexion",
     "backupPasswordTooShort": "Le mot de passe de sauvegarde doit comporter au moins {{ minLength }} caractères",
     "backupPasswordBreached": "Ce mot de passe a été trouvé dans une fuite de données. Veuillez choisir un mot de passe différent.",
-    "restoreBodyMustBeFile": "Le corps de la requête doit être un fichier de sauvegarde"
+    "restoreBodyMustBeFile": "Le corps de la requête doit être un fichier de sauvegarde",
+    "reauthUnavailable": "Terminez la configuration du mot de passe de votre compte avant de restaurer une sauvegarde."
   },
   "budgets": {
     "notFound": "Budget avec l'ID {{ id }} introuvable",
@@ -485,12 +489,13 @@
     "emailInUse": "E-mail déjà utilisé",
     "noPasswordSet": "Aucun mot de passe défini pour ce compte",
     "passwordBreached": "Ce mot de passe a été trouvé dans une fuite de données. Veuillez choisir un mot de passe différent.",
-    "oidcReauthRequired": "Une ré-authentification OIDC est requise pour confirmer la suppression du compte",
+    "oidcReauthRequired": "Authentifiez-vous à nouveau auprès de votre fournisseur d'identité pour confirmer la suppression du compte",
     "passwordRequiredForDelete": "Un mot de passe est requis pour confirmer la suppression du compte",
     "invalidPassword": "Mot de passe invalide",
     "deleteLastAdmin": "Impossible de supprimer le dernier compte administrateur. Promouvez d'abord un autre utilisateur.",
-    "oidcReauthRequiredForDataDelete": "Une ré-authentification OIDC est requise pour confirmer la suppression des données",
-    "passwordRequiredForDataDelete": "Un mot de passe est requis pour confirmer la suppression des données"
+    "oidcReauthRequiredForDataDelete": "Authentifiez-vous à nouveau auprès de votre fournisseur d'identité pour confirmer la suppression des données",
+    "passwordRequiredForDataDelete": "Un mot de passe est requis pour confirmer la suppression des données",
+    "reauthUnavailable": "Terminez la configuration du mot de passe de votre compte avant d'utiliser cette action."
   },
   "loanScenarios": {
     "notFound": "Scénario de prêt avec l'ID {{ id }} introuvable",

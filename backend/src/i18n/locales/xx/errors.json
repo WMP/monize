@@ -156,7 +156,10 @@
     "insufficientTokenScope": "[XX-Insufficient token scope. Required: {{ requiredScopes }}-XX]",
     "passwordChangeRequiredForAccess": "[XX-Password change required before accessing this resource-XX]",
     "invalidAuthenticatorCode": "[XX-Invalid authenticator code-XX]",
-    "incorrectPassword": "[XX-Incorrect password-XX]"
+    "incorrectPassword": "[XX-Incorrect password-XX]",
+    "oidcReauthRequired": "[XX-Re-authenticate with your identity provider to confirm this action.-XX]",
+    "oidcReauthUnknownPurpose": "[XX-Unknown re-authentication purpose-XX]",
+    "oidcReauthNotOidcAccount": "[XX-This account does not sign in with an identity provider-XX]"
   },
   "backup": {
     "folderNotExist": "[XX-Folder does not exist: {{ safePath }}-XX]",
@@ -179,7 +182,7 @@
     "backupPasswordRequired": "[XX-This backup is encrypted. Provide the password that was used when the backup was created.-XX]",
     "decompressFailed": "[XX-Failed to decompress backup file. Ensure the file is gzip-compressed.-XX]",
     "invalidJsonBackup": "[XX-Invalid backup file: decompressed content is not valid JSON-XX]",
-    "oidcReauthRequired": "[XX-OIDC re-authentication is required to confirm restore-XX]",
+    "oidcReauthRequired": "[XX-Re-authenticate with your identity provider to confirm restore-XX]",
     "oidcTokenInvalid": "[XX-Invalid OIDC token: the token must be a valid ID token from your SSO provider-XX]",
     "passwordRequiredForRestore": "[XX-Password is required to confirm restore-XX]",
     "invalidPassword": "[XX-Invalid password-XX]",
@@ -191,7 +194,8 @@
     "backupPasswordOidcOnly": "[XX-Backup password is only configurable for OIDC users; local users use their login password-XX]",
     "backupPasswordTooShort": "[XX-Backup password must be at least {{ minLength }} characters-XX]",
     "backupPasswordBreached": "[XX-This password has been found in a data breach. Please choose a different password.-XX]",
-    "restoreBodyMustBeFile": "[XX-Request body must be a backup file-XX]"
+    "restoreBodyMustBeFile": "[XX-Request body must be a backup file-XX]",
+    "reauthUnavailable": "[XX-Finish setting up your account password before restoring a backup.-XX]"
   },
   "budgets": {
     "notFound": "[XX-Budget with ID {{ id }} not found-XX]",
@@ -493,12 +497,13 @@
     "emailInUse": "[XX-Email already in use-XX]",
     "noPasswordSet": "[XX-No password set for this account-XX]",
     "passwordBreached": "[XX-This password has been found in a data breach. Please choose a different password.-XX]",
-    "oidcReauthRequired": "[XX-OIDC re-authentication is required to confirm account deletion-XX]",
+    "oidcReauthRequired": "[XX-Re-authenticate with your identity provider to confirm account deletion-XX]",
     "passwordRequiredForDelete": "[XX-Password is required to confirm account deletion-XX]",
     "invalidPassword": "[XX-Invalid password-XX]",
     "deleteLastAdmin": "[XX-Cannot delete the last admin account. Promote another user first.-XX]",
-    "oidcReauthRequiredForDataDelete": "[XX-OIDC re-authentication is required to confirm data deletion-XX]",
-    "passwordRequiredForDataDelete": "[XX-Password is required to confirm data deletion-XX]"
+    "oidcReauthRequiredForDataDelete": "[XX-Re-authenticate with your identity provider to confirm data deletion-XX]",
+    "passwordRequiredForDataDelete": "[XX-Password is required to confirm data deletion-XX]",
+    "reauthUnavailable": "[XX-Finish setting up your account password before using this action.-XX]"
   },
   "loanScenarios": {
     "notFound": "[XX-Loan scenario with ID {{ id }} not found-XX]",

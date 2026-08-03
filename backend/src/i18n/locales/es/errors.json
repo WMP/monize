@@ -148,7 +148,10 @@
     "insufficientTokenScope": "Alcance del token insuficiente. Requerido: {{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "Se requiere cambio de contraseña antes de acceder a este recurso",
     "invalidAuthenticatorCode": "Código de autenticador no válido",
-    "incorrectPassword": "Contraseña incorrecta"
+    "incorrectPassword": "Contraseña incorrecta",
+    "oidcReauthRequired": "Vuelve a autenticarte con tu proveedor de identidad para confirmar esta acción.",
+    "oidcReauthUnknownPurpose": "Propósito de reautenticación desconocido",
+    "oidcReauthNotOidcAccount": "Esta cuenta no inicia sesión con un proveedor de identidad"
   },
   "backup": {
     "folderNotExist": "La carpeta no existe: {{ safePath }}",
@@ -171,7 +174,7 @@
     "backupPasswordRequired": "Esta copia de seguridad está cifrada. Proporciona la contraseña que se usó al crearla.",
     "decompressFailed": "Error al descomprimir el archivo de copia de seguridad. Asegúrate de que el archivo esté comprimido con gzip.",
     "invalidJsonBackup": "Archivo de copia de seguridad no válido: el contenido descomprimido no es JSON válido",
-    "oidcReauthRequired": "Se requiere reautenticación OIDC para confirmar la restauración",
+    "oidcReauthRequired": "Vuelve a autenticarte con tu proveedor de identidad para confirmar la restauración",
     "oidcTokenInvalid": "Token OIDC no válido: el token debe ser un ID token válido de tu proveedor SSO",
     "passwordRequiredForRestore": "Se requiere contraseña para confirmar la restauración",
     "invalidPassword": "Contraseña no válida",
@@ -183,7 +186,8 @@
     "backupPasswordOidcOnly": "La contraseña de copia de seguridad solo es configurable para usuarios OIDC; los usuarios locales usan su contraseña de inicio de sesión",
     "backupPasswordTooShort": "La contraseña de copia de seguridad debe tener al menos {{ minLength }} caracteres",
     "backupPasswordBreached": "Esta contraseña se encontró en una filtración de datos. Elige una contraseña diferente.",
-    "restoreBodyMustBeFile": "El cuerpo de la solicitud debe ser un archivo de copia de seguridad"
+    "restoreBodyMustBeFile": "El cuerpo de la solicitud debe ser un archivo de copia de seguridad",
+    "reauthUnavailable": "Termina de configurar la contraseña de tu cuenta antes de restaurar una copia de seguridad."
   },
   "budgets": {
     "notFound": "Presupuesto con ID {{ id }} no encontrado",
@@ -485,12 +489,13 @@
     "emailInUse": "El correo electrónico ya está en uso",
     "noPasswordSet": "No se ha establecido contraseña para esta cuenta",
     "passwordBreached": "Esta contraseña se encontró en una filtración de datos. Elige una contraseña diferente.",
-    "oidcReauthRequired": "Se requiere reautenticación OIDC para confirmar la eliminación de la cuenta",
+    "oidcReauthRequired": "Vuelve a autenticarte con tu proveedor de identidad para confirmar la eliminación de la cuenta",
     "passwordRequiredForDelete": "Se requiere contraseña para confirmar la eliminación de la cuenta",
     "invalidPassword": "Contraseña no válida",
     "deleteLastAdmin": "No se puede eliminar la última cuenta de administrador. Promueve a otro usuario primero.",
-    "oidcReauthRequiredForDataDelete": "Se requiere reautenticación OIDC para confirmar la eliminación de datos",
-    "passwordRequiredForDataDelete": "Se requiere contraseña para confirmar la eliminación de datos"
+    "oidcReauthRequiredForDataDelete": "Vuelve a autenticarte con tu proveedor de identidad para confirmar la eliminación de datos",
+    "passwordRequiredForDataDelete": "Se requiere contraseña para confirmar la eliminación de datos",
+    "reauthUnavailable": "Termina de configurar la contraseña de tu cuenta antes de usar esta acción."
   },
   "loanScenarios": {
     "notFound": "No se encontró el escenario de préstamo con ID {{ id }}",

@@ -148,7 +148,10 @@
     "insufficientTokenScope": "Niewystarczający zakres tokena. Wymagany: {{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "Przed uzyskaniem dostępu do tego zasobu wymagana jest zmiana hasła",
     "invalidAuthenticatorCode": "Nieprawidłowy kod uwierzytelniający",
-    "incorrectPassword": "Nieprawidłowe hasło"
+    "incorrectPassword": "Nieprawidłowe hasło",
+    "oidcReauthRequired": "Uwierzytelnij się ponownie u swojego dostawcy tożsamości, aby potwierdzić tę operację.",
+    "oidcReauthUnknownPurpose": "Nieznany cel ponownego uwierzytelnienia",
+    "oidcReauthNotOidcAccount": "To konto nie loguje się przez dostawcę tożsamości"
   },
   "backup": {
     "folderNotExist": "Folder nie istnieje: {{ safePath }}",
@@ -171,7 +174,7 @@
     "backupPasswordRequired": "Ta kopia zapasowa jest zaszyfrowana. Podaj hasło użyte podczas tworzenia kopii zapasowej.",
     "decompressFailed": "Nie udało się rozpakować pliku kopii zapasowej. Upewnij się, że plik jest skompresowany metodą gzip.",
     "invalidJsonBackup": "Nieprawidłowy plik kopii zapasowej: rozpakowana zawartość nie jest prawidłowym formatem JSON",
-    "oidcReauthRequired": "Do potwierdzenia przywracania wymagane jest ponowne uwierzytelnienie OIDC",
+    "oidcReauthRequired": "Uwierzytelnij się ponownie u swojego dostawcy tożsamości, aby potwierdzić przywracanie",
     "oidcTokenInvalid": "Nieprawidłowy token OIDC: token musi być prawidłowym tokenem ID od Twojego dostawcy SSO",
     "passwordRequiredForRestore": "Do potwierdzenia przywracania wymagane jest hasło",
     "invalidPassword": "Nieprawidłowe hasło",
@@ -183,7 +186,8 @@
     "backupPasswordOidcOnly": "Hasło kopii zapasowej można skonfigurować tylko dla użytkowników OIDC; użytkownicy lokalni używają swojego hasła logowania",
     "backupPasswordTooShort": "Hasło kopii zapasowej musi mieć co najmniej {{ minLength }} znaków",
     "backupPasswordBreached": "To hasło zostało znalezione w wycieku danych. Wybierz inne hasło.",
-    "restoreBodyMustBeFile": "Treść żądania musi być plikiem kopii zapasowej"
+    "restoreBodyMustBeFile": "Treść żądania musi być plikiem kopii zapasowej",
+    "reauthUnavailable": "Zakończ ustawianie hasła do konta, zanim przywrócisz kopię zapasową."
   },
   "budgets": {
     "notFound": "Nie znaleziono budżetu o ID {{ id }}",
@@ -485,12 +489,13 @@
     "emailInUse": "Adres e-mail jest już używany",
     "noPasswordSet": "Brak ustawionego hasła dla tego konta",
     "passwordBreached": "To hasło zostało znalezione w wycieku danych. Wybierz inne hasło.",
-    "oidcReauthRequired": "Do potwierdzenia usunięcia konta wymagane jest ponowne uwierzytelnienie OIDC",
+    "oidcReauthRequired": "Uwierzytelnij się ponownie u swojego dostawcy tożsamości, aby potwierdzić usunięcie konta",
     "passwordRequiredForDelete": "Do potwierdzenia usunięcia konta wymagane jest hasło",
     "invalidPassword": "Nieprawidłowe hasło",
     "deleteLastAdmin": "Nie można usunąć ostatniego konta administratora. Najpierw awansuj innego użytkownika.",
-    "oidcReauthRequiredForDataDelete": "Do potwierdzenia usunięcia danych wymagane jest ponowne uwierzytelnienie OIDC",
-    "passwordRequiredForDataDelete": "Do potwierdzenia usunięcia danych wymagane jest hasło"
+    "oidcReauthRequiredForDataDelete": "Uwierzytelnij się ponownie u swojego dostawcy tożsamości, aby potwierdzić usunięcie danych",
+    "passwordRequiredForDataDelete": "Do potwierdzenia usunięcia danych wymagane jest hasło",
+    "reauthUnavailable": "Zakończ ustawianie hasła do konta, zanim użyjesz tej operacji."
   },
   "loanScenarios": {
     "notFound": "Nie znaleziono scenariusza kredytu o identyfikatorze {{ id }}",

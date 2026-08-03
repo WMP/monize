@@ -356,7 +356,8 @@
       "toasts": {
         "downgraded": "Vos données ont été supprimées. Votre identifiant de connexion et l'accès partagé sont conservés pour maintenir la délégation.",
         "deleted": "Compte supprimé",
-        "failed": "Échec de la suppression du compte"
+        "failed": "Échec de la suppression du compte",
+        "reauthRedirect": "Vous allez être redirigé vers votre fournisseur d'identité pour confirmer votre identité. Vous reviendrez ensuite ici."
       },
       "errors": {
         "typeDelete": "Veuillez saisir DELETE pour confirmer",
@@ -559,7 +560,8 @@
         "pleaseSelectFile": "Veuillez sélectionner un fichier de sauvegarde",
         "pleaseEnterPassword": "Veuillez saisir votre mot de passe pour confirmer",
         "encryptedNeedsPassword": "Cette sauvegarde est chiffrée. Saisissez le mot de passe utilisé lors de sa création dans le champ \"Mot de passe de sauvegarde\", puis réessayez.",
-        "failed": "Échec de la restauration de la sauvegarde"
+        "failed": "Échec de la restauration de la sauvegarde",
+        "reauthRedirect": "Vous allez être redirigé vers votre fournisseur d'identité pour confirmer votre identité. Sélectionnez à nouveau le fichier de sauvegarde à votre retour."
       }
     },
     "restoreResult": {

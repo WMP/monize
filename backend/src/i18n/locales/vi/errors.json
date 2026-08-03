@@ -148,7 +148,10 @@
     "insufficientTokenScope": "Phạm vi mã thông báo không đủ. Yêu cầu: {{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "Cần thay đổi mật khẩu trước khi truy cập tài nguyên này",
     "invalidAuthenticatorCode": "Mã xác thực không hợp lệ",
-    "incorrectPassword": "Mật khẩu không đúng"
+    "incorrectPassword": "Mật khẩu không đúng",
+    "oidcReauthRequired": "Xác thực lại với nhà cung cấp danh tính của bạn để xác nhận hành động này.",
+    "oidcReauthUnknownPurpose": "Mục đích xác thực lại không xác định",
+    "oidcReauthNotOidcAccount": "Tài khoản này không đăng nhập bằng nhà cung cấp danh tính"
   },
   "backup": {
     "folderNotExist": "Thư mục không tồn tại: {{ safePath }}",
@@ -171,7 +174,7 @@
     "backupPasswordRequired": "Bản sao lưu này đã được mã hóa. Cung cấp mật khẩu đã sử dụng khi tạo bản sao lưu.",
     "decompressFailed": "Không thể giải nén tệp sao lưu. Đảm bảo tệp được nén bằng gzip.",
     "invalidJsonBackup": "Tệp sao lưu không hợp lệ: nội dung đã giải nén không phải JSON hợp lệ",
-    "oidcReauthRequired": "Yêu cầu xác thực lại OIDC để xác nhận khôi phục",
+    "oidcReauthRequired": "Xác thực lại với nhà cung cấp danh tính của bạn để xác nhận việc phục hồi",
     "oidcTokenInvalid": "Mã thông báo OIDC không hợp lệ: mã thông báo phải là ID token hợp lệ từ nhà cung cấp SSO của bạn",
     "passwordRequiredForRestore": "Cần mật khẩu để xác nhận khôi phục",
     "invalidPassword": "Mật khẩu không hợp lệ",
@@ -183,7 +186,8 @@
     "backupPasswordOidcOnly": "Mật khẩu sao lưu chỉ có thể cấu hình cho người dùng OIDC; người dùng cục bộ sử dụng mật khẩu đăng nhập của họ",
     "backupPasswordTooShort": "Mật khẩu sao lưu phải có ít nhất {{ minLength }} ký tự",
     "backupPasswordBreached": "Mật khẩu này đã bị phát hiện trong một vụ rò rỉ dữ liệu. Vui lòng chọn mật khẩu khác.",
-    "restoreBodyMustBeFile": "Nội dung yêu cầu phải là tệp sao lưu"
+    "restoreBodyMustBeFile": "Nội dung yêu cầu phải là tệp sao lưu",
+    "reauthUnavailable": "Hãy hoàn tất việc thiết lập mật khẩu tài khoản trước khi phục hồi bản sao lưu."
   },
   "budgets": {
     "notFound": "Không tìm thấy ngân sách với ID {{ id }}",
@@ -485,12 +489,13 @@
     "emailInUse": "Email đã được sử dụng",
     "noPasswordSet": "Chưa đặt mật khẩu cho tài khoản này",
     "passwordBreached": "Mật khẩu này đã bị phát hiện trong một vụ rò rỉ dữ liệu. Vui lòng chọn mật khẩu khác.",
-    "oidcReauthRequired": "Yêu cầu xác thực lại OIDC để xác nhận xóa tài khoản",
+    "oidcReauthRequired": "Xác thực lại với nhà cung cấp danh tính của bạn để xác nhận việc xoá tài khoản",
     "passwordRequiredForDelete": "Cần mật khẩu để xác nhận xóa tài khoản",
     "invalidPassword": "Mật khẩu không hợp lệ",
     "deleteLastAdmin": "Không thể xóa tài khoản quản trị viên cuối cùng. Hãy thăng cấp người dùng khác trước.",
-    "oidcReauthRequiredForDataDelete": "Yêu cầu xác thực lại OIDC để xác nhận xóa dữ liệu",
-    "passwordRequiredForDataDelete": "Cần mật khẩu để xác nhận xóa dữ liệu"
+    "oidcReauthRequiredForDataDelete": "Xác thực lại với nhà cung cấp danh tính của bạn để xác nhận việc xoá dữ liệu",
+    "passwordRequiredForDataDelete": "Cần mật khẩu để xác nhận xóa dữ liệu",
+    "reauthUnavailable": "Hãy hoàn tất việc thiết lập mật khẩu tài khoản trước khi dùng hành động này."
   },
   "loanScenarios": {
     "notFound": "Không tìm thấy kịch bản khoản vay có ID {{ id }}",

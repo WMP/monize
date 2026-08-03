@@ -148,7 +148,10 @@
     "insufficientTokenScope": "अपर्याप्त टोकन स्कोप। आवश्यक: {{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "इस संसाधन तक पहुँचने से पहले पासवर्ड बदलना आवश्यक है",
     "invalidAuthenticatorCode": "अमान्य प्रमाणक कोड",
-    "incorrectPassword": "गलत पासवर्ड"
+    "incorrectPassword": "गलत पासवर्ड",
+    "oidcReauthRequired": "इस कार्रवाई की पुष्टि करने के लिए अपने पहचान प्रदाता से फिर से प्रमाणित करें।",
+    "oidcReauthUnknownPurpose": "अज्ञात पुनः प्रमाणीकरण उद्देश्य",
+    "oidcReauthNotOidcAccount": "यह खाता किसी पहचान प्रदाता से साइन इन नहीं करता है"
   },
   "backup": {
     "folderNotExist": "फ़ोल्डर मौजूद नहीं है: {{ safePath }}",
@@ -171,7 +174,7 @@
     "backupPasswordRequired": "यह बैकअप एन्क्रिप्टेड है। वह पासवर्ड प्रदान करें जो बैकअप बनाते समय उपयोग किया गया था।",
     "decompressFailed": "बैकअप फ़ाइल को डीकंप्रेस करने में विफल। सुनिश्चित करें कि फ़ाइल gzip-संपीड़ित है।",
     "invalidJsonBackup": "अमान्य बैकअप फ़ाइल: डीकंप्रेस की गई सामग्री मान्य JSON नहीं है",
-    "oidcReauthRequired": "पुनर्स्थापना की पुष्टि करने के लिए OIDC पुनः-प्रमाणीकरण आवश्यक है",
+    "oidcReauthRequired": "पुनर्स्थापना की पुष्टि करने के लिए अपने पहचान प्रदाता से फिर से प्रमाणित करें",
     "oidcTokenInvalid": "अमान्य OIDC टोकन: टोकन आपके SSO प्रदाता से एक वैध ID टोकन होना चाहिए",
     "passwordRequiredForRestore": "पुनर्स्थापना की पुष्टि करने के लिए पासवर्ड आवश्यक है",
     "invalidPassword": "अमान्य पासवर्ड",
@@ -183,7 +186,8 @@
     "backupPasswordOidcOnly": "बैकअप पासवर्ड केवल OIDC उपयोगकर्ताओं के लिए कॉन्फ़िगर करने योग्य है; स्थानीय उपयोगकर्ता अपने लॉगिन पासवर्ड का उपयोग करते हैं",
     "backupPasswordTooShort": "बैकअप पासवर्ड कम से कम {{ minLength }} अक्षरों का होना चाहिए",
     "backupPasswordBreached": "यह पासवर्ड डेटा उल्लंघन में पाया गया है। कृपया एक अलग पासवर्ड चुनें।",
-    "restoreBodyMustBeFile": "अनुरोध बॉडी एक बैकअप फ़ाइल होनी चाहिए"
+    "restoreBodyMustBeFile": "अनुरोध बॉडी एक बैकअप फ़ाइल होनी चाहिए",
+    "reauthUnavailable": "बैकअप पुनर्स्थापित करने से पहले अपने खाते का पासवर्ड सेट करना पूरा करें।"
   },
   "budgets": {
     "notFound": "ID {{ id }} वाला बजट नहीं मिला",
@@ -485,12 +489,13 @@
     "emailInUse": "ईमेल पहले से उपयोग में है",
     "noPasswordSet": "इस खाते के लिए कोई पासवर्ड सेट नहीं है",
     "passwordBreached": "यह पासवर्ड डेटा उल्लंघन में पाया गया है। कृपया एक अलग पासवर्ड चुनें।",
-    "oidcReauthRequired": "खाता हटाने की पुष्टि करने के लिए OIDC पुनः-प्रमाणीकरण आवश्यक है",
+    "oidcReauthRequired": "खाता हटाने की पुष्टि करने के लिए अपने पहचान प्रदाता से फिर से प्रमाणित करें",
     "passwordRequiredForDelete": "खाता हटाने की पुष्टि करने के लिए पासवर्ड आवश्यक है",
     "invalidPassword": "अमान्य पासवर्ड",
     "deleteLastAdmin": "अंतिम व्यवस्थापक खाता हटाया नहीं जा सकता। पहले किसी अन्य उपयोगकर्ता को पदोन्नत करें।",
-    "oidcReauthRequiredForDataDelete": "डेटा हटाने की पुष्टि करने के लिए OIDC पुनः-प्रमाणीकरण आवश्यक है",
-    "passwordRequiredForDataDelete": "डेटा हटाने की पुष्टि करने के लिए पासवर्ड आवश्यक है"
+    "oidcReauthRequiredForDataDelete": "डेटा हटाने की पुष्टि करने के लिए अपने पहचान प्रदाता से फिर से प्रमाणित करें",
+    "passwordRequiredForDataDelete": "डेटा हटाने की पुष्टि करने के लिए पासवर्ड आवश्यक है",
+    "reauthUnavailable": "इस कार्रवाई का उपयोग करने से पहले अपने खाते का पासवर्ड सेट करना पूरा करें।"
   },
   "loanScenarios": {
     "notFound": "आईडी {{ id }} वाला ऋण परिदृश्य नहीं मिला",

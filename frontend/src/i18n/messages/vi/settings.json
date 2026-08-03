@@ -356,7 +356,8 @@
       "toasts": {
         "downgraded": "Dữ liệu của bạn đã bị xóa. Đăng nhập và quyền truy cập chia sẻ được giữ lại để ủy quyền vẫn có hiệu lực.",
         "deleted": "Tài khoản đã bị xóa",
-        "failed": "Không thể xóa tài khoản"
+        "failed": "Không thể xóa tài khoản",
+        "reauthRedirect": "Bạn sẽ được chuyển đến nhà cung cấp danh tính để xác nhận đúng là bạn. Sau đó bạn sẽ trở lại đây."
       },
       "errors": {
         "typeDelete": "Vui lòng nhập DELETE để xác nhận",
@@ -559,7 +560,8 @@
         "pleaseSelectFile": "Vui lòng chọn tệp sao lưu",
         "pleaseEnterPassword": "Vui lòng nhập mật khẩu để xác nhận",
         "encryptedNeedsPassword": "Sao lưu này được mã hóa. Nhập mật khẩu đã được tạo cùng với nó vào trường \"Mật khẩu sao lưu\", sau đó thử lại.",
-        "failed": "Không thể khôi phục sao lưu"
+        "failed": "Không thể khôi phục sao lưu",
+        "reauthRedirect": "Bạn sẽ được chuyển đến nhà cung cấp danh tính để xác nhận đúng là bạn. Khi trở lại, hãy chọn lại tệp sao lưu."
       }
     },
     "restoreResult": {

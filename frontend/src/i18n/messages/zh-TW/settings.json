@@ -356,7 +356,8 @@
       "toasts": {
         "downgraded": "您自己的資料已移除。您的登入和共用存取已保留，以維持委派功能。",
         "deleted": "帳戶已刪除",
-        "failed": "刪除帳戶失敗"
+        "failed": "刪除帳戶失敗",
+        "reauthRedirect": "正在前往身分提供者以確認你的身分，完成後會回到這裡。"
       },
       "errors": {
         "typeDelete": "請輸入 DELETE 以確認",
@@ -559,7 +560,8 @@
         "pleaseSelectFile": "請選擇備份檔案",
         "pleaseEnterPassword": "請輸入您的密碼以確認",
         "encryptedNeedsPassword": "此備份已加密。請在「備份密碼」欄位輸入建立時使用的密碼後再試。",
-        "failed": "還原備份失敗"
+        "failed": "還原備份失敗",
+        "reauthRedirect": "正在前往身分提供者以確認你的身分。返回後請重新選擇備份檔案。"
       }
     },
     "restoreResult": {

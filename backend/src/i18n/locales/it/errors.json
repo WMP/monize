@@ -148,7 +148,10 @@
     "insufficientTokenScope": "Ambito token insufficiente. Richiesto: {{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "Modifica password richiesta prima di accedere a questa risorsa",
     "invalidAuthenticatorCode": "Codice autenticatore non valido",
-    "incorrectPassword": "Password errata"
+    "incorrectPassword": "Password errata",
+    "oidcReauthRequired": "Autenticati di nuovo con il tuo provider di identità per confermare questa azione.",
+    "oidcReauthUnknownPurpose": "Scopo di riautenticazione non riconosciuto",
+    "oidcReauthNotOidcAccount": "Questo account non accede tramite un provider di identità"
   },
   "backup": {
     "folderNotExist": "La cartella non esiste: {{ safePath }}",
@@ -171,7 +174,7 @@
     "backupPasswordRequired": "Questo backup è cifrato. Fornisci la password usata al momento della creazione del backup.",
     "decompressFailed": "Decompressione del file di backup non riuscita. Assicurati che il file sia compresso con gzip.",
     "invalidJsonBackup": "File di backup non valido: il contenuto decompresso non è JSON valido",
-    "oidcReauthRequired": "La riautenticazione OIDC è richiesta per confermare il ripristino",
+    "oidcReauthRequired": "Autenticati di nuovo con il tuo provider di identità per confermare il ripristino",
     "oidcTokenInvalid": "Token OIDC non valido: il token deve essere un ID token valido del provider SSO",
     "passwordRequiredForRestore": "La password è obbligatoria per confermare il ripristino",
     "invalidPassword": "Password non valida",
@@ -183,7 +186,8 @@
     "backupPasswordOidcOnly": "La password di backup è configurabile solo per gli utenti OIDC; gli utenti locali usano la password di accesso",
     "backupPasswordTooShort": "La password di backup deve contenere almeno {{ minLength }} caratteri",
     "backupPasswordBreached": "Questa password è stata trovata in una violazione dei dati. Scegli una password diversa.",
-    "restoreBodyMustBeFile": "Il corpo della richiesta deve essere un file di backup"
+    "restoreBodyMustBeFile": "Il corpo della richiesta deve essere un file di backup",
+    "reauthUnavailable": "Completa la configurazione della password del tuo account prima di ripristinare un backup."
   },
   "budgets": {
     "notFound": "Budget con ID {{ id }} non trovato",
@@ -485,12 +489,13 @@
     "emailInUse": "Email già in uso",
     "noPasswordSet": "Nessuna password impostata per questo account",
     "passwordBreached": "Questa password è stata trovata in una violazione dei dati. Scegli una password diversa.",
-    "oidcReauthRequired": "La riautenticazione OIDC è richiesta per confermare l'eliminazione dell'account",
+    "oidcReauthRequired": "Autenticati di nuovo con il tuo provider di identità per confermare l'eliminazione dell'account",
     "passwordRequiredForDelete": "La password è obbligatoria per confermare l'eliminazione dell'account",
     "invalidPassword": "Password non valida",
     "deleteLastAdmin": "Impossibile eliminare l'ultimo account amministratore. Promuovi prima un altro utente.",
-    "oidcReauthRequiredForDataDelete": "La riautenticazione OIDC è richiesta per confermare l'eliminazione dei dati",
-    "passwordRequiredForDataDelete": "La password è obbligatoria per confermare l'eliminazione dei dati"
+    "oidcReauthRequiredForDataDelete": "Autenticati di nuovo con il tuo provider di identità per confermare l'eliminazione dei dati",
+    "passwordRequiredForDataDelete": "La password è obbligatoria per confermare l'eliminazione dei dati",
+    "reauthUnavailable": "Completa la configurazione della password del tuo account prima di usare questa azione."
   },
   "loanScenarios": {
     "notFound": "Scenario di prestito con ID {{ id }} non trovato",

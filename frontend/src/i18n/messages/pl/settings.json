@@ -356,7 +356,8 @@
       "toasts": {
         "downgraded": "Twoje własne dane zostały usunięte. Twoje logowanie i dostęp współdzielony pozostają, aby pełnomocnictwo nadal obowiązywało.",
         "deleted": "Usunięto konto",
-        "failed": "Nie udało się usunąć konta"
+        "failed": "Nie udało się usunąć konta",
+        "reauthRedirect": "Przenosimy Cię do dostawcy tożsamości, aby potwierdzić Twoją tożsamość. Potem wrócisz tutaj."
       },
       "errors": {
         "typeDelete": "Wpisz DELETE, aby potwierdzić",
@@ -559,7 +560,8 @@
         "pleaseSelectFile": "Wybierz plik kopii zapasowej",
         "pleaseEnterPassword": "Wpisz hasło, aby potwierdzić",
         "encryptedNeedsPassword": "Ta kopia zapasowa jest zaszyfrowana. Wpisz hasło, którym ją utworzono, w polu \"Hasło kopii zapasowej\" i spróbuj ponownie.",
-        "failed": "Nie udało się przywrócić kopii zapasowej"
+        "failed": "Nie udało się przywrócić kopii zapasowej",
+        "reauthRedirect": "Przenosimy Cię do dostawcy tożsamości, aby potwierdzić Twoją tożsamość. Po powrocie wybierz plik kopii zapasowej ponownie."
       }
     },
     "restoreResult": {

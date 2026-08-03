@@ -148,7 +148,10 @@
     "insufficientTokenScope": "令牌權限不足。所需：{{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "存取此資源前需要先變更密碼",
     "invalidAuthenticatorCode": "無效的驗證器代碼",
-    "incorrectPassword": "密碼不正確"
+    "incorrectPassword": "密碼不正確",
+    "oidcReauthRequired": "請在身分提供者處重新驗證以確認此操作。",
+    "oidcReauthUnknownPurpose": "未知的重新驗證目的",
+    "oidcReauthNotOidcAccount": "此帳戶不使用身分提供者登入"
   },
   "backup": {
     "folderNotExist": "資料夾不存在：{{ safePath }}",
@@ -171,7 +174,7 @@
     "backupPasswordRequired": "此備份已加密。請提供建立備份時使用的密碼。",
     "decompressFailed": "無法解壓縮備份檔案。請確保檔案為 gzip 壓縮格式。",
     "invalidJsonBackup": "無效的備份檔案：解壓縮內容不是有效的 JSON",
-    "oidcReauthRequired": "需要 OIDC 重新驗證以確認還原",
+    "oidcReauthRequired": "請在身分提供者處重新驗證以確認還原",
     "oidcTokenInvalid": "無效的 OIDC 令牌：令牌必須是來自您的 SSO 提供者的有效 ID 令牌",
     "passwordRequiredForRestore": "需要密碼以確認還原",
     "invalidPassword": "無效的密碼",
@@ -183,7 +186,8 @@
     "backupPasswordOidcOnly": "備份密碼僅適用於 OIDC 使用者；本機使用者使用其登入密碼",
     "backupPasswordTooShort": "備份密碼至少需要 {{ minLength }} 個字元",
     "backupPasswordBreached": "此密碼已出現在資料外洩事件中。請選擇其他密碼。",
-    "restoreBodyMustBeFile": "請求主體必須是備份檔案"
+    "restoreBodyMustBeFile": "請求主體必須是備份檔案",
+    "reauthUnavailable": "請先完成帳戶密碼設定，再還原備份。"
   },
   "budgets": {
     "notFound": "找不到 ID 為 {{ id }} 的預算",
@@ -485,12 +489,13 @@
     "emailInUse": "電子郵件已被使用",
     "noPasswordSet": "此帳戶未設定密碼",
     "passwordBreached": "此密碼已出現在資料外洩事件中。請選擇其他密碼。",
-    "oidcReauthRequired": "需要 OIDC 重新驗證以確認帳戶刪除",
+    "oidcReauthRequired": "請在身分提供者處重新驗證以確認刪除帳戶",
     "passwordRequiredForDelete": "需要密碼以確認帳戶刪除",
     "invalidPassword": "無效的密碼",
     "deleteLastAdmin": "無法刪除最後一個管理員帳戶。請先晉升其他使用者。",
-    "oidcReauthRequiredForDataDelete": "需要 OIDC 重新驗證以確認資料刪除",
-    "passwordRequiredForDataDelete": "需要密碼以確認資料刪除"
+    "oidcReauthRequiredForDataDelete": "請在身分提供者處重新驗證以確認刪除資料",
+    "passwordRequiredForDataDelete": "需要密碼以確認資料刪除",
+    "reauthUnavailable": "請先完成帳戶密碼設定，再使用此操作。"
   },
   "loanScenarios": {
     "notFound": "找不到 ID 為 {{ id }} 的貸款情境",

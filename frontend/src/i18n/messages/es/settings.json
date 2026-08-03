@@ -356,7 +356,8 @@
       "toasts": {
         "downgraded": "Tus propios datos fueron eliminados. Tu inicio de sesión y el acceso compartido se conservan para que la delegación siga en su lugar.",
         "deleted": "Cuenta eliminada",
-        "failed": "Error al eliminar la cuenta"
+        "failed": "Error al eliminar la cuenta",
+        "reauthRedirect": "Te llevamos a tu proveedor de identidad para confirmar que eres tú. Después volverás aquí."
       },
       "errors": {
         "typeDelete": "Por favor escribe DELETE para confirmar",
@@ -559,7 +560,8 @@
         "pleaseSelectFile": "Por favor selecciona un archivo de copia de seguridad",
         "pleaseEnterPassword": "Ingresa tu contraseña para confirmar",
         "encryptedNeedsPassword": "Esta copia de seguridad está cifrada. Ingresa la contraseña con la que fue creada en el campo \"Contraseña de copia de seguridad\" y vuelve a intentarlo.",
-        "failed": "Error al restaurar la copia de seguridad"
+        "failed": "Error al restaurar la copia de seguridad",
+        "reauthRedirect": "Te llevamos a tu proveedor de identidad para confirmar que eres tú. Vuelve a elegir el archivo de copia de seguridad cuando regreses."
       }
     },
     "restoreResult": {

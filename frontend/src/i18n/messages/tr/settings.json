@@ -356,7 +356,8 @@
       "toasts": {
         "downgraded": "Kendi verileriniz kaldırıldı. Temsilcilik yerinde kalsın diye oturumunuz ve paylaşılan erişim korunmaktadır.",
         "deleted": "Hesap silindi",
-        "failed": "Hesap silinemedi"
+        "failed": "Hesap silinemedi",
+        "reauthRedirect": "Kimliğinizi doğrulamak için sizi kimlik sağlayıcınıza yönlendiriyoruz. Sonrasında buraya döneceksiniz."
       },
       "errors": {
         "typeDelete": "Onaylamak için lütfen DELETE yazın",
@@ -559,7 +560,8 @@
         "pleaseSelectFile": "Lütfen bir yedekleme dosyası seçin",
         "pleaseEnterPassword": "Onaylamak için lütfen şifrenizi girin",
         "encryptedNeedsPassword": "Bu yedekleme şifrelenmiş. Oluşturulduğu şifreyi \"Yedekleme şifresi\" alanına girin ve tekrar deneyin.",
-        "failed": "Yedekleme geri yüklenemedi"
+        "failed": "Yedekleme geri yüklenemedi",
+        "reauthRedirect": "Kimliğinizi doğrulamak için sizi kimlik sağlayıcınıza yönlendiriyoruz. Döndüğünüzde yedek dosyasını yeniden seçin."
       }
     },
     "restoreResult": {
