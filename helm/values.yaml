@@ -60,9 +60,57 @@ backend:
     # bound memory if the files being imported are small. See helm/README.md.
     MNY_IMPORT_LIMIT_MB: "300"
 
+  # -- Writable durable storage for the data the backend keeps outside Postgres.
+  #
+  # The backend container runs with readOnlyRootFilesystem: true and, until this
+  # existed, the StatefulSet rendered no volumes at all. So two features that are
+  # exposed in the UI could not work in the canonical chart, and both failed at
+  # the point of use rather than at install time:
+  #
+  #   * Automatic backups write to BACKUP_CONTAINER_DIR (/data/backups). Directory
+  #     creation failed with EROFS, and the user saw a schedule that reported
+  #     errors forever while looking configured.
+  #   * ATTACHMENT_STORAGE_PROVIDER=local writes to ATTACHMENT_CONTAINER_DIR
+  #     (/data/attachments) -- the same failure, for receipts and documents.
+  #
+  # Left disabled by default: enabling it creates a PersistentVolumeClaim, and on
+  # a cluster with no default StorageClass that leaves the pod Pending. Turning it
+  # on is a deliberate act, and the chart refuses to render if you turn it on
+  # without saying where the storage comes from.
+  #
+  # These are plain PVCs mounted as volumes, deliberately not
+  # volumeClaimTemplates: a StatefulSet's volumeClaimTemplates are immutable, so
+  # adding one to an existing release cannot be done by an upgrade.
+  persistence:
+    # -- Storage for automatic backups (/data/backups).
+    backups:
+      enabled: false
+      # -- Mount an existing claim instead of creating one. Set this OR size.
+      existingClaim: ""
+      # -- Size of the claim the chart creates. Automatic backups keep 7 daily,
+      # 4 weekly and 6 monthly artifacts per user by default, and each is a
+      # gzipped dump of that user's whole dataset -- so size this against the
+      # number of users, not the number of files.
+      size: 5Gi
+      # -- StorageClass for the created claim. Empty uses the cluster default.
+      storageClass: ""
+      accessMode: ReadWriteOnce
+    # -- Storage for locally stored attachment bytes (/data/attachments). Only
+    # needed with ATTACHMENT_STORAGE_PROVIDER=local; the default "database"
+    # provider keeps bytes in Postgres and s3 keeps them in a bucket.
+    attachments:
+      enabled: false
+      existingClaim: ""
+      size: 10Gi
+      storageClass: ""
+      accessMode: ReadWriteOnce
+
   # -- Security context for the backend container
   securityContext:
     allowPrivilegeEscalation: false
+    # With this on, the container can only write where a volume is mounted. See
+    # backend.persistence above, and note that /tmp is always given an emptyDir
+    # because Node and the .mny import both need somewhere to spill.
     readOnlyRootFilesystem: true
     runAsNonRoot: true
     runAsUser: 1001
@@ -162,6 +210,27 @@ backend:
   #       name: my-backend-secrets
   #   - configMapRef:
   #       name: my-backend-config
+
+  # -- Where automatic backups are written inside the container. Must match
+  # BACKUP_CONTAINER_DIR if you override that through extraEnv; the mount for
+  # backend.persistence.backups follows this value.
+  backupContainerDir: /data/backups
+
+  # -- Where locally stored attachment bytes are written inside the container.
+  # Must match ATTACHMENT_CONTAINER_DIR if you override that through extraEnv.
+  attachmentContainerDir: /data/attachments
+
+  # -- Additional volumes for the backend pod (beyond /tmp and the persistence
+  # block above)
+  extraVolumes: []
+  #   - name: extra-backups
+  #     persistentVolumeClaim:
+  #       claimName: nas-monize-backups
+
+  # -- Additional volume mounts for the backend container
+  extraVolumeMounts: []
+  #   - name: extra-backups
+  #     mountPath: /mnt/nas/monize
 
 # -- Frontend configuration
 frontend:

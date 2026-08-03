@@ -146,6 +146,68 @@ Set `MNY_IMPORT_LIMIT_MB` on **both** deployments if you change it. The frontend
 reads it to size the proxy's own body ceiling (Next caps proxied bodies at 10MB
 otherwise, and truncates rather than rejecting anything larger).
 
+
+#### Storage for data kept outside Postgres
+
+The backend container runs with `readOnlyRootFilesystem: true`, so it can only
+write where a volume is mounted. Until this block existed the StatefulSet
+rendered no volumes at all, which meant two features visible in the UI could not
+work in the canonical chart -- and both failed at the point of use rather than at
+install time, so the UI went on presenting them as configured:
+
+- **Automatic backups** write to `/data/backups`. Directory creation failed with
+  EROFS, so a user's schedule reported errors forever and produced no files.
+- **`ATTACHMENT_STORAGE_PROVIDER=local`** writes to `/data/attachments`. Same
+  failure, for receipts and documents. (The default `database` provider keeps
+  bytes in Postgres and is unaffected; so is `s3`.)
+
+Both are off by default, because enabling them creates a PersistentVolumeClaim
+and a cluster with no default StorageClass would leave the pod `Pending`. Turning
+one on without saying where the storage comes from fails at render time rather
+than at run time.
+
+```yaml
+backend:
+  persistence:
+    backups:
+      enabled: true
+      size: 5Gi           # or: existingClaim: my-backup-claim
+      storageClass: ""    # empty uses the cluster default
+      accessMode: ReadWriteOnce
+    attachments:
+      enabled: true       # only needed with ATTACHMENT_STORAGE_PROVIDER=local
+      size: 10Gi
+```
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `backend.persistence.backups.enabled` | Mount durable storage at `backupContainerDir` | `false` |
+| `backend.persistence.backups.existingClaim` | Use an existing PVC instead of creating one | `""` |
+| `backend.persistence.backups.size` | Size of the created claim | `5Gi` |
+| `backend.persistence.backups.storageClass` | StorageClass (empty = cluster default) | `""` |
+| `backend.persistence.attachments.*` | Same shape, for `/data/attachments` | disabled |
+| `backend.backupContainerDir` | Mount path for backups | `/data/backups` |
+| `backend.attachmentContainerDir` | Mount path for local attachments | `/data/attachments` |
+| `backend.extraVolumes` / `extraVolumeMounts` | Anything else the pod needs | `[]` |
+
+Notes on sizing and behaviour:
+
+- Retention keeps 7 daily, 4 weekly and 6 monthly artifacts **per user** by
+  default, and each is a gzipped dump of that user's whole dataset -- so size
+  against the number of users, not the number of files.
+- Each user's backups go in a server-computed subdirectory named by their user
+  id. One user's retention can only ever reach their own artifacts.
+- Backup destinations are confined to `BACKUP_ALLOWED_ROOTS` (defaulting to
+  `BACKUP_CONTAINER_DIR`). If you mount a second volume through `extraVolumes`
+  and want users to be able to select it, add it to that variable as well.
+- The claims carry `helm.sh/resource-policy: keep`, so `helm uninstall` does not
+  delete a user's only off-database backups or their attachment bytes.
+- `fsGroup` is set from `securityContext.runAsGroup` when either store is
+  enabled: a freshly provisioned volume is root-owned on most CSI drivers, and
+  without it the first write fails with EACCES.
+- `/tmp` always gets an `emptyDir`. Node and the `.mny` import both need
+  somewhere to spill, and nothing there needs to survive a restart.
+
 ### Frontend
 
 | Parameter | Description | Default |

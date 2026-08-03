@@ -114,3 +114,18 @@ Selector labels for frontend.
 {{- define "monize.frontend.selectorLabels" -}}
 app: monize-frontend
 {{- end }}
+
+{{/*
+The configured attachment storage provider, read out of backend.extraEnv so
+NOTES.txt can warn when "local" has no volume behind it. Defaults to "database",
+matching the backend's own default.
+*/}}
+{{- define "monize.attachmentProvider" -}}
+{{- $provider := "database" -}}
+{{- range .Values.backend.extraEnv -}}
+{{- if eq .name "ATTACHMENT_STORAGE_PROVIDER" -}}
+{{- $provider = .value | default "database" -}}
+{{- end -}}
+{{- end -}}
+{{- $provider | lower -}}
+{{- end -}}

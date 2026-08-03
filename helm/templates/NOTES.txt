@@ -21,3 +21,26 @@ Access via Ingress:
 {{- end }}
 
 Public URL: {{ include "monize.publicAppUrl" . }}
+
+{{- if not .Values.backend.persistence.backups.enabled }}
+
+NOTE: automatic backups have nowhere durable to write.
+
+  The backend runs with readOnlyRootFilesystem: true and no volume is mounted at
+  {{ .Values.backend.backupContainerDir }}, so a user who turns on a backup
+  schedule in Settings will get a schedule that reports errors and produces no
+  files. The UI does not know that, so it will look configured.
+
+  To fix:  --set backend.persistence.backups.enabled=true
+  Or mount your own claim with backend.persistence.backups.existingClaim.
+{{- end }}
+{{- if not .Values.backend.persistence.attachments.enabled }}
+{{- if eq (include "monize.attachmentProvider" .) "local" }}
+
+NOTE: ATTACHMENT_STORAGE_PROVIDER=local has nowhere durable to write.
+
+  Nothing is mounted at {{ .Values.backend.attachmentContainerDir }}, so uploading
+  a receipt will fail. Set backend.persistence.attachments.enabled=true, or use
+  the "database" or "s3" provider.
+{{- end }}
+{{- end }}

@@ -1,0 +1,40 @@
+{{/*
+Persistent claims for the data the backend keeps outside Postgres.
+
+Rendered only for the stores that are enabled and that do not name an existing
+claim. Failing here rather than at runtime is the point: a claim that is enabled
+but has neither `existingClaim` nor `size` would otherwise install cleanly and
+then produce a pod that cannot start, or -- worse, and what used to happen -- a
+pod that starts and reports backup failures forever while looking configured.
+*/}}
+{{- range $name, $store := .Values.backend.persistence }}
+{{- if $store.enabled }}
+{{- if and (not $store.existingClaim) (not $store.size) }}
+{{- fail (printf "backend.persistence.%s is enabled but has neither existingClaim nor size. Set one, or disable it -- the backend runs with a read-only root filesystem and cannot write to an unmounted path." $name) }}
+{{- end }}
+{{- if not $store.existingClaim }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: monize-backend-{{ $name }}
+  namespace: {{ $.Values.global.namespace }}
+  labels:
+    {{- include "monize.backend.labels" $ | nindent 4 }}
+  annotations:
+    # The claim outlives the release on purpose: `helm uninstall` deleting a
+    # user's only off-database backups, or their attachment bytes, would be a
+    # data-loss surprise. Delete it deliberately.
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - {{ $store.accessMode | default "ReadWriteOnce" }}
+  {{- if $store.storageClass }}
+  storageClassName: {{ $store.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $store.size }}
+{{- end }}
+{{- end }}
+{{- end }}

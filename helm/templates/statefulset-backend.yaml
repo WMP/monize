@@ -79,6 +79,48 @@ spec:
           readinessProbe:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          volumeMounts:
+            # readOnlyRootFilesystem: true means the container can only write
+            # where something is mounted, and Node plus the .mny import both need
+            # somewhere to spill. emptyDir, not a claim: nothing here needs to
+            # survive a restart.
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.backend.persistence.backups.enabled }}
+            - name: backups
+              mountPath: {{ .Values.backend.backupContainerDir | default "/data/backups" }}
+            {{- end }}
+            {{- if .Values.backend.persistence.attachments.enabled }}
+            - name: attachments
+              mountPath: {{ .Values.backend.attachmentContainerDir | default "/data/attachments" }}
+            {{- end }}
+            {{- with .Values.backend.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- if .Values.backend.persistence.backups.enabled }}
+        - name: backups
+          persistentVolumeClaim:
+            claimName: {{ .Values.backend.persistence.backups.existingClaim | default "monize-backend-backups" }}
+        {{- end }}
+        {{- if .Values.backend.persistence.attachments.enabled }}
+        - name: attachments
+          persistentVolumeClaim:
+            claimName: {{ .Values.backend.persistence.attachments.existingClaim | default "monize-backend-attachments" }}
+        {{- end }}
+        {{- with .Values.backend.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- if or .Values.backend.persistence.backups.enabled .Values.backend.persistence.attachments.enabled }}
+      # The container runs as 1001:100 and a freshly provisioned volume is
+      # root-owned on most CSI drivers, so without this the first write fails with
+      # EACCES -- the same "feature looks configured and never works" outcome the
+      # missing mount produced.
+      securityContext:
+        fsGroup: {{ .Values.backend.securityContext.runAsGroup | default 100 }}
+      {{- end }}
       dnsConfig:
         options:
           - name: ndots
