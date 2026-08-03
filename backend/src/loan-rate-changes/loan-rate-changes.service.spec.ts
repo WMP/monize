@@ -287,6 +287,64 @@ describe("LoanRateChangesService", () => {
       expect(result.newPaymentAmount).toBe(expected.paymentAmount);
     });
 
+    it("recalculates over the actual remaining term, not a 12-month floor, when under a year remains", async () => {
+      // paymentStartDate 2022-01-01 + 294 months = 2046-07-01, leaving 6 of
+      // the account's 300 configured amortization months.
+      const account = makeAccount();
+      accountsRepository.findOne.mockResolvedValue(account);
+
+      const result = await service.create(userId, accountId, {
+        effectiveDate: "2046-07-01",
+        annualRate: 4.9,
+        recalculatePayment: true,
+      });
+
+      const expectedOverActualTerm = recalculateMortgageAfterRateChange(
+        400000,
+        4.9,
+        6,
+        "MONTHLY",
+        true,
+        true,
+      );
+      const wrongOverTwelveMonths = recalculateMortgageAfterRateChange(
+        400000,
+        4.9,
+        12,
+        "MONTHLY",
+        true,
+        true,
+      );
+
+      // Sanity check the two calculations are not coincidentally equal, so
+      // the assertion below is not vacuous.
+      expect(expectedOverActualTerm.paymentAmount).not.toBe(
+        wrongOverTwelveMonths.paymentAmount,
+      );
+      expect(result.newPaymentAmount).toBe(
+        expectedOverActualTerm.paymentAmount,
+      );
+      expect(result.newPaymentAmount).not.toBe(
+        wrongOverTwelveMonths.paymentAmount,
+      );
+    });
+
+    it("rejects an effective date beyond the loan's configured amortization end", async () => {
+      // paymentStartDate 2022-01-01 + 312 months = 2048-01-01, which is 12
+      // months past the account's 300-month configured amortization.
+      const account = makeAccount();
+      accountsRepository.findOne.mockResolvedValue(account);
+
+      await expect(
+        service.create(userId, accountId, {
+          effectiveDate: "2048-01-01",
+          annualRate: 4.9,
+          recalculatePayment: true,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
     it("records a past-dated change without touching the account scalars", async () => {
       const account = makeAccount();
       accountsRepository.findOne.mockResolvedValue(account);

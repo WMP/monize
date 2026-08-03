@@ -618,10 +618,20 @@ export class LoanRateChangesService {
     const currentBalance = Math.abs(Number(account.currentBalance));
     const startDate = toYmd(account.paymentStartDate) ?? todayYMD();
     const monthsElapsed = monthsBetweenYmd(startDate, effectiveDate);
-    const remainingAmortizationMonths = Math.max(
-      12,
-      (account.amortizationMonths || 300) - monthsElapsed,
-    );
+    const amortizationMonths = account.amortizationMonths || 300;
+    const rawRemainingMonths = amortizationMonths - monthsElapsed;
+    if (rawRemainingMonths < 1) {
+      throw new BadRequestException(
+        tr(
+          "errors.loanRateChanges.effectiveDateBeyondAmortization",
+          "Effective date is beyond the loan's configured amortization end date",
+        ),
+      );
+    }
+    // Clamp to a single valid payment period, not an arbitrary minimum term:
+    // a mortgage with only a few months left must be recalculated over its
+    // actual remaining term, not extended out to a full year.
+    const remainingAmortizationMonths = Math.max(1, rawRemainingMonths);
 
     const result = recalculateMortgageAfterRateChange(
       currentBalance,
