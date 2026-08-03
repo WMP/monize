@@ -884,6 +884,47 @@ describe('deriveLoanPaymentHistory with paired separate interest expenses', () =
     expect(events[0].interest).toBeCloseTo(388.14, 2);
   });
 
+  it('REV-20260803-032: keeps grace-period interest when no paymentStartDate is set at all', () => {
+    // Imported mortgage: opening balance known, no paymentStartDate configured
+    // (not merely a later one -- entirely absent, the shape of an import).
+    // Standalone interest in January and February precedes the first
+    // principal repayment in March. The lower bound must not be inferred from
+    // the first principal transaction in a way that drops the earlier
+    // interest-only grace period.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      openingBalance: -200000,
+      currentBalance: -199700,
+      interestRate: 5.4,
+      paymentStartDate: undefined,
+    });
+    const transactions = [
+      makeTransaction({ transactionDate: '2026-03-05', amount: 300 }),
+    ];
+    const interestTransactions = [
+      { transactionDate: '2026-01-05', amount: -900, isTransfer: false } as Transaction,
+      { transactionDate: '2026-02-05', amount: -900, isTransfer: false } as Transaction,
+      { transactionDate: '2026-03-05', amount: -915, isTransfer: false } as Transaction,
+    ];
+
+    const { events, cumulativeInterest } = deriveLoanPaymentHistory(
+      account,
+      transactions,
+      [],
+      interestTransactions,
+    );
+
+    expect(events.some((e) => e.date.startsWith('2026-01'))).toBe(true);
+    expect(events.some((e) => e.date.startsWith('2026-02'))).toBe(true);
+    const jan = events.find((e) => e.date.startsWith('2026-01'));
+    const feb = events.find((e) => e.date.startsWith('2026-02'));
+    expect(jan?.principal).toBe(0);
+    expect(jan?.interest).toBeCloseTo(900, 2);
+    expect(feb?.principal).toBe(0);
+    expect(feb?.interest).toBeCloseTo(900, 2);
+    expect(cumulativeInterest).toBeCloseTo(900 + 900 + 915, 2);
+  });
+
   it('includes all category interest regardless of date; refinances need distinct categories', () => {
     // Interest is scoped by the configured interest category and source account,
     // not by date, so an active loan shows every payment in that category. The
