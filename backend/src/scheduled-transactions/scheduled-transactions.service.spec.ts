@@ -147,7 +147,12 @@ describe("ScheduledTransactionsService", () => {
     };
 
     accountsService = {
-      findOne: jest.fn().mockResolvedValue({ id: "acc-1", userId }),
+      // `accounts.currency_code` is NOT NULL, so an account without one is a
+      // shape the real service cannot return -- and a transfer's destination
+      // currency is now read from it, which a currency-less mock hid.
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: "acc-1", userId, currencyCode: "USD" }),
     };
 
     transactionsService = {
@@ -1112,6 +1117,126 @@ describe("ScheduledTransactionsService", () => {
         }),
       );
       expect(transactionsService.create).not.toHaveBeenCalled();
+    });
+
+    // A scheduled transfer stores one amount and a destination account, so a
+    // cross-currency schedule used to post with no `toCurrencyCode`, no rate and
+    // no destination amount -- a par credit stamped with the SOURCE currency.
+    // For a monthly 1200.00 USD -> CAD transfer that overstated the destination
+    // by the whole spread, twelve times a year.
+    describe("a cross-currency scheduled transfer", () => {
+      const setUpCrossCurrency = () => {
+        const scheduled = makeScheduled({
+          isTransfer: true,
+          transferAccountId: "acc-cad",
+        });
+        stubFindOne(scheduled);
+        const overrideQb = mockQueryBuilder(null);
+        overrideQb.getOne.mockResolvedValue(null);
+        overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
+        accountsRepo.findOne.mockResolvedValue(null);
+        accountsService.findOne.mockImplementation(
+          (_userId: string, accountId: string) =>
+            Promise.resolve(
+              accountId === "acc-cad"
+                ? { id: "acc-cad", userId, currencyCode: "CAD" }
+                : { id: accountId, userId, currencyCode: "USD" },
+            ),
+        );
+      };
+
+      it("resolves the rate for the posting date and converts with it", async () => {
+        setUpCrossCurrency();
+        mockExchangeRateService.getRateForDate.mockResolvedValue(1.37);
+
+        await service.post(userId, stId);
+
+        expect(mockExchangeRateService.getRateForDate).toHaveBeenCalledWith(
+          "USD",
+          "CAD",
+          expect.any(String),
+        );
+        expect(transactionsService.createTransfer).toHaveBeenCalledWith(
+          userId,
+          expect.objectContaining({
+            toAccountId: "acc-cad",
+            amount: 1200,
+            fromCurrencyCode: "USD",
+            toCurrencyCode: "CAD",
+            exchangeRate: 1.37,
+          }),
+        );
+      });
+
+      // An unknown rate is unknown. Posting at par would credit 1200.00 CAD for
+      // 1200.00 USD, so the occurrence stays unposted and says why.
+      it("refuses to post when no rate is available for the date", async () => {
+        setUpCrossCurrency();
+        mockExchangeRateService.getRateForDate.mockResolvedValue(null);
+
+        await expect(service.post(userId, stId)).rejects.toThrow(
+          /No exchange rate is available for USD to CAD/,
+        );
+        expect(transactionsService.createTransfer).not.toHaveBeenCalled();
+      });
+
+      it.each([0, -1])("refuses a stored rate of %p", async (rate) => {
+        setUpCrossCurrency();
+        mockExchangeRateService.getRateForDate.mockResolvedValue(rate);
+
+        await expect(service.post(userId, stId)).rejects.toThrow(
+          /No exchange rate is available/,
+        );
+        expect(transactionsService.createTransfer).not.toHaveBeenCalled();
+      });
+
+      it("prefers a rate supplied on the posting request", async () => {
+        setUpCrossCurrency();
+        mockExchangeRateService.getRateForDate.mockResolvedValue(1.37);
+
+        await service.post(userId, stId, { transferExchangeRate: 1.4 });
+
+        expect(transactionsService.createTransfer).toHaveBeenCalledWith(
+          userId,
+          expect.objectContaining({ exchangeRate: 1.4, toCurrencyCode: "CAD" }),
+        );
+      });
+
+      it("forwards a received amount supplied on the posting request", async () => {
+        setUpCrossCurrency();
+        mockExchangeRateService.getRateForDate.mockResolvedValue(1.37);
+
+        await service.post(userId, stId, { transferToAmount: 1650 });
+
+        expect(transactionsService.createTransfer).toHaveBeenCalledWith(
+          userId,
+          expect.objectContaining({ toAmount: 1650, toCurrencyCode: "CAD" }),
+        );
+        // A stated received amount is the conversion; no rate is invented beside it.
+        expect(
+          transactionsService.createTransfer.mock.calls[0][1].exchangeRate,
+        ).toBeUndefined();
+      });
+    });
+
+    it("does not look up a rate for a same-currency transfer", async () => {
+      const scheduled = makeScheduled({
+        isTransfer: true,
+        transferAccountId: "acc-2",
+      });
+      stubFindOne(scheduled);
+      const overrideQb = mockQueryBuilder(null);
+      overrideQb.getOne.mockResolvedValue(null);
+      overridesRepo.createQueryBuilder.mockReturnValue(overrideQb);
+      accountsRepo.findOne.mockResolvedValue(null);
+
+      await service.post(userId, stId);
+
+      expect(mockExchangeRateService.getRateForDate).not.toHaveBeenCalled();
+      const arg = transactionsService.createTransfer.mock.calls[0][1];
+      expect(arg.exchangeRate).toBeUndefined();
+      expect(arg.toAmount).toBeUndefined();
+      expect(arg.toCurrencyCode).toBeUndefined();
     });
 
     it("forwards the schedule's category to createTransfer (#743)", async () => {

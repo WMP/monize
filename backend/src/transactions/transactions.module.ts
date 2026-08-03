@@ -21,6 +21,7 @@ import { NetWorthModule } from "../net-worth/net-worth.module";
 import { ActionHistoryModule } from "../action-history/action-history.module";
 import { SecuritiesModule } from "../securities/securities.module";
 import { DelegationModule } from "../delegation/delegation.module";
+import { CurrenciesModule } from "../currencies/currencies.module";
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { DelegationModule } from "../delegation/delegation.module";
     TagsModule,
     ActionHistoryModule,
     DelegationModule,
+    forwardRef(() => CurrenciesModule),
   ],
   providers: [
     TransactionsService,

@@ -74,6 +74,18 @@ describe("TransactionTransferService", () => {
     userId: "user-1",
   };
 
+  // A genuinely foreign destination. The FX tests used to point at the USD
+  // `to-account` while claiming `toCurrencyCode: "CAD"`, which the service now
+  // refuses: a leg's amount goes straight onto its account's balance, so a leg
+  // labelled in a currency its account does not hold moves the balance by an
+  // unconverted number.
+  const mockCadAccount = {
+    id: "cad-account",
+    name: "Loonie Savings",
+    currencyCode: "CAD",
+    userId: "user-1",
+  };
+
   const baseTransferDto = {
     fromAccountId: "from-account",
     toAccountId: "to-account",
@@ -125,6 +137,8 @@ describe("TransactionTransferService", () => {
           if (accountId === "from-account")
             return Promise.resolve(mockFromAccount);
           if (accountId === "to-account") return Promise.resolve(mockToAccount);
+          if (accountId === "cad-account")
+            return Promise.resolve(mockCadAccount);
           return Promise.resolve({
             id: accountId,
             name: "Unknown",
@@ -158,12 +172,14 @@ describe("TransactionTransferService", () => {
               ? mockFromAccount
               : accountId === "to-account"
                 ? mockToAccount
-                : {
-                    id: accountId,
-                    name: "Unknown",
-                    currencyCode: "USD",
-                    userId: "user-1",
-                  };
+                : accountId === "cad-account"
+                  ? mockCadAccount
+                  : {
+                      id: accountId,
+                      name: "Unknown",
+                      currencyCode: "USD",
+                      userId: "user-1",
+                    };
           return {
             account,
             ownerUserId: account.userId,
@@ -489,10 +505,12 @@ describe("TransactionTransferService", () => {
         .mockResolvedValueOnce({ id: "from-tx-id" })
         .mockResolvedValueOnce({ id: "to-tx-id" });
 
+      // 500 * 1.36 = 680 exactly, so the rate and the received amount agree.
       const dto = {
         ...baseTransferDto,
+        toAccountId: "cad-account",
         toCurrencyCode: "CAD",
-        exchangeRate: 1.35,
+        exchangeRate: 1.36,
         toAmount: 680,
       };
 
@@ -501,9 +519,122 @@ describe("TransactionTransferService", () => {
       const toCreateCall = transactionsRepository.create.mock.calls[1][0];
       expect(toCreateCall.amount).toBe(680);
       expect(accountsService.updateBalance).toHaveBeenCalledWith(
-        "to-account",
+        "cad-account",
         680,
       );
+    });
+
+    // Two ways to say the same thing must not be allowed to say different
+    // things: `toAmount` used to win silently, so a client that computed the
+    // received amount from a stale rate wrote a destination amount its own rate
+    // field contradicted, and the stored leg was internally inconsistent.
+    it("refuses an exchange rate and a received amount that disagree", async () => {
+      await expect(
+        service.createTransfer(
+          "user-1",
+          {
+            ...baseTransferDto,
+            toAccountId: "cad-account",
+            toCurrencyCode: "CAD",
+            exchangeRate: 1.35,
+            toAmount: 680,
+          },
+          mockFindOne,
+        ),
+      ).rejects.toThrow(/converts 500 USD to 675 CAD, not 680/);
+      expect(transactionsRepository.save).not.toHaveBeenCalled();
+    });
+
+    // The P6-002 reproduction. 100.00 USD into a CAD account with neither a rate
+    // nor a received amount used to create a 100.00 CAD destination leg.
+    it("refuses a cross-currency transfer that carries no conversion", async () => {
+      await expect(
+        service.createTransfer(
+          "user-1",
+          {
+            ...baseTransferDto,
+            amount: 100,
+            toAccountId: "cad-account",
+          },
+          mockFindOne,
+        ),
+      ).rejects.toThrow(/needs an exchange rate or the amount received/);
+      expect(transactionsRepository.save).not.toHaveBeenCalled();
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
+
+    // A destination amount on its own is a complete conversion, and the rate it
+    // implies is what gets stored -- leaving 1 there is what let a later
+    // amount-only edit rescale 100 -> 90 back to 1:1.
+    it("derives and stores the rate implied by a received amount", async () => {
+      transactionsRepository.save
+        .mockReset()
+        .mockResolvedValueOnce({ id: "from-tx-id" })
+        .mockResolvedValueOnce({ id: "to-tx-id" });
+      mockFindOne
+        .mockResolvedValueOnce({ id: "from-tx-id" })
+        .mockResolvedValueOnce({ id: "to-tx-id" });
+
+      await service.createTransfer(
+        "user-1",
+        {
+          ...baseTransferDto,
+          amount: 100,
+          toAccountId: "cad-account",
+          toAmount: 90,
+        },
+        mockFindOne,
+      );
+
+      const toCreateCall = transactionsRepository.create.mock.calls[1][0];
+      expect(toCreateCall.amount).toBe(90);
+      expect(toCreateCall.exchangeRate).toBe(0.9);
+      expect(toCreateCall.currencyCode).toBe("CAD");
+    });
+
+    // The scheduled poster called createTransfer without `toCurrencyCode`, and
+    // `toCurrencyCode || fromCurrencyCode` then stamped the destination leg with
+    // the SOURCE currency -- a USD-labelled row sitting in a CAD account.
+    it("denominates the destination leg in its own account's currency", async () => {
+      transactionsRepository.save
+        .mockReset()
+        .mockResolvedValueOnce({ id: "from-tx-id" })
+        .mockResolvedValueOnce({ id: "to-tx-id" });
+      mockFindOne
+        .mockResolvedValueOnce({ id: "from-tx-id" })
+        .mockResolvedValueOnce({ id: "to-tx-id" });
+
+      await service.createTransfer(
+        "user-1",
+        {
+          ...baseTransferDto,
+          amount: 100,
+          toAccountId: "cad-account",
+          exchangeRate: 1.4,
+        },
+        mockFindOne,
+      );
+
+      expect(transactionsRepository.create.mock.calls[1][0]).toMatchObject({
+        currencyCode: "CAD",
+        amount: 140,
+      });
+    });
+
+    it("refuses a currency code that contradicts its account", async () => {
+      await expect(
+        service.createTransfer(
+          "user-1",
+          {
+            ...baseTransferDto,
+            toAccountId: "cad-account",
+            toCurrencyCode: "EUR",
+            exchangeRate: 1.4,
+          },
+          mockFindOne,
+        ),
+      ).rejects.toThrow(/holds CAD, not EUR/);
+      expect(transactionsRepository.save).not.toHaveBeenCalled();
     });
 
     it("calculates toAmount from exchangeRate when toAmount not provided", async () => {
@@ -518,6 +649,7 @@ describe("TransactionTransferService", () => {
 
       const dto = {
         ...baseTransferDto,
+        toAccountId: "cad-account",
         toCurrencyCode: "CAD",
         exchangeRate: 1.35,
       };
@@ -1012,6 +1144,7 @@ describe("TransactionTransferService", () => {
       id: "from-tx",
       accountId: "from-account",
       amount: -500,
+      currencyCode: "USD",
       isTransfer: true,
       linkedTransactionId: "to-tx",
       exchangeRate: 1,
@@ -1022,10 +1155,26 @@ describe("TransactionTransferService", () => {
       id: "to-tx",
       accountId: "to-account",
       amount: 500,
+      currencyCode: "USD",
       isTransfer: true,
       linkedTransactionId: "from-tx",
       exchangeRate: 1,
       account: mockToAccount,
+    } as unknown as Transaction;
+
+    // A stored cross-currency transfer with a real recorded conversion:
+    // 500.00 USD -> 675.00 CAD at 1.35. Every FX edit case is exercised against
+    // this rather than against two USD accounts labelled as foreign, which is a
+    // payload the service now refuses outright.
+    const fxToTransaction = {
+      id: "to-tx",
+      accountId: "cad-account",
+      amount: 675,
+      currencyCode: "CAD",
+      isTransfer: true,
+      linkedTransactionId: "from-tx",
+      exchangeRate: 1.35,
+      account: mockCadAccount,
     } as unknown as Transaction;
 
     beforeEach(() => {
@@ -1293,7 +1442,29 @@ describe("TransactionTransferService", () => {
       expect(createdAtCalls[1][1][1]).toBe("to-tx");
     });
 
-    it("updates the source and destination currency codes when provided", async () => {
+    // The currency codes on the update DTO used to be written straight onto the
+    // legs, so a client could relabel a USD leg as GBP while the account stayed
+    // USD and the balance kept moving by the unconverted number. A code that
+    // disagrees with its account is now refused; a leg's currency changes only by
+    // moving the leg to an account that holds that currency.
+    it("refuses currency codes that contradict the legs' accounts", async () => {
+      mockFindOne
+        .mockResolvedValueOnce(fromTransaction)
+        .mockResolvedValueOnce(toTransaction);
+
+      await expect(
+        service.updateTransfer(
+          "user-1",
+          "from-tx",
+          { fromCurrencyCode: "EUR", toCurrencyCode: "GBP" },
+          mockFindOne,
+        ),
+      ).rejects.toThrow(/holds USD, not EUR/);
+
+      expect(transactionsRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("accepts currency codes that restate the accounts' own currencies", async () => {
       mockFindOne
         .mockResolvedValueOnce(fromTransaction)
         .mockResolvedValueOnce(toTransaction)
@@ -1303,17 +1474,13 @@ describe("TransactionTransferService", () => {
       await service.updateTransfer(
         "user-1",
         "from-tx",
-        { fromCurrencyCode: "EUR", toCurrencyCode: "GBP" },
+        { fromCurrencyCode: "USD", toCurrencyCode: "USD", description: "rent" },
         mockFindOne,
       );
 
       expect(transactionsRepository.update).toHaveBeenCalledWith(
-        "from-tx",
-        expect.objectContaining({ currencyCode: "EUR" }),
-      );
-      expect(transactionsRepository.update).toHaveBeenCalledWith(
         "to-tx",
-        expect.objectContaining({ currencyCode: "GBP" }),
+        expect.objectContaining({ currencyCode: "USD" }),
       );
     });
 
@@ -1369,47 +1536,100 @@ describe("TransactionTransferService", () => {
     it("handles cross-currency exchange rate update", async () => {
       mockFindOne
         .mockResolvedValueOnce(fromTransaction)
-        .mockResolvedValueOnce(toTransaction)
+        .mockResolvedValueOnce(fxToTransaction)
         .mockResolvedValueOnce(fromTransaction)
-        .mockResolvedValueOnce(toTransaction);
+        .mockResolvedValueOnce(fxToTransaction);
 
       await service.updateTransfer(
         "user-1",
         "from-tx",
-        { exchangeRate: 1.35 },
+        { exchangeRate: 1.4 },
         mockFindOne,
       );
 
-      // 500 * 1.35 = 675
+      // 500 * 1.40 = 700
       expect(transactionsRepository.update).toHaveBeenCalledWith(
         "to-tx",
-        expect.objectContaining({ amount: 675 }),
+        expect.objectContaining({ amount: 700, exchangeRate: 1.4 }),
       );
 
       expect(accountsService.updateBalance).toHaveBeenCalledWith(
-        "to-account",
-        675,
+        "cad-account",
+        700,
       );
     });
 
-    it("uses explicit toAmount over calculated amount", async () => {
+    // A received amount on its own has to move the stored rate with it. It used
+    // to leave `exchangeRate` alone (`if (updateDto.exchangeRate)` never fired),
+    // so the leg recorded 1.35 beside a 700.00 destination for 500.00 source --
+    // and the next amount-only edit then rescaled by the stale 1.35.
+    it("rewrites the stored rate when only the received amount changes", async () => {
       mockFindOne
         .mockResolvedValueOnce(fromTransaction)
-        .mockResolvedValueOnce(toTransaction)
+        .mockResolvedValueOnce(fxToTransaction)
         .mockResolvedValueOnce(fromTransaction)
-        .mockResolvedValueOnce(toTransaction);
+        .mockResolvedValueOnce(fxToTransaction);
 
       await service.updateTransfer(
         "user-1",
         "from-tx",
-        { toAmount: 680 },
+        { toAmount: 700 },
         mockFindOne,
       );
 
       expect(transactionsRepository.update).toHaveBeenCalledWith(
         "to-tx",
-        expect.objectContaining({ amount: 680 }),
+        expect.objectContaining({ amount: 700, exchangeRate: 1.4 }),
       );
+    });
+
+    // The compounding half of P6-002: every cross-currency transfer created
+    // through the affected paths stored `exchangeRate: 1`, so an amount-only edit
+    // rescaled the destination leg at par -- turning a 675.00 CAD destination
+    // into 600.00 CAD when the source went from 500.00 to 600.00 USD.
+    it("refuses an amount-only edit of a cross-currency transfer", async () => {
+      mockFindOne
+        .mockResolvedValueOnce(fromTransaction)
+        .mockResolvedValueOnce(fxToTransaction);
+
+      await expect(
+        service.updateTransfer(
+          "user-1",
+          "from-tx",
+          { amount: 600 },
+          mockFindOne,
+        ),
+      ).rejects.toThrow(/needs an exchange rate or the amount received/);
+
+      expect(transactionsRepository.update).not.toHaveBeenCalled();
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
+
+    // ...but an edit that leaves the money alone still works on such a transfer,
+    // so a date or description can be corrected without restating the FX.
+    it("allows a non-money edit of a cross-currency transfer", async () => {
+      mockFindOne
+        .mockResolvedValueOnce(fromTransaction)
+        .mockResolvedValueOnce(fxToTransaction)
+        .mockResolvedValueOnce(fromTransaction)
+        .mockResolvedValueOnce(fxToTransaction);
+
+      await service.updateTransfer(
+        "user-1",
+        "from-tx",
+        { description: "Moving savings" },
+        mockFindOne,
+      );
+
+      expect(transactionsRepository.update).toHaveBeenCalledWith(
+        "to-tx",
+        expect.objectContaining({ description: "Moving savings" }),
+      );
+      const toUpdate = transactionsRepository.update.mock.calls.find(
+        (c: any[]) => c[0] === "to-tx",
+      )![1];
+      expect(toUpdate.amount).toBeUndefined();
+      expect(toUpdate.exchangeRate).toBeUndefined();
     });
 
     it("correctly identifies from/to when called with to-transaction ID", async () => {
@@ -2074,7 +2294,7 @@ describe("TransactionTransferService", () => {
     it("resolves accounts, derives currencies, and computes toAmount from exchangeRate", async () => {
       const preview = await service.previewCreateTransfer("user-1", {
         fromAccountId: "from-account",
-        toAccountId: "to-account",
+        toAccountId: "cad-account",
         amount: 100,
         transactionDate: "2026-01-15",
         exchangeRate: 1.25,
@@ -2083,9 +2303,9 @@ describe("TransactionTransferService", () => {
         fromAccountId: "from-account",
         fromAccountName: "Checking",
         fromCurrencyCode: "USD",
-        toAccountId: "to-account",
-        toAccountName: "Savings",
-        toCurrencyCode: "USD",
+        toAccountId: "cad-account",
+        toAccountName: "Loonie Savings",
+        toCurrencyCode: "CAD",
         amount: 100,
         toAmount: 125,
         exchangeRate: 1.25,
@@ -2095,17 +2315,59 @@ describe("TransactionTransferService", () => {
       });
     });
 
-    it("uses an explicit toAmount over the exchange rate and strips html from description", async () => {
+    it("previews a same-currency transfer at par without an FX field", async () => {
       const preview = await service.previewCreateTransfer("user-1", {
         fromAccountId: "from-account",
         toAccountId: "to-account",
         amount: 100,
         transactionDate: "2026-01-15",
-        exchangeRate: 2,
+      });
+      expect(preview).toMatchObject({
+        toCurrencyCode: "USD",
+        amount: 100,
+        toAmount: 100,
+        exchangeRate: 1,
+      });
+    });
+
+    // A preview is only useful if it previews something that can be written. It
+    // used to resolve a cross-currency transfer at 1:1 and show the user a
+    // destination amount equal to the source, then the confirm step wrote it.
+    it("refuses to preview a cross-currency transfer with no conversion", async () => {
+      await expect(
+        service.previewCreateTransfer("user-1", {
+          fromAccountId: "from-account",
+          toAccountId: "cad-account",
+          amount: 100,
+          transactionDate: "2026-01-15",
+        }),
+      ).rejects.toThrow(/needs an exchange rate or the amount received/);
+    });
+
+    it("refuses a preview whose rate and received amount disagree", async () => {
+      await expect(
+        service.previewCreateTransfer("user-1", {
+          fromAccountId: "from-account",
+          toAccountId: "cad-account",
+          amount: 100,
+          transactionDate: "2026-01-15",
+          exchangeRate: 2,
+          toAmount: 90,
+        }),
+      ).rejects.toThrow(/converts 100 USD to 200 CAD, not 90/);
+    });
+
+    it("previews an explicit received amount and strips html from description", async () => {
+      const preview = await service.previewCreateTransfer("user-1", {
+        fromAccountId: "from-account",
+        toAccountId: "cad-account",
+        amount: 100,
+        transactionDate: "2026-01-15",
         toAmount: 90,
         description: "Wire <b>x</b>",
       });
       expect(preview.toAmount).toBe(90);
+      expect(preview.exchangeRate).toBe(0.9);
       // stripHtml escapes angle brackets rather than emitting raw markup.
       expect(preview.description).not.toContain("<");
     });
@@ -2555,9 +2817,11 @@ describe("TransactionTransferService", () => {
         expect(transactionsRepository.update).toHaveBeenCalledWith("own-leg", {
           amount: -600,
         });
+        // The resolved rate travels with the amount now, so the destination leg
+        // can never store a rate its own two amounts contradict.
         expect(transactionsRepository.update).toHaveBeenCalledWith(
           "foreign-leg",
-          { amount: 600 },
+          { amount: 600, exchangeRate: 1 },
         );
         // Old amounts reversed, new applied.
         expect(accountsService.updateBalance).toHaveBeenCalledWith(

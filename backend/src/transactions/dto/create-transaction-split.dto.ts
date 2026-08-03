@@ -89,6 +89,25 @@ export class CreateTransactionSplitDto {
 
   @ApiPropertyOptional({
     description:
+      "Exchange rate for a transfer split whose target account holds a different currency (target-account units per 1 unit of the parent transaction's currency). Omitted, the stored rate for the parent's date is used; posting fails when neither is available -- the two currencies are never treated as equal.",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 10 })
+  @Min(0.000001)
+  transferExchangeRate?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "Amount the transfer split's target account receives, when it holds a different currency. Alternative to transferExchangeRate; supplying both requires them to agree.",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(-999999999999)
+  @Max(999999999999)
+  transferToAmount?: number;
+
+  @ApiPropertyOptional({
+    description:
       "Embedded investment action (mutually exclusive with categoryId/transferAccountId). The split's amount must equal the cash impact of this action.",
     type: InvestmentSplitDto,
   })
