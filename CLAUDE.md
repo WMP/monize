@@ -208,6 +208,20 @@ disappear through a path with no application code -- an `ON DELETE CASCADE` -- t
 record has to be written by a trigger, because that is the only thing that runs.
 `attachment_blob_tombstones` and `AttachmentOrphanSweeper` are the worked example.
 
+### Derived state fired after a commit needs a way to be noticed as missing
+
+A `setTimeout` or an unawaited promise scheduled after a write is a latency
+optimization, never a delivery. The process can be killed inside the window and
+the callback can throw; either way the derived rows disagree with the ledger and
+nothing will ever notice. A durable queue does not fix it by itself — the crash
+that loses the timer loses the enqueue too, unless the enqueue joins the
+transaction that made the work necessary. Prefer *deriving* the staleness: stamp
+the derived rows with when they were computed and let a sweep compare that
+against a timestamp the source already keeps. `NetWorthService.sweepStaleSnapshots`
+compares each account's newest monthly snapshot against `accounts.updated_at`,
+which every balance-affecting write moves in its own transaction. See
+`docs/cron-jobs.md`.
+
 ## Database Access & Row-Level Security (RLS lint bans — CRITICAL)
 
 **All** database access goes through `withScopedDb` (`backend/src/common/db/scoped-db.ts`) — the single RLS-compliant door to the DB. **Never add an `@InjectRepository(...)` field, a `this.dataSource.createQueryRunner()` call, a `this.dataSource.transaction(...)` call, or a bare `this.dataSource.query(...)`.** ESLint bans the first three outright (RLS task L1, `backend/eslint.config.mjs`): importing `InjectRepository`, or calling `.createQueryRunner()` or `.transaction()`, anywhere in `src/` (outside `scoped-db.ts`, specs and test helpers) fails "Backend Lint & Type Check". `DataSource.transaction()` is banned for a reason the `createQueryRunner` ban did not cover: it opens a transaction that does not know about the ambient scoped manager, so it carries no identity GUCs under enforcement and, nested inside a caller's `withScopedDb`, commits independently of that caller's rollback. The same config restricts importing `common/db/with-context` to an explicit `WITH_CONTEXT_ALLOWLIST` — a new `withSystemContext`/`withUserContext` call site means adding the file to that allowlist in the same PR, as a reviewed decision. (R1–R7 converted the ~91 original sites; the old counting ratchet is gone.)

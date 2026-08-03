@@ -124,6 +124,14 @@ describe("derived financial state has one set of writers", () => {
         "ai/insights/ai-insights.service.ts",
         "generatingUsers is a cheap local short-circuit ONLY; the exclusion is a durable lease",
       ],
+      [
+        "net-worth/net-worth.service.ts",
+        "recalcTimers is a debounce registry, not a guard: it coordinates nothing " +
+          "and duplicate work is harmless (the recalc is an absolute recomputation " +
+          "under the account lock). Losing a timer is made recoverable by " +
+          "sweepStaleSnapshots, which derives the staleness from accounts.updated_at " +
+          "rather than from anything held in memory",
+      ],
     ]);
 
     const offenders = sourceFiles()

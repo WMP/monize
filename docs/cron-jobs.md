@@ -43,6 +43,7 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `exchange-rate.service` | 5:05 PM ET weekdays | Fetch exchange rates (staggered after the price refresh) | `UNIQUE` upsert on the rate row; duplicate provider calls possible |
 | `holdings.service` | Hourly at :30 | Apply matured future-dated investment transactions to holdings | Full rebuild under the per-account holdings lock |
 | `job-claim.service` | Daily 4 AM | Prune claim rows past their retention window | Idempotent predicate delete |
+| `net-worth.service` | Every 30 min | Recompute snapshots that fell behind their account | Idempotent predicate: the staleness is derived from `accounts.updated_at` vs the account's newest snapshot, so two replicas recompute the same accounts under the per-account lock |
 | `mny-import-job.service` | Every 5 min | Fail import jobs whose worker stopped heartbeating | Conditional state/time predicate |
 | `mny-staging.service` | Hourly | Delete expired staged import files (24 h TTL) that no active job needs | Idempotent predicate delete |
 | `mortgage-reminder.service` | Daily 8 AM | Mortgage renewal reminders | **Durable claim** keyed on the local date plus a digest of the mortgages named |
@@ -53,6 +54,27 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `updates.service` | Every 12 hours | Check for a newer Monize release | Read-only external check |
 
 Three rows above say coordination is still missing: the weekly budget digest and the two provider refreshes. Those are known -- the provider ones as duplicate *external calls* rather than duplicate persisted rows (the row each one writes is uniquely keyed), and the digest as a duplicate email nobody has claimed yet. Do not read their presence as permission to add a fourth uncoordinated job.
+
+## Work fired after a commit is not delivered
+
+A `setTimeout` scheduled after a write is a latency optimization, never a
+guarantee: the process holding it can be killed, and the callback can throw. Both
+leave derived state disagreeing with the ledger with only a `warn` to show for it,
+and nothing that will ever notice (audit DR-04-03).
+
+A durable work queue does not fix it on its own -- the crash that loses the timer
+loses the enqueue too, unless the enqueue joins the transaction that made the
+work necessary, which means every write path has to know about every derived
+result. So prefer **deriving** the staleness: give the derived rows a
+`computed_at` (or rebuild them wholesale so their `updated_at` is one), and let a
+sweep compare that against a timestamp the source keeps for its own reasons.
+`NetWorthService.sweepStaleSnapshots` does exactly this -- every write that can
+change a monthly snapshot also moves the account's `current_balance` in the same
+transaction, so `accounts.updated_at` is the source timestamp, and an account
+newer than its own snapshots by more than the debounce-plus-grace was missed.
+
+The sweep is bounded (`STALE_SWEEP_BATCH`) and says when it truncates, because a
+capped pass that logs nothing reads as "all caught up".
 
 ## Do not derive from a dataset that is being replaced
 
