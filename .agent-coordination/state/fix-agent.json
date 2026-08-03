@@ -1,35 +1,32 @@
 {
-  "written_at": "2026-08-03T22:54:00+00:00",
+  "written_at": "2026-08-03T23:17:00+00:00",
   "session_id": "sess-f1322760-b0fa-4f15-943d-588b4a88c4f6",
-  "stop_reason": "session active, round 3 complete, about to start round 4",
+  "stop_reason": "session active, round 4 complete, about to start round 5",
   "source_sha": "4e48a76762a07402a5d3bc3f886fcd8e6ff5829b",
   "fix_branch": "automation/claude-fixes",
-  "fix_sha": "c8dfcf42a86b9e3ba9bbe29a9b5ecaa6e6523ed7",
+  "fix_sha": "a1834d0a690a1f9d83d4fa2d59db8a7216ac793e",
   "waker": {
     "mechanism": "two hourly Routines offset ~30min: trig_01YX47nT1RZJ3FuQNo9muN1X (cron '36 * * * *') and trig_01BNx6At8UmkLjip1T3eKaEF (cron '6 * * * *'). Both create_new_session_on_fire=true with the full fix-agent prompt as payload.",
     "caveat": "Routines created from inside this CCR session store no MCP connectors, so a fired session has Bash/git but no Claude_Code_Remote/github tools -- it must read this state file rather than concluding nothing exists."
   },
-  "lock": {
-    "holder": "sess-f1322760-b0fa-4f15-943d-588b4a88c4f6",
-    "verified_on_origin": true
-  },
+  "lock": {"holder": "sess-f1322760-b0fa-4f15-943d-588b4a88c4f6", "verified_on_origin": true},
   "rounds_complete": {
-    "round_1": {"findings": ["REV-036", "REV-030", "REV-014"], "outcome": "all fixed, moved to pending-review"},
-    "round_2": {"findings": ["REV-032", "REV-025", "REV-011"], "outcome": "REV-032 disputed (not reproducible), REV-025 escalated (DEC-20260803-007), REV-011 fixed"},
-    "round_3": {
-      "findings": ["REV-036 (reopen)", "REV-030 (reopen)", "REV-007", "REV-006"],
-      "outcome": "IMPORTANT: the review agent reopened REV-036 and REV-030 after round 1 with legitimate residual bugs its re-review found (deriveCurrentInstallment still cents-rounding; buildScheduledUpdate swallowing non-not-found findOne errors). Both re-fixed this round with additional regression tests for the reopened scenarios specifically. REV-006/REV-007 (same file/function, backend/src/accounts/loan-payment-detector.service.ts) fixed and bundled in one commit.",
-      "lesson_for_next_session": "ALWAYS check reviews/open/ for findings that already have a fix_commit set and a 'reopened'/'moved to open' history entry -- those are not fresh findings, they are residual bugs in a fix already attempted this session (or a prior one) and take priority over picking new findings. Read the review agent's reopen reason carefully before re-fixing; it names the exact remaining gap."
-    },
-    "full_gate_after_round_3": {
-      "backend_eslint": "pass", "backend_tsc": "pass",
-      "backend_test_unit": "pass, TZ=UTC, 400 suites / 10708 tests",
-      "frontend_lint": "pass, 1 pre-existing unrelated warning (Combobox.tsx)",
-      "frontend_type_check": "pass", "frontend_i18n_check": "pass",
-      "frontend_test": "pass, 628 files / 12319 tests"
+    "round_1": {"findings": ["REV-036", "REV-030", "REV-014"], "outcome": "fixed"},
+    "round_2": {"findings": ["REV-032", "REV-025", "REV-011"], "outcome": "REV-032 disputed, REV-025 escalated (DEC-007), REV-011 fixed"},
+    "round_3": {"findings": ["REV-036(reopen)", "REV-030(reopen)", "REV-007", "REV-006"], "outcome": "all fixed"},
+    "round_4": {
+      "findings": ["REV-032(dispute-rejected)", "REV-011(reopen)", "REV-026"],
+      "outcome": "REV-011 fixed again (paidOff gate added, second reopen fix); REV-026 fixed (12->1 month floor + reject-past-term); REV-032 disputed AGAIN with stronger evidence (injected the exact described bug, proved existing tests already catch it, current code does not have it)",
+      "lesson": "REV-011 has now been reopened TWICE for two different variants of the same missing-data-becomes-a-measured-value bug class (null projection, then truncated/non-payoff projection). Watch for a THIRD variant if reopened again -- check paidOff AND null AND any other 'looks complete but isn't' schedule state before assuming this is finally closed.",
+      "full_gate": {
+        "backend_eslint": "pass", "backend_tsc": "pass",
+        "backend_test_unit": "399/400 suites pass; locales.parity.spec.ts fails ONLY on the new REV-026 i18n key across non-en locales -- expected/documented on a WIP branch, not a regression",
+        "frontend_lint": "pass, 1 pre-existing unrelated warning", "frontend_type_check": "pass", "frontend_i18n_check": "pass",
+        "frontend_test": "pass, 628 files / 12320 tests"
+      }
     }
   },
   "human_approval_pending": ["DEC-20260803-007 (REV-20260803-025)"],
-  "disputed": ["REV-20260803-032"],
-  "next_step": "Round 4: git fetch + refresh coordination worktree, list reviews/open/ FIRST checking for any newly reopened findings (fix_commit set + reopened history entry) among REV-014, REV-011, REV-006, REV-007 -- those take priority over fresh picks if reopened. Otherwise pick 3 new findings, one per partition, re-verifying each against current fix-branch HEAD before claiming. SKIP requires_human_approval:true findings: REV-017, REV-022, REV-023, REV-025. Remaining open by partition as of this writing: partition 1 frontend/src/lib/ -- REV-019,020 (loan-past-impact.ts, CAUTION already touched by REV-011 this session, re-read fresh), REV-033,034,035,037,038 (loan-history.ts, CAUTION touched twice this session by REV-036 both passes, re-read fresh), REV-040,041,042,043 (loan-schedule.ts, not yet touched); partition 2 backend/src/loan-rate-changes/ -- REV-004,005,024 (rate-change-inference.service.ts, not yet touched), REV-026,027,028,029 (loan-rate-changes.service.ts, CAUTION touched twice this session by REV-030 both passes, re-read fresh); partition 3 loan-detail/+accounts/ -- REV-013,016 (minor, PayoffComparisonChart.tsx touched by REV-014/AmortizationScheduleTable.tsx not touched). Apply the same escalate-vs-implement framework used in rounds 2-3: read root CLAUDE.md 'Missing data: a subtotal is not a total' and 'Financial Math' first; an explicit CLAUDE.md rule or existing in-repo precedent decides implementation, a genuine multi-design tradeoff goes to human-approval/pending/DEC-20260803-008+ with the finding moved back to open/ (not in-progress/disputed) with requires_human_approval=true."
+  "disputed": ["REV-20260803-032 (disputed twice now, second time with strong evidence -- an injection test proving the described bug is absent)"],
+  "next_step": "Round 5: git fetch + refresh coordination worktree, list reviews/open/ FIRST checking for newly reopened findings among REV-014, REV-006, REV-007 (not yet re-reviewed) and re-checking REV-032's second dispute outcome. Otherwise pick 3 new findings, one per partition, re-verifying each against current fix-branch HEAD. SKIP requires_human_approval:true: REV-017, REV-022, REV-023, REV-025. Remaining open by partition: partition 1 frontend/src/lib/ -- REV-019,020 (loan-past-impact.ts), REV-033,034,035,037,038 (loan-history.ts), REV-040,041,042,043 (loan-schedule.ts, not yet touched this session); partition 2 backend/src/loan-rate-changes/ -- REV-004,005,024 (rate-change-inference.service.ts, not yet touched), REV-027,028,029 (loan-rate-changes.service.ts, REV-029 concerns stale-preview/API versioning -- likely needs escalation, read carefully); partition 3 loan-detail/+accounts/ -- REV-013,016 (minor, not yet touched this session). Apply the same escalate-vs-implement framework: root CLAUDE.md 'Missing data: a subtotal is not a total' and 'Financial Math' decide plenty outright; a genuine multi-design numeric fork goes to human-approval/pending/DEC-20260803-008+ with the finding moved back to open/ with requires_human_approval=true (not in-progress/disputed)."
 }
