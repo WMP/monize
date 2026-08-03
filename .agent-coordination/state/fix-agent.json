@@ -1,17 +1,30 @@
 {
-  "written_at": "2026-08-03T20:15:00+00:00",
-  "stop_reason": "operator deleted the waker to install a corrected prompt; nothing in flight",
+  "written_at": "2026-08-03T20:52:24+00:00",
+  "stop_reason": "session live; parallel round 1 in flight (3 subagents)",
   "source_sha": "4e48a76762a07402a5d3bc3f886fcd8e6ff5829b",
   "fix_branch": "automation/claude-fixes",
   "fix_sha": "34b7aea9345dad3201371c571d45d54afc7408fa",
   "coordination_sha": "898115bc (parent of this commit)",
   "waker": {
-    "mechanism": "NONE AT PRESENT",
-    "status": "The operator deleted trigger trig_01YaujE8d495u7sstPwDpGwm at ~20:15Z, to replace it with a corrected prompt. No Routine is scheduled, so NOTHING WILL WAKE THIS LOOP until the operator creates one. Do not describe the loop as running or watched.",
-    "history": "Three trigger ids have been created and deleted during this session as the prompt payload was revised: trig_013WsSWHj4Uem7k3jjf5RRKu, trig_01AnPNjh3x4ATeEEQHNUJ48Q, trig_01YaujE8d495u7sstPwDpGwm. All are gone.",
-    "on_next_start": "LIST the triggers first. If the operator has created the replacement, record its id, cron and next firing here and do not create a second one -- two fix agents on one fix branch claim the same findings and commit conflicting changes. Only create one if the listing is genuinely empty.",
-    "caveat": "Triggers created from inside a CCR session store no MCP connectors, so fired sessions get Bash/git but no GitHub MCP and no trigger-listing tool. Git is the only channel this loop needs, but such a session cannot verify its own waker -- this entry is the record.",
-    "container_restarted_once": "At ~19:40Z the container restarted mid-suite. The pushed commit, working tree, coordination worktree AND node_modules all survived; only the background job was lost. Check before running npm ci."
+    "mechanism": "Two Claude Code Remote Routines, fresh session per fire, together giving a 30-minute cadence",
+    "why_two": "The durable Routine tool ENFORCES a one-hour minimum -- `*/30 * * * *` is rejected with 'cron interval too short'. Two hourly Routines offset by half an hour is how the requested 30-minute cadence is implemented. THEY ARE A PAIR: do not delete either as a duplicate, and do not add a third.",
+    "routines": [
+      {
+        "name": "Monize fix agent loop (:04 of 2)",
+        "id": "trig_01H1YpsJDe5jPCSxrcifsJzx",
+        "cron_utc": "4 * * * *",
+        "next_run_at": "2026-08-03T21:04:00Z"
+      },
+      {
+        "name": "Monize fix agent loop (:34 of 2)",
+        "id": "trig_016HUN91KiRu4QJAXdtkondU",
+        "cron_utc": "34 * * * *",
+        "next_run_at": "2026-08-03T20:34:00Z"
+      }
+    ],
+    "both_carry_the_full_prompt": "Each payload is the full fix-agent prompt plus a paragraph documenting this two-Routine arrangement and the connector caveat below, so a fired session does not mistake the pair for a duplicate.",
+    "caveat": "A Routine created from inside a CCR session stores no MCP connectors, so the fired session has Bash and git but NO trigger-listing tool. A fired session that cannot list triggers must NOT conclude none exist -- read this block and treat it as the record.",
+    "earlier_ids_deleted": "trig_013WsSWHj4Uem7k3jjf5RRKu, trig_01AnPNjh3x4ATeEEQHNUJ48Q, trig_01YaujE8d495u7sstPwDpGwm -- all deleted by the operator while revising the prompt. Gone; do not look for them."
   },
   "in_flight": [],
   "in_progress_dir_empty": true,
@@ -123,5 +136,28 @@
     "reports-fetch-failure.guard.test.ts only scans src/components/reports/*.tsx. The same swallow in a hook, a lib fetcher or a non-report component is still uncaught."
   ],
   "next_step": "Run the loop from step 1. SKIP REV-20260803-017, -022 and -023: all three have requires_human_approval true, waiting on DEC-20260803-006, -005 and -004 respectively. Silence is never approval. Next two are already verified as still real, with the reading done: REV-20260803-016 (PayoffComparisonChart, minor) -- `projectionStartKey = points[lastHistoricalIndex + 1]?.monthKey` takes the next UNION point, and since `original` joined the union that can be a contractual-only month carrying no baselineBalance, so Today lands on February when the projection starts in May; the no-history branch has the same bug via `points[0]`. Fix: first point after lastHistoricalIndex having baselineBalance or scenarioBalance, and use that index in the sampling `keep` set too. REV-20260803-013 (AmortizationScheduleTable, minor) -- only `monthRows[0].precededByGap` is tested, so a gap before a LATER payment in the same month emits no band. CAUTION: the finding offers two designs and the 'do not group across a gap' one collides with `expandedMonths` being keyed by monthKey (two units would share a key); emitting the band before the whole month is cheap but says the gap is before May when it is inside May. Decide deliberately, and consider a DEC if neither reads as clearly correct. Then REV-20260803-011 (missing projections treated as zero future interest) -- read docs/financial-calculation-contract.md first; 'a subtotal is not a total' may settle it outright. Everything in loan-schedule.ts (040-043), loan-history.ts (032-038) and rate-change-inference/loan-rate-changes (004-007, 024-030) is a numeric-policy fork.",
-  "resume_instructions": "git fetch origin; git worktree add ../coordination automation/agent-review (if absent); git checkout automation/claude-fixes (on origin at 34b7aea9). Nothing in in-progress/. CHECK whether node_modules survived before running npm ci -- after this session's container restart they did."
+  "resume_instructions": "git fetch origin; git worktree add ../coordination automation/agent-review (if absent); git checkout automation/claude-fixes (on origin at 34b7aea9). Nothing in in-progress/. CHECK whether node_modules survived before running npm ci -- after this session's container restart they did.",
+  "lock": {
+    "file": ".agent-coordination/state/fix-agent.lock",
+    "holder": "sess-30f4ca0e-d841-58ba-8e24-2ffef071e459",
+    "taken_at": "2026-08-03T20:13:47+00:00",
+    "verified_on_origin": true,
+    "note": "Heartbeat is refreshed with every checkpoint write. Delete the lock on a deliberate stop so the next firing does not wait out the 25-minute staleness window."
+  },
+  "round_in_flight": {
+    "round": 1,
+    "claimed_and_pushed": [
+      "REV-20260803-036",
+      "REV-20260803-030",
+      "REV-20260803-014"
+    ],
+    "partitions": {
+      "1": "frontend/src/lib/ -- REV-036 interest rounded to cents instead of 4dp",
+      "2": "backend/src/loan-rate-changes/ -- REV-030 rate edit commits before scheduled-payment sync, sync failure swallowed",
+      "3": "frontend/src/components/accounts/loan-detail/ -- REV-014 tooltip accumulates overpayments as floats"
+    },
+    "why_these_three": "All three are decided by an explicit CLAUDE.md rule rather than being numeric-policy forks: integer ten-thousandths for money (036, 014) and single-transaction/'a rejected command must not already have written' (030). Most of the rest of the queue is NOT like this -- see escalate_rather_than_implement.",
+    "state": "subagents editing and running partition tests; parent has NOT yet run the full gate and has committed nothing. If this session dies here, the three findings sit in in-progress/ with no fix commit -- the next session should re-verify and redo them.",
+    "correction_given_to_subagent_2": "REV-030's text says the code 'violates the repository's QueryRunner invariant'. That is out of date: there are no QueryRunners left in src/ and lint bans createQueryRunner(). The fix must use withScopedDb and thread an EntityManager."
+  }
 }
