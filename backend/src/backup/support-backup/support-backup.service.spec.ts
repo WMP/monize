@@ -647,6 +647,48 @@ describe("SupportBackupService custom currencies", () => {
     expect(codeOf(first)).not.toBe(codeOf(second));
   });
 
+  /**
+   * Currencies are shared, and the export deliberately includes every code the
+   * user's data references whoever defined it -- so a custom currency another
+   * user of the same instance created arrives with *that* user's real UUID in
+   * `created_by_user_id`. `currencies` has no `id` column, so the row-id sweep
+   * that remaps every other identifier never collects it, and the value would
+   * survive verbatim: two support files from two users of one instance could
+   * then be lined up by the creator id they share, which is precisely the
+   * correlation the remapping step exists to prevent.
+   */
+  it("carries no other user's id in a shared custom currency", async () => {
+    const OTHER_USER = "99999999-9999-4999-8999-999999999999";
+    const tables = withCustomCurrency();
+    tables.currencies = tables.currencies.map((row) =>
+      row.code === "KEN" ? { ...row, created_by_user_id: OTHER_USER } : row,
+    );
+
+    const data = await generateParsed(makeService(tables), {
+      multiplier: 2.5,
+    });
+
+    expect(JSON.stringify(data)).not.toContain(OTHER_USER);
+    const custom = data.currencies.find(
+      (c: Record<string, unknown>) => c.created_by_user_id !== null,
+    );
+    // Still marked as user-defined rather than canonical -- the distinction is
+    // what tells a reader the row is not public reference data, and the restore
+    // overwrites the id with the restoring user's anyway.
+    expect(custom.created_by_user_id).toBeTruthy();
+    expect(custom.created_by_user_id).not.toBe(OTHER_USER);
+  });
+
+  it("does not leak the exporting user's own id either", async () => {
+    const data = await generateParsed(makeService(withCustomCurrency()), {
+      multiplier: 2.5,
+    });
+    // The fixture's currency is created by USER, and USER is remapped, so this
+    // holds for the same reason. Asserted so the fix above cannot be narrowed to
+    // "rewrite foreign ids only" and quietly reintroduce the simpler leak.
+    expect(JSON.stringify(data)).not.toContain(USER);
+  });
+
   it("never invents a code a real currency claims", async () => {
     for (let run = 0; run < 20; run += 1) {
       const data = await generateParsed(makeService(withCustomCurrency()), {

@@ -136,7 +136,10 @@ export class SupportBackupService {
     const sections = this.resolveSections(options.sections);
     const scoped = this.scopeAndSection(raw.tables, sections, options);
     const obfuscated = this.obfuscate(scoped, options.multiplier);
-    const withoutCustomCodes = this.pseudonymiseCustomCurrencies(obfuscated);
+    const withoutCustomCodes = this.pseudonymiseCustomCurrencies(
+      obfuscated,
+      userId,
+    );
     const remapped = this.remapIdentifiers(withoutCustomCodes, userId);
 
     const payload: Record<string, unknown> = {
@@ -396,8 +399,22 @@ export class SupportBackupService {
    * masked text often enough that a generic walker would corrupt unrelated
    * values, and the schema-scanning guard in
    * `currencies/currency-references.spec.ts` is what keeps the named list honest.
+   *
+   * `created_by_user_id` is rewritten to the exporting user's own id, which
+   * `remapIdentifiers` then replaces along with everything else. Currencies are
+   * shared, and the export deliberately includes every code the user's data
+   * references whoever defined it -- so a custom currency another user of the same
+   * instance created arrives here carrying *that* user's real UUID. It has no
+   * `id` column for the row-id sweep to catch, so the value would survive
+   * remapping verbatim and defeat the one thing remapping is for: two support
+   * files from two users of one instance could be lined up by the creator id they
+   * share. The restore overwrites this column with the restoring user's id in any
+   * case, so nothing downstream depends on the original.
    */
-  private pseudonymiseCustomCurrencies(tables: TableMap): TableMap {
+  private pseudonymiseCustomCurrencies(
+    tables: TableMap,
+    userId: string,
+  ): TableMap {
     const currencies = tables.currencies;
     if (!currencies?.length) return tables;
 
@@ -428,6 +445,9 @@ export class SupportBackupService {
         // A generic currency sign: shape-preserving replacements leak length,
         // and one character is all any renderer needs.
         symbol: GENERIC_CURRENCY_SYMBOL,
+        // Another user's real UUID would otherwise survive remapping, since
+        // `currencies` has no `id` column for the row-id sweep to collect.
+        created_by_user_id: userId,
       };
     });
 

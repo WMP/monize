@@ -237,3 +237,10 @@ restore contract, not privacy policy:
 - Custom currency codes are pseudonymised, and every reference is rewritten
   through `CURRENCY_REFERENCE_COLUMNS`. A reference left behind is a foreign-key
   violation, which would make the artifact de-identified *and* useless.
+- `currencies.created_by_user_id` is rewritten to the exporting user before the
+  identifier remap. The row has no `id` column, so the row-id sweep that remaps
+  every other identifier never sees it — and since the export includes every code
+  the user's data references whoever defined it, the column can hold another
+  user's real UUID. Two support files from two users of one instance would then be
+  correlatable by the creator id they share, which is the one thing the remap
+  exists to prevent.
