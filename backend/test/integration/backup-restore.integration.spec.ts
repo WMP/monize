@@ -597,6 +597,73 @@ describe("Backup export/restore round-trip (integration)", () => {
     expect(await countRows("accounts", userB.id)).toBe(0);
   });
 
+  /**
+   * `accounts.linked_loan_account_id` is an immediate self-referential FK, so a
+   * restore that inserts the asset before the loan it points at aborts the whole
+   * transaction. The export orders accounts `ORDER BY name`, so the failing
+   * order is not exotic -- it is whatever the user happened to call the two
+   * accounts. Both directions are exercised because only one of them puts the
+   * reference before its target, and a fix that deferred nothing would still
+   * pass the other.
+   */
+  describe.each([
+    { assetName: "A Home", loanName: "Z Mortgage", label: "asset first" },
+    { assetName: "Z Cottage", loanName: "A Loan", label: "loan first" },
+  ])(
+    "asset linked to its financing loan ($label)",
+    ({ assetName, loanName }) => {
+      it("restores the link", async () => {
+        const userA = await createTestUserDirect(dataSource, {
+          email: `loan-${assetName.replace(/\W/g, "")}-a@example.com`,
+        });
+        const userB = await createTestUserDirect(dataSource, {
+          email: `loan-${assetName.replace(/\W/g, "")}-b@example.com`,
+        });
+
+        const assetId = randomUUID();
+        const loanId = randomUUID();
+        await dataSource.query(
+          `INSERT INTO accounts (id, user_id, account_type, name, currency_code,
+                               current_balance, opening_balance)
+         VALUES ($1, $2, 'LOAN', $3, 'USD', -200000, -220000)`,
+          [loanId, userA.id, loanName],
+        );
+        await dataSource.query(
+          `INSERT INTO accounts (id, user_id, account_type, name, currency_code,
+                               current_balance, opening_balance, linked_loan_account_id)
+         VALUES ($1, $2, 'ASSET', $3, 'USD', 500000, 480000, $4)`,
+          [assetId, userA.id, assetName, loanId],
+        );
+
+        const backup = await withUserContext(userA.id, () =>
+          service.exportToBuffer(userA.id),
+        );
+
+        const result = await withUserContext(userB.id, () =>
+          service.restoreData(userB.id, {
+            compressedData: backup,
+            password: PASSWORD,
+          }),
+        );
+        expect(result.restored.accounts).toBe(2);
+
+        // The link must point at B's copy of the loan -- not at A's row, and not
+        // at null. A restore that dropped the column silently would still report
+        // two accounts restored.
+        const [restoredAsset] = await dataSource.query(
+          `SELECT a.linked_loan_account_id, loan.name AS loan_name, loan.user_id AS loan_user
+           FROM accounts a
+           JOIN accounts loan ON loan.id = a.linked_loan_account_id
+          WHERE a.user_id = $1 AND a.name = $2`,
+          [userB.id, assetName],
+        );
+        expect(restoredAsset).toBeDefined();
+        expect(restoredAsset.loan_name).toBe(loanName);
+        expect(restoredAsset.loan_user).toBe(userB.id);
+        expect(restoredAsset.linked_loan_account_id).not.toBe(loanId);
+      });
+    },
+  );
   it("rejects a restore when the confirmation password is invalid", async () => {
     const userA = await createTestUserDirect(dataSource, {
       email: "auth-a@example.com",

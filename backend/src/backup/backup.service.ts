@@ -26,6 +26,12 @@ import {
   BackupDecryptionError,
 } from "./backup-crypto.util";
 import { collectRowIdRemap, deepRemapIds } from "./backup-id-remap.util";
+import {
+  DEFERRED_FK_COLUMNS,
+  DEFERRED_FK_REPAIRS,
+  RESTORABLE_TABLES,
+  RESTORE_PLAN,
+} from "./restore-plan";
 import { resolveCurrencyMetadata } from "../currencies/currency-metadata";
 import { tr } from "../i18n/translate";
 import { gemConfigFingerprint } from "../strategies/gem-signal.service";
@@ -51,59 +57,12 @@ export class BackupPasswordRequiredError extends BadRequestException {
 const BACKUP_VERSION = 1;
 
 /**
- * Tables that `insertRows` is permitted to write during a restore. This is the
- * single source of truth for the restore allowlist -- the export side derives
- * its coverage from `getTableQueries()`, and the two are kept in lockstep by the
- * coverage guard test (backup-restore.integration.spec.ts).
- *
- * `currencies` is intentionally absent: it is restored separately via
- * `ensureCurrenciesExist` (shared, code-keyed rows), not through `insertRows`.
+ * Re-exported from the restore plan, which derives it from the insertion order
+ * so the allowlist and the order cannot disagree. Consumed by the coverage guard
+ * test (backup-restore.integration.spec.ts), which asserts every live table is
+ * either exported or in INTENTIONALLY_EXCLUDED_TABLES.
  */
-export const RESTORABLE_TABLES: ReadonlySet<string> = new Set([
-  "user_preferences",
-  "user_currency_preferences",
-  "categories",
-  "payees",
-  "payee_aliases",
-  "institutions",
-  "accounts",
-  "tags",
-  "transactions",
-  "transaction_splits",
-  "transaction_attachments",
-  "attachment_blobs",
-  "transaction_tags",
-  "transaction_split_tags",
-  "scheduled_transactions",
-  "scheduled_transaction_splits",
-  "scheduled_transaction_overrides",
-  "scheduled_transaction_split_tags",
-  "securities",
-  "security_prices",
-  "security_documents",
-  "holdings",
-  "security_tags",
-  "investment_transactions",
-  "loan_rate_changes",
-  "loan_scenarios",
-  "budgets",
-  "budget_categories",
-  "budget_periods",
-  "budget_period_categories",
-  "budget_alerts",
-  "custom_reports",
-  "investment_reports",
-  "import_column_mappings",
-  "monthly_account_balances",
-  "auto_backup_settings",
-  "ai_provider_configs",
-  "monte_carlo_scenarios",
-  "monte_carlo_cash_flows",
-  "gem_strategies",
-  "gem_strategy_accounts",
-  "gem_strategy_assets",
-  "gem_strategy_signals",
-]);
+export { RESTORABLE_TABLES };
 
 /**
  * User-owned tables that are deliberately NOT part of a backup, each with the
@@ -630,278 +589,25 @@ export class BackupService {
         // Phase 1: Delete all existing user data (same order as deleteData in users.service)
         await this.deleteAllUserData(userId, manager);
 
-        // Phase 2: Insert backup data in FK-safe order.
-        // Columns that create circular or forward FK references are stripped
-        // during insert and restored in Phase 3 via UPDATE.
-
-        // Ensure all referenced currency codes exist before restoring tables
-        // that have FK references to currencies(code).
+        // Phase 2a: ensure every referenced currency code exists before
+        // restoring the tables with FK references to currencies(code).
         await this.ensureCurrenciesExist(manager, data, userId);
 
-        restored.userPreferences = await this.insertRows(
-          manager,
-          "user_preferences",
-          data.user_preferences,
-          userId,
-        );
-        restored.userCurrencyPreferences = await this.insertRows(
-          manager,
-          "user_currency_preferences",
-          data.user_currency_preferences,
-          userId,
-        );
-        restored.categories = await this.insertRows(
-          manager,
-          "categories",
-          data.categories,
-          userId,
-        );
-        restored.payees = await this.insertRows(
-          manager,
-          "payees",
-          data.payees,
-          userId,
-        );
-        restored.payeeAliases = await this.insertRows(
-          manager,
-          "payee_aliases",
-          data.payee_aliases,
-          userId,
-        );
-        restored.institutions = await this.insertRows(
-          manager,
-          "institutions",
-          data.institutions,
-          userId,
-        );
-        restored.accounts = await this.insertRows(
-          manager,
-          "accounts",
-          data.accounts,
-          userId,
-        );
-        restored.tags = await this.insertRows(
-          manager,
-          "tags",
-          data.tags,
-          userId,
-        );
-        restored.scheduledTransactions = await this.insertRows(
-          manager,
-          "scheduled_transactions",
-          data.scheduled_transactions,
-          userId,
-        );
-        restored.scheduledTransactionSplits = await this.insertRows(
-          manager,
-          "scheduled_transaction_splits",
-          data.scheduled_transaction_splits,
-          null,
-        );
-        restored.scheduledTransactionOverrides = await this.insertRows(
-          manager,
-          "scheduled_transaction_overrides",
-          data.scheduled_transaction_overrides,
-          null,
-        );
-        restored.scheduledTransactionSplitTags = await this.insertRows(
-          manager,
-          "scheduled_transaction_split_tags",
-          data.scheduled_transaction_split_tags,
-          null,
-        );
-        restored.securities = await this.insertRows(
-          manager,
-          "securities",
-          data.securities,
-          userId,
-        );
-        restored.securityPrices = await this.insertRows(
-          manager,
-          "security_prices",
-          data.security_prices,
-          null,
-        );
-        restored.securityDocuments = await this.insertRows(
-          manager,
-          "security_documents",
-          data.security_documents,
-          userId,
-        );
-        restored.holdings = await this.insertRows(
-          manager,
-          "holdings",
-          data.holdings,
-          null,
-        );
-        restored.securityTags = await this.insertRows(
-          manager,
-          "security_tags",
-          data.security_tags,
-          null,
-        );
-        restored.transactions = await this.insertRows(
-          manager,
-          "transactions",
-          data.transactions,
-          userId,
-        );
-        restored.transactionSplits = await this.insertRows(
-          manager,
-          "transaction_splits",
-          data.transaction_splits,
-          null,
-        );
-        restored.transactionAttachments = await this.insertRows(
-          manager,
-          "transaction_attachments",
-          data.transaction_attachments,
-          userId,
-        );
-        // attachment_blobs has no user_id; it is scoped transitively through its
-        // FK to transaction_attachments. The base64 `data` column is decoded to
-        // bytea by insertRows (auto-detected).
-        restored.attachmentBlobs = await this.insertRows(
-          manager,
-          "attachment_blobs",
-          data.attachment_blobs,
-          null,
-        );
-        restored.transactionTags = await this.insertRows(
-          manager,
-          "transaction_tags",
-          data.transaction_tags,
-          null,
-        );
-        restored.transactionSplitTags = await this.insertRows(
-          manager,
-          "transaction_split_tags",
-          data.transaction_split_tags,
-          null,
-        );
-        restored.investmentTransactions = await this.insertRows(
-          manager,
-          "investment_transactions",
-          data.investment_transactions,
-          userId,
-        );
-        restored.loanRateChanges = await this.insertRows(
-          manager,
-          "loan_rate_changes",
-          data.loan_rate_changes,
-          userId,
-        );
-        restored.loanScenarios = await this.insertRows(
-          manager,
-          "loan_scenarios",
-          data.loan_scenarios,
-          userId,
-        );
-        restored.budgets = await this.insertRows(
-          manager,
-          "budgets",
-          data.budgets,
-          userId,
-        );
-        restored.budgetCategories = await this.insertRows(
-          manager,
-          "budget_categories",
-          data.budget_categories,
-          null,
-        );
-        restored.budgetPeriods = await this.insertRows(
-          manager,
-          "budget_periods",
-          data.budget_periods,
-          null,
-        );
-        restored.budgetPeriodCategories = await this.insertRows(
-          manager,
-          "budget_period_categories",
-          data.budget_period_categories,
-          null,
-        );
-        restored.budgetAlerts = await this.insertRows(
-          manager,
-          "budget_alerts",
-          data.budget_alerts,
-          userId,
-        );
-        restored.customReports = await this.insertRows(
-          manager,
-          "custom_reports",
-          data.custom_reports,
-          userId,
-        );
-        restored.investmentReports = await this.insertRows(
-          manager,
-          "investment_reports",
-          data.investment_reports,
-          userId,
-        );
-        restored.importColumnMappings = await this.insertRows(
-          manager,
-          "import_column_mappings",
-          data.import_column_mappings,
-          userId,
-        );
-        restored.monthlyAccountBalances = await this.insertRows(
-          manager,
-          "monthly_account_balances",
-          data.monthly_account_balances,
-          userId,
-        );
-        restored.autoBackupSettings = await this.insertRows(
-          manager,
-          "auto_backup_settings",
-          data.auto_backup_settings,
-          userId,
-        );
-        restored.aiProviderConfigs = await this.insertRows(
-          manager,
-          "ai_provider_configs",
-          data.ai_provider_configs,
-          userId,
-        );
-        restored.monteCarloScenarios = await this.insertRows(
-          manager,
-          "monte_carlo_scenarios",
-          data.monte_carlo_scenarios,
-          userId,
-        );
-        restored.monteCarloCashFlows = await this.insertRows(
-          manager,
-          "monte_carlo_cash_flows",
-          data.monte_carlo_cash_flows,
-          null,
-        );
-        // GEM strategies last: the children reference securities and accounts,
-        // both already inserted above, and each other only through
-        // gem_strategies, which goes in first.
-        restored.gemStrategies = await this.insertRows(
-          manager,
-          "gem_strategies",
-          data.gem_strategies,
-          userId,
-        );
-        restored.gemStrategyAccounts = await this.insertRows(
-          manager,
-          "gem_strategy_accounts",
-          data.gem_strategy_accounts,
-          userId,
-        );
-        restored.gemStrategyAssets = await this.insertRows(
-          manager,
-          "gem_strategy_assets",
-          data.gem_strategy_assets,
-          userId,
-        );
-        restored.gemStrategySignals = await this.insertRows(
-          manager,
-          "gem_strategy_signals",
-          data.gem_strategy_signals,
-          userId,
-        );
+        // Phase 2b: insert every backed-up table in FK-safe order. The order,
+        // the row-count key and whether user_id is forced live in
+        // RESTORE_PLAN, which restore-plan.spec.ts checks against the schema's
+        // foreign keys -- so a new table or a new FK cannot quietly land in the
+        // wrong position.
+        for (const { table, countKey, scopeToUser } of RESTORE_PLAN) {
+          restored[countKey] = await this.insertRows(
+            manager,
+            table,
+            (data as unknown as Record<string, Record<string, unknown>[]>)[
+              table
+            ],
+            scopeToUser ? userId : null,
+          );
+        }
 
         // Phase 3: Restore deferred FK columns that were stripped during insert
         // to avoid circular/forward reference violations.
@@ -1477,85 +1183,10 @@ export class BackupService {
     manager: EntityManager,
     data: BackupData,
   ): Promise<void> {
-    // Each entry: [table, rows, column] -- update rows that have a non-null
-    // value for the deferred FK column.
-    const deferredUpdates: Array<{
-      table: string;
-      rows: Record<string, unknown>[];
-      column: string;
-      // When set, the UPDATE only applies if a row with the referenced id
-      // exists in this table. Used for institution_id so legacy backups that
-      // predate institution export leave the column NULL instead of failing.
-      requireReferencedTable?: string;
-    }> = [
-      { table: "categories", rows: data.categories, column: "parent_id" },
-      {
-        table: "accounts",
-        rows: data.accounts,
-        column: "institution_id",
-        requireReferencedTable: "institutions",
-      },
-      {
-        table: "accounts",
-        rows: data.accounts,
-        column: "linked_account_id",
-      },
-      {
-        table: "accounts",
-        rows: data.accounts,
-        column: "source_account_id",
-      },
-      {
-        table: "accounts",
-        rows: data.accounts,
-        column: "scheduled_transaction_id",
-      },
-      {
-        table: "accounts",
-        rows: data.accounts,
-        column: "principal_category_id",
-      },
-      {
-        table: "accounts",
-        rows: data.accounts,
-        column: "interest_category_id",
-      },
-      {
-        table: "accounts",
-        rows: data.accounts,
-        column: "asset_category_id",
-      },
-      {
-        table: "transactions",
-        rows: data.transactions,
-        column: "linked_transaction_id",
-      },
-      {
-        table: "transactions",
-        rows: data.transactions,
-        column: "parent_transaction_id",
-      },
-      {
-        table: "investment_transactions",
-        rows: data.investment_transactions,
-        column: "linked_transaction_id",
-      },
-      {
-        table: "payees",
-        rows: data.payees,
-        column: "default_category_id",
-      },
-      {
-        table: "scheduled_transactions",
-        rows: data.scheduled_transactions,
-        column: "investment_security_id",
-      },
-      {
-        table: "scheduled_transaction_splits",
-        rows: data.scheduled_transaction_splits,
-        column: "investment_security_id",
-      },
-    ];
+    const byTable = data as unknown as Record<
+      string,
+      Record<string, unknown>[] | undefined
+    >;
 
     // These UPDATEs run inside the restore's preserveTimestamps scope
     // (restoreData), so the `updated_at` BEFORE UPDATE triggers see
@@ -1565,10 +1196,10 @@ export class BackupService {
     // does not have under RLS enforcement.
     for (const {
       table,
-      rows,
       column,
       requireReferencedTable,
-    } of deferredUpdates) {
+    } of DEFERRED_FK_REPAIRS) {
+      const rows = byTable[table];
       if (!rows) continue;
       const sql = requireReferencedTable
         ? `UPDATE "${table}" SET "${column}" = $1 WHERE id = $2
@@ -1707,33 +1338,9 @@ export class BackupService {
 
     // Columns that create circular or forward FK references and must be
     // deferred until all tables are populated (restored via UPDATE in Phase 3).
-    const deferredFkColumns: Record<string, string[]> = {
-      categories: ["parent_id"],
-      accounts: [
-        "linked_account_id",
-        "source_account_id",
-        "scheduled_transaction_id",
-        "principal_category_id",
-        "interest_category_id",
-        "asset_category_id",
-        // Deferred so that legacy backups (taken before institutions were
-        // included in the export) restore without violating fk_accounts_institution.
-        // Phase 3 only re-applies it when the referenced institution exists.
-        "institution_id",
-      ],
-      transactions: ["linked_transaction_id", "parent_transaction_id"],
-      payees: ["default_category_id"],
-      // Scheduled transactions/splits are inserted before securities, so their
-      // forward reference to securities(id) is deferred to Phase 3.
-      scheduled_transactions: ["investment_security_id"],
-      scheduled_transaction_splits: ["investment_security_id"],
-      // Self-referential FK linking the two legs of a security transfer
-      // (TRANSFER_OUT <-> TRANSFER_IN). A row may reference another
-      // investment_transactions row that appears later in the insert batch, so
-      // defer it to Phase 3 once every row exists.
-      investment_transactions: ["linked_transaction_id"],
-    };
-    const columnsToDefer = deferredFkColumns[table] ?? [];
+    // See restore-plan.ts; restore-plan.spec.ts proves the list covers every
+    // such foreign key in database/schema.sql.
+    const columnsToDefer = DEFERRED_FK_COLUMNS[table] ?? [];
 
     // Fetch all valid column names for this table from the schema. This serves
     // three purposes: (1) detect native PostgreSQL array columns so we can pass
