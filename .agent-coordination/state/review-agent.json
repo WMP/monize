@@ -1,7 +1,7 @@
 {
   "conversation_id": null,
   "last_audited_source_sha": "5ecc5b9642d22c7429bf4854a69e8be155b1bb14",
-  "last_pass_at": "2026-08-03T15:22:21Z",
+  "last_pass_at": "2026-08-03T15:28:07Z",
   "last_seen_fix_sha": "5ecc5b9642d22c7429bf4854a69e8be155b1bb14",
   "pr_877_audited": [
     "backend/src/accounts/accounts.service.ts",
@@ -64,12 +64,20 @@
     "frontend/src/components/reports/LoanOverpaymentSimulatorReport.test.tsx",
     "frontend/src/components/reports/LoanOverpaymentSimulatorReport.tsx",
     "frontend/src/components/transactions/NormalTransactionFields.test.tsx",
+    "frontend/src/components/transactions/SplitEditor.tsx",
+    "frontend/src/components/transactions/SplitTransactionFields.test.tsx",
+    "frontend/src/components/transactions/TransactionFilterPanel.test.tsx",
+    "frontend/src/components/transactions/TransferTransactionFields.test.tsx",
+    "frontend/src/hooks/useInvestmentData.test.tsx",
+    "frontend/src/hooks/useInvestmentData.ts",
+    "frontend/src/lib/loan-past-impact.ts",
     "frontend/src/lib/loan-scenarios.ts",
+    "frontend/src/types/account.ts",
     "frontend/src/types/loan-scenario.ts"
   ],
   "pull_request": 877,
   "pull_request_base": "5e5b4df6ec9c82f1cd31dc855c340af5bfeb3aa5",
-  "pull_request_coverage": "62/72",
+  "pull_request_coverage": "70/72",
   "stop_reason": "pass limit reached (1)",
   "stopped_at": "2026-08-03T14:44:50Z"
 }
