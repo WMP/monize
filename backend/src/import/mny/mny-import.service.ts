@@ -67,10 +67,19 @@ import {
  * Runs a `.mny` import: staged bytes in, Monize rows and a verification report
  * out.
  *
- * The whole write is one transaction, so a failure leaves nothing behind and
- * Retry cannot double-import. Progress still reaches the wizard mid-flight
- * because the job service publishes it on its own connection -- see
- * `runOutsideActiveScopedManager`.
+ * The whole **write** is one transaction, so a failure *before it commits*
+ * leaves nothing behind. What that transaction does not cover is everything
+ * after it: post-processing, verification, staged-byte removal and the terminal
+ * status write. A failure there leaves every imported row in place, and the row
+ * used to advertise itself as retryable anyway -- so Retry inserted the file a
+ * second time under fresh UUIDs, because the mapper generates new ids on every
+ * parse and nothing on an imported row identifies its source record (audit
+ * P4-002). `writeAll` therefore sets `import_jobs.data_committed` inside its own
+ * transaction, and `MnyImportJobService.fail` will not call such a run
+ * retryable.
+ *
+ * Progress still reaches the wizard mid-flight because the job service publishes
+ * it on its own connection -- see `runOutsideActiveScopedManager`.
  *
  * The optional "start fresh" wipe happens in `start`, outside the job body, for
  * a security reason as much as an ordering one: `UsersService.deleteData`
@@ -583,6 +592,15 @@ export class MnyImportService {
         parsed.accounts.accounts,
         accounts.idByKey,
       );
+
+      // The commit checkpoint, written inside this transaction so it lands with
+      // the rows it describes. Everything after this transaction commits --
+      // post-processing, verification, staged-byte removal, the terminal status
+      // write -- can fail, and a failure there used to be indistinguishable
+      // from a failure before any of it was written. `fail()` reads this flag,
+      // so such a run is no longer offered as a retry that would insert the
+      // whole file again (audit P4-002).
+      await this.jobs.markDataCommitted(manager, context.jobId);
 
       const result = {
         accountIdByKey: accounts.idByKey,

@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, forwardRef } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
+import { lockAccountsForBalanceWrite } from "../common/db/locks";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { SecurityPriceService } from "../securities/security-price.service";
 import { ExchangeRateService } from "../currencies/exchange-rate.service";
@@ -49,10 +50,18 @@ export class ImportPostProcessingService {
     const affectedIds = [...affectedAccountIds];
     if (affectedIds.length > 0) {
       try {
-        // Read the balances and write them back in one transaction: the
-        // recomputed figures must not be applied on top of rows that changed
-        // between the SELECT and the UPDATE.
+        // Read the balances and write them back in one transaction, holding the
+        // account rows from before the read.
+        //
+        // One transaction was not enough on its own: under READ COMMITTED the
+        // SELECT and the UPDATE take separate statement snapshots, so an
+        // interactive transaction that committed in between was overwritten by
+        // an absolute total that never saw it (audit P4-005). The lock is what
+        // makes "must not be applied on top of rows that changed" true rather
+        // than intended -- see the protocol note in common/db/locks.ts.
         await withScopedDb(this.dataSource, async (manager) => {
+          await lockAccountsForBalanceWrite(manager, affectedIds);
+
           const balances: { account_id: string; balance: string }[] =
             await manager.query(
               `SELECT a.id as account_id,

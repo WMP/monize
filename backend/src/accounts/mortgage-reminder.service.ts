@@ -13,6 +13,11 @@ import { emailTranslator } from "../i18n/email-translator";
 import { DEFAULT_LOCALE } from "../i18n/config";
 import { withSystemContext, withUserContext } from "../common/db/with-context";
 import { withScopedDb } from "../common/db/scoped-db";
+import {
+  JobClaimService,
+  JobClaimType,
+} from "../common/jobs/job-claim.service";
+import { createHash } from "node:crypto";
 
 /**
  * Service for handling mortgage term renewal reminders
@@ -31,7 +36,20 @@ export class MortgageReminderService {
     private emailService: EmailService,
     private configService: ConfigService,
     private readonly i18n: I18nService,
+    private readonly jobClaims: JobClaimService,
   ) {}
+
+  /** Release a claim a send did not use, so the next run can retry. */
+  private async releaseClaim(userId: string, claimKey: string): Promise<void> {
+    await this.jobClaims
+      .release(JobClaimType.MortgageReminder, userId, claimKey)
+      .catch((error: unknown) =>
+        this.logger.warn(
+          `Failed to release mortgage-reminder claim for user ${userId}: ` +
+            `${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
+  }
 
   /**
    * Run daily at 8:00 AM to check for upcoming mortgage renewals
@@ -85,6 +103,20 @@ export class MortgageReminderService {
     let skipCount = 0;
 
     for (const [userId, mortgages] of mortgagesByUser) {
+      // Claim before sending -- see BillReminderService for the reasoning. Every
+      // replica fires this cron, so without a durable record two healthy pods
+      // both email the same renewal notice (audit P4-018).
+      const claimKey = buildMortgageReminderClaimKey(mortgages);
+      const claimed = await this.jobClaims.claimOnce(
+        JobClaimType.MortgageReminder,
+        userId,
+        claimKey,
+      );
+      if (!claimed) {
+        skipCount++;
+        continue;
+      }
+
       try {
         // RLS (task C2): per-user reads run under the user's own context.
         const prefs = await withUserContext(userId, () =>
@@ -96,6 +128,7 @@ export class MortgageReminderService {
         );
         if (prefs && !prefs.notificationEmail) {
           skipCount++;
+          await this.releaseClaim(userId, claimKey);
           continue;
         }
 
@@ -108,6 +141,7 @@ export class MortgageReminderService {
         );
         if (!user || !user.email) {
           skipCount++;
+          await this.releaseClaim(userId, claimKey);
           continue;
         }
 
@@ -140,6 +174,8 @@ export class MortgageReminderService {
         await this.emailService.sendMail(user.email, subject, html);
         sentCount++;
       } catch (error) {
+        // A transient SMTP failure returns the day rather than consuming it.
+        await this.releaseClaim(userId, claimKey);
         this.logger.error(
           `Failed to send mortgage reminder to user ${userId}`,
           error instanceof Error ? error.stack : error,
@@ -216,4 +252,28 @@ export class MortgageReminderService {
       })),
     };
   }
+}
+
+/**
+ * The delivery key for one user's mortgage-renewal notice: today's date plus a
+ * digest of which mortgages and which term-end dates it names.
+ *
+ * Same shape as the bill reminder's key, and for the same reason: the date alone
+ * suppresses a legitimate second notice when another mortgage enters the window
+ * today, and the digest alone would let the same notice repeat tomorrow.
+ */
+export function buildMortgageReminderClaimKey(
+  mortgages: readonly Account[],
+): string {
+  const today = new Date();
+  const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const fingerprint = [...mortgages]
+    .map((m) => `${m.id}:${formatDateYMD(m.termEndDate!)}`)
+    .sort()
+    .join("|");
+  const digest = createHash("sha256")
+    .update(fingerprint)
+    .digest("hex")
+    .slice(0, 32);
+  return `${date}#${digest}`;
 }

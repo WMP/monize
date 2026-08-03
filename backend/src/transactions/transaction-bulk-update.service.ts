@@ -41,6 +41,7 @@ import {
 } from "./transaction-search-parse.util";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
+import { lockTransactionRows } from "../common/db/locks";
 
 export interface BulkDeleteResult {
   deleted: number;
@@ -152,6 +153,16 @@ export class TransactionBulkUpdateService {
 
     // Balance changes and the batch update commit in a single transaction.
     await withScopedDb(this.dataSource, async (m) => {
+      // Lock every row this batch will write, ascending by id, before anything
+      // reads the statuses the VOID adjustment is derived from. One transaction
+      // was not enough: handleStatusBalanceChanges aggregates the *current*
+      // statuses and the UPDATE that changes them runs afterwards, so without
+      // the lock a concurrent single-transaction edit lands in between and the
+      // batch applies a delta for a transition that no longer happened.
+      if (isUpdatingStatus) {
+        await lockTransactionRows(m, eligibleIds, userId);
+      }
+
       // Step 3: Handle balance adjustments for VOID status changes
       if (isUpdatingStatus) {
         await this.handleStatusBalanceChanges(
@@ -240,6 +251,7 @@ export class TransactionBulkUpdateService {
     }
 
     // Balance adjustments and both delete passes commit atomically.
+    let deleted = 0;
     await withScopedDb(this.dataSource, async (m) => {
       // Collect linked transaction IDs from transfers and split transfers
       const linkedIdsToDelete = new Set<string>();
@@ -264,40 +276,33 @@ export class TransactionBulkUpdateService {
         }
       }
 
-      // Load linked transactions for balance adjustments
-      let linkedTransactions: Transaction[] = [];
-      if (linkedIdsToDelete.size > 0) {
-        linkedTransactions = await m
-          .createQueryBuilder(Transaction, "transaction")
-          .select([
-            "transaction.id",
-            "transaction.accountId",
-            "transaction.amount",
-            "transaction.status",
-            "transaction.transactionDate",
-          ])
-          .where("transaction.id IN (:...ids)", {
-            ids: [...linkedIdsToDelete],
-          })
-          .andWhere("transaction.userId = :userId", { userId })
-          .getMany();
-      }
+      // Lock every row about to be deleted -- primary and linked alike --
+      // ascending by id, and derive the reversals from the locked values.
+      //
+      // The `transactions` read above happened before this transaction opened,
+      // so its amounts and statuses are a claim about the past. A row another
+      // request deleted in the meantime is simply absent from `locked`, and gets
+      // no reversal: reversing an amount whose row is already gone is how a
+      // double delete leaves the balance 10.00 above the ledger (P4-003).
+      const locked = await lockTransactionRows(
+        m,
+        [...allIds, ...linkedIdsToDelete],
+        userId,
+      );
 
-      // Adjust balances for all transactions being deleted (primary + linked)
-      const allTransactionsToDelete = [...transactions, ...linkedTransactions];
       const balanceAdjustments = new Map<string, number>();
-
-      for (const tx of allTransactionsToDelete) {
+      for (const tx of locked.values()) {
         if (
           tx.status !== TransactionStatus.VOID &&
           !isTransactionInFuture(tx.transactionDate)
         ) {
           const current = balanceAdjustments.get(tx.accountId) || 0;
-          balanceAdjustments.set(tx.accountId, current - Number(tx.amount));
+          balanceAdjustments.set(tx.accountId, current - tx.amount);
         }
       }
 
-      for (const [accountId, adjustment] of balanceAdjustments) {
+      for (const accountId of [...balanceAdjustments.keys()].sort()) {
+        const adjustment = balanceAdjustments.get(accountId)!;
         if (adjustment !== 0) {
           await this.accountsService.updateBalance(accountId, adjustment);
         }
@@ -315,13 +320,16 @@ export class TransactionBulkUpdateService {
       }
 
       // Delete the primary transactions
-      await m
+      const primaryDeleted = await m
         .createQueryBuilder()
         .delete()
         .from(Transaction)
         .where("id IN (:...ids)", { ids: allIds })
         .andWhere("userId = :userId", { userId })
         .execute();
+      // What the database removed, not what the pre-read hoped to remove: a row
+      // a concurrent request already deleted must not be counted twice.
+      deleted = primaryDeleted.affected ?? 0;
     });
 
     // Trigger net worth recalc for all affected accounts
@@ -330,7 +338,7 @@ export class TransactionBulkUpdateService {
       this.netWorthService.triggerDebouncedRecalc(accountId, userId);
     }
 
-    return { deleted: transactions.length };
+    return { deleted };
   }
 
   private extractUpdateFields(dto: BulkUpdateDto): Partial<Transaction> {

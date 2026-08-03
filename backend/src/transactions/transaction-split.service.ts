@@ -24,6 +24,7 @@ import { roundMoney, sumMoney } from "../common/round.util";
 import { validateSplitAmountSum } from "../common/split-amount.util";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
+import { lockTransactionRow } from "../common/db/locks";
 
 function inferSplitKind(split: CreateTransactionSplitDto): SplitKind {
   if (split.splitKind) return split.splitKind;
@@ -484,9 +485,22 @@ export class TransactionSplitService {
     splits: CreateTransactionSplitDto[],
     userId: string,
   ): Promise<TransactionSplit[]> {
-    this.validateSplits(splits, transaction.amount);
-
     return withScopedDb(this.dataSource, async (m) => {
+      // Same parent lock as addSplit, so full replacement and incremental
+      // addition serialize against each other, and validated against the
+      // parent's committed amount rather than the caller's snapshot of it.
+      const parent = await lockTransactionRow(m, transaction.id, userId);
+      if (!parent) {
+        throw new NotFoundException(
+          tr(
+            "errors.transactions.notFoundById",
+            `Transaction with ID ${transaction.id} not found`,
+            { id: transaction.id },
+          ),
+        );
+      }
+      this.validateSplits(splits, parent.amount);
+
       await this.deleteSplitSideEffects(transaction.id, userId);
 
       await m.delete(TransactionSplit, {
@@ -529,28 +543,55 @@ export class TransactionSplitService {
       await this.validateCategoryOwnership(userId, splitDto.categoryId);
     }
 
-    const existingSplits = await this.getSplits(transaction.id);
-    const existingTotal = sumMoney(existingSplits.map((s) => Number(s.amount)));
-    const newTotal = sumMoney([existingTotal, Number(splitDto.amount)]);
-    const transactionAmount = roundMoney(Number(transaction.amount));
-
-    if (Math.abs(newTotal) > Math.abs(transactionAmount)) {
-      throw new BadRequestException(
-        tr(
-          "errors.transactions.splitExceedsTransactionAmount",
-          `Adding this split would exceed the transaction amount. ` +
-            `Current total: ${existingTotal}, New split: ${splitDto.amount}, ` +
-            `Transaction amount: ${transaction.amount}`,
-          {
-            existingTotal,
-            newSplit: splitDto.amount,
-            transactionAmount: transaction.amount,
-          },
-        ),
-      );
-    }
-
     const savedSplitId = await withScopedDb(this.dataSource, async (m) => {
+      // The aggregate check and the insert are one serialized unit.
+      //
+      // Reading the split set, validating in application code, and inserting in
+      // a later transaction is a check-then-act with nothing under it: the schema
+      // has no aggregate constraint, and two inserts against the same parent hold
+      // compatible foreign-key key-share locks, so both commit. Parent -100.00
+      // with -60.00 already split, two concurrent -30.00 additions each
+      // validating -90.00, and the splits total -120.00 (audit P4-009).
+      //
+      // The parent row lock is what serializes them. Every other writer of this
+      // split set -- full replacement included -- takes the same lock, so the
+      // second request re-reads the set the first one committed and refuses.
+      const parent = await lockTransactionRow(m, transaction.id, userId);
+      if (!parent) {
+        throw new NotFoundException(
+          tr(
+            "errors.transactions.notFoundById",
+            `Transaction with ID ${transaction.id} not found`,
+            { id: transaction.id },
+          ),
+        );
+      }
+
+      const existingSplits = await m.getRepository(TransactionSplit).find({
+        where: { transactionId: transaction.id },
+      });
+      const existingTotal = sumMoney(
+        existingSplits.map((s) => Number(s.amount)),
+      );
+      const newTotal = sumMoney([existingTotal, Number(splitDto.amount)]);
+      const transactionAmount = roundMoney(parent.amount);
+
+      if (Math.abs(newTotal) > Math.abs(transactionAmount)) {
+        throw new BadRequestException(
+          tr(
+            "errors.transactions.splitExceedsTransactionAmount",
+            `Adding this split would exceed the transaction amount. ` +
+              `Current total: ${existingTotal}, New split: ${splitDto.amount}, ` +
+              `Transaction amount: ${transactionAmount}`,
+            {
+              existingTotal,
+              newSplit: splitDto.amount,
+              transactionAmount,
+            },
+          ),
+        );
+      }
+
       const splitKind = splitDto.transferAccountId
         ? SplitKind.TRANSFER
         : SplitKind.CATEGORY;
@@ -608,7 +649,7 @@ export class TransactionSplitService {
       }
 
       const totalSplits = existingSplits.length + 1;
-      if (totalSplits >= 2 && !transaction.isSplit) {
+      if (totalSplits >= 2 && !parent.isSplit) {
         await m.update(Transaction, transaction.id, {
           isSplit: true,
           categoryId: null,

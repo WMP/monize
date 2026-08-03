@@ -6,6 +6,7 @@ import {
   runOutsideActiveScopedManager,
   withScopedDb,
 } from "../../common/db/scoped-db";
+import { returnedRows } from "../../common/db/query-result";
 import {
   withSystemContext,
   withUserContext,
@@ -104,18 +105,11 @@ export type JobBody = (context: JobRunContext) => Promise<MnyImportResult>;
 /**
  * The rows a `query()` returned, whichever shape TypeORM chose.
  *
- * A data-modifying statement with `RETURNING` comes back as `[rows, rowCount]`,
- * while a `SELECT` comes back as bare rows. Reading that wrong fails silently in
- * the worst possible direction: `result.length > 0` on the tuple is always true,
- * so every conditional claim would look like a winner and two workers would
- * import the same file. Found by the concurrency spec, kept honest by it.
+ * Re-exported from `common/db/query-result` for the concurrency spec and the
+ * callers below: this used to be defined here, and every other guarded statement
+ * in the codebase now needs the same reading, so it lives in one place.
  */
-export function returnedRows<T>(result: unknown): T[] {
-  if (!Array.isArray(result)) {
-    return [];
-  }
-  return Array.isArray(result[0]) ? (result[0] as T[]) : (result as T[]);
-}
+export { returnedRows };
 
 @Injectable()
 export class MnyImportJobService {
@@ -124,15 +118,19 @@ export class MnyImportJobService {
   constructor(private dataSource: DataSource) {}
 
   /**
-   * Creates a `pending` job, or throws 409 when this user already has one in
-   * flight. Returns the row the wizard will poll.
+   * Creates a `pending` job, or throws `ConflictException` when this user
+   * already has one active. Returns the row the wizard will poll.
    *
-   * The refusal is the INSERT itself, not a preceding count: `hasActiveJob`
-   * followed by `create` is two transactions, and two concurrent starts can
-   * both read zero before either writes -- which imported the same staged file
-   * twice, with fresh transaction UUIDs each time so nothing deduplicated the
-   * second run. The partial unique index makes the loser block on the winner
-   * and then fail, so the check and the write are one atomic act.
+   * The insert **is** the active-job check. A `count()` before an unconditional
+   * insert is a check-then-act: two simultaneous starts both counted zero, both
+   * inserted, and both were legitimately claimable -- one file imported twice,
+   * or with `wipeExistingData` one wipe landing mid-import (audit P4-001). The
+   * partial unique index on `(user_id) WHERE status IN ('pending','running')`
+   * arbitrates instead, and the loser's 23505 becomes the 409 the API already
+   * documented.
+   *
+   * Inserted through the user-scoped manager, so RLS still applies; database
+   * uniqueness arbitrates across transactions regardless.
    */
   async create(
     userId: string,
@@ -150,6 +148,7 @@ export class MnyImportJobService {
             status: "pending",
             options,
             retryable: false,
+            dataCommitted: false,
           }),
         );
       });
@@ -192,9 +191,10 @@ export class MnyImportJobService {
   /**
    * True when this user already has an import in flight.
    *
-   * Advisory only: it answers the question a moment before the answer can
-   * change, so it buys a friendly 409 without an INSERT attempt and nothing
-   * more. The guarantee lives in `create`'s unique index.
+   * A hint for the UI -- it greys out the Start button -- and nothing more.
+   * The guarantee lives in the partial unique index the insert in `create()`
+   * hits; this read cannot provide one, because anything decided here can be
+   * invalidated before the insert lands.
    */
   async hasActiveJob(userId: string): Promise<boolean> {
     const count = await withScopedDb(this.dataSource, (manager) =>
@@ -309,8 +309,35 @@ export class MnyImportJobService {
     );
   }
 
-  async complete(jobId: string, result: MnyImportResult): Promise<void> {
-    await runOutsideActiveScopedManager(() =>
+  /**
+   * Record that the import transaction committed its rows.
+   *
+   * Written **inside** that transaction, so it lands with the data it describes.
+   * That is the whole point: `retryable` alone could not tell "failed before
+   * writing anything" from "the ledger is written and only the completion
+   * metadata is missing", so both were offered as an ordinary retry and the
+   * second one imported the file again (audit P4-002).
+   */
+  async markDataCommitted(
+    manager: EntityManager,
+    jobId: string,
+  ): Promise<void> {
+    await manager.query(
+      `UPDATE import_jobs SET data_committed = true WHERE id = $1`,
+      [jobId],
+    );
+  }
+
+  /**
+   * Move a running job to `completed`. Returns false when it was not running.
+   *
+   * `status = 'running'` is a compare-and-set, not decoration: a worker that
+   * stalled long enough for the reaper to fail its job would otherwise wake up
+   * and overwrite that terminal state with `completed`, so the row would claim
+   * success for a run nobody supervised. Terminal states are monotonic.
+   */
+  async complete(jobId: string, result: MnyImportResult): Promise<boolean> {
+    const updated = await runOutsideActiveScopedManager(() =>
       withScopedDb(this.dataSource, (manager) =>
         manager.query(
           // `AND status = 'running'`: a job retired while its body ran must not
@@ -323,34 +350,54 @@ export class MnyImportJobService {
                   progress = NULL,
                   completed_at = CURRENT_TIMESTAMP,
                   retryable = false
-            WHERE id = $1 AND status = 'running'`,
+            WHERE id = $1 AND status = 'running'
+            RETURNING id`,
           [jobId, JSON.stringify(result)],
         ),
       ),
     );
+    if (returnedRows<{ id: string }>(updated).length === 0) {
+      this.logger.warn(
+        `Import job ${jobId} finished but was no longer running; leaving its terminal state alone`,
+      );
+      return false;
+    }
+    return true;
   }
 
+  /**
+   * Move a job to `failed`. Returns false when it had already left `running`
+   * or `pending` -- the same monotonicity rule as `complete`.
+   *
+   * `retryable` is ANDed with `data_committed = false`: a run whose import
+   * transaction committed must never be advertised as retryable, whatever the
+   * caller believes, because retrying it inserts every source row a second time
+   * under fresh UUIDs. The caller cannot know this -- the checkpoint can be set
+   * after the caller's own decision -- so the predicate lives in the statement.
+   */
   async fail(
     jobId: string,
     errorKey: string,
     errorDetail: string,
     retryable: boolean,
-  ): Promise<void> {
-    await runOutsideActiveScopedManager(() =>
+  ): Promise<boolean> {
+    const updated = await runOutsideActiveScopedManager(() =>
       withScopedDb(this.dataSource, (manager) =>
         manager.query(
           `UPDATE import_jobs
               SET status = 'failed',
                   error_key = $2,
                   error_detail = $3,
-                  retryable = $4,
+                  retryable = ($4 AND data_committed = false),
                   progress = NULL,
                   completed_at = CURRENT_TIMESTAMP
-            WHERE id = $1`,
+            WHERE id = $1 AND status IN ('pending', 'running')
+            RETURNING id`,
           [jobId, errorKey, errorDetail, retryable],
         ),
       ),
     );
+    return returnedRows<{ id: string }>(updated).length > 0;
   }
 
   /**
@@ -358,8 +405,11 @@ export class MnyImportJobService {
    * happens. Returns false when another worker already had it.
    *
    * A parse failure (bad file, wrong Money version) is not retryable -- retrying
-   * the same bytes cannot help. Anything else is: the staged file survives, so
-   * Retry is a new job over the same file.
+   * the same bytes cannot help. Anything else is, *provided the import
+   * transaction never committed*: `fail()` ANDs the caller's `retryable` with
+   * `data_committed = false`, so a failure after the ledger was written is
+   * reported as non-retryable rather than inviting a second import of the same
+   * file. The staged file survives either way, for diagnosis.
    */
   async runClaimed(
     userId: string,

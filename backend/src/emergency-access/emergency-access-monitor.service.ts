@@ -26,6 +26,11 @@ import { hashToken } from "../auth/crypto.util";
 import { User } from "../users/entities/user.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { withSystemContext } from "../common/db/with-context";
+import { affectedRowCount } from "../common/db/query-result";
+import {
+  JobClaimService,
+  JobClaimType,
+} from "../common/jobs/job-claim.service";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const CLAIM_TOKEN_BYTES = 32;
@@ -41,7 +46,49 @@ export class EmergencyAccessMonitorService {
     private readonly encryption: AiEncryptionService,
     private readonly configService: ConfigService,
     private readonly i18n: I18nService,
+    private readonly jobClaims: JobClaimService,
   ) {}
+
+  /**
+   * Move this owner from ungranted to granted, atomically. True for the one
+   * caller that won.
+   *
+   * `granted_at IS NULL` and `enabled = true` are predicates of the UPDATE, so
+   * PostgreSQL re-evaluates them after the row lock: exactly one replica gets a
+   * row back, and an owner who disabled the feature between the sweep's read and
+   * here is not granted at all.
+   */
+  private async claimGrant(ownerUserId: string): Promise<boolean> {
+    const updated = await withScopedDb(this.dataSource, (manager) =>
+      manager.query(
+        `UPDATE emergency_access_settings
+            SET granted_at = CURRENT_TIMESTAMP
+          WHERE owner_user_id = $1
+            AND granted_at IS NULL
+            AND enabled = true
+          RETURNING owner_user_id`,
+        [ownerUserId],
+      ),
+    );
+    return affectedRowCount(updated) > 0;
+  }
+
+  /** Hand a claimed grant back when no contact could be reached. */
+  private async releaseGrant(ownerUserId: string): Promise<void> {
+    await withScopedDb(this.dataSource, (manager) =>
+      manager.query(
+        `UPDATE emergency_access_settings
+            SET granted_at = NULL
+          WHERE owner_user_id = $1`,
+        [ownerUserId],
+      ),
+    ).catch((error: unknown) =>
+      this.logger.error(
+        `Failed to release emergency-access grant claim for user ${ownerUserId}: ` +
+          `${error instanceof Error ? error.message : String(error)}`,
+      ),
+    );
+  }
 
   /**
    * One repository call in its own short scoped transaction -- the RLS-era
@@ -157,6 +204,20 @@ export class EmergencyAccessMonitorService {
       );
       if (contacts.length === 0) return "skipped";
 
+      // Claim the ungranted -> granted transition atomically, BEFORE generating a
+      // single token.
+      //
+      // Every replica fires this cron and `grantedAt` was written only after the
+      // emails went out, so two replicas could both see `grantedAt === null`,
+      // both generate a fresh random token for the same contact, and both send.
+      // Whichever token hash was stored last is the only valid one, so the other
+      // delivered link is dead -- and the recipient of a dead emergency-access
+      // link during a high-stakes recovery has no way to tell it from a revoked
+      // one (audit P4-014). The loser now stands down before writing anything.
+      if (!(await this.claimGrant(settings.ownerUserId))) {
+        return "skipped";
+      }
+
       const decryptedMessage = settings.messageCiphertext
         ? this.tryDecrypt(settings.messageCiphertext)
         : null;
@@ -222,18 +283,19 @@ export class EmergencyAccessMonitorService {
         }
       }
 
-      // Only commit the grant if at least one contact actually received a
-      // link. Otherwise leave grantedAt null so the next run retries -- a
-      // transient SMTP failure must not permanently disable the safeguard.
+      // Only keep the grant if at least one contact actually received a link.
+      // Otherwise hand it back so the next run retries -- a transient SMTP
+      // failure must not permanently disable the safeguard. That behaviour
+      // predates the claim and has to survive it, which is what the release
+      // below is for.
       if (delivered === 0) {
         this.logger.error(
-          `Emergency access grant for user ${settings.ownerUserId} delivered no contact emails; leaving grant un-set for retry`,
+          `Emergency access grant for user ${settings.ownerUserId} delivered no contact emails; releasing the grant claim for retry`,
         );
+        await this.releaseGrant(settings.ownerUserId);
         return "skipped";
       }
 
-      settings.grantedAt = new Date(now);
-      await this.scoped(EmergencyAccessSettings, (repo) => repo.save(settings));
       return "granted";
     }
 
@@ -242,12 +304,17 @@ export class EmergencyAccessMonitorService {
       settings.grantedAt === null &&
       daysSinceLogin >= settings.reminderAfterDays
     ) {
-      const todayMidnight = new Date();
-      todayMidnight.setHours(0, 0, 0, 0);
-      if (
-        settings.lastReminderSentAt &&
-        settings.lastReminderSentAt >= todayMidnight
-      ) {
+      // Same reasoning as the grant: the "at most once per day" rule was a read
+      // of `lastReminderSentAt` followed by a write after the email, so two
+      // replicas both passed it and the owner got the notice twice. The claim is
+      // the rule now, keyed on the local date.
+      const reminderKey = todayKeyFrom(new Date(now));
+      const claimedReminder = await this.jobClaims.claimOnce(
+        JobClaimType.EmergencyAccessReminder,
+        settings.ownerUserId,
+        reminderKey,
+      );
+      if (!claimedReminder) {
         return "skipped";
       }
 
@@ -283,22 +350,44 @@ export class EmergencyAccessMonitorService {
         },
         reminderT,
       );
-      await this.emailService.sendMail(
-        owner.email,
-        daysSinceLogin === 1
-          ? reminderT(
-              "emails.emergencyAccessReminder.subjectOne",
-              "Monize: your account has been inactive for 1 day",
-            )
-          : reminderT(
-              "emails.emergencyAccessReminder.subjectMany",
-              `Monize: your account has been inactive for ${daysSinceLogin} days`,
-              { daysSinceLogin },
-            ),
-        html,
+      try {
+        await this.emailService.sendMail(
+          owner.email,
+          daysSinceLogin === 1
+            ? reminderT(
+                "emails.emergencyAccessReminder.subjectOne",
+                "Monize: your account has been inactive for 1 day",
+              )
+            : reminderT(
+                "emails.emergencyAccessReminder.subjectMany",
+                `Monize: your account has been inactive for ${daysSinceLogin} days`,
+                { daysSinceLogin },
+              ),
+          html,
+        );
+      } catch (error) {
+        // Give the day back rather than consuming it on a failed send.
+        await this.jobClaims
+          .release(
+            JobClaimType.EmergencyAccessReminder,
+            settings.ownerUserId,
+            reminderKey,
+          )
+          .catch(() => undefined);
+        throw error;
+      }
+
+      // Targeted UPDATE, not a save of the entity read at the top of the sweep:
+      // that snapshot would write back every other column too, so an owner
+      // disabling the feature mid-sweep would find it silently re-enabled.
+      await this.scoped(EmergencyAccessSettings, (repo) =>
+        repo
+          .createQueryBuilder()
+          .update(EmergencyAccessSettings)
+          .set({ lastReminderSentAt: new Date(now) })
+          .where("owner_user_id = :id", { id: settings.ownerUserId })
+          .execute(),
       );
-      settings.lastReminderSentAt = new Date(now);
-      await this.scoped(EmergencyAccessSettings, (repo) => repo.save(settings));
       return "reminded";
     }
 
@@ -331,9 +420,16 @@ export class EmergencyAccessMonitorService {
         .execute(),
     );
 
-    settings.grantedAt = null;
-    settings.lastReminderSentAt = null;
-    await this.scoped(EmergencyAccessSettings, (repo) => repo.save(settings));
+    // Targeted UPDATE for the same reason as above: re-saving the sweep's
+    // snapshot would revert any other setting the owner changed meanwhile.
+    await this.scoped(EmergencyAccessSettings, (repo) =>
+      repo
+        .createQueryBuilder()
+        .update(EmergencyAccessSettings)
+        .set({ grantedAt: null, lastReminderSentAt: null })
+        .where("owner_user_id = :id", { id: settings.ownerUserId })
+        .execute(),
+    );
 
     this.logger.warn(
       `Owner ${settings.ownerUserId} active again after a grant; voided ${
@@ -385,4 +481,9 @@ export class EmergencyAccessMonitorService {
       return null;
     }
   }
+}
+
+/** `YYYY-MM-DD` in server-local time -- the reminder claim's daily key. */
+function todayKeyFrom(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }

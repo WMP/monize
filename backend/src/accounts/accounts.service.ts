@@ -40,6 +40,8 @@ import { didYouMean } from "../common/name-suggestions.util";
 import { ActionHistoryService } from "../action-history/action-history.service";
 import { withSystemContext } from "../common/db/with-context";
 import { withScopedDb } from "../common/db/scoped-db";
+import { lockAccountsForBalanceWrite } from "../common/db/locks";
+import { affectedRowCount } from "../common/db/query-result";
 
 @Injectable()
 export class AccountsService {
@@ -949,41 +951,52 @@ export class AccountsService {
 
   /**
    * Update account balance (called internally by transactions).
-   * Uses atomic SQL UPDATE to prevent race conditions from concurrent requests.
+   *
+   * The arithmetic is done by PostgreSQL, so two concurrent deltas compose: the
+   * `UPDATE` re-reads `current_balance` after it wins the row lock. Two things
+   * make that guarantee real rather than nominal:
+   *
+   * - `is_closed = false` is a predicate of the **write**, not of a read that
+   *   preceded it. A separate check-then-update let a mutation of an existing
+   *   transaction read the account as open, wait behind `close()`, and then add
+   *   its delta to a row that had since been closed with a zero balance -- a
+   *   closed account holding `-10.00` (audit P4-008). Re-evaluating the
+   *   predicate after the lock is what refuses instead.
+   * - the refusal has to reach the caller, which is why this returns 0 rows into
+   *   a throw rather than reporting success. The ledger mutation shares this
+   *   transaction, so the throw rolls it back too.
    */
   async updateBalance(accountId: string, amount: number): Promise<Account> {
-    const account = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(Account).findOne({
-        where: { id: accountId },
-      }),
-    );
+    // One statement: lock, re-check `is_closed`, apply the delta, report back.
+    const sql = `UPDATE accounts
+                    SET current_balance = ROUND(CAST(current_balance AS numeric) + $1, 4)
+                  WHERE id = $2 AND is_closed = false
+                  RETURNING id`;
 
-    if (!account) {
-      throw new NotFoundException(
-        tr(
-          "errors.accounts.accountWithIdNotFound",
-          `Account with ID ${accountId} not found`,
-          { id: accountId },
-        ),
-      );
-    }
-
-    if (account.isClosed) {
-      throw new BadRequestException(
-        tr(
-          "errors.accounts.modifyBalanceClosed",
-          "Cannot modify balance of a closed account",
-        ),
-      );
-    }
-
-    const sql = `UPDATE accounts SET current_balance = ROUND(CAST(current_balance AS numeric) + $1, 4) WHERE id = $2`;
-
-    // Atomic update at the database level to avoid read-modify-write race
-    // conditions. A caller already inside a scoped transaction joins it (F2
-    // re-entrancy), so the update and the re-read stay in that transaction.
     return withScopedDb(this.dataSource, async (m) => {
-      await m.query(sql, [amount, accountId]);
+      const updated: unknown = await m.query(sql, [amount, accountId]);
+      if (affectedRowCount(updated) === 0) {
+        // No row matched: either the account is gone or it is closed. Tell those
+        // apart so the caller gets 404 vs 400 rather than one ambiguous error.
+        const exists = await m.getRepository(Account).findOne({
+          where: { id: accountId },
+        });
+        if (!exists) {
+          throw new NotFoundException(
+            tr(
+              "errors.accounts.accountWithIdNotFound",
+              `Account with ID ${accountId} not found`,
+              { id: accountId },
+            ),
+          );
+        }
+        throw new BadRequestException(
+          tr(
+            "errors.accounts.modifyBalanceClosed",
+            "Cannot modify balance of a closed account",
+          ),
+        );
+      }
       return m.getRepository(Account).findOneOrFail({
         where: { id: accountId },
       });
@@ -995,45 +1008,58 @@ export class AccountsService {
    * only including transactions dated on or before today.
    * Used when future-dated transactions are created/modified/deleted
    * to ensure the balance is always correct regardless of history.
+   *
+   * This writes an **absolute** balance, which is the protocol that cannot race
+   * an atomic delta unaided: under `READ COMMITTED` the ledger `SELECT` and the
+   * account `UPDATE` are separate statement snapshots, so a delta committing
+   * between them was silently overwritten by a total that never saw it (audit
+   * P4-005). `lockAccountsForBalanceWrite` closes that window from the front --
+   * see the protocol note in `common/db/locks.ts` for why locking before the
+   * ledger read makes the two protocols compose.
+   *
+   * The write is a targeted `UPDATE` of one column. Saving the `Account` entity
+   * loaded before the transaction would also write back every other column from
+   * that snapshot, so a concurrent rename or opening-balance edit would be
+   * reverted by a balance recalculation.
    */
   async recalculateCurrentBalance(accountId: string): Promise<Account> {
-    const account = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(Account).findOne({
-        where: { id: accountId },
-      }),
-    );
-
-    if (!account) {
-      throw new NotFoundException(
-        tr(
-          "errors.accounts.accountWithIdNotFound",
-          `Account with ID ${accountId} not found`,
-          { id: accountId },
-        ),
-      );
-    }
-
-    const balanceSql = `SELECT COALESCE($2::NUMERIC, 0) + COALESCE(SUM(t.amount), 0) as balance
-       FROM transactions t
-       WHERE t.account_id = $1
+    const balanceSql = `SELECT COALESCE(a.opening_balance, 0) + COALESCE(SUM(t.amount), 0) as balance
+       FROM accounts a
+       LEFT JOIN transactions t ON t.account_id = a.id
          AND (t.status IS NULL OR t.status != 'VOID')
          AND t.parent_transaction_id IS NULL
-         AND t.transaction_date <= $3`;
+         AND t.transaction_date <= $2
+      WHERE a.id = $1
+      GROUP BY a.id, a.opening_balance`;
 
     const today = todayYMD();
 
     return withScopedDb(this.dataSource, async (m) => {
+      // First statement of the transaction, before the ledger is read.
+      await lockAccountsForBalanceWrite(m, [accountId]);
+
       const result: { balance: string }[] = await m.query(balanceSql, [
         accountId,
-        account.openingBalance,
         today,
       ]);
-      const newBalance =
-        result.length > 0
-          ? roundMoney(Number(result[0].balance))
-          : roundMoney(Number(account.openingBalance));
-      account.currentBalance = newBalance;
-      return m.getRepository(Account).save(account);
+      if (result.length === 0) {
+        throw new NotFoundException(
+          tr(
+            "errors.accounts.accountWithIdNotFound",
+            `Account with ID ${accountId} not found`,
+            { id: accountId },
+          ),
+        );
+      }
+
+      const newBalance = roundMoney(Number(result[0].balance));
+      await m.query(`UPDATE accounts SET current_balance = $1 WHERE id = $2`, [
+        newBalance,
+        accountId,
+      ]);
+      return m.getRepository(Account).findOneOrFail({
+        where: { id: accountId },
+      });
     });
   }
 
@@ -1627,6 +1653,13 @@ export class AccountsService {
 
         // One read-modify-write block per timezone bucket: find due accounts,
         // recompute their balances, apply them in a single UPDATE.
+        //
+        // The recomputation writes absolute balances, so it must hold the
+        // account rows from before it reads the ledger -- otherwise an
+        // interactive transaction committing between the SELECT and the UPDATE
+        // is overwritten by a total that never saw it (audit P4-005). Locking
+        // in ascending id order keeps it deadlock-free against a transfer
+        // touching two of the same accounts.
         const applied = await withScopedDb(this.dataSource, async (m) => {
           const accountRows: { account_id: string }[] = await m.query(
             `SELECT DISTINCT t.account_id
@@ -1642,6 +1675,8 @@ export class AccountsService {
           if (accountRows.length === 0) return 0;
 
           const accountIds = accountRows.map((r) => r.account_id);
+          await lockAccountsForBalanceWrite(m, accountIds);
+
           const balances: { account_id: string; balance: string }[] =
             await m.query(
               `SELECT a.id as account_id,

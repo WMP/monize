@@ -1,6 +1,7 @@
 import {
   Injectable,
   BadRequestException,
+  ConflictException,
   Inject,
   NotFoundException,
   forwardRef,
@@ -24,6 +25,7 @@ import { roundMoney } from "../common/round.util";
 import { stripHtml } from "../common/sanitization.util";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
+import { lockTransactionRows } from "../common/db/locks";
 import { withSystemContext } from "../common/db/with-context";
 
 export interface TransferResult {
@@ -787,47 +789,49 @@ export class TransactionTransferService {
           affectedAccountIds,
         );
       } else {
-        const linkedTransaction = transaction.linkedTransactionId
-          ? await m.findOne(Transaction, {
-              where: { id: transaction.linkedTransactionId },
-            })
-          : null;
+        // Both legs are locked here, in ascending id order, and their amounts
+        // re-read: the delta each leg reverses must be the version the delete
+        // actually removes, and a fixed lock order is what keeps two concurrent
+        // transfer deletions from holding one another's second leg. A snapshot
+        // taken before the transaction let two deletions each reverse the same
+        // pair of amounts while only one pair of rows went away (P4-003).
+        const legIds = [transactionId];
+        if (transaction.linkedTransactionId) {
+          legIds.push(transaction.linkedTransactionId);
+        }
+        const locked = await lockTransactionRows(m, legIds, userId);
 
-        const txIsFuture = isTransactionInFuture(transaction.transactionDate);
-        const txAccountId = transaction.accountId;
-        affectedAccountIds.add(txAccountId);
-
-        if (!txIsFuture) {
-          await this.accountsService.updateBalance(
-            txAccountId,
-            -Number(transaction.amount),
+        const ownLeg = locked.get(transactionId);
+        if (!ownLeg) {
+          throw new NotFoundException(
+            tr(
+              "errors.transactions.notFoundById",
+              `Transaction with ID ${transactionId} not found`,
+              { id: transactionId },
+            ),
           );
         }
+        const linkedLeg = transaction.linkedTransactionId
+          ? locked.get(transaction.linkedTransactionId)
+          : undefined;
 
-        if (linkedTransaction) {
-          const linkedIsFuture = isTransactionInFuture(
-            linkedTransaction.transactionDate,
-          );
-          const linkedAccountId = linkedTransaction.accountId;
-          affectedAccountIds.add(linkedAccountId);
-
-          if (!linkedIsFuture) {
+        for (const leg of [linkedLeg, ownLeg]) {
+          if (!leg) continue;
+          const isFuture = isTransactionInFuture(leg.transactionDate);
+          affectedAccountIds.add(leg.accountId);
+          const removed = await m.delete(Transaction, {
+            id: leg.id,
+            userId,
+          });
+          if ((removed.affected ?? 0) === 0) continue;
+          if (isFuture) {
+            await this.accountsService.recalculateCurrentBalance(leg.accountId);
+          } else if (leg.status !== TransactionStatus.VOID) {
             await this.accountsService.updateBalance(
-              linkedAccountId,
-              -Number(linkedTransaction.amount),
+              leg.accountId,
+              -leg.amount,
             );
           }
-          await m.remove(linkedTransaction);
-          if (linkedIsFuture) {
-            await this.accountsService.recalculateCurrentBalance(
-              linkedAccountId,
-            );
-          }
-        }
-
-        await m.remove(transaction);
-        if (txIsFuture) {
-          await this.accountsService.recalculateCurrentBalance(txAccountId);
         }
       }
     });
@@ -1111,6 +1115,48 @@ export class TransactionTransferService {
     // Both legs' field updates and the four possible balance adjustments
     // commit atomically.
     await withScopedDb(this.dataSource, async (m) => {
+      // The four balance adjustments below reverse `oldFromAmount` /
+      // `oldToAmount` and re-apply the new ones. Those old values were read
+      // before this transaction opened, so a concurrent edit of either leg
+      // would make them describe a version this write is not replacing -- two
+      // updates each reversing the same pair and corrupting both accounts
+      // (audit P4-003).
+      //
+      // Lock both legs in ascending id order and refuse if the committed row no
+      // longer matches what was read. A 409 the client can retry is the honest
+      // answer; silently applying a delta derived from a superseded snapshot is
+      // not.
+      const locked = await lockTransactionRows(
+        m,
+        [fromTransaction.id, toTransaction.id],
+        userId,
+      );
+      const lockedFrom = locked.get(fromTransaction.id);
+      const lockedTo = locked.get(toTransaction.id);
+      if (!lockedFrom || !lockedTo) {
+        throw new NotFoundException(
+          tr(
+            "errors.transactions.notFoundById",
+            `Transaction with ID ${transactionId} not found`,
+            { id: transactionId },
+          ),
+        );
+      }
+      const unchanged =
+        Math.abs(lockedFrom.amount) === oldFromAmount &&
+        lockedTo.amount === oldToAmount &&
+        lockedFrom.accountId === oldFromAccountId &&
+        lockedTo.accountId === oldToAccountId &&
+        lockedFrom.transactionDate === oldDate;
+      if (!unchanged) {
+        throw new ConflictException(
+          tr(
+            "errors.transactions.transferChangedConcurrently",
+            "This transfer was changed by another request. Reload it and try again.",
+          ),
+        );
+      }
+
       if ((accountsOrAmountsChanged || dateChanged) && !anyFuture) {
         await this.accountsService.updateBalance(
           oldFromAccountId,
@@ -1144,12 +1190,17 @@ export class TransactionTransferService {
 
       if (accountsOrAmountsChanged || dateChanged) {
         if (anyFuture) {
-          const allAccounts = new Set([
-            oldFromAccountId,
-            oldToAccountId,
-            newFromAccountId,
-            newToAccountId,
-          ]);
+          // Sorted: the same fixed lock order every other account-balance
+          // writer uses, so two transfers touching the same pair cannot
+          // deadlock on each other's second account.
+          const allAccounts = [
+            ...new Set([
+              oldFromAccountId,
+              oldToAccountId,
+              newFromAccountId,
+              newToAccountId,
+            ]),
+          ].sort();
           for (const accId of allAccounts) {
             await this.accountsService.recalculateCurrentBalance(accId);
           }

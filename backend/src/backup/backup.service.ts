@@ -131,6 +131,22 @@ const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   // backup's size by the size of whatever was last uploaded.
   "import_staged_files",
   "import_jobs",
+  // Cron bookkeeping, not user content: one row per already-claimed delivery or
+  // lease. Restoring them would re-suppress a reminder the restored account has
+  // not been sent, and the sweep drops them after 30 days anyway.
+  "job_claims",
+  // Deletion bookkeeping for bytes that live outside PostgreSQL. A restore
+  // replaces the attachment metadata wholesale, so a tombstone from before it
+  // describes an object no restored row references -- and the sweeper will have
+  // deleted it long before a restore lands anyway.
+  "attachment_blob_tombstones",
+  // The occurrence-claim ledger guards *concurrent* posting of the occurrence a
+  // schedule is currently due for -- two replicas, or a manual post racing the
+  // cron. A restore has no in-flight posting, and the restored schedules get new
+  // ids, so their old claims are gone by cascade and no stale row can shadow a
+  // live occurrence. What a restore does bring back is next_due_date, which
+  // already points past everything the backup had posted.
+  "scheduled_transaction_postings",
   "personal_access_tokens", // auth credentials -- never exported
   "refresh_tokens", // auth session tokens -- never exported
   "trusted_devices", // 2FA device registrations -- never exported

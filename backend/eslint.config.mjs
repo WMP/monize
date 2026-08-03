@@ -18,6 +18,10 @@ const WITH_CONTEXT_ALLOWLIST = [
   "src/accounts/accounts.service.ts",
   "src/accounts/mortgage-reminder.service.ts",
   "src/action-history/action-history.service.ts",
+  // Cross-user by construction: a tombstone can outlive its owner, and its
+  // user_id is NULL once that user is deleted -- which is exactly when the bytes
+  // most need removing.
+  "src/attachments/attachment-orphan-sweeper.service.ts",
   "src/admin/admin.service.ts",
   "src/ai/ai-usage.service.ts",
   "src/ai/insights/ai-insights.service.ts",
@@ -31,6 +35,8 @@ const WITH_CONTEXT_ALLOWLIST = [
   "src/budgets/budget-alert.service.ts",
   "src/budgets/budget-period-cron.service.ts",
   "src/common/interceptors/request-context.interceptor.ts",
+  // The shared cron claim table's retention sweep spans every user.
+  "src/common/jobs/job-claim.service.ts",
   "src/currencies/currencies.service.ts",
   "src/currencies/exchange-rate.service.ts",
   "src/database/demo-reset.service.ts",

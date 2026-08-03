@@ -99,6 +99,21 @@ export class ImportJob {
   @Column({ name: "retryable", default: false })
   retryable: boolean;
 
+  /**
+   * Set inside the import transaction itself, so it commits with the rows it
+   * describes (migration 133).
+   *
+   * `retryable` alone could not distinguish "failed before writing anything" from
+   * "the ledger is written and only the completion metadata is missing" -- a
+   * crash, an eviction, or an exception in verification produced the second and
+   * the row advertised the first. Retrying then re-imported every source record
+   * under fresh UUIDs, because the mapper assigns new ids on every parse and
+   * nothing on the inserted rows identifies the source. So the checkpoint is
+   * durable and `fail()` ANDs `retryable` with it.
+   */
+  @Column({ name: "data_committed", default: false })
+  dataCommitted: boolean;
+
   /** Bumped by the running job; the reaper's liveness signal. */
   @Column({ type: "timestamp", name: "heartbeat_at", nullable: true })
   heartbeatAt: Date | null;

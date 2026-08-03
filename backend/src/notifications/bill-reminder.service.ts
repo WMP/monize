@@ -12,6 +12,11 @@ import { emailTranslator } from "../i18n/email-translator";
 import { DEFAULT_LOCALE } from "../i18n/config";
 import { withSystemContext, withUserContext } from "../common/db/with-context";
 import { withScopedDb } from "../common/db/scoped-db";
+import {
+  JobClaimService,
+  JobClaimType,
+} from "../common/jobs/job-claim.service";
+import { createHash } from "node:crypto";
 
 @Injectable()
 export class BillReminderService {
@@ -22,7 +27,20 @@ export class BillReminderService {
     private emailService: EmailService,
     private configService: ConfigService,
     private readonly i18n: I18nService,
+    private readonly jobClaims: JobClaimService,
   ) {}
+
+  /** Release a claim a send did not use, so the next run can retry. */
+  private async releaseClaim(userId: string, claimKey: string): Promise<void> {
+    await this.jobClaims
+      .release(JobClaimType.BillReminder, userId, claimKey)
+      .catch((error: unknown) =>
+        this.logger.warn(
+          `Failed to release bill-reminder claim for user ${userId}: ` +
+            `${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
+  }
 
   @Cron(CronExpression.EVERY_DAY_AT_8AM)
   async sendBillReminders(): Promise<void> {
@@ -90,6 +108,28 @@ export class BillReminderService {
     let skipCount = 0;
 
     for (const [userId, bills] of billsByUser) {
+      // Claim this user's reminder for today before doing anything that leaves
+      // the process.
+      //
+      // Every backend replica fires this cron (docs/cron-jobs.md), and nothing
+      // here recorded that a reminder had been sent -- so two healthy replicas
+      // both selected the same due bills and both emailed them. Not a rare race:
+      // the *normal* outcome of running more than one replica (audit P4-018).
+      //
+      // The key is the local date plus a hash of what the email says, so a bill
+      // that becomes due later the same day still produces a reminder while an
+      // identical run does not.
+      const claimKey = buildReminderClaimKey(bills);
+      const claimed = await this.jobClaims.claimOnce(
+        JobClaimType.BillReminder,
+        userId,
+        claimKey,
+      );
+      if (!claimed) {
+        skipCount++;
+        continue;
+      }
+
       try {
         // Check if user has email notifications enabled.
         // RLS (task C2): per-user reads run under the user's own context.
@@ -102,6 +142,7 @@ export class BillReminderService {
         );
         if (prefs && !prefs.notificationEmail) {
           skipCount++;
+          await this.releaseClaim(userId, claimKey);
           continue;
         }
 
@@ -112,6 +153,7 @@ export class BillReminderService {
         );
         if (!user || !user.email) {
           skipCount++;
+          await this.releaseClaim(userId, claimKey);
           continue;
         }
 
@@ -153,6 +195,11 @@ export class BillReminderService {
         await this.emailService.sendMail(user.email, subject, html);
         sentCount++;
       } catch (error) {
+        // Hand the claim back. Claiming first is what makes the send
+        // exactly-once, but it must not turn a transient SMTP outage into a
+        // silently skipped day -- which is what the pre-claim code got for free
+        // by never recording anything.
+        await this.releaseClaim(userId, claimKey);
         this.logger.error(
           `Failed to send bill reminder to user ${userId}`,
           error instanceof Error ? error.stack : error,
@@ -164,4 +211,29 @@ export class BillReminderService {
       `Bill reminders complete: ${sentCount} sent, ${skipCount} skipped`,
     );
   }
+}
+
+/**
+ * The delivery key for one user's bill reminder: today's date plus a digest of
+ * exactly what the email will say.
+ *
+ * The date alone would suppress a legitimate second reminder when another bill
+ * falls due later the same day. The digest alone would let the same set be
+ * re-sent tomorrow. Together they mean "this reminder, today", which is what the
+ * claim is asserting.
+ */
+export function buildReminderClaimKey(
+  bills: readonly ScheduledTransaction[],
+): string {
+  const today = new Date();
+  const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const fingerprint = [...bills]
+    .map((b) => `${b.id}:${String(b.nextDueDate).split("T")[0]}:${b.amount}`)
+    .sort()
+    .join("|");
+  const digest = createHash("sha256")
+    .update(fingerprint)
+    .digest("hex")
+    .slice(0, 32);
+  return `${date}#${digest}`;
 }

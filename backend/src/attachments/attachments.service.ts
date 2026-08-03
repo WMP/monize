@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   PayloadTooLargeException,
   UnsupportedMediaTypeException,
@@ -9,8 +10,10 @@ import {
 import { createHash, randomUUID } from "crypto";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
+import { lockTransactionRow } from "../common/db/locks";
+import { returnedRows } from "../common/db/query-result";
+import { AttachmentOrphanSweeper } from "./attachment-orphan-sweeper.service";
 import { tr } from "../i18n/translate";
-import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionAttachment } from "./entities/transaction-attachment.entity";
 import {
   ALLOWED_ATTACHMENT_MIME_TYPES,
@@ -45,17 +48,26 @@ export interface UploadedAttachmentFile {
 
 @Injectable()
 export class AttachmentsService {
+  private readonly logger = new Logger(AttachmentsService.name);
+
   constructor(
     private readonly dataSource: DataSource,
     @Inject(ATTACHMENT_STORAGE_PROVIDER)
     private readonly storage: AttachmentStorageProvider,
+    private readonly orphanSweeper: AttachmentOrphanSweeper,
   ) {}
 
   /**
    * Store an uploaded file against a transaction. Validates size, sniffs the
    * real MIME type (never trusting the client), enforces the per-transaction
-   * cap, and writes metadata + bytes in one transaction so a storage failure
-   * rolls the metadata row back.
+   * cap, and writes metadata + bytes together.
+   *
+   * "Together" means different things per provider, and the difference matters:
+   * the database provider's blob write joins this transaction and genuinely
+   * commits or rolls back with the metadata row, while a local filesystem write
+   * or an S3 put cannot. For those, a commit failure after the object is written
+   * leaves bytes nothing references, so the catch below deletes them -- and the
+   * hourly orphan sweep is the backstop for a process that dies before it can.
    */
   async create(
     userId: string,
@@ -93,49 +105,76 @@ export class AttachmentsService {
     const sha256 = createHash("sha256").update(file.buffer).digest("hex");
     const id = randomUUID();
 
-    return withScopedDb(this.dataSource, async (m) => {
-      const transaction = await m
-        .getRepository(Transaction)
-        .findOne({ where: { id: transactionId, userId } });
-      if (!transaction) {
-        throw new NotFoundException(
-          tr("errors.attachments.transactionNotFound", "Transaction not found"),
-        );
-      }
+    let objectWritten = false;
+    try {
+      return await withScopedDb(this.dataSource, async (m) => {
+        // Lock the parent transaction before counting. The cap is a refusal, and
+        // a count taken without the lock is a check-then-act: at 9 attachments
+        // two uploads both counted 9, both passed `< 10`, and the transaction
+        // ended with 11 (audit P4-017). Every uploader now queues behind the
+        // same row, so the count each one sees includes its predecessor.
+        const locked = await lockTransactionRow(m, transactionId, userId);
+        if (!locked) {
+          throw new NotFoundException(
+            tr(
+              "errors.attachments.transactionNotFound",
+              "Transaction not found",
+            ),
+          );
+        }
 
-      const existing = await m
-        .getRepository(TransactionAttachment)
-        .count({ where: { transactionId, userId } });
-      if (existing >= MAX_ATTACHMENTS_PER_TRANSACTION) {
-        throw new BadRequestException(
-          tr(
-            "errors.attachments.tooMany",
-            `This transaction already has the maximum of ${MAX_ATTACHMENTS_PER_TRANSACTION} attachments`,
-            { max: MAX_ATTACHMENTS_PER_TRANSACTION },
-          ),
-        );
-      }
+        const existing = await m
+          .getRepository(TransactionAttachment)
+          .count({ where: { transactionId, userId } });
+        if (existing >= MAX_ATTACHMENTS_PER_TRANSACTION) {
+          throw new BadRequestException(
+            tr(
+              "errors.attachments.tooMany",
+              `This transaction already has the maximum of ${MAX_ATTACHMENTS_PER_TRANSACTION} attachments`,
+              { max: MAX_ATTACHMENTS_PER_TRANSACTION },
+            ),
+          );
+        }
 
-      const repo = m.getRepository(TransactionAttachment);
-      const attachment = repo.create({
-        id,
-        userId,
-        transactionId,
-        filename,
-        contentType,
-        byteSize: file.buffer.length,
-        sha256,
-        storageProvider: this.storage.name,
-        storageKey: id,
+        const repo = m.getRepository(TransactionAttachment);
+        const attachment = repo.create({
+          id,
+          userId,
+          transactionId,
+          filename,
+          contentType,
+          byteSize: file.buffer.length,
+          sha256,
+          storageProvider: this.storage.name,
+          storageKey: id,
+        });
+        const saved = await repo.save(attachment);
+
+        // The database provider's nested withScopedDb joins this transaction, so
+        // its blob commits with the metadata row. An external provider does not,
+        // which is what `objectWritten` records.
+        await this.storage.save(id, file.buffer);
+        objectWritten = this.storage.name !== "database";
+
+        return saved;
       });
-      const saved = await repo.save(attachment);
-
-      // Nested withScopedDb joins this transaction, so the bytes and the metadata
-      // row commit together (or roll back together on failure).
-      await this.storage.save(id, file.buffer);
-
-      return saved;
-    });
+    } catch (error) {
+      if (objectWritten) {
+        // The transaction rolled back after the object was written. Nothing
+        // references those bytes now, so remove them; the orphan sweep cannot
+        // find them either, because there is no metadata row and therefore no
+        // tombstone.
+        await this.storage
+          .delete(id)
+          .catch((cleanupError: unknown) =>
+            this.logger.warn(
+              `Attachment ${id} rolled back but its stored object could not be ` +
+                `removed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+            ),
+          );
+      }
+      throw error;
+    }
   }
 
   /** List attachment metadata for one of the user's transactions (no bytes). */
@@ -174,23 +213,41 @@ export class AttachmentsService {
     };
   }
 
-  /** Delete an attachment (metadata + bytes) the user owns. */
+  /**
+   * Delete an attachment (metadata + bytes) the user owns.
+   *
+   * The metadata delete commits first and the object goes afterwards. That order
+   * is deliberate and was previously the other way round: deleting the object
+   * inside the transaction meant a commit failure left metadata pointing at bytes
+   * that no longer existed -- a download that can only fail, with nothing to
+   * retry (audit P4-010).
+   *
+   * The `AFTER DELETE` trigger records a tombstone in the same transaction, so
+   * the object is deleted even if this process dies here, and even when the row
+   * goes away through a path with no application code at all: a parent
+   * transaction's ON DELETE CASCADE, a restore wipe, an account deletion.
+   */
   async remove(userId: string, id: string): Promise<void> {
-    const attachment = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(TransactionAttachment).findOne({ where: { id, userId } }),
-    );
-    if (!attachment) {
-      throw new NotFoundException(
-        tr("errors.attachments.notFound", "Attachment not found"),
+    const storageKey = await withScopedDb(this.dataSource, async (m) => {
+      const deleted: unknown = await m.query(
+        `DELETE FROM transaction_attachments
+          WHERE id = $1 AND user_id = $2
+          RETURNING storage_key`,
+        [id, userId],
       );
-    }
-
-    await withScopedDb(this.dataSource, async (m) => {
-      // Removing the metadata row cascades to attachment_blobs for the database
-      // provider; still call the provider so external stores are cleaned up too.
-      await m.getRepository(TransactionAttachment).delete({ id, userId });
-      await this.storage.delete(attachment.storageKey);
+      const rows = returnedRows<{ storage_key: string }>(deleted);
+      if (rows.length === 0) {
+        // "Not found" covers both never-existed and already-deleted-by-a-
+        // concurrent-request. Either way there is nothing left to sweep.
+        throw new NotFoundException(
+          tr("errors.attachments.notFound", "Attachment not found"),
+        );
+      }
+      return rows[0].storage_key;
     });
+
+    // Committed. Now the part PostgreSQL could not have rolled back.
+    await this.orphanSweeper.sweepKey(storageKey);
   }
 }
 

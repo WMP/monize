@@ -15,6 +15,7 @@ import { getUsersByEffectiveTimezone } from "../common/users-by-timezone.util";
 import { withSystemContext, withUserContext } from "../common/db/with-context";
 import { EntityManager, In, LessThanOrEqual, DataSource } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
+import { lockHoldingScope } from "../common/db/locks";
 import { Holding } from "./entities/holding.entity";
 import {
   InvestmentTransaction,
@@ -213,6 +214,18 @@ export class HoldingsService {
     return this.inScope(manager, async (m) => {
       const repo = m.getRepository(Holding);
 
+      // Serialize against every other holdings writer for this account before
+      // reading the quantity this update is derived from.
+      //
+      // `new = old + delta` computed in application code is a read-modify-write.
+      // The unique key on (account_id, security_id) stops two *inserts*, and the
+      // row lock PostgreSQL takes during an UPDATE serializes the physical
+      // writes -- but the second request still wrote the quantity it had
+      // calculated from the value it read before waiting. 10 shares, concurrent
+      // buys of 1 and 2, and the holding ends at 12 instead of 13: one purchase
+      // and $100 of cost basis gone, with both trades committed (audit P4-006).
+      await lockHoldingScope(m, [accountId]);
+
       // Find existing holding
       let holding = await this.findByAccountAndSecurity(
         accountId,
@@ -320,6 +333,10 @@ export class HoldingsService {
     }
 
     return this.inScope(manager, async (m) => {
+      // Same lock namespace as createOrUpdate: a split multiplies the quantity
+      // it read, so a buy committing in between would be multiplied away.
+      await lockHoldingScope(m, [accountId]);
+
       const holding = await this.findByAccountAndSecurity(
         accountId,
         securityId,
@@ -375,6 +392,9 @@ export class HoldingsService {
     return this.inScope(manager, async (m) => {
       const repo = m.getRepository(Holding);
 
+      // Same lock namespace as createOrUpdate.
+      await lockHoldingScope(m, [accountId]);
+
       let holding = await this.findByAccountAndSecurity(
         accountId,
         securityId,
@@ -427,21 +447,39 @@ export class HoldingsService {
   }
 
   async remove(userId: string, id: string): Promise<void> {
-    const holding = await this.findOne(userId, id);
+    const outer = await this.findOne(userId, id);
 
-    // Only allow deletion if quantity is zero
-    if (Math.abs(Number(holding.quantity)) >= 0.0001) {
-      throw new ForbiddenException(
-        tr(
-          "errors.securities.cannotDeleteNonZeroHolding",
-          "Cannot delete holding with non-zero quantity",
-        ),
-      );
-    }
+    await withScopedDb(this.dataSource, async (m) => {
+      // "Quantity is zero" is a refusal, so it is checked against the row this
+      // statement is about to delete, under the lock every holdings writer
+      // takes. Checked outside, a buy committing in between would have its
+      // shares deleted by a request that had seen zero.
+      await lockHoldingScope(m, [outer.accountId]);
 
-    await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(Holding).remove(holding),
-    );
+      const holding = await m.getRepository(Holding).findOne({
+        where: { id },
+      });
+      if (!holding) {
+        throw new NotFoundException(
+          tr(
+            "errors.securities.holdingNotFound",
+            `Holding with ID ${id} not found`,
+            { id },
+          ),
+        );
+      }
+
+      if (Math.abs(Number(holding.quantity)) >= 0.0001) {
+        throw new ForbiddenException(
+          tr(
+            "errors.securities.cannotDeleteNonZeroHolding",
+            "Cannot delete holding with non-zero quantity",
+          ),
+        );
+      }
+
+      await m.getRepository(Holding).remove(holding);
+    });
   }
 
   /**
@@ -686,6 +724,14 @@ export class HoldingsService {
   ): Promise<void> {
     if (accountIds.length === 0) return;
 
+    // Same lock namespace as the incremental mutators, taken before the ledger
+    // is read. A rebuild replays investment_transactions and replaces the
+    // holdings derived from them, so the thing it must not lose is a *trade* --
+    // an insert into investment_transactions, which no holdings row locks. Only
+    // an account-level lock shared with the trade path serializes the two
+    // (audit P4-006).
+    await lockHoldingScope(manager, accountIds);
+
     // Only brokerage / standalone investment accounts track holdings; the cash
     // sleeve of an investment account is excluded everywhere else, so it must be
     // excluded here too or its rows would be deleted but never rebuilt.
@@ -765,37 +811,48 @@ export class HoldingsService {
     holdingsUpdated: number;
     holdingsDeleted: number;
   }> {
-    // M14: Get all investment accounts (brokerage + standalone) for the user
-    const investmentAccounts = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(Account).find({
+    const cutoff = asOfDate ?? this.serverToday();
+
+    // Account discovery, the ledger read, the delete and the recreate all in ONE
+    // transaction, with the account lock taken first.
+    //
+    // Reading the accounts and the ledger in separate transactions and writing
+    // in a third made this idempotent only against an unchanged ledger: a trade
+    // committing after the ledger read was replaced by a snapshot that never saw
+    // it, so the rebuild *deleted* a holding the trade had just updated (audit
+    // P4-006). The lock is the same one createOrUpdate takes, which is what
+    // makes the two protocols exclusive rather than merely both careful.
+    let holdingsDeleted = 0;
+    let holdingsCreated = 0;
+
+    await withScopedDb(this.dataSource, async (m) => {
+      // M14: Get all investment accounts (brokerage + standalone) for the user
+      const investmentAccounts = await m.getRepository(Account).find({
         where: {
           userId,
           accountType: AccountType.INVESTMENT,
         },
-      }),
-    );
+      });
 
-    // Include brokerage accounts and standalone investment accounts (null subType)
-    const eligibleAccounts = investmentAccounts.filter(
-      (a) =>
-        a.accountSubType === AccountSubType.INVESTMENT_BROKERAGE ||
-        !a.accountSubType,
-    );
+      // Include brokerage accounts and standalone investment accounts (null subType)
+      const eligibleAccounts = investmentAccounts.filter(
+        (a) =>
+          a.accountSubType === AccountSubType.INVESTMENT_BROKERAGE ||
+          !a.accountSubType,
+      );
 
-    if (eligibleAccounts.length === 0) {
-      return { holdingsCreated: 0, holdingsUpdated: 0, holdingsDeleted: 0 };
-    }
+      if (eligibleAccounts.length === 0) return;
 
-    const brokerageAccountIds = eligibleAccounts.map((a) => a.id);
+      const brokerageAccountIds = eligibleAccounts.map((a) => a.id);
+      await lockHoldingScope(m, brokerageAccountIds);
 
-    // Get all investment transactions for these accounts up to the cutoff date,
-    // ordered by date. Future-dated transactions are excluded so they don't
-    // affect current holdings. Callers materializing matured transactions (the
-    // hourly cron) pass the user's timezone-correct "today" so a transfer dated
-    // today in a timezone ahead of the server isn't wrongly treated as future.
-    const cutoff = asOfDate ?? this.serverToday();
-    const transactions = await withScopedDb(this.dataSource, (m) =>
-      m.getRepository(InvestmentTransaction).find({
+      // Get all investment transactions for these accounts up to the cutoff
+      // date, ordered by date. Future-dated transactions are excluded so they
+      // don't affect current holdings. Callers materializing matured
+      // transactions (the hourly cron) pass the user's timezone-correct "today"
+      // so a transfer dated today in a timezone ahead of the server isn't
+      // wrongly treated as future.
+      const transactions = await m.getRepository(InvestmentTransaction).find({
         where: {
           userId,
           accountId: In(brokerageAccountIds),
@@ -805,18 +862,11 @@ export class HoldingsService {
           transactionDate: "ASC",
           createdAt: "ASC",
         },
-      }),
-    );
+      });
 
-    // Rebuild holdings from transactions
-    // Map: accountId -> securityId -> { quantity, totalCost }
-    const holdingsMap = this.computeHoldingsMap(transactions);
+      // Map: accountId -> securityId -> { quantity, totalCost }
+      const holdingsMap = this.computeHoldingsMap(transactions);
 
-    // Wrap delete-all + rebuild in a transaction for atomicity
-    let holdingsDeleted = 0;
-    let holdingsCreated = 0;
-
-    await withScopedDb(this.dataSource, async (m) => {
       // Delete all existing holdings for these accounts
       const existingHoldings = await m.find(Holding, {
         where: { accountId: In(brokerageAccountIds) },
@@ -945,6 +995,10 @@ export class HoldingsService {
       }
 
       const brokerageAccountIds = brokerageAccounts.map((a) => a.id);
+      // Same lock namespace: a wipe racing a trade would otherwise delete a
+      // holding the trade just wrote, leaving the ledger and the holdings
+      // disagreeing with no rebuild scheduled.
+      await lockHoldingScope(m, brokerageAccountIds);
 
       // Delete all holdings for these accounts
       const holdingsRepo = m.getRepository(Holding);
