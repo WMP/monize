@@ -8,6 +8,7 @@ import { AutoBackupSettings } from "../backup/entities/auto-backup-settings.enti
 import { EmergencyAccessSettings } from "../emergency-access/entities/emergency-access-settings.entity";
 import { getRequestContext } from "../common/request-context";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import { createJobClaimMock } from "../test-helpers/job-claim-testing";
 
 /**
  * RLS smoke for the R7 modules' out-of-request entry points (task R7).
@@ -79,6 +80,7 @@ describe("R7 modules RLS context smoke (real withScopedDb)", () => {
       {} as never,
       { get: jest.fn() } as never,
       {} as never,
+      createJobClaimMock() as never,
     );
 
     await service.runDailyCheck();

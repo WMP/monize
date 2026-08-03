@@ -126,12 +126,22 @@ describe("MnyStagingService", () => {
   });
 
   describe("findInfo", () => {
-    it("scopes the lookup to the caller", async () => {
+    it("scopes the lookup to the caller and excludes expired rows", async () => {
       await service.findInfo("user-1", "staged-1");
 
-      expect(repo.findOne).toHaveBeenCalledWith({
-        where: { id: "staged-1", userId: "user-1" },
-      });
+      const conditions = [
+        ...(builder.where as jest.Mock).mock.calls,
+        ...(builder.andWhere as jest.Mock).mock.calls,
+      ].map((call) => String(call[0]));
+      expect(conditions.join(" ")).toContain("file.id = :id");
+      expect(conditions.join(" ")).toContain("file.user_id = :userId");
+      // The regression guard for P4-016 / DOC-04-03: the comment claimed expired
+      // rows were absent while the query filtered only by id and user, so a file
+      // past its TTL could still start an import -- and then be swept away
+      // before the worker loaded its bytes.
+      expect(conditions.join(" ")).toContain(
+        "file.expires_at >= CURRENT_TIMESTAMP",
+      );
     });
 
     it("returns null when the row is gone", async () => {
@@ -139,7 +149,7 @@ describe("MnyStagingService", () => {
     });
 
     it("maps a bigint size back to a number", async () => {
-      repo.findOne.mockResolvedValue({
+      (builder.getOne as jest.Mock).mockResolvedValue({
         id: "staged-1",
         filename: "finances.mny",
         sourceFormat: "mny",
@@ -151,6 +161,25 @@ describe("MnyStagingService", () => {
       const info = await service.findInfo("user-1", "staged-1");
 
       expect(info?.sizeBytes).toBe(1048576);
+    });
+  });
+
+  describe("sweepExpiredFiles", () => {
+    it("excludes staged files an active job still needs", async () => {
+      repo.createQueryBuilder.mockReturnValue(builder);
+
+      await service.sweepExpiredFiles();
+
+      const conditions = [
+        ...(builder.where as jest.Mock).mock.calls,
+        ...(builder.andWhere as jest.Mock).mock.calls,
+      ].map((call) => String(call[0]));
+      expect(conditions.join(" ")).toContain("expires_at < CURRENT_TIMESTAMP");
+      // The other half of P4-016: expiry alone deleted the bytes out from under
+      // a pending or running import. The FK is ON DELETE SET NULL, so the job
+      // survived and failed partway through with a missing-file error.
+      expect(conditions.join(" ")).toContain("NOT EXISTS");
+      expect(conditions.join(" ")).toContain("'pending', 'running'");
     });
   });
 

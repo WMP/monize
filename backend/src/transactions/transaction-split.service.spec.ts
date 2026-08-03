@@ -11,9 +11,20 @@ import {
   createScopedDbMocks,
   DataSourceMock,
 } from "../test-helpers/scoped-db-testing";
+import { lockTransactionRow } from "../common/db/locks";
+import {
+  lockedTransactionRow,
+  stubLockedTransactions,
+} from "../test-helpers/locks-testing";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
+);
+
+// `addSplit` and `updateSplits` now validate against the parent row they lock,
+// not against the entity the caller passed. See test-helpers/locks-testing.
+jest.mock("../common/db/locks", () =>
+  jest.requireActual("../test-helpers/locks-testing").locksMockModule(),
 );
 
 jest.mock("../common/date-utils", () => ({
@@ -44,6 +55,32 @@ describe("TransactionSplitService", () => {
     isSplit: true,
     categoryId: null,
   };
+
+  /**
+   * Make the locked parent row the service reads inside its transaction agree
+   * with the entity this test hands in.
+   *
+   * The service deliberately no longer trusts the caller's copy -- the split-sum
+   * validation has to run against the parent amount the write is serialized
+   * against (P4-009) -- so a spec has to say what the committed row holds.
+   */
+  function lockParent(transaction: Partial<Transaction>): void {
+    stubLockedTransactions(
+      {
+        lockTransactionRow: lockTransactionRow as jest.Mock,
+        lockTransactionRows: jest.fn(),
+      },
+      [
+        lockedTransactionRow({
+          id: transaction.id ?? "tx-1",
+          accountId: transaction.accountId ?? "account-1",
+          amount: Number(transaction.amount ?? 0),
+          transactionDate: String(transaction.transactionDate ?? "2026-01-15"),
+          isSplit: transaction.isSplit ?? false,
+        }),
+      ],
+    );
+  }
 
   const mockSplit: Partial<TransactionSplit> = {
     id: "split-1",
@@ -578,6 +615,7 @@ describe("TransactionSplitService", () => {
   describe("updateSplits", () => {
     it("validates, deletes old splits, creates new splits, and marks transaction as split", async () => {
       const transaction = { ...mockTransaction } as Transaction;
+      lockParent(transaction);
       const newSplits = [
         { amount: -70, categoryId: "cat-1" },
         { amount: -30, categoryId: "cat-2" },
@@ -608,6 +646,7 @@ describe("TransactionSplitService", () => {
 
     it("throws when splits fail validation", async () => {
       const transaction = { ...mockTransaction } as Transaction;
+      lockParent(transaction);
       const invalidSplits = [
         { amount: -50, categoryId: "cat-1" },
         { amount: -30, categoryId: "cat-2" },
@@ -620,6 +659,7 @@ describe("TransactionSplitService", () => {
 
     it("deletes transfer linked transactions before replacing splits", async () => {
       const transaction = { ...mockTransaction } as Transaction;
+      lockParent(transaction);
       const oldTransferSplit = {
         id: "old-split",
         transactionId: "tx-1",
@@ -657,6 +697,7 @@ describe("TransactionSplitService", () => {
   describe("addSplit", () => {
     it("adds a category split to an existing split transaction", async () => {
       const transaction = { ...mockTransaction, isSplit: true } as Transaction;
+      lockParent(transaction);
       const existingSplits = [
         { ...mockSplit, amount: -60 },
         { ...mockSplit2, amount: -30 },
@@ -698,6 +739,7 @@ describe("TransactionSplitService", () => {
 
     it("throws when adding split would exceed transaction amount", async () => {
       const transaction = { ...mockTransaction, amount: -100 } as Transaction;
+      lockParent(transaction);
       const existingSplits = [{ ...mockSplit, amount: -90 }];
 
       splitsRepository.find.mockResolvedValue(existingSplits);
@@ -717,6 +759,7 @@ describe("TransactionSplitService", () => {
         isSplit: false,
         amount: -100,
       } as Transaction;
+      lockParent(transaction);
       const existingSplits = [{ ...mockSplit, amount: -60 }];
 
       splitsRepository.find.mockResolvedValue(existingSplits);
@@ -751,6 +794,7 @@ describe("TransactionSplitService", () => {
         isSplit: true,
         amount: -100,
       } as Transaction;
+      lockParent(transaction);
       const existingSplits = [
         { ...mockSplit, amount: -40 },
         { ...mockSplit2, amount: -30 },
@@ -786,6 +830,7 @@ describe("TransactionSplitService", () => {
         amount: -100,
         payeeName: "My Transfer",
       } as Transaction;
+      lockParent(transaction);
       const existingSplits = [{ ...mockSplit, amount: -60 }];
 
       splitsRepository.find.mockResolvedValue(existingSplits);
@@ -851,6 +896,7 @@ describe("TransactionSplitService", () => {
         isSplit: true,
         amount: -100,
       } as Transaction;
+      lockParent(transaction);
 
       splitsRepository.find.mockResolvedValue([{ ...mockSplit, amount: -60 }]);
       splitsRepository.save.mockResolvedValue({
@@ -873,6 +919,7 @@ describe("TransactionSplitService", () => {
   describe("removeSplit", () => {
     it("removes a category split from a transaction with more than 2 splits", async () => {
       const transaction = { ...mockTransaction } as Transaction;
+      lockParent(transaction);
       const splitToRemove = {
         ...mockSplit,
         linkedTransactionId: null,
@@ -904,6 +951,7 @@ describe("TransactionSplitService", () => {
 
     it("throws NotFoundException when split not found", async () => {
       const transaction = { ...mockTransaction } as Transaction;
+      lockParent(transaction);
       splitsRepository.findOne.mockResolvedValue(null);
 
       await expect(
@@ -913,6 +961,7 @@ describe("TransactionSplitService", () => {
 
     it("removes linked transaction for transfer split", async () => {
       const transaction = { ...mockTransaction } as Transaction;
+      lockParent(transaction);
       const transferSplit = {
         id: "split-1",
         transactionId: "tx-1",
@@ -956,6 +1005,7 @@ describe("TransactionSplitService", () => {
 
     it("collapses to non-split when only 1 split remains (category)", async () => {
       const transaction = { ...mockTransaction } as Transaction;
+      lockParent(transaction);
       const splitToRemove = {
         ...mockSplit,
         linkedTransactionId: null,
@@ -986,6 +1036,7 @@ describe("TransactionSplitService", () => {
 
     it("collapses to non-split and removes linked transaction when last split is a transfer", async () => {
       const transaction = { ...mockTransaction } as Transaction;
+      lockParent(transaction);
       const splitToRemove = {
         ...mockSplit,
         linkedTransactionId: null,
@@ -1028,6 +1079,7 @@ describe("TransactionSplitService", () => {
 
     it("sets isSplit false when no splits remain", async () => {
       const transaction = { ...mockTransaction } as Transaction;
+      lockParent(transaction);
       const splitToRemove = {
         ...mockSplit,
         linkedTransactionId: null,
@@ -1046,6 +1098,7 @@ describe("TransactionSplitService", () => {
 
     it("handles linked transaction not found gracefully for transfer split removal", async () => {
       const transaction = { ...mockTransaction } as Transaction;
+      lockParent(transaction);
       const transferSplit = {
         id: "split-1",
         transactionId: "tx-1",
@@ -1523,6 +1576,7 @@ describe("TransactionSplitService", () => {
 
     it("rejects adding an investment split via addSplit", async () => {
       const transaction = { ...mockTransaction, isSplit: true } as Transaction;
+      lockParent(transaction);
       await expect(
         service.addSplit(
           transaction,

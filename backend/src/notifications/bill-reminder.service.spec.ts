@@ -9,12 +9,20 @@ import { ScheduledTransactionOverride } from "../scheduled-transactions/entities
 import { User } from "../users/entities/user.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  createJobClaimMock,
+  JobClaimMock,
+  jobClaimProvider,
+} from "../test-helpers/job-claim-testing";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
 
 describe("BillReminderService", () => {
+
+  /** Wins every claim, matching the pre-claim behaviour these specs describe. */
+  const jobClaims: JobClaimMock = createJobClaimMock();
   let service: BillReminderService;
   let scheduledTransactionsRepo: Record<string, jest.Mock>;
   let usersRepo: Record<string, jest.Mock>;
@@ -53,6 +61,7 @@ describe("BillReminderService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BillReminderService,
+        jobClaimProvider(jobClaims),
         { provide: DataSource, useValue: dataSource },
         { provide: EmailService, useValue: emailService },
         { provide: ConfigService, useValue: configService },

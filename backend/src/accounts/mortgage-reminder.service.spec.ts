@@ -12,8 +12,16 @@ import { Account, AccountType } from "./entities/account.entity";
 import { User } from "../users/entities/user.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { EmailService } from "../notifications/email.service";
+import {
+  createJobClaimMock,
+  JobClaimMock,
+  jobClaimProvider,
+} from "../test-helpers/job-claim-testing";
 
 describe("MortgageReminderService", () => {
+
+  /** Wins every claim, matching the pre-claim behaviour these specs describe. */
+  const jobClaims: JobClaimMock = createJobClaimMock();
   let service: MortgageReminderService;
   let accountsRepository: Record<string, jest.Mock>;
   let usersRepository: Record<string, jest.Mock>;
@@ -83,6 +91,7 @@ describe("MortgageReminderService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MortgageReminderService,
+        jobClaimProvider(jobClaims),
         { provide: DataSource, useValue: dataSource },
         { provide: EmailService, useValue: emailService },
         { provide: ConfigService, useValue: configService },

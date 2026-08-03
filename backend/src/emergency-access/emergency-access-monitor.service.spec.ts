@@ -11,12 +11,23 @@ import { User } from "../users/entities/user.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { getRequestContext } from "../common/request-context";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  createJobClaimMock,
+  JobClaimMock,
+  jobClaimProvider,
+} from "../test-helpers/job-claim-testing";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
 
 describe("EmergencyAccessMonitorService", () => {
+
+  /** Wins every claim, matching the pre-claim behaviour these specs describe. */
+  const jobClaims: JobClaimMock = createJobClaimMock();
+  /** Whether the conditional grant-claim UPDATE returns a row this run. */
+  let grantClaimWins: boolean;
+  let scopedManagerQuery: jest.Mock;
   let service: EmergencyAccessMonitorService;
   let settingsRepo: Record<string, jest.Mock>;
   let contactsRepo: Record<string, jest.Mock>;
@@ -36,6 +47,15 @@ describe("EmergencyAccessMonitorService", () => {
     settingsRepo = {
       find: jest.fn().mockResolvedValue([]),
       save: jest.fn(),
+      // grantedAt / lastReminderSentAt are now written with targeted UPDATEs
+      // rather than by re-saving the entity the sweep read, so a concurrent
+      // settings change is not reverted by a bookkeeping write.
+      createQueryBuilder: jest.fn(() => ({
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ affected: 1 }),
+      })),
     };
     contactsRepo = {
       find: jest.fn().mockResolvedValue([]),
@@ -71,12 +91,25 @@ describe("EmergencyAccessMonitorService", () => {
       [User, usersRepo as never],
       [UserPreference, prefsRepo as never],
     ]);
+    // The grant transition is claimed with a conditional UPDATE ... RETURNING,
+    // so exactly one replica may issue tokens (audit P4-014). The default is
+    // "this process won the claim", which is what the pre-claim specs describe;
+    // `losesGrantClaim()` below is the other side.
+    grantClaimWins = true;
+    scopedManagerQuery = scoped.manager.query;
+    scoped.manager.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("UPDATE emergency_access_settings")) {
+        return grantClaimWins ? [[{ owner_user_id: "claimed" }], 1] : [[], 0];
+      }
+      return [];
+    });
     const dataSource = scoped.dataSource;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         { provide: DataSource, useValue: dataSource },
         EmergencyAccessMonitorService,
+        jobClaimProvider(jobClaims),
         { provide: EmailService, useValue: emailService },
         { provide: AiEncryptionService, useValue: encryption },
         { provide: ConfigService, useValue: configService },
@@ -141,7 +174,24 @@ describe("EmergencyAccessMonitorService", () => {
     const [to, subject] = emailService.sendMail.mock.calls[0];
     expect(to).toBe("owner@example.com");
     expect(subject).toContain("10");
-    expect(settingsRepo.save).toHaveBeenCalled();
+    // The daily rule is a durable claim now, not a read-then-write of
+    // lastReminderSentAt: two replicas both passed that check and both emailed.
+    expect(jobClaims.claimOnce).toHaveBeenCalledWith(
+      "emergency_access_reminder",
+      userId,
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    );
+    // And the timestamp is written with a targeted UPDATE, not by re-saving the
+    // settings row the sweep read.
+    expect(settingsRepo.createQueryBuilder).toHaveBeenCalled();
+  });
+
+  it("does not send the reminder when another replica claimed the day", async () => {
+    jobClaims.claimOnce.mockResolvedValueOnce(false);
+
+    await service.runDailyCheck();
+
+    expect(emailService.sendMail).not.toHaveBeenCalled();
   });
 
   it("issues a grant token + email to every contact once grantAfterDays is reached", async () => {
@@ -175,7 +225,24 @@ describe("EmergencyAccessMonitorService", () => {
     expect(recipients).toEqual(["carol@example.com", "dave@example.com"]);
     expect(contactsRepo.save).toHaveBeenCalledTimes(2);
     expect(contactsRepo.save.mock.calls[0][0].claimTokenHash).toBeTruthy();
-    expect(settings.grantedAt).toBeInstanceOf(Date);
+    // grantedAt is set by the conditional claim UPDATE, before any token is
+    // generated -- not by saving the entity after the emails went out. That
+    // ordering is the fix: two replicas both saw null and both sent, and only
+    // the last token hash written was still valid (audit P4-014).
+    const claimSql = scopedManagerQuery.mock.calls
+      .map((c) => String(c[0]))
+      .find((sql) => sql.includes("UPDATE emergency_access_settings"));
+    expect(claimSql).toContain("granted_at IS NULL");
+    expect(claimSql).toContain("RETURNING");
+  });
+
+  it("issues nothing when another replica won the grant claim", async () => {
+    grantClaimWins = false;
+
+    await service.runDailyCheck();
+
+    expect(contactsRepo.save).not.toHaveBeenCalled();
+    expect(emailService.sendMail).not.toHaveBeenCalled();
   });
 
   it("does not re-issue grants once granted_at is set", async () => {
@@ -709,9 +776,9 @@ describe("EmergencyAccessMonitorService", () => {
 
     // Outstanding links voided, grant state re-armed, owner emailed.
     expect(execute).toHaveBeenCalledTimes(1);
-    expect(settings.grantedAt).toBeNull();
-    expect(settings.lastReminderSentAt).toBeNull();
-    expect(settingsRepo.save).toHaveBeenCalledWith(settings);
+    // Re-armed with a targeted UPDATE rather than by re-saving the snapshot the
+    // sweep read, so a setting the owner changed in the meantime survives.
+    expect(settingsRepo.createQueryBuilder).toHaveBeenCalled();
     expect(emailService.sendMail).toHaveBeenCalledTimes(1);
     const [to, subject] = emailService.sendMail.mock.calls[0];
     expect(to).toBe("owner@example.com");
