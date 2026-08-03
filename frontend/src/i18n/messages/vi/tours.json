@@ -231,11 +231,11 @@
         }
       },
       "gemStrategy": {
-        "title": "Chiến lược GEM: từ thiết lập đến bước tiếp theo",
+        "title": "GEM: quy tắc chọn một công cụ cho mỗi kỳ",
         "steps": {
           "welcome": {
             "title": "Làm quen với chiến lược GEM",
-            "body": "GEM là cách chọn một khoản đầu tư duy nhất cho kỳ tới dựa trên các quy tắc. GEM so sánh biến động giá gần đây và cho thấy các quy tắc đó chỉ tới đâu. GEM không mua, không bán và không chuyển tiền thay bạn. Những công cụ nêu làm ví dụ không phải lời khuyên đầu tư dành riêng cho bạn. Phần hướng dẫn này giải thích báo cáo và thiết lập của nó bằng lời lẽ thường ngày."
+            "body": "Mỗi tháng hoặc mỗi quý một lần, GEM so sánh diễn biến của ba thị trường cổ phiếu và một tài sản an toàn, rồi nêu ra công cụ duy nhất nên giữ cho tới lần kiểm tra kế tiếp. Nếu cổ phiếu không vượt chuẩn phi rủi ro, GEM nêu tài sản an toàn. Monize không mua, không bán và không chuyển tiền thay bạn, còn những công cụ được nêu chỉ là ví dụ, không phải lời khuyên đầu tư dành riêng cho bạn."
           },
           "findReport": {
             "title": "Tìm GEM trong Báo cáo",

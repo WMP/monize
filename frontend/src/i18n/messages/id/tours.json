@@ -231,11 +231,11 @@
         }
       },
       "gemStrategy": {
-        "title": "Strategi GEM: dari pengaturan sampai langkah berikutnya",
+        "title": "GEM: aturan yang memilih satu instrumen per periode",
         "steps": {
           "welcome": {
             "title": "Mengenal strategi GEM",
-            "body": "GEM adalah cara berbasis aturan untuk memilih satu investasi bagi periode berikutnya. GEM membandingkan perubahan harga terkini dan menunjukkan ke mana aturan itu mengarah. GEM tidak membeli, menjual, atau memindahkan uang untuk Anda. Instrumen yang ditampilkan sebagai contoh bukan nasihat investasi pribadi. Tur ini menjelaskan laporan dan pengaturannya dengan bahasa sehari-hari."
+            "body": "Sebulan atau sekuartal sekali, GEM membandingkan pergerakan tiga pasar saham dan satu aset aman, lalu menyebut satu instrumen yang perlu dipegang sampai pemeriksaan berikutnya. Jika saham tidak mengalahkan tolok ukur bebas risiko, GEM menyebut aset aman. Monize tidak membeli, menjual, atau memindahkan uang untuk Anda, dan instrumen yang ditampilkan adalah contoh, bukan nasihat investasi pribadi."
           },
           "findReport": {
             "title": "Temukan GEM di Laporan",

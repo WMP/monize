@@ -231,11 +231,11 @@
         }
       },
       "gemStrategy": {
-        "title": "GEM stratejisi: ayarlardan sonraki adıma",
+        "title": "GEM: her dönem tek bir enstrüman seçen kurallar",
         "steps": {
           "welcome": {
             "title": "GEM stratejisiyle tanışın",
-            "body": "GEM, gelecek dönem için tek bir yatırım seçen, kurallara dayalı bir yöntemdir. Son fiyat değişimlerini karşılaştırır ve bu kuralların neyi gösterdiğini söyler. Sizin adınıza alım, satım ya da para transferi yapmaz. Örnek olarak gösterilen enstrümanlar kişiye özel yatırım tavsiyesi değildir. Bu tur, raporu ve ayarlarını gündelik dille anlatır."
+            "body": "GEM ayda bir ya da üç ayda bir, üç hisse piyasası ile bir güvenli varlığın nasıl hareket ettiğini karşılaştırır ve bir sonraki kontrole kadar tutulacak tek enstrümanı söyler. Hisseler risksiz ölçütü aşamazsa GEM onun yerine güvenli varlığı söyler. Monize sizin adınıza alım, satım ya da para transferi yapmaz ve gösterilen enstrümanlar örnektir, kişiye özel yatırım tavsiyesi değildir."
           },
           "findReport": {
             "title": "GEM'i Raporlar altında bulun",

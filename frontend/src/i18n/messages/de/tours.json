@@ -231,11 +231,11 @@
         }
       },
       "gemStrategy": {
-        "title": "GEM-Strategie: von der Einrichtung bis zum nächsten Schritt",
+        "title": "GEM: Regeln, die je Zeitraum ein Instrument wählen",
         "steps": {
           "welcome": {
             "title": "Die GEM-Strategie kennenlernen",
-            "body": "GEM ist ein regelbasiertes Verfahren, das für den nächsten Zeitraum eine einzige Anlage auswählt. Es vergleicht die jüngsten Kursveränderungen und zeigt, worauf diese Regeln hindeuten. Es kauft, verkauft und überweist nichts für Sie. Die als Beispiel gezeigten Instrumente sind keine persönliche Anlageempfehlung. Diese Tour erklärt den Bericht und seine Einstellungen in Alltagssprache."
+            "body": "Einmal im Monat oder im Quartal vergleicht GEM, wie sich drei Aktienmärkte und ein sicheres Anlagegut entwickelt haben, und nennt dann das einzige Instrument, das bis zur nächsten Prüfung zu halten wäre. Schlagen Aktien den risikofreien Vergleichsmaßstab nicht, nennt GEM stattdessen das sichere Anlagegut. Monize kauft, verkauft und überweist nichts für Sie, und die gezeigten Instrumente sind Beispiele, keine persönliche Anlageempfehlung."
           },
           "findReport": {
             "title": "GEM unter Berichte finden",

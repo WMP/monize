@@ -231,11 +231,11 @@
         }
       },
       "gemStrategy": {
-        "title": "Strategia GEM: od ustawień do kolejnego kroku",
+        "title": "GEM: reguły wybierają jeden instrument na okres",
         "steps": {
           "welcome": {
             "title": "Poznaj strategię GEM",
-            "body": "GEM to strategia oparta na regułach, która na kolejny okres wybiera jeden instrument inwestycyjny. Porównuje ostatnie zmiany cen i pokazuje, co wynika z przyjętych reguł. Nie kupuje, nie sprzedaje ani nie przenosi pieniędzy. Pokazane instrumenty są przykładami, a nie indywidualną poradą inwestycyjną. Ten przewodnik prostym językiem wyjaśni raport i jego ustawienia."
+            "body": "Raz w miesiącu lub raz na kwartał GEM porównuje, jak zmieniły się trzy rynki akcji i jedno aktywo bezpieczne, a potem wskazuje jeden instrument do utrzymania do następnej oceny. Jeśli akcje nie wypadają lepiej niż punkt odniesienia wolny od ryzyka, wskazuje aktywo bezpieczne. Monize nie kupuje, nie sprzedaje ani nie przenosi pieniędzy, a pokazane instrumenty są przykładami, nie indywidualną poradą inwestycyjną."
           },
           "findReport": {
             "title": "Znajdź GEM w Raportach",

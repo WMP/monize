@@ -231,11 +231,11 @@
         }
       },
       "gemStrategy": {
-        "title": "Stratégie GEM : des réglages à la prochaine étape",
+        "title": "GEM : des règles qui choisissent un instrument par période",
         "steps": {
           "welcome": {
             "title": "Découvrir la stratégie GEM",
-            "body": "GEM est une méthode fondée sur des règles qui choisit un seul placement pour la période à venir. Elle compare les variations de cours récentes et montre ce que ces règles désignent. Elle n'achète pas, ne vend pas et ne déplace pas d'argent à votre place. Les instruments présentés en exemple ne constituent pas un conseil en investissement personnalisé. Cette visite explique le rapport et ses réglages en langage courant."
+            "body": "Une fois par mois ou par trimestre, GEM compare l'évolution de trois marchés actions et d'un actif sûr, puis désigne le seul instrument à détenir jusqu'à la prochaine vérification. Si les actions ne battent pas la référence sans risque, GEM désigne l'actif sûr. Monize n'achète pas, ne vend pas et ne déplace pas d'argent à votre place, et les instruments présentés sont des exemples, pas un conseil en investissement personnalisé."
           },
           "findReport": {
             "title": "Trouver GEM dans Rapports",

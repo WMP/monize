@@ -231,11 +231,11 @@
         }
       },
       "gemStrategy": {
-        "title": "[XX-GEM strategy: from setup to next action-XX]",
+        "title": "[XX-GEM: rules that pick one investment per period-XX]",
         "steps": {
           "welcome": {
             "title": "[XX-Meet the GEM strategy-XX]",
-            "body": "[XX-GEM is a rules-based way to choose one investment for the next period. It compares recent price changes and shows what those rules point to. It does not buy, sell, or move money for you. The instruments shown as examples are not personal investment advice. This tour explains the report and its settings in everyday language.-XX]"
+            "body": "[XX-Once a month or quarter, GEM compares how three share markets and one safe asset have moved, then names the single instrument to hold until the next check. If shares are not beating a risk-free yardstick, it names the safe asset instead. Monize does not buy, sell, or move money for you, and the instruments shown are examples, not personal investment advice.-XX]"
           },
           "findReport": {
             "title": "[XX-Find GEM under Reports-XX]",

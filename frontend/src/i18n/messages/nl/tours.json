@@ -231,11 +231,11 @@
         }
       },
       "gemStrategy": {
-        "title": "GEM-strategie: van instellingen tot de volgende stap",
+        "title": "GEM: regels die per periode één instrument kiezen",
         "steps": {
           "welcome": {
             "title": "Maak kennis met de GEM-strategie",
-            "body": "GEM is een op regels gebaseerde manier om één belegging voor de komende periode te kiezen. Het vergelijkt recente koersveranderingen en laat zien waar die regels op wijzen. Het koopt, verkoopt of verplaatst geen geld voor je. De instrumenten die als voorbeeld worden genoemd zijn geen persoonlijk beleggingsadvies. Deze rondleiding legt het rapport en de instellingen uit in gewone taal."
+            "body": "Eens per maand of kwartaal vergelijkt GEM hoe drie aandelenmarkten en één veilige belegging zich hebben bewogen, en noemt dan het enige instrument om aan te houden tot de volgende controle. Verslaan aandelen de risicovrije maatstaf niet, dan noemt GEM de veilige belegging. Monize koopt, verkoopt of verplaatst geen geld voor je, en de genoemde instrumenten zijn voorbeelden, geen persoonlijk beleggingsadvies."
           },
           "findReport": {
             "title": "GEM vinden onder Rapporten",

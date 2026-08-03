@@ -231,11 +231,11 @@
         }
       },
       "gemStrategy": {
-        "title": "Strategia GEM: dalle impostazioni al passo successivo",
+        "title": "GEM: regole che scelgono uno strumento per periodo",
         "steps": {
           "welcome": {
             "title": "Conoscere la strategia GEM",
-            "body": "GEM è un metodo basato su regole che sceglie un solo investimento per il periodo successivo. Confronta le variazioni di prezzo recenti e mostra dove portano quelle regole. Non compra, non vende e non sposta denaro per te. Gli strumenti mostrati come esempio non sono consulenza finanziaria personalizzata. Questo tour spiega il report e le sue impostazioni con parole di tutti i giorni."
+            "body": "Una volta al mese o al trimestre, GEM confronta come si sono mossi tre mercati azionari e un'attività sicura, poi indica l'unico strumento da tenere fino al controllo successivo. Se le azioni non battono il riferimento privo di rischio, GEM indica l'attività sicura. Monize non compra, non vende e non sposta denaro per te, e gli strumenti mostrati sono esempi, non consulenza finanziaria personalizzata."
           },
           "findReport": {
             "title": "Trovare GEM nei Report",
