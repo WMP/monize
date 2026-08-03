@@ -2,10 +2,14 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@/test/render';
 import { GroupedHoldingsList } from './GroupedHoldingsList';
 
-vi.mock('@heroicons/react/24/outline', () => ({
-  ChevronDownIcon: () => <span data-testid="chevron-down" />,
-  ChevronRightIcon: () => <span data-testid="chevron-right" />,
-}));
+vi.mock('@heroicons/react/24/outline', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    ChevronDownIcon: () => <span data-testid="chevron-down" />,
+    ChevronRightIcon: () => <span data-testid="chevron-right" />,
+  };
+});
 
 vi.mock('@/hooks/useNumberFormat', () => ({
   useNumberFormat: () => ({

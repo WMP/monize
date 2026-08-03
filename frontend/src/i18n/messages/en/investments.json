@@ -48,9 +48,9 @@
     "netInvested": "Net Invested",
     "netInvestedTooltip": "The net amount of your own money deposited into your investment accounts. This is total contributions minus withdrawals, excluding any investment gains, dividends, or interest earned.",
     "costBasis": "Cost Basis",
-    "costBasisTooltip": "The total amount you originally paid to acquire your investments, including purchase prices and transaction fees. Used to calculate your gains and losses.",
+    "costBasisTooltip": "What your current holdings cost to acquire, rebuilt from your transaction history: purchase prices plus the commission charged on each purchase, each converted at the rate of the trade that paid for it. Shown in your display currency. Used to calculate gains and losses.",
     "gainLoss": "Gain/Loss",
-    "gainLossTooltip": "Unrealized gain or loss on your current holdings: Market Value minus Cost Basis. Does not include realized gains from past sales or income received.",
+    "gainLossTooltip": "Unrealized gain or loss on your current holdings: market value at today's prices minus the cost basis above. Does not include realized gains from past sales, or dividends and interest received.",
     "returns": "Returns",
     "simpleReturn": "Simple Return",
     "simpleReturnTooltip": "Total percentage gain or loss on your holdings, calculated as (Market Value − Cost Basis) ÷ Cost Basis. Does not account for the timing of contributions or withdrawals.",
@@ -106,8 +106,10 @@
     "avgCostColumn": "Avg Cost",
     "priceColumn": "Price",
     "costBasisColumn": "Cost Basis",
+    "costBasisColumnTooltip": "Quantity times average cost per share, in the security's own currency. Purchase commissions are not part of the average cost, so this figure can be lower than the portfolio Cost Basis above, which is rebuilt from your transaction history with commissions included.",
     "mktValueColumn": "Mkt Value",
     "gainLossColumn": "Gain/Loss",
+    "gainLossColumnTooltip": "Market value minus the cost basis in this row, so it follows the same commission-free average cost.",
     "portfolioPercentColumn": "% Port"
   },
   "investmentValueChart": {
@@ -250,7 +252,10 @@
     "toastAvailableShares": "Only {available} shares available to transfer",
     "toastSplitRatioRequired": "Split ratio must be greater than zero",
     "toastPairedLegError": "Could not load the paired transfer leg; reopen and try again",
-    "toastSaveFailed": "Failed to save transaction"
+    "toastSaveFailed": "Failed to save transaction",
+    "exchangeRateUnresolved": "No {from} to {to} rate is available. Enter one, or the converted total, before saving.",
+    "toastExchangeRateRequired": "Enter an exchange rate before saving a cross-currency trade.",
+    "notAvailable": "Not available"
   },
   "newTransactionButton": {
     "label": "+ New Transaction",
