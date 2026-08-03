@@ -134,8 +134,8 @@ export class AuthService {
    * a first failed attempt.
    */
   private async incrementFailedAttempts(userId: string): Promise<number> {
-    const rows = await this.scoped(User, (repo) =>
-      repo.query(
+    const rows = await withScopedDb(this.dataSource, (manager) =>
+      manager.query(
         `UPDATE users
             SET failed_login_attempts = failed_login_attempts + 1
           WHERE id = $1

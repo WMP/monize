@@ -53,6 +53,7 @@ jest.mock("qrcode", () => ({
 describe("AuthService", () => {
   let service: AuthService;
   let scopedManager: Record<string, jest.Mock>;
+  let stageOneTokenFamily: () => void;
   let usersRepository: Record<string, jest.Mock>;
   let preferencesRepository: Record<string, jest.Mock>;
   let trustedDevicesRepository: Record<string, jest.Mock>;
@@ -95,7 +96,16 @@ describe("AuthService", () => {
       create: jest.fn(),
       save: jest.fn(),
       count: jest.fn(),
-      createQueryBuilder: jest.fn(),
+      // Successful login now always issues the counter reset as a guarded SQL
+      // UPDATE instead of gating it on the entity snapshot, so every login spec
+      // needs a builder -- not just the ones asserting on it.
+      createQueryBuilder: jest.fn(() => ({
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ affected: 1 }),
+      })),
     };
 
     preferencesRepository = {
@@ -138,6 +148,30 @@ describe("AuthService", () => {
       [RefreshToken, refreshTokensRepository as never],
     ]);
     scopedManager = scoped.manager;
+    // Two statements now reach the manager directly on ordinary paths: the SQL
+    // failed-attempt increment and the family-discovery SELECT in
+    // revokeAllUserRefreshTokens. Both are happy with an empty result unless a
+    // spec says otherwise.
+    scopedManager.query.mockResolvedValue([]);
+
+    /**
+     * `revokeAllUserRefreshTokens` discovers the user's families, locks them in
+     * ascending order, revokes, and repeats until a pass revokes nothing -- one
+     * bulk UPDATE cannot see a replacement a concurrent rotation inserted after
+     * its statement snapshot (audit P4-011). So a spec that expects the revoke to
+     * happen has to give it a family to find.
+     */
+    stageOneTokenFamily = () => {
+      let pass = 0;
+      scopedManager.query.mockImplementation(async (sql: string) => {
+        if (String(sql).includes("pg_advisory_xact_lock")) return [];
+        if (!String(sql).includes("DISTINCT family_id")) return [];
+        return pass++ === 0 ? [{ family_id: "family-1" }] : [];
+      });
+      refreshTokensRepository.update
+        .mockResolvedValueOnce({ affected: 1 })
+        .mockResolvedValue({ affected: 0 });
+    };
     dataSource = scoped.dataSource as unknown as Record<string, jest.Mock>;
 
     passwordBreachService = {
@@ -242,6 +276,9 @@ describe("AuthService", () => {
   }
 
   function installTransactionMock(txManager: Record<string, any>) {
+    // The family advisory lock goes through the manager, and it is taken before
+    // any row lock so rotation and revocation cannot deadlock (audit P4-011).
+    txManager.query ??= jest.fn().mockResolvedValue([]);
     txManager.getRepository ??= jest.fn((entity: unknown) => {
       if (entity === User) return usersRepository;
       if (entity === UserPreference) return preferencesRepository;
@@ -612,14 +649,34 @@ describe("AuthService", () => {
         update: jest.fn().mockReturnThis(),
         set: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
         execute: jest.fn().mockResolvedValue({ affected: 1 }),
       };
       usersRepository.createQueryBuilder.mockReturnValue(builder);
       return builder;
     }
 
+    /**
+     * The committed failed-attempt count the SQL increment returns.
+     *
+     * The lockout decision reads this, not `user.failedLoginAttempts + 1`: the
+     * old arithmetic sat across a ~100ms bcrypt comparison, so parallel attempts
+     * all read the same pre-hash value and all wrote the same `1` -- the counter
+     * grew at a fraction of the attempt rate and the account never locked
+     * (audit P4-012).
+     */
+    function stageFailedAttemptCount(committed: number) {
+      scopedManager.query.mockImplementation(async (sql: string) => {
+        if (String(sql).includes("failed_login_attempts + 1")) {
+          return [[{ failed_login_attempts: committed }], 1];
+        }
+        return [];
+      });
+    }
+
     it("returns token pair for valid credentials", async () => {
       const hashedPassword = await bcrypt.hash("ValidPass123!", 10);
+      mockLoginQueryBuilder();
       const user = { ...mockUser, passwordHash: hashedPassword };
       usersRepository.findOne.mockResolvedValue(user);
       preferencesRepository.findOne.mockResolvedValue(null);
@@ -818,9 +875,10 @@ describe("AuthService", () => {
       expect(result.accessToken).toBeDefined();
     });
 
-    it("increments failed attempts on wrong password", async () => {
+    it("increments failed attempts in SQL on wrong password", async () => {
       const hashedPassword = await bcrypt.hash("CorrectPass", 10);
       const builder = mockLoginQueryBuilder();
+      stageFailedAttemptCount(3);
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,
         passwordHash: hashedPassword,
@@ -831,14 +889,44 @@ describe("AuthService", () => {
         service.login({ email: "test@example.com", password: "WrongPass" }),
       ).rejects.toThrow(UnauthorizedException);
 
+      // The counter is incremented by the database, not by writing an absolute
+      // value derived from the pre-bcrypt read.
+      const increment = scopedManager.query.mock.calls.find((c) =>
+        String(c[0]).includes("failed_login_attempts + 1"),
+      );
+      expect(increment).toBeDefined();
+      expect(increment![1]).toEqual([mockUser.id]);
+      // Below the threshold, so no lockout write at all.
+      expect(builder.set).not.toHaveBeenCalled();
+    });
+
+    it("locks out on the count the database committed, not the one it read", async () => {
+      // The regression guard for P4-012. The entity says 0 attempts; four other
+      // parallel requests have since committed theirs, so the increment returns
+      // 5. Deriving the threshold from the snapshot would read `1` and never
+      // lock, which is exactly how a parallel guessing attack stayed unblocked.
+      const hashedPassword = await bcrypt.hash("CorrectPass", 10);
+      const builder = mockLoginQueryBuilder();
+      stageFailedAttemptCount(5);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        passwordHash: hashedPassword,
+        failedLoginAttempts: 0,
+      });
+
+      await expect(
+        service.login({ email: "test@example.com", password: "WrongPass" }),
+      ).rejects.toThrow(UnauthorizedException);
+
       expect(builder.set).toHaveBeenCalledWith(
-        expect.objectContaining({ failedLoginAttempts: 3 }),
+        expect.objectContaining({ lockedUntil: expect.any(Date) }),
       );
     });
 
     it("locks account at 5 failed attempts and sends email", async () => {
       const hashedPassword = await bcrypt.hash("CorrectPass", 10);
       const builder = mockLoginQueryBuilder();
+      stageFailedAttemptCount(5);
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,
         passwordHash: hashedPassword,
@@ -851,7 +939,6 @@ describe("AuthService", () => {
 
       expect(builder.set).toHaveBeenCalledWith(
         expect.objectContaining({
-          failedLoginAttempts: 5,
           lockedUntil: expect.any(Date),
         }),
       );
@@ -865,6 +952,7 @@ describe("AuthService", () => {
     it("does not send lockout email for users without email", async () => {
       const hashedPassword = await bcrypt.hash("CorrectPass", 10);
       mockLoginQueryBuilder();
+      stageFailedAttemptCount(5);
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,
         email: null,
@@ -895,19 +983,26 @@ describe("AuthService", () => {
         password: "ValidPass123!",
       });
 
+      // Unconditional in SQL, guarded by a WHERE rather than by the snapshot:
+      // a failure that committed between the read and here would otherwise leave
+      // the counter standing after a proven-correct password.
       expect(builder.set).toHaveBeenCalledWith({
         failedLoginAttempts: 0,
         lockedUntil: null,
       });
+      expect(builder.andWhere).toHaveBeenCalledWith(
+        "(failed_login_attempts <> 0 OR locked_until IS NOT NULL)",
+      );
     });
 
     it("applies progressive lockout duration", async () => {
       const hashedPassword = await bcrypt.hash("CorrectPass", 10);
       const builder = mockLoginQueryBuilder();
+      stageFailedAttemptCount(10); // 2nd lockout
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,
         passwordHash: hashedPassword,
-        failedLoginAttempts: 9, // Will become 10, 2nd lockout
+        failedLoginAttempts: 9,
       });
 
       await expect(
@@ -1121,6 +1216,7 @@ describe("AuthService", () => {
       mockQueryBuilder({ affected: 1, raw: [{ id: mockUser.id }] });
       refreshTokensRepository.update.mockResolvedValue({ affected: 1 });
 
+      stageOneTokenFamily();
       await service.resetPassword("valid-token", "NewPass123!");
 
       expect(refreshTokensRepository.update).toHaveBeenCalledWith(
@@ -1163,6 +1259,7 @@ describe("AuthService", () => {
     it("revokes all non-revoked tokens for user", async () => {
       refreshTokensRepository.update.mockResolvedValue({ affected: 3 });
 
+      stageOneTokenFamily();
       await service.revokeAllUserRefreshTokens("user-1");
 
       expect(refreshTokensRepository.update).toHaveBeenCalledWith(
@@ -2150,7 +2247,10 @@ describe("AuthService", () => {
       };
       const manager = setupTransactionMock();
       manager.findOne
-        .mockResolvedValueOnce(existingToken) // RefreshToken lookup
+        // Two token reads: the unlocked probe that learns the family id,
+        // then the locked re-read once the family lock is held (P4-011).
+        .mockResolvedValueOnce(existingToken)
+        .mockResolvedValueOnce(existingToken)
         .mockResolvedValueOnce({ ...mockUser }); // User lookup
 
       const result = await service.refreshTokens("raw-refresh-token");
@@ -2198,7 +2298,11 @@ describe("AuthService", () => {
         expiresAt: new Date(Date.now() + 3600000),
       };
       const manager = setupTransactionMock();
-      manager.findOne.mockResolvedValueOnce(revokedToken);
+      // Two token reads: the unlocked probe that learns the family id,
+      // then the locked re-read once the family lock is held (P4-011).
+      manager.findOne
+        .mockResolvedValueOnce(revokedToken)
+        .mockResolvedValueOnce(revokedToken);
 
       await expect(
         service.refreshTokens("reused-refresh-token"),
@@ -2221,7 +2325,11 @@ describe("AuthService", () => {
         expiresAt: new Date(Date.now() - 1000), // expired
       };
       const manager = setupTransactionMock();
-      manager.findOne.mockResolvedValueOnce(expiredToken);
+      // Two token reads: the unlocked probe that learns the family id,
+      // then the locked re-read once the family lock is held (P4-011).
+      manager.findOne
+        .mockResolvedValueOnce(expiredToken)
+        .mockResolvedValueOnce(expiredToken);
 
       await expect(
         service.refreshTokens("expired-refresh-token"),
@@ -2243,6 +2351,9 @@ describe("AuthService", () => {
       };
       const manager = setupTransactionMock();
       manager.findOne
+        // Two token reads: the unlocked probe that learns the family id,
+        // then the locked re-read once the family lock is held (P4-011).
+        .mockResolvedValueOnce(validToken)
         .mockResolvedValueOnce(validToken)
         .mockResolvedValueOnce({ ...mockUser, isActive: false });
 
@@ -2259,7 +2370,11 @@ describe("AuthService", () => {
 
     it("throws for unknown refresh token", async () => {
       const manager = setupTransactionMock();
-      manager.findOne.mockResolvedValueOnce(null);
+      // Two token reads: the unlocked probe that learns the family id,
+      // then the locked re-read once the family lock is held (P4-011).
+      manager.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
 
       await expect(
         service.refreshTokens("unknown-refresh-token"),
@@ -2277,6 +2392,9 @@ describe("AuthService", () => {
       };
       const manager = setupTransactionMock();
       manager.findOne
+        // Two token reads: the unlocked probe that learns the family id,
+        // then the locked re-read once the family lock is held (P4-011).
+        .mockResolvedValueOnce(validToken)
         .mockResolvedValueOnce(validToken)
         .mockResolvedValueOnce(null); // user not found
 
@@ -2303,6 +2421,9 @@ describe("AuthService", () => {
       };
       const manager = setupTransactionMock();
       manager.findOne
+        // Two token reads: the unlocked probe that learns the family id,
+        // then the locked re-read once the family lock is held (P4-011).
+        .mockResolvedValueOnce(existingToken)
         .mockResolvedValueOnce(existingToken)
         .mockResolvedValueOnce({ ...mockUser });
 
@@ -2402,6 +2523,7 @@ describe("AuthService", () => {
   describe("resetPassword - success path", () => {
     it("updates password hash, clears token, revokes all refresh tokens", async () => {
       const rawToken = "test-reset-token-hex-value";
+      stageOneTokenFamily();
 
       const mockExecute = jest.fn().mockResolvedValue({
         affected: 1,
