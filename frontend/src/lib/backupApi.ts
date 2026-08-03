@@ -21,6 +21,15 @@ function encodePasswordHeader(value: string): string {
 export interface RestoreResult {
   message: string;
   restored: Record<string, number>;
+  /**
+   * Attachments whose metadata was deliberately not restored because their
+   * bytes could not be made reachable (absent from the sidecar volume/bucket,
+   * failing their recorded checksum, or exported from an instance using a
+   * different storage provider). Deliberately outside `restored`, whose values
+   * are summed into a row total -- rows that were not written must not be
+   * counted as written. Absent when nothing was skipped.
+   */
+  skippedAttachments?: number;
 }
 
 export type SupportBackupSection =

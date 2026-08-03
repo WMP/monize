@@ -48,6 +48,12 @@ import { ATTACHMENT_STORAGE_PROVIDER } from "./storage/attachment-storage.interf
       ],
     },
   ],
-  exports: [AttachmentsService, AttachmentToolPrepService],
+  // The active provider is exported so the restore can stage external
+  // attachment objects under their new keys (see BackupService).
+  exports: [
+    AttachmentsService,
+    AttachmentToolPrepService,
+    ATTACHMENT_STORAGE_PROVIDER,
+  ],
 })
 export class AttachmentsModule {}

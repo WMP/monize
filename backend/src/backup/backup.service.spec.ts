@@ -8,7 +8,7 @@ import {
 } from "@nestjs/common";
 import { gzipSync, gunzipSync } from "zlib";
 import { PassThrough } from "stream";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import { getRequestContext } from "../common/request-context";
@@ -19,6 +19,10 @@ import { AiEncryptionService } from "../ai/ai-encryption.service";
 import { encryptBackup } from "./backup-crypto.util";
 import * as bcrypt from "bcryptjs";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  ATTACHMENT_STORAGE_PROVIDER,
+  AttachmentStorageProvider,
+} from "../attachments/storage/attachment-storage.interface";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -47,6 +51,12 @@ describe("BackupService", () => {
   let mockUserRepo: Record<string, jest.Mock>;
   let mockDataSource: Record<string, jest.Mock>;
   let mockQueryRunner: Record<string, jest.Mock>;
+  // Typed rather than Record<string, jest.Mock>: this is one of our own
+  // interfaces, so tsc should reject a return shape the real provider cannot
+  // produce (backend/CLAUDE.md, "a mock must return what the real collaborator
+  // returns").
+  let attachmentStorage: jest.Mocked<AttachmentStorageProvider>;
+  let attachmentStorageName: string;
 
   const userId = "test-user-id";
   const mockUser = {
@@ -88,6 +98,7 @@ describe("BackupService", () => {
       "notes",
       "sort_order",
       "linked_account_id",
+      "linked_loan_account_id",
       "source_account_id",
       "scheduled_transaction_id",
       "principal_category_id",
@@ -384,6 +395,19 @@ describe("BackupService", () => {
       "created_at",
       "updated_at",
     ],
+    transaction_attachments: [
+      "id",
+      "user_id",
+      "transaction_id",
+      "filename",
+      "content_type",
+      "byte_size",
+      "sha256",
+      "storage_provider",
+      "storage_key",
+      "created_at",
+    ],
+    attachment_blobs: ["attachment_id", "data"],
   };
 
   function mockQueryHandler(sql: string, params?: unknown[]) {
@@ -423,6 +447,20 @@ describe("BackupService", () => {
     mockQueryRunner = { query: scoped.manager.query };
     mockDataSource = scoped.dataSource as unknown as Record<string, jest.Mock>;
 
+    // `name` is readonly on the real provider (it is persisted into
+    // transaction_attachments.storage_provider), so the double exposes it as a
+    // getter over a mutable local rather than a writable field -- tsc rejects
+    // the assignment, which is the point of typing the mock.
+    attachmentStorageName = "database";
+    attachmentStorage = {
+      get name() {
+        return attachmentStorageName;
+      },
+      save: jest.fn().mockResolvedValue(undefined),
+      load: jest.fn().mockRejectedValue(new Error("no such object")),
+      delete: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<AttachmentStorageProvider>;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BackupService,
@@ -446,6 +484,10 @@ describe("BackupService", () => {
               s.startsWith("enc:") ? s.slice(4) : s,
             ),
           },
+        },
+        {
+          provide: ATTACHMENT_STORAGE_PROVIDER,
+          useValue: attachmentStorage,
         },
       ],
     }).compile();
@@ -657,6 +699,164 @@ describe("BackupService", () => {
       await expect(
         service.restoreData(userId, makeInput({ password: "test" })),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    /**
+     * Attachment bytes only travel inside a backup for the `database` provider.
+     * For `local` and `s3` the metadata carries a `storage_key` equal to the
+     * attachment's UUID, and the restore mints a new UUID for every row -- so
+     * the restore has to move the bytes to the new key or admit it did not.
+     *
+     * These cases are the ones the suite was missing: it had no external-
+     * provider attachment anywhere, so changing what the restore does with them
+     * broke nothing.
+     */
+    describe("external attachment bytes", () => {
+      const BYTES = Buffer.from("receipt-pdf-bytes");
+      const SHA256 = createHash("sha256").update(BYTES).digest("hex");
+      const OLD_ID = "11111111-1111-4111-8111-111111111111";
+      const TX_ID = "22222222-2222-4222-8222-222222222222";
+
+      function backupWithLocalAttachment(
+        overrides: Record<string, unknown> = {},
+      ) {
+        return {
+          ...validBackupData,
+          transaction_attachments: [
+            {
+              id: OLD_ID,
+              user_id: userId,
+              transaction_id: TX_ID,
+              filename: "receipt.pdf",
+              content_type: "application/pdf",
+              byte_size: BYTES.length,
+              sha256: SHA256,
+              storage_provider: "local",
+              storage_key: OLD_ID,
+              ...overrides,
+            },
+          ],
+        };
+      }
+
+      beforeEach(() => {
+        mockUserRepo.findOne.mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        attachmentStorageName = "local";
+      });
+
+      it("copies the bytes to the remapped key before restoring the metadata", async () => {
+        attachmentStorage.load.mockResolvedValue(BYTES);
+
+        const result = await service.restoreData(
+          userId,
+          makeInput({ password: "test", data: backupWithLocalAttachment() }),
+        );
+
+        // Read at the key the object actually sits under...
+        expect(attachmentStorage.load).toHaveBeenCalledWith(OLD_ID);
+        // ...and written under the fresh id the restored row will name.
+        expect(attachmentStorage.save).toHaveBeenCalledTimes(1);
+        const [writtenKey, writtenBytes] = attachmentStorage.save.mock.calls[0];
+        expect(writtenKey).not.toBe(OLD_ID);
+        expect(writtenBytes).toEqual(BYTES);
+
+        const insertedKey = mockQueryRunner.query.mock.calls
+          .filter(([sql]) =>
+            String(sql).includes('INSERT INTO "transaction_attachments"'),
+          )
+          .flatMap(([, params]) => params as unknown[])
+          .find((value) => value === writtenKey);
+        expect(insertedKey).toBe(writtenKey);
+        expect(result.restored.transactionAttachments).toBe(1);
+        expect(result.skippedAttachments).toBeUndefined();
+      });
+
+      it("drops the metadata and reports it when the object is missing", async () => {
+        attachmentStorage.load.mockRejectedValue(new Error("ENOENT"));
+
+        const result = await service.restoreData(
+          userId,
+          makeInput({ password: "test", data: backupWithLocalAttachment() }),
+        );
+
+        expect(attachmentStorage.save).not.toHaveBeenCalled();
+        expect(result.restored.transactionAttachments).toBe(0);
+        expect(result.skippedAttachments).toBe(1);
+        // The count of rows deliberately not written must not be inside
+        // `restored` -- the client sums those values into a row total.
+        expect(
+          Object.keys(result.restored).includes("skippedAttachments"),
+        ).toBe(false);
+      });
+
+      it("drops the metadata when the stored bytes fail their checksum", async () => {
+        attachmentStorage.load.mockResolvedValue(Buffer.from("tampered"));
+
+        const result = await service.restoreData(
+          userId,
+          makeInput({ password: "test", data: backupWithLocalAttachment() }),
+        );
+
+        expect(attachmentStorage.save).not.toHaveBeenCalled();
+        expect(result.skippedAttachments).toBe(1);
+      });
+
+      it("drops the metadata when the backup used a different storage provider", async () => {
+        attachmentStorage.load.mockResolvedValue(BYTES);
+
+        const result = await service.restoreData(
+          userId,
+          makeInput({
+            password: "test",
+            data: backupWithLocalAttachment({ storage_provider: "s3" }),
+          }),
+        );
+
+        // No point reading: this runtime has one provider and no cross-provider
+        // migration path.
+        expect(attachmentStorage.load).not.toHaveBeenCalled();
+        expect(result.skippedAttachments).toBe(1);
+      });
+
+      it("drops a database-provider attachment whose blob did not travel", async () => {
+        attachmentStorageName = "database";
+
+        const result = await service.restoreData(
+          userId,
+          makeInput({
+            password: "test",
+            data: backupWithLocalAttachment({ storage_provider: "database" }),
+          }),
+        );
+
+        // Metadata with no bytes anywhere is a download that 404s, which the
+        // user cannot tell from a working attachment.
+        expect(result.restored.transactionAttachments).toBe(0);
+        expect(result.skippedAttachments).toBe(1);
+      });
+
+      it("removes staged objects when the restore transaction fails", async () => {
+        attachmentStorage.load.mockResolvedValue(BYTES);
+        mockQueryRunner.query.mockImplementation((sql: string, params) => {
+          if (String(sql).includes('INSERT INTO "transaction_attachments"')) {
+            return Promise.reject(new Error("constraint violation"));
+          }
+          return mockQueryHandler(sql, params as unknown[]);
+        });
+
+        await expect(
+          service.restoreData(
+            userId,
+            makeInput({ password: "test", data: backupWithLocalAttachment() }),
+          ),
+        ).rejects.toThrow("constraint violation");
+
+        const stagedKey = attachmentStorage.save.mock.calls[0][0];
+        // The database rolled back; the object write did not, so it must not be
+        // left behind with nothing referencing it.
+        expect(attachmentStorage.delete).toHaveBeenCalledWith(stagedKey);
+      });
     });
 
     it("should throw UnauthorizedException if password is missing for local user", async () => {

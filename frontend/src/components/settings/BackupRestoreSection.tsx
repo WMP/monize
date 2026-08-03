@@ -569,6 +569,18 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
               </span>
             </div>
 
+            {/* Attachments whose bytes could not be found are not restored, and
+                a success dialogue that says nothing about them leaves the user
+                believing files came back that did not. Reported outside the
+                record total on purpose: they were not written. */}
+            {!!restoreResult.skippedAttachments && (
+              <p className="mt-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-200">
+                {t('restoreResult.skippedAttachments', {
+                  count: restoreResult.skippedAttachments,
+                })}
+              </p>
+            )}
+
             <div className="mt-6 flex justify-end">
               <Button onClick={() => setRestoreResult(null)}>
                 {t('restoreResult.doneButton')}

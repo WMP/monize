@@ -8,9 +8,10 @@ import { BackupEncryptionService } from "./backup-encryption.service";
 import { SupportBackupService } from "./support-backup/support-backup.service";
 import { AuthModule } from "../auth/auth.module";
 import { AiModule } from "../ai/ai.module";
+import { AttachmentsModule } from "../attachments/attachments.module";
 
 @Module({
-  imports: [AuthModule, AiModule, ConfigModule],
+  imports: [AuthModule, AiModule, ConfigModule, AttachmentsModule],
   controllers: [BackupController, AutoBackupController],
   providers: [
     BackupService,

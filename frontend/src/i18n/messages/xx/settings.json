@@ -566,6 +566,7 @@
       "title": "[XX-Restore Complete-XX]",
       "description": "[XX-Your data has been restored successfully. Here is a summary of what was restored:-XX]",
       "totalRecords": "[XX-Total records-XX]",
+      "skippedAttachments": "[XX-{count, plural, one {# attachment was not restored} other {# attachments were not restored}}: their files could not be found in attachment storage, or did not match the checksum recorded in the backup. Attachment files are stored outside the database, so they must be backed up and restored alongside it.-XX]",
       "doneButton": "[XX-Done-XX]"
     }
   },

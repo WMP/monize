@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -15,8 +16,12 @@ import {
 import { withScopedDb } from "../common/db/scoped-db";
 import { withPreserveTimestamps } from "../common/db/with-context";
 import * as bcrypt from "bcryptjs";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { createGzip, gunzipSync, gzipSync } from "zlib";
+import {
+  ATTACHMENT_STORAGE_PROVIDER,
+  AttachmentStorageProvider,
+} from "../attachments/storage/attachment-storage.interface";
 import { User } from "../users/entities/user.entity";
 import { AiEncryptionService } from "../ai/ai-encryption.service";
 import {
@@ -46,6 +51,20 @@ export interface RestoreBackupInput {
   // the same as `password`; if the user rotated their login password since the
   // backup was made, the frontend re-prompts and sends the old one here.
   backupPassword?: string;
+}
+
+export interface RestoreResult {
+  message: string;
+  /** Rows written, keyed by `RestoreStep.countKey`. The client sums these. */
+  restored: Record<string, number>;
+  /**
+   * Attachments whose metadata was deliberately not written because their bytes
+   * could not be made reachable -- absent from the sidecar store, failing their
+   * recorded checksum, or exported from an instance using a different storage
+   * provider. Kept out of `restored` so it is never added into a row total.
+   * Omitted when nothing was skipped, so "no field" and "zero" agree.
+   */
+  skippedAttachments?: number;
 }
 
 export class BackupPasswordRequiredError extends BadRequestException {
@@ -151,6 +170,8 @@ export class BackupService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly aiEncryption: AiEncryptionService,
+    @Inject(ATTACHMENT_STORAGE_PROVIDER)
+    private readonly attachmentStorage: AttachmentStorageProvider,
   ) {}
 
   /**
@@ -536,7 +557,7 @@ export class BackupService {
   async restoreData(
     userId: string,
     input: RestoreBackupInput,
-  ): Promise<{ message: string; restored: Record<string, number> }> {
+  ): Promise<RestoreResult> {
     const user = await this.scoped(User, (repo) =>
       repo.findOne({ where: { id: userId } }),
     );
@@ -573,6 +594,12 @@ export class BackupService {
     this.rehashGemSignalFingerprints(data, idRemap);
 
     this.logger.log(`Starting backup restore for user ${userId}`);
+
+    // Attachment bytes are staged before anything is deleted: an object that is
+    // missing or fails its checksum has to be discovered while the user's
+    // current data is still there, not halfway through replacing it.
+    const { stagedKeys, skipped: skippedAttachments } =
+      await this.stageAttachmentObjects(data, idRemap);
 
     const restored: Record<string, number> = {};
 
@@ -614,12 +641,25 @@ export class BackupService {
         await this.restoreDeferredFkColumns(manager, data);
 
         this.logger.log(`Backup restore completed for user ${userId}`);
-        return { message: "Backup restored successfully", restored };
+        // `skippedAttachments` is reported beside `restored`, never inside it:
+        // the client sums `restored`'s values to show a row total, and a count
+        // of rows that were deliberately not written does not belong in that
+        // sum.
+        return skippedAttachments > 0
+          ? {
+              message: "Backup restored successfully",
+              restored,
+              skippedAttachments,
+            }
+          : { message: "Backup restored successfully", restored };
       }),
-    ).catch((error) => {
+    ).catch(async (error) => {
       this.logger.error(
         `Backup restore failed for user ${userId}: ${error.message}`,
       );
+      // The database rolled back; the objects staged for it did not, so remove
+      // them rather than leaving bytes nothing references.
+      await this.discardStagedAttachmentObjects(stagedKeys);
       throw error;
     });
   }
@@ -859,6 +899,146 @@ export class BackupService {
         if (signal.config_fingerprint === asBackedUp) {
           signal.config_fingerprint = asNow;
         }
+      }
+    }
+  }
+
+  /**
+   * Makes every restored attachment's bytes reachable under the key its
+   * restored metadata will name -- or drops the metadata row and says so.
+   *
+   * Only `database`-provider bytes travel inside a backup, as base64 in
+   * `attachment_blobs`. The `local` and `s3` providers keep bytes outside
+   * Postgres under a `storage_key` that equals the attachment's UUID, and the
+   * restore mints a fresh UUID for every row. So the metadata came back
+   * pointing at `<new-uuid>` while the only object in the volume or bucket was
+   * still at `<old-uuid>`: every externally stored attachment was unreachable
+   * after a restore that reported success, and restoring the sidecar directory
+   * byte-for-byte did not help, because the mismatch was in the database.
+   *
+   * Preserving the old key instead would be worse than the bug: the bytes are
+   * not in the backup, so a restore into a different user on the same instance
+   * would hand that user working links to attachments whose contents they were
+   * never sent.
+   *
+   * So the bytes are copied. For each external row the object is read at its
+   * old key, checked against the size and SHA-256 the metadata claims, and
+   * written under the new key -- all before the destructive delete, so a
+   * missing or corrupt object cannot be discovered halfway through.
+   *
+   * An object that cannot be staged is not restorable, and a metadata row
+   * pointing at nothing is a broken attachment the user cannot tell from a
+   * working one. Refusing the whole restore over a receipt image would be the
+   * wrong trade -- the ledger is the point -- so the row is dropped and
+   * counted, and the count is reported separately from `restored` rather than
+   * added to it.
+   *
+   * Returns the new keys written, so a failed database transaction can remove
+   * them again. Old-key objects are deliberately left alone: the same backup
+   * may be restored more than once, and deleting the source would make the
+   * second attempt fail.
+   */
+  private async stageAttachmentObjects(
+    data: BackupData,
+    idRemap: Map<string, string>,
+  ): Promise<{ stagedKeys: string[]; skipped: number }> {
+    const rows = data.transaction_attachments;
+    if (!rows?.length) return { stagedKeys: [], skipped: 0 };
+
+    const oldIdOf = new Map(
+      [...idRemap].map(([oldId, newId]) => [newId, oldId] as const),
+    );
+    const blobbedAttachmentIds = new Set(
+      (data.attachment_blobs ?? []).map((blob) => String(blob.attachment_id)),
+    );
+
+    const stagedKeys: string[] = [];
+    const unrestorable = new Set<string>();
+
+    for (const row of rows) {
+      const attachmentId = String(row.id ?? "");
+      const provider = String(row.storage_provider ?? "database");
+
+      if (provider === "database") {
+        // The bytes should have travelled in `attachment_blobs`. Without them
+        // the metadata row describes a download that will 404, so it is no more
+        // restorable than a missing external object.
+        if (!blobbedAttachmentIds.has(attachmentId)) {
+          unrestorable.add(attachmentId);
+        }
+        continue;
+      }
+
+      if (provider !== this.attachmentStorage.name) {
+        // Exported from an instance using a different backend. There is one
+        // configured provider at runtime and no cross-provider migration, so
+        // these bytes are not reachable from here.
+        unrestorable.add(attachmentId);
+        continue;
+      }
+
+      const newKey = String(row.storage_key ?? attachmentId);
+      const oldKey = oldIdOf.get(newKey) ?? newKey;
+      if (newKey === oldKey) {
+        // The key was not a remapped id (a legacy or operator-chosen key), so
+        // the object already sits where the restored metadata points.
+        continue;
+      }
+
+      let bytes: Buffer;
+      try {
+        bytes = await this.attachmentStorage.load(oldKey);
+      } catch {
+        unrestorable.add(attachmentId);
+        continue;
+      }
+
+      const claimedSize = Number(row.byte_size);
+      if (Number.isFinite(claimedSize) && bytes.length !== claimedSize) {
+        unrestorable.add(attachmentId);
+        continue;
+      }
+      const claimedHash = row.sha256;
+      if (typeof claimedHash === "string" && claimedHash.length > 0) {
+        const actual = createHash("sha256").update(bytes).digest("hex");
+        if (actual !== claimedHash) {
+          unrestorable.add(attachmentId);
+          continue;
+        }
+      }
+
+      await this.attachmentStorage.save(newKey, bytes);
+      stagedKeys.push(newKey);
+    }
+
+    if (unrestorable.size > 0) {
+      // Immutability: the caller's arrays are replaced, not spliced.
+      data.transaction_attachments = rows.filter(
+        (row) => !unrestorable.has(String(row.id ?? "")),
+      );
+      data.attachment_blobs = (data.attachment_blobs ?? []).filter(
+        (blob) => !unrestorable.has(String(blob.attachment_id ?? "")),
+      );
+      this.logger.warn(
+        `Restore is dropping ${unrestorable.size} attachment(s) whose bytes could not be staged ` +
+          `(provider ${this.attachmentStorage.name}); their metadata would point at nothing.`,
+      );
+    }
+
+    return { stagedKeys, skipped: unrestorable.size };
+  }
+
+  /** Best-effort removal of objects staged for a restore that then failed. */
+  private async discardStagedAttachmentObjects(
+    stagedKeys: string[],
+  ): Promise<void> {
+    for (const key of stagedKeys) {
+      try {
+        await this.attachmentStorage.delete(key);
+      } catch (error) {
+        this.logger.warn(
+          `Could not remove staged attachment object ${key} after a failed restore: ${error.message}`,
+        );
       }
     }
   }
