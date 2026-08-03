@@ -191,21 +191,28 @@ export interface LlmAccountHoldings {
   accountName: string;
   currency: string;
   cashBalance: number;
-  totalCostBasis: number;
-  totalMarketValue: number;
-  totalGainLoss: number;
-  totalGainLossPercent: number;
+  /** `null` when a holding in this account could not be valued. */
+  totalCostBasis: number | null;
+  totalMarketValue: number | null;
+  totalGainLoss: number | null;
+  totalGainLossPercent: number | null;
   holdings: LlmPortfolioHolding[];
 }
 
 export interface LlmPortfolioSummary {
   holdingCount: number;
-  totalCashValue: number;
-  totalHoldingsValue: number;
-  totalCostBasis: number;
-  totalPortfolioValue: number;
-  totalGainLoss: number;
-  totalGainLossPercent: number;
+  /**
+   * `null` when the figure could not be established -- an unpriced holding, or a
+   * currency pair with no exchange rate. It must not be flattened to `0` on the
+   * way to a model: an assistant told the portfolio is worth 0.00 will say so,
+   * and the user has no way to tell that apart from a real zero.
+   */
+  totalCashValue: number | null;
+  totalHoldingsValue: number | null;
+  totalCostBasis: number | null;
+  totalPortfolioValue: number | null;
+  totalGainLoss: number | null;
+  totalGainLossPercent: number | null;
   timeWeightedReturn: number | null;
   cagr: number | null;
   holdings: LlmPortfolioHolding[];
@@ -640,10 +647,10 @@ export class PortfolioService {
         accountName: acct.accountName,
         currency: acct.currencyCode,
         cashBalance: roundMoneyValue(acct.cashBalance),
-        totalCostBasis: roundMoneyValue(acct.totalCostBasis),
-        totalMarketValue: roundMoneyValue(acct.totalMarketValue),
-        totalGainLoss: roundMoneyValue(acct.totalGainLoss),
-        totalGainLossPercent: roundPct(acct.totalGainLossPercent) ?? 0,
+        totalCostBasis: roundMoneyNullable(acct.totalCostBasis),
+        totalMarketValue: roundMoneyNullable(acct.totalMarketValue),
+        totalGainLoss: roundMoneyNullable(acct.totalGainLoss),
+        totalGainLossPercent: roundPct(acct.totalGainLossPercent),
         holdings: acct.holdings.map(toLlmHolding),
       }));
 
@@ -659,12 +666,14 @@ export class PortfolioService {
 
     return {
       holdingCount: holdings.length,
-      totalCashValue: roundMoneyValue(summary.totalCashValue),
-      totalHoldingsValue: roundMoneyValue(summary.totalHoldingsValue),
-      totalCostBasis: roundMoneyValue(summary.totalCostBasis),
-      totalPortfolioValue: roundMoneyValue(summary.totalPortfolioValue),
-      totalGainLoss: roundMoneyValue(summary.totalGainLoss),
-      totalGainLossPercent: roundPct(summary.totalGainLossPercent) ?? 0,
+      // Nullable on purpose: `roundMoneyValue` maps null to 0, which would tell
+      // the model a portfolio of unknown value is worth nothing.
+      totalCashValue: roundMoneyNullable(summary.totalCashValue),
+      totalHoldingsValue: roundMoneyNullable(summary.totalHoldingsValue),
+      totalCostBasis: roundMoneyNullable(summary.totalCostBasis),
+      totalPortfolioValue: roundMoneyNullable(summary.totalPortfolioValue),
+      totalGainLoss: roundMoneyNullable(summary.totalGainLoss),
+      totalGainLossPercent: roundPct(summary.totalGainLossPercent),
       timeWeightedReturn: roundPct(summary.timeWeightedReturn),
       cagr: roundPct(summary.cagr),
       holdings,

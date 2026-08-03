@@ -911,6 +911,58 @@ describe("ToolExecutorService", () => {
       expect(result.sources[0].type).toBe("portfolio");
     });
 
+    it("get_portfolio_summary reports an unknown total as unknown, not 0.00", async () => {
+      // A total the portfolio could not establish used to be flattened to 0 on
+      // the way to the model, so the assistant would state a portfolio of
+      // unknown value as being worth 0.00 -- indistinguishable from a real zero
+      // and impossible for the user to check.
+      portfolio.getLlmSummary.mockResolvedValueOnce({
+        holdingCount: 2,
+        totalCashValue: null,
+        totalHoldingsValue: null,
+        totalCostBasis: null,
+        totalPortfolioValue: null,
+        totalGainLoss: null,
+        totalGainLossPercent: null,
+        timeWeightedReturn: null,
+        cagr: null,
+        holdings: [],
+        holdingsByAccount: [],
+        allocation: [],
+      });
+
+      const result = await service.execute(userId, "get_portfolio_summary", {});
+
+      expect(result.summary).toContain("total portfolio value unknown");
+      expect(result.summary).not.toContain("0.00");
+      // ...and the model is told explicitly not to read it as zero.
+      expect(result.summary).toMatch(/not treat an unknown figure as zero/i);
+    });
+
+    it("get_portfolio_summary states a real zero as a number", async () => {
+      // The counterpart: an empty portfolio is worth zero, which is known. It
+      // must not be reported as unknown.
+      portfolio.getLlmSummary.mockResolvedValueOnce({
+        holdingCount: 0,
+        totalCashValue: 0,
+        totalHoldingsValue: 0,
+        totalCostBasis: 0,
+        totalPortfolioValue: 0,
+        totalGainLoss: 0,
+        totalGainLossPercent: 0,
+        timeWeightedReturn: null,
+        cagr: null,
+        holdings: [],
+        holdingsByAccount: [],
+        allocation: [],
+      });
+
+      const result = await service.execute(userId, "get_portfolio_summary", {});
+
+      expect(result.summary).toContain("total portfolio value 0.00");
+      expect(result.summary).not.toMatch(/unknown/i);
+    });
+
     it("get_portfolio_summary requests the look-through when asked", async () => {
       portfolio.getLlmSummary.mockResolvedValueOnce({
         holdingCount: 1,
