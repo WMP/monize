@@ -29,6 +29,7 @@ import {
 import { collectRowIdRemap, deepRemapIds } from "./backup-id-remap.util";
 import { resolveCurrencyMetadata } from "../currencies/currency-metadata";
 import { tr } from "../i18n/translate";
+import { UserMaintenanceService } from "../common/jobs/user-maintenance.service";
 import { gemConfigFingerprint } from "../strategies/gem-signal.service";
 import { GemStrategy } from "../strategies/entities/gem-strategy.entity";
 import { GemStrategyAsset } from "../strategies/entities/gem-strategy-asset.entity";
@@ -222,6 +223,7 @@ export class BackupService {
     private readonly dataSource: DataSource,
     private readonly aiEncryption: AiEncryptionService,
     private readonly oidcReauth: OidcReauthService,
+    private readonly maintenance: UserMaintenanceService,
   ) {}
 
   /**
@@ -668,6 +670,23 @@ export class BackupService {
 
     const restored: Record<string, number> = {};
 
+    // A restore deletes everything the user owns and rewrites it, and it is not
+    // the only operation that does: a `.mny` import with "start fresh" and the
+    // self-service delete-my-data do too. Each is internally atomic, but two of
+    // them overlapping is not -- and the `.mny` import is not one transaction at
+    // all, so a restore landing mid-import wipes the rows its worker is still
+    // writing and the worker then writes them into the restored dataset. The
+    // lease refuses with a 409 before anything is deleted (audit DR-04-02).
+    return this.maintenance.withMaintenanceLease(userId, "backup restore", () =>
+      this.applyRestore(userId, data, restored),
+    );
+  }
+
+  private async applyRestore(
+    userId: string,
+    data: BackupData,
+    restored: Record<string, number>,
+  ): Promise<{ message: string; restored: Record<string, number> }> {
     // One transaction for the whole restore, exactly as the QueryRunner block
     // was: a half-applied restore would leave the account in a state that is
     // neither the backup nor what was there before. `preserveTimestamps` makes

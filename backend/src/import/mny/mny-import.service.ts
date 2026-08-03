@@ -177,6 +177,10 @@ export class MnyImportService {
           // wizard, not in Settings, so an artifact obtained for one must not drive
           // the other (P2-005).
           "import-wipe",
+          // The import slot claimed above is this wipe's exclusion. Letting
+          // `deleteData` take the maintenance lease as well would have it refuse
+          // on the importer's own in-flight job.
+          "mny-import",
         );
       } catch (error) {
         // The request is refused, so the slot it took must go back: leaving the

@@ -530,5 +530,8 @@
     "signalNotFound": "Sinyal strategi tidak ditemukan",
     "signalStrategyMismatch": "Sinyal itu milik strategi lain.",
     "strategyNotFound": "Strategi tidak ditemukan"
+  },
+  "maintenance": {
+    "inProgress": "Operasi lain sedang menggantikan data akun ini. Tunggu hingga selesai lalu coba lagi."
   }
 }

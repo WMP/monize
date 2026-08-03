@@ -1,4 +1,5 @@
 import { JobClaimService } from "../common/jobs/job-claim.service";
+import { UserMaintenanceService } from "../common/jobs/user-maintenance.service";
 
 /**
  * A `JobClaimService` double that always wins the claim.
@@ -32,4 +33,37 @@ export function jobClaimProvider(mock: JobClaimMock = createJobClaimMock()): {
   useValue: JobClaimMock;
 } {
   return { provide: JobClaimService, useValue: mock };
+}
+
+/**
+ * A `UserMaintenanceService` double for the surfaces that consult it.
+ *
+ * Defaults to "not under maintenance" and to running the body, so a spec written
+ * before the lease existed behaves as it did. The interesting assertions are the
+ * refusals -- set `isUnderMaintenance` to resolve true, or make
+ * `withMaintenanceLease` reject, and check that the destructive operation wrote
+ * nothing.
+ */
+export type UserMaintenanceMock = jest.Mocked<
+  Pick<UserMaintenanceService, "isUnderMaintenance" | "withMaintenanceLease">
+>;
+
+export function createUserMaintenanceMock(): UserMaintenanceMock {
+  return {
+    isUnderMaintenance: jest.fn().mockResolvedValue(false),
+    withMaintenanceLease: jest.fn(
+      async (_userId: string, _operation: string, fn: () => Promise<unknown>) =>
+        fn(),
+    ) as UserMaintenanceMock["withMaintenanceLease"],
+  };
+}
+
+/** Provider entry for `Test.createTestingModule({ providers: [...] })`. */
+export function userMaintenanceProvider(
+  mock: UserMaintenanceMock = createUserMaintenanceMock(),
+): {
+  provide: typeof UserMaintenanceService;
+  useValue: UserMaintenanceMock;
+} {
+  return { provide: UserMaintenanceService, useValue: mock };
 }

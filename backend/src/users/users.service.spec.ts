@@ -21,6 +21,11 @@ import { CurrenciesService } from "../currencies/currencies.service";
 import { BackupEncryptionService } from "../backup/backup-encryption.service";
 import { DemoModeService } from "../common/demo-mode.service";
 import { OidcReauthService } from "../auth/oidc/oidc-reauth.service";
+import {
+  createUserMaintenanceMock,
+  userMaintenanceProvider,
+  type UserMaintenanceMock,
+} from "../test-helpers/job-claim-testing";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 
 jest.mock("../common/db/scoped-db", () =>
@@ -36,6 +41,7 @@ describe("UsersService", () => {
   let trustedDevicesRepository: Record<string, jest.Mock>;
   let passwordBreachService: { isBreached: jest.Mock };
   let demoModeService: { isDemo: boolean };
+  let maintenance: UserMaintenanceMock;
   let exchangeRateService: { refreshAllRates: jest.Mock };
   let currenciesService: { ensureSystemCurrency: jest.Mock };
   let backupEncryptionService: { rememberLoginPassword: jest.Mock };
@@ -136,6 +142,7 @@ describe("UsersService", () => {
     };
 
     demoModeService = { isDemo: false };
+    maintenance = createUserMaintenanceMock();
 
     mockQueryRunner = {
       connect: jest.fn(),
@@ -174,6 +181,7 @@ describe("UsersService", () => {
         // re-authentication assertion below vacuous -- which is how the
         // sentinel survived (P2-005).
         OidcReauthService,
+        userMaintenanceProvider(maintenance),
       ],
     }).compile();
 
@@ -1070,6 +1078,67 @@ describe("UsersService", () => {
   });
 
   describe("deleteData", () => {
+    it("holds the maintenance lease for a user-initiated wipe", async () => {
+      const hashedPassword = await bcrypt.hash("CorrectPass123!", 10);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        passwordHash: hashedPassword,
+      });
+
+      await service.deleteData("user-1", { password: "CorrectPass123!" });
+
+      expect(maintenance.withMaintenanceLease).toHaveBeenCalledWith(
+        "user-1",
+        expect.any(String),
+        expect.any(Function),
+      );
+    });
+
+    it("deletes nothing when another operation is already replacing the data", async () => {
+      const hashedPassword = await bcrypt.hash("CorrectPass123!", 10);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        passwordHash: hashedPassword,
+      });
+      maintenance.withMaintenanceLease.mockRejectedValue(
+        new ConflictException("busy"),
+      );
+
+      await expect(
+        service.deleteData("user-1", { password: "CorrectPass123!" }),
+      ).rejects.toThrow(ConflictException);
+
+      const deletes = mockQueryRunner.query.mock.calls.filter(
+        (call: string[]) => String(call[0]).includes("DELETE FROM"),
+      );
+      expect(deletes).toHaveLength(0);
+    });
+
+    it("skips the lease for the .mny importer's own wipe", async () => {
+      // The importer already holds the user's single import slot, and that slot
+      // is what excludes a second wipe. Taking the lease here would have
+      // `withMaintenanceLease` refuse on the importer's own in-flight job.
+      const hashedPassword = await bcrypt.hash("CorrectPass123!", 10);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        passwordHash: hashedPassword,
+      });
+
+      await service.deleteData(
+        "user-1",
+        { password: "CorrectPass123!" },
+        "import-wipe",
+        "mny-import",
+      );
+
+      expect(maintenance.withMaintenanceLease).not.toHaveBeenCalled();
+      expect(
+        mockQueryRunner.query.mock.calls.some((call: string[]) =>
+          String(call[0]).includes("DELETE FROM"),
+        ),
+      ).toBe(true);
+    });
+
     it("requires password for local auth users", async () => {
       usersRepository.findOne.mockResolvedValue({ ...mockUser });
 

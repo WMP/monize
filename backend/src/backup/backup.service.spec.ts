@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
+  ConflictException,
 } from "@nestjs/common";
 import { gzipSync, gunzipSync } from "zlib";
 import { PassThrough } from "stream";
@@ -19,6 +20,11 @@ import { AiEncryptionService } from "../ai/ai-encryption.service";
 import { encryptBackup } from "./backup-crypto.util";
 import * as bcrypt from "bcryptjs";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  createUserMaintenanceMock,
+  userMaintenanceProvider,
+  type UserMaintenanceMock,
+} from "../test-helpers/job-claim-testing";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -45,6 +51,7 @@ function insertColumnMap(call: unknown[]): Record<string, unknown> {
 describe("BackupService", () => {
   let service: BackupService;
   let mockUserRepo: Record<string, jest.Mock>;
+  let maintenance: UserMaintenanceMock;
   let mockDataSource: Record<string, jest.Mock>;
   let mockQueryRunner: Record<string, jest.Mock>;
 
@@ -443,6 +450,7 @@ describe("BackupService", () => {
     // EntityManager -- `mockQueryRunner.query` and `mockDataSource.query` are
     // the same jest.fn the manager exposes, keeping the assertions below
     // pointed at the same statements.
+    maintenance = createUserMaintenanceMock();
     const scoped = createScopedDbMocks([[User, mockUserRepo as never]]);
     scoped.manager.query.mockImplementation(mockQueryHandler);
     scoped.dataSource.query = scoped.manager.query;
@@ -461,6 +469,7 @@ describe("BackupService", () => {
         // re-authentication assertion vacuous -- which is how the sentinel
         // survived (P2-005).
         OidcReauthService,
+        userMaintenanceProvider(maintenance),
         {
           provide: AiEncryptionService,
           useValue: {
@@ -964,6 +973,53 @@ describe("BackupService", () => {
 
       expect(mockDataSource.transaction).toHaveBeenCalled();
       expect(mockDataSource.transaction).toHaveBeenCalled();
+    });
+
+    it("runs the restore under the maintenance lease", async () => {
+      mockUserRepo.findOne.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await service.restoreData(userId, makeInput({ password: "test" }));
+
+      expect(maintenance.withMaintenanceLease).toHaveBeenCalledWith(
+        userId,
+        expect.stringContaining("restore"),
+        expect.any(Function),
+      );
+    });
+
+    it("deletes nothing when another operation is already replacing the data", async () => {
+      // A restore landing mid-`.mny`-import wipes the rows that import's worker
+      // is still writing, and the worker then writes the rest into the restored
+      // dataset. The lease refuses before the delete phase, so the account is
+      // left exactly as the other operation will leave it (DR-04-02).
+      mockUserRepo.findOne.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      maintenance.withMaintenanceLease.mockRejectedValue(
+        new ConflictException("busy"),
+      );
+
+      await expect(
+        service.restoreData(userId, makeInput({ password: "test" })),
+      ).rejects.toThrow(ConflictException);
+
+      const deletes = mockQueryRunner.query.mock.calls.filter(
+        (call: string[]) => String(call[0]).includes("DELETE FROM"),
+      );
+      expect(deletes).toHaveLength(0);
+    });
+
+    it("takes the lease only after authentication succeeds", async () => {
+      // A wrong password must not consume the lease and lock the real restore
+      // out for the length of its TTL.
+      mockUserRepo.findOne.mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.restoreData(userId, makeInput({ password: "wrong" })),
+      ).rejects.toThrow();
+
+      expect(maintenance.withMaintenanceLease).not.toHaveBeenCalled();
     });
 
     it("should override user_id in restored data to match current user", async () => {

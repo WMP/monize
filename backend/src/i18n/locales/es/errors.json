@@ -530,5 +530,8 @@
     "signalNotFound": "Señal de estrategia no encontrada",
     "signalStrategyMismatch": "Esa señal pertenece a otra estrategia.",
     "strategyNotFound": "Estrategia no encontrada"
+  },
+  "maintenance": {
+    "inProgress": "Otra operacion esta reemplazando actualmente los datos de esta cuenta. Espera a que termine e intentalo de nuevo."
   }
 }

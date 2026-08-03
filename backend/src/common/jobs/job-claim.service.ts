@@ -39,6 +39,7 @@ export const JobClaimType = {
   MortgageReminder: "mortgage_reminder",
   EmergencyAccessReminder: "emergency_access_reminder",
   AiInsightGeneration: "ai_insight_generation",
+  UserMaintenance: "user_maintenance",
   DemoReset: "demo_reset",
   DemoIntraday: "demo_intraday",
 } as const;

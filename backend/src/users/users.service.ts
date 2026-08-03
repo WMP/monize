@@ -40,6 +40,7 @@ import {
   type OidcReauthPurpose,
 } from "../auth/oidc/oidc-reauth.service";
 import { toUserProfile } from "./user-profile";
+import { UserMaintenanceService } from "../common/jobs/user-maintenance.service";
 
 @Injectable()
 export class UsersService {
@@ -51,6 +52,7 @@ export class UsersService {
     private moduleRef: ModuleRef,
     private demoModeService: DemoModeService,
     private oidcReauth: OidcReauthService,
+    private maintenance: UserMaintenanceService,
   ) {}
 
   /**
@@ -524,11 +526,34 @@ export class UsersService {
    * .mny import's wipe-first mode passes its own, so an artifact obtained for one
    * cannot silently drive the other -- they present different confirmations to
    * the user and one of them is followed by an import.
+   *
+   * @param initiator who asked. `"user-request"` is the self-service flow and
+   *   must not overlap another operation replacing this account's data, so it
+   *   takes the maintenance lease. `"mny-import"` is the importer's "start
+   *   fresh" wipe, which already holds the user's single import slot -- taking
+   *   the lease there would have it refuse itself, and consulting it would
+   *   refuse on the importer's own in-flight job (audit DR-04-02).
    */
   async deleteData(
     userId: string,
     dto: DeleteDataDto,
     reauthPurpose: OidcReauthPurpose = "delete-data",
+    initiator: "user-request" | "mny-import" = "user-request",
+  ): Promise<{ deleted: Record<string, number> }> {
+    if (initiator === "user-request") {
+      return this.maintenance.withMaintenanceLease(
+        userId,
+        "delete my data",
+        () => this.deleteDataWithinLease(userId, dto, reauthPurpose),
+      );
+    }
+    return this.deleteDataWithinLease(userId, dto, reauthPurpose);
+  }
+
+  private async deleteDataWithinLease(
+    userId: string,
+    dto: DeleteDataDto,
+    reauthPurpose: OidcReauthPurpose,
   ): Promise<{ deleted: Record<string, number> }> {
     const user = await this.scoped(User, (repo) =>
       repo.findOne({ where: { id: userId } }),

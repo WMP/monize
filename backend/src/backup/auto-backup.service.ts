@@ -1,4 +1,9 @@
-import { Injectable, Logger, BadRequestException } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  ConflictException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   DataSource,
@@ -22,6 +27,7 @@ import { User } from "../users/entities/user.entity";
 import { DemoModeService } from "../common/demo-mode.service";
 import { isShardableId, shardedSegments } from "../common/shard-path.util";
 import { withSystemContext, withUserContext } from "../common/db/with-context";
+import { UserMaintenanceService } from "../common/jobs/user-maintenance.service";
 import {
   UpdateAutoBackupSettingsDto,
   AutoBackupFrequency,
@@ -114,6 +120,7 @@ export class AutoBackupService {
     private readonly backupService: BackupService,
     private readonly backupEncryption: BackupEncryptionService,
     private readonly demoMode: DemoModeService,
+    private readonly maintenance: UserMaintenanceService,
     config: ConfigService,
   ) {
     this.defaultFolderPath = this.resolveConfiguredFolderPath(
@@ -380,6 +387,18 @@ export class AutoBackupService {
   async runManualBackup(
     userId: string,
   ): Promise<{ message: string; filename: string }> {
+    // The cron defers in this state; a manual run has a user watching, so it says
+    // so instead. Writing the file anyway would produce an empty backup and then
+    // rotate the last good one out to keep the retention count.
+    if (await this.maintenance.isUnderMaintenance(userId)) {
+      throw new ConflictException(
+        tr(
+          "errors.maintenance.inProgress",
+          "Another operation is currently replacing this account's data. Wait for it to finish and try again.",
+        ),
+      );
+    }
+
     // A user who has never opened the auto-backup settings still gets a working
     // manual run: the row is seeded with defaults here and persisted by the
     // save at the end of this method.
@@ -507,6 +526,20 @@ export class AutoBackupService {
         settings.timezone,
         now,
       );
+
+      // Never back up a dataset that is mid-replacement. A `.mny` import with
+      // "start fresh" commits its wipe and then writes rows for minutes, so an
+      // hourly backup landing in that window would export the empty dataset,
+      // save it as today's file, and enforce retention -- rotating the last good
+      // backup out to make room for one containing nothing. Skipping without
+      // claiming leaves `next_backup_at` in the past, so the next hour retries
+      // (audit DR-04-02).
+      if (await this.maintenance.isUnderMaintenance(settings.userId)) {
+        this.logger.log(
+          `Auto-backup deferred for user ${settings.userId}: their data is being replaced`,
+        );
+        continue;
+      }
 
       const claimed = await this.claimDueBackup(settings, now, nextBackupAt);
       if (!claimed) {

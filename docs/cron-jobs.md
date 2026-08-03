@@ -54,6 +54,34 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 
 Three rows above say coordination is still missing: the weekly budget digest and the two provider refreshes. Those are known -- the provider ones as duplicate *external calls* rather than duplicate persisted rows (the row each one writes is uniquely keyed), and the digest as a duplicate email nobody has claimed yet. Do not read their presence as permission to add a fourth uncoordinated job.
 
+## Do not derive from a dataset that is being replaced
+
+Three operations replace everything a user owns: a backup restore, the
+self-service delete-my-data, and a `.mny` import started with
+`wipeExistingData`. Restore and delete are one transaction each, so a concurrent
+reader sees the before or the after. The `.mny` import is **not**: its wipe
+commits and the rows arrive over the following minutes, so for the length of the
+import the dataset is legitimately empty.
+
+`UserMaintenanceService` (`backend/src/common/jobs/user-maintenance.service.ts`)
+is how anything else finds out:
+
+- **`withMaintenanceLease(userId, operation, fn)`** for an operation that must
+  not overlap another. Refuses with a `409` before `fn` writes anything. An
+  active `import_jobs` row counts as maintenance without a lease of its own --
+  the row already is the fact.
+- **`isUnderMaintenance(userId)`** for work that is merely pointless or harmful
+  during the window and can happen later. The hourly `auto-backup` consults it
+  and defers *without claiming*, so `next_backup_at` stays in the past and the
+  next hour retries. Backing up mid-import would save the empty dataset as
+  today's file and then enforce retention -- rotating the last good backup out to
+  make room for one containing nothing.
+
+The `.mny` importer's own wipe passes `initiator: "mny-import"` to
+`UsersService.deleteData` so it does not take the lease: the import slot it
+already holds is that wipe's exclusion, and taking the lease would have it refuse
+on its own in-flight job.
+
 ## Schema bootstrap is not a cron, and it races the same way
 
 `db-init` and `db-migrate` run once per container start rather than on a schedule, but on a multi-replica rollout every replica runs them at the same moment and each is a check-then-act -- "does `users` exist" then apply `schema.sql`, "which migrations are recorded" then apply the rest. Both take one session-level advisory lock (`backend/src/common/db/bootstrap-lock.ts`) around the whole check-and-act, so the loser waits and then finds the work already done instead of dying on `duplicate_table` or the `schema_migrations` primary key and reporting a crash-loop for what is a race.

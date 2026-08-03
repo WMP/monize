@@ -530,5 +530,8 @@
     "signalNotFound": "Strategiesignaal niet gevonden",
     "signalStrategyMismatch": "Dat signaal hoort bij een andere strategie.",
     "strategyNotFound": "Strategie niet gevonden"
+  },
+  "maintenance": {
+    "inProgress": "Een andere bewerking vervangt momenteel de gegevens van dit account. Wacht tot deze klaar is en probeer het opnieuw."
   }
 }

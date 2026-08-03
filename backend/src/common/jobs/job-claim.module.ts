@@ -1,5 +1,6 @@
 import { Global, Module } from "@nestjs/common";
 import { JobClaimService } from "./job-claim.service";
+import { UserMaintenanceService } from "./user-maintenance.service";
 
 /**
  * Global so any cron can claim its work without every feature module
@@ -8,7 +9,7 @@ import { JobClaimService } from "./job-claim.service";
  */
 @Global()
 @Module({
-  providers: [JobClaimService],
-  exports: [JobClaimService],
+  providers: [JobClaimService, UserMaintenanceService],
+  exports: [JobClaimService, UserMaintenanceService],
 })
 export class JobClaimModule {}

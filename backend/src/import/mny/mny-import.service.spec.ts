@@ -451,6 +451,10 @@ describe("MnyImportService", () => {
         // import wizard, so an artifact obtained for the Settings "delete my
         // data" flow must not drive it (P2-005).
         "import-wipe",
+        // Declared as the importer's own wipe: the import slot claimed above is
+        // its exclusion, so `deleteData` must not also take the maintenance
+        // lease -- it would refuse on this very job (DR-04-02).
+        "mny-import",
       );
       // The wipe re-authenticates, so its credentials must not reach
       // import_jobs.options.

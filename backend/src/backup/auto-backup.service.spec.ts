@@ -1,7 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
 import { ConfigService } from "@nestjs/config";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ConflictException } from "@nestjs/common";
 import * as fs from "fs";
 import {
   AutoBackupService,
@@ -13,6 +13,11 @@ import { AutoBackupSettings } from "./entities/auto-backup-settings.entity";
 import { User } from "../users/entities/user.entity";
 import { DemoModeService } from "../common/demo-mode.service";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  createUserMaintenanceMock,
+  userMaintenanceProvider,
+  type UserMaintenanceMock,
+} from "../test-helpers/job-claim-testing";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -52,6 +57,7 @@ describe("AutoBackupService", () => {
   let mockBackupEncryption: Record<string, jest.Mock>;
   let updateBuilder: Record<string, jest.Mock>;
   let scoped: ReturnType<typeof createScopedDbMocks>;
+  let maintenance: UserMaintenanceMock;
 
   const userId = "55555555-5555-5555-5555-555555555555";
   /**
@@ -124,6 +130,7 @@ describe("AutoBackupService", () => {
           provide: BackupService,
           useValue: mockBackupService,
         },
+        userMaintenanceProvider(maintenance),
         {
           provide: BackupEncryptionService,
           useValue: mockBackupEncryption,
@@ -177,6 +184,8 @@ describe("AutoBackupService", () => {
       // default, so the cron tests below exercise only the due-backup path.
       find: jest.fn().mockResolvedValue([]),
     };
+
+    maintenance = createUserMaintenanceMock();
 
     mockBackupService = {
       exportToBuffer: jest
@@ -702,6 +711,23 @@ describe("AutoBackupService", () => {
       );
     });
 
+    it("refuses rather than writing an empty file mid-maintenance", async () => {
+      // The cron defers silently; a manual run has someone watching, so it says
+      // why. Writing the file anyway would produce an empty backup and then
+      // rotate the last good one out to keep the retention count.
+      mockSettingsRepo.findOne.mockResolvedValue(
+        createSettings({ enabled: true, folderPath: "/backups" }),
+      );
+      setupExportMocks();
+      maintenance.isUnderMaintenance.mockResolvedValue(true);
+
+      await expect(service.runManualBackup(userId)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(mockBackupService.exportToBuffer).not.toHaveBeenCalled();
+      expect(fsPromises.writeFile).not.toHaveBeenCalled();
+    });
+
     it("should run backup and update status on success", async () => {
       const existing = createSettings({
         enabled: true,
@@ -937,6 +963,39 @@ describe("AutoBackupService", () => {
         await service.handleAutoBackupCron();
 
         expect(mockBackupService.exportToBuffer).not.toHaveBeenCalled();
+      });
+
+      it("defers, without claiming, while the user's data is being replaced", async () => {
+        // A `.mny` import with "start fresh" commits its wipe and then writes
+        // rows for minutes. Backing up in that window saves the empty dataset as
+        // today's file and then enforces retention -- rotating the last good
+        // backup out to make room for one containing nothing (DR-04-02).
+        mockSettingsRepo.find.mockResolvedValue([dueSettings()]);
+        setupExportMocks();
+        maintenance.isUnderMaintenance.mockResolvedValue(true);
+
+        await service.handleAutoBackupCron();
+
+        expect(mockBackupService.exportToBuffer).not.toHaveBeenCalled();
+        // Not claimed, so next_backup_at stays in the past and the next hour
+        // retries rather than skipping the whole period.
+        const claim = scoped.manager.query.mock.calls.find((call) =>
+          String(call[0]).includes("UPDATE auto_backup_settings"),
+        );
+        expect(claim).toBeUndefined();
+      });
+
+      it("does not enforce retention while deferring", async () => {
+        // Retention runs inside the backup path, so deferring has to skip it
+        // too: pruning to N files without having written a new one loses a
+        // generation for nothing.
+        mockSettingsRepo.find.mockResolvedValue([dueSettings()]);
+        setupExportMocks();
+        maintenance.isUnderMaintenance.mockResolvedValue(true);
+
+        await service.handleAutoBackupCron();
+
+        expect(fsMock.unlinkSync).not.toHaveBeenCalled();
       });
 
       it("writes only the outcome columns, never the whole snapshot", async () => {
