@@ -39,15 +39,27 @@ const GENERIC_CURRENCY_SYMBOL = "¤";
  * Random rather than derived from the original: a derived code would let two
  * artifacts from the same user be lined up by it, which is the correlation the
  * whole remapping step exists to prevent.
+ *
+ * The catalog is consulted here rather than only through `taken`. The caller does
+ * seed `taken` with every catalogued code, so the end-to-end path was safe -- but
+ * the guarantee in the sentence above was the caller's to keep, and a second
+ * caller that seeded only the payload's own codes would have emitted `USD` as a
+ * pseudonym with nothing to stop it. `taken` is still needed for the codes this
+ * payload uses, which the catalog does not know about.
+ *
+ * Exported for its own test. The end-to-end path costs two scrypt derivations
+ * per export (~200 ms), so probing the allocator's randomness through `generate`
+ * bought a handful of samples for seconds of CPU; the wiring and the allocation
+ * property are now tested separately, and the second one thoroughly.
  */
-function allocatePseudonymCode(taken: Set<string>): string {
+export function allocatePseudonymCode(taken: Set<string>): string {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   // 17,576 combinations against a catalog of a few hundred, so this converges
   // immediately; the bound exists so a pathological `taken` cannot spin forever.
   for (let attempt = 0; attempt < 10000; attempt += 1) {
     const bytes = randomBytes(3);
     const code = `${letters[bytes[0] % 26]}${letters[bytes[1] % 26]}${letters[bytes[2] % 26]}`;
-    if (!taken.has(code)) {
+    if (!taken.has(code) && CURRENCY_METADATA[code] === undefined) {
       taken.add(code);
       return code;
     }

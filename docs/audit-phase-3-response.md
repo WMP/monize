@@ -7,7 +7,7 @@ was deliberately left alone.
 - **Branch:** `claude/detailed-error-review-4pbug7`
 - **Audit items answered:** 16 confirmed findings, 12 design risks, 22 missing
   tests, 7 documentation issues, 19 rejected false positives
-- **Defects fixed:** 15 of the 16 confirmed findings, plus 14 the audit did not
+- **Defects fixed:** 15 of the 16 confirmed findings, plus 15 the audit did not
   find
 - **Still open:** 1 confirmed finding (P3-009), with a written plan
 
@@ -319,7 +319,7 @@ ownership as disqualifying *precisely because* owner bypass is deliberate.
 ## 6. Defects found beyond the audit
 
 The audit's own reviewed-scope list was re-read for the classes its confirmed
-findings belong to. Fourteen further defects came out of that, four passes deep.
+findings belong to. Fifteen further defects came out of that, four passes deep.
 
 ### Security and data integrity
 
@@ -417,6 +417,22 @@ findings belong to. Fourteen further defects came out of that, four passes deep.
     on an authenticated endpoint (CWE-834). Two entries came off
     `array-bound-dto.spec.ts`'s grandfather list, which may only shrink.
 
+15. **The pseudonym allocator did not keep its own promise** (this commit). Its
+    doc says it returns "a three-letter code no row in this payload uses and no
+    real currency claims", but it only checked the `taken` set. The production
+    caller seeds that set with every catalogued code, so the end-to-end path was
+    safe — the guarantee was the caller's to keep, and a second caller seeding
+    only the payload's own codes would have emitted `USD` as a pseudonym with
+    nothing to stop it. Found by a new 2000-sample test that issued `SAR` on its
+    first run; the catalog is now consulted in the function.
+
+    That test exists because the P3-014 case it replaced had become a
+    4-second, 40-scrypt-derivation loop once the support export was forced to
+    encrypt — it sat on Jest's default timeout and failed under any parallel
+    contention. Splitting it gave the wiring one end-to-end run and the
+    allocation property two thousand cheap ones, which is how the gap surfaced:
+    a rejection bug firing one time in fifty survives twenty samples.
+
 14. **A comment claiming a filter the query does not have** (`52f854e1`).
     `MnyStagingService.findInfo` was documented as excluding expired rows; there
     is no `expires_at` predicate. The behaviour is correct and was left alone —
@@ -499,7 +515,7 @@ than taken as a pass.
 
 ## 9. Commit inventory
 
-All 22 commits on the branch, oldest first, so nothing is unaccounted for.
+All 23 commits on the branch, oldest first, so nothing is unaccounted for.
 
 | Commit | Subject | Answers |
 |---|---|---|
@@ -525,6 +541,7 @@ All 22 commits on the branch, oldest first, so nothing is unaccounted for.
 | `59079301` | Stop the folder write-probe reporting a writable folder as unwritable | extra 9 |
 | `43974c04` | Document the six cron jobs that were missing, and check the table against the source | extra 12 |
 | `65e26925` | Enforce the support backup's encryption in the code that produces the file | extra 7, FP-006 note |
+| `7938a130` | Make the pseudonym allocator keep its own promise, and stop a 4-second test | extra 15 |
 
 Three commits carry no audit finding of their own: `405f3e79` keeps the
 pseudo-locale gate green, and `009b3eac` and `99b41963` convert prose rules that

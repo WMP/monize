@@ -2,7 +2,10 @@ import { BadRequestException } from "@nestjs/common";
 import { gunzipSync } from "zlib";
 import { BackupService } from "../backup.service";
 import { decryptBackup } from "../backup-crypto.util";
-import { SupportBackupService } from "./support-backup.service";
+import {
+  allocatePseudonymCode,
+  SupportBackupService,
+} from "./support-backup.service";
 import { CURRENCY_METADATA } from "../../currencies/currency-metadata";
 
 const USER = "11111111-1111-4111-8111-111111111111";
@@ -744,19 +747,41 @@ describe("SupportBackupService custom currencies", () => {
   });
 
   it("never invents a code a real currency claims", async () => {
-    for (let run = 0; run < 20; run += 1) {
-      const data = await generateParsed(makeService(withCustomCurrency()), {
-        multiplier: 2.5,
-      });
-      const custom = data.currencies.find(
-        (c: Record<string, unknown>) => c.created_by_user_id !== null,
-      );
-      // A pseudonym that reads as USD or EUR would be actively misleading to
-      // whoever opens the artifact. The `not.toBe("KEN")` keeps this from
-      // passing vacuously when nothing is pseudonymised at all.
-      expect(custom.code).not.toBe("KEN");
-      expect(CURRENCY_METADATA[custom.code]).toBeUndefined();
-      expect(custom.code).not.toBe("PLN");
+    // The wiring: one end-to-end export, proving the service reaches the
+    // allocator and stores what it returns. The allocation property itself is
+    // the next test's -- probing it through `generate` costs two scrypt
+    // derivations per sample (~200 ms), which bought twenty samples for four
+    // seconds of CPU and sat on the default timeout.
+    const data = await generateParsed(makeService(withCustomCurrency()), {
+      multiplier: 2.5,
+    });
+    const custom = data.currencies.find(
+      (c: Record<string, unknown>) => c.created_by_user_id !== null,
+    );
+    // A pseudonym that reads as USD or EUR would be actively misleading to
+    // whoever opens the artifact. The `not.toBe("KEN")` keeps this from
+    // passing vacuously when nothing is pseudonymised at all.
+    expect(custom.code).not.toBe("KEN");
+    expect(CURRENCY_METADATA[custom.code]).toBeUndefined();
+    expect(custom.code).not.toBe("PLN");
+  });
+
+  it("allocates a code no catalogued currency and no taken code claims", () => {
+    // 2000 samples rather than twenty, because the allocator is cheap on its
+    // own: a rejection bug that fires one time in fifty would survive a
+    // twenty-sample end-to-end loop and not this.
+    const taken = new Set<string>(["KEN", "PLN"]);
+    const issued = new Set<string>();
+    for (let run = 0; run < 2000; run += 1) {
+      const code = allocatePseudonymCode(taken);
+      expect(code).toMatch(/^[A-Z]{3}$/);
+      expect(CURRENCY_METADATA[code]).toBeUndefined();
+      // `taken` grows as codes are issued, so this also covers the collision
+      // path: the same code must never come back twice.
+      expect(issued.has(code)).toBe(false);
+      issued.add(code);
     }
+    expect(issued.has("KEN")).toBe(false);
+    expect(issued.has("PLN")).toBe(false);
   });
 });
