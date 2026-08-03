@@ -11,6 +11,8 @@ import { Account } from '@/types/account';
 import { PortfolioSummary } from '@/types/investment';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
+import { sumConverted } from '@/lib/currency-total';
+import { PartialTotal } from '@/components/ui/PartialTotal';
 import { useReportData } from '@/hooks/useReportData';
 import { CHART_COLOURS } from '@/lib/chart-colours';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
@@ -118,11 +120,19 @@ export function AccountBalancesReport() {
     let assets = 0;
     let liabilities = 0;
 
+    // An account with no rate to the display currency is excluded and its
+    // currency named, so the headline figures are marked as subtotals rather
+    // than under-reporting silently.
+    const missing = new Set<string>();
     filteredAccounts.forEach((acc) => {
       const rawBalance = acc.accountSubType === 'INVESTMENT_BROKERAGE'
         ? (brokerageMarketValues.get(acc.id) ?? 0)
         : (Number(acc.currentBalance) || 0) + (Number(acc.futureTransactionsSum) || 0);
       const convertedBalance = convertToDefault(rawBalance, acc.currencyCode);
+      if (convertedBalance === null) {
+        missing.add(acc.currencyCode);
+        return;
+      }
 
       if (LIABILITY_TYPES.includes(acc.accountType)) {
         liabilities += Math.abs(convertedBalance);
@@ -131,7 +141,12 @@ export function AccountBalancesReport() {
       }
     });
 
-    return { assets, liabilities, netWorth: assets - liabilities };
+    return {
+      assets,
+      liabilities,
+      netWorth: assets - liabilities,
+      missingCurrencies: [...missing],
+    };
   }, [filteredAccounts, brokerageMarketValues, convertToDefault]);
 
   // Helper to get effective balance for an account (includes future-dated transactions)
@@ -148,7 +163,10 @@ export function AccountBalancesReport() {
       let colorIdx = 0;
       groupedAccounts.forEach((accs, type) => {
         const total = accs.reduce((sum, acc) => {
-          return sum + Math.abs(convertToDefault(getEffectiveBalance(acc), acc.currencyCode));
+          const converted = convertToDefault(getEffectiveBalance(acc), acc.currencyCode);
+          // No rate, no slice: a bar sized from the unconverted amount would be
+          // in the wrong currency, and a zero-size one reads as a measured zero.
+          return converted === null ? sum : sum + Math.abs(converted);
         }, 0);
         if (total > 0) {
           data.push({
@@ -163,7 +181,9 @@ export function AccountBalancesReport() {
     } else {
       const data: Array<{ name: string; value: number; color: string }> = [];
       filteredAccounts.forEach((acc, idx) => {
-        const converted = Math.abs(convertToDefault(getEffectiveBalance(acc), acc.currencyCode));
+        const rawConverted = convertToDefault(getEffectiveBalance(acc), acc.currencyCode);
+        if (rawConverted === null) return;
+        const converted = Math.abs(rawConverted);
         if (converted > 0) {
           data.push({
             name: acc.name,
@@ -409,12 +429,17 @@ export function AccountBalancesReport() {
         <>
           {Array.from(groupedAccounts.entries()).map(([type, accs]) => {
             const isLiabilityGroup = LIABILITY_TYPES.includes(type);
-            const groupTotal = accs.reduce((sum, acc) => {
-              const rawBalance = acc.accountSubType === 'INVESTMENT_BROKERAGE'
-                ? (brokerageMarketValues.get(acc.id) ?? 0)
-                : (Number(acc.currentBalance) || 0) + (Number(acc.futureTransactionsSum) || 0);
-              return sum + convertToDefault(rawBalance, acc.currencyCode);
-            }, 0);
+            // Group subtotal: an account with no rate is left out and the group
+            // header marks the figure as partial.
+            const groupTotal = sumConverted(
+              accs,
+              (acc) =>
+                acc.accountSubType === 'INVESTMENT_BROKERAGE'
+                  ? (brokerageMarketValues.get(acc.id) ?? 0)
+                  : (Number(acc.currentBalance) || 0) + (Number(acc.futureTransactionsSum) || 0),
+              (acc) => acc.currencyCode,
+              convertToDefault,
+            );
 
             return (
               <div key={type} className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-700/50 overflow-hidden">
@@ -425,7 +450,11 @@ export function AccountBalancesReport() {
                   <span className={`font-semibold ${
                     isLiabilityGroup ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
                   }`}>
-                    {formatCurrency(isLiabilityGroup ? Math.abs(groupTotal) : groupTotal)}
+                    <PartialTotal total={groupTotal} displayCurrency={defaultCurrency}>
+                      {formatCurrency(
+                        isLiabilityGroup ? Math.abs(groupTotal.value) : groupTotal.value,
+                      )}
+                    </PartialTotal>
                   </span>
                 </div>
                 <div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -466,11 +495,21 @@ export function AccountBalancesReport() {
                           }`}>
                             {formatCurrency(isLiabilityGroup ? Math.abs(effectiveBalance) : effectiveBalance, acc.currencyCode)}
                           </div>
-                          {acc.currencyCode !== defaultCurrency && (
-                            <div className="text-xs text-gray-400 dark:text-gray-500">
-                              {'\u2248 '}{formatCurrency(convertToDefault(Math.abs(effectiveBalance), acc.currencyCode), defaultCurrency)}
-                            </div>
-                          )}
+                          {acc.currencyCode !== defaultCurrency &&
+                            (() => {
+                              // Nothing rather than the unconverted amount under
+                              // the display currency's symbol.
+                              const approx = convertToDefault(
+                                Math.abs(effectiveBalance),
+                                acc.currencyCode,
+                              );
+                              if (approx === null) return null;
+                              return (
+                                <div className="text-xs text-gray-400 dark:text-gray-500">
+                                  {'\u2248 '}{formatCurrency(approx, defaultCurrency)}
+                                </div>
+                              );
+                            })()}
                         </div>
                       </button>
                     );

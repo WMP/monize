@@ -108,10 +108,13 @@ export function TagKeyBreakdownChart({ tagKey, params }: TagKeyBreakdownChartPro
             toDisplay: (amount, from) => convertToDefault(amount, from),
           };
 
-    const aggregated = aggregateGroupedTotals(rows, strategy).map((r) => ({
-      name: r.name ?? '',
-      value: Math.abs(r.total),
-    }));
+    const aggregated = aggregateGroupedTotals(rows, strategy)
+      // No rate, no slice: a bar cannot represent unknown.
+      .filter((r): r is typeof r & { total: number } => r.total !== null)
+      .map((r) => ({
+        name: r.name ?? '',
+        value: Math.abs(r.total),
+      }));
 
     const top = aggregated.slice(0, TOP_N);
     const rest = aggregated.slice(TOP_N);

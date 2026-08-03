@@ -10,6 +10,7 @@ import { Category } from '@/types/category';
 import { transactionsApi } from '@/lib/transactions';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
+import { PartialTotal } from '@/components/ui/PartialTotal';
 import { useReportData } from '@/hooks/useReportData';
 import { useWidgetConfig } from '@/hooks/useWidgetConfig';
 import { resolveRangePreset } from '@/lib/date-range';
@@ -41,7 +42,7 @@ export function ExpensesPieChart({
   const t = useTranslations('dashboard');
   const router = useRouter();
   const { formatCurrencyCompact: formatCurrency } = useNumberFormat();
-  const { convertToDefault } = useExchangeRates();
+  const { convertToDefault, defaultCurrency } = useExchangeRates();
   const { config, updateConfig } = useWidgetConfig<RangeAccountsConfig>(
     WIDGET_ID,
     EXPENSES_PIE_DEFAULT,
@@ -61,8 +62,11 @@ export function ExpensesPieChart({
   );
 
   // Calculate spending by category
-  const chartData = useMemo(() => {
+  const breakdown = useMemo(() => {
     const categoryMap = new Map<string, { id: string; name: string; value: number; colour: string }>();
+    // Currencies left out of the breakdown for want of a rate, so the chart can
+    // say the slices do not add up to everything spent.
+    const missingCurrencies = new Set<string>();
     let uncategorizedTotal = 0;
 
     // Build category lookup
@@ -76,14 +80,26 @@ export function ExpensesPieChart({
       // Only count expenses (negative amounts)
       const txAmount = Number(tx.amount) || 0;
       if (txAmount >= 0) return;
-      const expenseAmount = Math.abs(convertToDefault(txAmount, tx.currencyCode));
+      const convertedTx = convertToDefault(txAmount, tx.currencyCode);
+      // No rate, no slice. A pie slice cannot say "unknown", and counting the
+      // unconverted figure would size it in the wrong currency.
+      if (convertedTx === null) {
+        missingCurrencies.add(tx.currencyCode);
+        return;
+      }
+      const expenseAmount = Math.abs(convertedTx);
 
       if (tx.isSplit && tx.splits && tx.splits.length > 0) {
         // Handle split transactions
         tx.splits.forEach((split) => {
           const splitAmt = Number(split.amount) || 0;
           if (splitAmt >= 0) return;
-          const splitAmount = Math.abs(convertToDefault(splitAmt, tx.currencyCode));
+          const convertedSplit = convertToDefault(splitAmt, tx.currencyCode);
+          if (convertedSplit === null) {
+            missingCurrencies.add(tx.currencyCode);
+            return;
+          }
+          const splitAmount = Math.abs(convertedSplit);
           if (split.categoryId && split.category) {
             const cat = categoryLookup.get(split.categoryId) || split.category;
             const existing = categoryMap.get(split.categoryId);
@@ -158,9 +174,10 @@ export function ExpensesPieChart({
       }
     });
 
-    return data;
+    return { data, missingCurrencies: [...missingCurrencies] };
   }, [transactions, categories, convertToDefault, t]);
 
+  const chartData = breakdown.data;
   const totalExpenses = chartData.reduce((sum, item) => sum + item.value, 0);
 
   const handleCategoryClick = (categoryId: string) => {
@@ -273,7 +290,16 @@ export function ExpensesPieChart({
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-center flex-shrink-0">
             <div className="text-sm text-gray-500 dark:text-gray-400">{t('expensesPieChart.total')}</div>
             <div className="font-semibold text-gray-900 dark:text-gray-100">
-              {formatCurrency(totalExpenses)}
+              <PartialTotal
+                total={{
+                  value: totalExpenses,
+                  missingCurrencies: breakdown.missingCurrencies,
+                  excludedCount: breakdown.missingCurrencies.length,
+                }}
+                displayCurrency={defaultCurrency}
+              >
+                {formatCurrency(totalExpenses)}
+              </PartialTotal>
             </div>
           </div>
         </>

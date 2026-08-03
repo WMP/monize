@@ -228,5 +228,9 @@
     "nothingToRedo": "[XX-Nothing to redo-XX]",
     "cannotRedo": "[XX-Cannot redo this action-XX]",
     "redoFailed": "[XX-Redo failed-XX]"
+  },
+  "partialTotal": {
+    "srSuffix": "[XX-(partial total)-XX]",
+    "explanation": "[XX-Partial total: {count, plural, one {# amount} other {# amounts}} could not be converted to {displayCurrency} because no rate is available for {currencies}. The figure shown excludes them.-XX]"
   }
 }

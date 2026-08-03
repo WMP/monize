@@ -315,6 +315,37 @@ hundred pixels are where that gets thrown away:
 Whoever adds the `null` on the server owns how it looks. A component test
 asserting the gap, the marker or the absent fill is what keeps it.
 
+**A missing exchange rate is the same class, and it used to be the worst case
+of it.** `useExchangeRates().convert` / `convertToDefault` /
+`convertWithRateMap` return `number | null`; they previously returned the amount
+*unconverted*, so a 100.00 USD balance with no USD→EUR rate was formatted as
+"100.00 EUR" and summed into Assets, Liabilities and Net Worth. Silent,
+unbounded, one instance per unconverted account, and able to reverse a trend.
+
+Pick the treatment from what the figure is:
+
+- **An aggregate** uses `sumConverted` / `combineTotals`
+  (`lib/currency-total.ts`), which keep the subtotal and the missing currencies
+  together, and renders through `PartialTotal`. Incompleteness is a union: net
+  worth built from a complete asset total and a partial liability total is
+  partial.
+- **A single displayed value** shows an unknown marker, or nothing. Never the
+  unconverted number beside the target currency's symbol -- "≈" does not make a
+  euro figure an approximate zloty one.
+- **A chart series** uses `null` and `connectNulls={false}`. A bar, slice or
+  gauge cannot say "unknown", so an unconvertible component leaves the chart
+  rather than appearing at an arbitrary size.
+- **A cumulative series** (a running balance, a forecast) is withheld whole:
+  one missing rate invalidates every point after it, so `buildForecast` returns
+  no points and names the currencies. A short series there is not a partial
+  answer, it is a wrong one.
+- **A summary over a series** (`computeBalanceSummary`) refuses when any point
+  is unknown. "Minimum" and "goes negative" are claims about all of it.
+
+Same currency is 1:1 *by definition* and stays a known conversion -- keep it
+distinguishable from the missing case, and keep a real zero rendering as a
+number.
+
 ## `accountsApi.getAll()` is not "the user's accounts"
 
 In own context the endpoint returns a **union**: accounts the caller owns, plus

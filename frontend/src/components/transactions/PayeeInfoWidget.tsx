@@ -326,7 +326,10 @@ export function PayeeInfoWidget({
               const label = row.id
                 ? (categoryLabelMap.get(row.id) ?? row.name ?? row.id)
                 : t('payeeWidget.uncategorized');
-              const amount = formatCurrency(Math.abs(row.total), currencyStrategy.displayCurrency);
+              const amount =
+                row.total === null
+                  ? t('payeeWidget.amountUnavailable')
+                  : formatCurrency(Math.abs(row.total), currencyStrategy.displayCurrency);
               return (
                 <li key={row.id ?? 'uncategorized'}>
                   {row.id && onCategoryClick ? (

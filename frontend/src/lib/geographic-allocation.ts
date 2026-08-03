@@ -72,7 +72,7 @@ export const COUNTRY_COLOURS = CHART_SERIES;
 export function computeGeographicAllocation(
   holdings: HoldingWithMarketValue[],
   securityExchangeMap: Map<string, string>,
-  convertToDefault: (value: number, currency: string) => number,
+  convertToDefault: (value: number, currency: string) => number | null,
 ): { exchangeData: ExchangeAllocation[]; regionData: RegionAllocation[]; totalValue: number } {
   const exchangeMap = new Map<
     string,
@@ -82,7 +82,12 @@ export function computeGeographicAllocation(
   holdings.forEach((h) => {
     const exchange = securityExchangeMap.get(h.securityId) || 'Unknown';
     const info = EXCHANGE_TO_REGION[exchange] || { country: 'Other', region: 'Other' };
-    const marketValue = convertToDefault(h.marketValue ?? 0, h.currencyCode);
+    // Two ways this holding cannot be placed: the server could not price it
+    // (`marketValue` null) or there is no rate into the display currency. `?? 0`
+    // used to include it as a zero, which re-weighted every other region.
+    if (h.marketValue === null || h.marketValue === undefined) return;
+    const marketValue = convertToDefault(h.marketValue, h.currencyCode);
+    if (marketValue === null) return;
 
     const existing =
       exchangeMap.get(exchange) || {

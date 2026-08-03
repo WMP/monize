@@ -363,13 +363,18 @@ function PayeeDetailContent() {
       categoryRange === 'all'
         ? (analytics?.categoryTotalsAllTime ?? [])
         : (analytics?.categoryTotals ?? []);
-    return aggregateGroupedTotals(source, currencyStrategy).map((row) => ({
-      id: row.id,
-      name: row.id ? (categoryLabelMap.get(row.id) ?? row.name) : row.name,
-      currencyCode: currencyStrategy.displayCurrency,
-      total: row.total,
-      count: row.count,
-    }));
+    // A row whose total could not be converted is dropped rather than drawn: a
+    // bar has no way to say "unknown", and a zero-width one reads as a measured
+    // zero (frontend/CLAUDE.md).
+    return aggregateGroupedTotals(source, currencyStrategy)
+      .filter((row): row is typeof row & { total: number } => row.total !== null)
+      .map((row) => ({
+        id: row.id,
+        name: row.id ? (categoryLabelMap.get(row.id) ?? row.name) : row.name,
+        currencyCode: currencyStrategy.displayCurrency,
+        total: row.total,
+        count: row.count,
+      }));
   }, [
     analytics?.categoryTotals,
     analytics?.categoryTotalsAllTime,
@@ -381,13 +386,16 @@ function PayeeDetailContent() {
   // One row per account, converted so the bars stay comparable.
   const accountPanelTotals = useMemo<GroupedTotal[]>(
     () =>
-      (detail?.accounts ?? []).map((row) => ({
-        id: row.accountId,
-        name: row.accountName,
-        currencyCode: currencyStrategy.displayCurrency,
-        total: currencyStrategy.toDisplay(row.total, row.currencyCode),
-        count: row.transactionCount,
-      })),
+      (detail?.accounts ?? [])
+        .map((row) => ({
+          id: row.accountId,
+          name: row.accountName,
+          currencyCode: currencyStrategy.displayCurrency,
+          total: currencyStrategy.toDisplay(row.total, row.currencyCode),
+          count: row.transactionCount,
+        }))
+        // Same reasoning as the category panel: no rate, no bar.
+        .filter((row): row is typeof row & { total: number } => row.total !== null),
     [detail?.accounts, currencyStrategy],
   );
 

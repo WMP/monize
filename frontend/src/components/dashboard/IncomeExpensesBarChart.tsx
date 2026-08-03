@@ -126,8 +126,10 @@ export function IncomeExpensesBarChart({
 
   // Group transactions into weekly (recent) or monthly (longer) buckets and
   // split each bucket's activity into income and expenses.
-  const chartData = useMemo(() => {
+  const breakdown = useMemo(() => {
     const txns = transactions ?? [];
+    // Currencies excluded from the bars for want of a rate.
+    const missingCurrencies = new Set<string>();
     const startDate = start ? parseLocalDate(start) : parseLocalDate(end);
     const endDate = parseLocalDate(end);
 
@@ -165,6 +167,13 @@ export function IncomeExpensesBarChart({
 
       const classifyAmount = (rawAmount: number, category: { isIncome: boolean } | null | undefined) => {
         const amount = convertToDefault(rawAmount, tx.currencyCode);
+        // No rate: the amount belongs to neither bar. Counting the unconverted
+        // figure would size a bar in the wrong currency, and counting zero would
+        // silently shrink the month.
+        if (amount === null) {
+          missingCurrencies.add(tx.currencyCode);
+          return;
+        }
         if (category?.isIncome === true) {
           bucket.income += amount;
         } else if (category?.isIncome === false) {
@@ -189,14 +198,19 @@ export function IncomeExpensesBarChart({
       }
     });
 
-    return buckets.map((b) => ({
-      name: b.label,
-      Income: Math.round(b.income),
-      Expenses: Math.round(b.expenses),
-      startDate: format(b.bucketStart, 'yyyy-MM-dd'),
-      endDate: format(b.bucketEnd, 'yyyy-MM-dd'),
-    }));
+    return {
+      data: buckets.map((b) => ({
+        name: b.label,
+        Income: Math.round(b.income),
+        Expenses: Math.round(b.expenses),
+        startDate: format(b.bucketStart, 'yyyy-MM-dd'),
+        endDate: format(b.bucketEnd, 'yyyy-MM-dd'),
+      })),
+      missingCurrencies: [...missingCurrencies],
+    };
   }, [transactions, start, end, isWeekly, formatDate, formatChartDate, convertToDefault, weekStartsOn]);
+
+  const chartData = breakdown.data;
 
   const barClickedRef = useRef(false);
 

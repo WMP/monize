@@ -602,6 +602,89 @@ describe('MonteCarloReport', () => {
         expect(mockApi.historicalStats).toHaveBeenCalledWith(['acc-1']),
       );
     });
+
+    /**
+     * `currentBalance: null` means the server could not value the accounts. It
+     * used to be coerced to 0 and the run went ahead, so a 250,000 portfolio
+     * whose valuation failed produced a projection that ran out of money in
+     * year one -- presented as a result, with nothing on screen to say the
+     * starting figure was invented.
+     */
+    describe('when the accounts cannot be valued', () => {
+      const selectScenarioWithAccounts = async () => {
+        mockApi.list.mockResolvedValueOnce([
+          scenario({ id: 's', useCurrentBalance: true, accountIds: ['acc-1'] }),
+        ]);
+        await renderReport();
+        const item = await screen.findByRole('button', { name: /Retirement/i });
+        await act(async () => {
+          fireEvent.click(item);
+        });
+        await waitFor(() =>
+          expect(mockApi.historicalStats).toHaveBeenCalledWith(['acc-1']),
+        );
+      };
+
+      it('says so instead of starting from zero', async () => {
+        mockApi.historicalStats.mockResolvedValue({
+          yearsObserved: 10,
+          meanReturn: 0.1,
+          volatility: 0.15,
+          currentBalance: null,
+        });
+        await selectScenarioWithAccounts();
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+          'could not be valued',
+        );
+      });
+
+      it('blocks the run', async () => {
+        mockApi.historicalStats.mockResolvedValue({
+          yearsObserved: 10,
+          meanReturn: 0.1,
+          volatility: 0.15,
+          currentBalance: null,
+        });
+        await selectScenarioWithAccounts();
+
+        await waitFor(() =>
+          expect(
+            screen.getByRole('button', { name: /Run simulation/i }),
+          ).toBeDisabled(),
+        );
+        expect(mockApi.run).not.toHaveBeenCalled();
+      });
+
+      it('blocks the run when the request itself fails', async () => {
+        mockApi.historicalStats.mockRejectedValue(new Error('offline'));
+        await selectScenarioWithAccounts();
+        await act(async () => {});
+
+        await waitFor(() =>
+          expect(
+            screen.getByRole('button', { name: /Run simulation/i }),
+          ).toBeDisabled(),
+        );
+      });
+
+      // An account genuinely holding nothing is a known zero and must stay
+      // runnable -- that is the state the unknown one was confused with.
+      it('still runs on a real zero balance', async () => {
+        mockApi.historicalStats.mockResolvedValue({
+          yearsObserved: 10,
+          meanReturn: 0.1,
+          volatility: 0.15,
+          currentBalance: 0,
+        });
+        await selectScenarioWithAccounts();
+
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /Run simulation/i }),
+        ).not.toBeDisabled();
+      });
+    });
   });
 
   describe('Inputs collapse/expand', () => {

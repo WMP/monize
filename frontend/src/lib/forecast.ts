@@ -25,6 +25,18 @@ export interface ForecastDataPoint {
   transactions: ForecastTransaction[];
 }
 
+/**
+ * A forecast, plus the currencies that stopped it from being one.
+ *
+ * `points` is empty when `missingCurrencies` is not: a projected balance is
+ * cumulative, so a single missing rate invalidates every day after it, and a
+ * short series is not a partial answer here -- it is a wrong one.
+ */
+export interface ForecastResult {
+  points: ForecastDataPoint[];
+  missingCurrencies: string[];
+}
+
 export const FORECAST_PERIOD_DAYS: Record<ForecastPeriod, number> = {
   week: 7,
   month: 30,
@@ -241,8 +253,13 @@ export function buildForecast(
   period: ForecastPeriod,
   accountId: string | 'all',
   futureTransactions: FutureTransaction[] = [],
-  convertAmount?: (amount: number, currencyCode: string) => number,
-): ForecastDataPoint[] {
+  /**
+   * Cross-currency conversion into the display currency. Returns `null` when no
+   * rate for the pair is known -- a forecast built by treating that as the
+   * unconverted amount would project a balance in a currency it was never in.
+   */
+  convertAmount?: (amount: number, currencyCode: string) => number | null,
+): ForecastResult {
   // Remap scheduled investment transactions onto their funding cash account so
   // BUY/SELL/etc. show up in the cash flow forecast for INVESTMENT_CASH accounts.
   const accountsById = new Map(accounts.map(a => [a.id, a]));
@@ -264,7 +281,7 @@ export function buildForecast(
     : accounts.filter(a => a.id === accountId);
 
   if (targetAccounts.length === 0) {
-    return [];
+    return { points: [], missingCurrencies: [] };
   }
 
   // currentBalance excludes future-dated transactions (backend filters them
@@ -277,18 +294,32 @@ export function buildForecast(
 
   // Build account currency lookup for converting transaction amounts
   const accountCurrencyMap = new Map(targetAccounts.map(a => [a.id, a.currencyCode]));
+  // A forecast is a running balance: one unconvertible amount makes every
+  // subsequent day wrong, so an unknown conversion is recorded once and the whole
+  // series is reported as unavailable rather than silently drifting. `conv`
+  // therefore contributes nothing and sets the flag.
+  const missingRateCurrencies = new Set<string>();
   const conv = (amount: number, acctId: string): number => {
     if (!convertAmount) return amount;
     const currency = accountCurrencyMap.get(acctId);
-    return currency ? convertAmount(amount, currency) : amount;
+    if (!currency) return amount;
+    const converted = convertAmount(amount, currency);
+    if (converted === null) {
+      missingRateCurrencies.add(currency);
+      return 0;
+    }
+    return converted;
   };
 
-  const startingBalance = targetAccounts.reduce(
-    (sum, acc) => sum + (convertAmount
-      ? convertAmount(Number(acc.currentBalance), acc.currencyCode)
-      : Number(acc.currentBalance)),
-    0
-  );
+  const startingBalance = targetAccounts.reduce((sum, acc) => {
+    if (!convertAmount) return sum + Number(acc.currentBalance);
+    const converted = convertAmount(Number(acc.currentBalance), acc.currencyCode);
+    if (converted === null) {
+      missingRateCurrencies.add(acc.currencyCode);
+      return sum;
+    }
+    return sum + converted;
+  }, 0);
 
   // Filter scheduled transactions by account
   // For a specific account, include transfers where this account is the destination
@@ -370,7 +401,12 @@ export function buildForecast(
     }
   }
 
-  return dataPoints;
+  // A running balance cannot be partially right: report the whole series as
+  // unavailable when any leg of it needed a rate we do not have.
+  if (missingRateCurrencies.size > 0) {
+    return { points: [], missingCurrencies: [...missingRateCurrencies] };
+  }
+  return { points: dataPoints, missingCurrencies: [] };
 }
 
 /**

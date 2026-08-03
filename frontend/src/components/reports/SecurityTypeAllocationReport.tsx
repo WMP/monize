@@ -133,7 +133,11 @@ export function SecurityTypeAllocationReport() {
     const typeMap = new Map<string, { totalValue: number; holdings: AggregatedHolding[] }>();
     aggregated.forEach((h) => {
       const type = h.securityType || 'OTHER';
-      const converted = convertToDefault(h.marketValue ?? 0, h.currencyCode);
+      // An unpriced holding and an unconvertible one both leave the allocation:
+      // `?? 0` folded the first in as a zero, re-weighting every other type.
+      if (h.marketValue === null || h.marketValue === undefined) return;
+      const converted = convertToDefault(h.marketValue, h.currencyCode);
+      if (converted === null) return;
 
       let existing = typeMap.get(type);
       if (!existing) {
@@ -157,8 +161,8 @@ export function SecurityTypeAllocationReport() {
         color: getColor(type, colorIndex++),
         holdings: data.holdings.sort(
           (a, b) =>
-            convertToDefault(b.marketValue ?? 0, b.currencyCode) -
-            convertToDefault(a.marketValue ?? 0, a.currencyCode),
+            (convertToDefault(b.marketValue ?? 0, b.currencyCode) ?? 0) -
+            (convertToDefault(a.marketValue ?? 0, a.currencyCode) ?? 0),
         ),
       }))
       .sort((a, b) => b.totalValue - a.totalValue);
@@ -421,12 +425,25 @@ export function SecurityTypeAllocationReport() {
                         )}
                       </td>
                       <td className="px-4 py-2 text-sm text-right text-gray-600 dark:text-gray-400">
-                        {formatCurrencyFull(convertToDefault(h.marketValue ?? 0, h.currencyCode), defaultCurrency)}
+                        {(() => {
+                          const value =
+                            h.marketValue === null || h.marketValue === undefined
+                              ? null
+                              : convertToDefault(h.marketValue, h.currencyCode);
+                          return value === null
+                            ? t('securityTypeAllocation.unavailable')
+                            : formatCurrencyFull(value, defaultCurrency);
+                        })()}
                       </td>
                       <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-500">
-                        {totalPortfolioValue > 0
-                          ? ((convertToDefault(h.marketValue ?? 0, h.currencyCode) / totalPortfolioValue) * 100).toFixed(1)
-                          : '0.0'}%
+                        {(() => {
+                          const value =
+                            h.marketValue === null || h.marketValue === undefined
+                              ? null
+                              : convertToDefault(h.marketValue, h.currencyCode);
+                          if (value === null || totalPortfolioValue <= 0) return '-';
+                          return `${((value / totalPortfolioValue) * 100).toFixed(1)}%`;
+                        })()}
                       </td>
                       <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-500">
                         {h.quantity}

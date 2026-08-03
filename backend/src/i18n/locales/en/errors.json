@@ -313,7 +313,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Scenario {{ id }} not found",
     "scenarioIdsMustBeArray": "scenarioIds must be an array",
-    "atLeastOneAccountRequired": "At least one accountId is required"
+    "atLeastOneAccountRequired": "At least one accountId is required",
+    "currentBalanceUnavailable": "Your accounts could not be valued right now, so a simulation starting from the current balance cannot be run. Try again, or enter a starting value."
   },
   "netWorth": {
     "invalidStartDate": "startDate must be YYYY-MM-DD",

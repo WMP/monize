@@ -165,6 +165,11 @@ export function useMonteCarloScenarios() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
+  // True when "use current balance" is on but the accounts could not be valued.
+  // The report disables Run on it: every percentile of a simulation started from
+  // an unknown balance is an answer about a portfolio that does not exist.
+  const [currentBalanceUnavailable, setCurrentBalanceUnavailable] =
+    useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showSaveAsDialog, setShowSaveAsDialog] = useState(false);
@@ -235,30 +240,39 @@ export function useMonteCarloScenarios() {
   // when the selected accounts change so the displayed value matches what the
   // simulation will actually use.
   useEffect(() => {
-    if (!form.useCurrentBalance || form.accountIds.length === 0) return;
+    if (!form.useCurrentBalance || form.accountIds.length === 0) {
+      setCurrentBalanceUnavailable(false);
+      return;
+    }
     let cancelled = false;
     const accountIds = form.accountIds;
     monteCarloApi
       .historicalStats(accountIds)
       .then((stats) => {
         if (cancelled) return;
-        // NaN serializes to JSON null; guard against that and any other
-        // non-numeric server quirks so we never feed null into a required
-        // numeric form field.
-        const safe =
+        // `null` means the server could not value these accounts. Coercing it
+        // to 0 -- which this did -- makes a failed valuation indistinguishable
+        // from an empty portfolio, and the simulation then runs from a balance
+        // nobody has. A real 0 is a number and passes through untouched.
+        const balance =
           typeof stats.currentBalance === 'number' &&
           Number.isFinite(stats.currentBalance)
             ? stats.currentBalance
-            : 0;
+            : null;
+        setCurrentBalanceUnavailable(balance === null);
+        if (balance === null) return;
         setForm((prev) =>
           prev.useCurrentBalance &&
           prev.accountIds.length > 0 &&
           prev.accountIds.every((id) => accountIds.includes(id))
-            ? { ...prev, startingValue: safe }
+            ? { ...prev, startingValue: balance }
             : prev,
         );
       })
       .catch((err) => {
+        if (cancelled) return;
+        // A failed request is not a zero balance either.
+        setCurrentBalanceUnavailable(true);
         logger.error('Failed to fetch current balance:', err);
         showErrorToast(err, t('monteCarlo.toasts.currentValueFailed'));
       });
@@ -541,6 +555,7 @@ export function useMonteCarloScenarios() {
     // loading flags
     isLoading,
     isRunning,
+    currentBalanceUnavailable,
     savedFlash,
     // dialog state
     showDeleteConfirm,

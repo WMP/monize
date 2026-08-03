@@ -109,7 +109,7 @@ export function InvestmentTransactionHistoryReport() {
   const displayCurrency = selectedAccount?.currencyCode || defaultCurrency;
   const isForeign = displayCurrency !== defaultCurrency;
 
-  const getTxAmount = useCallback((tx: InvestmentTransaction): number => {
+  const getTxAmount = useCallback((tx: InvestmentTransaction): number | null => {
     const amount = Math.abs(tx.totalAmount);
     if (isSingleAccount) return amount;
     const txCurrency = accountCurrencyMap.get(tx.accountId) || defaultCurrency;
@@ -175,14 +175,21 @@ export function InvestmentTransactionHistoryReport() {
         map.set(tx.action, entry);
       }
       entry.count += 1;
-      entry.totalAmount += getTxAmount(tx);
+      const amount = getTxAmount(tx);
+      // The row is still counted -- the transaction happened -- but an
+      // unconvertible amount does not join a total in another currency.
+      if (amount !== null) entry.totalAmount += amount;
     });
 
     return Array.from(map.values()).sort((a, b) => b.totalAmount - a.totalAmount);
   }, [filteredTransactions, getTxAmount]);
 
   const totalAmount = useMemo(
-    () => filteredTransactions.reduce((sum, tx) => sum + getTxAmount(tx), 0),
+    () =>
+      filteredTransactions.reduce((sum, tx) => {
+        const amount = getTxAmount(tx);
+        return amount === null ? sum : sum + amount;
+      }, 0),
     [filteredTransactions, getTxAmount],
   );
 

@@ -325,7 +325,8 @@
     "tooltipUtilization": "Utilization",
     "tooltipUsed": "Used",
     "tooltipAvailable": "Available",
-    "pdfTitle": "Credit Utilization"
+    "pdfTitle": "Credit Utilization",
+    "noRate": "No rate"
   },
   "currencyExposure": {
     "empty": "No investment holdings found. Add securities to see currency exposure.",
@@ -952,7 +953,8 @@
     "tooltipRow10th": "10th percentile",
     "tooltipRecurring": "Recurring · year {startYear}–{endYear}",
     "tooltipRecurringOpen": "Recurring · year {startYear}+",
-    "tooltipInflated": " (inflated)"
+    "tooltipInflated": " (inflated)",
+    "currentBalanceUnavailable": "Your accounts could not be valued right now, so a simulation cannot start from the current balance. Retry, or turn off “Use current balance” and enter a starting value."
   },
   "monteCarloResults": {
     "colYear": "Year",
@@ -1160,7 +1162,8 @@
     "csvColProceeds": "Proceeds",
     "csvColCostBasis": "Cost Basis",
     "csvColGainLoss": "Gain/Loss",
-    "csvColReturn": "Return %"
+    "csvColReturn": "Return %",
+    "csvNoRate": "No rate"
   },
   "recurringExpenses": {
     "recurringExpenses": "Recurring Expenses",
@@ -1351,7 +1354,8 @@
     "pdfTotalPortfolio": "Total Portfolio",
     "pdfAssetTypes": "Asset Types",
     "pdfTotalHoldings": "Total Holdings",
-    "pdfLargestType": "Largest Type"
+    "pdfLargestType": "Largest Type",
+    "unavailable": "Unavailable"
   },
   "spendingAnomalies": {
     "highPriority": "High Priority",

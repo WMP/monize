@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ServiceUnavailableException,
   Injectable,
   Logger,
   NotFoundException,
@@ -33,7 +34,12 @@ export interface HistoricalStats {
   /** Sample standard deviation of annual returns. null if not enough data. */
   volatility: number | null;
   /** Aggregate current market value of the selected accounts in the user's default currency. */
-  currentBalance: number;
+  /**
+   * Today's value of the selected accounts, or `null` when it could not be
+   * worked out. Not zero: a failed valuation and an empty selection are
+   * different answers and the form has to tell them apart.
+   */
+  currentBalance: number | null;
 }
 
 export interface HoldingStat {
@@ -251,10 +257,12 @@ export class MonteCarloService {
   async runSaved(userId: string, id: string): Promise<SimulationResult> {
     const scenario = await this.findOne(userId, id);
 
-    const startingValue =
-      scenario.useCurrentBalance && scenario.accountIds.length > 0
-        ? await this.computeCurrentValue(userId, scenario.accountIds)
-        : scenario.startingValue;
+    const startingValue = await this.resolveStartingValue(
+      userId,
+      scenario.accountIds,
+      scenario.useCurrentBalance,
+      scenario.startingValue,
+    );
 
     const { expectedReturn, volatility } = await this.resolveReturns(
       userId,
@@ -293,10 +301,12 @@ export class MonteCarloService {
     userId: string,
     dto: RunScenarioDto,
   ): Promise<SimulationResult> {
-    const startingValue =
-      dto.useCurrentBalance && dto.accountIds.length > 0
-        ? await this.computeCurrentValue(userId, dto.accountIds)
-        : dto.startingValue;
+    const startingValue = await this.resolveStartingValue(
+      userId,
+      dto.accountIds,
+      dto.useCurrentBalance,
+      dto.startingValue,
+    );
 
     const { expectedReturn, volatility } = await this.resolveReturns(
       userId,
@@ -666,20 +676,34 @@ export class MonteCarloService {
     return yearlyReturns;
   }
 
+  /**
+   * Today's value of the selected accounts, or `null` when it could not be
+   * worked out.
+   *
+   * `null`, never 0. A valuation failure used to return zero, and a caller
+   * cannot tell that from an account genuinely holding nothing: a 100,000
+   * portfolio whose price lookup failed produced a retirement projection that
+   * ran out of money in year one and presented it as a result. An empty
+   * selection really is zero and stays zero -- that is a known state, and the
+   * two must not share a value.
+   */
   private async computeCurrentValue(
     userId: string,
     accountIds: string[],
-  ): Promise<number> {
+  ): Promise<number | null> {
     try {
       const summary = await this.portfolioService.getPortfolioSummary(
         userId,
         accountIds,
       );
       const value = summary.totalPortfolioValue;
-      // NaN serializes to JSON null and would break the frontend form. Floats
-      // with more than 4 decimals fail the DTO's @IsNumber maxDecimalPlaces
-      // check. Clamp non-finite values to 0 and round to 4 decimal places.
-      if (!Number.isFinite(value)) return 0;
+      // A non-finite total is an arithmetic failure upstream, not a balance.
+      if (!Number.isFinite(value)) {
+        this.logger.warn(
+          `Portfolio value for accounts ${accountIds.join(",")} was not finite`,
+        );
+        return null;
+      }
       return roundMoney(value);
     } catch (err) {
       this.logger.warn(
@@ -687,8 +711,37 @@ export class MonteCarloService {
           err instanceof Error ? err.message : String(err)
         }`,
       );
-      return 0;
+      return null;
     }
+  }
+
+  /**
+   * The starting value a run should use, refusing rather than guessing.
+   *
+   * A scenario set to start from the current balance cannot be simulated when
+   * that balance is unknown: every percentile, every success rate and the
+   * headline "money runs out in year N" would be an answer about a portfolio
+   * that does not exist.
+   */
+  private async resolveStartingValue(
+    userId: string,
+    accountIds: string[],
+    useCurrentBalance: boolean,
+    storedStartingValue: number,
+  ): Promise<number> {
+    if (!useCurrentBalance || accountIds.length === 0) {
+      return storedStartingValue;
+    }
+    const currentValue = await this.computeCurrentValue(userId, accountIds);
+    if (currentValue === null) {
+      throw new ServiceUnavailableException(
+        tr(
+          "errors.monteCarlo.currentBalanceUnavailable",
+          "Your accounts could not be valued right now, so a simulation starting from the current balance cannot be run. Try again, or enter a starting value.",
+        ),
+      );
+    }
+    return currentValue;
   }
 }
 

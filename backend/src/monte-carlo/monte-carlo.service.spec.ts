@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import {
+  ServiceUnavailableException,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
 import { MonteCarloService } from "./monte-carlo.service";
 import { MonteCarloSimulationService } from "./monte-carlo-simulation.service";
 import { MonteCarloScenario } from "./entities/monte-carlo-scenario.entity";
@@ -722,33 +726,81 @@ describe("MonteCarloService", () => {
     });
   });
 
-  describe("computeCurrentValue branches via runSaved", () => {
-    it("returns 0 when portfolio service throws", async () => {
+  /**
+   * A scenario starting from the current balance cannot be simulated when that
+   * balance is unknown. These two cases used to fall back to a 0 starting value
+   * and return a result: a 100,000 portfolio whose valuation failed produced a
+   * projection that ran out of money in year one, presented as an answer. The
+   * old tests asserted exactly that ("falls back to 0 starting value"), so the
+   * suite was green over it.
+   */
+  describe("an unknown current balance refuses the run", () => {
+    it("refuses when the portfolio service throws", async () => {
       scenariosRepository.findOne.mockResolvedValueOnce(
         buildScenario({ useCurrentBalance: true }),
       );
       portfolioService.getPortfolioSummary.mockRejectedValueOnce(
         new Error("db down"),
       );
-      scenariosRepository.save.mockImplementationOnce((s) =>
-        Promise.resolve(s),
-      );
 
-      const result = await service.runSaved(userId, "scn-1");
-      // Should not blow up — falls back to 0 starting value.
-      expect(result).toBeDefined();
+      await expect(service.runSaved(userId, "scn-1")).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+      // and nothing is recorded as having been run
+      expect(scenariosRepository.save).not.toHaveBeenCalled();
     });
 
-    it("clamps non-finite portfolio values to 0", async () => {
+    it("refuses a non-finite portfolio value rather than treating it as zero", async () => {
       scenariosRepository.findOne.mockResolvedValueOnce(
         buildScenario({ useCurrentBalance: true }),
       );
       portfolioService.getPortfolioSummary.mockResolvedValueOnce({
         totalPortfolioValue: NaN,
       });
+
+      await expect(service.runSaved(userId, "scn-1")).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+    });
+
+    it("refuses an ad-hoc run on the same grounds", async () => {
+      portfolioService.getPortfolioSummary.mockRejectedValueOnce(
+        new Error("db down"),
+      );
+
+      await expect(
+        service.runAdHoc(userId, {
+          ...validInputs,
+          accountIds: ["a1"],
+          useCurrentBalance: true,
+        }),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    });
+
+    // An empty selection genuinely holds nothing. That is a known zero and must
+    // stay runnable -- it is the state the unknown one used to be confused with.
+    it("still runs from the stored starting value when no accounts are selected", async () => {
+      const result = await service.runAdHoc(userId, {
+        ...validInputs,
+        accountIds: [],
+        useCurrentBalance: true,
+        startingValue: 25_000,
+      });
+      expect(result).toBeDefined();
+      expect(portfolioService.getPortfolioSummary).not.toHaveBeenCalled();
+    });
+
+    it("runs from a real zero valuation", async () => {
+      scenariosRepository.findOne.mockResolvedValueOnce(
+        buildScenario({ useCurrentBalance: true }),
+      );
+      portfolioService.getPortfolioSummary.mockResolvedValueOnce({
+        totalPortfolioValue: 0,
+      });
       scenariosRepository.save.mockImplementationOnce((s) =>
         Promise.resolve(s),
       );
+
       const result = await service.runSaved(userId, "scn-1");
       expect(result).toBeDefined();
     });

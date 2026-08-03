@@ -587,11 +587,20 @@ function TransactionsContent() {
     const isSingleCurrency = currencies.size === 1;
     const displayCurrency = isSingleCurrency ? [...currencies][0] : defaultCurrency;
 
-    const byDate = new Map<string, number>();
+    // A day whose total needs a rate we do not have has an unknown balance, not a
+    // smaller one. `null` marks the gap so the line breaks there rather than
+    // drawing a straight segment through it (`connectNulls={false}`).
+    const byDate = new Map<string, number | null>();
     const latestByAccount = new Map<string, { date: string; balance: number; currencyCode: string }>();
     for (const row of dailyBalances) {
-      const amount = isSingleCurrency ? row.balance : convertToDefault(row.balance, row.currencyCode);
-      byDate.set(row.date, (byDate.get(row.date) ?? 0) + amount);
+      const amount = isSingleCurrency
+        ? row.balance
+        : convertToDefault(row.balance, row.currencyCode);
+      const running = byDate.get(row.date);
+      byDate.set(
+        row.date,
+        amount === null || running === null ? null : (running ?? 0) + amount,
+      );
 
       const existing = latestByAccount.get(row.accountId);
       if (!existing || existing.date < row.date) {
@@ -608,8 +617,13 @@ function TransactionsContent() {
       .map(([accountId, info]) => ({
         accountId,
         accountName: accountNameById.get(accountId) ?? 'Unknown',
-        balance: isSingleCurrency ? info.balance : convertToDefault(info.balance, info.currencyCode),
+        balance: isSingleCurrency
+          ? info.balance
+          : convertToDefault(info.balance, info.currencyCode),
       }))
+      // An unconvertible balance cannot be drawn as a bar, so it is left out
+      // rather than shown at an arbitrary length.
+      .filter((a): a is typeof a & { balance: number } => a.balance !== null)
       // Hide zero-balance accounts -- they add no information to the chart.
       // Compare at 4-decimal precision to match decimal(20,4) storage.
       .filter((a) => Math.round(a.balance * 10000) !== 0)
