@@ -535,6 +535,26 @@ describe('fetchLoanInterestTransactions', () => {
     expect(await fetchLoanInterestTransactions(makeAccount())).toEqual([]);
     expect(transactionsApi.getAllPages).not.toHaveBeenCalled();
   });
+
+  // REV-20260803-039. A failed fetch is "unknown", not "no interest booked".
+  // Swallowing it into [] made a timeout indistinguishable from a loan with no
+  // separate interest, and the caller then rendered analytic interest as though
+  // it were the real thing.
+  it('propagates a fetch failure instead of reporting no interest', async () => {
+    const failure = new Error('Request timed out');
+    vi.mocked(transactionsApi.getAllPages).mockRejectedValue(failure);
+
+    await expect(fetchLoanInterestTransactions(account)).rejects.toThrow(failure);
+  });
+
+  it('still distinguishes an unconfigured loan from a failing one', async () => {
+    // The two branches must not converge: no interest category is a known
+    // empty and stays [], while a configured loan whose fetch fails rejects.
+    vi.mocked(transactionsApi.getAllPages).mockRejectedValue(new Error('boom'));
+
+    expect(await fetchLoanInterestTransactions(makeAccount())).toEqual([]);
+    await expect(fetchLoanInterestTransactions(account)).rejects.toThrow('boom');
+  });
 });
 
 describe('deriveLoanPaymentHistory interest from the rate timeline', () => {
