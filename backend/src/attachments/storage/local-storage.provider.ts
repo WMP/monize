@@ -5,6 +5,7 @@ import { basename, dirname, resolve, sep } from "path";
 import { tr } from "../../i18n/translate";
 import { isShardableId, shardedSegments } from "../../common/shard-path.util";
 import { AttachmentStorageProvider } from "./attachment-storage.interface";
+import { writeFileAtomic } from "../../backup/atomic-file";
 
 /**
  * Folder attachment bytes are written to when ATTACHMENT_CONTAINER_DIR is unset.
@@ -97,7 +98,12 @@ export class LocalStorageProvider implements AttachmentStorageProvider {
   async save(key: string, data: Buffer): Promise<void> {
     const target = this.shardedPath(this.safeKey(key));
     await fs.mkdir(dirname(target), { recursive: true });
-    await fs.writeFile(target, data);
+    // Temp file, fsync, rename -- not `fs.writeFile` onto the final path, which
+    // truncates first. A kill or an ENOSPC mid-write left a file whose bytes did
+    // not match the SHA-256 the metadata row records, and nothing checked: the
+    // download simply served a truncated receipt. The same hazard the automatic
+    // backup had (see atomic-file.ts).
+    await writeFileAtomic(target, data);
   }
 
   async load(key: string): Promise<Buffer> {

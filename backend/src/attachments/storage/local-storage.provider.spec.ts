@@ -150,4 +150,49 @@ describe("LocalStorageProvider", () => {
       expect(baseDirOf(p)).toBe("/mnt/attachments");
     });
   });
+  /**
+   * The bytes are addressed by a SHA-256 the metadata row records, and nothing
+   * re-checks it on download -- so a partial write serves a truncated receipt
+   * with no error anywhere. `fs.writeFile` onto the final path truncates before
+   * it fills, which is the same hazard the automatic backup had.
+   */
+  describe("crash-atomic writes", () => {
+    it("leaves no file behind when the write fails", async () => {
+      const key = "aabbccdd-1111-4111-8111-111111111111".replace(/-/g, "");
+      // A Buffer view whose byteLength is a lie: the write throws after the
+      // temporary file exists, which is the shape of ENOSPC or a short write.
+      const broken = Object.create(Buffer.prototype) as Buffer;
+
+      await expect(provider.save(key, broken)).rejects.toThrow();
+
+      // Nothing under the shard directory, not even a zero-length placeholder.
+      const shard = join(baseDir, key.slice(0, 2), key.slice(2, 4));
+      await expect(
+        fs.readdir(shard).then((names) => names.sort()),
+      ).resolves.toEqual([]);
+    });
+
+    it("keeps the previous bytes when a rewrite fails", async () => {
+      const key = "eeff0011222233334444555566667777";
+      await provider.save(key, Buffer.from("original receipt"));
+      const broken = Object.create(Buffer.prototype) as Buffer;
+
+      await expect(provider.save(key, broken)).rejects.toThrow();
+
+      expect((await provider.load(key)).toString("utf-8")).toBe(
+        "original receipt",
+      );
+    });
+
+    it("replaces existing bytes in one step, leaving no temporary file", async () => {
+      const key = "99887766554433221100aabbccddeeff";
+      await provider.save(key, Buffer.from("old"));
+
+      await provider.save(key, Buffer.from("new"));
+
+      expect((await provider.load(key)).toString("utf-8")).toBe("new");
+      const shard = join(baseDir, key.slice(0, 2), key.slice(2, 4));
+      expect((await fs.readdir(shard)).sort()).toEqual([key]);
+    });
+  });
 });

@@ -151,7 +151,10 @@ export class SupportBackupService {
     // (scrypt), not from AI_ENCRYPTION_KEY, so a support backup encrypts fine
     // regardless of whether that env var is configured.
     return options.password
-      ? { buffer: encryptBackup(gzipped, options.password), encrypted: true }
+      ? {
+          buffer: await encryptBackup(gzipped, options.password),
+          encrypted: true,
+        }
       : { buffer: gzipped, encrypted: false };
   }
 

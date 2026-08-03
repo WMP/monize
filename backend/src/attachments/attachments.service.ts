@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   PayloadTooLargeException,
   UnsupportedMediaTypeException,
@@ -45,6 +46,8 @@ export interface UploadedAttachmentFile {
 
 @Injectable()
 export class AttachmentsService {
+  private readonly logger = new Logger(AttachmentsService.name);
+
   constructor(
     private readonly dataSource: DataSource,
     @Inject(ATTACHMENT_STORAGE_PROVIDER)
@@ -53,9 +56,13 @@ export class AttachmentsService {
 
   /**
    * Store an uploaded file against a transaction. Validates size, sniffs the
-   * real MIME type (never trusting the client), enforces the per-transaction
-   * cap, and writes metadata + bytes in one transaction so a storage failure
-   * rolls the metadata row back.
+   * real MIME type (never trusting the client), and enforces the per-transaction
+   * cap.
+   *
+   * Only the `database` provider's bytes are transactional -- its `save` is a
+   * nested `withScopedDb` that joins this transaction. `local` and `s3` write
+   * outside it, so the ordering of the object write against the commit is a
+   * decision rather than an accident; see the comment at the write.
    */
   async create(
     userId: string,
@@ -130,12 +137,44 @@ export class AttachmentsService {
       });
       const saved = await repo.save(attachment);
 
-      // Nested withScopedDb joins this transaction, so the bytes and the metadata
-      // row commit together (or roll back together on failure).
+      // The database provider's `save` is a nested withScopedDb, so it joins this
+      // transaction and the bytes commit with the metadata row -- or roll back
+      // with it. For `local` and `s3` there is no such guarantee: the object
+      // write is not part of any transaction.
+      //
+      // Bytes first, deliberately. If the commit then fails the object is
+      // orphaned, which costs storage and nothing else; writing after the commit
+      // would instead leave a metadata row promising a download that does not
+      // exist, and the user cannot tell that apart from a working attachment.
+      // The orphan is cleaned up below on the paths we can see.
       await this.storage.save(id, file.buffer);
 
       return saved;
+    }).catch(async (error) => {
+      if (!this.storageIsTransactional) {
+        await this.discardOrphanedBytes(id);
+      }
+      throw error;
     });
+  }
+
+  /** Whether the active provider's writes participate in the DB transaction. */
+  private get storageIsTransactional(): boolean {
+    return this.storage.name === "database";
+  }
+
+  /**
+   * Best-effort removal of bytes written for a row that did not commit. Failing
+   * here must not replace the caller's error, which is the one that explains
+   * what went wrong.
+   */
+  private async discardOrphanedBytes(key: string): Promise<void> {
+    try {
+      await this.storage.delete(key);
+    } catch {
+      // Left orphaned. Storage cost, not a correctness problem -- unlike the
+      // reverse ordering, which would leave a broken attachment.
+    }
   }
 
   /** List attachment metadata for one of the user's transactions (no bytes). */
@@ -186,11 +225,34 @@ export class AttachmentsService {
     }
 
     await withScopedDb(this.dataSource, async (m) => {
-      // Removing the metadata row cascades to attachment_blobs for the database
-      // provider; still call the provider so external stores are cleaned up too.
+      // Removing the metadata row cascades to attachment_blobs, so the database
+      // provider's bytes go with it inside this transaction.
       await m.getRepository(TransactionAttachment).delete({ id, userId });
-      await this.storage.delete(attachment.storageKey);
+      if (this.storageIsTransactional) {
+        await this.storage.delete(attachment.storageKey);
+      }
     });
+
+    // External bytes are deleted only after the metadata row is committed gone.
+    //
+    // This used to happen inside the transaction, which had the ordering exactly
+    // backwards: a commit failure after the object was deleted left the metadata
+    // row in place, pointing at bytes that no longer existed. The user saw an
+    // attachment they could not download and could not tell from a working one.
+    //
+    // After the commit, a failure here leaves an orphaned object instead -- a
+    // storage cost with nothing referencing it. `delete` is idempotent, so a
+    // retry is harmless.
+    if (!this.storageIsTransactional) {
+      try {
+        await this.storage.delete(attachment.storageKey);
+      } catch (error) {
+        this.logger.warn(
+          `Attachment ${id} was deleted but its bytes could not be removed from ` +
+            `${this.storage.name} storage (key ${attachment.storageKey}): ${error.message}`,
+        );
+      }
+    }
   }
 }
 

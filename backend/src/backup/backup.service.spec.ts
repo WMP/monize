@@ -2570,7 +2570,7 @@ describe("BackupService", () => {
         mockUserRepo.findOne.mockResolvedValue(mockUser);
         (bcrypt.compare as jest.Mock).mockResolvedValue(true);
         const result = await service.restoreData(userId, {
-          compressedData: encryptedBlob(validBackupData, "user-password"),
+          compressedData: await encryptedBlob(validBackupData, "user-password"),
           password: "user-password",
         });
         expect(result.message).toBe("Backup restored successfully");
@@ -2580,7 +2580,10 @@ describe("BackupService", () => {
         mockUserRepo.findOne.mockResolvedValue(mockUser);
         (bcrypt.compare as jest.Mock).mockResolvedValue(true);
         const result = await service.restoreData(userId, {
-          compressedData: encryptedBlob(validBackupData, "old-backup-password"),
+          compressedData: await encryptedBlob(
+            validBackupData,
+            "old-backup-password",
+          ),
           password: "new-login-password",
           backupPassword: "old-backup-password",
         });
@@ -2597,7 +2600,7 @@ describe("BackupService", () => {
           backupPasswordEnc: "enc:stored-bk-pw",
         });
         const result = await service.restoreData(userId, {
-          compressedData: encryptedBlob(validBackupData, "stored-bk-pw"),
+          compressedData: await encryptedBlob(validBackupData, "stored-bk-pw"),
           oidcIdToken: "tok",
         });
         expect(result.message).toBe("Backup restored successfully");
@@ -2608,7 +2611,7 @@ describe("BackupService", () => {
         (bcrypt.compare as jest.Mock).mockResolvedValue(true);
         await expect(
           service.restoreData(userId, {
-            compressedData: encryptedBlob(validBackupData, "real-pw"),
+            compressedData: await encryptedBlob(validBackupData, "real-pw"),
             password: "different-pw",
           }),
         ).rejects.toMatchObject({

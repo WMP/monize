@@ -31,9 +31,33 @@ import { tr } from "../i18n/translate";
 // whitespace (and non-ASCII characters) survive HTTP header transport, which
 // otherwise strips surrounding whitespace per RFC 7230. Decode them back to the
 // exact password the user typed before any credential comparison or decryption.
-function decodePasswordHeader(value: string | undefined): string | undefined {
+//
+// The round-trip check is the point. Node's base64 decoder is lenient: it
+// silently discards characters outside the alphabet rather than failing, so a
+// client that sent the password unencoded (or encoded it wrongly) got a mangled
+// string back and no error anywhere. On `x-restore-password` that is a
+// confusing 401; on `x-export-password` it is unrecoverable, because the export
+// is then encrypted under a password nobody knows and reported as a success.
+// Better to refuse the request than to hand back a file that can never be
+// opened.
+function decodePasswordHeader(
+  value: string | undefined,
+  header: string,
+): string | undefined {
   if (value === undefined) return undefined;
-  return Buffer.from(value, "base64").toString("utf8");
+  const decoded = Buffer.from(value, "base64");
+  if (
+    decoded.toString("base64").replace(/=+$/, "") !== value.replace(/=+$/, "")
+  ) {
+    throw new BadRequestException(
+      tr(
+        "errors.backup.passwordHeaderNotBase64",
+        `The ${header} header must be base64-encoded.`,
+        { header },
+      ),
+    );
+  }
+  return decoded.toString("utf8");
 }
 
 /**
@@ -79,6 +103,7 @@ export class BackupController {
     // and so it never lands in server access logs as a query string.
     const encryptionPassword = decodePasswordHeader(
       req.headers["x-export-password"] as string | undefined,
+      "x-export-password",
     );
 
     this.setBackupDownloadHeaders(res, !!encryptionPassword, "monize-backup");
@@ -151,12 +176,14 @@ export class BackupController {
 
     const password = decodePasswordHeader(
       req.headers["x-restore-password"] as string | undefined,
+      "x-restore-password",
     );
     const oidcIdToken = req.headers["x-restore-oidc-token"] as
       | string
       | undefined;
     const backupPassword = decodePasswordHeader(
       req.headers["x-backup-password"] as string | undefined,
+      "x-backup-password",
     );
 
     const result = await this.backupService.restoreData(req.user.id, {

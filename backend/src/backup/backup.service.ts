@@ -248,7 +248,7 @@ export class BackupService {
   ): Promise<Buffer> {
     const gzipped = await this.collectGzippedExport(userId);
     return encryptionPassword
-      ? encryptBackup(gzipped, encryptionPassword)
+      ? await encryptBackup(gzipped, encryptionPassword)
       : gzipped;
   }
 
@@ -266,7 +266,7 @@ export class BackupService {
     // stream straight through gzip to avoid OOM on very large datasets.
     if (encryptionPassword) {
       const gzipped = await this.collectGzippedExport(userId);
-      const encrypted = encryptBackup(gzipped, encryptionPassword);
+      const encrypted = await encryptBackup(gzipped, encryptionPassword);
       res.write(encrypted);
       res.end();
       this.logger.log(`Backup export completed for user ${userId} (encrypted)`);
@@ -689,7 +689,7 @@ export class BackupService {
 
     await this.verifyAuthentication(user, input);
 
-    const gzippedPayload = this.maybeDecrypt(input, user);
+    const gzippedPayload = await this.maybeDecrypt(input, user);
     const rawData = await this.decompressAndParse(gzippedPayload);
     this.validateBackupFormat(rawData);
 
@@ -795,7 +795,10 @@ export class BackupService {
    * encrypted but every available password failed -- the frontend uses that
    * to prompt the user for the password the backup was made with.
    */
-  private maybeDecrypt(input: RestoreBackupInput, user: User): Buffer {
+  private async maybeDecrypt(
+    input: RestoreBackupInput,
+    user: User,
+  ): Promise<Buffer> {
     if (!isEncryptedBackup(input.compressedData)) {
       return input.compressedData;
     }
@@ -808,7 +811,7 @@ export class BackupService {
 
     for (const pw of candidates) {
       try {
-        return decryptBackup(input.compressedData, pw);
+        return await decryptBackup(input.compressedData, pw);
       } catch (err) {
         if (!(err instanceof BackupDecryptionError)) throw err;
         // try next candidate

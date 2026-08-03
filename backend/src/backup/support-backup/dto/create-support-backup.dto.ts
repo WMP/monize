@@ -1,4 +1,5 @@
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsIn,
@@ -61,6 +62,10 @@ export class CreateSupportBackupDto {
    */
   @IsOptional()
   @IsArray()
+  // There are only six sections, and `resolveSections` filters the request
+  // against them -- but the array itself was unbounded, so a caller could send
+  // "investments" a million times and make that filter walk the lot.
+  @ArrayMaxSize(SECTIONS.length)
   @IsIn(SECTIONS, { each: true })
   sections?: SupportBackupSection[];
 
@@ -70,6 +75,10 @@ export class CreateSupportBackupDto {
    */
   @IsOptional()
   @IsArray()
+  // `scopeToAccounts` does per-element work over every exported table, so an
+  // unbounded list here is a denial-of-service lever on an authenticated
+  // endpoint (CWE-834). Well above any real account count.
+  @ArrayMaxSize(1000)
   @IsUUID("4", { each: true })
   accountIds?: string[];
 

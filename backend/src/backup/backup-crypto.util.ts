@@ -1,4 +1,21 @@
 import * as crypto from "crypto";
+import { promisify } from "util";
+
+/**
+ * scrypt at N=32768 takes roughly 100ms of pure CPU. `scryptSync` spent that on
+ * the event loop, and `maybeDecrypt` tries up to three candidate passwords per
+ * restore -- so one request stalled every other request in the process for about
+ * a third of a second. Under the 100 requests/minute throttle that is a large
+ * fraction of one core denied to everyone else, from a single authenticated user.
+ * The async form runs the derivation on the libuv threadpool instead. Same
+ * reasoning as the async gunzip in the restore path.
+ */
+const scryptAsync = promisify(crypto.scrypt) as (
+  password: string,
+  salt: Buffer,
+  keylen: number,
+  options: crypto.ScryptOptions,
+) => Promise<Buffer>;
 
 // Backup file envelope format (binary, prepended to ciphertext):
 //
@@ -25,8 +42,8 @@ const SCRYPT_N = 1 << 15; // 32768; tuned for ~100ms on modern hardware
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 
-function deriveKey(password: string, salt: Buffer): Buffer {
-  return crypto.scryptSync(password, salt, KEY_LENGTH, {
+function deriveKey(password: string, salt: Buffer): Promise<Buffer> {
+  return scryptAsync(password, salt, KEY_LENGTH, {
     N: SCRYPT_N,
     r: SCRYPT_R,
     p: SCRYPT_P,
@@ -61,13 +78,16 @@ export function isEncryptedBackup(buf: Buffer): boolean {
  * Encrypt the gzipped-JSON payload under a password-derived AES-256-GCM key.
  * Returns the full envelope: magic + version + kdf + salt + iv + tag + ct.
  */
-export function encryptBackup(payload: Buffer, password: string): Buffer {
+export async function encryptBackup(
+  payload: Buffer,
+  password: string,
+): Promise<Buffer> {
   if (!password) {
     throw new Error("Backup encryption requires a non-empty password");
   }
   const salt = crypto.randomBytes(SALT_LENGTH);
   const iv = crypto.randomBytes(IV_LENGTH);
-  const key = deriveKey(password, salt);
+  const key = await deriveKey(password, salt);
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
   const ciphertext = Buffer.concat([cipher.update(payload), cipher.final()]);
   const authTag = cipher.getAuthTag();
@@ -94,7 +114,10 @@ export class BackupDecryptionError extends Error {
  * tampering) surfaces as a BackupDecryptionError -- callers map this to a
  * prompt-for-password response instead of a transaction failure.
  */
-export function decryptBackup(envelope: Buffer, password: string): Buffer {
+export async function decryptBackup(
+  envelope: Buffer,
+  password: string,
+): Promise<Buffer> {
   // isEncryptedBackup already enforces length >= HEADER_LENGTH, so we don't
   // re-check it here.
   if (!isEncryptedBackup(envelope)) {
@@ -119,7 +142,7 @@ export function decryptBackup(envelope: Buffer, password: string): Buffer {
   offset += TAG_LENGTH;
   const ciphertext = envelope.subarray(offset);
 
-  const key = deriveKey(password, salt);
+  const key = await deriveKey(password, salt);
   const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
   decipher.setAuthTag(authTag);
 

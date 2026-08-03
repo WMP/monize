@@ -229,6 +229,124 @@ describe("AttachmentsService", () => {
       expect(storage.delete).not.toHaveBeenCalled();
     });
   });
+
+  /**
+   * Only the `database` provider's bytes are transactional -- its `save`/`delete`
+   * are nested `withScopedDb` calls that join the caller's transaction. `local`
+   * and `s3` write outside it, so where the object operation sits relative to the
+   * commit decides which way a failure breaks.
+   *
+   * The rule: a failure must leave an orphaned object, never a metadata row
+   * promising a download that does not exist. The user cannot tell a broken
+   * attachment from a working one; an orphan costs storage and nothing else.
+   */
+  describe("external storage against the transaction boundary", () => {
+    /** Rebuilds the service with a non-transactional provider. */
+    function withExternalStorage(): void {
+      storage = {
+        name: "local",
+        save: jest.fn().mockResolvedValue(undefined),
+        load: jest.fn(),
+        delete: jest.fn().mockResolvedValue(undefined),
+      };
+      service = new AttachmentsService({} as DataSource, storage);
+    }
+
+    it("deletes external bytes only after the metadata row is committed gone", async () => {
+      withExternalStorage();
+      attRepo.findOne.mockResolvedValue({ id: "a1", storageKey: "a1" });
+      const order: string[] = [];
+      attRepo.delete.mockImplementation(() => {
+        order.push("delete-row");
+        return Promise.resolve({ affected: 1 });
+      });
+      storage.delete.mockImplementation(() => {
+        order.push("delete-bytes");
+        return Promise.resolve(undefined);
+      });
+      // The transaction body has to finish before the object write happens, so
+      // the double resolves only after the callback returns.
+      mockedTenantTx.mockImplementation(async (_ds, fn) => {
+        const result = await fn({
+          getRepository: jest.fn(() => attRepo),
+        } as unknown as EntityManager);
+        order.push("commit");
+        return result;
+      });
+
+      await service.remove("user-1", "a1");
+
+      // Sliced: `remove` opens a second short transaction first, to read the row
+      // it is about to delete, and that commit is not the one under test.
+      //
+      // This used to be delete-row, delete-bytes, commit -- so a commit failure
+      // left the row pointing at bytes that were already gone.
+      expect(order.slice(-3)).toEqual(["delete-row", "commit", "delete-bytes"]);
+    });
+
+    it("keeps external bytes when the metadata delete fails", async () => {
+      withExternalStorage();
+      attRepo.findOne.mockResolvedValue({ id: "a1", storageKey: "a1" });
+      attRepo.delete.mockRejectedValue(new Error("deadlock detected"));
+
+      await expect(service.remove("user-1", "a1")).rejects.toThrow(
+        "deadlock detected",
+      );
+      // The row survives, so its bytes must too.
+      expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it("still deletes database-provider bytes inside the transaction", async () => {
+      // The cascade handles attachment_blobs, and the provider call joins the
+      // transaction -- moving it outside would take it out of that atomicity.
+      attRepo.findOne.mockResolvedValue({ id: "a1", storageKey: "a1" });
+      const order: string[] = [];
+      attRepo.delete.mockImplementation(() => {
+        order.push("delete-row");
+        return Promise.resolve({ affected: 1 });
+      });
+      storage.delete.mockImplementation(() => {
+        order.push("delete-bytes");
+        return Promise.resolve(undefined);
+      });
+      mockedTenantTx.mockImplementation(async (_ds, fn) => {
+        const result = await fn({
+          getRepository: jest.fn(() => attRepo),
+        } as unknown as EntityManager);
+        order.push("commit");
+        return result;
+      });
+
+      await service.remove("user-1", "a1");
+
+      expect(order.slice(-3)).toEqual(["delete-row", "delete-bytes", "commit"]);
+    });
+
+    it("removes orphaned external bytes when the upload transaction fails", async () => {
+      withExternalStorage();
+      attRepo.save.mockRejectedValue(new Error("constraint violation"));
+
+      await expect(
+        service.create("user-1", "txn-1", pngFile()),
+      ).rejects.toThrow("constraint violation");
+
+      // Nothing references them, so leaving them would be a slow leak on every
+      // failed upload.
+      expect(storage.delete).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not try to clean up database-provider bytes on failure", async () => {
+      attRepo.save.mockRejectedValue(new Error("constraint violation"));
+
+      await expect(
+        service.create("user-1", "txn-1", pngFile()),
+      ).rejects.toThrow("constraint violation");
+
+      // The rollback already took them; a delete afterwards would run outside any
+      // transaction against a row that never existed.
+      expect(storage.delete).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe("sanitizeFilename", () => {

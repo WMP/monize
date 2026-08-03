@@ -100,6 +100,47 @@ describe("BackupController", () => {
         "pw",
       );
     });
+
+    /**
+     * Node's base64 decoder silently discards characters outside the alphabet
+     * instead of failing, so an unencoded (or wrongly encoded) header produced a
+     * mangled password and no error. On export that is unrecoverable: the file is
+     * encrypted under a password nobody knows, and the response says success.
+     */
+    it("refuses an export password header that is not base64", async () => {
+      const mockRes = { setHeader: jest.fn() };
+      const req = {
+        ...mockReq,
+        // A plausible mistake: the client sent the password as typed.
+        headers: { "x-export-password": "my p@ssword!" },
+      };
+
+      await expect(
+        controller.exportBackup(req, mockRes as any),
+      ).rejects.toThrow(/base64/i);
+      expect(mockBackupService.streamExport).not.toHaveBeenCalled();
+    });
+
+    it("accepts a correctly encoded password with padding and non-ASCII", async () => {
+      const mockRes = { setHeader: jest.fn() };
+      const password = "hasło  z odstępami ";
+      const req = {
+        ...mockReq,
+        headers: {
+          "x-export-password": Buffer.from(password, "utf8").toString("base64"),
+        },
+      };
+
+      await controller.exportBackup(req, mockRes as any);
+
+      // The whole reason for base64: surrounding whitespace and non-ASCII must
+      // arrive exactly as typed.
+      expect(mockBackupService.streamExport).toHaveBeenCalledWith(
+        userId,
+        mockRes,
+        password,
+      );
+    });
   });
 
   describe("supportExport", () => {
@@ -156,6 +197,21 @@ describe("BackupController", () => {
 
       expect(mockSupportBackup.preview).toHaveBeenCalledWith(userId, dto);
       expect(result).toEqual({ samples: [] });
+    });
+  });
+
+  describe("password header decoding on restore", () => {
+    it("refuses a restore password header that is not base64", async () => {
+      const req = {
+        user: { id: userId },
+        body: Buffer.from("gz"),
+        headers: { "x-restore-password": "not base64!" },
+      };
+
+      await expect(controller.restoreBackup(req)).rejects.toThrow(/base64/i);
+      // A mangled password here is a confusing 401 rather than data loss, but
+      // the request must still be refused rather than guessed at.
+      expect(mockBackupService.restoreData).not.toHaveBeenCalled();
     });
   });
 

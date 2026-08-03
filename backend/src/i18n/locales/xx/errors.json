@@ -177,6 +177,7 @@
     "userNotFoundRestore": "[XX-User not found-XX]",
     "backupPasswordWrong": "[XX-The password you entered cannot decrypt this backup. Try the password that was set when the backup was created.-XX]",
     "backupPasswordRequired": "[XX-This backup is encrypted. Provide the password that was used when the backup was created.-XX]",
+    "passwordHeaderNotBase64": "[XX-The {header} header must be base64-encoded.-XX]",
     "folderOutsideAllowedRoots": "[XX-Backup folder \"{path}\" is outside the permitted roots ({roots}). Set BACKUP_ALLOWED_ROOTS to permit it.-XX]",
     "decompressFailed": "[XX-Failed to decompress backup file. Ensure the file is gzip-compressed.-XX]",
     "decompressTooLarge": "[XX-Backup is too large to restore: it expands past the configured limit of {limit} bytes. Raise BACKUP_RESTORE_EXPANDED_LIMIT if this is a genuine backup.-XX]",

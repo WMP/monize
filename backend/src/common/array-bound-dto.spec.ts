@@ -118,8 +118,6 @@ const PREEXISTING_UNBOUNDED: readonly string[] = [
   "CreateScheduledTransactionOverrideDto.splits",
   "CreateScheduledTransactionSplitDto.tagIds",
   "CreateSecurityDto.tagIds",
-  "CreateSupportBackupDto.accountIds",
-  "CreateSupportBackupDto.sections",
   "CreateTransactionDto.tagIds",
   "CreateTransactionSplitDto.tagIds",
   "CreateTransferDto.tagIds",
