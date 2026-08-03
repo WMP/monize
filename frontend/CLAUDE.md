@@ -42,10 +42,10 @@ Feature API modules (one per feature, typed axios wrappers) live alongside `api.
 
 ### A write that moves money calls `invalidateBalanceCaches()`
 
-`accountsApi.getAll` and `investmentsApi.getPortfolioSummary` are cached in
-`apiCache.ts` for two minutes, and the backend computes balances live from
-transactions -- so a write that does not drop those entries leaves the Accounts
-page showing the pre-write number. Navigating away and back does not fix it:
+`accountsApi.getAll`, `investmentsApi.getPortfolioSummary` and the budget
+progress views are cached in `apiCache.ts`, and the backend computes all three
+live from transaction rows -- so a write that does not drop those entries leaves
+the Accounts page showing the pre-write number. Navigating away and back does not fix it:
 the page refetches on mount and the refetch is served from the same cache, so
 only a browser reload clears it. Call `invalidateBalanceCaches()` (both
 prefixes at once) after any write that adds, removes, re-dates, re-prices or
@@ -56,6 +56,15 @@ named), an investment trade hitting its INVESTMENT_CASH account, and a QIF/OFX/
 CSV/MNY import all write transaction rows from their own modules. That omission
 on `scheduledTransactionsApi.post` is the bug this rule came from;
 `src/lib/balance-cache.guard.test.ts` now scans for it.
+
+**The prefix list inside the helper is the other half of the rule.** It covers
+`accounts:`, `investments:` and `budgets:` -- three views of the same rows. A
+categorised expense moves a budget's progress exactly as it moves the account's
+balance, and `budgets:dashboard` (30s) and `budgets:cat-status:*` (60s) used to
+survive the write, so the toast said saved while the remaining-funds figure
+beside it was pre-write. Adding a cached family that reads transaction rows means
+adding its prefix in `invalidateBalanceCaches` in the same change;
+`apiCache.test.ts` pins the set, both what it drops and what it leaves alone.
 
 Where the write can touch anything -- undo/redo, an AI assistant action, a
 backup restore -- use `clearAllCache()` instead; no prefix is narrow enough to
