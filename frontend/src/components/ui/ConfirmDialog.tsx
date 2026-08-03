@@ -15,6 +15,13 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   /** When true, integrates with browser history so the back button cancels. */
   pushHistory?: boolean;
+  /**
+   * When true, the confirmed action is in flight: both buttons are disabled so
+   * the same operation cannot be fired twice. Only needed by a dialog that stays
+   * open across its own request -- one that closes on confirm has nothing to
+   * double-click.
+   */
+  isBusy?: boolean;
 }
 
 export function ConfirmDialog({
@@ -27,6 +34,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   pushHistory = false,
+  isBusy = false,
 }: ConfirmDialogProps) {
   const t = useTranslations('common');
   const resolvedConfirmLabel = confirmLabel ?? t('confirmDialog.confirm');
@@ -107,12 +115,14 @@ export function ConfirmDialog({
         </div>
       </div>
       <div className="mt-6 flex justify-end space-x-3">
-        <Button variant="outline" onClick={onCancel}>
+        <Button variant="outline" onClick={onCancel} disabled={isBusy}>
           {resolvedCancelLabel}
         </Button>
         <button
           onClick={onConfirm}
-          className={`inline-flex justify-center px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${buttonVariants[variant]}`}
+          disabled={isBusy}
+          aria-busy={isBusy}
+          className={`inline-flex justify-center px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed ${buttonVariants[variant]}`}
         >
           {resolvedConfirmLabel}
         </button>

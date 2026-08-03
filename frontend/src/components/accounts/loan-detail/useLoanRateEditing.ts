@@ -50,6 +50,10 @@ export function useLoanRateEditing(account: Account, onChanged: () => void) {
   const [isDetecting, setIsDetecting] = useState(false);
   const [scheduledPreview, setScheduledPreview] =
     useState<ScheduledPaymentPreview | null>(null);
+  // The dialog stays open on a failure so the user can retry, which means the
+  // confirm button stays live: without this the same apply could be fired
+  // several times over.
+  const [isApplyingScheduled, setIsApplyingScheduled] = useState(false);
 
   const isMortgage = account.accountType === 'MORTGAGE';
 
@@ -154,16 +158,24 @@ export function useLoanRateEditing(account: Account, onChanged: () => void) {
   };
 
   const applyScheduledPayment = async () => {
-    if (!scheduledPreview) return;
-    setScheduledPreview(null);
+    if (!scheduledPreview || isApplyingScheduled) return;
+    // The preview is held until the request SUCCEEDS. Clearing it up-front closed
+    // the dialog on the way out, and the catch never put it back -- so a
+    // transient failure left the rate change saved, the linked scheduled bill
+    // stale, and no way to retry: this preview is only ever returned by
+    // rate-change creation, so it does not come back on reload either.
+    setIsApplyingScheduled(true);
     try {
       await loanRateChangesApi.applyScheduledPayment(account.id);
       toast.success(t('loanDetail.rateHistory.scheduledUpdateAppliedToast'));
+      setScheduledPreview(null);
       onChanged();
     } catch (err) {
       toast.error(
         getErrorMessage(err, t('loanDetail.rateHistory.scheduledUpdateFailed')),
       );
+    } finally {
+      setIsApplyingScheduled(false);
     }
   };
 
@@ -246,6 +258,7 @@ export function useLoanRateEditing(account: Account, onChanged: () => void) {
     scheduledUpdateMessage,
     applyScheduledPayment,
     skipScheduledPayment,
+    isApplyingScheduled,
   };
 }
 

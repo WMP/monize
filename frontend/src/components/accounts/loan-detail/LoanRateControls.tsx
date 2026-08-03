@@ -158,6 +158,7 @@ export function LoanRateControls({ editing }: LoanRateControlsProps) {
         cancelLabel={t('loanDetail.rateHistory.scheduledUpdateSkip')}
         onConfirm={editing.applyScheduledPayment}
         onCancel={editing.skipScheduledPayment}
+        isBusy={editing.isApplyingScheduled}
       />
     </div>
   );
