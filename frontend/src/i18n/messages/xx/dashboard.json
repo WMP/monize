@@ -201,13 +201,15 @@
     "title": "[XX-Credit Utilization by Account-XX]",
     "empty": "[XX-No credit accounts with a limit set.-XX]",
     "utilization": "[XX-Utilization-XX]",
-    "used": "[XX-Used-XX]"
+    "used": "[XX-Used-XX]",
+    "amountUnavailable": "[XX-Not available-XX]"
   },
   "creditUtilizationTotal": {
     "title": "[XX-Total Credit Utilization-XX]",
     "empty": "[XX-No credit accounts with a limit set.-XX]",
     "used": "[XX-Used-XX]",
-    "available": "[XX-Available-XX]"
+    "available": "[XX-Available-XX]",
+    "ratesUnavailable": "[XX-Some accounts use a currency with no exchange rate on file, so the combined limit and drawn amounts cannot be worked out.-XX]"
   },
   "sectorWeightings": {
     "title": "[XX-Sector Allocation-XX]",

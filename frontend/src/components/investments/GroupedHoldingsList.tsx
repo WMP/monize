@@ -133,7 +133,12 @@ export function GroupedHoldingsList({
       <div className="divide-y divide-gray-200 dark:divide-gray-700">
         {holdingsByAccount.map((account) => {
           const isExpanded = expandedAccounts.has(account.accountId);
-          const accountTotalValue = account.totalMarketValue + account.cashBalance;
+          // Unknown market value makes the account's total unknown; `fmtAcct`
+          // already renders null as a dash rather than a formatted zero.
+          const accountTotalValue =
+            account.totalMarketValue === null
+              ? null
+              : account.totalMarketValue + account.cashBalance;
           const acctDisplayCurrency = account.currencyCode !== defaultCurrency
             ? account.currencyCode
             : null;
@@ -171,7 +176,7 @@ export function GroupedHoldingsList({
                   <div className="font-semibold text-gray-900 dark:text-gray-100">
                     {fmtAcct(accountTotalValue)}
                   </div>
-                  {acctDisplayCurrency && (
+                  {acctDisplayCurrency && accountTotalValue !== null && (
                     <div className="text-xs text-gray-400 dark:text-gray-500">
                       {'\u2248 '}{formatCurrencyBase(convertToDefault(accountTotalValue, acctDisplayCurrency), defaultCurrency)} {defaultCurrency}
                     </div>
@@ -281,13 +286,17 @@ export function GroupedHoldingsList({
                           {t('groupedHoldings.accountTotal')}
                         </td>
                         <td className="px-1.5 sm:px-4 py-3 text-right text-sm text-gray-900 dark:text-gray-100">
-                          {fmtAcct(account.totalCostBasis + account.cashBalance)}
+                          {fmtAcct(
+                            account.totalCostBasis === null
+                              ? null
+                              : account.totalCostBasis + account.cashBalance,
+                          )}
                         </td>
                         <td className="px-1.5 sm:px-4 py-3 text-right text-sm text-gray-900 dark:text-gray-100">
                           <div>{fmtAcct(accountTotalValue)}</div>
                           {acctDisplayCurrency && (
                             <div className="text-xs font-normal text-gray-400 dark:text-gray-500">
-                              {'\u2248 '}{formatCurrencyBase(convertToDefault(accountTotalValue, acctDisplayCurrency), defaultCurrency)} {defaultCurrency}
+                              {'\u2248 '}{accountTotalValue === null ? '-' : `${formatCurrencyBase(convertToDefault(accountTotalValue, acctDisplayCurrency), defaultCurrency)} ${defaultCurrency}`}
                             </div>
                           )}
                         </td>
@@ -370,8 +379,10 @@ const HoldingRow = memo(function HoldingRow({
     holding.marketValue !== null
       ? convert(holding.marketValue, holding.currencyCode, accountCurrency)
       : null;
+  // Both halves must be known: an unknown basis would otherwise report the
+  // whole market value as gain.
   const gainLossAcct =
-    marketValueAcct !== null
+    marketValueAcct !== null && holding.costBasisAccountCurrency !== null
       ? marketValueAcct - holding.costBasisAccountCurrency
       : null;
 

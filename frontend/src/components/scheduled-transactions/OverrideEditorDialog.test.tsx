@@ -578,7 +578,10 @@ describe('OverrideEditorDialog', () => {
       expect(Number(qtyInput.value)).toBeCloseTo(2.5, 6);
     });
 
-    it('auto-fills Price from latest market price on open', async () => {
+    it('auto-fills Price from latest market price when creating a new override', async () => {
+      // There is no stored override price to protect here, so filling the field
+      // from the quote matches the new-scheduled-transaction form. The cases
+      // below cover the override that already has one.
       mockGetSecurityPrices.mockResolvedValue([{ closePrice: '123.45' }]);
       render(
         <OverrideEditorDialog
@@ -589,6 +592,103 @@ describe('OverrideEditorDialog', () => {
       const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
       await waitFor(() => {
         expect(Number(priceInput.value)).toBeCloseTo(123.45, 6);
+      });
+    });
+
+    describe('an existing override owns its stored price', () => {
+      // The defect these cover: opening the editor replaced a stored 250.00
+      // with the day's quote of 123.45, so saving a date-only edit changed the
+      // transaction by -126.55 per share with no user action. The suite had a
+      // hole exactly here -- the only latest-price test rendered without an
+      // `existingOverride`, so it never exercised the harmful path.
+      const storedOverride = {
+        id: 'ov-priced',
+        scheduledTransactionId: 'inv1',
+        occurrenceDate: '2025-06-15',
+        investmentQuantity: 4,
+        investmentPrice: 250,
+        investmentTotalAmount: 1005,
+      } as any;
+
+      it('does not replace the stored price when the quote arrives', async () => {
+        mockGetSecurityPrices.mockResolvedValue([{ closePrice: '123.45' }]);
+        render(
+          <OverrideEditorDialog
+            {...defaultProps}
+            scheduledTransaction={investmentTransaction}
+            existingOverride={storedOverride}
+          />,
+        );
+        const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+        // Wait for the quote to have been fetched and offered before asserting,
+        // so this cannot pass merely by checking before the response lands.
+        await waitFor(() =>
+          expect(screen.getByText('Apply latest price')).toBeInTheDocument(),
+        );
+        expect(Number(priceInput.value)).toBeCloseTo(250, 6);
+      });
+
+      it('preserves every financial field across an unrelated edit and save', async () => {
+        mockGetSecurityPrices.mockResolvedValue([{ closePrice: '123.45' }]);
+        mockUpdateOverride.mockClear();
+        render(
+          <OverrideEditorDialog
+            {...defaultProps}
+            scheduledTransaction={investmentTransaction}
+            existingOverride={storedOverride}
+          />,
+        );
+        await waitFor(() =>
+          expect(screen.getByText('Apply latest price')).toBeInTheDocument(),
+        );
+
+        const descriptionInput = screen.getByLabelText('Description (optional)');
+        fireEvent.change(descriptionInput, { target: { value: 'note only' } });
+        fireEvent.click(screen.getByText('Update Override'));
+
+        await waitFor(() => expect(mockUpdateOverride).toHaveBeenCalled());
+        const payload = mockUpdateOverride.mock.calls[0][2];
+        expect(Number(payload.investmentQuantity)).toBeCloseTo(4, 6);
+        expect(Number(payload.investmentPrice)).toBeCloseTo(250, 6);
+        expect(Number(payload.investmentTotalAmount)).toBeCloseTo(1005, 4);
+        expect(payload.description).toBe('note only');
+      });
+
+      it('applies the quote only when the user explicitly asks', async () => {
+        mockGetSecurityPrices.mockResolvedValue([{ closePrice: '123.45' }]);
+        render(
+          <OverrideEditorDialog
+            {...defaultProps}
+            scheduledTransaction={investmentTransaction}
+            existingOverride={storedOverride}
+          />,
+        );
+        const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+        await waitFor(() =>
+          expect(screen.getByText('Apply latest price')).toBeInTheDocument(),
+        );
+
+        fireEvent.click(screen.getByText('Apply latest price'));
+
+        expect(Number(priceInput.value)).toBeCloseTo(123.45, 6);
+        // 4 shares * 123.45 + 0 commission
+        const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
+        await waitFor(() =>
+          expect(Number(totalInput.value.replace(/,/g, ''))).toBeCloseTo(493.8, 4),
+        );
+      });
+
+      it('does not offer the suggestion when the quote equals the stored price', async () => {
+        mockGetSecurityPrices.mockResolvedValue([{ closePrice: '250' }]);
+        render(
+          <OverrideEditorDialog
+            {...defaultProps}
+            scheduledTransaction={investmentTransaction}
+            existingOverride={storedOverride}
+          />,
+        );
+        await waitFor(() => expect(mockGetSecurityPrices).toHaveBeenCalled());
+        expect(screen.queryByText('Apply latest price')).not.toBeInTheDocument();
       });
     });
 

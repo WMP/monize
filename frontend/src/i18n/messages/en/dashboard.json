@@ -201,13 +201,15 @@
     "title": "Credit Utilization by Account",
     "empty": "No credit accounts with a limit set.",
     "utilization": "Utilization",
-    "used": "Used"
+    "used": "Used",
+    "amountUnavailable": "Not available"
   },
   "creditUtilizationTotal": {
     "title": "Total Credit Utilization",
     "empty": "No credit accounts with a limit set.",
     "used": "Used",
-    "available": "Available"
+    "available": "Available",
+    "ratesUnavailable": "Some accounts use a currency with no exchange rate on file, so the combined limit and drawn amounts cannot be worked out."
   },
   "sectorWeightings": {
     "title": "Sector Allocation",

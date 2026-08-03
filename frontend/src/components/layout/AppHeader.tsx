@@ -194,7 +194,15 @@ export function AppHeader() {
       toast.success(t('loggedOut'));
       router.push('/login');
     } catch {
+      // Local state still has to go -- leaving the user apparently signed in on
+      // a machine they asked to leave is worse. But clearing it is not a server
+      // logout: the refresh-token family was not revoked, so the session may
+      // still be accepted in another tab or on another device. Saying nothing
+      // (or worse, showing the success toast) presents a failed revocation as a
+      // completed one, which is the security state the user is least able to
+      // check for themselves.
       logout();
+      toast.error(t('logoutNotConfirmed'), { duration: 8000 });
       router.push('/login');
     }
   };

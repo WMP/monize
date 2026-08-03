@@ -73,6 +73,10 @@ function DashboardContent() {
     const map = new Map<string, number>();
     if (!portfolioSummary) return map;
     for (const accountHoldings of portfolioSummary.holdingsByAccount) {
+      // An account whose market value is unknown is left out of the map rather
+      // than entered as 0, matching the backend's convention that a missing
+      // key means "no market-value information" for that account.
+      if (accountHoldings.totalMarketValue === null) continue;
       map.set(accountHoldings.accountId, accountHoldings.totalMarketValue);
     }
     return map;

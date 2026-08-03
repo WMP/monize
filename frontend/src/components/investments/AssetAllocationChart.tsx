@@ -123,20 +123,25 @@ function AllocationTooltip({
   }>;
   fmtVal: (v: number) => string;
   foreignCurrency: string | null;
-  foreignTotal: number;
+  /** `null` when the foreign-currency total is unknown, so no absolute figure
+   * can be derived from a slice's percentage. */
+  foreignTotal: number | null;
 }) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    const displayValue = foreignCurrency
-      ? (data.percentage / 100) * foreignTotal
-      : data.value;
+    const displayValue =
+      foreignCurrency
+        ? foreignTotal === null
+          ? null
+          : (data.percentage / 100) * foreignTotal
+        : data.value;
     return (
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
         <p className="font-medium text-gray-900 dark:text-gray-100">
           {data.fullName}
         </p>
         <p className="text-gray-600 dark:text-gray-400">
-          {fmtVal(displayValue)} ({data.percentage.toFixed(1)}%)
+          {displayValue === null ? '' : `${fmtVal(displayValue)} `}({data.percentage.toFixed(1)}%)
         </p>
       </div>
     );
@@ -377,10 +382,14 @@ export function AssetAllocationChart({
       : null;
 
   // Compute raw total in the foreign currency from holdingsByAccount
+  // `null` when any account's market value is unknown: this figure is the
+  // denominator the pie's percentages are measured against, so a partial sum
+  // would inflate every slice.
   const foreignTotal = useMemo(() => {
     if (!foreignCurrency || !holdingsByAccount) return 0;
     let total = 0;
     for (const acct of holdingsByAccount) {
+      if (acct.totalMarketValue === null) return null;
       total += acct.cashBalance + acct.totalMarketValue;
     }
     return total;
