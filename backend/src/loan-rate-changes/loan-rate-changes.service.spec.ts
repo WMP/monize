@@ -632,6 +632,29 @@ describe("LoanRateChangesService", () => {
         service.update(userId, accountId, "rc-1", { annualRate: 5 }),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it("propagates a scheduled-payment sync failure instead of returning success", async () => {
+      const account = makeAccount();
+      accountsRepository.findOne.mockResolvedValue(account);
+      manager.find.mockResolvedValue([
+        makeRow({ annualRate: 5.1, effectiveDate: "2024-06-01" }),
+      ]);
+      scheduledTransactionsService.update.mockRejectedValue(
+        new Error("sync failed"),
+      );
+
+      await expect(
+        service.update(userId, accountId, "rc-1", { annualRate: 5.1 }),
+      ).rejects.toThrow("sync failed");
+
+      // verifyLoanAccount + the private findOne lookup + the write block share
+      // no transaction with the write itself, so there are three scoped calls
+      // total -- but the write and the scheduled-payment sync happen inside
+      // the *same* (last) transaction, so a sync failure rolls that write
+      // back too, rather than leaving it already committed with the sync
+      // merely attempted afterwards.
+      expect(dataSource.transaction).toHaveBeenCalledTimes(3);
+    });
   });
 
   describe("remove", () => {
@@ -673,6 +696,33 @@ describe("LoanRateChangesService", () => {
       await expect(
         service.remove(userId, accountId, "missing"),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it("propagates a scheduled-payment sync failure instead of silently succeeding", async () => {
+      const account = makeAccount();
+      accountsRepository.findOne.mockResolvedValue(account);
+      const row = makeRow();
+      rateChangesRepository.findOne.mockResolvedValue(row);
+      manager.find.mockResolvedValue([
+        makeRow({
+          source: "initial",
+          effectiveDate: "2022-01-01",
+          annualRate: 5.5,
+          newPaymentAmount: 2500,
+        }),
+      ]);
+      scheduledTransactionsService.update.mockRejectedValue(
+        new Error("sync failed"),
+      );
+
+      await expect(service.remove(userId, accountId, "rc-1")).rejects.toThrow(
+        "sync failed",
+      );
+
+      // The row removal must not be left committed while the linked scheduled
+      // payment silently keeps its stale split: the removal and the sync run
+      // in the same transaction, so the failure rolls both back.
+      expect(manager.remove).toHaveBeenCalledWith(row);
     });
   });
 

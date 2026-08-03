@@ -198,59 +198,66 @@ export class LoanRateChangesService {
     const account = await this.verifyLoanAccount(userId, accountId);
     const rateChange = await this.findOne(userId, accountId, id);
 
-    const { saved, resolved } = await withScopedDb(
-      this.dataSource,
-      async (m) => {
-        if (
-          dto.effectiveDate !== undefined &&
-          dto.effectiveDate !== rateChange.effectiveDate
-        ) {
-          await this.rejectDuplicateDate(m, accountId, dto.effectiveDate);
-        }
+    return withScopedDb(this.dataSource, async (m) => {
+      if (
+        dto.effectiveDate !== undefined &&
+        dto.effectiveDate !== rateChange.effectiveDate
+      ) {
+        await this.rejectDuplicateDate(m, accountId, dto.effectiveDate);
+      }
 
-        const merged = m.merge(LoanRateChange, rateChange, {
-          ...(dto.effectiveDate !== undefined
-            ? { effectiveDate: dto.effectiveDate }
-            : {}),
-          ...(dto.annualRate !== undefined
-            ? { annualRate: dto.annualRate }
-            : {}),
-          ...(dto.newPaymentAmount !== undefined
-            ? { newPaymentAmount: dto.newPaymentAmount }
-            : {}),
-          ...(dto.note !== undefined ? { note: dto.note } : {}),
-          // A user-edited inferred row becomes manual so re-running detection
-          // never clobbers their correction.
-          ...(rateChange.source === "inferred"
-            ? { source: "manual" as const }
-            : {}),
+      const merged = m.merge(LoanRateChange, rateChange, {
+        ...(dto.effectiveDate !== undefined
+          ? { effectiveDate: dto.effectiveDate }
+          : {}),
+        ...(dto.annualRate !== undefined ? { annualRate: dto.annualRate } : {}),
+        ...(dto.newPaymentAmount !== undefined
+          ? { newPaymentAmount: dto.newPaymentAmount }
+          : {}),
+        ...(dto.note !== undefined ? { note: dto.note } : {}),
+        // A user-edited inferred row becomes manual so re-running detection
+        // never clobbers their correction.
+        ...(rateChange.source === "inferred"
+          ? { source: "manual" as const }
+          : {}),
+      });
+
+      const saved = await m.save(merged);
+      const resolved = await this.resolveCurrentTimeline(m, account);
+
+      // The scheduled-payment resync runs inside the same transaction as the
+      // rate-change write (withScopedDb joins the ambient one, see
+      // scoped-db.ts) and its failure is propagated rather than swallowed --
+      // otherwise the rate-change row would already be committed while the
+      // linked scheduled bill payment silently kept its stale rate/payment
+      // split, and the caller would see success for a change that only half
+      // happened.
+      if (resolved) {
+        await this.syncScheduledTransaction(userId, account, resolved, {
+          propagateErrors: true,
         });
-
-        return {
-          saved: await m.save(merged),
-          resolved: await this.resolveCurrentTimeline(m, account),
-        };
-      },
-    );
-
-    if (resolved) {
-      await this.syncScheduledTransaction(userId, account, resolved);
-    }
-    return saved;
+      }
+      return saved;
+    });
   }
 
   async remove(userId: string, accountId: string, id: string): Promise<void> {
     const account = await this.verifyLoanAccount(userId, accountId);
     const rateChange = await this.findOne(userId, accountId, id);
 
-    const resolved = await withScopedDb(this.dataSource, async (m) => {
+    await withScopedDb(this.dataSource, async (m) => {
       await m.remove(rateChange);
-      return this.resolveCurrentTimeline(m, account);
-    });
+      const resolved = await this.resolveCurrentTimeline(m, account);
 
-    if (resolved) {
-      await this.syncScheduledTransaction(userId, account, resolved);
-    }
+      // Same rationale as update(): sync inside the transaction and propagate
+      // a failure so the removal never commits while the linked scheduled
+      // bill payment is left pointing at a rate change that no longer exists.
+      if (resolved) {
+        await this.syncScheduledTransaction(userId, account, resolved, {
+          propagateErrors: true,
+        });
+      }
+    });
   }
 
   /**
@@ -293,13 +300,23 @@ export class LoanRateChangesService {
 
   /**
    * Resync the linked scheduled payment to the account's current rate and
-   * payment. Best-effort, mirroring the tolerance of the mortgage-rate update
-   * flow -- the rate history itself is already committed.
+   * payment.
+   *
+   * By default this is best-effort (logged and swallowed), mirroring the
+   * tolerance of the legacy mortgage-rate update flow -- used by `create`'s
+   * immediate-sync path, where the rate history itself is already committed
+   * in its own prior transaction and there is nothing left to roll back.
+   *
+   * Pass `propagateErrors: true` for a caller that runs this *inside* the
+   * same transaction as the rate-change write (`update`/`remove`): there, a
+   * sync failure must abort the whole transaction rather than leave the rate
+   * change committed against a stale scheduled payment.
    */
   async syncScheduledTransaction(
     userId: string,
     account: Account,
     override?: { annualRate: number; paymentAmount: number | null },
+    options?: { propagateErrors?: boolean },
   ): Promise<void> {
     const plan = await this.buildScheduledUpdate(userId, account, override);
     if (!plan) return;
@@ -310,6 +327,9 @@ export class LoanRateChangesService {
         plan.payload,
       );
     } catch (error) {
+      if (options?.propagateErrors) {
+        throw error;
+      }
       this.logger.warn(
         `Could not update scheduled transaction: ${error.message}`,
       );
