@@ -1,5 +1,7 @@
+import { BadRequestException } from "@nestjs/common";
 import { gunzipSync } from "zlib";
 import { BackupService } from "../backup.service";
+import { decryptBackup } from "../backup-crypto.util";
 import { SupportBackupService } from "./support-backup.service";
 import { CURRENCY_METADATA } from "../../currencies/currency-metadata";
 
@@ -311,13 +313,30 @@ function makeService(tables = fixtureTables()): SupportBackupService {
   return new SupportBackupService(backup);
 }
 
+/**
+ * The password every fixture here uses. It is not optional: `generate` refuses
+ * to produce an unencrypted support backup, so a helper that omitted it was
+ * exercising a branch no HTTP caller could reach -- and asserting the output was
+ * plain gzip, which is the opposite of the file's stated guarantee.
+ */
+const FIXTURE_PASSWORD = "fixture-password-not-a-secret";
+
 async function generateParsed(
   service: SupportBackupService,
-  opts: Parameters<SupportBackupService["generate"]>[1],
+  opts: Omit<Parameters<SupportBackupService["generate"]>[1], "password"> & {
+    password?: string;
+  },
 ): Promise<Record<string, any>> {
-  const { buffer, encrypted } = await service.generate(USER, opts);
-  expect(encrypted).toBe(false);
-  return JSON.parse(gunzipSync(buffer).toString("utf-8"));
+  const { buffer, encrypted } = await service.generate(USER, {
+    password: FIXTURE_PASSWORD,
+    ...opts,
+  });
+  expect(encrypted).toBe(true);
+  const gzipped = await decryptBackup(
+    buffer,
+    opts.password ?? FIXTURE_PASSWORD,
+  );
+  return JSON.parse(gunzipSync(gzipped).toString("utf-8"));
 }
 
 describe("SupportBackupService.generate", () => {
@@ -437,8 +456,21 @@ describe("SupportBackupService.generate", () => {
   });
 
   it("leaks no original name, free text, account number, secret or id", async () => {
-    const { buffer } = await makeService().generate(USER, { multiplier: 2.5 });
-    const json = gunzipSync(buffer).toString("utf-8");
+    // Decrypt and decompress first. Scanning the shipped bytes directly would
+    // pass for the wrong reason -- ciphertext contains nothing legible, so the
+    // assertion would hold even if every mask were removed. The claim is about
+    // the plaintext inside the file, so the plaintext is what gets scanned.
+    const { buffer } = await makeService().generate(USER, {
+      multiplier: 2.5,
+      password: FIXTURE_PASSWORD,
+    });
+    const json = gunzipSync(
+      await decryptBackup(buffer, FIXTURE_PASSWORD),
+    ).toString("utf-8");
+    // Guard against the scan becoming vacuous: the plaintext must at least look
+    // like the export it claims to be searching.
+    expect(json).toContain('"supportBackup":true');
+    expect(json.length).toBeGreaterThan(1000);
     for (const secret of [
       "Biedronka",
       "Everyday Chequing",
@@ -472,6 +504,28 @@ describe("SupportBackupService.generate", () => {
     // public price values are untouched even when included
     expect(withPrices.security_prices[0].close_price).toBe(250.12);
   });
+
+  /**
+   * The DTO requires a password, so no HTTP caller reaches this. The branch that
+   * returned plain gzip when one was absent existed anyway, which put the "never
+   * ships in the clear" guarantee at the edge rather than in the thing that
+   * produces the file -- and 17 tests in this suite were exercising it, asserting
+   * `encrypted: false` on output the API cannot emit.
+   */
+  it.each([
+    ["omitted", undefined],
+    ["empty", ""],
+  ])(
+    "refuses to produce an unencrypted file when the password is %s",
+    async (_label, password) => {
+      await expect(
+        makeService().generate(USER, {
+          multiplier: 2.5,
+          password: password as string,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    },
+  );
 
   it("encrypts the file when a password is given", async () => {
     const { buffer, encrypted } = await makeService().generate(USER, {

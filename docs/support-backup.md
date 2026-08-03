@@ -57,7 +57,12 @@ Starting from the same rows the normal export produces, the support backup:
 - **Always encrypts** the file: the modal pre-fills a random password (editable,
   regenerable) and the export refuses to run without one -- a support backup is
   made to leave the user's machine, so it never ships in the clear. Share the
-  password through a separate channel.
+  password through a separate channel. The refusal is in
+  `SupportBackupService.generate`, not only in `CreateSupportBackupDto`: the
+  service used to fall back to plain gzip when no password was supplied, so the
+  guarantee held for HTTP callers and for nothing else, and a future cron, CLI or
+  admin path that omitted the field would have produced an unencrypted
+  de-identified dump with no error.
 - Supports an optional **date range**: history outside the window is trimmed
   and each account's opening balance is advanced by the removed transactions,
   so the trimmed file still reconciles to the true balance.

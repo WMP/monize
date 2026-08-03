@@ -1,7 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { randomBytes, randomUUID } from "crypto";
 import { gzipSync } from "zlib";
 import { BackupService } from "../backup.service";
+import { tr } from "../../i18n/translate";
 import { encryptBackup } from "../backup-crypto.util";
 import { applyJsonbHandler } from "./support-backup-jsonb";
 import { collectRowIdRemap, deepRemapIds } from "../backup-id-remap.util";
@@ -81,6 +82,12 @@ export interface SupportBackupOptions {
    * reproduced concerns prices or valuations.
    */
   includePriceHistory?: boolean;
+  /**
+   * Password the produced file is encrypted under (AES-256-GCM).
+   *
+   * Optional on the shared options type because `preview` takes the same object
+   * and produces no file, but `generate` requires it -- see the check there.
+   */
   password?: string;
 }
 
@@ -132,6 +139,24 @@ export class SupportBackupService {
     userId: string,
     options: SupportBackupOptions,
   ): Promise<{ buffer: Buffer; encrypted: boolean }> {
+    // A support backup is produced in order to leave the user's machine, so it
+    // never ships in the clear. `CreateSupportBackupDto` requires a password, so
+    // no HTTP caller can reach this -- but the branch that returned plain gzip
+    // when `options.password` was absent still existed, and the guarantee lived
+    // only at the edge. A future internal caller (a cron, a CLI, an admin path)
+    // that forgot the field would have got an unencrypted de-identified dump and
+    // no error at all. The producer of the file enforces it now, and the DTO is
+    // the second line rather than the only one.
+    const password = options.password;
+    if (typeof password !== "string" || password.length === 0) {
+      throw new BadRequestException(
+        tr(
+          "errors.backup.supportPasswordRequired",
+          "A support backup must be encrypted: supply a password.",
+        ),
+      );
+    }
+
     const raw = await this.collectRawExport(userId);
     const sections = this.resolveSections(options.sections);
     const scoped = this.scopeAndSection(raw.tables, sections, options);
@@ -153,12 +178,7 @@ export class SupportBackupService {
     // encryptBackup derives its AES-256-GCM key from the user's password
     // (scrypt), not from AI_ENCRYPTION_KEY, so a support backup encrypts fine
     // regardless of whether that env var is configured.
-    return options.password
-      ? {
-          buffer: await encryptBackup(gzipped, options.password),
-          encrypted: true,
-        }
-      : { buffer: gzipped, encrypted: false };
+    return { buffer: await encryptBackup(gzipped, password), encrypted: true };
   }
 
   async preview(

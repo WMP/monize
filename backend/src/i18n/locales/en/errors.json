@@ -195,7 +195,8 @@
     "backupPasswordOidcOnly": "Backup password is only configurable for OIDC users; local users use their login password",
     "backupPasswordTooShort": "Backup password must be at least {{ minLength }} characters",
     "backupPasswordBreached": "This password has been found in a data breach. Please choose a different password.",
-    "restoreBodyMustBeFile": "Request body must be a backup file"
+    "restoreBodyMustBeFile": "Request body must be a backup file",
+    "supportPasswordRequired": "A support backup must be encrypted: supply a password."
   },
   "budgets": {
     "notFound": "Budget with ID {{ id }} not found",
