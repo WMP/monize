@@ -2224,4 +2224,32 @@ describe("PortfolioCalculationService.calculateHoldingsWithValues", () => {
 
     expect(result.holdingsWithValues[0].costBasisAccountCurrency).toBe(900);
   });
+
+  /**
+   * A holding carries two cost-basis figures with two different definitions, and
+   * they are labelled the same word on one screen: the portfolio card shows the
+   * replayed `costBasisAccountCurrency`, which includes each purchase's
+   * commission, while the holdings list's Cost Basis column shows the native
+   * `costBasis`, which is `quantity x averageCost` and carries none --
+   * `HoldingsService.updateHolding` blends only the price into the average.
+   *
+   * That is deliberate today, not an oversight, and the UI now says so in the
+   * column's tooltip. It is pinned here because the difference is otherwise
+   * invisible: both are plausible currency figures, and the gap is exactly the
+   * commission. If a product decision later makes the native basis
+   * commission-inclusive, this test is the one that has to change, and its
+   * failure is the prompt to update the tooltip with it.
+   */
+  it("keeps the native basis commission-free while the replayed one includes it", async () => {
+    const result = await valuation(lot({ costBasis: 920 }));
+    const holding = result.holdingsWithValues[0];
+
+    // Stored average cost: 10 x 30. No commission is blended into it.
+    expect(holding.costBasis).toBe(300);
+    // Replayed: what the acquisitions actually cost, commission included.
+    expect(holding.costBasisAccountCurrency).toBe(920);
+    // And the row's gain follows the native figure, so it differs from the
+    // card's gain by the same commission.
+    expect(holding.gainLoss).toBe(200); // 10 x 50 market - 300 native basis
+  });
 });
