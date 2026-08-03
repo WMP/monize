@@ -150,30 +150,65 @@ export class TransactionBulkUpdateService {
       return { updated: 0, skipped, skippedReasons };
     }
 
+    // A status change is balance-affecting, so it may not land on one leg of a
+    // linked transfer alone. Resolve the pair-safe id set before anything is
+    // written, and inside the same transaction that adjusts the balances.
+    let statusIds: string[] = [];
+    let statusSkipped = 0;
+    const statusSkippedReasons: string[] = [];
+
+    // Every field except the status applies to the selection itself; the status
+    // applies to the transfer-pair expansion of it.
+    const nonStatusFields = { ...updateFields };
+    delete nonStatusFields.status;
+    const appliesNonStatusFields =
+      Object.keys(nonStatusFields).length > 0 || isUpdatingTags;
+
     // Balance changes and the batch update commit in a single transaction.
     await withScopedDb(this.dataSource, async (m) => {
       // Step 3: Handle balance adjustments for VOID status changes
       if (isUpdatingStatus) {
-        await this.handleStatusBalanceChanges(
+        const expanded = await this.expandTransferLegsForStatus(
           m,
           userId,
           eligibleIds,
-          dto.status!,
         );
+        statusIds = expanded.ids;
+        statusSkipped = expanded.refused;
+        statusSkippedReasons.push(...expanded.reasons);
+
+        if (statusIds.length > 0) {
+          await this.handleStatusBalanceChanges(
+            m,
+            userId,
+            statusIds,
+            dto.status!,
+          );
+        }
       }
 
-      // Step 4: Execute batch update for column fields
-      if (Object.keys(updateFields).length > 0) {
+      // Step 4: Execute batch update for column fields.
+      if (Object.keys(nonStatusFields).length > 0) {
         await m
           .createQueryBuilder()
           .update(Transaction)
-          .set(updateFields)
+          .set(nonStatusFields)
           .where("id IN (:...ids)", { ids: eligibleIds })
           .andWhere("userId = :userId", { userId })
           .execute();
 
         // Step 4b: Sync payee/description to linked transfer transactions
-        await this.syncLinkedTransfers(m, userId, eligibleIds, updateFields);
+        await this.syncLinkedTransfers(m, userId, eligibleIds, nonStatusFields);
+      }
+
+      if (isUpdatingStatus && statusIds.length > 0) {
+        await m
+          .createQueryBuilder()
+          .update(Transaction)
+          .set({ status: dto.status })
+          .where("id IN (:...ids)", { ids: statusIds })
+          .andWhere("userId = :userId", { userId })
+          .execute();
       }
 
       // Step 4c: Update tags (many-to-many relation). Validates the tag set
@@ -194,15 +229,146 @@ export class TransactionBulkUpdateService {
     });
 
     // Step 5: Trigger net worth recalc for affected accounts (after commit)
-    if (isUpdatingStatus) {
-      await this.triggerNetWorthRecalcForTransactions(userId, eligibleIds);
+    if (isUpdatingStatus && statusIds.length > 0) {
+      await this.triggerNetWorthRecalcForTransactions(userId, statusIds);
     }
 
+    // A refused transfer leg still received every other field it was selected
+    // for, so it counts as both updated and skipped in a mixed request; the
+    // reason string says which half was refused.
+    const updatedIds = new Set<string>(
+      appliesNonStatusFields ? eligibleIds : [],
+    );
+    for (const id of statusIds) updatedIds.add(id);
+
     return {
-      updated: eligibleIds.length,
-      skipped,
-      skippedReasons,
+      updated: updatedIds.size,
+      skipped: skipped + statusSkipped,
+      skippedReasons: [...skippedReasons, ...statusSkippedReasons],
     };
+  }
+
+  /**
+   * A linked transfer is one economic event, so a balance-affecting status
+   * change -- above all entering or leaving VOID -- has to land on both legs or
+   * on neither. Voiding only the source leg used to restore the source balance
+   * while the destination leg stayed active, so 1,000.00 spread across two
+   * accounts became 1,100.00.
+   *
+   * A bulk request naming one leg is therefore expanded to the pair here,
+   * inside the transaction that adjusts the balances, so no API path -- UI,
+   * MCP, assistant -- can produce the half-voided state.
+   *
+   * Three shapes, and only two of them can be paired:
+   *  - a plain transfer leg: `linkedTransactionId` is the mirror leg, so
+   *    include it.
+   *  - a split parent: each of its splits may carry a `linkedTransactionId`
+   *    pointing at a leg in another account, so include those.
+   *  - a split-transfer leg: its `linkedTransactionId` is the split PARENT,
+   *    whose status covers every other child of that split too. Changing it is
+   *    a different operation from the one asked for, so the leg is refused and
+   *    reported rather than half-applied.
+   *
+   * A cross-owner counterpart belongs to another user and this request cannot
+   * write it, so those legs are refused for the same reason.
+   */
+  private async expandTransferLegsForStatus(
+    m: EntityManager,
+    userId: string,
+    eligibleIds: string[],
+  ): Promise<{ ids: string[]; refused: number; reasons: string[] }> {
+    const repo = m.getRepository(Transaction);
+    const rows = await repo
+      .createQueryBuilder("t")
+      .select(["t.id", "t.linkedTransactionId", "t.isTransfer", "t.isSplit"])
+      .where("t.id IN (:...ids)", { ids: eligibleIds })
+      .andWhere("t.userId = :userId", { userId })
+      .getMany();
+
+    const legs = rows.filter((r) => r.isTransfer && r.linkedTransactionId);
+    const splitParentIds = rows.filter((r) => r.isSplit).map((r) => r.id);
+
+    // Legs owned by a transaction_splits row point at the split parent.
+    const owningSplits =
+      legs.length > 0
+        ? await m.find(TransactionSplit, {
+            where: { linkedTransactionId: In(legs.map((l) => l.id)) },
+            select: ["id", "linkedTransactionId"],
+          })
+        : [];
+    const splitOwnedLegIds = new Set(
+      owningSplits.map((s) => s.linkedTransactionId),
+    );
+
+    const plainLegs = legs.filter((l) => !splitOwnedLegIds.has(l.id));
+    const candidateCounterpartIds = plainLegs
+      .map((l) => l.linkedTransactionId)
+      .filter((id): id is string => id !== null);
+
+    // Only counterparts this request may actually write can be paired.
+    const writableCounterpartIds = new Set(
+      candidateCounterpartIds.length === 0
+        ? []
+        : (
+            await repo
+              .createQueryBuilder("t")
+              .select(["t.id"])
+              .where("t.id IN (:...ids)", { ids: candidateCounterpartIds })
+              .andWhere("t.userId = :userId", { userId })
+              .getMany()
+          ).map((t) => t.id),
+    );
+
+    const ids = new Set(eligibleIds);
+    const refusedIds = new Set<string>();
+
+    for (const leg of plainLegs) {
+      const counterpartId = leg.linkedTransactionId!;
+      if (writableCounterpartIds.has(counterpartId)) {
+        ids.add(counterpartId);
+      } else {
+        // Cross-owner counterpart: pairing is impossible, so refuse the leg.
+        refusedIds.add(leg.id);
+      }
+    }
+
+    for (const leg of legs) {
+      if (splitOwnedLegIds.has(leg.id)) refusedIds.add(leg.id);
+    }
+
+    // A selected split parent carries its own transfer legs with it.
+    if (splitParentIds.length > 0) {
+      const childLegs = await m.find(TransactionSplit, {
+        where: { transactionId: In(splitParentIds) },
+        select: ["id", "linkedTransactionId"],
+      });
+      const childLegIds = childLegs
+        .map((s) => s.linkedTransactionId)
+        .filter((id): id is string => id !== null);
+      if (childLegIds.length > 0) {
+        const writableChildLegIds = (
+          await repo
+            .createQueryBuilder("t")
+            .select(["t.id"])
+            .where("t.id IN (:...ids)", { ids: childLegIds })
+            .andWhere("t.userId = :userId", { userId })
+            .getMany()
+        ).map((t) => t.id);
+        for (const id of writableChildLegIds) ids.add(id);
+      }
+    }
+
+    for (const id of refusedIds) ids.delete(id);
+
+    const reasons: string[] = [];
+    if (refusedIds.size > 0) {
+      const plural = refusedIds.size !== 1 ? "s" : "";
+      reasons.push(
+        `${refusedIds.size} transfer leg${plural} skipped (a transfer's status must change on both legs; edit the transfer itself)`,
+      );
+    }
+
+    return { ids: [...ids], refused: refusedIds.size, reasons };
   }
 
   async bulkDelete(
