@@ -28,7 +28,7 @@ import {
   CreateSecurityData,
   Holding,
 } from '@/types/investment';
-import { getCurrencySymbol, roundToDecimals } from '@/lib/format';
+import { getCurrencySymbol, roundToDecimals, roundFxRate } from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
@@ -427,9 +427,21 @@ export function InvestmentTransactionForm({
     }
     const marketRate = getMarketRate(transactionCurrency, cashCurrency);
     if (marketRate && marketRate !== 1) {
-      setValue('exchangeRate', roundToDecimals(marketRate, 6), {
+      // Rates are NUMERIC(20,10) and every conversion multiplies at that
+      // precision; six is what the field *shows*. Rounding the stored value to
+      // six made the persisted rate disagree with the quote it came from.
+      setValue('exchangeRate', roundFxRate(marketRate), {
         shouldDirty: false,
       });
+      return;
+    }
+    // Nothing resolved. The 1 this field carries is the one the branch above
+    // wrote while the currencies still matched -- it means "no conversion", not
+    // "the rate is one", and leaving it here is what let a cross-currency trade
+    // preview at 1:1. Clear it so the state reads as unknown and the commit is
+    // blocked until a rate is supplied.
+    if (watchedExchangeRate !== 0) {
+      setValue('exchangeRate', 0, { shouldDirty: false });
     }
   }, [
     securitiesLoaded,
@@ -441,11 +453,24 @@ export function InvestmentTransactionForm({
     watchedExchangeRate,
   ]);
 
+  /**
+   * The cash movement this trade will post, or `null` when the currencies differ
+   * and no rate has been resolved.
+   *
+   * `|| 1` used to stand in for the missing rate, so the preview showed
+   * 10 x 100.00 USD as 1,000.00 CAD while the request omitted `exchangeRate`
+   * entirely and the server resolved its own dated or latest rate -- persisting
+   * 1,350.00 CAD against a preview the user had just confirmed. An unresolved
+   * rate is not a rate of one; it is a reason not to commit.
+   */
   const convertedAmount = useMemo(() => {
     if (!needsConversion) return totalAmount;
-    const rate = watchedExchangeRate || 1;
-    return roundToDecimals(totalAmount * rate, 4);
+    if (!watchedExchangeRate || watchedExchangeRate <= 0) return null;
+    return roundToDecimals(totalAmount * watchedExchangeRate, 4);
   }, [needsConversion, totalAmount, watchedExchangeRate]);
+
+  /** True when the cash leg cannot be priced, so the trade must not be posted. */
+  const conversionUnresolved = needsConversion && convertedAmount === null;
 
   const handleConvertedAmountChange = (value: number | undefined) => {
     if (!needsConversion || totalAmount === 0) return;
@@ -800,6 +825,14 @@ export function InvestmentTransactionForm({
           : 0;
       if (isSplit && ratio <= 0) {
         toast.error(t('transactionForm.toastSplitRatioRequired'));
+        setIsLoading(false);
+        return;
+      }
+      // A cross-currency trade may not be committed on an unresolved rate. The
+      // preview would have to invent one, and omitting the field lets the server
+      // resolve a different rate than the figure the user just confirmed.
+      if (postsCash && conversionUnresolved) {
+        toast.error(t('transactionForm.toastExchangeRateRequired'));
         setIsLoading(false);
         return;
       }
@@ -1277,15 +1310,24 @@ export function InvestmentTransactionForm({
             <NumericInput
               label={t('transactionForm.convertedTotal', { currency: cashCurrency })}
               prefix={cashCurrencySymbol}
-              value={convertedAmount || undefined}
+              value={convertedAmount ?? undefined}
               onChange={handleConvertedAmountChange}
               decimalPlaces={4}
               min={0}
             />
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            {t('transactionForm.conversionHelp')}
-          </div>
+          {conversionUnresolved ? (
+            <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+              {t('transactionForm.exchangeRateUnresolved', {
+                from: transactionCurrency,
+                to: cashCurrency,
+              })}
+            </p>
+          ) : (
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {t('transactionForm.conversionHelp')}
+            </div>
+          )}
         </div>
       )}
 
@@ -1312,7 +1354,13 @@ export function InvestmentTransactionForm({
                 {t('transactionForm.postsToCashAccount', { currency: cashCurrency })}
               </span>
               <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                {formatCurrency(convertedAmount, cashCurrency)}
+                {convertedAmount === null ? (
+                  <span className="text-sm font-normal text-gray-400 dark:text-gray-500">
+                    {t('transactionForm.notAvailable')}
+                  </span>
+                ) : (
+                  formatCurrency(convertedAmount, cashCurrency)
+                )}
               </span>
             </div>
           )}
@@ -1320,7 +1368,12 @@ export function InvestmentTransactionForm({
       )}
 
       {/* Form Actions */}
-      <FormActions onCancel={onCancel} submitLabel={isTransfer ? t('transactionForm.submitTransfer') : transaction ? t('transactionForm.submitUpdate') : t('transactionForm.submitCreate')} isSubmitting={isLoading} />
+      <FormActions
+        onCancel={onCancel}
+        submitLabel={isTransfer ? t('transactionForm.submitTransfer') : transaction ? t('transactionForm.submitUpdate') : t('transactionForm.submitCreate')}
+        isSubmitting={isLoading}
+        submitDisabled={conversionUnresolved}
+      />
     </form>
 
     <Modal isOpen={showSecurityModal} onClose={() => setShowSecurityModal(false)} maxWidth="lg" className="p-6">
