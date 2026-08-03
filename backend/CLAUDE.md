@@ -152,6 +152,31 @@ statement, a lock taken before the read, a unique key -- and if you cannot point
 at one, the comment is the bug. The root `CLAUDE.md` has the protocol; this is the
 habit that keeps it honest.
 
+## `repo.save(loadedEntity)` writes the columns you did not touch
+
+`save` on an entity read a moment ago looks like "update this field". It is not.
+TypeORM re-reads the row inside `save` and writes every column that differs from
+the entity in hand — and the entity still holds whatever the *other* columns
+looked like when it was read. A column another request has changed since then
+therefore reads as a deliberate change back, and is written back. No error, no
+log, nothing in the diff to see.
+
+That matters wherever one row is written from more than one place, and
+`user_preferences` is the worst case: the Settings form, a dismissed tour, a
+"What's New" acknowledgement, an update banner and enabling 2FA all write the
+same row. Dismiss a tour in one tab while switching the theme in another and the
+theme used to revert.
+
+So write the columns you mean: `patchUserPreferences` /
+`ensureUserPreferencesRow` (`src/users/user-preference-writer.ts`) for that
+table, and a `createQueryBuilder().update().set({...})` for anything else shared.
+Reach for `repo.save` when you own the whole row — a fresh insert, or an entity
+nothing else writes concurrently. And materialize a missing row with
+`ON CONFLICT DO NOTHING` rather than "read, and insert if absent": inside a
+transaction a unique violation cannot be caught and recovered from, it aborts the
+transaction, so the loser of that race fails a whole request over a cosmetic
+write.
+
 ## An identity, once a transaction is open, is not yours to change
 
 `withScopedDb` emits the identity GUCs as the transaction's first statements and

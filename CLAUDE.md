@@ -192,10 +192,15 @@ unique key with `ON CONFLICT DO NOTHING RETURNING`. `docs/cron-jobs.md` lists
 every job and how it coordinates; keep that column true.
 
 Read a guarded statement's result with `affectedRowCount`/`returnedRows`
-(`backend/src/common/db/query-result.ts`). The driver returns `[rows, rowCount]`
-for `RETURNING`, and on that tuple `result.length > 0` is always true -- so an
+(`backend/src/common/db/query-result.ts`). The driver's shape depends on the
+**command tag, not on `RETURNING`**: `UPDATE` and `DELETE` return the tuple
+`[rows, rowCount]` either way, while everything else — **`INSERT` included** —
+returns bare rows. On the tuple `result.length > 0` is always true, so an
 open-coded length check makes every replica a winner, which is the exact bug the
-guard exists to prevent.
+guard exists to prevent; and `[[], 3]` from an `UPDATE`/`DELETE` without
+`RETURNING` means three rows changed, which counting the row list reports as
+zero. Both helpers are correct for every shape, so a call site never has to know
+which one it is holding.
 
 ### An external side effect belongs after the commit, never inside it
 

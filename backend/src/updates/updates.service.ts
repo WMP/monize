@@ -3,8 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { DataSource } from "typeorm";
 import { UserPreference } from "../users/entities/user-preference.entity";
-import { buildDefaultPreferences } from "../users/user-preference.factory";
-import { currentRequestLocale } from "../i18n/request-locale";
+import { patchUserPreferences } from "../users/user-preference-writer";
 import { withScopedDb } from "../common/db/scoped-db";
 
 // Version comes from the backend package.json at build/run time. Using require
@@ -244,21 +243,14 @@ export class UpdatesService implements OnModuleInit {
       return { dismissed: false, version: null };
     }
 
-    await withScopedDb(this.dataSource, async (manager) => {
-      const repo = manager.getRepository(UserPreference);
-      const prefs = await repo.findOne({ where: { userId } });
-      if (prefs) {
-        prefs.dismissedUpdateVersion = latestVersion;
-        await repo.save(prefs);
-      } else {
-        // No row yet: materialize one from the shared defaults (seeding the
-        // request locale) so this fallback doesn't create a preferences row with
-        // a different baseline than every other creation path.
-        const created = buildDefaultPreferences(userId, currentRequestLocale());
-        created.dismissedUpdateVersion = latestVersion;
-        await repo.save(created);
-      }
-    });
+    // One column, materializing the row from the shared defaults if absent, so
+    // dismissing an update banner cannot revert a preference another request
+    // changed while this one was in flight.
+    await withScopedDb(this.dataSource, (manager) =>
+      patchUserPreferences(manager, userId, {
+        dismissedUpdateVersion: latestVersion,
+      }),
+    );
     return { dismissed: true, version: latestVersion };
   }
 }

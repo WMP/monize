@@ -150,6 +150,73 @@ describe("derived financial state has one set of writers", () => {
   });
 
   /**
+   * TypeORM returns `[rows, rowCount]` for `UPDATE` and `DELETE` -- with or
+   * without a `RETURNING` clause -- and bare rows for everything else. So a
+   * `length` check on an `UPDATE ... RETURNING` result is not merely fragile: it
+   * is testing 2 against 0 and can only ever take one branch.
+   *
+   * That is not a hypothetical. `TourService.saveProgress` had a
+   * `updated.length === 0` guard whose whole job was to materialize a missing
+   * preferences row, and it could not fire; the row stayed missing and the tour
+   * progress went nowhere while the endpoint answered `{ saved: true }`. Nothing
+   * about the call site shows the shape, so this is a scan, not a review note.
+   */
+  it("never reads an UPDATE/DELETE result with an open-coded length check", () => {
+    /**
+     * `.query(...)` calls whose result is bound to a name, paren-matched so a
+     * multi-line SQL template is captured whole.
+     */
+    function boundQueryCalls(
+      source: string,
+    ): Array<{ line: number; sql: string; variable: string }> {
+      const calls: Array<{ line: number; sql: string; variable: string }> = [];
+      for (const match of source.matchAll(
+        /(?:const|let|var)\s+(\w+)(?:\s*:\s*[^=]+)?=\s*(?:await\s+)?[\w.]*\.query\s*\(/g,
+      )) {
+        let depth = 0;
+        let i = match.index! + match[0].length - 1;
+        const start = i;
+        while (i < source.length) {
+          if (source[i] === "(") depth++;
+          else if (source[i] === ")" && --depth === 0) break;
+          i++;
+        }
+        calls.push({
+          line: source.slice(0, match.index!).split("\n").length,
+          sql: source.slice(start, i),
+          variable: match[1],
+        });
+      }
+      return calls;
+    }
+
+    const offenders: string[] = [];
+    for (const file of sourceFiles()) {
+      const source = read(file);
+      const lines = source.split("\n");
+      for (const { line, sql, variable } of boundQueryCalls(source)) {
+        // The statement's first word, read from the literal the call passes. A
+        // call that passes a variable (`query(sql, params)`) shows nothing here
+        // and is skipped -- a scan can only see what is written inline.
+        const firstWord = sql.match(/[`"']\s*(\w+)/)?.[1] ?? "";
+        // Only the tuple-shaped commands can mislead a length check.
+        if (!/^(UPDATE|DELETE)$/i.test(firstWord)) continue;
+
+        // How that specific binding is consumed, a little way past the call.
+        const after = lines.slice(line - 1, line + 20).join("\n");
+        const lengthCheck = new RegExp(
+          `\\b${variable}\\s*\\.length\\s*(?:===|!==|==|>|<|>=|<=)`,
+        );
+        if (lengthCheck.test(after)) {
+          offenders.push(`${relative(file)}:${line}`);
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  /**
    * `ActionHistoryService.record` swallows its own failures on purpose: recording
    * an undo entry must never fail the operation the user actually asked for. That
    * is only safe *outside* a transaction. Called inside one, a failed insert has

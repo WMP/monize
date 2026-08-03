@@ -28,6 +28,10 @@ import { PasswordBreachService } from "./password-breach.service";
 import { EmailService } from "../notifications/email.service";
 import { getRequestContext } from "../common/request-context";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  createUserPreferenceRepoMock,
+  type UserPreferenceRepoMock,
+} from "../test-helpers/user-preference-testing";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -56,6 +60,7 @@ describe("AuthService", () => {
   let stageOneTokenFamily: () => void;
   let usersRepository: Record<string, jest.Mock>;
   let preferencesRepository: Record<string, jest.Mock>;
+  let preferencesRow: UserPreferenceRepoMock;
   let trustedDevicesRepository: Record<string, jest.Mock>;
   let refreshTokensRepository: Record<string, jest.Mock>;
   let jwtService: Partial<JwtService>;
@@ -108,11 +113,10 @@ describe("AuthService", () => {
       })),
     };
 
-    preferencesRepository = {
-      findOne: jest.fn(),
-      create: jest.fn(),
-      save: jest.fn(),
-    };
+    // Behaves like the row: the 2FA flag is now written as a targeted patch,
+    // materializing the row when absent.
+    preferencesRow = createUserPreferenceRepoMock(null);
+    preferencesRepository = preferencesRow.repo;
 
     trustedDevicesRepository = {
       create: jest.fn(),
@@ -1370,11 +1374,7 @@ describe("AuthService", () => {
       });
       (otplib.verifySync as jest.Mock).mockReturnValue({ valid: true });
       usersRepository.save.mockImplementation((u) => u);
-      preferencesRepository.findOne.mockResolvedValue({
-        userId: "user-1",
-        twoFactorEnabled: false,
-      });
-      preferencesRepository.save.mockImplementation((p) => p);
+      preferencesRow.seed({ userId: "user-1", twoFactorEnabled: false });
 
       const result = await service.confirmSetup2FA("user-1", "123456");
 
@@ -1386,8 +1386,7 @@ describe("AuthService", () => {
       const savedUser = usersRepository.save.mock.calls[0][0];
       expect(savedUser.twoFactorSecret).toBe(encryptedSecret);
       expect(savedUser.pendingTwoFactorSecret).toBeNull();
-      const savedPrefs = preferencesRepository.save.mock.calls[0][0];
-      expect(savedPrefs.twoFactorEnabled).toBe(true);
+      expect(preferencesRow.row()!.twoFactorEnabled).toBe(true);
     });
 
     it("creates preferences if they do not exist yet", async () => {
@@ -1398,20 +1397,14 @@ describe("AuthService", () => {
       });
       (otplib.verifySync as jest.Mock).mockReturnValue({ valid: true });
       usersRepository.save.mockImplementation((u) => u);
-      preferencesRepository.findOne.mockResolvedValue(null);
-      preferencesRepository.create.mockImplementation((data) => ({
-        ...data,
-        twoFactorEnabled: false,
-      }));
-      preferencesRepository.save.mockImplementation((p) => p);
+      preferencesRow.seed(null);
 
       await service.confirmSetup2FA("user-1", "123456");
 
-      expect(preferencesRepository.create).toHaveBeenCalledWith(
+      expect(preferencesRow.insertAttempts()[0]).toEqual(
         expect.objectContaining({ userId: "user-1" }),
       );
-      const savedPrefs = preferencesRepository.save.mock.calls[0][0];
-      expect(savedPrefs.twoFactorEnabled).toBe(true);
+      expect(preferencesRow.row()!.twoFactorEnabled).toBe(true);
     });
 
     it("throws for invalid verification code", async () => {
@@ -1463,11 +1456,7 @@ describe("AuthService", () => {
       });
       (otplib.verifySync as jest.Mock).mockReturnValue({ valid: true });
       usersRepository.save.mockImplementation((u) => u);
-      preferencesRepository.findOne.mockResolvedValue({
-        userId: "user-1",
-        twoFactorEnabled: true,
-      });
-      preferencesRepository.save.mockImplementation((p) => p);
+      preferencesRow.seed({ userId: "user-1", twoFactorEnabled: true });
       trustedDevicesRepository.delete.mockResolvedValue({ affected: 2 });
 
       const result = await service.disable2FA("user-1", "123456");
@@ -1479,8 +1468,7 @@ describe("AuthService", () => {
       expect(savedUser.twoFactorSecret).toBeNull();
 
       // Preferences should be disabled
-      const savedPrefs = preferencesRepository.save.mock.calls[0][0];
-      expect(savedPrefs.twoFactorEnabled).toBe(false);
+      expect(preferencesRow.row()!.twoFactorEnabled).toBe(false);
 
       // Trusted devices should be revoked
       expect(trustedDevicesRepository.delete).toHaveBeenCalledWith({
@@ -1541,7 +1529,7 @@ describe("AuthService", () => {
       );
     });
 
-    it("handles case where preferences do not exist", async () => {
+    it("clears the flag even when no preferences row exists yet", async () => {
       const encryptedSecret = encrypt("TESTSECRET", TEST_TOTP_KEY);
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,
@@ -1549,13 +1537,15 @@ describe("AuthService", () => {
       });
       (otplib.verifySync as jest.Mock).mockReturnValue({ valid: true });
       usersRepository.save.mockImplementation((u) => u);
-      preferencesRepository.findOne.mockResolvedValue(null);
+      preferencesRow.seed(null);
       trustedDevicesRepository.delete.mockResolvedValue({ affected: 0 });
 
       const result = await service.disable2FA("user-1", "123456");
 
       expect(result.message).toContain("disabled successfully");
-      expect(preferencesRepository.save).not.toHaveBeenCalled();
+      // Previously the write was skipped entirely when no row existed, so a user
+      // whose preferences had never materialized stayed flagged as 2FA-enabled.
+      expect(preferencesRow.row()!.twoFactorEnabled).toBe(false);
     });
   });
 

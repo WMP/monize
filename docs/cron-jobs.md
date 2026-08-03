@@ -16,7 +16,7 @@ Pick one of these; do not invent a sixth. Anything held in process memory -- a `
 | **Unique key + `ON CONFLICT DO NOTHING RETURNING`** | A row whose existence *is* the fact: a posted occurrence, an alert fingerprint. The insert arbitrates and the loser gets nothing back. | migration `133` |
 | **An idempotent predicate** | Nothing to coordinate: `DELETE ... WHERE expired`, or a recomputation that derives its answer from scratch. Two replicas race to do the same thing and the loser does nothing. | the sweeps below |
 
-Reading the result of a guarded statement correctly is part of the mechanism, not a detail: a data-modifying `query` with `RETURNING` comes back as `[rows, rowCount]`, and on that tuple `result.length > 0` is always true. Use `affectedRowCount` / `returnedRows` from `backend/src/common/db/query-result.ts`, never an open-coded length check.
+Reading the result of a guarded statement correctly is part of the mechanism, not a detail. TypeORM's shape depends on the statement's command tag rather than on its `RETURNING` clause: `UPDATE` and `DELETE` come back as the tuple `[rows, rowCount]` with or without one, and everything else -- `INSERT` included -- comes back as bare rows. On the tuple `result.length > 0` is always true, so a `length === 0` branch beside an `UPDATE ... RETURNING` is dead code. Use `affectedRowCount` / `returnedRows` from `backend/src/common/db/query-result.ts`, which are correct for every shape, and never an open-coded length check.
 
 Every `@Cron` handler is also an out-of-request entry point, so its body must seed its own RLS context: the cross-user fan-out under `withSystemContext`, each per-user body under `withUserContext(userId)`. See `backend/CLAUDE.md`.
 
