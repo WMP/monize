@@ -306,6 +306,13 @@ function debtMagnitude(signedBalance: number): number {
  * payment is not preferred even when it is lower: for loans whose interest is
  * booked separately it often holds only the principal part and would seed a
  * non-amortizing payment.
+ *
+ * Returned at 4dp (decimal(20,4) storage precision), not rounded to cents:
+ * this feeds `LoanScheduleInput.paymentAmount`, which the projection engine
+ * uses unrounded throughout its accumulation and only rounds to cents on each
+ * emitted row -- truncating the seed to cents here would lose sub-cent
+ * separately-booked interest a step after it was correctly preserved through
+ * the event.
  */
 export function deriveCurrentInstallment(
   history: LoanHistoryResult,
@@ -315,8 +322,18 @@ export function deriveCurrentInstallment(
     .reverse()
     .find((event) => event.type === 'REGULAR');
   if (!lastRegular) return contractualPayment;
+  // Sum first, then round once at 4dp (decimal(20,4) storage precision) --
+  // never round principal and interest separately to cents and add the
+  // roundings. `buildLoanProjectionInput` feeds this straight into
+  // `LoanScheduleInput.paymentAmount`, which the schedule engine consumes as
+  // an unrounded float throughout its accumulation (only each emitted row is
+  // rounded to cents); seeding it pre-truncated to cents here would just
+  // reintroduce, one step later, the same premature-rounding loss that
+  // `classifyPayment`/`analyticInterest`/the orphan-interest rows were fixed
+  // to avoid (REV-20260803-036). A genuinely presented cents figure is the
+  // caller's job, not this function's.
   const observed =
-    Math.round((lastRegular.principal + lastRegular.interest) * 100) / 100;
+    Math.round((lastRegular.principal + lastRegular.interest) * 10000) / 10000;
   return observed > 0 ? observed : contractualPayment;
 }
 

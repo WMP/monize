@@ -468,6 +468,33 @@ describe('deriveCurrentInstallment', () => {
     );
     expect(result).toBe(600);
   });
+
+  it('preserves 4dp precision instead of rounding principal+interest to cents before seeding the projection (REV-20260803-036 reopen)', () => {
+    // Reopened scenario: a latest regular payment with principal 100 and
+    // separately-booked interest 0.0049. The event correctly retains 0.0049
+    // (fixed in the first pass), but deriveCurrentInstallment used to round
+    // principal + interest to cents -- Math.round(100.0049 * 100) / 100 ===
+    // 100 -- silently dropping the sub-cent interest one step later, right
+    // before it seeds buildLoanProjectionInput's paymentAmount.
+    const result = deriveCurrentInstallment(
+      history([{ principal: 100, interest: 0.0049, type: 'REGULAR' }]),
+      1279,
+    );
+    expect(result).toBeCloseTo(100.0049, 4);
+    expect(result).not.toBe(100);
+
+    // Interest of 0.0050 used to produce 100.01 (each rounded to cents
+    // separately then summed would give 100.00 + 0.01 = 100.01 too, but the
+    // bug was rounding the *sum* to cents: Math.round(100.005 * 100) / 100 =
+    // 100.01). Summing first at full precision then rounding once at 4dp
+    // keeps the true value.
+    const result2 = deriveCurrentInstallment(
+      history([{ principal: 100, interest: 0.005, type: 'REGULAR' }]),
+      1279,
+    );
+    expect(result2).toBeCloseTo(100.005, 4);
+    expect(result2).not.toBe(100.01);
+  });
 });
 
 describe('fetchAllAccountTransactions', () => {
