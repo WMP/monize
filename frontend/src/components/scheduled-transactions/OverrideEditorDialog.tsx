@@ -23,6 +23,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
 import { useTranslations } from 'next-intl';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useDateFormat } from '@/hooks/useDateFormat';
 
 const logger = createLogger('OverrideEditorDialog');
 interface OverrideEditorDialogProps {
@@ -55,6 +56,11 @@ export function OverrideEditorDialog({
   const t = useTranslations('scheduledTransactions');
   const tc = useTranslations('common');
   const { formatNumber } = useNumberFormat();
+  const { formatDate } = useDateFormat();
+  // A share price is not money: it carries up to six decimals, and the trailing
+  // zeros of a whole-cent price are noise beside a suggestion.
+  const formatPriceForCopy = (price: number) =>
+    formatNumber(price, 6).replace(/0+$/, '').replace(/[.,]$/, '');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(overrideDate);
   const [amount, setAmount] = useState<number>(0);
@@ -71,6 +77,12 @@ export function OverrideEditorDialog({
   // (the backend derives total from qty * price + commission).
   const [investmentTotalValue, setInvestmentTotalValue] = useState<number | ''>('');
   const [marketPrice, setMarketPrice] = useState<number | null>(null);
+  const [marketPriceDate, setMarketPriceDate] = useState<string | null>(null);
+  // True when the occurrence already has a price on file -- from this override
+  // or from the schedule it belongs to. Such a price is an instruction the user
+  // saved, so market data may be offered beside it but never written over it.
+  const [hasStoredPrice, setHasStoredPrice] = useState(false);
+  const [priceCameFromMarket, setPriceCameFromMarket] = useState(false);
 
   const isInvestmentKind = scheduledTransaction.isInvestment;
   const investmentAction = scheduledTransaction.investmentAction;
@@ -157,6 +169,8 @@ export function OverrideEditorDialog({
       setInvestmentQuantity(initialQty);
       setInvestmentPrice(initialPrice);
       setInvestmentTotalAmount(initialTotalAmount);
+      setHasStoredPrice(typeof initialPrice === 'number' && initialPrice > 0);
+      setPriceCameFromMarket(false);
       if (
         typeof initialQty === 'number' &&
         initialQty > 0 &&
@@ -171,6 +185,7 @@ export function OverrideEditorDialog({
         setInvestmentTotalValue('');
       }
       setMarketPrice(null);
+      setMarketPriceDate(null);
     }
   }, [isOpen, existingOverride, scheduledTransaction, overrideDate, prefillAmount]);
 
@@ -187,10 +202,12 @@ export function OverrideEditorDialog({
         if (cancelled) return;
         const latest = prices[0];
         setMarketPrice(latest ? Number(latest.closePrice) : null);
+        setMarketPriceDate(latest ? latest.priceDate : null);
       })
       .catch((err) => {
         if (cancelled) return;
         setMarketPrice(null);
+        setMarketPriceDate(null);
         logger.warn?.('Failed to fetch latest price', err);
       });
     return () => {
@@ -203,26 +220,54 @@ export function OverrideEditorDialog({
     scheduledTransaction.investmentSecurityId,
   ]);
 
-  // When the market price arrives, overwrite the Price with the latest value
-  // and recompute the total from the existing quantity. Uses the "info from
-  // previous render" pattern to avoid violating react-hooks/set-state-in-effect.
+  const investmentSign = scheduledTransaction.investmentAction === 'SELL' ? -1 : 1;
+  const investmentCommission = Number(scheduledTransaction.investmentCommission ?? 0);
+
+  /**
+   * Write a price into the form and recompute the total from the quantity
+   * already entered. Used by the explicit "use latest close" action and by the
+   * first-fill below; never called to replace a price already on file.
+   */
+  const writePrice = (price: number, fromMarket: boolean) => {
+    const rounded = Math.round(price * 1_000_000) / 1_000_000;
+    setInvestmentPrice(rounded);
+    setPriceCameFromMarket(fromMarket);
+    if (investmentQuantity !== '' && Number(investmentQuantity) > 0) {
+      const total = Number(investmentQuantity) * rounded + investmentSign * investmentCommission;
+      setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
+    }
+  };
+
+  // The latest close fills the Price field only when the occurrence has no
+  // price of its own -- a brand new override on a schedule that never stored
+  // one. Where a price *is* on file it stays put and the market figure is
+  // offered as an explicit action instead: this dialog used to overwrite it on
+  // open, so reopening an override to change only its date silently re-priced a
+  // future purchase at today's close. Uses the "info from previous render"
+  // pattern to avoid violating react-hooks/set-state-in-effect.
   const [lastSeenMarketPrice, setLastSeenMarketPrice] = useState<number | null>(null);
   if (isOpen && marketPrice !== lastSeenMarketPrice) {
     setLastSeenMarketPrice(marketPrice);
-    if (isInvestmentQuantityPrice && marketPrice != null && marketPrice > 0) {
-      const rounded = Math.round(marketPrice * 1_000_000) / 1_000_000;
-      setInvestmentPrice(rounded);
-      if (investmentQuantity !== '' && Number(investmentQuantity) > 0) {
-        const commission = Number(scheduledTransaction.investmentCommission ?? 0);
-        const sign = scheduledTransaction.investmentAction === 'SELL' ? -1 : 1;
-        const total = Number(investmentQuantity) * rounded + sign * commission;
-        setInvestmentTotalValue(Math.round(total * 10_000) / 10_000);
-      }
+    if (
+      isInvestmentQuantityPrice &&
+      !hasStoredPrice &&
+      investmentPrice === '' &&
+      marketPrice != null &&
+      marketPrice > 0
+    ) {
+      writePrice(marketPrice, true);
     }
   }
 
-  const investmentSign = scheduledTransaction.investmentAction === 'SELL' ? -1 : 1;
-  const investmentCommission = Number(scheduledTransaction.investmentCommission ?? 0);
+  const roundedMarketPrice =
+    marketPrice != null && marketPrice > 0
+      ? Math.round(marketPrice * 1_000_000) / 1_000_000
+      : null;
+  // Offer the market price only when it would actually change the field.
+  const canApplyMarketPrice =
+    isInvestmentQuantityPrice &&
+    roundedMarketPrice !== null &&
+    roundedMarketPrice !== investmentPrice;
 
   const handleInvestmentQuantityChange = (raw: number | undefined) => {
     const qty = raw ?? '';
@@ -236,6 +281,8 @@ export function OverrideEditorDialog({
   const handleInvestmentPriceChange = (raw: number | undefined) => {
     const price = raw ?? '';
     setInvestmentPrice(price);
+    // A typed price is the user's own, whatever it happens to equal.
+    setPriceCameFromMarket(false);
     if (price !== '' && Number(price) > 0) {
       if (investmentTotalValue !== '') {
         const cost = Number(investmentTotalValue) - investmentSign * investmentCommission;
@@ -443,13 +490,50 @@ export function OverrideEditorDialog({
                   decimalPlaces={6}
                   min={0}
                   placeholder={
-                    marketPrice != null
-                      ? `Latest: ${formatNumber(marketPrice, 6).replace(/0+$/, '').replace(/\.$/, '')}`
+                    roundedMarketPrice != null
+                      ? t('overrideEditor.latestPricePlaceholder', {
+                          price: formatPriceForCopy(roundedMarketPrice),
+                        })
                       : undefined
                   }
                   value={investmentPrice === '' ? undefined : investmentPrice}
                   onChange={handleInvestmentPriceChange}
                 />
+                {/* Price provenance. The stored value wins on open; the latest
+                    close is a suggestion the user applies deliberately. */}
+                {canApplyMarketPrice && (
+                  <div className="-mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <span>
+                      {marketPriceDate
+                        ? t('overrideEditor.latestCloseOnDate', {
+                            price: formatPriceForCopy(roundedMarketPrice),
+                            date: formatDate(marketPriceDate),
+                          })
+                        : t('overrideEditor.latestClose', {
+                            price: formatPriceForCopy(roundedMarketPrice),
+                          })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => writePrice(roundedMarketPrice, true)}
+                      className="text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {t('overrideEditor.useLatestClose')}
+                    </button>
+                  </div>
+                )}
+                {priceCameFromMarket && !canApplyMarketPrice && (
+                  <p className="-mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    {marketPriceDate
+                      ? t('overrideEditor.priceFromMarketOnDate', { date: formatDate(marketPriceDate) })
+                      : t('overrideEditor.priceFromMarket')}
+                  </p>
+                )}
+                {hasStoredPrice && !canApplyMarketPrice && (
+                  <p className="-mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    {t('overrideEditor.priceFromSchedule')}
+                  </p>
+                )}
                 <CurrencyInput
                   label={t('overrideEditor.totalPriceLabel')}
                   prefix={getCurrencySymbol(scheduledTransaction.currencyCode)}
@@ -502,7 +586,10 @@ export function OverrideEditorDialog({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
               </svg>
               <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                Transfer: {scheduledTransaction.account?.name} → {scheduledTransaction.transferAccount?.name}
+                {t('overrideEditor.transferSummary', {
+                  from: scheduledTransaction.account?.name ?? '',
+                  to: scheduledTransaction.transferAccount?.name ?? '',
+                })}
               </span>
             </div>
           </div>
@@ -547,7 +634,7 @@ export function OverrideEditorDialog({
                   {t('overrideEditor.categoryLabel')}
                 </label>
                 <Combobox
-                  placeholder="Select category..."
+                  placeholder={t('overrideEditor.categoryPlaceholder')}
                   options={categoryOptions}
                   value={categoryId}
                   initialDisplayValue={currentCategory?.name || ''}
@@ -568,7 +655,7 @@ export function OverrideEditorDialog({
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Override description..."
+            placeholder={t('overrideEditor.descriptionPlaceholder')}
           />
         </div>
       </div>
