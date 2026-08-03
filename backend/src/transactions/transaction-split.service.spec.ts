@@ -6,6 +6,7 @@ import { Transaction } from "./entities/transaction.entity";
 import { TransactionSplit } from "./entities/transaction-split.entity";
 import { Category } from "../categories/entities/category.entity";
 import { AccountsService } from "../accounts/accounts.service";
+import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { isTransactionInFuture } from "../common/date-utils";
 import {
   createScopedDbMocks,
@@ -29,6 +30,7 @@ describe("TransactionSplitService", () => {
   let splitsRepository: Record<string, jest.Mock>;
   let categoriesRepository: Record<string, jest.Mock>;
   let accountsService: Record<string, jest.Mock>;
+  let exchangeRateService: Record<string, jest.Mock>;
   let mockDataSource: DataSourceMock;
   // The withScopedDb EntityManager, kept under the legacy `mockQueryRunner.manager`
   // shape so the pre-RLS manager assertions below still read naturally.
@@ -168,6 +170,13 @@ describe("TransactionSplitService", () => {
       triggerDebouncedRecalc: jest.fn(),
     };
 
+    // Default: no stored rate. A same-currency split must never consult it, and a
+    // cross-currency one must refuse rather than fall back to par -- so an
+    // unset-by-default mock is the honest starting point.
+    exchangeRateService = {
+      getRateForDate: jest.fn().mockResolvedValue(null),
+    };
+
     const {
       InvestmentTransactionsService,
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -186,6 +195,7 @@ describe("TransactionSplitService", () => {
           useValue: investmentTransactionsService,
         },
         { provide: NetWorthService, useValue: netWorthService },
+        { provide: ExchangeRateService, useValue: exchangeRateService },
         { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
@@ -363,6 +373,174 @@ describe("TransactionSplitService", () => {
       );
       expect(result).toHaveLength(1);
       expect(result[0].linkedTransactionId).toBe("linked-tx-1");
+    });
+
+    // The third P6-002 path. A transfer split's counterpart leg was written as
+    // `-split.amount` with `exchangeRate: 1` whatever currency the target account
+    // held, so -100.00 USD out of a chequing account credited 100.00 EUR to a EUR
+    // savings account -- and that row feeds budgets and category history too.
+    describe("a cross-currency transfer split", () => {
+      const wireCrossCurrency = () => {
+        accountsService.findOne
+          .mockReset()
+          .mockResolvedValueOnce({
+            id: "account-eur",
+            name: "Euro Savings",
+            currencyCode: "EUR",
+          })
+          .mockResolvedValueOnce({
+            id: "account-1",
+            name: "Checking",
+            currencyCode: "USD",
+          });
+        splitsRepository.save.mockResolvedValueOnce({
+          id: "split-new",
+          transactionId: "tx-1",
+          transferAccountId: "account-eur",
+          amount: -100,
+        });
+        transactionsRepository.save.mockResolvedValueOnce({
+          id: "linked-tx-1",
+          accountId: "account-eur",
+        });
+      };
+
+      const run = (split: Record<string, unknown>) =>
+        service.createSplits(
+          "tx-1",
+          [{ amount: -100, transferAccountId: "account-eur", ...split }] as any,
+          "user-1",
+          "account-1",
+          new Date("2026-01-15"),
+          "Store",
+          null,
+        );
+
+      it("converts the counterpart at the stored rate for the parent's date", async () => {
+        wireCrossCurrency();
+        exchangeRateService.getRateForDate.mockResolvedValue(0.9);
+
+        await run({});
+
+        expect(exchangeRateService.getRateForDate).toHaveBeenCalledWith(
+          "USD",
+          "EUR",
+          "2026-01-15",
+        );
+        expect(transactionsRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            accountId: "account-eur",
+            amount: 90,
+            currencyCode: "EUR",
+            exchangeRate: 0.9,
+          }),
+        );
+        expect(accountsService.updateBalance).toHaveBeenCalledWith(
+          "account-eur",
+          90,
+        );
+      });
+
+      it("refuses the whole split set when no rate is available", async () => {
+        wireCrossCurrency();
+        exchangeRateService.getRateForDate.mockResolvedValue(null);
+
+        await expect(run({})).rejects.toThrow(
+          /No exchange rate is available for USD to EUR on 2026-01-15/,
+        );
+        // Nothing was written: the conversion is resolved before the split row.
+        expect(splitsRepository.save).not.toHaveBeenCalled();
+        expect(transactionsRepository.save).not.toHaveBeenCalled();
+        expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      });
+
+      it("prefers a rate stated on the split", async () => {
+        wireCrossCurrency();
+        exchangeRateService.getRateForDate.mockResolvedValue(0.9);
+
+        await run({ transferExchangeRate: 0.95 });
+
+        expect(exchangeRateService.getRateForDate).not.toHaveBeenCalled();
+        expect(transactionsRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ amount: 95, exchangeRate: 0.95 }),
+        );
+      });
+
+      it("accepts a stated received amount and stores the rate it implies", async () => {
+        wireCrossCurrency();
+
+        await run({ transferToAmount: 92 });
+
+        expect(transactionsRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ amount: 92, exchangeRate: 0.92 }),
+        );
+      });
+
+      it("keeps the counterpart's sign opposite the split's on an inflow", async () => {
+        accountsService.findOne
+          .mockReset()
+          .mockResolvedValueOnce({
+            id: "account-eur",
+            name: "Euro Savings",
+            currencyCode: "EUR",
+          })
+          .mockResolvedValueOnce({
+            id: "account-1",
+            name: "Checking",
+            currencyCode: "USD",
+          });
+        splitsRepository.save.mockResolvedValueOnce({ id: "split-new" });
+        transactionsRepository.save.mockResolvedValueOnce({
+          id: "linked-tx-1",
+        });
+        exchangeRateService.getRateForDate.mockResolvedValue(0.9);
+
+        await service.createSplits(
+          "tx-1",
+          [{ amount: 100, transferAccountId: "account-eur" }] as any,
+          "user-1",
+          "account-1",
+          new Date("2026-01-15"),
+          "Store",
+          null,
+        );
+
+        expect(transactionsRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ amount: -90 }),
+        );
+      });
+    });
+
+    it("does not consult a rate for a same-currency transfer split", async () => {
+      accountsService.findOne
+        .mockReset()
+        .mockResolvedValueOnce({
+          id: "account-2",
+          name: "Savings",
+          currencyCode: "USD",
+        })
+        .mockResolvedValueOnce({
+          id: "account-1",
+          name: "Checking",
+          currencyCode: "USD",
+        });
+      splitsRepository.save.mockResolvedValueOnce({ id: "split-new" });
+      transactionsRepository.save.mockResolvedValueOnce({ id: "linked-tx-1" });
+
+      await service.createSplits(
+        "tx-1",
+        [{ amount: -50, transferAccountId: "account-2" }] as any,
+        "user-1",
+        "account-1",
+        new Date("2026-01-15"),
+        "Store",
+        null,
+      );
+
+      expect(exchangeRateService.getRateForDate).not.toHaveBeenCalled();
+      expect(transactionsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 50, exchangeRate: 1 }),
+      );
     });
 
     it("uses default payee name when parentPayeeName is null", async () => {

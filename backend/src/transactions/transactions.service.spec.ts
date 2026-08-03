@@ -12,6 +12,7 @@ import { AccountsService } from "../accounts/accounts.service";
 import { PayeesService } from "../payees/payees.service";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { TransactionSplitService } from "./transaction-split.service";
+import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { TransactionTransferService } from "./transaction-transfer.service";
 import { TransactionReconciliationService } from "./transaction-reconciliation.service";
 import { TransactionAnalyticsService } from "./transaction-analytics.service";
@@ -261,6 +262,12 @@ describe("TransactionsService", () => {
               .fn()
               .mockImplementation(async () => new Set<string>()),
           },
+        },
+        {
+          // No stored rate by default: a cross-currency transfer split must
+          // refuse rather than settle at par.
+          provide: ExchangeRateService,
+          useValue: { getRateForDate: jest.fn().mockResolvedValue(null) },
         },
         TransactionSplitService,
         TransactionTransferService,
@@ -4446,8 +4453,11 @@ describe("TransactionsService", () => {
         id: "account-1",
         name: "Checking",
       };
+      // `addSplit` looks up the target account and then the source one; the
+      // stray leading value here shifted both by one, so the "target account"
+      // was actually the transaction and the linked leg was created with
+      // `currencyCode: undefined`. Nothing asserted the currency, so it passed.
       accountsService.findOne
-        .mockResolvedValueOnce(mockTx) // findOne for the main tx
         .mockResolvedValueOnce(targetAccount)
         .mockResolvedValueOnce(sourceAccount);
 
@@ -4466,7 +4476,12 @@ describe("TransactionsService", () => {
         expect.objectContaining({
           accountId: "account-2",
           amount: 40,
+          currencyCode: "USD",
+          exchangeRate: 1,
           isTransfer: true,
+          // Named after the SOURCE account, which the off-by-one fixture had
+          // pointing at the destination.
+          payeeName: "Transfer from Checking",
         }),
       );
       expect(accountsService.updateBalance).toHaveBeenCalledWith(
@@ -5015,12 +5030,30 @@ describe("TransactionsService", () => {
       );
     });
 
+    // An exchange rate only means something between two different currencies.
+    // These two cases used to pass a rate of 1.3 between two accounts in the same
+    // currency, which the service now rejects -- so the fixture is a real
+    // cross-currency transfer: 200.00 USD -> 240.00 CAD at 1.20.
+    const fxFromTx = { ...fromTx, currencyCode: "USD" };
+    const fxToTx = {
+      ...toTx,
+      currencyCode: "CAD",
+      amount: 240,
+      exchangeRate: 1.2,
+      account: {
+        ...mockAccount,
+        id: "account-2",
+        name: "Savings",
+        currencyCode: "CAD",
+      },
+    };
+
     it("handles exchange rate changes", async () => {
       transactionsRepository.findOne
-        .mockResolvedValueOnce({ ...fromTx })
-        .mockResolvedValueOnce({ ...toTx })
-        .mockResolvedValueOnce({ ...fromTx })
-        .mockResolvedValueOnce({ ...toTx, amount: 260 });
+        .mockResolvedValueOnce({ ...fxFromTx })
+        .mockResolvedValueOnce({ ...fxToTx })
+        .mockResolvedValueOnce({ ...fxFromTx })
+        .mockResolvedValueOnce({ ...fxToTx, amount: 260 });
 
       await service.updateTransfer("user-1", "tx-from", {
         exchangeRate: 1.3,
@@ -5036,12 +5069,12 @@ describe("TransactionsService", () => {
       );
     });
 
-    it("handles explicit toAmount override", async () => {
+    it("handles an explicit received amount and derives the rate it implies", async () => {
       transactionsRepository.findOne
-        .mockResolvedValueOnce({ ...fromTx })
-        .mockResolvedValueOnce({ ...toTx })
-        .mockResolvedValueOnce({ ...fromTx })
-        .mockResolvedValueOnce({ ...toTx, amount: 250 });
+        .mockResolvedValueOnce({ ...fxFromTx })
+        .mockResolvedValueOnce({ ...fxToTx })
+        .mockResolvedValueOnce({ ...fxFromTx })
+        .mockResolvedValueOnce({ ...fxToTx, amount: 250 });
 
       await service.updateTransfer("user-1", "tx-from", {
         toAmount: 250,
@@ -5051,8 +5084,20 @@ describe("TransactionsService", () => {
         "tx-to",
         expect.objectContaining({
           amount: 250,
+          exchangeRate: 1.25,
         }),
       );
+    });
+
+    it("refuses a rate on a transfer between two accounts in one currency", async () => {
+      transactionsRepository.findOne
+        .mockResolvedValueOnce({ ...fromTx, currencyCode: "USD" })
+        .mockResolvedValueOnce({ ...toTx, currencyCode: "USD" });
+
+      await expect(
+        service.updateTransfer("user-1", "tx-from", { exchangeRate: 1.3 }),
+      ).rejects.toThrow(/cannot carry an exchange rate/);
+      expect(transactionsRepository.update).not.toHaveBeenCalled();
     });
 
     it("does not modify payee names when custom payeeName is provided", async () => {

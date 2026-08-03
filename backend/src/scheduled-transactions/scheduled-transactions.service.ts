@@ -532,6 +532,90 @@ export class ScheduledTransactionsService {
    * account currency that could not be re-derived when the rate moves -- so
    * each of those rejects the fields rather than silently dropping them.
    */
+  /**
+   * The conversion a scheduled transfer needs when its two accounts hold
+   * different currencies, or `null` when they hold the same one.
+   *
+   * A schedule stores one amount and a destination account, and nothing else:
+   * the posting path used to call `createTransfer` with no `toCurrencyCode`,
+   * no rate and no destination amount, so the destination leg was created at par
+   * AND stamped with the source currency. A monthly 100.00 USD -> EUR transfer
+   * therefore credited 100.00 every month instead of ~90.00, overstating the
+   * destination by 120.00 EUR a year before any rate movement.
+   *
+   * Resolution order, mirroring `resolveScheduleFx` for a foreign-currency entry:
+   * an explicit rate or received amount on the posting request, else the stored
+   * rate for the posting date. Neither available is unknown, and an unknown
+   * conversion refuses the posting -- it does not become 1.
+   */
+  private async resolveTransferPostConversion(
+    userId: string,
+    scheduled: ScheduledTransaction,
+    postDate: string,
+    postDto?: {
+      transferExchangeRate?: number | null;
+      transferToAmount?: number | null;
+    },
+  ): Promise<{
+    toCurrencyCode: string;
+    exchangeRate?: number;
+    toAmount?: number;
+  } | null> {
+    const destination = await this.accountsService.findOne(
+      userId,
+      scheduled.transferAccountId!,
+    );
+    if (
+      destination.currencyCode.toUpperCase() ===
+      scheduled.currencyCode.toUpperCase()
+    ) {
+      return null;
+    }
+
+    const supplied =
+      postDto?.transferExchangeRate !== undefined &&
+      postDto?.transferExchangeRate !== null
+        ? Number(postDto.transferExchangeRate)
+        : null;
+    const suppliedToAmount =
+      postDto?.transferToAmount !== undefined &&
+      postDto?.transferToAmount !== null
+        ? Number(postDto.transferToAmount)
+        : null;
+
+    if (supplied !== null || suppliedToAmount !== null) {
+      return {
+        toCurrencyCode: destination.currencyCode,
+        exchangeRate: supplied ?? undefined,
+        toAmount: suppliedToAmount ?? undefined,
+      };
+    }
+
+    const rate = await this.exchangeRateService.getRateForDate(
+      scheduled.currencyCode,
+      destination.currencyCode,
+      postDate,
+    );
+    if (rate === null || !isFinite(rate) || rate <= 0) {
+      throw new BadRequestException(
+        tr(
+          "errors.scheduled.transferFxRateUnavailable",
+          `No exchange rate is available for ${scheduled.currencyCode} to ${destination.currencyCode} on ${postDate}. Add the rate, or post this transfer manually with the amount the destination account received.`,
+          {
+            from: scheduled.currencyCode,
+            to: destination.currencyCode,
+            date: postDate,
+          },
+        ),
+      );
+    }
+
+    return {
+      toCurrencyCode: destination.currencyCode,
+      exchangeRate: roundFxRate(rate),
+    };
+  }
+
   private resolveScheduleFx(
     dto: {
       amount?: number;
@@ -1637,12 +1721,25 @@ export class ScheduledTransactionsService {
             storedOverride?.categoryId !== undefined
           ? storedOverride.categoryId
           : scheduled.categoryId || undefined;
+      // A cross-currency schedule has no conversion of its own: the rate on the
+      // day is what matters for a recurring transfer, and a rate captured when
+      // the schedule was created is wrong by the time it posts. Resolve it for
+      // the posting date, and refuse to post rather than move the money at par.
+      const transferFx = await this.resolveTransferPostConversion(
+        userId,
+        scheduled,
+        postDate,
+        postDto,
+      );
       await this.transactionsService.createTransfer(userId, {
         fromAccountId: scheduled.accountId,
         toAccountId: scheduled.transferAccountId,
         amount: Math.abs(finalAmount),
         transactionDate: postDate,
         fromCurrencyCode: scheduled.currencyCode,
+        toCurrencyCode: transferFx?.toCurrencyCode,
+        exchangeRate: transferFx?.exchangeRate,
+        toAmount: transferFx?.toAmount,
         description: finalDescription || undefined,
         referenceNumber: postDto?.referenceNumber || undefined,
         payeeId: scheduled.payeeId || undefined,

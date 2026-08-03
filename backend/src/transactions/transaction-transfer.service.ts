@@ -21,6 +21,10 @@ import { ActionHistoryService } from "../action-history/action-history.service";
 import { CrossOwnerAccessService } from "../delegation/cross-owner-access.service";
 import { formatCurrency } from "../common/format-currency.util";
 import { roundMoney } from "../common/round.util";
+import {
+  resolveTransferConversion,
+  resolveTransferUpdateConversion,
+} from "./transfer-conversion.util";
 import { stripHtml } from "../common/sanitization.util";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -138,6 +142,43 @@ export class TransactionTransferService {
     }
   }
 
+  /**
+   * Refuse a request whose currency code disagrees with the account it names.
+   *
+   * A transfer leg's amount is added straight to its account's balance, so the
+   * leg has to be denominated in the account's currency. An absent code is not a
+   * disagreement -- the account supplies it.
+   */
+  private assertCurrencyMatchesAccount(
+    code: string | undefined | null,
+    account: Account,
+    side: "from" | "to",
+  ): void {
+    if (!code) return;
+    if (code.toUpperCase() === account.currencyCode.toUpperCase()) return;
+    throw new BadRequestException(
+      side === "from"
+        ? tr(
+            "errors.transactions.transferFromCurrencyMismatch",
+            `The source account "${account.name}" holds ${account.currencyCode}, not ${code}.`,
+            {
+              account: account.name,
+              accountCurrency: account.currencyCode,
+              currency: code,
+            },
+          )
+        : tr(
+            "errors.transactions.transferToCurrencyMismatch",
+            `The destination account "${account.name}" holds ${account.currencyCode}, not ${code}.`,
+            {
+              account: account.name,
+              accountCurrency: account.currencyCode,
+              currency: code,
+            },
+          ),
+    );
+  }
+
   async createTransfer(
     userId: string,
     createTransferDto: CreateTransferDto,
@@ -152,7 +193,7 @@ export class TransactionTransferService {
       amount,
       fromCurrencyCode,
       toCurrencyCode,
-      exchangeRate = 1,
+      exchangeRate: requestedExchangeRate,
       toAmount: explicitToAmount,
       description,
       payeeId,
@@ -204,11 +245,25 @@ export class TransactionTransferService {
     // is fully decided above, before the bypass window opens.
     const hasForeignLeg = fromOwnerId !== userId || toOwnerId !== userId;
 
-    const toAmount =
-      explicitToAmount !== undefined
-        ? roundMoney(explicitToAmount)
-        : roundMoney(amount * exchangeRate);
-    const destinationCurrency = toCurrencyCode || fromCurrencyCode;
+    // The accounts decide the currencies, not the request. A client-supplied
+    // code that contradicts its account is refused rather than persisted: both
+    // balance updates below add the raw leg amount to the account balance, so a
+    // leg stamped with a currency its account does not hold moves the balance by
+    // an unconverted number. The scheduled poster used to omit `toCurrencyCode`
+    // entirely, which stamped the destination leg with the SOURCE currency.
+    this.assertCurrencyMatchesAccount(fromCurrencyCode, fromAccount, "from");
+    this.assertCurrencyMatchesAccount(toCurrencyCode, toAccount, "to");
+    const destinationCurrency = toAccount.currencyCode;
+
+    const conversion = resolveTransferConversion({
+      amount,
+      fromCurrencyCode: fromAccount.currencyCode,
+      toCurrencyCode: destinationCurrency,
+      exchangeRate: requestedExchangeRate,
+      toAmount: explicitToAmount,
+    });
+    const toAmount = conversion.toAmount;
+    const exchangeRate = conversion.exchangeRate;
 
     const fromPayeeName = customPayeeName || `Transfer to ${toAccount.name}`;
     const toPayeeName = customPayeeName || `Transfer from ${fromAccount.name}`;
@@ -530,11 +585,17 @@ export class TransactionTransferService {
       input.toAccountId,
     );
 
-    const exchangeRate = input.exchangeRate ?? 1;
-    const toAmount =
-      input.toAmount !== undefined
-        ? roundMoney(input.toAmount)
-        : roundMoney(input.amount * exchangeRate);
+    // Same contract as createTransfer, so a preview the assistant shows is a
+    // preview of something that can actually be written: a cross-currency
+    // transfer with no conversion is refused here too, rather than previewed at
+    // par and then rejected (or worse, accepted) on confirm.
+    const { toAmount, exchangeRate } = resolveTransferConversion({
+      amount: input.amount,
+      fromCurrencyCode: fromAccount.currencyCode,
+      toCurrencyCode: toAccount.currencyCode,
+      exchangeRate: input.exchangeRate,
+      toAmount: input.toAmount,
+    });
 
     // Resolve the custom label to an existing payee exactly like a normal cash
     // transaction (previewCreate): on a match link the payee and adopt its
@@ -613,6 +674,10 @@ export class TransactionTransferService {
     transactionId: string,
     input: {
       amount?: number;
+      /** Destination units per one source unit, for a cross-currency edit. */
+      exchangeRate?: number;
+      /** Destination magnitude, for a cross-currency edit. */
+      toAmount?: number;
       transactionDate?: string;
       description?: string;
       payeeName?: string;
@@ -645,16 +710,26 @@ export class TransactionTransferService {
 
     const oldFromAmount = Math.abs(Number(fromTransaction.amount));
     const oldToAmount = Number(toTransaction.amount);
-    const exchangeRate = Number(toTransaction.exchangeRate) || 1;
 
-    const newAmount =
-      input.amount !== undefined ? roundMoney(input.amount) : oldFromAmount;
-    // When only the amount changes, scale the destination leg by the stored
-    // exchange rate; when nothing money-related changes, keep the stored toAmount.
-    const newToAmount =
-      input.amount !== undefined
-        ? roundMoney(newAmount * exchangeRate)
-        : roundMoney(oldToAmount);
+    // Same contract as updateTransfer: an amount change on a cross-currency
+    // transfer needs a conversion, and the preview refuses it here rather than
+    // showing a rescaled-at-the-stored-rate figure the confirm step would reject.
+    const {
+      amount: newAmount,
+      toAmount: newToAmount,
+      exchangeRate,
+    } = resolveTransferUpdateConversion({
+      fromCurrencyCode: fromTransaction.currencyCode,
+      toCurrencyCode: toTransaction.currencyCode,
+      storedFromCurrencyCode: fromTransaction.currencyCode,
+      storedToCurrencyCode: toTransaction.currencyCode,
+      storedAmount: oldFromAmount,
+      storedToAmount: oldToAmount,
+      storedExchangeRate: Number(toTransaction.exchangeRate) || 1,
+      requestedAmount: input.amount,
+      requestedExchangeRate: input.exchangeRate,
+      requestedToAmount: input.toAmount,
+    });
 
     const newDate = input.transactionDate ?? fromTransaction.transactionDate;
     const description =
@@ -1061,13 +1136,33 @@ export class TransactionTransferService {
       );
     }
 
-    const newAmount = updateDto.amount ?? oldFromAmount;
-    const newExchangeRate =
-      updateDto.exchangeRate ?? toTransaction.exchangeRate;
-    const newToAmount =
-      updateDto.toAmount !== undefined
-        ? roundMoney(updateDto.toAmount)
-        : roundMoney(newAmount * newExchangeRate);
+    this.assertCurrencyMatchesAccount(
+      updateDto.fromCurrencyCode,
+      newFromAccount,
+      "from",
+    );
+    this.assertCurrencyMatchesAccount(
+      updateDto.toCurrencyCode,
+      newToAccount,
+      "to",
+    );
+
+    const {
+      amount: newAmount,
+      toAmount: newToAmount,
+      exchangeRate: newExchangeRate,
+    } = resolveTransferUpdateConversion({
+      fromCurrencyCode: newFromAccount.currencyCode,
+      toCurrencyCode: newToAccount.currencyCode,
+      storedFromCurrencyCode: fromTransaction.currencyCode,
+      storedToCurrencyCode: toTransaction.currencyCode,
+      storedAmount: oldFromAmount,
+      storedToAmount: oldToAmount,
+      storedExchangeRate: Number(toTransaction.exchangeRate) || 1,
+      requestedAmount: updateDto.amount,
+      requestedExchangeRate: updateDto.exchangeRate,
+      requestedToAmount: updateDto.toAmount,
+    });
 
     const accountsOrAmountsChanged =
       updateDto.fromAccountId ||
@@ -1333,13 +1428,35 @@ export class TransactionTransferService {
 
     const oldFromAmount = Math.abs(Number(fromTransaction.amount));
     const oldToAmount = Number(toTransaction.amount);
-    const newAmount = updateDto.amount ?? oldFromAmount;
-    const newExchangeRate =
-      updateDto.exchangeRate ?? toTransaction.exchangeRate;
-    const newToAmount =
-      updateDto.toAmount !== undefined
-        ? roundMoney(updateDto.toAmount)
-        : roundMoney(newAmount * newExchangeRate);
+    // Accounts cannot move on a cross-owner transfer (rejected above), so the
+    // stored legs' currencies are also the post-edit currencies.
+    this.assertCurrencyMatchesAccount(
+      updateDto.fromCurrencyCode,
+      fromTransaction.account,
+      "from",
+    );
+    this.assertCurrencyMatchesAccount(
+      updateDto.toCurrencyCode,
+      toTransaction.account,
+      "to",
+    );
+
+    const {
+      amount: newAmount,
+      toAmount: newToAmount,
+      exchangeRate: newExchangeRate,
+    } = resolveTransferUpdateConversion({
+      fromCurrencyCode: fromTransaction.currencyCode,
+      toCurrencyCode: toTransaction.currencyCode,
+      storedFromCurrencyCode: fromTransaction.currencyCode,
+      storedToCurrencyCode: toTransaction.currencyCode,
+      storedAmount: oldFromAmount,
+      storedToAmount: oldToAmount,
+      storedExchangeRate: Number(toTransaction.exchangeRate) || 1,
+      requestedAmount: updateDto.amount,
+      requestedExchangeRate: updateDto.exchangeRate,
+      requestedToAmount: updateDto.toAmount,
+    });
     const amountsChanged =
       updateDto.amount !== undefined ||
       updateDto.exchangeRate !== undefined ||
@@ -1669,12 +1786,11 @@ export class TransactionTransferService {
     const data: Partial<Transaction> = {};
     if (updateDto.transactionDate)
       data.transactionDate = updateDto.transactionDate as any;
-    if (
+    const moneyChanged =
       updateDto.amount !== undefined ||
       updateDto.exchangeRate !== undefined ||
-      updateDto.toAmount !== undefined
-    )
-      data.amount = newToAmount;
+      updateDto.toAmount !== undefined;
+    if (moneyChanged) data.amount = newToAmount;
     if (updateDto.description !== undefined)
       data.description = updateDto.description ?? null;
     if (updateDto.referenceNumber !== undefined)
@@ -1683,7 +1799,11 @@ export class TransactionTransferService {
     if (updateDto.categoryId !== undefined)
       data.categoryId = updateDto.categoryId || null;
     if (updateDto.toCurrencyCode) data.currencyCode = updateDto.toCurrencyCode;
-    if (updateDto.exchangeRate) data.exchangeRate = updateDto.exchangeRate;
+    // The RESOLVED rate, written whenever the money moved -- not the raw request
+    // value, and not only when the request happened to carry one. A destination
+    // amount supplied on its own used to leave the old rate in place, so the leg
+    // stored a rate its own two amounts contradicted.
+    if (moneyChanged) data.exchangeRate = newExchangeRate;
     if (updateDto.payeeId !== undefined)
       data.payeeId = updateDto.payeeId || null;
     if (updateDto.payeeName !== undefined)

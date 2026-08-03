@@ -91,6 +91,25 @@ export class PostScheduledTransactionDto {
   exchangeRate?: number;
 
   @ApiPropertyOptional({
+    description:
+      "Exchange rate for a cross-currency scheduled transfer (destination-account units per 1 source-account unit). Defaults to the stored rate for the posting date; posting fails when neither is available. Distinct from `exchangeRate`, which converts a foreign entry into the source account's own currency.",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 10 })
+  @Min(0.000001)
+  transferExchangeRate?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "Amount the destination account receives, for a cross-currency scheduled transfer. Alternative to `transferExchangeRate`; supplying both requires them to agree.",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
+  @Max(999999999999)
+  transferToAmount?: number;
+
+  @ApiPropertyOptional({
     description: "Override category ID for this posting only",
   })
   @IsOptional()

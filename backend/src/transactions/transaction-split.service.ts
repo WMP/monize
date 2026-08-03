@@ -21,6 +21,8 @@ import {
 } from "../securities/cash-impact.util";
 import { NetWorthService } from "../net-worth/net-worth.service";
 import { roundMoney, sumMoney } from "../common/round.util";
+import { resolveTransferConversion } from "./transfer-conversion.util";
+import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { validateSplitAmountSum } from "../common/split-amount.util";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -41,8 +43,84 @@ export class TransactionSplitService {
     private investmentTransactionsService: InvestmentTransactionsService,
     @Inject(forwardRef(() => NetWorthService))
     private netWorthService: NetWorthService,
+    private exchangeRateService: ExchangeRateService,
     private dataSource: DataSource,
   ) {}
+
+  /**
+   * The linked leg's signed amount and stored rate for a transfer split.
+   *
+   * A split carries one amount, in the parent transaction's currency, and a
+   * target account id. The counterpart leg used to be written as
+   * `-split.amount` with `exchangeRate: 1` regardless of what currency the
+   * target account holds, so a 100.00 USD transfer split into a EUR account
+   * credited 100.00 EUR -- the same par credit as the direct and scheduled
+   * paths, on a row that also feeds budgets and category history.
+   *
+   * The rate comes from the split (explicit), else from the stored rate for the
+   * parent's date. Neither available is unknown, and an unknown conversion
+   * refuses the write.
+   *
+   * Returns the amount already signed for the counterpart leg: opposite the
+   * split's own sign, because the two sides of a transfer move opposite ways.
+   */
+  private async resolveTransferSplitConversion(
+    split: CreateTransactionSplitDto,
+    sourceCurrencyCode: string,
+    targetCurrencyCode: string,
+    dateStr: string,
+  ): Promise<{ linkedAmount: number; exchangeRate: number }> {
+    const magnitude = Math.abs(Number(split.amount));
+    const sameCurrency =
+      sourceCurrencyCode.toUpperCase() === targetCurrencyCode.toUpperCase();
+
+    let rate: number | null | undefined = split.transferExchangeRate;
+    const explicitToAmount =
+      split.transferToAmount !== undefined && split.transferToAmount !== null
+        ? Math.abs(Number(split.transferToAmount))
+        : undefined;
+
+    if (
+      !sameCurrency &&
+      (rate === undefined || rate === null) &&
+      explicitToAmount === undefined
+    ) {
+      rate = await this.exchangeRateService.getRateForDate(
+        sourceCurrencyCode,
+        targetCurrencyCode,
+        dateStr,
+      );
+      if (rate === null || !isFinite(rate) || rate <= 0) {
+        throw new BadRequestException(
+          tr(
+            "errors.transactions.splitTransferFxRateUnavailable",
+            `No exchange rate is available for ${sourceCurrencyCode} to ${targetCurrencyCode} on ${dateStr}. Add the rate, or state the amount the target account receives.`,
+            {
+              from: sourceCurrencyCode,
+              to: targetCurrencyCode,
+              date: dateStr,
+            },
+          ),
+        );
+      }
+    }
+
+    const conversion = resolveTransferConversion({
+      amount: magnitude,
+      fromCurrencyCode: sourceCurrencyCode,
+      toCurrencyCode: targetCurrencyCode,
+      // A same-currency split carries no rate: 1:1 is the known answer, and
+      // asserting a market rate over it would be refused as a contradiction.
+      exchangeRate: sameCurrency ? undefined : rate,
+      toAmount: sameCurrency ? undefined : explicitToAmount,
+    });
+
+    return {
+      linkedAmount:
+        Number(split.amount) < 0 ? conversion.toAmount : -conversion.toAmount,
+      exchangeRate: conversion.exchangeRate,
+    };
+  }
 
   private async validateCategoryOwnership(
     userId: string,
@@ -305,17 +383,6 @@ export class TransactionSplitService {
     }
 
     for (const { split, index } of transferSplits) {
-      const splitEntity = m.create(TransactionSplit, {
-        transactionId,
-        kind: SplitKind.TRANSFER,
-        categoryId: null,
-        transferAccountId: split.transferAccountId,
-        amount: split.amount,
-        memo: split.memo || null,
-      });
-
-      const savedSplit = await m.save(splitEntity);
-
       const targetAccount = await this.accountsService.findOne(
         userId!,
         split.transferAccountId!,
@@ -336,13 +403,34 @@ export class TransactionSplitService {
         ? transactionDate.toISOString().substring(0, 10)
         : "";
 
+      // Resolved before anything is written, so a missing rate refuses the whole
+      // split set rather than leaving a half-written parent behind.
+      const { linkedAmount, exchangeRate } =
+        await this.resolveTransferSplitConversion(
+          split,
+          sourceAccount.currencyCode,
+          targetAccount.currencyCode,
+          dateStr,
+        );
+
+      const splitEntity = m.create(TransactionSplit, {
+        transactionId,
+        kind: SplitKind.TRANSFER,
+        categoryId: null,
+        transferAccountId: split.transferAccountId,
+        amount: split.amount,
+        memo: split.memo || null,
+      });
+
+      const savedSplit = await m.save(splitEntity);
+
       const linkedTransaction = m.create(Transaction, {
         userId,
         accountId: split.transferAccountId,
         transactionDate: (dateStr || null) as any,
-        amount: -split.amount,
+        amount: linkedAmount,
         currencyCode: targetAccount.currencyCode,
-        exchangeRate: 1,
+        exchangeRate,
         description: split.memo || null,
         isTransfer: true,
         payeeId: parentPayeeId || null,
@@ -366,7 +454,7 @@ export class TransactionSplitService {
       } else {
         await this.accountsService.updateBalance(
           split.transferAccountId!,
-          -split.amount,
+          linkedAmount,
         );
       }
 
@@ -564,6 +652,35 @@ export class TransactionSplitService {
       const splitKind = splitDto.transferAccountId
         ? SplitKind.TRANSFER
         : SplitKind.CATEGORY;
+
+      // Resolve the counterpart's conversion before writing anything, so a
+      // missing rate refuses the request rather than leaving the split saved and
+      // its counterpart absent.
+      let transferLeg: { linkedAmount: number; exchangeRate: number } | null =
+        null;
+      let targetAccount: Awaited<
+        ReturnType<AccountsService["findOne"]>
+      > | null = null;
+      let sourceAccount: Awaited<
+        ReturnType<AccountsService["findOne"]>
+      > | null = null;
+      if (splitDto.transferAccountId) {
+        targetAccount = await this.accountsService.findOne(
+          userId,
+          splitDto.transferAccountId,
+        );
+        sourceAccount = await this.accountsService.findOne(
+          userId,
+          transaction.accountId,
+        );
+        transferLeg = await this.resolveTransferSplitConversion(
+          splitDto,
+          sourceAccount.currencyCode,
+          targetAccount.currencyCode,
+          String(transaction.transactionDate),
+        );
+      }
+
       const split = m.create(TransactionSplit, {
         transactionId: transaction.id,
         kind: splitKind,
@@ -575,28 +692,19 @@ export class TransactionSplitService {
 
       const savedSplit = await m.save(split);
 
-      if (splitDto.transferAccountId) {
-        const targetAccount = await this.accountsService.findOne(
-          userId,
-          splitDto.transferAccountId,
-        );
-        const sourceAccount = await this.accountsService.findOne(
-          userId,
-          transaction.accountId,
-        );
-
+      if (splitDto.transferAccountId && transferLeg) {
         const linkedTransaction = m.create(Transaction, {
           userId,
           accountId: splitDto.transferAccountId,
           transactionDate: transaction.transactionDate,
-          amount: -splitDto.amount,
-          currencyCode: targetAccount.currencyCode,
-          exchangeRate: 1,
+          amount: transferLeg.linkedAmount,
+          currencyCode: targetAccount!.currencyCode,
+          exchangeRate: transferLeg.exchangeRate,
           description: splitDto.memo || null,
           isTransfer: true,
           payeeId: transaction.payeeId || null,
           payeeName:
-            transaction.payeeName || `Transfer from ${sourceAccount.name}`,
+            transaction.payeeName || `Transfer from ${sourceAccount!.name}`,
         });
 
         const savedLinkedTransaction = await m.save(linkedTransaction);
@@ -612,7 +720,7 @@ export class TransactionSplitService {
         } else {
           await this.accountsService.updateBalance(
             splitDto.transferAccountId,
-            -splitDto.amount,
+            transferLeg.linkedAmount,
           );
         }
       }
