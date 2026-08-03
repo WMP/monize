@@ -466,10 +466,21 @@ describe('computePastImpact', () => {
     const paidPrincipals = original.rows.slice(0, 4).map((row) => row.principal);
     const remaining = original.rows[3].balance;
     const history = makeHistory(makeAccount({ currentBalance: -remaining }), paidPrincipals);
+    // The forward projection the loan detail page would compute from the
+    // remaining balance, continuing on the same contractual terms -- passed
+    // in the way the app actually does, rather than leaving it null.
+    const currentProjection = generateLoanSchedule({
+      startingBalance: remaining,
+      annualRate: 6,
+      paymentAmount: 500,
+      frequency: 'MONTHLY',
+      firstPaymentDate: new Date(2025, 4, 15),
+    });
 
     const impact = computePastImpact(
       makeAccount({ currentBalance: -remaining }),
       history,
+      currentProjection,
     );
 
     expect(impact).not.toBeNull();
@@ -478,6 +489,39 @@ describe('computePastImpact', () => {
     // No interest was recorded in history (no linked splits), so the saving
     // is capped rather than negative
     expect(impact!.interestAlreadySaved).toBeGreaterThanOrEqual(0);
+  });
+
+  it('reports unknown (not a measured zero) remaining interest and months saved when the loan is outstanding but has no current projection', () => {
+    // REV-20260803-011: an $80,000 outstanding loan with principal, rate,
+    // frequency, start date, and amortization configured, but no paymentAmount
+    // -- buildLoanProjectionInput (and so the page's baseline) is null, yet the
+    // loan is nowhere near paid off. The original contractual schedule can
+    // still be reconstructed from rate/term/principal, but the remaining
+    // interest cannot -- it must come back null, never a computed 0, which
+    // would otherwise be displayed as "Interest Already Saved".
+    const account = makeAccount({
+      originalPrincipal: 80000,
+      currentBalance: -80000,
+      paymentAmount: null,
+      amortizationMonths: 240,
+    });
+    const history = makeHistory(account, []);
+
+    // No currentProjection passed -- exactly what LoanDetailView passes when
+    // its own `baseline` memo is null.
+    const impact = computePastImpact(account, history, null, []);
+
+    expect(impact).not.toBeNull();
+    expect(impact!.originalSchedule.totalInterest).toBeGreaterThan(0);
+    // The loan is genuinely outstanding, not paid off.
+    expect(impact!.currentProjection).toBeNull();
+    expect(impact!.currentPayoffDate).toBeNull();
+    // Unknown, not a measured zero.
+    expect(impact!.interestAlreadySaved).toBeNull();
+    expect(impact!.monthsAlreadySaved).toBeNull();
+    // Extra principal paid is independent of the projection and stays a real,
+    // known number (0 here, since nothing was paid yet).
+    expect(impact!.extraPrincipalPaid).toBe(0);
   });
 
   it('derives the mortgage contractual payment from the amortization period', () => {

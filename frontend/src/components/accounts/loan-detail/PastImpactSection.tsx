@@ -42,7 +42,13 @@ export function PastImpactSection({ account, impact }: PastImpactSectionProps) {
     },
     {
       label: t('loanDetail.pastImpact.monthsAlreadySaved'),
-      value: t('loanDetail.pastImpact.monthsValue', { count: impact.monthsAlreadySaved }),
+      // Null when the loan is outstanding but has no current projection (e.g.
+      // paymentAmount not yet configured) -- the remaining term is unknown, so
+      // this must read as "not available", never as 0 months saved.
+      value:
+        impact.monthsAlreadySaved != null
+          ? t('loanDetail.pastImpact.monthsValue', { count: impact.monthsAlreadySaved })
+          : t('loanDetail.summary.notAvailable'),
       valueClass: 'text-green-600 dark:text-green-400',
       note: t('loanDetail.pastImpact.payoffComparison', {
         original: formatMonth(impact.originalPayoffDate),
@@ -51,7 +57,13 @@ export function PastImpactSection({ account, impact }: PastImpactSectionProps) {
     },
     {
       label: t('loanDetail.pastImpact.interestAlreadySaved'),
-      value: formatCurrency(impact.interestAlreadySaved, account.currencyCode),
+      // Same unknown case as above: an outstanding loan with no projection has
+      // unknown remaining interest, so it must not render as a measured 0 or
+      // any other computed figure.
+      value:
+        impact.interestAlreadySaved != null
+          ? formatCurrency(impact.interestAlreadySaved, account.currencyCode)
+          : t('loanDetail.summary.notAvailable'),
       valueClass: 'text-green-600 dark:text-green-400',
       note: t('loanDetail.pastImpact.vsOriginalInterest', {
         amount: formatCurrency(impact.originalSchedule.totalInterest, account.currencyCode),

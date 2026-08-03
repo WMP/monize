@@ -32,8 +32,16 @@ export interface PastImpactResult {
   originalPayoffDate: string | null;
   /** Projected payoff, or the final actual payment when already paid off */
   currentPayoffDate: string | null;
-  monthsAlreadySaved: number;
-  interestAlreadySaved: number;
+  /**
+   * Null when the loan is still outstanding but has no current projection to
+   * compare against (e.g. paymentAmount not yet configured) -- the remaining
+   * term/interest is unknown, not zero, so this must not render as a measured
+   * saving. Only known (and possibly 0) once the loan is paid off or a
+   * projection exists.
+   */
+  monthsAlreadySaved: number | null;
+  /** Null under the same condition as `monthsAlreadySaved`, for the same reason. */
+  interestAlreadySaved: number | null;
   /**
    * Total extra principal already paid: the principal from payments recognized
    * as overpayments (by the loan's overpayment category or memo). Matches the
@@ -224,14 +232,22 @@ export function computePastImpact(
     ? lastActualPaymentDate
     : (currentProjection?.payoffDate ?? null);
 
+  // The remaining term/interest is genuinely known (and 0) once paid off, and
+  // known from the caller's projection otherwise. An outstanding loan with no
+  // projection (e.g. paymentAmount not yet configured) has neither -- treating
+  // that as 0 remaining interest would report most of the loan's real future
+  // interest as "already saved", so both figures stay null (unknown) instead.
+  const remainingImpactKnown = isPaidOff || currentProjection != null;
   const projectedRemainingInterest = currentProjection?.totalInterest ?? 0;
-  const interestAlreadySaved = Math.max(
-    0,
-    round2(
-      originalSchedule.totalInterest -
-        (history.cumulativeInterest + projectedRemainingInterest),
-    ),
-  );
+  const interestAlreadySaved = remainingImpactKnown
+    ? Math.max(
+        0,
+        round2(
+          originalSchedule.totalInterest -
+            (history.cumulativeInterest + projectedRemainingInterest),
+        ),
+      )
+    : null;
 
   // Extra principal already paid = the principal from payments recognized as
   // overpayments (by the loan's overpayment category or memo). This is the sum
@@ -247,10 +263,9 @@ export function computePastImpact(
     currentProjection,
     originalPayoffDate: originalSchedule.payoffDate,
     currentPayoffDate,
-    monthsAlreadySaved: Math.max(
-      0,
-      monthsBetween(currentPayoffDate, originalSchedule.payoffDate),
-    ),
+    monthsAlreadySaved: remainingImpactKnown
+      ? Math.max(0, monthsBetween(currentPayoffDate, originalSchedule.payoffDate))
+      : null,
     interestAlreadySaved,
     extraPrincipalPaid,
   };
