@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { randomUUID } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import { gzipSync } from "zlib";
 import { BackupService } from "../backup.service";
 import { encryptBackup } from "../backup-crypto.util";
@@ -16,6 +16,8 @@ import {
   TableMap,
 } from "./support-backup-scope";
 import { maskText, scaleMoney, scaleQuantity } from "./support-backup.util";
+import { CURRENCY_METADATA } from "../../currencies/currency-metadata";
+import { CURRENCY_REFERENCE_COLUMNS } from "../../currencies/currency-reference-columns";
 import {
   ALWAYS_EXCLUDED_TABLES,
   ColumnRule,
@@ -26,6 +28,33 @@ import {
 } from "./support-backup-rules";
 
 const ALL_SECTIONS = Object.keys(SECTION_TABLES) as SupportBackupSection[];
+
+/** U+00A4, the generic currency sign, for a pseudonymised custom currency. */
+const GENERIC_CURRENCY_SYMBOL = "¤";
+
+/**
+ * A three-letter code no row in this payload uses and no real currency claims.
+ *
+ * Random rather than derived from the original: a derived code would let two
+ * artifacts from the same user be lined up by it, which is the correlation the
+ * whole remapping step exists to prevent.
+ */
+function allocatePseudonymCode(taken: Set<string>): string {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  // 17,576 combinations against a catalog of a few hundred, so this converges
+  // immediately; the bound exists so a pathological `taken` cannot spin forever.
+  for (let attempt = 0; attempt < 10000; attempt += 1) {
+    const bytes = randomBytes(3);
+    const code = `${letters[bytes[0] % 26]}${letters[bytes[1] % 26]}${letters[bytes[2] % 26]}`;
+    if (!taken.has(code)) {
+      taken.add(code);
+      return code;
+    }
+  }
+  throw new Error(
+    "Could not allocate a pseudonymous currency code: every three-letter combination is taken.",
+  );
+}
 
 /** How long a collected raw export is reused across preview/generate calls.
  *  A support snapshot being up to this stale is harmless, and it turns the
@@ -107,7 +136,8 @@ export class SupportBackupService {
     const sections = this.resolveSections(options.sections);
     const scoped = this.scopeAndSection(raw.tables, sections, options);
     const obfuscated = this.obfuscate(scoped, options.multiplier);
-    const remapped = this.remapIdentifiers(obfuscated, userId);
+    const withoutCustomCodes = this.pseudonymiseCustomCurrencies(obfuscated);
+    const remapped = this.remapIdentifiers(withoutCustomCodes, userId);
 
     const payload: Record<string, unknown> = {
       version: raw.version,
@@ -329,6 +359,89 @@ export class SupportBackupService {
       ...(tables.transactions ? { transactions } : {}),
       ...(tables.accounts ? { accounts } : {}),
     };
+  }
+
+  /**
+   * Replaces user-created currency codes, names and symbols, and rewrites every
+   * reference to them.
+   *
+   * `currencies.code`, `name` and `symbol` were kept verbatim, on the reasoning
+   * that the table holds public reference data. For the canonical rows it does.
+   * For a row a user created, all three are free text: the code is any three
+   * characters, the name is up to 100, the symbol up to 10. So a currency called
+   * `KEN / Kenneth Lasko Family Credits / KL` travelled unchanged inside an
+   * artifact documented as de-identified, next to the masked payee and account
+   * names it contradicted. Encryption does not help: it protects the file in
+   * transit, and the recipient is the person the masking is for.
+   *
+   * Canonical rows (`created_by_user_id IS NULL`) keep everything -- they are
+   * genuinely public, and masking `USD` would make a reproduction harder to read
+   * for no gain.
+   *
+   * The replacement code is random per export rather than derived from the
+   * original, so two artifacts from the same user cannot be lined up by it. It
+   * stays three characters (the column's width, and what every reference
+   * expects), and avoids both the codes already in this payload and the curated
+   * catalog, so a pseudonym can never be mistaken for a real currency.
+   *
+   * `decimal_places` is kept: it is the arithmetic, and changing it would alter
+   * every amount's meaning in a file whose whole purpose is reproducing a
+   * calculation.
+   *
+   * References are rewritten through `CURRENCY_REFERENCE_COLUMNS` -- named
+   * columns, not a string sweep. A three-character code appears by chance inside
+   * masked text often enough that a generic walker would corrupt unrelated
+   * values, and the schema-scanning guard in
+   * `currencies/currency-references.spec.ts` is what keeps the named list honest.
+   */
+  private pseudonymiseCustomCurrencies(tables: TableMap): TableMap {
+    const currencies = tables.currencies;
+    if (!currencies?.length) return tables;
+
+    const custom = currencies.filter(
+      (row) =>
+        row.created_by_user_id !== null && row.created_by_user_id !== undefined,
+    );
+    if (custom.length === 0) return tables;
+
+    const taken = new Set<string>([
+      ...currencies.map((row) => String(row.code)),
+      ...Object.keys(CURRENCY_METADATA),
+    ]);
+    const codeMap = new Map<string, string>();
+    for (const row of custom) {
+      const original = String(row.code);
+      codeMap.set(original, allocatePseudonymCode(taken));
+    }
+
+    const result: TableMap = { ...tables };
+    result.currencies = currencies.map((row) => {
+      const replacement = codeMap.get(String(row.code));
+      if (!replacement) return row;
+      return {
+        ...row,
+        code: replacement,
+        name: maskText(row.name),
+        // A generic currency sign: shape-preserving replacements leak length,
+        // and one character is all any renderer needs.
+        symbol: GENERIC_CURRENCY_SYMBOL,
+      };
+    });
+
+    for (const [table, columns] of Object.entries(CURRENCY_REFERENCE_COLUMNS)) {
+      const rows = result[table];
+      if (!rows) continue;
+      result[table] = rows.map((row) => {
+        let next = row;
+        for (const column of columns) {
+          const replacement = codeMap.get(String(row[column]));
+          if (replacement) next = { ...next, [column]: replacement };
+        }
+        return next;
+      });
+    }
+
+    return result;
   }
 
   /**

@@ -1,5 +1,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
+import { CURRENCY_REFERENCE_COLUMNS } from "./currency-reference-columns";
 
 /**
  * Proves the two currency-reference functions consult every foreign key that
@@ -226,6 +227,26 @@ describe("currency global liveness", () => {
       uncommented.match(/CREATE (?:OR REPLACE )?FUNCTION[\s\S]*?\$\$/g) ?? [];
     const definers = definitions.filter((d) => /SECURITY DEFINER/.test(d));
     expect(definers).toHaveLength(1);
+  });
+
+  /**
+   * The one caller that cannot ask the database: the support backup rewrites
+   * currency codes in an in-memory export, after the rows have left Postgres, so
+   * it needs the list in TypeScript. Which makes it the fourth place this list
+   * could drift -- hence this.
+   */
+  it("keeps CURRENCY_REFERENCE_COLUMNS identical to the schema", () => {
+    const fromSchema = references
+      .map(({ table, column }) => `${table}.${column}`)
+      .sort();
+    const fromCode = Object.entries(CURRENCY_REFERENCE_COLUMNS)
+      .flatMap(([table, columns]) => columns.map((c) => `${table}.${c}`))
+      .sort();
+
+    // Both directions: a missing entry leaves a real reference un-rewritten (the
+    // pseudonymised code and the row pointing at it disagree, and the artifact
+    // will not restore), and a stale entry names a column that no longer exists.
+    expect(fromCode).toEqual(fromSchema);
   });
 
   it("is the predicate both callers use", () => {

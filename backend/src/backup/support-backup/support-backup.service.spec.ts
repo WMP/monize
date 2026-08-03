@@ -1,6 +1,7 @@
 import { gunzipSync } from "zlib";
 import { BackupService } from "../backup.service";
 import { SupportBackupService } from "./support-backup.service";
+import { CURRENCY_METADATA } from "../../currencies/currency-metadata";
 
 const USER = "11111111-1111-4111-8111-111111111111";
 const ACC1 = "aaaaaaaa-1111-4111-8111-111111111111";
@@ -507,5 +508,159 @@ describe("SupportBackupService.preview", () => {
     const payees = samples.find((s) => s.table === "payees")!;
     expect(payees.before[0].name).toBe("Biedronka");
     expect(payees.after[0].name).toBe("Bi*****ka");
+  });
+});
+
+/**
+ * `currencies.code`, `name` and `symbol` were kept verbatim on the reasoning that
+ * the table holds public reference data. For a row a user created, all three are
+ * free text -- so a currency called `KEN / Kenneth Lasko Family Credits / KL`
+ * travelled unchanged inside an artifact documented as de-identified, beside the
+ * masked payee and account names it contradicted.
+ */
+describe("SupportBackupService custom currencies", () => {
+  const MARKER = "Kenneth Lasko";
+
+  function withCustomCurrency(): Record<string, Record<string, unknown>[]> {
+    const tables = fixtureTables();
+    tables.currencies = [
+      {
+        code: "KEN",
+        name: `${MARKER} Family Credits`,
+        symbol: "KL",
+        decimal_places: 0,
+        is_active: true,
+        created_by_user_id: USER,
+        created_at: "2026-01-01T00:00:00.000Z",
+      },
+      {
+        code: "PLN",
+        name: "Polish Zloty",
+        symbol: "zl",
+        decimal_places: 2,
+        is_active: true,
+        created_by_user_id: null,
+        created_at: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+    tables.user_currency_preferences = [
+      {
+        user_id: USER,
+        currency_code: "KEN",
+        is_active: true,
+        created_at: null,
+      },
+    ];
+    tables.accounts = tables.accounts.map((account, index) =>
+      index === 0 ? { ...account, currency_code: "KEN" } : account,
+    );
+    tables.transactions = tables.transactions.map((tx) =>
+      tx.account_id === ACC1 ? { ...tx, currency_code: "KEN" } : tx,
+    );
+    return tables;
+  }
+
+  it("removes the user's own words from the code, name and symbol", async () => {
+    const data = await generateParsed(makeService(withCustomCurrency()), {
+      multiplier: 2.5,
+    });
+
+    const custom = data.currencies.find(
+      (c: Record<string, unknown>) => c.created_by_user_id !== null,
+    );
+    expect(custom.code).not.toBe("KEN");
+    expect(custom.code).toMatch(/^[A-Z]{3}$/);
+    expect(custom.name).not.toContain(MARKER);
+    expect(custom.symbol).not.toBe("KL");
+    // No marker anywhere in the artifact, not just in the row it came from.
+    expect(JSON.stringify(data)).not.toContain(MARKER);
+    expect(JSON.stringify(data)).not.toContain('"KEN"');
+  });
+
+  it("keeps decimal_places, which is the arithmetic", async () => {
+    const data = await generateParsed(makeService(withCustomCurrency()), {
+      multiplier: 2.5,
+    });
+
+    const custom = data.currencies.find(
+      (c: Record<string, unknown>) => c.created_by_user_id !== null,
+    );
+    // Changing it would alter what every amount means in a file whose purpose
+    // is reproducing a calculation.
+    expect(custom.decimal_places).toBe(0);
+  });
+
+  it("leaves canonical currencies alone", async () => {
+    const data = await generateParsed(makeService(withCustomCurrency()), {
+      multiplier: 2.5,
+    });
+
+    const canonical = data.currencies.find(
+      (c: Record<string, unknown>) => c.created_by_user_id === null,
+    );
+    // Genuinely public. Masking USD would make a reproduction harder to read for
+    // no gain.
+    expect(canonical).toMatchObject({
+      code: "PLN",
+      name: "Polish Zloty",
+      symbol: "zl",
+    });
+  });
+
+  it("rewrites every reference so the artifact still restores", async () => {
+    const data = await generateParsed(makeService(withCustomCurrency()), {
+      multiplier: 2.5,
+    });
+
+    const custom = data.currencies.find(
+      (c: Record<string, unknown>) => c.created_by_user_id !== null,
+    );
+    const codes = new Set(
+      data.currencies.map((c: Record<string, unknown>) => c.code),
+    );
+
+    // A reference left pointing at the old code is a foreign-key violation on
+    // restore -- the artifact would be de-identified and useless.
+    expect(data.user_currency_preferences[0].currency_code).toBe(custom.code);
+    for (const account of data.accounts) {
+      expect(codes.has(account.currency_code)).toBe(true);
+    }
+    for (const tx of data.transactions) {
+      if (tx.currency_code) expect(codes.has(tx.currency_code)).toBe(true);
+    }
+  });
+
+  it("does not reuse a code across two exports of the same data", async () => {
+    const first = await generateParsed(makeService(withCustomCurrency()), {
+      multiplier: 2.5,
+    });
+    const second = await generateParsed(makeService(withCustomCurrency()), {
+      multiplier: 2.5,
+    });
+
+    const codeOf = (data: Record<string, any>) =>
+      data.currencies.find(
+        (c: Record<string, unknown>) => c.created_by_user_id !== null,
+      ).code;
+    // A derived code would let two artifacts from the same user be lined up by
+    // it, which is the correlation the identifier remapping exists to prevent.
+    expect(codeOf(first)).not.toBe(codeOf(second));
+  });
+
+  it("never invents a code a real currency claims", async () => {
+    for (let run = 0; run < 20; run += 1) {
+      const data = await generateParsed(makeService(withCustomCurrency()), {
+        multiplier: 2.5,
+      });
+      const custom = data.currencies.find(
+        (c: Record<string, unknown>) => c.created_by_user_id !== null,
+      );
+      // A pseudonym that reads as USD or EUR would be actively misleading to
+      // whoever opens the artifact. The `not.toBe("KEN")` keeps this from
+      // passing vacuously when nothing is pseudonymised at all.
+      expect(custom.code).not.toBe("KEN");
+      expect(CURRENCY_METADATA[custom.code]).toBeUndefined();
+      expect(custom.code).not.toBe("PLN");
+    }
   });
 });
