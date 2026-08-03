@@ -152,6 +152,23 @@ statement, a lock taken before the read, a unique key -- and if you cannot point
 at one, the comment is the bug. The root `CLAUDE.md` has the protocol; this is the
 habit that keeps it honest.
 
+## An identity, once a transaction is open, is not yours to change
+
+`withScopedDb` emits the identity GUCs as the transaction's first statements and
+never again. A nested call joins that transaction, so wrapping the inner call in
+a different context -- `withSystemContext` for a bit of cross-user work, another
+user's `withUserContext`, `withPreserveTimestamps` bolted on after the fact --
+does not change what the database enforces. It changes only what the code
+believes, and the two disagreeing produces no error: zero rows under
+enforcement, correct results at `RLS_MODE=off`, so the mistake survives review
+and CI and appears when an operator flips modes.
+
+So `withScopedDb` refuses that nesting outright, naming both identities. If a
+genuinely separate identity is needed inside an open transaction, that is
+`runOutsideActiveScopedManager` -- a second connection, chosen deliberately,
+with the atomicity trade-off visible at the call site rather than hidden in a
+GUC nobody re-read.
+
 ## A predicate that decides which row counts is written once
 
 When "is this row the one we mean" takes more than one clause -- current

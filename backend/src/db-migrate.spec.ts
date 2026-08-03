@@ -347,7 +347,7 @@ describe("db-migrate runMigrations()", () => {
       const sqls = mockQuery.mock.calls.map((c) => String(c[0]));
       expect(sqls).not.toContain("BEGIN");
       expect(mockExit).toHaveBeenCalledWith(1);
-      const report = consoleErrorSpy.mock.calls.map((c) => c[0]).join("\n");
+      const report = errorSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(report).toContain("Migration runner failed");
     });
   });
