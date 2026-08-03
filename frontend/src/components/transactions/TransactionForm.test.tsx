@@ -3685,6 +3685,154 @@ describe('TransactionForm', () => {
       expect(payload.toAmount).toBe(75);
       expect(payload.payeeId).toBe('payee-1');
     });
+
+    // The P6-002 reproduction. A cross-currency transfer with the Received
+    // Amount field left blank used to send no conversion at all, and the server
+    // then multiplied by a default rate of 1: 50.00 CAD arrived as 50.00 USD.
+    describe('cross-currency conversion', () => {
+      const startCrossCurrencyTransfer = async (sourceAmount = '50') => {
+        render(
+          <TransactionForm
+            onSuccess={mockOnSuccess}
+            onCancel={mockOnCancel}
+            defaultAccountId="acc-1"
+          />,
+        );
+        await waitFor(() => expect(screen.getByText('Transfer')).toBeInTheDocument());
+        fireEvent.click(screen.getByText('Transfer'));
+        await waitFor(() => expect(screen.getByText('To Account')).toBeInTheDocument());
+
+        await act(async () => {
+          fireEvent.change(screen.getByPlaceholderText('0.00'), {
+            target: { value: sourceAmount },
+          });
+        });
+
+        const toAccountSelect = Array.from(document.querySelectorAll('select')).find(
+          (s) =>
+            Array.from(s.options).some((o) => o.value === 'acc-3') &&
+            s.name !== 'accountId',
+        );
+        await act(async () => {
+          if (toAccountSelect) fireEvent.change(toAccountSelect, { target: { value: 'acc-3' } });
+        });
+        await waitFor(() =>
+          expect(screen.getByText('Amount Received (USD)')).toBeInTheDocument(),
+        );
+      };
+
+      const submit = async () => {
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: /Create Transfer/i }));
+        });
+      };
+
+      it('sends the market-rate conversion when the received amount is left blank', async () => {
+        mockGetRateForDate.mockResolvedValue(1.5);
+        await startCrossCurrencyTransfer('50');
+        await waitFor(() =>
+          expect(mockGetRateForDate).toHaveBeenCalledWith('CAD', 'USD', expect.any(String)),
+        );
+
+        await submit();
+
+        await waitFor(() => expect(mockCreateTransfer).toHaveBeenCalled());
+        // 50.00 CAD x 1.5 = 75.00 USD, not 50.00 USD.
+        expect(mockCreateTransfer.mock.calls[0][0].toAmount).toBe(75);
+      });
+
+      // An unknown rate is unknown: it is not a rate of one, and the form must
+      // not let the request through for the server to default.
+      it('blocks submission and explains when no rate exists for the date', async () => {
+        mockGetRateForDate.mockResolvedValue(null);
+        await startCrossCurrencyTransfer('50');
+
+        await waitFor(() =>
+          expect(screen.getByRole('alert')).toHaveTextContent(
+            /No stored exchange rate for CAD to USD/i,
+          ),
+        );
+
+        await submit();
+
+        expect(mockCreateTransfer).not.toHaveBeenCalled();
+      });
+
+      // A failed request is not evidence that no rate exists, so it says so
+      // differently -- while still refusing to guess.
+      it('distinguishes a failed lookup from a missing rate', async () => {
+        mockGetRateForDate.mockRejectedValue(new Error('Request failed with status code 429'));
+        await startCrossCurrencyTransfer('50');
+
+        await waitFor(() =>
+          expect(screen.getByRole('alert')).toHaveTextContent(
+            /could not be loaded/i,
+          ),
+        );
+        await submit();
+        expect(mockCreateTransfer).not.toHaveBeenCalled();
+      });
+
+      it('derives the received amount from a rate the user types', async () => {
+        mockGetRateForDate.mockResolvedValue(1.5);
+        await startCrossCurrencyTransfer('50');
+
+        await act(async () => {
+          fireEvent.change(
+            screen.getByLabelText('Exchange Rate (USD per 1 CAD)'),
+            { target: { value: '0.8' } },
+          );
+        });
+        await submit();
+
+        await waitFor(() => expect(mockCreateTransfer).toHaveBeenCalled());
+        expect(mockCreateTransfer.mock.calls[0][0].toAmount).toBe(40);
+      });
+
+      // A received amount the user typed is what the bank actually credited, so
+      // it wins over the market rate rather than being recomputed from it.
+      it('keeps a received amount the user typed', async () => {
+        mockGetRateForDate.mockResolvedValue(1.5);
+        await startCrossCurrencyTransfer('50');
+
+        const amountInputs = screen.getAllByPlaceholderText('0.00');
+        await act(async () => {
+          fireEvent.change(amountInputs[1], { target: { value: '72.15' } });
+        });
+        await submit();
+
+        await waitFor(() => expect(mockCreateTransfer).toHaveBeenCalled());
+        expect(mockCreateTransfer.mock.calls[0][0].toAmount).toBe(72.15);
+      });
+
+      it('does not look up a rate for a same-currency transfer', async () => {
+        mockGetRateForDate.mockResolvedValue(1.5);
+        render(
+          <TransactionForm
+            onSuccess={mockOnSuccess}
+            onCancel={mockOnCancel}
+            defaultAccountId="acc-1"
+          />,
+        );
+        await waitFor(() => expect(screen.getByText('Transfer')).toBeInTheDocument());
+        fireEvent.click(screen.getByText('Transfer'));
+        await waitFor(() => expect(screen.getByText('To Account')).toBeInTheDocument());
+
+        const toAccountSelect = Array.from(document.querySelectorAll('select')).find(
+          (s) =>
+            Array.from(s.options).some((o) => o.value === 'acc-2') &&
+            s.name !== 'accountId',
+        );
+        await act(async () => {
+          if (toAccountSelect) fireEvent.change(toAccountSelect, { target: { value: 'acc-2' } });
+        });
+
+        expect(
+          screen.queryByText('Amount Received (USD)'),
+        ).not.toBeInTheDocument();
+        expect(mockGetRateForDate).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('split editor integration (coverage)', () => {

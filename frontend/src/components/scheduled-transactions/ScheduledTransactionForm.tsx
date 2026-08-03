@@ -316,6 +316,16 @@ export function ScheduledTransactionForm({
   const accountCurrency =
     selectedAccount?.currencyCode || watchedCurrencyCode || defaultCurrency;
 
+  // The two currencies of a cross-currency scheduled transfer, or null when the
+  // destination holds the same one.
+  const transferCrossCurrency = useMemo(() => {
+    if (!transferToAccountId || !selectedAccount) return null;
+    const destination = accounts.find((a) => a.id === transferToAccountId);
+    if (!destination) return null;
+    if (destination.currencyCode === selectedAccount.currencyCode) return null;
+    return { from: selectedAccount.currencyCode, to: destination.currencyCode };
+  }, [accounts, selectedAccount, transferToAccountId]);
+
   const [entryCurrency, setEntryCurrency] = useState<string>(
     scheduledTransaction?.originalCurrencyCode || '',
   );
@@ -1598,6 +1608,22 @@ export function ScheduledTransactionForm({
               ]}
             />
           </div>
+
+          {/*
+            A schedule holds one amount, so it cannot hold a conversion: the rate
+            that matters is the one in force on the day each occurrence posts, and
+            a rate captured here would be stale by then. Say which rate will be
+            used rather than letting the user assume the amount is the amount --
+            posting used to credit the destination the unconverted figure.
+          */}
+          {transferCrossCurrency && (
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              {t('form.transferCrossCurrencyNote', {
+                from: transferCrossCurrency.from,
+                to: transferCrossCurrency.to,
+              })}
+            </p>
+          )}
 
           {/* Row 4: Transfer Amount, Reference Number (mirrors the Transaction tab) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

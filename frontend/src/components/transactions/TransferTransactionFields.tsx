@@ -6,12 +6,13 @@ import { UseFormRegister, FieldErrors, UseFormSetValue } from 'react-hook-form';
 import { Input } from '@/components/ui/Input';
 import { DateInput } from '@/components/ui/DateInput';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { NumericInput } from '@/components/ui/NumericInput';
 import { Select } from '@/components/ui/Select';
 import { Combobox } from '@/components/ui/Combobox';
 import { Transaction } from '@/types/transaction';
 import { Account, TransferCandidate } from '@/types/account';
 import { Payee } from '@/types/payee';
-import { getCurrencySymbol } from '@/lib/format';
+import { FX_RATE_DISPLAY_DECIMALS, getCurrencySymbol } from '@/lib/format';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { useAuthStore } from '@/store/authStore';
 
@@ -34,8 +35,23 @@ interface TransferTransactionFieldsProps {
   setValue: UseFormSetValue<any>;
   transferToAccountId: string;
   setTransferToAccountId: (id: string) => void;
+  /**
+   * Destination amount and rate for a cross-currency transfer. The two are
+   * derived from one another by the parent, so they can never disagree -- the
+   * setter for either replaces whichever the user last stated.
+   */
   transferTargetAmount: number | undefined;
   setTransferTargetAmount: (amount: number | undefined) => void;
+  /** Destination-account units per 1 source-account unit. */
+  transferExchangeRate?: number | undefined;
+  setTransferExchangeRate?: (rate: number | undefined) => void;
+  /** True while the shown rate is the looked-up market rate, not a typed one. */
+  transferRateIsMarket?: boolean;
+  transferRateLoading?: boolean;
+  /** The lookup itself failed -- not evidence that no rate exists. */
+  transferRateLookupFailed?: boolean;
+  /** No rate stated and none available: the transfer cannot be submitted. */
+  transferConversionUnresolved?: boolean;
   transferPayeeId: string;
   transferPayeeName: string;
   setTransferPayeeId: (id: string) => void;
@@ -64,6 +80,12 @@ export function TransferTransactionFields({
   setTransferToAccountId,
   transferTargetAmount,
   setTransferTargetAmount,
+  transferExchangeRate,
+  setTransferExchangeRate,
+  transferRateIsMarket,
+  transferRateLoading,
+  transferRateLookupFailed,
+  transferConversionUnresolved,
   transferPayeeId,
   transferPayeeName,
   setTransferPayeeId,
@@ -255,6 +277,66 @@ export function TransferTransactionFields({
           {...register('referenceNumber')}
         />
       </div>
+
+      {/*
+        The conversion, for a cross-currency transfer. Both currencies used to be
+        treated as equal when the received amount was left blank -- 100.00 USD
+        arrived as 100.00 EUR -- so the rate is now shown, editable, and required.
+        The direction is spelled out in the label because "exchange rate" alone is
+        ambiguous and the wrong way round is a wrong number, not a wrong display.
+      */}
+      {crossCurrencyInfo && setTransferExchangeRate && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <NumericInput
+              label={t('form.fields.transferExchangeRate', {
+                from: crossCurrencyInfo.fromCurrency,
+                to: crossCurrencyInfo.toCurrency,
+              })}
+              decimalPlaces={FX_RATE_DISPLAY_DECIMALS}
+              value={transferExchangeRate}
+              onChange={(value) =>
+                setTransferExchangeRate(
+                  value !== undefined && value > 0 ? value : undefined,
+                )
+              }
+              min={0}
+              disabled={counterpartLocked}
+              aria-label={t('form.fields.transferExchangeRate', {
+                from: crossCurrencyInfo.fromCurrency,
+                to: crossCurrencyInfo.toCurrency,
+              })}
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {transferRateLoading
+                ? t('form.transferRate.loading')
+                : transferRateIsMarket && transferExchangeRate !== undefined
+                  ? t('form.transferRate.fromMarket')
+                  : t('form.transferRate.hint', {
+                      from: crossCurrencyInfo.fromCurrency,
+                      to: crossCurrencyInfo.toCurrency,
+                    })}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {crossCurrencyInfo && transferConversionUnresolved && (
+        <p
+          role="alert"
+          className="text-sm text-amber-700 dark:text-amber-400"
+        >
+          {transferRateLookupFailed
+            ? t('form.transferRate.lookupFailed', {
+                from: crossCurrencyInfo.fromCurrency,
+                to: crossCurrencyInfo.toCurrency,
+              })
+            : t('form.transferRate.unresolved', {
+                from: crossCurrencyInfo.fromCurrency,
+                to: crossCurrencyInfo.toCurrency,
+              })}
+        </p>
+      )}
 
       {/* Row 4: Payee and Category */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

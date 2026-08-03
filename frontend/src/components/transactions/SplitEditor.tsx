@@ -481,9 +481,43 @@ export function SplitEditor({
     </div>
   ) : null;
 
+  /**
+   * Transfer rows whose target account holds a different currency.
+   *
+   * A split carries one amount, in the parent's currency, and no conversion --
+   * the counterpart leg used to be written at par, so 100.00 CAD out arrived as
+   * 100.00 USD in. The rate for the parent's date decides it now, which the user
+   * has to be told, because the number they typed is not the number that lands.
+   */
+  const crossCurrencyTransferRows = useMemo(() => {
+    return localSplits
+      .map((split, index) => {
+        if (split.splitType !== 'transfer' || !split.transferAccountId) return null;
+        const target = accounts.find((a) => a.id === split.transferAccountId);
+        if (!target || target.currencyCode === currencyCode) return null;
+        return { row: index + 1, to: target.currencyCode };
+      })
+      .filter((entry): entry is { row: number; to: string } => entry !== null);
+  }, [localSplits, accounts, currencyCode]);
+
+  const crossCurrencyNotice =
+    crossCurrencyTransferRows.length > 0 ? (
+      <div
+        role="status"
+        className="mb-2 rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs text-amber-800 dark:text-amber-300"
+      >
+        {t('splitEditor.crossCurrencyTransfer', {
+          rows: crossCurrencyTransferRows.map((entry) => entry.row).join(', '),
+          from: currencyCode,
+          to: [...new Set(crossCurrencyTransferRows.map((e) => e.to))].join(', '),
+        })}
+      </div>
+    ) : null;
+
   return (
     <div className="space-y-4">
       {oppositeSignNotice}
+      {crossCurrencyNotice}
       <div className="flex justify-between items-center gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('splitEditor.header')}</h4>

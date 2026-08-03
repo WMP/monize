@@ -21,6 +21,7 @@ import {
   FX_RATE_DISPLAY_DECIMALS,
   getCurrencySymbol,
   moneyEquals,
+  roundFxRate,
   roundMoney,
   roundToCents,
   roundToDecimals,
@@ -229,16 +230,40 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
     initialTransferAccounts.toAccountId
   );
 
-  // Target amount for cross-currency transfers
-  const [transferTargetAmount, setTransferTargetAmount] = useState<number | undefined>(() => {
-    // If editing/duplicating a transfer with different currencies, initialize target amount from linked transaction
+  /**
+   * The conversion the user stated for a cross-currency transfer, if any.
+   *
+   * One field of state for two inputs, because they are two ways of saying the
+   * same thing and only one of them can be authoritative: whichever the user
+   * typed. The other is derived from it, so the pair can never disagree, and the
+   * request carries an internally consistent contract.
+   *
+   * `null` means the user has stated nothing and the market rate stands in. It
+   * is not a rate of 1 -- with no market rate either, the transfer cannot be
+   * submitted (the backend refuses it as well).
+   */
+  const [transferConversion, setTransferConversion] = useState<
+    { kind: 'rate' | 'received'; value: number } | null
+  >(() => {
+    // Editing or duplicating an existing cross-currency transfer: the stored
+    // destination amount IS the stated conversion, so an amount-only edit still
+    // carries one.
     if (initSource?.isTransfer && initSource.linkedTransaction) {
       const isOutgoing = Number(initSource.amount) < 0;
       const toTx = isOutgoing ? initSource.linkedTransaction : initSource;
-      return Math.abs(Number(toTx.amount));
+      const stored = Math.abs(Number(toTx.amount));
+      return Number.isFinite(stored) && stored > 0
+        ? { kind: 'received', value: stored }
+        : null;
     }
-    return undefined;
+    return null;
   });
+  // Market rate for the transfer's currency pair on its date, looked up like the
+  // foreign-entry rate below. Separate from `transferRateLookupFailed` so a
+  // failed request is never reported as "no rate exists".
+  const [transferMarketRate, setTransferMarketRate] = useState<number | null>(null);
+  const [transferRateLoading, setTransferRateLoading] = useState(false);
+  const [transferRateLookupFailed, setTransferRateLookupFailed] = useState(false);
   // Transfer payee (optional)
   const [transferPayeeId, setTransferPayeeId] = useState<string>(
     initSource?.isTransfer ? (initSource.payeeId || '') : '',
@@ -423,6 +448,85 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
         : payees,
     [selectedIsJoint, jointRefData, payees],
   );
+
+  // The rate in force: what the user typed, the rate implied by a received
+  // amount they typed, or the market rate. Never 1 by default -- for two
+  // different currencies that is a claim they are at par, and it credited the
+  // destination account with the unconverted figure.
+  const transferSourceAmount =
+    watchedAmount !== undefined && watchedAmount !== null
+      ? Math.abs(Number(watchedAmount))
+      : undefined;
+  const transferExchangeRate = useMemo<number | undefined>(() => {
+    if (!crossCurrencyInfo) return undefined;
+    if (transferConversion?.kind === 'rate') return transferConversion.value;
+    if (transferConversion?.kind === 'received') {
+      if (!transferSourceAmount) return undefined;
+      return roundFxRate(transferConversion.value / transferSourceAmount);
+    }
+    return transferMarketRate ?? undefined;
+  }, [
+    crossCurrencyInfo,
+    transferConversion,
+    transferSourceAmount,
+    transferMarketRate,
+  ]);
+
+  // The destination amount that follows from it. A received amount the user
+  // typed stays as typed -- that is what the bank actually credited -- while a
+  // stated rate re-derives it whenever the source amount changes.
+  const transferTargetAmount = useMemo<number | undefined>(() => {
+    if (!crossCurrencyInfo) return undefined;
+    if (transferConversion?.kind === 'received') return transferConversion.value;
+    if (transferExchangeRate === undefined || transferSourceAmount === undefined) {
+      return undefined;
+    }
+    return roundMoney(transferSourceAmount * transferExchangeRate);
+  }, [
+    crossCurrencyInfo,
+    transferConversion,
+    transferExchangeRate,
+    transferSourceAmount,
+  ]);
+
+  // Neither stated nor available: the conversion is unknown, so the transfer
+  // cannot be submitted. Silence here is what produced the par credit.
+  const transferConversionUnresolved =
+    !!crossCurrencyInfo &&
+    !transferRateLoading &&
+    !(transferExchangeRate !== undefined && transferExchangeRate > 0) &&
+    !(transferTargetAmount !== undefined && transferTargetAmount > 0);
+
+  // Fetch the market rate for the transfer's pair on its date, debounced and
+  // mirroring the foreign-entry lookup below: a request failure is not evidence
+  // that no rate exists, so the two states stay apart.
+  const transferFromCurrency = crossCurrencyInfo?.fromCurrency;
+  const transferToCurrency = crossCurrencyInfo?.toCurrency;
+  useEffect(() => {
+    if (!transferFromCurrency || !transferToCurrency || !watchedDate) return;
+    let cancelled = false;
+    setTransferRateLoading(true);
+    const handle = setTimeout(() => {
+      exchangeRatesApi
+        .getRateForDate(transferFromCurrency, transferToCurrency, watchedDate)
+        .then((rate) => {
+          if (cancelled) return;
+          setTransferMarketRate(rate);
+          setTransferRateLookupFailed(false);
+          setTransferRateLoading(false);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setTransferMarketRate(null);
+          setTransferRateLookupFailed(true);
+          setTransferRateLoading(false);
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [transferFromCurrency, transferToCurrency, watchedDate]);
 
   // Memoize category tree to avoid rebuilding on every render
   const categoryTree = useMemo(
@@ -1089,6 +1193,18 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           setIsLoading(false);
           return;
         }
+        // An unknown conversion cannot be sent as 1:1. The backend refuses it
+        // too; refusing here says which field to fill in.
+        if (transferConversionUnresolved) {
+          toast.error(
+            t('form.toasts.transferConversionRequired', {
+              from: crossCurrencyInfo!.fromCurrency,
+              to: crossCurrencyInfo!.toCurrency,
+            }),
+          );
+          setIsLoading(false);
+          return;
+        }
 
         // Get the destination account's currency
         const toAccount = accounts.find(a => a.id === transferToAccountId);
@@ -1112,9 +1228,18 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           tagIds: selectedTagIds.length > 0 ? selectedTagIds : [],
         };
 
-        // Include target amount for cross-currency transfers
-        if (crossCurrencyInfo && transferTargetAmount !== undefined && transferTargetAmount > 0) {
-          transferData.toAmount = transferTargetAmount;
+        // Cross-currency: send the conversion, always. It used to be omitted
+        // whenever the Received Amount field was blank, and the server then
+        // treated the two currencies as equal. The amount and the rate are sent
+        // together only when they agree at storage precision -- they are derived
+        // from one another, so they do, but a stale render must not slip a
+        // contradictory pair past the server's consistency check.
+        if (crossCurrencyInfo) {
+          if (transferTargetAmount !== undefined && transferTargetAmount > 0) {
+            transferData.toAmount = transferTargetAmount;
+          } else if (transferExchangeRate !== undefined && transferExchangeRate > 0) {
+            transferData.exchangeRate = transferExchangeRate;
+          }
         }
 
         if (transaction?.isTransfer) {
@@ -1507,7 +1632,23 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           transferToAccountId={transferToAccountId}
           setTransferToAccountId={setTransferToAccountId}
           transferTargetAmount={transferTargetAmount}
-          setTransferTargetAmount={setTransferTargetAmount}
+          setTransferTargetAmount={(value) =>
+            setTransferConversion(
+              value !== undefined && value > 0
+                ? { kind: 'received', value }
+                : null,
+            )
+          }
+          transferExchangeRate={transferExchangeRate}
+          setTransferExchangeRate={(value) =>
+            setTransferConversion(
+              value !== undefined && value > 0 ? { kind: 'rate', value } : null,
+            )
+          }
+          transferRateIsMarket={transferConversion === null}
+          transferRateLoading={transferRateLoading}
+          transferRateLookupFailed={transferRateLookupFailed}
+          transferConversionUnresolved={transferConversionUnresolved}
           transferPayeeId={transferPayeeId}
           transferPayeeName={transferPayeeName}
           setTransferPayeeId={setTransferPayeeId}

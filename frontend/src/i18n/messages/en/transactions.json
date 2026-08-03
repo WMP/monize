@@ -349,7 +349,8 @@
       "transferAmountWithCurrency": "Transfer Amount ({currency})",
       "amountReceived": "Amount Received ({currency})",
       "payeeOptional": "Payee (Optional)",
-      "categoryOptional": "Category (Optional)"
+      "categoryOptional": "Category (Optional)",
+      "transferExchangeRate": "Exchange Rate ({to} per 1 {from})"
     },
     "placeholders": {
       "selectAccount": "Select account...",
@@ -415,7 +416,8 @@
       "tagCreated": "Tag \"{name}\" created",
       "fxRateRequired": "Enter an exchange rate or the converted amount before saving a foreign-currency transaction.",
       "jointPayeeCreateNotGranted": "The account owner has not granted you permission to create payees. Pick one of their existing payees instead.",
-      "splitsOppositeSign": "Split row {rows} reverses the transaction's direction. Fix the sign before saving."
+      "splitsOppositeSign": "Split row {rows} reverses the transaction's direction. Fix the sign before saving.",
+      "transferConversionRequired": "Enter the exchange rate or the amount received: {from} and {to} cannot be treated as equal."
     },
     "ariaHistory": "Show recent transactions",
     "ariaHistoryForPayee": "Show recent transactions for this payee",
@@ -441,7 +443,14 @@
       },
       "feeCaption": "Includes a {percent}% foreign transaction fee ({fee})."
     },
-    "jointSplitDisabled": "Split transactions in a shared account can only be managed by the owner"
+    "jointSplitDisabled": "Split transactions in a shared account can only be managed by the owner",
+    "transferRate": {
+      "hint": "How many {to} one {from} buys. Enter this or the amount received; the other follows.",
+      "fromMarket": "Today's stored rate for this pair and date. Change it to match your statement.",
+      "loading": "Looking up the rate for this date...",
+      "unresolved": "No stored exchange rate for {from} to {to} on this date. Enter the rate or the amount received — the two currencies cannot be treated as equal.",
+      "lookupFailed": "The exchange rate for {from} to {to} could not be loaded. Enter the rate or the amount received to continue."
+    }
   },
   "splitEditor": {
     "header": "Split Details",
@@ -489,7 +498,8 @@
     "tagsPlaceholder": "Tags...",
     "oppositeSignShort": "Balanced, but a row reverses the transaction",
     "oppositeSignExpense": "Row {rows} is income inside an expense. Every category row of an expense must be negative, or the split records income the transaction never received.",
-    "oppositeSignIncome": "Row {rows} is an expense inside an income transaction. Every category row of an income transaction must be positive."
+    "oppositeSignIncome": "Row {rows} is an expense inside an income transaction. Every category row of an income transaction must be positive.",
+    "crossCurrencyTransfer": "Row {rows}: the target account holds {to}, not {from}. The amount that lands there is converted at the stored {from} to {to} rate for this transaction’s date, so it will differ from the amount entered here. Saving fails if no rate is stored for that date."
   },
   "recentPopover": {
     "recentForPayee": "Recent for {name}",

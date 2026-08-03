@@ -540,6 +540,57 @@ describe('ScheduledTransactionForm', () => {
     expect(screen.getByText('Account')).toBeInTheDocument();
   });
 
+  // A schedule holds one amount and no conversion. Posting used to credit the
+  // destination the unconverted figure, so the form now states which rate each
+  // occurrence will actually use -- the one in force on its posting date.
+  describe('a cross-currency scheduled transfer', () => {
+    const usdAccount = {
+      id: 'acc-usd',
+      name: 'US Savings',
+      currencyCode: 'USD',
+      isClosed: false,
+      accountType: 'SAVINGS',
+      accountSubType: null,
+    };
+
+    const renderWithDestination = async (toAccountId: string) => {
+      mockAccountsGetAll.mockResolvedValue([...mockAccounts, usdAccount]);
+      render(<ScheduledTransactionForm />);
+      await waitFor(() => expect(screen.getByText('Transfer')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('Transfer'));
+      await waitFor(() => expect(screen.getByText('To Account')).toBeInTheDocument());
+      const fromSelect = Array.from(document.querySelectorAll('select')).find(
+        (s) => s.name === 'accountId',
+      );
+      await act(async () => {
+        if (fromSelect) fireEvent.change(fromSelect, { target: { value: 'acc-1' } });
+      });
+      const toSelect = Array.from(document.querySelectorAll('select')).find(
+        (s) =>
+          Array.from(s.options).some((o) => o.value === toAccountId) &&
+          s.name !== 'accountId',
+      );
+      await act(async () => {
+        if (toSelect) fireEvent.change(toSelect, { target: { value: toAccountId } });
+      });
+    };
+
+    it('names both currencies and says the rate is per posting date', async () => {
+      await renderWithDestination('acc-usd');
+      expect(
+        screen.getByText(/sends CAD to a USD account/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/rate for its posting date/i),
+      ).toBeInTheDocument();
+    });
+
+    it('says nothing for a same-currency destination', async () => {
+      await renderWithDestination('acc-2');
+      expect(screen.queryByText(/sends CAD to a/i)).not.toBeInTheDocument();
+    });
+  });
+
   it('renders transfer mode for existing transfer scheduled transaction', async () => {
     const transferSt = {
       id: 's1',

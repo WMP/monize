@@ -1234,6 +1234,52 @@ describe('SplitEditor — desktop layout interactions', () => {
     expect(newSplits[0].categoryId).toBeUndefined();
   });
 
+  // A split carries one amount and no conversion, so the counterpart leg used to
+  // be written at par: -100.00 CAD out of chequing credited 100.00 USD to a USD
+  // account. The rate for the transaction's date decides it now, and the number
+  // the user typed is not the number that lands -- so the editor says so.
+  describe('a transfer split into a different currency', () => {
+    const currencyAccounts = [
+      { id: 'acc-1', name: 'Chequing', isClosed: false, accountSubType: null, currencyCode: 'CAD' },
+      { id: 'acc-2', name: 'Savings', isClosed: false, accountSubType: null, currencyCode: 'CAD' },
+      { id: 'acc-usd', name: 'US Savings', isClosed: false, accountSubType: null, currencyCode: 'USD' },
+    ] as any[];
+
+    const renderWithTarget = (transferAccountId: string) =>
+      render(
+        <SplitEditor
+          splits={[
+            createSplitRow({
+              id: 'split-1',
+              splitType: 'transfer',
+              transferAccountId,
+              amount: -30,
+            }),
+            createSplitRow({ id: 'split-2', amount: -20 }),
+          ]}
+          onChange={mockOnChange}
+          categories={mockCategories}
+          accounts={currencyAccounts}
+          sourceAccountId="acc-1"
+          transactionAmount={-50}
+          currencyCode="CAD"
+        />,
+      );
+
+    it('names the row and both currencies', () => {
+      renderWithTarget('acc-usd');
+      const notice = screen.getByRole('status');
+      expect(notice).toHaveTextContent(/Row 1/);
+      expect(notice).toHaveTextContent(/holds USD, not CAD/);
+      expect(notice).toHaveTextContent(/converted at the stored CAD to USD rate/);
+    });
+
+    it('says nothing when the target holds the same currency', () => {
+      renderWithTarget('acc-2');
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+  });
+
   it('renders transfer account selector in desktop when splitType is transfer', () => {
     const splits: SplitRow[] = [
       createSplitRow({ id: 'split-1', splitType: 'transfer', transferAccountId: 'acc-2', amount: -30 }),
