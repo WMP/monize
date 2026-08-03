@@ -664,6 +664,87 @@ describe("Backup export/restore round-trip (integration)", () => {
       });
     },
   );
+  /**
+   * Currencies are shared: user A defines `PTS`, user B activates it and prices
+   * an account in it. B's backup used to select currencies by
+   * `created_by_user_id`, so it carried the references without the definition,
+   * and a restore onto an instance that had never seen `PTS` synthesised the
+   * metadata from a fallback -- name and symbol became the bare code and decimal
+   * places became 2. The balance was still 7; it just rendered as `PTS 7.00`
+   * rather than `*7`.
+   */
+  it("carries the definition of a custom currency another user created", async () => {
+    const userA = await createTestUserDirect(dataSource, {
+      email: "cur-a@example.com",
+    });
+    const userB = await createTestUserDirect(dataSource, {
+      email: "cur-b@example.com",
+    });
+    const userC = await createTestUserDirect(dataSource, {
+      email: "cur-c@example.com",
+    });
+
+    // A defines it; B is the one who uses it.
+    await dataSource.query(
+      `INSERT INTO currencies (code, name, symbol, decimal_places, is_active, created_by_user_id)
+       VALUES ('PTS', 'Family Points', '*', 0, true, $1)
+       ON CONFLICT (code) DO NOTHING`,
+      [userA.id],
+    );
+    await dataSource.query(
+      `INSERT INTO user_currency_preferences (user_id, currency_code, is_active)
+       VALUES ($1, 'PTS', true) ON CONFLICT DO NOTHING`,
+      [userB.id],
+    );
+    await dataSource.query(
+      `INSERT INTO accounts (id, user_id, account_type, name, currency_code,
+                             current_balance, opening_balance)
+       VALUES ($1, $2, 'SAVINGS', 'Points Jar', 'PTS', 7, 7)`,
+      [randomUUID(), userB.id],
+    );
+
+    const backup = await withUserContext(userB.id, () =>
+      service.exportToBuffer(userB.id),
+    );
+
+    // The definition has to travel in the artifact, not be reconstructed later.
+    const exported = JSON.parse(gunzipSync(backup).toString("utf-8"));
+    const exportedPts = exported.currencies.find(
+      (c: { code: string }) => c.code === "PTS",
+    );
+    expect(exportedPts).toMatchObject({
+      code: "PTS",
+      name: "Family Points",
+      symbol: "*",
+      decimal_places: 0,
+    });
+
+    // Simulate a fresh instance for the code: drop it, then restore into C.
+    await dataSource.query(
+      "DELETE FROM user_currency_preferences WHERE currency_code = 'PTS'",
+    );
+    await dataSource.query("DELETE FROM accounts WHERE user_id = $1", [
+      userB.id,
+    ]);
+    await dataSource.query("DELETE FROM currencies WHERE code = 'PTS'");
+
+    await withUserContext(userC.id, () =>
+      service.restoreData(userC.id, {
+        compressedData: backup,
+        password: PASSWORD,
+      }),
+    );
+
+    const [restored] = await dataSource.query(
+      "SELECT name, symbol, decimal_places FROM currencies WHERE code = 'PTS'",
+    );
+    expect(restored).toEqual({
+      name: "Family Points",
+      symbol: "*",
+      decimal_places: 0,
+    });
+  });
+
   it("rejects a restore when the confirmation password is invalid", async () => {
     const userA = await createTestUserDirect(dataSource, {
       email: "auth-a@example.com",

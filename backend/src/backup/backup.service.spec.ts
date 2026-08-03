@@ -495,6 +495,85 @@ describe("BackupService", () => {
     service = module.get<BackupService>(BackupService);
   });
 
+  /**
+   * A backup has to be one snapshot of the database. Each table query used to
+   * open its own short transaction, so the export observed a different committed
+   * state per table: create an account and a transaction for it between the
+   * `accounts` query and the `transactions` query and the artifact holds the
+   * transaction without its account -- valid gzip, valid envelope, and a restore
+   * that fails on `transactions.account_id`.
+   */
+  describe("export snapshot", () => {
+    it.each([
+      [
+        "streamExport",
+        async (s: BackupService) => {
+          const res = new PassThrough();
+          res.resume();
+          await s.streamExport(
+            userId,
+            res as unknown as import("express").Response,
+          );
+        },
+      ],
+      [
+        "exportToBuffer",
+        async (s: BackupService) => {
+          await s.exportToBuffer(userId);
+        },
+      ],
+      [
+        "collectRawExport",
+        async (s: BackupService) => {
+          await s.collectRawExport(userId);
+        },
+      ],
+    ])(
+      "reads every table in one REPEATABLE READ transaction (%s)",
+      async (_name, run) => {
+        mockDataSource.transaction.mockClear();
+
+        await run(service);
+
+        const isolationLevels = mockDataSource.transaction.mock.calls.map(
+          ([first]) => (typeof first === "string" ? first : undefined),
+        );
+        // Exactly one transaction, and it fixes its snapshot up front. READ
+        // COMMITTED would not do even as a single transaction: it takes a fresh
+        // snapshot per statement, which is the same defect with fewer transactions.
+        expect(isolationLevels).toEqual(["REPEATABLE READ"]);
+      },
+    );
+  });
+
+  /**
+   * Currencies are shared: any user may activate a code another user defined.
+   * Selecting them by `created_by_user_id` exported the references without the
+   * definition, so restoring onto a fresh instance invented name, symbol and
+   * decimal places -- `PTS / Family Points / * / 0 decimals` came back as
+   * `PTS / PTS / PTS / 2 decimals`, and a balance of 7 rendered `PTS 7.00`
+   * instead of `*7`. Same stored amount, different meaning.
+   */
+  describe("currency export selection", () => {
+    it("selects by what the user's data references, not by who created it", () => {
+      const sql = (
+        service as unknown as {
+          getTableQueries(): Array<{ key: string; sql: string }>;
+        }
+      )
+        .getTableQueries()
+        .find((q) => q.key === "currencies")!.sql;
+
+      expect(sql).toContain("currency_codes_referenced_by_user($1)");
+      // Rows the user created are still exported even when nothing references
+      // them yet, so a currency defined and not yet used survives a round trip.
+      expect(sql).toContain("created_by_user_id = $1");
+      // The referencing columns must not be spelled out here: that list has
+      // drifted twice already (currencies/currency-references.spec.ts).
+      expect(sql).not.toMatch(/FROM accounts/);
+    });
+  });
+
   describe("streamExport", () => {
     async function collectGzipOutput(
       mockRes: PassThrough,

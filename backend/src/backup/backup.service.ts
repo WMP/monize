@@ -289,16 +289,17 @@ export class BackupService {
         }
       });
 
-    await write(
-      `{"version":${BACKUP_VERSION},"exportedAt":"${new Date().toISOString()}"`,
-    );
+    await this.inExportSnapshot(userId, async (read) => {
+      await write(
+        `{"version":${BACKUP_VERSION},"exportedAt":"${new Date().toISOString()}"`,
+      );
 
-    for (const { key, sql } of tableQueries) {
-      const rows = await this.query(sql, [userId]);
-      await write(`,"${key}":${JSON.stringify(rows)}`);
-    }
+      for (const { key, sql } of tableQueries) {
+        await write(`,"${key}":${JSON.stringify(await read(sql))}`);
+      }
 
-    await write("}");
+      await write("}");
+    });
 
     await new Promise<void>((resolve, reject) => {
       gzip.once("error", reject);
@@ -306,6 +307,39 @@ export class BackupService {
     });
 
     this.logger.log(`Backup export completed for user ${userId}`);
+  }
+
+  /**
+   * Runs `fn` with a reader bound to one consistent database snapshot.
+   *
+   * Every table query used to open its own short transaction, so the export saw
+   * a different committed state per table -- and a backup taken while the user
+   * was active could contain a child without its parent. Add an account and a
+   * transaction for it between the `accounts` query and the `transactions`
+   * query, and the artifact holds the transaction alone: valid gzip, valid
+   * envelope, and a restore that fails on `transactions.account_id`. Other
+   * interleavings drop dependent rows with no error at all.
+   *
+   * `REPEATABLE READ` fixes the snapshot at the transaction's first statement,
+   * so every table is read as of one instant. READ COMMITTED would not do, even
+   * inside a single transaction: it takes a fresh snapshot per statement, which
+   * is the same problem with fewer transactions.
+   *
+   * The cost is a transaction held for the length of the export -- for the
+   * streaming path, for the length of the download. That is one pooled
+   * connection and a held xmin, which is the price of a backup that restores.
+   */
+  private inExportSnapshot<T>(
+    userId: string,
+    fn: (
+      read: (sql: string) => Promise<Record<string, unknown>[]>,
+    ) => Promise<T>,
+  ): Promise<T> {
+    return withScopedDb(
+      this.dataSource,
+      (manager) => fn((sql) => manager.query(sql, [userId])),
+      "REPEATABLE READ",
+    );
   }
 
   /**
@@ -335,9 +369,11 @@ export class BackupService {
     tables: Record<string, Record<string, unknown>[]>;
   }> {
     const tables: Record<string, Record<string, unknown>[]> = {};
-    for (const { key, sql } of this.getTableQueries()) {
-      tables[key] = await this.query(sql, [userId]);
-    }
+    await this.inExportSnapshot(userId, async (read) => {
+      for (const { key, sql } of this.getTableQueries()) {
+        tables[key] = await read(sql);
+      }
+    });
     return {
       version: BACKUP_VERSION,
       exportedAt: new Date().toISOString(),
@@ -348,8 +384,31 @@ export class BackupService {
   private getTableQueries(): Array<{ key: string; sql: string }> {
     return [
       {
+        // Every currency this user's data depends on, not just the ones they
+        // created. Currencies are shared: any user may activate a code another
+        // user defined, so `created_by_user_id = $1` exported the references
+        // without the definition. On a fresh instance the restore then
+        // synthesised name, symbol and decimal places from a fallback -- `PTS /
+        // Family Points / * / 0 decimals` came back as `PTS / PTS / PTS / 2
+        // decimals`, so a balance of 7 rendered `PTS 7.00` instead of `*7`. The
+        // amounts were right; what they meant was not.
+        //
+        // Canonical currencies are included too. Their metadata usually resolves
+        // from the curated catalog anyway, but exporting the row costs one line
+        // and makes the restore reproduce what the source instance actually had
+        // rather than what this instance would guess. `ON CONFLICT (code) DO
+        // NOTHING` means an existing row on the target always wins, so this can
+        // never overwrite a definition the target already holds.
+        //
+        // The referencing columns live in `currency_codes_referenced_by_user`
+        // (migration 134) rather than being spelled out here: this list has
+        // drifted before, and currency-references.spec.ts checks the function
+        // against the schema.
         key: "currencies",
-        sql: "SELECT * FROM currencies WHERE created_by_user_id = $1",
+        sql: `SELECT * FROM currencies
+               WHERE created_by_user_id = $1
+                  OR code IN (SELECT currency_codes_referenced_by_user($1))
+               ORDER BY code`,
       },
       {
         key: "user_preferences",
@@ -592,21 +651,25 @@ export class BackupService {
       ),
     ];
     let total = parts[0].length;
-    for (const { key, sql } of tableQueries) {
-      const rows = await this.query(sql, [userId]);
-      const chunk = Buffer.from(`,"${key}":${JSON.stringify(rows)}`, "utf-8");
-      total += chunk.length;
-      if (total > this.exportBufferLimitBytes) {
-        throw new BadRequestException(
-          tr(
-            "errors.backup.exportTooLarge",
-            `This backup is too large to produce in one piece (past ${this.exportBufferLimitBytes} bytes at table "${key}"). Encrypted, automatic and support backups have to be assembled in memory; use the plain export, which streams, or raise BACKUP_EXPORT_BUFFER_LIMIT.`,
-            { limit: this.exportBufferLimitBytes, table: key },
-          ),
+    await this.inExportSnapshot(userId, async (read) => {
+      for (const { key, sql } of tableQueries) {
+        const chunk = Buffer.from(
+          `,"${key}":${JSON.stringify(await read(sql))}`,
+          "utf-8",
         );
+        total += chunk.length;
+        if (total > this.exportBufferLimitBytes) {
+          throw new BadRequestException(
+            tr(
+              "errors.backup.exportTooLarge",
+              `This backup is too large to produce in one piece (past ${this.exportBufferLimitBytes} bytes at table "${key}"). Encrypted, automatic and support backups have to be assembled in memory; use the plain export, which streams, or raise BACKUP_EXPORT_BUFFER_LIMIT.`,
+              { limit: this.exportBufferLimitBytes, table: key },
+            ),
+          );
+        }
+        parts.push(chunk);
       }
-      parts.push(chunk);
-    }
+    });
     parts.push(Buffer.from("}", "utf-8"));
     return gzipSync(Buffer.concat(parts));
   }
@@ -719,15 +782,6 @@ export class BackupService {
       await this.discardStagedAttachmentObjects(stagedKeys);
       throw error;
     });
-  }
-
-  private async query(
-    sql: string,
-    params: unknown[],
-  ): Promise<Record<string, unknown>[]> {
-    return withScopedDb(this.dataSource, (manager) =>
-      manager.query(sql, params),
-    );
   }
 
   /**

@@ -105,9 +105,20 @@ export function createScopedDbMocks(
   };
 
   const dataSource: DataSourceMock = {
+    // Both TypeORM signatures: `transaction(fn)` and
+    // `transaction(isolationLevel, fn)`. Handling only the first made every
+    // caller that asks for an isolation level fail with "fn is not a function" --
+    // a double that cannot do what the real collaborator does, which is how the
+    // backup export's REPEATABLE READ snapshot surfaced as nine broken specs
+    // rather than as a passing change.
     transaction: jest.fn(
-      async (fn: (m: EntityManager) => unknown) =>
-        fn(manager as unknown as EntityManager) as Promise<unknown>,
+      async (
+        first: string | ((m: EntityManager) => unknown),
+        second?: (m: EntityManager) => unknown,
+      ) => {
+        const fn = typeof first === "function" ? first : second!;
+        return fn(manager as unknown as EntityManager) as Promise<unknown>;
+      },
     ),
     query: jest.fn(),
     manager,
