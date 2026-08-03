@@ -25,6 +25,7 @@ import { DeleteDataDto } from "./dto/delete-data.dto";
 import { SkipPasswordCheck } from "../auth/decorators/skip-password-check.decorator";
 import { DemoRestricted } from "../common/decorators/demo-restricted.decorator";
 import { AllowDelegate } from "../delegation/decorators/delegate-access.decorator";
+import { toDelegatedUserProfile, toUserProfile } from "./user-profile";
 
 @ApiTags("Users")
 @Controller("users")
@@ -38,16 +39,18 @@ export class UsersController {
   @AllowDelegate()
   @ApiOperation({ summary: "Get current user profile" })
   async getProfile(@Request() req) {
+    // `req.user.id` is the OWNER while a delegate is acting, so this route can
+    // serialize a row that is not the caller's. Spreading the entity here used
+    // to hand a finance delegate the owner's pending 2FA secret, backup codes,
+    // OIDC link token and encrypted backup password -- `@Exclude()` cannot save
+    // a plain object, because the spread drops the class metadata the global
+    // serializer reads. Go through the audited allowlist instead, and give an
+    // acting delegate the variant without the owner's credential state.
     const user = await this.usersService.findById(req.user.id);
     if (!user) return null;
-    const {
-      passwordHash,
-      resetToken,
-      resetTokenExpiry,
-      twoFactorSecret,
-      ...rest
-    } = user as any;
-    return { ...rest, hasPassword: !!passwordHash };
+    return req.user.isActing
+      ? toDelegatedUserProfile(user)
+      : toUserProfile(user);
   }
 
   @Patch("profile")

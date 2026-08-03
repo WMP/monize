@@ -1,6 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { UsersController } from "./users.controller";
 import { UsersService } from "./users.service";
+import {
+  fullyPopulatedUser,
+  nonProfileUserFields,
+} from "./user-profile.test-util";
+
+const EXCLUDED_USER_FIELDS = nonProfileUserFields();
+const populatedOwner = () => fullyPopulatedUser();
 
 describe("UsersController", () => {
   let controller: UsersController;
@@ -71,7 +78,48 @@ describe("UsersController", () => {
 
       const result = await controller.getProfile(mockReq);
 
-      expect(result.hasPassword).toBe(false);
+      expect(result).toMatchObject({ hasPassword: false });
+    });
+
+    // P2-003: the route is @AllowDelegate() and resolves req.user.id, which is
+    // the OWNER while acting. The previous implementation spread the entity and
+    // removed four fields by name, so every other @Exclude() column -- the ones
+    // added after that list was written -- reached the delegate.
+    it("withholds every excluded security column from an acting delegate", async () => {
+      mockUsersService.findById.mockResolvedValue({
+        ...populatedOwner(),
+      });
+
+      const result = (await controller.getProfile({
+        user: { id: "owner-1", realUserId: "delegate-2", isActing: true },
+      })) as Record<string, unknown>;
+
+      for (const field of EXCLUDED_USER_FIELDS) {
+        expect(result).not.toHaveProperty(field);
+      }
+      // Identification survives so the UI can say whose finances are on screen.
+      expect(result).toMatchObject({
+        id: "owner-1",
+        email: "owner@example.com",
+      });
+      // The owner's credential state does not: a delegate's own password/2FA
+      // controls read GET /auth/me-self, which resolves the real user.
+      expect(result).not.toHaveProperty("hasPassword");
+      expect(result).not.toHaveProperty("mustChangePassword");
+      expect(result).not.toHaveProperty("backupEncryptionEnabled");
+    });
+
+    it("withholds every excluded security column from the account holder too", async () => {
+      mockUsersService.findById.mockResolvedValue({ ...populatedOwner() });
+
+      const result = (await controller.getProfile({
+        user: { id: "owner-1", realUserId: "owner-1", isActing: false },
+      })) as Record<string, unknown>;
+
+      for (const field of EXCLUDED_USER_FIELDS) {
+        expect(result).not.toHaveProperty(field);
+      }
+      expect(result).toMatchObject({ hasPassword: true });
     });
 
     it("returns null when user is not found", async () => {

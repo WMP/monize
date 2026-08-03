@@ -20,6 +20,7 @@ import * as bcrypt from "bcryptjs";
 import * as crypto from "crypto";
 
 import { User } from "../users/entities/user.entity";
+import { toUserProfile } from "../users/user-profile";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { buildDefaultPreferences } from "../users/user-preference.factory";
 import { TrustedDevice } from "../users/entities/trusted-device.entity";
@@ -892,25 +893,13 @@ export class AuthService {
     return user;
   }
 
+  /**
+   * Public profile shape for a `users` row. Delegates to the one audited
+   * allowlist so login, `/auth/profile`, `/users/me` and the admin surfaces
+   * cannot drift apart -- they did, and the shortest list forgot the most.
+   */
   sanitizeUser(user: User) {
-    const {
-      passwordHash,
-      resetToken,
-      resetTokenExpiry,
-      twoFactorSecret,
-      pendingTwoFactorSecret,
-      failedLoginAttempts,
-      lockedUntil,
-      backupCodes,
-      oidcLinkPending,
-      oidcLinkToken,
-      oidcLinkExpiresAt,
-      pendingOidcSubject,
-      emailVerificationToken,
-      emailVerificationTokenExpiry,
-      ...sanitized
-    } = user;
-    return { ...sanitized, hasPassword: !!passwordHash };
+    return toUserProfile(user);
   }
 
   // --- Delegated methods (preserve public API for controller/strategies) ---

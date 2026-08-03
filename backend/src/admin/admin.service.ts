@@ -31,6 +31,7 @@ import {
 import { EmailService } from "../notifications/email.service";
 import { accountInviteTemplate } from "../notifications/email-templates";
 import { CreateUserDto } from "./dto/create-user.dto";
+import { toUserProfile, UserProfile } from "../users/user-profile";
 
 @Injectable()
 export class AdminService {
@@ -64,27 +65,7 @@ export class AdminService {
         order: { createdAt: "ASC" },
       }),
     );
-    return users.map((user) => {
-      const {
-        passwordHash,
-        resetToken,
-        resetTokenExpiry,
-        twoFactorSecret,
-        ...rest
-      } = user;
-      return { ...rest, hasPassword: !!passwordHash };
-    });
-  }
-
-  private sanitizeUser(user: User) {
-    const {
-      passwordHash,
-      resetToken,
-      resetTokenExpiry,
-      twoFactorSecret,
-      ...rest
-    } = user;
-    return { ...rest, hasPassword: !!passwordHash };
+    return users.map((user) => toUserProfile(user));
   }
 
   async createUser(dto: CreateUserDto) {
@@ -233,7 +214,7 @@ export class AdminService {
     }
 
     return {
-      ...this.sanitizeUser(saved),
+      ...toUserProfile(saved),
       temporaryPassword,
       invited: !!inviteToken,
       upgraded,
@@ -299,19 +280,14 @@ export class AdminService {
       targetUser.role = role;
       return repo.save(targetUser);
     });
-    return this.sanitizeUser(saved);
+    return toUserProfile(saved);
   }
 
   async updateUserStatus(
     adminId: string,
     targetUserId: string,
     isActive: boolean,
-  ): Promise<
-    Omit<
-      User,
-      "passwordHash" | "resetToken" | "resetTokenExpiry" | "twoFactorSecret"
-    > & { hasPassword: boolean }
-  > {
+  ): Promise<UserProfile> {
     return withSystemContext(() =>
       this.updateUserStatusWithinContext(adminId, targetUserId, isActive),
     );
@@ -356,7 +332,7 @@ export class AdminService {
       await this.revokeSessionsAndTokens(targetUserId);
     }
 
-    return this.sanitizeUser(saved);
+    return toUserProfile(saved);
   }
 
   async deleteUser(

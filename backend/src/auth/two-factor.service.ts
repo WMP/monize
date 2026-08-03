@@ -23,6 +23,7 @@ import * as QRCode from "qrcode";
 import { UAParser } from "ua-parser-js";
 
 import { User } from "../users/entities/user.entity";
+import { toUserProfile } from "../users/user-profile";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { TrustedDevice } from "../users/entities/trusted-device.entity";
 import { encrypt, decrypt, derivePurposeKey, hashToken } from "./crypto.util";
@@ -822,22 +823,8 @@ export class TwoFactorService {
     return device?.id || null;
   }
 
+  /** See `AuthService.sanitizeUser`: one audited allowlist for every surface. */
   sanitizeUser(user: User) {
-    const {
-      passwordHash,
-      resetToken,
-      resetTokenExpiry,
-      twoFactorSecret,
-      pendingTwoFactorSecret,
-      failedLoginAttempts,
-      lockedUntil,
-      backupCodes,
-      oidcLinkPending,
-      oidcLinkToken,
-      oidcLinkExpiresAt,
-      pendingOidcSubject,
-      ...sanitized
-    } = user;
-    return { ...sanitized, hasPassword: !!passwordHash };
+    return toUserProfile(user);
   }
 }
