@@ -454,6 +454,18 @@ export class LoanPaymentDetectorService {
     const tolerance = this.paymentPeriodToleranceDays(payments);
     const byDate = new Map<string, number>();
     for (const tx of interestTxns) {
+      // A voided transaction is out of the ledger: it moves no balance, and
+      // every report in this codebase filters it out. Summing one in reports
+      // interest -- and an inferred rate -- from money that was never charged.
+      //
+      // Filtered here rather than in the `where` above because
+      // `transactions.status` is nullable (`VARCHAR(20) DEFAULT
+      // 'UNRECONCILED'`, no NOT NULL), so a SQL `status != 'VOID'` would also
+      // discard every NULL-status row. That is why the reports all spell it
+      // `(t.status IS NULL OR t.status != 'VOID')`. The entity's own `isVoid`
+      // getter gets this right by construction, and `find` returns hydrated
+      // entities so it is available.
+      if (tx.isVoid) continue;
       // Interest is always a plain expense; principal is a transfer to the loan.
       // A ledger that tags the principal transfer with the same category as the
       // interest expense (a common style) would otherwise have its principal

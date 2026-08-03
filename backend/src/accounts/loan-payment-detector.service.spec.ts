@@ -8,7 +8,10 @@ jest.mock("../common/db/scoped-db", () =>
 import { NotFoundException } from "@nestjs/common";
 import { LoanPaymentDetectorService } from "./loan-payment-detector.service";
 import { Account, AccountType } from "./entities/account.entity";
-import { Transaction } from "../transactions/entities/transaction.entity";
+import {
+  Transaction,
+  TransactionStatus,
+} from "../transactions/entities/transaction.entity";
 
 describe("LoanPaymentDetectorService", () => {
   let service: LoanPaymentDetectorService;
@@ -1790,6 +1793,73 @@ describe("LoanPaymentDetectorService", () => {
       );
       expect(result).toBe(payments);
       expect(transactionRepository.find).not.toHaveBeenCalled();
+    });
+
+    /**
+     * REV-20260803-008. These two use real `Transaction` instances rather than
+     * the plain object literals the rest of this describe block uses, because
+     * the claim under test is about the entity's own `isVoid` getter. A plain
+     * `{ status: "VOID" }` literal has no getter, so `isVoid` would be
+     * `undefined` and the test would pass against the unfixed code -- the
+     * "a mock must return what the real collaborator returns" trap in
+     * backend/CLAUDE.md. `find()` returns hydrated entities, so this is also
+     * what the real repository hands back.
+     */
+    const makeInterestTx = (over: Partial<Transaction>): Transaction =>
+      Object.assign(new Transaction(), {
+        accountId: "bank-1",
+        categoryId: "cat-int",
+        isTransfer: false,
+        status: TransactionStatus.CLEARED,
+        ...over,
+      });
+
+    it("ignores a voided interest transaction while still counting its live sibling", async () => {
+      const payments = [makePayment("2026-01-05"), makePayment("2026-02-05")];
+      transactionRepository.find.mockResolvedValue([
+        // Voided: out of the ledger, so it must not reach the interest sum.
+        makeInterestTx({
+          transactionDate: "2026-01-05",
+          amount: -153.63,
+          status: TransactionStatus.VOID,
+        }),
+        // Live, same category and window: proves the filter is selective
+        // rather than dropping the whole batch.
+        makeInterestTx({ transactionDate: "2026-02-05", amount: -140.7 }),
+      ]);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      expect(result[0].interestAmount).toBeNull();
+      expect(result[1].interestAmount).toBeCloseTo(140.7, 2);
+    });
+
+    it("keeps an interest transaction whose status is null", async () => {
+      // `transactions.status` is nullable (VARCHAR(20) DEFAULT 'UNRECONCILED',
+      // no NOT NULL), which is why the reports spell the filter
+      // `(t.status IS NULL OR t.status != 'VOID')`. A SQL `status != 'VOID'`
+      // here would silently discard these rows -- trading the voided-interest
+      // bug for a missing-interest one.
+      const payments = [makePayment("2026-01-05")];
+      transactionRepository.find.mockResolvedValue([
+        makeInterestTx({
+          transactionDate: "2026-01-05",
+          amount: -153.63,
+          status: null as unknown as TransactionStatus,
+        }),
+      ]);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      expect(result[0].interestAmount).toBeCloseTo(153.63, 2);
     });
 
     it("fills interest from separate categorized transactions, paired by nearest date and summed per period", async () => {
