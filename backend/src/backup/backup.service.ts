@@ -17,7 +17,15 @@ import { withScopedDb } from "../common/db/scoped-db";
 import { withPreserveTimestamps } from "../common/db/with-context";
 import * as bcrypt from "bcryptjs";
 import { createHash, randomUUID } from "crypto";
-import { createGzip, gunzipSync, gzipSync } from "zlib";
+import { createGzip, gunzip, gzipSync } from "zlib";
+import { promisify } from "util";
+import {
+  DEFAULT_EXPORT_BUFFER_LIMIT_BYTES,
+  DEFAULT_RESTORE_EXPANDED_LIMIT_BYTES,
+  resolveByteLimit,
+} from "./backup-limits";
+
+const gunzipAsync = promisify(gunzip);
 import {
   ATTACHMENT_STORAGE_PROVIDER,
   AttachmentStorageProvider,
@@ -173,6 +181,29 @@ export class BackupService {
     @Inject(ATTACHMENT_STORAGE_PROVIDER)
     private readonly attachmentStorage: AttachmentStorageProvider,
   ) {}
+
+  /**
+   * Ceiling on a restore's decompressed payload (see backup-limits.ts).
+   * Read per call rather than cached in the constructor: it is consulted once
+   * per restore, so the cost is nothing, and a limit that can only be observed
+   * at construction time is a limit no test can vary.
+   */
+  private get restoreExpandedLimitBytes(): number {
+    return resolveByteLimit(
+      process.env.BACKUP_RESTORE_EXPANDED_LIMIT,
+      DEFAULT_RESTORE_EXPANDED_LIMIT_BYTES,
+      (message) => this.logger.warn(message),
+    );
+  }
+
+  /** Ceiling on the JSON a buffered export may accumulate. */
+  private get exportBufferLimitBytes(): number {
+    return resolveByteLimit(
+      process.env.BACKUP_EXPORT_BUFFER_LIMIT,
+      DEFAULT_EXPORT_BUFFER_LIMIT_BYTES,
+      (message) => this.logger.warn(message),
+    );
+  }
 
   /**
    * One repository call in its own short scoped transaction -- the RLS-era
@@ -540,18 +571,44 @@ export class BackupService {
    * Builds the gzipped JSON backup payload as a single Buffer in memory.
    * Used by the encryption path (which needs the whole payload to compute
    * the GCM auth tag) and the auto-backup writer.
+   *
+   * Buffers rather than strings, concatenated once: `parts.join("")` followed by
+   * `Buffer.from(..., "utf-8")` held the whole payload twice at the moment of
+   * conversion -- once as a JS string, once as bytes -- on top of the per-table
+   * strings and the gzip output. On the chart's default 400 MiB backend that is
+   * the difference between a backup and an OOM kill.
+   *
+   * The running total is checked against `exportBufferLimitBytes` as it grows, so
+   * a dataset too large for this path is refused with an error the user can read
+   * rather than by the pod dying mid-write. The unencrypted HTTP export is
+   * unaffected: it streams, and has no total to bound.
    */
   private async collectGzippedExport(userId: string): Promise<Buffer> {
     const tableQueries = this.getTableQueries();
-    const parts: string[] = [
-      `{"version":${BACKUP_VERSION},"exportedAt":"${new Date().toISOString()}"`,
+    const parts: Buffer[] = [
+      Buffer.from(
+        `{"version":${BACKUP_VERSION},"exportedAt":"${new Date().toISOString()}"`,
+        "utf-8",
+      ),
     ];
+    let total = parts[0].length;
     for (const { key, sql } of tableQueries) {
       const rows = await this.query(sql, [userId]);
-      parts.push(`,"${key}":${JSON.stringify(rows)}`);
+      const chunk = Buffer.from(`,"${key}":${JSON.stringify(rows)}`, "utf-8");
+      total += chunk.length;
+      if (total > this.exportBufferLimitBytes) {
+        throw new BadRequestException(
+          tr(
+            "errors.backup.exportTooLarge",
+            `This backup is too large to produce in one piece (past ${this.exportBufferLimitBytes} bytes at table "${key}"). Encrypted, automatic and support backups have to be assembled in memory; use the plain export, which streams, or raise BACKUP_EXPORT_BUFFER_LIMIT.`,
+            { limit: this.exportBufferLimitBytes, table: key },
+          ),
+        );
+      }
+      parts.push(chunk);
     }
-    parts.push("}");
-    return gzipSync(Buffer.from(parts.join(""), "utf-8"));
+    parts.push(Buffer.from("}", "utf-8"));
+    return gzipSync(Buffer.concat(parts));
   }
 
   async restoreData(
@@ -570,7 +627,7 @@ export class BackupService {
     await this.verifyAuthentication(user, input);
 
     const gzippedPayload = this.maybeDecrypt(input, user);
-    const rawData = this.decompressAndParse(gzippedPayload);
+    const rawData = await this.decompressAndParse(gzippedPayload);
     this.validateBackupFormat(rawData);
 
     // A support (de-identified) backup restores like any other, but the data
@@ -717,12 +774,50 @@ export class BackupService {
     );
   }
 
-  private decompressAndParse(compressedData: Buffer): BackupData {
+  /**
+   * Decompress and parse the uploaded backup, under a hard ceiling on the
+   * decompressed size.
+   *
+   * Express caps the *compressed* body, which bounds nothing about what comes
+   * out of gzip. `gunzipSync` with no `maxOutputLength` allocated whatever the
+   * stream expanded to -- so a few hundred kilobytes of repeated text became
+   * gigabytes of buffer, allocated before the version check, the format check,
+   * or anything else that could refuse the request. `maxOutputLength` makes zlib
+   * stop and raise instead of allocating past the limit.
+   *
+   * Asynchronous for the second half of the same problem: `gunzipSync` inflated
+   * on the event loop, so a large payload froze every other request in the
+   * process for the duration. The async form runs on the libuv threadpool. The
+   * `JSON.parse` below still blocks, unavoidably -- a JSON document has to be
+   * whole to be parsed -- but it now blocks on a string of bounded length.
+   */
+  private async decompressAndParse(
+    compressedData: Buffer,
+  ): Promise<BackupData> {
     let json: string;
     try {
-      const decompressed = gunzipSync(compressedData);
+      const decompressed = await gunzipAsync(compressedData, {
+        maxOutputLength: this.restoreExpandedLimitBytes,
+      });
       json = decompressed.toString("utf-8");
-    } catch {
+    } catch (error) {
+      // zlib reports the ceiling as ERR_BUFFER_TOO_LARGE / RangeError. Say so:
+      // "not valid gzip" would send the user looking for a corrupt file.
+      if (
+        error instanceof RangeError ||
+        (error as { code?: string })?.code === "ERR_BUFFER_TOO_LARGE"
+      ) {
+        this.logger.warn(
+          `Rejected a backup restore whose decompressed size exceeded ${this.restoreExpandedLimitBytes} bytes`,
+        );
+        throw new BadRequestException(
+          tr(
+            "errors.backup.decompressTooLarge",
+            `Backup is too large to restore: it expands past the configured limit of ${this.restoreExpandedLimitBytes} bytes. Raise BACKUP_RESTORE_EXPANDED_LIMIT if this is a genuine backup.`,
+            { limit: this.restoreExpandedLimitBytes },
+          ),
+        );
+      }
       throw new BadRequestException(
         tr(
           "errors.backup.decompressFailed",

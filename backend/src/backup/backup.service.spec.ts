@@ -702,6 +702,147 @@ describe("BackupService", () => {
     });
 
     /**
+     * Express caps the compressed upload; it says nothing about what comes out
+     * of gzip. `gunzipSync` with no `maxOutputLength` allocated the whole
+     * expansion before the version check, the format check, or anything that
+     * could refuse the request -- and it did so on the event loop, so one upload
+     * froze every other request in the process.
+     */
+    describe("decompression ceiling", () => {
+      const previousLimit = process.env.BACKUP_RESTORE_EXPANDED_LIMIT;
+
+      afterEach(() => {
+        if (previousLimit === undefined) {
+          delete process.env.BACKUP_RESTORE_EXPANDED_LIMIT;
+        } else {
+          process.env.BACKUP_RESTORE_EXPANDED_LIMIT = previousLimit;
+        }
+      });
+
+      /** A small gzip that expands to far more than it weighs. */
+      function gzipBomb(expandedBytes: number): Buffer {
+        const filler = "A".repeat(expandedBytes);
+        return gzipSync(
+          Buffer.from(
+            JSON.stringify({
+              version: 1,
+              exportedAt: "2026-01-01T00:00:00.000Z",
+              filler,
+            }),
+            "utf-8",
+          ),
+        );
+      }
+
+      it("rejects a payload that expands past the limit, before touching data", async () => {
+        mockUserRepo.findOne.mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        process.env.BACKUP_RESTORE_EXPANDED_LIMIT = "64kb";
+
+        const bomb = gzipBomb(512 * 1024);
+        // The compressed form is a rounding error next to what it expands to --
+        // which is exactly why bounding the upload bounds nothing.
+        expect(bomb.length).toBeLessThan(8 * 1024);
+
+        await expect(
+          service.restoreData(userId, {
+            compressedData: bomb,
+            password: "test",
+          }),
+        ).rejects.toThrow(BadRequestException);
+
+        // The ceiling is hit before the destructive phase. (A transaction *is*
+        // opened before this point -- the user lookup runs in one -- so the
+        // claim worth asserting is that no data was deleted.)
+        const deletes = mockQueryRunner.query.mock.calls.filter(
+          ([sql]) => typeof sql === "string" && sql.includes("DELETE FROM"),
+        );
+        expect(deletes).toEqual([]);
+      });
+
+      it("says the backup is too large, not that it is corrupt", async () => {
+        mockUserRepo.findOne.mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        process.env.BACKUP_RESTORE_EXPANDED_LIMIT = "64kb";
+
+        // "Not valid gzip" would send the user hunting for a corrupt file.
+        await expect(
+          service.restoreData(userId, {
+            compressedData: gzipBomb(512 * 1024),
+            password: "test",
+          }),
+        ).rejects.toThrow(/too large/i);
+      });
+
+      it("accepts a payload inside the limit", async () => {
+        mockUserRepo.findOne.mockResolvedValue(mockUser);
+        (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+        process.env.BACKUP_RESTORE_EXPANDED_LIMIT = "1mb";
+
+        const result = await service.restoreData(
+          userId,
+          makeInput({ password: "test" }),
+        );
+        expect(result.message).toBe("Backup restored successfully");
+      });
+    });
+
+    describe("buffered export ceiling", () => {
+      const previousLimit = process.env.BACKUP_EXPORT_BUFFER_LIMIT;
+
+      afterEach(() => {
+        if (previousLimit === undefined) {
+          delete process.env.BACKUP_EXPORT_BUFFER_LIMIT;
+        } else {
+          process.env.BACKUP_EXPORT_BUFFER_LIMIT = previousLimit;
+        }
+      });
+
+      it("refuses to assemble a buffered export past the limit", async () => {
+        process.env.BACKUP_EXPORT_BUFFER_LIMIT = "1kb";
+        // Every table query returns a row, so the accumulated JSON passes 1 kB
+        // within the first few tables.
+        mockQueryRunner.query.mockImplementation((sql: string, params) => {
+          if (String(sql).includes("SELECT * FROM")) {
+            return Promise.resolve([
+              { id: randomUUID(), padding: "x".repeat(400) },
+            ]);
+          }
+          return mockQueryHandler(sql, params as unknown[]);
+        });
+
+        // The pod dying mid-write leaves no artifact and no message; an error
+        // naming the limit and the table it was reached at is recoverable.
+        await expect(service.exportToBuffer(userId)).rejects.toThrow(
+          /too large to produce/i,
+        );
+      });
+
+      it("leaves the streaming export unbounded", async () => {
+        process.env.BACKUP_EXPORT_BUFFER_LIMIT = "1kb";
+        mockQueryRunner.query.mockImplementation((sql: string, params) => {
+          if (String(sql).includes("SELECT * FROM")) {
+            return Promise.resolve([
+              { id: randomUUID(), padding: "x".repeat(400) },
+            ]);
+          }
+          return mockQueryHandler(sql, params as unknown[]);
+        });
+
+        // The plain HTTP export streams through gzip and holds no total, so the
+        // buffered ceiling must not apply to it.
+        const res = new PassThrough();
+        const chunks: Buffer[] = [];
+        res.on("data", (c: Buffer) => chunks.push(c));
+        await service.streamExport(
+          userId,
+          res as unknown as import("express").Response,
+        );
+        expect(Buffer.concat(chunks).length).toBeGreaterThan(0);
+      });
+    });
+
+    /**
      * Attachment bytes only travel inside a backup for the `database` provider.
      * For `local` and `s3` the metadata carries a `storage_key` equal to the
      * attachment's UUID, and the restore mints a new UUID for every row -- so
