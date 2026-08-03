@@ -9,6 +9,9 @@ import { AppModule } from "./app.module";
 import { OAuthProviderService } from "./oauth/oauth-provider.service";
 import { oauthDebugLogger } from "./oauth/oauth-debug-logger.middleware";
 import { isOidcProviderPath } from "./oauth/oidc-provider-paths";
+import { DataSource } from "typeorm";
+import { parseRlsMode } from "./common/db/rls-config";
+import { assertRuntimeRoleSafe } from "./common/db/runtime-role-check";
 
 // Configure pg to return DATE types as strings instead of Date objects
 // This prevents timezone-related date shifting issues
@@ -57,8 +60,49 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
+/**
+ * Verify the runtime DB role is fit to serve enforced traffic, and exit if not.
+ *
+ * Exiting rather than rethrowing: Nest turns a bootstrap rejection into an
+ * unhandled promise warning and a non-zero exit whose cause is buried, and an
+ * operator restarting a crash-looping container needs to read the reason in the
+ * first ten lines of the log.
+ */
+async function assertRuntimeRoleOrExit(dataSource: DataSource): Promise<void> {
+  const logger = new Logger("RlsRuntimeRole");
+  const mode = parseRlsMode(process.env.RLS_MODE);
+  try {
+    const facts = await assertRuntimeRoleSafe(dataSource, {
+      mode,
+      appUser: process.env.DATABASE_APP_USER,
+    });
+    if (facts) {
+      logger.log(
+        `RLS_MODE=enforce verified: connected as "${facts.currentUser}" ` +
+          "(no SUPERUSER, no BYPASSRLS, owns neither the database nor any " +
+          "policied table).",
+      );
+    }
+  } catch (error) {
+    logger.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // RLS_MODE=enforce promises a database-level tenant boundary. Selecting the
+  // application role and supplying its password does not deliver one: a
+  // superuser, a role holding BYPASSRLS, and the owner of a policied table are
+  // each exempt from every policy on it, so an operator who points
+  // DATABASE_APP_USER at the database owner (or at a pre-provisioned role with
+  // BYPASSRLS) used to get a clean boot, a log line saying enforce, and no
+  // enforcement (P2-006). Ask the connection we will actually serve requests on
+  // what it is, and refuse to start on a wrong answer -- before app.listen(),
+  // because the alternative is serving cross-tenant reads while believing the
+  // database is filtering them.
+  await assertRuntimeRoleOrExit(app.get(DataSource));
 
   // Trust first proxy (Docker/nginx) so req.ip reflects the real client IP
   app.getHttpAdapter().getInstance().set("trust proxy", 1);

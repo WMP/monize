@@ -1,5 +1,7 @@
 import {
+  APP_ROLE_ATTRIBUTES,
   APP_ROLE_GRANTS_SQL,
+  RUNTIME_READ_ONLY_TABLES,
   APP_ROLE_NAME_GUC,
   APP_ROLE_PASSWORD_GUC,
   APP_ROLE_UPSERT_SQL,
@@ -113,12 +115,48 @@ describe("provisionAppRole", () => {
 describe("app-role SQL", () => {
   it("uses %I / %L formatting and no FOR ROLE clause", () => {
     expect(APP_ROLE_UPSERT_SQL).toContain(
-      "format('CREATE ROLE %I LOGIN PASSWORD %L'",
+      `format('CREATE ROLE %I ${APP_ROLE_ATTRIBUTES} PASSWORD %L'`,
     );
     expect(APP_ROLE_UPSERT_SQL).toContain("insufficient_privilege");
     expect(APP_ROLE_GRANTS_SQL).toContain(
       "ALTER DEFAULT PRIVILEGES IN SCHEMA public",
     );
     expect(APP_ROLE_GRANTS_SQL).not.toMatch(/FOR ROLE/i);
+  });
+});
+
+/**
+ * DR-02. The blanket "all tables in schema public" grant is deliberate -- a new
+ * user-owned table must be reachable the moment a migration creates it -- but it
+ * also handed the runtime role write access to the migration ledger, which no
+ * request touches and no policy protects.
+ */
+describe("runtime grant surface", () => {
+  it("revokes writes on every read-only infrastructure table", () => {
+    for (const table of RUNTIME_READ_ONLY_TABLES) {
+      expect(APP_ROLE_GRANTS_SQL).toContain(`'${table}'`);
+    }
+    expect(APP_ROLE_GRANTS_SQL).toContain(
+      "REVOKE INSERT, UPDATE, DELETE ON public.%I",
+    );
+  });
+
+  it("keeps SELECT, so nothing that reads the ledger breaks", () => {
+    expect(APP_ROLE_GRANTS_SQL).not.toContain("REVOKE ALL");
+    expect(APP_ROLE_GRANTS_SQL).not.toMatch(/REVOKE[^;]*SELECT/);
+  });
+
+  it("guards the revoke on the table existing", () => {
+    // The grants block runs on every startup, including before schema.sql has
+    // created anything. A REVOKE on a missing table aborts the whole DO block
+    // and would take the grants with it.
+    expect(APP_ROLE_GRANTS_SQL).toMatch(/IF EXISTS \(\s*SELECT FROM pg_class/);
+  });
+
+  it("revokes after granting, not before", () => {
+    // "GRANT ON ALL TABLES" would re-add what an earlier revoke took away.
+    expect(APP_ROLE_GRANTS_SQL.indexOf("GRANT SELECT, INSERT")).toBeLessThan(
+      APP_ROLE_GRANTS_SQL.indexOf("REVOKE"),
+    );
   });
 });

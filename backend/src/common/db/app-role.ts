@@ -44,12 +44,33 @@ export const APP_ROLE_NAME_GUC = "monize.app_role";
 export const APP_ROLE_PASSWORD_GUC = "monize.app_password";
 
 /**
- * Create the role if absent, else rotate its password. Idempotent and
- * re-applied on every startup so rotating `DATABASE_APP_PASSWORD` and
- * restarting is sufficient. On managed Postgres (CNPG) where the owner lacks
- * `CREATEROLE`, the CREATE/ALTER raises `insufficient_privilege` (42501); we
- * swallow it with a warning and let the role be provisioned declaratively via
- * the CNPG `Cluster` spec (`managed.roles`).
+ * The attribute set that makes the role unprivileged, spelled out on both the
+ * CREATE and the ALTER.
+ *
+ * The ALTER is the load-bearing half. Provisioning used to converge only
+ * `LOGIN PASSWORD`, so a role that already existed kept whatever attributes it
+ * was created with -- `SUPERUSER` or `BYPASSRLS` among them -- and PostgreSQL
+ * exempts both from every policy. `ALTER ROLE` is not additive, so naming the
+ * NO-forms here actually strips them.
+ *
+ * This still cannot be the only defence: the deployment may provision the role
+ * declaratively (CNPG `managed.roles`) where this SQL never runs, the ALTER can
+ * fail with `insufficient_privilege` and degrade to a warning, and an attribute
+ * granted after startup is invisible to it. `runtime-role-check.ts` asks the
+ * database what the connection actually is, and refuses to serve traffic on a
+ * wrong answer.
+ */
+export const APP_ROLE_ATTRIBUTES =
+  "LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION";
+
+/**
+ * Create the role if absent, else converge its attributes and rotate its
+ * password. Idempotent and re-applied on every startup so rotating
+ * `DATABASE_APP_PASSWORD` and restarting is sufficient. On managed Postgres
+ * (CNPG) where the owner lacks `CREATEROLE`, the CREATE/ALTER raises
+ * `insufficient_privilege` (42501); we swallow it with a warning and let the
+ * role be provisioned declaratively via the CNPG `Cluster` spec
+ * (`managed.roles`).
  */
 export const APP_ROLE_UPSERT_SQL = `
 DO $$
@@ -58,12 +79,12 @@ DECLARE
   role_pw   text := current_setting('${APP_ROLE_PASSWORD_GUC}');
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = role_name) THEN
-    EXECUTE format('CREATE ROLE %I LOGIN PASSWORD %L', role_name, role_pw);
+    EXECUTE format('CREATE ROLE %I ${APP_ROLE_ATTRIBUTES} PASSWORD %L', role_name, role_pw);
   ELSE
-    EXECUTE format('ALTER ROLE %I LOGIN PASSWORD %L', role_name, role_pw);
+    EXECUTE format('ALTER ROLE %I ${APP_ROLE_ATTRIBUTES} PASSWORD %L', role_name, role_pw);
   END IF;
 EXCEPTION WHEN insufficient_privilege THEN
-  RAISE WARNING 'Insufficient privilege to create/alter role %; provision it declaratively via CNPG managed.roles (spec.managed.roles).', role_name;
+  RAISE WARNING 'Insufficient privilege to create/alter role %; provision it declaratively via CNPG managed.roles (spec.managed.roles) with NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS.', role_name;
 END $$;
 `.trim();
 
@@ -80,6 +101,7 @@ export const APP_ROLE_GRANTS_SQL = `
 DO $$
 DECLARE
   role_name text := current_setting('${APP_ROLE_NAME_GUC}');
+  infra_table text;
 BEGIN
   IF EXISTS (SELECT FROM pg_roles WHERE rolname = role_name) THEN
     EXECUTE format('GRANT USAGE ON SCHEMA public TO %I', role_name);
@@ -87,11 +109,42 @@ BEGIN
     EXECUTE format('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO %I', role_name);
     EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I', role_name);
     EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO %I', role_name);
+
+    -- Then take back what the blanket grant should never have included.
+    --
+    -- The grant above is deliberately "all tables": a new user-owned table has
+    -- to be reachable the moment a migration creates it, and an allowlist that
+    -- has to be edited per table would be forgotten, leaving the feature broken
+    -- in enforce mode only. But "all tables" also hands the runtime role write
+    -- access to the migration ledger, which no request has any reason to touch
+    -- and which no RLS policy protects -- it is one of the four documented
+    -- exemptions. A mistaken raw query or an application SQL injection could
+    -- rewrite it, and db-migrate reads it to decide what to replay: a forged row
+    -- silently skips a migration, a deleted one replays a migration on top of
+    -- itself. Revoking write while keeping SELECT is a strict narrowing (task
+    -- DR-02); nothing at runtime writes it.
+    FOR infra_table IN SELECT unnest(ARRAY['schema_migrations']) LOOP
+      IF EXISTS (
+        SELECT FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE n.nspname = 'public' AND c.relname = infra_table
+      ) THEN
+        EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON public.%I FROM %I', infra_table, role_name);
+      END IF;
+    END LOOP;
   END IF;
 EXCEPTION WHEN insufficient_privilege THEN
   RAISE WARNING 'Insufficient privilege to grant DML to role %; grant it manually or via the DB owner.', role_name;
 END $$;
 `.trim();
+
+/**
+ * Tables the runtime role may read but never write: infrastructure with no RLS
+ * policy, where the blanket grant is the only thing standing between a mistaken
+ * query and a corrupted invariant. Exported so the integration harness can
+ * assert the revoke actually took (`app-role.spec.ts` asserts the SQL; only a
+ * live database can assert the privilege).
+ */
+export const RUNTIME_READ_ONLY_TABLES = ["schema_migrations"] as const;
 
 export interface ProvisionAppRoleOptions {
   appUser: string | undefined;
