@@ -95,12 +95,22 @@ GUCs through `withScopedDb` and the policies compare each row's owner against th
    Keep the `(SELECT app_current_user_id())` initplan form — a bare function call relies on
    SQL-function inlining and evaluates per row on sequential scans.
 
-2. **No migration may contain a role or grant statement.** `GRANT ... TO monize_app` (or any
-   `CREATE/ALTER/DROP ROLE`) in a migration crash-loops every deployment where the role does not
-   exist. The role and its grants are provisioned idempotently by db-init on every startup
+2. **No migration may name a role.** `GRANT ... TO monize_app` (or any `CREATE/ALTER/DROP ROLE`)
+   in a migration crash-loops every deployment where the role does not exist. The role and its
+   grants are provisioned idempotently by db-init on every startup
    (`backend/src/common/db/app-role.ts`); on CNPG the role comes from the `Cluster` manifest
    (`managed.roles`) instead. New tables created by the owner get their grants automatically via
-   `ALTER DEFAULT PRIVILEGES`.
+   `ALTER DEFAULT PRIVILEGES`. The `role-or-grant-statement` rule in
+   `backend/scripts/migration-lint.mjs` enforces this over every migration, so it is a CI failure
+   rather than a convention.
+
+   **`PUBLIC` is the exception, for the same reason and not in spite of it:** it is a keyword that
+   always resolves, so it cannot fail for a missing role. It has to be permitted, because
+   `CREATE FUNCTION` grants `EXECUTE` to `PUBLIC` implicitly -- revoking that anywhere but the
+   transaction that created the function leaves a window in which any role can execute a fresh
+   `SECURITY DEFINER` function. `133_currency_global_liveness.sql` is the case. This paragraph used
+   to read as an absolute ban while that `REVOKE` was already in the tree, which is a rule nothing
+   checked disagreeing with the code it governs.
 
 ## Migration File Conventions
 - Numbered prefix for ordering: `NNN_description.sql` (e.g., `079_securities_is_favourite.sql`)

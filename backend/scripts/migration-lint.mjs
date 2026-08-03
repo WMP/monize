@@ -416,6 +416,48 @@ export const RULES = [
       ];
     },
   },
+  /**
+   * Not idempotency -- deployability. A migration runs unconditionally at
+   * startup on every installation, including ones where the runtime role does
+   * not exist (it is provisioned by db-init, or by the CNPG Cluster manifest, or
+   * not at all at RLS_MODE=off). A statement naming that role fails, the
+   * migration aborts, and the backend crash-loops before it serves a request.
+   * Roles and their grants therefore live in `backend/src/common/db/app-role.ts`.
+   *
+   * `PUBLIC` is the one exception, and it is not an exception to the reason:
+   * PUBLIC is a keyword that always resolves, so `REVOKE ... FROM PUBLIC` cannot
+   * fail for a missing role. It has to be allowed, because `CREATE FUNCTION`
+   * grants EXECUTE to PUBLIC implicitly -- revoking it anywhere but in the same
+   * transaction as the CREATE leaves a window in which any role can execute a
+   * fresh SECURITY DEFINER function. Migration 133 is the case.
+   *
+   * `database/CLAUDE.md` stated this as an absolute ban while the source already
+   * held that one REVOKE, so the prose was a rule nothing checked and the code
+   * disagreed with. This is the checked version, and it says what is actually
+   * true.
+   */
+  {
+    id: "role-or-grant-statement",
+    check(text) {
+      const messages = [];
+      if (/\b(?:CREATE|ALTER|DROP)\s+(?:ROLE|USER|GROUP)\b/i.test(text)) {
+        messages.push(
+          "CREATE/ALTER/DROP ROLE in a migration crash-loops startup where the role differs; roles live in db-init (common/db/app-role.ts)",
+        );
+      }
+      const grant = /\b(GRANT|REVOKE)\b([\s\S]*)$/i.exec(text);
+      if (grant) {
+        // The grantee follows TO (GRANT) or FROM (REVOKE).
+        const grantee = /\b(?:TO|FROM)\s+([A-Za-z_"][\w"$]*)/i.exec(grant[2]);
+        if (!grantee || grantee[1].toUpperCase() !== "PUBLIC") {
+          messages.push(
+            `${grant[1].toUpperCase()} to a named role in a migration crash-loops startup where the role does not exist; only PUBLIC is safe (it always resolves)`,
+          );
+        }
+      }
+      return messages;
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -526,11 +568,29 @@ function main() {
   for (const finding of findings) {
     console.error(`FAIL: ${finding.file}:${finding.line} [${finding.rule}] ${finding.message}`);
   }
+  // Two failure families, two remedies. Naming only the idempotency one sent a
+  // reader of a role/grant finding looking for an IF NOT EXISTS clause to add.
+  const hasRoleFinding = findings.some((f) => f.rule === "role-or-grant-statement");
+  const hasIdempotencyFinding = findings.some((f) => f.rule !== "role-or-grant-statement");
+  const remedies = [];
+  if (hasIdempotencyFinding) {
+    remedies.push(
+      "Migrations must be no-ops when re-run: a half-applied migration otherwise\n" +
+        "crash-loops the backend at startup. Add the IF [NOT] EXISTS clause, a preceding\n" +
+        "DROP ... IF EXISTS, or wrap the statement in a catalog-checking DO block.",
+    );
+  }
+  if (hasRoleFinding) {
+    remedies.push(
+      "Migrations must not name a role: they run unconditionally at startup, including\n" +
+        "where that role does not exist. Move it to backend/src/common/db/app-role.ts,\n" +
+        "which db-init applies idempotently. Only PUBLIC is safe in a migration.",
+    );
+  }
   console.error(
-    `\n${findings.length} finding(s). Migrations must be no-ops when re-run: a half-applied\n` +
-      "migration otherwise crash-loops the backend at startup. Add the IF [NOT] EXISTS clause,\n" +
-      "a preceding DROP ... IF EXISTS, or wrap the statement in a catalog-checking DO block.\n" +
-      "See docs/database-migrations.md.",
+    `\n${findings.length} finding(s).\n\n` +
+      remedies.join("\n\n") +
+      "\n\nSee docs/database-migrations.md.",
   );
   process.exit(1);
 }

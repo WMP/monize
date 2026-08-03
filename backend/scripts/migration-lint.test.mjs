@@ -203,6 +203,51 @@ test("INSERT without ON CONFLICT is flagged; ON CONFLICT and WHERE NOT EXISTS pa
   clean("INSERT INTO t (a) SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM t);");
 });
 
+/**
+ * Not idempotency but deployability, and the reason it is here rather than in a
+ * jest spec: it has to hold for every migration in the directory, and this is
+ * the CI gate that walks all of them.
+ *
+ * A migration naming the runtime role fails on any installation where that role
+ * does not exist -- it is provisioned by db-init, or by the CNPG Cluster
+ * manifest, or not at all at RLS_MODE=off -- and the migration aborting means the
+ * backend crash-loops before serving a request.
+ *
+ * PUBLIC is allowed, and for the same reason rather than in spite of it: it is a
+ * keyword that always resolves. It must be allowed, because CREATE FUNCTION
+ * grants EXECUTE to PUBLIC implicitly, so revoking that anywhere but the
+ * transaction that created the function leaves a window in which any role can
+ * execute a fresh SECURITY DEFINER function.
+ */
+test("a migration naming a role is flagged; PUBLIC is allowed", () => {
+  flags("CREATE ROLE monize_app LOGIN;", "role-or-grant-statement");
+  flags("ALTER ROLE monize_app NOSUPERUSER;", "role-or-grant-statement");
+  flags("DROP ROLE monize_app;", "role-or-grant-statement");
+  flags("CREATE USER monize_app PASSWORD 'x';", "role-or-grant-statement");
+  flags(
+    "GRANT EXECUTE ON FUNCTION f(VARCHAR) TO monize_app;",
+    "role-or-grant-statement",
+  );
+  flags("GRANT SELECT ON TABLE t TO monize_app;", "role-or-grant-statement");
+  flags("REVOKE ALL ON TABLE t FROM monize_app;", "role-or-grant-statement");
+  // A quoted role name is still a named role.
+  flags('GRANT SELECT ON t TO "monize_app";', "role-or-grant-statement");
+
+  clean("REVOKE ALL ON FUNCTION f(VARCHAR) FROM PUBLIC;");
+  clean("REVOKE ALL ON FUNCTION f(VARCHAR) FROM public;");
+  clean("GRANT SELECT ON TABLE t TO PUBLIC;");
+  // The word appearing in prose or an identifier is not a grant statement.
+  clean("COMMENT ON FUNCTION f() IS 'EXECUTE is revoked from PUBLIC';");
+});
+
+test("the shipped migrations satisfy the role rule", () => {
+  // Migration 133 revokes EXECUTE from PUBLIC on a SECURITY DEFINER function, in
+  // the same transaction that creates it. Asserted here so a future tightening of
+  // the rule to an absolute ban fails loudly instead of silently making the
+  // directory unlintable.
+  clean("REVOKE ALL ON FUNCTION currency_code_in_use_globally(VARCHAR) FROM PUBLIC;");
+});
+
 test("statements that are re-runnable by nature are not flagged", () => {
   clean("ALTER TABLE t ALTER COLUMN a TYPE NUMERIC(20, 6);");
   clean("ALTER TABLE t ALTER COLUMN a SET DEFAULT 'x';");
