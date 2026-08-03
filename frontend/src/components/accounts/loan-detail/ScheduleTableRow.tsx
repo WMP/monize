@@ -49,6 +49,15 @@ export function ScheduleTableRow({
   const { formatCurrency } = useNumberFormat();
   const { formatDate } = useDateFormat();
 
+  const existingChange = row.change;
+  const editRateHandler = !editing
+    ? undefined
+    : existingChange
+      ? () => editing.openEdit(existingChange)
+      : row.annualRate != null
+        ? () => editing.openAddWith(row.date, row.annualRate as number)
+        : undefined;
+
   return (
     <tr
       className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
@@ -112,11 +121,17 @@ export function ScheduleTableRow({
       <td className={`${cellClass} text-right`}>
         <RateCell
           annualRate={row.annualRate}
-          onEdit={
-            editing && row.annualRate != null
-              ? () => editing.openAddWith(row.date, row.annualRate as number)
-              : undefined
-          }
+          // A saved rate change already effective on this date is EDITED, not
+          // added. This always opened the Add flow, which then failed on the
+          // duplicate-date conflict -- so a change point, the row a user is
+          // most likely to click, was the one row that could not be adjusted.
+          //
+          // Whether a HISTORICAL row should offer this at all is a separate
+          // question and deliberately unchanged here: this component's doc
+          // comment says only projected rows expose the editor, but a test
+          // asserts historical rows seed the Add form, so removing that
+          // affordance is a product decision (DEC-20260803-006).
+          onEdit={editRateHandler}
           editLabel={t('loanDetail.schedule.editRateLabel', {
             date: formatDate(row.date),
           })}

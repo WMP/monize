@@ -5,6 +5,7 @@ import { generateLoanSchedule } from '@/lib/loan-schedule';
 import { LoanPaymentEvent } from '@/lib/loan-history';
 import { exportToCsv } from '@/lib/csv-export';
 import type { LoanRateEditing } from './useLoanRateEditing';
+import type { LoanRateChange } from '@/types/loan-rate-change';
 
 // Stub the rate controls (modals) so these tests focus on the table + rate cell.
 vi.mock('./LoanRateControls', () => ({
@@ -392,5 +393,60 @@ describe('AmortizationScheduleTable', () => {
     // The first projected row is dated 2026-08-15.
     fireEvent.click(screen.getAllByLabelText(/Edit interest rate/)[0]);
     expect(openAddWith).toHaveBeenCalledWith('2026-08-15', expect.any(Number));
+  });
+
+  // A row whose date already carries a saved rate change is a change point, and
+  // Add cannot succeed there: the backend rejects a second change on the same
+  // date. Opening the Add flow anyway made the row a user is most likely to
+  // click the one row that could not be adjusted (REV-20260803-017).
+  describe('a row on an existing rate change edits it instead of adding', () => {
+    const existingChange = {
+      id: 'rc-1',
+      effectiveDate: '2026-08-15',
+      annualRate: 7.25,
+      newPaymentAmount: null,
+      note: 'renewal',
+    } as unknown as LoanRateChange;
+
+    it('opens the edit form with the saved change', () => {
+      const openAddWith = vi.fn();
+      const openEdit = vi.fn();
+      const editing = { openAddWith, openEdit } as unknown as LoanRateEditing;
+
+      render(
+        <AmortizationScheduleTable
+          historyEvents={[]}
+          projectionRows={makeProjection().rows}
+          currencyCode="CAD"
+          rateChanges={[existingChange]}
+          editing={editing}
+        />,
+      );
+
+      fireEvent.click(screen.getAllByLabelText(/Edit interest rate/)[0]);
+      expect(openEdit).toHaveBeenCalledWith(existingChange);
+      expect(openAddWith).not.toHaveBeenCalled();
+    });
+
+    it('still adds on a row with no change on its date', () => {
+      const openAddWith = vi.fn();
+      const openEdit = vi.fn();
+      const editing = { openAddWith, openEdit } as unknown as LoanRateEditing;
+
+      render(
+        <AmortizationScheduleTable
+          historyEvents={[]}
+          projectionRows={makeProjection().rows}
+          currencyCode="CAD"
+          rateChanges={[existingChange]}
+          editing={editing}
+        />,
+      );
+
+      // The second projected row (2026-09-15) is not a change point.
+      fireEvent.click(screen.getAllByLabelText(/Edit interest rate/)[1]);
+      expect(openAddWith).toHaveBeenCalledWith('2026-09-15', expect.any(Number));
+      expect(openEdit).not.toHaveBeenCalled();
+    });
   });
 });
