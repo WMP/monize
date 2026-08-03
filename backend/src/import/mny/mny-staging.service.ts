@@ -89,7 +89,17 @@ export class MnyStagingService {
     });
   }
 
-  /** Metadata only. Null when the file never existed, expired, or is another user's. */
+  /**
+   * Metadata only. Null when the file never existed, is another user's, or has
+   * already been swept.
+   *
+   * Deliberately *not* "or has expired": there is no `expires_at` predicate
+   * here, so a row past its TTL stays readable until the hourly sweep removes
+   * it. That is the intended behaviour -- the TTL is a storage-reclamation
+   * policy, and refusing a file mid-import because the clock crossed 24 hours
+   * would fail a job that was working. The comment used to claim the filter
+   * existed, which is a claim about code that is not there.
+   */
   async findInfo(userId: string, id: string): Promise<StagedFileInfo | null> {
     const row = await withScopedDb(this.dataSource, (manager) =>
       manager

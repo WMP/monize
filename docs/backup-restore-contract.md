@@ -112,6 +112,18 @@ rows deliberately not written must not be counted as written.
 Operationally: the sidecar directory or bucket must be restored **before or
 alongside** the database, not after.
 
+**`storage_key` is attacker-chosen input.** It is a column, and a restore writes
+it from the uploaded file, so by the time a provider sees it the key may be
+anything. Every provider therefore addresses objects through
+`assertSafeStorageKey` (`attachments/storage/storage-key.util.ts`), whose
+allowlist excludes `.` and `/` so neither a traversal segment nor a separator can
+be expressed. The S3 provider lacked this while the local one had it, which made
+a crafted key address arbitrary objects in the bucket -- an S3 prefix is a naming
+convention, not a boundary. `storage-key.util.spec.ts` asserts every provider in
+the module routes its key through the validator, and names the database
+provider's exemption (a parameterised primary-key lookup) rather than assuming
+it.
+
 ## 5. Confirming a destructive restore — known gap
 
 A restore requires the user's password (local accounts, bcrypt-checked). For OIDC
