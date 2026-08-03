@@ -596,7 +596,7 @@ files fails the lint job.
 Performed and green:
 
 - `TZ=UTC npm run test:unit` (backend): 403 suites, 10809 tests, at branch tip.
-- Frontend `vitest`: 627 files, 12275 tests, measured at `1078c3cd`.
+- Frontend `vitest`: 627 files, 12279 tests, at branch tip.
 - ESLint and `tsc --noEmit` on both sides. The backend was additionally type-checked
   with `src` and `test` in one program (via a scratch tsconfig, not committed) so a
   spec cannot drift from the code it tests -- clean.
