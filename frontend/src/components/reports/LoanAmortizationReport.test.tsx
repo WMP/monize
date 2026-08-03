@@ -83,6 +83,7 @@ describe('LoanAmortizationReport', () => {
     ]);
     mockGetAllTransactions.mockResolvedValue({
       data: [{ id: 'p1', transactionDate: '2024-06-01', amount: 500, linkedTransaction: null }],
+      pagination: { hasMore: false },
     });
     mockGetAllPages.mockResolvedValue([
       { id: 'i1', transactionDate: '2024-06-01', amount: -300, categoryId: 'cat-int', isTransfer: false },
@@ -121,6 +122,7 @@ describe('LoanAmortizationReport', () => {
       data: [
         { id: 'tx-1', transactionDate: '2024-06-01', amount: 350, linkedTransaction: null },
       ],
+      pagination: { hasMore: false },
     });
     render(<LoanAmortizationReport />);
     await waitFor(() => {
@@ -152,6 +154,7 @@ describe('LoanAmortizationReport', () => {
         { id: 'tx-1', transactionDate: '2024-03-01', amount: 180, linkedTransaction: null },
         { id: 'tx-2', transactionDate: '2024-04-01', amount: 180, linkedTransaction: null },
       ],
+      pagination: { hasMore: false },
     });
     render(<LoanAmortizationReport />);
     await waitFor(() => {
@@ -560,17 +563,70 @@ describe('LoanAmortizationReport', () => {
     });
   });
 
-  it('handles loadTransactions error gracefully', async () => {
-    mockGetAllAccounts.mockResolvedValue([
-      {
-        id: 'loan-1', name: 'Loan', accountType: 'LOAN',
-        currentBalance: -5000, openingBalance: -10000, interestRate: 5.0,
-        paymentAmount: 300, paymentFrequency: 'MONTHLY',
-        isCanadianMortgage: false, isVariableRate: false, isClosed: false,
-      },
-    ]);
+  // A failed fetch is not an empty dataset. These three cases used to assert the
+  // opposite: the report caught the failure, set transactions and interest to
+  // [], and still rendered a schedule -- built from the analytic interest
+  // estimate, with nothing on screen to say the actual figures never arrived.
+  const loanWithSeparateInterest = {
+    id: 'loan-1', name: 'Loan', accountType: 'LOAN',
+    currentBalance: -5000, openingBalance: -10000, interestRate: 5.0,
+    paymentAmount: 300, paymentFrequency: 'MONTHLY',
+    interestCategoryId: 'cat-int', sourceAccountId: 'src-1',
+    isCanadianMortgage: false, isVariableRate: false, isClosed: false,
+  };
+
+  it('shows a retryable error when loading transactions fails', async () => {
+    mockGetAllAccounts.mockResolvedValue([loanWithSeparateInterest]);
     mockGetAllTransactions.mockRejectedValue(new Error('boom'));
+    mockGetAllPages.mockResolvedValue([]);
     render(<LoanAmortizationReport />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Try again/i })).toBeInTheDocument();
+    });
+    // Not merely "an error is also shown": the schedule must be gone, because a
+    // schedule on screen is the estimate being presented as the loan's history.
+    expect(screen.queryByText('Select Loan')).not.toBeInTheDocument();
+  });
+
+  it('shows a retryable error when the separate-interest fetch fails', async () => {
+    // Transactions succeed; only the interest expenses fail. Swallowed into [],
+    // this reads as "this loan has no booked interest" and the schedule falls
+    // back to analytic interest -- a different set of numbers, silently.
+    mockGetAllAccounts.mockResolvedValue([loanWithSeparateInterest]);
+    mockGetAllTransactions.mockResolvedValue({
+      data: [{ id: 'tx-1', transactionDate: '2024-06-01', amount: 300, linkedTransaction: null }],
+      pagination: { hasMore: false },
+    });
+    mockGetAllPages.mockRejectedValue(new Error('interest timeout'));
+    render(<LoanAmortizationReport />);
+    await waitFor(() => {
+      expect(
+        screen.getByText('Failed to load report data. Please try again.'),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Select Loan')).not.toBeInTheDocument();
+    expect(screen.queryByText('Payments Made')).not.toBeInTheDocument();
+  });
+
+  it('retries both the accounts and the loan data after a failure', async () => {
+    mockGetAllAccounts.mockResolvedValue([loanWithSeparateInterest]);
+    mockGetAllTransactions.mockResolvedValue({
+      data: [{ id: 'tx-1', transactionDate: '2024-06-01', amount: 300, linkedTransaction: null }],
+      pagination: { hasMore: false },
+    });
+    mockGetAllPages.mockRejectedValue(new Error('interest timeout'));
+    render(<LoanAmortizationReport />);
+    const retry = await waitFor(() =>
+      screen.getByRole('button', { name: /Try again/i }),
+    );
+
+    mockGetAllPages.mockResolvedValue([
+      { id: 'i1', transactionDate: '2024-06-01', amount: -50, categoryId: 'cat-int', isTransfer: false },
+    ]);
+    await act(async () => {
+      fireEvent.click(retry);
+    });
+
     await waitFor(() => {
       expect(screen.getByText('Select Loan')).toBeInTheDocument();
     });
