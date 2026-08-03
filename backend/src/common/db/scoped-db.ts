@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { DataSource, EntityManager } from "typeorm";
-import { getRequestContext } from "../request-context";
+import { getRequestContext, RequestContext } from "../request-context";
 import { getRlsMode } from "./rls-config";
 
 /**
@@ -28,22 +28,89 @@ import { getRlsMode } from "./rls-config";
 // nested withScopedDb can join the ambient transaction instead of opening a
 // second one. A second `dataSource.transaction` would take a second pooled
 // connection inside the first and deadlock the pool under load (design 2b).
-const activeManagerStorage = new AsyncLocalStorage<EntityManager>();
+//
+// The identity that opened the transaction travels with it. The GUCs are set
+// once, as the transaction's first statement, and are transaction-local -- so a
+// nested call that joins under a *different* ambient identity gets the outer
+// transaction's GUCs regardless of what its own context says. That silently
+// disagrees with the application's belief about who it is acting as (DR-01):
+// usually it fails closed or writes to the outer identity, but a caller that
+// uses the nested identity for a non-database decision is then wrong, and a
+// nested `withSystemContext` reads as an escape hatch that does not escape.
+// Recording the identity here is what lets the join refuse instead.
+interface ActiveTransaction {
+  manager: EntityManager;
+  identity: TransactionIdentity;
+}
+
+const activeManagerStorage = new AsyncLocalStorage<ActiveTransaction>();
 
 export function getActiveScopedManager(): EntityManager | undefined {
-  return activeManagerStorage.getStore();
+  return activeManagerStorage.getStore()?.manager;
+}
+
+/**
+ * The identity a transaction's GUCs were set from -- exactly the fields
+ * `withScopedDb` turns into `set_config` calls, normalized so two contexts that
+ * produce identical GUCs compare equal.
+ */
+interface TransactionIdentity {
+  system: boolean;
+  currentUserId?: string;
+  realUserId?: string;
+  preserveTimestamps: boolean;
+}
+
+function identityOf(ctx: RequestContext): TransactionIdentity {
+  return ctx.system
+    ? // A system transaction emits only app.bypass_rls, so a userId in the
+      // context is not part of the transaction's identity and must not make two
+      // otherwise identical system scopes compare unequal.
+      { system: true, preserveTimestamps: !!ctx.preserveTimestamps }
+    : {
+        system: false,
+        currentUserId: ctx.userId,
+        // `withScopedDb` defaults the real user to the current one, so a context
+        // that omits it is the same identity as one that spells it out.
+        realUserId: ctx.realUserId ?? ctx.userId,
+        preserveTimestamps: !!ctx.preserveTimestamps,
+      };
+}
+
+function describeIdentity(identity: TransactionIdentity): string {
+  const parts = identity.system
+    ? ["system bypass"]
+    : [
+        `current=${identity.currentUserId}`,
+        `real=${identity.realUserId ?? identity.currentUserId}`,
+      ];
+  if (identity.preserveTimestamps) parts.push("preserveTimestamps");
+  return parts.join(", ");
+}
+
+function sameIdentity(a: TransactionIdentity, b: TransactionIdentity): boolean {
+  return (
+    a.system === b.system &&
+    a.currentUserId === b.currentUserId &&
+    a.realUserId === b.realUserId &&
+    a.preserveTimestamps === b.preserveTimestamps
+  );
 }
 
 /**
  * Run `fn` while `manager` is registered as the ambient transaction. Exported
  * for tests and for advanced callers that already hold a manager; ordinary code
  * should use `withScopedDb`.
+ *
+ * The registered identity defaults to the current ambient context, which is what
+ * `withScopedDb` passes and what a test double wants.
  */
 export function runWithActiveScopedManager<T>(
   manager: EntityManager,
   fn: () => T,
+  identity: TransactionIdentity = identityOf(getRequestContext() ?? {}),
 ): T {
-  return activeManagerStorage.run(manager, fn);
+  return activeManagerStorage.run({ manager, identity }, fn);
 }
 
 /**
@@ -64,6 +131,9 @@ export function runWithActiveScopedManager<T>(
 export function runOutsideActiveScopedManager<T>(fn: () => T): T {
   return activeManagerStorage.exit(fn);
 }
+
+export const IDENTITY_MISMATCH_MESSAGE =
+  "withScopedDb cannot change identity while joining an ambient transaction";
 
 export const MISSING_CONTEXT_MESSAGE =
   "DB access outside request/user/system context -- wrap the call path in withUserContext/withSystemContext";
@@ -93,8 +163,22 @@ export async function withScopedDb<T>(
     throw new Error(MISSING_CONTEXT_MESSAGE);
   }
 
-  const active = getActiveScopedManager();
+  const active = activeManagerStorage.getStore();
   if (active) {
+    const wanted = identityOf(ctx);
+    if (!sameIdentity(active.identity, wanted)) {
+      // Joining would run `fn` under the OUTER transaction's GUCs while the
+      // caller believes it changed identity. Refuse instead: whichever of the
+      // two the code meant, one of them is not what the database is doing.
+      // Genuinely needing a different identity means a separate transaction --
+      // `runOutsideActiveScopedManager` -- and that is a decision to make
+      // deliberately, because it is no longer atomic with the outer work.
+      throw new Error(
+        `${IDENTITY_MISMATCH_MESSAGE}: transaction opened with ` +
+          `[${describeIdentity(active.identity)}], nested call wants ` +
+          `[${describeIdentity(wanted)}]`,
+      );
+    }
     if (isolation) {
       // A joined transaction already has an isolation level, chosen by whoever
       // opened it. Silently downgrading a SERIALIZABLE request to whatever the
@@ -104,9 +188,9 @@ export async function withScopedDb<T>(
         `withScopedDb cannot apply isolation "${isolation}": it is joining an ambient transaction`,
       );
     }
-    // Re-entrant call: join the ambient transaction (same connection, same
-    // GUCs, same atomicity). Never open a second transaction.
-    return fn(active);
+    // Re-entrant call under the same identity: join the ambient transaction
+    // (same connection, same GUCs, same atomicity). Never open a second one.
+    return fn(active.manager);
   }
 
   const runInTransaction = async (manager: EntityManager) => {
@@ -136,7 +220,11 @@ export async function withScopedDb<T>(
       );
     }
 
-    return runWithActiveScopedManager(manager, () => fn(manager));
+    return runWithActiveScopedManager(
+      manager,
+      () => fn(manager),
+      identityOf(ctx),
+    );
   };
 
   return isolation

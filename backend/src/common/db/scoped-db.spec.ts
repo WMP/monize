@@ -1,6 +1,7 @@
 import { DataSource, EntityManager } from "typeorm";
 import { requestContextStorage, RequestContext } from "../request-context";
 import {
+  IDENTITY_MISMATCH_MESSAGE,
   MISSING_CONTEXT_MESSAGE,
   getActiveScopedManager,
   runOutsideActiveScopedManager,
@@ -206,6 +207,196 @@ describe("withScopedDb -- re-entrancy", () => {
       withScopedDb(dataSource, async () => undefined),
     );
     expect(getActiveScopedManager()).toBeUndefined();
+  });
+});
+
+/**
+ * DR-01. The GUCs are the transaction's first statement and are
+ * transaction-local, so a nested call that joins under a different ambient
+ * identity runs under the OUTER transaction's GUCs while the code around it
+ * believes it changed identity. That disagreement is silent: it usually fails
+ * closed or writes to the outer identity, and a nested `withSystemContext` reads
+ * as an escape hatch that does not escape.
+ */
+describe("withScopedDb -- nested identity", () => {
+  const withMode = (mode: string) => {
+    process.env.RLS_MODE = mode;
+  };
+
+  it.each(["off", "shadow", "enforce"])(
+    "refuses a nested user change at RLS_MODE=%s",
+    async (mode) => {
+      // Rejected in every mode, not just under enforcement: at `off` the GUCs
+      // are not emitted, so the mistake has no database symptom at all and would
+      // only surface the day an operator flips the flag.
+      withMode(mode);
+      const { dataSource } = makeDataSource();
+
+      await expect(
+        run({ userId: "user-a" }, () =>
+          withScopedDb(dataSource, () =>
+            run({ userId: "user-b" }, () =>
+              withScopedDb(dataSource, async () => "reached"),
+            ),
+          ),
+        ),
+      ).rejects.toThrow(IDENTITY_MISMATCH_MESSAGE);
+    },
+  );
+
+  it("refuses a nested system bypass inside a user transaction", async () => {
+    withMode("enforce");
+    const { dataSource } = makeDataSource();
+
+    await expect(
+      run({ userId: "user-a" }, () =>
+        withScopedDb(dataSource, () =>
+          run({ system: true }, () =>
+            withScopedDb(dataSource, async () => "reached"),
+          ),
+        ),
+      ),
+    ).rejects.toThrow(IDENTITY_MISMATCH_MESSAGE);
+  });
+
+  it("refuses a nested user identity inside a system transaction", async () => {
+    withMode("enforce");
+    const { dataSource } = makeDataSource();
+
+    await expect(
+      run({ system: true }, () =>
+        withScopedDb(dataSource, () =>
+          run({ userId: "user-a" }, () =>
+            withScopedDb(dataSource, async () => "reached"),
+          ),
+        ),
+      ),
+    ).rejects.toThrow(IDENTITY_MISMATCH_MESSAGE);
+  });
+
+  it("refuses a nested delegation change", async () => {
+    // Same effective owner, different authenticated delegate: app.real_user_id
+    // would still name the first one, which decides what the delegate-keyed
+    // policies return.
+    withMode("enforce");
+    const { dataSource } = makeDataSource();
+
+    await expect(
+      run({ userId: "owner", realUserId: "delegate-1" }, () =>
+        withScopedDb(dataSource, () =>
+          run({ userId: "owner", realUserId: "delegate-2" }, () =>
+            withScopedDb(dataSource, async () => "reached"),
+          ),
+        ),
+      ),
+    ).rejects.toThrow(IDENTITY_MISMATCH_MESSAGE);
+  });
+
+  it("refuses a nested preserveTimestamps change", async () => {
+    // The GUC is already set (or not) for the whole transaction, so an inner
+    // scope asking for the other behaviour cannot get it.
+    withMode("off");
+    const { dataSource } = makeDataSource();
+
+    await expect(
+      run({ userId: "user-a" }, () =>
+        withScopedDb(dataSource, () =>
+          run({ userId: "user-a", preserveTimestamps: true }, () =>
+            withScopedDb(dataSource, async () => "reached"),
+          ),
+        ),
+      ),
+    ).rejects.toThrow(IDENTITY_MISMATCH_MESSAGE);
+  });
+
+  it("names both identities in the error", async () => {
+    // The operator (or the next agent) has to be able to tell which of the two
+    // the code meant, so both appear.
+    withMode("enforce");
+    const { dataSource } = makeDataSource();
+
+    await expect(
+      run({ userId: "user-a" }, () =>
+        withScopedDb(dataSource, () =>
+          run({ system: true }, () => withScopedDb(dataSource, async () => 1)),
+        ),
+      ),
+    ).rejects.toThrow(/current=user-a[\s\S]*system bypass/);
+  });
+
+  it("joins on an identical identity spelled out differently", async () => {
+    // `withScopedDb` defaults the real user to the current one, so a context
+    // that omits realUserId is the same identity as one that names it. Rejecting
+    // that would break every ordinary nested service call.
+    withMode("enforce");
+    const { dataSource, transaction, manager } = makeDataSource();
+
+    const joined = await run({ userId: "user-a" }, () =>
+      withScopedDb(dataSource, () =>
+        run({ userId: "user-a", realUserId: "user-a" }, () =>
+          withScopedDb(dataSource, async (m) => m),
+        ),
+      ),
+    );
+
+    expect(joined).toBe(manager);
+    expect(transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("joins when only the timezone differs", async () => {
+    // Timezone is not part of the transaction's identity: it emits no GUC.
+    withMode("enforce");
+    const { dataSource, transaction } = makeDataSource();
+
+    await run({ userId: "user-a", timezone: "UTC" }, () =>
+      withScopedDb(dataSource, () =>
+        run({ userId: "user-a", timezone: "America/Toronto" }, () =>
+          withScopedDb(dataSource, async () => undefined),
+        ),
+      ),
+    );
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("joins two system scopes even when one also carries a userId", async () => {
+    // A system transaction emits only app.bypass_rls, so a stray userId beside
+    // `system` does not change what the database is doing.
+    withMode("enforce");
+    const { dataSource, transaction } = makeDataSource();
+
+    await run({ system: true }, () =>
+      withScopedDb(dataSource, () =>
+        run({ system: true, userId: "user-a" }, () =>
+          withScopedDb(dataSource, async () => undefined),
+        ),
+      ),
+    );
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets a deliberate second transaction change identity", async () => {
+    // The sanctioned escape: runOutsideActiveScopedManager opens its own
+    // transaction, which gets its own GUCs -- at the cost of atomicity, which is
+    // why it has to be asked for explicitly.
+    withMode("enforce");
+    const { dataSource, transaction, queries } = makeDataSource();
+
+    await run({ userId: "user-a" }, () =>
+      withScopedDb(dataSource, async () => {
+        await runOutsideActiveScopedManager(() =>
+          run({ system: true }, () =>
+            withScopedDb(dataSource, async () => undefined),
+          ),
+        );
+      }),
+    );
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(queries.map((q) => q.text)).toContain(
+      "SELECT set_config('app.bypass_rls', 'on', true)",
+    );
   });
 });
 
