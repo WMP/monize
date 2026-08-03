@@ -180,6 +180,14 @@ export function useLoanRateEditing(account: Account, onChanged: () => void) {
   };
 
   const skipScheduledPayment = () => {
+    // Refused while an apply is pending. Disabling the dialog's buttons is not
+    // enough: ConfirmDialog passes onCancel to Modal as onClose, so Escape and a
+    // backdrop click reach here directly and would clear the preview out from
+    // under a request still on the wire -- and if that request then failed, the
+    // confirmation would be gone for good, which is the very thing this finding
+    // is about. Guarding the state change rather than each dismissal route also
+    // covers the routes not enumerated.
+    if (isApplyingScheduled) return;
     setScheduledPreview(null);
     toast(t('loanDetail.rateHistory.scheduledUpdateSkippedToast'), { icon: 'ℹ️' });
   };

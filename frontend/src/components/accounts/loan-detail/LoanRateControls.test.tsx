@@ -169,6 +169,47 @@ describe('LoanRateControls + useLoanRateEditing', () => {
       });
     });
 
+    it('survives an Escape dismissal while the apply is pending', async () => {
+      // Disabling the buttons is not enough: ConfirmDialog passes onCancel to
+      // Modal as onClose, so Escape and a backdrop click reach
+      // skipScheduledPayment directly and would clear the preview out from under
+      // a request still on the wire. If that request then failed, the
+      // confirmation would be gone for good -- the finding's own failure mode
+      // through a different door.
+      const apply = loanRateChangesApi.applyScheduledPayment as ReturnType<typeof vi.fn>;
+      let reject: ((err: Error) => void) | undefined;
+      apply.mockImplementation(() => new Promise<void>((_resolve, rej) => { reject = rej; }));
+      await openTheConfirmation();
+
+      fireEvent.click(screen.getByText('Update payment'));
+      await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      await act(async () => {
+        reject?.(new Error('network'));
+      });
+
+      // Still retryable.
+      expect(screen.getByText('Update scheduled payment?')).toBeInTheDocument();
+      apply.mockResolvedValueOnce(null);
+      fireEvent.click(screen.getByText('Update payment'));
+      await waitFor(() => expect(apply).toHaveBeenCalledTimes(2));
+      await waitFor(() =>
+        expect(screen.queryByText('Update scheduled payment?')).not.toBeInTheDocument(),
+      );
+    });
+
+    it('still allows skipping when no apply is pending', async () => {
+      // The guard must not make the dialog undismissable in the ordinary case.
+      await openTheConfirmation();
+      fireEvent.click(screen.getByText('Leave as-is'));
+      await waitFor(() =>
+        expect(screen.queryByText('Update scheduled payment?')).not.toBeInTheDocument(),
+      );
+      expect(loanRateChangesApi.applyScheduledPayment).not.toHaveBeenCalled();
+    });
+
     it('ignores a second apply while one is already pending', async () => {
       // Invoked on the hook, not through the button: a disabled button makes
       // fireEvent a no-op, so clicking twice would pass either way.
