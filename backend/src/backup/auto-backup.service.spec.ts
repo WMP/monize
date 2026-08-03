@@ -2,7 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
 import { ConfigService } from "@nestjs/config";
 import { BadRequestException } from "@nestjs/common";
-import { promises as fs, mkdtempSync, rmSync } from "fs";
+import { promises as fs, mkdtempSync, readdirSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import {
@@ -437,6 +437,35 @@ describe("AutoBackupService", () => {
       const result = await service.validateFolder(root);
 
       expect(result).toEqual({ valid: true });
+    });
+
+    /**
+     * `validateFolder` probes the *shared* root, so every user validating the
+     * same folder writes a test file into one directory -- and the cron probes a
+     * per-user folder that every replica fires for. The probe name was
+     * `.monize-write-test-${Date.now()}`, which two calls in the same millisecond
+     * pick identically: both writes succeed, the first unlink removes the file,
+     * and the second gets ENOENT and reports the folder as not writable.
+     *
+     * The consequence is a user told to "check container permissions" for a
+     * folder that is writable, and -- on the cron path -- an aborted backup.
+     */
+    it("stays valid when several probes run against one directory at once", async () => {
+      const results = await Promise.all(
+        Array.from({ length: 12 }, () => service.validateFolder(root)),
+      );
+
+      expect(results).toEqual(
+        Array.from({ length: 12 }, () => ({ valid: true })),
+      );
+    });
+
+    it("leaves no probe file behind", async () => {
+      await service.validateFolder(root);
+      const left = readdirSync(root).filter((name) =>
+        name.startsWith(".monize-write-test-"),
+      );
+      expect(left).toEqual([]);
     });
 
     it("should return invalid for non-existent directory", async () => {

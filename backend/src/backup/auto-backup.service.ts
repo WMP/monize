@@ -12,6 +12,7 @@ import {
 import { withScopedDb } from "../common/db/scoped-db";
 import { Cron } from "@nestjs/schedule";
 import { promises as fs, readdirSync, unlinkSync } from "fs";
+import { randomUUID } from "crypto";
 import { resolve } from "path";
 import {
   cleanStaleTempFiles,
@@ -1155,14 +1156,22 @@ export class AutoBackupService {
     const safePath = this.validateFolderPath(folderPath);
     await this.assertDirectoryExists(safePath, createIfMissing);
 
-    // Test write access by creating and removing a temporary file
+    // Test write access by creating and removing a temporary file.
+    //
+    // The name is a UUID, not a timestamp. `validateFolder` probes the *shared*
+    // root, so every user who validates the same folder writes here -- and the
+    // cron probes a per-user folder that every replica fires for. Two probes
+    // landing in the same millisecond used to pick the same name: both writes
+    // succeed, the first unlink removes the file, and the second gets ENOENT and
+    // reports "Folder is not writable ... Check container permissions" for a
+    // folder that is perfectly writable. On the settings screen that blocks
+    // enabling backups; in the cron it aborts that user's backup.
     const testFile = this.safePath(
       safePath,
-      `.monize-write-test-${Date.now()}`,
+      `.monize-write-test-${randomUUID()}`,
     );
     try {
       await fs.writeFile(testFile, "");
-      await fs.unlink(testFile);
     } catch {
       throw new BadRequestException(
         tr(
@@ -1170,6 +1179,16 @@ export class AutoBackupService {
           `Folder is not writable: ${safePath}. Check container permissions.`,
           { safePath },
         ),
+      );
+    }
+    // The write is the answer. Failing to remove the probe is litter -- one empty
+    // dot-file that no retention pattern matches -- and reporting it as "not
+    // writable" would contradict the write that just succeeded.
+    try {
+      await fs.unlink(testFile);
+    } catch (error) {
+      this.logger.warn(
+        `Could not remove write-test file ${testFile}: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
