@@ -449,7 +449,7 @@
       "hint": "[XX-How many {to} one {from} buys. Enter this or the amount received; the other follows.-XX]",
       "fromMarket": "[XX-Today's stored rate for this pair and date. Change it to match your statement.-XX]",
       "loading": "[XX-Looking up the rate for this date...-XX]",
-      "unresolved": "[XX-No stored exchange rate for {from} to {to} on this date. Enter the rate or the amount received -- the two currencies cannot be treated as equal.-XX]",
+      "unresolved": "[XX-No stored exchange rate for {from} to {to} on this date. Enter the rate or the amount received — the two currencies cannot be treated as equal.-XX]",
       "lookupFailed": "[XX-The exchange rate for {from} to {to} could not be loaded. Enter the rate or the amount received to continue.-XX]"
     }
   },
@@ -522,7 +522,7 @@
     "ratePlaceholder": "[XX-{to} per 1 {from}-XX]",
     "ariaRate": "[XX-Exchange rate ({to} per 1 {from})-XX]",
     "rateHint": "[XX-Quantity, price and commission are in {from}; this rate converts the cash impact into {to}.-XX]",
-    "rateUnresolved": "[XX-No {from} to {to} rate is available. Enter one -- the cash impact cannot be worked out without it, and the two currencies are not equal.-XX]"
+    "rateUnresolved": "[XX-No {from} to {to} rate is available. Enter one — the cash impact cannot be worked out without it, and the two currencies are not equal.-XX]"
   },
   "charts": {
     "balanceHistory": {
