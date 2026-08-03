@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { EmergencyAccessController } from "./emergency-access.controller";
 import { EmergencyAccessService } from "./emergency-access.service";
 import { StepUpGuard } from "../auth/step-up/step-up.guard";
+import { REQUIRE_STEP_UP_KEY } from "../auth/step-up/require-step-up.decorator";
 
 describe("EmergencyAccessController", () => {
   let controller: EmergencyAccessController;
@@ -31,6 +32,45 @@ describe("EmergencyAccessController", () => {
       .compile();
 
     controller = module.get(EmergencyAccessController);
+  });
+
+  /**
+   * Which routes demand a second factor is the security shape of this feature, and
+   * it was wrong: the message -- the least sensitive thing in it -- was gated, while
+   * *who receives emergency access and after how long* was changeable with nothing
+   * but a session. Reading the decorator metadata rather than driving the guard,
+   * because the guard is overridden above and a behavioural test would assert the
+   * override, not the route.
+   */
+  describe("step-up gating", () => {
+    const purposeFor = (handler: keyof EmergencyAccessController) =>
+      Reflect.getMetadata(
+        REQUIRE_STEP_UP_KEY,
+        EmergencyAccessController.prototype[handler] as object,
+      );
+
+    it.each([
+      ["putSettings", "the waiting period decides when access is granted"],
+      ["addContact", "a contact is a durable route into the account"],
+      ["updateContact", "an edit can repoint a contact at a new address"],
+      ["removeContact", "removing the wrong contact disables the safety net"],
+      ["putMessage", "already gated before this change"],
+      ["getMessage", "already gated before this change"],
+    ])("gates %s -- %s", (handler) => {
+      expect(purposeFor(handler as keyof EmergencyAccessController)).toBe(
+        "emergency-access",
+      );
+    });
+
+    it("does not gate reset, which only ever removes access", () => {
+      // An owner who has just realized a grant is in flight needs the fastest
+      // path to killing it; a second factor in front of that is a hazard.
+      expect(purposeFor("reset")).toBeUndefined();
+    });
+
+    it("does not gate the view, which the page needs before it can prompt", () => {
+      expect(purposeFor("get")).toBeUndefined();
+    });
   });
 
   it("delegates GET / to getView with the JWT user id", async () => {

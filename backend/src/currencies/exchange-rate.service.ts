@@ -323,7 +323,22 @@ export class ExchangeRateService implements OnModuleInit {
   /**
    * Refresh exchange rates for all currencies in use
    */
+  /**
+   * Refresh every currency pair in use across the deployment.
+   *
+   * Global by definition: `exchange_rates` is shared reference data, and the pair
+   * set is assembled from every user's accounts, securities and default currency.
+   * The system context therefore belongs here, not at the call sites -- left to the
+   * caller's ambient identity, the manual endpoint spans all users at
+   * RLS_MODE=off and silently narrows to the caller's own currencies at enforce,
+   * so the same button would mean two different things. A nested system context
+   * from the cron is the same identity and joins.
+   */
   async refreshAllRates(): Promise<RateRefreshSummary> {
+    return withSystemContext(() => this.refreshAllRatesGlobally());
+  }
+
+  private async refreshAllRatesGlobally(): Promise<RateRefreshSummary> {
     const startTime = Date.now();
     this.logger.log("Starting exchange rate refresh");
 

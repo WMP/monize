@@ -115,51 +115,106 @@ describe('emergencyAccessApi', () => {
     });
   });
 
-  it('updateSettings() PUTs the payload to /emergency-access/settings (no message field)', async () => {
-    client.put.mockResolvedValue({ data: { enabled: false } });
-    const payload = {
-      enabled: false,
-      grantAfterDays: 14,
-      reminderAfterDays: 7,
-    };
-    const result = await emergencyAccessApi.updateSettings(payload);
-    expect(client.put).toHaveBeenCalledWith(
-      '/emergency-access/settings',
-      payload,
-    );
-    expect(result).toEqual({ enabled: false });
-  });
+  /**
+   * Who receives emergency access and after how long is the security content of
+   * this feature, and it used to be changeable with nothing but a session -- while
+   * the message inside it, the least sensitive part, was step-up gated. All four
+   * configuration calls now carry the token and surface a step-up rejection as a
+   * typed error the page turns into the prompt.
+   */
+  describe('configuration calls are step-up gated', () => {
+    const seedToken = () =>
+      useStepUpTokenStore
+        .getState()
+        .set(
+          'emergency-access',
+          'tok-cfg',
+          new Date(Date.now() + 60_000).toISOString(),
+        );
 
-  it('addContact() POSTs to /emergency-access/contacts', async () => {
-    client.post.mockResolvedValue({
-      data: { id: 'c1', firstName: 'Carol', email: 'c@x.com' },
+    it('updateSettings() PUTs the payload with the step-up header', async () => {
+      seedToken();
+      client.put.mockResolvedValue({ data: { enabled: false } });
+      const payload = {
+        enabled: false,
+        grantAfterDays: 14,
+        reminderAfterDays: 7,
+      };
+      const result = await emergencyAccessApi.updateSettings(payload);
+      expect(client.put).toHaveBeenCalledWith(
+        '/emergency-access/settings',
+        payload,
+        { headers: { 'X-Step-Up-Token': 'tok-cfg' } },
+      );
+      expect(result).toEqual({ enabled: false });
     });
-    const payload = { firstName: 'Carol', email: 'c@x.com' };
-    await emergencyAccessApi.addContact(payload);
-    expect(client.post).toHaveBeenCalledWith(
-      '/emergency-access/contacts',
-      payload,
-    );
-  });
 
-  it('updateContact() PATCHes /emergency-access/contacts/:id', async () => {
-    client.patch.mockResolvedValue({ data: { id: 'c1' } });
-    await emergencyAccessApi.updateContact('c1', {
-      firstName: 'Carol',
-      email: 'c@x.com',
+    it('addContact() POSTs with the step-up header', async () => {
+      seedToken();
+      client.post.mockResolvedValue({
+        data: { id: 'c1', firstName: 'Carol', email: 'c@x.com' },
+      });
+      const payload = { firstName: 'Carol', email: 'c@x.com' };
+      await emergencyAccessApi.addContact(payload);
+      expect(client.post).toHaveBeenCalledWith(
+        '/emergency-access/contacts',
+        payload,
+        { headers: { 'X-Step-Up-Token': 'tok-cfg' } },
+      );
     });
-    expect(client.patch).toHaveBeenCalledWith(
-      '/emergency-access/contacts/c1',
-      { firstName: 'Carol', email: 'c@x.com' },
-    );
-  });
 
-  it('removeContact() DELETEs /emergency-access/contacts/:id', async () => {
-    client.delete.mockResolvedValue({ data: { ok: true } });
-    await emergencyAccessApi.removeContact('c1');
-    expect(client.delete).toHaveBeenCalledWith(
-      '/emergency-access/contacts/c1',
-    );
+    it('updateContact() PATCHes with the step-up header', async () => {
+      seedToken();
+      client.patch.mockResolvedValue({ data: { id: 'c1' } });
+      await emergencyAccessApi.updateContact('c1', {
+        firstName: 'Carol',
+        email: 'c@x.com',
+      });
+      expect(client.patch).toHaveBeenCalledWith(
+        '/emergency-access/contacts/c1',
+        { firstName: 'Carol', email: 'c@x.com' },
+        { headers: { 'X-Step-Up-Token': 'tok-cfg' } },
+      );
+    });
+
+    it('removeContact() DELETEs with the step-up header', async () => {
+      seedToken();
+      client.delete.mockResolvedValue({ data: { ok: true } });
+      await emergencyAccessApi.removeContact('c1');
+      expect(client.delete).toHaveBeenCalledWith(
+        '/emergency-access/contacts/c1',
+        { headers: { 'X-Step-Up-Token': 'tok-cfg' } },
+      );
+    });
+
+    it.each([
+      ['updateSettings', 'put', () =>
+        emergencyAccessApi.updateSettings({
+          enabled: true,
+          grantAfterDays: 2,
+          reminderAfterDays: 1,
+        })],
+      ['addContact', 'post', () =>
+        emergencyAccessApi.addContact({ firstName: 'A', email: 'a@x.com' })],
+      ['updateContact', 'patch', () =>
+        emergencyAccessApi.updateContact('c1', {
+          firstName: 'A',
+          email: 'a@x.com',
+        })],
+      ['removeContact', 'delete', () => emergencyAccessApi.removeContact('c1')],
+    ])('%s() surfaces STEP_UP_REQUIRED as a typed error', async (
+      _label,
+      method,
+      call,
+    ) => {
+      client[method].mockRejectedValue({
+        response: {
+          status: 403,
+          data: { code: 'STEP_UP_REQUIRED', purpose: 'emergency-access' },
+        },
+      });
+      await expect(call()).rejects.toBeInstanceOf(StepUpRequiredError);
+    });
   });
 
   it('reset() POSTs /emergency-access/reset', async () => {

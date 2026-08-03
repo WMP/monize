@@ -194,13 +194,26 @@ export class CurrenciesController {
     return { lastUpdated };
   }
 
+  /**
+   * Counts only, deliberately.
+   *
+   * The refresh is global -- the pair set is assembled from every user's accounts,
+   * securities and default currency -- and this endpoint is reachable by any
+   * authenticated user, not just an admin. Returning the per-pair `results` told
+   * the caller which currencies everybody else on the deployment transacts in,
+   * which on a small self-hosted instance is an inference about named people's
+   * finances. The UI shows `updated` and `failed` and nothing else; the per-pair
+   * detail stays in the server log, where the operator can already see everything.
+   */
   @Post("exchange-rates/refresh")
   @ApiOperation({
     summary: "Manually trigger exchange rate refresh",
   })
-  @ApiResponse({ status: 201, description: "Refresh summary" })
-  refreshRates(): Promise<RateRefreshSummary> {
-    return this.exchangeRateService.refreshAllRates();
+  @ApiResponse({ status: 201, description: "Refresh summary (counts only)" })
+  async refreshRates(): Promise<Omit<RateRefreshSummary, "results">> {
+    const { results: _results, ...counts } =
+      await this.exchangeRateService.refreshAllRates();
+    return counts;
   }
 
   @Post("exchange-rates/backfill")

@@ -89,7 +89,31 @@ describe("securities module RLS context smoke (real withScopedDb)", () => {
     });
   });
 
-  it("real withScopedDb still refuses these paths without their context wrappers", async () => {
+  it("refreshAllPrices supplies its own system context", async () => {
+    // It used to depend on the caller's wrapper, which meant the admin
+    // maintenance endpoint read `securities` in the admin's own scope: global at
+    // RLS_MODE=off and silently narrowed to their own holdings at enforce. The
+    // scope is a property of the operation now, so it runs with no ambient
+    // context at all.
+    const { dataSource } = createScopedDbMocks([
+      [Security, { find: jest.fn().mockResolvedValue([]) }],
+    ]);
+    const service = new SecurityPriceService(
+      dataSource as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(service.refreshAllPrices()).resolves.toMatchObject({
+      totalSecurities: 0,
+    });
+  });
+
+  it("real withScopedDb still refuses a per-user path without its context", async () => {
+    // The negative control: `refreshPricesForSecurities` is the caller-scoped
+    // counterpart (its controller verifies ownership of every id first), so it
+    // must still fail closed with no ambient identity -- proving the smokes above
+    // pass because of real context wrappers and not because the check is inert.
     const { dataSource } = createScopedDbMocks([
       [Security, { find: jest.fn() }],
     ]);
@@ -99,11 +123,10 @@ describe("securities module RLS context smoke (real withScopedDb)", () => {
       {} as never,
     );
 
-    // Called with no ambient scope at all (no interceptor, no wrapper): the
-    // real withScopedDb must throw, proving the smokes above pass because of
-    // the C2 wrappers and not because the check is inert.
-    await expect(service.refreshAllPrices()).rejects.toThrow(
-      "DB access outside request/user/system context",
-    );
+    await expect(
+      service.refreshPricesForSecurities([
+        "11111111-1111-4111-8111-111111111111",
+      ]),
+    ).rejects.toThrow("DB access outside request/user/system context");
   });
 });

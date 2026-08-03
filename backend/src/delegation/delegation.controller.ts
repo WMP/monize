@@ -14,6 +14,7 @@ import {
   ParseUUIDPipe,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
+import { Throttle } from "@nestjs/throttler";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { DemoRestricted } from "../common/decorators/demo-restricted.decorator";
 import { DelegationService } from "./delegation.service";
@@ -68,7 +69,22 @@ export class DelegationController {
     );
   }
 
+  /**
+   * An email-existence oracle, so it is throttled far below the global limit.
+   *
+   * The Add-delegate form needs this before it can decide whether to offer the
+   * password/invite controls, and answering it truthfully means telling the caller
+   * whether an address has a Monize login. Under RLS enforcement it used to answer
+   * "no" for everyone -- `users_self` reaches only the caller's own row -- and the
+   * P2-007 fix elevated the probe so it answers correctly, which also made it a
+   * reliable enumerator. This repo takes enumeration seriously elsewhere (forgot-
+   * password always reports success), so bound it: a user adding delegates types a
+   * handful of addresses, and the debounced field fires two or three lookups per
+   * address. Thirty an hour covers that and cuts the global 100/minute ceiling by
+   * two orders of magnitude.
+   */
   @Get("delegates/lookup")
+  @Throttle({ default: { limit: 30, ttl: 3_600_000 } })
   @ApiOperation({
     summary: "Whether an email already has a Monize login",
   })

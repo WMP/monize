@@ -412,7 +412,29 @@ export class SecurityPriceService {
    *   (source = 'manual') never count as fresh, so a user-entered intraday
    *   price does not suppress the official close fetch.
    */
+  /**
+   * Refresh prices for EVERY user's active securities.
+   *
+   * Global by definition -- prices are keyed by symbol, not by owner, and one
+   * fetch serves every holder -- so the system context belongs here rather than at
+   * the call sites. It used to live only in the cron, which left the admin
+   * maintenance endpoint reading `securities` in the requesting admin's own scope:
+   * identical to global at RLS_MODE=off, and silently narrowed to "the admin's own
+   * holdings" the moment enforcement is switched on. A maintenance operation whose
+   * reach depends on which caller reached it is the trap; naming the scope in the
+   * method closes it. A nested system context from the cron is the same identity,
+   * so it joins rather than conflicting (see scoped-db's DR-01 check).
+   *
+   * `refreshPricesForSecurities` is the per-user counterpart: its controller
+   * verifies ownership of every id before calling it.
+   */
   async refreshAllPrices(skipFresh = false): Promise<PriceRefreshSummary> {
+    return withSystemContext(() => this.refreshAllPricesGlobally(skipFresh));
+  }
+
+  private async refreshAllPricesGlobally(
+    skipFresh: boolean,
+  ): Promise<PriceRefreshSummary> {
     const startTime = Date.now();
     this.logger.log("Starting price refresh for all securities");
 

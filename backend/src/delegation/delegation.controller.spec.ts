@@ -66,6 +66,26 @@ describe("DelegationController", () => {
     expect(service.delegateEmailExists).toHaveBeenCalledWith("a@b.c");
   });
 
+  /**
+   * The lookup answers "does this address have a Monize login", which makes it an
+   * enumeration oracle. Elevating the probe (P2-007) is what made it answer
+   * correctly under enforcement -- and therefore reliable enough to enumerate with
+   * -- so it carries a throttle far below the global 100/minute. This repo already
+   * takes enumeration seriously: forgot-password always reports success.
+   */
+  it("throttles the email-existence lookup well below the global limit", () => {
+    // @Throttle writes one metadata key per named limiter, suffixed with the
+    // limiter's name -- reading them by name rather than a single options object.
+    const handler = DelegationController.prototype.lookupDelegate;
+    const limit = Reflect.getMetadata("THROTTLER:LIMITdefault", handler);
+    const ttl = Reflect.getMetadata("THROTTLER:TTLdefault", handler);
+
+    expect(typeof limit).toBe("number");
+    expect(typeof ttl).toBe("number");
+    // At most a few dozen an hour, against 6000 at the global default.
+    expect((limit / ttl) * 3_600_000).toBeLessThanOrEqual(60);
+  });
+
   it("creates a delegate", async () => {
     const dto = { email: "a@b.c" } as never;
     await controller.createDelegate(req, dto);

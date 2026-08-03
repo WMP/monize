@@ -409,6 +409,26 @@ function EmergencyAccessSection() {
     }
   };
 
+  /**
+   * Turn a step-up rejection into the prompt, and report anything else.
+   *
+   * The config mutations (settings, contacts) are step-up gated now, so each of
+   * them can come back asking for a factor. Shared rather than repeated so the
+   * three handlers cannot drift on which errors reopen the modal.
+   */
+  const handleMutationError = useCallback(
+    (err: unknown, fallback: string) => {
+      if (err instanceof StepUpRequiredError) {
+        clearStepUp(STEP_UP_PURPOSE);
+        setStepUpOpen(true);
+        return;
+      }
+      toast.error(getErrorMessage(err, fallback));
+      logger.error(err);
+    },
+    [clearStepUp],
+  );
+
   const onSettingsSubmit = async (data: SettingsFormData) => {
     setSavingSettings(true);
     try {
@@ -416,8 +436,7 @@ function EmergencyAccessSection() {
       setView(next);
       toast.success(t('settings.toasts.saved'));
     } catch (err) {
-      toast.error(getErrorMessage(err, t('settings.toasts.saveFailed')));
-      logger.error(err);
+      handleMutationError(err, t('settings.toasts.saveFailed'));
     } finally {
       setSavingSettings(false);
     }
@@ -454,8 +473,7 @@ function EmergencyAccessSection() {
       toast.success(editingContact ? tContacts('toasts.updated') : tContacts('toasts.added'));
       setShowContactForm(false);
     } catch (err) {
-      toast.error(getErrorMessage(err, tContacts('toasts.saveFailed')));
-      logger.error(err);
+      handleMutationError(err, tContacts('toasts.saveFailed'));
     } finally {
       setSubmittingContact(false);
     }
@@ -477,8 +495,7 @@ function EmergencyAccessSection() {
       toast.success(tContacts('toasts.removed'));
       setRemoveTarget(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, tContacts('toasts.removeFailed')));
-      logger.error(err);
+      handleMutationError(err, tContacts('toasts.removeFailed'));
     } finally {
       setRemoving(false);
     }

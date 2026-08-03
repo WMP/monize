@@ -7,6 +7,10 @@ import { UserPreference } from "../users/entities/user-preference.entity";
 import { YahooFinanceService } from "../securities/yahoo-finance.service";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import { roundFxRate } from "../common/fx-entry.util";
+import {
+  getRequestContext,
+  requestContextStorage,
+} from "../common/request-context";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -170,6 +174,31 @@ describe("ExchangeRateService", () => {
   });
 
   describe("refreshAllRates", () => {
+    /**
+     * The pair set is assembled from every user's accounts, securities and default
+     * currency, and `exchange_rates` is shared reference data -- so this is global
+     * by definition. The system context used to live only in the cron, which left
+     * the manual endpoint reading those tables in the requesting user's own scope:
+     * identical to global at RLS_MODE=off, silently narrowed to the caller's own
+     * currencies at enforce. A maintenance operation whose reach depends on which
+     * caller reached it is the trap.
+     */
+    it("runs under a system context regardless of the caller", async () => {
+      dataSource.query.mockResolvedValue([{ code: "USD" }]);
+      let ctx: ReturnType<typeof getRequestContext>;
+      dataSource.query.mockImplementation(() => {
+        ctx = getRequestContext();
+        return Promise.resolve([{ code: "USD" }]);
+      });
+
+      await requestContextStorage.run({ userId: "user-1" }, () =>
+        service.refreshAllRates(),
+      );
+
+      expect(ctx).toMatchObject({ system: true });
+      expect(ctx).not.toHaveProperty("userId");
+    });
+
     it("returns empty summary when fewer than 2 currencies are in use", async () => {
       dataSource.query.mockResolvedValue([{ code: "USD" }]);
 

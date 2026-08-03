@@ -9,6 +9,10 @@ import { YahooFinanceService } from "./yahoo-finance.service";
 import { QuoteProviderRegistry } from "./providers/quote-provider.registry";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  getRequestContext,
+  requestContextStorage,
+} from "../common/request-context";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -373,6 +377,29 @@ describe("SecurityPriceService", () => {
   });
 
   describe("refreshAllPrices", () => {
+    /**
+     * Prices are keyed by symbol, not by owner, so one fetch serves every holder
+     * and this is global by definition. The system context used to live only in the
+     * cron, leaving the admin maintenance endpoint reading `securities` in the
+     * requesting admin's own scope -- global at RLS_MODE=off, and silently narrowed
+     * to "the admin's own holdings" the moment enforcement is switched on, which
+     * would stop the maintenance endpoint doing maintenance.
+     */
+    it("runs under a system context regardless of the caller", async () => {
+      let ctx: ReturnType<typeof getRequestContext>;
+      securitiesRepository.find.mockImplementation(() => {
+        ctx = getRequestContext();
+        return Promise.resolve([]);
+      });
+
+      await requestContextStorage.run({ userId: "admin-1" }, () =>
+        service.refreshAllPrices(),
+      );
+
+      expect(ctx).toMatchObject({ system: true });
+      expect(ctx).not.toHaveProperty("userId");
+    });
+
     it("returns empty summary when no active securities exist", async () => {
       securitiesRepository.find.mockResolvedValue([]);
 

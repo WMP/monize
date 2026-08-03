@@ -89,6 +89,9 @@ describe("EmergencyAccessClaimController", () => {
       release: jest.fn(),
       manager: {
         findOne: jest.fn(),
+        // The claim now takes a row lock over the owner's contacts before it
+        // decides anything, so the manager needs a query().
+        query: jest.fn().mockResolvedValue([]),
         save: jest.fn(async (row) => row),
         delete: jest.fn(),
         createQueryBuilder: jest.fn(() => updateBuilder),
@@ -254,6 +257,48 @@ describe("EmergencyAccessClaimController", () => {
         expect.any(Object),
       );
       expect(res.json).toHaveBeenCalledWith({ ok: true });
+    });
+
+    /**
+     * "Single-claim wins" is the design: the winner rewrites the owner's
+     * credentials and voids its siblings' links. Those two halves were not atomic
+     * against a concurrent claim -- the in-transaction re-validation carried a
+     * comment saying it ran "under lock" and there was no lock, so under READ
+     * COMMITTED two contacts could each see an unused row, each rewrite the
+     * password, each void the other, and each walk away with a session on the
+     * owner's account.
+     */
+    it("locks the owner's contact rows before deciding anything", async () => {
+      queryRunner.manager.findOne
+        .mockResolvedValueOnce({
+          id: "c1",
+          ownerUserId: ownerId,
+          claimTokenHash: TOKEN_HASH,
+          claimTokenExpiresAt: new Date(Date.now() + 100000),
+          claimTokenUsedAt: null,
+        })
+        .mockResolvedValueOnce({ id: ownerId });
+      usersRepo.findOne.mockResolvedValue({ id: ownerId, isActive: true });
+
+      await controller.complete(
+        { token: RAW_TOKEN, newPassword: "Aa1!correcthorse" },
+        makeRes() as never,
+      );
+
+      const lock = queryRunner.manager.query.mock.calls.find(
+        ([sql]: [string]) => sql.includes("FOR UPDATE"),
+      );
+      expect(lock).toBeDefined();
+      // All of the owner's contacts, not just the one being claimed: the
+      // invariant is per owner, so locking only our own row would let a
+      // sibling's claim proceed beside it.
+      expect(lock[0]).toContain("owner_user_id = $1");
+      expect(lock[0]).toContain("emergency_access_contacts");
+      expect(lock[1]).toEqual([ownerId]);
+      // ...and before the re-validating read, or it serializes nothing.
+      expect(
+        queryRunner.manager.query.mock.invocationCallOrder[0],
+      ).toBeLessThan(queryRunner.manager.findOne.mock.invocationCallOrder[0]);
     });
 
     it("rolls back when the token is no longer valid in-transaction", async () => {

@@ -321,13 +321,48 @@ describe("CurrenciesController", () => {
   });
 
   describe("refreshRates()", () => {
-    it("delegates to exchangeRateService.refreshAllRates", () => {
-      mockExchangeRateService.refreshAllRates!.mockReturnValue("summary");
+    const summary = {
+      totalPairs: 3,
+      updated: 2,
+      failed: 1,
+      lastUpdated: new Date("2026-08-03T00:00:00Z"),
+      results: [
+        { pair: "USDJPY", success: true, rate: 150 },
+        { pair: "CADNOK", success: false, error: "no quote" },
+      ],
+    };
 
-      const result = controller.refreshRates();
+    it("delegates to exchangeRateService.refreshAllRates", async () => {
+      mockExchangeRateService.refreshAllRates!.mockResolvedValue(summary);
 
-      expect(result).toBe("summary");
+      await controller.refreshRates();
+
       expect(mockExchangeRateService.refreshAllRates).toHaveBeenCalledWith();
+    });
+
+    /**
+     * The refresh is global -- the pair set is assembled from every user's
+     * accounts, securities and default currency -- and this endpoint is reachable
+     * by any authenticated user, not just an admin. Returning the per-pair results
+     * told the caller which currencies everybody else on the deployment transacts
+     * in, which on a small self-hosted instance is an inference about named
+     * people's finances.
+     */
+    it("returns counts only, never the per-pair list", async () => {
+      mockExchangeRateService.refreshAllRates!.mockResolvedValue(summary);
+
+      const result = await controller.refreshRates();
+
+      expect(result).toEqual({
+        totalPairs: 3,
+        updated: 2,
+        failed: 1,
+        lastUpdated: summary.lastUpdated,
+      });
+      expect(result).not.toHaveProperty("results");
+      // Belt and braces: no pair name survives anywhere in the payload, which
+      // also catches one copied into a differently named field.
+      expect(JSON.stringify(result)).not.toContain("CADNOK");
     });
   });
 

@@ -52,39 +52,64 @@ export const emergencyAccessApi = {
     }
   },
 
+  // Step-up gated, like the message calls above: who receives emergency access
+  // and after how long is the security content of this feature, and it used to be
+  // changeable with nothing but a session. `reset` below stays ungated on purpose
+  // -- it only ever takes access away.
   updateSettings: async (
     payload: UpsertEmergencyAccessSettings,
   ): Promise<EmergencyAccessView> => {
-    const res = await apiClient.put<EmergencyAccessView>(
-      '/emergency-access/settings',
-      payload,
-    );
-    return res.data;
+    try {
+      const res = await apiClient.put<EmergencyAccessView>(
+        '/emergency-access/settings',
+        payload,
+        { headers: stepUpHeader() },
+      );
+      return res.data;
+    } catch (error) {
+      rethrowStepUpError(error);
+    }
   },
 
   addContact: async (
     payload: UpsertEmergencyAccessContact,
   ): Promise<EmergencyAccessContact> => {
-    const res = await apiClient.post<EmergencyAccessContact>(
-      '/emergency-access/contacts',
-      payload,
-    );
-    return res.data;
+    try {
+      const res = await apiClient.post<EmergencyAccessContact>(
+        '/emergency-access/contacts',
+        payload,
+        { headers: stepUpHeader() },
+      );
+      return res.data;
+    } catch (error) {
+      rethrowStepUpError(error);
+    }
   },
 
   updateContact: async (
     id: string,
     payload: UpsertEmergencyAccessContact,
   ): Promise<EmergencyAccessContact> => {
-    const res = await apiClient.patch<EmergencyAccessContact>(
-      `/emergency-access/contacts/${id}`,
-      payload,
-    );
-    return res.data;
+    try {
+      const res = await apiClient.patch<EmergencyAccessContact>(
+        `/emergency-access/contacts/${id}`,
+        payload,
+        { headers: stepUpHeader() },
+      );
+      return res.data;
+    } catch (error) {
+      rethrowStepUpError(error);
+    }
   },
 
   removeContact: async (id: string): Promise<void> => {
-    await apiClient.delete(`/emergency-access/contacts/${id}`);
+    try {
+      await apiClient.delete(`/emergency-access/contacts/${id}`, {
+        headers: stepUpHeader(),
+      });
+    } catch (error) {
+      rethrowStepUpError(error);
+    }
   },
 
   reset: async (): Promise<EmergencyAccessView> => {

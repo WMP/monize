@@ -172,8 +172,8 @@ export class EmergencyAccessClaimController {
     // Validate the magic link before doing any expensive work. Otherwise an
     // unauthenticated caller could force a breach lookup and a bcrypt hash
     // (cost 12) on every request with a bogus token. The transaction below
-    // re-validates under lock to close the TOCTOU window.
-    await this.findValidContact(dto.token);
+    // re-validates under a row lock; this pass is only a cheap-work guard.
+    const guardContact = await this.findValidContact(dto.token);
 
     const isBreached = await this.passwordBreachService.isBreached(
       dto.newPassword,
@@ -190,6 +190,22 @@ export class EmergencyAccessClaimController {
     const tokenHash = hashToken(dto.token);
     const passwordHash = await bcrypt.hash(dto.newPassword, 12);
     const ownerId = await withScopedDb(this.dataSource, async (manager) => {
+      // Serialize every claim for this owner before deciding anything.
+      //
+      // "Single-claim wins" is the design: the winner rewrites the owner's
+      // credentials and voids its siblings' links. Without a lock the two halves
+      // of that are not atomic against a concurrent claim, and READ COMMITTED
+      // hands both transactions a row that still looks unused -- so two contacts
+      // could each rewrite the password, each void the other's link, and each
+      // walk away with an authenticated session on the owner's account. The
+      // invariant is per owner, not per link, so the lock has to cover all of the
+      // owner's contact rows; locking only our own would let a sibling's claim
+      // proceed beside it. A claim for a different owner is unaffected.
+      await manager.query(
+        "SELECT 1 FROM emergency_access_contacts WHERE owner_user_id = $1 FOR UPDATE",
+        [guardContact.ownerUserId],
+      );
+
       const contact = await manager.findOne(EmergencyAccessContact, {
         where: { claimTokenHash: tokenHash },
       });
