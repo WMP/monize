@@ -19,6 +19,7 @@ describe("BackupEncryptionService", () => {
   let usersRepo: Record<string, jest.Mock>;
   let aiEncryption: Record<string, jest.Mock>;
   let passwordBreach: Record<string, jest.Mock>;
+  let scopedDataSource: { transaction: jest.Mock };
 
   const userId = "user-1";
 
@@ -37,6 +38,7 @@ describe("BackupEncryptionService", () => {
     usersRepo = {
       findOne: jest.fn(),
       save: jest.fn().mockImplementation((u) => Promise.resolve(u)),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     aiEncryption = {
       isConfigured: jest.fn().mockReturnValue(true),
@@ -47,12 +49,14 @@ describe("BackupEncryptionService", () => {
       isBreached: jest.fn().mockResolvedValue(false),
     };
 
+    scopedDataSource = createScopedDbMocks([[User, usersRepo as never]])
+      .dataSource as unknown as { transaction: jest.Mock };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         {
           provide: DataSource,
-          useValue: createScopedDbMocks([[User, usersRepo as never]])
-            .dataSource,
+          useValue: scopedDataSource,
         },
         BackupEncryptionService,
         { provide: AiEncryptionService, useValue: aiEncryption },
@@ -98,17 +102,22 @@ describe("BackupEncryptionService", () => {
 
   describe("rememberLoginPassword", () => {
     it("stores the encrypted password and turns encryption on", async () => {
-      const user = makeUser();
-      usersRepo.findOne.mockResolvedValue(user);
+      usersRepo.findOne.mockResolvedValue(makeUser());
 
       await service.rememberLoginPassword(userId, "hunter2hunter2");
 
       expect(aiEncryption.encrypt).toHaveBeenCalledWith("hunter2hunter2");
-      expect(usersRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({
+      // A targeted update, not a full-entity save. `save` on a loaded entity
+      // writes every column from the snapshot, so it silently reverted any
+      // concurrent change to the users row -- `last_activity_at`, a lockout
+      // counter, an admin disabling the account.
+      expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).toHaveBeenCalledWith(
+        { id: userId },
+        {
           backupPasswordEnc: "enc:hunter2hunter2",
           backupEncryptionEnabled: true,
-        }),
+        },
       );
     });
 
@@ -122,7 +131,13 @@ describe("BackupEncryptionService", () => {
 
       await service.rememberLoginPassword(userId, "new-password");
 
-      expect(usersRepo.save).toHaveBeenCalledWith(
+      // This runs during a password change, which writes `password_hash` on
+      // the same row. A full-entity save from the snapshot read a moment
+      // earlier could put the old hash back -- only the columns this feature
+      // owns are written.
+      expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).toHaveBeenCalledWith(
+        { id: userId },
         expect.objectContaining({ backupPasswordEnc: "enc:new-password" }),
       );
     });
@@ -142,7 +157,8 @@ describe("BackupEncryptionService", () => {
       // which is a timing side channel with `===` (CWE-208) and an insecure
       // password hash with a digest -- both were flagged, and neither bought
       // anything, since every caller writes this row regardless.
-      expect(usersRepo.save).toHaveBeenCalledWith(
+      expect(usersRepo.update).toHaveBeenCalledWith(
+        { id: userId },
         expect.objectContaining({ backupPasswordEnc: "enc:hunter2hunter2" }),
       );
       expect(aiEncryption.decrypt).not.toHaveBeenCalled();
@@ -156,6 +172,7 @@ describe("BackupEncryptionService", () => {
       await service.rememberLoginPassword(userId, "hunter2hunter2");
 
       expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).not.toHaveBeenCalled();
     });
 
     it("stores nothing when the server has no encryption key", async () => {
@@ -165,11 +182,20 @@ describe("BackupEncryptionService", () => {
       await service.rememberLoginPassword(userId, "hunter2hunter2");
 
       expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("stores nothing for a user that no longer exists", async () => {
+      usersRepo.findOne.mockResolvedValue(null);
+
+      await service.rememberLoginPassword(userId, "hunter2hunter2");
+
+      expect(usersRepo.update).not.toHaveBeenCalled();
     });
 
     it("swallows a storage failure rather than breaking sign-in", async () => {
       usersRepo.findOne.mockResolvedValue(makeUser());
-      usersRepo.save.mockRejectedValue(new Error("db down"));
+      usersRepo.update.mockRejectedValue(new Error("db down"));
 
       await expect(
         service.rememberLoginPassword(userId, "hunter2hunter2"),
@@ -219,11 +245,12 @@ describe("BackupEncryptionService", () => {
       // A backup encrypted with a forgotten password is a file the user
       // cannot open; better an unencrypted one until the next sign-in.
       expect(result).toEqual({ status: "none" });
-      expect(usersRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({
+      expect(usersRepo.update).toHaveBeenCalledWith(
+        { id: userId },
+        {
           backupEncryptionEnabled: false,
           backupPasswordEnc: null,
-        }),
+        },
       );
     });
 
@@ -273,11 +300,14 @@ describe("BackupEncryptionService", () => {
 
       await service.setBackupPasswordForOidcUser(userId, "a-strong-password");
 
-      expect(usersRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({
+      // Targeted update of the two owned columns, never a full-entity save.
+      expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).toHaveBeenCalledWith(
+        { id: userId },
+        {
           backupPasswordEnc: "enc:a-strong-password",
           backupEncryptionEnabled: true,
-        }),
+        },
       );
     });
 
@@ -291,7 +321,8 @@ describe("BackupEncryptionService", () => {
 
       await service.setBackupPasswordForOidcUser(userId, "new-backup-password");
 
-      expect(usersRepo.save).toHaveBeenCalledWith(
+      expect(usersRepo.update).toHaveBeenCalledWith(
+        { id: userId },
         expect.objectContaining({
           backupPasswordEnc: "enc:new-backup-password",
         }),
@@ -307,6 +338,7 @@ describe("BackupEncryptionService", () => {
         service.setBackupPasswordForOidcUser(userId, "a-strong-password"),
       ).rejects.toThrow(BadRequestException);
       expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).not.toHaveBeenCalled();
     });
 
     it("rejects a password shorter than the minimum", async () => {
@@ -316,6 +348,7 @@ describe("BackupEncryptionService", () => {
         service.setBackupPasswordForOidcUser(userId, "short"),
       ).rejects.toThrow(/at least 12/);
       expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).not.toHaveBeenCalled();
     });
 
     it("rejects a breached password", async () => {
@@ -326,6 +359,7 @@ describe("BackupEncryptionService", () => {
         service.setBackupPasswordForOidcUser(userId, "correct horse battery"),
       ).rejects.toThrow(/data breach/);
       expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).not.toHaveBeenCalled();
     });
 
     it("refuses when the server has no encryption key", async () => {
@@ -336,6 +370,7 @@ describe("BackupEncryptionService", () => {
         service.setBackupPasswordForOidcUser(userId, "a-strong-password"),
       ).rejects.toThrow(/AI_ENCRYPTION_KEY/);
       expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).not.toHaveBeenCalled();
     });
   });
 
@@ -352,11 +387,13 @@ describe("BackupEncryptionService", () => {
 
       await service.disableForOidcUser(userId);
 
-      expect(usersRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({
+      expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).toHaveBeenCalledWith(
+        { id: userId },
+        {
           backupEncryptionEnabled: false,
           backupPasswordEnc: null,
-        }),
+        },
       );
     });
 
@@ -374,6 +411,7 @@ describe("BackupEncryptionService", () => {
         BadRequestException,
       );
       expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).not.toHaveBeenCalled();
     });
   });
 
@@ -388,11 +426,13 @@ describe("BackupEncryptionService", () => {
 
       await service.forgetStoredPassword(userId);
 
-      expect(usersRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({
+      expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).toHaveBeenCalledWith(
+        { id: userId },
+        {
           backupEncryptionEnabled: false,
           backupPasswordEnc: null,
-        }),
+        },
       );
     });
 
@@ -401,6 +441,61 @@ describe("BackupEncryptionService", () => {
       await expect(
         service.forgetStoredPassword(userId),
       ).resolves.toBeUndefined();
+      expect(usersRepo.save).not.toHaveBeenCalled();
+      expect(usersRepo.update).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Each of these methods used to read the users row in one transaction and
+   * write it back in another, which is the read-modify-write the project's
+   * transaction rule exists to forbid: between the two, any concurrent change
+   * to the row was lost.
+   */
+  describe("read and write share one transaction", () => {
+    it.each([
+      [
+        "setBackupPasswordForOidcUser",
+        () =>
+          service.setBackupPasswordForOidcUser(userId, "long-good-password"),
+        () => makeUser({ authProvider: "oidc", passwordHash: null }),
+      ],
+      [
+        "disableForOidcUser",
+        () => service.disableForOidcUser(userId),
+        () =>
+          makeUser({
+            authProvider: "oidc",
+            passwordHash: null,
+            backupEncryptionEnabled: true,
+            backupPasswordEnc: "enc:dedicated",
+          }),
+      ],
+      [
+        "rememberLoginPassword",
+        () => service.rememberLoginPassword(userId, "new-password"),
+        () => makeUser({ backupEncryptionEnabled: true }),
+      ],
+      [
+        "forgetStoredPassword",
+        () => service.forgetStoredPassword(userId),
+        () =>
+          makeUser({
+            backupEncryptionEnabled: true,
+            backupPasswordEnc: "enc:whatever",
+          }),
+      ],
+    ])("%s", async (_name, run, user) => {
+      usersRepo.findOne.mockResolvedValue(user());
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      scopedDataSource.transaction.mockClear();
+
+      await run();
+
+      // One transaction, so the checks above the write ran against the state
+      // the write lands on. Two would mean the row could change in between.
+      expect(scopedDataSource.transaction).toHaveBeenCalledTimes(1);
+      expect(usersRepo.update).toHaveBeenCalledTimes(1);
       expect(usersRepo.save).not.toHaveBeenCalled();
     });
   });

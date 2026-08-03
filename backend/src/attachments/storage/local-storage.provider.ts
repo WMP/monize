@@ -1,11 +1,12 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { promises as fs } from "fs";
-import { basename, dirname, resolve, sep } from "path";
+import { dirname, resolve, sep } from "path";
 import { tr } from "../../i18n/translate";
 import { isShardableId, shardedSegments } from "../../common/shard-path.util";
 import { AttachmentStorageProvider } from "./attachment-storage.interface";
 import { writeFileAtomic } from "../../backup/atomic-file";
+import { assertSafeStorageKey } from "./storage-key.util";
 
 /**
  * Folder attachment bytes are written to when ATTACHMENT_CONTAINER_DIR is unset.
@@ -54,20 +55,15 @@ export class LocalStorageProvider implements AttachmentStorageProvider {
   }
 
   /**
-   * Validate `key` and return it. Keys are server-generated, but treat them as
-   * untrusted: strip any directory component and require the result to be an
-   * unchanged id from the shared safe alphabet. A key that survives this cannot
-   * contain a separator, a dot, or a NUL, so any shard path derived from it
-   * stays inside `baseDir` by construction.
+   * Validate `key` and return it. Shared with the S3 provider (see
+   * storage-key.util.ts): the rule is the same for every backend, and it lived
+   * only here while the S3 path took the key unchecked.
+   *
+   * A key that survives this cannot contain a separator, a dot, or a NUL, so any
+   * shard path derived from it stays inside `baseDir` by construction.
    */
   private safeKey(key: string): string {
-    const safe = basename(key ?? "");
-    if (!safe || safe !== key || !isShardableId(safe)) {
-      throw new NotFoundException(
-        tr("errors.attachments.notFound", "Attachment not found"),
-      );
-    }
-    return safe;
+    return assertSafeStorageKey(key);
   }
 
   /** Resolve a path inside `baseDir`, asserting containment before use. */

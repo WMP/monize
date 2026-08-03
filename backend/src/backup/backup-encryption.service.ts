@@ -98,25 +98,39 @@ export class BackupEncryptionService {
     userId: string,
     newBackupPassword: string,
   ): Promise<void> {
-    const user = await this.requireManageableUser(userId);
+    // Strength and breach checks first, deliberately outside the transaction
+    // below: `isBreached` is an HTTPS round trip to the breach service, and
+    // holding a pooled database connection across it would tie every settings
+    // save to that service's latency.
     await this.validatePasswordStrength(newBackupPassword);
-    if (!this.aiEncryption.isConfigured()) {
-      throw new BadRequestException(
-        tr(
-          "errors.backup.encryptionNotConfigured",
-          "Server is not configured for encryption (AI_ENCRYPTION_KEY missing)",
-        ),
-      );
-    }
-    user.backupPasswordEnc = this.aiEncryption.encrypt(newBackupPassword);
-    user.backupEncryptionEnabled = true;
-    await this.scoped(User, (repo) => repo.save(user));
+
+    await withScopedDb(this.dataSource, async (manager) => {
+      const repo = manager.getRepository(User);
+      // Re-read inside the transaction the write runs in: the manageability
+      // check has to hold against the state the write lands on.
+      await this.requireManageableUser(repo, userId);
+      if (!this.aiEncryption.isConfigured()) {
+        throw new BadRequestException(
+          tr(
+            "errors.backup.encryptionNotConfigured",
+            "Server is not configured for encryption (AI_ENCRYPTION_KEY missing)",
+          ),
+        );
+      }
+      await this.storeBackupPassword(repo, userId, newBackupPassword);
+    });
   }
 
   /** OIDC accounts: stop encrypting backups and drop the stored password. */
   async disableForOidcUser(userId: string): Promise<void> {
-    await this.requireManageableUser(userId);
-    await this.forgetStoredPassword(userId);
+    await withScopedDb(this.dataSource, async (manager) => {
+      const repo = manager.getRepository(User);
+      await this.requireManageableUser(repo, userId);
+      await repo.update(
+        { id: userId },
+        { backupEncryptionEnabled: false, backupPasswordEnc: null },
+      );
+    });
   }
 
   /**
@@ -132,23 +146,27 @@ export class BackupEncryptionService {
   async rememberLoginPassword(userId: string, password: string): Promise<void> {
     try {
       if (!password || !this.aiEncryption.isConfigured()) return;
-      const user = await this.scoped(User, (repo) =>
-        repo.findOne({ where: { id: userId } }),
-      );
-      // OIDC accounts have no password of ours to remember.
-      if (!user || user.authProvider !== "local") return;
+      await withScopedDb(this.dataSource, async (manager) => {
+        const repo = manager.getRepository(User);
+        const user = await repo.findOne({ where: { id: userId } });
+        // OIDC accounts have no password of ours to remember.
+        if (!user || user.authProvider !== "local") return;
 
-      // Always re-encrypt and store, rather than reading the existing copy back
-      // to see whether it changed. Comparing would mean decrypting a secret and
-      // matching it against the one supplied, which is a timing side channel
-      // (CWE-208) if done with `===` and an insecure password hash if done with
-      // a digest; and it saves nothing, because every caller -- login,
-      // registration, change-password -- already writes this row anyway
-      // (`lastLogin`, the new hash). AES-GCM over one short string is cheaper
-      // than the round trip the check would have avoided.
-      user.backupPasswordEnc = this.aiEncryption.encrypt(password);
-      user.backupEncryptionEnabled = true;
-      await this.scoped(User, (repo) => repo.save(user));
+        // Always re-encrypt and store, rather than reading the existing copy
+        // back to see whether it changed. Comparing would mean decrypting a
+        // secret and matching it against the one supplied, which is a timing
+        // side channel (CWE-208) if done with `===` and an insecure password
+        // hash if done with a digest; and it saves nothing, because every
+        // caller -- login, registration, change-password -- already writes
+        // this row anyway (`lastLogin`, the new hash). AES-GCM over one short
+        // string is cheaper than the round trip the check would have avoided.
+        //
+        // The write is a targeted update in the same transaction as the read:
+        // this runs during a password change, which is writing `password_hash`
+        // on the same row, and a full-entity save from a snapshot read moments
+        // earlier could put the old hash back.
+        await this.storeBackupPassword(repo, userId, password);
+      });
     } catch (err) {
       this.logger.error(
         `Failed to store the backup password for user ${userId}: ${err.message}`,
@@ -203,10 +221,41 @@ export class BackupEncryptionService {
       const repo = manager.getRepository(User);
       const user = await repo.findOne({ where: { id: userId } });
       if (!user) return;
-      user.backupEncryptionEnabled = false;
-      user.backupPasswordEnc = null;
-      await repo.save(user);
+      await repo.update(
+        { id: userId },
+        { backupEncryptionEnabled: false, backupPasswordEnc: null },
+      );
     });
+  }
+
+  /**
+   * Write only the two columns this feature owns.
+   *
+   * Every method here used to read the `users` row in one transaction and then
+   * `repo.save(user)` it in another. `save` on a loaded entity writes *every*
+   * column from that snapshot, so any concurrent change to the row in between
+   * was silently reverted -- and `users` is written on ordinary traffic
+   * (`last_activity_at`), on failed logins (lockout counters) and by admin
+   * actions (role, disabled, forced password change). Turning on encrypted
+   * backups could therefore undo an account being disabled, or reset a lockout
+   * that was counting up.
+   *
+   * A targeted `update` inside the same transaction as the read fixes both
+   * halves: nothing unrelated is written, and the checks that can refuse the
+   * request run against the state the write lands on.
+   */
+  private async storeBackupPassword(
+    repo: Repository<User>,
+    userId: string,
+    password: string,
+  ): Promise<void> {
+    await repo.update(
+      { id: userId },
+      {
+        backupPasswordEnc: this.aiEncryption.encrypt(password),
+        backupEncryptionEnabled: true,
+      },
+    );
   }
 
   /**
@@ -214,9 +263,21 @@ export class BackupEncryptionService {
    * local-auth account is refused rather than half-obeyed: its password is
    * recaptured at every login, so anything set or cleared here would be
    * overwritten by the next sign-in.
+   *
+   * Takes the transaction's repository so the check and the write it guards
+   * run against the same state -- a caller must invoke it inside the same
+   * `withScopedDb` block that performs the mutation.
    */
-  private async requireManageableUser(userId: string): Promise<User> {
-    const user = await this.requireUser(userId);
+  private async requireManageableUser(
+    repo: Repository<User>,
+    userId: string,
+  ): Promise<User> {
+    const user = await repo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(
+        tr("errors.backup.userNotFoundRestore", "User not found"),
+      );
+    }
     if (user.authProvider !== "oidc") {
       throw new BadRequestException(
         tr(
