@@ -396,10 +396,21 @@ export class LoanRateChangesService {
         account.scheduledTransactionId,
       );
     } catch (error) {
-      this.logger.warn(
-        `Could not load scheduled transaction: ${error.message}`,
-      );
-      return null;
+      // Only a genuine "this scheduled transaction no longer exists" is a
+      // legitimate no-op -- scheduledTransactionsService.findOne throws
+      // NotFoundException exclusively for that case. Any other error (a
+      // timeout, a transient DB failure, anything else) must not be
+      // swallowed into the same null: doing so would make syncScheduledTransaction
+      // treat a failed lookup as "nothing to sync", so update()/remove()
+      // would report success via propagateErrors while the linked scheduled
+      // payment silently keeps its stale rate/split.
+      if (error instanceof NotFoundException) {
+        this.logger.warn(
+          `Could not load scheduled transaction: ${error.message}`,
+        );
+        return null;
+      }
+      throw error;
     }
 
     const isMortgage = account.accountType === AccountType.MORTGAGE;

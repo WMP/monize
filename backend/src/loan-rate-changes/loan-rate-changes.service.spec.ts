@@ -655,6 +655,49 @@ describe("LoanRateChangesService", () => {
       // merely attempted afterwards.
       expect(dataSource.transaction).toHaveBeenCalledTimes(3);
     });
+
+    it("propagates a non-not-found failure looking up the scheduled transaction, rather than treating it as nothing to sync (REV-20260803-030)", async () => {
+      const account = makeAccount();
+      accountsRepository.findOne.mockResolvedValue(account);
+      manager.find.mockResolvedValue([
+        makeRow({ annualRate: 5.1, effectiveDate: "2024-06-01" }),
+      ]);
+      // A transient/real failure (timeout, DB error, etc) -- NOT the
+      // scheduled transaction genuinely not existing.
+      scheduledTransactionsService.findOne.mockRejectedValue(
+        new Error("connection timeout"),
+      );
+
+      await expect(
+        service.update(userId, accountId, "rc-1", { annualRate: 5.1 }),
+      ).rejects.toThrow("connection timeout");
+
+      // The lookup failure must never be silently treated as "no plan, no
+      // sync needed": scheduledTransactionsService.update must not have run
+      // (buildScheduledUpdate threw before ever reaching it), and the rate
+      // edit itself must not be left committed.
+      expect(scheduledTransactionsService.update).not.toHaveBeenCalled();
+    });
+
+    it("still succeeds cleanly when the linked scheduled transaction genuinely no longer exists", async () => {
+      const account = makeAccount();
+      accountsRepository.findOne.mockResolvedValue(account);
+      manager.find.mockResolvedValue([
+        makeRow({ annualRate: 5.1, effectiveDate: "2024-06-01" }),
+      ]);
+      scheduledTransactionsService.findOne.mockRejectedValue(
+        new NotFoundException(
+          "Scheduled transaction with ID sched-1 not found",
+        ),
+      );
+
+      const result = await service.update(userId, accountId, "rc-1", {
+        annualRate: 5.1,
+      });
+
+      expect(result.annualRate).toBe(5.1);
+      expect(scheduledTransactionsService.update).not.toHaveBeenCalled();
+    });
   });
 
   describe("remove", () => {
@@ -723,6 +766,59 @@ describe("LoanRateChangesService", () => {
       // payment silently keeps its stale split: the removal and the sync run
       // in the same transaction, so the failure rolls both back.
       expect(manager.remove).toHaveBeenCalledWith(row);
+    });
+
+    it("propagates a non-not-found failure looking up the scheduled transaction, rather than treating it as nothing to sync (REV-20260803-030)", async () => {
+      const account = makeAccount();
+      accountsRepository.findOne.mockResolvedValue(account);
+      const row = makeRow();
+      rateChangesRepository.findOne.mockResolvedValue(row);
+      manager.find.mockResolvedValue([
+        makeRow({
+          source: "initial",
+          effectiveDate: "2022-01-01",
+          annualRate: 5.5,
+          newPaymentAmount: 2500,
+        }),
+      ]);
+      // A transient/real failure (timeout, DB error, etc) -- NOT the
+      // scheduled transaction genuinely not existing.
+      scheduledTransactionsService.findOne.mockRejectedValue(
+        new Error("connection timeout"),
+      );
+
+      await expect(service.remove(userId, accountId, "rc-1")).rejects.toThrow(
+        "connection timeout",
+      );
+
+      expect(scheduledTransactionsService.update).not.toHaveBeenCalled();
+    });
+
+    it("still succeeds cleanly when the linked scheduled transaction genuinely no longer exists", async () => {
+      const account = makeAccount();
+      accountsRepository.findOne.mockResolvedValue(account);
+      const row = makeRow();
+      rateChangesRepository.findOne.mockResolvedValue(row);
+      manager.find.mockResolvedValue([
+        makeRow({
+          source: "initial",
+          effectiveDate: "2022-01-01",
+          annualRate: 5.5,
+          newPaymentAmount: 2500,
+        }),
+      ]);
+      scheduledTransactionsService.findOne.mockRejectedValue(
+        new NotFoundException(
+          "Scheduled transaction with ID sched-1 not found",
+        ),
+      );
+
+      await expect(
+        service.remove(userId, accountId, "rc-1"),
+      ).resolves.toBeUndefined();
+
+      expect(manager.remove).toHaveBeenCalledWith(row);
+      expect(scheduledTransactionsService.update).not.toHaveBeenCalled();
     });
   });
 
