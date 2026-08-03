@@ -13,12 +13,12 @@ const tour = RELEASE_1_14_GEM_STRATEGY_TOUR;
 const ANCHOR_VALUES = new Set<TourAnchorId>(Object.values(TOUR_ANCHORS));
 const REPORT_ROUTE = '/reports/gem-strategy';
 
-/** Steps whose anchor lives inside the settings form, opened by `openSettings`. */
+/** Steps whose anchor lives inside the settings form, in the order visited. */
 const SETTINGS_STEPS = [
-  'accounts',
-  'timingAndCosts',
   'addInstruments',
   'roles',
+  'accounts',
+  'timingAndCosts',
   'save',
 ] as const;
 
@@ -55,23 +55,39 @@ describe('GEM strategy release tour', () => {
     expect(isTourOfferable(tour, null)).toBe(true);
   });
 
-  it('walks setup to next action in a fixed order', () => {
+  it('sets the strategy up before reading its output', () => {
+    // Order matters more than the step list here: a user with no instruments has
+    // an empty report, so explaining the cards first describes blanks. Settings
+    // comes first, then the Overview walk has something in it.
     expect(tour.steps.map((s) => s.id)).toEqual([
       'welcome',
       'findReport',
       'page',
+      'openSettings',
+      'addInstruments',
+      'roles',
+      'accounts',
+      'timingAndCosts',
+      'save',
+      'tabs',
       'summary',
       'action',
       'reasoning',
-      'tabs',
-      'openSettings',
-      'accounts',
-      'timingAndCosts',
-      'addInstruments',
-      'roles',
-      'save',
       'finish',
     ]);
+  });
+
+  it('puts every settings step ahead of every report-reading step', () => {
+    const ids = tour.steps.map((s) => s.id);
+    const lastSettings = Math.max(
+      ...SETTINGS_STEPS.map((id) => ids.indexOf(id)),
+    );
+    const firstReading = Math.min(
+      ...['summary', 'action', 'reasoning'].map((id) => ids.indexOf(id)),
+    );
+    expect(lastSettings).toBeLessThan(firstReading);
+    // And the shortcut precedes the pickers it fills in.
+    expect(ids.indexOf('addInstruments')).toBeLessThan(ids.indexOf('roles'));
   });
 
   it('references only declared anchors', () => {
@@ -134,12 +150,24 @@ describe('GEM strategy release tour', () => {
   });
 
   it('explains itself when the settings form does not load', () => {
-    const step = tour.steps.find((s) => s.id === 'accounts');
-    expect(step?.anchorId).toBe(TOUR_ANCHORS.gemSettingsAccounts);
-    // The form fetches accounts and securities before it renders, so this is the
-    // one settings anchor that can be slow rather than absent.
+    // The first settings step is the one that waits on the form's accounts and
+    // securities fetch, so it carries the slow-load stand-in.
+    const step = tour.steps.find((s) => s.id === 'addInstruments');
+    expect(step?.anchorId).toBe(TOUR_ANCHORS.gemSettingsAssets);
     expect(step?.fallbackWhenMissing).toBe(true);
     expect(step?.anchorTimeoutMs).toBe(8000);
+  });
+
+  it('waits for the Overview panel before describing it', () => {
+    // The engine navigates by route, and the tabs are in-page, so nothing about
+    // a route match can guarantee the Overview panel is mounted. Without this
+    // advance the three reading steps would race the user's tab click and get
+    // skipped as missing anchors.
+    const step = tour.steps.find((s) => s.id === 'tabs');
+    expect(step?.advance).toEqual({
+      type: 'appear',
+      anchorId: TOUR_ANCHORS.gemStrategyOverviewCards,
+    });
   });
 
   it('anchors the instrument step to the always-mounted assets card', () => {
@@ -151,26 +179,30 @@ describe('GEM strategy release tour', () => {
   });
 
   it('never requires a write to advance', () => {
-    // Taking the tour must not create a security, save a configuration, or mark
-    // a signal executed. Passive means: the default Next advance, and no
-    // `allowInteraction` inviting a click on the spotlit control.
+    // This is the line the tour holds. Every settings step is *actionable* --
+    // `allowInteraction` keeps the control usable so the user can fill the form
+    // in while reading -- but none of them advances on the action. The advance is
+    // the default Next throughout, so a user who presses nothing still reaches
+    // the end, and no create, save or mark-executed is ever a precondition.
     for (const id of SETTINGS_STEPS) {
       const step = tour.steps.find((s) => s.id === id);
       expect(step, id).toBeDefined();
       expect(step?.advance, id).toBeUndefined();
-      expect(step?.allowInteraction, id).toBeUndefined();
+      expect(step?.allowInteraction, id).toBe(true);
     }
   });
 
   it('drives no mutation from any step in the tour', () => {
-    // The two interactive advances are navigation and a tab switch. Nothing in
-    // the tour waits on an element that only a write produces.
+    // The three interactive advances are a navigation, a tab switch, and the
+    // Overview panel mounting. None of them is produced by a write, so nothing
+    // in the tour can stall until the user changes data.
     const advances = tour.steps
       .map((s) => s.advance)
       .filter((a): a is NonNullable<typeof a> => a !== undefined);
     expect(advances).toEqual([
       { type: 'route', route: REPORT_ROUTE },
       { type: 'click' },
+      { type: 'appear', anchorId: TOUR_ANCHORS.gemStrategyOverviewCards },
     ]);
   });
 
@@ -222,7 +254,7 @@ describe('GEM strategy tour copy', () => {
     const withFallback = tour.steps
       .filter((s) => s.fallbackWhenMissing)
       .map((s) => s.id);
-    expect(withFallback).toEqual(['findReport', 'accounts']);
+    expect(withFallback).toEqual(['findReport', 'addInstruments']);
     for (const id of withFallback) {
       expect(steps[id]?.fallbackBody, id).toBeTruthy();
     }
@@ -238,9 +270,12 @@ describe('GEM strategy tour copy', () => {
   it('never claims Monize trades for the user', () => {
     // The copy's whole job on this report. A rewrite that drops these is the
     // failure this test exists to catch.
-    expect(steps.welcome.body).toMatch(
-      /does not buy, sell, or move money for you/i,
-    );
+    //
+    // Deliberately not asserted on `welcome`: the opening step is a two-sentence
+    // hook describing the mechanism, and the disclaimers were cut from it as
+    // preamble. They belong where a user could actually mistake the screen for a
+    // broker, which is the three steps below.
+    expect(steps.openSettings.body).toMatch(/buys an instrument/i);
     expect(steps.action.body).toMatch(/never sends an order to your broker/i);
     expect(steps.save.body).toMatch(/does not place a trade/i);
   });
@@ -249,8 +284,11 @@ describe('GEM strategy tour copy', () => {
     // The fill-missing shortcut creates security rows immediately. A user who
     // reads that as "GEM bought this for me" has been actively misled.
     expect(steps.addInstruments.body).toMatch(
-      /creates instrument records in Monize immediately/i,
+      /creates instrument records in Monize (immediately|straight away)/i,
     );
+    // And that they land before the configuration is saved, which is the part
+    // users are surprised by.
+    expect(steps.addInstruments.body).toMatch(/before you save/i);
     expect(steps.addInstruments.body).toMatch(/does not buy anything/i);
     // And it must say what to do when the shortcut is not on screen, since the
     // step is anchored to the card that is always there.
@@ -260,8 +298,12 @@ describe('GEM strategy tour copy', () => {
   });
 
   it('presents the suggested instruments as examples, not advice', () => {
-    expect(steps.welcome.body).toMatch(/not personal investment advice/i);
+    // Asserted where the suggestions actually appear rather than on `welcome`,
+    // which is now a two-sentence hook with the disclaimers cut out of it.
     expect(steps.addInstruments.body).toMatch(/not a recommendation/i);
+    expect(steps.addInstruments.body).toMatch(
+      /check every symbol, exchange, and currency/i,
+    );
     expect(allText).not.toMatch(/\b(recommended|best for you|right for you)\b/i);
   });
 

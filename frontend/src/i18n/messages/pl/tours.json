@@ -235,7 +235,7 @@
         "steps": {
           "welcome": {
             "title": "Poznaj strategię GEM",
-            "body": "Raz w miesiącu lub raz na kwartał GEM porównuje, jak zmieniły się trzy rynki akcji i jedno aktywo bezpieczne, a potem wskazuje jeden instrument do utrzymania do następnej oceny. Jeśli akcje nie wypadają lepiej niż punkt odniesienia wolny od ryzyka, wskazuje aktywo bezpieczne. Monize nie kupuje, nie sprzedaje ani nie przenosi pieniędzy, a pokazane instrumenty są przykładami, nie indywidualną poradą inwestycyjną."
+            "body": "Raz w miesiącu lub raz na kwartał GEM porównuje, jak zmieniły się trzy rynki akcji i jedno aktywo bezpieczne, a potem wskazuje jeden instrument do utrzymania do następnej oceny. Gdy akcje radzą sobie zbyt słabo, wskazuje zamiast nich aktywo bezpieczne."
           },
           "findReport": {
             "title": "Znajdź GEM w Raportach",
@@ -259,17 +259,16 @@
             "body": "„Momentum” oznacza tutaj po prostu zmianę cen w wybranym okresie z przeszłości. GEM najpierw sprawdza, czy instrument dla akcji amerykańskich wypadł lepiej niż benchmark wolny od ryzyka używany jako punkt odniesienia. Jeśli tak, wybiera najlepszy z trzech rynków: USA, rynków rozwiniętych poza USA i rynków wschodzących. Jeśli nie, wybiera aktywo bezpieczne. Karta **Dlaczego taki sygnał?** i historia sygnałów pokazują całą decyzję, a nie tylko końcowy symbol."
           },
           "tabs": {
-            "title": "Więcej szczegółów, gdy ich potrzebujesz",
-            "body": "**Sygnały** pokazują wcześniejsze decyzje. **Mój portfel** wyjaśnia, co zapisano na wybranych kontach. **Backtest** pokazuje, jak reguły zachowałyby się na dostępnych cenach historycznych; to model, a nie prognoza ani obietnica wyniku. **Ustawienia** sterują zapisanym scenariuszem."
+            "title": "Wróć do Przeglądu, aby zobaczyć wynik",
+            "body": "Wybierz **Przegląd**, aby zobaczyć, co daje ta konfiguracja. Warto znać też pozostałe karty: **Sygnały** pokazują wcześniejsze decyzje, **Mój portfel** wyjaśnia, co zapisano na wybranych kontach, a **Backtest** pokazuje, jak reguły zachowałyby się na dostępnych cenach historycznych; to model, a nie prognoza ani obietnica wyniku."
           },
           "openSettings": {
             "title": "Otwórz ustawienia scenariusza",
-            "body": "Wybierz **Edytuj ustawienia**, aby zobaczyć, jak zdefiniowano ten scenariusz. Wszystkie pola możesz obejrzeć bez zapisywania. Nic na tym ekranie nie kupuje instrumentu ani nie zmienia czegokolwiek na koncie u brokera."
+            "body": "Wybierz **Edytuj ustawienia** — najpierw skonfigurujemy strategię, a dopiero potem będziemy z niej cokolwiek odczytywać. Pusta konfiguracja daje pusty raport, więc to tutaj warto zacząć. Nic na tym ekranie nie kupuje instrumentu ani nie zmienia czegokolwiek na koncie u brokera."
           },
           "accounts": {
             "title": "Wybierz konta do porównania",
-            "body": "**Konta strategii** to konta inwestycyjne należące do tego scenariusza GEM. Do porównania portfela i oszacowania wartości do przeniesienia liczą się tylko instrumenty oraz gotówka zapisane na tych kontach. Nie masz jeszcze konta inwestycyjnego? Zostaw listę pustą. GEM nadal może wyliczyć sygnał, ale nie porówna go z Twoim rzeczywistym portfelem.",
-            "fallbackBody": "Formularz ustawień nie został wczytany, dlatego przewodnik nie może wskazać wyboru kont. Żadne ustawienie nie zostało zmienione. Użyj opcji ponowienia na stronie albo uruchom przewodnik później w sekcji **Przewodniki po aplikacji** w **Ustawieniach**."
+            "body": "**Konta strategii** to konta inwestycyjne należące do tego scenariusza GEM. Do porównania portfela i oszacowania wartości do przeniesienia liczą się tylko instrumenty oraz gotówka zapisane na tych kontach. Nie masz jeszcze konta inwestycyjnego? Zostaw listę pustą. GEM nadal może wyliczyć sygnał, ale nie porówna go z Twoim rzeczywistym portfelem."
           },
           "timingAndCosts": {
             "title": "Wybierz, jak daleko GEM patrzy wstecz",
@@ -277,19 +276,20 @@
           },
           "addInstruments": {
             "title": "Nie masz jeszcze instrumentów? Zacznij tutaj",
-            "body": "Gdy co najmniej jedna rola jest pusta, karta **Role i instrumenty** pokazuje skrót do dodania przykładowych funduszy ETF. Najpierw w polu **Notowania do dodania** wybierz rynek, na którym rzeczywiście działa Twój broker: **Ameryka** albo **Europa (UCITS)**. Naciśnięcie przycisku dodawania od razu tworzy wpisy instrumentów w Monize, jeszcze przed zapisaniem konfiguracji GEM; niczego nie kupuje. Uzupełniane są tylko puste role, a pasujący instrument z Twojej listy może zostać użyty ponownie. Sprawdź każdy symbol, giełdę i walutę. Te przykłady nie są rekomendacją. Jeśli skrótu nie ma, role są już uzupełnione i możesz je przejrzeć poniżej."
+            "body": "GEM potrzebuje instrumentu w każdej roli, żeby móc cokolwiek zdecydować. Gdy rola jest pusta, karta **Role i instrumenty** proponuje skrót dodający przykładowe funduszy ETF. Najpierw w polu **Notowania do dodania** wybierz rynek, na którym rzeczywiście działa Twój broker: **Ameryka** albo **Europa (UCITS)**. Przycisk dodawania od razu tworzy wpisy instrumentów w Monize, jeszcze przed zapisaniem konfiguracji GEM; niczego nie kupuje. Uzupełniane są tylko puste role, a pasujący instrument z Twojej listy może zostać użyty ponownie. Sprawdź każdy symbol, giełdę i walutę. Te przykłady nie są rekomendacją. Jeśli skrótu nie ma, role są już uzupełnione i możesz je przejrzeć poniżej.",
+            "fallbackBody": "Formularz ustawień nie został wczytany, dlatego przewodnik nie może wskazać karty z rolami. Żadne ustawienie nie zostało zmienione. Użyj opcji ponowienia na stronie albo uruchom przewodnik później w sekcji **Przewodniki po aplikacji** w **Ustawieniach**."
           },
           "roles": {
             "title": "Pięć ról, jeden cel",
-            "body": "Trzy role akcyjne oznaczają USA (**S&P 500**), **Rynki rozwinięte poza USA** i **Rynki wschodzące**. **Aktywo bezpieczne** ma być trzymane, gdy akcje nie przejdą testu bezpieczeństwa. **Benchmark wolny od ryzyka** jest tylko punktem odniesienia dla tego testu i można zostawić go pustego; wtedy aktywo bezpieczne pełni obie funkcje. To pięć zadań w obliczeniu, a nie pięć inwestycji, które GEM każe posiadać naraz. Celem strategii jest jeden instrument na raz."
+            "body": "Te pięć pól to właśnie to, co uzupełnił skrót — i to, co w innym razie ustawiasz ręcznie. Trzy role akcyjne oznaczają USA (**S&P 500**), **Rynki rozwinięte poza USA** i **Rynki wschodzące**. **Aktywo bezpieczne** ma być trzymane, gdy akcje nie przejdą testu bezpieczeństwa. **Benchmark wolny od ryzyka** jest tylko punktem odniesienia dla tego testu i można zostawić go pustego; wtedy aktywo bezpieczne pełni obie funkcje. To pięć zadań w obliczeniu, a nie pięć inwestycji, które GEM każe posiadać naraz. Celem strategii jest jeden instrument na raz."
           },
           "save": {
             "title": "Sprawdź wszystko przed zapisaniem",
-            "body": "Sprawdź listę kont, każde notowanie i waluty. **Zapisz konfigurację** przechowuje scenariusz i ponownie oblicza raport z dostępnej historii cen. Nadal nie składa żadnych zleceń. Nie musisz niczego zapisywać, aby ukończyć ten przewodnik. Jeśli cen brakuje albo są zbyt stare, Monize pokaże brak dostępnego sygnału zamiast zgadywać."
+            "body": "Sprawdź listę kont, każde notowanie i waluty, a potem **Zapisz konfigurację**, aby przechować scenariusz i ponownie obliczyć raport z dostępnej historii cen. To zapis sprawia, że kolejne kroki mają co pokazać. Nadal nie składa żadnych zleceń i nie musisz zapisywać, aby ukończyć ten przewodnik. Jeśli cen brakuje albo są zbyt stare, Monize pokaże brak dostępnego sygnału zamiast zgadywać."
           },
           "finish": {
-            "title": "GEM jest gotowy, gdy gotowe są dane",
-            "body": "Po zapisaniu konfiguracji wróć do **Przeglądu**. Gdy historia cen jest użyteczna, raport może pokazać sygnał, jego uzasadnienie, porównanie portfela i możliwy kolejny krok. Brakujące konta, pozycje, ceny lub przypisania pozostają widoczne jako jasne ostrzeżenia. Ten przewodnik możesz w każdej chwili uruchomić ponownie w sekcji **Przewodniki po aplikacji** w **Ustawieniach**."
+            "title": "To cała pętla",
+            "body": "Konfiguracja, sygnał, uzasadnienie, porównanie portfela, możliwy kolejny krok. Każdą z tych rzeczy zmienisz w **Ustawieniach**, a raport przeliczy się z posiadanej historii cen. Brakujące konta, pozycje, ceny lub przypisania ról pozostają widoczne jako jasne ostrzeżenia, zamiast po cichu wyglądać jak zero. Ten przewodnik możesz w każdej chwili uruchomić ponownie w sekcji **Przewodniki po aplikacji** w **Ustawieniach**."
           }
         }
       }

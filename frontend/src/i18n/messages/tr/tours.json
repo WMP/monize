@@ -235,7 +235,7 @@
         "steps": {
           "welcome": {
             "title": "GEM stratejisiyle tanışın",
-            "body": "GEM ayda bir ya da üç ayda bir, üç hisse piyasası ile bir güvenli varlığın nasıl hareket ettiğini karşılaştırır ve bir sonraki kontrole kadar tutulacak tek enstrümanı söyler. Hisseler risksiz ölçütü aşamazsa GEM onun yerine güvenli varlığı söyler. Monize sizin adınıza alım, satım ya da para transferi yapmaz ve gösterilen enstrümanlar örnektir, kişiye özel yatırım tavsiyesi değildir."
+            "body": "GEM ayda bir ya da üç ayda bir, üç hisse piyasası ile bir güvenli varlığın nasıl hareket ettiğini karşılaştırır ve bir sonraki kontrole kadar tutulacak tek enstrümanı söyler. Hisseler fazla zayıf gittiğinde onun yerine güvenli varlığı söyler."
           },
           "findReport": {
             "title": "GEM'i Raporlar altında bulun",
@@ -259,17 +259,16 @@
             "body": "Burada „momentum“ yalnızca fiyatların seçilen geçmiş dönemde nasıl değiştiğini anlatır. GEM önce ABD hisse enstrümanının, ölçüt olarak kullanılan risksiz referanstan daha iyi gidip gitmediğine bakar. Daha iyi gittiyse GEM, ABD, ABD dışı gelişmiş piyasalar ve gelişmekte olan piyasalar enstrümanları arasından en güçlüsünü seçer. Gitmediyse GEM güvenli varlığı seçer. **Bu sinyal neden?** ve sinyal geçmişi, yalnızca son bir kodu değil, kararın tamamını gösterir."
           },
           "tabs": {
-            "title": "İhtiyaç duyduğunuzda daha fazla ayrıntı",
-            "body": "**Sinyaller** önceki kararları gösterir. **Portföyüm**, seçili hesaplarda neyin kayıtlı olduğunu açıklar. **Geriye dönük test**, kuralların mevcut geçmiş fiyatlarla nasıl davranacağını gösterir; bu bir modeldir, tahmin ya da vaat değil. **Ayarlar**, kaydedilmiş senaryoyu yönetir."
+            "title": "Sonucu görmek için Genel bakış'a dönün",
+            "body": "Yapılandırmanın ne ürettiğini görmek için **Genel bakış**'ı seçin. Diğer sekmeleri de bilmeye değer: **Sinyaller** önceki kararları gösterir, **Portföyüm** seçili hesaplarda neyin kayıtlı olduğunu açıklar ve **Geriye dönük test** kuralların mevcut geçmiş fiyatlarla nasıl davranacağını gösterir; bu bir modeldir, tahmin ya da vaat değil."
           },
           "openSettings": {
             "title": "Senaryo ayarlarını açın",
-            "body": "Bu senaryonun nasıl tanımlandığını görmek için **Ayarları düzenle**'yi seçin. Her alanı kaydetmeden inceleyebilirsiniz. Bu ekrandaki hiçbir şey enstrüman satın almaz ya da aracı kurumunuzda bir şeyi değiştirmez."
+            "body": "**Ayarları düzenle**'yi seçin: önce stratejiyi kuralım, sonra ondan bir şey okuyalım. Boş bir yapılandırma boş bir rapor üretir, dolayısıyla başlamaya değer yer burasıdır. Bu ekrandaki hiçbir şey enstrüman satın almaz ya da aracı kurumunuzda bir şeyi değiştirmez."
           },
           "accounts": {
             "title": "Karşılaştırılacak hesapları seçin",
-            "body": "**Strateji hesapları**, bu GEM senaryosuna ait yatırım hesaplarıdır. Portföy karşılaştırması ve aktarılacak tutar tahmini için yalnızca bu hesaplarda kayıtlı pozisyonlar ve nakit kullanılır. Henüz yatırım hesabınız yok mu? Listeyi boş bırakın. GEM yine bir sinyal hesaplayabilir, ama onu gerçek portföyünüzle karşılaştıramaz.",
-            "fallbackBody": "Ayarlar formu yüklenmedi, bu yüzden tur hesap seçicisini gösteremiyor. Hiçbir ayar değiştirilmedi. Sayfadaki yeniden dene seçeneğini kullanın ya da turu daha sonra **Ayarlar** içindeki **Rehberli turlar** bölümünden tekrar başlatın."
+            "body": "**Strateji hesapları**, bu GEM senaryosuna ait yatırım hesaplarıdır. Portföy karşılaştırması ve aktarılacak tutar tahmini için yalnızca bu hesaplarda kayıtlı pozisyonlar ve nakit kullanılır. Henüz yatırım hesabınız yok mu? Listeyi boş bırakın. GEM yine bir sinyal hesaplayabilir, ama onu gerçek portföyünüzle karşılaştıramaz."
           },
           "timingAndCosts": {
             "title": "GEM'in ne kadar geriye baktığını seçin",
@@ -277,19 +276,20 @@
           },
           "addInstruments": {
             "title": "Henüz enstrüman yok mu? Buradan başlayın",
-            "body": "Bir veya daha fazla rol boşken **Roller ve enstrümanlar** kartı, örnek ETF'ler eklemek için bir kısayol gösterir. Önce **Eklenecek kotasyonlar** alanında, aracı kurumunuzun gerçekten işlem yapabildiği bölgeyi seçin: **Amerika** veya **Avrupa (UCITS)**. Ekle düğmesine basmak, GEM yapılandırmasını kaydetmeden önce bile enstrüman kayıtlarını Monize'de hemen oluşturur; hiçbir şey satın almaz. Yalnızca boş roller doldurulur ve listenizde zaten bulunan uygun bir enstrüman yeniden kullanılabilir. Her sembolü, borsayı ve para birimini kontrol edin. Bu örnekler bir öneri değildir. Kısayol görünmüyorsa rolleriniz zaten dolu ve onları aşağıda gözden geçirebilirsiniz."
+            "body": "GEM'in bir karar verebilmesi için her rolde bir enstrüman gerekir. Bir rol boşken **Roller ve enstrümanlar** kartı, örnek ETF'ler ekleyen bir kısayol sunar. Önce **Eklenecek kotasyonlar** alanında, aracı kurumunuzun gerçekten işlem yapabildiği bölgeyi seçin: **Amerika** veya **Avrupa (UCITS)**. Ekle düğmesi, GEM yapılandırmasını kaydetmenizden önce bile enstrüman kayıtlarını Monize'de hemen oluşturur; hiçbir şey satın almaz. Yalnızca boş roller doldurulur ve listenizde zaten bulunan uygun bir enstrüman yeniden kullanılabilir. Her sembolü, borsayı ve para birimini kontrol edin. Bu örnekler bir öneri değildir. Kısayol görünmüyorsa rolleriniz zaten dolu ve onları aşağıda gözden geçirebilirsiniz.",
+            "fallbackBody": "Ayarlar formu yüklenmedi, bu yüzden tur roller kartını gösteremiyor. Hiçbir ayar değiştirilmedi. Sayfadaki yeniden dene seçeneğini kullanın ya da turu daha sonra **Ayarlar** içindeki **Rehberli turlar** bölümünden tekrar başlatın."
           },
           "roles": {
             "title": "Beş rol, tek hedef",
-            "body": "Üç hisse rolü ABD'yi (**S&P 500**), **ABD dışı gelişmiş piyasalar**ı ve **Gelişmekte olan piyasalar**ı temsil eder. **Güvenli varlık**, hisseler güvenlik testini geçemediğinde GEM'in tutacağı şeydir. **Risksiz ölçüt** yalnızca o testin kıyas noktasıdır ve boş bırakılabilir; o durumda güvenli varlık iki işi birlikte görür. Bunlar hesaplamadaki beş iştir, GEM'in aynı anda elinizde tutmanızı beklediği beş yatırım değil. Hedefi her seferinde tek bir enstrümandır."
+            "body": "Bu beş seçici, kısayolun doldurduğu ve aksi hâlde elle ayarladığınız alanlardır. Üç hisse rolü ABD'yi (**S&P 500**), **ABD dışı gelişmiş piyasalar**ı ve **Gelişmekte olan piyasalar**ı temsil eder. **Güvenli varlık**, hisseler güvenlik testini geçemediğinde GEM'in tutacağı şeydir. **Risksiz ölçüt** yalnızca o testin kıyas noktasıdır ve boş bırakılabilir; o durumda güvenli varlık iki işi birlikte görür. Bunlar hesaplamadaki beş iştir, GEM'in aynı anda elinizde tutmanızı beklediği beş yatırım değil. Hedefi her seferinde tek bir enstrümandır."
           },
           "save": {
             "title": "Kaydetmeden önce gözden geçirin",
-            "body": "Hesap listesini, her kotasyonu ve para birimlerini kontrol edin. **Yapılandırmayı kaydet**, senaryoyu saklar ve raporu mevcut fiyat geçmişinden yeniden hesaplar. Bu yine hiçbir emir iletmez. Bu turu bitirmek için hiçbir şeyi kaydetmeniz gerekmez. Fiyatlar eksikse ya da fazla eskiyse Monize tahmin yürütmek yerine sinyalin kullanılamadığını gösterir."
+            "body": "Hesap listesini, her kotasyonu ve para birimlerini kontrol edin, ardından senaryoyu saklamak ve raporu mevcut fiyat geçmişinden yeniden hesaplamak için **Yapılandırmayı kaydet**'i kullanın. Sonraki adımlara gösterecek bir şey veren şey bu kayıttır. Bu yine hiçbir emir iletmez ve turu bitirmek için kaydetmeniz gerekmez. Fiyatlar eksikse ya da fazla eskiyse Monize tahmin yürütmek yerine sinyalin kullanılamadığını gösterir."
           },
           "finish": {
-            "title": "Veriler hazır olduğunda GEM de hazır",
-            "body": "Bir yapılandırmayı kaydettikten sonra **Genel bakış**'a dönün. Kullanılabilir fiyat geçmişi varsa rapor bir sinyal, açıklamasını, portföy karşılaştırmasını ve olası bir sonraki adımı gösterebilir. Eksik hesaplar, pozisyonlar, fiyatlar veya rol atamaları açık uyarılar olarak görünmeye devam eder. Bu turu istediğiniz zaman **Ayarlar** içindeki **Rehberli turlar** bölümünden yeniden başlatabilirsiniz."
+            "title": "Döngünün tamamı bu",
+            "body": "Kurulum, sinyal, gerekçe, portföy karşılaştırması, olası sonraki adım. Bunların her birini **Ayarlar**'dan değiştirirsiniz ve rapor elinizdeki fiyat geçmişinden yeniden hesaplanır. Eksik hesaplar, pozisyonlar, fiyatlar veya rol atamaları sessizce sıfır gibi görünmek yerine açık uyarılar olarak görünmeye devam eder. Bu turu istediğiniz zaman **Ayarlar** içindeki **Rehberli turlar** bölümünden yeniden başlatabilirsiniz."
           }
         }
       }

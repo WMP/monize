@@ -235,7 +235,7 @@
         "steps": {
           "welcome": {
             "title": "Conoscere la strategia GEM",
-            "body": "Una volta al mese o al trimestre, GEM confronta come si sono mossi tre mercati azionari e un'attività sicura, poi indica l'unico strumento da tenere fino al controllo successivo. Se le azioni non battono il riferimento privo di rischio, GEM indica l'attività sicura. Monize non compra, non vende e non sposta denaro per te, e gli strumenti mostrati sono esempi, non consulenza finanziaria personalizzata."
+            "body": "Una volta al mese o al trimestre, GEM confronta come si sono mossi tre mercati azionari e un'attività sicura, poi indica l'unico strumento da tenere fino al controllo successivo. Quando le azioni vanno troppo debolmente, indica invece l'attività sicura."
           },
           "findReport": {
             "title": "Trovare GEM nei Report",
@@ -259,17 +259,16 @@
             "body": "Qui «momentum» significa semplicemente come sono variati i prezzi nel periodo passato scelto. GEM verifica prima se lo strumento sulle azioni statunitensi ha fatto meglio del riferimento privo di rischio usato come metro. Se sì, GEM sceglie il più forte fra gli strumenti su Stati Uniti, mercati sviluppati esclusi gli Stati Uniti e mercati emergenti. Se no, GEM sceglie l'attività sicura. **Perché questo segnale?** e lo storico dei segnali mostrano l'intera decisione anziché solo un simbolo finale."
           },
           "tabs": {
-            "title": "Più dettaglio quando serve",
-            "body": "**Segnali** mostra le decisioni precedenti. **Il mio portafoglio** spiega cosa è registrato sui conti selezionati. **Backtest** mostra come si sarebbero comportate le regole sui prezzi storici disponibili; è un modello, non una previsione né una promessa. **Impostazioni** governa lo scenario salvato."
+            "title": "Torna a Panoramica per vedere il risultato",
+            "body": "Scegli **Panoramica** per vedere cosa produce la configurazione. Vale la pena conoscere anche le altre schede: **Segnali** mostra le decisioni precedenti, **Il mio portafoglio** spiega cosa è registrato sui conti selezionati e **Backtest** mostra come si sarebbero comportate le regole sui prezzi storici disponibili; è un modello, non una previsione né una promessa."
           },
           "openSettings": {
             "title": "Aprire le impostazioni dello scenario",
-            "body": "Scegli **Modifica impostazioni** per vedere come è definito questo scenario. Puoi esaminare ogni campo senza salvare. Nulla in questa schermata compra uno strumento o modifica qualcosa presso il tuo intermediario."
+            "body": "Scegli **Modifica impostazioni**: prima configuriamo la strategia, poi ne leggeremo qualcosa. Una configurazione vuota produce un report vuoto, quindi è qui che conviene cominciare. Nulla in questa schermata compra uno strumento o modifica qualcosa presso il tuo intermediario."
           },
           "accounts": {
             "title": "Scegliere i conti da confrontare",
-            "body": "I **Conti della strategia** sono i conti di investimento che appartengono a questo scenario GEM. Solo le posizioni e la liquidità registrate su quei conti servono al confronto del portafoglio e alla stima dell'importo da trasferire. Non hai ancora un conto di investimento? Lascia la lista vuota. GEM può comunque calcolare un segnale, ma non potrà confrontarlo con il tuo portafoglio reale.",
-            "fallbackBody": "Il modulo delle impostazioni non è stato caricato, quindi il tour non può indicare il selettore dei conti. Nessuna impostazione è stata modificata. Usa il comando di nuovo tentativo della pagina, oppure riprendi il tour più tardi da **Tour guidati** nelle **Impostazioni**."
+            "body": "I **Conti della strategia** sono i conti di investimento che appartengono a questo scenario GEM. Solo le posizioni e la liquidità registrate su quei conti servono al confronto del portafoglio e alla stima dell'importo da trasferire. Non hai ancora un conto di investimento? Lascia la lista vuota. GEM può comunque calcolare un segnale, ma non potrà confrontarlo con il tuo portafoglio reale."
           },
           "timingAndCosts": {
             "title": "Scegliere quanto indietro guarda GEM",
@@ -277,19 +276,20 @@
           },
           "addInstruments": {
             "title": "Ancora nessuno strumento? Comincia qui",
-            "body": "Quando uno o più ruoli sono vuoti, la scheda **Ruoli e strumenti** mostra una scorciatoia per aggiungere ETF di esempio. Scegli prima, in **Quotazioni da aggiungere**, la regione che il tuo intermediario può davvero negoziare: **Americhe** o **Europa (UCITS)**. Premere il pulsante di aggiunta crea subito le schede degli strumenti in Monize, ancora prima di salvare la configurazione GEM; non compra nulla. Vengono riempiti solo i ruoli vuoti e uno strumento corrispondente già presente nella tua lista può essere riutilizzato. Controlla ogni simbolo, ogni mercato e ogni valuta. Questi esempi non sono una raccomandazione. Se la scorciatoia non compare, i tuoi ruoli sono già assegnati e puoi rivederli qui sotto."
+            "body": "GEM ha bisogno di uno strumento in ogni ruolo per poter decidere qualcosa. Quando un ruolo è vuoto, la scheda **Ruoli e strumenti** propone una scorciatoia che aggiunge ETF di esempio. Scegli prima, in **Quotazioni da aggiungere**, la regione che il tuo intermediario può davvero negoziare: **Americhe** o **Europa (UCITS)**. Il pulsante di aggiunta crea subito le schede degli strumenti in Monize, ancora prima che salvi la configurazione GEM; non compra nulla. Vengono riempiti solo i ruoli vuoti e uno strumento corrispondente già presente nella tua lista può essere riutilizzato. Controlla ogni simbolo, ogni mercato e ogni valuta. Questi esempi non sono una raccomandazione. Se la scorciatoia non compare, i tuoi ruoli sono già assegnati e puoi rivederli qui sotto.",
+            "fallbackBody": "Il modulo delle impostazioni non è stato caricato, quindi il tour non può indicare la scheda dei ruoli. Nessuna impostazione è stata modificata. Usa il comando di nuovo tentativo della pagina, oppure riprendi il tour più tardi da **Tour guidati** nelle **Impostazioni**."
           },
           "roles": {
             "title": "Cinque ruoli, un obiettivo",
-            "body": "I tre ruoli azionari rappresentano gli Stati Uniti (**S&P 500**), i **Mercati sviluppati ex-USA** e i **Mercati emergenti**. **Attività sicura** è ciò che GEM terrebbe quando le azioni non superano la prova di sicurezza. **Riferimento privo di rischio** è soltanto il metro di quella prova e può restare vuoto; in quel caso l'attività sicura svolge entrambi i compiti. Sono cinque compiti nel calcolo, non cinque investimenti che GEM si aspetta tu detenga insieme. Il suo obiettivo è uno strumento alla volta."
+            "body": "Questi cinque selettori sono ciò che la scorciatoia ha riempito, e ciò che imposti a mano altrimenti. I tre ruoli azionari rappresentano gli Stati Uniti (**S&P 500**), i **Mercati sviluppati ex-USA** e i **Mercati emergenti**. **Attività sicura** è ciò che GEM terrebbe quando le azioni non superano la prova di sicurezza. **Riferimento privo di rischio** è soltanto il metro di quella prova e può restare vuoto; in quel caso l'attività sicura svolge entrambi i compiti. Sono cinque compiti nel calcolo, non cinque investimenti che GEM si aspetta tu detenga insieme. Il suo obiettivo è uno strumento alla volta."
           },
           "save": {
             "title": "Controlla prima di salvare",
-            "body": "Verifica la lista dei conti, ogni quotazione e le valute. **Salva configurazione** memorizza lo scenario e ricalcola il report dallo storico prezzi disponibile. Continua a non immettere alcun ordine. Non devi salvare nulla per concludere questo tour. Se i prezzi mancano o sono troppo vecchi, Monize indica che il segnale non è disponibile invece di tirare a indovinare."
+            "body": "Verifica la lista dei conti, ogni quotazione e le valute, poi **Salva configurazione** per memorizzare lo scenario e ricalcolare il report dallo storico prezzi disponibile. È il salvataggio che dà qualcosa da mostrare ai passi successivi. Continua a non immettere alcun ordine, e non devi salvare per concludere questo tour. Se i prezzi mancano o sono troppo vecchi, Monize indica che il segnale non è disponibile invece di tirare a indovinare."
           },
           "finish": {
-            "title": "GEM è pronto quando lo sono i dati",
-            "body": "Dopo aver salvato una configurazione, torna a **Panoramica**. Con uno storico prezzi utilizzabile, il report può mostrare un segnale, la sua spiegazione, un confronto di portafoglio e un possibile passo successivo. Conti, posizioni, prezzi o assegnazioni di ruolo mancanti restano visibili come avvisi chiari. Puoi rifare questo tour quando vuoi da **Tour guidati** nelle **Impostazioni**."
+            "title": "Questo è tutto il giro",
+            "body": "Configurazione, segnale, spiegazione, confronto del portafoglio, possibile passo successivo. Ognuna di queste cose si cambia da **Impostazioni**, e il report si ricalcola dallo storico prezzi che hai. Conti, posizioni, prezzi o assegnazioni di ruolo mancanti restano visibili come avvisi chiari, anziché passare in silenzio per zero. Puoi rifare questo tour quando vuoi da **Tour guidati** nelle **Impostazioni**."
           }
         }
       }

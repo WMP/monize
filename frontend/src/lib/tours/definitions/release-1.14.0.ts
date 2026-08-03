@@ -103,16 +103,20 @@ export const RELEASE_1_14_SECURITY_DETAIL_TOUR: TourDefinition = {
 /**
  * The GEM (Global Equities Momentum) strategy report.
  *
- * An explanatory tour, not a setup wizard. It walks the report top to bottom,
- * opens the Settings tab, and names what each group of fields decides -- but
- * every settings step advances with Next. Nothing in the tour requires the user
- * to save a configuration, create an instrument, or mark a signal executed, so
- * taking it writes nothing.
+ * Set up first, then read the result. The tour opens the report, goes straight
+ * into Settings, offers the add-instruments shortcut and the five role pickers,
+ * covers the accounts and the timing/cost fields, invites a save, and only then
+ * walks the Overview cards -- which by that point have something in them.
+ *
+ * The settings steps carry `allowInteraction` so the user can actually fill the
+ * form in while reading about it. **None of them advances on a mutation**: every
+ * one still moves on with Next, so a user who presses nothing reaches the end.
+ * That is the line this tour holds -- actionable, never required.
  *
  * Deliberately **not** gated on `securitiesExist`. A user with no instruments is
  * the primary audience: the report opens for them, the Settings tab renders, and
- * the "Roles and instruments" card is where they would start. Gating it would
- * hide the tour from exactly the people it is for.
+ * the "Roles and instruments" card is where the tour now sends them first.
+ * Gating it would hide the tour from exactly the people it is for.
  *
  * One tour, not a "configured"/"unconfigured" pair. The two states differ only in
  * whether the fill-missing-roles shortcut is on screen, and the `addInstruments`
@@ -153,10 +157,87 @@ export const RELEASE_1_14_GEM_STRATEGY_TOUR: TourDefinition = {
       anchorTimeoutMs: 4000,
     },
     {
+      // Orientation before the setup: what a scenario is, and the four questions
+      // the page answers once it has data.
       id: 'page',
       route: '/reports/gem-strategy',
       anchorId: TOUR_ANCHORS.gemStrategyHeader,
       placement: 'bottom',
+    },
+    {
+      // A click advance is safe here: Edit settings switches an in-page tab, so
+      // there is no navigation for the advance to race.
+      id: 'openSettings',
+      route: '/reports/gem-strategy',
+      anchorId: TOUR_ANCHORS.gemStrategyEditSettings,
+      placement: 'auto',
+      advance: { type: 'click' },
+    },
+    {
+      // The stable "Roles and instruments" card, not the conditional shortcut
+      // box inside it -- see the anchor's own comment. The copy covers both
+      // states, so no step is skipped when the roles are already filled.
+      //
+      // First anchor inside the settings form, which fetches its accounts and
+      // securities before rendering, so this is the step that carries the
+      // slow-load fallback: it says the form did not arrive rather than leaving a
+      // hole in the step counter.
+      //
+      // `allowInteraction` so the user can actually press the add button while
+      // reading about it -- the tour is a setup walkthrough now, and a passive
+      // step would cover the control with the spotlight's click blocker. The
+      // advance stays the default Next, so pressing it is never *required*.
+      id: 'addInstruments',
+      route: '/reports/gem-strategy',
+      anchorId: TOUR_ANCHORS.gemSettingsAssets,
+      placement: 'auto',
+      allowInteraction: true,
+      fallbackWhenMissing: true,
+      anchorTimeoutMs: 8000,
+    },
+    {
+      // Straight after the shortcut, since the five pickers are what it filled in
+      // and what a user without the shortcut has to set by hand.
+      id: 'roles',
+      route: '/reports/gem-strategy',
+      anchorId: TOUR_ANCHORS.gemSettingsRoles,
+      placement: 'auto',
+      allowInteraction: true,
+    },
+    {
+      id: 'accounts',
+      route: '/reports/gem-strategy',
+      anchorId: TOUR_ANCHORS.gemSettingsAccounts,
+      placement: 'auto',
+      allowInteraction: true,
+    },
+    {
+      id: 'timingAndCosts',
+      route: '/reports/gem-strategy',
+      anchorId: TOUR_ANCHORS.gemSettingsTimingAndCosts,
+      placement: 'auto',
+      allowInteraction: true,
+    },
+    {
+      // Interactive but not required: saving here is what gives the report steps
+      // something to show, and the copy says the tour finishes either way. The
+      // advance is still the default Next, never the save itself.
+      id: 'save',
+      route: '/reports/gem-strategy',
+      anchorId: TOUR_ANCHORS.gemSettingsSave,
+      placement: 'top',
+      allowInteraction: true,
+    },
+    {
+      // The tab bar doubles as the way back to Overview: the engine cannot switch
+      // an in-page tab itself, and every step after this one needs the Overview
+      // panel mounted. Advancing on the overview grid appearing is what
+      // guarantees that, rather than hoping the user picked the right tab.
+      id: 'tabs',
+      route: '/reports/gem-strategy',
+      anchorId: TOUR_ANCHORS.gemStrategyTabs,
+      placement: 'bottom',
+      advance: { type: 'appear', anchorId: TOUR_ANCHORS.gemStrategyOverviewCards },
     },
     {
       id: 'summary',
@@ -177,66 +258,9 @@ export const RELEASE_1_14_GEM_STRATEGY_TOUR: TourDefinition = {
       placement: 'auto',
     },
     {
-      id: 'tabs',
-      route: '/reports/gem-strategy',
-      anchorId: TOUR_ANCHORS.gemStrategyTabs,
-      placement: 'bottom',
-    },
-    {
-      // A click advance is safe here: Edit settings switches an in-page tab, so
-      // there is no navigation for the advance to race.
-      id: 'openSettings',
-      route: '/reports/gem-strategy',
-      anchorId: TOUR_ANCHORS.gemStrategyEditSettings,
-      placement: 'auto',
-      advance: { type: 'click' },
-    },
-    {
-      // First anchor inside the settings form, which fetches its accounts and
-      // securities before rendering. `fallbackWhenMissing` with a generous
-      // timeout covers a slow or failed load: the step says the form did not
-      // arrive rather than leaving a hole in the step counter.
-      id: 'accounts',
-      route: '/reports/gem-strategy',
-      anchorId: TOUR_ANCHORS.gemSettingsAccounts,
-      placement: 'auto',
-      fallbackWhenMissing: true,
-      anchorTimeoutMs: 8000,
-    },
-    {
-      id: 'timingAndCosts',
-      route: '/reports/gem-strategy',
-      anchorId: TOUR_ANCHORS.gemSettingsTimingAndCosts,
-      placement: 'auto',
-    },
-    {
-      // The stable "Roles and instruments" card, not the conditional shortcut
-      // box inside it -- see the anchor's own comment. The copy covers both
-      // states, so no step is skipped when the roles are already filled.
-      id: 'addInstruments',
-      route: '/reports/gem-strategy',
-      anchorId: TOUR_ANCHORS.gemSettingsAssets,
-      placement: 'auto',
-    },
-    {
-      id: 'roles',
-      route: '/reports/gem-strategy',
-      anchorId: TOUR_ANCHORS.gemSettingsRoles,
-      placement: 'auto',
-    },
-    {
-      // Passive, like every settings step: no `allowInteraction`, and the
-      // advance is the default Next. Saving is explained, never required.
-      id: 'save',
-      route: '/reports/gem-strategy',
-      anchorId: TOUR_ANCHORS.gemSettingsSave,
-      placement: 'top',
-    },
-    {
-      // Route-agnostic, and deliberately does not send the user back to
-      // Overview: they may have edited a field while reading, and an automatic
-      // tab change would trip the unsaved-changes guard. The copy says how to
-      // get back instead.
+      // Route-agnostic, and no tab change: the user is already on Overview, and
+      // an automatic switch could trip the unsaved-changes guard if they left an
+      // edit behind.
       id: 'finish',
       anchorId: null,
     },

@@ -235,7 +235,7 @@
         "steps": {
           "welcome": {
             "title": "[XX-Meet the GEM strategy-XX]",
-            "body": "[XX-Once a month or quarter, GEM compares how three share markets and one safe asset have moved, then names the single instrument to hold until the next check. If shares are not beating a risk-free yardstick, it names the safe asset instead. Monize does not buy, sell, or move money for you, and the instruments shown are examples, not personal investment advice.-XX]"
+            "body": "[XX-Once a month or quarter, GEM compares how three share markets and one safe asset have moved, then names the single instrument to hold until the next check. When shares are not doing well enough, it names the safe asset instead.-XX]"
           },
           "findReport": {
             "title": "[XX-Find GEM under Reports-XX]",
@@ -259,17 +259,16 @@
             "body": "[XX-Here, “momentum” simply means how prices changed over the chosen past period. GEM first checks whether the US-share instrument beat the risk-free benchmark used as its yardstick. If it did, GEM chooses the strongest of the US, developed-markets-outside-the-US, and emerging-markets instruments. If it did not, GEM chooses the safe asset. **Why this signal?** and the signal history show the decision instead of only a final ticker.-XX]"
           },
           "tabs": {
-            "title": "[XX-More detail when you need it-XX]",
-            "body": "[XX-**Signals** shows earlier decisions. **My portfolio** explains what is recorded in the selected accounts. **Backtest** shows how the rules would have behaved on the available historical prices; it is a model, not a forecast or promise. **Settings** controls the saved scenario.-XX]"
+            "title": "[XX-Back to Overview to see the result-XX]",
+            "body": "[XX-Choose **Overview** to see what the configuration produces. The other tabs are worth knowing: **Signals** shows earlier decisions, **My portfolio** explains what is recorded in the selected accounts, and **Backtest** shows how the rules would have behaved on the available historical prices; it is a model, not a forecast or promise.-XX]"
           },
           "openSettings": {
             "title": "[XX-Open the scenario settings-XX]",
-            "body": "[XX-Choose **Edit settings** to see how this scenario is defined. You may inspect every field without saving. Nothing on this screen buys an instrument or changes anything at your broker.-XX]"
+            "body": "[XX-Choose **Edit settings** and we will set the strategy up before reading anything off it. An empty configuration produces an empty report, so this is the useful place to start. Nothing on this screen buys an instrument or changes anything at your broker.-XX]"
           },
           "accounts": {
             "title": "[XX-Choose the accounts to compare-XX]",
-            "body": "[XX-**Strategy accounts** are the investment accounts that belong to this GEM scenario. Only the holdings and cash recorded in those accounts are used for the portfolio comparison and the amount-to-transfer estimate. No investment account yet? Leave the list empty. GEM may still calculate a signal, but it cannot compare that signal with your real portfolio.-XX]",
-            "fallbackBody": "[XX-The settings form has not loaded, so the tour cannot point to the account selector. No settings were changed. Use the page's retry control, or retake the tour later from **Guided tours** in **Settings**.-XX]"
+            "body": "[XX-**Strategy accounts** are the investment accounts that belong to this GEM scenario. Only the holdings and cash recorded in those accounts are used for the portfolio comparison and the amount-to-transfer estimate. No investment account yet? Leave the list empty. GEM may still calculate a signal, but it cannot compare that signal with your real portfolio.-XX]"
           },
           "timingAndCosts": {
             "title": "[XX-Choose how GEM looks back-XX]",
@@ -277,19 +276,20 @@
           },
           "addInstruments": {
             "title": "[XX-No instruments yet? Start here-XX]",
-            "body": "[XX-When one or more roles are empty, this **Roles and instruments** card shows a shortcut for adding example ETFs. First use **Listings to add** to choose the region your broker can actually trade: **Americas** or **Europe (UCITS)**. Pressing the add button creates instrument records in Monize immediately, even before you save the GEM configuration; it does not buy anything. It fills only empty roles and may reuse a matching instrument already in your list. Check every symbol, exchange, and currency. These examples are not a recommendation. If the shortcut is not shown, your roles are already filled and you can review them below.-XX]"
+            "body": "[XX-GEM needs an instrument in each role before it can decide anything. When a role is empty, this **Roles and instruments** card offers a shortcut that adds example ETFs. First use **Listings to add** to pick the region your broker can actually trade: **Americas** or **Europe (UCITS)**. The add button creates instrument records in Monize straight away, before you save the GEM configuration; it does not buy anything. It fills only empty roles and may reuse a matching instrument already in your list. Check every symbol, exchange, and currency. These examples are not a recommendation. If the shortcut is not shown, your roles are already filled and you can review them below.-XX]",
+            "fallbackBody": "[XX-The settings form has not loaded, so the tour cannot point to the roles card. No settings were changed. Use the page's retry control, or retake the tour later from **Guided tours** in **Settings**.-XX]"
           },
           "roles": {
             "title": "[XX-Five roles, one target-XX]",
-            "body": "[XX-The three equity roles represent the US (**S&P 500**), **Developed markets ex-US**, and **Emerging markets**. **Safe asset** is what GEM would hold when shares fail the safety test. **Risk-free benchmark** is only the yardstick for that test and may be left empty; then the safe asset is used for both jobs. These are five jobs in the calculation, not five investments GEM expects you to hold at once. Its target is one instrument at a time.-XX]"
+            "body": "[XX-These five pickers are what the shortcut filled in, and what you set by hand otherwise. The three equity roles represent the US (**S&P 500**), **Developed markets ex-US**, and **Emerging markets**. **Safe asset** is what GEM would hold when shares fail the safety test. **Risk-free benchmark** is only the yardstick for that test and may be left empty; then the safe asset is used for both jobs. These are five jobs in the calculation, not five investments GEM expects you to hold at once. Its target is one instrument at a time.-XX]"
           },
           "save": {
             "title": "[XX-Review before saving-XX]",
-            "body": "[XX-Check the account list, each listing, and the currencies. **Save configuration** stores the scenario and recalculates the report from the available price history. It still does not place a trade. You do not need to save anything to finish this tour. If prices are missing or too old, Monize shows that the signal is unavailable instead of guessing.-XX]"
+            "body": "[XX-Check the account list, each listing, and the currencies, then **Save configuration** to store the scenario and recalculate the report from the available price history. Saving is what gives the next few steps something to show. It still does not place a trade, and you do not have to save to finish this tour. If prices are missing or too old, Monize shows that the signal is unavailable instead of guessing.-XX]"
           },
           "finish": {
-            "title": "[XX-GEM is ready when the data is ready-XX]",
-            "body": "[XX-After saving a configuration, return to **Overview**. With usable price history, the report can show a signal, its explanation, a portfolio comparison, and a possible next action. Missing accounts, holdings, prices, or role assignments remain visible as clear warnings. You can retake this tour anytime from **Guided tours** in **Settings**.-XX]"
+            "title": "[XX-That is the whole loop-XX]",
+            "body": "[XX-Setup, signal, reasoning, portfolio comparison, possible next action. Change any of it from **Settings** and the report recalculates from the price history you have. Missing accounts, holdings, prices, or role assignments stay visible as clear warnings rather than quietly reading as zero. You can retake this tour anytime from **Guided tours** in **Settings**.-XX]"
           }
         }
       }

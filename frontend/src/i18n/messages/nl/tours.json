@@ -235,7 +235,7 @@
         "steps": {
           "welcome": {
             "title": "Maak kennis met de GEM-strategie",
-            "body": "Eens per maand of kwartaal vergelijkt GEM hoe drie aandelenmarkten en één veilige belegging zich hebben bewogen, en noemt dan het enige instrument om aan te houden tot de volgende controle. Verslaan aandelen de risicovrije maatstaf niet, dan noemt GEM de veilige belegging. Monize koopt, verkoopt of verplaatst geen geld voor je, en de genoemde instrumenten zijn voorbeelden, geen persoonlijk beleggingsadvies."
+            "body": "Eens per maand of kwartaal vergelijkt GEM hoe drie aandelenmarkten en één veilige belegging zich hebben bewogen, en noemt dan het enige instrument om aan te houden tot de volgende controle. Gaan aandelen te zwak, dan noemt GEM de veilige belegging."
           },
           "findReport": {
             "title": "GEM vinden onder Rapporten",
@@ -259,17 +259,16 @@
             "body": "„Momentum” betekent hier simpelweg hoe de koersen over de gekozen periode uit het verleden zijn veranderd. GEM kijkt eerst of het instrument voor Amerikaanse aandelen het beter deed dan de risicovrije maatstaf die als meetlat dient. Zo ja, dan kiest GEM de sterkste van de instrumenten voor de Verenigde Staten, ontwikkelde markten buiten de Verenigde Staten en opkomende markten. Zo nee, dan kiest GEM de veilige belegging. **Waarom dit signaal?** en de signaalhistorie tonen de hele beslissing in plaats van alleen een slotticker."
           },
           "tabs": {
-            "title": "Meer detail wanneer je het nodig hebt",
-            "body": "**Signalen** toont eerdere beslissingen. **Mijn portefeuille** legt uit wat op de gekozen rekeningen is vastgelegd. **Backtest** toont hoe de regels zich zouden hebben gedragen op de beschikbare historische koersen; dat is een model, geen voorspelling of belofte. **Instellingen** bepaalt het opgeslagen scenario."
+            "title": "Terug naar Overzicht voor het resultaat",
+            "body": "Kies **Overzicht** om te zien wat de configuratie oplevert. De andere tabbladen zijn ook goed om te kennen: **Signalen** toont eerdere beslissingen, **Mijn portefeuille** legt uit wat op de gekozen rekeningen is vastgelegd, en **Backtest** toont hoe de regels zich zouden hebben gedragen op de beschikbare historische koersen; dat is een model, geen voorspelling of belofte."
           },
           "openSettings": {
             "title": "Open de instellingen van het scenario",
-            "body": "Kies **Instellingen aanpassen** om te zien hoe dit scenario is vastgelegd. Je kunt elk veld bekijken zonder op te slaan. Niets op dit scherm koopt een instrument of verandert iets bij je broker."
+            "body": "Kies **Instellingen aanpassen**: we zetten de strategie eerst op en lezen er daarna iets uit af. Een lege configuratie levert een leeg rapport op, dus hier begin je met nut. Niets op dit scherm koopt een instrument of verandert iets bij je broker."
           },
           "accounts": {
             "title": "Kies de rekeningen die worden vergeleken",
-            "body": "**Strategierekeningen** zijn de beleggingsrekeningen die bij dit GEM-scenario horen. Alleen de posities en het geld dat op die rekeningen is vastgelegd, gaan mee in de portefeuillevergelijking en de schatting van het te verplaatsen bedrag. Nog geen beleggingsrekening? Laat de lijst leeg. GEM kan nog steeds een signaal berekenen, maar kan dat niet met je echte portefeuille vergelijken.",
-            "fallbackBody": "Het instellingenformulier is niet geladen, dus de rondleiding kan de rekeningkeuze niet aanwijzen. Er is geen instelling gewijzigd. Gebruik de opnieuw-proberen-optie op de pagina, of doe de rondleiding later opnieuw via **Begeleide rondleidingen** in **Instellingen**."
+            "body": "**Strategierekeningen** zijn de beleggingsrekeningen die bij dit GEM-scenario horen. Alleen de posities en het geld dat op die rekeningen is vastgelegd, gaan mee in de portefeuillevergelijking en de schatting van het te verplaatsen bedrag. Nog geen beleggingsrekening? Laat de lijst leeg. GEM kan nog steeds een signaal berekenen, maar kan dat niet met je echte portefeuille vergelijken."
           },
           "timingAndCosts": {
             "title": "Kies hoe ver GEM terugkijkt",
@@ -277,19 +276,20 @@
           },
           "addInstruments": {
             "title": "Nog geen instrumenten? Begin hier",
-            "body": "Zolang een of meer rollen leeg zijn, toont de kaart **Rollen en instrumenten** een snelkoppeling om voorbeeld-ETF's toe te voegen. Kies eerst bij **Toe te voegen noteringen** de regio waar je broker echt kan handelen: **Amerika** of **Europa (UCITS)**. Op de toevoegknop drukken maakt de instrumentgegevens direct aan in Monize, nog voordat je de GEM-configuratie opslaat; er wordt niets gekocht. Alleen lege rollen worden gevuld, en een passend instrument dat al in je lijst staat kan opnieuw worden gebruikt. Controleer elk symbool, elke beurs en elke valuta. Deze voorbeelden zijn geen aanbeveling. Staat de snelkoppeling er niet, dan zijn je rollen al gevuld en kun je ze hieronder nalopen."
+            "body": "GEM heeft in elke rol een instrument nodig om iets te kunnen beslissen. Is een rol leeg, dan biedt de kaart **Rollen en instrumenten** een snelkoppeling die voorbeeld-ETF's toevoegt. Kies eerst bij **Toe te voegen noteringen** de regio waar je broker echt kan handelen: **Amerika** of **Europa (UCITS)**. De toevoegknop maakt de instrumentgegevens direct aan in Monize, nog voordat je de GEM-configuratie opslaat; er wordt niets gekocht. Alleen lege rollen worden gevuld, en een passend instrument dat al in je lijst staat kan opnieuw worden gebruikt. Controleer elk symbool, elke beurs en elke valuta. Deze voorbeelden zijn geen aanbeveling. Staat de snelkoppeling er niet, dan zijn je rollen al gevuld en kun je ze hieronder nalopen.",
+            "fallbackBody": "Het instellingenformulier is niet geladen, dus de rondleiding kan de rollenkaart niet aanwijzen. Er is geen instelling gewijzigd. Gebruik de opnieuw-proberen-optie op de pagina, of doe de rondleiding later opnieuw via **Begeleide rondleidingen** in **Instellingen**."
           },
           "roles": {
             "title": "Vijf rollen, één doel",
-            "body": "De drie aandelenrollen staan voor de Verenigde Staten (**S&P 500**), **Ontwikkelde markten ex-VS** en **Opkomende markten**. **Veilige belegging** is wat GEM zou aanhouden wanneer aandelen de veiligheidstoets niet doorstaan. **Risicovrije maatstaf** is uitsluitend de meetlat voor die toets en mag leeg blijven; dan vervult de veilige belegging beide taken. Dit zijn vijf taken in de berekening, niet vijf beleggingen die GEM tegelijk van je verwacht. Het doel blijft één instrument per keer."
+            "body": "Deze vijf keuzevelden zijn wat de snelkoppeling heeft gevuld, en wat je anders zelf instelt. De drie aandelenrollen staan voor de Verenigde Staten (**S&P 500**), **Ontwikkelde markten ex-VS** en **Opkomende markten**. **Veilige belegging** is wat GEM zou aanhouden wanneer aandelen de veiligheidstoets niet doorstaan. **Risicovrije maatstaf** is uitsluitend de meetlat voor die toets en mag leeg blijven; dan vervult de veilige belegging beide taken. Dit zijn vijf taken in de berekening, niet vijf beleggingen die GEM tegelijk van je verwacht. Het doel blijft één instrument per keer."
           },
           "save": {
             "title": "Nakijken voordat je opslaat",
-            "body": "Controleer de rekeninglijst, elke notering en de valuta's. **Instellingen opslaan** bewaart het scenario en berekent het rapport opnieuw op basis van de beschikbare koershistorie. Er wordt daarmee nog steeds geen order geplaatst. Je hoeft niets op te slaan om deze rondleiding af te ronden. Ontbreken koersen of zijn ze te oud, dan meldt Monize dat het signaal niet beschikbaar is in plaats van te gokken."
+            "body": "Controleer de rekeninglijst, elke notering en de valuta's, en dan **Instellingen opslaan** om het scenario te bewaren en het rapport opnieuw te berekenen op basis van de beschikbare koershistorie. Opslaan is wat de volgende stappen iets te tonen geeft. Er wordt daarmee nog steeds geen order geplaatst, en je hoeft niet op te slaan om deze rondleiding af te ronden. Ontbreken koersen of zijn ze te oud, dan meldt Monize dat het signaal niet beschikbaar is in plaats van te gokken."
           },
           "finish": {
-            "title": "GEM is klaar wanneer de gegevens dat zijn",
-            "body": "Ga na het opslaan van een configuratie terug naar **Overzicht**. Met een bruikbare koershistorie kan het rapport een signaal, de uitleg daarvan, een portefeuillevergelijking en een mogelijke volgende stap laten zien. Ontbrekende rekeningen, posities, koersen of roltoewijzingen blijven zichtbaar als duidelijke waarschuwingen. Je kunt deze rondleiding altijd opnieuw doen via **Begeleide rondleidingen** in **Instellingen**."
+            "title": "Dat is de hele kringloop",
+            "body": "Instellen, signaal, uitleg, portefeuillevergelijking, mogelijke volgende stap. Elk daarvan verander je via **Instellingen**, en het rapport rekent opnieuw met de koershistorie die je hebt. Ontbrekende rekeningen, posities, koersen of roltoewijzingen blijven zichtbaar als duidelijke waarschuwingen, in plaats van stilletjes als nul te lezen. Je kunt deze rondleiding altijd opnieuw doen via **Begeleide rondleidingen** in **Instellingen**."
           }
         }
       }

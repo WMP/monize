@@ -235,7 +235,7 @@
         "steps": {
           "welcome": {
             "title": "Làm quen với chiến lược GEM",
-            "body": "Mỗi tháng hoặc mỗi quý một lần, GEM so sánh diễn biến của ba thị trường cổ phiếu và một tài sản an toàn, rồi nêu ra công cụ duy nhất nên giữ cho tới lần kiểm tra kế tiếp. Nếu cổ phiếu không vượt chuẩn phi rủi ro, GEM nêu tài sản an toàn. Monize không mua, không bán và không chuyển tiền thay bạn, còn những công cụ được nêu chỉ là ví dụ, không phải lời khuyên đầu tư dành riêng cho bạn."
+            "body": "Mỗi tháng hoặc mỗi quý một lần, GEM so sánh diễn biến của ba thị trường cổ phiếu và một tài sản an toàn, rồi nêu ra công cụ duy nhất nên giữ cho tới lần kiểm tra kế tiếp. Khi cổ phiếu diễn biến quá yếu, GEM nêu tài sản an toàn."
           },
           "findReport": {
             "title": "Tìm GEM trong Báo cáo",
@@ -259,17 +259,16 @@
             "body": "Ở đây, „đà tăng“ chỉ có nghĩa là giá đã biến động thế nào trong khoảng thời gian quá khứ được chọn. GEM trước tiên kiểm tra xem công cụ cổ phiếu Mỹ có vượt chuẩn phi rủi ro dùng làm thước đo hay không. Nếu vượt, GEM chọn công cụ mạnh nhất trong ba nhóm: Mỹ, thị trường phát triển ngoài Mỹ và thị trường mới nổi. Nếu không vượt, GEM chọn tài sản an toàn. **Vì sao có tín hiệu này?** và lịch sử tín hiệu cho thấy toàn bộ quyết định, không chỉ một mã cuối cùng."
           },
           "tabs": {
-            "title": "Thêm chi tiết khi bạn cần",
-            "body": "**Tín hiệu** cho thấy các quyết định trước đó. **Danh mục của tôi** giải thích những gì được ghi nhận trên các tài khoản đã chọn. **Kiểm định lịch sử** cho thấy các quy tắc sẽ hoạt động thế nào trên dữ liệu giá quá khứ hiện có; đó là một mô hình, không phải dự báo hay lời hứa. **Thiết lập** điều khiển kịch bản đã lưu."
+            "title": "Trở lại Tổng quan để xem kết quả",
+            "body": "Hãy chọn **Tổng quan** để xem cấu hình cho ra điều gì. Các thẻ còn lại cũng nên biết: **Tín hiệu** cho thấy các quyết định trước đó, **Danh mục của tôi** giải thích những gì được ghi nhận trên các tài khoản đã chọn, và **Kiểm định lịch sử** cho thấy các quy tắc sẽ hoạt động thế nào trên dữ liệu giá quá khứ hiện có; đó là một mô hình, không phải dự báo hay lời hứa."
           },
           "openSettings": {
             "title": "Mở thiết lập của kịch bản",
-            "body": "Chọn **Sửa thiết lập** để xem kịch bản này được định nghĩa ra sao. Bạn có thể xem mọi trường mà không cần lưu. Không có gì trên màn hình này mua một công cụ hay thay đổi bất cứ điều gì tại công ty chứng khoán của bạn."
+            "body": "Hãy chọn **Sửa thiết lập**: ta sẽ thiết lập chiến lược trước, rồi mới đọc kết quả từ nó. Cấu hình rỗng thì báo cáo cũng rỗng, nên đây là nơi đáng bắt đầu. Không có gì trên màn hình này mua một công cụ hay thay đổi bất cứ điều gì tại công ty chứng khoán của bạn."
           },
           "accounts": {
             "title": "Chọn các tài khoản để so sánh",
-            "body": "**Tài khoản của chiến lược** là những tài khoản đầu tư thuộc kịch bản GEM này. Chỉ các vị thế và tiền mặt được ghi nhận trên những tài khoản đó mới dùng để so sánh danh mục và ước tính số tiền cần chuyển. Chưa có tài khoản đầu tư? Hãy để danh sách trống. GEM vẫn có thể tính ra tín hiệu, nhưng sẽ không so sánh được tín hiệu đó với danh mục thật của bạn.",
-            "fallbackBody": "Biểu mẫu thiết lập chưa tải xong, nên phần hướng dẫn không thể chỉ vào bộ chọn tài khoản. Không có thiết lập nào bị thay đổi. Hãy dùng nút thử lại trên trang, hoặc chạy lại phần hướng dẫn sau từ **Hướng dẫn sử dụng** trong **Cài đặt**."
+            "body": "**Tài khoản của chiến lược** là những tài khoản đầu tư thuộc kịch bản GEM này. Chỉ các vị thế và tiền mặt được ghi nhận trên những tài khoản đó mới dùng để so sánh danh mục và ước tính số tiền cần chuyển. Chưa có tài khoản đầu tư? Hãy để danh sách trống. GEM vẫn có thể tính ra tín hiệu, nhưng sẽ không so sánh được tín hiệu đó với danh mục thật của bạn."
           },
           "timingAndCosts": {
             "title": "Chọn GEM nhìn lại bao xa",
@@ -277,19 +276,20 @@
           },
           "addInstruments": {
             "title": "Chưa có công cụ nào? Bắt đầu ở đây",
-            "body": "Khi còn một vai trò trở lên trống, thẻ **Vai trò và công cụ** hiển thị lối tắt để thêm các ETF làm ví dụ. Trước tiên, ở **Niêm yết cần thêm**, hãy chọn khu vực mà công ty chứng khoán của bạn thực sự giao dịch được: **Châu Mỹ** hoặc **Châu Âu (UCITS)**. Nhấn nút thêm sẽ tạo ngay các bản ghi công cụ trong Monize, kể cả trước khi bạn lưu cấu hình GEM; việc đó không mua bất cứ thứ gì. Chỉ những vai trò trống được điền, và một công cụ trùng khớp đã có trong danh sách của bạn có thể được dùng lại. Hãy kiểm tra từng mã, từng sàn và từng loại tiền. Những ví dụ này không phải là khuyến nghị. Nếu không thấy lối tắt, nghĩa là các vai trò đã được điền và bạn có thể xem lại bên dưới."
+            "body": "GEM cần một công cụ cho mỗi vai trò mới có thể quyết định được gì. Khi một vai trò còn trống, thẻ **Vai trò và công cụ** đưa ra lối tắt thêm các ETF làm ví dụ. Trước tiên, ở **Niêm yết cần thêm**, hãy chọn khu vực mà công ty chứng khoán của bạn thực sự giao dịch được: **Châu Mỹ** hoặc **Châu Âu (UCITS)**. Nút thêm tạo ngay các bản ghi công cụ trong Monize, kể cả trước khi bạn lưu cấu hình GEM; việc đó không mua bất cứ thứ gì. Chỉ những vai trò trống được điền, và một công cụ trùng khớp đã có trong danh sách của bạn có thể được dùng lại. Hãy kiểm tra từng mã, từng sàn và từng loại tiền. Những ví dụ này không phải là khuyến nghị. Nếu không thấy lối tắt, nghĩa là các vai trò đã được điền và bạn có thể xem lại bên dưới.",
+            "fallbackBody": "Biểu mẫu thiết lập chưa tải xong, nên phần hướng dẫn không thể chỉ vào thẻ vai trò. Không có thiết lập nào bị thay đổi. Hãy dùng nút thử lại trên trang, hoặc chạy lại phần hướng dẫn sau từ **Hướng dẫn sử dụng** trong **Cài đặt**."
           },
           "roles": {
             "title": "Năm vai trò, một mục tiêu",
-            "body": "Ba vai trò cổ phiếu đại diện cho Mỹ (**S&P 500**), **Thị trường phát triển ngoài Mỹ** và **Thị trường mới nổi**. **Tài sản an toàn** là thứ GEM sẽ nắm giữ khi cổ phiếu không qua được phép thử an toàn. **Chuẩn phi rủi ro** chỉ là thước đo cho phép thử đó và có thể để trống; khi ấy tài sản an toàn đảm nhiệm cả hai việc. Đây là năm việc trong phép tính, không phải năm khoản đầu tư mà GEM muốn bạn giữ cùng lúc. Mục tiêu của nó là một công cụ mỗi lần."
+            "body": "Năm ô chọn này chính là những gì lối tắt vừa điền, và là những gì bạn tự đặt nếu không dùng nó. Ba vai trò cổ phiếu đại diện cho Mỹ (**S&P 500**), **Thị trường phát triển ngoài Mỹ** và **Thị trường mới nổi**. **Tài sản an toàn** là thứ GEM sẽ nắm giữ khi cổ phiếu không qua được phép thử an toàn. **Chuẩn phi rủi ro** chỉ là thước đo cho phép thử đó và có thể để trống; khi ấy tài sản an toàn đảm nhiệm cả hai việc. Đây là năm việc trong phép tính, không phải năm khoản đầu tư mà GEM muốn bạn giữ cùng lúc. Mục tiêu của nó là một công cụ mỗi lần."
           },
           "save": {
             "title": "Xem lại trước khi lưu",
-            "body": "Hãy kiểm tra danh sách tài khoản, từng niêm yết và các loại tiền. **Lưu cấu hình** lưu kịch bản và tính lại báo cáo từ dữ liệu giá quá khứ hiện có. Việc đó vẫn không đặt bất kỳ lệnh nào. Bạn không cần lưu gì để hoàn tất phần hướng dẫn này. Nếu thiếu giá hoặc giá quá cũ, Monize sẽ cho biết tín hiệu không khả dụng thay vì phỏng đoán."
+            "body": "Hãy kiểm tra danh sách tài khoản, từng niêm yết và các loại tiền, rồi chọn **Lưu cấu hình** để lưu kịch bản và tính lại báo cáo từ dữ liệu giá quá khứ hiện có. Chính việc lưu mới cho các bước sau có gì để trình bày. Việc đó vẫn không đặt bất kỳ lệnh nào, và bạn không cần lưu để hoàn tất phần hướng dẫn này. Nếu thiếu giá hoặc giá quá cũ, Monize sẽ cho biết tín hiệu không khả dụng thay vì phỏng đoán."
           },
           "finish": {
-            "title": "GEM sẵn sàng khi dữ liệu sẵn sàng",
-            "body": "Sau khi lưu một cấu hình, hãy trở lại **Tổng quan**. Với dữ liệu giá quá khứ dùng được, báo cáo có thể cho thấy tín hiệu, lời giải thích, phần so sánh danh mục và một bước kế tiếp khả dĩ. Những tài khoản, vị thế, giá hay việc gán vai trò còn thiếu vẫn hiện rõ dưới dạng cảnh báo. Bạn có thể chạy lại phần hướng dẫn này bất cứ lúc nào từ **Hướng dẫn sử dụng** trong **Cài đặt**."
+            "title": "Đó là trọn một vòng",
+            "body": "Thiết lập, tín hiệu, lý do, so sánh danh mục, bước kế tiếp khả dĩ. Bạn đổi bất kỳ phần nào trong đó từ **Thiết lập**, và báo cáo sẽ tính lại từ dữ liệu giá bạn đang có. Những tài khoản, vị thế, giá hay việc gán vai trò còn thiếu vẫn hiện rõ dưới dạng cảnh báo, chứ không âm thầm bị đọc thành số không. Bạn có thể chạy lại phần hướng dẫn này bất cứ lúc nào từ **Hướng dẫn sử dụng** trong **Cài đặt**."
           }
         }
       }
