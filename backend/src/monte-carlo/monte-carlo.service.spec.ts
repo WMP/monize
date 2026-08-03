@@ -723,7 +723,14 @@ describe("MonteCarloService", () => {
   });
 
   describe("computeCurrentValue branches via runSaved", () => {
-    it("returns 0 when portfolio service throws", async () => {
+    // These three cases all used to assert that an unknown current portfolio
+    // value became a starting value of 0 and the simulation ran anyway. That is
+    // not a graceful degradation: the scenario asked to start from the current
+    // balance, and a run seeded with 0 returns a full set of percentiles
+    // describing nothing growing into nothing. The user reads that as a
+    // forecast. Refusing is the honest answer -- see the
+    // `currentPortfolioValueUnavailable` message.
+    it("refuses to simulate when the portfolio lookup fails", async () => {
       scenariosRepository.findOne.mockResolvedValueOnce(
         buildScenario({ useCurrentBalance: true }),
       );
@@ -734,12 +741,30 @@ describe("MonteCarloService", () => {
         Promise.resolve(s),
       );
 
-      const result = await service.runSaved(userId, "scn-1");
-      // Should not blow up — falls back to 0 starting value.
-      expect(result).toBeDefined();
+      await expect(service.runSaved(userId, "scn-1")).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it("clamps non-finite portfolio values to 0", async () => {
+    it("refuses to simulate when the portfolio value is unknown", async () => {
+      // `null` is what the summary now returns when a holding has no price or
+      // a currency pair has no rate.
+      scenariosRepository.findOne.mockResolvedValueOnce(
+        buildScenario({ useCurrentBalance: true }),
+      );
+      portfolioService.getPortfolioSummary.mockResolvedValueOnce({
+        totalPortfolioValue: null,
+      });
+      scenariosRepository.save.mockImplementationOnce((s) =>
+        Promise.resolve(s),
+      );
+
+      await expect(service.runSaved(userId, "scn-1")).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("refuses to simulate a non-finite portfolio value", async () => {
       scenariosRepository.findOne.mockResolvedValueOnce(
         buildScenario({ useCurrentBalance: true }),
       );
@@ -749,6 +774,25 @@ describe("MonteCarloService", () => {
       scenariosRepository.save.mockImplementationOnce((s) =>
         Promise.resolve(s),
       );
+
+      await expect(service.runSaved(userId, "scn-1")).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("still simulates from a known current value", async () => {
+      // The positive control: a real value is used, so the refusal above is
+      // about missing data and not about the branch being unreachable.
+      scenariosRepository.findOne.mockResolvedValueOnce(
+        buildScenario({ useCurrentBalance: true }),
+      );
+      portfolioService.getPortfolioSummary.mockResolvedValueOnce({
+        totalPortfolioValue: 12345.6789,
+      });
+      scenariosRepository.save.mockImplementationOnce((s) =>
+        Promise.resolve(s),
+      );
+
       const result = await service.runSaved(userId, "scn-1");
       expect(result).toBeDefined();
     });

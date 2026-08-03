@@ -71,6 +71,13 @@ export interface IntradayBreakdownResponse {
   fetchedAt: string;
   skippedSymbols: string[];
   failedSymbols: string[];
+  /**
+   * Currencies held in the portfolio that have no exchange rate to the display
+   * currency, so their contribution could not be valued. Bars that depended on
+   * one are omitted from `points` (a gap, not a 1:1 valuation), and in the
+   * breakdown view those holdings get no band. Empty when everything converted.
+   */
+  unconvertibleCurrencies?: string[];
   fallbackToDaily: boolean;
 }
 
@@ -94,6 +101,13 @@ export interface IntradayValueResponse {
    * can show a distinct error message.
    */
   failedSymbols: string[];
+  /**
+   * Currencies held in the portfolio that have no exchange rate to the display
+   * currency, so their contribution could not be valued. Bars that depended on
+   * one are omitted from `points` (a gap, not a 1:1 valuation). Empty when
+   * everything converted.
+   */
+  unconvertibleCurrencies?: string[];
   /**
    * True when the frontend must not render this intraday series and should
    * instead use the daily-snapshot endpoint. Set when:

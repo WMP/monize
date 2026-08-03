@@ -391,15 +391,20 @@ export class SectorWeightingService {
       const price = priceMap.get(holding.securityId);
       if (price == null) continue;
 
-      let marketValue = quantity * price;
+      const rawMarketValue = quantity * price;
 
-      // Convert to default currency
-      marketValue = await this.portfolioCalculationService.convertToDefault(
-        marketValue,
+      // Convert to default currency. A pair with no rate means this holding
+      // cannot take part in a percentage weighting: including it at an
+      // invented rate would misstate every other sector's share, so it is
+      // excluded from the breakdown entirely.
+      const converted = await this.portfolioCalculationService.convertToDefault(
+        rawMarketValue,
         holding.security.currencyCode,
         defaultCurrency,
         rateCache,
       );
+      if (converted === null) continue;
+      const marketValue = converted;
 
       const sec = holding.security;
       const isStock =
@@ -647,13 +652,15 @@ export class SectorWeightingService {
       const price = priceMap.get(holding.securityId);
       if (price == null) continue;
 
-      let marketValue = quantity * price;
-      marketValue = await this.portfolioCalculationService.convertToDefault(
-        marketValue,
+      const rawMarketValue = quantity * price;
+      const converted = await this.portfolioCalculationService.convertToDefault(
+        rawMarketValue,
         holding.security.currencyCode,
         defaultCurrency,
         rateCache,
       );
+      if (converted === null) continue;
+      const marketValue = converted;
 
       const classification = classify(holding.security);
 
