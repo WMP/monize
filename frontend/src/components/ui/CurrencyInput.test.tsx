@@ -350,4 +350,62 @@ describe('CurrencyInput', () => {
       expect(screen.getByLabelText('Change sign')).toBeDisabled();
     });
   });
+
+  // Money is stored at four decimals. A field that formats and re-parses at two
+  // shows an imported 5.0024 as "5.00" and, on the next blur, rounds the
+  // remainder away where nobody can see it -- which is how a split set that
+  // looked balanced stopped matching what the API compares.
+  describe('decimalPlaces', () => {
+    it('shows cents by default', () => {
+      render(<CurrencyInput label="Amount" value={5.0024} onChange={vi.fn()} />);
+      expect(screen.getByLabelText('Amount')).toHaveValue('5.00');
+    });
+
+    it('shows the stored remainder when asked for four places', () => {
+      render(
+        <CurrencyInput label="Amount" value={5.0024} onChange={vi.fn()} decimalPlaces={4} />,
+      );
+      expect(screen.getByLabelText('Amount')).toHaveValue('5.0024');
+    });
+
+    it('does not round the remainder away on blur', () => {
+      const onChange = vi.fn();
+      render(
+        <CurrencyInput label="Amount" value={5.0024} onChange={onChange} decimalPlaces={4} />,
+      );
+      const input = screen.getByLabelText('Amount');
+      fireEvent.focus(input);
+      fireEvent.blur(input);
+      expect(input).toHaveValue('5.0024');
+      expect(onChange).not.toHaveBeenCalledWith(5);
+    });
+
+    it('parses a typed four-decimal amount at full precision', () => {
+      const onChange = vi.fn();
+      render(
+        <CurrencyInput label="Amount" value={undefined} onChange={onChange} decimalPlaces={4} />,
+      );
+      const input = screen.getByLabelText('Amount');
+      fireEvent.change(input, { target: { value: '5.0024' } });
+      expect(onChange).toHaveBeenLastCalledWith(5.0024);
+    });
+
+    it('still rounds a typed four-decimal amount to cents by default', () => {
+      const onChange = vi.fn();
+      render(<CurrencyInput label="Amount" value={undefined} onChange={onChange} />);
+      fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '5.0024' } });
+      expect(onChange).toHaveBeenLastCalledWith(5);
+    });
+
+    it('evaluates a calculator expression at the requested precision', () => {
+      const onChange = vi.fn();
+      render(
+        <CurrencyInput label="Amount" value={undefined} onChange={onChange} decimalPlaces={4} />,
+      );
+      const input = screen.getByLabelText('Amount');
+      fireEvent.change(input, { target: { value: '10.0048/2' } });
+      fireEvent.blur(input);
+      expect(onChange).toHaveBeenLastCalledWith(5.0024);
+    });
+  });
 });

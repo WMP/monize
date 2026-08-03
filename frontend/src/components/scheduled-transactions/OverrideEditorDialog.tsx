@@ -12,6 +12,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows } from '@/components/transactions/SplitEditor';
 import { toOverrideSplits } from './splitSerialization';
+import { validateSplits } from '@/lib/split-validation';
 import { ScheduledTransaction, ScheduledTransactionOverride } from '@/types/scheduled-transaction';
 import { Category } from '@/types/category';
 import { Account } from '@/types/account';
@@ -342,10 +343,31 @@ export function OverrideEditorDialog({
       }
     }
 
+    // For transfers, negate the amount (user enters positive, stored as negative)
+    const savedAmount = scheduledTransaction.isTransfer ? -Math.abs(amount) : amount;
+
+    // Same split rule as the transaction and schedule forms: 4dp equality with
+    // the parent, and no category row reversing its direction. This editor had
+    // no split validation at all, so an unbalanced or sign-reversing override
+    // reached the API and came back as a generic save failure.
+    if (!isInvestmentKind && isSplit) {
+      const issue = validateSplits(splits, savedAmount);
+      if (issue?.kind === 'unbalanced') {
+        toast.error(t('overrideEditor.toasts.splitsNotEqual'));
+        return;
+      }
+      if (issue?.kind === 'mixed-sign') {
+        toast.error(
+          t('overrideEditor.toasts.splitsOppositeSign', {
+            rows: issue.indexes.map((index) => index + 1).join(', '),
+          }),
+        );
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
-      // For transfers, negate the amount (user enters positive, stored as negative)
-      const savedAmount = scheduledTransaction.isTransfer ? -Math.abs(amount) : amount;
       const baseData = isInvestmentKind
         ? {
             description: description || null,

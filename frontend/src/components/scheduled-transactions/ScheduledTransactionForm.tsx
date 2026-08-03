@@ -17,6 +17,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { TagForm } from '@/components/tags/TagForm';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows, toCreateSplitData } from '@/components/transactions/SplitEditor';
+import { validateSplits } from '@/lib/split-validation';
 import { CurrencyPickerButton } from '@/components/transactions/CurrencyPickerButton';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { exchangeRatesApi } from '@/lib/exchange-rates';
@@ -863,10 +864,19 @@ export function ScheduledTransactionForm({
         toast.error(t('form.toasts.splitsMinimum'));
         return;
       }
-      const splitsTotal = splits.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
-      const remaining = Math.abs(Number(data.amount) - splitsTotal);
-      if (remaining >= 0.01) {
+      // The shared rule, matching the API's 4dp equality rather than a cents
+      // band of our own, plus the parent-direction check.
+      const issue = validateSplits(splits, Number(data.amount));
+      if (issue?.kind === 'unbalanced') {
         toast.error(t('form.toasts.splitsTotal'));
+        return;
+      }
+      if (issue?.kind === 'mixed-sign') {
+        toast.error(
+          t('form.toasts.splitsOppositeSign', {
+            rows: issue.indexes.map((index) => index + 1).join(', '),
+          }),
+        );
         return;
       }
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/Input';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
@@ -14,8 +14,9 @@ import { Account } from '@/types/account';
 import { Tag } from '@/types/tag';
 import { CreateSplitData, InvestmentSplitDetails } from '@/types/transaction';
 import { buildCategoryTree } from '@/lib/categoryUtils';
-import { roundToCents, roundToDecimals, getCurrencySymbol, formatAmountWithCommas, getDecimalPlacesForCurrency } from '@/lib/format';
+import { roundToDecimals, getCurrencySymbol, formatAmountWithCommas, getDecimalPlacesForCurrency, sumMoney, roundMoney, moneyEquals, moneyFractionDigits } from '@/lib/format';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
+import { oppositeSignCategorySplits } from '@/lib/split-validation';
 import { InvestmentSplitFields } from './InvestmentSplitFields';
 
 export type SplitType = 'category' | 'transfer' | 'investment';
@@ -97,13 +98,36 @@ export function SplitEditor({
   const activeDecimals = foreignActive
     ? getDecimalPlacesForCurrency(displayCurrencyCode as string)
     : decimals;
+  // Precision the editor distributes and stores at, in the *account* currency:
+  // that currency's own places, widened to the full money precision only when the
+  // parent or one of the children actually carries a third or fourth decimal.
+  // Keeping it narrow in the ordinary case preserves the familiar
+  // 33.33/33.33/33.34 distribution; widening it is what lets a 10.0048 parent
+  // balance at all, since cents can never sum to it.
+  const storeDecimals = moneyFractionDigits(
+    [...splits.map((s) => Number(s.amount) || 0), Number(transactionAmount)],
+    decimals,
+  );
+  /** Round to the precision this editor stores at. */
+  const roundStored = (value: number) => roundToDecimals(value, storeDecimals);
+
   // Convert a stored account-currency amount to the currency currently shown.
   const toDisplayAmount = (accountAmount: number) =>
     foreignActive ? roundToDecimals(accountAmount / rate, activeDecimals) : accountAmount;
   // Convert an amount typed in the currently shown currency back to the stored
   // account currency (always rounded to cents, matching the rest of the editor).
+  // The field has already delivered a value at the precision it displays, so
+  // this only converts; rounding to cents here is what used to discard a
+  // four-decimal amount the moment its row was touched.
   const fromDisplayAmount = (displayAmount: number) =>
-    foreignActive ? roundToCents(displayAmount * rate) : roundToCents(displayAmount);
+    foreignActive ? roundMoney(displayAmount * rate) : roundMoney(displayAmount);
+  // React keys for rows the user adds. A `Date.now()`/`Math.random()` id inside
+  // the new-row literal is an impure call the React Compiler may hoist into
+  // render once every other field of that literal is a render value -- which
+  // `react-hooks/purity` flags. A ref counter is unique among the rows on screen,
+  // which is all a key has to be, and it stays in the event path.
+  const nextAddedRowId = useRef(0);
+
   // Index of the split pending removal that would convert the transaction back
   // to a regular one (only set while the confirmation dialog is open).
   const [convertPendingIndex, setConvertPendingIndex] = useState<number | null>(null);
@@ -151,11 +175,40 @@ export function SplitEditor({
     setLocalSplits(splits);
   }, [splits]);
 
-  const splitsTotal = localSplits.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
-  const remaining = Number(transactionAmount) - splitsTotal;
+  // Accumulate in integer ten-thousandths, exactly as the backend's `sumMoney`
+  // does, so the two agree on the sum before they are compared.
+  const splitsTotal = sumMoney(localSplits.map((s) => Number(s.amount) || 0));
+  const remaining = roundMoney(Number(transactionAmount) - splitsTotal);
   // Balance is always judged in the account currency so distribution and the
   // balanced/remaining indicators stay exact regardless of the display currency.
-  const isBalanced = Math.abs(remaining) < 0.01;
+  //
+  // The rule is the backend's, not a tolerance of our own: `validateSplitAmountSum`
+  // requires the 4dp sum of the children to equal the 4dp parent exactly. A
+  // `< 0.01` band called a 10.0048 parent balanced against 5.00 + 5.00 and the
+  // API then rejected the save; it also let an existing four-decimal split be
+  // silently normalised, because the digits that decided it were never shown.
+  const isBalanced = moneyEquals(splitsTotal, Number(transactionAmount));
+  // Category children that reverse part of the parent's direction. Balanced
+  // arithmetic hides these: -150 and +50 sum to -100 and record 50 of income
+  // inside an expense. Transfer and investment splits define their own
+  // direction and are exempt.
+  const oppositeSignIndexes = useMemo(
+    () => oppositeSignCategorySplits(localSplits, Number(transactionAmount)),
+    [localSplits, transactionAmount],
+  );
+  const hasOppositeSign = oppositeSignIndexes.length > 0;
+  const parentIsIncome = roundMoney(Number(transactionAmount)) > 0;
+  // Widen the shown precision when any value on screen carries a third or
+  // fourth decimal. Two places would render 5.0024 as "5.00" twice against a
+  // 10.00 parent -- balanced to look at, rejected by the API -- and the next
+  // blur would round the remainder away where the user could never see it.
+  const amountDecimals = moneyFractionDigits(
+    [
+      ...localSplits.map((s) => Number(s.amount) || 0),
+      Number(transactionAmount),
+    ],
+    activeDecimals,
+  );
   // Footer figures rendered in whichever currency the amounts are shown in.
   const displaySplitsTotal = toDisplayAmount(splitsTotal);
   const displayRemaining = toDisplayAmount(remaining);
@@ -273,12 +326,13 @@ export function SplitEditor({
   };
 
   const addSplit = () => {
+    nextAddedRowId.current += 1;
     const newSplit: SplitRow = {
-      id: `temp-${Date.now()}-${Math.random()}`,
+      id: `added-${nextAddedRowId.current}`,
       splitType: 'category',
       categoryId: undefined,
       transferAccountId: undefined,
-      amount: Math.round(remaining * 100) / 100, // Pre-fill with remaining amount, rounded to 2 decimals
+      amount: remaining, // Pre-fill with what is unassigned, at storage precision
       memo: '',
     };
     const newSplits = [...localSplits, newSplit];
@@ -322,16 +376,18 @@ export function SplitEditor({
   const distributeEvenly = () => {
     if (localSplits.length === 0) return;
 
-    const totalAmount = Math.round(Number(transactionAmount) * 100) / 100;
-    // Round each split to 2 decimal places (cents)
-    const amountPerSplit = Math.round((totalAmount / localSplits.length) * 100) / 100;
+    const totalAmount = roundStored(Number(transactionAmount));
+    const amountPerSplit = roundStored(totalAmount / localSplits.length);
 
     // Distribute evenly, putting the remainder on the last row for an exact sum.
+    // `sumMoney` accumulates in integer ten-thousandths, so "the others" is the
+    // figure the backend will also compute rather than a re-multiplied estimate.
     const newSplits = localSplits.map((split, index) => {
       if (index === localSplits.length - 1) {
-        const otherSplitsTotal = Math.round(amountPerSplit * (localSplits.length - 1) * 100) / 100;
-        const lastAmount = Math.round((totalAmount - otherSplitsTotal) * 100) / 100;
-        return { ...split, amount: lastAmount };
+        const otherSplitsTotal = sumMoney(
+          Array.from({ length: localSplits.length - 1 }, () => amountPerSplit),
+        );
+        return { ...split, amount: roundStored(totalAmount - otherSplitsTotal) };
       }
       return { ...split, amount: amountPerSplit };
     });
@@ -342,11 +398,11 @@ export function SplitEditor({
 
   // Add unassigned amount to a specific split
   const addRemainingToSplit = (index: number) => {
-    if (Math.abs(remaining) < 0.01) return; // No remaining amount
+    if (isBalanced) return; // Nothing unassigned
 
     const newSplits = [...localSplits];
     const currentAmount = Number(newSplits[index].amount) || 0;
-    newSplits[index] = { ...newSplits[index], amount: Math.round((currentAmount + remaining) * 100) / 100 };
+    newSplits[index] = { ...newSplits[index], amount: roundStored(currentAmount + remaining) };
     setLocalSplits(newSplits);
     onChange(newSplits);
   };
@@ -354,42 +410,45 @@ export function SplitEditor({
   // Distribute the remaining amount proportionally across the splits based on
   // their current amounts.
   const distributeProportionally = () => {
-    if (localSplits.length === 0 || Math.abs(remaining) < 0.01) return;
+    if (localSplits.length === 0 || isBalanced) return;
 
-    const absTotal = localSplits.reduce((sum, s) => sum + Math.abs(Number(s.amount) || 0), 0);
+    const absTotal = sumMoney(localSplits.map((s) => Math.abs(Number(s.amount) || 0)));
     const lastSplit = localSplits[localSplits.length - 1];
 
-    // If all splits are zero, fall back to equal distribution.
-    if (absTotal < 0.01) {
-      const perSplit = Math.round((remaining / localSplits.length) * 100) / 100;
+    // If all splits are zero, fall back to equal distribution. "Zero" is judged
+    // at storage precision: a set of 0.0001 rows is not empty.
+    if (roundStored(absTotal) === 0) {
+      const perSplit = roundStored(remaining / localSplits.length);
       const newSplits = localSplits.map((split, index) => {
         const currentAmount = Number(split.amount) || 0;
         if (index === localSplits.length - 1) {
-          const distributed = Math.round(perSplit * (localSplits.length - 1) * 100) / 100;
-          const lastPortion = Math.round((remaining - distributed) * 100) / 100;
-          return { ...split, amount: Math.round((currentAmount + lastPortion) * 100) / 100 };
+          const distributed = sumMoney(
+            Array.from({ length: localSplits.length - 1 }, () => perSplit),
+          );
+          const lastPortion = roundStored(remaining - distributed);
+          return { ...split, amount: roundStored(currentAmount + lastPortion) };
         }
-        return { ...split, amount: Math.round((currentAmount + perSplit) * 100) / 100 };
+        return { ...split, amount: roundStored(currentAmount + perSplit) };
       });
       setLocalSplits(newSplits);
       onChange(newSplits);
       return;
     }
 
-    let distributedSoFar = 0;
+    const portions: number[] = [];
     const newSplits = localSplits.map((split) => {
       const currentAmount = Number(split.amount) || 0;
       const proportion = Math.abs(currentAmount) / absTotal;
 
       if (split === lastSplit) {
-        // Last split absorbs the rounding remainder
-        const lastPortion = Math.round((remaining - distributedSoFar) * 100) / 100;
-        return { ...split, amount: Math.round((currentAmount + lastPortion) * 100) / 100 };
+        // Last split absorbs the rounding remainder.
+        const lastPortion = roundStored(remaining - sumMoney(portions));
+        return { ...split, amount: roundStored(currentAmount + lastPortion) };
       }
 
-      const portion = Math.round(remaining * proportion * 100) / 100;
-      distributedSoFar += portion;
-      return { ...split, amount: Math.round((currentAmount + portion) * 100) / 100 };
+      const portion = roundStored(remaining * proportion);
+      portions.push(portion);
+      return { ...split, amount: roundStored(currentAmount + portion) };
     });
 
     setLocalSplits(newSplits);
@@ -403,8 +462,28 @@ export function SplitEditor({
     }
   };
 
+  /**
+   * Named the rows rather than only flagging the total: "one of these reverses
+   * the transaction" is not actionable without saying which.
+   */
+  const oppositeSignNotice = hasOppositeSign ? (
+    <div
+      role="alert"
+      className="mb-2 rounded-md border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-xs text-red-700 dark:text-red-300"
+    >
+      {parentIsIncome
+        ? t('splitEditor.oppositeSignIncome', {
+            rows: oppositeSignIndexes.map((index) => index + 1).join(', '),
+          })
+        : t('splitEditor.oppositeSignExpense', {
+            rows: oppositeSignIndexes.map((index) => index + 1).join(', '),
+          })}
+    </div>
+  ) : null;
+
   return (
     <div className="space-y-4">
+      {oppositeSignNotice}
       <div className="flex justify-between items-center gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('splitEditor.header')}</h4>
@@ -449,7 +528,7 @@ export function SplitEditor({
             variant="outline"
             size="sm"
             onClick={distributeProportionally}
-            disabled={disabled || localSplits.length === 0 || Math.abs(remaining) < 0.01}
+            disabled={disabled || localSplits.length === 0 || isBalanced}
             title={t('splitEditor.distributeProportionallyTitle')}
           >
             {t('splitEditor.distributeProportionally')}
@@ -484,9 +563,9 @@ export function SplitEditor({
                     <button
                       type="button"
                       onClick={() => addRemainingToSplit(index)}
-                      disabled={disabled || Math.abs(remaining) < 0.01}
+                      disabled={disabled || isBalanced}
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={Math.abs(remaining) < 0.01 ? t('splitEditor.noUnassigned') : t('splitEditor.addRemaining')}
+                      title={isBalanced ? t('splitEditor.noUnassigned') : t('splitEditor.addRemaining')}
                     >
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -558,6 +637,7 @@ export function SplitEditor({
                   <CurrencyInput
                     prefix={activeSymbol}
                     value={toDisplayAmount(split.amount)}
+                    decimalPlaces={amountDecimals}
                     onChange={(value) => handleSplitChange(index, 'amount', fromDisplayAmount(value ?? 0))}
                     allowSignToggle
                     disabled={disabled}
@@ -603,13 +683,19 @@ export function SplitEditor({
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('splitEditor.total')}</span>
                 <span className={`font-medium ${isBalanced ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {activeSymbol}{formatAmountWithCommas(displaySplitsTotal, activeDecimals)}
+                  {activeSymbol}{formatAmountWithCommas(displaySplitsTotal, amountDecimals)}
                 </span>
                 {isBalanced ? (
-                  <span className="text-xs text-green-600 dark:text-green-400">{t('splitEditor.balanced')}</span>
+                  hasOppositeSign ? (
+                    <span className="text-xs text-red-600 dark:text-red-400">
+                      {t('splitEditor.oppositeSignShort')}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-green-600 dark:text-green-400">{t('splitEditor.balanced')}</span>
+                  )
                 ) : (
                   <span className="text-xs text-red-600 dark:text-red-400">
-                    {t('splitEditor.remaining', { symbol: activeSymbol, amount: formatAmountWithCommas(displayRemaining, activeDecimals) })}
+                    {t('splitEditor.remaining', { symbol: activeSymbol, amount: formatAmountWithCommas(displayRemaining, amountDecimals) })}
                   </span>
                 )}
               </div>
@@ -620,7 +706,7 @@ export function SplitEditor({
                   disabled={disabled}
                   className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline disabled:opacity-50 whitespace-nowrap"
                 >
-                  {t('splitEditor.setTotal', { symbol: activeSymbol, amount: formatAmountWithCommas(displaySplitsTotal, activeDecimals) })}
+                  {t('splitEditor.setTotal', { symbol: activeSymbol, amount: formatAmountWithCommas(displaySplitsTotal, amountDecimals) })}
                 </button>
               )}
             </div>
@@ -721,6 +807,7 @@ export function SplitEditor({
                   <CurrencyInput
                     prefix={activeSymbol}
                     value={toDisplayAmount(split.amount)}
+                    decimalPlaces={amountDecimals}
                     onChange={(value) => handleSplitChange(index, 'amount', fromDisplayAmount(value ?? 0))}
                     allowSignToggle
                     disabled={disabled}
@@ -753,9 +840,9 @@ export function SplitEditor({
                     <button
                       type="button"
                       onClick={() => addRemainingToSplit(index)}
-                      disabled={disabled || Math.abs(remaining) < 0.01}
+                      disabled={disabled || isBalanced}
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={Math.abs(remaining) < 0.01 ? t('splitEditor.noUnassigned') : t('splitEditor.addRemaining')}
+                      title={isBalanced ? t('splitEditor.noUnassigned') : t('splitEditor.addRemaining')}
                     >
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path
@@ -816,13 +903,19 @@ export function SplitEditor({
                         isBalanced ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                       }`}
                     >
-                      {activeSymbol}{formatAmountWithCommas(displaySplitsTotal, activeDecimals)}
+                      {activeSymbol}{formatAmountWithCommas(displaySplitsTotal, amountDecimals)}
                     </span>
                     {isBalanced ? (
-                      <span className="text-xs text-green-600 dark:text-green-400">{t('splitEditor.balanced')}</span>
+                      hasOppositeSign ? (
+                        <span className="text-xs text-red-600 dark:text-red-400">
+                          {t('splitEditor.oppositeSignShort')}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-green-600 dark:text-green-400">{t('splitEditor.balanced')}</span>
+                      )
                     ) : (
                       <span className="text-xs text-red-600 dark:text-red-400 whitespace-nowrap">
-                        {t('splitEditor.needAmount', { symbol: activeSymbol, amount: formatAmountWithCommas(displayTransactionAmount, activeDecimals), remaining: formatAmountWithCommas(displayRemaining, activeDecimals) })}
+                        {t('splitEditor.needAmount', { symbol: activeSymbol, amount: formatAmountWithCommas(displayTransactionAmount, amountDecimals), remaining: formatAmountWithCommas(displayRemaining, amountDecimals) })}
                       </span>
                     )}
                   </div>
@@ -833,7 +926,7 @@ export function SplitEditor({
                       disabled={disabled}
                       className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline disabled:opacity-50 whitespace-nowrap"
                     >
-                      {t('splitEditor.setTotal', { symbol: activeSymbol, amount: formatAmountWithCommas(displaySplitsTotal, activeDecimals) })}
+                      {t('splitEditor.setTotal', { symbol: activeSymbol, amount: formatAmountWithCommas(displaySplitsTotal, amountDecimals) })}
                     </button>
                   )}
                 </div>
