@@ -397,7 +397,7 @@ describe('OverrideEditorDialog', () => {
   // --- Description override ---
   it('allows changing description', () => {
     render(<OverrideEditorDialog {...defaultProps} />);
-    const descInput = screen.getByPlaceholderText('Override description...');
+    const descInput = screen.getByPlaceholderText('Override description…');
     expect(descInput).toBeInTheDocument();
 
     fireEvent.change(descInput, { target: { value: 'Special rent this month' } });
@@ -578,18 +578,134 @@ describe('OverrideEditorDialog', () => {
       expect(Number(qtyInput.value)).toBeCloseTo(2.5, 6);
     });
 
-    it('auto-fills Price from latest market price on open', async () => {
-      mockGetSecurityPrices.mockResolvedValue([{ closePrice: '123.45' }]);
+    // The dialog used to write the latest close over whatever price the
+    // occurrence had, so reopening an override to change only its date
+    // re-priced a future purchase at today's market. A stored price is an
+    // instruction; market data is a suggestion offered beside it.
+    it('keeps the scheduled price when a latest close arrives', async () => {
+      mockGetSecurityPrices.mockResolvedValue([
+        { closePrice: '123.45', priceDate: '2025-02-20' },
+      ]);
       render(
         <OverrideEditorDialog
           {...defaultProps}
           scheduledTransaction={investmentTransaction}
         />,
       );
+      await waitFor(() => {
+        expect(screen.getByText('Use latest close')).toBeInTheDocument();
+      });
+      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      expect(Number(priceInput.value)).toBe(100);
+      const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
+      expect(totalInput.value).toBe('1,000');
+    });
+
+    it('keeps an existing override price when a latest close arrives', async () => {
+      mockGetSecurityPrices.mockResolvedValue([
+        { closePrice: '123.45', priceDate: '2025-02-20' },
+      ]);
+      const existingOverride = {
+        id: 'ov1',
+        scheduledTransactionId: 'inv1',
+        originalDate: '2025-02-15',
+        overrideDate: '2025-02-15',
+        investmentQuantity: 10,
+        investmentPrice: 100,
+        investmentTotalAmount: null,
+      } as any;
+      render(
+        <OverrideEditorDialog
+          {...defaultProps}
+          scheduledTransaction={investmentTransaction}
+          existingOverride={existingOverride}
+        />,
+      );
+      await waitFor(() => {
+        expect(screen.getByText('Use latest close')).toBeInTheDocument();
+      });
+      expect(
+        Number((screen.getByLabelText('Price per share') as HTMLInputElement).value),
+      ).toBe(100);
+    });
+
+    // The reproduction from the audit: a date-only edit must not move money.
+    it('saves the stored price when only the date is changed', async () => {
+      mockGetSecurityPrices.mockResolvedValue([
+        { closePrice: '120', priceDate: '2025-02-20' },
+      ]);
+      const existingOverride = {
+        id: 'ov1',
+        scheduledTransactionId: 'inv1',
+        originalDate: '2025-02-15',
+        overrideDate: '2025-02-15',
+        investmentQuantity: 10,
+        investmentPrice: 100,
+        investmentTotalAmount: null,
+      } as any;
+      render(
+        <OverrideEditorDialog
+          {...defaultProps}
+          scheduledTransaction={investmentTransaction}
+          existingOverride={existingOverride}
+        />,
+      );
+      await waitFor(() => {
+        expect(screen.getByText('Use latest close')).toBeInTheDocument();
+      });
+
+      const dateInput = screen.getByLabelText('Occurrence Date') as HTMLInputElement;
+      fireEvent.change(dateInput, { target: { value: '2025-02-18' } });
+      fireEvent.blur(dateInput);
+      fireEvent.click(screen.getByText('Update Override'));
+
+      await waitFor(() => {
+        expect(mockCreateOverride).toHaveBeenCalled();
+      });
+      expect(mockCreateOverride).toHaveBeenCalledWith(
+        'inv1',
+        expect.objectContaining({ investmentPrice: 100, overrideDate: '2025-02-18' }),
+      );
+    });
+
+    it('applies the latest close only when the user asks for it', async () => {
+      mockGetSecurityPrices.mockResolvedValue([
+        { closePrice: '123.45', priceDate: '2025-02-20' },
+      ]);
+      render(
+        <OverrideEditorDialog
+          {...defaultProps}
+          scheduledTransaction={investmentTransaction}
+        />,
+      );
+      await waitFor(() => {
+        expect(screen.getByText('Use latest close')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Use latest close'));
+
+      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      expect(Number(priceInput.value)).toBeCloseTo(123.45, 6);
+      // The total follows the applied price, not the old one.
+      const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
+      expect(totalInput.value).toBe('1,234.5');
+    });
+
+    it('fills Price from the latest close when the schedule stored none', async () => {
+      mockGetSecurityPrices.mockResolvedValue([
+        { closePrice: '123.45', priceDate: '2025-02-20' },
+      ]);
+      render(
+        <OverrideEditorDialog
+          {...defaultProps}
+          scheduledTransaction={{ ...investmentTransaction, investmentPrice: null }}
+        />,
+      );
       const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
       await waitFor(() => {
         expect(Number(priceInput.value)).toBeCloseTo(123.45, 6);
       });
+      // and it says where the number came from
+      expect(screen.getByText(/Filled from the close on/)).toBeInTheDocument();
     });
 
     it('sends investment fields when saving a new override', async () => {
