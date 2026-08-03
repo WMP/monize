@@ -229,6 +229,69 @@
             "body": "Todas as ligações que apontavam para as janelas antigas chegam aqui: os widgets de cotações no painel abrem esta página diretamente no separador Histórico de cotações. É uma página a sério, por isso pode guardá-la nos favoritos e voltar."
           }
         }
+      },
+      "gemStrategy": {
+        "title": "Estratégia GEM: das definições ao passo seguinte",
+        "steps": {
+          "welcome": {
+            "title": "Conheça a estratégia GEM",
+            "body": "A GEM é um método baseado em regras que escolhe um único investimento para o período seguinte. Compara as variações de preço recentes e mostra para onde apontam essas regras. Não compra, não vende nem movimenta dinheiro por você. Os instrumentos apresentados como exemplo não são aconselhamento de investimento personalizado. Esta visita explica o relatório e as suas definições em linguagem simples."
+          },
+          "findReport": {
+            "title": "Encontrar a GEM em Relatórios",
+            "body": "Abra aqui o relatório **Estratégia GEM**. Está na categoria **Investimentos**. O relatório está disponível mesmo que ainda não tenha instrumentos de investimento nem posições registadas no Monize.",
+            "fallbackBody": "O cartão do relatório não está visível neste momento, normalmente por causa de um filtro. Escolha **Seguinte** e a visita abrirá o relatório GEM diretamente. Mais tarde encontrá-lo-á em **Relatórios**, na categoria **Investimentos**."
+          },
+          "page": {
+            "title": "Um relatório, quatro perguntas",
+            "body": "No topo, um **cenário** significa um conjunto guardado de escolhas da GEM, e não uma ordem, um lançamento ou uma conta de títulos. A página responde a quatro perguntas: o que escolhe a estratégia agora? porquê? a carteira das contas selecionadas corresponde? o que teria de mudar? A GEM aponta normalmente para um único instrumento até à avaliação mensal ou trimestral seguinte."
+          },
+          "summary": {
+            "title": "Quatro cartões num relance",
+            "body": "**Sinal atual** é o instrumento escolhido pelas regras. **A sua carteira** compara esse objetivo com o que está registado nas contas da estratégia. **A transferir** estima o valor que poderá ter de mudar. **Ativos da estratégia** mostra que instrumento preenche cada papel. A informação que falta é apresentada como ausente, nunca como zero."
+          },
+          "action": {
+            "title": "Uma sugestão, não uma ordem automática",
+            "body": "O gráfico compara os instrumentos atribuídos. **O que devo fazer?** traduz o sinal numa possível operação de venda e compra e estima imposto e comissão quando há dados suficientes. O Monize nunca envia uma ordem para a sua corretora. Depois de negociar realmente através da sua corretora, registe os lançamentos no Monize; use então **Marcar como executada** apenas como nota de que cumpriu o sinal."
+          },
+          "reasoning": {
+            "title": "Porque é que a GEM escolheu isto?",
+            "body": "Aqui, «momentum» significa apenas como os preços variaram ao longo do período passado escolhido. A GEM verifica primeiro se o instrumento de ações norte-americanas superou a referência sem risco usada como medida. Se superou, a GEM escolhe o mais forte entre os instrumentos dos Estados Unidos, dos mercados desenvolvidos fora dos Estados Unidos e dos mercados emergentes. Se não superou, a GEM escolhe o ativo seguro. **Por que este sinal?** e o histórico de sinais mostram toda a decisão em vez de apenas um símbolo final."
+          },
+          "tabs": {
+            "title": "Mais detalhe quando precisar",
+            "body": "**Sinais** mostra decisões anteriores. **A minha carteira** explica o que está registado nas contas selecionadas. **Backtest** mostra como as regras se teriam comportado com os preços históricos disponíveis; é um modelo, não uma previsão nem uma promessa. **Definições** comanda o cenário guardado."
+          },
+          "openSettings": {
+            "title": "Abrir as definições do cenário",
+            "body": "Escolha **Editar definições** para ver como este cenário está definido. Pode inspecionar todos os campos sem guardar. Nada neste ecrã compra um instrumento nem altera algo na sua corretora."
+          },
+          "accounts": {
+            "title": "Escolher as contas a comparar",
+            "body": "As **Contas da estratégia** são as contas de investimento que pertencem a este cenário GEM. Só as posições e o dinheiro registados nessas contas são usados para comparar a carteira e estimar o valor a transferir. Ainda não tem conta de investimento? Deixe a lista vazia. A GEM pode continuar a calcular um sinal, mas não o poderá comparar com a sua carteira real.",
+            "fallbackBody": "O formulário de definições não foi carregado, pelo que a visita não pode apontar para a seleção de contas. Nenhuma definição foi alterada. Use a opção de repetir da página, ou refaça a visita mais tarde em **Visitas guiadas** nas **Definições**."
+          },
+          "timingAndCosts": {
+            "title": "Escolher até onde a GEM olha para trás",
+            "body": "**Frequência de avaliação** decide se a GEM toma uma nova decisão todos os meses ou todos os trimestres. **Janela de momentum (meses)** é simplesmente o número de meses passados cujos preços são comparados; o valor predefinido é 12. **Taxa de imposto (%)** e **Comissão por transação** são opcionais e afetam apenas as estimativas de custo; não alteram o sinal. Deixe-as em branco se não as souber."
+          },
+          "addInstruments": {
+            "title": "Ainda sem instrumentos? Comece aqui",
+            "body": "Quando um ou mais papéis estão vazios, o cartão **Papéis e instrumentos** mostra um atalho para adicionar ETF de exemplo. Escolha primeiro, em **Cotações a adicionar**, a região em que a sua corretora realmente negocia: **Américas** ou **Europa (UCITS)**. Premir o botão de adicionar cria os registos dos instrumentos no Monize de imediato, ainda antes de guardar a configuração da GEM; não compra nada. Só os papéis vazios são preenchidos, e um instrumento correspondente que já esteja na sua lista pode ser reutilizado. Verifique cada símbolo, cada bolsa e cada moeda. Estes exemplos não são uma recomendação. Se o atalho não aparecer, os seus papéis já estão preenchidos e pode revê-los abaixo."
+          },
+          "roles": {
+            "title": "Cinco papéis, um objetivo",
+            "body": "Os três papéis de ações representam os Estados Unidos (**S&P 500**), os **Mercados desenvolvidos ex-EUA** e os **Mercados emergentes**. **Ativo seguro** é o que a GEM manteria quando as ações não passam o teste de segurança. **Referência sem risco** é apenas a medida desse teste e pode ficar vazia; nesse caso o ativo seguro cumpre as duas funções. São cinco funções no cálculo, não cinco investimentos que a GEM espere que tenha ao mesmo tempo. O seu objetivo é um instrumento de cada vez."
+          },
+          "save": {
+            "title": "Reveja antes de guardar",
+            "body": "Confirme a lista de contas, cada cotação e as moedas. **Guardar configuração** armazena o cenário e recalcula o relatório a partir do histórico de preços disponível. Continua a não colocar qualquer ordem. Não precisa de guardar nada para terminar esta visita. Se faltarem preços ou estes forem demasiado antigos, o Monize indica que o sinal não está disponível em vez de adivinhar."
+          },
+          "finish": {
+            "title": "A GEM está pronta quando os dados estiverem",
+            "body": "Depois de guardar uma configuração, volte ao **Resumo**. Com um histórico de preços utilizável, o relatório pode mostrar um sinal, a sua explicação, uma comparação da carteira e um possível passo seguinte. Contas, posições, preços ou atribuições de papel que faltem permanecem visíveis como avisos claros. Pode repetir esta visita a qualquer momento em **Visitas guiadas** nas **Definições**."
+          }
+        }
       }
     }
   }

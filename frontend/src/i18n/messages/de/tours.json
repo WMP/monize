@@ -229,6 +229,69 @@
             "body": "Jeder Link, der auf die alten Dialoge zeigte, landet jetzt hier — die Kurs-Widgets im Dashboard öffnen diese Seite direkt auf dem Tab Kurshistorie. Es ist eine echte Seite, du kannst sie also als Lesezeichen speichern und wiederkommen."
           }
         }
+      },
+      "gemStrategy": {
+        "title": "GEM-Strategie: von der Einrichtung bis zum nächsten Schritt",
+        "steps": {
+          "welcome": {
+            "title": "Die GEM-Strategie kennenlernen",
+            "body": "GEM ist ein regelbasiertes Verfahren, das für den nächsten Zeitraum eine einzige Anlage auswählt. Es vergleicht die jüngsten Kursveränderungen und zeigt, worauf diese Regeln hindeuten. Es kauft, verkauft und überweist nichts für Sie. Die als Beispiel gezeigten Instrumente sind keine persönliche Anlageempfehlung. Diese Tour erklärt den Bericht und seine Einstellungen in Alltagssprache."
+          },
+          "findReport": {
+            "title": "GEM unter Berichte finden",
+            "body": "Öffnen Sie hier den Bericht **GEM-Strategie**. Er liegt in der Kategorie **Investitionen**. Der Bericht steht auch dann zur Verfügung, wenn Sie noch keine Anlageinstrumente oder Depotbestände in Monize erfasst haben.",
+            "fallbackBody": "Die Berichtskarte ist gerade nicht sichtbar, meist wegen eines Filters. Wählen Sie **Weiter**, dann öffnet die Tour den GEM-Bericht direkt. Später finden Sie ihn unter **Berichte** in der Kategorie **Investitionen**."
+          },
+          "page": {
+            "title": "Ein Bericht, vier Fragen",
+            "body": "Ein **Szenario** oben bezeichnet einen gespeicherten Satz von GEM-Vorgaben, keine Order, keine Buchung und kein Depot. Die Seite beantwortet vier Fragen: Was wählt die Strategie jetzt? Warum? Passt das Portfolio auf den ausgewählten Konten dazu? Was müsste sich ändern? GEM verweist normalerweise auf ein einziges Instrument bis zur nächsten monatlichen oder vierteljährlichen Auswertung."
+          },
+          "summary": {
+            "title": "Vier Karten im Überblick",
+            "body": "**Aktuelles Signal** ist das von den Regeln ausgewählte Instrument. **Ihr Portfolio** vergleicht dieses Ziel mit dem, was auf den Strategiekonten erfasst ist. **Zu übertragen** schätzt den Wert, der sich ändern müsste. **Strategie-Anlagegüter** zeigt, welches Instrument welche Rolle ausfüllt. Fehlende Angaben werden als fehlend dargestellt, niemals als Null."
+          },
+          "action": {
+            "title": "Ein Hinweis, keine automatische Order",
+            "body": "Das Diagramm vergleicht die zugewiesenen Instrumente. **Was soll ich tun?** übersetzt das Signal in einen möglichen Verkauf mit anschließendem Kauf und schätzt Steuer und Gebühr, sofern genügend Daten vorliegen. Monize sendet niemals eine Order an Ihre Bank oder Ihren Broker. Nachdem Sie über Ihren Broker tatsächlich gehandelt haben, erfassen Sie die Buchungen in Monize; **Als ausgeführt markieren** dient danach nur als Notiz, dass Sie das Signal umgesetzt haben."
+          },
+          "reasoning": {
+            "title": "Warum hat GEM das gewählt?",
+            "body": "„Momentum“ meint hier lediglich, wie sich Kurse über den gewählten vergangenen Zeitraum verändert haben. GEM prüft zuerst, ob das Instrument für US-Aktien besser lief als der risikofreie Vergleichsmaßstab. War das der Fall, wählt GEM das stärkste der Instrumente für die USA, für entwickelte Märkte ohne die USA und für Schwellenmärkte. War es nicht der Fall, wählt GEM das sichere Anlagegut. **Warum dieses Signal?** und die Signalhistorie zeigen die ganze Entscheidung statt nur ein Endkürzel."
+          },
+          "tabs": {
+            "title": "Mehr Details, wenn Sie sie brauchen",
+            "body": "**Signale** zeigt frühere Entscheidungen. **Mein Portfolio** erläutert, was auf den ausgewählten Konten erfasst ist. **Backtest** zeigt, wie sich die Regeln auf den verfügbaren historischen Kursen verhalten hätten; das ist ein Modell, keine Prognose und kein Versprechen. **Einstellungen** steuert das gespeicherte Szenario."
+          },
+          "openSettings": {
+            "title": "Die Szenario-Einstellungen öffnen",
+            "body": "Wählen Sie **Einstellungen bearbeiten**, um zu sehen, wie dieses Szenario definiert ist. Sie können jedes Feld ansehen, ohne zu speichern. Nichts auf diesem Bildschirm kauft ein Instrument oder ändert etwas bei Ihrem Broker."
+          },
+          "accounts": {
+            "title": "Die Konten für den Vergleich wählen",
+            "body": "**Strategiekonten** sind die Anlagekonten, die zu diesem GEM-Szenario gehören. Nur die auf diesen Konten erfassten Bestände und Barmittel gehen in den Portfoliovergleich und in die Schätzung des zu übertragenden Betrags ein. Noch kein Anlagekonto? Lassen Sie die Liste leer. GEM kann weiterhin ein Signal berechnen, es aber nicht mit Ihrem echten Portfolio vergleichen.",
+            "fallbackBody": "Das Einstellungsformular wurde nicht geladen, daher kann die Tour nicht auf die Kontenauswahl zeigen. Es wurde keine Einstellung geändert. Nutzen Sie die Wiederholen-Option auf der Seite, oder starten Sie die Tour später über **Geführte Touren** in den **Einstellungen**."
+          },
+          "timingAndCosts": {
+            "title": "Festlegen, wie weit GEM zurückblickt",
+            "body": "**Auswertungsintervall** entscheidet, ob GEM monatlich oder vierteljährlich neu entscheidet. **Momentum-Zeitraum (Monate)** ist einfach die Anzahl vergangener Monate, deren Kurse verglichen werden; voreingestellt sind 12. **Steuersatz (%)** und **Gebühr je Order** sind optional und beeinflussen nur die Kostenschätzungen; sie ändern das Signal nicht. Lassen Sie sie leer, wenn Sie sie nicht kennen."
+          },
+          "addInstruments": {
+            "title": "Noch keine Instrumente? Hier anfangen",
+            "body": "Solange mindestens eine Rolle leer ist, zeigt die Karte **Rollen und Instrumente** eine Abkürzung zum Anlegen beispielhafter ETFs. Wählen Sie zuerst unter **Hinzuzufügende Notierungen** die Region, an der Ihr Broker tatsächlich handeln kann: **Amerika** oder **Europa (UCITS)**. Ein Druck auf die Schaltfläche legt die Instrumenten-Einträge sofort in Monize an, noch bevor Sie die GEM-Konfiguration speichern; gekauft wird dabei nichts. Es werden nur leere Rollen gefüllt, und ein passendes Instrument aus Ihrer Liste kann wiederverwendet werden. Prüfen Sie jedes Kürzel, jede Börse und jede Währung. Diese Beispiele sind keine Empfehlung. Fehlt die Abkürzung, sind Ihre Rollen bereits gefüllt und Sie können sie unten durchsehen."
+          },
+          "roles": {
+            "title": "Fünf Rollen, ein Ziel",
+            "body": "Die drei Aktienrollen stehen für die USA (**S&P 500**), **Entwickelte Märkte ohne USA** und **Schwellenmärkte**. **Sicheres Anlagegut** ist das, was GEM halten würde, wenn Aktien den Sicherheitstest nicht bestehen. **Risikofreier Vergleichsmaßstab** ist ausschließlich die Messlatte für diesen Test und darf leer bleiben; dann übernimmt das sichere Anlagegut beide Aufgaben. Das sind fünf Aufgaben in der Berechnung, nicht fünf Anlagen, die GEM gleichzeitig von Ihnen erwartet. Sein Ziel ist immer ein Instrument zur Zeit."
+          },
+          "save": {
+            "title": "Vor dem Speichern prüfen",
+            "body": "Prüfen Sie die Kontenliste, jede Notierung und die Währungen. **Konfiguration speichern** legt das Szenario ab und berechnet den Bericht aus der verfügbaren Kurshistorie neu. Eine Order wird dadurch weiterhin nicht erteilt. Sie müssen nichts speichern, um diese Tour zu beenden. Fehlen Kurse oder sind sie zu alt, zeigt Monize an, dass das Signal nicht verfügbar ist, statt zu raten."
+          },
+          "finish": {
+            "title": "GEM ist bereit, sobald die Daten es sind",
+            "body": "Wechseln Sie nach dem Speichern einer Konfiguration zurück zur **Übersicht**. Bei brauchbarer Kurshistorie kann der Bericht ein Signal, seine Begründung, einen Portfoliovergleich und einen möglichen nächsten Schritt zeigen. Fehlende Konten, Bestände, Kurse oder Rollenzuweisungen bleiben als deutliche Warnungen sichtbar. Diese Tour können Sie jederzeit über **Geführte Touren** in den **Einstellungen** erneut starten."
+          }
+        }
       }
     }
   }

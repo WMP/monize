@@ -229,6 +229,69 @@
             "body": "Tous les liens qui pointaient vers les anciennes boîtes de dialogue arrivent ici — les widgets de cours du tableau de bord ouvrent cette page directement sur l'onglet Historique des cours. C'est une vraie page : vous pouvez la mettre en favori et y revenir."
           }
         }
+      },
+      "gemStrategy": {
+        "title": "Stratégie GEM : des réglages à la prochaine étape",
+        "steps": {
+          "welcome": {
+            "title": "Découvrir la stratégie GEM",
+            "body": "GEM est une méthode fondée sur des règles qui choisit un seul placement pour la période à venir. Elle compare les variations de cours récentes et montre ce que ces règles désignent. Elle n'achète pas, ne vend pas et ne déplace pas d'argent à votre place. Les instruments présentés en exemple ne constituent pas un conseil en investissement personnalisé. Cette visite explique le rapport et ses réglages en langage courant."
+          },
+          "findReport": {
+            "title": "Trouver GEM dans Rapports",
+            "body": "Ouvrez ici le rapport **Stratégie GEM**. Il se trouve dans la catégorie **Investissement**. Le rapport est disponible même si vous n'avez encore aucun instrument de placement ni position enregistrée dans Monize.",
+            "fallbackBody": "La carte du rapport n'est pas visible pour le moment, le plus souvent à cause d'un filtre. Choisissez **Suivant** et la visite ouvrira directement le rapport GEM. Vous le retrouverez plus tard dans **Rapports**, catégorie **Investissement**."
+          },
+          "page": {
+            "title": "Un rapport, quatre questions",
+            "body": "En haut, un **scénario** désigne un ensemble enregistré de choix GEM, et non un ordre, une écriture ou un compte-titres. La page répond à quatre questions : que choisit la stratégie maintenant ? pourquoi ? le portefeuille des comptes sélectionnés correspond-il ? que faudrait-il changer ? GEM désigne normalement un seul instrument jusqu'à la prochaine évaluation mensuelle ou trimestrielle."
+          },
+          "summary": {
+            "title": "Quatre cartes en un coup d'œil",
+            "body": "**Signal actuel** est l'instrument retenu par les règles. **Votre portefeuille** compare cette cible avec ce qui est enregistré sur les comptes de la stratégie. **À transférer** estime le montant qui devrait éventuellement changer. **Actifs de la stratégie** montre quel instrument remplit chaque rôle. Une information manquante est affichée comme manquante, jamais comme zéro."
+          },
+          "action": {
+            "title": "Une suggestion, pas un ordre automatique",
+            "body": "Le graphique compare les instruments affectés. **Que dois-je faire ?** traduit le signal en une opération possible de vente puis d'achat et estime l'impôt et les frais lorsque les données suffisent. Monize n'envoie jamais d'ordre à votre courtier. Après avoir réellement passé un ordre chez votre courtier, enregistrez les écritures dans Monize ; n'utilisez ensuite **Marquer comme exécutée** que comme note indiquant que vous avez appliqué le signal."
+          },
+          "reasoning": {
+            "title": "Pourquoi GEM a-t-il choisi cela ?",
+            "body": "Ici, le « momentum » signifie simplement comment les cours ont évolué sur la période passée choisie. GEM vérifie d'abord si l'instrument actions américaines a fait mieux que la référence sans risque servant d'étalon. Si oui, GEM retient le plus fort parmi les instruments États-Unis, marchés développés hors États-Unis et marchés émergents. Sinon, GEM retient l'actif sûr. **Pourquoi ce signal ?** et l'historique des signaux montrent toute la décision plutôt qu'un simple code final."
+          },
+          "tabs": {
+            "title": "Plus de détail quand vous en avez besoin",
+            "body": "**Signaux** montre les décisions précédentes. **Mon portefeuille** explique ce qui est enregistré sur les comptes sélectionnés. **Backtest** montre comment les règles se seraient comportées sur les cours historiques disponibles ; c'est un modèle, ni une prévision ni une promesse. **Paramètres** pilote le scénario enregistré."
+          },
+          "openSettings": {
+            "title": "Ouvrir les paramètres du scénario",
+            "body": "Choisissez **Modifier les paramètres** pour voir comment ce scénario est défini. Vous pouvez examiner chaque champ sans enregistrer. Rien sur cet écran n'achète un instrument ni ne change quoi que ce soit chez votre courtier."
+          },
+          "accounts": {
+            "title": "Choisir les comptes à comparer",
+            "body": "Les **Comptes de la stratégie** sont les comptes de placement rattachés à ce scénario GEM. Seuls les titres et les liquidités enregistrés sur ces comptes servent à la comparaison du portefeuille et à l'estimation du montant à transférer. Pas encore de compte de placement ? Laissez la liste vide. GEM peut toujours calculer un signal, mais il ne pourra pas le comparer à votre portefeuille réel.",
+            "fallbackBody": "Le formulaire de paramètres ne s'est pas chargé, la visite ne peut donc pas désigner le sélecteur de comptes. Aucun réglage n'a été modifié. Utilisez la commande de nouvelle tentative de la page, ou reprenez la visite plus tard depuis **Visites guidées** dans les **Paramètres**."
+          },
+          "timingAndCosts": {
+            "title": "Choisir jusqu'où GEM regarde en arrière",
+            "body": "**Fréquence d'évaluation** détermine si GEM prend une nouvelle décision chaque mois ou chaque trimestre. **Fenêtre de momentum (mois)** est simplement le nombre de mois passés dont les cours sont comparés ; la valeur par défaut est 12. **Taux d'imposition (%)** et **Frais par ordre** sont facultatifs et n'influencent que les estimations de coût ; ils ne changent pas le signal. Laissez-les vides si vous ne les connaissez pas."
+          },
+          "addInstruments": {
+            "title": "Pas encore d'instruments ? Commencez ici",
+            "body": "Lorsqu'au moins un rôle est vide, la carte **Rôles et instruments** propose un raccourci pour ajouter des ETF donnés en exemple. Choisissez d'abord, dans **Cotations à ajouter**, la région que votre courtier peut réellement négocier : **Amériques** ou **Europe (UCITS)**. Appuyer sur le bouton d'ajout crée immédiatement les fiches d'instruments dans Monize, avant même l'enregistrement de la configuration GEM ; cela n'achète rien. Seuls les rôles vides sont remplis, et un instrument correspondant déjà dans votre liste peut être réutilisé. Vérifiez chaque code, chaque place de cotation et chaque devise. Ces exemples ne sont pas une recommandation. Si le raccourci n'apparaît pas, vos rôles sont déjà remplis et vous pouvez les relire ci-dessous."
+          },
+          "roles": {
+            "title": "Cinq rôles, une cible",
+            "body": "Les trois rôles actions représentent les États-Unis (**S&P 500**), les **Marchés développés hors États-Unis** et les **Marchés émergents**. **Actif sûr** est ce que GEM détiendrait lorsque les actions échouent au test de sécurité. **Référence sans risque** n'est que l'étalon de ce test et peut rester vide ; l'actif sûr assure alors les deux fonctions. Ce sont cinq fonctions dans le calcul, non cinq placements que GEM attendrait de vous en même temps. Sa cible reste un instrument à la fois."
+          },
+          "save": {
+            "title": "Vérifier avant d'enregistrer",
+            "body": "Contrôlez la liste des comptes, chaque cotation et les devises. **Enregistrer la configuration** conserve le scénario et recalcule le rapport à partir de l'historique de cours disponible. Cela ne passe toujours aucun ordre. Vous n'avez rien à enregistrer pour terminer cette visite. Si des cours manquent ou sont trop anciens, Monize indique que le signal est indisponible au lieu de le deviner."
+          },
+          "finish": {
+            "title": "GEM est prêt quand les données le sont",
+            "body": "Après avoir enregistré une configuration, revenez à l'**Aperçu**. Avec un historique de cours exploitable, le rapport peut montrer un signal, son explication, une comparaison de portefeuille et une prochaine étape possible. Les comptes, positions, cours ou affectations de rôle manquants restent visibles sous forme d'avertissements explicites. Vous pouvez reprendre cette visite à tout moment depuis **Visites guidées** dans les **Paramètres**."
+          }
+        }
       }
     }
   }

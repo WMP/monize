@@ -229,6 +229,69 @@
             "body": "Todos los enlaces que apuntaban a los diálogos antiguos llegan aquí: los widgets de precios del panel abren esta página directamente en la pestaña Historial de precios. Es una página de verdad, así que puedes guardarla en marcadores y volver a ella."
           }
         }
+      },
+      "gemStrategy": {
+        "title": "Estrategia GEM: de los ajustes al siguiente paso",
+        "steps": {
+          "welcome": {
+            "title": "Conoce la estrategia GEM",
+            "body": "GEM es un método basado en reglas que elige una sola inversión para el próximo periodo. Compara las variaciones recientes de precio y muestra a qué apuntan esas reglas. No compra, no vende ni mueve dinero por ti. Los instrumentos mostrados como ejemplo no son asesoramiento de inversión personalizado. Este recorrido explica el informe y sus ajustes en lenguaje corriente."
+          },
+          "findReport": {
+            "title": "Encuentra GEM en Informes",
+            "body": "Abre aquí el informe **Estrategia GEM**. Está en la categoría **Inversiones**. El informe está disponible incluso si aún no tienes instrumentos de inversión ni posiciones registradas en Monize.",
+            "fallbackBody": "La tarjeta del informe no está visible ahora mismo, normalmente por un filtro. Elige **Siguiente** y el recorrido abrirá el informe GEM directamente. Más adelante lo encontrarás en **Informes**, en la categoría **Inversiones**."
+          },
+          "page": {
+            "title": "Un informe, cuatro preguntas",
+            "body": "Arriba, un **escenario** es un conjunto guardado de decisiones de GEM, no una operación, un apunte ni una cuenta de valores. La página responde a cuatro preguntas: ¿qué elige la estrategia ahora?, ¿por qué?, ¿encaja la cartera de las cuentas seleccionadas?, ¿qué habría que cambiar? GEM suele señalar un único instrumento hasta la siguiente evaluación mensual o trimestral."
+          },
+          "summary": {
+            "title": "Cuatro tarjetas de un vistazo",
+            "body": "**Señal actual** es el instrumento seleccionado por las reglas. **Tu cartera** compara ese objetivo con lo registrado en las cuentas de la estrategia. **Por traspasar** estima el valor que quizá deba cambiar. **Activos de la estrategia** muestra qué instrumento cubre cada rol. La información que falta se muestra como ausente, nunca como cero."
+          },
+          "action": {
+            "title": "Una sugerencia, no una orden automática",
+            "body": "El gráfico compara los instrumentos asignados. **¿Qué debo hacer?** traduce la señal en una posible operación de venta y compra, y estima impuestos y comisiones cuando hay datos suficientes. Monize nunca envía una orden a tu bróker. Después de operar de verdad a través de tu bróker, registra los apuntes en Monize; luego usa **Marcar como ejecutada** solo como nota de que llevaste a cabo la señal."
+          },
+          "reasoning": {
+            "title": "¿Por qué GEM eligió esto?",
+            "body": "Aquí «momentum» significa simplemente cómo variaron los precios durante el periodo pasado elegido. GEM comprueba primero si el instrumento de renta variable estadounidense superó a la referencia libre de riesgo usada como medida. Si lo hizo, GEM elige el más fuerte entre los instrumentos de Estados Unidos, de mercados desarrollados fuera de Estados Unidos y de mercados emergentes. Si no lo hizo, GEM elige el activo seguro. **¿Por qué esta señal?** y el historial de señales muestran la decisión completa en lugar de solo un símbolo final."
+          },
+          "tabs": {
+            "title": "Más detalle cuando lo necesites",
+            "body": "**Señales** muestra decisiones anteriores. **Mi cartera** explica lo registrado en las cuentas seleccionadas. **Backtest** muestra cómo se habrían comportado las reglas con los precios históricos disponibles; es un modelo, no una previsión ni una promesa. **Ajustes** controla el escenario guardado."
+          },
+          "openSettings": {
+            "title": "Abre los ajustes del escenario",
+            "body": "Elige **Editar ajustes** para ver cómo está definido este escenario. Puedes inspeccionar todos los campos sin guardar. Nada de esta pantalla compra un instrumento ni cambia algo en tu bróker."
+          },
+          "accounts": {
+            "title": "Elige las cuentas que se comparan",
+            "body": "Las **Cuentas de la estrategia** son las cuentas de inversión que pertenecen a este escenario GEM. Solo las posiciones y el efectivo registrados en esas cuentas se usan para comparar la cartera y estimar el importe por traspasar. ¿Aún no tienes cuenta de inversión? Deja la lista vacía. GEM puede seguir calculando una señal, pero no podrá compararla con tu cartera real.",
+            "fallbackBody": "El formulario de ajustes no se ha cargado, así que el recorrido no puede señalar el selector de cuentas. No se cambió ningún ajuste. Usa la opción de reintentar de la página, o vuelve a hacer el recorrido más adelante desde **Recorridos guiados** en **Configuración**."
+          },
+          "timingAndCosts": {
+            "title": "Elige cuánto mira GEM hacia atrás",
+            "body": "**Frecuencia de evaluación** decide si GEM toma una nueva decisión cada mes o cada trimestre. **Ventana de momentum (meses)** es simplemente el número de meses pasados cuyos precios se comparan; el valor predeterminado es 12. **Tipo impositivo (%)** y **Comisión por operación** son opcionales y solo afectan a las estimaciones de coste; no cambian la señal. Déjalos en blanco si no los conoces."
+          },
+          "addInstruments": {
+            "title": "¿Aún sin instrumentos? Empieza aquí",
+            "body": "Cuando uno o más roles están vacíos, la tarjeta **Roles e instrumentos** muestra un atajo para añadir ETF de ejemplo. Primero, en **Cotizaciones que añadir**, elige la región que tu bróker puede negociar realmente: **América** o **Europa (UCITS)**. Pulsar el botón de añadir crea los registros de los instrumentos en Monize de inmediato, incluso antes de guardar la configuración de GEM; no compra nada. Solo rellena los roles vacíos y puede reutilizar un instrumento que ya esté en tu lista. Comprueba cada símbolo, cada mercado y cada divisa. Estos ejemplos no son una recomendación. Si el atajo no aparece, tus roles ya están cubiertos y puedes revisarlos más abajo."
+          },
+          "roles": {
+            "title": "Cinco roles, un objetivo",
+            "body": "Los tres roles de renta variable representan Estados Unidos (**S&P 500**), **Mercados desarrollados ex-EE. UU.** y **Mercados emergentes**. **Activo seguro** es lo que GEM mantendría cuando la renta variable no pasa la prueba de seguridad. **Referencia libre de riesgo** es únicamente la medida de esa prueba y puede quedar vacía; entonces el activo seguro cumple ambas funciones. Son cinco funciones dentro del cálculo, no cinco inversiones que GEM espere que tengas a la vez. Su objetivo es un instrumento cada vez."
+          },
+          "save": {
+            "title": "Revisa antes de guardar",
+            "body": "Comprueba la lista de cuentas, cada cotización y las divisas. **Guardar configuración** almacena el escenario y recalcula el informe a partir del historial de precios disponible. Sigue sin ejecutar ninguna operación. No necesitas guardar nada para terminar este recorrido. Si faltan precios o son demasiado antiguos, Monize indica que la señal no está disponible en lugar de suponerla."
+          },
+          "finish": {
+            "title": "GEM está listo cuando lo están los datos",
+            "body": "Tras guardar una configuración, vuelve a **Resumen**. Con un historial de precios utilizable, el informe puede mostrar una señal, su explicación, una comparación de la cartera y un posible paso siguiente. Las cuentas, posiciones, precios o asignaciones de rol que falten siguen visibles como avisos claros. Puedes repetir este recorrido cuando quieras desde **Recorridos guiados** en **Configuración**."
+          }
+        }
       }
     }
   }

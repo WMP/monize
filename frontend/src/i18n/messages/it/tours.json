@@ -229,6 +229,69 @@
             "body": "Ogni collegamento che puntava alle vecchie finestre arriva qui: i widget dei prezzi nella dashboard aprono questa pagina direttamente sulla scheda Storico prezzi. È una pagina vera, quindi puoi aggiungerla ai preferiti e tornarci."
           }
         }
+      },
+      "gemStrategy": {
+        "title": "Strategia GEM: dalle impostazioni al passo successivo",
+        "steps": {
+          "welcome": {
+            "title": "Conoscere la strategia GEM",
+            "body": "GEM è un metodo basato su regole che sceglie un solo investimento per il periodo successivo. Confronta le variazioni di prezzo recenti e mostra dove portano quelle regole. Non compra, non vende e non sposta denaro per te. Gli strumenti mostrati come esempio non sono consulenza finanziaria personalizzata. Questo tour spiega il report e le sue impostazioni con parole di tutti i giorni."
+          },
+          "findReport": {
+            "title": "Trovare GEM nei Report",
+            "body": "Apri qui il report **Strategia GEM**. Si trova nella categoria **Investimenti**. Il report è disponibile anche se non hai ancora strumenti di investimento o posizioni registrate in Monize.",
+            "fallbackBody": "La scheda del report non è visibile in questo momento, di solito per un filtro. Scegli **Avanti** e il tour aprirà direttamente il report GEM. Più tardi lo troverai in **Report**, nella categoria **Investimenti**."
+          },
+          "page": {
+            "title": "Un report, quattro domande",
+            "body": "In alto, uno **scenario** indica un insieme salvato di scelte GEM, non un ordine, una registrazione o un conto titoli. La pagina risponde a quattro domande: cosa sceglie ora la strategia? perché? il portafoglio dei conti selezionati corrisponde? cosa dovrebbe cambiare? GEM indica di norma un solo strumento fino alla valutazione mensile o trimestrale successiva."
+          },
+          "summary": {
+            "title": "Quattro schede a colpo d'occhio",
+            "body": "**Segnale attuale** è lo strumento scelto dalle regole. **Il tuo portafoglio** confronta quell'obiettivo con quanto registrato sui conti della strategia. **Da trasferire** stima il valore che potrebbe dover cambiare. **Attività della strategia** mostra quale strumento copre ciascun ruolo. Le informazioni mancanti sono mostrate come mancanti, mai come zero."
+          },
+          "action": {
+            "title": "Un suggerimento, non un ordine automatico",
+            "body": "Il grafico confronta gli strumenti assegnati. **Cosa devo fare?** traduce il segnale in una possibile operazione di vendita e acquisto e stima imposte e commissioni quando i dati sono sufficienti. Monize non invia mai un ordine al tuo intermediario. Dopo aver operato davvero tramite il tuo intermediario, registra i movimenti in Monize; poi usa **Segna come eseguita** solo come nota del fatto che hai dato seguito al segnale."
+          },
+          "reasoning": {
+            "title": "Perché GEM ha scelto questo?",
+            "body": "Qui «momentum» significa semplicemente come sono variati i prezzi nel periodo passato scelto. GEM verifica prima se lo strumento sulle azioni statunitensi ha fatto meglio del riferimento privo di rischio usato come metro. Se sì, GEM sceglie il più forte fra gli strumenti su Stati Uniti, mercati sviluppati esclusi gli Stati Uniti e mercati emergenti. Se no, GEM sceglie l'attività sicura. **Perché questo segnale?** e lo storico dei segnali mostrano l'intera decisione anziché solo un simbolo finale."
+          },
+          "tabs": {
+            "title": "Più dettaglio quando serve",
+            "body": "**Segnali** mostra le decisioni precedenti. **Il mio portafoglio** spiega cosa è registrato sui conti selezionati. **Backtest** mostra come si sarebbero comportate le regole sui prezzi storici disponibili; è un modello, non una previsione né una promessa. **Impostazioni** governa lo scenario salvato."
+          },
+          "openSettings": {
+            "title": "Aprire le impostazioni dello scenario",
+            "body": "Scegli **Modifica impostazioni** per vedere come è definito questo scenario. Puoi esaminare ogni campo senza salvare. Nulla in questa schermata compra uno strumento o modifica qualcosa presso il tuo intermediario."
+          },
+          "accounts": {
+            "title": "Scegliere i conti da confrontare",
+            "body": "I **Conti della strategia** sono i conti di investimento che appartengono a questo scenario GEM. Solo le posizioni e la liquidità registrate su quei conti servono al confronto del portafoglio e alla stima dell'importo da trasferire. Non hai ancora un conto di investimento? Lascia la lista vuota. GEM può comunque calcolare un segnale, ma non potrà confrontarlo con il tuo portafoglio reale.",
+            "fallbackBody": "Il modulo delle impostazioni non è stato caricato, quindi il tour non può indicare il selettore dei conti. Nessuna impostazione è stata modificata. Usa il comando di nuovo tentativo della pagina, oppure riprendi il tour più tardi da **Tour guidati** nelle **Impostazioni**."
+          },
+          "timingAndCosts": {
+            "title": "Scegliere quanto indietro guarda GEM",
+            "body": "**Frequenza di valutazione** decide se GEM prende una nuova decisione ogni mese o ogni trimestre. **Finestra di momentum (mesi)** è semplicemente il numero di mesi passati i cui prezzi vengono confrontati; il valore predefinito è 12. **Aliquota fiscale (%)** e **Commissione per operazione** sono facoltative e influiscono solo sulle stime di costo; non cambiano il segnale. Lasciale vuote se non le conosci."
+          },
+          "addInstruments": {
+            "title": "Ancora nessuno strumento? Comincia qui",
+            "body": "Quando uno o più ruoli sono vuoti, la scheda **Ruoli e strumenti** mostra una scorciatoia per aggiungere ETF di esempio. Scegli prima, in **Quotazioni da aggiungere**, la regione che il tuo intermediario può davvero negoziare: **Americhe** o **Europa (UCITS)**. Premere il pulsante di aggiunta crea subito le schede degli strumenti in Monize, ancora prima di salvare la configurazione GEM; non compra nulla. Vengono riempiti solo i ruoli vuoti e uno strumento corrispondente già presente nella tua lista può essere riutilizzato. Controlla ogni simbolo, ogni mercato e ogni valuta. Questi esempi non sono una raccomandazione. Se la scorciatoia non compare, i tuoi ruoli sono già assegnati e puoi rivederli qui sotto."
+          },
+          "roles": {
+            "title": "Cinque ruoli, un obiettivo",
+            "body": "I tre ruoli azionari rappresentano gli Stati Uniti (**S&P 500**), i **Mercati sviluppati ex-USA** e i **Mercati emergenti**. **Attività sicura** è ciò che GEM terrebbe quando le azioni non superano la prova di sicurezza. **Riferimento privo di rischio** è soltanto il metro di quella prova e può restare vuoto; in quel caso l'attività sicura svolge entrambi i compiti. Sono cinque compiti nel calcolo, non cinque investimenti che GEM si aspetta tu detenga insieme. Il suo obiettivo è uno strumento alla volta."
+          },
+          "save": {
+            "title": "Controlla prima di salvare",
+            "body": "Verifica la lista dei conti, ogni quotazione e le valute. **Salva configurazione** memorizza lo scenario e ricalcola il report dallo storico prezzi disponibile. Continua a non immettere alcun ordine. Non devi salvare nulla per concludere questo tour. Se i prezzi mancano o sono troppo vecchi, Monize indica che il segnale non è disponibile invece di tirare a indovinare."
+          },
+          "finish": {
+            "title": "GEM è pronto quando lo sono i dati",
+            "body": "Dopo aver salvato una configurazione, torna a **Panoramica**. Con uno storico prezzi utilizzabile, il report può mostrare un segnale, la sua spiegazione, un confronto di portafoglio e un possibile passo successivo. Conti, posizioni, prezzi o assegnazioni di ruolo mancanti restano visibili come avvisi chiari. Puoi rifare questo tour quando vuoi da **Tour guidati** nelle **Impostazioni**."
+          }
+        }
       }
     }
   }

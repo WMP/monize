@@ -229,6 +229,69 @@
             "body": "Eski pencerelere işaret eden her bağlantı artık buraya geliyor: panodaki fiyat bileşenleri bu sayfayı doğrudan Fiyat geçmişi sekmesinde açar. Bu gerçek bir sayfa, yer imlerine ekleyip geri dönebilirsin."
           }
         }
+      },
+      "gemStrategy": {
+        "title": "GEM stratejisi: ayarlardan sonraki adıma",
+        "steps": {
+          "welcome": {
+            "title": "GEM stratejisiyle tanışın",
+            "body": "GEM, gelecek dönem için tek bir yatırım seçen, kurallara dayalı bir yöntemdir. Son fiyat değişimlerini karşılaştırır ve bu kuralların neyi gösterdiğini söyler. Sizin adınıza alım, satım ya da para transferi yapmaz. Örnek olarak gösterilen enstrümanlar kişiye özel yatırım tavsiyesi değildir. Bu tur, raporu ve ayarlarını gündelik dille anlatır."
+          },
+          "findReport": {
+            "title": "GEM'i Raporlar altında bulun",
+            "body": "**GEM stratejisi** raporunu buradan açın. **Yatırım** kategorisinde yer alır. Monize'de henüz hiç yatırım enstrümanınız veya kayıtlı pozisyonunuz olmasa da rapor kullanılabilir.",
+            "fallbackBody": "Rapor kartı şu anda görünmüyor, genellikle bir filtre yüzünden. **İleri**'yi seçin, tur GEM raporunu doğrudan açacak. Daha sonra **Raporlar** altında, **Yatırım** kategorisinde bulabilirsiniz."
+          },
+          "page": {
+            "title": "Bir rapor, dört soru",
+            "body": "Üstteki **senaryo**, kaydedilmiş bir GEM tercihleri kümesi demektir; emir, kayıt ya da aracı kurum hesabı değil. Sayfa dört soruyu yanıtlar: Strateji şimdi ne seçiyor? Neden? Seçili hesaplardaki portföy buna uyuyor mu? Neyin değişmesi gerekir? GEM normalde bir sonraki aylık veya üç aylık değerlendirmeye kadar tek bir enstrümanı işaret eder."
+          },
+          "summary": {
+            "title": "Bir bakışta dört kart",
+            "body": "**Güncel sinyal**, kuralların seçtiği enstrümandır. **Portföyünüz**, bu hedefi strateji hesaplarında kayıtlı olanla karşılaştırır. **Aktarılacak**, değişmesi gerekebilecek tutarı tahmin eder. **Strateji varlıkları**, her rolü hangi enstrümanın doldurduğunu gösterir. Eksik bilgi eksik olarak gösterilir, asla sıfır olarak değil."
+          },
+          "action": {
+            "title": "Bir öneri, otomatik emir değil",
+            "body": "Grafik, atanmış enstrümanları karşılaştırır. **Ne yapmalıyım?**, sinyali olası bir satış ve alım işlemine dönüştürür ve yeterli veri varsa vergi ile komisyonu tahmin eder. Monize aracı kurumunuza asla emir göndermez. Aracı kurumunuz üzerinden gerçekten işlem yaptıktan sonra kayıtları Monize'ye girin; **Yapıldı olarak işaretle**'yi ise yalnızca sinyali uyguladığınıza dair bir not olarak kullanın."
+          },
+          "reasoning": {
+            "title": "GEM bunu neden seçti?",
+            "body": "Burada „momentum“ yalnızca fiyatların seçilen geçmiş dönemde nasıl değiştiğini anlatır. GEM önce ABD hisse enstrümanının, ölçüt olarak kullanılan risksiz referanstan daha iyi gidip gitmediğine bakar. Daha iyi gittiyse GEM, ABD, ABD dışı gelişmiş piyasalar ve gelişmekte olan piyasalar enstrümanları arasından en güçlüsünü seçer. Gitmediyse GEM güvenli varlığı seçer. **Bu sinyal neden?** ve sinyal geçmişi, yalnızca son bir kodu değil, kararın tamamını gösterir."
+          },
+          "tabs": {
+            "title": "İhtiyaç duyduğunuzda daha fazla ayrıntı",
+            "body": "**Sinyaller** önceki kararları gösterir. **Portföyüm**, seçili hesaplarda neyin kayıtlı olduğunu açıklar. **Geriye dönük test**, kuralların mevcut geçmiş fiyatlarla nasıl davranacağını gösterir; bu bir modeldir, tahmin ya da vaat değil. **Ayarlar**, kaydedilmiş senaryoyu yönetir."
+          },
+          "openSettings": {
+            "title": "Senaryo ayarlarını açın",
+            "body": "Bu senaryonun nasıl tanımlandığını görmek için **Ayarları düzenle**'yi seçin. Her alanı kaydetmeden inceleyebilirsiniz. Bu ekrandaki hiçbir şey enstrüman satın almaz ya da aracı kurumunuzda bir şeyi değiştirmez."
+          },
+          "accounts": {
+            "title": "Karşılaştırılacak hesapları seçin",
+            "body": "**Strateji hesapları**, bu GEM senaryosuna ait yatırım hesaplarıdır. Portföy karşılaştırması ve aktarılacak tutar tahmini için yalnızca bu hesaplarda kayıtlı pozisyonlar ve nakit kullanılır. Henüz yatırım hesabınız yok mu? Listeyi boş bırakın. GEM yine bir sinyal hesaplayabilir, ama onu gerçek portföyünüzle karşılaştıramaz.",
+            "fallbackBody": "Ayarlar formu yüklenmedi, bu yüzden tur hesap seçicisini gösteremiyor. Hiçbir ayar değiştirilmedi. Sayfadaki yeniden dene seçeneğini kullanın ya da turu daha sonra **Ayarlar** içindeki **Rehberli turlar** bölümünden tekrar başlatın."
+          },
+          "timingAndCosts": {
+            "title": "GEM'in ne kadar geriye baktığını seçin",
+            "body": "**Değerlendirme sıklığı**, GEM'in her ay mı yoksa her üç ayda bir mi yeni karar vereceğini belirler. **Momentum penceresi (ay)**, fiyatları karşılaştırılan geçmiş ay sayısıdır; varsayılan 12'dir. **Vergi oranı (%)** ve **İşlem başına komisyon** isteğe bağlıdır ve yalnızca maliyet tahminlerini etkiler; sinyali değiştirmezler. Bilmiyorsanız boş bırakın."
+          },
+          "addInstruments": {
+            "title": "Henüz enstrüman yok mu? Buradan başlayın",
+            "body": "Bir veya daha fazla rol boşken **Roller ve enstrümanlar** kartı, örnek ETF'ler eklemek için bir kısayol gösterir. Önce **Eklenecek kotasyonlar** alanında, aracı kurumunuzun gerçekten işlem yapabildiği bölgeyi seçin: **Amerika** veya **Avrupa (UCITS)**. Ekle düğmesine basmak, GEM yapılandırmasını kaydetmeden önce bile enstrüman kayıtlarını Monize'de hemen oluşturur; hiçbir şey satın almaz. Yalnızca boş roller doldurulur ve listenizde zaten bulunan uygun bir enstrüman yeniden kullanılabilir. Her sembolü, borsayı ve para birimini kontrol edin. Bu örnekler bir öneri değildir. Kısayol görünmüyorsa rolleriniz zaten dolu ve onları aşağıda gözden geçirebilirsiniz."
+          },
+          "roles": {
+            "title": "Beş rol, tek hedef",
+            "body": "Üç hisse rolü ABD'yi (**S&P 500**), **ABD dışı gelişmiş piyasalar**ı ve **Gelişmekte olan piyasalar**ı temsil eder. **Güvenli varlık**, hisseler güvenlik testini geçemediğinde GEM'in tutacağı şeydir. **Risksiz ölçüt** yalnızca o testin kıyas noktasıdır ve boş bırakılabilir; o durumda güvenli varlık iki işi birlikte görür. Bunlar hesaplamadaki beş iştir, GEM'in aynı anda elinizde tutmanızı beklediği beş yatırım değil. Hedefi her seferinde tek bir enstrümandır."
+          },
+          "save": {
+            "title": "Kaydetmeden önce gözden geçirin",
+            "body": "Hesap listesini, her kotasyonu ve para birimlerini kontrol edin. **Yapılandırmayı kaydet**, senaryoyu saklar ve raporu mevcut fiyat geçmişinden yeniden hesaplar. Bu yine hiçbir emir iletmez. Bu turu bitirmek için hiçbir şeyi kaydetmeniz gerekmez. Fiyatlar eksikse ya da fazla eskiyse Monize tahmin yürütmek yerine sinyalin kullanılamadığını gösterir."
+          },
+          "finish": {
+            "title": "Veriler hazır olduğunda GEM de hazır",
+            "body": "Bir yapılandırmayı kaydettikten sonra **Genel bakış**'a dönün. Kullanılabilir fiyat geçmişi varsa rapor bir sinyal, açıklamasını, portföy karşılaştırmasını ve olası bir sonraki adımı gösterebilir. Eksik hesaplar, pozisyonlar, fiyatlar veya rol atamaları açık uyarılar olarak görünmeye devam eder. Bu turu istediğiniz zaman **Ayarlar** içindeki **Rehberli turlar** bölümünden yeniden başlatabilirsiniz."
+          }
+        }
       }
     }
   }
