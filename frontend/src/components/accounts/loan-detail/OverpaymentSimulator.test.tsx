@@ -10,9 +10,13 @@ vi.mock('@/lib/accounts', () => ({
   },
 }));
 
+// Mirrors the real hook's fallback: an omitted currency silently becomes the
+// user's default. A mock that ignored the argument could not tell a hint
+// formatted in the loan's currency from one formatted in the user's.
 vi.mock('@/hooks/useNumberFormat', () => ({
   useNumberFormat: () => ({
-    formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
+    formatCurrency: (amount: number, currencyCode?: string) =>
+      `${currencyCode || 'CAD'} ${amount.toFixed(2)}`,
   }),
 }));
 
@@ -147,7 +151,7 @@ describe('OverpaymentSimulator', () => {
     const { onPlanChange } = await renderSimulator();
 
     await waitFor(() => {
-      expect(screen.getByText(/\$250\.50/)).toBeInTheDocument();
+      expect(screen.getByText(/USD 250\.50/)).toBeInTheDocument();
     });
 
     await act(async () => {
@@ -157,6 +161,20 @@ describe('OverpaymentSimulator', () => {
     expect(onPlanChange).toHaveBeenLastCalledWith({
       recurringExtra: { amount: 250.5, frequency: 'MONTHLY', mode: 'SHORTEN_TERM' },
     });
+  });
+
+  it('formats the detected hint in the loan currency, not the user default', async () => {
+    // The amount comes off the loan, and the input beside the hint already
+    // carries a euro prefix from `currencyCode`. Formatting the hint without it
+    // labelled a EUR figure as the user's default currency, unconverted, right
+    // next to that prefix.
+    mockDetectLoanPayments.mockResolvedValue({ averageExtraPrincipal: 250.5 });
+    await renderSimulator({ currencyCode: 'EUR' });
+
+    await waitFor(() => {
+      expect(screen.getByText(/EUR 250\.50/)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/CAD 250\.50/)).not.toBeInTheDocument();
   });
 
   it('does not show a hint when detection finds no extra principal', async () => {
