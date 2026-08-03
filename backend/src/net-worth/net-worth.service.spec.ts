@@ -494,10 +494,14 @@ describe("NetWorthService", () => {
             quantity: 5,
             transactionDate: "2024-03-01",
           },
+          // A SPLIT's quantity is the RATIO, not a number of shares: this is a
+          // 2-for-1. The fixture used to say 90, which only produced the
+          // expected total because the service added it -- 90 as a ratio would
+          // be a 90-for-1 split, and no such row exists in real data.
           {
             securityId: "sec-1",
             action: InvestmentAction.SPLIT,
-            quantity: 90,
+            quantity: 2,
             transactionDate: "2024-03-05",
           },
         ]);
@@ -513,7 +517,7 @@ describe("NetWorthService", () => {
         expect(insertCalls[0][1][4]).toBe(10500);
         // Month 2 (Feb): 105 - SELL 20 + TRANSFER_IN 10 = 95 shares * 100 = 9500
         expect(insertCalls[1][1][4]).toBe(9500);
-        // Month 3 (Mar): 95 - TRANSFER_OUT 5 + SPLIT 90 = 180 shares * 100 = 18000
+        // Month 3 (Mar): (95 - TRANSFER_OUT 5) x SPLIT 2 = 180 shares * 100 = 18000
         expect(insertCalls[2][1][4]).toBe(18000);
       });
 
@@ -2684,11 +2688,15 @@ describe("NetWorthService", () => {
           quantity: "20",
           transaction_date: "2025-02-15",
         },
+        // 2-for-1, expressed as the ratio the rest of the codebase multiplies
+        // by. Written as "50" the daily replay added 50 shares, which happened to
+        // reach the same total as doubling 50 -- so the assertion below held over
+        // a walk that disagreed with every other holdings replay.
         {
           account_id: "brok-1",
           security_id: "sec-1",
           action: "SPLIT",
-          quantity: "50",
+          quantity: "2",
           transaction_date: "2025-02-20",
         },
       ]);
@@ -2713,7 +2721,7 @@ describe("NetWorthService", () => {
         "2025-03-01",
       );
 
-      // 100 - 30 - 20 + 50 = 100 shares * $10 = $1000
+      // (100 - 30 - 20) x 2 = 100 shares * $10 = $1000
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(1000);
     });
