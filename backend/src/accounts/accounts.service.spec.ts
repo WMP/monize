@@ -11,6 +11,7 @@ import {
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { Institution } from "../institutions/entities/institution.entity";
+import { Payee } from "../payees/entities/payee.entity";
 import { CategoriesService } from "../categories/categories.service";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
 import { NetWorthService } from "../net-worth/net-worth.service";
@@ -34,6 +35,7 @@ describe("AccountsService", () => {
   let transactionRepository: Record<string, jest.Mock>;
   let investmentTxRepository: Record<string, jest.Mock>;
   let institutionsRepository: Record<string, jest.Mock>;
+  let payeesRepository: Record<string, jest.Mock>;
   let scheduledTransactionsService: Record<string, jest.Mock>;
   let categoriesService: Record<string, jest.Mock>;
   let netWorthService: Record<string, jest.Mock>;
@@ -141,11 +143,20 @@ describe("AccountsService", () => {
       find: jest.fn().mockResolvedValue([]),
     };
 
+    // Default: the payee exists and belongs to the requester, so the ownership
+    // check is transparent to every test that is not about it. A spec that
+    // means "another user's payee" overrides this with null, which is what the
+    // real `findOne({ where: { id, userId } })` returns for a foreign row.
+    payeesRepository = {
+      findOne: jest.fn().mockResolvedValue({ id: "payee-1" }),
+    };
+
     const { manager: txManager, dataSource } = createScopedDbMocks([
       [Account, accountsRepository],
       [Transaction, transactionRepository],
       [InvestmentTransaction, investmentTxRepository],
       [Institution, institutionsRepository],
+      [Payee, payeesRepository],
     ]);
     mockDataSource = dataSource;
     txManager.save.mockImplementation((data) => data);
@@ -272,6 +283,49 @@ describe("AccountsService", () => {
         } as any),
       ).rejects.toThrow(BadRequestException);
       expect(accountsRepository.save).not.toHaveBeenCalled();
+    });
+
+    // REV-20260803-002: create spreads the DTO straight into the entity, so the
+    // payee needs the same tenant check the update path does -- otherwise the
+    // cross-tenant link is simply made at creation instead.
+    it("assigns an owned overpayment payee", async () => {
+      await service.create("user-1", {
+        name: "Loan",
+        accountType: AccountType.LOAN,
+        currencyCode: "USD",
+        overpaymentPayeeId: "payee-1",
+      } as any);
+
+      expect(payeesRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "payee-1", userId: "user-1" },
+        select: { id: true },
+      });
+      const createCall = accountsRepository.create.mock.calls[0][0];
+      expect(createCall.overpaymentPayeeId).toBe("payee-1");
+    });
+
+    it("rejects an overpayment payee that does not belong to the user", async () => {
+      payeesRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.create("user-1", {
+          name: "Loan",
+          accountType: AccountType.LOAN,
+          currencyCode: "USD",
+          overpaymentPayeeId: "victims-payee",
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(accountsRepository.save).not.toHaveBeenCalled();
+    });
+
+    it("does not look up a payee when none is supplied", async () => {
+      await service.create("user-1", {
+        name: "Plain",
+        accountType: AccountType.CHEQUING,
+        currencyCode: "USD",
+      } as any);
+
+      expect(payeesRepository.findOne).not.toHaveBeenCalled();
     });
 
     it("defaults opening balance to 0", async () => {
@@ -523,6 +577,65 @@ describe("AccountsService", () => {
         service.update("user-1", "account-1", { institutionId: "x" }),
       ).rejects.toThrow(BadRequestException);
       expect(mockDataSource.transaction).toHaveBeenCalled();
+    });
+
+    // REV-20260803-002: the overpayment payee FK checks existence only, so an
+    // unvalidated assignment let a caller point their account at another
+    // tenant's payee -- and that payee's owner deleting it then reached across
+    // tenants through ON DELETE SET NULL.
+    it("assigns an owned overpayment payee on update", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({ ...mockAccount });
+
+      await service.update("user-1", "account-1", {
+        overpaymentPayeeId: "payee-1",
+      });
+
+      const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+      expect(saved.overpaymentPayeeId).toBe("payee-1");
+      expect(payeesRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "payee-1", userId: "user-1" },
+        select: { id: true },
+      });
+    });
+
+    it("rejects another user's overpayment payee on update", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({ ...mockAccount });
+      payeesRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.update("user-1", "account-1", {
+          overpaymentPayeeId: "victims-payee",
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("does not store the account when the overpayment payee is rejected", async () => {
+      // The refusal has to happen before the write: a 400 that arrives after
+      // the row is saved has already created the cross-tenant link it claims to
+      // have prevented.
+      mockQueryRunner.manager.findOne.mockResolvedValue({ ...mockAccount });
+      payeesRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.update("user-1", "account-1", {
+          overpaymentPayeeId: "victims-payee",
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+    });
+
+    it("clears the overpayment payee without a lookup when passed null", async () => {
+      // null means "stop treating any payee as an overpayment marker". There is
+      // no row to own, so requiring one would make the field unclearable.
+      mockQueryRunner.manager.findOne.mockResolvedValue({ ...mockAccount });
+
+      await service.update("user-1", "account-1", {
+        overpaymentPayeeId: null,
+      });
+
+      const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+      expect(saved.overpaymentPayeeId).toBeNull();
+      expect(payeesRepository.findOne).not.toHaveBeenCalled();
     });
 
     it("links and unlinks a loan account for the equity view", async () => {

@@ -15,6 +15,7 @@ import {
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { Institution } from "../institutions/entities/institution.entity";
+import { Payee } from "../payees/entities/payee.entity";
 import { CreateAccountDto } from "./dto/create-account.dto";
 import { UpdateAccountDto } from "./dto/update-account.dto";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
@@ -82,6 +83,38 @@ export class AccountsService {
   }
 
   /**
+   * Verify that an overpayment payee id (if provided) exists and belongs to the
+   * user. The foreign key only checks existence, so without this a caller could
+   * point their account at another tenant's payee -- and deleting that payee
+   * would then reach across tenants through ON DELETE SET NULL.
+   *
+   * A nested `withScopedDb` joins an ambient transaction, so when this runs from
+   * inside `update` the check shares that transaction and refuses before the
+   * write rather than after it.
+   */
+  private async assertPayeeOwned(
+    userId: string,
+    payeeId: string | null | undefined,
+  ): Promise<void> {
+    if (!payeeId) return;
+    const payee = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(Payee).findOne({
+        where: { id: payeeId, userId },
+        select: { id: true },
+      }),
+    );
+    if (!payee) {
+      // Reuses the transactions namespace's already-translated copy rather than
+      // adding an accounts-specific key, the way payees.service.ts borrows
+      // errors.transactions.categoryNotFound. The message is identical and this
+      // keeps the string localized in every locale from the first commit.
+      throw new BadRequestException(
+        tr("errors.transactions.payeeNotFound", "Payee not found"),
+      );
+    }
+  }
+
+  /**
    * Create a new account for a user
    */
   async create(
@@ -95,6 +128,7 @@ export class AccountsService {
     } = createAccountDto;
 
     await this.assertInstitutionOwned(userId, accountData.institutionId);
+    await this.assertPayeeOwned(userId, accountData.overpaymentPayeeId);
 
     // If creating an investment account pair, delegate to the pair creation method
     if (
@@ -734,8 +768,13 @@ export class AccountsService {
           account.overpaymentMemo = updateAccountDto.overpaymentMemo?.trim()
             ? updateAccountDto.overpaymentMemo.trim()
             : null;
-        if (updateAccountDto.overpaymentPayeeId !== undefined)
+        if (updateAccountDto.overpaymentPayeeId !== undefined) {
+          await this.assertPayeeOwned(
+            userId,
+            updateAccountDto.overpaymentPayeeId,
+          );
           account.overpaymentPayeeId = updateAccountDto.overpaymentPayeeId;
+        }
         if (updateAccountDto.fxFeePercent !== undefined)
           account.fxFeePercent = updateAccountDto.fxFeePercent;
         if (updateAccountDto.assetCategoryId !== undefined)
