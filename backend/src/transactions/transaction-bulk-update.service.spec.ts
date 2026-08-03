@@ -647,9 +647,16 @@ describe("TransactionBulkUpdateService", () => {
           .mockResolvedValue([{ accountId: "acc-1", totalAmount: "20" }]),
       });
 
+      // A status change re-reads the batch first, to expand a selected transfer
+      // leg to its counterpart before any balance moves.
+      const expansionQb = createMockQueryBuilder({
+        getMany: exclusionsQb.getMany,
+      });
+
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
         .mockReturnValueOnce(exclusionsQb)
+        .mockReturnValueOnce(expansionQb)
         .mockReturnValueOnce(balanceQb)
         .mockReturnValueOnce(accountIdsQb);
 
@@ -673,6 +680,202 @@ describe("TransactionBulkUpdateService", () => {
         "acc-1",
         userId,
       );
+    });
+
+    // A linked transfer is one economic event. Voiding only the source leg used
+    // to restore the source balance while the destination leg stayed active, so
+    // 1,000.00 held across two accounts became 1,100.00.
+    describe("a transfer's status changes on both legs", () => {
+      /**
+       * Wire the query sequence for a status update whose batch is `batchRows`,
+       * where `counterpartRows` are the same-user rows the expansion is allowed
+       * to pair with.
+       */
+      const wireStatusUpdate = (
+        batchRows: Transaction[],
+        counterpartRows: { id: string }[],
+        // `m.find(TransactionSplit)` results in call order. The expansion asks
+        // for owning splits only when the batch holds a transfer leg, and for a
+        // split parent's children only when it holds a split parent, so the
+        // order depends on the batch.
+        findResults: {
+          id: string;
+          linkedTransactionId: string | null;
+        }[][] = [],
+      ) => {
+        const resolveQb = createMockQueryBuilder({
+          getMany: jest
+            .fn()
+            .mockResolvedValue(batchRows.map((r) => ({ id: r.id }))),
+        });
+        const exclusionsQb = createMockQueryBuilder({
+          getMany: jest.fn().mockResolvedValue(batchRows),
+        });
+        const expansionQb = createMockQueryBuilder({
+          getMany: jest.fn().mockResolvedValue(batchRows),
+        });
+        const counterpartQb = createMockQueryBuilder({
+          getMany: jest.fn().mockResolvedValue(counterpartRows),
+        });
+        const balanceQb = createMockQueryBuilder({
+          getRawMany: jest.fn().mockResolvedValue([]),
+        });
+        const accountIdsQb = createMockQueryBuilder({
+          getRawMany: jest.fn().mockResolvedValue([]),
+        });
+
+        const chain = transactionsRepository.createQueryBuilder
+          .mockReturnValueOnce(resolveQb)
+          .mockReturnValueOnce(exclusionsQb)
+          .mockReturnValueOnce(expansionQb);
+        if (counterpartRows.length > 0) {
+          chain.mockReturnValueOnce(counterpartQb);
+        }
+        chain.mockReturnValueOnce(balanceQb).mockReturnValueOnce(accountIdsQb);
+
+        for (const rows of findResults) {
+          mockManagerFind.mockResolvedValueOnce(rows);
+        }
+
+        const statusUpdateQb = createMockQueryBuilder({
+          execute: jest.fn().mockResolvedValue({ affected: 2 }),
+        });
+        mockManagerCreateQueryBuilder.mockReturnValue(statusUpdateQb);
+        return { statusUpdateQb, balanceQb };
+      };
+
+      it("voids the counterpart when only the source leg is selected", async () => {
+        const sourceLeg = makeTransaction({
+          id: "leg-source",
+          accountId: "checking",
+          amount: -100,
+          isTransfer: true,
+          linkedTransactionId: "leg-dest",
+        });
+        const { statusUpdateQb, balanceQb } = wireStatusUpdate(
+          [sourceLeg],
+          [{ id: "leg-dest" }],
+        );
+
+        const result = await service.bulkUpdate(userId, {
+          mode: "ids",
+          transactionIds: ["leg-source"],
+          status: TransactionStatus.VOID,
+        });
+
+        // Both legs are voided, and both are in the balance query, so the
+        // combined balance cannot move.
+        expect(statusUpdateQb.where).toHaveBeenCalledWith(
+          "id IN (:...ids)",
+          expect.objectContaining({
+            ids: expect.arrayContaining(["leg-source", "leg-dest"]),
+          }),
+        );
+        expect(balanceQb.where).toHaveBeenCalledWith(
+          "transaction.id IN (:...ids)",
+          expect.objectContaining({
+            ids: expect.arrayContaining(["leg-source", "leg-dest"]),
+          }),
+        );
+        expect(result.updated).toBe(2);
+        expect(result.skipped).toBe(0);
+      });
+
+      it("refuses a split-transfer leg rather than changing its split parent", async () => {
+        const splitLeg = makeTransaction({
+          id: "leg-in-target",
+          isTransfer: true,
+          // For a split-transfer leg this points at the split PARENT.
+          linkedTransactionId: "split-parent",
+        });
+        const { statusUpdateQb } = wireStatusUpdate(
+          [splitLeg],
+          [],
+          [[{ id: "split-row", linkedTransactionId: "leg-in-target" }]],
+        );
+
+        const result = await service.bulkUpdate(userId, {
+          mode: "ids",
+          transactionIds: ["leg-in-target"],
+          status: TransactionStatus.VOID,
+        });
+
+        // Nothing is written: the pair cannot be made atomic here.
+        expect(statusUpdateQb.set).not.toHaveBeenCalled();
+        expect(accountsService.updateBalance).not.toHaveBeenCalled();
+        expect(result.updated).toBe(0);
+        expect(result.skipped).toBe(1);
+        expect(result.skippedReasons[0]).toContain("both legs");
+      });
+
+      it("refuses a cross-owner leg whose counterpart it cannot write", async () => {
+        const leg = makeTransaction({
+          id: "leg-mine",
+          isTransfer: true,
+          linkedTransactionId: "leg-theirs",
+        });
+        // The counterpart lookup is user-filtered, so it comes back empty.
+        const { statusUpdateQb } = wireStatusUpdate([leg], []);
+
+        const result = await service.bulkUpdate(userId, {
+          mode: "ids",
+          transactionIds: ["leg-mine"],
+          status: TransactionStatus.VOID,
+        });
+
+        expect(statusUpdateQb.set).not.toHaveBeenCalled();
+        expect(result.updated).toBe(0);
+        expect(result.skipped).toBe(1);
+      });
+
+      it("carries a selected split parent's transfer legs with it", async () => {
+        const parent = makeTransaction({ id: "split-parent", isSplit: true });
+        const { statusUpdateQb } = wireStatusUpdate(
+          [parent],
+          [{ id: "leg-in-target" }],
+          [[{ id: "split-row", linkedTransactionId: "leg-in-target" }]],
+        );
+
+        await service.bulkUpdate(userId, {
+          mode: "ids",
+          transactionIds: ["split-parent"],
+          status: TransactionStatus.VOID,
+        });
+
+        expect(statusUpdateQb.where).toHaveBeenCalledWith(
+          "id IN (:...ids)",
+          expect.objectContaining({
+            ids: expect.arrayContaining(["split-parent", "leg-in-target"]),
+          }),
+        );
+      });
+
+      it("still applies non-status fields to a refused leg", async () => {
+        const splitLeg = makeTransaction({
+          id: "leg-in-target",
+          isTransfer: true,
+          linkedTransactionId: "split-parent",
+        });
+        const { statusUpdateQb } = wireStatusUpdate(
+          [splitLeg],
+          [],
+          [[{ id: "split-row", linkedTransactionId: "leg-in-target" }]],
+        );
+
+        const result = await service.bulkUpdate(userId, {
+          mode: "ids",
+          transactionIds: ["leg-in-target"],
+          status: TransactionStatus.VOID,
+          description: "renamed",
+        });
+
+        // The description landed; only the status was refused.
+        expect(statusUpdateQb.set).toHaveBeenCalledWith({
+          description: "renamed",
+        });
+        expect(result.updated).toBe(1);
+        expect(result.skipped).toBe(1);
+      });
     });
 
     it("adjusts balances when changing status from VOID to non-VOID", async () => {
@@ -701,9 +904,16 @@ describe("TransactionBulkUpdateService", () => {
           .mockResolvedValue([{ accountId: "acc-1", totalAmount: "100" }]),
       });
 
+      // A status change re-reads the batch first, to expand a selected transfer
+      // leg to its counterpart before any balance moves.
+      const expansionQb = createMockQueryBuilder({
+        getMany: exclusionsQb.getMany,
+      });
+
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
         .mockReturnValueOnce(exclusionsQb)
+        .mockReturnValueOnce(expansionQb)
         .mockReturnValueOnce(balanceQb)
         .mockReturnValueOnce(accountIdsQb);
 
@@ -1115,9 +1325,16 @@ describe("TransactionBulkUpdateService", () => {
           .mockResolvedValue([{ accountId: "acc-1", totalAmount: "50" }]),
       });
 
+      // A status change re-reads the batch first, to expand a selected transfer
+      // leg to its counterpart before any balance moves.
+      const expansionQb = createMockQueryBuilder({
+        getMany: exclusionsQb.getMany,
+      });
+
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
         .mockReturnValueOnce(exclusionsQb)
+        .mockReturnValueOnce(expansionQb)
         .mockReturnValueOnce(balanceQb)
         .mockReturnValueOnce(accountIdsQb);
 
@@ -1179,9 +1396,16 @@ describe("TransactionBulkUpdateService", () => {
           .mockResolvedValue([{ accountId: "acc-1", totalAmount: "100" }]),
       });
 
+      // A status change re-reads the batch first, to expand a selected transfer
+      // leg to its counterpart before any balance moves.
+      const expansionQb = createMockQueryBuilder({
+        getMany: exclusionsQb.getMany,
+      });
+
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
         .mockReturnValueOnce(exclusionsQb)
+        .mockReturnValueOnce(expansionQb)
         .mockReturnValueOnce(balanceQb)
         .mockReturnValueOnce(accountIdsQb);
 
@@ -2171,9 +2395,16 @@ describe("TransactionBulkUpdateService", () => {
           .mockResolvedValue([{ accountId: "acc-1", totalAmount: "0" }]),
       });
 
+      // A status change re-reads the batch first, to expand a selected transfer
+      // leg to its counterpart before any balance moves.
+      const expansionQb = createMockQueryBuilder({
+        getMany: exclusionsQb.getMany,
+      });
+
       transactionsRepository.createQueryBuilder
         .mockReturnValueOnce(resolveQb)
         .mockReturnValueOnce(exclusionsQb)
+        .mockReturnValueOnce(expansionQb)
         .mockReturnValueOnce(balanceQb)
         .mockReturnValueOnce(accountIdsQb);
 

@@ -321,7 +321,8 @@
       },
       "notes": {
         "transfer": "[XX-Transfer transactions will have their linked counterpart updated as well.-XX]",
-        "split": "[XX-Split transactions will be skipped for category changes.-XX]"
+        "split": "[XX-Split transactions will be skipped for category changes.-XX]",
+        "statusTransfer": "[XX-A status change applies to both legs of a transfer, so its counterpart changes too.-XX]"
       }
     }
   },

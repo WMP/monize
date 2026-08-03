@@ -187,6 +187,9 @@ export function BulkUpdateModal({
   // Info notes about what gets skipped
   const showTransferNote = enablePayee;
   const showSplitNote = enableCategory;
+  // A status change moves balances, so it cannot land on one leg of a transfer
+  // alone -- the server pairs the legs and refuses the ones it cannot pair.
+  const showStatusTransferNote = enableStatus;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="lg" className="p-6" allowOverflow>
@@ -296,7 +299,7 @@ export function BulkUpdateModal({
         </div>
 
         {/* Info notes */}
-        {(showTransferNote || showSplitNote) && (
+        {(showTransferNote || showSplitNote || showStatusTransferNote) && (
           <div className="mt-4 space-y-1">
             {showTransferNote && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -306,6 +309,11 @@ export function BulkUpdateModal({
             {showSplitNote && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {t('bulk.modal.notes.split')}
+              </p>
+            )}
+            {showStatusTransferNote && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {t('bulk.modal.notes.statusTransfer')}
               </p>
             )}
           </div>
