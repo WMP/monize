@@ -21,12 +21,13 @@ const SOURCE_DIRS = [
 // docker-compose files where service environments declare vars that are
 // derived in-compose (e.g. DATABASE_NAME mapped from POSTGRES_DB). Counts as
 // documentation since self-hosters consume these files alongside .env.example.
-const COMPOSE_FILES = [
-  'docker-compose.yml',
-  'docker-compose.dev.yml',
-  'docker-compose.prod.yml',
-  'docker-compose.e2e.yml',
-];
+// Read from disk rather than listed: the hardcoded list named a
+// `docker-compose.yml` this repository does not have (the loop below skips a
+// missing file silently, so the coverage loss was invisible) and omitted the
+// demo and zap stacks. A new stack is now covered by existing.
+const COMPOSE_FILES = readdirSync(REPO_ROOT)
+  .filter((name) => /^docker-compose[\w.-]*\.ya?ml$/.test(name))
+  .sort();
 
 // Built-ins and runtime-injected vars that don't belong in .env.example.
 const IGNORED = new Set([

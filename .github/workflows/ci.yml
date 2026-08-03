@@ -301,7 +301,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   env-doc-check:
-    name: Env Var Documentation
+    name: Documentation vs Manifests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
@@ -312,6 +312,12 @@ jobs:
           node-version: 24
       - name: Verify env vars are documented
         run: node scripts/check-env-docs.mjs
+      # The documented setup path must name files that exist and defaults that
+      # match the manifests: the README's Quick Start pointed at a
+      # `docker-compose.yml` this repository has never contained, and the Helm
+      # install command at a chart directory that does not exist.
+      - name: Verify documented paths and Helm defaults match the manifests
+        run: node scripts/check-docs-manifests.mjs
 
   zizmor-scan:
     name: Workflow Security Scan (zizmor)

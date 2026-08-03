@@ -20,16 +20,16 @@ Only the frontend is exposed externally via HTTPRoute or Ingress. The backend is
 
 ```bash
 # Install with default values (HTTPRoute enabled)
-helm install monize ./helm/monize -n monize --create-namespace
+helm install monize ./helm -n monize --create-namespace
 
 # Install with Ingress instead of HTTPRoute
-helm install monize ./helm/monize -n monize --create-namespace \
+helm install monize ./helm -n monize --create-namespace \
   --set httpRoute.enabled=false \
   --set ingress.enabled=true \
   --set ingress.className=nginx
 
 # Dry-run to preview rendered templates
-helm template monize ./helm/monize -n monize
+helm template monize ./helm -n monize
 ```
 
 ## Routing Options
@@ -93,10 +93,19 @@ ingress:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `backend.image.registry` | Image registry | `registry.yourdomain.com` |
-| `backend.image.repository` | Image repository | `monize/backend` |
+| `backend.image.registry` | Image registry | `ghcr.io` |
+| `backend.image.repository` | Image repository | `kenlasko/monize/backend` |
 | `backend.image.tag` | Image tag | `latest` |
-| `backend.image.pullPolicy` | Image pull policy | `Always` |
+| `backend.image.pullPolicy` | Image pull policy | `IfNotPresent` |
+
+> **`latest` with `IfNotPresent` does not pick up new builds.** The two defaults
+> combine into a deployment that keeps whatever image the node already cached: a
+> rolling restart re-uses it, so replicas can end up running different builds of
+> the same tag. Pin an immutable tag or a digest (`--set
+> backend.image.tag=v1.13.0`) for anything you intend to upgrade predictably, or
+> set `pullPolicy=Always` if you genuinely want to track `latest`. This is
+> stated rather than changed because flipping either default silently alters
+> upgrade behaviour for existing installs.
 | `backend.replicas` | Number of replicas | `1` |
 | `backend.service.port` | Service port | `3001` |
 | `backend.service.type` | Service type | `ClusterIP` |
@@ -109,8 +118,8 @@ ingress:
 
 #### Memory for Microsoft Money imports
 
-The default `backend.resources.limits.memory` of `150Mi` is sized for ordinary
-use and **cannot import a real `.mny` file**. A Money upload is buffered in
+The default `backend.resources.limits.memory` of `400Mi` is sized for ordinary
+use and **cannot import a real `.mny` file** at the default 300 MB ceiling. A Money upload is buffered in
 memory and decrypted in place, so peak usage is roughly twice the file size on
 top of the baseline. A pod that hits its limit mid-import is OOM-killed, and the
 wizard reports the job as stalled rather than as out of memory.
@@ -141,10 +150,10 @@ otherwise, and truncates rather than rejecting anything larger).
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `frontend.image.registry` | Image registry | `registry.yourdomain.com` |
-| `frontend.image.repository` | Image repository | `monize/frontend` |
+| `frontend.image.registry` | Image registry | `ghcr.io` |
+| `frontend.image.repository` | Image repository | `kenlasko/monize/frontend` |
 | `frontend.image.tag` | Image tag | `latest` |
-| `frontend.image.pullPolicy` | Image pull policy | `Always` |
+| `frontend.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `frontend.replicas` | Number of replicas | `1` |
 | `frontend.service.port` | Service port | `3000` |
 | `frontend.service.type` | Service type | `ClusterIP` |
@@ -231,16 +240,16 @@ All containers enforce the `restricted` Pod Security Standard:
 
 ```bash
 # Lint the chart
-helm lint ./helm/monize
+helm lint ./helm
 
 # Render templates without deploying
-helm template monize ./helm/monize -n monize
+helm template monize ./helm -n monize
 
 # Dry-run install
-helm install monize ./helm/monize -n monize --dry-run
+helm install monize ./helm -n monize --dry-run
 
 # Test with Ingress instead of HTTPRoute
-helm template monize ./helm/monize -n monize \
+helm template monize ./helm -n monize \
   --set httpRoute.enabled=false \
   --set ingress.enabled=true \
   --set ingress.className=nginx

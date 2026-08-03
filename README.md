@@ -232,9 +232,11 @@ monize/
 │   └── migrations/            # Incremental schema migrations
 ├── e2e/                       # End-to-end tests
 ├── helm/                      # Helm charts for Kubernetes
-├── docker-compose.yml         # Development environment
+├── docker-compose.dev.yml     # Development environment
 ├── docker-compose.prod.yml    # Production environment
 ├── docker-compose.demo.yml    # Demo environment
+├── docker-compose.e2e.yml     # End-to-end test environment
+├── docker-compose.zap.yml     # ZAP security-scan environment
 ├── .env.example               # Environment variables template
 └── README.md
 ```
@@ -268,8 +270,11 @@ cp .env.example .env
 
 4. Start the application:
 ```bash
-docker-compose up -d
+docker compose -f docker-compose.dev.yml up -d
 ```
+
+   The `-f` is required: every stack in this repository is an explicit target
+   (see the tree above) and there is no default Compose file to fall back on.
 
 5. Access the application:
    - Frontend: http://localhost:3001
