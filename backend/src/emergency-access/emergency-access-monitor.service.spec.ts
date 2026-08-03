@@ -22,7 +22,6 @@ jest.mock("../common/db/scoped-db", () =>
 );
 
 describe("EmergencyAccessMonitorService", () => {
-
   /** Wins every claim, matching the pre-claim behaviour these specs describe. */
   const jobClaims: JobClaimMock = createJobClaimMock();
   /** Whether the conditional grant-claim UPDATE returns a row this run. */

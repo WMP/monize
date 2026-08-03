@@ -137,6 +137,21 @@ A check capable of refusing a command belongs inside the transaction that perfor
 
 Give the operation the caller's precondition as a parameter -- the expected owner, scenario or revision -- and let it refuse before writing. Return the refusal distinguishably: "no such row", "not yours" and "done" are three answers, and folding two into `null` makes the caller guess. Tests assert the rejected response **and** the stored state; see `docs/financial-calculation-contract.md` section 7.
 
+## A snapshot is not a lock, and a comment is not a mechanism
+
+Every concurrency defect the Phase 4 audit confirmed had a comment above it
+asserting the safety it did not have: "atomically increment failed attempts" over
+`user.failedLoginAttempts + 1`; "re-validates under lock" over a `findOne` with no
+lock option; "a failure leaves nothing behind and Retry cannot double-import" over
+a transaction that committed before finalization; "returns null for expired files"
+over a query filtering only by id.
+
+So when you write that a thing is atomic, locked, single-use or idempotent, the
+next line has to be the mechanism that makes it so -- a predicate in the
+statement, a lock taken before the read, a unique key -- and if you cannot point
+at one, the comment is the bug. The root `CLAUDE.md` has the protocol; this is the
+habit that keeps it honest.
+
 ## A predicate that decides which row counts is written once
 
 When "is this row the one we mean" takes more than one clause -- current

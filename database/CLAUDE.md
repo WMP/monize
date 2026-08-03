@@ -102,6 +102,37 @@ GUCs through `withScopedDb` and the policies compare each row's owner against th
    (`managed.roles`) instead. New tables created by the owner get their grants automatically via
    `ALTER DEFAULT PRIVILEGES`.
 
+## A check-then-act cannot be fixed in application code
+
+When two requests may both pass a check and both act on it, the constraint belongs
+in the database. Application code cannot close that window -- it can only make it
+smaller, which reads as fixed and is not.
+
+The shapes and what they became in migration `133`:
+
+| Application shape | Database guard |
+|---|---|
+| count active rows, then insert | partial unique index (`import_jobs(user_id) WHERE status IN (...)`) |
+| read the set, then insert if absent | unique fingerprint + `ON CONFLICT DO NOTHING RETURNING` (`budget_alerts`) |
+| check "already posted", then post | unique occurrence key (`scheduled_transaction_postings`) |
+| a `Set` in process memory, per replica | a claim row (`job_claims`) |
+| delete external bytes, then commit | a trigger-written tombstone (`attachment_blob_tombstones`) |
+
+Two things go with such a guard:
+
+- **A `CHECK` beside a partial unique index whose predicate names statuses.** The
+  index only constrains rows matching its predicate, so a status the application
+  never intended sits outside it -- and the guard silently stops guarding. `133`
+  ships `import_jobs_status_check` for exactly that reason.
+- **`COALESCE` for a nullable column in a unique index.** `NULL` never equals
+  `NULL`, so the rows with a null there are precisely the ones left unprotected.
+  In `budget_alerts` those were the budget-wide alerts.
+
+And a trigger that writes an audit or tombstone row must be `SECURITY DEFINER`
+with a pinned `search_path`: under RLS it would otherwise insert as the invoking
+role and be refused whenever the deleted row's owner is not the session identity,
+and a refused trigger fails the `DELETE` itself.
+
 ## Migration File Conventions
 - Numbered prefix for ordering: `NNN_description.sql` (e.g., `079_securities_is_favourite.sql`)
 - Use `ADD COLUMN IF NOT EXISTS` for column additions

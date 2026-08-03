@@ -1448,8 +1448,11 @@ describe("ActionHistoryService", () => {
       mockQueryRunner.manager.findOne.mockResolvedValueOnce(mockInvTx);
       mockQueryRunner.manager.remove.mockResolvedValue(undefined);
       mockQueryRunner.manager.update.mockResolvedValue({ affected: 1 });
-      // rebuildHoldings: DELETE returns void, SELECT returns investment transactions
+      // rebuildHoldings takes the shared holdings lock first -- a rebuild replays
+      // investment_transactions and replaces what it derives from them, so the
+      // trade it must not lose is an insert no holdings row locks (P4-006).
       mockQueryRunner.query
+        .mockResolvedValueOnce([]) // pg_advisory_xact_lock
         .mockResolvedValueOnce(undefined) // DELETE FROM holdings
         .mockResolvedValueOnce([
           {

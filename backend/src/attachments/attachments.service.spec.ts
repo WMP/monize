@@ -7,7 +7,6 @@ import {
 import { DataSource, EntityManager } from "typeorm";
 import { createHash } from "crypto";
 import { withScopedDb } from "../common/db/scoped-db";
-import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionAttachment } from "./entities/transaction-attachment.entity";
 import {
   AttachmentsService,

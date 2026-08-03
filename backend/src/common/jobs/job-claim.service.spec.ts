@@ -1,0 +1,173 @@
+import { DataSource } from "typeorm";
+import {
+  JOB_CLAIM_RETENTION_DAYS,
+  JobClaimService,
+  JobClaimType,
+} from "./job-claim.service";
+import { JobClaim } from "./entities/job-claim.entity";
+import {
+  createScopedDbMocks,
+  DataSourceMock,
+} from "../../test-helpers/scoped-db-testing";
+
+jest.mock("../db/scoped-db", () =>
+  jest
+    .requireActual("../../test-helpers/scoped-db-testing")
+    .scopedDbMockModule(),
+);
+
+jest.mock("../db/with-context", () => ({
+  withSystemContext: jest.fn((fn: () => unknown) => fn()),
+}));
+
+/**
+ * The claim's whole value is that the *database* decides who won, so these specs
+ * pin down the statements and how their results are read.
+ *
+ * The result-reading is not incidental. A data-modifying `query` with `RETURNING`
+ * comes back as `[rows, rowCount]`, and on that tuple `result.length > 0` is
+ * always true -- so a naive reading makes every replica a winner and every
+ * replica sends. That is precisely the bug the claim exists to prevent, which is
+ * why the tuple shape is exercised here rather than assumed.
+ */
+describe("JobClaimService", () => {
+  let service: JobClaimService;
+  let manager: Record<string, jest.Mock>;
+  let dataSource: DataSourceMock;
+  let claimsRepo: Record<string, jest.Mock>;
+
+  const USER = "11111111-1111-4111-8111-111111111111";
+
+  beforeEach(() => {
+    claimsRepo = { delete: jest.fn().mockResolvedValue({ affected: 1 }) };
+    const mocks = createScopedDbMocks([[JobClaim, claimsRepo]]);
+    manager = mocks.manager;
+    dataSource = mocks.dataSource;
+    service = new JobClaimService(dataSource as unknown as DataSource);
+  });
+
+  describe("claimOnce", () => {
+    it("inserts with ON CONFLICT DO NOTHING and no expiry", async () => {
+      manager.query.mockResolvedValue([[{ id: "claim-1" }], 1]);
+
+      const won = await service.claimOnce(
+        JobClaimType.BillReminder,
+        USER,
+        "2026-08-03#abc",
+      );
+
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(sql).toContain("INSERT INTO job_claims");
+      expect(sql).toContain("ON CONFLICT (claim_type, user_id, claim_key)");
+      expect(sql).toContain("DO NOTHING");
+      expect(sql).toContain("RETURNING id");
+      expect(params).toEqual(["bill_reminder", USER, "2026-08-03#abc"]);
+      expect(won).toBe(true);
+    });
+
+    it("reports the loser correctly through the RETURNING tuple", async () => {
+      // `[[], 0]` -- the shape the driver hands back when nothing was inserted.
+      // Read as a bare array its length is 2, i.e. "won", which is the failure
+      // this assertion exists to prevent.
+      manager.query.mockResolvedValue([[], 0]);
+
+      expect(
+        await service.claimOnce(JobClaimType.BillReminder, USER, "k"),
+      ).toBe(false);
+    });
+
+    it("reports the winner when the driver returns bare rows", async () => {
+      manager.query.mockResolvedValue([{ id: "claim-1" }]);
+
+      expect(
+        await service.claimOnce(JobClaimType.BillReminder, USER, "k"),
+      ).toBe(true);
+    });
+  });
+
+  describe("claimLease", () => {
+    it("retakes a lease only once its own expiry has passed", async () => {
+      manager.query.mockResolvedValue([[{ id: "claim-1" }], 1]);
+
+      const won = await service.claimLease(
+        JobClaimType.AiInsightGeneration,
+        USER,
+        "generation",
+        60_000,
+      );
+
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(sql).toContain("DO UPDATE");
+      // Both halves matter: a live lease must not be retaken, and a lease with no
+      // expiry (a permanent delivery claim) must never be retaken at all.
+      expect(sql).toContain("job_claims.expires_at IS NOT NULL");
+      expect(sql).toContain("job_claims.expires_at < CURRENT_TIMESTAMP");
+      expect(params).toEqual([
+        "ai_insight_generation",
+        USER,
+        "generation",
+        "60000",
+      ]);
+      expect(won).toBe(true);
+    });
+
+    it("stands down when a live lease exists", async () => {
+      manager.query.mockResolvedValue([[], 0]);
+
+      expect(
+        await service.claimLease(
+          JobClaimType.AiInsightGeneration,
+          USER,
+          "generation",
+          60_000,
+        ),
+      ).toBe(false);
+    });
+
+    it("never asks for a non-positive lease", async () => {
+      manager.query.mockResolvedValue([[{ id: "c" }], 1]);
+
+      await service.claimLease(JobClaimType.AiInsightGeneration, USER, "g", 0);
+
+      expect(manager.query.mock.calls[0][1][3]).toBe("1");
+    });
+  });
+
+  describe("release", () => {
+    it("deletes the claim so a failed send can be retried", async () => {
+      await service.release(JobClaimType.MortgageReminder, USER, "k");
+
+      expect(claimsRepo.delete).toHaveBeenCalledWith({
+        claimType: "mortgage_reminder",
+        userId: USER,
+        claimKey: "k",
+      });
+    });
+  });
+
+  describe("sweepOldClaims", () => {
+    it("deletes only claims past the retention window", async () => {
+      manager.query.mockResolvedValue([[], 3]);
+
+      await service.sweepOldClaims();
+
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(sql).toContain("DELETE FROM job_claims");
+      expect(sql).toContain("claimed_at <");
+      expect(params).toEqual([String(JOB_CLAIM_RETENTION_DAYS)]);
+    });
+
+    it("logs and swallows a sweep failure rather than crashing the cron", async () => {
+      manager.query.mockRejectedValue(new Error("connection reset"));
+      const warn = jest
+        .spyOn(service["logger"], "warn")
+        .mockImplementation(() => undefined);
+
+      await expect(service.sweepOldClaims()).resolves.toBeUndefined();
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("connection reset"),
+      );
+    });
+  });
+});

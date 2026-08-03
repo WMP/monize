@@ -202,7 +202,10 @@ describe("TransactionTransferService", () => {
         const byId = new Map<string, Record<string, unknown>>();
         // The own leg comes back through the caller's `findOne`; the counterpart
         // through the repository. Both are rows this spec described.
-        for (const mock of [mockFindOne.mock, transactionsRepository.findOne.mock]) {
+        for (const mock of [
+          mockFindOne.mock,
+          transactionsRepository.findOne.mock,
+        ]) {
           for (const result of mock.results) {
             if (result.type !== "return") continue;
             try {

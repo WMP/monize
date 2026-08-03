@@ -40,6 +40,8 @@ describe("EmergencyAccessClaimController", () => {
 
   const ownerId = "11111111-1111-1111-1111-111111111111";
   const RAW_TOKEN = "a".repeat(64);
+  /** Whether the conditional consume returns a row this run. */
+  let claimWins: boolean;
   const TOKEN_HASH = hashToken(RAW_TOKEN);
 
   beforeEach(async () => {
@@ -104,6 +106,19 @@ describe("EmergencyAccessClaimController", () => {
     ]);
     Object.assign(scoped.manager, queryRunner.manager);
     queryRunner.manager = scoped.manager;
+
+    /**
+     * The claim token is consumed by ONE conditional statement, before any
+     * credential is touched: `claim_token_used_at IS NULL` and the expiry are
+     * predicates of the UPDATE, so PostgreSQL re-evaluates them after the row
+     * lock and exactly one caller gets a row back (audit P4-007). The double
+     * answers the way that statement does.
+     */
+    claimWins = true;
+    scoped.manager.query.mockImplementation(async (sql: string) => {
+      if (!String(sql).includes("UPDATE emergency_access_contacts")) return [];
+      return claimWins ? [[{ id: "c1", owner_user_id: ownerId }], 1] : [[], 0];
+    });
     dataSource = scoped.dataSource as unknown as Record<string, jest.Mock>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -196,6 +211,58 @@ describe("EmergencyAccessClaimController", () => {
     } {
       return { cookie: jest.fn(), json: jest.fn() };
     }
+
+    it("consumes the token before touching a single credential", async () => {
+      // The regression guard for P4-007. The old shape was a findOne followed by
+      // an entity save, under a comment claiming it revalidated "under lock" --
+      // there was no lock and no predicate, so two requests could both read the
+      // unused token, both replace the owner's password with a different value,
+      // and both mark it used. An account-takeover race, not merely a duplicate.
+      // The owner is loaded through the transaction manager as well as the repo.
+      queryRunner.manager.findOne.mockResolvedValue({
+        id: ownerId,
+        email: "o@x.com",
+      });
+      usersRepo.findOne.mockResolvedValue({ id: ownerId, email: "o@x.com" });
+      settingsRepo.findOne.mockResolvedValue({ ownerUserId: ownerId });
+      const res = makeRes();
+
+      await controller.complete(
+        { token: RAW_TOKEN, newPassword: "Password12345!" },
+        res as never,
+      );
+
+      const [sql, params] = queryRunner.manager.query.mock.calls[0];
+      expect(sql).toContain("UPDATE emergency_access_contacts");
+      expect(sql).toContain("claim_token_used_at IS NULL");
+      expect(sql).toContain("claim_token_expires_at >= CURRENT_TIMESTAMP");
+      expect(sql).toContain("RETURNING");
+      expect(params).toEqual([TOKEN_HASH]);
+      // And it is the FIRST statement: nothing may be written by a caller that
+      // is about to lose the claim.
+      const credentialWrite =
+        queryRunner.manager.createQueryBuilder.mock.invocationCallOrder[0];
+      expect(
+        queryRunner.manager.query.mock.invocationCallOrder[0],
+      ).toBeLessThan(credentialWrite);
+    });
+
+    it("refuses the second consumer and writes nothing", async () => {
+      claimWins = false;
+      usersRepo.findOne.mockResolvedValue({ id: ownerId, email: "o@x.com" });
+      const res = makeRes();
+
+      await expect(
+        controller.complete(
+          { token: RAW_TOKEN, newPassword: "Password12345!" },
+          res as never,
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(queryRunner.manager.createQueryBuilder).not.toHaveBeenCalled();
+      expect(tokenService.generateTokenPair).not.toHaveBeenCalled();
+      expect(res.cookie).not.toHaveBeenCalled();
+    });
 
     it("rejects breached passwords", async () => {
       passwordBreach.isBreached.mockResolvedValue(true);

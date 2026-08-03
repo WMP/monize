@@ -496,7 +496,10 @@ describe("TokenService", () => {
     }
 
     it("locks every family, then batch revokes the user's tokens", async () => {
-      stageFamilies([[{ family_id: "family-2" }, { family_id: "family-1" }], []]);
+      stageFamilies([
+        [{ family_id: "family-2" }, { family_id: "family-1" }],
+        [],
+      ]);
       refreshTokensRepository.update.mockResolvedValueOnce({ affected: 2 });
 
       await service.revokeAllUserRefreshTokens("user-1");

@@ -75,8 +75,8 @@ export function stubLockedTransactions(
   rows: LockedTransactionRow[],
 ): void {
   const byId = new Map(rows.map((row) => [row.id, row]));
-  locks.lockTransactionRow.mockImplementation(async (_m, id: string) =>
-    byId.get(id) ?? null,
+  locks.lockTransactionRow.mockImplementation(
+    async (_m, id: string) => byId.get(id) ?? null,
   );
   locks.lockTransactionRows.mockImplementation(
     async (_m, ids: readonly string[]) =>

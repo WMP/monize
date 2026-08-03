@@ -21,6 +21,10 @@ import { Budget } from "../budgets/entities/budget.entity";
 import { CustomReport } from "../reports/entities/custom-report.entity";
 import { withSystemContext } from "../common/db/with-context";
 import { withScopedDb } from "../common/db/scoped-db";
+import {
+  lockAccountsForBalanceWrite,
+  lockHoldingScope,
+} from "../common/db/locks";
 
 export interface RecordActionParams {
   entityType: string;
@@ -1241,6 +1245,16 @@ export class ActionHistoryService {
     accountId: string,
     manager: EntityManager,
   ): Promise<void> {
+    // Lock the account before reading the ledger, like every other absolute
+    // balance writer.
+    //
+    // This is the same protocol boundary as AccountsService.recalculateCurrentBalance
+    // (audit P4-005): the SELECT and the UPDATE below are separate statement
+    // snapshots under READ COMMITTED, so without the lock an ordinary
+    // transaction committing between them is overwritten by a total that never
+    // saw it -- and an undo is precisely when a user is watching the balance.
+    await lockAccountsForBalanceWrite(manager, [accountId]);
+
     // Use the same recalculation logic as AccountsService
     const result = await manager.query(
       `SELECT a.opening_balance, COALESCE(SUM(t.amount), 0) as tx_sum
@@ -1273,6 +1287,12 @@ export class ActionHistoryService {
     accountId: string,
     manager: EntityManager,
   ): Promise<void> {
+    // Same lock namespace every holdings writer takes, before the ledger is
+    // read. A rebuild replays investment_transactions and replaces the holdings
+    // derived from them, so what it must not lose is a *trade* -- an insert no
+    // holdings row locks (audit P4-006).
+    await lockHoldingScope(manager, [accountId]);
+
     // Delete existing holdings for this account
     await manager.query(`DELETE FROM holdings WHERE account_id = $1`, [
       accountId,

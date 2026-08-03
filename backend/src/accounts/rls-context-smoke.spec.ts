@@ -32,7 +32,6 @@ import {
  */
 
 describe("accounts module RLS context smoke (real withScopedDb)", () => {
-
   /** Wins every claim, matching the pre-claim behaviour these specs describe. */
   const jobClaims: JobClaimMock = createJobClaimMock();
   const OWNER_ID = "3f1f8a52-2f0e-4b6d-9a56-0d6a3f1c2b4e";
@@ -89,7 +88,8 @@ describe("accounts module RLS context smoke (real withScopedDb)", () => {
       (c) => typeof c[0] === "string" && c[0].includes("FOR UPDATE"),
     );
     const sumIndex = manager.query.mock.calls.findIndex(
-      (c) => typeof c[0] === "string" && c[0].includes("COALESCE(SUM(t.amount)"),
+      (c) =>
+        typeof c[0] === "string" && c[0].includes("COALESCE(SUM(t.amount)"),
     );
     expect(lockIndex).toBeGreaterThanOrEqual(0);
     expect(lockIndex).toBeLessThan(sumIndex);

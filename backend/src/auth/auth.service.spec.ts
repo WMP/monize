@@ -2372,9 +2372,7 @@ describe("AuthService", () => {
       const manager = setupTransactionMock();
       // Two token reads: the unlocked probe that learns the family id,
       // then the locked re-read once the family lock is held (P4-011).
-      manager.findOne
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(null);
+      manager.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
 
       await expect(
         service.refreshTokens("unknown-refresh-token"),

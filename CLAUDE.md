@@ -146,6 +146,68 @@ with a fresh read of the authoritative state, inside the same transaction. Never
 loaded before the insert attempt -- the request that lost the race would return data missing the rows the winner
 just inserted.
 
+### The value a write derives from must be read under that write's own lock
+
+A transaction that is atomic is not thereby serialized. Two shapes look correct
+in isolation and corrupt derived state when they meet:
+
+- **A snapshot read before the transaction.** `findOne`, then open a transaction,
+  then adjust a balance by the difference between the snapshot and the new value.
+  PostgreSQL serializes the row writes; it does not refresh your snapshot while
+  you wait. Two updates each reversing the same stale amount leave the ledger and
+  `current_balance` permanently apart.
+- **An absolute recomputation.** Read the ledger, write the total. Under `READ
+  COMMITTED` the `SELECT` and the `UPDATE` are separate statement snapshots even
+  inside one transaction, so a delta that commits between them is overwritten by
+  a total that never saw it.
+
+The fix is one protocol, not a preference between the two: **take the lock before
+reading the inputs you will write back.** `backend/src/common/db/locks.ts` holds
+it -- `lockTransactionRow`/`lockTransactionRows` for a ledger row, and
+`lockAccountsForBalanceWrite` before any absolute balance write. Advisory locks
+before row locks, ids in ascending order, always; that ordering is what keeps two
+writers off each other's second lock.
+
+A refusal is a value read under the same lock. "Not already reconciled", "not
+void", "quantity is zero", "under the cap", "the account is open" -- each decides
+whether the write happens, so each is evaluated against the row the write
+replaces. Prefer making it a predicate of the statement
+(`UPDATE ... WHERE is_closed = false ... RETURNING`) and reading the result with
+`affectedRowCount`, so there is no window at all. `backend/src/common/db/derived-state-writers.guard.spec.ts`
+scans for both shapes; a new balance-adjusting service without a locked read
+fails it.
+
+And when a reversal follows a delete, gate it on what the database actually
+removed. `manager.remove(entity)` deletes by primary key and reports nothing, so
+two concurrent deletes each reversed the same amount while one row went away.
+
+### Every replica fires every cron, so a guard in process memory is not a guard
+
+`ScheduleModule` lives in the API process. A `Set` of user ids or a boolean flag
+beside an `@Cron` handler is per-process, so on two replicas both pass it and both
+do the work -- duplicate emails, duplicate provider spend, a second token that
+invalidates the first one's link. Use `JobClaimService` (`claimOnce` for a
+delivery, `claimLease` for an exclusion), a conditional state transition, or a
+unique key with `ON CONFLICT DO NOTHING RETURNING`. `docs/cron-jobs.md` lists
+every job and how it coordinates; keep that column true.
+
+Read a guarded statement's result with `affectedRowCount`/`returnedRows`
+(`backend/src/common/db/query-result.ts`). The driver returns `[rows, rowCount]`
+for `RETURNING`, and on that tuple `result.length > 0` is always true -- so an
+open-coded length check makes every replica a winner, which is the exact bug the
+guard exists to prevent.
+
+### An external side effect belongs after the commit, never inside it
+
+A filesystem write and an object-store put cannot roll back with PostgreSQL.
+Doing the external delete *before* the metadata delete commits means a commit
+failure leaves metadata pointing at bytes that are gone -- unrecoverable. Commit
+first, then perform the external operation, and record the intent durably so a
+crash in between costs a retry rather than an orphan. Where the row can also
+disappear through a path with no application code -- an `ON DELETE CASCADE` -- the
+record has to be written by a trigger, because that is the only thing that runs.
+`attachment_blob_tombstones` and `AttachmentOrphanSweeper` are the worked example.
+
 ## Database Access & Row-Level Security (RLS lint bans — CRITICAL)
 
 **All** database access goes through `withScopedDb` (`backend/src/common/db/scoped-db.ts`) — the single RLS-compliant door to the DB. **Never add an `@InjectRepository(...)` field, a `this.dataSource.createQueryRunner()` call, a `this.dataSource.transaction(...)` call, or a bare `this.dataSource.query(...)`.** ESLint bans the first three outright (RLS task L1, `backend/eslint.config.mjs`): importing `InjectRepository`, or calling `.createQueryRunner()` or `.transaction()`, anywhere in `src/` (outside `scoped-db.ts`, specs and test helpers) fails "Backend Lint & Type Check". `DataSource.transaction()` is banned for a reason the `createQueryRunner` ban did not cover: it opens a transaction that does not know about the ambient scoped manager, so it carries no identity GUCs under enforcement and, nested inside a caller's `withScopedDb`, commits independently of that caller's rollback. The same config restricts importing `common/db/with-context` to an explicit `WITH_CONTEXT_ALLOWLIST` — a new `withSystemContext`/`withUserContext` call site means adding the file to that allowlist in the same PR, as a reviewed decision. (R1–R7 converted the ~91 original sites; the old counting ratchet is gone.)

@@ -20,7 +20,6 @@ jest.mock("../common/db/scoped-db", () =>
 );
 
 describe("BillReminderService", () => {
-
   /** Wins every claim, matching the pre-claim behaviour these specs describe. */
   const jobClaims: JobClaimMock = createJobClaimMock();
   let service: BillReminderService;

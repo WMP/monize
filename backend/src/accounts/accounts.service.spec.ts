@@ -519,7 +519,8 @@ describe("AccountsService", () => {
         if (String(sql).includes("COALESCE(SUM(t.amount)")) return balanceRows;
         return [];
       });
-      (mockQueryRunner.manager as unknown as { query: jest.Mock }).query = query;
+      (mockQueryRunner.manager as unknown as { query: jest.Mock }).query =
+        query;
       return query;
     }
 

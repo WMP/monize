@@ -277,6 +277,10 @@ describe("MnyImportService", () => {
       // holds the slot"; the refusal path is a property of real transactions and
       // is asserted in test/integration/mny-import-job.integration.spec.ts.
       assertStillHoldsSlot: jest.fn().mockResolvedValue(undefined),
+      // Written INSIDE the import transaction, so it commits with the rows it
+      // describes: a failure after that commit must not be offered as a retry
+      // that re-imports the whole file (audit P4-002).
+      markDataCommitted: jest.fn().mockResolvedValue(undefined),
     };
     postProcessing = { run: jest.fn().mockResolvedValue(undefined) };
     usersService = { deleteData: jest.fn().mockResolvedValue(undefined) };
@@ -368,13 +372,20 @@ describe("MnyImportService", () => {
       expect(jobs.create).not.toHaveBeenCalled();
     });
 
-    it("refuses a second concurrent import", async () => {
-      jobs.hasActiveJob.mockResolvedValue(true);
+    it("refuses a second concurrent import, on the insert rather than a count", async () => {
+      // The regression guard for P4-001. `hasActiveJob()` before an
+      // unconditional insert is a check-then-act: two simultaneous starts both
+      // counted zero, both inserted, and both were legitimately claimable -- one
+      // file imported twice. The partial unique index arbitrates now, so `start`
+      // does not ask first at all; the 409 comes from the insert losing.
+      jobs.create.mockRejectedValue(
+        new ConflictException("An import is already running."),
+      );
 
       await expect(
         service.start("user-1", { stagedFileId: "staged-1" }),
       ).rejects.toBeInstanceOf(ConflictException);
-      expect(jobs.create).not.toHaveBeenCalled();
+      expect(jobs.hasActiveJob).not.toHaveBeenCalled();
     });
 
     it("passes the 409 through when only the insert catches the race", async () => {
@@ -588,6 +599,27 @@ describe("MnyImportService", () => {
       staging.loadBytes.mockResolvedValue(null);
 
       await expect(run()).rejects.toBeInstanceOf(MnyStagedFileMissingError);
+    });
+
+    it("checkpoints the commit inside the import transaction", async () => {
+      // The regression guard for P4-002. `writeAll` commits, then
+      // post-processing, verification, staged-byte removal and the terminal
+      // status write all happen outside it -- and a failure in any of them used
+      // to leave every imported row in place while the job still advertised
+      // itself as retryable. The mapper generates fresh UUIDs on every parse and
+      // nothing on an imported row identifies its source, so the retry inserted
+      // the file a second time.
+      await run();
+
+      expect(jobs.markDataCommitted).toHaveBeenCalledWith(
+        expect.anything(),
+        "job-1",
+      );
+      // Inside the transaction, before it commits -- which is what makes the
+      // checkpoint land with the rows rather than after them.
+      expect(jobs.markDataCommitted.mock.invocationCallOrder[0]).toBeLessThan(
+        postProcessing.run.mock.invocationCallOrder[0],
+      );
     });
 
     it("re-parses the staged bytes rather than trusting the preview", async () => {

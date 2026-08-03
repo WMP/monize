@@ -19,7 +19,6 @@ import {
 } from "../test-helpers/job-claim-testing";
 
 describe("MortgageReminderService", () => {
-
   /** Wins every claim, matching the pre-claim behaviour these specs describe. */
   const jobClaims: JobClaimMock = createJobClaimMock();
   let service: MortgageReminderService;
