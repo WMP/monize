@@ -82,6 +82,9 @@ describe("db-migrate runMigrations()", () => {
     existsSyncSpy.mockReturnValue(true);
     readdirSyncSpy.mockReturnValue([]);
     mockQuery
+      // The database-lifecycle advisory lock, taken first so only one process
+      // initializes or migrates at a time.
+      .mockResolvedValueOnce({ rows: [{}] })
       .mockResolvedValueOnce(undefined) // CREATE TABLE
       .mockResolvedValueOnce({ rows: [] }); // SELECT applied
 
@@ -99,6 +102,9 @@ describe("db-migrate runMigrations()", () => {
       "002_add_users.sql",
     ] as any);
     mockQuery
+      // The database-lifecycle advisory lock, taken first so only one process
+      // initializes or migrates at a time.
+      .mockResolvedValueOnce({ rows: [{}] })
       .mockResolvedValueOnce(undefined) // CREATE TABLE
       .mockResolvedValueOnce({
         rows: [{ filename: "001_init.sql" }, { filename: "002_add_users.sql" }],
@@ -126,6 +132,9 @@ describe("db-migrate runMigrations()", () => {
     });
 
     mockQuery
+      // The database-lifecycle advisory lock, taken first so only one process
+      // initializes or migrates at a time.
+      .mockResolvedValueOnce({ rows: [{}] })
       .mockResolvedValueOnce(undefined) // CREATE TABLE schema_migrations
       .mockResolvedValueOnce({ rows: [] }) // SELECT applied (none)
       .mockResolvedValue(undefined); // All subsequent queries succeed
@@ -164,6 +173,9 @@ describe("db-migrate runMigrations()", () => {
     readFileSyncSpy.mockReturnValue("SELECT 1;");
 
     mockQuery
+      // The database-lifecycle advisory lock, taken first so only one process
+      // initializes or migrates at a time.
+      .mockResolvedValueOnce({ rows: [{}] })
       .mockResolvedValueOnce(undefined) // CREATE TABLE
       .mockResolvedValueOnce({
         rows: [{ filename: "001_init.sql" }, { filename: "002_add_users.sql" }],
@@ -193,6 +205,9 @@ describe("db-migrate runMigrations()", () => {
     readFileSyncSpy.mockReturnValue("INVALID SQL;");
 
     mockQuery
+      // The database-lifecycle advisory lock, taken first so only one process
+      // initializes or migrates at a time.
+      .mockResolvedValueOnce({ rows: [{}] })
       .mockResolvedValueOnce(undefined) // CREATE TABLE
       .mockResolvedValueOnce({ rows: [] }) // SELECT applied
       .mockResolvedValueOnce(undefined) // BEGIN
@@ -221,6 +236,9 @@ describe("db-migrate runMigrations()", () => {
     readFileSyncSpy.mockReturnValue("SELECT 1;");
 
     mockQuery
+      // The database-lifecycle advisory lock, taken first so only one process
+      // initializes or migrates at a time.
+      .mockResolvedValueOnce({ rows: [{}] })
       .mockResolvedValueOnce(undefined) // CREATE TABLE
       .mockResolvedValueOnce({ rows: [] }) // SELECT applied
       .mockResolvedValueOnce(undefined) // BEGIN (001)
@@ -264,6 +282,9 @@ describe("db-migrate runMigrations()", () => {
     readFileSyncSpy.mockReturnValue("SELECT 1;");
 
     mockQuery
+      // The database-lifecycle advisory lock, taken first so only one process
+      // initializes or migrates at a time.
+      .mockResolvedValueOnce({ rows: [{}] })
       .mockResolvedValueOnce(undefined) // CREATE TABLE
       .mockResolvedValueOnce({ rows: [] }) // SELECT applied
       .mockResolvedValue(undefined); // All subsequent queries succeed

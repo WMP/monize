@@ -58,7 +58,15 @@ DECLARE
   role_pw   text := current_setting('${APP_ROLE_PASSWORD_GUC}');
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = role_name) THEN
-    EXECUTE format('CREATE ROLE %I LOGIN PASSWORD %L', role_name, role_pw);
+    -- The attributes are PostgreSQL's defaults for a new role, spelled out so
+    -- the intent is on the page: this role exists to be bound by policies, and
+    -- SUPERUSER or BYPASSRLS would make enforcement a no-op. Naming them costs
+    -- nothing and needs no elevated privilege, since they are already the
+    -- defaults. An operator-precreated role gets whatever it was given, which is
+    -- what assertRuntimeRoleIsSafe refuses to boot on.
+    EXECUTE format(
+      'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION',
+      role_name, role_pw);
   ELSE
     EXECUTE format('ALTER ROLE %I LOGIN PASSWORD %L', role_name, role_pw);
   END IF;
@@ -88,6 +96,20 @@ BEGIN
     EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I', role_name);
     EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO %I', role_name);
 
+    -- Migration bookkeeping is the owner's, not the runtime's. The blanket
+    -- "ALL TABLES IN SCHEMA public" above hands DML on every table to the app
+    -- role, and schema_migrations is a table in public, so ordinary runtime
+    -- credentials could insert a filename (making the next deployment skip
+    -- required DDL) or delete one (making a migration body re-run). No
+    -- application code reads or writes it -- the migrator uses owner
+    -- credentials -- so revoking costs nothing and closes the privilege that
+    -- compromised runtime code or an injection bug would otherwise inherit.
+    IF EXISTS (
+      SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'schema_migrations'
+    ) THEN
+      EXECUTE format('REVOKE ALL ON TABLE public.schema_migrations FROM %I', role_name);
+    END IF;
+
     -- The one SECURITY DEFINER helper the runtime needs: it answers whether a
     -- currency code is still referenced anywhere, which the tenant's own view of
     -- the tables cannot. EXECUTE is revoked from PUBLIC by migration 133, so it
@@ -108,6 +130,154 @@ EXCEPTION WHEN insufficient_privilege THEN
   RAISE WARNING 'Insufficient privilege to grant DML to role %; grant it manually or via the DB owner.', role_name;
 END $$;
 `.trim();
+
+/**
+ * What makes a runtime role unsafe under enforcement, as one query.
+ *
+ * Enforcement rests on the runtime connecting as a role that policies actually
+ * bind. Four things exempt a role from its own policies:
+ *
+ *   - `rolsuper`      -- a superuser bypasses RLS outright.
+ *   - `rolbypassrls`  -- the attribute that says so by name.
+ *   - table ownership -- an owner bypasses RLS on its own tables, because
+ *                        `FORCE ROW LEVEL SECURITY` is deliberately not used
+ *                        (db-init, db-migrate and backup restore rely on the
+ *                        owner bypass).
+ *   - inherited membership in a role with any of the above.
+ *
+ * `pg_has_role(..., 'USAGE')` is what catches the fourth: it is true for the
+ * role itself and for anything it can reach through `INHERIT`, so a role granted
+ * membership in an owner or a BYPASSRLS role is reported as unsafe even though
+ * its own `pg_roles` row looks clean. That was the gap -- startup validated the
+ * configured *name* and *password* and never asked the catalog anything.
+ */
+const RUNTIME_ROLE_SAFETY_SQL = `
+SELECT
+  r.rolsuper,
+  r.rolbypassrls,
+  r.rolcreatedb,
+  r.rolcreaterole,
+  r.rolreplication,
+  EXISTS (
+    SELECT 1 FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public'
+       AND c.relkind IN ('r', 'p')
+       AND pg_has_role(r.oid, c.relowner, 'USAGE')
+  ) AS owns_tables,
+  EXISTS (
+    SELECT 1 FROM pg_database d
+     WHERE d.datname = $2
+       AND pg_has_role(r.oid, d.datdba, 'USAGE')
+  ) AS owns_database,
+  EXISTS (
+    SELECT 1 FROM pg_roles m
+     WHERE m.rolname <> r.rolname
+       AND (m.rolsuper OR m.rolbypassrls)
+       AND pg_has_role(r.oid, m.oid, 'USAGE')
+  ) AS inherits_bypass
+FROM pg_roles r
+WHERE r.rolname = $1
+`.trim();
+
+interface RuntimeRoleSafetyRow {
+  rolsuper: boolean;
+  rolbypassrls: boolean;
+  rolcreatedb: boolean;
+  rolcreaterole: boolean;
+  rolreplication: boolean;
+  owns_tables: boolean;
+  owns_database: boolean;
+  inherits_bypass: boolean;
+}
+
+/**
+ * Refuse to boot under `RLS_MODE=enforce` when the runtime role can ignore the
+ * policies.
+ *
+ * Provisioning creates a safe role, but it only ever *created or rotated the
+ * password of* an existing one -- so a role pre-created as the database owner, a
+ * superuser, or with `BYPASSRLS` (a plausible mistake, and the normal shape of a
+ * managed-Postgres role) connected happily while every policy was bypassed.
+ * Enforcement reported itself as on and was not, which is worse than being off:
+ * off is a documented state somebody chose.
+ *
+ * Throwing is the point. A warning here would be read once and then live in the
+ * logs of a deployment that believes it is isolating tenants.
+ */
+export async function assertRuntimeRoleIsSafe(
+  client: SqlClient,
+  {
+    appUser,
+    databaseName,
+    logger = console,
+  }: {
+    appUser: string | undefined;
+    databaseName: string;
+    logger?: RoleProvisionLogger;
+  },
+): Promise<void> {
+  const roleName = appUser || DEFAULT_APP_USER;
+  const result = (await client.query(RUNTIME_ROLE_SAFETY_SQL, [
+    roleName,
+    databaseName,
+  ])) as { rows?: RuntimeRoleSafetyRow[] };
+  const row = result?.rows?.[0];
+
+  if (!row) {
+    throw new Error(
+      `RLS_MODE=enforce requires the runtime role '${roleName}' to exist, and it does not. ` +
+        "Set DATABASE_APP_PASSWORD so it can be provisioned, create it declaratively " +
+        "(CNPG spec.managed.roles), or use RLS_MODE=shadow/off.",
+    );
+  }
+
+  const problems: string[] = [];
+  if (row.rolsuper) problems.push("it is a SUPERUSER (bypasses RLS entirely)");
+  if (row.rolbypassrls) problems.push("it has BYPASSRLS");
+  if (row.owns_database) {
+    problems.push(`it owns the database '${databaseName}'`);
+  }
+  if (row.owns_tables) {
+    problems.push(
+      "it owns tables in schema public (an owner bypasses RLS on its own tables, " +
+        "since FORCE ROW LEVEL SECURITY is deliberately not used)",
+    );
+  }
+  if (row.inherits_bypass) {
+    problems.push(
+      "it inherits membership in a SUPERUSER or BYPASSRLS role (pg_has_role reports " +
+        "the privilege as reachable)",
+    );
+  }
+
+  if (problems.length > 0) {
+    throw new Error(
+      `RLS_MODE=enforce refuses to start: the runtime role '${roleName}' would not be ` +
+        `subject to row-level security because ${problems.join("; ")}. ` +
+        "Point DATABASE_APP_USER at an unprivileged non-owner role, or use " +
+        "RLS_MODE=shadow to exercise the mechanism without relying on it.",
+    );
+  }
+
+  // Not fatal: these grant no RLS exemption. Worth saying out loud because a
+  // runtime role holding them is a sign it was provisioned as something else.
+  const overpowered = [
+    row.rolcreatedb && "CREATEDB",
+    row.rolcreaterole && "CREATEROLE",
+    row.rolreplication && "REPLICATION",
+  ].filter(Boolean);
+  if (overpowered.length > 0) {
+    logger.warn(
+      `Runtime role '${roleName}' holds ${overpowered.join(", ")}. These do not bypass RLS, ` +
+        "but an application role should not need them.",
+    );
+  }
+
+  logger.log(
+    `Runtime role '${roleName}' verified as non-owner, non-superuser, non-BYPASSRLS for RLS_MODE=enforce.`,
+  );
+}
 
 export interface ProvisionAppRoleOptions {
   appUser: string | undefined;

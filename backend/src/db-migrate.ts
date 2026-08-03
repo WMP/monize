@@ -2,6 +2,7 @@ import { Client } from "pg";
 import * as fs from "fs";
 import * as path from "path";
 import { applyAppRoleGrants } from "./common/db/app-role";
+import { acquireDbLifecycleLock } from "./common/db/advisory-locks";
 
 const MIGRATIONS_DIRNAME = "migrations";
 
@@ -265,6 +266,13 @@ export async function runMigrations() {
 
   try {
     await client.connect();
+
+    // The same lock db-init takes, for the same reason and against the same
+    // races: two migrators both reading the pending set before either commits,
+    // and an initializer applying schema.sql while a migrator replays migrations
+    // on top of it. The applied-filename read below therefore happens after any
+    // other process has finished, so a follower simply finds nothing pending.
+    await acquireDbLifecycleLock(client);
 
     // Find migrations directory
     // All base directories are trusted (derived from __dirname or cwd)

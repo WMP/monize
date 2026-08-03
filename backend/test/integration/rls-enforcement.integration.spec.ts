@@ -13,6 +13,7 @@ import {
   RlsRowSeeder,
   TableCatalog,
 } from "../helpers/rls-catalog";
+import { assertRuntimeRoleIsSafe } from "@/common/db/app-role";
 import { withScopedDb } from "@/common/db/scoped-db";
 import { withUserContext } from "@/common/db/with-context";
 
@@ -844,6 +845,136 @@ describe("RLS enforcement (T2, catalog-driven)", () => {
       }
     });
 
+    it("reports an unreferenced code as free", async () => {
+      await dataSource.query(
+        `INSERT INTO currencies (code, name, symbol, decimal_places, is_active, created_by_user_id)
+         VALUES ('ZZZ', 'Nothing Points', '?', 0, true, $1)
+         ON CONFLICT (code) DO NOTHING`,
+        [USER_A],
+      );
+      // "Unknown" is not the answer here: nothing references the code, which is
+      // a settled fact, and reporting it as live would strand the row forever.
+      const [{ inUse }] = await dataSource.query(
+        `SELECT currency_code_in_use_globally('ZZZ') AS "inUse"`,
+      );
+      expect(inUse).toBe(false);
+    });
+  });
+
+  /**
+   * The catalog query behind the enforce-mode startup check, against real
+   * catalogs. The unit specs cover the decision it makes from a row; this covers
+   * whether the row says what it should -- which is where a mistake would hide,
+   * because `pg_has_role` and the ownership joins are the parts you cannot reason
+   * about from the SQL text alone.
+   */
+  describe("runtime role safety check (enforce mode startup)", () => {
+    const databaseName = process.env.DATABASE_NAME || ("monize_test" as string);
+
+    it("accepts the unprivileged runtime role the harness provisions", async () => {
+      await expect(
+        assertRuntimeRoleIsSafe(dataSource, {
+          appUser: TEST_APP_ROLE,
+          databaseName,
+          logger: { log: () => {}, warn: () => {} },
+        }),
+      ).resolves.toBeUndefined();
+    });
+
+    it("refuses the owner, which bypasses RLS on its own tables", async () => {
+      const owner = (await dataSource.query("SELECT current_user AS name"))[0]
+        .name;
+
+      // The owner is what the runtime connects as at RLS_MODE=off, so pointing
+      // DATABASE_APP_USER at it is a plausible misconfiguration -- and it would
+      // have started, silently bypassing every policy.
+      await expect(
+        assertRuntimeRoleIsSafe(dataSource, {
+          appUser: owner,
+          databaseName,
+          logger: { log: () => {}, warn: () => {} },
+        }),
+      ).rejects.toThrow(/owns/i);
+    });
+
+    it("refuses a role that inherits membership in the owner", async () => {
+      const owner = (await dataSource.query("SELECT current_user AS name"))[0]
+        .name;
+      const inheritor = "monize_test_inheritor";
+      await dataSource.query(
+        `DO $$ BEGIN
+           IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${inheritor}') THEN
+             CREATE ROLE ${inheritor} LOGIN PASSWORD 'x' INHERIT;
+           END IF;
+         END $$;`,
+      );
+      await dataSource.query(`GRANT ${owner} TO ${inheritor}`);
+      try {
+        // Its own pg_roles row is clean; the membership is the whole problem, and
+        // a check that only read the row would have passed it.
+        await expect(
+          assertRuntimeRoleIsSafe(dataSource, {
+            appUser: inheritor,
+            databaseName,
+            logger: { log: () => {}, warn: () => {} },
+          }),
+        ).rejects.toThrow(/owns|inherits/i);
+      } finally {
+        await dataSource.query(`REVOKE ${owner} FROM ${inheritor}`);
+        await dataSource.query(`DROP ROLE IF EXISTS ${inheritor}`);
+      }
+    });
+
+    it("refuses a role that does not exist", async () => {
+      await expect(
+        assertRuntimeRoleIsSafe(dataSource, {
+          appUser: "monize_no_such_role",
+          databaseName,
+          logger: { log: () => {}, warn: () => {} },
+        }),
+      ).rejects.toThrow(/to exist/);
+    });
+  });
+
+  describe("runtime role privileges on migration bookkeeping", () => {
+    it("cannot write schema_migrations", async () => {
+      // The blanket table grant includes it. Inserting a filename makes the next
+      // deployment skip required DDL; deleting one makes a migration body re-run.
+      await expect(
+        asAppRole(identity(USER_A), (m) =>
+          m.query(
+            "INSERT INTO schema_migrations (filename) VALUES ('999_hostile.sql')",
+          ),
+        ),
+      ).rejects.toThrow(/permission denied/i);
+
+      await expect(
+        asAppRole(identity(USER_A), (m) =>
+          m.query("DELETE FROM schema_migrations"),
+        ),
+      ).rejects.toThrow(/permission denied/i);
+    });
+
+    it("cannot read schema_migrations either", async () => {
+      // Nothing in the application needs to, so ALL is revoked rather than
+      // carving out SELECT for a caller that does not exist.
+      await expect(
+        asAppRole(identity(USER_A), (m) =>
+          m.query("SELECT count(*) FROM schema_migrations"),
+        ),
+      ).rejects.toThrow(/permission denied/i);
+    });
+
+    it("still has DML on an ordinary user table", async () => {
+      // The revoke has to be surgical: revoking too much would break the app.
+      const rows = await asAppRole(identity(USER_A), (m) =>
+        m.query("SELECT count(*)::int AS n FROM accounts"),
+      );
+      expect(rows[0].n).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe("unreferenced currency codes", () => {
     it("reports an unreferenced code as free", async () => {
       await dataSource.query(
         `INSERT INTO currencies (code, name, symbol, decimal_places, is_active, created_by_user_id)
