@@ -13,11 +13,19 @@ import { makeAdapterFactory } from "./postgres.adapter";
 import { derivePurposeKey } from "../auth/crypto.util";
 import { AuthService } from "../auth/auth.service";
 import { checkUserAuthState } from "../auth/user-state.util";
+import { API_SCOPES, ApiScope, MCP_SCOPE_PREFIX } from "../auth/scopes";
 import { withUserContext } from "../common/db/with-context";
 import { OAuthPayload } from "./entities/oauth-payload.entity";
 
-export const MCP_RESOURCE_SCOPES = ["monize:read", "monize:write"] as const;
-export type McpScope = (typeof MCP_RESOURCE_SCOPES)[number];
+/**
+ * The scopes an OAuth client may request, derived from the single vocabulary in
+ * `auth/scopes.ts` rather than restated. `resolveBearer` strips the prefix, so a
+ * PAT and an OAuth token both reach the guards as `read`/`write`.
+ */
+export const MCP_RESOURCE_SCOPES = API_SCOPES.map(
+  (scope) => `${MCP_SCOPE_PREFIX}${scope}` as const,
+);
+export type McpScope = `${typeof MCP_SCOPE_PREFIX}${ApiScope}`;
 
 @Injectable()
 export class OAuthProviderService implements OnModuleInit {

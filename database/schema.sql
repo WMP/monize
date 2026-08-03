@@ -1136,7 +1136,11 @@ CREATE TABLE personal_access_tokens (
     name VARCHAR(100) NOT NULL,
     token_prefix VARCHAR(8) NOT NULL,     -- First 8 chars (e.g., "pat_xxxx") for display identification
     token_hash VARCHAR(64) NOT NULL,      -- SHA-256 hash of the full token
-    scopes VARCHAR(500) NOT NULL DEFAULT 'read', -- Comma-separated: 'read', 'write', 'reports'
+    -- Comma-separated. The vocabulary is defined once in
+    -- backend/src/auth/scopes.ts (API_SCOPES) and every consumer derives from
+    -- it; do not widen this comment without widening that constant. It used to
+    -- list a third scope, 'reports', that no issuance path ever accepted.
+    scopes VARCHAR(500) NOT NULL DEFAULT 'read', -- 'read', 'write'
     last_used_at TIMESTAMP,
     expires_at TIMESTAMP,                 -- NULL = never expires
     is_revoked BOOLEAN DEFAULT false,

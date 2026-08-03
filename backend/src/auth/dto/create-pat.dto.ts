@@ -9,6 +9,7 @@ import {
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsFutureDate } from "../../common/validators/is-future-date.validator";
 import { SanitizeHtml } from "../../common/decorators/sanitize-html.decorator";
+import { apiScopesList, apiScopesPattern } from "../scopes";
 
 export class CreatePatDto {
   @ApiProperty({ description: "User-assigned label for the token" })
@@ -18,15 +19,18 @@ export class CreatePatDto {
   @SanitizeHtml()
   name: string;
 
+  // Pattern and message both derived from `API_SCOPES`: a scope named in the
+  // schema comment or a feature plan but missing from the regex is exactly how
+  // `reports` came to be documented and unissuable.
   @ApiPropertyOptional({
-    description: "Comma-separated scopes: read, write",
+    description: `Comma-separated scopes: ${apiScopesList()}`,
     default: "read",
   })
   @IsOptional()
   @IsString()
   @MaxLength(500)
-  @Matches(/^(read|write)(,(read|write))*$/, {
-    message: "Scopes must be comma-separated values of: read, write",
+  @Matches(apiScopesPattern(), {
+    message: `Scopes must be comma-separated values of: ${apiScopesList()}`,
   })
   scopes?: string;
 

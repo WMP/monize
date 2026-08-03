@@ -44,7 +44,7 @@ in `frontend/src/lib/vat.ts`.
 ### New module `backend/src/tax-rates/` (mirror `tags/`)
 - `entities/tax-rate.entity.ts` (decimal `rate` uses `numericTransformer`)
 - `dto/create-tax-rate.dto.ts`, `dto/update-tax-rate.dto.ts` (PartialType) — `@SanitizeHtml` name, `@Min(0)@Max(100)` rate, `@IsEnum` rateKind; whitelist validation like `create-tag.dto.ts`
-- `tax-rates.service.ts` — `userId`-first CRUD; name-conflict check; single-default enforcement via **QueryRunner** (clears other defaults); `remove` relies on `ON DELETE SET NULL` (keep historical `tax_amount`); record `ActionHistoryService`
+- `tax-rates.service.ts` — `userId`-first CRUD; name-conflict check; single-default enforcement inside one `withScopedDb` transaction (clears other defaults) -- **not** a `QueryRunner`, which ESLint rejects in `src/`; see the root `CLAUDE.md`; `remove` relies on `ON DELETE SET NULL` (keep historical `tax_amount`); record `ActionHistoryService`
 - `tax-rates.controller.ts` — `@Controller("tax-rates")`, class-level `AuthGuard('jwt')`, `ParseUUIDPipe` on `:id`
 - `tax-rates.module.ts` — `forFeature([TaxRate])`, import `ActionHistoryModule`, export service
 - Wire into `backend/src/app.module.ts`
@@ -62,11 +62,11 @@ in `frontend/src/lib/vat.ts`.
 
 ### Shared AI tool `get_vat_summary` (BOTH surfaces — hard project rule)
 - AI executor: `ai/query/tool-executor.service.ts` add `case "get_vat_summary"` + private method returning `{ data, summary, sources }` (mirror `getSpendingByCategory`); inject the tax/built-in-reports service; add to `tool-definitions.ts` and `tool-input-schemas.ts` (+ their specs)
-- MCP: new `mcp/tools/vat.tool.ts` (READ_ONLY, `requireScope(..., "reports")`); add `getVatSummaryOutput` to `mcp/tool-output-schemas.ts`; wire into `mcp-server.service.ts` + `mcp.module.ts`; bump `EXPECTED_TOOL_COUNT` and update `mcp-annotations.spec.ts`, `tool-output-schemas.spec.ts`, `mcp-server.service.spec.ts`
+- MCP: new `mcp/tools/vat.tool.ts` (READ_ONLY, `requireScope(..., "read")` -- the vocabulary is `read`/`write` only, defined in `backend/src/auth/scopes.ts`; a `reports` scope would have to be added there and to the PAT UI first); add `getVatSummaryOutput` to `mcp/tool-output-schemas.ts`; wire into `mcp-server.service.ts` + `mcp.module.ts`; bump `EXPECTED_TOOL_COUNT` and update `mcp-annotations.spec.ts`, `tool-output-schemas.spec.ts`, `mcp-server.service.spec.ts`
 
 ### Migrations + schema
-- `database/migrations/086_tax_rates.sql` — `CREATE TABLE IF NOT EXISTS tax_rates` + unique `(user_id, LOWER(name))` index (idempotent)
-- `database/migrations/087_transaction_split_vat.sql` — add `tax_rate_id` (FK `ON DELETE SET NULL`), `tax_amount`, `tax_direction`; index on `tax_rate_id`; `chk_split_vat_category_only CHECK (tax_rate_id IS NULL OR kind = 'category')` via guarded `DO $$` block
+- `database/migrations/<next>_tax_rates.sql` (read the current max from `ls database/migrations | tail`; the numbers below were written when the directory ended at 085) — `CREATE TABLE IF NOT EXISTS tax_rates` + unique `(user_id, LOWER(name))` index (idempotent)
+- `database/migrations/<next+1>_transaction_split_vat.sql` — add `tax_rate_id` (FK `ON DELETE SET NULL`), `tax_amount`, `tax_direction`; index on `tax_rate_id`; `chk_split_vat_category_only CHECK (tax_rate_id IS NULL OR kind = 'category')` via guarded `DO $$` block
 - Mirror both into `database/schema.sql` (after `tags`, and the `transaction_splits` block)
 
 ## Frontend changes
