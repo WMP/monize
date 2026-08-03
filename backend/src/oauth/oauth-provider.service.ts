@@ -345,7 +345,7 @@ export class OAuthProviderService implements OnModuleInit {
    */
   async validateAccessToken(
     rawToken: string,
-  ): Promise<{ userId: string; scopes: string } | null> {
+  ): Promise<{ userId: string; scopes: string; grantId?: string } | null> {
     const provider = this.getProvider();
     try {
       const token = await provider.AccessToken.find(rawToken);
@@ -394,7 +394,12 @@ export class OAuthProviderService implements OnModuleInit {
         .filter(Boolean)
         .map((s) => (s.startsWith("monize:") ? s.slice("monize:".length) : s))
         .join(",");
-      return { userId: token.accountId, scopes };
+      // The grant, not the individual access token: an MCP client refreshes
+      // access tokens routinely, and a session must survive that while still
+      // being bound to the authorization the resource owner actually consented
+      // to. Revoking the grant (or issuing a different one) breaks the binding.
+      const grantId = token.grantId ?? token.jti;
+      return { userId: token.accountId, scopes, grantId };
     } catch (err) {
       this.logger.warn(
         `Access token validation failed: ${(err as Error).message}`,

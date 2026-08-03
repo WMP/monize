@@ -253,6 +253,8 @@ describe("PatService", () => {
       expect(result).toEqual({
         userId: "user-1",
         scopes: "read",
+        // The credential fingerprint the MCP transport binds a session to.
+        tokenId: "token-1",
       });
       expect(repository.update).toHaveBeenCalledWith(
         "token-1",

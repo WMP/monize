@@ -25,15 +25,18 @@ import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
  */
 describe("MCP transport RLS context smoke (real withScopedDb)", () => {
   const USER_ID = "7d2b6c11-3f8a-4c5e-9b0d-6a1e2f3c4d5b";
+  const TOKEN_ID = "0c5f1a2b-4d6e-4a8b-9c0d-1e2f3a4b5c6d";
 
   let controller: McpHttpController;
   let patService: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     patService = {
-      validateToken: jest
-        .fn()
-        .mockResolvedValue({ userId: USER_ID, scopes: "read,write" }),
+      validateToken: jest.fn().mockResolvedValue({
+        userId: USER_ID,
+        scopes: "read,write",
+        tokenId: TOKEN_ID,
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -94,6 +97,7 @@ describe("MCP transport RLS context smoke (real withScopedDb)", () => {
     (controller as any).sessionUsers.set(sessionId, {
       userId: USER_ID,
       scopes: "read,write",
+      credentialId: `pat:${TOKEN_ID}`,
     });
     (controller as any).sessionCreatedAt.set(sessionId, Date.now());
 

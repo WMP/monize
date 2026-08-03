@@ -5,6 +5,18 @@ import type { RequestId } from "@modelcontextprotocol/sdk/types.js";
 export interface McpUserContext {
   userId: string;
   scopes: string;
+  /**
+   * Stable identifier of the credential that authorized this request: the PAT
+   * row's id, or the OAuth grant behind the access token.
+   *
+   * A session is bound to one credential. Matching only `userId` let a session
+   * outlive the credential that created it: a read-only PAT presenting the
+   * session id of a session opened with a write PAT inherited the write scope,
+   * and a replacement token kept a session alive after the original was revoked
+   * (P2-004). Absent only for a context built before this field existed, which
+   * the transport treats as "cannot be matched" and refuses.
+   */
+  credentialId?: string;
 }
 
 export type UserContextResolver = (

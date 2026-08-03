@@ -106,6 +106,56 @@ export class McpHttpController implements OnModuleDestroy {
     return Date.now() - createdAt > McpHttpController.SESSION_TTL_MS;
   }
 
+  /**
+   * Authorize an existing session against the credential presented on THIS
+   * request, and re-bind the session's authorization to it.
+   *
+   * The session used to be accepted whenever the current token's `userId`
+   * matched the cached one, while tools kept reading the scopes captured when
+   * the session was created. Two consequences, both live (P2-004): a read-only
+   * PAT that presented the session id of a session opened with a write PAT was
+   * authorized for every mutating tool, and revoking the creating token left the
+   * session usable until its TTL expired as long as the user still held any
+   * valid token.
+   *
+   * So: the credential must be the same one (matching users is not enough --
+   * one user holds many tokens with different scopes), and the scopes the tools
+   * see are replaced by the ones the presented token carries right now. A
+   * narrowed token narrows the session immediately; it never widens it back,
+   * because a session may only ever be used by the credential that created it.
+   *
+   * Returns false when the request has been answered and must not proceed.
+   */
+  private authorizeExistingSession(
+    sessionId: string,
+    authResult: McpUserContext,
+    res: Response,
+  ): boolean {
+    const sessionUser = this.sessionUsers.get(sessionId);
+    if (
+      sessionUser?.userId !== authResult.userId ||
+      !sessionUser.credentialId ||
+      !authResult.credentialId ||
+      sessionUser.credentialId !== authResult.credentialId
+    ) {
+      res.status(403).json({
+        jsonrpc: "2.0",
+        error: { code: -32003, message: "Session credential mismatch" },
+        id: null,
+      });
+      return false;
+    }
+
+    // Adopt the presented token's current authorization state. Immutable
+    // replacement rather than a mutation of the object the tools hold.
+    this.sessionUsers.set(sessionId, {
+      userId: authResult.userId,
+      scopes: authResult.scopes,
+      credentialId: authResult.credentialId,
+    });
+    return true;
+  }
+
   @Post()
   @Throttle({ default: { ttl: 60000, limit: 30 } })
   async handlePost(@Req() req: Request, @Res() res: Response) {
@@ -136,13 +186,7 @@ export class McpHttpController implements OnModuleDestroy {
         });
         return;
       }
-      const sessionUser = this.sessionUsers.get(sessionId);
-      if (sessionUser?.userId !== authResult.userId) {
-        res.status(403).json({
-          jsonrpc: "2.0",
-          error: { code: -32003, message: "Session user mismatch" },
-          id: null,
-        });
+      if (!this.authorizeExistingSession(sessionId, authResult, res)) {
         return;
       }
       await withUserContext(authResult.userId, () =>
@@ -194,6 +238,7 @@ export class McpHttpController implements OnModuleDestroy {
       this.sessionUsers.set(transport.sessionId, {
         userId: authResult.userId,
         scopes: authResult.scopes,
+        credentialId: authResult.credentialId,
       });
       this.sessionCreatedAt.set(transport.sessionId, Date.now());
     }
@@ -238,13 +283,7 @@ export class McpHttpController implements OnModuleDestroy {
       return;
     }
 
-    const sessionUser = this.sessionUsers.get(sessionId);
-    if (sessionUser?.userId !== authResult.userId) {
-      res.status(403).json({
-        jsonrpc: "2.0",
-        error: { code: -32003, message: "Session user mismatch" },
-        id: null,
-      });
+    if (!this.authorizeExistingSession(sessionId, authResult, res)) {
       return;
     }
 
@@ -292,13 +331,7 @@ export class McpHttpController implements OnModuleDestroy {
       return;
     }
 
-    const sessionUser = this.sessionUsers.get(sessionId);
-    if (sessionUser?.userId !== authResult.userId) {
-      res.status(403).json({
-        jsonrpc: "2.0",
-        error: { code: -32003, message: "Session user mismatch" },
-        id: null,
-      });
+    if (!this.authorizeExistingSession(sessionId, authResult, res)) {
       return;
     }
 
@@ -330,7 +363,11 @@ export class McpHttpController implements OnModuleDestroy {
     if (token.startsWith("pat_")) {
       try {
         const result = await this.patService.validateToken(token);
-        return { userId: result.userId, scopes: result.scopes };
+        return {
+          userId: result.userId,
+          scopes: result.scopes,
+          credentialId: `pat:${result.tokenId}`,
+        };
       } catch {
         return null;
       }
@@ -342,7 +379,16 @@ export class McpHttpController implements OnModuleDestroy {
     const oauthResult =
       await this.oauthProviderService.validateAccessToken(token);
     if (oauthResult) {
-      return { userId: oauthResult.userId, scopes: oauthResult.scopes };
+      return {
+        userId: oauthResult.userId,
+        scopes: oauthResult.scopes,
+        // A grant with no id cannot be bound, and an unbindable credential must
+        // not be able to open a session that a later request could match by
+        // user alone -- refuse it here rather than mint one.
+        credentialId: oauthResult.grantId
+          ? `oauth:${oauthResult.grantId}`
+          : undefined,
+      };
     }
 
     return null;

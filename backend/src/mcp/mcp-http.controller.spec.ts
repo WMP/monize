@@ -166,6 +166,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const sessionId = "expired-post-session";
@@ -181,6 +182,7 @@ describe("McpHttpController", () => {
       (controller as any).sessionUsers.set(sessionId, {
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        credentialId: "pat:tok-a",
       });
       (controller as any).sessionCreatedAt.set(
         sessionId,
@@ -214,6 +216,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "44444444-4444-4444-8444-444444444444",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       // Populate 10 active sessions for the same user
@@ -230,6 +233,7 @@ describe("McpHttpController", () => {
         (controller as any).sessionUsers.set(sid, {
           userId: "44444444-4444-4444-8444-444444444444",
           scopes: "read",
+          credentialId: "pat:tok-a",
         });
         (controller as any).sessionCreatedAt.set(sid, Date.now());
       }
@@ -281,6 +285,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const req = {
@@ -301,6 +306,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const req = {
@@ -324,6 +330,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const sessionId = "expired-get-session";
@@ -339,6 +346,7 @@ describe("McpHttpController", () => {
       (controller as any).sessionUsers.set(sessionId, {
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        credentialId: "pat:tok-a",
       });
       (controller as any).sessionCreatedAt.set(
         sessionId,
@@ -372,6 +380,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const sessionId = "test-session-id";
@@ -388,6 +397,7 @@ describe("McpHttpController", () => {
       (controller as any).sessionUsers.set(sessionId, {
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        credentialId: "pat:tok-a",
       });
       (controller as any).sessionCreatedAt.set(sessionId, Date.now());
 
@@ -395,6 +405,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "22222222-2222-4222-8222-222222222222",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const req = {
@@ -414,7 +425,9 @@ describe("McpHttpController", () => {
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          error: expect.objectContaining({ message: "Session user mismatch" }),
+          error: expect.objectContaining({
+            message: "Session credential mismatch",
+          }),
         }),
       );
     });
@@ -443,6 +456,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const req = {
@@ -463,6 +477,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const sessionId = "expired-delete-session";
@@ -478,6 +493,7 @@ describe("McpHttpController", () => {
       (controller as any).sessionUsers.set(sessionId, {
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        credentialId: "pat:tok-a",
       });
       (controller as any).sessionCreatedAt.set(
         sessionId,
@@ -510,6 +526,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const sessionId = "delete-session-id";
@@ -526,6 +543,7 @@ describe("McpHttpController", () => {
       (controller as any).sessionUsers.set(sessionId, {
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        credentialId: "pat:tok-a",
       });
       (controller as any).sessionCreatedAt.set(sessionId, Date.now());
 
@@ -533,6 +551,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "22222222-2222-4222-8222-222222222222",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const req = {
@@ -552,7 +571,9 @@ describe("McpHttpController", () => {
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
-          error: expect.objectContaining({ message: "Session user mismatch" }),
+          error: expect.objectContaining({
+            message: "Session credential mismatch",
+          }),
         }),
       );
     });
@@ -592,6 +613,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const req = {
@@ -621,6 +643,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "55555555-5555-4555-8555-555555555555",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const sessionId = "post-mismatch";
@@ -635,6 +658,7 @@ describe("McpHttpController", () => {
       (controller as any).sessionUsers.set(sessionId, {
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        credentialId: "pat:tok-a",
       });
       (controller as any).sessionCreatedAt.set(sessionId, Date.now());
 
@@ -661,6 +685,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const sessionId = "post-valid";
@@ -674,6 +699,7 @@ describe("McpHttpController", () => {
       (controller as any).sessionUsers.set(sessionId, {
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        credentialId: "pat:tok-a",
       });
       (controller as any).sessionCreatedAt.set(sessionId, Date.now());
 
@@ -697,6 +723,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const sessionId = "get-valid";
@@ -710,6 +737,7 @@ describe("McpHttpController", () => {
       (controller as any).sessionUsers.set(sessionId, {
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        credentialId: "pat:tok-a",
       });
       (controller as any).sessionCreatedAt.set(sessionId, Date.now());
 
@@ -732,6 +760,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const req = {
@@ -760,6 +789,7 @@ describe("McpHttpController", () => {
       patService.validateToken.mockResolvedValue({
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        tokenId: "tok-a",
       });
 
       const sessionId = "delete-valid";
@@ -774,6 +804,7 @@ describe("McpHttpController", () => {
       (controller as any).sessionUsers.set(sessionId, {
         userId: "11111111-1111-4111-8111-111111111111",
         scopes: "read",
+        credentialId: "pat:tok-a",
       });
       (controller as any).sessionCreatedAt.set(sessionId, Date.now());
 
@@ -790,6 +821,265 @@ describe("McpHttpController", () => {
       expect(handleRequest).toHaveBeenCalledWith(req, res);
       expect((controller as any).transports.has(sessionId)).toBe(false);
       expect((controller as any).sessionUsers.has(sessionId)).toBe(false);
+    });
+  });
+
+  /**
+   * P2-004. A session used to be accepted whenever the presented token's user
+   * matched the cached one, while tools kept reading the scopes captured at
+   * session creation. One user holds many tokens, so "same user" is not "same
+   * authorization".
+   */
+  describe("session credential binding", () => {
+    const USER = "11111111-1111-4111-8111-111111111111";
+    const OTHER_USER = "22222222-2222-4222-8222-222222222222";
+
+    const seedSession = (
+      sessionId: string,
+      ctx: { userId: string; scopes: string; credentialId?: string },
+    ) => {
+      const handleRequest = jest.fn().mockResolvedValue(undefined);
+      (controller as any).transports.set(sessionId, {
+        sessionId,
+        handleRequest,
+        close: jest.fn().mockResolvedValue(undefined),
+      });
+      (controller as any).servers.set(sessionId, {});
+      (controller as any).sessionUsers.set(sessionId, ctx);
+      (controller as any).sessionCreatedAt.set(sessionId, Date.now());
+      return handleRequest;
+    };
+
+    const makeRes = () =>
+      ({
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+        setHeader: jest.fn(),
+      }) as any;
+
+    const post = (sessionId: string) =>
+      ({
+        headers: {
+          authorization: "Bearer pat_test",
+          "mcp-session-id": sessionId,
+        },
+        body: {},
+      }) as any;
+
+    it("refuses a read-only token reusing a session opened with a write token", async () => {
+      const sessionId = "write-session";
+      const handleRequest = seedSession(sessionId, {
+        userId: USER,
+        scopes: "read,write",
+        credentialId: "pat:write-token",
+      });
+      // Same user, different (read-only) PAT.
+      patService.validateToken.mockResolvedValue({
+        userId: USER,
+        scopes: "read",
+        tokenId: "read-token",
+      });
+      const res = makeRes();
+
+      await controller.handlePost(post(sessionId), res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.objectContaining({
+            message: "Session credential mismatch",
+          }),
+        }),
+      );
+      expect(handleRequest).not.toHaveBeenCalled();
+      // The cached write scope must not survive the rejected attempt either.
+      expect((controller as any).sessionUsers.get(sessionId).scopes).toBe(
+        "read,write",
+      );
+    });
+
+    it("refuses a replacement token after the creating token is revoked", async () => {
+      const sessionId = "revoked-session";
+      const handleRequest = seedSession(sessionId, {
+        userId: USER,
+        scopes: "read,write",
+        credentialId: "pat:revoked-token",
+      });
+      // The original token is gone; the user minted a new one with the same scopes.
+      patService.validateToken.mockResolvedValue({
+        userId: USER,
+        scopes: "read,write",
+        tokenId: "fresh-token",
+      });
+      const res = makeRes();
+
+      await controller.handlePost(post(sessionId), res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(handleRequest).not.toHaveBeenCalled();
+    });
+
+    it("adopts the presented token's current scopes on every request", async () => {
+      const sessionId = "narrowing-session";
+      const handleRequest = seedSession(sessionId, {
+        userId: USER,
+        scopes: "read,write",
+        credentialId: "pat:tok-a",
+      });
+      // Same credential, scopes since narrowed on the token row itself.
+      patService.validateToken.mockResolvedValue({
+        userId: USER,
+        scopes: "read",
+        tokenId: "tok-a",
+      });
+
+      await controller.handlePost(post(sessionId), makeRes());
+
+      expect(handleRequest).toHaveBeenCalled();
+      expect((controller as any).sessionUsers.get(sessionId)).toEqual({
+        userId: USER,
+        scopes: "read",
+        credentialId: "pat:tok-a",
+      });
+    });
+
+    it("accepts the same credential and still rejects another user's", async () => {
+      const sessionId = "same-credential-session";
+      const handleRequest = seedSession(sessionId, {
+        userId: USER,
+        scopes: "read",
+        credentialId: "pat:tok-a",
+      });
+      patService.validateToken.mockResolvedValue({
+        userId: USER,
+        scopes: "read",
+        tokenId: "tok-a",
+      });
+      await controller.handlePost(post(sessionId), makeRes());
+      expect(handleRequest).toHaveBeenCalledTimes(1);
+
+      patService.validateToken.mockResolvedValue({
+        userId: OTHER_USER,
+        scopes: "read",
+        tokenId: "tok-a",
+      });
+      const res = makeRes();
+      await controller.handlePost(post(sessionId), res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(handleRequest).toHaveBeenCalledTimes(1);
+    });
+
+    it("refuses a session whose stored context predates credential binding", async () => {
+      // A session created by the previous build carries no credentialId. It
+      // cannot be matched, so it must not be usable -- an unbindable session is
+      // exactly the hole this closes.
+      const sessionId = "legacy-session";
+      const handleRequest = seedSession(sessionId, {
+        userId: USER,
+        scopes: "read,write",
+      });
+      patService.validateToken.mockResolvedValue({
+        userId: USER,
+        scopes: "read,write",
+        tokenId: "tok-a",
+      });
+      const res = makeRes();
+
+      await controller.handlePost(post(sessionId), res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(handleRequest).not.toHaveBeenCalled();
+    });
+
+    it("refuses an OAuth token whose grant cannot be identified", async () => {
+      const sessionId = "oauth-session";
+      const handleRequest = seedSession(sessionId, {
+        userId: USER,
+        scopes: "read,write",
+        credentialId: "oauth:grant-1",
+      });
+      oauthProviderService.validateAccessToken.mockResolvedValue({
+        userId: USER,
+        scopes: "read,write",
+        grantId: undefined,
+      });
+      const res = makeRes();
+
+      await controller.handlePost(
+        {
+          headers: {
+            authorization: "Bearer oauth-opaque",
+            "mcp-session-id": sessionId,
+          },
+          body: {},
+        } as any,
+        res,
+      );
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(handleRequest).not.toHaveBeenCalled();
+    });
+
+    it("keeps an OAuth session alive across an access-token refresh in the same grant", async () => {
+      const sessionId = "oauth-refresh-session";
+      const handleRequest = seedSession(sessionId, {
+        userId: USER,
+        scopes: "read,write",
+        credentialId: "oauth:grant-1",
+      });
+      oauthProviderService.validateAccessToken.mockResolvedValue({
+        userId: USER,
+        scopes: "read,write",
+        grantId: "grant-1",
+      });
+
+      await controller.handlePost(
+        {
+          headers: {
+            authorization: "Bearer oauth-refreshed",
+            "mcp-session-id": sessionId,
+          },
+          body: {},
+        } as any,
+        makeRes(),
+      );
+
+      expect(handleRequest).toHaveBeenCalled();
+    });
+
+    it("fingerprints a PAT by its row id and an OAuth token by its grant", async () => {
+      // The value a new session stores, and the value every later request is
+      // compared against, both come from here.
+      patService.validateToken.mockResolvedValue({
+        userId: USER,
+        scopes: "read,write",
+        tokenId: "tok-new",
+      });
+      await expect(
+        (controller as any).validatePat({
+          headers: { authorization: "Bearer pat_test" },
+        }),
+      ).resolves.toEqual({
+        userId: USER,
+        scopes: "read,write",
+        credentialId: "pat:tok-new",
+      });
+
+      oauthProviderService.validateAccessToken.mockResolvedValue({
+        userId: USER,
+        scopes: "read",
+        grantId: "grant-9",
+      });
+      await expect(
+        (controller as any).validatePat({
+          headers: { authorization: "Bearer opaque" },
+        }),
+      ).resolves.toEqual({
+        userId: USER,
+        scopes: "read",
+        credentialId: "oauth:grant-9",
+      });
     });
   });
 

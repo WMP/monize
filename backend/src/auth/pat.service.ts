@@ -19,6 +19,13 @@ const MAX_TOKENS_PER_USER = 10;
 interface ValidatedToken {
   userId: string;
   scopes: string;
+  /**
+   * The PAT row's id -- the credential fingerprint the MCP transport binds a
+   * session to, so a session opened with a write token cannot be reused by a
+   * different (narrower, or replacement-after-revocation) token of the same
+   * user. Not a secret: the raw token is never stored, only its hash.
+   */
+  tokenId: string;
 }
 
 @Injectable()
@@ -176,6 +183,7 @@ export class PatService {
     return {
       userId: token.userId,
       scopes: token.scopes,
+      tokenId: token.id,
     };
   }
 
