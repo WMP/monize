@@ -209,6 +209,32 @@ strategy id after establishing that the id was gone, so every attempt took the
 identical path: a retry whose inputs are unchanged is a comment claiming a
 recovery that cannot happen.
 
+## Backup and restore
+
+`docs/backup-restore-contract.md` is the contract: what a backup promises, what
+it deliberately does not, and the known gaps. Read it before changing anything
+under `src/backup/`.
+
+Three things it will not let you get wrong by accident, because a test enforces
+them:
+
+- **A new foreign key between two backed-up tables** has to keep
+  `src/backup/restore-plan.spec.ts` green. It parses every FK out of
+  `database/schema.sql` and fails when a restored table references a table
+  inserted later, or itself, without being stripped on insert and repaired
+  afterwards.
+- **A new column referencing `currencies(code)`** has to keep
+  `src/currencies/currency-references.spec.ts` green -- both SQL functions and
+  the TypeScript constant the support backup uses.
+- **A new table** has to be exported or listed in
+  `INTENTIONALLY_EXCLUDED_TABLES` with a reason, and classified in the support
+  backup rules.
+
+And one that no test can catch: the destructive restore's step-up for OIDC users
+accepts any truthy header value. It is an open defect with a written plan, not a
+design choice -- see section 5 of the contract before touching
+`verifyAuthentication`.
+
 ## Testing Conventions
 
 Mock repositories use `Record<string, jest.Mock>`; tests use `Test.createTestingModule` with mocks injected via `getRepositoryToken()`. E2E tests live in `test/` with helpers under `test/helpers/` (`auth-helper.ts`, `test-database.ts`, `test-factories.ts`).

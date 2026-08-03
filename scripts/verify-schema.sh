@@ -123,11 +123,18 @@ normalize() {
 }
 
 if diff -u <(normalize /tmp/monize-schema-dump.sql) <(normalize /tmp/monize-migrations-dump.sql) > /tmp/monize-schema-diff.txt; then
-  echo "OK: schema.sql matches the state produced by all migrations"
+  # Deliberately precise about what was proven. Both databases start from the
+  # current schema.sql (older migrations were rolled into it), so this shows the
+  # retained migrations are no-ops when replayed on top of it -- which is also how
+  # the app boots: db-init applies schema.sql, db-migrate then replays the whole
+  # directory. It does NOT show that an old database upgraded through every
+  # migration arrives at the current schema; the repository has no earliest
+  # historical schema to start such a replay from.
+  echo "OK: every retained migration is a no-op when replayed on top of schema.sql"
   exit 0
 fi
 
-echo "FAIL: schema.sql diverges from migrations state"
+echo "FAIL: replaying the migrations on top of schema.sql changes the schema"
 echo
 echo "Diff (schema.sql <-> migrations applied to fresh db):"
 echo "-----------------------------------------------------"
