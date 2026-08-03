@@ -911,13 +911,23 @@ describe('deriveLoanPaymentHistory with paired separate interest expenses', () =
     expect(events[0].interest).toBeCloseTo(388.14, 2);
   });
 
-  it('REV-20260803-032: keeps grace-period interest when no paymentStartDate is set at all', () => {
+  it('REV-20260803-032: keeps grace-period interest when no paymentStartDate is set at all (dispute-rejected re-check)', () => {
     // Imported mortgage: opening balance known, no paymentStartDate configured
     // (not merely a later one -- entirely absent, the shape of an import).
     // Standalone interest in January and February precedes the first
     // principal repayment in March. The lower bound must not be inferred from
-    // the first principal transaction in a way that drops the earlier
-    // interest-only grace period.
+    // the first LOAN-ACCOUNT transaction (the March principal repayment --
+    // the January/February interest lives on the source account, so it is not
+    // one of `transactions`) in a way that drops the earlier interest-only
+    // grace period. `deriveLoanPaymentHistory` has no such lower bound at all
+    // -- `scopedInterestTransactions` (see loan-history.ts) only ever applies
+    // an *upper* bound, and only once the loan is fully paid off -- so there is
+    // no `originationDate`-style variable in this file to derive from a first
+    // transaction in the first place. Confirmed by temporarily reintroducing
+    // exactly that lower bound during this fix's verification: doing so makes
+    // this test (and the two neighboring "before configured start" /
+    // "regardless of date" tests) fail, which is what pins this guard to the
+    // exact mechanism a reviewer might reintroduce.
     const account = makeAccount({
       accountType: 'MORTGAGE',
       openingBalance: -200000,
