@@ -5,6 +5,28 @@
 > plan into tasks sized for one AI-agent session each. Do the tasks in dependency order; never start a
 > task whose dependencies are unmerged. Mark a task done by checking its box and noting the PR.
 
+## "Complete" here means the code, not the enforcement
+
+A checked box on this list means the code shipped. It does not mean any deployment
+is enforcing anything. Five distinct states, and only the last one is a tenant
+boundary:
+
+| State | How to confirm |
+|-------|----------------|
+| Code complete | this list's boxes |
+| Policies installed | `SELECT count(*) FROM pg_policies WHERE schemaname='public'` |
+| Tables enabled | `SELECT count(*) FROM pg_class WHERE relrowsecurity AND relnamespace='public'::regnamespace` |
+| Runtime role active | the `RlsRuntimeRole` line in the backend's startup log |
+| Production verified | the runbook's post-flip checks, on the production database |
+
+Compose and Helm default to `RLS_MODE=off`, so a deployment can sit in the first
+three states indefinitely -- which is intended, and is why the fourth is now
+enforced rather than assumed: at `enforce` the backend interrogates its own
+connection (`current_user`, `rolsuper`, `rolbypassrls`, database and table
+ownership) and refuses to start if the answer is not the unprivileged role. A log
+line saying "enforce" used to be compatible with no enforcement at all (audit
+finding P2-006).
+
 ## How to use this list (read first, every session)
 
 - **One task per session/PR.** Each task lists its files. Touching files outside the task's scope is a

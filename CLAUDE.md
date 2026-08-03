@@ -44,6 +44,79 @@ Every user-facing string must be internationalized -- no hardcoded literals in t
 - After editing any `en/*.json`, regenerate the pseudo-locale: `npm run i18n:pseudo` (CI enforces freshness via `npm run i18n:check`).
 - The user's language lives in `user_preferences.language` and is chosen in Settings -> Preferences (`LanguageSelector`); unauthenticated screens offer `AuthLanguageSwitcher` (cookie-only) on login/register. See `frontend/src/i18n/messages/README.md` and `backend/src/i18n/README.md` for the full contributor flow.
 
+### Security rules the audit had to teach us
+
+Each of these is a defect that shipped, reviewed, with tests that passed. The
+machine-checkable half is named beside the rule; the prose is the part that needs
+judgement.
+
+**A response is built from an allowlist, never from an entity.** `toUserProfile`
+(`backend/src/users/user-profile.ts`) is the only way a `users` row leaves the API.
+Five call sites used to spread the entity and delete the fields they remembered,
+so the shortest list decided what leaked -- and none of them dropped
+`backupPasswordEnc`. Spreading also strips the class metadata `@Exclude()` needs,
+so the global serializer cannot save you. `user-profile.spec.ts` fails for any new
+`{ passwordHash, ... } = user` sanitizer anywhere in `src/`.
+
+**A second factor the client can assert is not a second factor.** A destructive
+action's re-authentication has to be something the server minted and can verify:
+`OidcReauthService` (`backend/src/auth/oidc/oidc-reauth.service.ts`) signs an
+artifact bound to the user, the action and a one-time id, and only the OIDC
+callback -- after a real `prompt=login` round trip -- can mint one. The previous
+check was `if (!oidcIdToken) throw`, and the client sent the string
+`"oidc-session-confirmed"`. When you add a destructive surface, add its purpose to
+`OIDC_REAUTH_PURPOSES` and consume the artifact; never accept a flag that says a
+check happened.
+
+**A tenant never names a server-side path.** Storage roots are operator
+configuration; the per-user component is derived from the user's id by the server
+and asserted to be a descendant of the root. `LocalStorageProvider` and
+`AutoBackupService` are the two worked examples. A filename scheme with no tenant
+component in a shared directory is one user overwriting another's data, and a
+directory-listing endpoint reachable by an ordinary user is reconnaissance.
+
+**A global decision cannot be made from a tenant-scoped read.** "Is this shared
+row still referenced", "how many administrators exist", "does this email already
+belong to someone" are questions about every user, and under RLS an ordinary
+transaction answers them about one. Use `withElevatedDb`
+(`backend/src/common/db/elevated-db.ts`) around the narrowest possible query, and
+authorize in application code, because the policy is no longer doing it. The
+counts that decide whether an owner may set another user's password are part of
+that check, not an optimization around it: a check that cannot see the rows it is
+about is not a check.
+
+**A failed lookup is not an answer about the thing you looked for.** `undefined
+!== false` is `true`, so a guard reading `user?.isDelegateOnly !== false` voted to
+*delete* a row it could not find. "No such row", "not yours" and "here it is" are
+three different answers -- decide which branch you are in before writing the
+condition.
+
+**Cached authorization is not authorization.** An MCP session stores the scopes of
+the credential that opened it; every request re-derives them from the credential
+presented *now*, and a session is bound to one credential fingerprint. Matching
+the user is not enough: one user holds many tokens with different scopes, and a
+read-only token that could reuse a write session could write.
+
+**An unprivileged mode is verified, not configured.** Selecting a role name and
+supplying its password says nothing about `rolsuper`, `rolbypassrls`, or what the
+role owns -- and PostgreSQL exempts all three from every policy. Ask the
+connection what it is (`runtime-role-check.ts`) and refuse to serve traffic on a
+wrong answer.
+
+**Activity belongs to the person, not to the data.** `last_activity_at` records
+the *authenticated* user (`realUserId`), never the effective owner. A delegate's
+traffic recorded as the owner signing in held the owner's emergency-access timer
+at zero forever. Any timestamp that answers "is this human still around" has the
+same requirement.
+
+**An identity change inside an open transaction is refused, not honoured.** The
+identity GUCs are the transaction's first statement and are transaction-local, so
+a nested `withUserContext`/`withSystemContext` cannot change what the database
+sees. `withScopedDb` throws rather than pretending. When you genuinely need a
+different identity, that is a separate transaction
+(`runOutsideActiveScopedManager`) and no longer atomic with the outer work --
+which is a decision, so make it explicitly.
+
 ### Code Style
 - No emojis in code, comments, or documentation
 - Immutability always -- never mutate objects or arrays

@@ -209,6 +209,47 @@ strategy id after establishing that the id was gone, so every attempt took the
 identical path: a retry whose inputs are unchanged is a comment claiming a
 recovery that cannot happen.
 
+## Cross-user access inside a tenant transaction
+
+`withElevatedDb(manager, reason, fn)` (`src/common/db/elevated-db.ts`) turns
+`app.bypass_rls` on for the duration of `fn` on the caller's own connection, and
+off again afterwards -- including when `fn` throws. It exists for the operations
+that must read or write another user's row *atomically with the caller's work*:
+the shared-currency reference count that authorizes a DELETE, the identity-
+directory lookup/create/cleanup behind owner-managed delegation, and the
+administrator count that gates an admin's self-deletion.
+
+`withSystemContext` cannot express this. It seeds a new *ambient* context, and a
+`withScopedDb` inside an open transaction joins that transaction -- whose GUCs are
+already set -- so the bypass never reaches the database. Since DR-01 that mistake
+throws instead of passing silently, which is why the helper exists rather than a
+comment telling the next author not to try.
+
+Rules for a new call site:
+
+- Wrap the smallest possible unit. Everything inside is unfiltered.
+- Authorize in application code. The policy has stopped checking ownership, so
+  something else has to, and it must not be a value derived from request input
+  selecting the row.
+- `reason` is the audit record (logged with the call site). Write what the
+  elevation is *for*, not what the query does.
+- Add the file to `ELEVATED_DB_ALLOWLIST` in `eslint.config.mjs` in the same PR.
+  Lint rejects the import otherwise, the same way it gates `with-context`.
+
+## The OAuth adapter is the one direct-DataSource exception
+
+`src/oauth/postgres.adapter.ts` accesses `oauth_payloads` outside `withScopedDb`.
+That table is one of the four documented RLS exemptions (migration 114): it has no
+end-user owner column, its rows are keyed by opaque provider ids, and every access
+happens in the pre-session OAuth flow. So a policy would consist of nothing but
+its bypass arm.
+
+This exception covers that adapter and that table, and nothing else. Do not cite
+it for a user-owned table, and do not add a second direct-access site by analogy
+-- if a new infrastructure table needs the same treatment, it needs the same
+review: an exemption entry in the policy migration, the catalog test's exemption
+list, and a note here.
+
 ## Testing Conventions
 
 Mock repositories use `Record<string, jest.Mock>`; tests use `Test.createTestingModule` with mocks injected via `getRepositoryToken()`. E2E tests live in `test/` with helpers under `test/helpers/` (`auth-helper.ts`, `test-database.ts`, `test-factories.ts`).
