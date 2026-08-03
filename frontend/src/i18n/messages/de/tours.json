@@ -288,8 +288,8 @@
             "body": "Prüfen Sie die Kontenliste, jede Notierung und die Währungen, dann **Konfiguration speichern**, um das Szenario abzulegen und den Bericht aus der verfügbaren Kurshistorie neu zu berechnen. Erst das Speichern gibt den nächsten Schritten etwas zu zeigen. Eine Order wird dadurch weiterhin nicht erteilt, und Sie müssen nicht speichern, um diese Tour zu beenden. Fehlen Kurse oder sind sie zu alt, zeigt Monize an, dass das Signal nicht verfügbar ist, statt zu raten."
           },
           "finish": {
-            "title": "Das ist der ganze Kreislauf",
-            "body": "Einrichtung, Signal, Begründung, Portfoliovergleich, möglicher nächster Schritt. Jedes davon ändern Sie über **Einstellungen**, und der Bericht rechnet aus der vorhandenen Kurshistorie neu. Fehlende Konten, Bestände, Kurse oder Rollenzuweisungen bleiben als deutliche Warnungen sichtbar, statt still als Null zu erscheinen. Diese Tour können Sie jederzeit über **Geführte Touren** in den **Einstellungen** erneut starten."
+            "title": "Kommen Sie zur nächsten Auswertung wieder",
+            "body": "GEM trifft eine Entscheidung pro Zeitraum, und das Datum der nächsten steht oben im Bericht. Bis dahin ist nichts zu tun. Wenn sie ansteht, prüfen Sie, ob sich das Signal geändert hat; wenn ja, handeln Sie über Ihren Broker und erfassen Sie die Buchungen in Monize, damit der Portfoliovergleich weiter aufgeht. Diese Tour können Sie jederzeit über **Geführte Touren** in den **Einstellungen** erneut starten."
           }
         }
       }

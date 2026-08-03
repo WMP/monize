@@ -288,8 +288,8 @@
             "body": "Periksa daftar rekening, setiap pencatatan, dan mata uangnya, lalu **Simpan konfigurasi** untuk menyimpan skenario dan menghitung ulang laporan dari riwayat harga yang tersedia. Penyimpanan inilah yang memberi langkah-langkah berikutnya sesuatu untuk ditampilkan. Itu tetap tidak mengirim order apa pun, dan Anda tidak perlu menyimpan untuk menyelesaikan tur ini. Jika harga tidak ada atau terlalu lama, Monize menampilkan bahwa sinyal tidak tersedia daripada menebak."
           },
           "finish": {
-            "title": "Itulah putaran lengkapnya",
-            "body": "Penyiapan, sinyal, penjelasan, perbandingan portofolio, kemungkinan langkah berikutnya. Semuanya dapat Anda ubah dari **Pengaturan**, dan laporan dihitung ulang dari riwayat harga yang Anda miliki. Rekening, posisi, harga, atau penetapan peran yang belum ada tetap terlihat sebagai peringatan yang jelas, bukan diam-diam terbaca sebagai nol. Anda dapat mengulangi tur ini kapan saja dari **Tur berpandu** di **Pengaturan**."
+            "title": "Kembalilah pada evaluasi berikutnya",
+            "body": "GEM mengambil satu keputusan per periode, dan tanggal evaluasi berikutnya ada di bagian atas laporan. Sampai hari itu tidak ada yang perlu dilakukan. Ketika tiba, periksa apakah sinyalnya berubah; jika ya, lakukan transaksinya melalui broker Anda dan catat di Monize agar perbandingan portofolio tetap cocok. Anda dapat mengulangi tur ini kapan saja dari **Tur berpandu** di **Pengaturan**."
           }
         }
       }

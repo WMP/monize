@@ -288,8 +288,8 @@
             "body": "Confirme a lista de contas, cada cotação e as moedas, e depois **Guardar configuração** para armazenar o cenário e recalcular o relatório a partir do histórico de preços disponível. É o gravar que dá aos passos seguintes algo para mostrar. Continua a não colocar qualquer ordem, e não precisa de guardar para terminar esta visita. Se faltarem preços ou estes forem demasiado antigos, o Monize indica que o sinal não está disponível em vez de adivinhar."
           },
           "finish": {
-            "title": "É este o ciclo completo",
-            "body": "Configuração, sinal, explicação, comparação da carteira, possível passo seguinte. Qualquer uma destas peças muda a partir das **Definições**, e o relatório recalcula com o histórico de preços que tiver. Contas, posições, preços ou atribuições de papel que faltem permanecem visíveis como avisos claros, em vez de passarem discretamente por zero. Pode repetir esta visita a qualquer momento em **Visitas guiadas** nas **Definições**."
+            "title": "Volte na avaliação seguinte",
+            "body": "A GEM toma uma decisão por período, e a data da próxima está no topo do relatório. Até esse dia não há nada a fazer. Quando chegar, verifique se o sinal mudou; se mudou, execute as operações através da sua corretora e registe-as no Monize, para que a comparação da carteira continue a bater. Pode repetir esta visita a qualquer momento em **Visitas guiadas** nas **Definições**."
           }
         }
       }

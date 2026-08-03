@@ -288,8 +288,8 @@
             "body": "Sprawdź listę kont, każde notowanie i waluty, a potem **Zapisz konfigurację**, aby przechować scenariusz i ponownie obliczyć raport z dostępnej historii cen. To zapis sprawia, że kolejne kroki mają co pokazać. Nadal nie składa żadnych zleceń i nie musisz zapisywać, aby ukończyć ten przewodnik. Jeśli cen brakuje albo są zbyt stare, Monize pokaże brak dostępnego sygnału zamiast zgadywać."
           },
           "finish": {
-            "title": "To cała pętla",
-            "body": "Konfiguracja, sygnał, uzasadnienie, porównanie portfela, możliwy kolejny krok. Każdą z tych rzeczy zmienisz w **Ustawieniach**, a raport przeliczy się z posiadanej historii cen. Brakujące konta, pozycje, ceny lub przypisania ról pozostają widoczne jako jasne ostrzeżenia, zamiast po cichu wyglądać jak zero. Ten przewodnik możesz w każdej chwili uruchomić ponownie w sekcji **Przewodniki po aplikacji** w **Ustawieniach**."
+            "title": "Wróć przy następnej ocenie",
+            "body": "GEM podejmuje jedną decyzję na okres, a datę najbliższej widzisz u góry raportu. Do tego dnia nie musisz nic robić. Gdy nadejdzie, sprawdź, czy sygnał się zmienił; jeśli tak, wykonaj transakcje u brokera i zapisz je w Monize, żeby porównanie portfela dalej się zgadzało. Przewodnik uruchomisz ponownie w sekcji **Przewodniki po aplikacji** w **Ustawieniach**."
           }
         }
       }

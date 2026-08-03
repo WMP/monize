@@ -288,8 +288,8 @@
             "body": "Controleer de rekeninglijst, elke notering en de valuta's, en dan **Instellingen opslaan** om het scenario te bewaren en het rapport opnieuw te berekenen op basis van de beschikbare koershistorie. Opslaan is wat de volgende stappen iets te tonen geeft. Er wordt daarmee nog steeds geen order geplaatst, en je hoeft niet op te slaan om deze rondleiding af te ronden. Ontbreken koersen of zijn ze te oud, dan meldt Monize dat het signaal niet beschikbaar is in plaats van te gokken."
           },
           "finish": {
-            "title": "Dat is de hele kringloop",
-            "body": "Instellen, signaal, uitleg, portefeuillevergelijking, mogelijke volgende stap. Elk daarvan verander je via **Instellingen**, en het rapport rekent opnieuw met de koershistorie die je hebt. Ontbrekende rekeningen, posities, koersen of roltoewijzingen blijven zichtbaar als duidelijke waarschuwingen, in plaats van stilletjes als nul te lezen. Je kunt deze rondleiding altijd opnieuw doen via **Begeleide rondleidingen** in **Instellingen**."
+            "title": "Kom terug bij de volgende evaluatie",
+            "body": "GEM neemt één beslissing per periode, en de datum van de volgende staat boven aan het rapport. Tot die dag hoef je niets te doen. Is het zover, kijk dan of het signaal veranderd is; zo ja, handel via je broker en leg de boekingen vast in Monize, zodat de portefeuillevergelijking blijft kloppen. Je kunt deze rondleiding altijd opnieuw doen via **Begeleide rondleidingen** in **Instellingen**."
           }
         }
       }

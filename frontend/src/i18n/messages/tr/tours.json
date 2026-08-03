@@ -288,8 +288,8 @@
             "body": "Hesap listesini, her kotasyonu ve para birimlerini kontrol edin, ardından senaryoyu saklamak ve raporu mevcut fiyat geçmişinden yeniden hesaplamak için **Yapılandırmayı kaydet**'i kullanın. Sonraki adımlara gösterecek bir şey veren şey bu kayıttır. Bu yine hiçbir emir iletmez ve turu bitirmek için kaydetmeniz gerekmez. Fiyatlar eksikse ya da fazla eskiyse Monize tahmin yürütmek yerine sinyalin kullanılamadığını gösterir."
           },
           "finish": {
-            "title": "Döngünün tamamı bu",
-            "body": "Kurulum, sinyal, gerekçe, portföy karşılaştırması, olası sonraki adım. Bunların her birini **Ayarlar**'dan değiştirirsiniz ve rapor elinizdeki fiyat geçmişinden yeniden hesaplanır. Eksik hesaplar, pozisyonlar, fiyatlar veya rol atamaları sessizce sıfır gibi görünmek yerine açık uyarılar olarak görünmeye devam eder. Bu turu istediğiniz zaman **Ayarlar** içindeki **Rehberli turlar** bölümünden yeniden başlatabilirsiniz."
+            "title": "Bir sonraki değerlendirmede tekrar gelin",
+            "body": "GEM her dönem bir karar verir ve bir sonraki değerlendirmenin tarihi raporun üst kısmında yazar. O güne kadar yapılacak bir şey yok. Gün geldiğinde sinyalin değişip değişmediğine bakın; değiştiyse işlemleri aracı kurumunuz üzerinden yapın ve Monize'ye kaydedin, böylece portföy karşılaştırması tutmaya devam eder. Bu turu istediğiniz zaman **Ayarlar** içindeki **Rehberli turlar** bölümünden yeniden başlatabilirsiniz."
           }
         }
       }

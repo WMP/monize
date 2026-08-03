@@ -288,8 +288,8 @@
             "body": "Verifica la lista dei conti, ogni quotazione e le valute, poi **Salva configurazione** per memorizzare lo scenario e ricalcolare il report dallo storico prezzi disponibile. È il salvataggio che dà qualcosa da mostrare ai passi successivi. Continua a non immettere alcun ordine, e non devi salvare per concludere questo tour. Se i prezzi mancano o sono troppo vecchi, Monize indica che il segnale non è disponibile invece di tirare a indovinare."
           },
           "finish": {
-            "title": "Questo è tutto il giro",
-            "body": "Configurazione, segnale, spiegazione, confronto del portafoglio, possibile passo successivo. Ognuna di queste cose si cambia da **Impostazioni**, e il report si ricalcola dallo storico prezzi che hai. Conti, posizioni, prezzi o assegnazioni di ruolo mancanti restano visibili come avvisi chiari, anziché passare in silenzio per zero. Puoi rifare questo tour quando vuoi da **Tour guidati** nelle **Impostazioni**."
+            "title": "Torna alla prossima valutazione",
+            "body": "GEM prende una decisione per periodo, e la data della prossima è in cima al report. Fino a quel giorno non c'è nulla da fare. Quando arriva, controlla se il segnale è cambiato; se sì, esegui le operazioni tramite il tuo intermediario e registrale in Monize, così il confronto del portafoglio continua a tornare. Puoi rifare questo tour quando vuoi da **Tour guidati** nelle **Impostazioni**."
           }
         }
       }

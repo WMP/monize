@@ -288,8 +288,8 @@
             "body": "Confira a lista de contas, cada cotação e as moedas, e então **Salvar configuração** para guardar o cenário e recalcular o relatório a partir do histórico de preços disponível. É o salvamento que dá aos próximos passos algo para mostrar. Continua sem enviar nenhuma ordem, e você não precisa salvar para terminar este tour. Se faltarem preços ou eles estiverem muito antigos, o Monize mostra que o sinal não está disponível em vez de adivinhar."
           },
           "finish": {
-            "title": "Esse é o ciclo completo",
-            "body": "Configuração, sinal, explicação, comparação da carteira, possível próximo passo. Qualquer uma dessas peças você muda em **Configurações**, e o relatório recalcula com o histórico de preços que você tem. Contas, posições, preços ou atribuições de papel que faltem continuam visíveis como avisos claros, em vez de passarem caladas por zero. Você pode refazer este tour quando quiser em **Tours guiados** nas **Configurações**."
+            "title": "Volte na próxima avaliação",
+            "body": "A GEM toma uma decisão por período, e a data da próxima está no topo do relatório. Até esse dia não há nada a fazer. Quando chegar, verifique se o sinal mudou; se mudou, execute as operações pela sua corretora e registre-as no Monize, para que a comparação da carteira continue batendo. Você pode refazer este tour quando quiser em **Tours guiados** nas **Configurações**."
           }
         }
       }

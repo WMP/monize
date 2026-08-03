@@ -288,8 +288,8 @@
             "body": "Check the account list, each listing, and the currencies, then **Save configuration** to store the scenario and recalculate the report from the available price history. Saving is what gives the next few steps something to show. It still does not place a trade, and you do not have to save to finish this tour. If prices are missing or too old, Monize shows that the signal is unavailable instead of guessing."
           },
           "finish": {
-            "title": "That is the whole loop",
-            "body": "Setup, signal, reasoning, portfolio comparison, possible next action. Change any of it from **Settings** and the report recalculates from the price history you have. Missing accounts, holdings, prices, or role assignments stay visible as clear warnings rather than quietly reading as zero. You can retake this tour anytime from **Guided tours** in **Settings**."
+            "title": "Come back at the next evaluation",
+            "body": "GEM makes one decision per period, and the date of the next one is at the top of the report. There is nothing to do until then. When it arrives, check whether the signal changed; if it did, place the trades through your broker and record them in Monize so the portfolio comparison keeps adding up. You can retake this tour anytime from **Guided tours** in **Settings**."
           }
         }
       }

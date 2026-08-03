@@ -288,8 +288,8 @@
             "body": "Comprueba la lista de cuentas, cada cotización y las divisas, y luego **Guardar configuración** para almacenar el escenario y recalcular el informe a partir del historial de precios disponible. Guardar es lo que da contenido a los pasos siguientes. Sigue sin ejecutar ninguna operación, y no necesitas guardar para terminar este recorrido. Si faltan precios o son demasiado antiguos, Monize indica que la señal no está disponible en lugar de suponerla."
           },
           "finish": {
-            "title": "Ese es el ciclo completo",
-            "body": "Configuración, señal, explicación, comparación de la cartera, posible paso siguiente. Cualquiera de esas piezas se cambia desde **Ajustes**, y el informe se recalcula con el historial de precios que tengas. Las cuentas, posiciones, precios o asignaciones de rol que falten siguen visibles como avisos claros, en lugar de pasar por cero sin decirlo. Puedes repetir este recorrido cuando quieras desde **Recorridos guiados** en **Configuración**."
+            "title": "Vuelve en la siguiente evaluación",
+            "body": "GEM toma una decisión por periodo, y la fecha de la próxima está en la parte superior del informe. Hasta entonces no hay nada que hacer. Cuando llegue, comprueba si la señal cambió; si cambió, ejecuta las operaciones con tu bróker y regístralas en Monize para que la comparación de la cartera siga cuadrando. Puedes repetir este recorrido cuando quieras desde **Recorridos guiados** en **Configuración**."
           }
         }
       }

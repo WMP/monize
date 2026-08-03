@@ -288,8 +288,8 @@
             "body": "Contrôlez la liste des comptes, chaque cotation et les devises, puis **Enregistrer la configuration** pour conserver le scénario et recalculer le rapport à partir de l'historique de cours disponible. C'est l'enregistrement qui donne matière aux étapes suivantes. Cela ne passe toujours aucun ordre, et vous n'avez pas besoin d'enregistrer pour terminer cette visite. Si des cours manquent ou sont trop anciens, Monize indique que le signal est indisponible au lieu de le deviner."
           },
           "finish": {
-            "title": "Voilà la boucle complète",
-            "body": "Configuration, signal, explication, comparaison de portefeuille, prochaine étape possible. Chacun de ces éléments se modifie depuis les **Paramètres**, et le rapport se recalcule à partir de l'historique de cours dont vous disposez. Les comptes, positions, cours ou affectations de rôle manquants restent visibles sous forme d'avertissements explicites, plutôt que de passer discrètement pour zéro. Vous pouvez reprendre cette visite à tout moment depuis **Visites guidées** dans les **Paramètres**."
+            "title": "Revenez à la prochaine évaluation",
+            "body": "GEM prend une décision par période, et la date de la prochaine figure en haut du rapport. D'ici là, il n'y a rien à faire. Le moment venu, vérifiez si le signal a changé ; si oui, passez les ordres chez votre courtier et enregistrez les écritures dans Monize pour que la comparaison de portefeuille reste juste. Vous pouvez reprendre cette visite à tout moment depuis **Visites guidées** dans les **Paramètres**."
           }
         }
       }

@@ -288,8 +288,8 @@
             "body": "Hãy kiểm tra danh sách tài khoản, từng niêm yết và các loại tiền, rồi chọn **Lưu cấu hình** để lưu kịch bản và tính lại báo cáo từ dữ liệu giá quá khứ hiện có. Chính việc lưu mới cho các bước sau có gì để trình bày. Việc đó vẫn không đặt bất kỳ lệnh nào, và bạn không cần lưu để hoàn tất phần hướng dẫn này. Nếu thiếu giá hoặc giá quá cũ, Monize sẽ cho biết tín hiệu không khả dụng thay vì phỏng đoán."
           },
           "finish": {
-            "title": "Đó là trọn một vòng",
-            "body": "Thiết lập, tín hiệu, lý do, so sánh danh mục, bước kế tiếp khả dĩ. Bạn đổi bất kỳ phần nào trong đó từ **Thiết lập**, và báo cáo sẽ tính lại từ dữ liệu giá bạn đang có. Những tài khoản, vị thế, giá hay việc gán vai trò còn thiếu vẫn hiện rõ dưới dạng cảnh báo, chứ không âm thầm bị đọc thành số không. Bạn có thể chạy lại phần hướng dẫn này bất cứ lúc nào từ **Hướng dẫn sử dụng** trong **Cài đặt**."
+            "title": "Hãy trở lại vào lần đánh giá tới",
+            "body": "GEM ra một quyết định cho mỗi kỳ, và ngày đánh giá kế tiếp nằm ở đầu báo cáo. Cho tới ngày đó bạn không cần làm gì. Khi đến hạn, hãy xem tín hiệu có đổi không; nếu có, hãy đặt lệnh qua công ty chứng khoán và ghi các giao dịch đó vào Monize để phần so sánh danh mục vẫn khớp. Bạn có thể chạy lại phần hướng dẫn này bất cứ lúc nào từ **Hướng dẫn sử dụng** trong **Cài đặt**."
           }
         }
       }
