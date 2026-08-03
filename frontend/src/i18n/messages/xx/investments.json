@@ -59,7 +59,8 @@
     "twrTooltip": "[XX-Measures how well your investments performed regardless of when you added or removed money. Eliminates the impact of cash flow timing to show pure investment performance.-XX]",
     "cagr": "[XX-CAGR-XX]",
     "cagrTooltip": "[XX-Compound Annual Growth Rate. Your annualized return based on Net Invested vs. current portfolio value, as if growth had been perfectly steady each year.-XX]",
-    "notAvailable": "[XX-N/A-XX]"
+    "notAvailable": "[XX-N/A-XX]",
+    "unpricedHoldings": "[XX-Partial valuation: {count, plural, one {# holding has} other {# holdings have}} no current price ({symbols}), so the values below exclude {count, plural, one {it} other {them}}.-XX]"
   },
   "assetAllocation": {
     "title": "[XX-Asset Allocation-XX]",

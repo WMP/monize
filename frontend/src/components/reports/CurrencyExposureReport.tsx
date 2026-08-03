@@ -133,8 +133,14 @@ export function CurrencyExposureReport() {
 
     holdings.forEach((h) => {
       const currency = h.currencyCode;
-      const nativeValue = h.marketValue ?? 0;
+      // Two unknowns to keep out of an exposure breakdown: a holding the server
+      // could not price, and a currency with no rate into the display one. `?? 0`
+      // used to fold the first in as a zero, which re-weighted every currency's
+      // share of the portfolio.
+      if (h.marketValue === null || h.marketValue === undefined) return;
+      const nativeValue = h.marketValue;
       const convertedValue = convertToDefault(nativeValue, currency);
+      if (convertedValue === null) return;
 
       const existing = currencyMap.get(currency) || { nativeValue: 0, convertedValue: 0, count: 0 };
       currencyMap.set(currency, {

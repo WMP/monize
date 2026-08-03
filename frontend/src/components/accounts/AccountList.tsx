@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { sumConverted, type ConvertedTotal } from '@/lib/currency-total';
+import { PartialTotal } from '@/components/ui/PartialTotal';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Account, AccountType } from '@/types/account';
@@ -91,10 +93,18 @@ interface AccountListProps {
   institutions?: Institution[];
   brokerageMarketValues?: Map<string, number>;
   defaultCurrency: string;
-  convertToDefault: (value: number, fromCurrency: string) => number;
+  /** Returns `null` when no rate for the pair is known. */
+  convertToDefault: (value: number, fromCurrency: string) => number | null;
   onEdit: (account: Account) => void;
   onRefresh: () => void;
 }
+
+/** A group with nothing in it: complete, and zero. */
+const EMPTY_CONVERTED_TOTAL: ConvertedTotal = {
+  value: 0,
+  missingCurrencies: [],
+  excludedCount: 0,
+};
 
 export function AccountList({ accounts, institutions, brokerageMarketValues, defaultCurrency, convertToDefault, onEdit, onRefresh }: AccountListProps) {
   const t = useTranslations('accounts');
@@ -377,20 +387,24 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
   // summary calculation) so net-worth math stays consistent with the cards
   // above the list.
   const groupTotals = useMemo(() => {
-    const totals = new Map<AccountType, number>();
+    // A group total is partial when one of its accounts has no rate to the
+    // display currency; `sumConverted` keeps the subtotal and the missing pairs
+    // together so the header can mark it instead of quietly under-reporting.
+    const totals = new Map<AccountType, ConvertedTotal>();
     for (const { type, accounts: groupAccounts } of groupedAccounts) {
-      let totalUnits = 0;
-      for (const account of groupAccounts) {
-        const rawBalance =
-          account.accountSubType === 'INVESTMENT_BROKERAGE'
-            ? brokerageMarketValues?.get(account.id) ?? 0
-            : (Number(account.currentBalance) || 0) +
-              (Number(account.futureTransactionsSum) || 0);
-        const converted = convertToDefault(rawBalance, account.currencyCode);
-        // Accumulate in 1/10000 units to avoid floating-point drift.
-        totalUnits += Math.round(converted * 10000);
-      }
-      totals.set(type, totalUnits / 10000);
+      totals.set(
+        type,
+        sumConverted(
+          groupAccounts,
+          (account) =>
+            account.accountSubType === 'INVESTMENT_BROKERAGE'
+              ? brokerageMarketValues?.get(account.id) ?? 0
+              : (Number(account.currentBalance) || 0) +
+                (Number(account.futureTransactionsSum) || 0),
+          (account) => account.currencyCode,
+          convertToDefault,
+        ),
+      );
     }
     return totals;
   }, [groupedAccounts, brokerageMarketValues, convertToDefault]);
@@ -399,7 +413,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
   // indices so AccountRow alternation continues to look right across groups.
   const renderItems = useMemo(() => {
     type Item =
-      | { kind: 'header'; type: AccountType; count: number; total: number; isCollapsed: boolean }
+      | { kind: 'header'; type: AccountType; count: number; total: ConvertedTotal; isCollapsed: boolean }
       | { kind: 'row'; account: Account; index: number };
     const items: Item[] = [];
     let rowIndex = 0;
@@ -409,7 +423,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
         kind: 'header',
         type,
         count: countLogicalAccounts(groupAccounts),
-        total: groupTotals.get(type) ?? 0,
+        total: groupTotals.get(type) ?? EMPTY_CONVERTED_TOTAL,
         isCollapsed,
       });
       if (!isCollapsed) {
@@ -777,12 +791,14 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
                   <td className={`${cellPadding} text-right whitespace-nowrap`}>
                     <span
                       className={`text-sm font-medium ${
-                        item.total >= 0
+                        item.total.value >= 0
                           ? 'text-gray-700 dark:text-gray-200'
                           : 'text-red-600 dark:text-red-400'
                       }`}
                     >
-                      {formatCurrencyBase(item.total, defaultCurrency)}
+                      <PartialTotal total={item.total} displayCurrency={defaultCurrency}>
+                        {formatCurrencyBase(item.total.value, defaultCurrency)}
+                      </PartialTotal>
                     </span>
                   </td>
                   <td

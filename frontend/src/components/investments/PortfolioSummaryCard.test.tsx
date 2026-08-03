@@ -368,3 +368,91 @@ describe('PortfolioSummaryCard', () => {
     expect(screen.getByText('$18000.00 USD')).toBeInTheDocument();
   });
 });
+
+/**
+ * `totalHoldingsValue` and every figure derived from it are built by skipping
+ * holdings the server could not price, so they are subtotals whenever one
+ * exists. The card rendered them as ordinary complete totals: a portfolio
+ * missing 50,000 of unpriced stock read as 100,000 with nothing to say the
+ * other third was unknown. The signal was already in the payload.
+ */
+describe('PortfolioSummaryCard — partial valuation', () => {
+  const priced = {
+    symbol: 'AAA',
+    currencyCode: 'CAD',
+    quantity: 10,
+    currentPrice: 100,
+    marketValue: 1000,
+  } as any;
+  const unpriced = {
+    symbol: 'ZZZ',
+    currencyCode: 'CAD',
+    quantity: 10,
+    currentPrice: null,
+    marketValue: null,
+  } as any;
+
+  it('says nothing when every holding is priced', () => {
+    render(
+      <PortfolioSummaryCard
+        summary={makeSummary({ holdings: [priced] })}
+        isLoading={false}
+      />,
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('warns and names the symbol when a holding has no price', () => {
+    render(
+      <PortfolioSummaryCard
+        summary={makeSummary({ holdings: [priced, unpriced] })}
+        isLoading={false}
+      />,
+    );
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Partial valuation');
+    expect(alert).toHaveTextContent('ZZZ');
+    expect(alert).not.toHaveTextContent('AAA');
+  });
+
+  it('names every unpriced holding', () => {
+    render(
+      <PortfolioSummaryCard
+        summary={makeSummary({
+          holdings: [unpriced, { ...unpriced, symbol: 'YYY' }],
+        })}
+        isLoading={false}
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('ZZZ, YYY');
+  });
+
+  // A fully priced portfolio that happens to be worth nothing is a known zero
+  // and must still render as an ordinary total.
+  it('renders a genuine zero portfolio without a warning', () => {
+    render(
+      <PortfolioSummaryCard
+        summary={makeSummary({
+          holdings: [],
+          totalPortfolioValue: 0,
+          totalHoldingsValue: 0,
+          totalCashValue: 0,
+        })}
+        isLoading={false}
+      />,
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('treats a priced holding with a zero price as priced', () => {
+    render(
+      <PortfolioSummaryCard
+        summary={makeSummary({
+          holdings: [{ ...priced, currentPrice: 0, marketValue: 0 }],
+        })}
+        isLoading={false}
+      />,
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});

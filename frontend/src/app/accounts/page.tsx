@@ -19,6 +19,8 @@ import { PortfolioSummary } from '@/types/investment';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SummaryCard, SummaryIcons } from '@/components/ui/SummaryCard';
+import { PartialTotal } from '@/components/ui/PartialTotal';
+import { sumConverted, combineTotals } from '@/lib/currency-total';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useFormModal } from '@/hooks/useFormModal';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
@@ -42,6 +44,10 @@ function AccountsContent() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
+  // A failed portfolio request is not an empty portfolio. Kept apart so a
+  // brokerage account's market value reads as unknown rather than zero -- the
+  // page used to drop 100,000 of holdings out of Assets and Net Worth silently.
+  const [portfolioFailed, setPortfolioFailed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const formModal = useFormModal<Account>();
   const { openCreate, openEdit } = formModal;
@@ -53,11 +59,15 @@ function AccountsContent() {
     try {
       const [data, portfolio, insts] = await Promise.all([
         accountsApi.getAll(true),
-        investmentsApi.getPortfolioSummary().catch(() => null),
+        investmentsApi
+          .getPortfolioSummary()
+          .then((summary) => ({ ok: true as const, summary }))
+          .catch(() => ({ ok: false as const, summary: null })),
         institutionsApi.getAll().catch(() => [] as Institution[]),
       ]);
       setAccounts(data);
-      setPortfolioSummary(portfolio);
+      setPortfolioSummary(portfolio.summary);
+      setPortfolioFailed(!portfolio.ok);
       setInstitutions(insts);
     } catch (error) {
       showErrorToast(error, t('toast.loadFailed'));
@@ -88,34 +98,65 @@ function AccountsContent() {
     return map;
   }, [portfolioSummary]);
 
-  const calculateSummary = () => {
-    const activeAccounts = accounts.filter((a) => !a.isClosed);
-    const liabilityTypes = ['CREDIT_CARD', 'LOAN', 'MORTGAGE', 'LINE_OF_CREDIT'];
-    let totalAssets = 0;
-    let totalLiabilities = 0;
+  const LIABILITY_TYPES = ['CREDIT_CARD', 'LOAN', 'MORTGAGE', 'LINE_OF_CREDIT'];
 
-    activeAccounts.forEach((a) => {
-      // For brokerage accounts, use portfolio market value instead of currentBalance
-      // For other accounts, include future-dated transactions in the balance
-      const rawBalance = a.accountSubType === 'INVESTMENT_BROKERAGE'
-        ? (brokerageMarketValues.get(a.id) ?? 0)
-        : (Number(a.currentBalance) || 0) + (Number(a.futureTransactionsSum) || 0);
-      // Convert to default currency for accurate aggregation
-      const effectiveBalance = convertToDefault(rawBalance, a.currencyCode);
-
-      if (liabilityTypes.includes(a.accountType)) {
-        totalLiabilities += Math.abs(effectiveBalance);
-      } else {
-        totalAssets += effectiveBalance;
-      }
-    });
-
-    const accountCount = countLogicalAccounts(activeAccounts);
-    const totalBalance = totalAssets - totalLiabilities;
-    return { totalBalance, totalAssets, totalLiabilities, accountCount };
+  /**
+   * The balance an account contributes, or `null` when it is not known.
+   *
+   * A brokerage account's contribution is its holdings' market value, which
+   * comes from the portfolio summary. When that request failed the value is
+   * unknown -- `?? 0` used to drop the whole position out of the totals without
+   * a trace. A brokerage account genuinely absent from a *successful* summary
+   * holds no positions, which is a real zero.
+   */
+  const contributedBalance = (a: Account): number | null => {
+    if (a.accountSubType === 'INVESTMENT_BROKERAGE') {
+      if (portfolioFailed) return null;
+      return brokerageMarketValues.get(a.id) ?? 0;
+    }
+    return (Number(a.currentBalance) || 0) + (Number(a.futureTransactionsSum) || 0);
   };
 
-  const summary = calculateSummary();
+  const summary = useMemo(() => {
+    const activeAccounts = accounts.filter((a) => !a.isClosed);
+    const assets = activeAccounts.filter((a) => !LIABILITY_TYPES.includes(a.accountType));
+    const liabilities = activeAccounts.filter((a) => LIABILITY_TYPES.includes(a.accountType));
+
+    // An unknown component excludes the account from the subtotal and is
+    // reported, rather than being converted to zero or 1:1.
+    const convertOrUnknown = (amount: number | null, currency: string) =>
+      amount === null ? null : convertToDefault(amount, currency);
+
+    const totalAssets = sumConverted(
+      assets,
+      (a) => contributedBalance(a) ?? Number.NaN,
+      (a) => a.currencyCode,
+      (amount, currency) => convertOrUnknown(amount, currency),
+    );
+    const totalLiabilities = sumConverted(
+      liabilities,
+      (a) => contributedBalance(a) ?? Number.NaN,
+      (a) => a.currencyCode,
+      (amount, currency) => {
+        const converted = convertOrUnknown(amount, currency);
+        return converted === null ? null : Math.abs(converted);
+      },
+    );
+    // Net worth inherits the incompleteness of both sides: a hole in either
+    // makes the difference partial too.
+    const totalBalance = combineTotals(
+      [totalAssets, totalLiabilities],
+      ([a, l]) => a - l,
+    );
+
+    return {
+      totalBalance,
+      totalAssets,
+      totalLiabilities,
+      accountCount: countLogicalAccounts(activeAccounts),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accounts, brokerageMarketValues, portfolioFailed, convertToDefault]);
 
   return (
     <PageLayout>
@@ -142,19 +183,31 @@ function AccountsContent() {
           />
           <SummaryCard
             label={t('page.summary.netWorth')}
-            value={formatCurrency(summary.totalBalance, defaultCurrency)}
+            value={
+              <PartialTotal total={summary.totalBalance} displayCurrency={defaultCurrency}>
+                {formatCurrency(summary.totalBalance.value, defaultCurrency)}
+              </PartialTotal>
+            }
             icon={SummaryIcons.money}
-            valueColor={summary.totalBalance >= 0 ? 'blue' : 'red'}
+            valueColor={summary.totalBalance.value >= 0 ? 'blue' : 'red'}
           />
           <SummaryCard
             label={t('page.summary.totalAssets')}
-            value={formatCurrency(summary.totalAssets, defaultCurrency)}
+            value={
+              <PartialTotal total={summary.totalAssets} displayCurrency={defaultCurrency}>
+                {formatCurrency(summary.totalAssets.value, defaultCurrency)}
+              </PartialTotal>
+            }
             icon={SummaryIcons.checkmark}
             valueColor="green"
           />
           <SummaryCard
             label={t('page.summary.totalLiabilities')}
-            value={formatCurrency(summary.totalLiabilities, defaultCurrency)}
+            value={
+              <PartialTotal total={summary.totalLiabilities} displayCurrency={defaultCurrency}>
+                {formatCurrency(summary.totalLiabilities.value, defaultCurrency)}
+              </PartialTotal>
+            }
             icon={SummaryIcons.cross}
             valueColor="red"
           />

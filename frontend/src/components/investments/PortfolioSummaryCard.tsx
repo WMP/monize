@@ -61,16 +61,39 @@ export function PortfolioSummaryCard({
     return null;
   }, [summary, foreignCurrency]);
 
-  // Compute default-currency total when showing foreign, for the "approx" line
+  // Compute default-currency total when showing foreign, for the "approx" line.
+  // `null` when any account has no rate: the line says "approximately", not
+  // "approximately, minus the accounts we could not convert".
   const defaultTotal = useMemo(() => {
     if (!summary || !foreignCurrency) return null;
     let total = 0;
     for (const acct of summary.holdingsByAccount) {
-      total += convertToDefault(acct.cashBalance, acct.currencyCode);
-      total += convertToDefault(acct.totalMarketValue, acct.currencyCode);
+      const cash = convertToDefault(acct.cashBalance, acct.currencyCode);
+      const holdings = convertToDefault(acct.totalMarketValue, acct.currencyCode);
+      if (cash === null || holdings === null) return null;
+      total += cash + holdings;
     }
     return total;
   }, [summary, convertToDefault, foreignCurrency]);
+
+  /**
+   * Holdings the server could not price.
+   *
+   * `totalHoldingsValue` and each account's `totalMarketValue` are built by
+   * skipping holdings whose `currentPrice` is null, so they are subtotals whenever
+   * one exists -- and every figure derived from them (portfolio value, gain,
+   * simple return) is a subtotal too. The signal is in the payload; nothing was
+   * reading it, so a portfolio missing 50,000 of unpriced stock rendered as an
+   * ordinary complete total.
+   */
+  const unpricedHoldings = useMemo(
+    () =>
+      (summary?.holdings ?? []).filter(
+        (h) => h.currentPrice === null || h.marketValue === null,
+      ),
+    [summary],
+  );
+  const valuationIncomplete = unpricedHoldings.length > 0;
 
   const fmtVal = (value: number) => {
     if (foreignCurrency) return `${formatCurrency(value, foreignCurrency)} ${foreignCurrency}`;
@@ -126,6 +149,20 @@ export function PortfolioSummaryCard({
         {t('portfolioSummary.title')}{titleSuffix ? ` (${titleSuffix})` : ''}
       </h3>
 
+      {/* Every value below is built by skipping holdings the server could not
+          price, so it is a subtotal whenever one exists. Say which ones. */}
+      {valuationIncomplete && (
+        <div
+          role="alert"
+          className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200"
+        >
+          {t('portfolioSummary.unpricedHoldings', {
+            count: unpricedHoldings.length,
+            symbols: unpricedHoldings.map((h) => h.symbol).join(', '),
+          })}
+        </div>
+      )}
+
       <div className="space-y-4">
         {/* Total Portfolio Value */}
         <div>
@@ -134,6 +171,11 @@ export function PortfolioSummaryCard({
           </div>
           <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {fmtVal(converted?.portfolio ?? summary.totalPortfolioValue)}
+            {valuationIncomplete && (
+              <span className="ml-1 align-super text-base text-amber-600 dark:text-amber-400" aria-hidden="true">
+                *
+              </span>
+            )}
           </div>
           {foreignCurrency && defaultTotal !== null && (
             <div className="text-xs text-gray-400 dark:text-gray-500">

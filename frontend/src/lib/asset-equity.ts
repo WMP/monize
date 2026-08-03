@@ -55,7 +55,9 @@ export function buildEquitySeries(
   let lastAsset: number | undefined;
   let lastLoan = 0;
   for (const date of dates) {
-    if (assetByDate.has(date)) lastAsset = assetByDate.get(date);
+    // A null asset value is unknown, not carried forward: the equity line breaks
+    // there rather than reusing the last figure as if it still applied.
+    if (assetByDate.has(date)) lastAsset = assetByDate.get(date) ?? undefined;
     if (loanByDate.has(date)) lastLoan = loanByDate.get(date)!;
     if (lastAsset === undefined) continue;
     series.push({ date, balance: Math.round((lastAsset - Math.abs(lastLoan)) * 100) / 100 });

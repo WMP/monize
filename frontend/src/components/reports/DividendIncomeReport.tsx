@@ -314,7 +314,7 @@ export function DividendIncomeReport() {
   const displayCurrency = selectedAccount?.currencyCode || defaultCurrency;
   const isForeign = displayCurrency !== defaultCurrency;
 
-  const getTxAmount = useCallback((tx: InvestmentTransaction): number => {
+  const getTxAmount = useCallback((tx: InvestmentTransaction): number | null => {
     const amount = Math.abs(tx.totalAmount);
     if (isSingleAccount) {
       // Single account selected: native currency, no conversion needed
@@ -328,7 +328,7 @@ export function DividendIncomeReport() {
   // Backend already returns each capital gain entry in the holding account's
   // currency. Convert to the default currency for multi-account views; pass
   // through when a single account is selected.
-  const convertCapitalGain = useCallback((entry: CapitalGainEntry): number => {
+  const convertCapitalGain = useCallback((entry: CapitalGainEntry): number | null => {
     if (isSingleAccount) return entry.totalCapitalGain;
     return convertToDefault(entry.totalCapitalGain, entry.accountCurrencyCode || defaultCurrency);
   }, [isSingleAccount, defaultCurrency, convertToDefault]);
@@ -336,7 +336,7 @@ export function DividendIncomeReport() {
   // Same conversion as convertCapitalGain but applied to an arbitrary amount
   // denominated in the entry's account currency (e.g. start/end market values).
   const convertFromAccountCurrency = useCallback(
-    (amount: number, accountCurrencyCode: string | null): number => {
+    (amount: number, accountCurrencyCode: string | null): number | null => {
       if (isSingleAccount) return amount;
       return convertToDefault(amount, accountCurrencyCode || defaultCurrency);
     },
@@ -397,9 +397,18 @@ export function DividendIncomeReport() {
       return bucket;
     };
 
+    // Currencies excluded from the buckets for want of a rate, so the report can
+    // say the income figures are subtotals.
+    const missingCurrencies = new Set<string>();
     filteredTransactions.forEach((tx) => {
       const bucket = getOrCreateBucket(parseLocalDate(tx.transactionDate));
       const contribution = getTxAmount(tx);
+      if (contribution === null) {
+        missingCurrencies.add(
+          accountCurrencyMap.get(tx.accountId) || defaultCurrency,
+        );
+        return;
+      }
       switch (tx.action) {
         case 'DIVIDEND':
           bucket.dividends += contribution;
@@ -420,18 +429,18 @@ export function DividendIncomeReport() {
       const monthDate = parseLocalDate(`${entry.month}-15`);
       const bucket = getOrCreateBucket(monthDate);
       const gain = convertCapitalGain(entry);
+      if (gain === null) {
+        missingCurrencies.add(entry.accountCurrencyCode || defaultCurrency);
+        return;
+      }
       bucket.capitalGains += gain;
       bucket.total += gain;
       // Start/end market values sum across securities to give a portfolio
       // mark-to-market snapshot at each month boundary.
-      bucket.startValue += convertFromAccountCurrency(
-        entry.startValue,
-        entry.accountCurrencyCode,
-      );
-      bucket.endValue += convertFromAccountCurrency(
-        entry.endValue,
-        entry.accountCurrencyCode,
-      );
+      bucket.startValue +=
+        convertFromAccountCurrency(entry.startValue, entry.accountCurrencyCode) ?? 0;
+      bucket.endValue +=
+        convertFromAccountCurrency(entry.endValue, entry.accountCurrencyCode) ?? 0;
     });
 
     return Array.from(monthMap.values()).sort((a, b) => a.month.localeCompare(b.month));
@@ -461,10 +470,19 @@ export function DividendIncomeReport() {
       return bucket;
     };
 
+    // Same rule as the monthly view: an unconvertible amount is left out and its
+    // currency recorded, never counted at its unconverted face value.
+    const missingCurrencies = new Set<string>();
     filteredTransactions.forEach((tx) => {
       const txDate = parseLocalDate(tx.transactionDate);
       const bucket = getOrCreateBucket(tx.transactionDate, txDate);
       const contribution = getTxAmount(tx);
+      if (contribution === null) {
+        missingCurrencies.add(
+          accountCurrencyMap.get(tx.accountId) || defaultCurrency,
+        );
+        return;
+      }
       switch (tx.action) {
         case 'DIVIDEND':
           bucket.dividends += contribution;
@@ -487,10 +505,16 @@ export function DividendIncomeReport() {
       const txDate = parseLocalDate(entry.month);
       const bucket = getOrCreateBucket(entry.month, txDate);
       const gain = convertCapitalGain(entry);
+      if (gain === null) {
+        missingCurrencies.add(entry.accountCurrencyCode || defaultCurrency);
+        return;
+      }
       bucket.capitalGains += gain;
       bucket.total += gain;
-      bucket.startValue += convertFromAccountCurrency(entry.startValue, entry.accountCurrencyCode);
-      bucket.endValue += convertFromAccountCurrency(entry.endValue, entry.accountCurrencyCode);
+      bucket.startValue +=
+        convertFromAccountCurrency(entry.startValue, entry.accountCurrencyCode) ?? 0;
+      bucket.endValue +=
+        convertFromAccountCurrency(entry.endValue, entry.accountCurrencyCode) ?? 0;
     });
 
     return Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date));
@@ -544,6 +568,8 @@ export function DividendIncomeReport() {
   const securityData = useMemo((): SecurityIncome[] => {
     const securityMap = new Map<string, SecurityIncome>();
 
+    // As above: unknown is excluded and named, not counted at face value.
+    const missingCurrencies = new Set<string>();
     const getOrCreateBucket = (symbol: string, name: string): SecurityIncome => {
       let bucket = securityMap.get(symbol);
       if (!bucket) {
@@ -558,6 +584,12 @@ export function DividendIncomeReport() {
       const name = tx.security?.name || 'Unknown Security';
       const bucket = getOrCreateBucket(symbol, name);
       const contribution = getTxAmount(tx);
+      if (contribution === null) {
+        missingCurrencies.add(
+          accountCurrencyMap.get(tx.accountId) || defaultCurrency,
+        );
+        return;
+      }
       switch (tx.action) {
         case 'DIVIDEND':
           bucket.dividends += contribution;
@@ -577,6 +609,10 @@ export function DividendIncomeReport() {
       const name = entry.securityName || 'Unknown Security';
       const bucket = getOrCreateBucket(symbol, name);
       const gain = convertCapitalGain(entry);
+      if (gain === null) {
+        missingCurrencies.add(entry.accountCurrencyCode || defaultCurrency);
+        return;
+      }
       bucket.capitalGains += gain;
       bucket.total += gain;
     });
@@ -689,27 +725,60 @@ export function DividendIncomeReport() {
   }, [securityData, securitySort.sortField, securitySort.sortDirection]);
 
   const totals = useMemo(() => {
-    const dividends = filteredTransactions
-      .filter((t) => t.action === 'DIVIDEND')
-      .reduce((sum, t) => sum + getTxAmount(t), 0);
-    const interest = filteredTransactions
-      .filter((t) => t.action === 'INTEREST')
-      .reduce((sum, t) => sum + getTxAmount(t), 0);
-    const manualCapitalGains = filteredTransactions
-      .filter((t) => t.action === 'CAPITAL_GAIN')
-      .reduce((sum, t) => sum + getTxAmount(t), 0);
-    const periodCapitalGains = filteredCapitalGains.reduce(
-      (sum, entry) => sum + convertCapitalGain(entry),
-      0,
+    // Headline figures: an unconvertible amount is excluded and its currency
+    // named, so a short total is labelled a subtotal instead of passing as the
+    // whole.
+    const missing = new Set<string>();
+    const sumConvertible = (
+      items: readonly { accountId: string }[],
+      valueOf: (item: never) => number | null,
+      currencyOf: (item: never) => string,
+    ) =>
+      items.reduce((sum, item) => {
+        const value = valueOf(item as never);
+        if (value === null) {
+          missing.add(currencyOf(item as never));
+          return sum;
+        }
+        return sum + value;
+      }, 0);
+
+    const txCurrency = (t: { accountId: string }) =>
+      accountCurrencyMap.get(t.accountId) || defaultCurrency;
+
+    const dividends = sumConvertible(
+      filteredTransactions.filter((t) => t.action === 'DIVIDEND'),
+      (t: InvestmentTransaction) => getTxAmount(t),
+      txCurrency,
     );
+    const interest = sumConvertible(
+      filteredTransactions.filter((t) => t.action === 'INTEREST'),
+      (t: InvestmentTransaction) => getTxAmount(t),
+      txCurrency,
+    );
+    const manualCapitalGains = sumConvertible(
+      filteredTransactions.filter((t) => t.action === 'CAPITAL_GAIN'),
+      (t: InvestmentTransaction) => getTxAmount(t),
+      txCurrency,
+    );
+    const periodCapitalGains = filteredCapitalGains.reduce((sum, entry) => {
+      const gain = convertCapitalGain(entry);
+      if (gain === null) {
+        missing.add(entry.accountCurrencyCode || defaultCurrency);
+        return sum;
+      }
+      return sum + gain;
+    }, 0);
     const totalGains = manualCapitalGains + periodCapitalGains;
     return {
       dividends,
       interest,
       capitalGains: totalGains,
       total: dividends + interest + totalGains,
+      missingCurrencies: [...missing],
     };
-  }, [filteredTransactions, filteredCapitalGains, getTxAmount, convertCapitalGain]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredTransactions, filteredCapitalGains, getTxAmount, convertCapitalGain, accountCurrencyMap, defaultCurrency]);
 
   // CSV is only offered when the user is looking at a table. Raw numeric
   // values (no currency formatting) are written so spreadsheets can sum and

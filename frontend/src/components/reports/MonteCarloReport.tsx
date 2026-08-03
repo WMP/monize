@@ -67,6 +67,7 @@ export function MonteCarloReport() {
     form,
     isLoading,
     isRunning,
+    currentBalanceUnavailable,
     savedFlash,
     showDeleteConfirm,
     showSaveAsDialog,
@@ -638,7 +639,11 @@ export function MonteCarloReport() {
             {inputsCollapsed && (
               <Button
                 onClick={run}
-                disabled={isRunning || form.accountIds.length === 0}
+                disabled={
+                  isRunning ||
+                  form.accountIds.length === 0 ||
+                  currentBalanceUnavailable
+                }
                 variant="primary"
               >
                 {isRunning ? t('monteCarlo.running') : t('monteCarlo.runAgain')}
@@ -1004,8 +1009,23 @@ export function MonteCarloReport() {
             </label>
           </fieldset>
 
+          {/* A simulation started from an unknown balance is an answer about a
+              portfolio that does not exist, so say so and stop the run rather
+              than starting from zero. */}
+          {currentBalanceUnavailable && (
+            <p
+              role="alert"
+              className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-700 dark:bg-red-950/40 dark:text-red-300"
+            >
+              {t('monteCarlo.currentBalanceUnavailable')}
+            </p>
+          )}
+
           <div className="flex flex-wrap gap-2">
-            <Button onClick={run} disabled={isRunning}>
+            <Button
+              onClick={run}
+              disabled={isRunning || currentBalanceUnavailable}
+            >
               {isRunning ? t('monteCarlo.running') : t('monteCarlo.runSimulation')}
             </Button>
             {activeId ? (

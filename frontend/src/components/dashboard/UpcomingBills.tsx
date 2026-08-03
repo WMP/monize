@@ -10,6 +10,8 @@ import { parseLocalDate } from '@/lib/utils';
 import { useDateFormat } from '@/hooks/useDateFormat';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
+import { sumConverted } from '@/lib/currency-total';
+import { PartialTotal } from '@/components/ui/PartialTotal';
 
 const LIABILITY_TYPES = new Set(['CREDIT_CARD', 'LOAN', 'MORTGAGE', 'LINE_OF_CREDIT']);
 
@@ -25,7 +27,7 @@ export function UpcomingBills({ scheduledTransactions, accounts, isLoading, maxI
   const router = useRouter();
   const { formatDate } = useDateFormat();
   const { formatCurrency: formatCurrencyBase } = useNumberFormat();
-  const { convertToDefault } = useExchangeRates();
+  const { convertToDefault, defaultCurrency } = useExchangeRates();
 
   // Filter to active bills, deposits, and transfers: overdue items + within each item's reminder window
   const today = useMemo(() => startOfDay(new Date()), []);
@@ -196,13 +198,24 @@ export function UpcomingBills({ scheduledTransactions, accounts, isLoading, maxI
     );
   }
 
-  // Totals use the full list; display is capped at maxItems
-  const totalDue = upcomingItems
-    .filter((item) => !item.isTransfer && getEffectiveAmount(item) < 0)
-    .reduce((sum, item) => sum + Math.abs(convertToDefault(getEffectiveAmount(item), item.currencyCode)), 0);
-  const totalIncoming = upcomingItems
-    .filter((item) => !item.isTransfer && getEffectiveAmount(item) > 0)
-    .reduce((sum, item) => sum + convertToDefault(getEffectiveAmount(item), item.currencyCode), 0);
+  // Totals use the full list; display is capped at maxItems. An item with no
+  // rate is excluded and its currency named, so "due" is marked as a subtotal
+  // rather than quietly understating what is owed.
+  const totalDue = sumConverted(
+    upcomingItems.filter((item) => !item.isTransfer && getEffectiveAmount(item) < 0),
+    (item) => getEffectiveAmount(item),
+    (item) => item.currencyCode,
+    (amount, currency) => {
+      const converted = convertToDefault(amount, currency);
+      return converted === null ? null : Math.abs(converted);
+    },
+  );
+  const totalIncoming = sumConverted(
+    upcomingItems.filter((item) => !item.isTransfer && getEffectiveAmount(item) > 0),
+    (item) => getEffectiveAmount(item),
+    (item) => item.currencyCode,
+    convertToDefault,
+  );
 
   const visibleItems = upcomingItems.slice(0, maxItems);
   const hiddenCount = upcomingItems.length - visibleItems.length;
@@ -296,19 +309,23 @@ export function UpcomingBills({ scheduledTransactions, accounts, isLoading, maxI
         </button>
       )}
       <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-1">
-        {totalDue > 0 && (
+        {totalDue.value > 0 && (
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-600 dark:text-gray-400">{t('upcomingBills.totalDue')}</span>
             <span className="font-semibold text-red-600 dark:text-red-400">
-              -{formatCurrencyBase(totalDue)}
+              <PartialTotal total={totalDue} displayCurrency={defaultCurrency}>
+                {'-'}{formatCurrencyBase(totalDue.value)}
+              </PartialTotal>
             </span>
           </div>
         )}
-        {totalIncoming > 0 && (
+        {totalIncoming.value > 0 && (
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-600 dark:text-gray-400">{t('upcomingBills.totalIncoming')}</span>
             <span className="font-semibold text-green-600 dark:text-green-400">
-              +{formatCurrencyBase(totalIncoming)}
+              <PartialTotal total={totalIncoming} displayCurrency={defaultCurrency}>
+                {'+'}{formatCurrencyBase(totalIncoming.value)}
+              </PartialTotal>
             </span>
           </div>
         )}

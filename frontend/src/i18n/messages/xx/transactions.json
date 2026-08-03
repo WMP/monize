@@ -26,7 +26,8 @@
     "editAria": "[XX-Edit payee-XX]",
     "detailsAria": "[XX-View payee details-XX]",
     "collapseAria": "[XX-Hide payee info-XX]",
-    "show": "[XX-Show payee info-XX]"
+    "show": "[XX-Show payee info-XX]",
+    "amountUnavailable": "[XX-No rate-XX]"
   },
   "categoryWidget": {
     "totalSpent": "[XX-Total Spent-XX]",
@@ -46,7 +47,8 @@
     "noTransactions": "[XX-No transactions in this period-XX]",
     "editAria": "[XX-Edit category-XX]",
     "collapseAria": "[XX-Hide category info-XX]",
-    "show": "[XX-Show category info-XX]"
+    "show": "[XX-Show category info-XX]",
+    "amountUnavailable": "[XX-No rate-XX]"
   },
   "accountWidget": {
     "currentBalance": "[XX-Current Balance-XX]",

@@ -121,7 +121,15 @@ export interface HistoricalStats {
   yearsObserved: number;
   meanReturn: number | null;
   volatility: number | null;
-  currentBalance: number;
+  /**
+   * Today's value of the selected accounts, or `null` when the server could not
+   * work it out.
+   *
+   * Typed as a plain `number` before, which made a valuation failure and an
+   * empty portfolio the same value: the hook coerced the missing case to 0 and
+   * the simulation ran from a balance nobody has.
+   */
+  currentBalance: number | null;
 }
 
 export interface HoldingStat {

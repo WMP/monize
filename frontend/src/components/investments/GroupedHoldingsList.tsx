@@ -67,11 +67,30 @@ export function GroupedHoldingsList({
     return gainLossColor(value);
   };
 
+  /**
+   * The "approximately X CAD" line under a foreign account total, or nothing.
+   * Printing the unconverted amount beside the display currency's code -- which
+   * is what happened before -- states a figure in a currency it is not in.
+   */
+  const approxInDefault = (value: number, fromCurrency: string) => {
+    const converted = convertToDefault(value, fromCurrency);
+    if (converted === null) return null;
+    return (
+      <>
+        {'\u2248 '}
+        {formatCurrencyBase(converted, defaultCurrency)} {defaultCurrency}
+      </>
+    );
+  };
+
   const getPortfolioPercent = (value: number | null, currencyCode?: string): string => {
     if (value === null || totalPortfolioValue === 0) return '-';
     const converted = currencyCode && currencyCode !== defaultCurrency
       ? convertToDefault(value, currencyCode)
       : value;
+    // A share of the portfolio needs both figures in one currency. Without a
+    // rate the share is unknown, not zero percent.
+    if (converted === null) return '-';
     return ((converted / totalPortfolioValue) * 100).toFixed(1) + '%';
   };
 
@@ -174,7 +193,7 @@ export function GroupedHoldingsList({
                   </div>
                   {acctDisplayCurrency && (
                     <div className="text-xs text-gray-400 dark:text-gray-500">
-                      {'\u2248 '}{formatCurrencyBase(convertToDefault(accountTotalValue, acctDisplayCurrency), defaultCurrency)} {defaultCurrency}
+                      {approxInDefault(accountTotalValue, acctDisplayCurrency)}
                     </div>
                   )}
                   <div className={`text-sm ${getGainLossColor(account.totalGainLoss)}`}>
@@ -300,7 +319,7 @@ export function GroupedHoldingsList({
                           <div>{fmtAcct(accountTotalValue)}</div>
                           {acctDisplayCurrency && (
                             <div className="text-xs font-normal text-gray-400 dark:text-gray-500">
-                              {'\u2248 '}{formatCurrencyBase(convertToDefault(accountTotalValue, acctDisplayCurrency), defaultCurrency)} {defaultCurrency}
+                              {approxInDefault(accountTotalValue, acctDisplayCurrency)}
                             </div>
                           )}
                         </td>
@@ -332,7 +351,8 @@ interface HoldingRowProps {
   holding: HoldingWithMarketValue;
   defaultCurrency: string;
   accountCurrency: string;
-  convert: (amount: number, fromCurrency: string, toCurrency?: string) => number;
+  /** Returns `null` when the pair has no rate. */
+  convert: (amount: number, fromCurrency: string, toCurrency?: string) => number | null;
   formatCurrency: (value: number | null) => string;
   formatCurrencyWithCode: (value: number, currencyCode: string) => string;
   formatPrice: (value: number | null, currencyCode?: string) => string;

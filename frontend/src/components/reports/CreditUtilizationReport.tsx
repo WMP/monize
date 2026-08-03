@@ -57,10 +57,13 @@ interface CreditAccountRow {
   name: string;
   accountType: Account['accountType'];
   currencyCode: string;
-  /** Amounts in the report's display currency. */
-  limit: number;
-  used: number;
-  available: number;
+  /**
+   * Amounts in the report's display currency, or `null` when this account's
+   * currency has no rate to it.
+   */
+  limit: number | null;
+  used: number | null;
+  available: number | null;
   /** Utilization is currency-independent (a ratio of native amounts). */
   utilizationPercent: number;
 }
@@ -146,14 +149,34 @@ export function CreditUtilizationReport() {
     });
   }, [activeAccounts, convert, displayCurrency]);
 
+  /** A money figure, or a short "no rate" marker in its place. */
+  const fmtOrUnknown = (value: number | null) =>
+    value === null
+      ? t('creditUtilization.noRate')
+      : formatCurrency(value, displayCurrency);
+
   const totals = useMemo(() => {
-    const limit = rows.reduce((sum, r) => sum + r.limit, 0);
-    const used = rows.reduce((sum, r) => sum + r.used, 0);
-    const available = rows.reduce((sum, r) => sum + r.available, 0);
+    // A row with no rate to the display currency is excluded and its currency
+    // named. Counting it as a zero limit with a zero balance would improve the
+    // utilisation figure this report exists to warn about.
+    const missing = new Set<string>();
+    let limit = 0;
+    let used = 0;
+    let available = 0;
+    for (const r of rows) {
+      if (r.limit === null || r.used === null || r.available === null) {
+        missing.add(r.currencyCode);
+        continue;
+      }
+      limit += r.limit;
+      used += r.used;
+      available += r.available;
+    }
     return {
       limit,
       used,
       available,
+      missingCurrencies: [...missing],
       utilizationPercent: limit > 0 ? (used / limit) * 100 : 0,
     };
   }, [rows]);
@@ -202,9 +225,9 @@ export function CreditUtilizationReport() {
     const exportRows = sortedRows.map((r) => [
       r.name,
       accountTypeLabel(r.accountType),
-      formatCurrency(r.limit, displayCurrency),
-      formatCurrency(r.used, displayCurrency),
-      formatCurrency(r.available, displayCurrency),
+      fmtOrUnknown(r.limit),
+      fmtOrUnknown(r.used),
+      fmtOrUnknown(r.available),
       `${r.utilizationPercent.toFixed(1)}%`,
     ]);
     await exportToPdf({
@@ -360,10 +383,10 @@ export function CreditUtilizationReport() {
                               {t('creditUtilization.tooltipUtilization')}: {row.utilizationPercent.toFixed(1)}%
                             </p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {t('creditUtilization.tooltipUsed')}: {formatCurrency(row.used, displayCurrency)}
+                              {t('creditUtilization.tooltipUsed')}: {fmtOrUnknown(row.used)}
                             </p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {t('creditUtilization.tooltipAvailable')}: {formatCurrency(row.available, displayCurrency)}
+                              {t('creditUtilization.tooltipAvailable')}: {fmtOrUnknown(row.available)}
                             </p>
                           </div>
                         );
@@ -508,13 +531,13 @@ export function CreditUtilizationReport() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
-                    {formatCurrency(row.limit, displayCurrency)}
+                    {fmtOrUnknown(row.limit)}
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
-                    {formatCurrency(row.used, displayCurrency)}
+                    {fmtOrUnknown(row.used)}
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-400">
-                    {formatCurrency(row.available, displayCurrency)}
+                    {fmtOrUnknown(row.available)}
                   </td>
                   <td className="px-4 py-3 text-sm text-right font-medium" style={{ color: utilizationColour(row.utilizationPercent) }}>
                     {row.utilizationPercent.toFixed(1)}%

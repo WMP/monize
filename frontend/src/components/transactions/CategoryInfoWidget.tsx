@@ -191,6 +191,9 @@ export function CategoryInfoWidget({
     for (const row of aggregateGroupedTotals(groupedCategories, currencyStrategy)) {
       const target = rollupTarget(row.id);
       if (!target) continue;
+      // An unconvertible row is left out of the rollup rather than counted at
+      // its unconverted face value.
+      if (row.total === null) continue;
       buckets.set(target, (buckets.get(target) ?? 0) + row.total);
     }
     const grandTotal = [...buckets.values()].reduce((sum, v) => sum + Math.abs(v), 0);
@@ -406,7 +409,10 @@ export function CategoryInfoWidget({
           <ul className="space-y-1 text-sm">
             {topPayees.map((row) => {
               const label = row.name ?? t('categoryWidget.noPayee');
-              const amount = formatCurrency(Math.abs(row.total), currencyStrategy.displayCurrency);
+              const amount =
+                row.total === null
+                  ? t('categoryWidget.amountUnavailable')
+                  : formatCurrency(Math.abs(row.total), currencyStrategy.displayCurrency);
               return (
                 <li key={row.id ?? 'no-payee'}>
                   {row.id && onPayeeClick ? (
