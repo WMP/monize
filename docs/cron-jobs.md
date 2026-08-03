@@ -36,11 +36,11 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `budget-alert.service` | Daily 7 AM | Budget threshold alerts | **Unique fingerprint** on `budget_alerts`; only a returned insert emails |
 | `budget-alert.service` | Mon 7 AM | Weekly budget digest | Read-only aggregation; duplicate sends possible, not yet claimed |
 | `budget-alert.service` | Daily 3 AM | Prune old alerts | Idempotent predicate delete |
-| `budget-period-cron.service` | 1st of month, midnight | Create new budget periods | `UNIQUE(budget_id, period_start)` |
+| `budget-period-cron.service` | 1st of month, midnight | Close expired budget periods and open the next | Period row locked `FOR UPDATE` before the actuals are read; the next period's insert is `ON CONFLICT DO NOTHING` on `UNIQUE(budget_id, period_start)` |
 | `demo-reset.service` | Daily 4 AM | Demo database reset | **Durable lease** on the demo user; a wipe-and-reseed cannot be repaired by repeating |
 | `demo-reset.service` | Every 3 hours | Demo intraday transaction generation | **Durable claim** per date+hour window; the generator is seeded by the window, so every replica produces identical rows |
 | `emergency-access-monitor.service` | Daily 9 AM | Grant emergency access after inactivity; send reminders | **Conditional transition** on `granted_at` for the grant; **durable claim** per local date for the reminder |
-| `exchange-rate.service` | 5:05 PM ET weekdays | Fetch exchange rates (staggered after the price refresh) | `UNIQUE` upsert on the rate row; duplicate provider calls possible |
+| `exchange-rate.service` | 5:05 PM ET weekdays | Fetch exchange rates (staggered after the price refresh) | `ON CONFLICT DO UPDATE` on `UNIQUE(from_currency, to_currency, rate_date)`, both directions in one transaction; duplicate provider calls possible |
 | `holdings.service` | Hourly at :30 | Apply matured future-dated investment transactions to holdings | Full rebuild under the per-account holdings lock |
 | `job-claim.service` | Daily 4 AM | Prune claim rows past their retention window | Idempotent predicate delete |
 | `net-worth.service` | Every 30 min | Recompute snapshots that fell behind their account | Idempotent predicate: the staleness is derived from `accounts.updated_at` vs the account's newest snapshot, so two replicas recompute the same accounts under the per-account lock |
@@ -49,7 +49,7 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `mortgage-reminder.service` | Daily 8 AM | Mortgage renewal reminders | **Durable claim** keyed on the local date plus a digest of the mortgages named |
 | `scheduled-transactions.service` | Hourly at :05 | Post due recurring transactions | **Occurrence key** `(scheduled_transaction_id, original_due_date)`; the loser's `ConflictException` is a skip, not an error |
 | `scheduled-transactions.service` | 5:25 PM ET weekdays | Re-derive the account-currency estimate on foreign-currency schedules from the rates the 5:05 PM refresh just stored | Absolute recomputation; safe to repeat |
-| `security-price.service` | 5 PM ET weekdays | Fetch security prices | `UNIQUE(security_id, price_date)`; duplicate provider calls possible |
+| `security-price.service` | 5 PM ET weekdays | Fetch security prices | `ON CONFLICT DO UPDATE` on `UNIQUE(security_id, price_date)`, with `COALESCE` so a provider that omits a field keeps the stored one; duplicate provider calls possible |
 | `token.service` | Daily 3 AM | Purge expired/revoked refresh tokens | Idempotent predicate delete |
 | `updates.service` | Every 12 hours | Check for a newer Monize release | Read-only external check |
 
