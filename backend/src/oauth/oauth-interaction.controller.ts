@@ -179,9 +179,28 @@ export class OAuthInteractionController {
     };
 
     const Grant = provider.Grant;
-    const existing = interaction.grantId
+    const found = interaction.grantId
       ? await Grant.find(interaction.grantId)
       : undefined;
+    // A looked-up grant is not automatically this user's grant, and the scopes
+    // below are about to be added to whatever it is. The session check above
+    // guards the interaction; `grantId` is a separate field, and it names a row
+    // by opaque id. Adopt it only when it belongs to this account AND this
+    // client -- otherwise start a fresh one, which is what an unrelated grantId
+    // should have produced in the first place. Defence in depth: the provider is
+    // not expected to hand over a foreign grantId, but "it should not happen" is
+    // not a check, and the cost of making it one is an `&&`.
+    const existing =
+      found && found.accountId === user.id && found.clientId === clientId
+        ? found
+        : undefined;
+    if (found && !existing) {
+      this.logger.warn(
+        `interaction.confirm ignoring grant ${interaction.grantId}: ` +
+          `account=${found.accountId} client=${found.clientId} does not match ` +
+          `account=${user.id} client=${clientId}`,
+      );
+    }
     const grant = existing ?? new Grant({ accountId: user.id, clientId });
 
     if (details.missingOIDCScope?.length) {

@@ -142,6 +142,24 @@ email probe fixed a broken feature and, in the same motion, turned a lookup that
 always answered "no" under enforcement into a reliable enumerator. A fix that
 restores an answer owns the abuse of that answer: bound it in the same commit.
 
+**An id that arrives in a protocol artifact still has to be checked against the
+caller.** The OAuth consent screen took `interaction.grantId`, loaded that grant
+and added the requested scopes to it, having verified only that the *interaction*
+belonged to the session -- so a grant naming another account or another client
+would have been widened on this user's click. A row fetched by opaque id is a row,
+not a permission: compare every field that has to match (`accountId` **and**
+`clientId`) and fall back to a fresh object, rather than trusting that the library
+"would not" hand you someone else's id.
+
+**Validate everything free before spending a single-use credential.** Backup
+restore consumed the one-time OIDC re-authentication artifact and only then tried
+to decrypt the file, so a mistyped backup password cost a full identity-provider
+round trip -- and because that round trip also loses the file selection, the
+honest failure and the spent artifact looked identical on the retry. Order the
+work by what it costs to be wrong: cheap non-destructive checks first, then the
+step-up, then the write. The step-up exists to gate the write, so nothing that
+cannot write belongs behind it.
+
 **An identity change inside an open transaction is refused, not honoured.** The
 identity GUCs are the transaction's first statement and are transaction-local, so
 a nested `withUserContext`/`withSystemContext` cannot change what the database

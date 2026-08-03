@@ -2088,6 +2088,31 @@ describe("BackupService", () => {
       ).rejects.toThrow(UnauthorizedException);
     });
 
+    it("does not spend the re-authentication when the file is unusable", async () => {
+      // The artifact is single-use and the round trip that mints it loses the
+      // file selection, so a wrong backup password or a non-Monize file must not
+      // cost one. Nothing is written either way.
+      mockUserRepo.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: null,
+        oidcSubject: "sub-1",
+      });
+      const artifact = oidcArtifact();
+
+      await expect(
+        service.restoreData(userId, {
+          compressedData: Buffer.from("not gzip at all"),
+          oidcIdToken: artifact,
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      // Still good: the user fixes the file and retries without another round trip.
+      await expect(
+        service.restoreData(userId, makeInput({ oidcIdToken: artifact })),
+      ).resolves.toMatchObject({ message: "Backup restored successfully" });
+    });
+
     it("refuses a local account with no password to check", async () => {
       // This branch fell off the end of the else-if chain and required no proof.
       mockUserRepo.findOne.mockResolvedValue({

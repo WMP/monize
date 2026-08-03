@@ -589,11 +589,21 @@ export class BackupService {
       );
     }
 
-    await this.verifyAuthentication(user, input);
-
+    // Validate the file BEFORE spending the re-authentication.
+    //
+    // The OIDC artifact is single-use, and the round trip that mints it loses the
+    // user's file selection -- so consuming it and only then discovering the
+    // backup password was wrong, or the file was not a Monize backup, charged a
+    // full identity-provider round trip for a mistake that has nothing to do with
+    // identity. Worse, the honest failure and a spent artifact then look the same
+    // on the retry. Nothing here writes anything, and the endpoint is already
+    // behind the JWT guard and CSRF, so the cheap non-destructive checks go first
+    // and re-authentication gates the write, which is what it is for.
     const gzippedPayload = this.maybeDecrypt(input, user);
     const rawData = this.decompressAndParse(gzippedPayload);
     this.validateBackupFormat(rawData);
+
+    await this.verifyAuthentication(user, input);
 
     // A support (de-identified) backup restores like any other, but the data
     // is synthetic -- masked names, amounts scaled by a hidden factor. Log it

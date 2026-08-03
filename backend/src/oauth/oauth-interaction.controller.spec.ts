@@ -631,6 +631,11 @@ describe("OAuthInteractionController", () => {
 
     it("reuses the existing grant when the interaction already has a grantId", async () => {
       const existing = {
+        // The grant is adopted only when it belongs to this account AND this
+        // client -- a grantId names a row by opaque id, and the scopes below are
+        // about to be added to whatever it names.
+        accountId: USER_ID,
+        clientId: "claude-desktop",
         addOIDCScope: jest.fn(),
         addOIDCClaims: jest.fn(),
         addResourceScope: jest.fn(),
@@ -656,6 +661,66 @@ describe("OAuthInteractionController", () => {
       expect(existing.addOIDCScope).toHaveBeenCalledWith("openid monize:read");
       expect(existing.save).toHaveBeenCalled();
     });
+
+    /**
+     * The session check above guards the interaction; `grantId` is a separate
+     * field. Adding the requested scopes to a grant that belongs to somebody else
+     * -- or to a different client -- would widen an authorization the resource
+     * owner in front of us never consented to. The provider is not expected to
+     * hand over a foreign grantId, but "should not happen" is not a check.
+     */
+    it.each([
+      [
+        "another account",
+        { accountId: "someone-else", clientId: "claude-desktop" },
+      ],
+      ["another client", { accountId: undefined, clientId: "other-client" }],
+    ])(
+      "starts a fresh grant when the found one belongs to %s",
+      async (_label, overrides) => {
+        const foreign = {
+          accountId: overrides.accountId ?? USER_ID,
+          clientId: overrides.clientId,
+          addOIDCScope: jest.fn(),
+          addOIDCClaims: jest.fn(),
+          addResourceScope: jest.fn(),
+          save: jest.fn().mockResolvedValue("grant-foreign"),
+        };
+        const created = {
+          addOIDCScope: jest.fn(),
+          addOIDCClaims: jest.fn(),
+          addResourceScope: jest.fn(),
+          save: jest.fn().mockResolvedValue("grant-new"),
+        };
+        class GrantMock {
+          constructor() {
+            return created;
+          }
+          static find = jest.fn().mockResolvedValue(foreign);
+        }
+        const { controller } = makeController({
+          interactionDetails: jest.fn().mockResolvedValue({
+            uid: "u1",
+            prompt: { name: "consent", details: consentDetails },
+            params: { client_id: "claude-desktop" },
+            session: { accountId: USER_ID },
+            grantId: "g1",
+          }),
+          Grant: GrantMock as any,
+        });
+
+        await controller.confirm(
+          { cookies: { auth_token: "tok" } } as any,
+          makeRes(),
+        );
+
+        // Nothing was added to the foreign grant, and it was not saved.
+        expect(foreign.addOIDCScope).not.toHaveBeenCalled();
+        expect(foreign.save).not.toHaveBeenCalled();
+        expect(created.addOIDCScope).toHaveBeenCalledWith("openid monize:read");
+        expect(created.save).toHaveBeenCalled();
+      },
+    );
 
     it("creates a new grant when grantId is set but find returns null", async () => {
       const created = {
