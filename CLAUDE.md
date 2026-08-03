@@ -201,6 +201,16 @@ Money is `decimal(20,4)`; an exchange rate is `NUMERIC(20,10)` (`exchange_rates.
 
 Convert with `applyFxConversion` (backend) so the account's `fxFeePercent` is folded in the same way the transaction form does; validate a foreign-currency payload with `normalizeFxEntry`, which transactions and scheduled transactions share so both accept and reject exactly the same shapes.
 
+### A transfer's conversion is part of the request, not a default
+
+Two accounts in different currencies means the destination amount is not the source amount, so the request has to say what it is: a rate (**destination units per one source unit**, the only direction this codebase uses) or the amount received. `resolveTransferConversion` / `resolveTransferUpdateConversion` (`backend/src/transactions/transfer-conversion.util.ts`) decide it for every write path, derive whichever field was not supplied, reject a supplied pair that disagrees, and refuse the transfer when neither is present. `exchangeRate` defaulting to `1` is not a neutral default -- between two currencies it asserts they are at par, and it credited a EUR account 100.00 for 100.00 USD on the direct, scheduled and split-transfer paths at once. A leg is also always denominated in *its own account's* currency: both balance updates add the raw leg amount, so a mislabelled leg moves a balance by an unconverted figure.
+
+Where a schedule or a split cannot carry a conversion, resolve the rate for the date the money actually moves (posting date, parent transaction date) and **refuse the write when no rate is stored** -- never post at par. Say so in the UI before the user commits, because the number they typed is not the number that lands.
+
+### What an action does to a share count is written once
+
+`applyShareQuantity` (`backend/src/securities/share-quantity.util.ts`). `SPLIT.quantity` is a **ratio** -- the frontend posts new/old shares -- so it multiplies; `ADD_SHARES`/`REMOVE_SHARES` move units and must not be skipped by a valuation walk. The codebase held three answers for `SPLIT` at once: the holdings replays multiplied, the net-worth history added the ratio, and the TWR walk ignored it, so the same 2-for-1 gave 200, 102 and 100 shares depending on which chart you opened. `share-quantity.util.spec.ts` scans `src/` and fails on a new `case InvestmentAction.SPLIT` outside a documented allowlist.
+
 ### Missing data: a subtotal is not a total (CRITICAL)
 
 A field named `total*`, `portfolioValue`, `transferValue`, `gain`, `tax`, or `estimated*` may only carry a value when **every** component of the calculation is known. Filtering out `null` components and summing the rest produces a subtotal, not a total -- if any component is unknown, the total is `null`, and the partial sum, if returned at all, goes in a separate explicitly named field (`knownMarketValueSubtotal`), never in the total's field. Never default an unknown price, cost basis, or rate to `0` (or an exchange rate to `1`) to keep a formula running, and never treat a missing period price as a 0% return.

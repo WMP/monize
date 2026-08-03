@@ -13,6 +13,7 @@ import {
   AccountHoldings,
   AllocationItem,
 } from "./portfolio.service";
+import { applyShareQuantity } from "./share-quantity.util";
 import { roundMoney } from "../common/round.util";
 import { parseTag } from "../tags/tag-key-value.util";
 import { formatDateYMD, formatDateYMDLocal } from "../common/date-utils";
@@ -2412,20 +2413,13 @@ export class PortfolioCalculationService {
         const current = holdings.get(tx.securityId) || 0;
         const qty = Number(tx.quantity || 0);
 
-        switch (tx.action) {
-          case InvestmentAction.BUY:
-          case InvestmentAction.REINVEST:
-          case InvestmentAction.TRANSFER_IN:
-          case InvestmentAction.ADD_SHARES:
-            holdings.set(tx.securityId, current + qty);
-            break;
-          case InvestmentAction.SELL:
-          case InvestmentAction.TRANSFER_OUT:
-          case InvestmentAction.REMOVE_SHARES:
-            holdings.set(tx.securityId, current - qty);
-            break;
-          // DIVIDEND, INTEREST, CAPITAL_GAIN, SPLIT: no quantity change
-        }
+        // SPLIT was in the "no quantity change" list here, so every point after
+        // a split valued the pre-split share count -- a 2-for-1 halved the
+        // reported value of the position from that day on.
+        holdings.set(
+          tx.securityId,
+          applyShareQuantity(current, tx.action, qty),
+        );
       }
 
       // Compute portfolio value after today's transactions

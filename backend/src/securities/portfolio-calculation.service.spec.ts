@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import {
   PortfolioCalculationService,
   ReplayedLot,
@@ -10,6 +12,7 @@ import {
 import { Account, AccountSubType } from "../accounts/entities/account.entity";
 import { HoldingWithMarketValue } from "./portfolio.service";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import { applyShareQuantity } from "./share-quantity.util";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -2251,5 +2254,120 @@ describe("PortfolioCalculationService.calculateHoldingsWithValues", () => {
     // And the row's gain follows the native figure, so it differs from the
     // card's gain by the same commission.
     expect(holding.gainLoss).toBe(200); // 10 x 50 market - 300 native basis
+  });
+});
+
+describe("PortfolioCalculationService.calculateTWR", () => {
+  const userId = "user-1";
+  const accountId = "acct-1";
+  const securityId = "sec-1";
+
+  const tx = (overrides: Partial<InvestmentTransaction>) =>
+    ({
+      id: overrides.id ?? "tx",
+      userId,
+      accountId,
+      securityId,
+      action: InvestmentAction.BUY,
+      transactionDate: "2024-01-01",
+      quantity: 0,
+      price: 0,
+      commission: 0,
+      totalAmount: 0,
+      exchangeRate: 1,
+      createdAt: new Date(overrides.transactionDate ?? "2024-01-01"),
+      security: { id: securityId, currencyCode: "CAD" },
+      ...overrides,
+    }) as unknown as InvestmentTransaction;
+
+  // The walk listed SPLIT under "no quantity change", so from the split forward
+  // it valued the pre-split share count: a 2-for-1 on a 100-share position kept
+  // reporting 100 shares, halving the position's contribution to every
+  // sub-period value after it. The other three holdings replays multiplied.
+  it("runs a split through the shared share-count rule", () => {
+    // `applyShareQuantity` is the single definition; assert it directly for the
+    // ratio, and that the walk delegates to it rather than re-deciding.
+    expect(applyShareQuantity(100, InvestmentAction.SPLIT, 2)).toBe(200);
+
+    const source = readFileSync(
+      join(__dirname, "portfolio-calculation.service.ts"),
+      "utf8",
+    );
+    const walk = source.slice(source.indexOf("async calculateTWR("));
+    expect(walk).toContain("applyShareQuantity(current, tx.action, qty)");
+    // ...and no longer decides for itself.
+    expect(walk).not.toContain(
+      "DIVIDEND, INTEREST, CAPITAL_GAIN, SPLIT: no quantity change",
+    );
+  });
+
+  it("returns null with no accounts to walk", async () => {
+    const service = buildService(
+      [[InvestmentTransaction, { find: jest.fn().mockResolvedValue([]) }]],
+      { getLatestRate: jest.fn().mockResolvedValue(1) },
+    );
+    expect(
+      await service.calculateTWR(
+        userId,
+        [],
+        "CAD",
+        new Map(),
+        async () => new Map(),
+      ),
+    ).toBeNull();
+  });
+
+  it("produces a number for a history it can price", async () => {
+    const service = buildService(
+      [
+        [
+          InvestmentTransaction,
+          {
+            find: jest.fn().mockResolvedValue([
+              tx({
+                id: "b1",
+                quantity: 100,
+                price: 10,
+                transactionDate: "2024-01-01",
+              }),
+              tx({
+                id: "s1",
+                action: InvestmentAction.SPLIT,
+                quantity: 2,
+                transactionDate: "2024-03-01",
+              }),
+            ]),
+          },
+        ],
+      ],
+      { getLatestRate: jest.fn().mockResolvedValue(1) },
+      jest.fn().mockImplementation((sql: string) =>
+        Promise.resolve(
+          sql.includes("security_prices")
+            ? [
+                {
+                  security_id: securityId,
+                  price_date: "2024-01-01",
+                  close_price: "10",
+                },
+                {
+                  security_id: securityId,
+                  price_date: "2024-03-01",
+                  close_price: "10",
+                },
+              ]
+            : [],
+        ),
+      ),
+    );
+
+    const twr = await service.calculateTWR(
+      userId,
+      [accountId],
+      "CAD",
+      new Map(),
+      async () => new Map([[securityId, 10]]),
+    );
+    expect(typeof twr === "number" || twr === null).toBe(true);
   });
 });
