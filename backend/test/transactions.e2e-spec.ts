@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import * as request from "supertest";
-import * as cookieParser from "cookie-parser";
+import cookieParser from "cookie-parser";
 import { TransactionsController } from "@/transactions/transactions.controller";
 import { TransactionsService } from "@/transactions/transactions.service";
 import { ThrottlerGuard } from "@nestjs/throttler";

@@ -1,0 +1,28 @@
+// Type-check the test tree, which the build config deliberately excludes.
+//
+// `tsconfig.json` sets `rootDir: ./src` and `exclude: [..., "test"]` because it
+// drives the build, and CI's `npx tsc --noEmit` uses it -- so nothing type-checked
+// `test/`. ESLint's glob covers the directory but a namespace import called as a
+// function is a type error, not a lint error, so nothing caught it either.
+//
+// The consequence: when `main.ts` moved to `import cookieParser from
+// "cookie-parser"`, three files under `test/` kept `import * as cookieParser` and
+// stopped compiling. Because CI runs only `test:unit` and `test:integration`
+// (neither of which touches `test/*.e2e-spec.ts`), four suites sat dead for over a
+// week -- one of them cited in `backend/CLAUDE.md` as the safety net for the
+// raw-select transformer rule, and one edited while it was already broken.
+//
+// No `outDir`/`rootDir`: this config never emits, it only checks.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    // The base config pins rootDir to ./src for the build; keeping it here makes
+    // every test file "not under rootDir". Widening it to the package root is
+    // safe precisely because nothing is emitted.
+    "rootDir": "."
+  },
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

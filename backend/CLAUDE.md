@@ -8,7 +8,8 @@ NestJS API server. All commands run from this directory.
 npm run start:dev          # Dev server with HMR
 npm run build              # Production build
 npm run lint               # ESLint --fix
-npm run test               # All tests (unit + E2E)
+npm run typecheck          # tsc over src AND test (CI gate; plain `tsc --noEmit` skips test/)
+npm run test               # jest with no filter -- see the note below, this is NOT green
 npm run test:unit          # Unit tests only (src/**/*.spec.ts)
 npm run test:cov           # Coverage report (95% lines, 94% stmts, 95% funcs, 85% branches)
 npm run test:e2e           # E2E tests (test/**/*.spec.ts, 30s timeout, sequential)
@@ -17,6 +18,30 @@ npm run i18n:check         # Verify the pseudo-locale is up to date (CI gate)
 npm run migration:lint     # Idempotency lint over database/migrations (CI gate)
 npm run migration:lint:test # Self-test for the migration lint
 ```
+
+### `test/*.e2e-spec.ts` is not a gate, and three of the four suites are broken
+
+CI runs `test:unit` and `test:integration` (the latter filtered to
+`test/integration/*.spec.ts`). Nothing runs `test:e2e`, and `tsconfig.json`
+excludes `test/`, so for over a week four suites did not even compile -- a
+namespace `import * as cookieParser` left behind when `main.ts` moved to a
+default import. ESLint's glob covers the directory, but that is a type error, not
+a lint error. `npm run typecheck` now closes the compile half in CI.
+
+What the compile error was hiding, once removed:
+
+| Suite | State | Why |
+|---|---|---|
+| `test/payee-detail.e2e-spec.ts` | passes (9 tests) | nothing wrong with it; its coverage was simply absent. This is the spec cited below as what caught the raw-select transformer class of bug |
+| `test/payees.e2e-spec.ts` | fails | calls services directly, so there is no request scope; never converted for RLS (`withScopedDb` throws without ambient context) |
+| `test/auth.e2e-spec.ts` | fails | `AuthController` gained a `TokenService` dependency its test module does not provide |
+| `test/transactions.e2e-spec.ts` | fails | `DelegateTransferMaskInterceptor` gained a `CrossOwnerAccessService` dependency its test module does not provide |
+
+Each is separate rot that accumulated *behind* the compile error: the RLS
+conversion, the token-service split and the cross-owner-transfers work each moved
+on without these files and nothing complained. Repair them or delete them --
+what they must not stay is present, cited, and dead. Do not add `test:e2e` to CI
+until the three are fixed; it will be red.
 
 ## Module Structure
 

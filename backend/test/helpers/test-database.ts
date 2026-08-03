@@ -2,7 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule } from "@nestjs/config";
-import * as cookieParser from "cookie-parser";
+import cookieParser from "cookie-parser";
 
 export async function createTestApp(
   modules: any[],

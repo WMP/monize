@@ -66,6 +66,13 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npx tsc --noEmit
+      # tsconfig.json excludes test/ (it drives the build and pins rootDir to
+      # src/), so `tsc --noEmit` above never type-checked the test tree. Four
+      # `test/*.e2e-spec.ts` suites sat uncompilable for over a week as a result
+      # -- ESLint's glob covers the directory but a namespace import called as a
+      # function is a type error, not a lint error, and CI runs neither
+      # `test:e2e` nor a typecheck that reaches them.
+      - run: npm run typecheck
       # Migration idempotency: every migration body must be a no-op when
       # re-applied to an up-to-date database, or a half-applied migration
       # crash-loops the backend at startup (task B1). Self-test first, then lint.
