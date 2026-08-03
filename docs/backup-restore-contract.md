@@ -8,6 +8,9 @@ pointing at nothing, and a de-identified artifact carrying a user's name.
 
 Read this before changing anything under `backend/src/backup/`.
 
+For what was done about each audit finding that produced these rules -- including
+the one deliberately left open -- see `docs/audit-phase-3-response.md`.
+
 ## 1. What travels in a backup
 
 Everything the export produces, in one gzipped JSON document with a
