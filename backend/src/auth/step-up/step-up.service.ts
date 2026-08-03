@@ -21,7 +21,13 @@ import { tr } from "../../i18n/translate";
 interface VerifyArgs {
   password?: string;
   totpCode?: string;
-  oidcConfirmed?: boolean;
+  /**
+   * Set by the controller after `OidcReauthService` has verified the HttpOnly
+   * proof cookie the OIDC callback issued. It is deliberately not something the
+   * request body can carry: the earlier `oidcConfirmed` flag let the client
+   * assert its own re-authentication, which is no check at all.
+   */
+  oidcReauthProven?: boolean;
 }
 
 export interface StepUpVerificationResult {
@@ -126,14 +132,13 @@ export class StepUpAuthService {
         args.totpCode,
       );
     } else if (user.authProvider === "oidc") {
-      // OIDC users have no Monize-managed password and cannot enroll Monize
-      // 2FA (see two-factor.service.ts:283). Mirror the soft-check pattern
-      // used by /users/delete-account and /backup/restore: the frontend
-      // redirects the user through the identity provider via
-      // authApi.initiateOidc(), then sets oidcConfirmed=true on return.
-      // The presence of that flag combined with the freshly-rotated session
-      // cookies stands in for a re-auth challenge.
-      if (!args.oidcConfirmed) {
+      // OIDC users have no Monize-managed password and cannot enroll Monize 2FA
+      // (see two-factor.service.ts:283), so the factor is the identity provider
+      // itself. The proof is the HttpOnly cookie `/auth/oidc/callback` mints
+      // after it has verified state, nonce and the code exchange -- the only
+      // party that saw the authentication happen. A client-supplied flag was
+      // what this used to accept, and a client cannot vouch for itself.
+      if (!args.oidcReauthProven) {
         throw new BadRequestException({
           code: "OIDC_REAUTH_REQUIRED",
           message: "Re-authenticate with your identity provider to continue.",

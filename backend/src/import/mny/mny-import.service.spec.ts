@@ -391,13 +391,18 @@ describe("MnyImportService", () => {
         wipeCredentials: { password: "hunter2" },
       });
 
-      expect(usersService.deleteData).toHaveBeenCalledWith("user-1", {
-        password: "hunter2",
-        oidcIdToken: undefined,
-        deleteAccounts: true,
-        deleteCategories: true,
-        deletePayees: true,
-      });
+      expect(usersService.deleteData).toHaveBeenCalledWith(
+        "user-1",
+        {
+          password: "hunter2",
+          deleteAccounts: true,
+          deleteCategories: true,
+          deletePayees: true,
+        },
+        // No verified identity-provider roundtrip on this request, so an OIDC
+        // account's wipe is refused rather than waved through.
+        false,
+      );
       // The wipe re-authenticates, so its credentials must not reach
       // import_jobs.options.
       const [, , options] = jobs.create.mock.calls[0];

@@ -29,6 +29,7 @@ import { ImportJob } from "./entities/import-job.entity";
 import { MnyImportError } from "./mny-errors";
 import { MnyImportJobService } from "./mny-import-job.service";
 import { MnyImportService } from "./mny-import.service";
+import { OidcReauthService } from "../../auth/oidc/oidc-reauth.service";
 import { MnyParserService } from "./mny-parser.service";
 import { MnyStagingService } from "./mny-staging.service";
 import { MnyPreview, buildPreview } from "./mny-preview";
@@ -88,6 +89,7 @@ export class MnyImportController {
     private readonly parser: MnyParserService,
     private readonly jobs: MnyImportJobService,
     private readonly importService: MnyImportService,
+    private readonly oidcReauthService: OidcReauthService,
   ) {}
 
   @Post("parse")
@@ -177,7 +179,7 @@ export class MnyImportController {
       options: dto.options as Partial<MnyImportOptions> | undefined,
       wipeCredentials: {
         password: dto.wipePassword,
-        oidcIdToken: dto.wipeOidcIdToken,
+        oidcReauthProven: this.oidcReauthService.verify(req, req.user.id),
       },
     });
     return toJobDto(job);

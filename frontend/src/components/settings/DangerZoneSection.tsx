@@ -7,7 +7,11 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { userSettingsApi, DeleteDataOptions } from '@/lib/user-settings';
-import { authApi } from '@/lib/auth';
+import {
+  beginOidcReauth,
+  takeOidcReauthIntent,
+  clearOidcReauthIntent,
+} from '@/lib/oidc-reauth';
 import { useAuthStore } from '@/store/authStore';
 import { getErrorMessage } from '@/lib/errors';
 import { User } from '@/types/auth';
@@ -35,6 +39,7 @@ interface DangerZoneSectionProps {
 
 export function DangerZoneSection({ user }: DangerZoneSectionProps) {
   const t = useTranslations('settings.dangerZone');
+  const tc = useTranslations('common');
   const router = useRouter();
   const { logout } = useAuthStore();
   // A delegate of another account sees a tailored warning explaining
@@ -62,6 +67,39 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
 
   const isOidc = user.authProvider === 'oidc';
 
+  // OIDC only: whether this visit followed a completed identity-provider round
+  // trip. It decides which panel reopens and which button shows; the
+  // authorisation itself is the HttpOnly proof the server verifies.
+  //
+  // `handleOidcReauthData` used to stash the dataset selection and redirect, and
+  // nothing ever read it back: the OIDC delete-data flow bounced through the
+  // provider and silently did nothing. Reading it here is what resumes it.
+  const [pendingDataDelete] = useState(() =>
+    isOidc ? takeOidcReauthIntent('delete-data') : null,
+  );
+  const [accountDeleteReauthed] = useState(() =>
+    isOidc ? takeOidcReauthIntent('delete-account') !== null : false,
+  );
+  const dataDeleteReauthed = pendingDataDelete !== null;
+
+  // Reopen the panel the user left, with the selection they made, once the
+  // provider has sent them back.
+  const [resumeSynced, setResumeSynced] = useState(false);
+  if (!resumeSynced && (pendingDataDelete || accountDeleteReauthed)) {
+    setResumeSynced(true);
+    if (pendingDataDelete) {
+      const p = pendingDataDelete.payload ?? {};
+      setShowDataDelete(true);
+      setDeleteAccounts(p.deleteAccounts === true);
+      setDeleteCategories(p.deleteCategories === true);
+      setDeletePayees(p.deletePayees === true);
+      setDeleteExchangeRates(p.deleteExchangeRates === true);
+    }
+    if (accountDeleteReauthed) {
+      setShowDeleteConfirm(true);
+    }
+  }
+
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== 'DELETE') {
       toast.error(t('deleteAccount.errors.typeDelete'));
@@ -72,12 +110,19 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
       return;
     }
 
+    if (isOidc && !accountDeleteReauthed) {
+      toast.error(t('deleteAccount.errors.oidcReauthRequired'));
+      return;
+    }
+
     setIsDeleting(true);
     try {
-      const authData = isOidc
-        ? { oidcIdToken: 'oidc-session-confirmed' }
-        : { password: deleteAccountPassword };
-      const res = await userSettingsApi.deleteAccount(authData);
+      // An OIDC account sends no credential: the server checks the proof its own
+      // callback issued. This used to send the constant "oidc-session-confirmed",
+      // which the server accepted as reauthentication.
+      const res = await userSettingsApi.deleteAccount(
+        isOidc ? {} : { password: deleteAccountPassword },
+      );
       if (res.downgraded) {
         toast.success(
           t('deleteAccount.toasts.downgraded'),
@@ -99,6 +144,10 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
       toast.error(t('deleteAccount.errors.passwordRequired'));
       return;
     }
+    if (isOidc && !dataDeleteReauthed) {
+      toast.error(t('deleteAccount.errors.oidcReauthRequired'));
+      return;
+    }
 
     setIsDeletingData(true);
     try {
@@ -109,9 +158,7 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
         deleteExchangeRates,
       };
 
-      if (isOidc) {
-        options.oidcIdToken = 'oidc-session-confirmed';
-      } else {
+      if (!isOidc) {
         options.password = password;
       }
 
@@ -135,13 +182,12 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
   };
 
   const handleOidcReauthData = () => {
-    sessionStorage.setItem('dataDeletePending', JSON.stringify({
+    beginOidcReauth('delete-data', '/settings', {
       deleteAccounts,
       deleteCategories,
       deletePayees,
       deleteExchangeRates,
-    }));
-    authApi.initiateOidc();
+    });
   };
 
   return (
@@ -168,13 +214,13 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
               {t('deleteData.alwaysDeletedHeading')}
             </p>
             <ul className="text-sm text-gray-700 dark:text-gray-300 list-disc ml-5 space-y-1">
-              <li>All transactions and splits</li>
-              <li>All scheduled/recurring transactions</li>
-              <li>All securities, prices, holdings, and investment transactions</li>
-              <li>All budgets and budget alerts</li>
-              <li>Monthly account balance summaries</li>
-              <li>Custom reports, tags, and import mappings</li>
-              <li>Action history (undo/redo)</li>
+              <li>{t('deleteData.alwaysDeleted.transactions')}</li>
+              <li>{t('deleteData.alwaysDeleted.scheduled')}</li>
+              <li>{t('deleteData.alwaysDeleted.investments')}</li>
+              <li>{t('deleteData.alwaysDeleted.budgets')}</li>
+              <li>{t('deleteData.alwaysDeleted.monthlyBalances')}</li>
+              <li>{t('deleteData.alwaysDeleted.reportsTagsMappings')}</li>
+              <li>{t('deleteData.alwaysDeleted.actionHistory')}</li>
             </ul>
 
             <p className="text-sm font-medium text-red-700 dark:text-red-300 pt-2">
@@ -235,14 +281,21 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
                 <div className="flex gap-2">
                   <Button
                     variant="danger"
-                    onClick={handleOidcReauthData}
+                    onClick={
+                      dataDeleteReauthed ? handleDeleteData : handleOidcReauthData
+                    }
                     disabled={isDeletingData}
                   >
-                    {t('deleteData.oidcReauthButton')}
+                    {dataDeleteReauthed
+                      ? isDeletingData
+                        ? t('deleteData.deletingButton')
+                        : t('deleteData.confirmButton')
+                      : t('deleteData.oidcReauthButton')}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => {
+                      clearOidcReauthIntent();
                       setShowDataDelete(false);
                       setDeleteAccounts(false);
                       setDeleteCategories(false);
@@ -250,7 +303,7 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
                       setDeleteExchangeRates(false);
                     }}
                   >
-                    Cancel
+                    {tc('cancel')}
                   </Button>
                 </div>
               ) : (
@@ -285,7 +338,7 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
                         setDeleteExchangeRates(false);
                       }}
                     >
-                      Cancel
+                      {tc('cancel')}
                     </Button>
                   </div>
                 </>
@@ -334,23 +387,39 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
                 />
               </>
             )}
+            {isOidc && !accountDeleteReauthed && (
+              <p className="text-xs text-red-600 dark:text-red-400">
+                {t('deleteAccount.oidcReauthFirst')}
+              </p>
+            )}
             <div className="flex gap-2">
-              <Button
-                variant="danger"
-                onClick={handleDeleteAccount}
-                disabled={isDeleting || deleteConfirmText !== 'DELETE' || (!isOidc && !deleteAccountPassword)}
-              >
-                {isDeleting ? t('deleteAccount.deletingButton') : t('deleteAccount.confirmButton')}
-              </Button>
+              {isOidc && !accountDeleteReauthed ? (
+                <Button
+                  variant="danger"
+                  onClick={() => beginOidcReauth('delete-account', '/settings')}
+                  disabled={deleteConfirmText !== 'DELETE'}
+                >
+                  {t('deleteAccount.oidcReauthButton')}
+                </Button>
+              ) : (
+                <Button
+                  variant="danger"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting || deleteConfirmText !== 'DELETE' || (!isOidc && !deleteAccountPassword)}
+                >
+                  {isDeleting ? t('deleteAccount.deletingButton') : t('deleteAccount.confirmButton')}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 onClick={() => {
+                  clearOidcReauthIntent();
                   setShowDeleteConfirm(false);
                   setDeleteConfirmText('');
                   setDeleteAccountPassword('');
                 }}
               >
-                Cancel
+                {tc('cancel')}
               </Button>
             </div>
           </div>

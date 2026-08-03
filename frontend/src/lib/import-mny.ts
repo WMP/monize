@@ -291,7 +291,7 @@ export const mnyImportApi = {
   start: async (
     stagedFileId: string,
     options?: MnyImportOptionsInput,
-    wipeCredentials?: { password?: string; oidcIdToken?: string },
+    wipeCredentials?: { password?: string },
   ): Promise<MnyImportJob> => {
     const response = await apiClient.post<MnyImportJob>(
       '/import/mny/start',
@@ -300,9 +300,6 @@ export const mnyImportApi = {
         ...(options ? { options } : {}),
         ...(wipeCredentials?.password
           ? { wipePassword: wipeCredentials.password }
-          : {}),
-        ...(wipeCredentials?.oidcIdToken
-          ? { wipeOidcIdToken: wipeCredentials.oidcIdToken }
           : {}),
       },
       { timeout: START_TIMEOUT_MS },

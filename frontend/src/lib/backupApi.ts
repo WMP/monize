@@ -200,7 +200,6 @@ export const backupApi = {
   restoreBackup: async (params: {
     file: File;
     password?: string;
-    oidcIdToken?: string;
     backupPassword?: string;
   }): Promise<RestoreResult> => {
     // Three accepted file shapes:
@@ -219,9 +218,6 @@ export const backupApi = {
     };
     if (params.password) {
       headers['X-Restore-Password'] = encodePasswordHeader(params.password);
-    }
-    if (params.oidcIdToken) {
-      headers['X-Restore-OIDC-Token'] = params.oidcIdToken;
     }
     if (params.backupPassword) {
       headers['X-Backup-Password'] = encodePasswordHeader(params.backupPassword);

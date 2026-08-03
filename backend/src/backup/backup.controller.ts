@@ -24,6 +24,7 @@ import { BackupService } from "./backup.service";
 import { AutoBackupService } from "./auto-backup.service";
 import { BackupEncryptionService } from "./backup-encryption.service";
 import { SupportBackupService } from "./support-backup/support-backup.service";
+import { OidcReauthService } from "../auth/oidc/oidc-reauth.service";
 import { CreateSupportBackupDto } from "./support-backup/dto/create-support-backup.dto";
 import {
   UpdateAutoBackupSettingsDto,
@@ -55,6 +56,7 @@ export class BackupController {
     private readonly autoBackupService: AutoBackupService,
     private readonly backupEncryption: BackupEncryptionService,
     private readonly supportBackupService: SupportBackupService,
+    private readonly oidcReauthService: OidcReauthService,
   ) {}
 
   /** Download headers shared by the plain and support export endpoints, so
@@ -156,9 +158,6 @@ export class BackupController {
     const password = decodePasswordHeader(
       req.headers["x-restore-password"] as string | undefined,
     );
-    const oidcIdToken = req.headers["x-restore-oidc-token"] as
-      | string
-      | undefined;
     const backupPassword = decodePasswordHeader(
       req.headers["x-backup-password"] as string | undefined,
     );
@@ -166,7 +165,7 @@ export class BackupController {
     const result = await this.backupService.restoreData(req.user.id, {
       compressedData: body,
       password,
-      oidcIdToken,
+      oidcReauthProven: this.oidcReauthService.verify(req, req.user.id),
       backupPassword,
     });
     return result;

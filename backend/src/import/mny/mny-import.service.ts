@@ -84,7 +84,11 @@ const HOLDING_DECIMALS = 8;
 /** Credentials the existing delete-my-data operation requires. */
 export interface WipeCredentials {
   readonly password?: string;
-  readonly oidcIdToken?: string;
+  /**
+   * True only when the request carried a server-verified OIDC re-auth proof.
+   * Never a client-supplied token: the wipe deletes the account's data.
+   */
+  readonly oidcReauthProven?: boolean;
 }
 
 export interface StartImportInput {
@@ -140,13 +144,16 @@ export class MnyImportService {
     // Before the job row exists, and never with the credentials in tow: a
     // failed re-authentication must fail the request, not a background job.
     if (options.wipeExistingData) {
-      await this.usersService.deleteData(userId, {
-        password: input.wipeCredentials?.password,
-        oidcIdToken: input.wipeCredentials?.oidcIdToken,
-        deleteAccounts: true,
-        deleteCategories: true,
-        deletePayees: true,
-      });
+      await this.usersService.deleteData(
+        userId,
+        {
+          password: input.wipeCredentials?.password,
+          deleteAccounts: true,
+          deleteCategories: true,
+          deletePayees: true,
+        },
+        input.wipeCredentials?.oidcReauthProven ?? false,
+      );
       this.logger.log(
         `Wiped existing data for user ${userId} before .mny import`,
       );

@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+vi.mock('@/lib/auth', () => ({
+  authApi: { initiateOidc: vi.fn() },
+}));
 import { render, screen, fireEvent, waitFor, act } from '@/test/render';
 import { BackupRestoreSection } from './BackupRestoreSection';
 import { User } from '@/types/auth';
@@ -41,6 +45,7 @@ vi.mock('@/lib/errors', () => ({
   getErrorMessage: vi.fn((_error: unknown, fallback: string) => fallback),
 }));
 
+import { authApi } from '@/lib/auth';
 import { backupApi } from '@/lib/backupApi';
 import { getLocalDateString } from '@/lib/utils';
 import { usePreferencesStore } from '@/store/preferencesStore';
@@ -76,6 +81,7 @@ async function renderSection(user: User = localUser) {
 describe('BackupRestoreSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     // Reset the timezone preference so tests default to the browser timezone
     // unless they set one explicitly (prevents leakage between tests).
     usePreferencesStore.setState({ preferences: null, isLoaded: false });
@@ -220,12 +226,15 @@ describe('BackupRestoreSection', () => {
     expect(screen.getByText('Cancel')).toBeInTheDocument();
   });
 
-  it('shows OIDC re-auth button for OIDC users', async () => {
+  it('asks an OIDC user to reauthenticate before offering the restore', async () => {
     await renderSection(oidcUser);
 
     fireEvent.click(screen.getByText('Restore from Backup...'));
 
-    expect(screen.getByText('Re-authenticate and Restore')).toBeInTheDocument();
+    expect(screen.getByText('Reauthenticate with provider')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Re-authenticate and Restore'),
+    ).not.toBeInTheDocument();
   });
 
   it('collapses restore form on cancel', async () => {
@@ -610,13 +619,33 @@ describe('BackupRestoreSection', () => {
   });
 
   describe('OIDC restore', () => {
-    it('passes the OIDC token instead of a password', async () => {
+    // The button used to run the restore directly, sending the constant string
+    // "oidc-session-confirmed" as the reauthentication the label promised.
+    it('redirects to the provider and restores nothing yet', async () => {
+      await renderSection(oidcUser);
+      fireEvent.click(screen.getByText('Restore from Backup...'));
+      fireEvent.click(screen.getByText('Reauthenticate with provider'));
+
+      expect(authApi.initiateOidc).toHaveBeenCalled();
+      expect(backupApi.restoreBackup).not.toHaveBeenCalled();
+      expect(
+        JSON.parse(sessionStorage.getItem('monize:oidc-reauth-intent') as string),
+      ).toMatchObject({ intent: 'backup-restore' });
+    });
+
+    it('sends no credential of its own once the roundtrip is done', async () => {
       (backupApi.restoreBackup as ReturnType<typeof vi.fn>).mockResolvedValue({
         message: 'ok',
         restored: {},
       });
+      sessionStorage.setItem(
+        'monize:oidc-reauth-intent',
+        JSON.stringify({ intent: 'backup-restore' }),
+      );
       await renderSection(oidcUser);
-      fireEvent.click(screen.getByText('Restore from Backup...'));
+
+      // The panel reopens itself; the file is chosen after the redirect because
+      // a File cannot survive one.
       await act(async () => {
         fireEvent.change(
           screen.getByLabelText('Select backup file') as HTMLInputElement,
@@ -624,20 +653,21 @@ describe('BackupRestoreSection', () => {
         );
       });
       fireEvent.click(screen.getByText('Re-authenticate and Restore'));
+
       await waitFor(() => expect(backupApi.restoreBackup).toHaveBeenCalled());
       const call = (backupApi.restoreBackup as ReturnType<typeof vi.fn>).mock
         .calls[0][0];
-      expect(call.oidcIdToken).toBe('oidc-session-confirmed');
+      expect(call.oidcIdToken).toBeUndefined();
       expect(call.password).toBeUndefined();
     });
 
     it('OIDC restore Cancel closes the form', async () => {
       await renderSection(oidcUser);
       fireEvent.click(screen.getByText('Restore from Backup...'));
-      expect(screen.getByText('Re-authenticate and Restore')).toBeInTheDocument();
+      expect(screen.getByText('Reauthenticate with provider')).toBeInTheDocument();
       fireEvent.click(screen.getByText('Cancel'));
       expect(
-        screen.queryByText('Re-authenticate and Restore'),
+        screen.queryByText('Reauthenticate with provider'),
       ).not.toBeInTheDocument();
     });
   });

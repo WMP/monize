@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { OidcReauthModule } from "../auth/oidc/oidc-reauth.module";
 import { UsersService } from "./users.service";
 import { UsersController } from "./users.controller";
 import { PasswordBreachService } from "../auth/password-breach.service";
@@ -14,6 +15,7 @@ import { DemoModeModule } from "../common/demo-mode.module";
  */
 @Module({
   imports: [
+    OidcReauthModule,
     // DemoModeModule is @Global, but UsersService depends on DemoModeService
     // directly, so import it here too: integration tests build a TestingModule
     // around UsersModule without AppModule's global registration, and would

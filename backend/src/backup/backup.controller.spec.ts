@@ -5,6 +5,7 @@ import { BackupService } from "./backup.service";
 import { AutoBackupService } from "./auto-backup.service";
 import { BackupEncryptionService } from "./backup-encryption.service";
 import { SupportBackupService } from "./support-backup/support-backup.service";
+import { OidcReauthService } from "../auth/oidc/oidc-reauth.service";
 import { AutoBackupSettings } from "./entities/auto-backup-settings.entity";
 
 describe("BackupController", () => {
@@ -13,6 +14,7 @@ describe("BackupController", () => {
   let mockAutoBackupService: Record<string, jest.Mock>;
   let mockBackupEncryption: Record<string, jest.Mock>;
   let mockSupportBackup: Record<string, jest.Mock>;
+  let mockOidcReauth: Record<string, jest.Mock>;
 
   const userId = "test-user-id";
   const mockReq = {
@@ -41,6 +43,10 @@ describe("BackupController", () => {
       setBackupPasswordForOidcUser: jest.fn(),
       disable: jest.fn(),
     };
+    mockOidcReauth = {
+      verify: jest.fn().mockReturnValue(false),
+      consume: jest.fn(),
+    };
 
     mockSupportBackup = {
       generate: jest.fn(),
@@ -65,6 +71,10 @@ describe("BackupController", () => {
         {
           provide: SupportBackupService,
           useValue: mockSupportBackup,
+        },
+        {
+          provide: OidcReauthService,
+          useValue: mockOidcReauth,
         },
       ],
     }).compile();
@@ -196,13 +206,17 @@ describe("BackupController", () => {
       expect(mockBackupService.restoreData).toHaveBeenCalledWith(userId, {
         compressedData: req.body,
         password: "mypassword",
-        oidcIdToken: undefined,
+        oidcReauthProven: false,
         backupPassword: undefined,
       });
       expect(result).toEqual(mockResult);
     });
 
-    it("should pass OIDC token header to service", async () => {
+    // A restore used to be authorised by whatever the client put in
+    // X-Restore-OIDC-Token; the frontend sent the constant
+    // "oidc-session-confirmed". The header is gone: the proof is the HttpOnly
+    // cookie the OIDC callback issued, verified server-side.
+    it("ignores a client-supplied OIDC token header", async () => {
       mockBackupService.restoreData.mockResolvedValue({
         message: "ok",
         restored: {},
@@ -212,7 +226,7 @@ describe("BackupController", () => {
         user: { id: userId },
         body: Buffer.from("gzip-data"),
         headers: {
-          "x-restore-oidc-token": "oidc-token-value",
+          "x-restore-oidc-token": "oidc-session-confirmed",
         },
       };
 
@@ -221,9 +235,31 @@ describe("BackupController", () => {
       expect(mockBackupService.restoreData).toHaveBeenCalledWith(userId, {
         compressedData: req.body,
         password: undefined,
-        oidcIdToken: "oidc-token-value",
+        oidcReauthProven: false,
         backupPassword: undefined,
       });
+    });
+
+    it("passes the verified proof when the callback issued one", async () => {
+      mockBackupService.restoreData.mockResolvedValue({
+        message: "ok",
+        restored: {},
+      });
+      mockOidcReauth.verify.mockReturnValue(true);
+
+      const req = {
+        user: { id: userId },
+        body: Buffer.from("gzip-data"),
+        headers: {},
+      };
+
+      await controller.restoreBackup(req);
+
+      expect(mockOidcReauth.verify).toHaveBeenCalledWith(req, userId);
+      expect(mockBackupService.restoreData).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({ oidcReauthProven: true }),
+      );
     });
 
     it("should throw BadRequestException if body is not a buffer", async () => {

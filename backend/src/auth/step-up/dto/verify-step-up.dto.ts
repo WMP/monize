@@ -1,5 +1,4 @@
 import {
-  IsBoolean,
   IsIn,
   IsOptional,
   IsString,
@@ -13,7 +12,12 @@ import { ApiProperty } from "@nestjs/swagger";
  * surface means adding a new value here and decorating its handlers with
  * `@RequireStepUp(purpose)`.
  */
-export const STEP_UP_PURPOSES = ["emergency-access"] as const;
+export const STEP_UP_PURPOSES = [
+  "emergency-access",
+  "backup-restore",
+  "delete-account",
+  "delete-data",
+] as const;
 export type StepUpPurpose = (typeof STEP_UP_PURPOSES)[number];
 
 export class VerifyStepUpDto {
@@ -43,13 +47,4 @@ export class VerifyStepUpDto {
   @MaxLength(6)
   @Matches(/^\d{6}$/, { message: "TOTP code must be 6 digits" })
   totpCode?: string;
-
-  @ApiProperty({
-    description:
-      "OIDC users only: set true after the frontend has completed a fresh redirect through the identity provider. Mirrors the soft-check used by /users/delete-account.",
-    required: false,
-  })
-  @IsOptional()
-  @IsBoolean()
-  oidcConfirmed?: boolean;
 }

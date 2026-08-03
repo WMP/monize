@@ -8,7 +8,9 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Res,
 } from "@nestjs/common";
+import type { Response } from "express";
 import { AuthGuard } from "@nestjs/passport";
 import {
   ApiTags,
@@ -25,13 +27,17 @@ import { DeleteDataDto } from "./dto/delete-data.dto";
 import { SkipPasswordCheck } from "../auth/decorators/skip-password-check.decorator";
 import { DemoRestricted } from "../common/decorators/demo-restricted.decorator";
 import { AllowDelegate } from "../delegation/decorators/delegate-access.decorator";
+import { OidcReauthService } from "../auth/oidc/oidc-reauth.service";
 
 @ApiTags("Users")
 @Controller("users")
 @UseGuards(AuthGuard("jwt"))
 @ApiBearerAuth()
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly oidcReauthService: OidcReauthService,
+  ) {}
 
   @Get("me")
   @SkipPasswordCheck()
@@ -99,8 +105,20 @@ export class UsersController {
   })
   @ApiResponse({ status: 200, description: "Account deleted successfully" })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
-  async deleteAccount(@Request() req, @Body() dto: DeleteAccountDto) {
-    const result = await this.usersService.deleteAccount(req.user.id, dto);
+  async deleteAccount(
+    @Request() req,
+    @Body() dto: DeleteAccountDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    // An OIDC account is re-authenticated by the identity provider, and the
+    // proof is the HttpOnly cookie the callback set -- not anything in `dto`.
+    const proven = this.oidcReauthService.verify(req, req.user.id);
+    const result = await this.usersService.deleteAccount(
+      req.user.id,
+      dto,
+      proven,
+    );
+    if (proven) this.oidcReauthService.consume(res);
     return {
       message: result.downgraded
         ? "Your own data was removed. Your login and any shared access others granted you remain."
@@ -115,7 +133,14 @@ export class UsersController {
   @ApiOperation({ summary: "Delete user data with re-authentication" })
   @ApiResponse({ status: 200, description: "Data deleted successfully" })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
-  async deleteData(@Request() req, @Body() dto: DeleteDataDto) {
-    return this.usersService.deleteData(req.user.id, dto);
+  async deleteData(
+    @Request() req,
+    @Body() dto: DeleteDataDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const proven = this.oidcReauthService.verify(req, req.user.id);
+    const result = await this.usersService.deleteData(req.user.id, dto, proven);
+    if (proven) this.oidcReauthService.consume(res);
+    return result;
   }
 }

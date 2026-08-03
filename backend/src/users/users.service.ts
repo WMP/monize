@@ -382,7 +382,13 @@ export class UsersService {
 
   async deleteAccount(
     userId: string,
-    dto?: { password?: string; oidcIdToken?: string },
+    dto?: { password?: string },
+    /**
+     * True only when `OidcReauthService` has verified the HttpOnly proof the
+     * OIDC callback issued. The caller passes it in rather than the request
+     * body carrying it, because the request body is the client's own claim.
+     */
+    oidcReauthProven = false,
   ): Promise<{ downgraded: boolean }> {
     const user = await this.scoped(User, (repo) =>
       repo.findOne({ where: { id: userId } }),
@@ -393,9 +399,12 @@ export class UsersService {
       );
     }
 
-    // SECURITY: Re-authenticate before account deletion
+    // SECURITY: Re-authenticate before account deletion. For an OIDC account the
+    // only acceptable evidence is the server-issued proof from a completed
+    // identity-provider round trip; this used to accept any non-empty string the
+    // client cared to send, which the UI meanwhile described as reauthentication.
     if (user.authProvider === "oidc") {
-      if (!dto?.oidcIdToken) {
+      if (!oidcReauthProven) {
         throw new UnauthorizedException(
           tr(
             "errors.users.oidcReauthRequired",
@@ -474,6 +483,8 @@ export class UsersService {
   async deleteData(
     userId: string,
     dto: DeleteDataDto,
+    /** See `deleteAccount`: verified server-side, never taken from the body. */
+    oidcReauthProven = false,
   ): Promise<{ deleted: Record<string, number> }> {
     const user = await this.scoped(User, (repo) =>
       repo.findOne({ where: { id: userId } }),
@@ -484,9 +495,10 @@ export class UsersService {
       );
     }
 
-    // SECURITY: Re-authenticate before destructive operation
+    // SECURITY: Re-authenticate before destructive operation. Same rule as
+    // deleteAccount: a server-verified IdP round trip, not a client assertion.
     if (user.authProvider === "oidc") {
-      if (!dto.oidcIdToken) {
+      if (!oidcReauthProven) {
         throw new UnauthorizedException(
           tr(
             "errors.users.oidcReauthRequiredForDataDelete",

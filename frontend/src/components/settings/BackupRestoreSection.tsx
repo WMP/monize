@@ -15,6 +15,11 @@ import {
   RestoreResult,
 } from '@/lib/backupApi';
 import { getErrorMessage } from '@/lib/errors';
+import {
+  beginOidcReauth,
+  takeOidcReauthIntent,
+  clearOidcReauthIntent,
+} from '@/lib/oidc-reauth';
 import { getDateStringInTimezone, resolveTimezone } from '@/lib/utils';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { downloadBlob } from '@/lib/download';
@@ -69,6 +74,7 @@ interface BackupRestoreSectionProps {
 
 export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
   const t = useTranslations('settings.backupRestore');
+  const tc = useTranslations('common');
   const isOidc = user.authProvider === 'oidc';
   const timezonePref = usePreferencesStore((s) => s.preferences?.timezone);
 
@@ -89,6 +95,12 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
   const [restoreBackupPassword, setRestoreBackupPassword] = useState('');
   const [restoreResult, setRestoreResult] = useState<RestoreResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // OIDC only: set when we have just come back from the identity provider for
+  // this restore. It gates the button, not the authorisation -- the server holds
+  // the proof in an HttpOnly cookie and rejects the request without it.
+  const [oidcReauthReturned, setOidcReauthReturned] = useState(() =>
+    isOidc ? takeOidcReauthIntent('backup-restore') !== null : false,
+  );
 
   // Encryption setup state
   const [showEncryptionSetup, setShowEncryptionSetup] = useState(false);
@@ -112,6 +124,15 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
       cancelled = true;
     };
   }, [isOidc]);
+
+  // Returning from the provider lands on /settings, so reopen the panel the user
+  // left rather than making them find it again.
+  const [restorePanelSyncedToReauth, setRestorePanelSyncedToReauth] =
+    useState(false);
+  if (oidcReauthReturned && !restorePanelSyncedToReauth) {
+    setRestorePanelSyncedToReauth(true);
+    setShowRestore(true);
+  }
 
   const runExport = async (encryptionPassword?: string) => {
     setIsExporting(true);
@@ -150,6 +171,8 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
   };
 
   const closeRestoreForm = () => {
+    clearOidcReauthIntent();
+    setOidcReauthReturned(false);
     setShowRestore(false);
     setRestorePassword('');
     setRestoreFile(null);
@@ -178,16 +201,18 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
       toast.error(t('restore.toasts.pleaseEnterPassword'));
       return;
     }
+    if (isOidc && !oidcReauthReturned) {
+      toast.error(t('restore.toasts.oidcReauthRequired'));
+      return;
+    }
 
     setIsRestoring(true);
     try {
-      const authData = isOidc
-        ? { oidcIdToken: 'oidc-session-confirmed' }
-        : { password: restorePassword };
-
       const result = await backupApi.restoreBackup({
         file: restoreFile,
-        ...authData,
+        // An OIDC account sends no credential at all: the server verifies the
+        // HttpOnly proof its own callback issued.
+        ...(isOidc ? {} : { password: restorePassword }),
         // Only relevant for encrypted backups; the account password above is a
         // separate identity check and is not the decryption key.
         backupPassword:
@@ -383,17 +408,51 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
                   : t('restore.passwordConfirmLabel')}
               </p>
               {isOidc ? (
-                <div className="flex gap-2">
-                  <Button
-                    variant="danger"
-                    onClick={() => runRestore()}
-                    disabled={isRestoring || !restoreFile}
-                  >
-                    {isRestoring ? t('restore.restoringButton') : t('restore.oidcRestoreButton')}
-                  </Button>
-                  <Button variant="outline" onClick={closeRestoreForm}>
-                    Cancel
-                  </Button>
+                <div className="space-y-2">
+                  {!oidcReauthReturned ? (
+                    <>
+                      {/* Reauthenticate first: the proof the server needs is a
+                          cookie its own callback sets, and the file cannot
+                          survive the redirect, so it is chosen afterwards. */}
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        {t('restore.oidcReauthFirst')}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="danger"
+                          onClick={() =>
+                            beginOidcReauth('backup-restore', '/settings')
+                          }
+                          disabled={isRestoring}
+                        >
+                          {t('restore.oidcReauthButton')}
+                        </Button>
+                        <Button variant="outline" onClick={closeRestoreForm}>
+                          {tc('cancel')}
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        {t('restore.oidcReauthConfirmed')}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="danger"
+                          onClick={() => runRestore()}
+                          disabled={isRestoring || !restoreFile}
+                        >
+                          {isRestoring
+                            ? t('restore.restoringButton')
+                            : t('restore.oidcRestoreButton')}
+                        </Button>
+                        <Button variant="outline" onClick={closeRestoreForm}>
+                          {tc('cancel')}
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <>
@@ -417,7 +476,7 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
                       {isRestoring ? t('restore.restoringButton') : t('restore.confirmRestoreButton')}
                     </Button>
                     <Button variant="outline" onClick={closeRestoreForm}>
-                      Cancel
+                      {tc('cancel')}
                     </Button>
                   </div>
                 </>
@@ -460,7 +519,7 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
               }}
               disabled={setupSaving}
             >
-              Cancel
+              {tc('cancel')}
             </Button>
             <Button
               onClick={handleEnableEncryption}
@@ -508,7 +567,7 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
               }}
               disabled={isExporting}
             >
-              Cancel
+              {tc('cancel')}
             </Button>
             <Button
               onClick={() => runExport(exportPassword)}

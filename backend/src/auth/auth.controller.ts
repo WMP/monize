@@ -30,6 +30,7 @@ import { Response, Request as ExpressRequest } from "express";
 import { AuthService } from "./auth.service";
 import { TokenService } from "./token.service";
 import { OidcService } from "./oidc/oidc.service";
+import { OidcReauthService } from "./oidc/oidc-reauth.service";
 import { EmailService } from "../notifications/email.service";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -76,6 +77,7 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     private oidcService: OidcService,
+    private oidcReauthService: OidcReauthService,
     private configService: ConfigService,
     private emailService: EmailService,
     private demoModeService: DemoModeService,
@@ -501,6 +503,11 @@ export class AuthController {
       );
 
       this.setAuthCookies(res, accessToken, refreshToken, result.user.id);
+      // This is the only place that has watched a real identity-provider
+      // authentication complete, so it is the only place that can vouch for one.
+      // Destructive OIDC flows verify this proof instead of trusting the client
+      // to assert that the redirect happened.
+      this.oidcReauthService.issue(res, result.user.id);
       // `welcome` tells the callback page this login provisioned the account,
       // so it shows the same language/currency step local registration ends
       // on instead of dropping the user straight on the dashboard.

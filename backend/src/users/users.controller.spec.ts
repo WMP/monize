@@ -1,13 +1,20 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { UsersController } from "./users.controller";
 import { UsersService } from "./users.service";
+import { OidcReauthService } from "../auth/oidc/oidc-reauth.service";
 
 describe("UsersController", () => {
   let controller: UsersController;
   let mockUsersService: Record<string, jest.Mock>;
-  const mockReq = { user: { id: "user-1", realUserId: "user-1" } };
+  const mockReq = { user: { id: "user-1", realUserId: "user-1" } } as never;
+  const mockRes = { clearCookie: jest.fn() } as never;
+  let mockOidcReauth: Record<string, jest.Mock>;
 
   beforeEach(async () => {
+    mockOidcReauth = {
+      verify: jest.fn().mockReturnValue(false),
+      consume: jest.fn(),
+    };
     mockUsersService = {
       findById: jest.fn(),
       updateProfile: jest.fn(),
@@ -23,6 +30,10 @@ describe("UsersController", () => {
         {
           provide: UsersService,
           useValue: mockUsersService,
+        },
+        {
+          provide: OidcReauthService,
+          useValue: mockOidcReauth,
         },
       ],
     }).compile();
@@ -166,7 +177,7 @@ describe("UsersController", () => {
       mockUsersService.deleteAccount.mockResolvedValue({ downgraded: false });
       const dto = { password: "mypass" };
 
-      const result = await controller.deleteAccount(mockReq, dto);
+      const result = await controller.deleteAccount(mockReq, dto, mockRes);
 
       expect(result).toEqual({
         message: "Account deleted successfully",
@@ -175,14 +186,33 @@ describe("UsersController", () => {
       expect(mockUsersService.deleteAccount).toHaveBeenCalledWith(
         "user-1",
         dto,
+        false,
       );
+    });
+
+    // A destructive OIDC flow used to be authorised by the literal string
+    // "oidc-session-confirmed" in the request body. The proof now comes from the
+    // HttpOnly cookie the OIDC callback set, and is spent on use.
+    it("passes the server-verified OIDC proof and consumes it", async () => {
+      mockUsersService.deleteAccount.mockResolvedValue({ downgraded: false });
+      mockOidcReauth.verify.mockReturnValue(true);
+
+      await controller.deleteAccount(mockReq, {}, mockRes);
+
+      expect(mockOidcReauth.verify).toHaveBeenCalledWith(mockReq, "user-1");
+      expect(mockUsersService.deleteAccount).toHaveBeenCalledWith(
+        "user-1",
+        {},
+        true,
+      );
+      expect(mockOidcReauth.consume).toHaveBeenCalledWith(mockRes);
     });
 
     it("returns a downgrade-aware message when the account is demoted to a delegate", async () => {
       mockUsersService.deleteAccount.mockResolvedValue({ downgraded: true });
       const dto = { password: "mypass" };
 
-      const result = await controller.deleteAccount(mockReq, dto);
+      const result = await controller.deleteAccount(mockReq, dto, mockRes);
 
       expect(result).toEqual({
         message:
@@ -198,10 +228,14 @@ describe("UsersController", () => {
       mockUsersService.deleteData = jest.fn().mockResolvedValue({ deleted });
       const dto = { password: "mypass", deleteAccounts: true };
 
-      const result = await controller.deleteData(mockReq, dto);
+      const result = await controller.deleteData(mockReq, dto, mockRes);
 
       expect(result).toEqual({ deleted });
-      expect(mockUsersService.deleteData).toHaveBeenCalledWith("user-1", dto);
+      expect(mockUsersService.deleteData).toHaveBeenCalledWith(
+        "user-1",
+        dto,
+        false,
+      );
     });
   });
 });

@@ -173,9 +173,9 @@ describe("StepUpAuthService", () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it("issues a token when oidcConfirmed=true after a fresh IdP roundtrip", async () => {
+    it("issues a token once the server has verified the IdP roundtrip", async () => {
       const result = await service.verifyAndIssue(userId, "emergency-access", {
-        oidcConfirmed: true,
+        oidcReauthProven: true,
       });
       expect(result.stepUpToken).toBe("signed.jwt.token");
       const payload = jwt.sign.mock.calls[0][0];

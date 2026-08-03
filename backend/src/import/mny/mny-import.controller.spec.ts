@@ -8,6 +8,7 @@ import { readMnyFixture, MNY_FIXTURES } from "./__fixtures__/mny-fixtures";
 import { ImportJob } from "./entities/import-job.entity";
 import { MnyImportJobService } from "./mny-import-job.service";
 import { MnyImportService } from "./mny-import.service";
+import { OidcReauthService } from "../../auth/oidc/oidc-reauth.service";
 import {
   MNY_IMPORT_LIMIT_BYTES,
   MNY_IMPORT_LIMIT_MB,
@@ -32,6 +33,7 @@ describe("MnyImportController", () => {
   let staging: Record<string, jest.Mock>;
   let jobs: Record<string, jest.Mock>;
   let importService: Record<string, jest.Mock>;
+  let oidcReauth: Record<string, jest.Mock>;
   let controller: MnyImportController;
 
   beforeEach(() => {
@@ -48,12 +50,17 @@ describe("MnyImportController", () => {
     };
     jobs = { findOne: jest.fn().mockResolvedValue(null) };
     importService = { start: jest.fn() };
+    oidcReauth = {
+      verify: jest.fn().mockReturnValue(false),
+      consume: jest.fn(),
+    };
 
     controller = new MnyImportController(
       staging as unknown as MnyStagingService,
       new MnyParserService(),
       jobs as unknown as MnyImportJobService,
       importService as unknown as MnyImportService,
+      oidcReauth as unknown as OidcReauthService,
     );
   });
 
@@ -222,7 +229,7 @@ describe("MnyImportController", () => {
       expect(importService.start).toHaveBeenCalledWith("user-1", {
         stagedFileId: "staged-1",
         options: { wipeExistingData: true },
-        wipeCredentials: { password: "hunter2", oidcIdToken: undefined },
+        wipeCredentials: { password: "hunter2", oidcReauthProven: false },
       });
       expect(job).toEqual({
         id: "job-1",

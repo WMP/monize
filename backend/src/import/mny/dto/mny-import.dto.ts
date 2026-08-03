@@ -128,14 +128,6 @@ export class StartMnyImportDto {
   @IsString()
   @MaxLength(128)
   wipePassword?: string;
-
-  @ApiPropertyOptional({
-    description: "OIDC id token, the wipe confirmation for OIDC accounts.",
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(2048)
-  wipeOidcIdToken?: string;
 }
 
 /**

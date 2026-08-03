@@ -337,6 +337,15 @@
       "toasts": {
         "success": "[XX-Deleted {count} records successfully-XX]",
         "failed": "[XX-Failed to delete data-XX]"
+      },
+      "alwaysDeleted": {
+        "transactions": "[XX-All transactions and splits-XX]",
+        "scheduled": "[XX-All scheduled and recurring transactions-XX]",
+        "investments": "[XX-All securities, prices, holdings and investment transactions-XX]",
+        "budgets": "[XX-All budgets and budget alerts-XX]",
+        "monthlyBalances": "[XX-Monthly account balance summaries-XX]",
+        "reportsTagsMappings": "[XX-Custom reports, tags and import mappings-XX]",
+        "actionHistory": "[XX-Action history (undo and redo)-XX]"
       }
     },
     "deleteAccount": {
@@ -360,8 +369,11 @@
       },
       "errors": {
         "typeDelete": "[XX-Please type DELETE to confirm-XX]",
-        "passwordRequired": "[XX-Please enter your password to confirm-XX]"
-      }
+        "passwordRequired": "[XX-Please enter your password to confirm-XX]",
+        "oidcReauthRequired": "[XX-Reauthenticate with your provider before deleting the account.-XX]"
+      },
+      "oidcReauthFirst": "[XX-Confirm your identity with your provider to continue.-XX]",
+      "oidcReauthButton": "[XX-Reauthenticate with provider-XX]"
     }
   },
   "apiAccess": {
@@ -561,8 +573,12 @@
         "pleaseSelectFile": "[XX-Please select a backup file-XX]",
         "pleaseEnterPassword": "[XX-Please enter your password to confirm-XX]",
         "encryptedNeedsPassword": "[XX-This backup is encrypted. Enter the password it was created with in the \"Backup password\" field, then try again.-XX]",
-        "failed": "[XX-Failed to restore backup-XX]"
-      }
+        "failed": "[XX-Failed to restore backup-XX]",
+        "oidcReauthRequired": "[XX-Reauthenticate with your provider before restoring.-XX]"
+      },
+      "oidcReauthFirst": "[XX-Confirm your identity with your provider first, then choose the backup file.-XX]",
+      "oidcReauthButton": "[XX-Reauthenticate with provider-XX]",
+      "oidcReauthConfirmed": "[XX-Identity confirmed. Choose the backup file to restore.-XX]"
     },
     "restoreResult": {
       "title": "[XX-Restore Complete-XX]",

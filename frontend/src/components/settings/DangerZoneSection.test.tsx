@@ -55,6 +55,7 @@ const oidcUser: User = {
 describe('DangerZoneSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
   });
 
   it('renders the danger zone heading and both action buttons', () => {
@@ -353,28 +354,55 @@ describe('DangerZoneSection', () => {
   });
 
   describe('Delete Account (OIDC)', () => {
-    it('calls deleteAccount with OIDC token for OIDC users', async () => {
-      (userSettingsApi.deleteAccount as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
-
+    // The old flow offered Confirm Delete straight away and sent the constant
+    // string "oidc-session-confirmed", which the server accepted as
+    // reauthentication -- so a live session was the whole check.
+    it('offers reauthentication instead of deleting outright', () => {
       render(<DangerZoneSection user={oidcUser} />);
 
       fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }));
+      fireEvent.change(screen.getByPlaceholderText('Type DELETE'), { target: { value: 'DELETE' } });
+
+      expect(
+        screen.getByRole('button', { name: 'Reauthenticate with provider' }),
+      ).not.toBeDisabled();
+      expect(
+        screen.queryByRole('button', { name: 'Confirm Delete' }),
+      ).not.toBeInTheDocument();
+      expect(userSettingsApi.deleteAccount).not.toHaveBeenCalled();
+    });
+
+    it('redirects to the identity provider and remembers the intent', () => {
+      render(<DangerZoneSection user={oidcUser} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }));
+      fireEvent.change(screen.getByPlaceholderText('Type DELETE'), { target: { value: 'DELETE' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Reauthenticate with provider' }));
+
+      expect(authApi.initiateOidc).toHaveBeenCalled();
+      expect(
+        JSON.parse(sessionStorage.getItem('monize:oidc-reauth-intent') as string),
+      ).toMatchObject({ intent: 'delete-account' });
+    });
+
+    it('sends no credential once the roundtrip is done', async () => {
+      (userSettingsApi.deleteAccount as ReturnType<typeof vi.fn>).mockResolvedValue({
+        downgraded: false,
+      });
+      sessionStorage.setItem(
+        'monize:oidc-reauth-intent',
+        JSON.stringify({ intent: 'delete-account' }),
+      );
+
+      render(<DangerZoneSection user={oidcUser} />);
+
+      // The panel reopens itself; only the confirmation word is re-entered.
       fireEvent.change(screen.getByPlaceholderText('Type DELETE'), { target: { value: 'DELETE' } });
       fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
 
       await waitFor(() => {
-        expect(userSettingsApi.deleteAccount).toHaveBeenCalledWith({ oidcIdToken: 'oidc-session-confirmed' });
+        expect(userSettingsApi.deleteAccount).toHaveBeenCalledWith({});
       });
-    });
-
-    it('enables delete button without password for OIDC users', () => {
-      render(<DangerZoneSection user={oidcUser} />);
-
-      fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }));
-      fireEvent.change(screen.getByPlaceholderText('Type DELETE'), { target: { value: 'DELETE' } });
-
-      // OIDC user doesn't need password, just DELETE text
-      expect(screen.getByRole('button', { name: 'Confirm Delete' })).not.toBeDisabled();
     });
 
     it('shows error toast when deleteAccount fails', async () => {

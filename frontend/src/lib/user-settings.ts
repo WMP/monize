@@ -10,7 +10,6 @@ import {
 
 export interface DeleteDataOptions {
   password?: string;
-  oidcIdToken?: string;
   deleteAccounts?: boolean;
   deleteCategories?: boolean;
   deletePayees?: boolean;
@@ -47,7 +46,7 @@ export const userSettingsApi = {
   },
 
   deleteAccount: async (
-    data: { password?: string; oidcIdToken?: string },
+    data: { password?: string },
   ): Promise<{ downgraded: boolean }> => {
     const response = await apiClient.post<{ downgraded: boolean }>(
       '/users/delete-account',

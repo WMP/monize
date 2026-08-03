@@ -130,14 +130,18 @@ describe('backupApi', () => {
     expect(atob(encoded as string)).toBe(' spacey');
   });
 
-  it('restoreBackup adds OIDC token header when provided', async () => {
+  // An OIDC restore used to send the constant string "oidc-session-confirmed" in
+  // this header and the server accepted it as reauthentication. There is no
+  // client-supplied OIDC credential any more: the proof is the HttpOnly cookie
+  // /auth/oidc/callback issues, so the client must send nothing.
+  it('restoreBackup sends no OIDC credential of its own', async () => {
     vi.mocked(apiClient.post).mockResolvedValue({ data: { message: 'ok', restored: {} } });
 
     const file = new File(['data'], 'backup.json.gz');
-    await backupApi.restoreBackup({ file, oidcIdToken: 'oidc-token' });
+    await backupApi.restoreBackup({ file });
 
     const config = vi.mocked(apiClient.post).mock.calls[0][2];
-    expect(config?.headers?.['X-Restore-OIDC-Token']).toBe('oidc-token');
+    expect(config?.headers?.['X-Restore-OIDC-Token']).toBeUndefined();
   });
 
   it('getAutoBackupSettings fetches settings', async () => {
@@ -195,15 +199,6 @@ describe('backupApi', () => {
     expect((call[2] as any).headers['X-Backup-Password']).toBe(btoa('bk'));
   });
 
-  it('restoreBackup forwards the OIDC token header', async () => {
-    vi.mocked(apiClient.post).mockResolvedValue({
-      data: { message: 'ok', restored: {} },
-    });
-    const file = new File(['{}'], 'backup.json.gz');
-    await backupApi.restoreBackup({ file, oidcIdToken: 'tok' });
-    const call = vi.mocked(apiClient.post).mock.calls[0];
-    expect((call[2] as any).headers['X-Restore-OIDC-Token']).toBe('tok');
-  });
 
   it('getEncryptionStatus calls GET /backup/encryption', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({

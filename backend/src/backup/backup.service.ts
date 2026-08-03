@@ -35,7 +35,13 @@ import { GemStrategyAsset } from "../strategies/entities/gem-strategy-asset.enti
 export interface RestoreBackupInput {
   compressedData: Buffer;
   password?: string;
-  oidcIdToken?: string;
+  /**
+   * True only when `OidcReauthService` verified the HttpOnly proof the OIDC
+   * callback issued. Replaces the old client-supplied `oidcIdToken`, which the
+   * frontend filled with the constant "oidc-session-confirmed" and this service
+   * accepted as reauthentication.
+   */
+  oidcReauthProven?: boolean;
   // Password used to encrypt the backup file. For local users this is usually
   // the same as `password`; if the user rotated their login password since the
   // backup was made, the frontend re-prompts and sends the old one here.
@@ -1001,14 +1007,14 @@ export class BackupService {
     input: RestoreBackupInput,
   ): Promise<void> {
     if (user.authProvider === "oidc") {
-      // Re-confirm via the authenticated session, mirroring account deletion
-      // (users.service.deleteAccount). The request already passed the JWT
-      // AuthGuard, so a live OIDC session IS the re-authentication. OIDC users
-      // have no local password and cannot mint a fresh signed ID token in the
-      // browser (the login id_token lives only in backend httpOnly cookies), so
-      // the client sends a "session confirmed" sentinel. Cryptographically
-      // verifying that sentinel as an ID token here made OIDC restore impossible.
-      if (!input.oidcIdToken) {
+      // An OIDC account has no local password and the browser cannot mint a
+      // fresh signed ID token, so the factor is the identity provider itself.
+      // The evidence is the short-lived HttpOnly proof `/auth/oidc/callback`
+      // sets once it has verified state, nonce and the code exchange -- the only
+      // party that watched the authentication happen. A live session is not
+      // reauthentication: it is exactly what an attacker on an unattended
+      // browser already has.
+      if (!input.oidcReauthProven) {
         throw new UnauthorizedException(
           tr(
             "errors.backup.oidcReauthRequired",

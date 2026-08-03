@@ -909,21 +909,20 @@ describe("UsersService", () => {
       expect(usersRepository.remove).toHaveBeenCalled();
     });
 
-    it("accepts OIDC token for OIDC-only users", async () => {
+    it("accepts a verified roundtrip for OIDC-only users", async () => {
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,
         authProvider: "oidc",
         passwordHash: null,
       });
 
-      await service.deleteAccount("user-1", {
-        oidcIdToken: "oidc-session-confirmed",
-      });
+      await service.deleteAccount("user-1", {}, true);
 
       expect(usersRepository.remove).toHaveBeenCalled();
     });
 
-    it("requires OIDC token for OIDC-only users", async () => {
+    // Same false control as deleteData: any string used to pass for a redirect.
+    it("refuses an OIDC-only user without a server-verified roundtrip", async () => {
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,
         authProvider: "oidc",
@@ -935,7 +934,7 @@ describe("UsersService", () => {
       );
     });
 
-    it("accepts OIDC token for OIDC users who also have a password", async () => {
+    it("accepts a verified roundtrip for OIDC users who also have a password", async () => {
       const hashedPassword = await bcrypt.hash("CorrectPass123!", 10);
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,
@@ -943,9 +942,7 @@ describe("UsersService", () => {
         passwordHash: hashedPassword,
       });
 
-      await service.deleteAccount("user-1", {
-        oidcIdToken: "oidc-session-confirmed",
-      });
+      await service.deleteAccount("user-1", {}, true);
 
       expect(usersRepository.remove).toHaveBeenCalled();
     });
@@ -1059,22 +1056,22 @@ describe("UsersService", () => {
       expect(mockDataSource.transaction).toHaveBeenCalled();
     });
 
-    it("accepts OIDC token for OIDC-only users", async () => {
+    it("accepts a verified roundtrip for OIDC-only users", async () => {
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,
         authProvider: "oidc",
         passwordHash: null,
       });
 
-      const result = await service.deleteData("user-1", {
-        oidcIdToken: "oidc-session-confirmed",
-      });
+      const result = await service.deleteData("user-1", {}, true);
 
       expect(result).toHaveProperty("deleted");
       expect(mockDataSource.transaction).toHaveBeenCalled();
     });
 
-    it("requires OIDC token for OIDC-only users", async () => {
+    // The old contract accepted any non-empty client string as proof of an
+    // identity-provider round trip, so a borrowed session could wipe the data.
+    it("refuses an OIDC-only user without a server-verified roundtrip", async () => {
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,
         authProvider: "oidc",
@@ -1086,7 +1083,7 @@ describe("UsersService", () => {
       );
     });
 
-    it("accepts OIDC token for OIDC users who also have a password", async () => {
+    it("accepts a verified roundtrip for OIDC users who also have a password", async () => {
       const hashedPassword = await bcrypt.hash("CorrectPass123!", 10);
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,
@@ -1094,9 +1091,7 @@ describe("UsersService", () => {
         passwordHash: hashedPassword,
       });
 
-      const result = await service.deleteData("user-1", {
-        oidcIdToken: "oidc-session-confirmed",
-      });
+      const result = await service.deleteData("user-1", {}, true);
 
       expect(result).toHaveProperty("deleted");
       expect(mockDataSource.transaction).toHaveBeenCalled();

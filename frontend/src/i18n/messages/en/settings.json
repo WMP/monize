@@ -337,6 +337,15 @@
       "toasts": {
         "success": "Deleted {count} records successfully",
         "failed": "Failed to delete data"
+      },
+      "alwaysDeleted": {
+        "transactions": "All transactions and splits",
+        "scheduled": "All scheduled and recurring transactions",
+        "investments": "All securities, prices, holdings and investment transactions",
+        "budgets": "All budgets and budget alerts",
+        "monthlyBalances": "Monthly account balance summaries",
+        "reportsTagsMappings": "Custom reports, tags and import mappings",
+        "actionHistory": "Action history (undo and redo)"
       }
     },
     "deleteAccount": {
@@ -360,8 +369,11 @@
       },
       "errors": {
         "typeDelete": "Please type DELETE to confirm",
-        "passwordRequired": "Please enter your password to confirm"
-      }
+        "passwordRequired": "Please enter your password to confirm",
+        "oidcReauthRequired": "Reauthenticate with your provider before deleting the account."
+      },
+      "oidcReauthFirst": "Confirm your identity with your provider to continue.",
+      "oidcReauthButton": "Reauthenticate with provider"
     }
   },
   "apiAccess": {
@@ -561,8 +573,12 @@
         "pleaseSelectFile": "Please select a backup file",
         "pleaseEnterPassword": "Please enter your password to confirm",
         "encryptedNeedsPassword": "This backup is encrypted. Enter the password it was created with in the \"Backup password\" field, then try again.",
-        "failed": "Failed to restore backup"
-      }
+        "failed": "Failed to restore backup",
+        "oidcReauthRequired": "Reauthenticate with your provider before restoring."
+      },
+      "oidcReauthFirst": "Confirm your identity with your provider first, then choose the backup file.",
+      "oidcReauthButton": "Reauthenticate with provider",
+      "oidcReauthConfirmed": "Identity confirmed. Choose the backup file to restore."
     },
     "restoreResult": {
       "title": "Restore Complete",

@@ -1988,7 +1988,7 @@ describe("BackupService", () => {
 
       const result = await service.restoreData(
         userId,
-        makeInput({ oidcIdToken: "oidc-session-confirmed" }),
+        makeInput({ oidcReauthProven: true }),
       );
 
       expect(result.message).toBe("Backup restored successfully");
@@ -2137,9 +2137,7 @@ describe("BackupService", () => {
 
       const result = await service.restoreData(
         userId,
-        makeInput({
-          oidcIdToken: "oidc-session-confirmed",
-        }),
+        makeInput({ oidcReauthProven: true }),
       );
 
       expect(result.message).toBe("Backup restored successfully");
@@ -2182,7 +2180,7 @@ describe("BackupService", () => {
         });
         const result = await service.restoreData(userId, {
           compressedData: encryptedBlob(validBackupData, "stored-bk-pw"),
-          oidcIdToken: "tok",
+          oidcReauthProven: true,
         });
         expect(result.message).toBe("Backup restored successfully");
       });

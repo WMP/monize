@@ -10,6 +10,7 @@ import { UserPreference } from "../users/entities/user-preference.entity";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { OidcService } from "./oidc/oidc.service";
+import { OidcReauthService } from "./oidc/oidc-reauth.service";
 import { EmailService } from "../notifications/email.service";
 import { DemoModeService } from "../common/demo-mode.service";
 import { TokenService } from "./token.service";
@@ -40,6 +41,7 @@ describe("AuthController", () => {
   let controller: AuthController;
   let authService: Record<string, jest.Mock>;
   let oidcService: Record<string, jest.Mock | boolean>;
+  let oidcReauthService: Record<string, jest.Mock>;
   let configService: Record<string, jest.Mock>;
   let emailService: Record<string, jest.Mock>;
   let demoModeService: { isDemo: boolean };
@@ -118,6 +120,11 @@ describe("AuthController", () => {
       }),
     };
 
+    oidcReauthService = {
+      issue: jest.fn(),
+      verify: jest.fn().mockReturnValue(false),
+      consume: jest.fn(),
+    };
     oidcService = {
       enabled: false,
     };
@@ -149,6 +156,7 @@ describe("AuthController", () => {
       controllers: [AuthController],
       providers: [
         { provide: AuthService, useValue: authService },
+        { provide: OidcReauthService, useValue: oidcReauthService },
         { provide: OidcService, useValue: oidcService },
         { provide: ConfigService, useValue: configService },
         { provide: EmailService, useValue: emailService },
@@ -212,6 +220,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
           { provide: EmailService, useValue: emailService },
@@ -279,6 +288,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
           { provide: EmailService, useValue: emailService },
@@ -402,6 +412,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
           { provide: EmailService, useValue: emailService },
@@ -687,6 +698,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
           { provide: EmailService, useValue: emailService },
@@ -856,6 +868,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
           { provide: EmailService, useValue: emailService },
@@ -1086,6 +1099,11 @@ describe("AuthController", () => {
       expect(res.redirect).toHaveBeenCalledWith(
         expect.stringContaining("/auth/callback?success=true"),
       );
+      // This is the only place that watched a real identity-provider
+      // authentication complete, so it is where the proof destructive OIDC
+      // flows verify comes from. Those flows used to accept the client's word
+      // for it instead (the literal string "oidc-session-confirmed").
+      expect(oidcReauthService.issue).toHaveBeenCalledWith(res, "user-oidc");
       // An existing account signing in again must not be sent through the
       // first-run preferences step.
       expect(res.redirect).not.toHaveBeenCalledWith(
@@ -1798,6 +1816,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
           { provide: EmailService, useValue: emailService },
@@ -1875,6 +1894,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
           { provide: EmailService, useValue: emailService },
@@ -1960,6 +1980,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           {
             provide: OidcService,
             useValue: {
@@ -2045,6 +2066,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           {
             provide: OidcService,
             useValue: {
@@ -2135,6 +2157,7 @@ describe("AuthController", () => {
           controllers: [AuthController],
           providers: [
             { provide: AuthService, useValue: authService },
+            { provide: OidcReauthService, useValue: oidcReauthService },
             {
               provide: OidcService,
               useValue: {
@@ -2208,6 +2231,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           {
             provide: OidcService,
             useValue: {
@@ -2271,6 +2295,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           {
             provide: OidcService,
             useValue: {
@@ -2336,6 +2361,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           {
             provide: OidcService,
             useValue: {
@@ -2403,6 +2429,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           {
             provide: OidcService,
             useValue: {
@@ -2621,6 +2648,7 @@ describe("AuthController", () => {
         controllers: [AuthController],
         providers: [
           { provide: AuthService, useValue: authService },
+          { provide: OidcReauthService, useValue: oidcReauthService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
           { provide: EmailService, useValue: emailService },

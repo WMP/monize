@@ -6,11 +6,6 @@ export class DeleteDataDto {
   @IsOptional()
   password?: string;
 
-  @IsString()
-  @MaxLength(2048)
-  @IsOptional()
-  oidcIdToken?: string;
-
   // Always deleted: transactions, splits, tags, scheduled transactions,
   // investment transactions, holdings, security prices, securities,
   // monthly account balances, budgets

@@ -8,6 +8,7 @@ import { AuthController } from "./auth.controller";
 import { LocalStrategy } from "./strategies/local.strategy";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { OidcService } from "./oidc/oidc.service";
+import { OidcReauthModule } from "./oidc/oidc-reauth.module";
 import { PatService } from "./pat.service";
 import { PasswordBreachService } from "./password-breach.service";
 import { TokenService } from "./token.service";
@@ -24,6 +25,7 @@ import { DelegationModule } from "../delegation/delegation.module";
 @Module({
   imports: [
     PassportModule,
+    OidcReauthModule,
     UsersModule,
     NotificationsModule,
     DelegationModule,
@@ -57,6 +59,7 @@ import { DelegationModule } from "../delegation/delegation.module";
   ],
   controllers: [AuthController, PatController, StepUpAuthController],
   exports: [
+    OidcReauthModule,
     AuthService,
     TokenService,
     TwoFactorService,
