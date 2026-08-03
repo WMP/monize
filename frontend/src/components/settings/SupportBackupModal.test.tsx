@@ -47,6 +47,20 @@ describe('SupportBackupModal', () => {
     );
   });
 
+  // The note is the only place the user learns what survives de-identification,
+  // so it has to match the rules table rather than describe an easier promise.
+  // "names are masked" alone was true of payees and untrue of a currency the
+  // user created themselves, whose free-text name and symbol were kept verbatim
+  // (backend/src/backup/support-backup/support-backup-rules.ts now masks both,
+  // and keeps only the three-letter code for referential integrity).
+  it('discloses that a self-created currency keeps its code but not its name', async () => {
+    await open();
+    const note = screen.getByText(/de-identified copy/i).textContent ?? '';
+    expect(note).toMatch(/currency codes stay readable/i);
+    expect(note).toMatch(/currency you created yourself/i);
+    expect(note).toMatch(/name and symbol are masked/i);
+  });
+
   it('previews before/after from the actual obfuscation output', async () => {
     mockPreview.mockResolvedValue({
       samples: [

@@ -62,7 +62,6 @@ const BASELINE: readonly string[] = [
   'import:toasts.mnySingleFileOnly',
   'investments:transactionForm.transferCostNote',
   'settings:about.versionMismatch',
-  'settings:supportBackup.howItWorks',
   'settings:supportBackup.confirmPasswordMessage',
   'settings:supportBackup.confirmPasswordConfirm',
   'settings:emergencyAccess.message.toasts.verifyAgain',
