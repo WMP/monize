@@ -1,107 +1,76 @@
 {
-  "session_ended_at": "2026-08-03T16:30:00Z",
-  "stop_reason": "context budget; checkpointed deliberately with nothing in flight",
+  "session_ended_at": "2026-08-03T18:00:00Z",
+  "stop_reason": "planned checkpoint at the ~60% context budget, decided in advance; nothing in flight",
   "source_sha": "4e48a76762a07402a5d3bc3f886fcd8e6ff5829b",
   "fix_branch": "automation/claude-fixes",
-  "fix_sha": "937be3bdcb3ee2f336f6289141a03a0887189d3a",
-  "coordination_sha": "f2f243c9cf3e55456e70993ef537a0f51f4ce229",
-  "fix_branch_created_from": "origin/main at 4e48a767 (branch did not exist at session start)",
+  "fix_sha": "2124cff8afb8be6b2dbb9f4e457a2f87331b33b5",
+  "coordination_sha": "9d9cf7c3ffedfef575df94288f96f0e991d2e489",
 
   "in_flight": [],
   "in_progress_dir_empty": true,
 
-  "findings_touched": [
+  "this_session": [
     {
-      "id": "REV-20260803-001",
-      "state": "disputed",
-      "reason": "obsolete: migration 105 already widened recurring_extra_mode to VARCHAR(64), and schema.sql:1447 matches. Migration 098 is left as-is on purpose (applied migrations are history). DEC-20260803-001 is moot but left for the human to close."
-    },
-    {
-      "id": "REV-20260803-003",
-      "state": "disputed",
-      "reason": "obsolete: schema.sql already carries all three columns plus the payee FK (535-536) and index (181). Evidence table in the finding. DEC-20260803-003 moot, left for the human."
-    },
-    {
-      "id": "REV-20260803-002",
+      "id": "REV-20260803-039",
       "state": "pending-review",
-      "fix_commit": "f70e0314e81679c57fa7cbe7903c9be4417ab881",
-      "summary": "assertPayeeOwned on create + update; new source-scanning guard account-reference-ownership.spec.ts"
+      "fix_commit": "2124cff8afb8be6b2dbb9f4e457a2f87331b33b5",
+      "summary": "frontend/src/lib/loan-history.ts -- removed `catch { return [] }` from fetchLoanInterestTransactions so a failed fetch propagates instead of reading as 'no interest booked'. Activated error+retry state two callers already had but could never reach."
     },
     {
-      "id": "REV-20260803-021",
-      "state": "pending-review",
-      "fix_commit": "2c50baa798a85d25cdc347e3ed3f112b3b4d7bd2",
-      "summary": "assertCategoryOwned on create + update; overpaymentCategoryId removed from the guard's grandfather list"
+      "id": "REV-20260803-022",
+      "state": "open, requires_human_approval=true",
+      "escalated_to": "DEC-20260803-005",
+      "summary": "two loans sharing a source account and interest category collect each other's interest; refuse-vs-attribute is a product call"
     },
     {
-      "id": "REV-20260803-008",
-      "state": "pending-review",
-      "fix_commit": "937be3bdcb3ee2f336f6289141a03a0887189d3a",
-      "summary": "isVoid skip in pairSeparateInterest's pairing loop, NOT a SQL status filter (column is nullable)"
+      "id": "REV-20260803-023",
+      "state": "open, requires_human_approval=true",
+      "escalated_to": "DEC-20260803-004",
+      "summary": "Math.abs makes an interest refund ADD interest; net-vs-exclude-vs-unknown is a product call"
     }
   ],
 
-  "files_modified": [
-    "backend/src/accounts/accounts.service.ts",
-    "backend/src/accounts/accounts.service.spec.ts",
-    "backend/src/accounts/account-reference-ownership.spec.ts (new)",
-    "backend/src/accounts/loan-payment-detector.service.ts",
-    "backend/src/accounts/loan-payment-detector.service.spec.ts"
-  ],
-  "catalogs_touched": "none -- both fixes reused already-translated keys (errors.transactions.payeeNotFound / categoryNotFound), so locale parity stayed green all session",
-
-  "checks": {
-    "npx eslint \"{src,apps,libs,test}/**/*.ts\"": "pass (bare eslint; `npm run lint` is --fix and must not be used as the gate)",
-    "npx tsc --noEmit": "pass",
-    "npm run migration:lint": "pass, 122 files",
-    "TZ=UTC npm run test:unit": "pass -- 400 suites / 10700 tests, zero failures at 937be3bd",
-    "npm run i18n:check": "pass",
-    "frontend": "not run -- no frontend file was touched this session",
-    "npm run test:integration": "NOT RUN -- needs a live Postgres, sandbox has none",
-    "e2e": "NOT RUN -- needs browsers, sandbox has none"
+  "previous_session_all_closed_by_review_agent": {
+    "verified": ["REV-20260803-002", "REV-20260803-008", "REV-20260803-021"],
+    "withdrawn": ["REV-20260803-001", "REV-20260803-003"],
+    "note": "the review agent agreed both disputes: the code was already correct on main. DEC-20260803-001 and -003 were retired with them."
   },
-  "unresolved_failures": [],
 
   "counts_at_checkpoint": {
-    "open": 38,
+    "open": 37,
+    "open_awaiting_human_decision": 2,
     "in_progress": 0,
-    "pending_review": 3,
-    "disputed": 2,
+    "pending_review": 1,
+    "disputed": 0,
+    "resolved": 5,
     "human_approval_pending": 2
   },
 
+  "review_agent_is_blocked_on_us": "Its last three commits say 'audit paused, queue full'. It stops auditing while open/ is large, so the throughput limit is the fix agent, not the reviewer. Draining open/ is what unblocks new findings.",
+
+  "operational_rules_learned_the_hard_way": [
+    "backend `npm run lint` is `eslint --fix` and rewrites source. Gate on `npx eslint \"{src,apps,libs,test}/**/*.ts\"` instead.",
+    "Run backend unit tests as `TZ=UTC npm run test:unit`; some specs count periods against fixtures and flip under other offsets.",
+    "Jest here is v30: the flag is `--testPathPatterns` (plural).",
+    "Frontend `npm run test` takes ~10 minutes (627 files). Budget for it; run the single file with `npx vitest run <path>` while iterating.",
+    "transactions.status is NULLABLE (schema.sql:274). Never `status != 'VOID'` / `Not(TransactionStatus.VOID)` -- it drops NULL-status rows. Use the entity's isVoid getter in JS, or `(t.status IS NULL OR t.status != 'VOID')` in SQL.",
+    "Reuse an existing translated key across namespaces where the copy is identical (payees.service.ts borrows errors.transactions.categoryNotFound). Locale parity then stays green and no localization pass is owed; a new en-only errors.json key costs ~36 parity failures.",
+    "A nested withScopedDb JOINS the ambient transaction, so an assertXOwned helper opening its own withScopedDb still refuses before the caller's write. Findings written against the pre-RLS code will ask for a QueryRunner manager -- there are none left in src/ and lint bans them.",
+    "createScopedDbMocks THROWS for an unregistered entity: adding a repository read means registering [Entity, mock] in the spec.",
+    "Verify every regression test by actually reverting the fix and re-running. Some tests deliberately pass either way (they pin a boundary, e.g. 'null still clears without a lookup'); only the revert run tells those apart from vacuous ones.",
+    "A mock must have the shape the real collaborator returns. A plain `{ status: 'VOID' }` literal has no isVoid getter, so a test asserting void-filtering passes against unfixed code. Use Object.assign(new Entity(), {...}) when the claim is about a getter."
+  ],
+
+  "escalate_rather_than_implement": "Most of what remains in open/ is financial calculation. Escalate (write a DEC) when the finding admits more than one defensible numeric answer -- that is the common case in loan-schedule.ts, loan-history.ts and rate-change-inference.service.ts. REV-004 (annualization by calendar-day gaps) changes the inference formula and is the clearest example. Implement only where an explicit CLAUDE.md rule or an in-repo pattern fixes the answer, as with REV-039 ('a failed lookup is not an empty dataset') and REV-008 (voided rows are out of the ledger).",
+
   "recommend_review_agent_raise": [
-    {
-      "what": "Five more account reference ids with the same unvalidated-FK exposure as REV-002/REV-021",
-      "where": "backend/src/accounts/accounts.service.ts, create + update",
-      "fields": [
-        "principalCategoryId",
-        "interestCategoryId",
-        "assetCategoryId",
-        "sourceAccountId",
-        "linkedLoanAccountId"
-      ],
-      "note": "All five sit in PREEXISTING_UNCHECKED in backend/src/accounts/account-reference-ownership.spec.ts, and that list's third test fails if one is silently closed without leaving the list. The three category ids need one assertCategoryOwned call each. sourceAccountId/linkedLoanAccountId reference accounts and want different semantics (probably 404, matching findOne, not 400) -- that is the product call.",
-      "why_not_fixed": "each is an authorization change on an endpoint no finding named"
-    },
-    {
-      "what": "detectPaymentPattern loads every transaction on the loan account with no status filter",
-      "where": "backend/src/accounts/loan-payment-detector.service.ts:103-109",
-      "note": "Same class as REV-008 but wider: the unfiltered rows feed buildPaymentRecords, buildRunningBalanceMap and estimateInterestRate, so a voided loan payment can set the detected regular amount, the frequency, and the balance the rate estimate divides by. No open finding covers this line (REV-006/007 are :149, REV-022 :442, REV-023 :462). Any fix must use the nullable-safe form -- see the REV-008 notes.",
-      "why_not_fixed": "changes detected payment amounts and inferred rates on a path no finding named"
-    }
+    "Five account reference ids still unvalidated for tenant ownership: principalCategoryId, interestCategoryId, assetCategoryId, sourceAccountId, linkedLoanAccountId. All sit in PREEXISTING_UNCHECKED in backend/src/accounts/account-reference-ownership.spec.ts; that list may only shrink and its third test fails on a stale entry. The account-referencing pair probably wants 404 not 400.",
+    "loan-payment-detector.service.ts:103-109 loads every transaction on the loan account with no status filter, feeding buildPaymentRecords, buildRunningBalanceMap and estimateInterestRate. Same class as REV-008 but wider blast radius. Must use the nullable-safe form.",
+    "No component test proves REV-039's end-to-end claim: DebtPayoffTimelineReport / LoanOverpaymentSimulatorReport should assert their error+retry state renders when the interest fetch rejects. Their branches were unreachable until 2124cff8, so nothing ever covered them.",
+    "LoanAmortizationReport.tsx:111-114 catches locally and sets transactions and interest to [] with only a logger.error, so that surface still renders estimated interest silently."
   ],
 
-  "learned_this_session": [
-    "transactions.status is NULLABLE (schema.sql:274, VARCHAR(20) DEFAULT 'UNRECONCILED', no NOT NULL). Never write `status != 'VOID'` or `Not(TransactionStatus.VOID)` -- it silently drops NULL-status rows. Use the entity's isVoid getter in JS, or the reports' `(t.status IS NULL OR t.status != 'VOID')` in SQL.",
-    "Reuse an existing translated key across namespaces instead of adding an en-only one where the copy is identical (payees.service.ts:175 is the precedent). Locale parity then stays green and no localization pass is owed. A new en-only key in errors.json costs ~36 parity failures.",
-    "A nested withScopedDb JOINS the ambient transaction, so an assertXOwned helper that opens its own withScopedDb still runs inside the caller's transaction and refuses before the write. This is the RLS-era replacement for 'pass the QueryRunner manager down' -- review findings written against the old codebase will ask for a QueryRunner that no longer exists anywhere in src/.",
-    "Jest here is v30: the flag is --testPathPatterns (plural), not --testPathPattern.",
-    "createScopedDbMocks THROWS for an unregistered entity, so adding a repository read to a service means registering [Entity, mock] in its spec's createScopedDbMocks list.",
-    "Always verify a regression test fails without the fix by actually reverting the fix and re-running. Two of this session's tests (the null-clears cases) pass either way by design -- they pin the fix's boundary, not the defect -- and only the revert run distinguishes those from tests that are simply vacuous."
-  ],
+  "next_step": "Run the loop from step 1. 37 open (2 of them awaiting a human decision -- skip those: REV-022, REV-023). Cheapest next picks, none of which is a money-calculation fork: REV-20260803-015 (PayoffComparisonChart formats an overpayment in the user's default currency instead of the loan's -- add a currencyCode prop and thread it from the caller; REV-031 is the same bug in OverpaymentSimulator and can go in the same pass), REV-20260803-018 (a failed scheduled-payment update discards its confirmation -- frontend/CLAUDE.md's 'asynchronous data carries the request that produced it' section has the rule and the required test matrix), REV-20260803-012 (LoanRateControls must use the shared DateInput, never a raw date input -- ui-conventions.test.ts is the guard), REV-20260803-017 (existing rate-change rows open Add instead of Edit).",
 
-  "next_step": "Run the loop from step 1. 38 open, all severity major except REV-013/016/017/031 (minor), none flagged requires_human_approval. Suggested next pick: REV-20260803-023 (categorized income and refunds counted as interest expense, loan-payment-detector.service.ts:462) -- same file and describe block as the REV-008 work, so the context is cheapest there, and REV-022 (:442) sits beside it. BEFORE implementing either, read docs/financial-calculation-contract.md and docs/time-series-contract.md: the remaining backend findings (REV-004/005/024/025/026/027/028/029/030) and the frontend loan-schedule/loan-history ones (REV-032..043) are financial calculations, and several admit more than one valid design -- those need a human-approval DEC file rather than a fix, per the prompt's 'when in doubt about a money calculation, ask'. REV-004 (annualization by calendar-day gaps) is the clearest example: it changes the inference formula, so write DEC rather than implement.",
-
-  "resume_instructions": "git fetch origin; git worktree add ../coordination automation/agent-review; git checkout automation/claude-fixes (exists on origin at 937be3bd). Nothing is in in-progress/, so no partial work needs re-verifying. cd backend && npm ci before running checks."
+  "resume_instructions": "git fetch origin; git worktree add ../coordination automation/agent-review (if absent); git checkout automation/claude-fixes (on origin at 2124cff8). Nothing in in-progress/, so no partial work to re-verify. Run `npm ci` in backend/ and frontend/ before the checks -- node_modules do not survive a new container."
 }
