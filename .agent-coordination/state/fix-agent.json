@@ -1,30 +1,15 @@
 {
-  "written_at": "2026-08-03T20:52:24+00:00",
-  "stop_reason": "session live; parallel round 1 in flight (3 subagents)",
+  "written_at": "2026-08-03T21:04:47+00:00",
+  "stop_reason": "operator deleted both Routines to correct the prompt; round 1 (REV-036/030/014) still in flight in this same session, which continues under the lock",
   "source_sha": "4e48a76762a07402a5d3bc3f886fcd8e6ff5829b",
   "fix_branch": "automation/claude-fixes",
   "fix_sha": "34b7aea9345dad3201371c571d45d54afc7408fa",
   "coordination_sha": "898115bc (parent of this commit)",
   "waker": {
-    "mechanism": "Two Claude Code Remote Routines, fresh session per fire, together giving a 30-minute cadence",
-    "why_two": "The durable Routine tool ENFORCES a one-hour minimum -- `*/30 * * * *` is rejected with 'cron interval too short'. Two hourly Routines offset by half an hour is how the requested 30-minute cadence is implemented. THEY ARE A PAIR: do not delete either as a duplicate, and do not add a third.",
-    "routines": [
-      {
-        "name": "Monize fix agent loop (:04 of 2)",
-        "id": "trig_01H1YpsJDe5jPCSxrcifsJzx",
-        "cron_utc": "4 * * * *",
-        "next_run_at": "2026-08-03T21:04:00Z"
-      },
-      {
-        "name": "Monize fix agent loop (:34 of 2)",
-        "id": "trig_016HUN91KiRu4QJAXdtkondU",
-        "cron_utc": "34 * * * *",
-        "next_run_at": "2026-08-03T20:34:00Z"
-      }
-    ],
-    "both_carry_the_full_prompt": "Each payload is the full fix-agent prompt plus a paragraph documenting this two-Routine arrangement and the connector caveat below, so a fired session does not mistake the pair for a duplicate.",
-    "caveat": "A Routine created from inside a CCR session stores no MCP connectors, so the fired session has Bash and git but NO trigger-listing tool. A fired session that cannot list triggers must NOT conclude none exist -- read this block and treat it as the record.",
-    "earlier_ids_deleted": "trig_013WsSWHj4Uem7k3jjf5RRKu, trig_01AnPNjh3x4ATeEEQHNUJ48Q, trig_01YaujE8d495u7sstPwDpGwm -- all deleted by the operator while revising the prompt. Gone; do not look for them."
+    "mechanism": "NONE AT PRESENT",
+    "status": "The operator deleted both trig_016HUN91KiRu4QJAXdtkondU (:34 of 2) and trig_01H1YpsJDe5jPCSxrcifsJzx (:04 of 2) at ~21:0x Z to correct the prompt. NOTHING WILL WAKE A NEW SESSION until the operator recreates them. This session itself is still live and continues working under the lock below -- only the unattended wake-up is gone.",
+    "on_next_start": "LIST the triggers first. If the operator has recreated the pair, record ids/cron/next-fire here and do not create a third. If genuinely empty, create the two-Routine pair again (durable Routines enforce a 1-hour minimum, so 30-minute cadence = two hourly Routines offset by half an hour).",
+    "caveat": "A Routine created from inside a CCR session stores no MCP connectors, so a fired session has Bash/git but no trigger-listing tool -- it must read this block rather than concluding nothing exists."
   },
   "in_flight": [],
   "in_progress_dir_empty": true,
