@@ -1,5 +1,16 @@
 # Plan: Database-Enforced Row-Level Security (RLS)
 
+> **Status: implemented, not yet enforced.** This is the original design
+> document, kept for its rationale and its rollout reasoning. Do not read it as
+> a description of future work: every code and migration task in
+> [`row-level-security-tasks.md`](./row-level-security-tasks.md) has landed,
+> including the enable migration (`123_rls_enable.sql`). What remains is the two
+> operational flips in
+> [`row-level-security-runbook.md`](./row-level-security-runbook.md). The
+> `docs/future-plans/` location is historical -- the files move to `docs/` when
+> enforcement ships -- and it has already misled a reviewer into reporting the
+> feature as unbuilt.
+
 ## Goal
 
 Add PostgreSQL Row-Level Security as a database-enforced safety net **beneath** Monize's existing application-level multi-tenancy. Today every service takes `userId` (from JWT `req.user.id`) as its first argument and filters each query with `WHERE user_id = ?`; this is correct and is covered by `backend/test/integration/security-cross-user-isolation.integration.spec.ts`. RLS is defense in depth: a single forgotten `WHERE user_id` clause anywhere -- a new endpoint, a refactor, a raw query -- must not be able to leak one user's financial data to another. The app-level filtering stays in place; RLS is a second wall the database itself enforces.

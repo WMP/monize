@@ -220,6 +220,11 @@ branch selection; UUID validation in `withUserContext`; filter mapping. LSP diag
   `npm run rls:ratchet`). Exact-match ratchet: a count above baseline fails
   (banned new site), below baseline fails (lower the baseline in the same PR).
 
+  **Superseded (see L1).** The counts reached zero, so the script, its self-test,
+  its baseline and both npm scripts were removed and replaced by outright ESLint
+  bans. Nothing named in the paragraph above still exists -- it is kept as the
+  record of how the sites were driven down, not as a gate you can run.
+
 **Scope:** a script under `backend/scripts/` (or repo `scripts/`), CI workflow wiring, a committed
 baseline file.
 

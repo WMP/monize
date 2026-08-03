@@ -10,17 +10,19 @@
 // the backend memory limit all disagreed with `helm/values.yaml`, while the
 // templates render the real values.
 //
-// Prose cannot be type-checked, so this is the check. Three rules:
+// Prose cannot be type-checked, so this is the check. Five rules:
 //
 //   1. every repository path a documented command names must exist;
 //   2. no documented `docker compose` command may omit `-f`, because there is no
 //      default Compose file to fall back on;
 //   3. every Helm parameter documented with a default must have that default in
-//      helm/values.yaml.
+//      helm/values.yaml;
+//   4. every Compose stack on disk appears in the README's tree;
+//   5. every `npm run <script>` a document offers exists in a package.json.
 //
 // Exits non-zero with the offending lines. Requires nothing but Node.
 
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
 const REPO_ROOT = new URL('..', import.meta.url).pathname;
@@ -36,6 +38,21 @@ const DOCS = [
   'frontend/CLAUDE.md',
   'CONTAINER_BUILD.md',
 ];
+
+/**
+ * Every markdown file under docs/, for the npm-script rule only. Rule 5's
+ * failure was in `docs/future-plans/`, which none of the canonical instruction
+ * files above cover -- limiting the sweep to DOCS would have made the check pass
+ * over the defect that motivated it.
+ */
+function allDocsMarkdown(dir = join(REPO_ROOT, 'docs')) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).flatMap((name) => {
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) return allDocsMarkdown(full);
+    return name.endsWith('.md') ? [full.slice(REPO_ROOT.length)] : [];
+  });
+}
 
 const failures = [];
 
@@ -189,6 +206,56 @@ function checkComposeInventory() {
 }
 
 // ---------------------------------------------------------------------------
+// Rule 5: every `npm run <script>` a document offers actually exists
+// ---------------------------------------------------------------------------
+
+// The RLS task list documented `npm run rls:ratchet` as a live CI gate long
+// after the ratchet had reached zero and its script, baseline and npm entries
+// were deleted -- so a reader was pointed at a check that could not be run, let
+// alone fail. A command in a document is a promise; this is the check that it
+// can be kept.
+const NPM_RUN = /npm run ([\w:.-]+)/g;
+
+function collectScriptNames() {
+  const names = new Set();
+  for (const dir of ['', 'backend', 'frontend', 'e2e']) {
+    const manifest = join(REPO_ROOT, dir, 'package.json');
+    if (!existsSync(manifest)) continue;
+    const { scripts = {} } = JSON.parse(readFileSync(manifest, 'utf8'));
+    for (const name of Object.keys(scripts)) names.add(name);
+  }
+  return names;
+}
+
+/**
+ * Wording that marks a named command as historical rather than runnable. A task
+ * list legitimately records "we specified `npm run mny:validate`, shipped as
+ * `npm run mny:inspect`"; what it must not do is present a deleted script as a
+ * gate you can run. The marker has to be written, so the exemption is a decision
+ * rather than an accident, and it is looked for in a window rather than on the
+ * one line -- the correction often sits a paragraph below the command.
+ */
+const SUPERSEDED =
+  /superseded|no longer exists?|was removed|shipped as|renamed to|replaced by/i;
+const SUPERSEDED_WINDOW = 8;
+
+function checkNpmScripts(relative, lines, scripts) {
+  lines.forEach((text, index) => {
+    for (const [, name] of text.matchAll(NPM_RUN)) {
+      if (scripts.has(name)) continue;
+      const context = lines
+        .slice(
+          Math.max(0, index - SUPERSEDED_WINDOW),
+          index + SUPERSEDED_WINDOW + 1,
+        )
+        .join('\n');
+      if (SUPERSEDED.test(context)) continue;
+      fail(relative, index + 1, `npm script does not exist: ${name}`);
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
 
 const valuesPath = join(REPO_ROOT, 'helm/values.yaml');
 const values = existsSync(valuesPath)
@@ -199,11 +266,21 @@ if (values.size === 0) {
   fail('helm/values.yaml', null, 'no values parsed -- the defaults check would be vacuous');
 }
 
+const npmScripts = collectScriptNames();
+if (npmScripts.size === 0) {
+  fail('package.json', null, 'no npm scripts parsed -- the script check would be vacuous');
+}
+
 for (const relative of DOCS) {
   const lines = readDoc(relative);
   if (!lines) continue;
   checkCommands(relative, lines);
   if (dirname(relative) === 'helm') checkHelmDefaults(relative, lines, values);
+}
+
+for (const relative of new Set([...DOCS, ...allDocsMarkdown()])) {
+  const lines = readDoc(relative);
+  if (lines) checkNpmScripts(relative, lines, npmScripts);
 }
 
 checkComposeInventory();
