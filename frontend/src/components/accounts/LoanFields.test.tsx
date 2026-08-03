@@ -108,6 +108,7 @@ describe('LoanFields', () => {
     handleOverpaymentCategoryChange: vi.fn(),
     selectedOverpaymentPayeeId: '',
     handleOverpaymentPayeeChange: vi.fn(),
+    isEditing: false,
   };
 
   beforeEach(() => {
@@ -346,6 +347,44 @@ describe('LoanFields', () => {
     await waitFor(() => {
       expect(screen.queryByText('Payment Preview (First Payment)')).not.toBeInTheDocument();
     }, { timeout: 3000 });
+  });
+
+  // REV-20260803-009. LoanFields rendered only when creating, so editing an
+  // existing LOAN exposed none of the recognition controls -- while a mortgage,
+  // which takes isEditing and always renders, exposed all of them. A loan whose
+  // standalone overpayments are identified by memo could not be configured at
+  // all after creation, so those payments kept being split as ordinary ones.
+  describe('editing an existing loan', () => {
+    it('still shows the recognition controls', () => {
+      render(<LoanFields {...defaultProps} isEditing />);
+      expect(screen.getByText('Interest Category')).toBeInTheDocument();
+    });
+
+    it('hides the create-only payment setup inputs', () => {
+      render(<LoanFields {...defaultProps} isEditing />);
+      expect(screen.queryByText('Payment Amount (required)')).not.toBeInTheDocument();
+      expect(screen.queryByText('Payment Frequency (required)')).not.toBeInTheDocument();
+      expect(screen.queryByText('First Payment Date (required)')).not.toBeInTheDocument();
+      expect(screen.queryByText('Payment From Account (required)')).not.toBeInTheDocument();
+    });
+
+    it('shows the payment setup inputs when creating', () => {
+      render(<LoanFields {...defaultProps} />);
+      expect(screen.getByText('Payment Amount (required)')).toBeInTheDocument();
+      expect(screen.getByText('Interest Category')).toBeInTheDocument();
+    });
+
+    it('does not request an amortization preview', async () => {
+      vi.useRealTimers();
+      render(<LoanFields {...defaultProps} isEditing
+        openingBalance={10000} interestRate={5} paymentAmount={500}
+        paymentFrequency="MONTHLY" paymentStartDate="2024-02-01"
+      />);
+      // The inputs that would drive it are not on screen, so a preview of them
+      // is noise -- and it costs a request on every edit. Mirrors MortgageFields.
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      expect(accountsApi.previewLoanAmortization).not.toHaveBeenCalled();
+    });
   });
 
   it('renders interest category options from categories prop', () => {

@@ -128,6 +128,104 @@ describe('AccountFormModal', () => {
     );
   });
 
+  // REV-20260803-010. A cleared recognition field arrived as '' and the
+  // strip-empties cleanup deleted it, so the stored value stayed active: removing
+  // an overpayment category from a mortgage silently kept it, and later ordinary
+  // transactions in that category went on being read as 100% principal.
+  describe('recognition fields on a debt account', () => {
+    const debtAccount = {
+      id: 'loan-1',
+      accountType: 'MORTGAGE',
+      interestCategoryId: 'cat-int',
+      overpaymentCategoryId: 'cat-over',
+      overpaymentPayeeId: 'payee-1',
+      overpaymentMemo: 'EXTRA',
+    } as Account;
+
+    async function submitWith(data: Record<string, unknown>, editingItem: Account) {
+      mockUpdate.mockResolvedValue({});
+      render(
+        <AccountFormModal
+          formModal={buildFormModal({ editingItem, isEditing: true })}
+          onSaved={vi.fn()}
+        />,
+      );
+      await waitFor(() => expect(capturedOnSubmit).not.toBeNull());
+      await act(async () => {
+        await capturedOnSubmit!(data);
+      });
+    }
+
+    it('sends null for each field the user cleared', async () => {
+      await submitWith(
+        {
+          name: 'Mortgage',
+          accountType: 'MORTGAGE',
+          interestCategoryId: '',
+          overpaymentCategoryId: '',
+          overpaymentPayeeId: '',
+          overpaymentMemo: '',
+        },
+        debtAccount,
+      );
+
+      expect(mockUpdate).toHaveBeenCalledWith(
+        'loan-1',
+        expect.objectContaining({
+          interestCategoryId: null,
+          overpaymentCategoryId: null,
+          overpaymentPayeeId: null,
+          overpaymentMemo: null,
+        }),
+      );
+    });
+
+    it('leaves an untouched field alone', async () => {
+      await submitWith(
+        {
+          name: 'Mortgage',
+          accountType: 'MORTGAGE',
+          interestCategoryId: 'cat-int',
+          overpaymentCategoryId: '',
+          overpaymentPayeeId: 'payee-1',
+          overpaymentMemo: 'EXTRA',
+        },
+        debtAccount,
+      );
+
+      const payload = mockUpdate.mock.calls[0][1];
+      expect(payload.overpaymentCategoryId).toBeNull();
+      expect(payload.interestCategoryId).toBe('cat-int');
+      expect(payload.overpaymentPayeeId).toBe('payee-1');
+      expect(payload.overpaymentMemo).toBe('EXTRA');
+    });
+
+    it('does not null recognition fields on a non-debt account type', async () => {
+      // The issue #806 hazard: these controls only exist on LOAN/MORTGAGE, so on
+      // any other type an absent value means "not rendered", not "cleared".
+      // Force-nulling from absence is what wiped institutions before.
+      await submitWith(
+        { name: 'Chequing', accountType: 'CHEQUING' },
+        { ...debtAccount, accountType: 'CHEQUING' } as Account,
+      );
+
+      const payload = mockUpdate.mock.calls[0][1];
+      expect(payload).not.toHaveProperty('interestCategoryId');
+      expect(payload).not.toHaveProperty('overpaymentCategoryId');
+      expect(payload).not.toHaveProperty('overpaymentPayeeId');
+      expect(payload).not.toHaveProperty('overpaymentMemo');
+    });
+
+    it('does not send null for a field that was never set', async () => {
+      await submitWith(
+        { name: 'Mortgage', accountType: 'MORTGAGE', overpaymentMemo: '' },
+        { id: 'loan-1', accountType: 'MORTGAGE' } as Account,
+      );
+
+      expect(mockUpdate.mock.calls[0][1]).not.toHaveProperty('overpaymentMemo');
+    });
+  });
+
   it('clears a previously set account number by sending null when blanked on edit', async () => {
     mockUpdate.mockResolvedValue({});
     render(

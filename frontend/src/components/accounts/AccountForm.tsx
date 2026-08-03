@@ -845,7 +845,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
         </div>
       </div>
 
-      {isLoanAccount && !account && (
+      {isLoanAccount && (
         <LoanFields
           currencySymbol={currencySymbol}
           watchedCurrency={watchedCurrency}
@@ -868,6 +868,7 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
           handleOverpaymentCategoryChange={handleOverpaymentCategoryChange}
           selectedOverpaymentPayeeId={selectedOverpaymentPayeeId}
           handleOverpaymentPayeeChange={handleOverpaymentPayeeChange}
+          isEditing={!!account}
         />
       )}
 

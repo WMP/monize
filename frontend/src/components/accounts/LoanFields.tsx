@@ -38,6 +38,13 @@ interface LoanFieldsProps {
   handleOverpaymentCategoryChange: (categoryId: string) => void;
   selectedOverpaymentPayeeId: string;
   handleOverpaymentPayeeChange: (payeeId: string) => void;
+  /**
+   * Editing an existing loan rather than creating one. Hides the payment-setup
+   * inputs and the amortization preview, exactly as `MortgageFields` does, while
+   * leaving the recognition controls visible -- those describe how existing
+   * transactions are interpreted, so they matter most once a loan has history.
+   */
+  isEditing: boolean;
 }
 
 export function LoanFields({
@@ -62,6 +69,7 @@ export function LoanFields({
   handleOverpaymentCategoryChange,
   selectedOverpaymentPayeeId,
   handleOverpaymentPayeeChange,
+  isEditing,
 }: LoanFieldsProps) {
   const t = useTranslations('accounts');
   const { formatDate } = useDateFormat();
@@ -77,7 +85,7 @@ export function LoanFields({
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   const calculatePreview = useCallback(async () => {
-    if (!openingBalance || !interestRate || !paymentAmount || !paymentFrequency || !paymentStartDate) {
+    if (isEditing || !openingBalance || !interestRate || !paymentAmount || !paymentFrequency || !paymentStartDate) {
       setAmortizationPreview(null);
       return;
     }
@@ -98,7 +106,7 @@ export function LoanFields({
     } finally {
       setIsLoadingPreview(false);
     }
-  }, [openingBalance, interestRate, paymentAmount, paymentFrequency, paymentStartDate]);
+  }, [isEditing, openingBalance, interestRate, paymentAmount, paymentFrequency, paymentStartDate]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -114,49 +122,59 @@ export function LoanFields({
         {t('loanFields.title')}
       </h3>
 
-      <div className="grid grid-cols-2 gap-4">
-        <CurrencyInput
-          label={t('loanFields.paymentAmount')}
-          prefix={currencySymbol}
-          value={paymentAmount}
-          onChange={(value) => setValue('paymentAmount', value, { shouldValidate: true })}
-          error={errors.paymentAmount?.message as string | undefined}
-          allowNegative={false}
-        />
+      {/* Payment setup is create-only, as on a mortgage: an existing loan's
+          payment is managed from the loan detail page, and its stored values
+          still satisfy the schema because they load as form defaults. The
+          recognition controls below stay visible either way -- they describe how
+          existing transactions are read, which is what an established loan
+          actually needs to configure. */}
+      {!isEditing && (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <CurrencyInput
+              label={t('loanFields.paymentAmount')}
+              prefix={currencySymbol}
+              value={paymentAmount}
+              onChange={(value) => setValue('paymentAmount', value, { shouldValidate: true })}
+              error={errors.paymentAmount?.message as string | undefined}
+              allowNegative={false}
+            />
 
-        <Select
-          label={t('loanFields.paymentFrequency')}
-          options={[
-            { value: '', label: t('loanFields.selectFrequency') },
-            ...paymentFrequencyOptions,
-          ]}
-          error={errors.paymentFrequency?.message as string | undefined}
-          {...register('paymentFrequency')}
-        />
-      </div>
+            <Select
+              label={t('loanFields.paymentFrequency')}
+              options={[
+                { value: '', label: t('loanFields.selectFrequency') },
+                ...paymentFrequencyOptions,
+              ]}
+              error={errors.paymentFrequency?.message as string | undefined}
+              {...register('paymentFrequency')}
+            />
+          </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <DateInput
-          label={t('loanFields.firstPaymentDate')}
-          error={errors.paymentStartDate?.message as string | undefined}
-          onDateChange={(date) => setValue('paymentStartDate', date, { shouldDirty: true, shouldValidate: true })}
-          {...register('paymentStartDate')}
-        />
+          <div className="grid grid-cols-2 gap-4">
+            <DateInput
+              label={t('loanFields.firstPaymentDate')}
+              error={errors.paymentStartDate?.message as string | undefined}
+              onDateChange={(date) => setValue('paymentStartDate', date, { shouldDirty: true, shouldValidate: true })}
+              {...register('paymentStartDate')}
+            />
 
-        <Select
-          label={t('loanFields.paymentFromAccount')}
-          options={[
-            { value: '', label: t('loanFields.selectAccount') },
-            ...buildAccountDropdownOptions(
-              accounts,
-              () => true,
-              (a) => `${a.name} (${a.currencyCode})`,
-            ),
-          ]}
-          error={errors.sourceAccountId?.message as string | undefined}
-          {...register('sourceAccountId')}
-        />
-      </div>
+            <Select
+              label={t('loanFields.paymentFromAccount')}
+              options={[
+                { value: '', label: t('loanFields.selectAccount') },
+                ...buildAccountDropdownOptions(
+                  accounts,
+                  () => true,
+                  (a) => `${a.name} (${a.currencyCode})`,
+                ),
+              ]}
+              error={errors.sourceAccountId?.message as string | undefined}
+              {...register('sourceAccountId')}
+            />
+          </div>
+        </>
+      )}
 
       <OverpaymentRecognitionFields
         categories={categories}

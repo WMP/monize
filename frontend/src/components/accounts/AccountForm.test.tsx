@@ -792,24 +792,52 @@ describe('AccountForm', () => {
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
 
-  it('does not show loan fields when editing existing LOAN account', async () => {
-    const loanAccount = createExistingAccount({
+  // REV-20260803-009. This used to assert the panel was absent entirely when
+  // editing a LOAN, which is the defect rather than an intent: the same controls
+  // were reachable on a MORTGAGE, whose MortgageFields takes `isEditing` and
+  // always renders. The old comment ("only shown for new accounts") restated the
+  // condition without a reason for it. A loan whose standalone overpayments are
+  // identified by memo could not be configured after creation at all, so those
+  // payments kept being split as ordinary ones in every schedule and projection.
+  //
+  // The panel now renders either way; only its create-only payment setup is
+  // withheld, matching the mortgage.
+  describe('editing an existing LOAN', () => {
+    const loanAccount = () => createExistingAccount({
       accountType: 'LOAN',
       interestRate: 5.5,
       paymentAmount: 500,
     });
 
-    render(
-      <AccountForm
-        account={loanAccount}
-        onSubmit={mockOnSubmit}
-        onCancel={mockOnCancel}
-      />
-    );
+    it('shows the recognition controls', async () => {
+      render(
+        <AccountForm
+          account={loanAccount()}
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+        />
+      );
 
-    // Loan payment details are only shown for new accounts
-    await waitFor(() => {
-      expect(screen.queryByText('Loan Payment Details')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Loan Payment Details')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Interest Category')).toBeInTheDocument();
+    });
+
+    it('withholds the create-only payment setup inputs', async () => {
+      render(
+        <AccountForm
+          account={loanAccount()}
+          onSubmit={mockOnSubmit}
+          onCancel={mockOnCancel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Loan Payment Details')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Payment Amount (required)')).not.toBeInTheDocument();
+      expect(screen.queryByText('Payment From Account (required)')).not.toBeInTheDocument();
     });
   });
 

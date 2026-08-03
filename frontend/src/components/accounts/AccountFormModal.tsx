@@ -119,6 +119,36 @@ export function AccountFormModal({ formModal, onSaved }: AccountFormModalProps) 
         if (feePercentEmpty && editingItem.fxFeePercent != null) {
           cleanedData.fxFeePercent = null;
         }
+
+        // Overpayment/interest recognition: clearing one of these must reach the
+        // backend as null. Left as '' it was stripped below and the old value
+        // stayed active -- so removing an overpayment category from a mortgage
+        // silently kept it, and later ordinary transactions in that category went
+        // on being read as 100% principal.
+        //
+        // Gated on the debt types deliberately, per the institutionId lesson
+        // above (issue #806): these controls live in LoanFields/MortgageFields, so
+        // on any other account type they are absent rather than emptied, and
+        // force-nulling a merely absent value is how that bug wiped data. On LOAN
+        // and MORTGAGE they are always rendered -- including while editing, which
+        // is only true since the REV-20260803-009 fix -- so an empty submitted
+        // value there can only mean the user cleared the field.
+        if (effectiveType === 'LOAN' || effectiveType === 'MORTGAGE') {
+          const recognitionFields = [
+            'interestCategoryId',
+            'overpaymentCategoryId',
+            'overpaymentPayeeId',
+            'overpaymentMemo',
+          ] as const;
+          for (const key of recognitionFields) {
+            if (
+              (cleanedData[key] === '' || cleanedData[key] === undefined) &&
+              editingItem[key]
+            ) {
+              cleanedData[key] = null;
+            }
+          }
+        }
       }
 
       Object.keys(cleanedData).forEach((key) => {
