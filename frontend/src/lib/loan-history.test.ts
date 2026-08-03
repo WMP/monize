@@ -739,6 +739,40 @@ describe('deriveLoanPaymentHistory with paired separate interest expenses', () =
     expect(events[1].principal).toBeCloseTo(2534.09, 2);
   });
 
+  it('preserves 4dp precision for sub-cent separately-booked interest instead of rounding it away (REV-20260803-036)', () => {
+    // Each individual interest charge (0.0049) is below cent precision:
+    // Math.round(0.0049 * 100) / 100 === 0, so the old code recorded zero
+    // interest for every one of these payments and the cumulative total
+    // vanished to 0. Money is decimal(20,4) in Postgres, so the value must
+    // survive at 4dp and the three charges must accumulate to their real sum.
+    const account = makeAccount();
+    const transactions = [
+      makeTransaction({ id: 'p1', transactionDate: '2026-01-15', amount: 100 }),
+      makeTransaction({ id: 'p2', transactionDate: '2026-02-15', amount: 100 }),
+      makeTransaction({ id: 'p3', transactionDate: '2026-03-15', amount: 100 }),
+    ];
+    const interestTransactions = [
+      { transactionDate: '2026-01-15', amount: -0.0049, isTransfer: false } as Transaction,
+      { transactionDate: '2026-02-15', amount: -0.0049, isTransfer: false } as Transaction,
+      { transactionDate: '2026-03-15', amount: -0.0049, isTransfer: false } as Transaction,
+    ];
+
+    const { events, cumulativeInterest } = deriveLoanPaymentHistory(
+      account,
+      transactions,
+      [],
+      interestTransactions,
+    );
+
+    expect(events[0].interest).toBeCloseTo(0.0049, 4);
+    expect(events[1].interest).toBeCloseTo(0.0049, 4);
+    expect(events[2].interest).toBeCloseTo(0.0049, 4);
+    expect(cumulativeInterest).toBeCloseTo(0.0147, 4);
+    // Guards specifically against the cents-rounding regression: the buggy
+    // code rounded each 0.0049 charge to 0 before it was ever accumulated.
+    expect(cumulativeInterest).not.toBe(0);
+  });
+
   it('adds interest-only rows for grace-period interest with no principal', () => {
     const account = makeAccount({
       accountType: 'MORTGAGE',

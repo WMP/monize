@@ -248,7 +248,9 @@ export function deriveLoanPaymentHistory(
   const orphanEvents: LoanPaymentEvent[] = orphanInterest.map((tx) => ({
     date: tx.transactionDate,
     principal: 0,
-    interest: Math.round(Math.abs(Number(tx.amount)) * 100) / 100,
+    // Same separately-booked interest as takeSeparateInterest above -- keep 4dp
+    // precision through the accumulation, not cents.
+    interest: Math.round(Math.abs(Number(tx.amount)) * 10000) / 10000,
     balance: 0,
     cumulativePrincipal: 0,
     cumulativeInterest: 0,
@@ -400,7 +402,10 @@ function classifyPayment(
     const amount = separateInterestByDate.get(dateKey);
     if (amount == null || amount <= 0) return null;
     usedInterestDates.add(dateKey);
-    return Math.round(amount * 100) / 100;
+    // Preserve decimal(20,4) precision through the accumulation path -- only
+    // normalize floating-point noise at 4dp, never round to cents here. The
+    // running cumulativeInterest this feeds is presented at 2dp by the caller.
+    return Math.round(amount * 10000) / 10000;
   };
 
   if (
@@ -618,7 +623,9 @@ function analyticInterest(
     account.isVariableRate || false,
   );
   const interest = balanceBefore * periodicRate;
-  return Math.round(Math.max(0, interest) * 100) / 100;
+  // Same precision rule as takeSeparateInterest above: keep 4dp through the
+  // accumulation path, round to cents only at presentation.
+  return Math.round(Math.max(0, interest) * 10000) / 10000;
 }
 
 /**
