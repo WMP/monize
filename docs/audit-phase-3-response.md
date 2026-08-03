@@ -515,7 +515,8 @@ than taken as a pass.
 
 ## 9. Commit inventory
 
-All 23 commits on the branch, oldest first, so nothing is unaccounted for.
+The 23 commits that changed code, configuration or the repository's own rules,
+oldest first, so nothing is unaccounted for.
 
 | Commit | Subject | Answers |
 |---|---|---|
@@ -541,9 +542,15 @@ All 23 commits on the branch, oldest first, so nothing is unaccounted for.
 | `59079301` | Stop the folder write-probe reporting a writable folder as unwritable | extra 9 |
 | `43974c04` | Document the six cron jobs that were missing, and check the table against the source | extra 12 |
 | `65e26925` | Enforce the support backup's encryption in the code that produces the file | extra 7, FP-006 note |
-| `7938a130` | Make the pseudonym allocator keep its own promise, and stop a 4-second test | extra 15 |
+| `0748d69a` | Make the pseudonym allocator keep its own promise, and stop a 4-second test | extra 15 |
 
-Three commits carry no audit finding of their own: `405f3e79` keeps the
+Three of those carry no audit finding of their own: `405f3e79` keeps the
 pseudo-locale gate green, and `009b3eac` and `99b41963` convert prose rules that
 had already been violated into checks. They are here because the branch's
 recurring cause was a rule nothing enforced.
+
+Not rows above: the commits that introduce and correct **this document**
+(`4c42be22` and any that follow it). A file cannot list its own commit and stay
+accurate — amending to insert the hash changes the hash — so the branch log is the
+record for those, and every other hash in this file resolves. If you are checking
+the inventory against `git log`, that difference is the whole of it.
