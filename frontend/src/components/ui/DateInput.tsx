@@ -457,8 +457,19 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
       const val = e.target.value;
       if (val && isIsoDate(val)) {
         emitDateChange(val);
+      } else if (!val) {
+        // A cleared field must report the clear, not stay silent. Swallowing it
+        // left the caller holding the previous date while the input showed
+        // empty, so a form could save a value the user had visibly removed --
+        // on a loan rate change, that records the wrong effective date and
+        // recalculates the scheduled payment from it. The formatted-text mode
+        // below already emits '' here, and `dateFormat` is a user preference,
+        // so every caller can already receive '' today.
+        setIsoValue('');
+        setDisplayValue('');
+        onDateChange?.('');
       }
-    }, [emitDateChange]);
+    }, [emitDateChange, onDateChange]);
 
     const labelBlock = label && (
       <div className="flex items-center mb-1">
@@ -610,7 +621,12 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
               value={externalValue}
               onChange={(e) => {
                 externalOnChange?.(e);
-                if (e.target.value) onDateChange?.(e.target.value);
+                // Unconditional: a native date input reports either a valid
+                // ISO date or '', and '' means the user cleared the field. The
+                // old `if (e.target.value)` guard dropped exactly that case,
+                // leaving the caller with the previous date while the input
+                // read empty.
+                onDateChange?.(e.target.value);
               }}
               onBlur={externalOnBlur}
               onKeyDown={handleKeyDown}
@@ -649,7 +665,15 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
             id={inputId}
             type="date"
             value={externalValue}
-            onChange={externalOnChange}
+            // This mode reported selections through `onChange` only, so a
+            // caller that passes `onDateChange` alone -- the majority, and the
+            // documented handler -- never heard about a date the user picked on
+            // a touch device using the default browser format. Both handlers
+            // fire here, matching desktop-browser above.
+            onChange={(e) => {
+              externalOnChange?.(e);
+              onDateChange?.(e.target.value);
+            }}
             onBlur={externalOnBlur}
             onKeyDown={handleKeyDown}
             className="pr-10"

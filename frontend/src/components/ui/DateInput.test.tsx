@@ -257,6 +257,110 @@ describe('DateInput', () => {
     });
   });
 
+  // Clearing the field has to reach the caller. When it did not, the caller
+  // kept the previous date while the input showed empty -- so a form could save
+  // a date the user had visibly removed. On a loan rate change that records the
+  // wrong effective date and recalculates the scheduled payment from it
+  // (REV-20260803-012).
+  describe('clearing the field reports the clear', () => {
+    function withTouchDevice<T>(fn: () => T): T {
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(pointer: coarse)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+      try {
+        return fn();
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
+    }
+
+    it('emits an empty string when cleared on desktop browser format', () => {
+      const { getByLabelText } = renderDateInput('2025-06-15');
+      fireEvent.change(getByLabelText('Date'), { target: { value: '' } });
+      expect(onDateChange).toHaveBeenCalledWith('');
+    });
+
+    it('emits an empty string when cleared in touch browser mode', () => {
+      withTouchDevice(() => {
+        const { getByLabelText } = renderDateInput('2025-06-15');
+        fireEvent.change(getByLabelText('Date'), { target: { value: '' } });
+      });
+      expect(onDateChange).toHaveBeenCalledWith('');
+    });
+
+    it('emits an empty string when cleared in touch formatted mode', () => {
+      mockUseDateFormat.mockReturnValue({
+        formatDate: (d: string) => d,
+        dateFormat: 'DD/MM/YYYY',
+      });
+      withTouchDevice(() => {
+        const { getByLabelText, queryByText } = renderDateInput('2025-06-15');
+        fireEvent.change(getByLabelText('Date'), { target: { value: '' } });
+        // This mode draws its own decorative display beside the transparent
+        // native input, so a clear that only told the caller would leave the
+        // old date on screen.
+        expect(queryByText('2025-06-15')).not.toBeInTheDocument();
+      });
+      expect(onDateChange).toHaveBeenCalledWith('');
+    });
+  });
+
+  // Touch browser mode -- a touch device with the default 'browser' date format
+  // -- reported selections through `onChange` only, so a caller passing
+  // `onDateChange` alone never heard about a date the user picked. The existing
+  // touch coverage all sits under the custom-format describe below, i.e. touch
+  // FORMATTED mode, which is a different branch: nothing exercised this one.
+  describe('touch browser mode reports selections through onDateChange', () => {
+    function withTouchDevice<T>(fn: () => T): T {
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(pointer: coarse)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+      try {
+        return fn();
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
+    }
+
+    it('emits the picked date so a form holding only onDateChange updates', () => {
+      withTouchDevice(() => {
+        const { getByLabelText } = renderDateInput('');
+        fireEvent.change(getByLabelText('Date'), { target: { value: '2025-12-25' } });
+      });
+      expect(onDateChange).toHaveBeenCalledWith('2025-12-25');
+    });
+
+    it('still forwards the raw event to onChange', () => {
+      // react-hook-form callers register through onChange; adding onDateChange
+      // must not take that away.
+      const onChange = vi.fn();
+      withTouchDevice(() => {
+        const { getByLabelText } = render(
+          <DateInput label="Date" value="" onDateChange={onDateChange} onChange={onChange} />,
+        );
+        fireEvent.change(getByLabelText('Date'), { target: { value: '2025-12-25' } });
+      });
+      expect(onChange).toHaveBeenCalled();
+      expect(onDateChange).toHaveBeenCalledWith('2025-12-25');
+    });
+  });
+
   describe('custom format mode (non-browser format)', () => {
     beforeEach(() => {
       mockUseDateFormat.mockReturnValue({
