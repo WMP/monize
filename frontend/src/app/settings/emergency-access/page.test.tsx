@@ -262,6 +262,9 @@ describe('EmergencyAccessPage', () => {
       }),
     );
     api.getMessage.mockResolvedValue({ message: 'returned' });
+    // The artifact the OIDC callback stashed. The endpoint verifies and spends
+    // it; the client used to just assert `oidcConfirmed: true` (P2-005).
+    sessionStorage.setItem('oidcReauthArtifact', 'signed.artifact.value');
     mockedApi.post.mockResolvedValue({
       data: {
         stepUpToken: 'oidc-confirmed-token',
@@ -275,8 +278,10 @@ describe('EmergencyAccessPage', () => {
     await waitFor(() => expect(mockedApi.post).toHaveBeenCalled());
     expect(mockedApi.post).toHaveBeenCalledWith('/auth/step-up', {
       purpose: 'emergency-access',
-      oidcConfirmed: true,
+      oidcReauthToken: 'signed.artifact.value',
     });
+    // Spent on read: a second attempt has to earn a fresh one.
+    expect(sessionStorage.getItem('oidcReauthArtifact')).toBeNull();
     expect(
       useStepUpTokenStore.getState().getValid('emergency-access'),
     ).toBe('oidc-confirmed-token');

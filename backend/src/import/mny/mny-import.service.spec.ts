@@ -427,13 +427,20 @@ describe("MnyImportService", () => {
         wipeCredentials: { password: "hunter2" },
       });
 
-      expect(usersService.deleteData).toHaveBeenCalledWith("user-1", {
-        password: "hunter2",
-        oidcIdToken: undefined,
-        deleteAccounts: true,
-        deleteCategories: true,
-        deletePayees: true,
-      });
+      expect(usersService.deleteData).toHaveBeenCalledWith(
+        "user-1",
+        {
+          password: "hunter2",
+          oidcIdToken: undefined,
+          deleteAccounts: true,
+          deleteCategories: true,
+          deletePayees: true,
+        },
+        // Its own re-authentication purpose: this wipe is confirmed in the
+        // import wizard, so an artifact obtained for the Settings "delete my
+        // data" flow must not drive it (P2-005).
+        "import-wipe",
+      );
       // The wipe re-authenticates, so its credentials must not reach
       // import_jobs.options.
       const [, , options] = jobs.create.mock.calls[0];

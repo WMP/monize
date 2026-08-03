@@ -16,12 +16,21 @@ import { User } from "../../users/entities/user.entity";
 import { UserPreference } from "../../users/entities/user-preference.entity";
 import { TwoFactorService } from "../two-factor.service";
 import type { StepUpPurpose } from "./dto/verify-step-up.dto";
+import {
+  isOidcReauthPurpose,
+  OidcReauthService,
+} from "../oidc/oidc-reauth.service";
 import { tr } from "../../i18n/translate";
 
 interface VerifyArgs {
   password?: string;
   totpCode?: string;
-  oidcConfirmed?: boolean;
+  /**
+   * OIDC accounts: the artifact `GET /auth/oidc/reauth` -> the OIDC callback
+   * minted. Replaces the `oidcConfirmed` boolean, which the client asserted and
+   * the server believed.
+   */
+  oidcReauthToken?: string;
 }
 
 export interface StepUpVerificationResult {
@@ -52,6 +61,7 @@ export class StepUpAuthService {
     private readonly twoFactorService: TwoFactorService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly oidcReauth: OidcReauthService,
   ) {
     // Forces ConfigService to be retained so step-up TTL can be tuned later
     // via env without changing the constructor signature.
@@ -126,19 +136,30 @@ export class StepUpAuthService {
         args.totpCode,
       );
     } else if (user.authProvider === "oidc") {
-      // OIDC users have no Monize-managed password and cannot enroll Monize
-      // 2FA (see two-factor.service.ts:283). Mirror the soft-check pattern
-      // used by /users/delete-account and /backup/restore: the frontend
-      // redirects the user through the identity provider via
-      // authApi.initiateOidc(), then sets oidcConfirmed=true on return.
-      // The presence of that flag combined with the freshly-rotated session
-      // cookies stands in for a re-auth challenge.
-      if (!args.oidcConfirmed) {
+      // OIDC users have no Monize-managed password and cannot enroll Monize 2FA
+      // (see two-factor.service.ts:283), so their strongest factor lives at the
+      // identity provider. This used to accept `oidcConfirmed: true` -- a boolean
+      // the client sent -- which meant the step-up token, whose entire purpose is
+      // to be a second proof, was issued on the strength of the session that
+      // already existed (P2-005, same defect as the destructive routes).
+      //
+      // Now it requires the signed, purpose-bound, one-time artifact the OIDC
+      // callback mints after a prompt=login round trip. `purpose` is passed
+      // through, so an artifact obtained to unlock emergency access cannot be
+      // spent on a different sensitive surface.
+      if (!isOidcReauthPurpose(purpose)) {
+        // A step-up purpose with no matching re-auth purpose has no way for an
+        // OIDC user to satisfy it. Fail closed and loudly rather than issue.
+        this.logger.error(
+          `Step-up purpose "${purpose}" has no OIDC re-authentication purpose; ` +
+            "add it to OIDC_REAUTH_PURPOSES.",
+        );
         throw new BadRequestException({
-          code: "OIDC_REAUTH_REQUIRED",
-          message: "Re-authenticate with your identity provider to continue.",
+          code: "STEP_UP_FACTOR_UNAVAILABLE",
+          message: "This action cannot be confirmed for your account type.",
         });
       }
+      this.oidcReauth.consume(userId, purpose, args.oidcReauthToken);
       verified = true;
     } else if (user.passwordHash) {
       if (!args.password) {

@@ -62,9 +62,21 @@ export class OidcService implements OnModuleInit {
   }
 
   /**
-   * Generate authorization URL for OIDC login
+   * Generate authorization URL for OIDC login.
+   *
+   * `forceReauthentication` adds `prompt=login` and `max_age=0`, which ask the
+   * provider to challenge the user again rather than silently re-using its
+   * existing session. That is the whole point of a re-authentication: without it
+   * the round trip is a redirect the user never notices, and it proves nothing
+   * beyond what the Monize session already proved (P2-005). Both parameters are
+   * sent because providers honour them unevenly -- `prompt=login` is the RFC 6749
+   * spelling, `max_age=0` the OIDC Core one.
    */
-  getAuthorizationUrl(state: string, nonce: string): string {
+  getAuthorizationUrl(
+    state: string,
+    nonce: string,
+    { forceReauthentication = false }: { forceReauthentication?: boolean } = {},
+  ): string {
     if (!this.config) {
       throw new Error("OIDC client not initialized");
     }
@@ -74,6 +86,7 @@ export class OidcService implements OnModuleInit {
       scope: "openid profile email",
       state,
       nonce,
+      ...(forceReauthentication ? { prompt: "login", max_age: "0" } : {}),
     });
 
     return url.href;

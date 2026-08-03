@@ -22,6 +22,7 @@ import { StepUpAuthModal } from '@/components/auth/StepUpAuthModal';
 import {
   StepUpRequiredError,
   consumeOidcStepUpPending,
+  consumeOidcReauthArtifact,
   useStepUpTokenStore,
 } from '@/lib/stepUpToken';
 import apiClient from '@/lib/api';
@@ -303,12 +304,16 @@ function EmergencyAccessSection() {
     const resumeMode = pending.payload?.mode as 'view' | 'edit' | undefined;
     (async () => {
       try {
+        // The artifact the OIDC callback minted, not a claim that the round
+        // trip happened: the endpoint verifies its signature, purpose and
+        // subject, and spends it (P2-005).
+        const artifact = consumeOidcReauthArtifact();
         const res = await apiClient.post<{
           stepUpToken: string;
           expiresAt: string;
         }>('/auth/step-up', {
           purpose: STEP_UP_PURPOSE,
-          oidcConfirmed: true,
+          oidcReauthToken: artifact ?? undefined,
         });
         useStepUpTokenStore
           .getState()

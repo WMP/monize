@@ -11,11 +11,12 @@ import apiClient from '@/lib/api';
 const mockedApi = apiClient as unknown as { post: ReturnType<typeof vi.fn> };
 
 vi.mock('@/lib/auth', () => ({
-  authApi: { initiateOidc: vi.fn() },
+  authApi: { initiateOidc: vi.fn(), beginOidcReauth: vi.fn() },
 }));
 import { authApi } from '@/lib/auth';
 const mockedAuthApi = authApi as unknown as {
   initiateOidc: ReturnType<typeof vi.fn>;
+  beginOidcReauth: ReturnType<typeof vi.fn>;
 };
 
 const mockAuthState: {
@@ -198,7 +199,7 @@ describe('StepUpAuthModal — OIDC user without 2FA', () => {
       fireEvent.click(screen.getByRole('button', { name: /^Cancel$/i }));
     });
     expect(onClose).toHaveBeenCalled();
-    expect(mockedAuthApi.initiateOidc).not.toHaveBeenCalled();
+    expect(mockedAuthApi.beginOidcReauth).not.toHaveBeenCalled();
   });
 
   it('Continue stashes the resume payload + returnTo and redirects to the IdP', async () => {
@@ -211,7 +212,9 @@ describe('StepUpAuthModal — OIDC user without 2FA', () => {
         screen.getByRole('button', { name: /Continue to identity provider/i }),
       );
     });
-    expect(mockedAuthApi.initiateOidc).toHaveBeenCalled();
+    // The re-auth route, not ordinary login: it names the purpose and its
+    // callback mints the proof the step-up endpoint verifies (P2-005).
+    expect(mockedAuthApi.beginOidcReauth).toHaveBeenCalledWith('emergency-access');
     const pending = JSON.parse(
       sessionStorage.getItem('stepUpOidcPending') ?? 'null',
     );

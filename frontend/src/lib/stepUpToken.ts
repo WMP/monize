@@ -1,3 +1,4 @@
+import { authApi } from '@/lib/auth';
 import { create } from 'zustand';
 
 /**
@@ -107,10 +108,11 @@ export class StepUpRequiredError extends Error {
 
 /**
  * OIDC users can't enroll Monize-managed 2FA and have no local password, so
- * step-up uses the same soft-check pattern as the existing delete-account /
- * backup-restore flows: redirect through the identity provider, then call
- * the step-up endpoint with `oidcConfirmed=true` after the rotated session
- * cookies come back.
+ * step-up sends the user through `GET /auth/oidc/reauth?purpose=...`, which asks
+ * the identity provider to challenge them (`prompt=login`). The OIDC callback
+ * hands back a signed, purpose-bound, one-time artifact in the URL fragment,
+ * which is what the server verifies -- this used to be a client-asserted
+ * `oidcConfirmed=true` that the server took at face value (P2-005).
  *
  * We persist a sentinel in sessionStorage across the redirect so the
  * destination page can:
@@ -166,6 +168,63 @@ export function consumeOidcStepUpPending(
   if (!parsed || parsed.purpose !== purpose) return null;
   sessionStorage.removeItem(PENDING_KEY);
   return parsed;
+}
+
+/**
+ * The re-authentication artifact minted by the OIDC callback, held across the
+ * final hop from the callback page to the page that resumes the action.
+ *
+ * sessionStorage rather than a store: the callback page and the resuming page are
+ * separate document loads. It is removed the moment it is read, and the server
+ * refuses to spend the same artifact twice, so a copy left behind by a crashed
+ * tab is worth nothing.
+ */
+const REAUTH_ARTIFACT_KEY = 'oidcReauthArtifact';
+
+export function stashOidcReauthArtifact(token: string): void {
+  try {
+    sessionStorage.setItem(REAUTH_ARTIFACT_KEY, token);
+  } catch {
+    // sessionStorage unavailable -- the action will re-prompt, which is correct.
+  }
+}
+
+export function consumeOidcReauthArtifact(): string | null {
+  try {
+    const token = sessionStorage.getItem(REAUTH_ARTIFACT_KEY);
+    sessionStorage.removeItem(REAUTH_ARTIFACT_KEY);
+    return token;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Obtain a re-authentication artifact for `purpose`, or start the round trip that
+ * produces one.
+ *
+ * Returns the artifact when the user has just come back from the identity
+ * provider. Otherwise it navigates away and returns null -- the caller must stop.
+ *
+ * The redirect loses whatever the user had selected (a file to restore, a set of
+ * checkboxes). That is the honest cost of a second factor that actually
+ * challenges the user: the alternative was accepting a string the client made up.
+ * Callers say so before redirecting, and the artifact survives on the far side, so
+ * repeating the selection is all that is asked.
+ */
+export function takeOidcReauthArtifact(
+  purpose: string,
+  returnTo: string,
+): string | null {
+  const existing = consumeOidcReauthArtifact();
+  if (existing) return existing;
+  try {
+    sessionStorage.setItem('postLoginReturnTo', returnTo);
+  } catch {
+    // Without it the user lands on the dashboard and has to navigate back.
+  }
+  authApi.beginOidcReauth(purpose);
+  return null;
 }
 
 /**

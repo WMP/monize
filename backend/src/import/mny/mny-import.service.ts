@@ -155,13 +155,20 @@ export class MnyImportService {
     // re-authentication must fail the request rather than a background job.
     if (options.wipeExistingData) {
       try {
-        await this.usersService.deleteData(userId, {
-          password: input.wipeCredentials?.password,
-          oidcIdToken: input.wipeCredentials?.oidcIdToken,
-          deleteAccounts: true,
-          deleteCategories: true,
-          deletePayees: true,
-        });
+        await this.usersService.deleteData(
+          userId,
+          {
+            password: input.wipeCredentials?.password,
+            oidcIdToken: input.wipeCredentials?.oidcIdToken,
+            deleteAccounts: true,
+            deleteCategories: true,
+            deletePayees: true,
+          },
+          // Its own re-authentication purpose: this wipe is confirmed in the import
+          // wizard, not in Settings, so an artifact obtained for one must not drive
+          // the other (P2-005).
+          "import-wipe",
+        );
       } catch (error) {
         // The request is refused, so the slot it took must go back: leaving the
         // row pending would block every import this user starts for the five

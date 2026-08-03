@@ -19,6 +19,7 @@ import { randomUUID } from "crypto";
 import { createGzip, gunzipSync, gzipSync } from "zlib";
 import { User } from "../users/entities/user.entity";
 import { AiEncryptionService } from "../ai/ai-encryption.service";
+import { OidcReauthService } from "../auth/oidc/oidc-reauth.service";
 import {
   encryptBackup,
   decryptBackup,
@@ -192,6 +193,7 @@ export class BackupService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly aiEncryption: AiEncryptionService,
+    private readonly oidcReauth: OidcReauthService,
   ) {}
 
   /**
@@ -1002,22 +1004,24 @@ export class BackupService {
     input: RestoreBackupInput,
   ): Promise<void> {
     if (user.authProvider === "oidc") {
-      // Re-confirm via the authenticated session, mirroring account deletion
-      // (users.service.deleteAccount). The request already passed the JWT
-      // AuthGuard, so a live OIDC session IS the re-authentication. OIDC users
-      // have no local password and cannot mint a fresh signed ID token in the
-      // browser (the login id_token lives only in backend httpOnly cookies), so
-      // the client sends a "session confirmed" sentinel. Cryptographically
-      // verifying that sentinel as an ID token here made OIDC restore impossible.
-      if (!input.oidcIdToken) {
-        throw new UnauthorizedException(
-          tr(
-            "errors.backup.oidcReauthRequired",
-            "OIDC re-authentication is required to confirm restore",
-          ),
-        );
-      }
-    } else if (user.passwordHash) {
+      // A signed, action-bound, one-time artifact minted by the OIDC callback
+      // after a prompt=login round trip. This used to accept any non-empty
+      // string -- the client sent the literal "oidc-session-confirmed" -- so the
+      // second proof for the single most destructive action in the product was
+      // possession of the session that was already required (P2-005). Bound to
+      // "restore-backup" specifically: an artifact minted to delete data must not
+      // authorize overwriting everything instead.
+      this.oidcReauth.consume(user.id, "restore-backup", input.oidcIdToken);
+    } else if (!user.passwordHash) {
+      // Local account with no password (admin-provisioned, reset not completed).
+      // This fell off the end of the else-if chain and proved nothing at all.
+      throw new UnauthorizedException(
+        tr(
+          "errors.backup.reauthUnavailable",
+          "Finish setting up your account password before restoring a backup.",
+        ),
+      );
+    } else {
       if (!input.password) {
         throw new UnauthorizedException(
           tr(

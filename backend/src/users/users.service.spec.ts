@@ -20,6 +20,7 @@ import { ExchangeRateService } from "../currencies/exchange-rate.service";
 import { CurrenciesService } from "../currencies/currencies.service";
 import { BackupEncryptionService } from "../backup/backup-encryption.service";
 import { DemoModeService } from "../common/demo-mode.service";
+import { OidcReauthService } from "../auth/oidc/oidc-reauth.service";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 
 jest.mock("../common/db/scoped-db", () =>
@@ -168,11 +169,43 @@ describe("UsersService", () => {
         { provide: PasswordBreachService, useValue: passwordBreachService },
         { provide: ModuleRef, useValue: moduleRef },
         { provide: DemoModeService, useValue: demoModeService },
+        // Real instance, not a double: its whole job is cryptographic
+        // verification, and a mock that always says yes would make every
+        // re-authentication assertion below vacuous -- which is how the
+        // sentinel survived (P2-005).
+        OidcReauthService,
       ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
   });
+
+  // Signing key for the artifacts below. The service reads it fresh from the
+  // environment, so a spec that mints one has to supply it.
+  const ORIGINAL_JWT_SECRET = process.env.JWT_SECRET;
+
+  beforeAll(() => {
+    process.env.JWT_SECRET = "spec-jwt-secret-of-at-least-32-characters";
+  });
+
+  afterAll(() => {
+    if (ORIGINAL_JWT_SECRET === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = ORIGINAL_JWT_SECRET;
+  });
+
+  /**
+   * A genuine re-authentication artifact, minted the way the OIDC callback does.
+   *
+   * Deliberately not a fixture string: the point of P2-005 is that the old code
+   * accepted any non-empty value, and a spec that hands the service a literal
+   * would keep passing if the verification were removed again.
+   */
+  function oidcArtifact(
+    purpose: Parameters<OidcReauthService["issue"]>[1],
+    forUser = "user-1",
+  ): string {
+    return new OidcReauthService().issue(forUser, purpose);
+  }
 
   describe("findById", () => {
     it("returns user when found", async () => {
@@ -977,7 +1010,7 @@ describe("UsersService", () => {
       });
 
       await service.deleteAccount("user-1", {
-        oidcIdToken: "oidc-session-confirmed",
+        oidcIdToken: oidcArtifact("delete-account"),
       });
 
       expect(usersRepository.remove).toHaveBeenCalled();
@@ -995,6 +1028,67 @@ describe("UsersService", () => {
       );
     });
 
+    // P2-005. Each of these used to be accepted, because the check was only
+    // whether the field was non-empty.
+    it.each([
+      ["the sentinel the client used to send", "oidc-session-confirmed"],
+      ["any non-empty string", "x"],
+    ])("refuses %s as re-authentication", async (_label, token) => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: null,
+      });
+
+      await expect(
+        service.deleteAccount("user-1", { oidcIdToken: token }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(usersRepository.remove).not.toHaveBeenCalled();
+    });
+
+    it("refuses an artifact minted for a different action", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: null,
+      });
+
+      await expect(
+        service.deleteAccount("user-1", {
+          oidcIdToken: oidcArtifact("restore-backup"),
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("refuses an artifact minted for a different user", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: null,
+      });
+
+      await expect(
+        service.deleteAccount("user-1", {
+          oidcIdToken: oidcArtifact("delete-account", "someone-else"),
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    // The third branch: a local account with no password fell off the end of the
+    // else-if and was required to prove nothing at all.
+    it("refuses a local account that has no password to check", async () => {
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "local",
+        passwordHash: null,
+      });
+
+      await expect(service.deleteAccount("user-1", {})).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(usersRepository.remove).not.toHaveBeenCalled();
+    });
+
     it("accepts OIDC token for OIDC users who also have a password", async () => {
       const hashedPassword = await bcrypt.hash("CorrectPass123!", 10);
       usersRepository.findOne.mockResolvedValue({
@@ -1004,7 +1098,7 @@ describe("UsersService", () => {
       });
 
       await service.deleteAccount("user-1", {
-        oidcIdToken: "oidc-session-confirmed",
+        oidcIdToken: oidcArtifact("delete-account"),
       });
 
       expect(usersRepository.remove).toHaveBeenCalled();
@@ -1127,7 +1221,7 @@ describe("UsersService", () => {
       });
 
       const result = await service.deleteData("user-1", {
-        oidcIdToken: "oidc-session-confirmed",
+        oidcIdToken: oidcArtifact("delete-data"),
       });
 
       expect(result).toHaveProperty("deleted");
@@ -1155,7 +1249,7 @@ describe("UsersService", () => {
       });
 
       const result = await service.deleteData("user-1", {
-        oidcIdToken: "oidc-session-confirmed",
+        oidcIdToken: oidcArtifact("delete-data"),
       });
 
       expect(result).toHaveProperty("deleted");

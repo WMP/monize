@@ -654,11 +654,14 @@ describe('BackupRestoreSection', () => {
           { target: { files: [new File(['{}'], 'b.json.gz')] } },
         );
       });
+      // P2-005: the client can only present an artifact the OIDC callback
+      // minted; it used to send the literal string 'oidc-session-confirmed'.
+      sessionStorage.setItem('oidcReauthArtifact', 'signed.artifact.value');
       fireEvent.click(screen.getByText('Re-authenticate and Restore'));
       await waitFor(() => expect(backupApi.restoreBackup).toHaveBeenCalled());
       const call = (backupApi.restoreBackup as ReturnType<typeof vi.fn>).mock
         .calls[0][0];
-      expect(call.oidcIdToken).toBe('oidc-session-confirmed');
+      expect(call.oidcIdToken).toBe('signed.artifact.value');
       expect(call.password).toBeUndefined();
     });
 

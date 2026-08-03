@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { UsersController } from "./users.controller";
 import { PasswordBreachService } from "../auth/password-breach.service";
+import { OidcReauthService } from "../auth/oidc/oidc-reauth.service";
 import { DemoModeModule } from "../common/demo-mode.module";
 
 /**
@@ -20,7 +21,11 @@ import { DemoModeModule } from "../common/demo-mode.module";
     // otherwise fail to resolve DemoModeService.
     DemoModeModule,
   ],
-  providers: [UsersService, PasswordBreachService],
+  // `OidcReauthService` is re-provided here for the same reason as
+  // `PasswordBreachService`: UsersModule cannot import AuthModule. It holds no
+  // injected dependencies and its replay counter is module-level, so a second
+  // Nest instance is not a second set of state.
+  providers: [UsersService, PasswordBreachService, OidcReauthService],
   controllers: [UsersController],
   exports: [UsersService],
 })

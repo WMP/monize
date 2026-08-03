@@ -24,7 +24,7 @@ export class StepUpAuthController {
     return this.service.verifyAndIssue(req.user.id, dto.purpose, {
       password: dto.password,
       totpCode: dto.totpCode,
-      oidcConfirmed: dto.oidcConfirmed,
+      oidcReauthToken: dto.oidcReauthToken,
     });
   }
 }

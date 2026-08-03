@@ -48,6 +48,18 @@ export const authApi = {
     window.location.href = '/api/v1/auth/oidc';
   },
 
+  /**
+   * Start an OIDC *re-authentication* for a destructive action.
+   *
+   * Different route from initiateOidc: it requires the current session, names the
+   * action, and asks the provider to challenge the user again. The callback comes
+   * back with a signed artifact the server will verify -- previously the client
+   * simply claimed the round trip had happened (P2-005).
+   */
+  beginOidcReauth: (purpose: string) => {
+    window.location.href = `/api/v1/auth/oidc/reauth?purpose=${encodeURIComponent(purpose)}`;
+  },
+
   forgotPassword: async (email: string): Promise<{ message: string }> => {
     const response = await apiClient.post<{ message: string }>('/auth/forgot-password', { email });
     return response.data;

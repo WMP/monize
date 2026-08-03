@@ -17,6 +17,7 @@ import { DelegationService } from "../delegation/delegation.service";
 import { encrypt, derivePurposeKey } from "./crypto.util";
 import { I18nService } from "nestjs-i18n";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import { OidcReauthService } from "./oidc/oidc-reauth.service";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -148,6 +149,11 @@ describe("AuthController", () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
+        OidcReauthService,
+        // Real instance: the class exists to verify signatures, and a mock
+        // that always accepts would make the re-authentication assertions
+        // vacuous -- which is how the sentinel survived (P2-005).
+        OidcReauthService,
         { provide: AuthService, useValue: authService },
         { provide: OidcService, useValue: oidcService },
         { provide: ConfigService, useValue: configService },
@@ -211,6 +217,7 @@ describe("AuthController", () => {
       const module: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
@@ -278,6 +285,7 @@ describe("AuthController", () => {
       const module: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
@@ -401,6 +409,7 @@ describe("AuthController", () => {
       const module: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
@@ -686,6 +695,7 @@ describe("AuthController", () => {
       const module: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
@@ -855,6 +865,7 @@ describe("AuthController", () => {
       const module: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
@@ -1797,6 +1808,7 @@ describe("AuthController", () => {
       const module: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
@@ -1874,6 +1886,7 @@ describe("AuthController", () => {
       const module: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },
@@ -1959,6 +1972,7 @@ describe("AuthController", () => {
       const force2faModule: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           {
             provide: OidcService,
@@ -2044,6 +2058,7 @@ describe("AuthController", () => {
       const force2faModule: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           {
             provide: OidcService,
@@ -2134,6 +2149,7 @@ describe("AuthController", () => {
         const m: TestingModule = await Test.createTestingModule({
           controllers: [AuthController],
           providers: [
+            OidcReauthService,
             { provide: AuthService, useValue: authService },
             {
               provide: OidcService,
@@ -2202,11 +2218,325 @@ describe("AuthController", () => {
     });
   });
 
+  /**
+   * P2-005. The destructive routes used to accept any non-empty string as OIDC
+   * re-authentication; the artifact they now require is minted here and only
+   * here, so these are the tests that keep the minting honest.
+   */
+  describe("OIDC re-authentication", () => {
+    const REAUTH_USER = "33333333-3333-4333-8333-333333333333";
+    const ORIGINAL_JWT_SECRET = process.env.JWT_SECRET;
+
+    beforeAll(() => {
+      process.env.JWT_SECRET = "spec-jwt-secret-of-at-least-32-characters";
+    });
+
+    afterAll(() => {
+      if (ORIGINAL_JWT_SECRET === undefined) delete process.env.JWT_SECRET;
+      else process.env.JWT_SECRET = ORIGINAL_JWT_SECRET;
+    });
+
+    async function build(oidcOverrides: Record<string, unknown> = {}) {
+      const oidc = {
+        enabled: true,
+        handleCallback: jest.fn(),
+        getUserInfo: jest.fn().mockResolvedValue({ sub: "sub-1" }),
+        generateState: jest.fn().mockReturnValue("state-1"),
+        generateNonce: jest.fn().mockReturnValue("nonce-1"),
+        getAuthorizationUrl: jest.fn().mockReturnValue("https://idp/authorize"),
+        ...oidcOverrides,
+      };
+      const m: TestingModule = await Test.createTestingModule({
+        controllers: [AuthController],
+        providers: [
+          OidcReauthService,
+          { provide: AuthService, useValue: authService },
+          { provide: OidcService, useValue: oidc },
+          { provide: ConfigService, useValue: configService },
+          { provide: EmailService, useValue: emailService },
+          { provide: DemoModeService, useValue: demoModeService },
+          {
+            provide: TokenService,
+            useValue: { getRefreshExpiryMs: jest.fn().mockReturnValue(1000) },
+          },
+          {
+            provide: DelegationService,
+            useValue: {
+              getAvailableContexts: jest.fn().mockResolvedValue([]),
+              resolveSwitchTarget: jest.fn(),
+              validateActingContext: jest.fn(),
+            },
+          },
+          {
+            provide: I18nService,
+            useValue: {
+              translate: (key: string, opts?: { defaultValue?: string }) =>
+                opts?.defaultValue ?? key,
+            },
+          },
+          {
+            provide: DataSource,
+            useValue: createScopedDbMocks([
+              [UserPreference, { findOne: jest.fn().mockResolvedValue(null) }],
+            ]).dataSource,
+          },
+        ],
+      }).compile();
+      return {
+        controller: m.get<AuthController>(AuthController),
+        reauth: m.get(OidcReauthService),
+        oidc,
+      };
+    }
+
+    const actingReq = { user: { id: REAUTH_USER, realUserId: REAUTH_USER } };
+
+    it("asks the provider to actually challenge the user", async () => {
+      // Without prompt=login the round trip is a redirect the user never
+      // notices, and it proves nothing the session did not already prove.
+      const { controller, oidc } = await build();
+      authService.getUserById.mockResolvedValue({
+        id: REAUTH_USER,
+        authProvider: "oidc",
+      });
+      const res = mockRes();
+
+      await controller.oidcReauth(actingReq, "delete-account", res as never);
+
+      expect(oidc.getAuthorizationUrl).toHaveBeenCalledWith(
+        "state-1",
+        "nonce-1",
+        { forceReauthentication: true },
+      );
+      expect(res.redirect).toHaveBeenCalledWith("https://idp/authorize");
+    });
+
+    it("stores the purpose in a signed, httpOnly cookie", async () => {
+      // Signed because the callback trusts it to decide which action the artifact
+      // unlocks: a rewritable cookie would turn a harmless re-auth into one for
+      // account deletion.
+      const { controller, reauth } = await build();
+      authService.getUserById.mockResolvedValue({
+        id: REAUTH_USER,
+        authProvider: "oidc",
+      });
+      const res = mockRes();
+
+      await controller.oidcReauth(actingReq, "restore-backup", res as never);
+
+      const cookie = res.cookie.mock.calls.find(
+        (c: unknown[]) => c[0] === "oidc_reauth",
+      );
+      expect(cookie[2]).toMatchObject({ httpOnly: true });
+      expect(reauth.readPendingMarker(cookie[1] as string, REAUTH_USER)).toBe(
+        "restore-backup",
+      );
+    });
+
+    it("refuses an unknown purpose", async () => {
+      const { controller } = await build();
+      authService.getUserById.mockResolvedValue({
+        id: REAUTH_USER,
+        authProvider: "oidc",
+      });
+
+      await expect(
+        controller.oidcReauth(actingReq, "become-admin", mockRes() as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("refuses a local account, which re-authenticates with its password", async () => {
+      const { controller } = await build();
+      authService.getUserById.mockResolvedValue({
+        id: REAUTH_USER,
+        authProvider: "local",
+      });
+
+      await expect(
+        controller.oidcReauth(actingReq, "delete-account", mockRes() as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("names the REAL user while a delegate is acting", async () => {
+      // Re-authentication proves who is at the keyboard. A delegate cannot prove
+      // the owner's identity, and the id in the artifact has to be the one it
+      // will be compared against.
+      const { controller, reauth } = await build();
+      const delegate = "44444444-4444-4444-8444-444444444444";
+      authService.getUserById.mockResolvedValue({
+        id: delegate,
+        authProvider: "oidc",
+      });
+      const res = mockRes();
+
+      await controller.oidcReauth(
+        { user: { id: REAUTH_USER, realUserId: delegate } },
+        "delete-data",
+        res as never,
+      );
+
+      expect(authService.getUserById).toHaveBeenCalledWith(delegate);
+      const cookie = res.cookie.mock.calls.find(
+        (c: unknown[]) => c[0] === "oidc_reauth",
+      );
+      expect(reauth.readPendingMarker(cookie[1] as string, delegate)).toBe(
+        "delete-data",
+      );
+    });
+
+    it("mints the artifact in the callback and returns it in the fragment", async () => {
+      const { controller, reauth, oidc } = await build();
+      oidc.handleCallback.mockResolvedValue({
+        access_token: "at",
+        sub: "sub-1",
+      });
+      authService.findOrCreateOidcUser.mockResolvedValue({
+        user: { id: REAUTH_USER },
+        isNewUser: false,
+      });
+      authService.generateTokenPair.mockResolvedValue({
+        accessToken: "a",
+        refreshToken: "r",
+      });
+      const res = mockRes();
+
+      await controller.oidcCallback(
+        { code: "c" },
+        {
+          cookies: {
+            oidc_state: "s",
+            oidc_nonce: "n",
+            oidc_reauth: reauth.createPendingMarker(
+              REAUTH_USER,
+              "delete-account",
+            ),
+          },
+        } as never,
+        res as never,
+      );
+
+      const target = res.redirect.mock.calls[0][0] as string;
+      expect(target).toContain("reauth=delete-account");
+      // In the fragment: a fragment is never sent to a server, so it stays out
+      // of proxy and access logs.
+      const artifact = decodeURIComponent(target.split("#reauth_token=")[1]);
+      expect(() =>
+        reauth.consume(REAUTH_USER, "delete-account", artifact),
+      ).not.toThrow();
+    });
+
+    it("mints nothing when a different account came back from the provider", async () => {
+      // Otherwise the round trip user B completed would hand user A a proof.
+      const { controller, reauth, oidc } = await build();
+      oidc.handleCallback.mockResolvedValue({
+        access_token: "at",
+        sub: "sub-2",
+      });
+      authService.findOrCreateOidcUser.mockResolvedValue({
+        user: { id: "99999999-9999-4999-8999-999999999999" },
+        isNewUser: false,
+      });
+      authService.generateTokenPair.mockResolvedValue({
+        accessToken: "a",
+        refreshToken: "r",
+      });
+      const res = mockRes();
+
+      await controller.oidcCallback(
+        { code: "c" },
+        {
+          cookies: {
+            oidc_state: "s",
+            oidc_nonce: "n",
+            oidc_reauth: reauth.createPendingMarker(
+              REAUTH_USER,
+              "delete-account",
+            ),
+          },
+        } as never,
+        res as never,
+      );
+
+      expect(res.redirect.mock.calls[0][0]).not.toContain("reauth_token");
+    });
+
+    it("mints nothing on an ordinary login with no pending re-auth", async () => {
+      const { controller, oidc } = await build();
+      oidc.handleCallback.mockResolvedValue({
+        access_token: "at",
+        sub: "sub-1",
+      });
+      authService.findOrCreateOidcUser.mockResolvedValue({
+        user: { id: REAUTH_USER },
+        isNewUser: false,
+      });
+      authService.generateTokenPair.mockResolvedValue({
+        accessToken: "a",
+        refreshToken: "r",
+      });
+      const res = mockRes();
+
+      await controller.oidcCallback(
+        { code: "c" },
+        { cookies: { oidc_state: "s", oidc_nonce: "n" } } as never,
+        res as never,
+      );
+
+      const target = res.redirect.mock.calls[0][0] as string;
+      expect(target).toContain("success=true");
+      expect(target).not.toContain("reauth_token");
+    });
+
+    it("clears the pending cookie on both the success and error paths", async () => {
+      for (const failing of [false, true]) {
+        const { controller, reauth, oidc } = await build();
+        if (failing) {
+          oidc.handleCallback.mockRejectedValue(new Error("bad code"));
+        } else {
+          oidc.handleCallback.mockResolvedValue({
+            access_token: "at",
+            sub: "sub-1",
+          });
+          authService.findOrCreateOidcUser.mockResolvedValue({
+            user: { id: REAUTH_USER },
+            isNewUser: false,
+          });
+          authService.generateTokenPair.mockResolvedValue({
+            accessToken: "a",
+            refreshToken: "r",
+          });
+        }
+        const res = mockRes();
+
+        await controller.oidcCallback(
+          { code: "c" },
+          {
+            cookies: {
+              oidc_state: "s",
+              oidc_nonce: "n",
+              oidc_reauth: reauth.createPendingMarker(
+                REAUTH_USER,
+                "delete-data",
+              ),
+            },
+          } as never,
+          res as never,
+        );
+
+        expect(res.clearCookie).toHaveBeenCalledWith(
+          "oidc_reauth",
+          expect.anything(),
+        );
+      }
+    });
+  });
+
   describe("oidcCallback edge cases", () => {
     it("redirects with error when query.error is present", async () => {
       const m: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           {
             provide: OidcService,
@@ -2270,6 +2600,7 @@ describe("AuthController", () => {
       const m: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           {
             provide: OidcService,
@@ -2335,6 +2666,7 @@ describe("AuthController", () => {
       const m: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           {
             provide: OidcService,
@@ -2402,6 +2734,7 @@ describe("AuthController", () => {
       const m: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           {
             provide: OidcService,
@@ -2620,6 +2953,7 @@ describe("AuthController", () => {
       const module: TestingModule = await Test.createTestingModule({
         controllers: [AuthController],
         providers: [
+          OidcReauthService,
           { provide: AuthService, useValue: authService },
           { provide: OidcService, useValue: oidcService },
           { provide: ConfigService, useValue: configService },

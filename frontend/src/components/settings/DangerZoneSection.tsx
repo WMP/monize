@@ -7,10 +7,10 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { userSettingsApi, DeleteDataOptions } from '@/lib/user-settings';
-import { authApi } from '@/lib/auth';
 import { useAuthStore } from '@/store/authStore';
 import { getErrorMessage } from '@/lib/errors';
 import { User } from '@/types/auth';
+import { takeOidcReauthArtifact } from '@/lib/stepUpToken';
 
 interface DowngradeNoticeProps {
   isDelegate: boolean;
@@ -74,9 +74,19 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
 
     setIsDeleting(true);
     try {
-      const authData = isOidc
-        ? { oidcIdToken: 'oidc-session-confirmed' }
-        : { password: deleteAccountPassword };
+      let authData: { oidcIdToken?: string; password?: string };
+      if (isOidc) {
+        // Real re-authentication, not a claim that one happened: without an
+        // artifact in hand we hand the user to their identity provider and stop.
+        const artifact = takeOidcReauthArtifact('delete-account', '/settings');
+        if (!artifact) {
+          toast.success(t('deleteAccount.toasts.reauthRedirect'));
+          return;
+        }
+        authData = { oidcIdToken: artifact };
+      } else {
+        authData = { password: deleteAccountPassword };
+      }
       const res = await userSettingsApi.deleteAccount(authData);
       if (res.downgraded) {
         toast.success(
@@ -110,7 +120,12 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
       };
 
       if (isOidc) {
-        options.oidcIdToken = 'oidc-session-confirmed';
+        const artifact = takeOidcReauthArtifact('delete-data', '/settings');
+        if (!artifact) {
+          toast.success(t('deleteAccount.toasts.reauthRedirect'));
+          return;
+        }
+        options.oidcIdToken = artifact;
       } else {
         options.password = password;
       }
@@ -132,16 +147,6 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
     } finally {
       setIsDeletingData(false);
     }
-  };
-
-  const handleOidcReauthData = () => {
-    sessionStorage.setItem('dataDeletePending', JSON.stringify({
-      deleteAccounts,
-      deleteCategories,
-      deletePayees,
-      deleteExchangeRates,
-    }));
-    authApi.initiateOidc();
   };
 
   return (
@@ -235,7 +240,7 @@ export function DangerZoneSection({ user }: DangerZoneSectionProps) {
                 <div className="flex gap-2">
                   <Button
                     variant="danger"
-                    onClick={handleOidcReauthData}
+                    onClick={handleDeleteData}
                     disabled={isDeletingData}
                   >
                     {t('deleteData.oidcReauthButton')}

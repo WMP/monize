@@ -8,6 +8,31 @@ import { getErrorMessage } from '@/lib/errors';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { OnboardingPreferencesScreen } from '@/components/auth/OnboardingPreferencesScreen';
+import { stashOidcReauthArtifact } from '@/lib/stepUpToken';
+
+/**
+ * Same-origin path stashed before an OIDC redirect, consumed once.
+ *
+ * The `startsWith` checks are an open-redirect guard: `//evil.test` and `/\\evil`
+ * are both absolute in a browser despite the leading slash.
+ */
+function readReturnTo(): string | null {
+  try {
+    const stored = sessionStorage.getItem('postLoginReturnTo');
+    sessionStorage.removeItem('postLoginReturnTo');
+    if (
+      stored &&
+      stored.startsWith('/') &&
+      !stored.startsWith('//') &&
+      !stored.startsWith('/\\')
+    ) {
+      return stored;
+    }
+  } catch {
+    // sessionStorage unavailable -- caller falls through to /dashboard.
+  }
+  return null;
+}
 
 function CallbackContent() {
   const router = useRouter();
@@ -35,6 +60,28 @@ function CallbackContent() {
         const success = searchParams.get('success');
         const error = searchParams.get('error');
 
+        // A re-authentication round trip (GET /auth/oidc/reauth) ends here with
+        // the signed artifact in the fragment. Fragments are never sent to a
+        // server, so it does not reach proxy or access logs; take it out of the
+        // address bar immediately anyway, then hand it to the page that asked for
+        // it via sessionStorage and return there without a sign-in toast -- the
+        // user never left their session.
+        const reauthPurpose = searchParams.get('reauth');
+        if (reauthPurpose) {
+          const fragment = new URLSearchParams(
+            window.location.hash.replace(/^#/, ''),
+          );
+          const artifact = fragment.get('reauth_token');
+          window.history.replaceState(null, '', window.location.pathname);
+          if (artifact) {
+            stashOidcReauthArtifact(artifact);
+          } else {
+            toast.error(t('callback.toasts.oidcFailed'));
+          }
+          router.push(readReturnTo() ?? '/dashboard');
+          return;
+        }
+
         // Handle error from OIDC provider
         if (error) {
           toast.error(t('callback.toasts.oidcFailed'));
@@ -59,21 +106,7 @@ function CallbackContent() {
             // OIDC redirect (used to resume the OAuth consent flow when a
             // Claude Desktop connector triggers the login). Restricted to
             // same-origin paths to block open-redirect abuse.
-            let returnTo: string | null = null;
-            try {
-              const stored = sessionStorage.getItem('postLoginReturnTo');
-              sessionStorage.removeItem('postLoginReturnTo');
-              if (
-                stored &&
-                stored.startsWith('/') &&
-                !stored.startsWith('//') &&
-                !stored.startsWith('/\\')
-              ) {
-                returnTo = stored;
-              }
-            } catch {
-              // sessionStorage unavailable — fall through to /dashboard
-            }
+            const returnTo = readReturnTo();
             // A brand-new SSO account gets the same first-run preferences
             // step local registration ends on; the destination is held until
             // the user finishes with it.

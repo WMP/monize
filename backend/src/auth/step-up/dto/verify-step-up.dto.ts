@@ -1,5 +1,4 @@
 import {
-  IsBoolean,
   IsIn,
   IsOptional,
   IsString,
@@ -46,10 +45,11 @@ export class VerifyStepUpDto {
 
   @ApiProperty({
     description:
-      "OIDC users only: set true after the frontend has completed a fresh redirect through the identity provider. Mirrors the soft-check used by /users/delete-account.",
+      "OIDC users only: the re-authentication artifact returned by the OIDC callback after GET /auth/oidc/reauth. Signed, bound to this purpose, single use.",
     required: false,
   })
   @IsOptional()
-  @IsBoolean()
-  oidcConfirmed?: boolean;
+  @IsString()
+  @MaxLength(4096)
+  oidcReauthToken?: string;
 }

@@ -14,6 +14,7 @@ import { TwoFactorService } from "../two-factor.service";
 import { User } from "../../users/entities/user.entity";
 import { UserPreference } from "../../users/entities/user-preference.entity";
 import { createScopedDbMocks } from "../../test-helpers/scoped-db-testing";
+import { OidcReauthService } from "../oidc/oidc-reauth.service";
 
 jest.mock("../../common/db/scoped-db", () =>
   jest
@@ -22,6 +23,20 @@ jest.mock("../../common/db/scoped-db", () =>
 );
 
 describe("StepUpAuthService", () => {
+  // The artifacts below are real, so the spec needs the signing key. `jwt.sign`
+  // is mocked at the module level for the step-up token itself; OidcReauthService
+  // uses `jsonwebtoken` directly, which is not.
+  const ORIGINAL_JWT_SECRET = process.env.JWT_SECRET;
+
+  beforeAll(() => {
+    process.env.JWT_SECRET = "spec-jwt-secret-of-at-least-32-characters";
+  });
+
+  afterAll(() => {
+    if (ORIGINAL_JWT_SECRET === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = ORIGINAL_JWT_SECRET;
+  });
+
   let service: StepUpAuthService;
   let usersRepo: Record<string, jest.Mock>;
   let preferencesRepo: Record<string, jest.Mock>;
@@ -38,6 +53,10 @@ describe("StepUpAuthService", () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        // Real instance: the class exists to verify signatures, and a mock
+        // that always accepts would make the re-authentication assertions
+        // vacuous -- which is how the sentinel survived (P2-005).
+        OidcReauthService,
         {
           provide: DataSource,
           useValue: createScopedDbMocks([
@@ -164,18 +183,44 @@ describe("StepUpAuthService", () => {
       preferencesRepo.findOne.mockResolvedValue({ twoFactorEnabled: false });
     });
 
-    it("requires oidcConfirmed and otherwise rejects with OIDC_REAUTH_REQUIRED", async () => {
+    it("rejects a password or nothing at all", async () => {
       await expect(
         service.verifyAndIssue(userId, "emergency-access", { password: "x" }),
-      ).rejects.toBeInstanceOf(BadRequestException);
+      ).rejects.toBeInstanceOf(UnauthorizedException);
       await expect(
         service.verifyAndIssue(userId, "emergency-access", {}),
-      ).rejects.toBeInstanceOf(BadRequestException);
+      ).rejects.toBeInstanceOf(UnauthorizedException);
     });
 
-    it("issues a token when oidcConfirmed=true after a fresh IdP roundtrip", async () => {
+    // P2-005. This branch used to accept `oidcConfirmed: true` -- a boolean the
+    // client sent -- so the step-up token, whose entire purpose is to be a second
+    // proof, was issued on the strength of the session that already existed.
+    it.each([
+      ["the old sentinel", "oidc-session-confirmed"],
+      ["any non-empty string", "x"],
+      ["an unsigned JWT-shaped value", "a.b.c"],
+    ])("refuses %s as re-authentication", async (_label, token) => {
+      await expect(
+        service.verifyAndIssue(userId, "emergency-access", {
+          oidcReauthToken: token,
+        }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it("refuses an artifact minted for a different action", async () => {
+      await expect(
+        service.verifyAndIssue(userId, "emergency-access", {
+          oidcReauthToken: new OidcReauthService().issue(userId, "delete-data"),
+        }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it("issues a token for a verified re-authentication artifact", async () => {
       const result = await service.verifyAndIssue(userId, "emergency-access", {
-        oidcConfirmed: true,
+        oidcReauthToken: new OidcReauthService().issue(
+          userId,
+          "emergency-access",
+        ),
       });
       expect(result.stepUpToken).toBe("signed.jwt.token");
       const payload = jwt.sign.mock.calls[0][0];

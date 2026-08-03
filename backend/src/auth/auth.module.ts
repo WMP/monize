@@ -8,6 +8,7 @@ import { AuthController } from "./auth.controller";
 import { LocalStrategy } from "./strategies/local.strategy";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { OidcService } from "./oidc/oidc.service";
+import { OidcReauthService } from "./oidc/oidc-reauth.service";
 import { PatService } from "./pat.service";
 import { PasswordBreachService } from "./password-breach.service";
 import { TokenService } from "./token.service";
@@ -50,6 +51,7 @@ import { DelegationModule } from "../delegation/delegation.module";
     LocalStrategy,
     JwtStrategy,
     OidcService,
+    OidcReauthService,
     PatService,
     PasswordBreachService,
     StepUpAuthService,
@@ -62,6 +64,7 @@ import { DelegationModule } from "../delegation/delegation.module";
     TwoFactorService,
     AuthEmailService,
     OidcService,
+    OidcReauthService,
     PatService,
     PasswordBreachService,
     StepUpAuthService,

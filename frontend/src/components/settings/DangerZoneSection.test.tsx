@@ -13,6 +13,7 @@ vi.mock('@/lib/user-settings', () => ({
 vi.mock('@/lib/auth', () => ({
   authApi: {
     initiateOidc: vi.fn(),
+    beginOidcReauth: vi.fn(),
   },
 }));
 
@@ -332,13 +333,39 @@ describe('DangerZoneSection', () => {
       expect(screen.getByRole('button', { name: 'Delete Data...' })).toBeInTheDocument();
     });
 
-    it('triggers OIDC re-auth flow for OIDC users', () => {
+    // The OIDC button used to redirect unconditionally and nothing resumed on
+    // return, so an OIDC user re-ticked the boxes, clicked, and was redirected
+    // again -- the flow could never complete. It now goes through the same
+    // handler as the local one, which spends an artifact if it has one and starts
+    // the round trip if it does not.
+    it('sends the user to the identity provider when it has no artifact', async () => {
       render(<DangerZoneSection user={oidcUser} />);
 
       fireEvent.click(screen.getByRole('button', { name: 'Delete Data...' }));
       fireEvent.click(screen.getByRole('button', { name: 'Re-authenticate and Delete' }));
 
-      expect(authApi.initiateOidc).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(authApi.beginOidcReauth).toHaveBeenCalledWith('delete-data');
+      });
+      expect(userSettingsApi.deleteData).not.toHaveBeenCalled();
+    });
+
+    it('completes the deletion with the artifact on return', async () => {
+      (userSettingsApi.deleteData as ReturnType<typeof vi.fn>).mockResolvedValue({
+        deleted: { transactions: 3 },
+      });
+      sessionStorage.setItem('oidcReauthArtifact', 'signed.artifact.value');
+
+      render(<DangerZoneSection user={oidcUser} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Data...' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Re-authenticate and Delete' }));
+
+      await waitFor(() => {
+        expect(userSettingsApi.deleteData).toHaveBeenCalledWith(
+          expect.objectContaining({ oidcIdToken: 'signed.artifact.value' }),
+        );
+      });
     });
 
     it('enables delete button when password is entered', () => {
@@ -353,7 +380,13 @@ describe('DangerZoneSection', () => {
   });
 
   describe('Delete Account (OIDC)', () => {
-    it('calls deleteAccount with OIDC token for OIDC users', async () => {
+    // P2-005. The client used to send the literal string
+    // 'oidc-session-confirmed' and the server accepted any non-empty value, so
+    // the second proof for account deletion was possession of the session that
+    // was already required. Now the client can only present an artifact the OIDC
+    // callback minted -- and when it has none, it must not call the endpoint at
+    // all.
+    it('sends the user to the identity provider when it has no artifact', async () => {
       (userSettingsApi.deleteAccount as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
       render(<DangerZoneSection user={oidcUser} />);
@@ -363,8 +396,28 @@ describe('DangerZoneSection', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
 
       await waitFor(() => {
-        expect(userSettingsApi.deleteAccount).toHaveBeenCalledWith({ oidcIdToken: 'oidc-session-confirmed' });
+        expect(authApi.beginOidcReauth).toHaveBeenCalledWith('delete-account');
       });
+      expect(userSettingsApi.deleteAccount).not.toHaveBeenCalled();
+    });
+
+    it('spends the artifact once it has one, and never a sentinel', async () => {
+      (userSettingsApi.deleteAccount as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      sessionStorage.setItem('oidcReauthArtifact', 'signed.artifact.value');
+
+      render(<DangerZoneSection user={oidcUser} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Account' }));
+      fireEvent.change(screen.getByPlaceholderText('Type DELETE'), { target: { value: 'DELETE' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Confirm Delete' }));
+
+      await waitFor(() => {
+        expect(userSettingsApi.deleteAccount).toHaveBeenCalledWith({
+          oidcIdToken: 'signed.artifact.value',
+        });
+      });
+      // Spent: a second attempt has to earn a fresh one.
+      expect(sessionStorage.getItem('oidcReauthArtifact')).toBeNull();
     });
 
     it('enables delete button without password for OIDC users', () => {

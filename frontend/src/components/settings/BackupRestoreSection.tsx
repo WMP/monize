@@ -19,6 +19,7 @@ import { getDateStringInTimezone, resolveTimezone } from '@/lib/utils';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { downloadBlob } from '@/lib/download';
 import { User } from '@/types/auth';
+import { takeOidcReauthArtifact } from '@/lib/stepUpToken';
 
 const RESTORE_LABELS: Record<string, string> = {
   userPreferences: 'User Preferences',
@@ -219,9 +220,20 @@ export function BackupRestoreSection({ user }: BackupRestoreSectionProps) {
 
     setIsRestoring(true);
     try {
-      const authData = isOidc
-        ? { oidcIdToken: 'oidc-session-confirmed' }
-        : { password: restorePassword };
+      let authData: { oidcIdToken?: string; password?: string };
+      if (isOidc) {
+        // Real re-authentication, not a claim that one happened. The redirect
+        // loses the selected file, so say so -- the user re-picks it on return and
+        // the artifact is waiting.
+        const artifact = takeOidcReauthArtifact('restore-backup', '/settings');
+        if (!artifact) {
+          toast.success(t('restore.toasts.reauthRedirect'));
+          return;
+        }
+        authData = { oidcIdToken: artifact };
+      } else {
+        authData = { password: restorePassword };
+      }
 
       const result = await backupApi.restoreBackup({
         file: restoreFile,

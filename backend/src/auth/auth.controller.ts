@@ -30,6 +30,11 @@ import { Response, Request as ExpressRequest } from "express";
 import { AuthService } from "./auth.service";
 import { TokenService } from "./token.service";
 import { OidcService } from "./oidc/oidc.service";
+import {
+  isOidcReauthPurpose,
+  OidcReauthService,
+  OIDC_REAUTH_PENDING_TTL_SECONDS,
+} from "./oidc/oidc-reauth.service";
 import { EmailService } from "../notifications/email.service";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -76,6 +81,7 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     private oidcService: OidcService,
+    private oidcReauthService: OidcReauthService,
     private configService: ConfigService,
     private emailService: EmailService,
     private demoModeService: DemoModeService,
@@ -413,6 +419,91 @@ export class AuthController {
     res.redirect(authUrl);
   }
 
+  /**
+   * Start a *re-authentication* round trip for an OIDC account.
+   *
+   * Unlike `GET /auth/oidc` this requires an existing session, names the action
+   * the resulting proof is for, and asks the provider to actually challenge the
+   * user (`prompt=login`). The callback mints a signed, action-bound, one-time
+   * artifact that the destructive handler consumes. Before this existed, the
+   * frontend redirected through ordinary OIDC login and then simply asserted
+   * `"oidc-session-confirmed"`, which the backend accepted from anyone holding
+   * the session (P2-005).
+   */
+  @Get("oidc/reauth")
+  @UseGuards(AuthGuard("jwt"))
+  @SkipPasswordCheck()
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Start an OIDC re-authentication for a destructive action",
+  })
+  @ApiResponse({ status: 302, description: "Redirects to OIDC provider" })
+  async oidcReauth(
+    @Request() req,
+    @Query("purpose") purpose: string,
+    @Res() res: Response,
+  ) {
+    if (!this.oidcService.enabled) {
+      throw new BadRequestException(
+        tr(
+          "errors.auth.oidcNotConfigured",
+          "OIDC authentication is not configured",
+        ),
+      );
+    }
+    if (!isOidcReauthPurpose(purpose)) {
+      throw new BadRequestException(
+        tr(
+          "errors.auth.oidcReauthUnknownPurpose",
+          "Unknown re-authentication purpose",
+        ),
+      );
+    }
+
+    // The REAL user, never the effective owner: re-authentication proves who is
+    // sitting at the keyboard, and a delegate acting for an owner cannot prove
+    // the owner's identity. The destructive routes are owner-only anyway, so this
+    // is belt and braces -- but the id that goes into the artifact has to be the
+    // one that will be compared against it.
+    const userId = req.user.realUserId ?? req.user.id;
+    const user = await this.authService.getUserById(userId);
+    if (!user || user.authProvider !== "oidc") {
+      // A local account re-authenticates with its password. Minting an OIDC
+      // artifact for it would create a second, weaker route to the same actions.
+      throw new BadRequestException(
+        tr(
+          "errors.auth.oidcReauthNotOidcAccount",
+          "This account does not sign in with an identity provider",
+        ),
+      );
+    }
+
+    const state = this.oidcService.generateState();
+    const nonce = this.oidcService.generateNonce();
+    const cookieOptions = {
+      httpOnly: true,
+      secure: this.useSecureCookies,
+      sameSite: "lax" as const,
+      maxAge: OIDC_REAUTH_PENDING_TTL_SECONDS * 1000,
+    };
+
+    res.cookie("oidc_state", state, cookieOptions);
+    res.cookie("oidc_nonce", nonce, cookieOptions);
+    // Signed, not a plain value: the callback trusts this to decide which action
+    // the artifact it mints unlocks.
+    res.cookie(
+      "oidc_reauth",
+      this.oidcReauthService.createPendingMarker(userId, purpose),
+      cookieOptions,
+    );
+
+    res.redirect(
+      this.oidcService.getAuthorizationUrl(state, nonce, {
+        forceReauthentication: true,
+      }),
+    );
+  }
+
   @Get("oidc/callback")
   @AllowDelegate()
   @ApiOperation({ summary: "OIDC callback handler" })
@@ -443,10 +534,12 @@ export class AuthController {
 
       const state = req.cookies?.["oidc_state"];
       const nonce = req.cookies?.["oidc_nonce"];
+      const pendingReauth = req.cookies?.["oidc_reauth"];
 
       // Clear OIDC cookies with matching options
       res.clearCookie("oidc_state", clearOidcCookieOptions);
       res.clearCookie("oidc_nonce", clearOidcCookieOptions);
+      res.clearCookie("oidc_reauth", clearOidcCookieOptions);
 
       if (!state || !nonce) {
         throw new Error(
@@ -501,6 +594,31 @@ export class AuthController {
       );
 
       this.setAuthCookies(res, accessToken, refreshToken, result.user.id);
+
+      // A re-authentication round trip ends here too: the code exchange above
+      // verified state, nonce, issuer, audience and signature, and the account
+      // it resolved to is the one that started the flow (checked inside
+      // readPendingMarker), so this is the one place entitled to mint the proof.
+      const reauthPurpose = this.oidcReauthService.readPendingMarker(
+        pendingReauth,
+        result.user.id,
+      );
+      if (reauthPurpose) {
+        const artifact = this.oidcReauthService.issue(
+          result.user.id,
+          reauthPurpose,
+        );
+        // In the fragment, not the query: a fragment is not sent to servers, so
+        // it stays out of proxy and access logs. The SPA reads it, sends it in
+        // the request header, and clears it from the address bar.
+        res.redirect(
+          `${frontendUrl}/auth/callback?reauth=${encodeURIComponent(
+            reauthPurpose,
+          )}#reauth_token=${encodeURIComponent(artifact)}`,
+        );
+        return;
+      }
+
       // `welcome` tells the callback page this login provisioned the account,
       // so it shows the same language/currency step local registration ends
       // on instead of dropping the user straight on the dashboard.
@@ -513,6 +631,7 @@ export class AuthController {
       // Clear OIDC cookies on error path as well
       res.clearCookie("oidc_state", clearOidcCookieOptions);
       res.clearCookie("oidc_nonce", clearOidcCookieOptions);
+      res.clearCookie("oidc_reauth", clearOidcCookieOptions);
       // SECURITY: Log detailed error server-side only, don't expose to client
       this.logger.error(
         "OIDC callback error",

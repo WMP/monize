@@ -103,7 +103,10 @@ export function StepUpAuthModal({
       returnTo: oidcReturnTo,
       payload: oidcResumePayload,
     });
-    authApi.initiateOidc();
+    // The re-auth route, not ordinary login: it names the purpose and asks the
+    // provider to challenge the user, and its callback mints the proof the
+    // step-up endpoint verifies (P2-005).
+    authApi.beginOidcReauth(purpose);
   };
 
   const [submitting, setSubmitting] = useState(false);

@@ -356,7 +356,8 @@
       "toasts": {
         "downgraded": "[XX-Your own data was removed. Your login and shared access are kept so the delegation stays in place.-XX]",
         "deleted": "[XX-Account deleted-XX]",
-        "failed": "[XX-Failed to delete account-XX]"
+        "failed": "[XX-Failed to delete account-XX]",
+        "reauthRedirect": "[XX-Taking you to your identity provider to confirm it is you. You will come back here afterwards.-XX]"
       },
       "errors": {
         "typeDelete": "[XX-Please type DELETE to confirm-XX]",
@@ -559,7 +560,8 @@
         "pleaseSelectFile": "[XX-Please select a backup file-XX]",
         "pleaseEnterPassword": "[XX-Please enter your password to confirm-XX]",
         "encryptedNeedsPassword": "[XX-This backup is encrypted. Enter the password it was created with in the \"Backup password\" field, then try again.-XX]",
-        "failed": "[XX-Failed to restore backup-XX]"
+        "failed": "[XX-Failed to restore backup-XX]",
+        "reauthRedirect": "[XX-Taking you to your identity provider to confirm it is you. Choose the backup file again when you return.-XX]"
       }
     },
     "restoreResult": {

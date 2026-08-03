@@ -12,9 +12,9 @@ import { randomUUID } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import { getRequestContext } from "../common/request-context";
+import { OidcReauthService } from "../auth/oidc/oidc-reauth.service";
 import { BackupService, RestoreBackupInput } from "./backup.service";
 import { User } from "../users/entities/user.entity";
-import { OidcService } from "../auth/oidc/oidc.service";
 import { AiEncryptionService } from "../ai/ai-encryption.service";
 import { encryptBackup } from "./backup-crypto.util";
 import * as bcrypt from "bcryptjs";
@@ -407,6 +407,32 @@ describe("BackupService", () => {
     return Promise.resolve([]);
   }
 
+  // Signing key for the re-authentication artifacts below. The service reads it
+  // fresh from the environment, so a spec that mints one has to supply it.
+  const ORIGINAL_JWT_SECRET = process.env.JWT_SECRET;
+
+  beforeAll(() => {
+    process.env.JWT_SECRET = "spec-jwt-secret-of-at-least-32-characters";
+  });
+
+  afterAll(() => {
+    if (ORIGINAL_JWT_SECRET === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = ORIGINAL_JWT_SECRET;
+  });
+
+  /**
+   * A genuine artifact for the restore action, minted the way the OIDC callback
+   * does. Deliberately not a literal: the defect P2-005 fixed was that any
+   * non-empty string was accepted, so a fixture string would keep this spec green
+   * if the verification were removed again.
+   */
+  function oidcArtifact(
+    purpose: Parameters<OidcReauthService["issue"]>[1] = "restore-backup",
+    forUser = userId,
+  ): string {
+    return new OidcReauthService().issue(forUser, purpose);
+  }
+
   beforeEach(async () => {
     mockUserRepo = {
       findOne: jest.fn(),
@@ -430,13 +456,11 @@ describe("BackupService", () => {
           provide: DataSource,
           useValue: mockDataSource,
         },
-        {
-          provide: OidcService,
-          useValue: {
-            enabled: true,
-            verifyIdTokenClaims: jest.fn().mockReturnValue(true),
-          },
-        },
+        // Real instance, not a double: its whole job is cryptographic
+        // verification, and a mock that always accepts would make every
+        // re-authentication assertion vacuous -- which is how the sentinel
+        // survived (P2-005).
+        OidcReauthService,
         {
           provide: AiEncryptionService,
           useValue: {
@@ -1988,10 +2012,93 @@ describe("BackupService", () => {
 
       const result = await service.restoreData(
         userId,
-        makeInput({ oidcIdToken: "oidc-session-confirmed" }),
+        makeInput({ oidcIdToken: oidcArtifact() }),
       );
 
       expect(result.message).toBe("Backup restored successfully");
+    });
+
+    // P2-005. Restore is the most destructive action in the product: it deletes
+    // everything the user has and writes the file's contents in its place. Each
+    // of these used to be accepted, because the check was only whether the field
+    // was non-empty.
+    it.each([
+      ["the sentinel the client used to send", "oidc-session-confirmed"],
+      ["any non-empty string", "x"],
+      ["an unsigned JWT-shaped value", "a.b.c"],
+    ])("refuses %s as re-authentication for restore", async (_label, token) => {
+      mockUserRepo.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: null,
+        oidcSubject: "sub-1",
+      });
+
+      await expect(
+        service.restoreData(userId, makeInput({ oidcIdToken: token })),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("refuses an artifact minted to delete data rather than restore", async () => {
+      mockUserRepo.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: null,
+        oidcSubject: "sub-1",
+      });
+
+      await expect(
+        service.restoreData(
+          userId,
+          makeInput({ oidcIdToken: oidcArtifact("delete-data") }),
+        ),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("refuses an artifact minted for a different user", async () => {
+      mockUserRepo.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: null,
+        oidcSubject: "sub-1",
+      });
+
+      await expect(
+        service.restoreData(
+          userId,
+          makeInput({
+            oidcIdToken: oidcArtifact("restore-backup", "another-user"),
+          }),
+        ),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("spends the artifact, so a replayed restore is refused", async () => {
+      mockUserRepo.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "oidc",
+        passwordHash: null,
+        oidcSubject: "sub-1",
+      });
+      const artifact = oidcArtifact();
+
+      await service.restoreData(userId, makeInput({ oidcIdToken: artifact }));
+      await expect(
+        service.restoreData(userId, makeInput({ oidcIdToken: artifact })),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("refuses a local account with no password to check", async () => {
+      // This branch fell off the end of the else-if chain and required no proof.
+      mockUserRepo.findOne.mockResolvedValue({
+        ...mockUser,
+        authProvider: "local",
+        passwordHash: null,
+      });
+
+      await expect(service.restoreData(userId, makeInput({}))).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it("rejects backup files that decompress to a non-object", async () => {
@@ -2138,7 +2245,7 @@ describe("BackupService", () => {
       const result = await service.restoreData(
         userId,
         makeInput({
-          oidcIdToken: "oidc-session-confirmed",
+          oidcIdToken: oidcArtifact(),
         }),
       );
 
@@ -2182,7 +2289,7 @@ describe("BackupService", () => {
         });
         const result = await service.restoreData(userId, {
           compressedData: encryptedBlob(validBackupData, "stored-bk-pw"),
-          oidcIdToken: "tok",
+          oidcIdToken: oidcArtifact(),
         });
         expect(result.message).toBe("Backup restored successfully");
       });

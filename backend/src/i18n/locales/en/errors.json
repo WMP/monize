@@ -156,7 +156,10 @@
     "insufficientTokenScope": "Insufficient token scope. Required: {{ requiredScopes }}",
     "passwordChangeRequiredForAccess": "Password change required before accessing this resource",
     "invalidAuthenticatorCode": "Invalid authenticator code",
-    "incorrectPassword": "Incorrect password"
+    "incorrectPassword": "Incorrect password",
+    "oidcReauthRequired": "Re-authenticate with your identity provider to confirm this action.",
+    "oidcReauthUnknownPurpose": "Unknown re-authentication purpose",
+    "oidcReauthNotOidcAccount": "This account does not sign in with an identity provider"
   },
   "backup": {
     "folderNotExist": "Folder does not exist: {{ safePath }}",
@@ -179,7 +182,7 @@
     "backupPasswordRequired": "This backup is encrypted. Provide the password that was used when the backup was created.",
     "decompressFailed": "Failed to decompress backup file. Ensure the file is gzip-compressed.",
     "invalidJsonBackup": "Invalid backup file: decompressed content is not valid JSON",
-    "oidcReauthRequired": "OIDC re-authentication is required to confirm restore",
+    "oidcReauthRequired": "Re-authenticate with your identity provider to confirm restore",
     "oidcTokenInvalid": "Invalid OIDC token: the token must be a valid ID token from your SSO provider",
     "passwordRequiredForRestore": "Password is required to confirm restore",
     "invalidPassword": "Invalid password",
@@ -191,7 +194,8 @@
     "backupPasswordOidcOnly": "Backup password is only configurable for OIDC users; local users use their login password",
     "backupPasswordTooShort": "Backup password must be at least {{ minLength }} characters",
     "backupPasswordBreached": "This password has been found in a data breach. Please choose a different password.",
-    "restoreBodyMustBeFile": "Request body must be a backup file"
+    "restoreBodyMustBeFile": "Request body must be a backup file",
+    "reauthUnavailable": "Finish setting up your account password before restoring a backup."
   },
   "budgets": {
     "notFound": "Budget with ID {{ id }} not found",
@@ -493,12 +497,13 @@
     "emailInUse": "Email already in use",
     "noPasswordSet": "No password set for this account",
     "passwordBreached": "This password has been found in a data breach. Please choose a different password.",
-    "oidcReauthRequired": "OIDC re-authentication is required to confirm account deletion",
+    "oidcReauthRequired": "Re-authenticate with your identity provider to confirm account deletion",
     "passwordRequiredForDelete": "Password is required to confirm account deletion",
     "invalidPassword": "Invalid password",
     "deleteLastAdmin": "Cannot delete the last admin account. Promote another user first.",
-    "oidcReauthRequiredForDataDelete": "OIDC re-authentication is required to confirm data deletion",
-    "passwordRequiredForDataDelete": "Password is required to confirm data deletion"
+    "oidcReauthRequiredForDataDelete": "Re-authenticate with your identity provider to confirm data deletion",
+    "passwordRequiredForDataDelete": "Password is required to confirm data deletion",
+    "reauthUnavailable": "Finish setting up your account password before using this action."
   },
   "loanScenarios": {
     "notFound": "Loan scenario with ID {{ id }} not found",
