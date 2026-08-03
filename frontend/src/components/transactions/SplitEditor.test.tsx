@@ -2,20 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@/test/render';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows, toCreateSplitData } from './SplitEditor';
 
-vi.mock('@/lib/format', () => ({
-  getCurrencySymbol: () => '$',
-  getDecimalPlacesForCurrency: () => 2,
-  roundToCents: (v: number) => Math.round(v * 100) / 100,
-  roundToDecimals: (v: number, d: number) => { const f = Math.pow(10, d); return Math.round(v * f) / f; },
-  formatAmount: (v: number | undefined | null) => (v === undefined || v === null || isNaN(v)) ? '' : (Math.round(v * 100) / 100).toFixed(2),
-  formatAmountWithCommas: (v: number | undefined | null) => (v === undefined || v === null || isNaN(v)) ? '' : (Math.round(v * 100) / 100).toFixed(2),
-  parseAmount: (input: string) => { const n = parseFloat(input.replace(/[^0-9.-]/g, '')); return isNaN(n) ? undefined : Math.round(n * 100) / 100; },
-  filterCurrencyInput: (input: string) => input.replace(/[^0-9.-]/g, ''),
-  filterCalculatorInput: (input: string) => input.replace(/[^0-9.+\-*/() ]/g, ''),
-  hasCalculatorOperators: (input: string) => /[+*/()]/.test(input.replace(/^-/, '')) || /(?!^)-/.test(input),
-  evaluateExpression: vi.fn().mockImplementation(() => undefined),
-  formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
-}));
+// Use the real money helpers. A hand-written mock here re-implemented rounding
+// at cents, which is the precision this file exists to test: it would have
+// passed every four-decimal assertion below while the component did the wrong
+// thing. Only `evaluateExpression` is stubbed, because the calculator is
+// CurrencyInput's subject, not this one's.
+vi.mock('@/lib/format', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/format')>();
+  return { ...actual, evaluateExpression: vi.fn().mockReturnValue(undefined) };
+});
 
 vi.mock('@/lib/categoryUtils', () => ({
   buildCategoryTree: (cats: any[]) => cats.map((c: any) => ({ category: c, children: [] })),
@@ -2206,8 +2201,10 @@ describe('SplitEditor — foreign-currency toggle', () => {
 
     // -50 CAD / rate 2 = -25.00 EUR shown in each amount input (mobile + desktop).
     expect(screen.getAllByDisplayValue('-25.00').length).toBeGreaterThan(0);
-    // Footer total is shown converted too: -100 CAD / 2 = -50.00 EUR.
-    expect(screen.getAllByText('$-50.00').length).toBeGreaterThan(0);
+    // Footer total is shown converted too: -100 CAD / 2 = -50.00 EUR, under the
+    // euro symbol. (This asserted "$-50.00" while the format helpers were
+    // mocked to return "$" for every currency.)
+    expect(screen.getAllByText('€-50.00').length).toBeGreaterThan(0);
   });
 
   it('stores an edited foreign amount back in the account currency', () => {
@@ -2292,5 +2289,198 @@ describe('SplitEditor — foreign-currency toggle', () => {
 
     const newSplits = mockOnChange.mock.calls[mockOnChange.mock.calls.length - 1][0];
     expect(newSplits[0].amount).toBe(-40);
+  });
+});
+
+describe('SplitEditor — four-decimal money', () => {
+  const mockOnChange = vi.fn();
+  const mockCategories = [
+    { id: 'cat-1', name: 'Groceries', parentId: null, isIncome: false },
+    { id: 'cat-3', name: 'Salary', parentId: null, isIncome: true },
+  ] as any[];
+
+  beforeEach(() => {
+    mockOnChange.mockClear();
+  });
+
+  const renderWith = (splits: SplitRow[], transactionAmount: number) =>
+    render(
+      <SplitEditor
+        splits={splits}
+        onChange={mockOnChange}
+        categories={mockCategories}
+        transactionAmount={transactionAmount}
+      />,
+    );
+
+  // The audit's reproduction. A `< 0.01` tolerance called this balanced, the
+  // display showed 10.00 / 5.00 / 5.00, and the API rejected the save because
+  // it compares at four decimals.
+  it('reports a 0.0048 shortfall as unbalanced', () => {
+    renderWith(
+      [
+        createSplitRow({ id: 's1', amount: 5 }),
+        createSplitRow({ id: 's2', amount: 5 }),
+      ],
+      10.0048,
+    );
+    expect(screen.queryAllByText('Balanced')).toHaveLength(0);
+  });
+
+  it('shows the digits that decide it rather than rounding them away', () => {
+    renderWith(
+      [
+        createSplitRow({ id: 's1', amount: 5 }),
+        createSplitRow({ id: 's2', amount: 5 }),
+      ],
+      10.0048,
+    );
+    // The parent, the running total and the remainder all widen to four places.
+    expect(screen.getAllByDisplayValue('5.0000').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/10\.0048/).length).toBeGreaterThan(0);
+  });
+
+  it('calls a genuine four-decimal set balanced', () => {
+    renderWith(
+      [
+        createSplitRow({ id: 's1', amount: 5.0024 }),
+        createSplitRow({ id: 's2', amount: 5.0024 }),
+      ],
+      10.0048,
+    );
+    expect(screen.getAllByText('Balanced').length).toBeGreaterThan(0);
+    expect(screen.getAllByDisplayValue('5.0024').length).toBeGreaterThan(0);
+  });
+
+  it('keeps two decimals for an ordinary set', () => {
+    renderWith(
+      [
+        createSplitRow({ id: 's1', amount: -60 }),
+        createSplitRow({ id: 's2', amount: -40 }),
+      ],
+      -100,
+    );
+    expect(screen.getAllByDisplayValue('-60.00').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Balanced').length).toBeGreaterThan(0);
+  });
+
+  it('distributes a four-decimal parent so it actually balances', () => {
+    renderWith(
+      [
+        createSplitRow({ id: 's1', amount: 0 }),
+        createSplitRow({ id: 's2', amount: 0 }),
+      ],
+      10.0048,
+    );
+    fireEvent.click(screen.getByText('Distribute Evenly'));
+
+    const distributed = mockOnChange.mock.calls.at(-1)![0] as SplitRow[];
+    const total = distributed.reduce(
+      (sum, split) => sum + Math.round(split.amount * 10000),
+      0,
+    );
+    expect(total).toBe(Math.round(10.0048 * 10000));
+  });
+
+  it('still distributes an ordinary parent at cents', () => {
+    renderWith(
+      [
+        createSplitRow({ id: 's1', amount: 0 }),
+        createSplitRow({ id: 's2', amount: 0 }),
+        createSplitRow({ id: 's3', amount: 0 }),
+      ],
+      -100,
+    );
+    fireEvent.click(screen.getByText('Distribute Evenly'));
+
+    const distributed = mockOnChange.mock.calls.at(-1)![0] as SplitRow[];
+    expect(distributed.map((s) => s.amount)).toEqual([-33.33, -33.33, -33.34]);
+  });
+});
+
+describe('SplitEditor — a balanced set can still reverse the parent', () => {
+  const mockOnChange = vi.fn();
+  const mockCategories = [
+    { id: 'cat-1', name: 'Groceries', parentId: null, isIncome: false },
+    { id: 'cat-3', name: 'Salary', parentId: null, isIncome: true },
+  ] as any[];
+
+  beforeEach(() => {
+    mockOnChange.mockClear();
+  });
+
+  const renderWith = (splits: SplitRow[], transactionAmount: number) =>
+    render(
+      <SplitEditor
+        splits={splits}
+        onChange={mockOnChange}
+        categories={mockCategories}
+        accounts={[{ id: 'acc-2', name: 'Savings', isClosed: false, accountSubType: null }] as any[]}
+        sourceAccountId="acc-1"
+        transactionAmount={transactionAmount}
+      />,
+    );
+
+  // -150 and +50 sum to -100, so the arithmetic check passes and 50.00 of
+  // income is recorded inside an expense -- visible in budgets and category
+  // reports while the account balance still reconciles.
+  it('names the row that reverses an expense', () => {
+    renderWith(
+      [
+        createSplitRow({ id: 's1', amount: -150 }),
+        createSplitRow({ id: 's2', amount: 50 }),
+      ],
+      -100,
+    );
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Row 2 is income inside an expense');
+    expect(screen.queryAllByText('Balanced')).toHaveLength(0);
+  });
+
+  it('names the row that reverses an income transaction', () => {
+    renderWith(
+      [
+        createSplitRow({ id: 's1', amount: 150 }),
+        createSplitRow({ id: 's2', amount: -50 }),
+      ],
+      100,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Row 2 is an expense inside an income transaction',
+    );
+  });
+
+  it('says nothing when every row shares the parent direction', () => {
+    renderWith(
+      [
+        createSplitRow({ id: 's1', amount: -60 }),
+        createSplitRow({ id: 's2', amount: -40 }),
+      ],
+      -100,
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Balanced').length).toBeGreaterThan(0);
+  });
+
+  it('exempts a transfer row, whose opposite leg is modelled elsewhere', () => {
+    renderWith(
+      [
+        createSplitRow({ id: 's1', amount: -150 }),
+        createSplitRow({ id: 's2', amount: 50, splitType: 'transfer', transferAccountId: 'acc-2' }),
+      ],
+      -100,
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('treats a zero row as belonging to neither direction', () => {
+    renderWith(
+      [
+        createSplitRow({ id: 's1', amount: -100 }),
+        createSplitRow({ id: 's2', amount: 0 }),
+      ],
+      -100,
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

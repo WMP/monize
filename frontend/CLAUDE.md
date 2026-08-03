@@ -291,6 +291,39 @@ scan can hold: neither file is wrong on its own. Changing a shared component's
 trigger element is a change to every call site, so the guard is what tells you
 which ones.
 
+### Money is four decimals; two is a display choice
+
+`decimal(20,4)` is what the database holds and what the backend compares at
+(`roundMoney` / `sumMoney` / `validateSplitAmountSum`). A UI that validates or
+re-parses at cents is a *different* contract, and the gap is silent in both
+directions: a `< 0.01` tolerance called a 10.0048 parent balanced against
+5.00 + 5.00 and the API rejected the save, while `CurrencyInput` rounded a
+stored 5.0024 down to 5.00 on the next blur, destroying a remainder the user was
+never shown.
+
+- Compare with `moneyEquals`, never a tolerance and never a raw `===` on floats.
+  Sum with `sumMoney`, which accumulates in integer ten-thousandths exactly as
+  the backend does.
+- Widen the shown precision with `moneyFractionDigits` when a value actually
+  carries a third or fourth decimal, and pass the result to `CurrencyInput`'s
+  `decimalPlaces`. Leave it at two otherwise, so the ordinary case still reads as
+  cents and an even distribution is still 33.33/33.33/33.34.
+- Round with `roundMoney`, not `roundToCents`, anywhere a stored amount is
+  recomputed. `roundFxRate` remains the rate's; a rate is not money.
+
+**A split set's rules live in `lib/split-validation.ts`, once.** Three editors
+submit splits and each used to carry its own arithmetic, which is how the balance
+rule drifted from the API's. That module also holds the direction rule: an
+ordinary category child shares the parent's sign, because -150 and +50 sum to
+-100 and record 50.00 of income inside an expense that every sum-only check
+passes. Transfer and investment children are the explicit exceptions.
+
+**A test that mocks `@/lib/format` mocks the thing under test.** The split and
+transaction-form suites hand-rolled a `@/lib/format` double that rounded at
+cents, so every four-decimal assertion would have passed over a component doing
+the wrong thing. Use `importOriginal` and override only what is genuinely
+awkward.
+
 ### An unknown value must not render as a measured zero
 
 The server goes to real trouble to send `null` rather than `0` for anything it

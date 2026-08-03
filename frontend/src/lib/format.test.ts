@@ -18,6 +18,10 @@ import {
   formatSignedPercent,
   gainLossColor,
   balanceColor,
+  roundMoney,
+  moneyEquals,
+  moneyFractionDigits,
+  MONEY_DECIMALS,
 } from './format';
 
 describe('getCurrencySymbol', () => {
@@ -558,5 +562,66 @@ describe('balanceColor', () => {
   it('returns red classes for negative balances', () => {
     expect(balanceColor(-0.01)).toBe('text-red-600 dark:text-red-400');
     expect(balanceColor(-1500)).toBe('text-red-600 dark:text-red-400');
+  });
+});
+
+describe('money precision at storage scale', () => {
+  it('roundMoney keeps four decimals', () => {
+    expect(roundMoney(10.0048)).toBe(10.0048);
+    expect(roundMoney(10.00484)).toBe(10.0048);
+    expect(roundMoney(10.00485)).toBe(10.0049);
+  });
+
+  // The frontend twin of the backend's exact 4dp comparison. A tolerance is
+  // wrong in both directions: `< 0.01` accepted a 0.0099 gap the API rejects,
+  // and a raw float `===` rejects sums that are equal but computed differently.
+  describe('moneyEquals', () => {
+    it('accepts values equal at storage precision', () => {
+      expect(moneyEquals(0.1 + 0.2, 0.3)).toBe(true);
+      expect(moneyEquals(10.00001, 10)).toBe(true);
+    });
+
+    it('rejects a discrepancy the old one-cent band allowed', () => {
+      expect(moneyEquals(10, 10.0048)).toBe(false);
+      expect(moneyEquals(10, 10.0099)).toBe(false);
+    });
+
+    it('treats a signed zero as zero', () => {
+      expect(moneyEquals(-0, 0)).toBe(true);
+    });
+  });
+
+  describe('moneyFractionDigits', () => {
+    it('stays at the base precision when every value is exact there', () => {
+      expect(moneyFractionDigits([10, 5.5, -2.25])).toBe(2);
+    });
+
+    it('widens to storage precision when a value carries a remainder', () => {
+      expect(moneyFractionDigits([5.0024, 5])).toBe(MONEY_DECIMALS);
+    });
+
+    it('ignores null, undefined and non-finite values', () => {
+      expect(moneyFractionDigits([null, undefined, Number.NaN, Infinity, 10])).toBe(2);
+    });
+
+    it('respects a non-two base precision', () => {
+      // JPY has none; a whole-yen set must not sprout decimals.
+      expect(moneyFractionDigits([100, 250], 0)).toBe(0);
+      expect(moneyFractionDigits([100.5], 0)).toBe(MONEY_DECIMALS);
+    });
+  });
+});
+
+describe('parseAmount / evaluateExpression at wider precision', () => {
+  it('rounds to cents by default, preserving existing behaviour', () => {
+    expect(parseAmount('5.0024')).toBe(5);
+    expect(evaluateExpression('10.0048/2')).toBe(5);
+  });
+
+  // Rounding a split row to cents on blur is what silently destroyed a stored
+  // four-decimal remainder.
+  it('keeps four decimals when asked for them', () => {
+    expect(parseAmount('5.0024', MONEY_DECIMALS)).toBe(5.0024);
+    expect(evaluateExpression('10.0048/2', MONEY_DECIMALS)).toBe(5.0024);
   });
 });

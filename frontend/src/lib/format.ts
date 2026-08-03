@@ -138,6 +138,57 @@ export function sumMoney(values: number[]): number {
 }
 
 /**
+ * Storage precision for money: `decimal(20,4)`.
+ *
+ * Two decimals is a *display* choice, not what the database holds. An imported
+ * or calculated amount can carry four, and a UI that validates at two accepts
+ * payloads the API then rejects -- and hides the digits that decide the outcome.
+ */
+export const MONEY_DECIMALS = 4;
+
+/**
+ * Round to the money precision the database stores and the backend compares at.
+ * Mirrors the backend `roundMoney`, so a client-side equality check reaches the
+ * same verdict the API will. Never use this on an exchange rate: rates are
+ * `NUMERIC(20,10)` and `roundFxRate` is theirs.
+ */
+export function roundMoney(value: number): number {
+  return roundToDecimals(value, MONEY_DECIMALS);
+}
+
+/**
+ * True when two money values are the same amount at storage precision.
+ *
+ * This is the frontend twin of the backend's `validateSplitAmountSum`, which
+ * requires `sumMoney(children) === roundMoney(parent)` exactly. A tolerance is
+ * the wrong shape for that comparison in either direction: `< 0.01` accepts a
+ * 0.0099 discrepancy the API rejects, and a raw `===` on floats rejects sums
+ * that are equal but arrived by different arithmetic.
+ */
+export function moneyEquals(a: number, b: number): boolean {
+  return roundMoney(a) === roundMoney(b);
+}
+
+/**
+ * Fraction digits needed to show `values` without hiding a material remainder.
+ *
+ * Returns `baseDigits` when every value is exact at that precision, and the full
+ * money precision when any of them carries a third or fourth decimal. A split
+ * set of 5.0024 + 5.0024 displayed as "5.00" twice looks balanced against a
+ * 10.00 parent and is not; showing the digits is what lets the user fix it.
+ */
+export function moneyFractionDigits(
+  values: (number | null | undefined)[],
+  baseDigits = 2,
+): number {
+  const needsFull = values.some((value) => {
+    if (value === null || value === undefined || !isFinite(value)) return false;
+    return roundToDecimals(value, baseDigits) !== roundMoney(value);
+  });
+  return needsFull ? MONEY_DECIMALS : baseDigits;
+}
+
+/**
  * Pick how many fraction digits to show so a tiny non-zero value doesn't
  * collapse to "0.00". When the value already shows a non-zero figure at the
  * currency's natural precision (baseDigits), baseDigits is returned unchanged.
@@ -282,7 +333,15 @@ export function formatAmountWithCommas(value: number | undefined | null, decimal
  * Allows: digits, decimal point, minus sign
  * Returns undefined if the result is not a valid number
  */
-export function parseAmount(input: string): number | undefined {
+export function parseAmount(
+  input: string,
+  /**
+   * Precision to round the parsed value to. Two by default, because a money
+   * field shows cents; pass `MONEY_DECIMALS` where the stored value can carry
+   * four and rounding to two would destroy the remainder (split editing).
+   */
+  decimalPlaces: number = 2,
+): number | undefined {
   // Filter to only valid characters
   const filtered = input.replace(/[^0-9.-]/g, '');
   if (filtered === '' || filtered === '-' || filtered === '.') {
@@ -292,7 +351,7 @@ export function parseAmount(input: string): number | undefined {
   if (isNaN(parsed)) {
     return undefined;
   }
-  return roundToCents(parsed);
+  return roundToDecimals(parsed, decimalPlaces);
 }
 
 /**
@@ -418,7 +477,11 @@ class ExpressionParser {
  * Only allows basic arithmetic: +, -, *, /, and parentheses.
  * Returns undefined if the expression is invalid.
  */
-export function evaluateExpression(input: string): number | undefined {
+export function evaluateExpression(
+  input: string,
+  /** Precision for the result; see `parseAmount`. */
+  decimalPlaces: number = 2,
+): number | undefined {
   const cleaned = input
     .replace(/,/g, '')
     .replace(/[x×]/gi, '*')
@@ -437,7 +500,7 @@ export function evaluateExpression(input: string): number | undefined {
   const result = parser.parse();
   if (result === undefined) return undefined;
 
-  return roundToCents(result);
+  return roundToDecimals(result, decimalPlaces);
 }
 
 /**

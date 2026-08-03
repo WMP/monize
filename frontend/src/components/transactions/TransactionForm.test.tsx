@@ -260,21 +260,17 @@ vi.mock('@/hooks/useNumberFormat', () => ({
   }),
 }));
 
-vi.mock('@/lib/format', () => ({
-  FX_RATE_DISPLAY_DECIMALS: 6,
-  getCurrencySymbol: () => '$',
-  getDecimalPlacesForCurrency: () => 2,
-  roundToCents: (v: number) => Math.round(v * 100) / 100,
-  roundToDecimals: (v: number, d: number) => { const f = Math.pow(10, d); return Math.round(v * f) / f; },
-  formatAmount: (v: number | undefined | null) => (v === undefined || v === null || isNaN(v)) ? '' : (Math.round(v * 100) / 100).toFixed(2),
-  formatAmountWithCommas: (v: number | undefined | null) => (v === undefined || v === null || isNaN(v)) ? '' : (Math.round(v * 100) / 100).toFixed(2),
-  parseAmount: (input: string) => { const n = parseFloat(input.replace(/[^0-9.-]/g, '')); return isNaN(n) ? undefined : Math.round(n * 100) / 100; },
-  filterCurrencyInput: (input: string) => input.replace(/[^0-9.-]/g, ''),
-  filterCalculatorInput: (input: string) => input.replace(/[^0-9.+\-*/() ]/g, ''),
-  hasCalculatorOperators: (input: string) => /[+*/()]/.test(input.replace(/^-/, '')) || /(?!^)-/.test(input),
-  evaluateExpression: vi.fn().mockImplementation(() => undefined),
-  formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
-}));
+// Real money helpers. The split validation this form runs compares at storage
+// precision; a mock rounding at cents would accept payloads the API rejects,
+// which is the class of defect being fixed here.
+vi.mock('@/lib/format', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/format')>();
+  return {
+    ...actual,
+    getCurrencySymbol: () => '$',
+    evaluateExpression: vi.fn().mockReturnValue(undefined),
+  };
+});
 
 vi.mock('@/lib/categoryUtils', () => ({
   buildCategoryTree: (cats: any[]) => cats.map((c: any) => ({ category: c, children: [] })),
@@ -2387,6 +2383,41 @@ describe('TransactionForm', () => {
   // =========================================================================
 
   describe('split transaction submission', () => {
+    // A balanced set can still be wrong: -30 and +20 do not sum to -50, but
+    // -70 and +20 do, and that records 20.00 of income inside an expense.
+    it('refuses to submit a split whose row reverses the parent', async () => {
+      // Same shape as createSplitTransaction, with a row whose sign opposes the
+      // -50 parent. The pair still sums to -50, so the arithmetic check passes.
+      const splitTx = createExistingTransaction({
+        isSplit: true,
+        categoryId: null,
+        category: null,
+        splits: [
+          { id: 'sp-1', transactionId: '123e4567-e89b-12d3-a456-426614174000', categoryId: 'cat-1', category: null, transferAccountId: null, transferAccount: null, linkedTransactionId: null, amount: -70, memo: 'Food', createdAt: '2024-01-15T00:00:00Z' },
+          { id: 'sp-2', transactionId: '123e4567-e89b-12d3-a456-426614174000', categoryId: 'cat-2', category: null, transferAccountId: null, transferAccount: null, linkedTransactionId: null, amount: 20, memo: 'Other', createdAt: '2024-01-15T00:00:00Z' },
+        ],
+      });
+
+      render(
+        <TransactionForm
+          transaction={splitTx}
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Update Transaction/i })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Update Transaction/i }));
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalled();
+      });
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
     it('submits split transaction for existing split transaction', async () => {
       const splitTx = createSplitTransaction();
 

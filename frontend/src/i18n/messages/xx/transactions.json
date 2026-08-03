@@ -414,7 +414,8 @@
       "categoryCreateFailed": "[XX-Failed to create category-XX]",
       "tagCreated": "[XX-Tag \"{name}\" created-XX]",
       "fxRateRequired": "[XX-Enter an exchange rate or the converted amount before saving a foreign-currency transaction.-XX]",
-      "jointPayeeCreateNotGranted": "[XX-The account owner has not granted you permission to create payees. Pick one of their existing payees instead.-XX]"
+      "jointPayeeCreateNotGranted": "[XX-The account owner has not granted you permission to create payees. Pick one of their existing payees instead.-XX]",
+      "splitsOppositeSign": "[XX-Split row {rows} reverses the transaction's direction. Fix the sign before saving.-XX]"
     },
     "ariaHistory": "[XX-Show recent transactions-XX]",
     "ariaHistoryForPayee": "[XX-Show recent transactions for this payee-XX]",
@@ -485,7 +486,10 @@
     "selectAccount": "[XX-Select account...-XX]",
     "memoPlaceholder": "[XX-Optional memo-XX]",
     "mobileMemoPlaceholder": "[XX-Memo-XX]",
-    "tagsPlaceholder": "[XX-Tags...-XX]"
+    "tagsPlaceholder": "[XX-Tags...-XX]",
+    "oppositeSignShort": "[XX-Balanced, but a row reverses the transaction-XX]",
+    "oppositeSignExpense": "[XX-Row {rows} is income inside an expense. Every category row of an expense must be negative, or the split records income the transaction never received.-XX]",
+    "oppositeSignIncome": "[XX-Row {rows} is an expense inside an income transaction. Every category row of an income transaction must be positive.-XX]"
   },
   "recentPopover": {
     "recentForPayee": "[XX-Recent for {name}-XX]",

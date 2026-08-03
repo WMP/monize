@@ -414,7 +414,8 @@
       "categoryCreateFailed": "Failed to create category",
       "tagCreated": "Tag \"{name}\" created",
       "fxRateRequired": "Enter an exchange rate or the converted amount before saving a foreign-currency transaction.",
-      "jointPayeeCreateNotGranted": "The account owner has not granted you permission to create payees. Pick one of their existing payees instead."
+      "jointPayeeCreateNotGranted": "The account owner has not granted you permission to create payees. Pick one of their existing payees instead.",
+      "splitsOppositeSign": "Split row {rows} reverses the transaction's direction. Fix the sign before saving."
     },
     "ariaHistory": "Show recent transactions",
     "ariaHistoryForPayee": "Show recent transactions for this payee",
@@ -485,7 +486,10 @@
     "selectAccount": "Select account...",
     "memoPlaceholder": "Optional memo",
     "mobileMemoPlaceholder": "Memo",
-    "tagsPlaceholder": "Tags..."
+    "tagsPlaceholder": "Tags...",
+    "oppositeSignShort": "Balanced, but a row reverses the transaction",
+    "oppositeSignExpense": "Row {rows} is income inside an expense. Every category row of an expense must be negative, or the split records income the transaction never received.",
+    "oppositeSignIncome": "Row {rows} is an expense inside an income transaction. Every category row of an income transaction must be positive."
   },
   "recentPopover": {
     "recentForPayee": "Recent for {name}",

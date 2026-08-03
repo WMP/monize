@@ -39,17 +39,13 @@ vi.mock('@/lib/logger', () => ({
   }),
 }));
 
-vi.mock('@/lib/format', () => ({
-  getCurrencySymbol: () => '$',
-  getDecimalPlacesForCurrency: () => 2,
-  roundToCents: (v: number) => Math.round(v * 100) / 100,
-  formatAmountWithCommas: (v: number) => v?.toLocaleString() ?? '',
-  parseAmount: (v: string) => parseFloat(v) || 0,
-  filterCurrencyInput: (v: string) => v,
-  filterCalculatorInput: (v: string) => v,
-  hasCalculatorOperators: () => false,
-  evaluateExpression: (v: string) => parseFloat(v) || 0,
-}));
+// Real money helpers: the split validation this dialog now runs compares at
+// storage precision, and a hand-written mock rounding at cents would let a
+// payload through here that the API rejects.
+vi.mock('@/lib/format', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/format')>();
+  return { ...actual, getCurrencySymbol: () => '$' };
+});
 
 vi.mock('@/lib/errors', () => ({
   getErrorMessage: (_error: unknown, fallback: string) => fallback,
@@ -77,10 +73,18 @@ vi.mock('@/components/transactions/SplitEditor', () => ({
     { id: '1', categoryId: '', amount: 0, memo: '', splitType: 'category' },
     { id: '2', categoryId: '', amount: 0, memo: '', splitType: 'category' },
   ],
-  toSplitRows: () => [
-    { id: '1', categoryId: 'c1', amount: -750, memo: '', splitType: 'category' },
-    { id: '2', categoryId: 'c2', amount: -750, memo: '', splitType: 'category' },
-  ],
+  // Map what it is given, as the real helper does. Returning a fixed
+  // -750 / -750 pair regardless of input meant a fixture whose parent is -100
+  // produced splits summing to -1500 -- a payload the API could never accept, so
+  // the test was asserting a save that cannot happen in production.
+  toSplitRows: (splits: any[]) =>
+    (splits ?? []).map((split: any, index: number) => ({
+      id: split.id ?? String(index + 1),
+      categoryId: split.categoryId ?? '',
+      amount: split.amount,
+      memo: split.memo ?? '',
+      splitType: 'category',
+    })),
 }));
 
 vi.mock('@/components/ui/Combobox', () => ({
@@ -561,7 +565,7 @@ describe('OverrideEditorDialog', () => {
         />,
       );
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
-      expect(totalInput.value).toBe('1,000');
+      expect(totalInput.value).toBe('1,000.00');
     });
 
     it('updates Quantity when Total Price is changed', () => {
@@ -598,7 +602,7 @@ describe('OverrideEditorDialog', () => {
       const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
       expect(Number(priceInput.value)).toBe(100);
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
-      expect(totalInput.value).toBe('1,000');
+      expect(totalInput.value).toBe('1,000.00');
     });
 
     it('keeps an existing override price when a latest close arrives', async () => {
@@ -687,7 +691,7 @@ describe('OverrideEditorDialog', () => {
       expect(Number(priceInput.value)).toBeCloseTo(123.45, 6);
       // The total follows the applied price, not the old one.
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
-      expect(totalInput.value).toBe('1,234.5');
+      expect(totalInput.value).toBe('1,234.50');
     });
 
     it('fills Price from the latest close when the schedule stored none', async () => {

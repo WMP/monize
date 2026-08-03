@@ -176,7 +176,9 @@
       "deleteFailed": "[XX-Failed to delete override-XX]",
       "quantityRequired": "[XX-Quantity must be greater than zero-XX]",
       "priceRequired": "[XX-Price must be greater than zero-XX]",
-      "totalAmountRequired": "[XX-Total amount is required-XX]"
+      "totalAmountRequired": "[XX-Total amount is required-XX]",
+      "splitsNotEqual": "[XX-Split amounts must add up to the occurrence amount-XX]",
+      "splitsOppositeSign": "[XX-Split row {rows} reverses the transaction's direction. Fix the sign before saving.-XX]"
     }
   },
   "form": {
@@ -273,7 +275,8 @@
       "quantityRequired": "[XX-Quantity must be greater than zero-XX]",
       "priceRequired": "[XX-Price must be greater than zero-XX]",
       "totalAmountRequired": "[XX-Total amount is required for this action-XX]",
-      "fxRateRequired": "[XX-Enter an amount in the chosen currency before saving. No exchange rate is available yet.-XX]"
+      "fxRateRequired": "[XX-Enter an amount in the chosen currency before saving. No exchange rate is available yet.-XX]",
+      "splitsOppositeSign": "[XX-Split row {rows} reverses the transaction's direction. Fix the sign before saving.-XX]"
     },
     "fx": {
       "amountInCurrency": "[XX-Amount in {currency}-XX]",

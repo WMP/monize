@@ -9,6 +9,7 @@ import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { Select } from '@/components/ui/Select';
 import { SplitEditor, SplitRow, createEmptySplits, toSplitRows, toCreateSplitData } from './SplitEditor';
+import { validateSplits } from '@/lib/split-validation';
 import { NormalTransactionFields } from './NormalTransactionFields';
 import { SplitTransactionFields } from './SplitTransactionFields';
 import { CurrencyPickerButton } from './CurrencyPickerButton';
@@ -1137,13 +1138,28 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           ? []
           : undefined;
 
-      // Validate splits sum to amount if in split mode
-      if (isSplitMode && splitsData) {
-        const splitsTotal = splitsData.reduce((sum, s) => sum + s.amount, 0);
-        const roundedSplitsTotal = Math.round(splitsTotal * 100) / 100;
-        const roundedAmount = Math.round(data.amount * 100) / 100;
-        if (roundedSplitsTotal !== roundedAmount) {
-          toast.error(t('form.toasts.splitsNotEqual', { splitTotal: roundedSplitsTotal, txAmount: roundedAmount }));
+      // Validate splits before submitting. One shared rule, matching the API's
+      // exactly: the 4dp sum must equal the 4dp parent (a cents comparison here
+      // let a 10.0048 parent through against 5.00 + 5.00, which the server then
+      // rejected), and no category row may reverse the parent's direction.
+      if (isSplitMode) {
+        const issue = validateSplits(splits, data.amount);
+        if (issue?.kind === 'unbalanced') {
+          toast.error(
+            t('form.toasts.splitsNotEqual', {
+              splitTotal: issue.splitsTotal,
+              txAmount: issue.transactionAmount,
+            }),
+          );
+          setIsLoading(false);
+          return;
+        }
+        if (issue?.kind === 'mixed-sign') {
+          toast.error(
+            t('form.toasts.splitsOppositeSign', {
+              rows: issue.indexes.map((index) => index + 1).join(', '),
+            }),
+          );
           setIsLoading(false);
           return;
         }

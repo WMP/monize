@@ -28,6 +28,18 @@ interface CurrencyInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>,
   allowCalculator?: boolean;
   /** Show an in-field button to flip the value's sign (default: false) */
   allowSignToggle?: boolean;
+  /**
+   * Decimal places the field formats and rounds to. Two by default, which is
+   * what a money field shows.
+   *
+   * Money is stored at four (`decimal(20,4)`), so a value that carries a third
+   * or fourth decimal -- an imported amount, a proportionally distributed split
+   * -- would be shown as its cents and, on the next blur, rounded down to them:
+   * the remainder disappears without the user seeing it, and a split set that
+   * looked balanced stops matching what the API compares. Pass `MONEY_DECIMALS`
+   * where that matters; `moneyFractionDigits` decides when it does.
+   */
+  decimalPlaces?: number;
 }
 
 /**
@@ -49,6 +61,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       allowNegative = true,
       allowCalculator = true,
       allowSignToggle = false,
+      decimalPlaces = 2,
       className,
       id,
       onBlur,
@@ -60,7 +73,9 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
   ) => {
     const t = useTranslations('common');
     // Local display state - allows free typing
-    const [displayValue, setDisplayValue] = useState(() => formatAmountWithCommas(value));
+    const [displayValue, setDisplayValue] = useState(() =>
+      formatAmountWithCommas(value, decimalPlaces),
+    );
     const [isFocused, setIsFocused] = useState(false);
     const [calcOpen, setCalcOpen] = useState(false);
     const [calcExpression, setCalcExpression] = useState('');
@@ -79,9 +94,9 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     // Sync from parent when value changes externally (e.g., form reset)
     useEffect(() => {
       if (!isFocused) {
-        setDisplayValue(formatAmountWithCommas(value));
+        setDisplayValue(formatAmountWithCommas(value, decimalPlaces));
       }
-    }, [value, isFocused]);
+    }, [value, isFocused, decimalPlaces]);
 
     // Sync sign from parent value while focused (e.g., category auto-sign sets negative)
     useEffect(() => {
@@ -121,7 +136,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       // Only notify parent immediately if not a calculator expression
       // (expressions are evaluated on blur)
       if (!allowCalculator || !hasCalculatorOperators(filtered)) {
-        const parsed = parseAmount(filtered);
+        const parsed = parseAmount(filtered, decimalPlaces);
         onChange(parsed);
       }
     };
@@ -134,7 +149,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       // Check if this is a calculator expression
       if (allowCalculator && hasCalculatorOperators(displayValue)) {
         // Evaluate the expression
-        finalValue = evaluateExpression(displayValue);
+        finalValue = evaluateExpression(displayValue, decimalPlaces);
 
         // Apply negative restriction to the result
         if (finalValue !== undefined && !allowNegative && finalValue < 0) {
@@ -142,7 +157,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
         }
       } else {
         // Standard parsing
-        finalValue = parseAmount(displayValue);
+        finalValue = parseAmount(displayValue, decimalPlaces);
       }
 
       // Format and update
@@ -152,9 +167,9 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
         if (value !== undefined &&
             Math.abs(finalValue) === Math.abs(value) &&
             finalValue !== value) {
-          setDisplayValue(formatAmountWithCommas(value));
+          setDisplayValue(formatAmountWithCommas(value, decimalPlaces));
         } else {
-          setDisplayValue(formatAmountWithCommas(finalValue));
+          setDisplayValue(formatAmountWithCommas(finalValue, decimalPlaces));
           onChange(finalValue);
         }
       } else if (displayValue.trim() === '') {
@@ -162,7 +177,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
         onChange(undefined);
       } else {
         // Invalid input - reset to last valid value
-        setDisplayValue(formatAmountWithCommas(value));
+        setDisplayValue(formatAmountWithCommas(value, decimalPlaces));
       }
 
       // Call parent's onBlur if provided
@@ -179,12 +194,12 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
         hasCalculatorOperators(displayValue)
       ) {
         e.preventDefault();
-        let result = evaluateExpression(displayValue);
+        let result = evaluateExpression(displayValue, decimalPlaces);
         if (result !== undefined) {
           if (!allowNegative && result < 0) {
             result = Math.abs(result);
           }
-          setDisplayValue(formatAmountWithCommas(result));
+          setDisplayValue(formatAmountWithCommas(result, decimalPlaces));
           onChange(result);
         }
       }
@@ -240,21 +255,21 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
 
     const calcPreview = useMemo(() => {
       if (!hasCalculatorOperators(calcExpression)) {
-        const parsed = parseAmount(calcExpression);
-        if (parsed !== undefined) return formatAmountWithCommas(parsed);
+        const parsed = parseAmount(calcExpression, decimalPlaces);
+        if (parsed !== undefined) return formatAmountWithCommas(parsed, decimalPlaces);
         return null;
       }
-      const result = evaluateExpression(calcExpression);
+      const result = evaluateExpression(calcExpression, decimalPlaces);
       if (result === undefined) return null;
-      return formatAmountWithCommas(result);
-    }, [calcExpression]);
+      return formatAmountWithCommas(result, decimalPlaces);
+    }, [calcExpression, decimalPlaces]);
 
     const applyCalculation = useCallback(() => {
       let result: number | undefined;
       if (hasCalculatorOperators(calcExpression)) {
-        result = evaluateExpression(calcExpression);
+        result = evaluateExpression(calcExpression, decimalPlaces);
       } else {
-        result = parseAmount(calcExpression);
+        result = parseAmount(calcExpression, decimalPlaces);
       }
 
       if (result !== undefined) {
@@ -262,10 +277,10 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
           result = Math.abs(result);
         }
         onChange(result);
-        setDisplayValue(formatAmountWithCommas(result));
+        setDisplayValue(formatAmountWithCommas(result, decimalPlaces));
       }
       setCalcOpen(false);
-    }, [calcExpression, allowNegative, onChange]);
+    }, [calcExpression, allowNegative, onChange, decimalPlaces]);
 
     return (
       <div className="w-full">
