@@ -1761,6 +1761,142 @@ describe("LoanPaymentDetectorService", () => {
       expect(result!.estimatedInterestRate).not.toBeNull();
       expect(result!.estimatedInterestRate).toBeGreaterThan(0);
     });
+
+    /**
+     * REV-20260803-006. Three principal-only transfers ($450) with the
+     * matching interest booked as a separate categorized expense ($50) on the
+     * source account -- never a split leg of the transfer. Before the fix,
+     * `amount` stayed at the principal-only $450 after pairing, so the
+     * detected `paymentAmount` under-reported the real $500 installment.
+     * Both components are real, already-known ledger amounts once pairing has
+     * matched them, so summing is a correct total, not a guess.
+     */
+    it("includes paired separate interest in the detected payment amount", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        ...mockLoanAccount,
+        interestCategoryId: "cat-int",
+      });
+
+      const dates = ["2025-01-15", "2025-02-15", "2025-03-15"];
+      const loanTxns = dates.map((dateStr, i) => ({
+        id: `tx-${i}`,
+        accountId: "loan-1",
+        userId: "user-1",
+        transactionDate: dateStr,
+        amount: 450, // Principal transfer only -- interest booked separately
+        isTransfer: true,
+        isSplit: false,
+        linkedTransactionId: `linked-${i}`,
+      }));
+
+      transactionRepository.find.mockImplementation((opts: any) => {
+        if (opts?.where?.categoryId) {
+          // The separate interest expense transactions on the source account.
+          return Promise.resolve(
+            dates.map((dateStr) => ({
+              transactionDate: dateStr,
+              amount: -50,
+              accountId: "chequing-1",
+              categoryId: "cat-int",
+            })),
+          );
+        }
+        return Promise.resolve(loanTxns);
+      });
+
+      transactionRepository.findOne.mockImplementation(({ where }: any) => {
+        if (where?.id?.startsWith("linked-")) {
+          return Promise.resolve({
+            id: where.id,
+            accountId: "chequing-1",
+            amount: -450,
+            account: { name: "Checking" },
+            isSplit: false,
+          });
+        }
+        return Promise.resolve(null);
+      });
+
+      const result = await service.detectPaymentPattern("user-1", "loan-1");
+
+      expect(result).not.toBeNull();
+      // Full installment is principal ($450) + separately booked interest
+      // ($50) = $500, not the principal-only $450.
+      expect(result!.paymentAmount).toBe(500);
+    });
+
+    /**
+     * REV-20260803-007. A SPLIT-mode account books interest only as a split
+     * leg of the transfer. A payment missing that split must not acquire a
+     * standalone expense from the configured interest category -- that
+     * expense could be unrelated to the loan payment entirely. Mirrors the
+     * SPLIT-mode skip RateChangeInferenceService.detectAndPersist already
+     * applies before calling the same `pairSeparateInterest`.
+     */
+    it("does not pair a standalone interest-category expense for SPLIT accounts", async () => {
+      accountsRepository.findOne.mockResolvedValue({
+        ...mockLoanAccount,
+        interestBookingMode: "SPLIT",
+        interestCategoryId: "cat-int",
+      });
+
+      const dates = ["2025-01-15", "2025-02-15", "2025-03-15"];
+      const loanTxns = dates.map((dateStr, i) => ({
+        id: `tx-${i}`,
+        accountId: "loan-1",
+        userId: "user-1",
+        transactionDate: dateStr,
+        amount: 450, // Payment is missing its interest split
+        isTransfer: true,
+        isSplit: false,
+        linkedTransactionId: `linked-${i}`,
+      }));
+
+      const pairSeparateInterestSpy = jest.spyOn(
+        service,
+        "pairSeparateInterest",
+      );
+
+      transactionRepository.find.mockImplementation((opts: any) => {
+        if (opts?.where?.categoryId) {
+          // A standalone expense in the configured interest category. If the
+          // SPLIT skip regresses, this gets paired in and inflates the
+          // detected payment and interest category despite SPLIT explicitly
+          // meaning standalone expenses must not be considered.
+          return Promise.resolve(
+            dates.map((dateStr) => ({
+              transactionDate: dateStr,
+              amount: -50,
+              accountId: "chequing-1",
+              categoryId: "cat-int",
+            })),
+          );
+        }
+        return Promise.resolve(loanTxns);
+      });
+
+      transactionRepository.findOne.mockImplementation(({ where }: any) => {
+        if (where?.id?.startsWith("linked-")) {
+          return Promise.resolve({
+            id: where.id,
+            accountId: "chequing-1",
+            amount: -450,
+            account: { name: "Checking" },
+            isSplit: false,
+          });
+        }
+        return Promise.resolve(null);
+      });
+
+      const result = await service.detectPaymentPattern("user-1", "loan-1");
+
+      expect(pairSeparateInterestSpy).not.toHaveBeenCalled();
+      expect(result).not.toBeNull();
+      // The standalone expense must not be folded into the detected payment
+      // or its interest category.
+      expect(result!.paymentAmount).toBe(450);
+      expect(result!.interestCategoryId).toBeNull();
+    });
   });
 
   describe("pairSeparateInterest", () => {

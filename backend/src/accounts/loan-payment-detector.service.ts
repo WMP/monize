@@ -126,11 +126,14 @@ export class LoanPaymentDetectorService {
     const consolidated = this.consolidatePaymentsByDate(rawPayments);
     // Recover interest booked as a separate categorized transaction (not a
     // split leg) so payments entered that way still carry an interest amount.
-    const payments = await this.pairSeparateInterest(
-      userId,
-      account,
-      consolidated,
-    );
+    // Skipped in SPLIT mode, where interest is only ever a split leg -- pairing
+    // a standalone expense there would attribute an unrelated transaction to
+    // the payment, exactly as RateChangeInferenceService.detectAndPersist
+    // already skips it for the same reason.
+    const payments =
+      account.interestBookingMode === "SPLIT"
+        ? consolidated
+        : await this.pairSeparateInterest(userId, account, consolidated);
 
     if (payments.length < 2) {
       // Need at least 2 payments to detect a pattern
@@ -412,6 +415,12 @@ export class LoanPaymentDetectorService {
    * principal into "interest" and roughly double the implied rate. Records that
    * already carry split-based interest are left as-is.
    *
+   * A payment filled by this pairing had its `amount` built from a plain
+   * (unsplit) transfer, so it carries the principal only. The recovered
+   * interest is added into `amount` as well, so it reflects the full
+   * installment rather than a principal subtotal reported as if it were the
+   * whole payment -- see REV-20260803-006.
+   *
    * Returns a new array (records are copied, not mutated).
    */
   async pairSeparateInterest(
@@ -484,9 +493,19 @@ export class LoanPaymentDetectorService {
       if (p.interestAmount != null) return p;
       const summed = byDate.get(p.date.split("T")[0]);
       if (summed == null || summed <= 0) return p;
+      const recoveredInterest = roundMoney(summed);
+      // A payment reaching this branch had no interest split leg, so `amount`
+      // (built from the loan-side transfer or its linked source transaction)
+      // is the principal transfer only -- it never included this separately
+      // booked interest. Fold the recovered interest in so `amount` reflects
+      // the full contractual installment rather than a principal subtotal
+      // masquerading as the whole payment (see REV-20260803-006): both
+      // components are now known real ledger amounts, not a default standing
+      // in for a missing one.
       return {
         ...p,
-        interestAmount: roundMoney(summed),
+        amount: roundMoney(p.amount + recoveredInterest),
+        interestAmount: recoveredInterest,
         interestCategoryId: p.interestCategoryId ?? account.interestCategoryId,
       };
     });
