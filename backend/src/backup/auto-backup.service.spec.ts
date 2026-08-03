@@ -144,7 +144,15 @@ describe("AutoBackupService", () => {
   });
 
   afterEach(() => {
+    // `clearAllMocks` resets call history but NOT implementations, so a
+    // `mockRejectedValue` set by one test leaks into every later one. The
+    // folder-permission test below sets `fsPromises.mkdir` to reject, and once
+    // the service began creating a per-owner directory that leak failed
+    // fourteen unrelated tests. Restore the default here rather than relying on
+    // each test to undo its own doubles.
     jest.clearAllMocks();
+    (fsPromises.mkdir as unknown as jest.Mock).mockResolvedValue(undefined);
+    (fsPromises.writeFile as unknown as jest.Mock).mockResolvedValue(undefined);
   });
 
   describe("getSettings", () => {
@@ -529,7 +537,7 @@ describe("AutoBackupService", () => {
 
       expect(fsPromises.writeFile).toHaveBeenCalledWith(
         expect.stringContaining(
-          `${DEFAULT_BACKUP_CONTAINER_DIR}/monize-backup-daily-`,
+          `${DEFAULT_BACKUP_CONTAINER_DIR}/${userId}/monize-backup-daily-`,
         ),
         expect.any(Buffer),
       );
@@ -653,7 +661,7 @@ describe("AutoBackupService", () => {
 
       expect(fsPromises.writeFile).toHaveBeenCalledWith(
         expect.stringContaining(
-          `${DEFAULT_BACKUP_CONTAINER_DIR}/monize-backup-daily-`,
+          `${DEFAULT_BACKUP_CONTAINER_DIR}/${userId}/monize-backup-daily-`,
         ),
         expect.any(Buffer),
       );
@@ -683,6 +691,119 @@ describe("AutoBackupService", () => {
     });
   });
 
+  describe("owner isolation", () => {
+    // The suite used to assert generic date-only names against a shared
+    // listing, with a single mocked owner -- so it could not have exposed a
+    // filename collision or a cross-owner deletion, and a green run was
+    // evidence the shared namespace survived. The default folder is one
+    // deployment-wide directory, so two users backing up on the same date
+    // picked the same key.
+    const otherUserId = "66666666-6666-6666-6666-666666666666";
+
+    it("writes each owner's backup under its own directory", async () => {
+      const settings = createSettings({
+        enabled: true,
+        folderPath: "/backups",
+      });
+      mockSettingsRepo.findOne.mockResolvedValue(settings);
+      setupExportMocks();
+      (fsMock.readdirSync as unknown as jest.Mock).mockReturnValue([]);
+
+      // `writeFile` is also used for the folder-writability probe, so pick the
+      // call that actually wrote a backup.
+      const backupWritePath = (): string =>
+        (fsPromises.writeFile as unknown as jest.Mock).mock.calls
+          .map((c) => c[0] as string)
+          .find((path) => path.includes("monize-backup-"))!;
+
+      await service.runManualBackup(userId);
+      const firstPath = backupWritePath();
+
+      (fsPromises.writeFile as unknown as jest.Mock).mockClear();
+      mockUsersRepo.findOne.mockResolvedValue({ id: otherUserId });
+      await service.runManualBackup(otherUserId);
+      const secondPath = backupWritePath();
+
+      // Same date, same destination folder, two different keys.
+      expect(firstPath).toContain(`/backups/${userId}/`);
+      expect(secondPath).toContain(`/backups/${otherUserId}/`);
+      expect(firstPath).not.toBe(secondPath);
+    });
+
+    it("creates the owner directory before writing into it", async () => {
+      const settings = createSettings({
+        enabled: true,
+        folderPath: "/backups",
+      });
+      mockSettingsRepo.findOne.mockResolvedValue(settings);
+      setupExportMocks();
+      (fsMock.readdirSync as unknown as jest.Mock).mockReturnValue([]);
+
+      await service.runManualBackup(userId);
+
+      expect(fsPromises.mkdir).toHaveBeenCalledWith(`/backups/${userId}`, {
+        recursive: true,
+      });
+    });
+
+    it("retention lists and deletes only inside the owner's directory", async () => {
+      const settings = createSettings({
+        enabled: true,
+        folderPath: "/backups",
+        retentionDaily: 1,
+        retentionWeekly: 0,
+        retentionMonthly: 0,
+      });
+      mockSettingsRepo.findOne.mockResolvedValue(settings);
+      setupExportMocks();
+      (fsMock.readdirSync as unknown as jest.Mock).mockReturnValue([
+        "monize-backup-daily-2026-04-01.json.gz",
+        "monize-backup-daily-2026-04-02.json.gz",
+      ]);
+
+      await service.runManualBackup(userId);
+
+      // The directory it enumerated for retention is the owner's, not the
+      // shared parent -- so another owner's files were never candidates.
+      expect(fsMock.readdirSync).toHaveBeenCalledWith(`/backups/${userId}`);
+      for (const call of (fsMock.unlinkSync as unknown as jest.Mock).mock
+        .calls) {
+        expect(call[0]).toContain(`/backups/${userId}/`);
+        expect(call[0]).not.toContain(`/backups/${otherUserId}/`);
+      }
+    });
+
+    it("never deletes a legacy file sitting in the shared parent folder", async () => {
+      // Those files carry no owner id, so nothing can attribute them. Deleting
+      // them would destroy another user's recovery points; they are reported
+      // instead.
+      const settings = createSettings({
+        enabled: true,
+        folderPath: "/backups",
+        retentionDaily: 0,
+        retentionWeekly: 0,
+        retentionMonthly: 0,
+      });
+      mockSettingsRepo.findOne.mockResolvedValue(settings);
+      setupExportMocks();
+      (fsMock.readdirSync as unknown as jest.Mock).mockImplementation(
+        (path: string) =>
+          path === "/backups"
+            ? ["monize-backup-daily-2020-01-01.json.gz", `${userId}`]
+            : [],
+      );
+
+      await service.runManualBackup(userId);
+
+      for (const call of (fsMock.unlinkSync as unknown as jest.Mock).mock
+        .calls) {
+        expect(call[0]).not.toBe(
+          "/backups/monize-backup-daily-2020-01-01.json.gz",
+        );
+      }
+    });
+  });
+
   describe("retention policy", () => {
     it("should keep the most recent N daily backups", async () => {
       const settings = createSettings({
@@ -706,7 +827,7 @@ describe("AutoBackupService", () => {
 
       // Should delete the oldest file (April 1), keep April 2 and 3
       expect(fsMock.unlinkSync).toHaveBeenCalledWith(
-        "/backups/monize-backup-daily-2026-04-01.json.gz",
+        `/backups/${userId}/monize-backup-daily-2026-04-01.json.gz`,
       );
     });
 
@@ -732,7 +853,7 @@ describe("AutoBackupService", () => {
 
       // Should delete the oldest weekly (March 7), keep March 14 and 21
       expect(fsMock.unlinkSync).toHaveBeenCalledWith(
-        "/backups/monize-backup-weekly-2026-03-07.json.gz",
+        `/backups/${userId}/monize-backup-weekly-2026-03-07.json.gz`,
       );
     });
 
@@ -757,7 +878,7 @@ describe("AutoBackupService", () => {
 
       // Should delete the oldest monthly (Jan), keep Feb
       expect(fsMock.unlinkSync).toHaveBeenCalledWith(
-        "/backups/monize-backup-monthly-26-01.json.gz",
+        `/backups/${userId}/monize-backup-monthly-26-01.json.gz`,
       );
     });
 
@@ -776,8 +897,8 @@ describe("AutoBackupService", () => {
         await service.runManualBackup(userId);
 
         expect(fsMock.copyFileSync).toHaveBeenCalledWith(
-          "/backups/monize-backup-daily-2026-04-14.json.gz",
-          "/backups/monize-backup-weekly-2026-04-14.json.gz",
+          `/backups/${userId}/monize-backup-daily-2026-04-14.json.gz`,
+          `/backups/${userId}/monize-backup-weekly-2026-04-14.json.gz`,
         );
       } finally {
         jest.useRealTimers();
@@ -799,8 +920,8 @@ describe("AutoBackupService", () => {
         await service.runManualBackup(userId);
 
         expect(fsMock.copyFileSync).toHaveBeenCalledWith(
-          "/backups/monize-backup-daily-2026-04-01.json.gz",
-          "/backups/monize-backup-monthly-26-04.json.gz",
+          `/backups/${userId}/monize-backup-daily-2026-04-01.json.gz`,
+          `/backups/${userId}/monize-backup-monthly-26-04.json.gz`,
         );
       } finally {
         jest.useRealTimers();

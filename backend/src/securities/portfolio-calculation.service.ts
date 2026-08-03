@@ -1728,8 +1728,10 @@ export class PortfolioCalculationService {
               ),
         );
       }
-      const { gainLoss: accountGainLoss, gainLossPercent: accountGainLossPercent } =
-        gainAgainstBasis(accountMarketValue.total, accountCostBasis.total);
+      const {
+        gainLoss: accountGainLoss,
+        gainLossPercent: accountGainLossPercent,
+      } = gainAgainstBasis(accountMarketValue.total, accountCostBasis.total);
 
       // Get display name (remove the localized " - Brokerage" suffix if present)
       const accountName = stripBrokerageSuffix(brokerageAccount.name);
@@ -1785,8 +1787,10 @@ export class PortfolioCalculationService {
               ),
         );
       }
-      const { gainLoss: accountGainLoss, gainLossPercent: accountGainLossPercent } =
-        gainAgainstBasis(accountMarketValue.total, accountCostBasis.total);
+      const {
+        gainLoss: accountGainLoss,
+        gainLossPercent: accountGainLossPercent,
+      } = gainAgainstBasis(accountMarketValue.total, accountCostBasis.total);
 
       const standaloneCashBalance =
         effectiveBalances.get(standaloneAccount.id) ??

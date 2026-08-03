@@ -1215,7 +1215,8 @@ export class PortfolioService {
       };
 
       // Cash contributions, valued at the FX rate prevailing at this bar.
-      for (const [ccy, amount] of loaded.cashByCurrency) contribute(amount, ccy);
+      for (const [ccy, amount] of loaded.cashByCurrency)
+        contribute(amount, ccy);
       // Stale-holding contributions (last daily close * quantity), grouped by
       // currency so the per-currency rounding matches the historical total.
       for (const [ccy, amount] of loaded.staleByCurrency)

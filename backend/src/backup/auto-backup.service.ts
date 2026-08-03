@@ -10,7 +10,7 @@ import {
 import { withScopedDb } from "../common/db/scoped-db";
 import { Cron } from "@nestjs/schedule";
 import { promises as fs, readdirSync, unlinkSync, copyFileSync } from "fs";
-import { resolve } from "path";
+import { resolve, dirname } from "path";
 import { AutoBackupSettings } from "./entities/auto-backup-settings.entity";
 import { BackupService } from "./backup.service";
 import { User } from "../users/entities/user.entity";
@@ -289,14 +289,11 @@ export class AutoBackupService {
 
     await this.assertFolderWritable(settings.folderPath);
     const timezone = settings.timezone || "UTC";
-    const filename = await this.exportToFile(
-      userId,
-      settings.folderPath,
-      timezone,
-    );
-    this.copyToWeeklyIfNeeded(settings.folderPath, filename, timezone);
-    this.copyToMonthlyIfNeeded(settings.folderPath, filename, timezone);
-    this.enforceRetention(settings.folderPath, settings);
+    const ownerPath = await this.ensureOwnerDir(settings.folderPath, userId);
+    const filename = await this.exportToFile(userId, ownerPath, timezone);
+    this.copyToWeeklyIfNeeded(ownerPath, filename, timezone);
+    this.copyToMonthlyIfNeeded(ownerPath, filename, timezone);
+    this.enforceRetention(ownerPath, settings);
 
     settings.lastBackupAt = new Date();
     settings.lastBackupStatus = "success";
@@ -340,12 +337,16 @@ export class AutoBackupService {
         const timezone = settings.timezone || "UTC";
         // RLS (task C2): the export reads this user's entire dataset, and the
         // settings write below is that user's row -- both under a user context.
-        const filename = await withUserContext(settings.userId, () =>
-          this.exportToFile(settings.userId, settings.folderPath, timezone),
+        const ownerPath = await this.ensureOwnerDir(
+          settings.folderPath,
+          settings.userId,
         );
-        this.copyToWeeklyIfNeeded(settings.folderPath, filename, timezone);
-        this.copyToMonthlyIfNeeded(settings.folderPath, filename, timezone);
-        this.enforceRetention(settings.folderPath, settings);
+        const filename = await withUserContext(settings.userId, () =>
+          this.exportToFile(settings.userId, ownerPath, timezone),
+        );
+        this.copyToWeeklyIfNeeded(ownerPath, filename, timezone);
+        this.copyToMonthlyIfNeeded(ownerPath, filename, timezone);
+        this.enforceRetention(ownerPath, settings);
 
         settings.lastBackupAt = now;
         settings.lastBackupStatus = "success";
@@ -539,6 +540,42 @@ export class AutoBackupService {
     deleteExcess(dailyFiles, settings.retentionDaily);
     deleteExcess(weeklyFiles, settings.retentionWeekly);
     deleteExcess(monthlyFiles, settings.retentionMonthly);
+
+    this.reportUnownedLegacyBackups(folderPath);
+  }
+
+  /**
+   * Count backup files sitting directly in the configured folder rather than in
+   * an owner sub-directory, and say so once per run.
+   *
+   * These predate the owner-scoped layout. They are never deleted: with no
+   * owner in the name there is no way to tell whose they are, and in a
+   * multi-user deployment deleting them would destroy another user's recovery
+   * points. That means retention no longer applies to them, so an operator has
+   * to be told they are there rather than left with a folder that quietly
+   * stops shrinking.
+   */
+  private reportUnownedLegacyBackups(ownerFolderPath: string): void {
+    const parent = dirname(ownerFolderPath);
+    let entries: string[];
+    try {
+      entries = readdirSync(parent);
+    } catch {
+      return;
+    }
+    const legacy = entries.filter(
+      (name) =>
+        DAILY_FILE_PATTERN.test(name) ||
+        WEEKLY_FILE_PATTERN.test(name) ||
+        MONTHLY_FILE_PATTERN.test(name),
+    );
+    if (legacy.length === 0) return;
+    this.logger.warn(
+      `${legacy.length} backup file(s) sit directly in ${parent} and predate the ` +
+        `per-owner layout. Retention cannot apply to them because they carry no ` +
+        `owner id; move them into the owning user's sub-directory or delete them ` +
+        `manually.`,
+    );
   }
 
   private getLocalDateString(date: Date, timezone: string): string {
@@ -641,6 +678,34 @@ export class AutoBackupService {
     const get = (type: string) => parts.find((p) => p.type === type)!.value;
     const localAtUtc = `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}Z`;
     return new Date(localAtUtc).getTime() - utcDate.getTime();
+  }
+
+  /**
+   * The directory this owner's automatic backups live in: one sub-directory of
+   * the configured folder per user id, created on demand.
+   *
+   * Without it every owner shared one namespace. The default `folderPath` is
+   * `BACKUP_CONTAINER_DIR` -- a single deployment-wide directory -- and the
+   * filename was only `monize-backup-daily-<date>.<ext>`, so two users whose
+   * backups ran on the same day chose the same key: the second overwrote the
+   * first, and retention counted both owners' files against one limit and
+   * deleted across the boundary. A restore could then hand one user another
+   * user's data.
+   *
+   * A user id also separates two instances sharing a mounted volume, because
+   * the ids come from different databases and do not collide in practice.
+   *
+   * Legacy files sitting directly in the configured folder are deliberately
+   * left alone: they carry no owner, so no code here can safely attribute --
+   * or delete -- them. `enforceRetention` reports them once instead.
+   */
+  private async ensureOwnerDir(
+    folderPath: string,
+    userId: string,
+  ): Promise<string> {
+    const ownerPath = this.safePath(folderPath, userId);
+    await fs.mkdir(ownerPath, { recursive: true });
+    return ownerPath;
   }
 
   /**

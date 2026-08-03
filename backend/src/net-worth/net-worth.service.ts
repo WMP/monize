@@ -10,10 +10,7 @@ import {
   AccountType,
   AccountSubType,
 } from "../accounts/entities/account.entity";
-import {
-  InvestmentTransaction,
-  InvestmentAction,
-} from "../securities/entities/investment-transaction.entity";
+import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { Security } from "../securities/entities/security.entity";
 import { applyShareAction } from "../securities/share-quantity.util";
 import { UserPreference } from "../users/entities/user-preference.entity";

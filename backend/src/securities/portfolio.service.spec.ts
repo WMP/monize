@@ -2763,8 +2763,7 @@ describe("PortfolioService", () => {
 
       // Total Gain (portfolio - netInvested) must be negative because the
       // USD price dropped between purchase and today.
-      const totalGain =
-        result.totalPortfolioValue! - result.totalNetInvested!;
+      const totalGain = result.totalPortfolioValue! - result.totalNetInvested!;
       expect(totalGain).toBeLessThan(0);
       expect(totalGain).toBeCloseTo(-200.475, 2);
     });

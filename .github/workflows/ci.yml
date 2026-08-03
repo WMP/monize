@@ -71,6 +71,10 @@ jobs:
       # crash-loops the backend at startup (task B1). Self-test first, then lint.
       - run: npm run migration:lint:test
       - run: npm run migration:lint
+      # The integration-inventory guard is what stops a discovery regression
+      # from producing a green integration job that ran zero tests. Its own
+      # self-test runs here so a guard that can no longer fail is caught.
+      - run: npm run test:integration:inventory:test
 
   backend-unit-tests:
     name: Backend Unit Tests
@@ -133,6 +137,11 @@ jobs:
           node-version: 24
       - run: npm ci
       - run: npm run build
+      # The guard is also the first step of `test:integration`; running it
+      # separately gives it its own line in the job log, so a discovery
+      # regression is visible without unfolding the Jest step.
+      - name: Verify integration suite inventory
+        run: npm run test:integration:inventory
       - run: npm run test:integration
 
   frontend-lint:
@@ -717,13 +726,88 @@ jobs:
       - name: Commit version bump
         env:
           VERSION: ${{ needs.prepare-release.outputs.version }}
+          TESTED_SHA: ${{ needs.prepare-release.outputs.git_sha }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add backend/package.json backend/package-lock.json frontend/package.json frontend/package-lock.json
           git commit -m "chore: bump version to ${VERSION} [skip ci]"
+
+          # --- Provenance gate -------------------------------------------------
+          # The commit that becomes protected-branch head is NOT the commit the
+          # required checks ran against, and it carries [skip ci] so nothing runs
+          # against it either. That is only tolerable while the difference is
+          # provably confined to the version bump. These checks establish that,
+          # and refuse the push when they cannot.
+          #
+          # 1. The new commit must sit directly on the tested SHA. `git pull
+          #    --rebase` below can otherwise replay it onto commits that landed
+          #    after the gates ran, so `main` would advance to code no required
+          #    check has seen and the signed images would describe a different
+          #    tree than the branch.
+          PARENT="$(git rev-parse HEAD^)"
+          if [ "$PARENT" != "$TESTED_SHA" ]; then
+            echo "::error::Version bump's parent ($PARENT) is not the tested SHA ($TESTED_SHA)."                  "main moved while the release was building. Re-run the release so the"                  "gates and the images describe the commit that will become branch head."
+            exit 1
+          fi
+
+          # 2. The diff against the tested SHA must touch nothing but the four
+          #    version manifests. A package script side effect, a lockfile
+          #    rewrite pulling new dependency versions, or a stray generated file
+          #    would otherwise ship unverified.
+          CHANGED="$(git diff --name-only "$TESTED_SHA" HEAD | sort)"
+          EXPECTED="$(printf '%s\n'             backend/package-lock.json backend/package.json             frontend/package-lock.json frontend/package.json | sort)"
+          if [ "$CHANGED" != "$EXPECTED" ]; then
+            echo "::error::Version bump changed unexpected files. The release only"                  "verifies the parent commit, so anything beyond the version"                  "manifests would reach main unchecked."
+            echo "changed:"; printf '%s\n' "$CHANGED"
+            echo "expected:"; printf '%s\n' "$EXPECTED"
+            exit 1
+          fi
+
+          # 3. Both manifests must actually carry the released version, and each
+          #    lockfile must agree with its package.json. `npm version` is
+          #    deterministic, but a hook or a merge could leave them inconsistent
+          #    and the images are already stamped by this point.
+          for pkg in backend frontend; do
+            FOUND="$(node -p "require('./${pkg}/package.json').version")"
+            if [ "$FOUND" != "$VERSION" ]; then
+              echo "::error::${pkg}/package.json is at ${FOUND}, expected ${VERSION}."
+              exit 1
+            fi
+            LOCKED="$(node -p "require('./${pkg}/package-lock.json').version")"
+            if [ "$LOCKED" != "$VERSION" ]; then
+              echo "::error::${pkg}/package-lock.json is at ${LOCKED}, expected ${VERSION}."
+              exit 1
+            fi
+          done
+          # --- end provenance gate --------------------------------------------
+
           git pull --rebase
+
+          # The rebase must have been a no-op; if it replayed the commit onto
+          # anything new, check 1's guarantee no longer holds.
+          PARENT_AFTER="$(git rev-parse HEAD^)"
+          if [ "$PARENT_AFTER" != "$TESTED_SHA" ]; then
+            echo "::error::main advanced during the release (parent is now"                  "$PARENT_AFTER, tested $TESTED_SHA). Refusing to push a version"                  "commit on top of unverified code; re-run the release."
+            exit 1
+          fi
+
           git push
+
+          PUSHED_SHA="$(git rev-parse HEAD)"
+          {
+            echo "### Release provenance"
+            echo ""
+            echo "| Item | SHA |"
+            echo "|---|---|"
+            echo "| Verified by required checks | \`${TESTED_SHA}\` |"
+            echo "| Images stamped from | \`${TESTED_SHA}\` |"
+            echo "| Pushed to main | \`${PUSHED_SHA}\` |"
+            echo ""
+            echo "The pushed commit differs from the verified one only in the four"
+            echo "version manifests, checked above before the push."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # Resolve the release notes body. Precedence: the `release_notes` input,
       # then a committed docs/release-notes/<version>.md, then GitHub's
