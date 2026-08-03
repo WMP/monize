@@ -1,148 +1,30 @@
 {
-  "written_at": "2026-08-03T21:04:47+00:00",
-  "stop_reason": "operator deleted both Routines to correct the prompt; round 1 (REV-036/030/014) still in flight in this same session, which continues under the lock",
+  "written_at": "2026-08-03T21:42:48+00:00",
+  "session_id": "sess-f1322760-b0fa-4f15-943d-588b4a88c4f6",
+  "stop_reason": "session active, round 1 in flight",
   "source_sha": "4e48a76762a07402a5d3bc3f886fcd8e6ff5829b",
   "fix_branch": "automation/claude-fixes",
   "fix_sha": "34b7aea9345dad3201371c571d45d54afc7408fa",
-  "coordination_sha": "898115bc (parent of this commit)",
   "waker": {
-    "mechanism": "NONE AT PRESENT",
-    "status": "The operator deleted both trig_016HUN91KiRu4QJAXdtkondU (:34 of 2) and trig_01H1YpsJDe5jPCSxrcifsJzx (:04 of 2) at ~21:0x Z to correct the prompt. NOTHING WILL WAKE A NEW SESSION until the operator recreates them. This session itself is still live and continues working under the lock below -- only the unattended wake-up is gone.",
-    "on_next_start": "LIST the triggers first. If the operator has recreated the pair, record ids/cron/next-fire here and do not create a third. If genuinely empty, create the two-Routine pair again (durable Routines enforce a 1-hour minimum, so 30-minute cadence = two hourly Routines offset by half an hour).",
-    "caveat": "A Routine created from inside a CCR session stores no MCP connectors, so a fired session has Bash/git but no trigger-listing tool -- it must read this block rather than concluding nothing exists."
+    "mechanism": "two hourly Routines offset ~30min: trig_01YX47nT1RZJ3FuQNo9muN1X (cron '36 * * * *', next 2026-08-03T22:36:00Z) and trig_01BNx6At8UmkLjip1T3eKaEF (cron '6 * * * *', next 2026-08-03T22:06:00Z). Both create_new_session_on_fire=true with the full fix-agent prompt as payload.",
+    "caveat": "Routines created from inside this CCR session store no MCP connectors, so a fired session has Bash/git but no Claude_Code_Remote/github tools -- it must read this state file rather than concluding nothing exists."
   },
-  "in_flight": [],
-  "in_progress_dir_empty": true,
-  "this_session": [
-    {
-      "id": "REV-20260803-039",
-      "state": "RESOLVED (verified)",
-      "fix_commit": "b27bc20cde9158fedd28c9030b0ab18ac7246a36"
-    },
-    {
-      "id": "REV-20260803-015",
-      "state": "RESOLVED (verified)",
-      "fix_commit": "77daf96ce8611acdfdbe6290dc245b4cce2ddac5"
-    },
-    {
-      "id": "REV-20260803-031",
-      "state": "RESOLVED (verified)",
-      "fix_commit": "59eab7524e36b533c071892ace543feb136fec73"
-    },
-    {
-      "id": "REV-20260803-012",
-      "state": "RESOLVED (verified)",
-      "fix_commit": "2805737a98ed4a09f4fca143be08c972ade0b869"
-    },
-    {
-      "id": "REV-20260803-009",
-      "state": "RESOLVED (verified)",
-      "fix_commit": "bac4c5f9841e181c73070008ad047c523148362e"
-    },
-    {
-      "id": "REV-20260803-010",
-      "state": "RESOLVED (verified)",
-      "fix_commit": "bac4c5f9841e181c73070008ad047c523148362e"
-    },
-    {
-      "id": "REV-20260803-018",
-      "state": "pending-review (second attempt)",
-      "fix_commit": "34b7aea9345dad3201371c571d45d54afc7408fa",
-      "summary": "First fix (ab78f5d9) held the preview until success and disabled the dialog buttons; the reviewer correctly reopened it because ConfirmDialog passes onCancel to Modal as onClose, so Escape and a backdrop click reached skipScheduledPayment anyway. Now guarded in skipScheduledPayment itself, which covers every dismissal route including ones not enumerated."
-    },
-    {
-      "id": "REV-20260803-017",
-      "state": "open, requires_human_approval TRUE, blocked on DEC-20260803-006",
-      "fix_commit": "4faf10cfc881d991cdcd059c69a7df6228ab51a4",
-      "summary": "Change-point half fixed (a row whose date carries a saved rate change opens Edit, not Add). The reviewer reopened for the historical-row half, which is the part I escalated: editRateHandler deliberately does not test row.isProjected. Flagged so it is not re-picked. Once DEC-006 is answered it is one condition and one test either way."
-    }
-  ],
-  "two_reopens_and_what_they_teach": "The reviewer reopened REV-017 and REV-018 and was right both times, on things my own green tests could not have caught. REV-018: I fixed the button and missed the DISMISSAL ROUTES -- Modal's onClose is wired to onCancel, so Escape and the backdrop bypassed a disabled button entirely. General lesson: when a fix makes a dialog survive its own request, enumerate EVERY path that can clear the state, and prefer guarding the state mutation over guarding each entry point. REV-017: I moved a partly-fixed finding to pending-review with a note inviting reopen; the reviewer took the invitation. That was the right protocol move but it cost a round trip -- when half a finding is escalated, set requires_human_approval TRUE and leave it in open/ immediately rather than offering the reviewer the choice.",
-  "checks_run": {
-    "frontend_lint": "pass (1 pre-existing warning, ui/Combobox.tsx react-hooks/exhaustive-deps, unrelated)",
-    "frontend_type_check": "pass",
-    "frontend_i18n_check": "pass (no catalog change in any of the nine findings)",
-    "frontend_test": "pass -- 628 files / 12313 tests, zero failures on a clean run. See known_flake below: an earlier run of the identical tree failed one unrelated pre-existing test.",
-    "backend": "not run -- backend untouched by every finding this session",
-    "test_integration": "skipped, no Postgres in this sandbox",
-    "e2e": "skipped, no browsers in this sandbox"
-  },
-  "unresolved_failures": [],
-  "known_flake": {
-    "test": "frontend/src/components/reports/LoanAmortizationReport.test.tsx > 'exports CSV and PDF'",
-    "rate": "1 failure in 5 full-suite runs, in the run immediately after a container restart; passes 34/34 in isolation and 3/3 run alone",
-    "cause": "The test clicks the CSV item conditionally (`const csvBtn = screen.queryByText(/CSV/i); if (csvBtn) {...}`) and then asserts `expect(exportToCsv).toHaveBeenCalled()` unconditionally. A dropdown item that has not rendered yet skips the click and fails the assertion.",
-    "not_mine": "`git log -S \"if (csvBtn)\"` places the pattern in upstream bcfb573e (PR #975); `git show b27bc20c -- <that test file>` confirms my REV-039 commit never touched this test. I could not rule out that REV-039's loading-path change shifted timing, but the fragile structure predates it and four of five runs pass.",
-    "action": "NOT patched -- it belongs to no finding and a drive-by test edit is out of scope. Raised for the review agent below. If a future session sees it fail, re-run before believing it, and do not attribute it to the change in hand."
-  },
-  "operational_rules_learned_the_hard_way": [
-    "backend `npm run lint` is `eslint --fix` and rewrites source. Gate on `npx eslint \"{src,apps,libs,test}/**/*.ts\"` instead.",
-    "Run backend unit tests as `TZ=UTC npm run test:unit`; some specs count periods against fixtures and flip under other offsets.",
-    "Jest here is v30: the flag is `--testPathPatterns` (plural).",
-    "Frontend `npm run test` takes ~9 minutes (628 files). Iterate with `npx vitest run <path>`; run the full suite once before pushing.",
-    "REDIRECT THE SUITE TO A LOG FILE, do not pipe it through grep. `npm run test > log 2>&1` then grep the log: piping through grep in the command discards the assertion detail, and when something fails you need it and cannot get it back without another 9 minutes. Cost me exactly that.",
-    "A FOREGROUND `sleep` IS BLOCKED, and so are chained short sleeps. To wait: start the job with run_in_background, then a second background job `until [ \"$(ps aux | grep -c '[v]itest')\" -eq 0 ]; do sleep 15; done`, or the Monitor tool with the same until-loop.",
-    "NEVER git stash to check a test fails without the fix WHILE a full-suite run is in flight -- the running suite reads the reverted file mid-run. Order: per-file revert checks FIRST, then the full suite, then leave the tree alone.",
-    "`git checkout <file>` to undo a revert-check DISCARDS uncommitted work in that file. When the fix is already committed, checkout restores the committed state and silently drops a newer uncommitted edit -- I lost the skipScheduledPayment guard that way and had to re-apply it. Prefer `git stash push -- <file>` + `git stash pop`, or re-verify the file's content afterwards.",
-    "A stop hook nags about uncommitted changes every turn, and the suite takes ~9 minutes, so it WILL fire while you wait. Bound the risk cheaply and say so in the commit message (touched suites, consumers' suites, `grep -rn 'toMatchSnapshot' --include=*.test.tsx src | wc -l` is 0 so an added DOM attribute cannot break a snapshot, project-wide tsc) -- but NEVER claim a full-suite result you do not have, and WAIT for the suite when the change is a shared component with many call sites or touches a submit path whose documented precedent is silent data loss.",
-    "The coordination worktree is refreshed with `git reset --hard`, which does NOT delete untracked files -- a newly written DEC survives it.",
-    "NEVER write a SHA you have not read from git. Use `git rev-parse <short>`.",
-    "CHECK A LABEL STRING AGAINST THE CATALOG BEFORE ASSERTING ON IT. `queryByText('Payment Amount')` passes forever against a label that is really 'Payment Amount (required)'; a negative assertion on a nonexistent string is vacuous by construction.",
-    "A MOCK THAT DISCARDS AN ARGUMENT CANNOT TEST THAT ARGUMENT (REV-015/031: useNumberFormat mocks were `(amount) => ...`, dropping currencyCode). Mirror the real fallback (`code || default`).",
-    "A CHART TEST'S RECHARTS MOCK IS OFTEN `YAxis: () => null, Tooltip: () => null`, so the tick formatter and tooltip content never run. Render their output, and have YAxis pass a tick INDEX second: recharts calls tickFormatter as (value, index), so passing the formatter by reference silently receives 0 as its currency.",
-    "FIREEVENT.CLICK ON A DISABLED BUTTON IS A NO-OP, so a 'double click is ignored' test written that way passes regardless. Invoke the hook directly (write it to a sink object inside `useEffect` -- eslint bans reassigning an outer variable during render).",
-    "A CONDITIONAL CLICK FOLLOWED BY AN UNCONDITIONAL ASSERTION IS A FLAKE FACTORY: `if (btn) click(btn)` then `expect(fn).toHaveBeenCalled()` fails whenever the element has not rendered. That is the known_flake above. Never write one, and recognise the shape when triaging someone else's failure.",
-    "A TEST CAN BE NON-VACUOUS YET STILL NOT FAIL AGAINST THE ORIGINAL CODE (REV-018's re-entry test: the original prevented double-apply BY ACCIDENT by nulling the preview before awaiting). When a revert run does not fail, work out WHY before deleting the test or claiming it as regression coverage.",
-    "WHEN A FIX MAKES A DIALOG SURVIVE ITS OWN REQUEST, ENUMERATE EVERY PATH THAT CLEARS ITS STATE. ConfirmDialog wires Modal's onClose to onCancel, so Escape and a backdrop click bypass disabled buttons. Guard the state mutation, not each entry point.",
-    "PREFER A REQUIRED PROP when threading a per-entity identity (currency, editing mode): tsc enumerates every unfixed call site. Prefer OPTIONAL with a default for a capability other callers do not need (ConfirmDialog's isBusy, leaving its other 29 sites untouched).",
-    "'AN EXISTING TEST ALREADY COVERS THIS' IS A CLAIM ABOUT WHICH BRANCH IT RUNS. DateInput.test.tsx's four 'touch mode' tests all sit under a describe whose beforeEach sets DD/MM/YYYY, so they exercise touch-FORMATTED mode and say nothing about touch-browser.",
-    "DateInput has FOUR modes from `getInputMode(dateFormat)`, dateFormat being a USER PREFERENCE. touch-browser has no `if (mode === ...)` branch -- it is the fallback `return` at the end.",
-    "AN EXISTING TEST ASSERTING THE BEHAVIOUR A FINDING CALLS A BUG IS A FORK. Does a CLAUDE.md rule or in-repo pattern say which artifact is right? Yes -> replace the test and say so (REV-039's error-swallow test; REV-009's 'does not show loan fields when editing existing LOAN account', whose comment merely restated the condition while MORTGAGE already did the opposite). No -> escalate (REV-017's historical-rate test, whose comment showed deliberate intent).",
-    "WHEN YOU ESCALATE HALF A FINDING, set requires_human_approval TRUE and leave it in open/ straight away. Moving it to pending-review with 'reopen if you disagree' works but wastes a review round trip (REV-017).",
-    "CHECK THE BACKEND DTO BEFORE ASSUMING A FRONTEND FIX NEEDS AN API CHANGE. REV-010 looked like it needed one; UpdateAccountDto already accepted `string | null` with `@ValidateIf(... !== null)`.",
-    "transactions.status is NULLABLE (schema.sql:274). Never `status != 'VOID'`; use the entity's isVoid getter in JS or `(t.status IS NULL OR t.status != 'VOID')` in SQL.",
-    "Reuse an existing translated key across namespaces where the copy is identical. A new en-only key costs ~36 parity failures.",
-    "A nested withScopedDb JOINS the ambient transaction. There are no QueryRunners left in src/ and lint bans them.",
-    "createScopedDbMocks THROWS for an unregistered entity: register [Entity, mock] in the spec.",
-    "vitest `import.meta.glob('/src/...', {query:'?raw', eager:true, import:'default'})` is how the guard tests read source. Pair every scanning assertion with one pinning the glob's match count.",
-    "A finding's line number can be stale (REV-031 said 213, the call was at 384). Locate by content."
-  ],
-  "escalate_rather_than_implement": "Most of what remains in open/ is financial calculation. Escalate (write a DEC, flip requires_human_approval, leave in open/) when the finding admits more than one defensible numeric answer -- the common case in loan-schedule.ts, loan-history.ts and rate-change-inference.service.ts. REV-004 (annualization by calendar-day gaps) is the clearest example. All nine implemented this session qualified: none changed a number the app computes -- only whether a failure is visible (039, 018), which currency an amount is labelled in (015, 031), whether a handler fires (012), which form a click opens (017 part), which controls are reachable (009), and whether a clear is transmitted (010). For a shared-component change: if the contract you are making consistent ALREADY holds on some code path it is a bug; otherwise escalate. A finding can be split -- fix the unambiguous half and DEC the rest.",
-  "recommend_review_agent_raise": [
-    "THE KNOWN FLAKE (see known_flake above): LoanAmortizationReport.test.tsx 'exports CSV and PDF' clicks conditionally then asserts unconditionally. It is pre-existing (upstream bcfb573e / PR #975), fails roughly 1 run in 5, and is exactly the kind of test that makes a future agent mis-attribute a failure to its own change. A scanning guard for `if (<something>Btn)` followed by a `toHaveBeenCalled` in the same test would catch the whole class.",
-    "A GUARD FOR THE CURRENCY CLASS IS STILL MISSING and remains the highest-value follow-up. REV-015 and REV-031 are the same mistake twice in one PR. A scan over src/components/accounts/loan-detail/*.tsx for a currency formatter called with a single argument where a loan currency is in scope is clean today, so it would start green.",
-    "ScenarioComparisonChart.tsx is PayoffComparisonChart's sibling and was in neither currency finding. Check whether it threads the loan currency through its own formatters.",
-    "`confirmDelete` in useLoanRateEditing clears `changeToDelete` in a `finally`, so a failed delete also loses its dialog -- same shape as REV-018, less harmful because the row is still listed. Other ConfirmDialog call sites that mutate then clear in `finally` are worth the same sweep, and none of them can survive an Escape dismissal either.",
-    "The other 31 DateInput call sites now receive onDateChange('') on a clear where two browser modes previously stayed silent (2805737a). Any form treating an empty date as 'leave unchanged' rather than 'invalid' newly sees the clear. An audit of ScheduledTransactionForm, TransactionFilterPanel and the reconcile page is worth a finding.",
-    "AccountFormModal's clearable-field logic is now three separate mechanisms (plain-text clearableFields, fxFeePercent, and the LOAN/MORTGAGE recognition group), each with its own gate and reason. A fourth will be added by guesswork unless the rule is written down or made scannable -- and the failure mode is silent data loss (#806).",
-    "Five account reference ids still unvalidated for tenant ownership: principalCategoryId, interestCategoryId, assetCategoryId, sourceAccountId, linkedLoanAccountId, all in PREEXISTING_UNCHECKED in backend/src/accounts/account-reference-ownership.spec.ts. That list may only shrink and its third test fails on a stale entry. The account-referencing pair probably wants 404 not 400.",
-    "loan-payment-detector.service.ts:103-109 loads every transaction on the loan account with no status filter, feeding buildPaymentRecords, buildRunningBalanceMap and estimateInterestRate. Same class as REV-008, wider blast radius.",
-    "DebtPayoffTimelineReport and LoanOverpaymentSimulatorReport have the error+retry state but no component test proving it renders when the *interest* fetch specifically rejects. LoanAmortizationReport now has that test (b27bc20c); the siblings do not.",
-    "reports-fetch-failure.guard.test.ts only scans src/components/reports/*.tsx. The same swallow in a hook, a lib fetcher or a non-report component is still uncaught."
-  ],
-  "next_step": "Run the loop from step 1. SKIP REV-20260803-017, -022 and -023: all three have requires_human_approval true, waiting on DEC-20260803-006, -005 and -004 respectively. Silence is never approval. Next two are already verified as still real, with the reading done: REV-20260803-016 (PayoffComparisonChart, minor) -- `projectionStartKey = points[lastHistoricalIndex + 1]?.monthKey` takes the next UNION point, and since `original` joined the union that can be a contractual-only month carrying no baselineBalance, so Today lands on February when the projection starts in May; the no-history branch has the same bug via `points[0]`. Fix: first point after lastHistoricalIndex having baselineBalance or scenarioBalance, and use that index in the sampling `keep` set too. REV-20260803-013 (AmortizationScheduleTable, minor) -- only `monthRows[0].precededByGap` is tested, so a gap before a LATER payment in the same month emits no band. CAUTION: the finding offers two designs and the 'do not group across a gap' one collides with `expandedMonths` being keyed by monthKey (two units would share a key); emitting the band before the whole month is cheap but says the gap is before May when it is inside May. Decide deliberately, and consider a DEC if neither reads as clearly correct. Then REV-20260803-011 (missing projections treated as zero future interest) -- read docs/financial-calculation-contract.md first; 'a subtotal is not a total' may settle it outright. Everything in loan-schedule.ts (040-043), loan-history.ts (032-038) and rate-change-inference/loan-rate-changes (004-007, 024-030) is a numeric-policy fork.",
-  "resume_instructions": "git fetch origin; git worktree add ../coordination automation/agent-review (if absent); git checkout automation/claude-fixes (on origin at 34b7aea9). Nothing in in-progress/. CHECK whether node_modules survived before running npm ci -- after this session's container restart they did.",
   "lock": {
-    "file": ".agent-coordination/state/fix-agent.lock",
-    "holder": "sess-30f4ca0e-d841-58ba-8e24-2ffef071e459",
-    "taken_at": "2026-08-03T20:13:47+00:00",
-    "verified_on_origin": true,
-    "note": "Heartbeat is refreshed with every checkpoint write. Delete the lock on a deliberate stop so the next firing does not wait out the 25-minute staleness window."
+    "holder": "sess-f1322760-b0fa-4f15-943d-588b4a88c4f6",
+    "taken_over_from": "sess-30f4ca0e-d841-58ba-8e24-2ffef071e459 (dead, heartbeat stale since 2026-08-03T21:05:11+00:00)",
+    "verified_on_origin": true
   },
   "round_in_flight": {
     "round": 1,
-    "claimed_and_pushed": [
-      "REV-20260803-036",
-      "REV-20260803-030",
-      "REV-20260803-014"
-    ],
+    "resuming_abandoned_claim_from_dead_session": true,
+    "findings": ["REV-20260803-036", "REV-20260803-030", "REV-20260803-014"],
     "partitions": {
-      "1": "frontend/src/lib/ -- REV-036 interest rounded to cents instead of 4dp",
-      "2": "backend/src/loan-rate-changes/ -- REV-030 rate edit commits before scheduled-payment sync, sync failure swallowed",
-      "3": "frontend/src/components/accounts/loan-detail/ -- REV-014 tooltip accumulates overpayments as floats"
+      "1": "frontend/src/lib/ -- REV-036 interest rounded to cents instead of 4dp in loan-history.ts classifyPayment",
+      "2": "backend/src/loan-rate-changes/ -- REV-030 rate edit commits before scheduled-payment sync, sync failure swallowed in loan-rate-changes.service.ts update()/remove()",
+      "3": "frontend/src/components/accounts/loan-detail/ + backend/src/accounts/ -- REV-014 tooltip accumulates overpayments as floats in PayoffComparisonChart.tsx"
     },
-    "why_these_three": "All three are decided by an explicit CLAUDE.md rule rather than being numeric-policy forks: integer ten-thousandths for money (036, 014) and single-transaction/'a rejected command must not already have written' (030). Most of the rest of the queue is NOT like this -- see escalate_rather_than_implement.",
-    "state": "subagents editing and running partition tests; parent has NOT yet run the full gate and has committed nothing. If this session dies here, the three findings sit in in-progress/ with no fix commit -- the next session should re-verify and redo them.",
-    "correction_given_to_subagent_2": "REV-030's text says the code 'violates the repository's QueryRunner invariant'. That is out of date: there are no QueryRunners left in src/ and lint bans createQueryRunner(). The fix must use withScopedDb and thread an EntityManager."
+    "re_verification": "all three re-read against current automation/claude-fixes HEAD (34b7aea9) before resuming; all three defects confirmed still present (dead session's edits were never committed, fix_sha unchanged)",
+    "state": "3 subagents dispatched in parallel, one per finding/partition, each instructed to edit+add regression test+run only its own partition's tests, no git, no coordination writes. npm ci completed for both backend and frontend before dispatch. Awaiting subagent completion; full gate and commits not yet run.",
+    "next_step_if_this_session_dies_now": "Re-verify all three findings still apply (re-read the files), re-run the same 3-way subagent fan-out if no code changes landed, then: run the full gate (backend eslint/tsc/migration:lint/test:unit, frontend lint/type-check/i18n:check/test), commit each finding SEPARATELY on automation/claude-fixes naming its REV id, move each finding to pending-review/ with fix_commit set (or disputed/ with reasoning) on automation/agent-review, refresh this checkpoint + lock heartbeat in the same coordination commit, then proceed to round 2 picking new findings from open/ (SKIP REV-017, REV-022, REV-023 -- all requires_human_approval true, blocked on DEC-006/005/004 respectively; next candidates per prior session's reading: REV-016 PayoffComparisonChart projectionStartKey bug, REV-013 AmortizationScheduleTable gap-band bug (needs a judgment call, consider DEC), REV-011 missing projections -- read docs/financial-calculation-contract.md first)."
   }
 }
