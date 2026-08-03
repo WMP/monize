@@ -524,6 +524,49 @@ describe('computePastImpact', () => {
     expect(impact!.extraPrincipalPaid).toBe(0);
   });
 
+  it('reports unknown (not a fabricated saving) when the current projection is truncated, not paid off', () => {
+    // REV-20260803-011 (reopen): a rate rise from 6% to 10% on the same
+    // outstanding $80,000/$500-a-month loan leaves the configured payment
+    // below the new periodic interest ($80,000 * 10%/12 ≈ $667 > $500), so
+    // generateLoanSchedule breaks out with a non-null but truncated result --
+    // paidOff: false, no payoffDate, and only the (small) interest accrued
+    // before the break. The first-pass fix only gated on `currentProjection
+    // != null`, so this truncated-but-non-null schedule was accepted as the
+    // complete remaining-interest baseline, understating remaining interest
+    // and fabricating a positive "already saved" figure with no payoff date
+    // to diff for months saved.
+    const account = makeAccount({
+      originalPrincipal: 80000,
+      currentBalance: -80000,
+      interestRate: 6,
+      paymentAmount: 500,
+      amortizationMonths: 240,
+      paymentStartDate: '2025-01-15',
+    });
+    const history = makeHistory(account, []);
+    const currentProjection = generateLoanSchedule({
+      startingBalance: 80000,
+      annualRate: 6,
+      paymentAmount: 500,
+      frequency: 'MONTHLY',
+      firstPaymentDate: new Date(2025, 0, 15),
+      rateChanges: [{ effectiveDate: '2025-02-01', annualRate: 10 }],
+    });
+
+    // Sanity-check the fixture actually reproduces the review agent's
+    // scenario: non-null, truncated, no payoff date.
+    expect(currentProjection.paidOff).toBe(false);
+    expect(currentProjection.payoffDate).toBeNull();
+
+    const impact = computePastImpact(account, history, currentProjection, [])!;
+
+    expect(impact).not.toBeNull();
+    expect(impact.currentProjection).not.toBeNull();
+    // Unknown, not a measured (and fabricated) number.
+    expect(impact.interestAlreadySaved).toBeNull();
+    expect(impact.monthsAlreadySaved).toBeNull();
+  });
+
   it('derives the mortgage contractual payment from the amortization period', () => {
     const account = makeAccount({
       accountType: 'MORTGAGE',

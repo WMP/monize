@@ -34,10 +34,13 @@ export interface PastImpactResult {
   currentPayoffDate: string | null;
   /**
    * Null when the loan is still outstanding but has no current projection to
-   * compare against (e.g. paymentAmount not yet configured) -- the remaining
-   * term/interest is unknown, not zero, so this must not render as a measured
-   * saving. Only known (and possibly 0) once the loan is paid off or a
-   * projection exists.
+   * compare against (e.g. paymentAmount not yet configured), OR when it has a
+   * projection that never reaches payoff (a rate rise leaves the configured
+   * payment not covering accruing interest, so `generateLoanSchedule` returns
+   * a non-null but truncated schedule with `paidOff: false`) -- in both cases
+   * the remaining term/interest is unknown, not zero, so this must not render
+   * as a measured saving. Only known (and possibly 0) once the loan is paid
+   * off or a projection that reaches its own payoff exists.
    */
   monthsAlreadySaved: number | null;
   /** Null under the same condition as `monthsAlreadySaved`, for the same reason. */
@@ -233,11 +236,19 @@ export function computePastImpact(
     : (currentProjection?.payoffDate ?? null);
 
   // The remaining term/interest is genuinely known (and 0) once paid off, and
-  // known from the caller's projection otherwise. An outstanding loan with no
-  // projection (e.g. paymentAmount not yet configured) has neither -- treating
-  // that as 0 remaining interest would report most of the loan's real future
-  // interest as "already saved", so both figures stay null (unknown) instead.
-  const remainingImpactKnown = isPaidOff || currentProjection != null;
+  // known from the caller's projection otherwise -- but only when that
+  // projection actually reached payoff. A rate increase can leave the
+  // configured payment no longer covering accruing interest, in which case
+  // generateLoanSchedule returns a non-null result with paidOff: false: a
+  // truncated schedule, not a complete one. Treating that schedule's (smaller,
+  // because incomplete) accumulated interest as the true remaining-interest
+  // baseline would report the gap versus the full original schedule as
+  // "already saved" -- a fabricated positive number -- and there is no payoff
+  // date to diff for months saved either. So an outstanding loan needs BOTH a
+  // projection and that projection reaching payoff before either figure is
+  // treated as known; anything short of payoff is unknown, same as null.
+  const remainingImpactKnown =
+    isPaidOff || (currentProjection != null && currentProjection.paidOff);
   const projectedRemainingInterest = currentProjection?.totalInterest ?? 0;
   const interestAlreadySaved = remainingImpactKnown
     ? Math.max(
