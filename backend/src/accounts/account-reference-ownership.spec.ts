@@ -90,7 +90,6 @@ const PREEXISTING_UNCHECKED: readonly string[] = [
   "assetCategoryId",
   "interestCategoryId",
   "linkedLoanAccountId",
-  "overpaymentCategoryId",
   "principalCategoryId",
   "sourceAccountId",
 ];
@@ -127,16 +126,22 @@ describe("account reference ids are checked for tenant ownership", () => {
     expect(stale).toEqual([]);
   });
 
-  it("checks the overpayment payee on both create and update", () => {
-    // The specific regression: the finding's field has to be asserted on each
-    // entry point that can store it, not just one. A single-path fix would
-    // satisfy the sweep above while leaving the other door open.
+  // The specific regressions: a field has to be asserted on *each* entry point
+  // that can store it, not just one. A single-path fix would satisfy the sweep
+  // above -- which only asks that the field reach an assertion somewhere --
+  // while leaving the other door open.
+  it.each([
+    ["overpaymentPayeeId", "assertPayeeOwned"], // REV-20260803-002
+    ["overpaymentCategoryId", "assertCategoryOwned"], // REV-20260803-021
+  ])("checks %s on both create and update", (field, assertion) => {
     const source = serviceSource();
     expect(source).toMatch(
-      /assertPayeeOwned\( *userId, *accountData\.overpaymentPayeeId\b/,
+      new RegExp(String.raw`${assertion}\( *userId, *accountData\.${field}\b`),
     );
     expect(source).toMatch(
-      /assertPayeeOwned\( *userId, *updateAccountDto\.overpaymentPayeeId\b/,
+      new RegExp(
+        String.raw`${assertion}\( *userId, *updateAccountDto\.${field}\b`,
+      ),
     );
   });
 });

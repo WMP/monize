@@ -12,6 +12,7 @@ import { Transaction } from "../transactions/entities/transaction.entity";
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { Institution } from "../institutions/entities/institution.entity";
 import { Payee } from "../payees/entities/payee.entity";
+import { Category } from "../categories/entities/category.entity";
 import { CategoriesService } from "../categories/categories.service";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
 import { NetWorthService } from "../net-worth/net-worth.service";
@@ -36,6 +37,7 @@ describe("AccountsService", () => {
   let investmentTxRepository: Record<string, jest.Mock>;
   let institutionsRepository: Record<string, jest.Mock>;
   let payeesRepository: Record<string, jest.Mock>;
+  let categoriesRepository: Record<string, jest.Mock>;
   let scheduledTransactionsService: Record<string, jest.Mock>;
   let categoriesService: Record<string, jest.Mock>;
   let netWorthService: Record<string, jest.Mock>;
@@ -151,12 +153,18 @@ describe("AccountsService", () => {
       findOne: jest.fn().mockResolvedValue({ id: "payee-1" }),
     };
 
+    // Same arrangement for the overpayment category (REV-20260803-021).
+    categoriesRepository = {
+      findOne: jest.fn().mockResolvedValue({ id: "cat-1" }),
+    };
+
     const { manager: txManager, dataSource } = createScopedDbMocks([
       [Account, accountsRepository],
       [Transaction, transactionRepository],
       [InvestmentTransaction, investmentTxRepository],
       [Institution, institutionsRepository],
       [Payee, payeesRepository],
+      [Category, categoriesRepository],
     ]);
     mockDataSource = dataSource;
     txManager.save.mockImplementation((data) => data);
@@ -313,6 +321,38 @@ describe("AccountsService", () => {
           accountType: AccountType.LOAN,
           currencyCode: "USD",
           overpaymentPayeeId: "victims-payee",
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(accountsRepository.save).not.toHaveBeenCalled();
+    });
+
+    // REV-20260803-021: the overpayment category is the same exposure as the
+    // payee -- an FK that checks existence but not ownership.
+    it("assigns an owned overpayment category", async () => {
+      await service.create("user-1", {
+        name: "Loan",
+        accountType: AccountType.LOAN,
+        currencyCode: "USD",
+        overpaymentCategoryId: "cat-1",
+      } as any);
+
+      expect(categoriesRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "cat-1", userId: "user-1" },
+        select: { id: true },
+      });
+      const createCall = accountsRepository.create.mock.calls[0][0];
+      expect(createCall.overpaymentCategoryId).toBe("cat-1");
+    });
+
+    it("rejects an overpayment category that does not belong to the user", async () => {
+      categoriesRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.create("user-1", {
+          name: "Loan",
+          accountType: AccountType.LOAN,
+          currencyCode: "USD",
+          overpaymentCategoryId: "victims-category",
         } as any),
       ).rejects.toThrow(BadRequestException);
       expect(accountsRepository.save).not.toHaveBeenCalled();
@@ -636,6 +676,46 @@ describe("AccountsService", () => {
       const saved = mockQueryRunner.manager.save.mock.calls[0][0];
       expect(saved.overpaymentPayeeId).toBeNull();
       expect(payeesRepository.findOne).not.toHaveBeenCalled();
+    });
+
+    // REV-20260803-021
+    it("assigns an owned overpayment category on update", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({ ...mockAccount });
+
+      await service.update("user-1", "account-1", {
+        overpaymentCategoryId: "cat-1",
+      });
+
+      const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+      expect(saved.overpaymentCategoryId).toBe("cat-1");
+      expect(categoriesRepository.findOne).toHaveBeenCalledWith({
+        where: { id: "cat-1", userId: "user-1" },
+        select: { id: true },
+      });
+    });
+
+    it("rejects another user's overpayment category on update", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({ ...mockAccount });
+      categoriesRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.update("user-1", "account-1", {
+          overpaymentCategoryId: "victims-category",
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+    });
+
+    it("clears the overpayment category without a lookup when passed null", async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValue({ ...mockAccount });
+
+      await service.update("user-1", "account-1", {
+        overpaymentCategoryId: null,
+      });
+
+      const saved = mockQueryRunner.manager.save.mock.calls[0][0];
+      expect(saved.overpaymentCategoryId).toBeNull();
+      expect(categoriesRepository.findOne).not.toHaveBeenCalled();
     });
 
     it("links and unlinks a loan account for the equity view", async () => {

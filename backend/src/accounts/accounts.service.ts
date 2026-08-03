@@ -16,6 +16,7 @@ import { Transaction } from "../transactions/entities/transaction.entity";
 import { InvestmentTransaction } from "../securities/entities/investment-transaction.entity";
 import { Institution } from "../institutions/entities/institution.entity";
 import { Payee } from "../payees/entities/payee.entity";
+import { Category } from "../categories/entities/category.entity";
 import { CreateAccountDto } from "./dto/create-account.dto";
 import { UpdateAccountDto } from "./dto/update-account.dto";
 import { ScheduledTransactionsService } from "../scheduled-transactions/scheduled-transactions.service";
@@ -115,6 +116,32 @@ export class AccountsService {
   }
 
   /**
+   * Verify that an overpayment category id (if provided) exists and belongs to
+   * the user. Same exposure as the payee above: the FK checks existence only,
+   * so an unvalidated assignment persists a cross-tenant reference.
+   *
+   * Mirrors `assertCategoryOwned` in `transaction-transfer.service.ts`, message
+   * included, so a foreign category reads the same wherever it is rejected.
+   */
+  private async assertCategoryOwned(
+    userId: string,
+    categoryId: string | null | undefined,
+  ): Promise<void> {
+    if (!categoryId) return;
+    const category = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(Category).findOne({
+        where: { id: categoryId, userId },
+        select: { id: true },
+      }),
+    );
+    if (!category) {
+      throw new BadRequestException(
+        tr("errors.transactions.categoryNotFound", "Category not found"),
+      );
+    }
+  }
+
+  /**
    * Create a new account for a user
    */
   async create(
@@ -129,6 +156,7 @@ export class AccountsService {
 
     await this.assertInstitutionOwned(userId, accountData.institutionId);
     await this.assertPayeeOwned(userId, accountData.overpaymentPayeeId);
+    await this.assertCategoryOwned(userId, accountData.overpaymentCategoryId);
 
     // If creating an investment account pair, delegate to the pair creation method
     if (
@@ -761,9 +789,14 @@ export class AccountsService {
           account.interestCategoryId = updateAccountDto.interestCategoryId;
         if (updateAccountDto.interestBookingMode !== undefined)
           account.interestBookingMode = updateAccountDto.interestBookingMode;
-        if (updateAccountDto.overpaymentCategoryId !== undefined)
+        if (updateAccountDto.overpaymentCategoryId !== undefined) {
+          await this.assertCategoryOwned(
+            userId,
+            updateAccountDto.overpaymentCategoryId,
+          );
           account.overpaymentCategoryId =
             updateAccountDto.overpaymentCategoryId;
+        }
         if (updateAccountDto.overpaymentMemo !== undefined)
           account.overpaymentMemo = updateAccountDto.overpaymentMemo?.trim()
             ? updateAccountDto.overpaymentMemo.trim()
