@@ -128,6 +128,34 @@ Two things go with such a guard:
   `NULL`, so the rows with a null there are precisely the ones left unprotected.
   In `budget_alerts` those were the budget-wide alerts.
 
+**A pre-check plus a unique key is not the same as an upsert.** `findOne`, then
+insert if absent, is the commonest shape in this codebase, and its outcome
+depends entirely on where it runs:
+
+- In a **request handler**, the unique key stops the duplicate row and the global
+  exception filter turns the loser's `23505` into a `409` -- a worse message than
+  the pre-check's, but the right status. Tolerable.
+- In a **long transaction**, it is not tolerable. A unique violation aborts the
+  whole transaction, and inside a transaction it cannot be caught and recovered
+  from -- the statement after it dies with `25P02`. So one conflicting category
+  name used to lose an entire CSV import.
+- In a **cron**, it is a normal occurrence rather than a race, because every
+  replica fires every cron. `exchange_rates` and `security_prices` both had one,
+  and each meant that pair or security had no value stored for the day.
+
+Use `INSERT ... ON CONFLICT` in the last two cases, and read the result to tell
+"I created it" from "somebody else did" -- with `returnedRows`, not a length
+check on a shape you have not confirmed.
+
+**A unique key over a nullable column does not constrain the rows where it is
+null.** `categories UNIQUE(user_id, name, parent_id)` therefore does nothing at
+all for top-level categories, so two of those with the same name can both be
+created -- by two requests, or by an import racing a hand-created one. The fix is
+a unique index over `COALESCE(parent_id, '00000000-0000-0000-0000-000000000000')`,
+as `budget_alerts` has, but it needs existing duplicates collapsed first and their
+references re-pointed, so it is a data migration rather than a one-line index.
+Not yet done.
+
 And a trigger that writes an audit or tombstone row must be `SECURITY DEFINER`
 with a pinned `search_path`: under RLS it would otherwise insert as the invoking
 role and be refused whenever the deleted row's owner is not the session identity,

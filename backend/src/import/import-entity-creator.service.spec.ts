@@ -9,6 +9,10 @@ import { Security } from "../securities/entities/security.entity";
 import { ImportResultDto, CategoryMappingDto } from "./dto/import.dto";
 
 describe("ImportEntityCreatorService", () => {
+  /** SQL of each category insert, so a test can count creations. */
+  let insertedCategories: string[];
+  /** Ids the next category inserts should return, in order. */
+  let categoryIdQueue: string[];
   let service: ImportEntityCreatorService;
   let manager: Record<string, jest.Mock>;
   let importResult: ImportResultDto;
@@ -57,7 +61,28 @@ describe("ImportEntityCreatorService", () => {
         id: data.id || `generated-${Math.random().toString(36).slice(2, 8)}`,
       })),
       update: jest.fn().mockResolvedValue(undefined),
+      // Categories are created with `INSERT ... ON CONFLICT DO NOTHING RETURNING
+      // id` so a lost race adopts the existing row instead of aborting the whole
+      // import transaction. Default to winning; the loser path is asserted below.
+      query: jest.fn(async (sql: string) => {
+        if (
+          typeof sql !== "string" ||
+          !sql.includes("INSERT INTO categories")
+        ) {
+          return [];
+        }
+        insertedCategories.push(sql);
+        return [
+          {
+            id:
+              categoryIdQueue.shift() ??
+              `generated-${insertedCategories.length}`,
+          },
+        ];
+      }),
     };
+    insertedCategories = [];
+    categoryIdQueue = [];
     importResult = makeImportResult();
     service = new ImportEntityCreatorService();
   });
@@ -65,8 +90,7 @@ describe("ImportEntityCreatorService", () => {
   describe("createCategories", () => {
     it("should create a new category when it does not exist", async () => {
       manager.findOne.mockResolvedValue(null);
-      const savedCat = { id: "cat-new-1", name: "Groceries", userId };
-      manager.save.mockResolvedValue(savedCat);
+      categoryIdQueue.push("cat-new-1");
 
       const categoryMap = new Map<string, string | null>();
       const categoriesToCreate: CategoryMappingDto[] = [
@@ -87,20 +111,69 @@ describe("ImportEntityCreatorService", () => {
           where: expect.objectContaining({ userId, name: "Groceries" }),
         }),
       );
-      expect(manager.create).toHaveBeenCalledWith(
-        Category,
-        expect.objectContaining({
-          userId,
-          name: "Groceries",
-          parentId: null,
-          isIncome: false,
-        }),
-      );
+      const insert = manager.query.mock.calls.find((call: unknown[]) =>
+        String(call[0]).includes("INSERT INTO categories"),
+      )!;
+      // One guarded statement rather than create-then-save, so the values live
+      // in its parameters. `ON CONFLICT DO NOTHING` is what stops a lost race
+      // aborting the whole import transaction.
+      expect(String(insert[0])).toContain("ON CONFLICT DO NOTHING");
+      expect(insert[1]).toEqual([userId, "Groceries", null]);
       expect(categoryMap.get("Groceries")).toBe("cat-new-1");
       expect(importResult.categoriesCreated).toBe(1);
       expect(importResult.createdMappings!.categories["Groceries"]).toBe(
         "cat-new-1",
       );
+    });
+
+    it("adopts an existing category when the insert loses the race", async () => {
+      // An import runs as one long transaction, so a unique violation here does
+      // not merely fail this row -- it aborts the entire import. A user creating
+      // "Groceries" by hand while their CSV import is running was enough to lose
+      // the whole thing. The insert is allowed to lose and adopt what is there.
+      manager.findOne.mockImplementation(async (_entity: unknown, opts: any) =>
+        opts?.where?.name === "Groceries"
+          ? null // nothing when we first looked...
+          : null,
+      );
+      manager.query.mockImplementation(async (sql: string) =>
+        typeof sql === "string" && sql.includes("INSERT INTO categories")
+          ? [] // ...but somebody created it before our insert landed
+          : [],
+      );
+      // The post-conflict read finds theirs.
+      manager.findOne.mockResolvedValue({ id: "theirs", name: "Groceries" });
+
+      const categoryMap = new Map<string, string | null>();
+
+      await service.createCategories(
+        manager as any,
+        userId,
+        [{ originalName: "Groceries", createNew: "Groceries" }],
+        categoryMap,
+        importResult,
+      );
+
+      expect(categoryMap.get("Groceries")).toBe("theirs");
+      // Not counted as created -- somebody else created it.
+      expect(importResult.categoriesCreated).toBe(0);
+    });
+
+    it("fails loudly if the insert conflicts and no row can be found", async () => {
+      // The only way that happens is a genuine fault, and inventing a category id
+      // to carry on with would attach imported transactions to nothing.
+      manager.findOne.mockResolvedValue(null);
+      manager.query.mockImplementation(async () => []);
+
+      await expect(
+        service.createCategories(
+          manager as any,
+          userId,
+          [{ originalName: "Groceries", createNew: "Groceries" }],
+          new Map<string, string | null>(),
+          importResult,
+        ),
+      ).rejects.toThrow(/conflicted but no matching row exists/);
     });
 
     it("should reuse existing category when found in database", async () => {
@@ -122,13 +195,12 @@ describe("ImportEntityCreatorService", () => {
 
       expect(categoryMap.get("Food")).toBe("cat-existing");
       expect(importResult.categoriesCreated).toBe(0);
-      expect(manager.save).not.toHaveBeenCalled();
+      expect(insertedCategories).toHaveLength(0);
     });
 
     it("should deduplicate categories with the same name and parent", async () => {
       manager.findOne.mockResolvedValue(null);
-      const savedCat = { id: "cat-once", name: "Transport", userId };
-      manager.save.mockResolvedValue(savedCat);
+      categoryIdQueue.push("cat-once");
 
       const categoryMap = new Map<string, string | null>();
       const categoriesToCreate: CategoryMappingDto[] = [
@@ -144,7 +216,7 @@ describe("ImportEntityCreatorService", () => {
         importResult,
       );
 
-      expect(manager.save).toHaveBeenCalledTimes(1);
+      expect(insertedCategories).toHaveLength(1);
       expect(categoryMap.get("Transport-1")).toBe("cat-once");
       expect(categoryMap.get("Transport-2")).toBe("cat-once");
       expect(importResult.categoriesCreated).toBe(1);
@@ -152,11 +224,7 @@ describe("ImportEntityCreatorService", () => {
 
     it("should create new parent category when createNewParentCategoryName is provided", async () => {
       manager.findOne.mockResolvedValue(null);
-      let saveCount = 0;
-      manager.save.mockImplementation((data: any) => {
-        saveCount++;
-        return { ...data, id: `cat-${saveCount}` };
-      });
+      categoryIdQueue.push("cat-1", "cat-2");
 
       const categoryMap = new Map<string, string | null>();
       const categoriesToCreate: CategoryMappingDto[] = [
@@ -176,21 +244,17 @@ describe("ImportEntityCreatorService", () => {
       );
 
       // Should create parent first (cat-1), then child (cat-2)
-      expect(manager.save).toHaveBeenCalledTimes(2);
-      expect(manager.create).toHaveBeenCalledWith(
-        Category,
-        expect.objectContaining({
-          name: "Fees & Charges",
-          parentId: null,
-        }),
+      expect(insertedCategories).toHaveLength(2);
+      const parentInsert = manager.query.mock.calls.find((call: unknown[]) =>
+        String(call[0]).includes("INSERT INTO categories"),
+      )!;
+      expect(parentInsert[1]).toEqual([userId, "Fees & Charges", null]);
+      const inserts = manager.query.mock.calls.filter((call: unknown[]) =>
+        String(call[0]).includes("INSERT INTO categories"),
       );
-      expect(manager.create).toHaveBeenCalledWith(
-        Category,
-        expect.objectContaining({
-          name: "Bank Fee",
-          parentId: "cat-1",
-        }),
-      );
+      // Parent first, then the child pointing at it.
+      expect(inserts[0][1]).toEqual([userId, "Fees & Charges", null]);
+      expect(inserts[1][1]).toEqual([userId, "Bank Fee", "cat-1"]);
       expect(categoryMap.get("Fees & Charges:Bank Fee")).toBe("cat-2");
       expect(importResult.categoriesCreated).toBe(2);
     });
@@ -210,8 +274,7 @@ describe("ImportEntityCreatorService", () => {
         }
         return Promise.resolve(null);
       });
-      const savedChild = { id: "child-new", name: "Electricity", userId };
-      manager.save.mockResolvedValue(savedChild);
+      categoryIdQueue.push("child-new");
 
       const categoryMap = new Map<string, string | null>();
       const categoriesToCreate: CategoryMappingDto[] = [
@@ -231,7 +294,7 @@ describe("ImportEntityCreatorService", () => {
       );
 
       // Only child should be created; parent already exists
-      expect(manager.save).toHaveBeenCalledTimes(1);
+      expect(insertedCategories).toHaveLength(1);
       expect(categoryMap.get("Bills & Utilities:Electricity")).toBe(
         "child-new",
       );
@@ -240,11 +303,7 @@ describe("ImportEntityCreatorService", () => {
 
     it("should reuse same new parent for multiple children", async () => {
       manager.findOne.mockResolvedValue(null);
-      let saveCount = 0;
-      manager.save.mockImplementation((data: any) => {
-        saveCount++;
-        return { ...data, id: `cat-${saveCount}` };
-      });
+      categoryIdQueue.push("cat-1", "cat-2", "cat-3");
 
       const categoryMap = new Map<string, string | null>();
       const categoriesToCreate: CategoryMappingDto[] = [
@@ -269,7 +328,7 @@ describe("ImportEntityCreatorService", () => {
       );
 
       // Parent created once (cat-1), two children (cat-2, cat-3)
-      expect(manager.save).toHaveBeenCalledTimes(3);
+      expect(insertedCategories).toHaveLength(3);
       expect(importResult.categoriesCreated).toBe(3);
       expect(categoryMap.get("Taxes:Income Tax")).toBe("cat-2");
       expect(categoryMap.get("Taxes:CPP")).toBe("cat-3");
@@ -277,10 +336,7 @@ describe("ImportEntityCreatorService", () => {
 
     it("should prefer parentCategoryId over createNewParentCategoryName", async () => {
       manager.findOne.mockResolvedValue(null);
-      manager.save.mockImplementation((data: any) => ({
-        ...data,
-        id: "child-id",
-      }));
+      categoryIdQueue.push("child-id");
 
       const categoryMap = new Map<string, string | null>();
       const categoriesToCreate: CategoryMappingDto[] = [
@@ -301,23 +357,16 @@ describe("ImportEntityCreatorService", () => {
       );
 
       // Should use parentCategoryId, not create a new parent
-      expect(manager.create).toHaveBeenCalledWith(
-        Category,
-        expect.objectContaining({
-          name: "Sub",
-          parentId: "existing-parent-id",
-        }),
-      );
-      expect(manager.save).toHaveBeenCalledTimes(1);
+      const subInsert = manager.query.mock.calls.find((call: unknown[]) =>
+        String(call[0]).includes("INSERT INTO categories"),
+      )!;
+      expect(subInsert[1]).toEqual([userId, "Sub", "existing-parent-id"]);
+      expect(insertedCategories).toHaveLength(1);
     });
 
     it("should create categories with different parents separately", async () => {
       manager.findOne.mockResolvedValue(null);
-      let callCount = 0;
-      manager.save.mockImplementation((data: any) => {
-        callCount++;
-        return { ...data, id: `cat-${callCount}` };
-      });
+      categoryIdQueue.push("cat-1", "cat-2");
 
       const categoryMap = new Map<string, string | null>();
       const categoriesToCreate: CategoryMappingDto[] = [
@@ -341,7 +390,7 @@ describe("ImportEntityCreatorService", () => {
         importResult,
       );
 
-      expect(manager.save).toHaveBeenCalledTimes(2);
+      expect(insertedCategories).toHaveLength(2);
       expect(categoryMap.get("Gas:Auto")).toBe("cat-1");
       expect(categoryMap.get("Gas:Home")).toBe("cat-2");
       expect(importResult.categoriesCreated).toBe(2);

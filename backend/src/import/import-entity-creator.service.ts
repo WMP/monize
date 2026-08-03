@@ -6,6 +6,7 @@ import {
   AccountSubType,
 } from "../accounts/entities/account.entity";
 import { Category } from "../categories/entities/category.entity";
+import { returnedRows } from "../common/db/query-result";
 import { Security } from "../securities/entities/security.entity";
 import {
   ImportResultDto,
@@ -113,18 +114,19 @@ export class ImportEntityCreatorService {
         continue;
       }
 
-      const newCategory = manager.create(Category, {
+      const created = await this.insertCategoryIfAbsent(
+        manager,
         userId,
-        name: categoryName,
-        parentId,
-        isIncome: false,
-      });
-      const saved = await manager.save(newCategory);
-      categoryMap.set(catMapping.originalName, saved.id);
-      processedCategories.set(cacheKey, saved.id);
-      importResult.categoriesCreated++;
+        // A mapping selected for creation always carries the new name, the same
+        // assumption `createAccounts` makes of `accMapping.createNew`.
+        categoryName!,
+        parentId ?? null,
+      );
+      categoryMap.set(catMapping.originalName, created.id);
+      processedCategories.set(cacheKey, created.id);
+      if (created.inserted) importResult.categoriesCreated++;
       importResult.createdMappings!.categories[catMapping.originalName] =
-        saved.id;
+        created.id;
     }
   }
 
@@ -149,16 +151,62 @@ export class ImportEntityCreatorService {
       return existing.id;
     }
 
-    const newParent = manager.create(Category, {
+    const created = await this.insertCategoryIfAbsent(
+      manager,
       userId,
-      name: parentName,
-      parentId: null,
-      isIncome: false,
+      parentName,
+      null,
+    );
+    processedCategories.set(cacheKey, created.id);
+    if (created.inserted) importResult.categoriesCreated++;
+    return created.id;
+  }
+
+  /**
+   * Create a category unless one with the same name and parent is already there,
+   * and report which of the two happened.
+   *
+   * The pre-checks above are a fast path, not a guarantee: `UNIQUE(user_id, name,
+   * parent_id)` is what actually decides, and an import runs as one long
+   * transaction, so a unique violation does not merely fail this row -- it aborts
+   * the entire import. A user creating "Groceries" by hand while their CSV import
+   * is running was enough to lose the whole thing. `ON CONFLICT DO NOTHING` lets
+   * the insert lose and adopt what is there instead.
+   *
+   * No conflict target, so it covers the constraint however it is spelled. Note
+   * that the constraint does not constrain top-level categories at all --
+   * `parent_id` is NULL there and NULL never equals NULL -- so two of those can
+   * still both be created. That is a schema gap rather than one this statement
+   * can close; see the note in `database/CLAUDE.md` about `COALESCE` in a unique
+   * index over a nullable column.
+   */
+  private async insertCategoryIfAbsent(
+    manager: EntityManager,
+    userId: string,
+    name: string,
+    parentId: string | null,
+  ): Promise<{ id: string; inserted: boolean }> {
+    const rows: unknown = await manager.query(
+      `INSERT INTO categories (user_id, name, parent_id, is_income)
+       VALUES ($1, $2, $3, false)
+       ON CONFLICT DO NOTHING
+       RETURNING id`,
+      [userId, name, parentId],
+    );
+    const insertedId = returnedRows<{ id: string }>(rows)[0]?.id;
+    if (insertedId) {
+      return { id: insertedId, inserted: true };
+    }
+
+    const existing = await manager.findOne(Category, {
+      where: { userId, name, parentId: parentId ?? IsNull() },
     });
-    const saved = await manager.save(newParent);
-    processedCategories.set(cacheKey, saved.id);
-    importResult.categoriesCreated++;
-    return saved.id;
+    if (!existing) {
+      throw new Error(
+        `Category insert for "${name}" conflicted but no matching row exists`,
+      );
+    }
+    return { id: existing.id, inserted: false };
   }
 
   async createAccounts(
