@@ -20,6 +20,7 @@ describe("PatService", () => {
   let service: PatService;
   let repository: Record<string, jest.Mock>;
   let userRepository: Record<string, jest.Mock>;
+  let manager: Record<string, jest.Mock>;
 
   const mockToken = {
     id: "token-1",
@@ -49,14 +50,18 @@ describe("PatService", () => {
       findOne: jest.fn(),
     };
 
+    const scoped = createScopedDbMocks([
+      [PersonalAccessToken, repository as never],
+      [User, userRepository as never],
+    ]);
+    manager = scoped.manager as unknown as Record<string, jest.Mock>;
+    manager.query.mockResolvedValue([{ id: "user-1" }]);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         {
           provide: DataSource,
-          useValue: createScopedDbMocks([
-            [PersonalAccessToken, repository as never],
-            [User, userRepository as never],
-          ]).dataSource,
+          useValue: scoped.dataSource,
         },
         PatService,
       ],
@@ -157,6 +162,41 @@ describe("PatService", () => {
       await expect(
         service.create("user-1", { name: "Too Many" }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it("serializes on the owner's row before counting against the cap", async () => {
+      // The cap is a read-modify-write with no unique constraint behind it, so
+      // nothing catches a breach after the fact. Counting on one connection and
+      // inserting on another let two concurrent creates both pass; so would
+      // counting and inserting in one transaction, since neither sees the
+      // other's uncommitted row. The lock is the whole guard.
+      repository.count.mockResolvedValue(0);
+      repository.create.mockImplementation((data) => ({ ...data }));
+      repository.save.mockImplementation((token) =>
+        Promise.resolve({ ...token }),
+      );
+
+      await service.create("user-1", { name: "My Token" });
+
+      expect(manager.query).toHaveBeenCalledWith(
+        expect.stringMatching(/FROM users WHERE id = \$1 FOR UPDATE/),
+        ["user-1"],
+      );
+      expect(manager.query.mock.invocationCallOrder[0]).toBeLessThan(
+        repository.count.mock.invocationCallOrder[0],
+      );
+      expect(repository.count.mock.invocationCallOrder[0]).toBeLessThan(
+        repository.save.mock.invocationCallOrder[0],
+      );
+    });
+
+    it("does not insert the token when the cap refuses it", async () => {
+      repository.count.mockResolvedValue(10);
+
+      await expect(
+        service.create("user-1", { name: "Too Many" }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repository.save).not.toHaveBeenCalled();
     });
   });
 

@@ -44,27 +44,35 @@ export class PatService {
     userId: string,
     dto: CreatePatDto,
   ): Promise<{ token: PersonalAccessToken; rawToken: string }> {
-    const count = await this.scoped(PersonalAccessToken, (repo) =>
-      repo.count({
-        where: { userId, isRevoked: false },
-      }),
-    );
-    if (count >= MAX_TOKENS_PER_USER) {
-      throw new BadRequestException(
-        tr(
-          "errors.auth.maxTokensExceeded",
-          `Maximum of ${MAX_TOKENS_PER_USER} active tokens per user`,
-          { MAX_TOKENS_PER_USER },
-        ),
-      );
-    }
-
     const rawToken = "pat_" + crypto.randomBytes(32).toString("hex");
     const tokenHash = hashToken(rawToken);
     const tokenPrefix = rawToken.substring(0, 8);
 
-    const saved = await withScopedDb(this.dataSource, (manager) => {
+    // One transaction, and the owner's row locked inside it. The cap is a
+    // read-modify-write: counting on one connection and inserting on another let
+    // two concurrent creates both pass, and moving the count into the same
+    // transaction would not have helped -- neither sees the other's uncommitted
+    // insert. Serializing on the `users` row is what makes the count binding, and
+    // there is no unique constraint that could catch it afterwards.
+    const saved = await withScopedDb(this.dataSource, async (manager) => {
+      await manager.query(`SELECT id FROM users WHERE id = $1 FOR UPDATE`, [
+        userId,
+      ]);
+
       const repo = manager.getRepository(PersonalAccessToken);
+      const count = await repo.count({
+        where: { userId, isRevoked: false },
+      });
+      if (count >= MAX_TOKENS_PER_USER) {
+        throw new BadRequestException(
+          tr(
+            "errors.auth.maxTokensExceeded",
+            `Maximum of ${MAX_TOKENS_PER_USER} active tokens per user`,
+            { MAX_TOKENS_PER_USER },
+          ),
+        );
+      }
+
       return repo.save(
         repo.create({
           userId,

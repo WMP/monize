@@ -21,6 +21,7 @@ import { currentRequestLocale } from "../i18n/request-locale";
 import { User } from "./entities/user.entity";
 import { UserPreference } from "./entities/user-preference.entity";
 import { buildDefaultPreferences } from "./user-preference.factory";
+import { lockAdminsForUpdate, wouldRemoveLastAdmin } from "./last-admin.util";
 import { TrustedDevice } from "./entities/trusted-device.entity";
 import { RefreshToken } from "../auth/entities/refresh-token.entity";
 import { PersonalAccessToken } from "../auth/entities/personal-access-token.entity";
@@ -421,7 +422,13 @@ export class UsersService {
     }
 
     // SECURITY: Prevent the last admin from self-deleting, which would leave
-    // the system with no administrator
+    // the system with no administrator.
+    //
+    // Pre-flight only, so an obviously refused deletion does not first revoke
+    // the caller's own sessions. The authoritative check is under the admin lock
+    // in the transaction that removes the row -- two admins self-deleting at the
+    // same instant each counted two here and each proceeded, and the instance
+    // ended up with none.
     if (user.role === "admin") {
       const adminCount = await this.scoped(User, (repo) =>
         repo.count({
@@ -461,13 +468,28 @@ export class UsersService {
     // and preferences are worthless once the account is gone either way.
     // Delegate sessions acting *as* this user go too -- the owner they point
     // at is about to disappear.
-    await this.scoped(RefreshToken, (repo) => repo.delete({ userId }));
-    await this.scoped(RefreshToken, (repo) =>
-      repo.delete({ actingAsUserId: userId }),
-    );
-    await this.scoped(PersonalAccessToken, (repo) => repo.delete({ userId }));
-    await this.scoped(UserPreference, (repo) => repo.delete({ userId }));
-    await this.scoped(User, (repo) => repo.remove(user));
+    await withScopedDb(this.dataSource, async (manager) => {
+      // The authoritative last-admin check, in the transaction that removes the
+      // row and while the lock over the admin set is still held.
+      if (
+        user.role === "admin" &&
+        wouldRemoveLastAdmin(await lockAdminsForUpdate(manager), userId)
+      ) {
+        throw new ForbiddenException(
+          tr(
+            "errors.users.deleteLastAdmin",
+            "Cannot delete the last admin account. Promote another user first.",
+          ),
+        );
+      }
+
+      const refreshTokens = manager.getRepository(RefreshToken);
+      await refreshTokens.delete({ userId });
+      await refreshTokens.delete({ actingAsUserId: userId });
+      await manager.getRepository(PersonalAccessToken).delete({ userId });
+      await manager.getRepository(UserPreference).delete({ userId });
+      await manager.getRepository(User).remove(user);
+    });
     return { downgraded: false };
   }
 

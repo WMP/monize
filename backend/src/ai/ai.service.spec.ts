@@ -16,6 +16,7 @@ jest.mock("../common/db/scoped-db", () =>
 
 describe("AiService", () => {
   let service: AiService;
+  let scopedManager: Record<string, jest.Mock>;
   let mockConfigRepository: Record<string, jest.Mock>;
   let mockEncryptionService: Partial<
     Record<keyof AiEncryptionService, jest.Mock>
@@ -108,14 +109,18 @@ describe("AiService", () => {
       enqueuePrompt: jest.fn().mockResolvedValue({ text: "Relay answer" }),
     };
 
+    const scoped = createScopedDbMocks([
+      [AiProviderConfig, mockConfigRepository],
+    ]);
+    scopedManager = scoped.manager as unknown as Record<string, jest.Mock>;
+    scopedManager.query.mockResolvedValue([{ id: userId }]);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AiService,
         {
           provide: DataSource,
-          useValue: createScopedDbMocks([
-            [AiProviderConfig, mockConfigRepository],
-          ]).dataSource,
+          useValue: scoped.dataSource,
         },
         { provide: AiEncryptionService, useValue: mockEncryptionService },
         { provide: AiProviderFactory, useValue: mockProviderFactory },
@@ -248,6 +253,22 @@ describe("AiService", () => {
           baseUrl: "ftp://localhost:11434",
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it("serializes on the owner's row before counting against the per-user cap", async () => {
+      // One transaction is not the fix on its own: two concurrent creates each
+      // count the rows committed before either started, so neither sees the
+      // other's insert and both pass the cap. The lock is what makes the count
+      // binding.
+      await service.createConfig(userId, { provider: "ollama" });
+
+      expect(scopedManager.query).toHaveBeenCalledWith(
+        expect.stringMatching(/FROM users WHERE id = \$1 FOR UPDATE/),
+        [userId],
+      );
+      expect(scopedManager.query.mock.invocationCallOrder[0]).toBeLessThan(
+        mockConfigRepository.count.mock.invocationCallOrder[0],
+      );
     });
   });
 

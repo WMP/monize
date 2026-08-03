@@ -35,6 +35,20 @@ describe("AdminService", () => {
   let transactionManager: Record<string, jest.Mock>;
   let dataSource: Record<string, jest.Mock>;
 
+  /**
+   * The admin set a test posits. The last-admin guard locks it with a raw
+   * `SELECT id FROM users WHERE role = 'admin' FOR UPDATE`, because a count
+   * cannot refuse two concurrent demotions of two different admins -- so the set
+   * is driven through the manager's `query`, not through `usersRepository.count`.
+   */
+  const lockedAdmins = (...ids: string[]): void => {
+    transactionManager.query.mockImplementation((sql: unknown) =>
+      Promise.resolve(
+        /FOR UPDATE/.test(String(sql)) ? ids.map((id) => ({ id })) : [],
+      ),
+    );
+  };
+
   const mockAdmin = {
     id: "admin-1",
     email: "admin@example.com",
@@ -131,6 +145,10 @@ describe("AdminService", () => {
     Object.assign(scoped.manager, transactionManager);
     transactionManager = scoped.manager;
     dataSource = scoped.dataSource as unknown as Record<string, jest.Mock>;
+
+    // Three admins by default, so tests that are not about the guard are not
+    // refused by it.
+    lockedAdmins("admin-1", "admin-9", "user-2");
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -403,7 +421,7 @@ describe("AdminService", () => {
         ...mockTargetUser,
         role: "admin",
       });
-      usersRepository.count.mockResolvedValue(1);
+      lockedAdmins("user-2");
 
       await expect(
         service.updateUserRole("admin-1", "user-2", "user"),
@@ -415,7 +433,7 @@ describe("AdminService", () => {
         ...mockTargetUser,
         role: "admin",
       });
-      usersRepository.count.mockResolvedValue(3);
+      lockedAdmins("user-2", "admin-9");
 
       const result = await service.updateUserRole("admin-1", "user-2", "user");
 
@@ -526,7 +544,7 @@ describe("AdminService", () => {
         ...mockTargetUser,
         role: "admin",
       });
-      usersRepository.count.mockResolvedValue(1);
+      lockedAdmins("user-2");
 
       await expect(service.deleteUser("admin-1", "user-2")).rejects.toThrow(
         BadRequestException,
@@ -538,11 +556,53 @@ describe("AdminService", () => {
         ...mockTargetUser,
         role: "admin",
       });
-      usersRepository.count.mockResolvedValue(2);
+      lockedAdmins("user-2", "admin-9");
 
       await service.deleteUser("admin-1", "user-2");
 
       expect(usersRepository.remove).toHaveBeenCalled();
+    });
+
+    it("locks the admin set again in the transaction that removes the row", async () => {
+      // The guard used to run in its own transaction and commit before the
+      // delete began, so the lock protected nothing by the time the row went.
+      // Two admins deleted concurrently could each pass and leave none.
+      usersRepository.findOne.mockResolvedValue({
+        ...mockTargetUser,
+        role: "admin",
+      });
+      lockedAdmins("user-2", "admin-9");
+
+      await service.deleteUser("admin-1", "user-2");
+
+      const locks = transactionManager.query.mock.calls.filter((call) =>
+        /FOR UPDATE/.test(String(call[0])),
+      );
+      expect(locks.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("refuses in the delete transaction when the admin set shrank after the pre-flight", async () => {
+      // The pre-flight sees two admins; by the time the delete transaction takes
+      // the lock the other admin is gone. The row must survive.
+      usersRepository.findOne.mockResolvedValue({
+        ...mockTargetUser,
+        role: "admin",
+      });
+      let seen = 0;
+      transactionManager.query.mockImplementation((sql: unknown) => {
+        if (!/FOR UPDATE/.test(String(sql))) return Promise.resolve([]);
+        seen += 1;
+        return Promise.resolve(
+          seen === 1
+            ? [{ id: "user-2" }, { id: "admin-9" }]
+            : [{ id: "user-2" }],
+        );
+      });
+
+      await expect(service.deleteUser("admin-1", "user-2")).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(usersRepository.remove).not.toHaveBeenCalled();
     });
 
     it("revokes all OIDC artifacts on delete", async () => {

@@ -908,6 +908,31 @@ describe("UsersService", () => {
       expect(usersRepository.remove).toHaveBeenCalled();
     });
 
+    it("refuses under the admin lock even when the pre-flight count allowed it", async () => {
+      // The real race: two admins self-delete at the same instant, both count
+      // two, both proceed, and the instance ends up with no administrator. The
+      // pre-flight count is deliberately permissive here; only the locked read in
+      // the delete transaction can refuse.
+      const hashedPassword = await bcrypt.hash("CorrectPass123!", 10);
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        role: "admin",
+        passwordHash: hashedPassword,
+      });
+      usersRepository.count.mockResolvedValue(2);
+      // Same jest.fn as the scoped manager's `query` (wired in beforeEach).
+      mockQueryRunner.query.mockImplementation((sql: unknown) =>
+        Promise.resolve(
+          /FOR UPDATE/.test(String(sql)) ? [{ id: "user-1" }] : [],
+        ),
+      );
+
+      await expect(
+        service.deleteAccount("user-1", { password: "CorrectPass123!" }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(usersRepository.remove).not.toHaveBeenCalled();
+    });
+
     it("accepts OIDC token for OIDC-only users", async () => {
       usersRepository.findOne.mockResolvedValue({
         ...mockUser,

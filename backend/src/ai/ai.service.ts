@@ -152,10 +152,16 @@ export class AiService {
       await this.validateBaseUrl(dto.baseUrl, dto.provider);
     }
 
-    // One transaction: the per-user cap is a read-modify-write, so counting on
-    // one connection and inserting on another would let two concurrent creates
-    // both pass the check.
+    // One transaction, and the owner's row locked inside it. The per-user cap is
+    // a read-modify-write, and the transaction alone is not the fix: two
+    // concurrent creates each count the rows committed before either started, so
+    // neither sees the other's insert and both pass. Serializing on the `users`
+    // row is what makes the count binding.
     const saved = await withScopedDb(this.dataSource, async (manager) => {
+      await manager.query(`SELECT id FROM users WHERE id = $1 FOR UPDATE`, [
+        userId,
+      ]);
+
       const repo = manager.getRepository(AiProviderConfig);
 
       const existingCount = await repo.count({

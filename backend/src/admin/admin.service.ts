@@ -24,6 +24,10 @@ import { generateReadablePassword } from "./utils/password-generator";
 import { hashToken } from "../auth/crypto.util";
 import { OAuthProviderService } from "../oauth/oauth-provider.service";
 import { UsersService } from "../users/users.service";
+import {
+  lockAdminsForUpdate,
+  wouldRemoveLastAdmin,
+} from "../users/last-admin.util";
 import { EmailService } from "../notifications/email.service";
 import { accountInviteTemplate } from "../notifications/email-templates";
 import { CreateUserDto } from "./dto/create-user.dto";
@@ -256,10 +260,19 @@ export class AdminService {
       );
     }
 
-    // One transaction: the last-admin check and the demotion are a
-    // read-modify-write over the same set of rows.
+    // One transaction, and the admin set locked inside it: the last-admin check
+    // and the demotion are a read-modify-write over the same set of rows. A
+    // count would let two concurrent demotions of two *different* admins both
+    // see two and both proceed, leaving nobody able to administer the instance
+    // -- one transaction is not enough on its own, because neither sees the
+    // other's uncommitted change.
     const saved = await withScopedDb(this.dataSource, async (manager) => {
       const repo = manager.getRepository(User);
+
+      // Locked before the target is read, so this read also reflects a
+      // concurrent role change that has since committed.
+      const adminIds = await lockAdminsForUpdate(manager);
+
       const targetUser = await repo.findOne({
         where: { id: targetUserId },
       });
@@ -270,18 +283,17 @@ export class AdminService {
       }
 
       // Prevent removing the last admin
-      if (targetUser.role === "admin" && role === "user") {
-        const adminCount = await repo.count({
-          where: { role: "admin" },
-        });
-        if (adminCount <= 1) {
-          throw new BadRequestException(
-            tr(
-              "errors.admin.removeLastAdmin",
-              "Cannot remove the last admin. Promote another user first.",
-            ),
-          );
-        }
+      if (
+        targetUser.role === "admin" &&
+        role === "user" &&
+        wouldRemoveLastAdmin(adminIds, targetUserId)
+      ) {
+        throw new BadRequestException(
+          tr(
+            "errors.admin.removeLastAdmin",
+            "Cannot remove the last admin. Promote another user first.",
+          ),
+        );
       }
 
       targetUser.role = role;
@@ -369,6 +381,10 @@ export class AdminService {
       );
     }
 
+    // Pre-flight, so an obviously refused delete does not first revoke the
+    // target's sessions. The authoritative check is in the delete transaction
+    // below, under the admin lock -- a guard that commits before the delete
+    // starts holds nothing by the time the row is removed.
     const targetUser = await withScopedDb(this.dataSource, async (manager) => {
       const repo = manager.getRepository(User);
       const found = await repo.findOne({
@@ -380,19 +396,16 @@ export class AdminService {
         );
       }
 
-      // Prevent deleting the last admin
-      if (found.role === "admin") {
-        const adminCount = await repo.count({
-          where: { role: "admin" },
-        });
-        if (adminCount <= 1) {
-          throw new BadRequestException(
-            tr(
-              "errors.admin.deleteLastAdmin",
-              "Cannot delete the last admin account.",
-            ),
-          );
-        }
+      if (
+        found.role === "admin" &&
+        wouldRemoveLastAdmin(await lockAdminsForUpdate(manager), targetUserId)
+      ) {
+        throw new BadRequestException(
+          tr(
+            "errors.admin.deleteLastAdmin",
+            "Cannot delete the last admin account.",
+          ),
+        );
       }
       return found;
     });
@@ -419,6 +432,20 @@ export class AdminService {
     // One transaction: a partially cleared account would leave live sessions
     // pointing at a user row that is about to disappear.
     await withScopedDb(this.dataSource, async (manager) => {
+      // The authoritative last-admin check: taken here, in the transaction that
+      // actually removes the row, so the lock is still held when it commits.
+      if (
+        targetUser.role === "admin" &&
+        wouldRemoveLastAdmin(await lockAdminsForUpdate(manager), targetUserId)
+      ) {
+        throw new BadRequestException(
+          tr(
+            "errors.admin.deleteLastAdmin",
+            "Cannot delete the last admin account.",
+          ),
+        );
+      }
+
       const refreshTokens = manager.getRepository(RefreshToken);
       await refreshTokens.delete({ userId: targetUserId });
       await refreshTokens.delete({ actingAsUserId: targetUserId });
