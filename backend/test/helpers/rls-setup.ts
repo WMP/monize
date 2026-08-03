@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { DataSource } from "typeorm";
 
-import { provisionAppRole } from "@/common/db/app-role";
+import { applyAppRoleGrants, provisionAppRole } from "@/common/db/app-role";
 import { DEFAULT_APP_USER } from "@/common/db/rls-config";
 
 /**
@@ -51,9 +51,13 @@ export const TEST_APP_ROLE = process.env.DATABASE_APP_USER || DEFAULT_APP_USER;
  *
  * Every RLS object references one of the identity helpers -- each policy
  * predicate calls `app_current_user_id()` or `app_bypass_rls()`, and the
- * helpers' own migration defines them -- so that reference is the marker. It
- * selects exactly the RLS files today and picks up any future migration that
- * policies a new table, with no per-file registration to forget.
+ * helpers' own migration defines them -- so that reference is one marker. A
+ * `CREATE FUNCTION` is the other: a SQL function is by definition something
+ * entity synchronization cannot produce, which is exactly what this harness
+ * exists to install, whether or not the function has anything to do with RLS.
+ * Together they select the right files today and pick up any future migration
+ * that policies a new table or adds a helper, with no per-file registration to
+ * forget.
  */
 /**
  * SQL with comments removed, for content detection only.
@@ -92,6 +96,13 @@ export function findRlsMigrations(includeEnable = false): string[] {
     // otherwise be read as an enable migration and dropped from the default
     // apply, leaving its table unpolicied while the suite went green.
     if (/app_current_user_id|app_bypass_rls/.test(sql)) return true;
+    // A migration that defines a SQL function is, by this harness's own
+    // definition, a database object entity synchronization cannot produce -- so
+    // it belongs here whether or not it touches RLS. Without this, migration
+    // 133's `currency_code_in_use_globally` is absent from the test database and
+    // every spec whose code path calls it fails on "function does not exist",
+    // which reads as a bug in the caller rather than a gap in the harness.
+    if (/CREATE (?:OR REPLACE )?FUNCTION/i.test(sql)) return true;
     // The enable migration (M3) references neither helper -- it reads
     // pg_policies -- so it is opted into separately, and applied in its
     // filename position rather than appended. Position is what makes the
@@ -106,8 +117,8 @@ export function findRlsMigrations(includeEnable = false): string[] {
   if (rlsFiles.length === 0) {
     throw new Error(
       `No RLS migrations found in ${MIGRATIONS_DIR}. The harness applies migrations ` +
-        "by content marker (app_current_user_id / app_bypass_rls); finding none means " +
-        "either the migrations are missing or the marker changed.",
+        "by content marker (app_current_user_id / app_bypass_rls / CREATE FUNCTION); " +
+        "finding none means either the migrations are missing or the marker changed.",
     );
   }
 
@@ -248,6 +259,12 @@ export async function applyRlsPolicies(
       declared.add(table);
     }
   }
+
+  // 2b. Re-apply the grants, for the same reason db-migrate does: step 1 ran
+  //     before the migrations, so EXECUTE on a function one of them creates (and
+  //     revokes from PUBLIC) was granted to nothing. An enforcement spec calling
+  //     it as the runtime role would get "permission denied for function".
+  await applyAppRoleGrants(dataSource, { appUser: TEST_APP_ROLE });
 
   // 3. Post-condition: every policy the applied files declare exists in the
   //    database. Catches a file that applied without error but whose DO block

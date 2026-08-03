@@ -625,14 +625,46 @@ describe("CurrenciesService", () => {
         createdByUserId: userId,
       };
       mockCurrencyRepo.findOne!.mockResolvedValue(userCurrency);
-      mockDataSource.query.mockResolvedValue([{ inUse: false }]);
+      // isInUse (this user) says no; the global check says yes -- which is the
+      // only combination that can happen when another user activated the code,
+      // because everything this user owns was already ruled out.
+      mockDataSource.query
+        .mockResolvedValueOnce([{ inUse: false }])
+        .mockResolvedValueOnce([{ inUse: true }]);
       mockPrefRepo.delete!.mockResolvedValue(undefined);
-      mockPrefRepo.count!.mockResolvedValue(2);
 
       await service.remove(userId, "CAD");
 
       expect(mockPrefRepo.delete).toHaveBeenCalled();
       expect(mockCurrencyRepo.remove).not.toHaveBeenCalled();
+    });
+
+    /**
+     * The liveness decision must not be re-derived here. It used to be, twice
+     * over: a `user_currency_preferences` count that RLS filtered to this user's
+     * own row (so it always returned zero, whoever else had activated the code)
+     * followed by a hand-written reference query missing three columns. The
+     * cascade on `user_currency_preferences.currency_code` then deleted the other
+     * user's activation.
+     */
+    it("asks the database for a genuinely global answer", async () => {
+      const userCurrency = { ...mockCurrency, createdByUserId: userId };
+      mockCurrencyRepo.findOne!.mockResolvedValue(userCurrency);
+      mockDataSource.query.mockResolvedValue([{ inUse: false }]);
+      mockPrefRepo.delete!.mockResolvedValue(undefined);
+
+      await service.remove(userId, "CAD");
+
+      const globalCheck = mockDataSource.query.mock.calls.find(
+        ([sql]) =>
+          typeof sql === "string" &&
+          sql.includes("currency_code_in_use_globally"),
+      );
+      expect(globalCheck).toBeDefined();
+      expect(globalCheck![1]).toEqual(["CAD"]);
+      // A tenant-scoped count cannot see another user's preference row, so it
+      // must not be what the decision rests on.
+      expect(mockPrefRepo.count).not.toHaveBeenCalled();
     });
 
     it("keeps non-system currency if globally in use despite no preferences", async () => {

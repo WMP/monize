@@ -373,18 +373,20 @@ export class CurrenciesService implements OnApplicationBootstrap {
       currencyCode: upperCode,
     });
 
-    // If non-system currency and no other users reference it, clean up the currency row
+    // A user-created currency nothing points at any more is cleaned up. The
+    // preference row above is deleted as of this transaction, so a remaining
+    // reference is somebody else's -- and the check has to be able to see
+    // somebody else's rows, which is what makes it a SECURITY DEFINER function
+    // rather than a query here.
+    //
+    // The counting query this replaced (`prefRepo.count({ currencyCode })`) ran
+    // under the caller's RLS scope, so it only ever counted the row just
+    // deleted: it reported zero for a code another user had activated, and the
+    // ON DELETE CASCADE on `user_currency_preferences.currency_code` then took
+    // that user's activation with it.
     if (currency.createdByUserId !== null) {
-      const remainingPrefs = await prefRepo.count({
-        where: { currencyCode: upperCode },
-      });
-
-      if (remainingPrefs === 0) {
-        // Also check no global references (accounts, securities, transactions from any user)
-        const globallyInUse = await this.isInUseGlobally(upperCode);
-        if (!globallyInUse) {
-          await manager.getRepository(Currency).remove(currency);
-        }
+      if (!(await this.isInUseGlobally(manager, upperCode))) {
+        await manager.getRepository(Currency).remove(currency);
       }
     }
   }
@@ -537,20 +539,31 @@ export class CurrenciesService implements OnApplicationBootstrap {
     );
   }
 
-  private async isInUseGlobally(code: string): Promise<boolean> {
-    const result = await withScopedDb(this.dataSource, (manager) =>
-      manager.query(
-        `SELECT EXISTS (
-        SELECT 1 FROM accounts WHERE currency_code = $1
-        UNION ALL SELECT 1 FROM securities WHERE currency_code = $1
-        UNION ALL SELECT 1 FROM transactions
-          WHERE currency_code = $1 OR original_currency_code = $1
-        UNION ALL SELECT 1 FROM scheduled_transactions
-          WHERE currency_code = $1 OR original_currency_code = $1
-        UNION ALL SELECT 1 FROM user_preferences WHERE default_currency = $1
-      ) AS "inUse"`,
-        [code.toUpperCase()],
-      ),
+  /**
+   * Whether any row anywhere still references the code -- including rows this
+   * tenant cannot see.
+   *
+   * Written out here, this query answered a different question than its name
+   * claimed. It listed only some of the columns that reference
+   * `currencies(code)` (missing `budgets.currency_code` and both
+   * `exchange_rates` columns), and it ran inside the caller's scoped
+   * transaction, where RLS filters every table to the current user. So
+   * "referenced by anybody" was really "referenced by me" -- and the caller had
+   * already established that it was not, which made the check a no-op that
+   * cleared the way for the `user_currency_preferences` cascade to delete
+   * another user's activation.
+   *
+   * `currency_code_in_use_globally` (migration 133) is SECURITY DEFINER, so it
+   * sees every row, and it runs inside this transaction, so the answer cannot
+   * go stale between the check and the delete it guards.
+   */
+  private async isInUseGlobally(
+    manager: EntityManager,
+    code: string,
+  ): Promise<boolean> {
+    const result = await manager.query(
+      `SELECT currency_code_in_use_globally($1) AS "inUse"`,
+      [code.toUpperCase()],
     );
     return result[0]?.inUse === true;
   }

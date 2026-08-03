@@ -989,7 +989,6 @@ COMMENT ON FUNCTION app_real_user_id() IS
   'RLS: authenticated user id from the app.real_user_id GUC (the delegate while acting; equals app_current_user_id() otherwise).';
 COMMENT ON FUNCTION app_bypass_rls() IS
   'RLS: true inside a withSystemContext scope, letting cross-user jobs (cron, seed, admin, pre-session auth) see every row.';
-
 -- Triggers for updated_at timestamps.
 --
 -- Honours the app.preserve_timestamps GUC so backup restore can write rows with
@@ -2236,3 +2235,64 @@ BEGIN
         EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     END LOOP;
 END $$;
+
+-- -------------------------------------------------------------------------
+-- One global answer to "is this currency code still referenced?" (migration 133).
+--
+-- `currencies` is shared reference data, and columns across most of the
+-- financial tables point at `currencies(code)`. Deleting a row any of them still
+-- holds either aborts with a foreign-key violation or -- for
+-- `user_currency_preferences`, the one FK that cascades -- silently removes
+-- another user's activation.
+--
+-- The two callers that used to decide this each got it wrong: the currencies
+-- service enumerated only some of the columns, and the backup restore's
+-- cleanup enumerated all of them but ran inside the restoring user's transaction,
+-- where RLS hides the other users' rows the `NOT EXISTS` clauses were looking
+-- for. So the predicate lives here and both call it.
+--
+-- SECURITY DEFINER is what makes it global: policies are evaluated against
+-- `current_user`, which inside a definer function is this function's owner, and
+-- the owner is not subject to its own policies (FORCE ROW LEVEL SECURITY is
+-- deliberately unused -- see the RLS notes at the end of this file). It runs in
+-- the caller's transaction, so the check and the delete it guards stay one
+-- read-modify-write, which a separate system-context connection could not be.
+--
+-- The privilege is one VARCHAR in, one boolean out: no row contents leave the
+-- function and the caller cannot influence which tables are consulted.
+-- `search_path` is pinned so `public` cannot be shadowed. EXECUTE is revoked
+-- from PUBLIC and re-granted to the runtime role by db-init (a GRANT naming that
+-- role cannot live in SQL that runs before the role exists).
+--
+-- `currency-references.spec.ts` fails when a FK to `currencies(code)` is not
+-- consulted below, so a migration adding one cannot leave this behind.
+CREATE OR REPLACE FUNCTION currency_code_in_use_globally(p_code VARCHAR)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM user_currency_preferences WHERE currency_code = p_code
+    UNION ALL SELECT 1 FROM exchange_rates
+      WHERE from_currency = p_code OR to_currency = p_code
+    UNION ALL SELECT 1 FROM accounts WHERE currency_code = p_code
+    UNION ALL SELECT 1 FROM transactions
+      WHERE currency_code = p_code OR original_currency_code = p_code
+    UNION ALL SELECT 1 FROM securities WHERE currency_code = p_code
+    UNION ALL SELECT 1 FROM scheduled_transactions
+      WHERE currency_code = p_code OR original_currency_code = p_code
+    UNION ALL SELECT 1 FROM budgets WHERE currency_code = p_code
+    UNION ALL SELECT 1 FROM user_preferences WHERE default_currency = p_code
+  )
+$$;
+
+COMMENT ON FUNCTION currency_code_in_use_globally(VARCHAR) IS
+  'True when any row anywhere still references currencies(code) = p_code. '
+  'SECURITY DEFINER so the answer is genuinely global rather than the calling '
+  'tenant''s view of it; runs in the caller''s transaction so the check and the '
+  'delete it guards are one read-modify-write. Must consult every FK to '
+  'currencies(code) -- enforced by currency-references.spec.ts.';
+
+REVOKE ALL ON FUNCTION currency_code_in_use_globally(VARCHAR) FROM PUBLIC;

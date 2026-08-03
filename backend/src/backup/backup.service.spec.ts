@@ -1058,7 +1058,7 @@ describe("BackupService", () => {
     // a custom currency and let the daily rate refresh run got
     // "violates foreign key constraint exchange_rates_to_currency_fkey" and
     // could not restore at all.
-    it("guards the user-created-currency delete against every FK to currencies", async () => {
+    it("guards the user-created-currency delete with the shared global check", async () => {
       mockUserRepo.findOne.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
@@ -1070,20 +1070,16 @@ describe("BackupService", () => {
           call[0].includes("DELETE FROM currencies"),
       ) as [string];
 
-      for (const referrer of [
-        "exchange_rates",
-        "user_currency_preferences",
-        "accounts",
-        "transactions",
-        "securities",
-        "scheduled_transactions",
-        "budgets",
-        "user_preferences",
-      ]) {
-        expect(sql).toContain(referrer);
-      }
-      // transactions references currencies twice (paid-in currency included).
-      expect(sql).toContain("original_currency_code");
+      // The `NOT EXISTS` chain this replaced listed every referencing column,
+      // and was still wrong: running inside the restoring user's transaction, it
+      // could not see the other users' rows those clauses were looking for, and
+      // the ON DELETE CASCADE on user_currency_preferences fired.
+      //
+      // Whether the shared function consults every FK is asserted against the
+      // schema in currencies/currency-references.spec.ts, which a new migration
+      // cannot leave behind.
+      expect(sql).toContain("NOT currency_code_in_use_globally(c.code)");
+      expect(sql).not.toContain("NOT EXISTS");
     });
 
     it("should rollback transaction on error", async () => {

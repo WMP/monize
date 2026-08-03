@@ -1324,37 +1324,27 @@ export class BackupService {
 
     // User-created currencies, but only ones nothing else still points at.
     //
-    // `currencies.code` is referenced by nine columns across eight tables, and
-    // deleting a row any of them still holds aborts the whole restore with
-    // "violates foreign key constraint". Only `user_currency_preferences`
-    // cascades; every other reference blocks. Checking just preferences and
-    // accounts (as this did) misses the rest -- notably `exchange_rates`, which
-    // is global, is never cleared by a restore, and gets a row for every
-    // currency the FX backfill has ever seen. So a user who added a custom
-    // currency and let the daily rate refresh run could not restore a backup at
-    // all.
+    // Columns across most of the financial tables reference `currencies(code)`.
+    // Deleting a row any of them still holds aborts the whole restore with
+    // "violates foreign key constraint" -- except `user_currency_preferences`,
+    // whose FK cascades and would silently remove another user's activation.
     //
     // This user's own accounts/transactions/securities/scheduled/budgets/prefs
-    // are already deleted above, so the surviving references are other users'
-    // (plus the global exchange_rates), which is exactly what must block.
+    // are already deleted above, so a surviving reference is another user's (or
+    // the global `exchange_rates`, which a restore never clears and which gets a
+    // row for every currency the FX backfill has ever seen). That is exactly
+    // what must block the delete.
+    //
+    // The `NOT EXISTS` chain this replaced listed every column but ran
+    // inside this restore's transaction, where RLS filters every table to the
+    // restoring user -- so the clauses looking for *other* users' rows could not
+    // see them, and the cascade fired. `currency_code_in_use_globally`
+    // (migration 133) is SECURITY DEFINER, so the answer is global, and it runs
+    // in this transaction, so it stays atomic with the delete.
     await manager.query(
       `DELETE FROM currencies c
         WHERE c.created_by_user_id = $1
-          AND NOT EXISTS (SELECT 1 FROM exchange_rates er
-                           WHERE er.from_currency = c.code OR er.to_currency = c.code)
-          AND NOT EXISTS (SELECT 1 FROM user_currency_preferences ucp
-                           WHERE ucp.currency_code = c.code AND ucp.user_id != $1)
-          AND NOT EXISTS (SELECT 1 FROM accounts a WHERE a.currency_code = c.code)
-          AND NOT EXISTS (SELECT 1 FROM transactions t
-                           WHERE t.currency_code = c.code
-                              OR t.original_currency_code = c.code)
-          AND NOT EXISTS (SELECT 1 FROM securities s WHERE s.currency_code = c.code)
-          AND NOT EXISTS (SELECT 1 FROM scheduled_transactions st
-                           WHERE st.currency_code = c.code
-                              OR st.original_currency_code = c.code)
-          AND NOT EXISTS (SELECT 1 FROM budgets b WHERE b.currency_code = c.code)
-          AND NOT EXISTS (SELECT 1 FROM user_preferences up
-                           WHERE up.default_currency = c.code)`,
+          AND NOT currency_code_in_use_globally(c.code)`,
       [userId],
     );
   }

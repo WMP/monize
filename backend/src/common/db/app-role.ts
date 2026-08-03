@@ -87,6 +87,22 @@ BEGIN
     EXECUTE format('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO %I', role_name);
     EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I', role_name);
     EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO %I', role_name);
+
+    -- The one SECURITY DEFINER helper the runtime needs: it answers whether a
+    -- currency code is still referenced anywhere, which the tenant's own view of
+    -- the tables cannot. EXECUTE is revoked from PUBLIC by migration 133, so it
+    -- has to be granted back here -- a migration cannot name this role, which
+    -- may not exist yet on a given deployment. Guarded on the function's
+    -- presence so a deployment mid-upgrade (role provisioned, migration 133 not
+    -- yet applied) warns rather than failing startup.
+    IF EXISTS (
+      SELECT FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = 'public'
+         AND p.proname = 'currency_code_in_use_globally'
+    ) THEN
+      EXECUTE format('GRANT EXECUTE ON FUNCTION public.currency_code_in_use_globally(character varying) TO %I', role_name);
+    END IF;
   END IF;
 EXCEPTION WHEN insufficient_privilege THEN
   RAISE WARNING 'Insufficient privilege to grant DML to role %; grant it manually or via the DB owner.', role_name;
@@ -97,6 +113,33 @@ export interface ProvisionAppRoleOptions {
   appUser: string | undefined;
   appPassword: string | undefined;
   logger?: RoleProvisionLogger;
+}
+
+/**
+ * Apply the grants alone, without touching the role or its password.
+ *
+ * Called twice per startup, and the second call is the one that matters.
+ * `db-init` runs before `db-migrate`, so on the boot that first applies a
+ * migration creating a database object the runtime needs -- the SECURITY DEFINER
+ * `currency_code_in_use_globally`, whose EXECUTE migration 133 revokes from
+ * PUBLIC -- the grant in `db-init` runs while that object does not yet exist and
+ * silently grants nothing. Under `RLS_MODE=enforce` the runtime would then get
+ * "permission denied for function" until somebody restarted the pod again. So
+ * `db-migrate` converges the grants once more after its DDL.
+ *
+ * Idempotent and never fatal: a privilege shortfall degrades to a warning, as
+ * everywhere else in this file.
+ */
+export async function applyAppRoleGrants(
+  client: SqlClient,
+  { appUser }: { appUser: string | undefined },
+): Promise<void> {
+  const roleName = appUser || DEFAULT_APP_USER;
+  await client.query("SELECT set_config($1, $2, false)", [
+    APP_ROLE_NAME_GUC,
+    roleName,
+  ]);
+  await client.query(APP_ROLE_GRANTS_SQL);
 }
 
 /**
@@ -136,5 +179,6 @@ export async function provisionAppRole(
   }
 
   // Grants run whenever the role exists, regardless of how it was provisioned.
+  // db-migrate re-applies them after its DDL -- see applyAppRoleGrants.
   await client.query(APP_ROLE_GRANTS_SQL);
 }

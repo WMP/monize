@@ -765,4 +765,98 @@ describe("RLS enforcement (T2, catalog-driven)", () => {
       }
     });
   });
+
+  /**
+   * `currencies` is exempt reference data, but `user_currency_preferences` is
+   * not -- and its FK to `currencies(code)` is `ON DELETE CASCADE`. So a
+   * decision to delete a shared currency row, taken from inside one tenant's
+   * transaction, deletes rows that tenant cannot see.
+   *
+   * That is what happened: `CurrenciesService.remove` counted the remaining
+   * preference rows for the code with a tenant-scoped query, got zero because
+   * RLS had filtered away the other user's row, and deleted the currency --
+   * cascading that user's activation away. The restore's cleanup had the same
+   * blindness in a different shape.
+   *
+   * Only enforcement can demonstrate this, which is why it lives here: under
+   * `RLS_MODE=off` the app connects as the owner and every query sees
+   * everything, so the old code looked correct in every unit test.
+   */
+  describe("currency liveness is global, not tenant-scoped", () => {
+    const CODE = "PTS";
+
+    it("sees another user's activation that a tenant-scoped count cannot", async () => {
+      await dataSource.query(
+        `INSERT INTO currencies (code, name, symbol, decimal_places, is_active, created_by_user_id)
+         VALUES ($1, 'Family Points', '*', 0, true, $2)
+         ON CONFLICT (code) DO NOTHING`,
+        [CODE, USER_A],
+      );
+      // Only user B activates it. A has no preference row for the code at all,
+      // which is exactly the state `remove` reaches after deleting its own.
+      await dataSource.query(
+        `INSERT INTO user_currency_preferences (user_id, currency_code, is_active)
+         VALUES ($1, $2, true)
+         ON CONFLICT (user_id, currency_code) DO NOTHING`,
+        [USER_B, CODE],
+      );
+
+      const appDataSource = new DataSource({
+        ...INTEGRATION_TYPEORM_OPTIONS,
+        username: TEST_APP_ROLE,
+        password: TEST_APP_ROLE_PASSWORD,
+        synchronize: false,
+        dropSchema: false,
+        extra: { max: 1 },
+      } as never);
+      await appDataSource.initialize();
+      const previousMode = process.env.RLS_MODE;
+      process.env.RLS_MODE = "enforce";
+      try {
+        const { tenantView, globalAnswer } = await withUserContext(USER_A, () =>
+          withScopedDb(appDataSource, async (m) => {
+            const [counted] = await m.query(
+              `SELECT count(*)::int AS n FROM user_currency_preferences
+                  WHERE currency_code = $1`,
+              [CODE],
+            );
+            const [answer] = await m.query(
+              `SELECT currency_code_in_use_globally($1) AS "inUse"`,
+              [CODE],
+            );
+            return { tenantView: counted.n, globalAnswer: answer.inUse };
+          }),
+        );
+
+        // The query the old code trusted: B's row is invisible, so it says the
+        // code is unused and the delete looks safe.
+        expect(tenantView).toBe(0);
+        // The SECURITY DEFINER function, in the same transaction as that query,
+        // gives the answer the delete actually needs.
+        expect(globalAnswer).toBe(true);
+      } finally {
+        if (previousMode === undefined) {
+          delete process.env.RLS_MODE;
+        } else {
+          process.env.RLS_MODE = previousMode;
+        }
+        await appDataSource.destroy();
+      }
+    });
+
+    it("reports an unreferenced code as free", async () => {
+      await dataSource.query(
+        `INSERT INTO currencies (code, name, symbol, decimal_places, is_active, created_by_user_id)
+         VALUES ('ZZZ', 'Nothing Points', '?', 0, true, $1)
+         ON CONFLICT (code) DO NOTHING`,
+        [USER_A],
+      );
+      // "Unknown" is not the answer here: nothing references the code, which is
+      // a settled fact, and reporting it as live would strand the row forever.
+      const [{ inUse }] = await dataSource.query(
+        `SELECT currency_code_in_use_globally('ZZZ') AS "inUse"`,
+      );
+      expect(inUse).toBe(false);
+    });
+  });
 });
