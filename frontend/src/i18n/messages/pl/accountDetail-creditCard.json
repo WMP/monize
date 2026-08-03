@@ -71,7 +71,8 @@
     "toastRecorded": "Płatność zarejestrowana",
     "toastScheduled": "Zaplanowano płatność miesięczną",
     "toastFailed": "Nie udało się przesłać płatności",
-    "fillRequired": "Wybierz kwotę, konto źródłowe i datę"
+    "fillRequired": "Wybierz kwotę, konto źródłowe i datę",
+    "fundingAccountsLoadFailed": "Nie udało się wczytać kont, z których możesz zapłacić. Nie znaczy to, że ich nie masz. Spróbuj ponownie, gdy połączenie zostanie przywrócone."
   },
   "loadFailed": "Nie udało się załadować szczegółów karty kredytowej"
 }

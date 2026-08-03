@@ -167,7 +167,11 @@
       "quantityRequired": "La quantité doit être supérieure à zéro",
       "priceRequired": "Le prix doit être supérieur à zéro",
       "totalAmountRequired": "Le montant total est requis"
-    }
+    },
+    "applyLatestPrice": "Appliquer le dernier cours",
+    "descriptionPlaceholder": "Description de l'exception...",
+    "latestPricePlaceholder": "Dernier : {price}",
+    "latestPriceSuggestion": "Dernier cours du marché : {price}"
   },
   "form": {
     "tabs": {

@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "Posiciones",
     "pdfColCash": "Efectivo",
     "pdfColTotal": "Total",
-    "pdfColGainLoss": "Ganancia/pérdida"
+    "pdfColGainLoss": "Ganancia/pérdida",
+    "na": "No disponible"
   },
   "realizedGains": {
     "totalProceeds": "Total de ingresos por ventas",

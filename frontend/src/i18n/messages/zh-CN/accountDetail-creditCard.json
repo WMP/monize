@@ -71,7 +71,8 @@
     "toastRecorded": "付款已记录",
     "toastScheduled": "每月付款已计划",
     "toastFailed": "提交付款失败",
-    "fillRequired": "请选择金额、付款账户和日期"
+    "fillRequired": "请选择金额、付款账户和日期",
+    "fundingAccountsLoadFailed": "无法加载可用于付款的账户。这并不表示您没有账户。请在连接恢复后重试。"
   },
   "loadFailed": "加载信用卡详情失败"
 }

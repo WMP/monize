@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "保有銘柄",
     "pdfColCash": "現金",
     "pdfColTotal": "合計",
-    "pdfColGainLoss": "損益"
+    "pdfColGainLoss": "損益",
+    "na": "利用不可"
   },
   "realizedGains": {
     "totalProceeds": "総収益",

@@ -71,7 +71,8 @@
     "toastRecorded": "Pagamento registrato",
     "toastScheduled": "Pagamento mensile pianificato",
     "toastFailed": "Impossibile inviare il pagamento",
-    "fillRequired": "Scegli un importo, un conto di provenienza e una data"
+    "fillRequired": "Scegli un importo, un conto di provenienza e una data",
+    "fundingAccountsLoadFailed": "Non è stato possibile caricare i conti da cui puoi pagare. Questo non significa che non ne hai. Riprova quando la connessione sarà ripristinata."
   },
   "loadFailed": "Impossibile caricare i dettagli della carta di credito"
 }

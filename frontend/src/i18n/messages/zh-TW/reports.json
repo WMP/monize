@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "持倉",
     "pdfColCash": "現金",
     "pdfColTotal": "總計",
-    "pdfColGainLoss": "損益"
+    "pdfColGainLoss": "損益",
+    "na": "不可用"
   },
   "realizedGains": {
     "totalProceeds": "總收益",

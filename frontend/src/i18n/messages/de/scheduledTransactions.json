@@ -167,7 +167,11 @@
       "quantityRequired": "Menge muss größer als null sein",
       "priceRequired": "Kurs muss größer als null sein",
       "totalAmountRequired": "Gesamtbetrag ist erforderlich"
-    }
+    },
+    "applyLatestPrice": "Aktuellen Kurs übernehmen",
+    "descriptionPlaceholder": "Beschreibung der Ausnahme...",
+    "latestPricePlaceholder": "Aktuell: {price}",
+    "latestPriceSuggestion": "Aktueller Marktkurs: {price}"
   },
   "form": {
     "tabs": {

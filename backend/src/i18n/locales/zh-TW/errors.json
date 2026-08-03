@@ -184,7 +184,8 @@
     "backupPasswordOidcOnly": "備份密碼僅適用於 OIDC 使用者；本機使用者使用其登入密碼",
     "backupPasswordTooShort": "備份密碼至少需要 {{ minLength }} 個字元",
     "backupPasswordBreached": "此密碼已出現在資料外洩事件中。請選擇其他密碼。",
-    "restoreBodyMustBeFile": "請求主體必須是備份檔案"
+    "restoreBodyMustBeFile": "請求主體必須是備份檔案",
+    "restoredWithMissingAttachmentBytes": "備份還原成功，但其中 {{ count }} 個附件不包含檔案內容。它們儲存在資料庫之外（本機資料夾或 S3），因此需要從該儲存空間單獨還原這些檔案。"
   },
   "budgets": {
     "notFound": "找不到 ID 為 {{ id }} 的預算",
@@ -293,7 +294,8 @@
   "monteCarlo": {
     "scenarioNotFound": "找不到情境 {{ id }}",
     "scenarioIdsMustBeArray": "scenarioIds 必須是陣列",
-    "atLeastOneAccountRequired": "至少需要一個 accountId"
+    "atLeastOneAccountRequired": "至少需要一個 accountId",
+    "currentPortfolioValueUnavailable": "無法確定所選帳戶的目前價值，因此模擬無法以該值為起點。通常表示某個持倉沒有近期價格，或某個貨幣對沒有匯率。請手動輸入起始值，或在價格更新後重試。"
   },
   "netWorth": {
     "invalidStartDate": "startDate 必須為 YYYY-MM-DD 格式",

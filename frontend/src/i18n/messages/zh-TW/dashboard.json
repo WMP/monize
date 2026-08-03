@@ -201,13 +201,15 @@
     "title": "依科目信用使用率",
     "empty": "沒有設定額度的信用科目。",
     "utilization": "使用率",
-    "used": "已使用"
+    "used": "已使用",
+    "amountUnavailable": "不可用"
   },
   "creditUtilizationTotal": {
     "title": "總信用使用率",
     "empty": "沒有設定額度的信用科目。",
     "used": "已使用",
-    "available": "可用"
+    "available": "可用",
+    "ratesUnavailable": "部分帳戶使用的貨幣沒有匯率記錄，因此無法計算合併額度與已用金額。"
   },
   "sectorWeightings": {
     "title": "類股配置",

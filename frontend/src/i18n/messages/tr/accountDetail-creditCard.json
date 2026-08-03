@@ -71,7 +71,8 @@
     "toastRecorded": "Ödeme kaydedildi",
     "toastScheduled": "Aylık ödeme zamanlandı",
     "toastFailed": "Ödeme gönderilemedi",
-    "fillRequired": "Bir tutar, kaynak hesap ve tarih seçin"
+    "fillRequired": "Bir tutar, kaynak hesap ve tarih seçin",
+    "fundingAccountsLoadFailed": "Ödeme yapabileceğiniz hesaplar yüklenemedi. Bu, hesabınız olmadığı anlamına gelmez. Bağlantı düzeldiğinde tekrar deneyin."
   },
   "loadFailed": "Kredi kartı ayrıntıları yüklenemedi"
 }

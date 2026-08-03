@@ -167,7 +167,11 @@
       "quantityRequired": "Kuantitas harus lebih dari nol",
       "priceRequired": "Harga harus lebih dari nol",
       "totalAmountRequired": "Total jumlah wajib diisi"
-    }
+    },
+    "applyLatestPrice": "Terapkan harga terbaru",
+    "descriptionPlaceholder": "Deskripsi penggantian...",
+    "latestPricePlaceholder": "Terbaru: {price}",
+    "latestPriceSuggestion": "Harga pasar terbaru: {price}"
   },
   "form": {
     "tabs": {

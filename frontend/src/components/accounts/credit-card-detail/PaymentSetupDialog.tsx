@@ -55,6 +55,7 @@ export function PaymentSetupDialog({
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [fundingAccountId, setFundingAccountId] = useState('');
+  const [fundingLoadFailed, setFundingLoadFailed] = useState(false);
   const [amountType, setAmountType] = useState<AmountType>('full');
   const [customAmount, setCustomAmount] = useState<number>(0);
   const [paymentDate, setPaymentDate] = useState('');
@@ -78,6 +79,9 @@ export function PaymentSetupDialog({
   useEffect(() => {
     if (!isOpen) return;
     const load = async () => {
+      // Clear the previous attempt's failure so a reopened dialog does not
+      // carry a stale error over a successful load.
+      setFundingLoadFailed(false);
       try {
         const all = await accountsApi.getAll();
         setAccounts(all);
@@ -92,9 +96,14 @@ export function PaymentSetupDialog({
         );
         setFundingAccountId(options[0]?.value ?? '');
       } catch (error) {
+        // A failed lookup is not an empty list. Both leave the select with no
+        // options and the submit correctly disabled, but only one of them means
+        // "you have no eligible account": without saying which, an outage reads
+        // as a settled answer about the user's own accounts.
         logger.error('Failed to load funding accounts:', error);
         setAccounts([]);
         setFundingAccountId('');
+        setFundingLoadFailed(true);
       }
       setAmountType(statementAmount != null ? 'statement' : 'full');
       setCustomAmount(fullAmount);
@@ -216,12 +225,19 @@ export function PaymentSetupDialog({
               )}
             </fieldset>
 
-            <Select
-              label={t('payment.fromAccount')}
-              value={fundingAccountId}
-              onChange={(e) => setFundingAccountId(e.target.value)}
-              options={[{ value: '', label: t('payment.selectAccount') }, ...fundingOptions]}
-            />
+            <div>
+              <Select
+                label={t('payment.fromAccount')}
+                value={fundingAccountId}
+                onChange={(e) => setFundingAccountId(e.target.value)}
+                options={[{ value: '', label: t('payment.selectAccount') }, ...fundingOptions]}
+              />
+              {fundingLoadFailed && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {t('payment.fundingAccountsLoadFailed')}
+                </p>
+              )}
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

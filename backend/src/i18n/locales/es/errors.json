@@ -184,7 +184,8 @@
     "backupPasswordOidcOnly": "La contraseña de copia de seguridad solo es configurable para usuarios OIDC; los usuarios locales usan su contraseña de inicio de sesión",
     "backupPasswordTooShort": "La contraseña de copia de seguridad debe tener al menos {{ minLength }} caracteres",
     "backupPasswordBreached": "Esta contraseña se encontró en una filtración de datos. Elige una contraseña diferente.",
-    "restoreBodyMustBeFile": "El cuerpo de la solicitud debe ser un archivo de copia de seguridad"
+    "restoreBodyMustBeFile": "El cuerpo de la solicitud debe ser un archivo de copia de seguridad",
+    "restoredWithMissingAttachmentBytes": "Copia de seguridad restaurada correctamente, pero {{ count }} archivo(s) adjunto(s) no incluyen su contenido en esta copia. Se guardaron fuera de la base de datos (carpeta local o S3), por lo que esos archivos deben restaurarse por separado desde ese almacenamiento."
   },
   "budgets": {
     "notFound": "Presupuesto con ID {{ id }} no encontrado",
@@ -293,7 +294,8 @@
   "monteCarlo": {
     "scenarioNotFound": "Escenario {{ id }} no encontrado",
     "scenarioIdsMustBeArray": "scenarioIds debe ser un array",
-    "atLeastOneAccountRequired": "Se requiere al menos un accountId"
+    "atLeastOneAccountRequired": "Se requiere al menos un accountId",
+    "currentPortfolioValueUnavailable": "No se pudo determinar el valor actual de las cuentas seleccionadas, por lo que la simulación no puede partir de él. Suele significar que una posición no tiene precio reciente o que un par de divisas no tiene tipo de cambio. Introduce un valor inicial manualmente o vuelve a intentarlo cuando se actualicen los precios."
   },
   "netWorth": {
     "invalidStartDate": "startDate debe estar en formato YYYY-MM-DD",

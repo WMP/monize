@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "Varlıklar",
     "pdfColCash": "Nakit",
     "pdfColTotal": "Toplam",
-    "pdfColGainLoss": "Kazanç/Kayıp"
+    "pdfColGainLoss": "Kazanç/Kayıp",
+    "na": "Kullanılamıyor"
   },
   "realizedGains": {
     "totalProceeds": "Toplam Gelir",

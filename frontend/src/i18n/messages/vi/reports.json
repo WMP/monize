@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "Vị thế",
     "pdfColCash": "Tiền mặt",
     "pdfColTotal": "Tổng",
-    "pdfColGainLoss": "Lãi/Lỗ"
+    "pdfColGainLoss": "Lãi/Lỗ",
+    "na": "Không có sẵn"
   },
   "realizedGains": {
     "totalProceeds": "Tổng tiền thu",

@@ -167,7 +167,11 @@
       "quantityRequired": "Количество должно быть больше нуля",
       "priceRequired": "Цена должна быть больше нуля",
       "totalAmountRequired": "Общая сумма обязательна"
-    }
+    },
+    "applyLatestPrice": "Применить последнюю цену",
+    "descriptionPlaceholder": "Описание переопределения...",
+    "latestPricePlaceholder": "Последняя: {price}",
+    "latestPriceSuggestion": "Последняя рыночная цена: {price}"
   },
   "form": {
     "tabs": {

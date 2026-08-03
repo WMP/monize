@@ -71,7 +71,8 @@
     "toastRecorded": "Pembayaran dicatat",
     "toastScheduled": "Pembayaran bulanan dijadwalkan",
     "toastFailed": "Gagal mengirim pembayaran",
-    "fillRequired": "Pilih jumlah, akun pendanaan, dan tanggal"
+    "fillRequired": "Pilih jumlah, akun pendanaan, dan tanggal",
+    "fundingAccountsLoadFailed": "Tidak dapat memuat rekening yang dapat Anda gunakan untuk membayar. Ini tidak berarti Anda tidak memilikinya. Coba lagi setelah koneksi pulih."
   },
   "loadFailed": "Gagal memuat detail kartu kredit"
 }

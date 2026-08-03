@@ -4,6 +4,7 @@ import {
   ConflictException,
   Logger,
 } from "@nestjs/common";
+import { applyShareAction } from "../securities/share-quantity.util";
 import { tr } from "../i18n/translate";
 import { DataSource, EntityManager } from "typeorm";
 import { Cron } from "@nestjs/schedule";
@@ -1330,11 +1331,13 @@ export class ActionHistoryService {
           }
           break;
         }
-        case "SPLIT": {
-          const ratio = qty;
-          current.quantity = current.quantity * ratio;
+        case "SPLIT":
+          // Ratio, and the only copy of this fold that did not guard against a
+          // non-positive one -- a split stored with quantity 0 would have zeroed
+          // the position during an undo/redo rebuild. `applyShareAction` leaves
+          // it alone, matching every other replay.
+          current.quantity = applyShareAction(current.quantity, "SPLIT", qty);
           break;
-        }
       }
 
       holdings.set(securityId, current);

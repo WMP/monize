@@ -71,7 +71,8 @@
     "toastRecorded": "[XX-Payment recorded-XX]",
     "toastScheduled": "[XX-Monthly payment scheduled-XX]",
     "toastFailed": "[XX-Failed to submit payment-XX]",
-    "fillRequired": "[XX-Choose an amount, a funding account, and a date-XX]"
+    "fillRequired": "[XX-Choose an amount, a funding account, and a date-XX]",
+    "fundingAccountsLoadFailed": "[XX-Could not load the accounts you can pay from. This does not mean you have none. Try again once the connection recovers.-XX]"
   },
   "loadFailed": "[XX-Failed to load credit card details-XX]"
 }

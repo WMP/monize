@@ -167,7 +167,11 @@
       "quantityRequired": "Кількість має бути більше нуля",
       "priceRequired": "Ціна має бути більше нуля",
       "totalAmountRequired": "Загальна сума обов'язкова"
-    }
+    },
+    "applyLatestPrice": "Застосувати останню ціну",
+    "descriptionPlaceholder": "Опис перевизначення...",
+    "latestPricePlaceholder": "Остання: {price}",
+    "latestPriceSuggestion": "Остання ринкова ціна: {price}"
   },
   "form": {
     "tabs": {

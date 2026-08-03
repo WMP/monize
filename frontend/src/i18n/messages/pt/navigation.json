@@ -30,5 +30,6 @@
     "label": "Pesquisar transações",
     "open": "Abrir pesquisa",
     "submit": "Pesquisar"
-  }
+  },
+  "logoutNotConfirmed": "A sua sessão foi terminada neste dispositivo, mas o servidor não o confirmou. A sessão pode continuar utilizável noutro local. Feche o navegador, ou revogue as suas sessões nas Definições quando o servidor estiver acessível."
 }

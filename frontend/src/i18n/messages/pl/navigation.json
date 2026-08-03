@@ -30,5 +30,6 @@
     "label": "Szukaj transakcji",
     "open": "Otwórz wyszukiwanie",
     "submit": "Szukaj"
-  }
+  },
+  "logoutNotConfirmed": "Zostałeś wylogowany na tym urządzeniu, ale serwer tego nie potwierdził. Twoja sesja może być nadal aktywna w innym miejscu. Zamknij przeglądarkę lub unieważnij sesje w Ustawieniach, gdy serwer będzie znów dostępny."
 }

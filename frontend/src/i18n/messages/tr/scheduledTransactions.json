@@ -167,7 +167,11 @@
       "quantityRequired": "Miktar sıfırdan büyük olmalıdır",
       "priceRequired": "Fiyat sıfırdan büyük olmalıdır",
       "totalAmountRequired": "Toplam tutar zorunludur"
-    }
+    },
+    "applyLatestPrice": "En son fiyatı uygula",
+    "descriptionPlaceholder": "Geçersiz kılma açıklaması...",
+    "latestPricePlaceholder": "En son: {price}",
+    "latestPriceSuggestion": "En son piyasa fiyatı: {price}"
   },
   "form": {
     "tabs": {

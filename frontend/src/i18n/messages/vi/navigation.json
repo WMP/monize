@@ -30,5 +30,6 @@
     "label": "Tìm kiếm giao dịch",
     "open": "Mở tìm kiếm",
     "submit": "Tìm kiếm"
-  }
+  },
+  "logoutNotConfirmed": "Bạn đã đăng xuất trên thiết bị này, nhưng máy chủ chưa xác nhận. Phiên của bạn có thể vẫn dùng được ở nơi khác. Hãy đóng trình duyệt, hoặc thu hồi các phiên trong Cài đặt khi máy chủ có thể truy cập lại."
 }

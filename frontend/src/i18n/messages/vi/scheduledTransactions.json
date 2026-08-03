@@ -167,7 +167,11 @@
       "quantityRequired": "Số lượng phải lớn hơn không",
       "priceRequired": "Giá phải lớn hơn không",
       "totalAmountRequired": "Cần có tổng số tiền"
-    }
+    },
+    "applyLatestPrice": "Áp dụng giá mới nhất",
+    "descriptionPlaceholder": "Mô tả ghi đè...",
+    "latestPricePlaceholder": "Mới nhất: {price}",
+    "latestPriceSuggestion": "Giá thị trường mới nhất: {price}"
   },
   "form": {
     "tabs": {

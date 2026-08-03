@@ -184,7 +184,8 @@
     "backupPasswordOidcOnly": "备份密码仅适用于 OIDC 用户；本地用户使用登录密码",
     "backupPasswordTooShort": "备份密码至少需要 {{ minLength }} 个字符",
     "backupPasswordBreached": "此密码已在数据泄露中被发现。请选择其他密码。",
-    "restoreBodyMustBeFile": "请求正文必须是备份文件"
+    "restoreBodyMustBeFile": "请求正文必须是备份文件",
+    "restoredWithMissingAttachmentBytes": "备份恢复成功，但其中 {{ count }} 个附件不包含文件内容。它们存储在数据库之外（本地文件夹或 S3），因此需要从该存储中单独恢复这些文件。"
   },
   "budgets": {
     "notFound": "未找到 ID 为 {{ id }} 的预算",
@@ -293,7 +294,8 @@
   "monteCarlo": {
     "scenarioNotFound": "未找到情景 {{ id }}",
     "scenarioIdsMustBeArray": "scenarioIds 必须是数组",
-    "atLeastOneAccountRequired": "至少需要一个 accountId"
+    "atLeastOneAccountRequired": "至少需要一个 accountId",
+    "currentPortfolioValueUnavailable": "无法确定所选账户的当前价值，因此模拟无法以该值为起点。通常表示某个持仓没有近期价格，或某个货币对没有汇率。请手动输入起始值，或在价格刷新后重试。"
   },
   "netWorth": {
     "invalidStartDate": "startDate 必须为 YYYY-MM-DD 格式",

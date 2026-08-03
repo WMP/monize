@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "Позиції",
     "pdfColCash": "Готівка",
     "pdfColTotal": "Разом",
-    "pdfColGainLoss": "Прибуток/збиток"
+    "pdfColGainLoss": "Прибуток/збиток",
+    "na": "Недоступно"
   },
   "realizedGains": {
     "totalProceeds": "Загальний виторг",

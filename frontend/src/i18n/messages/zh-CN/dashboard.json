@@ -201,13 +201,15 @@
     "title": "按账户信用额度使用率",
     "empty": "没有设置额度的信用账户。",
     "utilization": "使用率",
-    "used": "已用"
+    "used": "已用",
+    "amountUnavailable": "不可用"
   },
   "creditUtilizationTotal": {
     "title": "总信用额度使用率",
     "empty": "没有设置额度的信用账户。",
     "used": "已用",
-    "available": "可用"
+    "available": "可用",
+    "ratesUnavailable": "部分账户使用的货币没有汇率记录，因此无法计算合并额度和已用金额。"
   },
   "sectorWeightings": {
     "title": "行业配置",

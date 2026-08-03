@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "Активы",
     "pdfColCash": "Наличные",
     "pdfColTotal": "Итого",
-    "pdfColGainLoss": "Прибыль/убыток"
+    "pdfColGainLoss": "Прибыль/убыток",
+    "na": "Недоступно"
   },
   "realizedGains": {
     "totalProceeds": "Всего выручки",

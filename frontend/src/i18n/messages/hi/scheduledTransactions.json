@@ -167,7 +167,11 @@
       "quantityRequired": "मात्रा शून्य से अधिक होनी चाहिए",
       "priceRequired": "मूल्य शून्य से अधिक होना चाहिए",
       "totalAmountRequired": "कुल राशि आवश्यक है"
-    }
+    },
+    "applyLatestPrice": "नवीनतम मूल्य लागू करें",
+    "descriptionPlaceholder": "ओवरराइड विवरण...",
+    "latestPricePlaceholder": "नवीनतम: {price}",
+    "latestPriceSuggestion": "नवीनतम बाज़ार मूल्य: {price}"
   },
   "form": {
     "tabs": {

@@ -178,9 +178,8 @@ export class HoldingsService {
           qty -= txQty;
           break;
         case InvestmentAction.SPLIT:
-          if (txQty > 0) {
-            qty *= txQty;
-          }
+          // Ratio: total basis is preserved, only the per-share figure moves.
+          qty = applyShareAction(qty, tx.action, txQty);
           break;
         default:
           // DIVIDEND / INTEREST / CAPITAL_GAIN don't move shares.

@@ -71,7 +71,8 @@
     "toastRecorded": "Zahlung erfasst",
     "toastScheduled": "Monatliche Zahlung geplant",
     "toastFailed": "Zahlung konnte nicht übermittelt werden",
-    "fillRequired": "Wählen Sie einen Betrag, ein Quellkonto und ein Datum"
+    "fillRequired": "Wählen Sie einen Betrag, ein Quellkonto und ein Datum",
+    "fundingAccountsLoadFailed": "Die Konten, von denen Sie zahlen können, konnten nicht geladen werden. Das bedeutet nicht, dass Sie keine haben. Versuchen Sie es erneut, sobald die Verbindung wiederhergestellt ist."
   },
   "loadFailed": "Kreditkartendetails konnten nicht geladen werden"
 }

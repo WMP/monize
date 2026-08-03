@@ -167,7 +167,11 @@
       "quantityRequired": "数量必须大于零",
       "priceRequired": "价格必须大于零",
       "totalAmountRequired": "总金额为必填项"
-    }
+    },
+    "applyLatestPrice": "应用最新价格",
+    "descriptionPlaceholder": "覆盖说明...",
+    "latestPricePlaceholder": "最新：{price}",
+    "latestPriceSuggestion": "最新市场价格：{price}"
   },
   "form": {
     "tabs": {

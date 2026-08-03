@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "Bestände",
     "pdfColCash": "Bargeld",
     "pdfColTotal": "Gesamt",
-    "pdfColGainLoss": "Gewinn/Verlust"
+    "pdfColGainLoss": "Gewinn/Verlust",
+    "na": "Nicht verfügbar"
   },
   "realizedGains": {
     "totalProceeds": "Gesamterlöse",

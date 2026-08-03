@@ -71,7 +71,8 @@
     "toastRecorded": "Đã ghi nhận thanh toán",
     "toastScheduled": "Đã lên lịch thanh toán hàng tháng",
     "toastFailed": "Không thể gửi thanh toán",
-    "fillRequired": "Chọn số tiền, một tài khoản thanh toán và một ngày"
+    "fillRequired": "Chọn số tiền, một tài khoản thanh toán và một ngày",
+    "fundingAccountsLoadFailed": "Không thể tải các tài khoản bạn có thể dùng để thanh toán. Điều này không có nghĩa là bạn không có tài khoản nào. Hãy thử lại khi kết nối được phục hồi."
   },
   "loadFailed": "Không thể tải chi tiết thẻ tín dụng"
 }

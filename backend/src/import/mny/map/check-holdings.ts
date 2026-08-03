@@ -1,5 +1,8 @@
-import { InvestmentAction } from "../../../securities/entities/investment-transaction.entity";
 import { roundToDecimals } from "../../../common/round.util";
+import {
+  applyShareAction,
+  movesShares,
+} from "../../../securities/share-quantity.util";
 import {
   MappedAccounts,
   MappedInvestmentTransaction,
@@ -30,24 +33,10 @@ const QUANTITY_TOLERANCE = 0.00000001;
 
 const QUANTITY_DECIMALS = 8;
 
-/** Actions that reduce a position. Mirrors `HoldingsService.computeHoldingsMap`. */
-const REDUCING_ACTIONS: ReadonlySet<InvestmentAction> = new Set([
-  InvestmentAction.SELL,
-  InvestmentAction.TRANSFER_OUT,
-  InvestmentAction.REMOVE_SHARES,
-]);
-
-/** Actions that change a position at all. Mirrors the holdings fold exactly. */
-const HOLDING_ACTIONS: ReadonlySet<InvestmentAction> = new Set([
-  InvestmentAction.BUY,
-  InvestmentAction.SELL,
-  InvestmentAction.REINVEST,
-  InvestmentAction.TRANSFER_IN,
-  InvestmentAction.TRANSFER_OUT,
-  InvestmentAction.ADD_SHARES,
-  InvestmentAction.REMOVE_SHARES,
-  InvestmentAction.SPLIT,
-]);
+// The two hand-maintained sets that used to live here -- one for reducing
+// actions, one for "actions that change a position at all" -- both carried a
+// comment saying they mirrored the holdings fold. A mirror maintained by comment
+// is what drifts: `movesShares` and `applyShareAction` are the fold.
 
 export interface CheckHoldingsInput {
   /** In replay order, as `mapInvestments` returns them. */
@@ -78,27 +67,18 @@ export function replayPositions(
   const positions = new Map<string, number>();
 
   for (const transaction of transactions) {
-    if (
-      !HOLDING_ACTIONS.has(transaction.action) ||
-      transaction.quantity === null
-    ) {
+    if (!movesShares(transaction.action) || transaction.quantity === null) {
       continue;
     }
 
     const key = positionKey(transaction.accountKey, transaction.securityHandle);
     const current = positions.get(key) ?? 0;
 
-    if (transaction.action === InvestmentAction.SPLIT) {
-      positions.set(key, current * transaction.quantity);
-      continue;
-    }
-
+    // Share arithmetic (including the split ratio) belongs to one function, so
+    // this cross-check and the holdings it is checking against cannot drift.
     positions.set(
       key,
-      current +
-        (REDUCING_ACTIONS.has(transaction.action)
-          ? -transaction.quantity
-          : transaction.quantity),
+      applyShareAction(current, transaction.action, transaction.quantity),
     );
   }
 

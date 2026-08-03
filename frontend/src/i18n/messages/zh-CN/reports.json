@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "持仓",
     "pdfColCash": "现金",
     "pdfColTotal": "合计",
-    "pdfColGainLoss": "盈亏"
+    "pdfColGainLoss": "盈亏",
+    "na": "不可用"
   },
   "realizedGains": {
     "totalProceeds": "总收益",

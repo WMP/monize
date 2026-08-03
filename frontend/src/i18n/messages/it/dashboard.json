@@ -201,13 +201,15 @@
     "title": "Utilizzo per conto",
     "empty": "Nessun conto di credito con un limite impostato.",
     "utilization": "Utilizzo",
-    "used": "Utilizzato"
+    "used": "Utilizzato",
+    "amountUnavailable": "Non disponibile"
   },
   "creditUtilizationTotal": {
     "title": "Utilizzo totale",
     "empty": "Nessun conto di credito con un limite impostato.",
     "used": "Utilizzato",
-    "available": "Disponibile"
+    "available": "Disponibile",
+    "ratesUnavailable": "Alcuni conti usano una valuta per cui non è registrato alcun tasso di cambio, quindi il limite complessivo e gli importi utilizzati non possono essere calcolati."
   },
   "sectorWeightings": {
     "title": "Allocazione per settore",

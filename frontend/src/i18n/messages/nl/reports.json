@@ -1132,7 +1132,8 @@
     "pdfColHoldings": "Posities",
     "pdfColCash": "Contanten",
     "pdfColTotal": "Totaal",
-    "pdfColGainLoss": "Winst/verlies"
+    "pdfColGainLoss": "Winst/verlies",
+    "na": "Niet beschikbaar"
   },
   "realizedGains": {
     "totalProceeds": "Totale opbrengsten",

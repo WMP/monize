@@ -252,11 +252,11 @@ function applyTxToState(
     case InvestmentAction.REMOVE_SHARES:
       state.quantity -= quantity;
       break;
-    case InvestmentAction.SPLIT: {
-      const splitRatio = quantity || 1;
-      if (splitRatio > 0) state.quantity *= splitRatio;
+    case InvestmentAction.SPLIT:
+      // Ratio, not a share count. Total cost basis is deliberately untouched:
+      // a split changes the per-share figure, not what was paid.
+      state.quantity = applyShareAction(state.quantity, tx.action, quantity);
       break;
-    }
   }
   if (Math.abs(state.quantity) < 0.0001) {
     state.quantity = 0;
@@ -935,13 +935,13 @@ export class PortfolioCalculationService {
           entry.quantity -= quantity;
           if (quantity !== 0) entry.basisGap = "quantity_only_action";
           break;
-        case InvestmentAction.SPLIT: {
-          const splitRatio = quantity || 1;
-          if (splitRatio > 0) {
-            entry.quantity *= splitRatio;
-          }
+        case InvestmentAction.SPLIT:
+          entry.quantity = applyShareAction(
+            entry.quantity,
+            tx.action,
+            quantity,
+          );
           break;
-        }
         // DIVIDEND / INTEREST / CAPITAL_GAIN: cash only, no impact on cost basis
       }
 
@@ -1195,11 +1195,13 @@ export class PortfolioCalculationService {
         case InvestmentAction.REMOVE_SHARES:
           entry.quantity -= quantity;
           break;
-        case InvestmentAction.SPLIT: {
-          const splitRatio = quantity || 1;
-          if (splitRatio > 0) entry.quantity *= splitRatio;
+        case InvestmentAction.SPLIT:
+          entry.quantity = applyShareAction(
+            entry.quantity,
+            tx.action,
+            quantity,
+          );
           break;
-        }
       }
 
       if (Math.abs(entry.quantity) < 0.0001) {
@@ -1424,11 +1426,13 @@ export class PortfolioCalculationService {
             case InvestmentAction.REMOVE_SHARES:
               state.quantity -= quantity;
               break;
-            case InvestmentAction.SPLIT: {
-              const splitRatio = quantity || 1;
-              if (splitRatio > 0) state.quantity *= splitRatio;
+            case InvestmentAction.SPLIT:
+              state.quantity = applyShareAction(
+                state.quantity,
+                tx.action,
+                quantity,
+              );
               break;
-            }
           }
 
           if (Math.abs(state.quantity) < 0.0001) {

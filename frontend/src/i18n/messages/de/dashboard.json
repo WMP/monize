@@ -201,13 +201,15 @@
     "title": "Kreditauslastung nach Konto",
     "empty": "Keine Kreditkonten mit festgelegtem Limit.",
     "utilization": "Auslastung",
-    "used": "Genutzt"
+    "used": "Genutzt",
+    "amountUnavailable": "Nicht verfügbar"
   },
   "creditUtilizationTotal": {
     "title": "Gesamte Kreditauslastung",
     "empty": "Keine Kreditkonten mit festgelegtem Limit.",
     "used": "Genutzt",
-    "available": "Verfügbar"
+    "available": "Verfügbar",
+    "ratesUnavailable": "Für einige Konten liegt kein Wechselkurs der verwendeten Währung vor, daher lassen sich das Gesamtlimit und die beanspruchten Beträge nicht ermitteln."
   },
   "sectorWeightings": {
     "title": "Sektorallokation",

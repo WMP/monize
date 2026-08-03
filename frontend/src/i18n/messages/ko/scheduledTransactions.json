@@ -167,7 +167,11 @@
       "quantityRequired": "수량은 0보다 커야 합니다",
       "priceRequired": "가격은 0보다 커야 합니다",
       "totalAmountRequired": "총 금액이 필요합니다"
-    }
+    },
+    "applyLatestPrice": "최신 가격 적용",
+    "descriptionPlaceholder": "재정의 설명...",
+    "latestPricePlaceholder": "최신: {price}",
+    "latestPriceSuggestion": "최신 시장 가격: {price}"
   },
   "form": {
     "tabs": {

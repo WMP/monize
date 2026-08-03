@@ -201,13 +201,15 @@
     "title": "계정별 신용 활용도",
     "empty": "한도가 설정된 신용 계정이 없습니다.",
     "utilization": "활용도",
-    "used": "사용액"
+    "used": "사용액",
+    "amountUnavailable": "사용할 수 없음"
   },
   "creditUtilizationTotal": {
     "title": "총 신용 활용도",
     "empty": "한도가 설정된 신용 계정이 없습니다.",
     "used": "사용액",
-    "available": "가용 한도"
+    "available": "가용 한도",
+    "ratesUnavailable": "일부 계좌가 환율이 등록되지 않은 통화를 사용하므로 합산 한도와 사용 금액을 계산할 수 없습니다."
   },
   "sectorWeightings": {
     "title": "섹터 배분",
