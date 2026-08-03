@@ -198,9 +198,10 @@ Verified by exploration; file paths are current as of this writing.
   AI streaming endpoints; the Next proxy passes `text/event-stream` through). Cron via
   `@nestjs/schedule` runs in-process — on Kubernetes, on every replica, so anything cron-adjacent
   must be idempotent/claimed.
-- **RLS ratchet (hard CI gate)**: new DB code must use `withScopedDb(dataSource, (m) => ...)`
-  (`backend/src/common/db/scoped-db.ts`); the CI script counts `@InjectRepository(` and
-  `createQueryRunner(` call sites and fails on any increase. Code without an HTTP request context
+- **RLS lint bans (hard CI gate)**: new DB code must use `withScopedDb(dataSource, (m) => ...)`
+  (`backend/src/common/db/scoped-db.ts`). The counting ratchet this section originally described is
+  gone -- it reached zero and was replaced by outright ESLint bans on `@InjectRepository`,
+  `createQueryRunner()` and `dataSource.transaction()` in `src/` (`backend/eslint.config.mjs`). Code without an HTTP request context
   (the background job body, crons) wraps in `withUserContext(userId, fn)` /
   `withSystemContext(fn)`. Existing import helpers take a `queryRunner`-shaped object and only use
   `.manager` / `.query()` — the .mny writer passes a `{ manager, query }` shim backed by the

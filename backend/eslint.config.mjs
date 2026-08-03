@@ -137,6 +137,21 @@ export default tseslint.config(
             "Manual QueryRunners bypass withScopedDb's transaction + identity GUCs -- use " +
             "withScopedDb(this.dataSource, async (m) => { ... }) instead (RLS task L1).",
         },
+        {
+          // The `createQueryRunner` ban never covered this, and contributor
+          // guidance recommended it: `dataSource.transaction(fn)` opens a
+          // transaction that is unaware of the ambient scoped manager. Under
+          // RLS_MODE=enforce it carries no identity GUCs and fails closed; at
+          // `off` it loses defence in depth; and nested inside a caller's
+          // withScopedDb it commits independently, so the outer rollback cannot
+          // take it back. scoped-db.ts is the one place that may call it.
+          selector: 'CallExpression[callee.property.name="transaction"]',
+          message:
+            "DataSource.transaction() opens a transaction outside the active scoped manager -- " +
+            "no identity GUCs, and it commits independently of the caller's rollback. Use " +
+            "withScopedDb(this.dataSource, async (m) => { ... }), which joins the ambient " +
+            "transaction when there is one (RLS task L1).",
+        },
       ],
     },
   },
