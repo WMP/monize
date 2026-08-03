@@ -341,6 +341,7 @@ export function LoanDetailView({
         baseline={baseline}
         scenario={scenario}
         original={impact?.originalSchedule ?? null}
+        currencyCode={account.currencyCode}
       />
 
       <AmortizationScheduleTable

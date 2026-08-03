@@ -175,6 +175,12 @@ interface PayoffComparisonChartProps {
   scenario: LoanScheduleResult | null;
   /** Original contractual schedule ("if I never overpaid"); omitted when unknown */
   original?: LoanScheduleResult | null;
+  /**
+   * The loan's own currency. Required, not optional: every amount this chart
+   * draws belongs to the loan, and falling back to the user's default currency
+   * relabels a EUR balance as USD without converting it.
+   */
+  currencyCode: string;
 }
 
 /**
@@ -189,6 +195,7 @@ export function PayoffComparisonChart({
   baseline,
   scenario,
   original = null,
+  currencyCode,
 }: PayoffComparisonChartProps) {
   const t = useTranslations('accounts');
   const tc = useTranslations('common');
@@ -262,7 +269,12 @@ export function PayoffComparisonChart({
             <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
             <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
             <YAxis
-              tickFormatter={formatCurrencyAxis}
+              // Wrapped rather than passed by reference: recharts calls a
+              // tickFormatter as (value, index), so `formatCurrencyAxis` would
+              // receive the tick index as its second argument and fall back to
+              // the user's default currency -- which is why that parameter is
+              // typed `string | number` in the first place.
+              tickFormatter={(value: number) => formatCurrencyAxis(value, currencyCode)}
               tick={{ fontSize: 12 }}
               width={72}
               label={{
@@ -275,12 +287,12 @@ export function PayoffComparisonChart({
             <Tooltip
               content={
                 <ChartTooltip
-                  formatValue={(value) => formatCurrencyCompact(value)}
+                  formatValue={(value) => formatCurrencyCompact(value, currencyCode)}
                   extra={(point) =>
                     typeof point.overpayment === 'number' && point.overpayment > 0 ? (
                       <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
                         {t('loanDetail.schedule.overpaymentBadge')}:{' '}
-                        {formatCurrencyCompact(point.overpayment)}
+                        {formatCurrencyCompact(point.overpayment, currencyCode)}
                       </p>
                     ) : null
                   }

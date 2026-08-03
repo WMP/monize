@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@/test/render';
 import {
   PayoffComparisonChart,
@@ -21,19 +22,45 @@ vi.mock('recharts', () => ({
   ),
   Area: ({ name }: { name?: string }) => <div data-testid="area">{name}</div>,
   XAxis: () => null,
-  YAxis: () => null,
+  // The axis and tooltip render their formatters' output, rather than being
+  // no-ops, so a test can see which currency the amounts are actually labelled
+  // with. YAxis passes a tick INDEX as the second argument exactly as recharts
+  // does -- that is the trap `formatCurrencyAxis`'s `string | number` parameter
+  // exists for, and a mock that omitted it could not catch an unwrapped
+  // `tickFormatter={formatCurrencyAxis}`.
+  YAxis: ({ tickFormatter }: { tickFormatter?: (value: number, index: number) => string }) => (
+    <div data-testid="y-axis-tick">{tickFormatter ? tickFormatter(1000, 0) : null}</div>
+  ),
   CartesianGrid: () => null,
-  Tooltip: () => null,
+  Tooltip: ({ content }: { content?: React.ReactElement }) =>
+    content
+      ? React.cloneElement(content, {
+          active: true,
+          label: '2024-06',
+          payload: [
+            {
+              name: 'Actual Balance',
+              value: 2500,
+              payload: { overpayment: 400 },
+            },
+          ],
+        } as Record<string, unknown>)
+      : null,
   Legend: () => null,
   ReferenceLine: ({ label }: { label?: { value?: string } }) => (
     <div data-testid="reference-line">{label?.value}</div>
   ),
 }));
 
+// Mirrors the real hook's fallback: an omitted currency silently becomes the
+// user's default. The mock has to honour the argument, or a chart labelling a
+// EUR loan in the user's USD is indistinguishable from a correct one.
 vi.mock('@/hooks/useNumberFormat', () => ({
   useNumberFormat: () => ({
-    formatCurrencyCompact: (amount: number) => `$${amount.toFixed(0)}`,
-    formatCurrencyAxis: (amount: number) => `$${amount}`,
+    formatCurrencyCompact: (amount: number, currencyCode?: string) =>
+      `${currencyCode || 'USD'} ${amount.toFixed(0)}`,
+    formatCurrencyAxis: (amount: number, currencyCodeOrIndex?: string | number) =>
+      `${typeof currencyCodeOrIndex === 'string' ? currencyCodeOrIndex : 'USD'} ${amount}`,
   }),
 }));
 
@@ -257,6 +284,7 @@ describe('PayoffComparisonChart', () => {
         historyEvents={makeHistory()}
         baseline={makeProjection()}
         scenario={null}
+        currencyCode="EUR"
       />,
     );
 
@@ -278,6 +306,7 @@ describe('PayoffComparisonChart', () => {
         historyEvents={makeHistory()}
         baseline={makeProjection()}
         scenario={null}
+        currencyCode="EUR"
       />,
     );
 
@@ -295,6 +324,7 @@ describe('PayoffComparisonChart', () => {
         baseline={makeProjection()}
         scenario={null}
         original={makeProjection()}
+        currencyCode="EUR"
       />,
     );
 
@@ -307,6 +337,7 @@ describe('PayoffComparisonChart', () => {
         historyEvents={makeHistory()}
         baseline={makeProjection()}
         scenario={makeProjection(200)}
+        currencyCode="EUR"
       />,
     );
 
@@ -314,8 +345,53 @@ describe('PayoffComparisonChart', () => {
     expect(screen.getByText(/does not change your scheduled payments/)).toBeInTheDocument();
   });
 
+  // Every amount on this chart belongs to the loan, so all three formatters have
+  // to be told the loan's currency. Omitting it does not raise anything -- the
+  // hook quietly substitutes the user's default -- so a EUR loan renders its
+  // balances and overpayments labelled in USD, unconverted.
+  it('labels the y-axis in the loan currency, not the user default', () => {
+    render(
+      <PayoffComparisonChart
+        historyEvents={makeHistory()}
+        baseline={makeProjection()}
+        scenario={null}
+        currencyCode="EUR"
+      />,
+    );
+
+    // Passed as a wrapper, not by reference: recharts hands a tickFormatter
+    // (value, index), so an unwrapped formatCurrencyAxis gets 0 here and falls
+    // back to the default currency.
+    expect(screen.getByTestId('y-axis-tick')).toHaveTextContent('EUR 1000');
+    expect(screen.getByTestId('y-axis-tick')).not.toHaveTextContent('USD');
+  });
+
+  it('formats the tooltip balance and the overpayment annotation in the loan currency', () => {
+    render(
+      <PayoffComparisonChart
+        historyEvents={makeHistory()}
+        baseline={makeProjection()}
+        scenario={null}
+        currencyCode="EUR"
+      />,
+    );
+
+    // The series value, via formatValue.
+    expect(screen.getByText(/Actual Balance: EUR 2500/)).toBeInTheDocument();
+    // The overpayment annotation, via extra -- the amount named in the finding.
+    expect(screen.getByText(/EUR 400/)).toBeInTheDocument();
+    expect(screen.queryByText(/USD/)).not.toBeInTheDocument();
+  });
+
   it('shows an empty state without any data', () => {
-    render(<PayoffComparisonChart historyEvents={[]} baseline={null} scenario={null} />);
+    render(
+      <PayoffComparisonChart
+        historyEvents={[]}
+        baseline={null}
+        scenario={null}
+        currencyCode="EUR"
+      />,
+    );
     expect(screen.getByText('No payment history or projection available.')).toBeInTheDocument();
   });
 });
