@@ -1,12 +1,12 @@
 {
-  "written_at": "2026-08-03T21:42:48+00:00",
+  "written_at": "2026-08-03T22:07:00+00:00",
   "session_id": "sess-f1322760-b0fa-4f15-943d-588b4a88c4f6",
-  "stop_reason": "session active, round 1 in flight",
+  "stop_reason": "session active, round 1 complete, about to start round 2",
   "source_sha": "4e48a76762a07402a5d3bc3f886fcd8e6ff5829b",
   "fix_branch": "automation/claude-fixes",
-  "fix_sha": "34b7aea9345dad3201371c571d45d54afc7408fa",
+  "fix_sha": "5e4464b9b9b333a66cee3b7989c3686b16a3f502",
   "waker": {
-    "mechanism": "two hourly Routines offset ~30min: trig_01YX47nT1RZJ3FuQNo9muN1X (cron '36 * * * *', next 2026-08-03T22:36:00Z) and trig_01BNx6At8UmkLjip1T3eKaEF (cron '6 * * * *', next 2026-08-03T22:06:00Z). Both create_new_session_on_fire=true with the full fix-agent prompt as payload.",
+    "mechanism": "two hourly Routines offset ~30min: trig_01YX47nT1RZJ3FuQNo9muN1X (cron '36 * * * *', next fire ~22:36Z each hour) and trig_01BNx6At8UmkLjip1T3eKaEF (cron '6 * * * *', next fire ~22:06Z each hour). Both create_new_session_on_fire=true with the full fix-agent prompt as payload.",
     "caveat": "Routines created from inside this CCR session store no MCP connectors, so a fired session has Bash/git but no Claude_Code_Remote/github tools -- it must read this state file rather than concluding nothing exists."
   },
   "lock": {
@@ -14,17 +14,29 @@
     "taken_over_from": "sess-30f4ca0e-d841-58ba-8e24-2ffef071e459 (dead, heartbeat stale since 2026-08-03T21:05:11+00:00)",
     "verified_on_origin": true
   },
-  "round_in_flight": {
-    "round": 1,
-    "resuming_abandoned_claim_from_dead_session": true,
+  "round_1_complete": {
     "findings": ["REV-20260803-036", "REV-20260803-030", "REV-20260803-014"],
-    "partitions": {
-      "1": "frontend/src/lib/ -- REV-036 interest rounded to cents instead of 4dp in loan-history.ts classifyPayment",
-      "2": "backend/src/loan-rate-changes/ -- REV-030 rate edit commits before scheduled-payment sync, sync failure swallowed in loan-rate-changes.service.ts update()/remove()",
-      "3": "frontend/src/components/accounts/loan-detail/ + backend/src/accounts/ -- REV-014 tooltip accumulates overpayments as floats in PayoffComparisonChart.tsx"
+    "fix_commits": {
+      "REV-20260803-036": "80cc2991032c6da298f670e41c671bf956f4df2f",
+      "REV-20260803-030": "5566c9d79ccd2ca174740bf761934d7ea44dd007",
+      "REV-20260803-014": "5e4464b9b9b333a66cee3b7989c3686b16a3f502"
     },
-    "re_verification": "all three re-read against current automation/claude-fixes HEAD (34b7aea9) before resuming; all three defects confirmed still present (dead session's edits were never committed, fix_sha unchanged)",
-    "state": "3 subagents dispatched in parallel, one per finding/partition, each instructed to edit+add regression test+run only its own partition's tests, no git, no coordination writes. npm ci completed for both backend and frontend before dispatch. Awaiting subagent completion; full gate and commits not yet run.",
-    "next_step_if_this_session_dies_now": "Re-verify all three findings still apply (re-read the files), re-run the same 3-way subagent fan-out if no code changes landed, then: run the full gate (backend eslint/tsc/migration:lint/test:unit, frontend lint/type-check/i18n:check/test), commit each finding SEPARATELY on automation/claude-fixes naming its REV id, move each finding to pending-review/ with fix_commit set (or disputed/ with reasoning) on automation/agent-review, refresh this checkpoint + lock heartbeat in the same coordination commit, then proceed to round 2 picking new findings from open/ (SKIP REV-017, REV-022, REV-023 -- all requires_human_approval true, blocked on DEC-006/005/004 respectively; next candidates per prior session's reading: REV-016 PayoffComparisonChart projectionStartKey bug, REV-013 AmortizationScheduleTable gap-band bug (needs a judgment call, consider DEC), REV-011 missing projections -- read docs/financial-calculation-contract.md first)."
-  }
+    "all_moved_to_pending_review": true,
+    "full_gate_results": {
+      "backend_eslint": "pass, 0 problems",
+      "backend_tsc": "pass",
+      "backend_migration_lint": "pass, 122 migrations",
+      "backend_test_unit": "pass, TZ=UTC, 400 suites / 10702 tests",
+      "frontend_lint": "pass, 1 pre-existing unrelated warning (Combobox.tsx react-hooks/exhaustive-deps)",
+      "frontend_type_check": "pass",
+      "frontend_i18n_check": "pass, no catalog changes needed by these 3 findings",
+      "frontend_test": "pass, 628 files / 12315 tests",
+      "test_integration": "skipped, no Postgres in this sandbox",
+      "e2e": "skipped, no browsers in this sandbox"
+    },
+    "notes_for_review_agent": [
+      "REV-030: create()'s immediate-sync path (non-deferred branch) still swallows a resync failure and was deliberately left untouched -- an existing spec test asserts that swallow is intentional for create(), and the finding's title ('Rate edits') reads as update/remove only. If the review agent judges create() should get the same fix, that's a new/reopened finding, not part of this one."
+    ]
+  },
+  "next_step": "Round 2: git fetch + refresh coordination worktree, list reviews/open/, pick next findings from the 3 partitions (frontend/src/lib/, backend/src/loan-rate-changes/, frontend/src/components/accounts/loan-detail/+backend/src/accounts/), re-verify each against current fix-branch HEAD before claiming. SKIP REV-017, REV-022, REV-023 (requires_human_approval true, blocked on DEC-006/005/004). Per the prior session's reading (still likely valid, re-verify content not just line numbers): REV-016 (PayoffComparisonChart projectionStartKey picks a contractual-only month with no baseline/scenario balance -- fix: first point after lastHistoricalIndex that actually has baselineBalance or scenarioBalance), REV-013 (AmortizationScheduleTable gap-band: only monthRows[0].precededByGap tested; two designs collide with expandedMonths keyed by monthKey -- may need a DEC), REV-011 (missing projections treated as zero future interest -- read docs/financial-calculation-contract.md 'a subtotal is not a total' first, likely settles it directly as escalate-worthy or not). Most of the remaining open/ queue (loan-schedule.ts 040-043, loan-history.ts 032-038, rate-change-inference/loan-rate-changes 004-007/024-030) is numeric-policy forks -- escalate to human-approval/pending/ rather than implement, per CLAUDE.md's 'financial calculations' human-approval trigger, unless a CLAUDE.md rule decides it outright the way integer-money-precision and single-transaction-atomicity decided round 1's three."
 }
