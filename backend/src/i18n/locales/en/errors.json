@@ -177,6 +177,7 @@
     "userNotFoundRestore": "User not found",
     "backupPasswordWrong": "The password you entered cannot decrypt this backup. Try the password that was set when the backup was created.",
     "backupPasswordRequired": "This backup is encrypted. Provide the password that was used when the backup was created.",
+    "folderOutsideAllowedRoots": "Backup folder \"{path}\" is outside the permitted roots ({roots}). Set BACKUP_ALLOWED_ROOTS to permit it.",
     "decompressFailed": "Failed to decompress backup file. Ensure the file is gzip-compressed.",
     "decompressTooLarge": "Backup is too large to restore: it expands past the configured limit of {limit} bytes. Raise BACKUP_RESTORE_EXPANDED_LIMIT if this is a genuine backup.",
     "exportTooLarge": "This backup is too large to produce in one piece (past {limit} bytes at table \"{table}\"). Encrypted, automatic and support backups have to be assembled in memory; use the plain export, which streams, or raise BACKUP_EXPORT_BUFFER_LIMIT.",
