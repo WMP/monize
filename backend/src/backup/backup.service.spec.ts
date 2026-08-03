@@ -547,6 +547,49 @@ describe("BackupService", () => {
       expect(result.investment_reports).toEqual(mockInvestmentReports);
     });
 
+    it("reads every table inside one REPEATABLE READ transaction", async () => {
+      // The regression: each table used to be read in its own autocommit
+      // transaction, so a concurrent write could land between two reads and the
+      // file could hold a split whose parent transaction is missing. The
+      // restore inserts with ON CONFLICT DO NOTHING, so that orphan is dropped
+      // silently rather than failing -- a backup that is quietly incomplete.
+      mockDataSource.query.mockResolvedValue([]);
+
+      const mockRes = new PassThrough();
+      const resultPromise = collectGzipOutput(mockRes);
+      await service.streamExport(userId, mockRes as any);
+      await resultPromise;
+
+      const isolations = mockDataSource.transaction.mock.calls
+        .map((call) => call[0])
+        .filter((arg) => typeof arg === "string");
+      expect(isolations).toEqual(["REPEATABLE READ"]);
+      // One transaction for the whole export, not one per table.
+      expect(mockDataSource.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it("bounds how long the snapshot may sit idle waiting on the client", async () => {
+      // The cost of holding one snapshot across a streamed download is that a
+      // client which stops draining keeps a REPEATABLE READ transaction open,
+      // and that blocks vacuum database-wide. The timeout turns that into a
+      // failed download instead.
+      mockDataSource.query.mockResolvedValue([]);
+
+      const mockRes = new PassThrough();
+      const resultPromise = collectGzipOutput(mockRes);
+      await service.streamExport(userId, mockRes as any);
+      await resultPromise;
+
+      const idleGuard = mockDataSource.query.mock.calls.find((call) =>
+        String(call[0]).includes("idle_in_transaction_session_timeout"),
+      );
+      expect(idleGuard).toBeDefined();
+      // Transaction-local (`set_config(..., true)`), so it cannot leak onto the
+      // pooled connection and shorten an unrelated request's allowance.
+      expect(idleGuard![1]).toEqual([expect.any(String)]);
+      expect(String(idleGuard![0])).toContain("true");
+    });
+
     it("writes an encrypted envelope when a password is provided", async () => {
       mockDataSource.query.mockResolvedValue([]);
       const mockCategories = [{ id: "cat-1", name: "Food", user_id: userId }];

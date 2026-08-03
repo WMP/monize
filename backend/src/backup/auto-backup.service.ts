@@ -10,6 +10,7 @@ import {
   Repository,
 } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
+import { affectedRowCount } from "../common/db/query-result";
 import { Cron } from "@nestjs/schedule";
 import { promises as fs, readdirSync, unlinkSync, copyFileSync } from "fs";
 import { resolve } from "path";
@@ -411,6 +412,74 @@ export class AutoBackupService {
     return { message: "Backup completed successfully", filename };
   }
 
+  /**
+   * Claim one due backup by advancing its own schedule.
+   *
+   * Every replica fires this cron, so without a claim a two-replica cluster
+   * writes every user's backup twice -- and worse, one replica's
+   * `enforceRetention` can delete the file the other is still writing.
+   *
+   * The claim is the schedule advance itself: `next_backup_at` is a column this
+   * job owns, so `UPDATE ... WHERE next_backup_at <= now RETURNING` re-evaluates
+   * the predicate after taking the row lock and exactly one replica gets a row
+   * back. No claim table and no lease to expire -- the row already carries the
+   * fact. Advancing *before* the export also means a crash mid-backup skips this
+   * window rather than retrying forever, which is the behaviour the failure path
+   * already had.
+   */
+  private async claimDueBackup(
+    settings: AutoBackupSettings,
+    now: Date,
+    nextBackupAt: Date,
+  ): Promise<boolean> {
+    const rows = await withUserContext(settings.userId, () =>
+      withScopedDb(this.dataSource, (manager) =>
+        manager.query(
+          `UPDATE auto_backup_settings
+              SET next_backup_at = $1
+            WHERE user_id = $2
+              AND enabled = true
+              AND next_backup_at IS NOT NULL
+              AND next_backup_at <= $3
+            RETURNING id`,
+          [nextBackupAt, settings.userId, now],
+        ),
+      ),
+    );
+    return affectedRowCount(rows) > 0;
+  }
+
+  /**
+   * Write only the columns describing how the run went.
+   *
+   * `repo.save(settings)` would write back every column of the snapshot this
+   * sweep read at the top, so a user who changed their folder, frequency or
+   * retention through the UI while the sweep was running would find those edits
+   * reverted. The outcome columns are the only ones this job is entitled to
+   * write; `next_backup_at` was already set by the claim.
+   */
+  private async recordBackupOutcome(
+    userId: string,
+    at: Date,
+    status: "success" | "failed",
+    error: string | null,
+  ): Promise<void> {
+    await withUserContext(userId, () =>
+      this.scoped(AutoBackupSettings, (repo) =>
+        repo
+          .createQueryBuilder()
+          .update(AutoBackupSettings)
+          .set({
+            lastBackupAt: at,
+            lastBackupStatus: status,
+            lastBackupError: error,
+          })
+          .where("user_id = :userId", { userId })
+          .execute(),
+      ),
+    );
+  }
+
   @Cron("0 * * * *")
   async handleAutoBackupCron(): Promise<void> {
     const now = new Date();
@@ -432,6 +501,21 @@ export class AutoBackupService {
     this.logger.log(`Auto-backup cron: ${dueSettings.length} backup(s) due`);
 
     for (const settings of dueSettings) {
+      const nextBackupAt = this.calculateNextBackupAt(
+        settings.frequency as AutoBackupFrequency,
+        settings.backupTime,
+        settings.timezone,
+        now,
+      );
+
+      const claimed = await this.claimDueBackup(settings, now, nextBackupAt);
+      if (!claimed) {
+        // Either another replica took this window, or the user disabled or
+        // rescheduled the backup after this sweep read its snapshot. Both mean
+        // "not ours to run".
+        continue;
+      }
+
       try {
         settings.folderPath = this.resolveFolderPath(settings.folderPath);
         const userFolder = await this.ensureUserFolder(
@@ -448,18 +532,7 @@ export class AutoBackupService {
         this.copyToMonthlyIfNeeded(userFolder, filename, timezone);
         this.enforceRetention(userFolder, settings.folderPath, settings);
 
-        settings.lastBackupAt = now;
-        settings.lastBackupStatus = "success";
-        settings.lastBackupError = null;
-        settings.nextBackupAt = this.calculateNextBackupAt(
-          settings.frequency as AutoBackupFrequency,
-          settings.backupTime,
-          settings.timezone,
-          now,
-        );
-        await withUserContext(settings.userId, () =>
-          this.scoped(AutoBackupSettings, (repo) => repo.save(settings)),
-        );
+        await this.recordBackupOutcome(settings.userId, now, "success", null);
 
         this.logger.log(
           `Auto-backup completed for user ${settings.userId}: ${filename}`,
@@ -468,17 +541,11 @@ export class AutoBackupService {
         this.logger.error(
           `Auto-backup failed for user ${settings.userId}: ${error.message}`,
         );
-        settings.lastBackupAt = now;
-        settings.lastBackupStatus = "failed";
-        settings.lastBackupError = String(error.message).slice(0, 1024);
-        settings.nextBackupAt = this.calculateNextBackupAt(
-          settings.frequency as AutoBackupFrequency,
-          settings.backupTime,
-          settings.timezone,
+        await this.recordBackupOutcome(
+          settings.userId,
           now,
-        );
-        await withUserContext(settings.userId, () =>
-          this.scoped(AutoBackupSettings, (repo) => repo.save(settings)),
+          "failed",
+          String(error.message).slice(0, 1024),
         );
       }
     }

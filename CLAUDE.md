@@ -234,7 +234,7 @@ await withScopedDb(this.dataSource, async (m) => {
   - `withPreserveTimestamps(fn)` — extends the ambient context (identity inherited, never granted) so every transaction inside emits `app.preserve_timestamps` and the GUC-aware `updated_at` trigger keeps supplied values instead of stamping. Backup restore is the only caller; it replaced the restore's old `DISABLE TRIGGER` DDL, and trigger DDL must never come back (a source-scan guard in `backup.service.spec.ts` enforces this).
 - Nested `withScopedDb` calls join the ambient transaction (same connection/atomicity), so a service method calling another is safe — no pool-exhaustion deadlock. The exceptions are deliberate: `runOutsideActiveScopedManager` for a background timer or a progress write a concurrent reader must see.
 - A callback that returns early (before writing) commits an empty transaction — that is the correct replacement for an explicit rollback, not a bug.
-- Pass an isolation level as the optional third argument only when the logic depends on it (registration uses `"SERIALIZABLE"` for the first-user-admin race). Requesting one while joining an ambient transaction throws rather than silently downgrading.
+- Pass an isolation level as the optional third argument only when the logic depends on it (registration uses `"SERIALIZABLE"` for the first-user-admin race; the backup export uses `"REPEATABLE READ"` so every table lands in the file from one snapshot). Requesting one while joining an ambient transaction throws rather than silently downgrading.
 - At `RLS_MODE=off` (the default) `withScopedDb` still wraps the transaction but skips the identity GUCs, so behavior is identical to pre-RLS. See `docs/future-plans/row-level-security.md`.
 
 ## Financial Math

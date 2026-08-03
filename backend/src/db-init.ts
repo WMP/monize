@@ -3,6 +3,11 @@ import { Client } from "pg";
 import * as fs from "fs";
 import * as path from "path";
 import { provisionAppRole } from "./common/db/app-role";
+import {
+  acquireBootstrapLock,
+  releaseBootstrapLock,
+  type BootstrapLockOptions,
+} from "./common/db/bootstrap-lock";
 
 const SCHEMA_FILENAME = "schema.sql";
 
@@ -38,7 +43,12 @@ function safePath(base: string, relative: string): string | null {
   return resolved;
 }
 
-async function initDatabase() {
+export async function initDatabase(
+  options: {
+    /** Overrides for the bootstrap lock wait; specs shorten it. */
+    lock?: BootstrapLockOptions;
+  } = {},
+) {
   logger.log("Checking database initialization");
 
   const client = new Client({
@@ -57,9 +67,20 @@ async function initDatabase() {
     }
   });
 
+  let lockHeld = false;
+
   try {
     await client.connect();
     logger.log("Connected to database");
+
+    // Serialize the whole check-and-act below against every other replica: the
+    // "tables already exist" probe and the schema.sql that follows it are a
+    // check-then-act, and two containers starting together both read "absent"
+    // and both apply the schema -- the loser dies on duplicate_table and the
+    // pod crash-loops. Role provisioning is inside the lock for the same
+    // reason (CREATE ROLE races to duplicate_object).
+    await acquireBootstrapLock(client, options.lock);
+    lockHeld = true;
 
     // RLS role + grants (Phase 1). Runs on EVERY startup, BEFORE the
     // "tables already exist" early return below -- placed after it, the block
@@ -129,8 +150,13 @@ async function initDatabase() {
     );
     process.exit(1);
   } finally {
+    if (lockHeld) {
+      await releaseBootstrapLock(client);
+    }
     await client.end();
   }
 }
 
-initDatabase();
+if (require.main === module) {
+  initDatabase();
+}

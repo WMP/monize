@@ -3,6 +3,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { DataSource } from "typeorm";
 import { withScopedDb } from "../db/scoped-db";
 import { withSystemContext } from "../db/with-context";
+import { affectedRowCount } from "../db/query-result";
 import { JobClaim } from "./entities/job-claim.entity";
 
 /**
@@ -38,6 +39,8 @@ export const JobClaimType = {
   MortgageReminder: "mortgage_reminder",
   EmergencyAccessReminder: "emergency_access_reminder",
   AiInsightGeneration: "ai_insight_generation",
+  DemoReset: "demo_reset",
+  DemoIntraday: "demo_intraday",
 } as const;
 
 export type JobClaimType = (typeof JobClaimType)[keyof typeof JobClaimType];
@@ -69,7 +72,7 @@ export class JobClaimService {
         [claimType, userId, claimKey],
       ),
     );
-    return returnedRowCount(rows) > 0;
+    return affectedRowCount(rows) > 0;
   }
 
   /**
@@ -99,7 +102,7 @@ export class JobClaimService {
         [claimType, userId, claimKey, String(Math.max(1, Math.round(ttlMs)))],
       ),
     );
-    return returnedRowCount(rows) > 0;
+    return affectedRowCount(rows) > 0;
   }
 
   /**
@@ -148,19 +151,4 @@ export class JobClaimService {
       );
     }
   }
-}
-
-/**
- * How many rows a data-modifying `query()` with `RETURNING` actually returned.
- *
- * The pg driver hands TypeORM `[rows, rowCount]` for those, and bare rows for a
- * `SELECT`. Reading that wrong fails in the worst direction: `result.length > 0`
- * on the tuple is always true, so every claim would look like a winner and every
- * replica would send. The `.mny` job service learned this the same way -- see
- * `returnedRows` there.
- */
-function returnedRowCount(result: unknown): number {
-  if (!Array.isArray(result)) return 0;
-  const rows = Array.isArray(result[0]) ? (result[0] as unknown[]) : result;
-  return rows.length;
 }

@@ -93,8 +93,19 @@ export class ImportPostProcessingService {
           }
         });
       } catch (err) {
-        this.logger.warn(
-          `Post-import balance recalculation failed: ${err.message}`,
+        // Not a `warn` like the backfills below it. Those reach an external
+        // price or FX provider, so a failure is somebody else's outage and the
+        // imported rows are still correct. This step is pure database work, and
+        // the balances the writers left behind are wrong until it runs: the
+        // `.mny` writer sets each account's balance absolutely from the file's
+        // own figure (`writeAccountBalances`), which counts future-dated rows
+        // this query deliberately excludes. A failure here leaves every affected
+        // account showing a balance that disagrees with its own ledger, so it is
+        // an error an operator has to see -- with the account ids, because
+        // repairing it means recalculating exactly those.
+        this.logger.error(
+          `Post-import balance recalculation failed for account(s) ${affectedIds.join(", ")}: ${err.message}`,
+          err instanceof Error ? err.stack : undefined,
         );
       }
     }

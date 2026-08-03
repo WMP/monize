@@ -105,9 +105,19 @@ export function createScopedDbMocks(
   };
 
   const dataSource: DataSourceMock = {
+    // Accepts both TypeORM signatures -- `transaction(fn)` and
+    // `transaction(isolation, fn)` -- because a caller that asks for an
+    // isolation level would otherwise arrive here with the level in the
+    // callback's position and the spec would die calling a string. The level is
+    // still visible in `transaction.mock.calls` for specs that assert on it.
     transaction: jest.fn(
-      async (fn: (m: EntityManager) => unknown) =>
-        fn(manager as unknown as EntityManager) as Promise<unknown>,
+      async (
+        first: string | ((m: EntityManager) => unknown),
+        second?: (m: EntityManager) => unknown,
+      ) => {
+        const fn = typeof first === "function" ? first : second!;
+        return fn(manager as unknown as EntityManager) as Promise<unknown>;
+      },
     ),
     query: jest.fn(),
     manager,

@@ -44,6 +44,10 @@ describe("db-migrate runMigrations()", () => {
     jest.clearAllMocks();
     mockConnect.mockResolvedValue(undefined);
     mockEnd.mockResolvedValue(undefined);
+    // The runner takes the bootstrap advisory lock before anything else, so the
+    // default answer has to grant it; tests that queue a `mockResolvedValueOnce`
+    // chain queue that grant as their first entry.
+    mockQuery.mockResolvedValue({ rows: [{ acquired: true }] });
 
     // The runner logs through the Nest Logger so its output matches the rest
     // of the boot sequence; spying on console here would catch nothing.
@@ -85,6 +89,7 @@ describe("db-migrate runMigrations()", () => {
     existsSyncSpy.mockReturnValue(true);
     readdirSyncSpy.mockReturnValue([]);
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ acquired: true }] }) // bootstrap lock
       .mockResolvedValueOnce(undefined) // CREATE TABLE
       .mockResolvedValueOnce({ rows: [] }); // SELECT applied
 
@@ -102,6 +107,7 @@ describe("db-migrate runMigrations()", () => {
       "002_add_users.sql",
     ] as any);
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ acquired: true }] }) // bootstrap lock
       .mockResolvedValueOnce(undefined) // CREATE TABLE
       .mockResolvedValueOnce({
         rows: [{ filename: "001_init.sql" }, { filename: "002_add_users.sql" }],
@@ -129,6 +135,7 @@ describe("db-migrate runMigrations()", () => {
     });
 
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ acquired: true }] }) // bootstrap lock
       .mockResolvedValueOnce(undefined) // CREATE TABLE schema_migrations
       .mockResolvedValueOnce({ rows: [] }) // SELECT applied (none)
       .mockResolvedValue(undefined); // All subsequent queries succeed
@@ -165,6 +172,7 @@ describe("db-migrate runMigrations()", () => {
     readFileSyncSpy.mockReturnValue("SELECT 1;");
 
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ acquired: true }] }) // bootstrap lock
       .mockResolvedValueOnce(undefined) // CREATE TABLE
       .mockResolvedValueOnce({
         rows: [{ filename: "001_init.sql" }, { filename: "002_add_users.sql" }],
@@ -192,6 +200,7 @@ describe("db-migrate runMigrations()", () => {
     readFileSyncSpy.mockReturnValue("INVALID SQL;");
 
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ acquired: true }] }) // bootstrap lock
       .mockResolvedValueOnce(undefined) // CREATE TABLE
       .mockResolvedValueOnce({ rows: [] }) // SELECT applied
       .mockResolvedValueOnce(undefined) // BEGIN
@@ -220,6 +229,7 @@ describe("db-migrate runMigrations()", () => {
     readFileSyncSpy.mockReturnValue("SELECT 1;");
 
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ acquired: true }] }) // bootstrap lock
       .mockResolvedValueOnce(undefined) // CREATE TABLE
       .mockResolvedValueOnce({ rows: [] }) // SELECT applied
       .mockResolvedValueOnce(undefined) // BEGIN (001)
@@ -263,6 +273,7 @@ describe("db-migrate runMigrations()", () => {
     readFileSyncSpy.mockReturnValue("SELECT 1;");
 
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ acquired: true }] }) // bootstrap lock
       .mockResolvedValueOnce(undefined) // CREATE TABLE
       .mockResolvedValueOnce({ rows: [] }) // SELECT applied
       .mockResolvedValue(undefined); // All subsequent queries succeed
@@ -291,6 +302,54 @@ describe("db-migrate runMigrations()", () => {
     await runMigrations();
 
     expect(mockEnd).toHaveBeenCalled();
+  });
+
+  describe("multi-replica serialization", () => {
+    it("takes the bootstrap lock before reading the applied set", async () => {
+      // The regression: the pending list is a snapshot, so if the lock is taken
+      // after this SELECT (or not at all) two replicas compute the same pending
+      // list and the loser dies on the schema_migrations primary key.
+      existsSyncSpy.mockReturnValue(true);
+      readdirSyncSpy.mockReturnValue([]);
+
+      await runMigrations();
+
+      const sqls = mockQuery.mock.calls.map((c) => String(c[0]));
+      const lockAt = sqls.findIndex((s) => s.includes("pg_try_advisory_lock"));
+      const selectAt = sqls.findIndex((s) =>
+        s.includes("SELECT filename FROM schema_migrations"),
+      );
+      expect(lockAt).toBeGreaterThanOrEqual(0);
+      expect(selectAt).toBeGreaterThan(lockAt);
+    });
+
+    it("releases the lock when the run is over", async () => {
+      existsSyncSpy.mockReturnValue(true);
+      readdirSyncSpy.mockReturnValue([]);
+
+      await runMigrations();
+
+      expect(mockQuery).toHaveBeenCalledWith(
+        "SELECT pg_advisory_unlock($1::int, $2::int)",
+        expect.any(Array),
+      );
+    });
+
+    it("does not migrate at all when the lock cannot be taken", async () => {
+      existsSyncSpy.mockReturnValue(true);
+      readdirSyncSpy.mockReturnValue(["001_init.sql"] as any);
+      readFileSyncSpy.mockReturnValue("SELECT 1;");
+      // A peer holds the lock and never lets go.
+      mockQuery.mockResolvedValue({ rows: [{ acquired: false }] });
+
+      await runMigrations({ lock: { timeoutMs: 5, pollMs: 1 } });
+
+      const sqls = mockQuery.mock.calls.map((c) => String(c[0]));
+      expect(sqls).not.toContain("BEGIN");
+      expect(mockExit).toHaveBeenCalledWith(1);
+      const report = consoleErrorSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(report).toContain("Migration runner failed");
+    });
   });
 });
 

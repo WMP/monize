@@ -31,14 +31,14 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `ai-usage.service` | Daily 4 AM | AI usage-log cleanup | Idempotent predicate delete |
 | `ai-insights.service` | Daily 6 AM | Generate AI insights | **Durable lease** per user, plus the existing recent-insight cooldown |
 | `attachment-orphan-sweeper.service` | Hourly | Delete external attachment objects whose metadata is gone | Tombstone rows; the provider's `delete` is idempotent |
-| `auto-backup.service` | Hourly | Enrol every non-admin user on the default backup policy, then run the backups that are due | None yet -- see the Phase 3 findings on backup overlap |
+| `auto-backup.service` | Hourly | Enrol every non-admin user on the default backup policy, then run the backups that are due | **Conditional transition**: the claim is the `next_backup_at` advance itself |
 | `bill-reminder.service` | Daily 8 AM | Bill payment reminders | **Durable claim** keyed on the local date plus a digest of the bills named |
 | `budget-alert.service` | Daily 7 AM | Budget threshold alerts | **Unique fingerprint** on `budget_alerts`; only a returned insert emails |
 | `budget-alert.service` | Mon 7 AM | Weekly budget digest | Read-only aggregation; duplicate sends possible, not yet claimed |
 | `budget-alert.service` | Daily 3 AM | Prune old alerts | Idempotent predicate delete |
 | `budget-period-cron.service` | 1st of month, midnight | Create new budget periods | `UNIQUE(budget_id, period_start)` |
-| `demo-reset.service` | Daily 4 AM | Demo database reset | Demo mode only; see DR-04-06 |
-| `demo-reset.service` | Every 3 hours | Demo intraday transaction generation | Demo mode only; see DR-04-06 |
+| `demo-reset.service` | Daily 4 AM | Demo database reset | **Durable lease** on the demo user; a wipe-and-reseed cannot be repaired by repeating |
+| `demo-reset.service` | Every 3 hours | Demo intraday transaction generation | **Durable claim** per date+hour window; the generator is seeded by the window, so every replica produces identical rows |
 | `emergency-access-monitor.service` | Daily 9 AM | Grant emergency access after inactivity; send reminders | **Conditional transition** on `granted_at` for the grant; **durable claim** per local date for the reminder |
 | `exchange-rate.service` | 5:05 PM ET weekdays | Fetch exchange rates (staggered after the price refresh) | `UNIQUE` upsert on the rate row; duplicate provider calls possible |
 | `holdings.service` | Hourly at :30 | Apply matured future-dated investment transactions to holdings | Full rebuild under the per-account holdings lock |
@@ -52,4 +52,8 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `token.service` | Daily 3 AM | Purge expired/revoked refresh tokens | Idempotent predicate delete |
 | `updates.service` | Every 12 hours | Check for a newer Monize release | Read-only external check |
 
-Four rows above say coordination is still missing: `auto-backup`, the weekly digest, and the two provider refreshes. Those are known -- the backup one as a Phase 3 finding, the provider ones as duplicate *external calls* rather than duplicate persisted rows, and the digest as a duplicate email nobody has claimed yet. Do not read their presence as permission to add a sixth uncoordinated job.
+Three rows above say coordination is still missing: the weekly budget digest and the two provider refreshes. Those are known -- the provider ones as duplicate *external calls* rather than duplicate persisted rows (the row each one writes is uniquely keyed), and the digest as a duplicate email nobody has claimed yet. Do not read their presence as permission to add a fourth uncoordinated job.
+
+## Schema bootstrap is not a cron, and it races the same way
+
+`db-init` and `db-migrate` run once per container start rather than on a schedule, but on a multi-replica rollout every replica runs them at the same moment and each is a check-then-act -- "does `users` exist" then apply `schema.sql`, "which migrations are recorded" then apply the rest. Both take one session-level advisory lock (`backend/src/common/db/bootstrap-lock.ts`) around the whole check-and-act, so the loser waits and then finds the work already done instead of dying on `duplicate_table` or the `schema_migrations` primary key and reporting a crash-loop for what is a race.

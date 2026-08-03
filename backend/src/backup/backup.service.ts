@@ -52,6 +52,18 @@ export class BackupPasswordRequiredError extends BadRequestException {
 const BACKUP_VERSION = 1;
 
 /**
+ * How long an export may sit idle inside its snapshot transaction before the
+ * database aborts it.
+ *
+ * The plain streaming export writes to the client between table reads, so a
+ * client that stops draining holds the snapshot open -- and a long-lived
+ * `REPEATABLE READ` transaction blocks vacuum from reclaiming dead tuples for
+ * the whole database, not just this user's tables. Bounding the idle time turns
+ * that from an operational problem into a failed download the user can retry.
+ */
+const EXPORT_IDLE_TIMEOUT_MS = 60_000;
+
+/**
  * Tables that `insertRows` is permitted to write during a restore. This is the
  * single source of truth for the restore allowlist -- the export side derives
  * its coverage from `getTableQueries()`, and the two are kept in lockstep by the
@@ -300,10 +312,17 @@ export class BackupService {
       `{"version":${BACKUP_VERSION},"exportedAt":"${new Date().toISOString()}"`,
     );
 
-    for (const { key, sql } of tableQueries) {
-      const rows = await this.query(sql, [userId]);
-      await write(`,"${key}":${JSON.stringify(rows)}`);
-    }
+    // One snapshot for every table, even though the writes are interleaved with
+    // the reads. Streaming is what keeps a large export off the heap, and the
+    // cost of keeping it is that the snapshot transaction lives as long as the
+    // client takes to drain -- bounded by EXPORT_IDLE_TIMEOUT_MS rather than
+    // left open indefinitely.
+    await this.withExportSnapshot(async (read) => {
+      for (const { key, sql } of tableQueries) {
+        const rows = await read(sql, [userId]);
+        await write(`,"${key}":${JSON.stringify(rows)}`);
+      }
+    });
 
     await write("}");
 
@@ -342,9 +361,11 @@ export class BackupService {
     tables: Record<string, Record<string, unknown>[]>;
   }> {
     const tables: Record<string, Record<string, unknown>[]> = {};
-    for (const { key, sql } of this.getTableQueries()) {
-      tables[key] = await this.query(sql, [userId]);
-    }
+    await this.withExportSnapshot(async (read) => {
+      for (const { key, sql } of this.getTableQueries()) {
+        tables[key] = await read(sql, [userId]);
+      }
+    });
     return {
       version: BACKUP_VERSION,
       exportedAt: new Date().toISOString(),
@@ -584,10 +605,12 @@ export class BackupService {
     const parts: string[] = [
       `{"version":${BACKUP_VERSION},"exportedAt":"${new Date().toISOString()}"`,
     ];
-    for (const { key, sql } of tableQueries) {
-      const rows = await this.query(sql, [userId]);
-      parts.push(`,"${key}":${JSON.stringify(rows)}`);
-    }
+    await this.withExportSnapshot(async (read) => {
+      for (const { key, sql } of tableQueries) {
+        const rows = await read(sql, [userId]);
+        parts.push(`,"${key}":${JSON.stringify(rows)}`);
+      }
+    });
     parts.push("}");
     return gzipSync(Buffer.from(parts.join(""), "utf-8"));
   }
@@ -952,6 +975,45 @@ export class BackupService {
   ): Promise<Record<string, unknown>[]> {
     return withScopedDb(this.dataSource, (manager) =>
       manager.query(sql, params),
+    );
+  }
+
+  /**
+   * Runs every table read of one export inside a single `REPEATABLE READ`
+   * transaction.
+   *
+   * A backup is a graph, not a bag of tables: `transactions` reference
+   * `accounts`, `transaction_splits` reference `transactions`, and the restore
+   * inserts with `ON CONFLICT DO NOTHING`. Reading each table in its own
+   * autocommit transaction -- which is what a per-call `withScopedDb` gives --
+   * lets a concurrent write land between two of those reads, so the file can
+   * hold a split whose parent transaction is absent, or a transaction whose
+   * account is absent. Restoring it does not fail: the orphan's insert is
+   * skipped and the row is silently gone, which is the worst way for a backup to
+   * be wrong.
+   *
+   * `REPEATABLE READ` takes one snapshot for the whole transaction, so every
+   * read sees the same committed state and the export is a point in time. It is
+   * read-only, so there is no serialization failure to retry.
+   */
+  private async withExportSnapshot<T>(
+    run: (
+      read: (
+        sql: string,
+        params: unknown[],
+      ) => Promise<Record<string, unknown>[]>,
+    ) => Promise<T>,
+  ): Promise<T> {
+    return withScopedDb(
+      this.dataSource,
+      async (manager) => {
+        await manager.query(
+          "SELECT set_config('idle_in_transaction_session_timeout', $1, true)",
+          [String(EXPORT_IDLE_TIMEOUT_MS)],
+        );
+        return run((sql, params) => manager.query(sql, params));
+      },
+      "REPEATABLE READ",
     );
   }
 

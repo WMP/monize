@@ -158,7 +158,6 @@
     "collectCoverageFrom": [
       "src/**/*.(t|j)s",
       "!src/main.ts",
-      "!src/db-init.ts",
       "!src/**/*.module.ts",
       "!src/**/*.entity.ts",
       "!src/**/*.dto.ts",
