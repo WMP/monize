@@ -1,18 +1,18 @@
 {
-  "written_at": "2026-08-03T18:16:00+00:00",
-  "stop_reason": "session still live; checkpoint written at step 9 after REV-012",
+  "written_at": "2026-08-03T18:35:00+00:00",
+  "stop_reason": "session still live; checkpoint written at step 9 after REV-017",
   "source_sha": "4e48a76762a07402a5d3bc3f886fcd8e6ff5829b",
   "fix_branch": "automation/claude-fixes",
-  "fix_sha": "2805737a98ed4a09f4fca143be08c972ade0b869",
-  "coordination_sha": "c9c74f60 (parent of this commit)",
+  "fix_sha": "4faf10cfc881d991cdcd059c69a7df6228ab51a4",
+  "coordination_sha": "1baa9a85 (parent of this commit)",
 
   "waker": {
     "mechanism": "Claude Code Remote Routine (scheduled trigger), fresh session per fire",
     "name": "Monize fix agent loop",
     "trigger_id": "trig_01YaujE8d495u7sstPwDpGwm",
     "cron_utc": "31 * * * *",
-    "next_run_at": "2026-08-03T18:31:00Z",
-    "note": "The operator replaced this trigger twice this session to update the prompt payload; two earlier ids (trig_013WsSWHj4Uem7k3jjf5RRKu, trig_01AnPNjh3x4ATeEEQHNUJ48Q) are DELETED. LIST before creating -- never create a second one.",
+    "next_run_at": "hourly at :31 UTC (first firing after creation was 2026-08-03T18:31:00Z)",
+    "note": "The operator replaced this trigger twice this session to update the prompt payload; two earlier ids (trig_013WsSWHj4Uem7k3jjf5RRKu, trig_01AnPNjh3x4ATeEEQHNUJ48Q) are DELETED. LIST before creating -- never create a second one. As of 18:35Z no concurrent session had touched the coordination branch, so either the firing landed in this same session or it has not yet run.",
     "caveat": "Triggers created from this session store no MCP connectors, so fired sessions have Bash/git but no GitHub MCP and no trigger-listing tool. Git is the only channel this loop needs, so that is fine -- but a fired session may be unable to confirm the trigger; treat this checkpoint entry as the record."
   },
 
@@ -23,65 +23,55 @@
     {
       "id": "REV-20260803-039",
       "state": "RESOLVED (verified)",
-      "fix_commit": "b27bc20cde9158fedd28c9030b0ab18ac7246a36",
-      "summary": "Reopen accepted. LoanAmortizationReport's own catch set transactions and interestTransactions to [] with only a logger.error, so the surface still rendered an analytic-estimate schedule on a failed fetch. Converted to a second useReportData folded into the existing ReportError branch. Added reports-fetch-failure.guard.test.ts, a source scan over all 64 report components."
+      "fix_commit": "b27bc20cde9158fedd28c9030b0ab18ac7246a36"
     },
     {
       "id": "REV-20260803-015",
       "state": "RESOLVED (verified)",
-      "fix_commit": "77daf96ce8611acdfdbe6290dc245b4cce2ddac5",
-      "summary": "PayoffComparisonChart took no currency, so y-axis, tooltip balance and overpayment annotation fell back to the user's default. currencyCode is now a REQUIRED prop. The y-axis needed a wrapper because recharts calls tickFormatter as (value, index)."
+      "fix_commit": "77daf96ce8611acdfdbe6290dc245b4cce2ddac5"
     },
     {
       "id": "REV-20260803-031",
       "state": "RESOLVED (verified)",
-      "fix_commit": "59eab7524e36b533c071892ace543feb136fec73",
-      "summary": "OverpaymentSimulator's detected-extra hint called formatCurrency without currencyCode while line 472 of the same file passed it."
+      "fix_commit": "59eab7524e36b533c071892ace543feb136fec73"
     },
     {
       "id": "REV-20260803-012",
-      "state": "pending-review",
+      "state": "RESOLVED (verified)",
       "fix_commit": "2805737a98ed4a09f4fca143be08c972ade0b869",
-      "summary": "BOTH halves were real. DateInput's four modes disagreed on when onDateChange fires: touch-browser had onChange={externalOnChange} and never called it (picking a date left the form empty and Save disabled -- no rate change recordable on a phone); desktop-browser guarded with if (e.target.value) and swallowed clears (form kept the old date while the field read empty, so saving recorded the change and recalculated the scheduled payment on a removed date); touch-formatted's handleNativeDateChange had the same clearing gap. All four now agree. Seven tests including two at the LoanRateControls surface."
+      "summary": "DateInput's four modes disagreed on when onDateChange fires. touch-browser never called it (Save permanently disabled on a phone); desktop-browser swallowed clears (stale effective date saved); touch-formatted had the same clearing gap. All four now agree."
+    },
+    {
+      "id": "REV-20260803-017",
+      "state": "pending-review, PARTLY escalated",
+      "fix_commit": "4faf10cfc881d991cdcd059c69a7df6228ab51a4",
+      "escalated_to": "DEC-20260803-006",
+      "summary": "Fixed: a schedule row whose date already carries a saved rate change now opens Edit instead of Add, which used to fail on the duplicate-date conflict (DisplayRow.change was already there and ignored). NOT fixed: the finding also asks to omit the button for historical rows, and the repo contradicts itself -- the component doc comment says projected-only, while AmortizationScheduleTable.test.tsx:359 deliberately asserts historical rows seed Add. Left requires_human_approval false and moved to pending-review anyway, since the titled defect is fixed; noted in the finding that reopening is the reviewer's call."
     }
-  ],
-
-  "files_modified": [
-    "frontend/src/components/reports/LoanAmortizationReport.tsx",
-    "frontend/src/components/reports/LoanAmortizationReport.test.tsx",
-    "frontend/src/components/reports/reports-fetch-failure.guard.test.ts (new)",
-    "frontend/src/components/accounts/loan-detail/OverpaymentSimulator.tsx",
-    "frontend/src/components/accounts/loan-detail/OverpaymentSimulator.test.tsx",
-    "frontend/src/components/accounts/loan-detail/PayoffComparisonChart.tsx",
-    "frontend/src/components/accounts/loan-detail/PayoffComparisonChart.test.tsx",
-    "frontend/src/components/accounts/loan-detail/LoanDetailView.tsx",
-    "frontend/src/components/ui/DateInput.tsx",
-    "frontend/src/components/ui/DateInput.test.tsx",
-    "frontend/src/components/accounts/loan-detail/LoanRateControls.test.tsx"
   ],
 
   "checks_run": {
     "frontend_lint": "pass (1 pre-existing warning, ui/Combobox.tsx react-hooks/exhaustive-deps, unrelated)",
     "frontend_type_check": "pass",
-    "frontend_i18n_check": "pass (no catalog change in any of the four findings)",
-    "frontend_test": "pass -- 628 files / 12296 tests, zero failures. Baseline at session start was 627/12282; every increment is accounted for (REV-039 +1 file/+4 net, REV-015+031 +3, REV-012 +7).",
-    "backend": "not run -- backend untouched by all four findings",
+    "frontend_i18n_check": "pass (no catalog change in any of the five findings)",
+    "frontend_test": "pass -- 628 files / 12298 tests, zero failures. Session-start baseline was 627/12282 and every increment is accounted for: +4 net (REV-039, incl. 1 new guard file), +3 (REV-015/031), +7 (REV-012), +2 (REV-017).",
+    "backend": "not run -- backend untouched by all five findings",
     "test_integration": "skipped, no Postgres in this sandbox",
     "e2e": "skipped, no browsers in this sandbox"
   },
   "unresolved_failures": [],
 
   "counts_after_this_finding": {
-    "open": 34,
+    "open": 33,
     "open_awaiting_human_decision": 2,
     "in_progress": 0,
     "pending_review": 1,
     "disputed": 0,
-    "resolved": 8,
-    "human_approval_pending": 2
+    "resolved": 9,
+    "human_approval_pending": 3
   },
 
-  "review_agent_is_blocked_on_us": "Most of its commits say 'audit paused, queue full' -- it stops auditing while open/ is large, so throughput is limited by the fix agent. Turnaround on a handoff is minutes: it verified all three of this session's earlier findings almost immediately.",
+  "review_agent_is_blocked_on_us": "Most of its commits say 'audit paused, queue full' -- it stops auditing while open/ is large, so throughput is limited by the fix agent. Turnaround on a handoff is minutes: it verified all four earlier findings almost immediately.",
 
   "operational_rules_learned_the_hard_way": [
     "backend `npm run lint` is `eslint --fix` and rewrites source. Gate on `npx eslint \"{src,apps,libs,test}/**/*.ts\"` instead.",
@@ -90,35 +80,37 @@
     "Frontend `npm run test` takes ~9 minutes (628 files). Iterate with `npx vitest run <path>`; run the full suite once before pushing.",
     "A FOREGROUND `sleep` IS BLOCKED in this sandbox, and so are chained short sleeps. To wait for a long job: start it with run_in_background, then a second background job `until [ \"$(ps aux | grep -c '[v]itest')\" -eq 0 ]; do sleep 15; done`, or the Monitor tool with the same until-loop. The harness notifies you when each exits.",
     "NEVER git stash to check a test fails without the fix WHILE a full-suite run is in flight -- the running suite reads the reverted file mid-run and its result is worthless. Order: per-file revert checks FIRST, then start the full suite, then leave the tree alone until it reports.",
+    "The coordination worktree is refreshed with `git reset --hard`, which does NOT delete untracked files -- a newly written DEC survives it. Still, write the DEC and commit it in the same step where you can, rather than leaving it untracked across a fetch.",
     "Pipe a script's output to `head` and you can get a BrokenPipeError traceback AFTER the work already succeeded. Check the effect before believing the traceback.",
     "NEVER write a SHA you have not read from git. Use `git rev-parse <short>`; a full SHA typed from memory is fabricated and lands in the coordination record. I did this once this session and had to correct it.",
     "A MOCK THAT DISCARDS AN ARGUMENT CANNOT TEST THAT ARGUMENT. REV-015 and REV-031 were both invisible because the useNumberFormat mocks were `(amount) => ...`, dropping currencyCode. Same class as a `{ data: [...] }` mock with no `pagination`, which makes fetchAllAccountTransactions throw while a component's swallow hides it. When a finding says 'X is not passed', check the mock honours X before writing the test, and mirror the real fallback (`code || default`).",
     "A CHART TEST'S RECHARTS MOCK IS OFTEN `YAxis: () => null, Tooltip: () => null`, so the tick formatter and tooltip content NEVER RUN and no test can catch a formatting bug in either. Render their output, and have YAxis pass a tick INDEX second, because recharts calls tickFormatter as (value, index): `tickFormatter={formatCurrencyAxis}` by reference silently receives 0 as its currency, and that formatter's `string | number` parameter absorbs it instead of failing. Always wrap.",
     "PREFER A REQUIRED PROP over optional-with-default when threading a currency or any per-entity identity. Required makes tsc enumerate every unfixed call site (it found five in PayoffComparisonChart's test file) and stops the next one reintroducing the bug silently. CLAUDE.md ranks compiler-enforced above scanning test above prose.",
-    "'AN EXISTING TEST ALREADY COVERS THIS' IS A CLAIM ABOUT WHICH BRANCH THE TEST RUNS. DateInput.test.tsx has four passing 'touch mode' tests; all sit under the `custom format mode (non-browser format)` describe whose beforeEach sets DD/MM/YYYY, so they exercise touch-FORMATTED mode and say nothing about touch-browser. I nearly disputed half of REV-012 on that basis. Check the enclosing describe's beforeEach and which code branch the mode actually selects before concluding a finding is already covered.",
+    "'AN EXISTING TEST ALREADY COVERS THIS' IS A CLAIM ABOUT WHICH BRANCH THE TEST RUNS. DateInput.test.tsx has four passing 'touch mode' tests; all sit under the `custom format mode (non-browser format)` describe whose beforeEach sets DD/MM/YYYY, so they exercise touch-FORMATTED mode and say nothing about touch-browser. I nearly disputed half of REV-012 on that basis. Check the enclosing describe's beforeEach and which branch the mode selects before concluding a finding is covered.",
     "DateInput has FOUR modes (touch/desktop x browser/formatted) selected by `getInputMode(dateFormat)` where dateFormat is a USER PREFERENCE. touch-browser has no `if (mode === ...)` branch -- it is the fallback `return` at the end of the component, which is why it is the easiest to miss. A change to any handler contract must be checked in all four.",
+    "AN EXISTING TEST ASSERTING THE BEHAVIOUR A FINDING CALLS A BUG IS A FORK, NOT A GREEN LIGHT EITHER WAY. Twice this session: LoanAmortizationReport's 'handles loadTransactions error gracefully' (the defect written down, safe to replace -- CLAUDE.md's 'a failed lookup is not an empty dataset' settles it) versus AmortizationScheduleTable's historical-rate test (no rule settles it, so DEC-20260803-006). The test to apply: does an explicit CLAUDE.md rule or an in-repo pattern decide which artifact is right? If yes, replace the test and say so. If the only evidence is two artifacts disagreeing, escalate.",
     "transactions.status is NULLABLE (schema.sql:274). Never `status != 'VOID'` / `Not(TransactionStatus.VOID)`; use the entity's isVoid getter in JS or `(t.status IS NULL OR t.status != 'VOID')` in SQL.",
     "Reuse an existing translated key across namespaces where the copy is identical. A new en-only errors.json key costs ~36 parity failures.",
     "A nested withScopedDb JOINS the ambient transaction, so an assertXOwned helper opening its own withScopedDb still refuses before the caller's write. Findings written against pre-RLS code will ask for a QueryRunner manager -- there are none left in src/ and lint bans them.",
     "createScopedDbMocks THROWS for an unregistered entity: adding a repository read means registering [Entity, mock] in the spec.",
-    "Verify every regression test by actually reverting the fix and re-running. Some tests deliberately pass either way; only the revert run tells those apart from vacuous ones.",
+    "Verify every regression test by actually reverting the fix and re-running. Two of this session's tests pass with or without their fix by design (they pin a boundary the real test moves); only the revert run distinguishes those from vacuous ones, and the finding should say which is which.",
     "vitest `import.meta.glob('/src/...', {query:'?raw', eager:true, import:'default'})` is how the guard tests read source. Pair every scanning assertion with a second one pinning the glob's match count, or a glob that matches nothing passes vacuously forever.",
     "A finding's line number can be stale (REV-031 said 213, the call was at 384). Locate by content; never patch by line number."
   ],
 
-  "escalate_rather_than_implement": "Most of what remains in open/ is financial calculation. Escalate (write a DEC, flip requires_human_approval, leave in open/) when the finding admits more than one defensible numeric answer -- the common case in loan-schedule.ts, loan-history.ts and rate-change-inference.service.ts. REV-004 (annualization by calendar-day gaps) changes the inference formula and is the clearest example. Implement only where an explicit CLAUDE.md rule or an in-repo pattern fixes the answer. All four fixed this session qualified: none changed a number the app computes -- only whether a failure is visible (039), which currency label an amount wears (015, 031), and whether a handler fires (012). A useful test for a shared-component change like 012: if the contract you are making consistent ALREADY holds on some code path, it is a bug; if you would be choosing a new contract, escalate.",
+  "escalate_rather_than_implement": "Most of what remains in open/ is financial calculation. Escalate (write a DEC, flip requires_human_approval, leave in open/) when the finding admits more than one defensible numeric answer -- the common case in loan-schedule.ts, loan-history.ts and rate-change-inference.service.ts. REV-004 (annualization by calendar-day gaps) changes the inference formula and is the clearest example. All five fixed this session qualified for implementation: none changed a number the app computes -- only whether a failure is visible (039), which currency an amount is labelled in (015, 031), whether a handler fires (012), and which form a click opens (017). Useful tests: for a shared-component change, if the contract you are making consistent ALREADY holds on some code path it is a bug, otherwise escalate. For a finding that asks you to delete an existing deliberate test, escalate unless a CLAUDE.md rule decides it. A finding can also be split: fix the unambiguous half and DEC the rest (REV-017).",
 
   "recommend_review_agent_raise": [
-    "A GUARD FOR THE CURRENCY CLASS IS STILL MISSING and is the highest-value follow-up. REV-015 and REV-031 are the same mistake twice in one PR. A scan over src/components/accounts/loan-detail/*.tsx for a currency formatter called with a single argument where a loan currency is in scope is clean today (checked: zero offenders after these fixes) so it would start green. Not folded in because it is wider than either finding's smallest-correct-change and the compiler now covers REV-015's half.",
+    "A GUARD FOR THE CURRENCY CLASS IS STILL MISSING and is the highest-value follow-up. REV-015 and REV-031 are the same mistake twice in one PR. A scan over src/components/accounts/loan-detail/*.tsx for a currency formatter called with a single argument where a loan currency is in scope is clean today (checked: zero offenders) so it would start green. Not folded in because it is wider than either finding's smallest-correct-change and the compiler now covers REV-015's half.",
     "ScenarioComparisonChart.tsx is PayoffComparisonChart's sibling and was in neither finding. Check whether it threads the loan currency through its own formatters; if not it is REV-015 again on an unexamined surface.",
-    "The other 31 DateInput call sites now receive onDateChange('') on a clear where two browser modes previously stayed silent (2805737a). Any form that treats an empty effective date as 'leave unchanged' rather than 'invalid' would newly see the clear. I checked LoanRateControls (isFormValid requires a non-empty date, correct) and the full suite is green, but a deliberate audit of the date-clearing path in ScheduledTransactionForm, TransactionFilterPanel and the reconcile page would be worth a finding.",
+    "The other 31 DateInput call sites now receive onDateChange('') on a clear where two browser modes previously stayed silent (2805737a). Any form treating an empty date as 'leave unchanged' rather than 'invalid' would newly see the clear. LoanRateControls is correct (isFormValid requires a non-empty date) and the full suite is green, but a deliberate audit of ScheduledTransactionForm, TransactionFilterPanel and the reconcile page is worth a finding.",
     "Five account reference ids still unvalidated for tenant ownership: principalCategoryId, interestCategoryId, assetCategoryId, sourceAccountId, linkedLoanAccountId. All sit in PREEXISTING_UNCHECKED in backend/src/accounts/account-reference-ownership.spec.ts; that list may only shrink and its third test fails on a stale entry. The account-referencing pair probably wants 404 not 400.",
     "loan-payment-detector.service.ts:103-109 loads every transaction on the loan account with no status filter, feeding buildPaymentRecords, buildRunningBalanceMap and estimateInterestRate. Same class as REV-008 but wider blast radius. Must use the nullable-safe form.",
     "DebtPayoffTimelineReport and LoanOverpaymentSimulatorReport have the error+retry state but no component test proving it renders when the *interest* fetch specifically rejects. LoanAmortizationReport now has exactly that test (b27bc20c); the two siblings do not.",
     "reports-fetch-failure.guard.test.ts only scans src/components/reports/*.tsx. The same swallow in a hook, a lib fetcher or a non-report component is still uncaught -- widening it is a candidate finding."
   ],
 
-  "next_step": "Run the loop from step 1. 34 open, of which REV-20260803-022 and REV-20260803-023 have requires_human_approval: true and must be SKIPPED (they wait on DEC-20260803-005 and DEC-20260803-004; silence is never approval). Next picks that are NOT money-calculation forks: REV-20260803-018 (a failed scheduled-payment update discards its confirmation -- frontend/CLAUDE.md's 'Asynchronous data carries the request that produced it' section has the rule AND the required six-row test matrix; needs deferred promises, and useLoanRateEditing.ts is already loaded context from REV-012), REV-20260803-017 (existing rate-change rows open the Add flow instead of Edit -- ScheduleTableRow.tsx, same surface as REV-012 so the context is warm), REV-20260803-009 and REV-20260803-010 (recognition settings inaccessible when editing a loan / existing criteria cannot be cleared -- both AccountForm.tsx, so one pass loads that file once), REV-20260803-013 and REV-20260803-016 (both minor, AmortizationScheduleTable and PayoffComparisonChart -- the latter is loaded context). Everything in loan-schedule.ts (040-043), loan-history.ts (032-038) and rate-change-inference/loan-rate-changes (004-007, 024-030) is a numeric-policy fork: read docs/financial-calculation-contract.md and expect to write a DEC rather than a fix.",
+  "next_step": "Run the loop from step 1. 33 open, of which REV-20260803-022 and REV-20260803-023 have requires_human_approval: true and must be SKIPPED (DEC-20260803-005 and DEC-20260803-004 are unanswered; silence is never approval). DEC-20260803-006 is also unanswered but does NOT block anything -- REV-017 is already in pending-review. Next picks that are not money-calculation forks: REV-20260803-018 (a failed scheduled-payment update discards its confirmation; frontend/CLAUDE.md's 'Asynchronous data carries the request that produced it' has the rule and a six-row test matrix, needs deferred promises, and useLoanRateEditing.ts is warm context from REV-012/017), REV-20260803-009 and REV-20260803-010 (recognition settings inaccessible when editing a loan / existing criteria cannot be cleared -- both AccountForm.tsx, so one pass loads that file once), REV-20260803-013 and REV-20260803-016 (both minor: AmortizationScheduleTable and PayoffComparisonChart, both warm context). Everything in loan-schedule.ts (040-043), loan-history.ts (032-038) and rate-change-inference/loan-rate-changes (004-007, 024-030) is a numeric-policy fork: read docs/financial-calculation-contract.md and expect to write a DEC rather than a fix.",
 
-  "resume_instructions": "git fetch origin; git worktree add ../coordination automation/agent-review (if absent); git checkout automation/claude-fixes (on origin at 2805737a). Nothing in in-progress/, so no partial work to re-verify. Run `npm ci` in backend/ and frontend/ before the checks -- node_modules do not survive a new container."
+  "resume_instructions": "git fetch origin; git worktree add ../coordination automation/agent-review (if absent); git checkout automation/claude-fixes (on origin at 4faf10cf). Nothing in in-progress/, so no partial work to re-verify. Run `npm ci` in backend/ and frontend/ before the checks -- node_modules do not survive a new container."
 }
