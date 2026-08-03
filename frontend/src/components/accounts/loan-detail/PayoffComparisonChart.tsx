@@ -71,17 +71,23 @@ export function buildPayoffComparisonSeries(
   for (const row of original?.rows ?? []) {
     setValue(row.date, 'originalBalance', row.balance);
   }
+  // Accumulate real recorded overpayments in integer ten-thousandths (the
+  // repo's decimal(20,4) money convention), not as running floats: several
+  // same-month overpayments added with plain `+` can drift a cent or more
+  // (e.g. 100 + 156.04 + 100.46 === 356.49999999999994), which a zero-decimal
+  // tooltip formatter then rounds down instead of to the true total.
+  const overpaymentTotalsScaled = new Map<string, number>();
   for (const event of historyEvents) {
     setValue(event.date, 'historicalBalance', event.balance);
-    // Accumulate real recorded overpayments so the tooltip can flag the month.
     if (event.type === 'OVERPAYMENT' && event.principal > 0) {
       const monthKey = event.date.slice(0, 7);
-      const existing = byMonth.get(monthKey) ?? { monthKey };
-      byMonth.set(monthKey, {
-        ...existing,
-        overpayment: (existing.overpayment ?? 0) + event.principal,
-      });
+      const existingScaled = overpaymentTotalsScaled.get(monthKey) ?? 0;
+      overpaymentTotalsScaled.set(monthKey, existingScaled + Math.round(event.principal * 10000));
     }
+  }
+  for (const [monthKey, scaled] of overpaymentTotalsScaled) {
+    const existing = byMonth.get(monthKey) ?? { monthKey };
+    byMonth.set(monthKey, { ...existing, overpayment: scaled / 10000 });
   }
   for (const row of baseline?.rows ?? []) {
     setValue(row.date, 'baselineBalance', row.balance);

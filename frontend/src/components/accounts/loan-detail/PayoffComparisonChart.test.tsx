@@ -129,6 +129,52 @@ describe('buildPayoffComparisonSeries', () => {
     expect(july?.overpayment).toBe(1650);
   });
 
+  it('accumulates several same-month overpayments without floating-point drift', () => {
+    // 100.00 + 156.04 + 100.46 === 356.49999999999994 under naive `+=`, which a
+    // zero-decimal tooltip formatter (Math.round / toFixed(0)) then displays
+    // as 356 instead of the correct 357. Accumulating in integer
+    // ten-thousandths keeps the true total exact.
+    const history: LoanPaymentEvent[] = [
+      {
+        date: '2022-07-05',
+        principal: 100.0,
+        interest: 0,
+        balance: 189900,
+        cumulativePrincipal: 100,
+        cumulativeInterest: 0,
+        type: 'OVERPAYMENT' as const,
+      },
+      {
+        date: '2022-07-12',
+        principal: 156.04,
+        interest: 0,
+        balance: 189743.96,
+        cumulativePrincipal: 256.04,
+        cumulativeInterest: 0,
+        type: 'OVERPAYMENT' as const,
+      },
+      {
+        date: '2022-07-20',
+        principal: 100.46,
+        interest: 0,
+        balance: 189643.5,
+        cumulativePrincipal: 356.5,
+        cumulativeInterest: 0,
+        type: 'OVERPAYMENT' as const,
+      },
+    ];
+
+    // Sanity-check the premise: naive float addition of these three values
+    // really does drift below the true 356.50 total.
+    expect(100.0 + 156.04 + 100.46).not.toBe(356.5);
+
+    const { points } = buildPayoffComparisonSeries(history, null, null);
+    const july = points.find((p) => p.monthKey === '2022-07');
+
+    expect(july?.overpayment).toBe(356.5);
+    expect(Math.round(july!.overpayment!)).toBe(357);
+  });
+
   it('merges history and projections into monthly points', () => {
     const baseline = makeProjection();
     const { points, projectionStartKey } = buildPayoffComparisonSeries(
