@@ -109,6 +109,39 @@ traffic recorded as the owner signing in held the owner's emergency-access timer
 at zero forever. Any timestamp that answers "is this human still around" has the
 same requirement.
 
+**Gate the routes that grant access, not the ones that describe it.** Emergency
+access had its step-up factor on the *message* and not on who receives access or
+after how long -- so a stolen session could plant a durable backdoor that survives
+a password change. When a feature has a second-factor gate, the routes that
+enlarge someone's reach need it; a route that only removes access should stay
+ungated, because an owner shutting down an in-flight grant needs the fast path.
+`emergency-access.controller.spec.ts` asserts the gating per route off the
+decorator metadata.
+
+**A comment claiming a lock is not a lock.** The emergency-access claim said it
+re-validated "under lock" and did not, so two contacts could both win a
+single-claim race and both end up with a session on the owner's account. When an
+invariant spans two statements, take the lock, and take it on whatever the
+invariant is scoped to -- per owner, not per row, if any of the owner's rows can
+decide it. `docs/financial-calculation-contract.md` section 7 is the long form.
+
+**A maintenance operation's reach belongs in its own signature.** `refreshAllPrices`
+and `refreshAllRates` inherited their tenant scope from whoever called them: the
+cron wrapped them in a system context and the endpoints did not, which read as
+global at `RLS_MODE=off` and silently narrowed to the caller at `enforce`. If an
+operation is global by definition, it seeds its own context; if it is per-user, it
+takes the user id as a parameter. Never let the answer depend on the call site.
+
+**A response from a global sweep must not enumerate other tenants.** The FX
+refresh returned every currency pair in use across the deployment to any
+authenticated caller. Aggregate counts are fine; the per-item list is the leak,
+and the operator's log is where it belongs.
+
+**Making a blind check work makes its oracle real.** Elevating the delegate
+email probe fixed a broken feature and, in the same motion, turned a lookup that
+always answered "no" under enforcement into a reliable enumerator. A fix that
+restores an answer owns the abuse of that answer: bound it in the same commit.
+
 **An identity change inside an open transaction is refused, not honoured.** The
 identity GUCs are the transaction's first statement and are transaction-local, so
 a nested `withUserContext`/`withSystemContext` cannot change what the database
