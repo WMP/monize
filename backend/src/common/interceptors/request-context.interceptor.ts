@@ -55,27 +55,46 @@ export class RequestContextInterceptor implements NestInterceptor {
     );
   }
 
-  private touchLastActivity(userId: string): void {
+  /**
+   * Record that a human interactively used Monize.
+   *
+   * `realUserId` -- the authenticated identity -- is deliberately the subject,
+   * not the effective user. While a delegate acts, the effective user is the
+   * OWNER, and stamping the owner's row would make the delegate's traffic
+   * indistinguishable from the owner signing in. Emergency access measures
+   * exactly that: an owner who configures a 30-day waiting period and stops
+   * signing in never becomes eligible if a delegate keeps making requests, so a
+   * delegate could suppress the owner's safety mechanism indefinitely, and the
+   * activity record would attribute the delegate's session to the owner (P2-008).
+   *
+   * `users.last_activity_at` therefore answers one question -- when did *this*
+   * person last interact -- and nothing else may be inferred from it. Tracking
+   * "somebody accessed this owner's data" is a different question; it needs its
+   * own column, and the emergency timer must never read it as an owner sign-in.
+   */
+  private touchLastActivity(realUserId: string): void {
     const now = Date.now();
-    const last = this.lastActivityWrite.get(userId) ?? 0;
+    const last = this.lastActivityWrite.get(realUserId) ?? 0;
     if (now - last < ACTIVITY_WRITE_INTERVAL_MS) return;
-    this.lastActivityWrite.set(userId, now);
+    this.lastActivityWrite.set(realUserId, now);
 
     // RLS (task C6): this fire-and-forget write runs BEFORE the interceptor
     // enters its requestContextStorage scope (that scope needs the resolved
     // timezone, which is not known yet). Seed a user context here so the write
     // has ambient identity once this repository moves to withScopedDb (R7). Inert
-    // at RLS_MODE=off; the update writes the same row it always did.
-    withUserContext(userId, () =>
+    // at RLS_MODE=off. The authenticated user always reaches their own `users`
+    // row: withUserContext puts the same id in both identity GUCs, and
+    // `users_self` matches on either.
+    withUserContext(realUserId, () =>
       this.scoped(User, (repo) =>
-        repo.update({ id: userId }, { lastActivityAt: new Date(now) }),
+        repo.update({ id: realUserId }, { lastActivityAt: new Date(now) }),
       ),
     ).catch((err) => {
       // Roll the cached timestamp back so a transient failure does not
       // permanently silence activity tracking for this user.
-      this.lastActivityWrite.delete(userId);
+      this.lastActivityWrite.delete(realUserId);
       this.logger.warn(
-        `Failed to persist last_activity_at for user ${userId}: ${err?.message ?? err}`,
+        `Failed to persist last_activity_at for user ${realUserId}: ${err?.message ?? err}`,
       );
     });
   }
@@ -100,8 +119,8 @@ export class RequestContextInterceptor implements NestInterceptor {
     // app.real_user_id for delegate-keyed rows. jwt.strategy resolves it.
     const realUserId: string | undefined = user?.realUserId ?? userId;
 
-    if (userId) {
-      this.touchLastActivity(userId);
+    if (realUserId) {
+      this.touchLastActivity(realUserId);
     }
 
     const rawHeader = request.headers["x-client-timezone"];

@@ -406,6 +406,58 @@ describe("RequestContextInterceptor", () => {
       expect(usersRepository.update).toHaveBeenCalledTimes(1);
     });
 
+    // P2-008: an acting JWT resolves `id` to the OWNER and `realUserId` to the
+    // delegate. Stamping the owner's row made a delegate's traffic look like the
+    // owner signing in, so a delegate making one request every few days held the
+    // owner's emergency-access waiting period at zero forever.
+    it("stamps the delegate's own row, never the owner's, while acting", async () => {
+      preferencesRepository.findOne.mockResolvedValue(null);
+      const owner = "44444444-4444-4444-4444-44444444000a";
+      const delegate = "44444444-4444-4444-4444-44444444000b";
+      const ctx = makeContext({
+        user: { id: owner, realUserId: delegate },
+      });
+
+      const obs$ = (await interceptor.intercept(ctx, makeNext() as any)) as any;
+      await firstValueFrom(obs$);
+
+      expect(usersRepository.update).toHaveBeenCalledTimes(1);
+      expect(usersRepository.update.mock.calls[0][0]).toEqual({ id: delegate });
+    });
+
+    it("still resets the owner's own clock on the owner's own request", async () => {
+      preferencesRepository.findOne.mockResolvedValue(null);
+      const owner = "44444444-4444-4444-4444-44444444000c";
+      const ctx = makeContext({ user: { id: owner, realUserId: owner } });
+
+      const obs$ = (await interceptor.intercept(ctx, makeNext() as any)) as any;
+      await firstValueFrom(obs$);
+
+      expect(usersRepository.update.mock.calls[0][0]).toEqual({ id: owner });
+    });
+
+    it("throttles per authenticated user, not per acted-on owner", async () => {
+      // Two delegates acting for the same owner are two humans: the throttle
+      // must not let one of them silence the other's activity record.
+      preferencesRepository.findOne.mockResolvedValue(null);
+      const owner = "44444444-4444-4444-4444-44444444000d";
+      const first = "44444444-4444-4444-4444-44444444000e";
+      const second = "44444444-4444-4444-4444-44444444000f";
+
+      for (const realUserId of [first, second]) {
+        const obs$ = (await interceptor.intercept(
+          makeContext({ user: { id: owner, realUserId } }),
+          makeNext() as any,
+        )) as any;
+        await firstValueFrom(obs$);
+      }
+
+      expect(usersRepository.update.mock.calls.map((c) => c[0])).toEqual([
+        { id: first },
+        { id: second },
+      ]);
+    });
+
     it("does not write activity when there is no authenticated user", async () => {
       preferencesRepository.findOne.mockResolvedValue(null);
       const next = makeNext();
