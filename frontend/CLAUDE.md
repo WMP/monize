@@ -66,6 +66,15 @@ beside it was pre-write. Adding a cached family that reads transaction rows mean
 adding its prefix in `invalidateBalanceCaches` in the same change;
 `apiCache.test.ts` pins the set, both what it drops and what it leaves alone.
 
+Pinning the set is not enough on its own, because that is what was green while
+`budgets:` was missing from it: the pinned set matched the helper, and neither
+knew about the new family. So `cache-prefix-classification.guard.test.ts` scans
+`src/` for every prefix any cache call uses and requires each one to be listed as
+transaction-derived (and therefore dropped) or as reference data (and therefore
+kept). A prefix in neither list fails, which forces the decision at the moment it
+is cheap to make. The list also fails when it names a prefix nothing uses any
+more, so it cannot drift into fiction.
+
 Where the write can touch anything -- undo/redo, an AI assistant action, a
 backup restore -- use `clearAllCache()` instead; no prefix is narrow enough to
 be correct. This matters most for `notifyUndoRedo`/`notifyAiAction`: they exist
