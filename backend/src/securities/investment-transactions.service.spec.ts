@@ -4559,6 +4559,83 @@ describe("InvestmentTransactionsService", () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    // The cash side of a split and the investment side beside it have to describe
+    // the same money. `validateSplits` runs before the security is loaded, so it
+    // cannot know a conversion applies and used to assume a rate of 1 -- which
+    // demanded the UNCONVERTED cash impact and let the two halves diverge by the
+    // whole FX spread. The check therefore also happens here, against the rate
+    // actually stored.
+    describe("the parent split's cash amount", () => {
+      const cadCashAccount = {
+        ...mockCashAccount,
+        currencyCode: "CAD",
+      };
+
+      const runEmbedded = (splitAmount: number) =>
+        service.createEmbeddedForSplit(
+          mockQueryRunner.manager as never,
+          userId,
+          "2026-05-09",
+          "split-1",
+          accountId,
+          cashAccountId,
+          {
+            action: InvestmentAction.BUY,
+            securityId,
+            quantity: 75,
+            price: 10,
+            commission: 0,
+          },
+          splitAmount,
+        );
+
+      beforeEach(() => {
+        // USD security, CAD cash sleeve, 1.35 on the parent's date.
+        accountsService.findOne.mockImplementation((_u: string, id: string) =>
+          Promise.resolve(
+            id === cashAccountId ? cadCashAccount : mockInvestmentAccount,
+          ),
+        );
+        securitiesService.findOne.mockResolvedValue(mockSecurity);
+        exchangeRateService.getRateForDate.mockResolvedValue(1.35);
+      });
+
+      it("accepts the cash impact converted at the resolved rate", async () => {
+        // 75 x 10 USD = 750 out, x 1.35 = 1012.50 CAD.
+        await expect(runEmbedded(-1012.5)).resolves.toBeDefined();
+        expect(
+          mockQueryRunner.manager.create.mock.calls.at(-1)![1],
+        ).toMatchObject({ exchangeRate: 1.35 });
+      });
+
+      it("refuses the unconverted amount the old check demanded", async () => {
+        await expect(runEmbedded(-750)).rejects.toThrow(
+          /converts to -1012.5 at a rate of 1.35/,
+        );
+        expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+      });
+
+      it("has nothing to check when the caller states no split amount", async () => {
+        await expect(
+          service.createEmbeddedForSplit(
+            mockQueryRunner.manager as never,
+            userId,
+            "2026-05-09",
+            "split-1",
+            accountId,
+            cashAccountId,
+            {
+              action: InvestmentAction.BUY,
+              securityId,
+              quantity: 75,
+              price: 10,
+              commission: 0,
+            },
+          ),
+        ).resolves.toBeDefined();
+      });
+    });
+
     it("creates an embedded BUY without spawning a linked cash transaction", async () => {
       accountsService.findOne.mockResolvedValue(mockInvestmentAccount);
       securitiesService.findOne.mockResolvedValue(mockSecurity);

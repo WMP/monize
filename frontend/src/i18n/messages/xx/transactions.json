@@ -503,7 +503,11 @@
     "quantityPlaceholder": "[XX-Quantity-XX]",
     "pricePlaceholder": "[XX-Price-XX]",
     "commissionPlaceholder": "[XX-Commission-XX]",
-    "amountPlaceholder": "[XX-Amount ({currency})-XX]"
+    "amountPlaceholder": "[XX-Amount ({currency})-XX]",
+    "ratePlaceholder": "[XX-{to} per 1 {from}-XX]",
+    "ariaRate": "[XX-Exchange rate ({to} per 1 {from})-XX]",
+    "rateHint": "[XX-Quantity, price and commission are in {from}; this rate converts the cash impact into {to}.-XX]",
+    "rateUnresolved": "[XX-No {from} to {to} rate is available. Enter one — the cash impact cannot be worked out without it, and the two currencies are not equal.-XX]"
   },
   "charts": {
     "balanceHistory": {

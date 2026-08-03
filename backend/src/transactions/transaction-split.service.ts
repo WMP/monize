@@ -109,10 +109,17 @@ export class TransactionSplitService {
         Number(inv.price ?? 0),
         Number(inv.commission ?? 0),
       );
-      const exchangeRate =
-        inv.exchangeRate !== undefined && inv.exchangeRate !== null
-          ? Number(inv.exchangeRate)
-          : 1;
+      // Only an internal-consistency check on the payload, and only when the
+      // payload states a rate. It used to default to 1 and demand that the
+      // split's cash amount equal the UNCONVERTED cash impact -- so for a USD
+      // security in a CAD account it required the wrong number and rejected the
+      // right one, while `createEmbeddedForSplit` went on to store the investment
+      // row at the properly resolved rate. The two halves of one split then
+      // disagreed by the whole FX spread. The authoritative check lives where the
+      // rate is resolved (`createEmbeddedForSplit`), against the rate actually
+      // stored.
+      if (inv.exchangeRate === undefined || inv.exchangeRate === null) continue;
+      const exchangeRate = Number(inv.exchangeRate);
       const expectedAmount = cashImpactInSecurity * exchangeRate;
 
       const expectedRounded = roundMoney(expectedAmount);
@@ -386,6 +393,9 @@ export class TransactionSplitService {
         brokerageAccountId!,
         sourceAccountId!,
         split.investment!,
+        // Checked against the resolved rate there: this amount and the
+        // investment row have to describe the same money.
+        Number(split.amount),
       );
 
       savedSplits[index] = savedSplit;

@@ -1272,6 +1272,9 @@ describe("TransactionSplitService", () => {
             quantity: 75,
             price: 10,
             commission: 0,
+            // A stated rate makes this a payload-consistency check: the caller
+            // says 1:1, so the cash impact and the split amount must agree.
+            exchangeRate: 1,
           },
         },
       ];
@@ -1281,6 +1284,28 @@ describe("TransactionSplitService", () => {
       expect(() => service.validateSplits(splits, 50)).toThrow(
         /does not match the cash impact/,
       );
+    });
+
+    // With no rate stated, this check has nothing to compare against: the
+    // security's currency is not loaded yet, so it cannot know whether a
+    // conversion applies. It used to assume 1, which demanded the UNCONVERTED
+    // cash impact -- rejecting the correct amount for a USD security in a CAD
+    // account and accepting the wrong one. The real check now happens where the
+    // rate is resolved (`createEmbeddedForSplit`).
+    it("defers the amount check when no exchange rate is stated", () => {
+      const splits = [
+        {
+          amount: -1012.5, // 75 x 10 USD converted at 1.35
+          investment: {
+            action: "BUY" as any,
+            securityId: "sec-1",
+            quantity: 75,
+            price: 10,
+            commission: 0,
+          },
+        },
+      ];
+      expect(() => service.validateSplits(splits, -1012.5)).not.toThrow();
     });
 
     it("rejects investment splits that combine with categoryId", () => {

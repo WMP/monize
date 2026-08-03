@@ -1891,6 +1891,13 @@ export class InvestmentTransactionsService {
       exchangeRate?: number | null;
       description?: string | null;
     },
+    /**
+     * Cash amount the parent split records for this action, in the CASH
+     * account's currency. Checked against the cash impact converted at the rate
+     * actually resolved below, so the two halves of one split cannot disagree.
+     * Omitted by callers that have no split amount to check.
+     */
+    splitAmount?: number,
   ): Promise<InvestmentTransaction> {
     if (!isInvestmentActionAllowedInSplit(dto.action)) {
       throw new BadRequestException(
@@ -1957,6 +1964,39 @@ export class InvestmentTransactionsService {
       dto.exchangeRate ?? undefined,
       parentTransactionDate,
     );
+
+    // The parent split's cash amount has to be the cash impact converted at THIS
+    // rate. `validateSplits` can only check the payload against itself -- it runs
+    // before the security is loaded, so it cannot know the two currencies differ
+    // -- and it used to check against a default rate of 1, blessing the
+    // unconverted figure. Rejecting here, before the row is written, is what
+    // stops the split's cash side and its investment side describing different
+    // amounts of money.
+    if (splitAmount !== undefined) {
+      const signedCashImpact = computeInvestmentCashImpact(
+        dto.action,
+        Number(dto.quantity ?? 0),
+        Number(dto.price ?? 0),
+        Number(dto.commission ?? 0),
+      );
+      const expected = roundMoney(signedCashImpact * exchangeRate);
+      if (expected !== roundMoney(Number(splitAmount))) {
+        throw new BadRequestException(
+          tr(
+            "errors.securities.embeddedSplitAmountMismatch",
+            `This split records ${splitAmount}, but ${dto.action} ${dto.quantity ?? 0} @ ${dto.price ?? 0} converts to ${expected} at a rate of ${exchangeRate}. Use that amount, or state the exchange rate you meant.`,
+            {
+              amount: String(splitAmount),
+              action: dto.action,
+              quantity: String(dto.quantity ?? 0),
+              price: String(dto.price ?? 0),
+              expected: String(expected),
+              rate: String(exchangeRate),
+            },
+          ),
+        );
+      }
+    }
 
     const investmentTransaction = manager.create(InvestmentTransaction, {
       userId,

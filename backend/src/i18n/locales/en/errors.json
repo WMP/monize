@@ -429,7 +429,8 @@
     "symbolLength": "Symbol must be between 1 and 20 characters",
     "symbolCharacters": "Symbol must contain only letters, digits, dots, or dashes",
     "noUpdateFields": "Provide at least one field to change.",
-    "documentNotFound": "Document not found"
+    "documentNotFound": "Document not found",
+    "embeddedSplitAmountMismatch": "This split records {{ amount }}, but {{ action }} {{ quantity }} @ {{ price }} converts to {{ expected }} at a rate of {{ rate }}. Use that amount, or state the exchange rate you meant."
   },
   "tags": {
     "notFound": "Tag with ID {{ id }} not found",
