@@ -61,6 +61,7 @@ describe('tour registry', () => {
     it('offers each minor line its own tours', () => {
       expect(getReleaseTours('1.14.0').map((t) => t.id)).toEqual([
         'release-1.14.0/security-detail',
+        'release-1.14.0/gem-strategy',
       ]);
     });
 

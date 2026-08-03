@@ -188,6 +188,51 @@ describe('ReportsPage', () => {
     });
   });
 
+  describe('guided-tour anchors on report cards', () => {
+    // Two release tours point at a card in this listing. `reportTourAnchor` is a
+    // single call site per id so the anchor-uniqueness guard stays green across
+    // the three density layouts -- which only works if every layout actually
+    // spreads it. A layout that forgot to would silently drop the tour's step.
+    it.each(['normal', 'compact', 'dense'])(
+      'marks the GEM Strategy card in %s density',
+      async (density) => {
+        currentDensity = density;
+        render(<ReportsPage />);
+        await waitFor(() => {
+          expect(
+            document.querySelector('[data-tour-id="report-gem-strategy"]'),
+          ).toBeInTheDocument();
+        });
+      },
+    );
+
+    it('marks the Foreign Currency Fees card too', async () => {
+      render(<ReportsPage />);
+      await waitFor(() => {
+        expect(
+          document.querySelector('[data-tour-id="report-foreign-currency-fees"]'),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('attaches each report anchor exactly once', async () => {
+      render(<ReportsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('GEM Strategy')).toBeInTheDocument();
+      });
+      // One live element per id: the helper returns {} for every other report,
+      // so a card that is not one of the two must not carry an anchor.
+      expect(
+        document.querySelectorAll('[data-tour-id="report-gem-strategy"]'),
+      ).toHaveLength(1);
+      expect(
+        document.querySelectorAll(
+          '[data-tour-id="report-foreign-currency-fees"]',
+        ),
+      ).toHaveLength(1);
+    });
+  });
+
   describe('?category= deep link', () => {
     it('overrides the remembered filter so the linked category is shown', async () => {
       // Remembered filter would hide the insights reports entirely.

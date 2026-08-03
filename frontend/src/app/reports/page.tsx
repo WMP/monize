@@ -297,14 +297,21 @@ function ReportsContent() {
     router.push(`/reports/${reportId}`);
   };
 
-  // Guided-tour anchor for the Foreign-Currency Fees report card (release 1.13).
-  // Kept as a single tourAnchor() call so the anchor-uniqueness test is happy
-  // across the three density layouts -- only the layout actually rendered mounts
-  // it, so the id is attached in exactly one live element.
-  const reportTourAnchor = (report: Report): { 'data-tour-id'?: string } =>
-    report.id === 'foreign-currency-fees'
-      ? tourAnchor(TOUR_ANCHORS.reportForeignCurrencyFees)
-      : {};
+  // Guided-tour anchors for the report cards a release tour points at: the
+  // Foreign-Currency Fees report (release 1.13) and the GEM Strategy report
+  // (release 1.14). Kept as a single tourAnchor() call per id so the
+  // anchor-uniqueness test is happy across the three density layouts -- only the
+  // layout actually rendered mounts one, so each id is attached in exactly one
+  // live element.
+  const reportTourAnchor = (report: Report): { 'data-tour-id'?: string } => {
+    if (report.id === 'foreign-currency-fees') {
+      return tourAnchor(TOUR_ANCHORS.reportForeignCurrencyFees);
+    }
+    if (report.id === 'gem-strategy') {
+      return tourAnchor(TOUR_ANCHORS.reportGemStrategy);
+    }
+    return {};
+  };
 
   return (
     <PageLayout>

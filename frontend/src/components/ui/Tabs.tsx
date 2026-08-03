@@ -21,6 +21,13 @@ interface TabsProps<K extends string> {
   /** Names the tab set for screen readers. */
   ariaLabel: string;
   className?: string;
+  /**
+   * Attributes (a `data-tour-id`) for the tablist itself, following the same
+   * convention as `FormActions`. A guided tour rings the row of tabs, and a
+   * wrapper element around this component would ring the negative gutters a
+   * caller adds to bleed the row to the screen edge instead.
+   */
+  anchorProps?: Record<string, string>;
 }
 
 /** The id of a tab button, so a panel can point back at it. */
@@ -54,6 +61,7 @@ export function Tabs<K extends string>({
   idPrefix,
   ariaLabel,
   className = '',
+  anchorProps,
 }: TabsProps<K>) {
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -107,6 +115,7 @@ export function Tabs<K extends string>({
       <div
         role="tablist"
         aria-label={ariaLabel}
+        {...anchorProps}
         className="flex gap-1 border-b border-gray-200 dark:border-gray-700"
       >
         {tabs.map((tab, index) => {

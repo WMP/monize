@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import type { TourAnchorId } from "@/lib/tours/anchors";
 import { chartColors } from "@/lib/chart-colors";
 import { cn } from "@/lib/utils";
 import { isKnown } from "@/lib/gem-strategy-view";
@@ -33,6 +34,13 @@ interface GemCardProps {
   children: ReactNode;
   /** Renders the card as a <section> with an accessible name. */
   ariaLabel?: string;
+  /**
+   * Guided-tour anchor for the card itself, spread from
+   * `tourAnchor(TOUR_ANCHORS.x)`. Forwarded onto the existing `<section>` so a
+   * tour can point at a whole card without a wrapper element -- an extra div
+   * around a card in a grid changes its sizing and height.
+   */
+  "data-tour-id"?: TourAnchorId;
 }
 
 export function GemCard({
@@ -43,11 +51,13 @@ export function GemCard({
   bodyClassName,
   children,
   ariaLabel,
+  "data-tour-id": dataTourId,
 }: GemCardProps) {
   return (
     <section
       aria-label={ariaLabel ?? title}
       className={cn(CARD_BASE, "flex flex-col", className)}
+      data-tour-id={dataTourId}
     >
       {(title || headerRight) && (
         <div className="flex items-start justify-between gap-2 px-4 pt-3 pb-2">

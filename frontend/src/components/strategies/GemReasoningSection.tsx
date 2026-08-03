@@ -8,6 +8,7 @@ import {
   isKnown,
   momentumBarWidth,
 } from "@/lib/gem-strategy-view";
+import { TOUR_ANCHORS, tourAnchor } from "@/lib/tours/anchors";
 import { cn } from "@/lib/utils";
 import {
   GemBadge,
@@ -40,9 +41,18 @@ export function GemReasoningSection({
   const { roleLabel, stateLabel, assetLabel } = useGemLabels();
   const { formatSignedPercent, formatNumber } = useNumberFormat();
 
+  // One tourAnchor() call spread on both branches: the card is what the tour
+  // points at, and a strategy with no signal yet still renders it (as the empty
+  // state), so the anchor is there whether or not the reasoning has numbers.
+  const anchorProps = tourAnchor(TOUR_ANCHORS.gemStrategyReasoning);
+
   if (!signal) {
     return (
-      <GemCard title={t("gem.reasoning.title")} hint={t("gem.reasoning.hint")}>
+      <GemCard
+        title={t("gem.reasoning.title")}
+        hint={t("gem.reasoning.hint")}
+        {...anchorProps}
+      >
         <GemEmptyState
           title={t("gem.reasoning.noSignalTitle")}
           description={t("gem.reasoning.noSignalDescription")}
@@ -115,7 +125,11 @@ export function GemReasoningSection({
   );
 
   return (
-    <GemCard title={t("gem.reasoning.title")} hint={t("gem.reasoning.hint")}>
+    <GemCard
+      title={t("gem.reasoning.title")}
+      hint={t("gem.reasoning.hint")}
+      {...anchorProps}
+    >
       <div className="grid gap-4 md:grid-cols-2 md:divide-x md:divide-gray-200 md:dark:divide-gray-700">
         {/* Step 1 -- absolute momentum */}
         <div className="md:pr-4">

@@ -229,6 +229,69 @@
             "body": "[XX-Every link that pointed at the old dialogs lands here instead — the dashboard's price widgets open this page on its Price history tab. It is a real page, so you can bookmark it and come back to it.-XX]"
           }
         }
+      },
+      "gemStrategy": {
+        "title": "[XX-GEM strategy: from setup to next action-XX]",
+        "steps": {
+          "welcome": {
+            "title": "[XX-Meet the GEM strategy-XX]",
+            "body": "[XX-GEM is a rules-based way to choose one investment for the next period. It compares recent price changes and shows what those rules point to. It does not buy, sell, or move money for you. The instruments shown as examples are not personal investment advice. This tour explains the report and its settings in everyday language.-XX]"
+          },
+          "findReport": {
+            "title": "[XX-Find GEM under Reports-XX]",
+            "body": "[XX-Open the **GEM Strategy** report here. It lives in the **Investment** category. The report is available even when you have no investment instruments or brokerage holdings in Monize yet.-XX]",
+            "fallbackBody": "[XX-The report card is not visible right now, usually because of a filter. Choose **Next** and the tour will open the GEM report directly. You can find it later under **Reports** in the **Investment** category.-XX]"
+          },
+          "page": {
+            "title": "[XX-One report, four questions-XX]",
+            "body": "[XX-At the top, a **scenario** means a saved set of GEM choices, not a trade, transaction, or brokerage account. The page answers four questions: What does the strategy choose now? Why? Does the portfolio in the selected accounts match? What would need to change? GEM normally points to one instrument until the next monthly or quarterly evaluation.-XX]"
+          },
+          "summary": {
+            "title": "[XX-Four cards at a glance-XX]",
+            "body": "[XX-**Current signal** is the instrument selected by the rules. **Your portfolio** compares that target with what is recorded in the strategy accounts. **To transfer** estimates the value that may need to change. **Strategy assets** shows which instrument fills each role. Missing information is shown as missing, never as zero.-XX]"
+          },
+          "action": {
+            "title": "[XX-A suggestion, not an automatic order-XX]",
+            "body": "[XX-The chart compares the assigned instruments. **What should I do?** turns the signal into a possible sell-and-buy operation and estimates tax and commission when enough data is available. Monize never sends an order to your broker. After making a real trade through your broker, record the transactions in Monize; then use **Mark as executed** only as a note that you carried out the signal.-XX]"
+          },
+          "reasoning": {
+            "title": "[XX-Why did GEM choose this?-XX]",
+            "body": "[XX-Here, “momentum” simply means how prices changed over the chosen past period. GEM first checks whether the US-share instrument beat the risk-free benchmark used as its yardstick. If it did, GEM chooses the strongest of the US, developed-markets-outside-the-US, and emerging-markets instruments. If it did not, GEM chooses the safe asset. **Why this signal?** and the signal history show the decision instead of only a final ticker.-XX]"
+          },
+          "tabs": {
+            "title": "[XX-More detail when you need it-XX]",
+            "body": "[XX-**Signals** shows earlier decisions. **My portfolio** explains what is recorded in the selected accounts. **Backtest** shows how the rules would have behaved on the available historical prices; it is a model, not a forecast or promise. **Settings** controls the saved scenario.-XX]"
+          },
+          "openSettings": {
+            "title": "[XX-Open the scenario settings-XX]",
+            "body": "[XX-Choose **Edit settings** to see how this scenario is defined. You may inspect every field without saving. Nothing on this screen buys an instrument or changes anything at your broker.-XX]"
+          },
+          "accounts": {
+            "title": "[XX-Choose the accounts to compare-XX]",
+            "body": "[XX-**Strategy accounts** are the investment accounts that belong to this GEM scenario. Only the holdings and cash recorded in those accounts are used for the portfolio comparison and the amount-to-transfer estimate. No investment account yet? Leave the list empty. GEM may still calculate a signal, but it cannot compare that signal with your real portfolio.-XX]",
+            "fallbackBody": "[XX-The settings form has not loaded, so the tour cannot point to the account selector. No settings were changed. Use the page's retry control, or retake the tour later from **Guided tours** in **Settings**.-XX]"
+          },
+          "timingAndCosts": {
+            "title": "[XX-Choose how GEM looks back-XX]",
+            "body": "[XX-**Evaluation frequency** decides whether GEM makes a new decision monthly or quarterly. **Momentum window (months)** is simply the number of past months whose prices are compared; the default is 12. **Tax rate (%)** and **Commission per trade** are optional and affect only the cost estimates; they do not change the signal. Leave them blank when you do not know them.-XX]"
+          },
+          "addInstruments": {
+            "title": "[XX-No instruments yet? Start here-XX]",
+            "body": "[XX-When one or more roles are empty, this **Roles and instruments** card shows a shortcut for adding example ETFs. First use **Listings to add** to choose the region your broker can actually trade: **Americas** or **Europe (UCITS)**. Pressing the add button creates instrument records in Monize immediately, even before you save the GEM configuration; it does not buy anything. It fills only empty roles and may reuse a matching instrument already in your list. Check every symbol, exchange, and currency. These examples are not a recommendation. If the shortcut is not shown, your roles are already filled and you can review them below.-XX]"
+          },
+          "roles": {
+            "title": "[XX-Five roles, one target-XX]",
+            "body": "[XX-The three equity roles represent the US (**S&P 500**), **Developed markets ex-US**, and **Emerging markets**. **Safe asset** is what GEM would hold when shares fail the safety test. **Risk-free benchmark** is only the yardstick for that test and may be left empty; then the safe asset is used for both jobs. These are five jobs in the calculation, not five investments GEM expects you to hold at once. Its target is one instrument at a time.-XX]"
+          },
+          "save": {
+            "title": "[XX-Review before saving-XX]",
+            "body": "[XX-Check the account list, each listing, and the currencies. **Save configuration** stores the scenario and recalculates the report from the available price history. It still does not place a trade. You do not need to save anything to finish this tour. If prices are missing or too old, Monize shows that the signal is unavailable instead of guessing.-XX]"
+          },
+          "finish": {
+            "title": "[XX-GEM is ready when the data is ready-XX]",
+            "body": "[XX-After saving a configuration, return to **Overview**. With usable price history, the report can show a signal, its explanation, a portfolio comparison, and a possible next action. Missing accounts, holdings, prices, or role assignments remain visible as clear warnings. You can retake this tour anytime from **Guided tours** in **Settings**.-XX]"
+          }
+        }
       }
     }
   }

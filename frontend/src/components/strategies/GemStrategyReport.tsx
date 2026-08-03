@@ -17,6 +17,7 @@ import {
 } from "@/types/gem-strategy";
 import { GEM_DEFAULT_RANGE, warningCodes } from "@/lib/gem-strategy-view";
 import { tabId, tabPanelId } from "@/components/ui/Tabs";
+import { TOUR_ANCHORS, tourAnchor } from "@/lib/tours/anchors";
 import { GemStrategyHeader } from "./GemStrategyHeader";
 import {
   GEM_TABS_ID_PREFIX,
@@ -583,7 +584,10 @@ export function GemStrategyReport() {
       {tab === "overview" && (
         <div {...panelProps("overview", "space-y-4")}>
           {/* Four summary cards: signal, portfolio fit, money to move, asset roster. */}
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div
+            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+            {...tourAnchor(TOUR_ANCHORS.gemStrategyOverviewCards)}
+          >
             <GemSignalCard
               signal={signal}
               nextEvaluationOn={strategy.nextEvaluationOn}
@@ -608,7 +612,12 @@ export function GemStrategyReport() {
             recommendation comes first (it is the actionable part); from the
             tablet breakpoint the chart leads, per the layout spec.
           */}
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] xl:items-start">
+          <div
+            className="grid gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] xl:items-start"
+            // The grid, not GemNextActionCard: that card is also rendered on the
+            // Portfolio tab, so anchoring it there would attach the id twice.
+            {...tourAnchor(TOUR_ANCHORS.gemStrategyChartAndAction)}
+          >
             <div className="order-2 md:order-1 xl:order-none">
               <GemPerformanceChart
                 performance={performance}

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Tabs, TabItem } from "@/components/ui/Tabs";
+import { TOUR_ANCHORS, tourAnchor } from "@/lib/tours/anchors";
 
 export const GEM_TABS = [
   "overview",
@@ -55,6 +56,10 @@ export function GemStrategyTabs({ active, onChange }: GemStrategyTabsProps) {
       idPrefix={GEM_TABS_ID_PREFIX}
       ariaLabel={t("gem.tabs.ariaLabel")}
       className="-mx-4 mb-4 px-4 sm:mx-0 sm:px-0"
+      // The tour rings the tab row itself, so the anchor goes on the tablist
+      // rather than on a wrapper: a wrapper would be full-bleed on mobile,
+      // where this row deliberately runs to the screen edge.
+      anchorProps={tourAnchor(TOUR_ANCHORS.gemStrategyTabs)}
     />
   );
 }

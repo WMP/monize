@@ -53,6 +53,24 @@ export const TOUR_ANCHORS = {
 
   // Reports
   reportForeignCurrencyFees: 'report-foreign-currency-fees',
+  reportGemStrategy: 'report-gem-strategy',
+
+  // GEM strategy report (the page, its Overview tab, and its tab bar)
+  gemStrategyHeader: 'gem-strategy-header',
+  gemStrategyOverviewCards: 'gem-strategy-overview-cards',
+  gemStrategyChartAndAction: 'gem-strategy-chart-and-action',
+  gemStrategyReasoning: 'gem-strategy-reasoning',
+  gemStrategyTabs: 'gem-strategy-tabs',
+  gemStrategyEditSettings: 'gem-strategy-edit-settings',
+
+  // GEM strategy settings form. Every one of these is on a container that
+  // mounts with the form, never on the conditional "fill the missing roles"
+  // box: an anchor that disappears mid-step reads as the tour breaking.
+  gemSettingsAccounts: 'gem-settings-accounts',
+  gemSettingsTimingAndCosts: 'gem-settings-timing-and-costs',
+  gemSettingsAssets: 'gem-settings-assets',
+  gemSettingsRoles: 'gem-settings-roles',
+  gemSettingsSave: 'gem-settings-save',
 
   // Settings
   settingsWhatsNewToggle: 'settings-whats-new-toggle',

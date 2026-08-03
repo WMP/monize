@@ -38,6 +38,7 @@ import {
   suggestionsForRole,
   symbolKey,
 } from "@/lib/gem-suggested-securities";
+import { TOUR_ANCHORS, tourAnchor } from "@/lib/tours/anchors";
 import { CreateSecurityData, Security } from "@/types/investment";
 import {
   GemAssetRef,
@@ -515,7 +516,7 @@ export function GemSettingsForm({
         <div className="grid items-start gap-4 lg:grid-cols-2">
           <GemCard title={t("gem.settings.generalTitle")}>
             <div className="space-y-3">
-              <div>
+              <div {...tourAnchor(TOUR_ANCHORS.gemSettingsAccounts)}>
                 <MultiSelect
                   label={t("gem.settings.accounts")}
                   // The visible label is not tied to the trigger button, so name
@@ -533,63 +534,72 @@ export function GemSettingsForm({
                   {t("gem.settingsForm.accountsHint")}
                 </p>
               </div>
-              <Select
-                label={t("gem.settings.cadence")}
-                options={[
-                  { value: "MONTHLY", label: t("gem.cadences.MONTHLY") },
-                  { value: "QUARTERLY", label: t("gem.cadences.QUARTERLY") },
-                ]}
-                error={errors.cadence?.message}
-                {...register("cadence")}
-              />
-              {/* Numbers go through the shared inputs rather than a raw numeric
-                one: no spinner arrows, no scroll-wheel edits, and the money
-                field gets the formatting and calculator the rest of the app
-                has. */}
-              <NumericInput
-                label={t("gem.settingsForm.lookbackMonths")}
-                value={watchedLookback || undefined}
-                onChange={(value) =>
-                  // Clearing a required field has to fail validation rather than
-                  // quietly keep the previous number.
-                  setValue("lookbackMonths", value ?? Number.NaN, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  })
-                }
-                decimalPlaces={0}
-                min={1}
-                error={errors.lookbackMonths?.message}
-              />
-              <div className="grid gap-3 sm:grid-cols-2">
+              {/* Cadence, momentum window and the two cost inputs share one
+                wrapper so a guided tour can explain "how far GEM looks back,
+                and what a switch costs" in a single step. It repeats the
+                parent's `space-y-3`, so the spacing is unchanged. */}
+              <div
+                className="space-y-3"
+                {...tourAnchor(TOUR_ANCHORS.gemSettingsTimingAndCosts)}
+              >
+                <Select
+                  label={t("gem.settings.cadence")}
+                  options={[
+                    { value: "MONTHLY", label: t("gem.cadences.MONTHLY") },
+                    { value: "QUARTERLY", label: t("gem.cadences.QUARTERLY") },
+                  ]}
+                  error={errors.cadence?.message}
+                  {...register("cadence")}
+                />
+                {/* Numbers go through the shared inputs rather than a raw numeric
+                  one: no spinner arrows, no scroll-wheel edits, and the money
+                  field gets the formatting and calculator the rest of the app
+                  has. */}
                 <NumericInput
-                  label={t("gem.settingsForm.taxRatePercent")}
-                  suffix="%"
-                  value={watch("taxRatePercent")}
+                  label={t("gem.settingsForm.lookbackMonths")}
+                  value={watchedLookback || undefined}
                   onChange={(value) =>
-                    setValue("taxRatePercent", value, {
+                    // Clearing a required field has to fail validation rather than
+                    // quietly keep the previous number.
+                    setValue("lookbackMonths", value ?? Number.NaN, {
                       shouldDirty: true,
                       shouldValidate: true,
                     })
                   }
-                  decimalPlaces={2}
-                  min={0}
-                  placeholder={t("gem.settingsForm.optional")}
-                  error={errors.taxRatePercent?.message}
+                  decimalPlaces={0}
+                  min={1}
+                  error={errors.lookbackMonths?.message}
                 />
-                <CurrencyInput
-                  label={t("gem.settingsForm.commissionAmount")}
-                  value={watch("commissionAmount")}
-                  onChange={(value) =>
-                    setValue("commissionAmount", value, {
-                      shouldDirty: true,
-                      shouldValidate: true,
-                    })
-                  }
-                  allowNegative={false}
-                  placeholder={t("gem.settingsForm.optional")}
-                  error={errors.commissionAmount?.message}
-                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <NumericInput
+                    label={t("gem.settingsForm.taxRatePercent")}
+                    suffix="%"
+                    value={watch("taxRatePercent")}
+                    onChange={(value) =>
+                      setValue("taxRatePercent", value, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    decimalPlaces={2}
+                    min={0}
+                    placeholder={t("gem.settingsForm.optional")}
+                    error={errors.taxRatePercent?.message}
+                  />
+                  <CurrencyInput
+                    label={t("gem.settingsForm.commissionAmount")}
+                    value={watch("commissionAmount")}
+                    onChange={(value) =>
+                      setValue("commissionAmount", value, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    allowNegative={false}
+                    placeholder={t("gem.settingsForm.optional")}
+                    error={errors.commissionAmount?.message}
+                  />
+                </div>
               </div>
               <Input
                 label={t("gem.settingsForm.rulesSourceUrl")}
@@ -635,7 +645,14 @@ export function GemSettingsForm({
             </dl>
           </GemCard>
 
-          <GemCard title={t("gem.settings.assetsTitle")}>
+          {/* The always-mounted card, deliberately not the conditional "fill the
+            missing roles" box inside it: that box disappears the moment every
+            role is filled, and an active anchor going away mid-step reads as the
+            tour breaking. */}
+          <GemCard
+            title={t("gem.settings.assetsTitle")}
+            {...tourAnchor(TOUR_ANCHORS.gemSettingsAssets)}
+          >
             <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
               {t("gem.settingsForm.assetsHint", {
                 months: Number(watchedLookback) || strategy.lookbackMonths,
@@ -689,7 +706,10 @@ export function GemSettingsForm({
                 </Button>
               </div>
             )}
-            <div className="space-y-3">
+            <div
+              className="space-y-3"
+              {...tourAnchor(TOUR_ANCHORS.gemSettingsRoles)}
+            >
               {GEM_ROLE_ORDER.map((role) => (
                 <div key={role}>
                   <div className="flex items-end gap-2">
@@ -753,6 +773,9 @@ export function GemSettingsForm({
               <FormActions
                 submitLabel={t("gem.settingsForm.save")}
                 isSubmitting={isSaving}
+                // FormActions' own anchor hook wraps just the button pair; the
+                // row is full-width, so anchoring the row would ring the form.
+                anchorProps={tourAnchor(TOUR_ANCHORS.gemSettingsSave)}
               />
             </div>
           </GemCard>

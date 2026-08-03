@@ -8,6 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/Button";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { TOUR_ANCHORS, tourAnchor } from "@/lib/tours/anchors";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { GemCadence, GemStrategyRef } from "@/types/gem-strategy";
 import { isKnown } from "@/lib/gem-strategy-view";
@@ -65,7 +66,7 @@ export function GemStrategyHeader({
   const { formatDate } = useDateFormat();
 
   return (
-    <header className="mb-4">
+    <header className="mb-4" {...tourAnchor(TOUR_ANCHORS.gemStrategyHeader)}>
       <nav aria-label={t("gem.header.breadcrumbAriaLabel")} className="mb-1">
         <ol className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
           <li>
@@ -139,6 +140,7 @@ export function GemStrategyHeader({
             variant="outline"
             onClick={onEditSettings}
             className="shrink-0"
+            {...tourAnchor(TOUR_ANCHORS.gemStrategyEditSettings)}
           >
             <PencilSquareIcon className="mr-2 h-4 w-4" aria-hidden="true" />
             {t("gem.header.editSettings")}
