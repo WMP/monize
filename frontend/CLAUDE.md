@@ -11,7 +11,7 @@ npm run lint               # ESLint
 npm run type-check         # tsc --noEmit
 npm run test               # Vitest (single run)
 npm run test:watch         # Vitest (watch mode)
-npm run test:cov           # Coverage report (91% lines, 90% stmts, 87% funcs, 85% branches)
+npm run test:cov           # Coverage report (91% lines, 90% stmts, 87% funcs, 84% branches)
 npm run i18n:pseudo        # Regenerate the xx pseudo-locale from en
 npm run i18n:check         # Verify the pseudo-locale is up to date (CI gate)
 ```
@@ -24,7 +24,7 @@ npm run i18n:check         # Verify the pseudo-locale is up to date (CI gate)
 
 - **Path alias:** `@/*` maps to `src/*` (tsconfig + Vitest resolve alias)
 - **TypeScript:** ES2017 target, strict mode, bundler module resolution, React JSX
-- **Vitest:** jsdom environment, 30s timeout, V8 coverage provider; thresholds 91% lines, 90% statements, 87% functions, 85% branches
+- **Vitest:** jsdom environment, 30s timeout, V8 coverage provider; thresholds 91% lines, 90% stmts, 87% funcs, 84% branches
 - **Tailwind CSS v4:** Via `@tailwindcss/postcss` in `postcss.config.js`, `@import "tailwindcss"` in `globals.css`
 - **Next.js:** Standalone output (Docker), strict mode, security headers in `next.config.js`
 

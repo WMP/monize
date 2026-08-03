@@ -20,16 +20,16 @@ Only the frontend is exposed externally via HTTPRoute or Ingress. The backend is
 
 ```bash
 # Install with default values (HTTPRoute enabled)
-helm install monize ./helm/monize -n monize --create-namespace
+helm install monize ./helm -n monize --create-namespace
 
 # Install with Ingress instead of HTTPRoute
-helm install monize ./helm/monize -n monize --create-namespace \
+helm install monize ./helm -n monize --create-namespace \
   --set httpRoute.enabled=false \
   --set ingress.enabled=true \
   --set ingress.className=nginx
 
 # Dry-run to preview rendered templates
-helm template monize ./helm/monize -n monize
+helm template monize ./helm -n monize
 ```
 
 ## Routing Options
@@ -231,16 +231,16 @@ All containers enforce the `restricted` Pod Security Standard:
 
 ```bash
 # Lint the chart
-helm lint ./helm/monize
+helm lint ./helm
 
 # Render templates without deploying
-helm template monize ./helm/monize -n monize
+helm template monize ./helm -n monize
 
 # Dry-run install
-helm install monize ./helm/monize -n monize --dry-run
+helm install monize ./helm -n monize --dry-run
 
 # Test with Ingress instead of HTTPRoute
-helm template monize ./helm/monize -n monize \
+helm template monize ./helm -n monize \
   --set httpRoute.enabled=false \
   --set ingress.enabled=true \
   --set ingress.className=nginx
