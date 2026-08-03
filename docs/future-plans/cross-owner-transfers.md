@@ -101,7 +101,7 @@ New **`backend/src/delegation/cross-owner-access.service.ts`** (`delegation.serv
 - **Counterpart loading**: `updateTransfer` / `removeTransfer` / `getLinkedTransaction` / `previewUpdateTransfer` load the linked leg via the bound `findOne(userId, id)`, which 404s cross-owner. Add a second callback `loadLegById(id)` provided by `TransactionsService` -- loads by id without a user filter under `withSystemContext`, relations `["account"]` -- used **only** when the scoped `findOne` misses; the service then decides access via `accountAccessFor(realUserId, linked.accountId, op)` and routes to connected / frozen / forbidden behavior per the spec above.
 - Wrappers (`transactions.service.ts` createTransfer/updateTransfer): skip `setTransactionTags` for any leg whose `userId !== effectiveUserId`.
 - **Bulk update** (`transaction-bulk-update.service.ts`): `syncLinkedTransfers` is already user-filtered and silently skips foreign counterparts -- good; `syncTransferTags` passes counterpart ids to `setTransactionTagsBulk` with no user filter -- filter linked ids to same-user legs in `classifyTransferLegs`.
-- **AI/MCP** (`backend/src/ai/query/transaction-tool-prep.service.ts`): creation already 404s on foreign accounts -- stays blocked. Add explicit detection in preview-update/delete of an existing cross-owner transfer -> clear i18n error ("cross-owner transfers can't be edited by the assistant yet"). One change in the shared prep service covers both the AI executor and MCP, per the shared-AI-tools rule in `CLAUDE.md`.
+- **AI/MCP** (`backend/src/transactions/transaction-tool-prep.service.ts`): creation already 404s on foreign accounts -- stays blocked. Add explicit detection in preview-update/delete of an existing cross-owner transfer -> clear i18n error ("cross-owner transfers can't be edited by the assistant yet"). One change in the shared prep service covers both the AI executor and MCP, per the shared-AI-tools rule in `CLAUDE.md`.
 - **Scope cuts** (assert with tests, don't build): cross-owner split transfers, cross-owner scheduled transfers, and imports all naturally 404 via owner-scoped `findOne`; bulk edits skip cross-owner legs.
 
 ### Phase 3 -- Read-path masking (the leak audit)
@@ -181,6 +181,6 @@ See the companion task list ([`cross-owner-transfers-tasks.md`](./cross-owner-tr
 - `backend/src/transactions/transactions.service.ts`, `transactions.controller.ts`, `transaction-bulk-update.service.ts`
 - `backend/src/delegation/cross-owner-access.service.ts` (new), `guards/account-delegate.guard.ts`, `interceptors/delegate-transfer-mask.interceptor.ts`, `transfer-mask.util.ts` (new)
 - `backend/src/accounts/accounts.controller.ts`, `account-export.service.ts`
-- `backend/src/ai/query/transaction-tool-prep.service.ts`
+- `backend/src/transactions/transaction-tool-prep.service.ts`
 - `frontend/src/components/transactions/TransferTransactionFields.tsx`, `TransactionForm.tsx`, `frontend/src/lib/accounts.ts`
 - `database/migrations/` (next free number), `database/schema.sql`

@@ -84,6 +84,8 @@ The point is that the next agent inherits the correction. A fix that lives only 
 
 **A doc that names an identifier is making a claim about the source.** Renaming or deleting a field, flag or helper means grepping `docs/` and every `CLAUDE.md` in the same commit. A document describing a model that no longer exists is worse than none: it gets read, believed, and built on. The same goes for a comment asserting that *every* call site does something -- that is a scanning test, not a comment.
 
+For the half of this a machine can check -- named *files* -- it now does: `backend/src/common/doc-paths.spec.ts` fails when a path in any `CLAUDE.md` or top-level `docs/*.md` does not resolve. This rule in prose was read, agreed with, and violated anyway (a plan doc sent readers to `backend/src/ai/query/` for a service under `backend/src/transactions/`), which is the argument for the test rather than the paragraph. `docs/future-plans/` is out of scope on purpose -- naming files that do not exist yet is what a plan is for -- and so is `docs/release-notes/`, a shipped record that must not be edited to match a later tree. A path in another branch or repository is not a claim about this tree, so qualify it (`branch:path/to/file.md`) rather than letting it read as one.
+
 ### Running the suites locally -- two ways a green branch reads as red
 
 CI runs in UTC with one Playwright worker. A local run does neither, and both differences produce failures that look like regressions and are not.

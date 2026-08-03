@@ -8,7 +8,8 @@ None of this is official documentation. It is reverse-engineered, and the parts
 that were never observed say so.
 
 > **Provenance.** The original of this document is
-> `migration/ms-money-data-model.md` from PR #192 (`poc/import-from-dotmny`) by
+> `poc/import-from-dotmny:migration/ms-money-data-model.md` -- a path in that
+> branch's tree, not in this one -- from PR #192 by
 > **marksimpson**, derived from analysis of a real 30-year Money file. That
 > analysis is the foundation of Monize's `.mny` importer and the single most
 > valuable thing the proof of concept produced.

@@ -66,7 +66,7 @@ trust-builder both PR testers said they needed.
 ### What the PoC got right (keep all of this)
 
 Credit to marksimpson: the PoC's real contribution is the reverse-engineered schema knowledge in
-`migration/ms-money-data-model.md` — table relationships, the `act` action-code semantics
+`poc/import-from-dotmny:migration/ms-money-data-model.md` (a path in that branch, not this one) — table relationships, the `act` action-code semantics
 (including the misleading act=16), the phantom-transaction taxonomy, and the LOT table as the
 authoritative holdings source. Task M4.5 adopts that document into `docs/` (with attribution)
 as the living format reference (now `docs/ms-money-data-model.md`, with the corrections below called out inline against the original). Also correct and carried forward:

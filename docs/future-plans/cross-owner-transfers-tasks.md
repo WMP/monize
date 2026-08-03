@@ -88,7 +88,7 @@ Per Phase 2 and the frozen-link spec: `loadLegById` fallback when the scoped `fi
 
 ### T3 -- Wrappers, bulk, AI prep
 
-**Files:** `transactions.service.ts` (create/update wrappers), `transaction-bulk-update.service.ts` + spec, `backend/src/ai/query/transaction-tool-prep.service.ts` + spec, i18n `en/errors.json`.
+**Files:** `transactions.service.ts` (create/update wrappers), `transaction-bulk-update.service.ts` + spec, `backend/src/transactions/transaction-tool-prep.service.ts` + spec, i18n `en/errors.json`.
 
 - Wrappers: skip `setTransactionTags` for legs whose `userId !== effectiveUserId`.
 - Bulk: filter linked ids to same-user legs in `classifyTransferLegs` so `syncTransferTags` never writes tags onto a foreign leg (`syncLinkedTransfers` is already user-filtered -- verify, don't change).
