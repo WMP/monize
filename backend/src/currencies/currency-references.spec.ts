@@ -92,6 +92,10 @@ const perUserBody = functionBody(
   uncommented,
   "currency_codes_referenced_by_user",
 );
+const perUserDataBody = functionBody(
+  uncommented,
+  "currency_codes_referenced_by_user_data",
+);
 
 describe("currency global liveness", () => {
   // Every assertion below depends on the parser. A regex that stops matching
@@ -148,15 +152,21 @@ describe("currency global liveness", () => {
       );
       const notConsulted = references
         .filter(({ table }) => !ownerless.has(table))
+        // The activation row is the composite's own branch, not the data
+        // function's -- see the derivation test below for why they differ.
+        .filter(({ table }) => table !== "user_currency_preferences")
         .filter(
           ({ table, column }) =>
-            !new RegExp(`FROM\\s+${table}\\b`, "i").test(perUserBody) ||
-            !new RegExp(`SELECT\\s+${column}\\b`, "i").test(perUserBody),
+            !new RegExp(`FROM\\s+${table}\\b`, "i").test(perUserDataBody) ||
+            !new RegExp(`SELECT\\s+${column}\\b`, "i").test(perUserDataBody),
         );
 
-      // A missed column means a currency the user's data depends on is left out
-      // of their backup, and the restore guesses its name, symbol and decimal
-      // places instead.
+      // A missed column means two things at once: a currency the user's data
+      // depends on is left out of their backup, and the restore guesses its
+      // name, symbol and decimal places instead -- and the delete gate reports
+      // the code as free, so the user's activation is removed while a row still
+      // names it. `budgets.currency_code` was missing from the gate's own
+      // spelling of this list, which is how the second half was found.
       expect(
         notConsulted.map(({ table, column }) => `${table}.${column}`),
       ).toEqual([]);
@@ -171,11 +181,12 @@ describe("currency global liveness", () => {
           ...new Set(references.map((r) => r.table)),
         ]).sort(),
       ).toEqual(["exchange_rates"]);
+      expect(perUserDataBody).not.toMatch(/FROM\s+exchange_rates/i);
       expect(perUserBody).not.toMatch(/FROM\s+exchange_rates/i);
     });
 
     it("scopes every branch to the requested user", () => {
-      const branches = perUserBody
+      const branches = perUserDataBody
         .split(/UNION/i)
         .map((b) => b.trim())
         .filter(Boolean);
@@ -187,14 +198,64 @@ describe("currency global liveness", () => {
       }
     });
 
+    it("filters NULLs out of the per-user answer", () => {
+      // Three of the columns are nullable. A NULL in the set turns a caller's
+      // `NOT IN` into a silently empty answer, which is the kind of mistake that
+      // reads as "nothing referenced" rather than as a bug.
+      expect(perUserDataBody).toMatch(/WHERE code IS NOT NULL/i);
+    });
+
+    /**
+     * The delete gate and the backup export ask *almost* the same question. The
+     * export needs the user's activation row counted, so a currency activated
+     * but not yet spent in still travels with the backup. The gate must not
+     * count it: it runs before deleting that very row, so counting it would
+     * report every visible currency as in use and no currency could ever be
+     * deleted.
+     *
+     * Two questions, one list. The composite calls the data function rather than
+     * repeating its branches -- repeating them is how the list reached three
+     * spellings and two of them wrong.
+     */
+    it("derives the composite from the data function", () => {
+      expect(perUserBody).toMatch(/currency_codes_referenced_by_user_data\(/);
+      // The activation row is the composite's one extra branch.
+      expect(perUserBody).toMatch(/FROM user_currency_preferences/);
+      // And it must not re-list what the data function already covers.
+      for (const table of ["accounts", "transactions", "budgets"]) {
+        expect(perUserBody).not.toMatch(new RegExp(`FROM ${table}\\b`));
+      }
+    });
+
+    it("is the predicate the delete gate uses", () => {
+      const currenciesService = readFileSync(
+        join(__dirname, "currencies.service.ts"),
+        "utf8",
+      );
+      // `isInUse` guards a destructive action with "does your data still need
+      // this code". Spelling the tables out there is what left `budgets` off.
+      expect(currenciesService).toContain(
+        "currency_codes_referenced_by_user_data(",
+      );
+      const spelledOut =
+        /FROM accounts WHERE currency_code[\s\S]{0,600}?FROM scheduled_transactions/.test(
+          currenciesService,
+        );
+      expect(spelledOut).toBe(false);
+    });
+
     it("is SECURITY INVOKER", () => {
-      const definition =
-        /CREATE OR REPLACE FUNCTION currency_codes_referenced_by_user\([\s\S]*?\nAS \$\$/.exec(
-          uncommented,
-        )![0];
-      // The caller's own policies are meant to scope this; a definer function
-      // would hand back other tenants' codes.
-      expect(definition).not.toMatch(/SECURITY DEFINER/);
+      for (const name of [
+        "currency_codes_referenced_by_user",
+        "currency_codes_referenced_by_user_data",
+      ]) {
+        const definition = new RegExp(
+          `CREATE OR REPLACE FUNCTION ${name}\\(p_user_id[\\s\\S]*?\\nAS \\$\\$`,
+        ).exec(uncommented)![0];
+        // The caller's own policies are meant to scope these; a definer function
+        // would hand back other tenants' codes.
+        expect(definition).not.toMatch(/SECURITY DEFINER/);
+      }
     });
   });
 

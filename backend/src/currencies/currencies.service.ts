@@ -391,21 +391,31 @@ export class CurrenciesService implements OnApplicationBootstrap {
     }
   }
 
+  /**
+   * Does this user's own data still depend on `code`?
+   *
+   * The referencing columns are not spelled out here. They were, and the list
+   * was missing `budgets.currency_code`: a user with a budget denominated in a
+   * custom currency was told the code was not "in use by your accounts,
+   * securities, or other records", had their activation row deleted, and was
+   * left holding a budget in a currency that no longer appeared anywhere in
+   * their settings -- so they could neither see it nor reactivate it. That is
+   * the third time this list has been written out and been wrong, which is why
+   * it now lives in `currency_codes_referenced_by_user_data` (migration 134)
+   * where `currency-references.spec.ts` can check it against the schema.
+   *
+   * The `_data` variant, not the composite: this runs *before* the caller's own
+   * `user_currency_preferences` row is deleted, and the composite counts that
+   * row -- so it would report every visible currency as in use and no currency
+   * could ever be deleted.
+   */
   async isInUse(userId: string, code: string): Promise<boolean> {
     const result = await withScopedDb(this.dataSource, (manager) =>
       manager.query(
         `SELECT EXISTS (
-        SELECT 1 FROM accounts WHERE currency_code = $1 AND user_id = $2
-        UNION ALL SELECT 1 FROM securities WHERE currency_code = $1 AND user_id = $2
-        UNION ALL SELECT 1 FROM transactions t
-          JOIN accounts a ON a.id = t.account_id
-          WHERE (t.currency_code = $1 OR t.original_currency_code = $1)
-            AND a.user_id = $2
-        UNION ALL SELECT 1 FROM scheduled_transactions st
-          WHERE (st.currency_code = $1 OR st.original_currency_code = $1)
-            AND st.user_id = $2
-        UNION ALL SELECT 1 FROM user_preferences WHERE default_currency = $1 AND user_id = $2
-      ) AS "inUse"`,
+           SELECT 1 FROM currency_codes_referenced_by_user_data($2) AS referenced(code)
+            WHERE referenced.code = $1
+         ) AS "inUse"`,
         [code.toUpperCase(), userId],
       ),
     );

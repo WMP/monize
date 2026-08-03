@@ -859,6 +859,82 @@ describe("RLS enforcement (T2, catalog-driven)", () => {
       );
       expect(inUse).toBe(false);
     });
+
+    /**
+     * The per-user companion, which the delete gate asks before removing the
+     * caller's activation row. `CurrenciesService.isInUse` used to spell the
+     * referencing columns out itself and was missing `budgets.currency_code`, so
+     * a user with a budget denominated in a custom currency was told the code was
+     * not in use, lost their activation row, and was left with a budget in a
+     * currency that no longer appeared anywhere in their settings.
+     *
+     * A unit spec cannot show this -- it mocks `manager.query` and gets back
+     * whatever the fixture says. Only the real function over real rows can.
+     */
+    it("counts a budget as a reference to the currency it is denominated in", async () => {
+      const CODE = "BGT";
+      await dataSource.query(
+        `INSERT INTO currencies (code, name, symbol, decimal_places, is_active, created_by_user_id)
+         VALUES ($1, 'Budget Points', 'B', 0, true, $2)
+         ON CONFLICT (code) DO NOTHING`,
+        [CODE, USER_A],
+      );
+      await dataSource.query(
+        `INSERT INTO budgets (user_id, name, period_start, currency_code)
+         VALUES ($1, 'Points budget', DATE '2026-01-01', $2)`,
+        [USER_A, CODE],
+      );
+
+      const referenced: Array<{ code: string }> = await dataSource.query(
+        `SELECT code FROM currency_codes_referenced_by_user_data($1) AS referenced(code)`,
+        [USER_A],
+      );
+      expect(referenced.map((r) => r.code)).toContain(CODE);
+
+      // And the other user's answer must not include it, or a shared code would
+      // become undeletable for everyone.
+      const otherUser: Array<{ code: string }> = await dataSource.query(
+        `SELECT code FROM currency_codes_referenced_by_user_data($1) AS referenced(code)`,
+        [USER_B],
+      );
+      expect(otherUser.map((r) => r.code)).not.toContain(CODE);
+    });
+
+    /**
+     * The two per-user functions differ by exactly one branch, and the difference
+     * is load-bearing in both directions: the backup export needs the activation
+     * row counted so an activated-but-unspent currency definition travels with
+     * the file, and the delete gate needs it *not* counted or no currency could
+     * ever be deleted.
+     */
+    it("counts an activation only in the composite, not in the data answer", async () => {
+      const CODE = "ACT";
+      await dataSource.query(
+        `INSERT INTO currencies (code, name, symbol, decimal_places, is_active, created_by_user_id)
+         VALUES ($1, 'Activated Points', 'A', 0, true, $2)
+         ON CONFLICT (code) DO NOTHING`,
+        [CODE, USER_A],
+      );
+      // Activated and nothing else: no account, no budget, no transaction.
+      await dataSource.query(
+        `INSERT INTO user_currency_preferences (user_id, currency_code, is_active)
+         VALUES ($1, $2, true)
+         ON CONFLICT (user_id, currency_code) DO NOTHING`,
+        [USER_A, CODE],
+      );
+
+      const data: Array<{ code: string }> = await dataSource.query(
+        `SELECT code FROM currency_codes_referenced_by_user_data($1) AS referenced(code)`,
+        [USER_A],
+      );
+      const all: Array<{ code: string }> = await dataSource.query(
+        `SELECT code FROM currency_codes_referenced_by_user($1) AS referenced(code)`,
+        [USER_A],
+      );
+
+      expect(data.map((r) => r.code)).not.toContain(CODE);
+      expect(all.map((r) => r.code)).toContain(CODE);
+    });
   });
 
   /**
@@ -971,23 +1047,6 @@ describe("RLS enforcement (T2, catalog-driven)", () => {
         m.query("SELECT count(*)::int AS n FROM accounts"),
       );
       expect(rows[0].n).toBeGreaterThanOrEqual(0);
-    });
-  });
-
-  describe("unreferenced currency codes", () => {
-    it("reports an unreferenced code as free", async () => {
-      await dataSource.query(
-        `INSERT INTO currencies (code, name, symbol, decimal_places, is_active, created_by_user_id)
-         VALUES ('ZZZ', 'Nothing Points', '?', 0, true, $1)
-         ON CONFLICT (code) DO NOTHING`,
-        [USER_A],
-      );
-      // "Unknown" is not the answer here: nothing references the code, which is
-      // a settled fact, and reporting it as live would strand the row forever.
-      const [{ inUse }] = await dataSource.query(
-        `SELECT currency_code_in_use_globally('ZZZ') AS "inUse"`,
-      );
-      expect(inUse).toBe(false);
     });
   });
 });
