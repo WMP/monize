@@ -1526,6 +1526,36 @@ export class InvestmentTransactionsService {
     // Cost basis flows through quantity * price (per-share cost) instead.
     const totalAmount = 0;
 
+    // Each leg's rate converts the carried per-share cost -- which is in the
+    // SECURITY's currency -- into that leg's own settlement currency. Both legs
+    // used to be written with `exchangeRate: 1` regardless, so moving a USD
+    // security into a CAD brokerage recorded a 10 x 50.00 position as a basis of
+    // 500.00 CAD instead of 675.00 at 1.3500: 175.00 of phantom gain waiting for
+    // the next sale, and tax on it. Same resolution as a BUY, including the
+    // refusal to guess -- 1 between two different currencies is a claim they are
+    // at par, not a neutral default.
+    //
+    // The authoritative cost-basis contract is `replayLots`, which carries the
+    // basis the OUT leg released in the OUT leg's own currency and reports a
+    // cross-currency pair as unknown. These rates serve the account-currency
+    // approximations that read `quantity * price * exchangeRate` directly.
+    const outExchangeRate = await this.resolveCashExchangeRate(
+      userId,
+      dto.fromAccountId,
+      null,
+      dto.securityId,
+      undefined,
+      dto.transactionDate,
+    );
+    const inExchangeRate = await this.resolveCashExchangeRate(
+      userId,
+      dto.toAccountId,
+      null,
+      dto.securityId,
+      dto.destinationExchangeRate,
+      dto.transactionDate,
+    );
+
     const { outId, inId } = await withScopedDb(
       this.dataSource,
       async (manager) => {
@@ -1540,7 +1570,7 @@ export class InvestmentTransactionsService {
           price: carriedCost,
           commission: 0,
           totalAmount,
-          exchangeRate: 1,
+          exchangeRate: outExchangeRate,
           description: dto.description,
         });
         const savedOut = await manager.save(transferOut);
@@ -1564,7 +1594,7 @@ export class InvestmentTransactionsService {
           price: carriedCost,
           commission: 0,
           totalAmount,
-          exchangeRate: 1,
+          exchangeRate: inExchangeRate,
           description: dto.description,
         });
         const savedIn = await manager.save(transferIn);
@@ -2748,10 +2778,26 @@ export class InvestmentTransactionsService {
           leg.description = updateDto.description;
         // Transfers carry no cash.
         leg.totalAmount = 0;
-        leg.exchangeRate = 1;
       };
       applyShared(editedLeg);
       applyShared(linkedLeg);
+
+      // Each leg's rate belongs to its OWN account, so it is resolved per leg
+      // after the shared fields land: an edit that moves a foreign security's
+      // transfer to a different-currency destination has to restate the
+      // destination's rate, and writing 1 on both legs is what recorded the
+      // destination's basis at par. Same resolution and same refusal-to-guess as
+      // a BUY.
+      for (const leg of [editedLeg, linkedLeg]) {
+        leg.exchangeRate = await this.resolveCashExchangeRate(
+          userId,
+          leg.accountId,
+          null,
+          leg.securityId,
+          undefined,
+          leg.transactionDate,
+        );
+      }
 
       affectedAccountIds.add(editedLeg.accountId);
       affectedAccountIds.add(linkedLeg.accountId);

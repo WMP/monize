@@ -1880,6 +1880,61 @@ describe('InvestmentTransactionForm - extra coverage', () => {
     ]);
   });
 
+  // The transfer note promised gain reports "stay correct", which held only
+  // inside one currency: the destination leg was written with a rate of 1, so a
+  // USD security landing in a CAD brokerage recorded its cost basis as if the two
+  // were at par. The copy now separates the figure that is carried unchanged (the
+  // native per-share cost) from the one that is converted (the destination's
+  // account-currency basis), and names the date the rate comes from.
+  describe('a transfer whose destination holds another currency', () => {
+    const openTransfer = async (destination: string) => {
+      render(<InvestmentTransactionForm accounts={accounts} />);
+      await waitFor(() =>
+        expect(screen.getByText('Brokerage Account')).toBeInTheDocument(),
+      );
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Transaction Type'), {
+          target: { value: 'TRANSFER' },
+        });
+      });
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('From Account'), {
+          target: { value: 'a1' },
+        });
+      });
+      await waitFor(() =>
+        expect(investmentsApi.getHoldings).toHaveBeenCalledWith('a1'),
+      );
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Security'), {
+          target: { value: 'sec-1' },
+        });
+      });
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('To Account'), {
+          target: { value: destination },
+        });
+      });
+    };
+
+    it('names both currencies and which figure converts', async () => {
+      // sec-1 is priced in USD; b1 is a CAD brokerage.
+      await openTransfer('b1');
+      const note = screen.getByRole('status');
+      expect(note).toHaveTextContent(/destination account holds CAD/i);
+      expect(note).toHaveTextContent(/priced in USD/i);
+      expect(note).toHaveTextContent(/cost per share above is unchanged/i);
+      expect(note).toHaveTextContent(/rate for the transfer date/i);
+    });
+
+    it('no longer claims gain reports simply stay correct', async () => {
+      await openTransfer('b1');
+      expect(
+        screen.getByText(/carried to the destination in the security’s own currency/i),
+      ).toBeInTheDocument();
+    });
+  });
+
   it('blocks a transfer with zero quantity', async () => {
     render(<InvestmentTransactionForm accounts={accounts} />);
     await waitFor(() => expect(screen.getByText('Brokerage Account')).toBeInTheDocument());

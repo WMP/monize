@@ -374,6 +374,16 @@ export function InvestmentTransactionForm({
     return accountCurrency;
   }, [watchedSecurityId, securities, accountCurrency]);
   const currencySymbol = getCurrencySymbol(transactionCurrency);
+  // Currency of the transfer's destination brokerage, for the cross-currency
+  // note below. The carried per-share cost is in the SECURITY's currency, so a
+  // destination holding a different one converts on arrival.
+  const transferDestinationCurrency = useMemo(() => {
+    if (!watchedDestinationAccountId) return null;
+    return (
+      allAccountsSource.find((a) => a.id === watchedDestinationAccountId)
+        ?.currencyCode ?? null
+    );
+  }, [allAccountsSource, watchedDestinationAccountId]);
   const cashCurrencySymbol = getCurrencySymbol(cashCurrency);
 
   const needsConversion =
@@ -1263,6 +1273,25 @@ export function InvestmentTransactionForm({
           <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
             {t('transactionForm.transferCostNote')}
           </div>
+          {/*
+            The note above promised gain reports "stay correct", which was only
+            true within one currency: the destination leg was written with a rate
+            of 1, so a USD security landing in a CAD brokerage recorded its basis
+            as if the two were at par. The rate for the transfer date is used now,
+            and the copy says which figure is converted and which is not.
+          */}
+          {transferDestinationCurrency &&
+            transferDestinationCurrency !== transactionCurrency && (
+              <div
+                role="status"
+                className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200"
+              >
+                {t('transactionForm.transferCrossCurrencyNote', {
+                  security: transactionCurrency,
+                  destination: transferDestinationCurrency,
+                })}
+              </div>
+            )}
         </div>
       )}
 

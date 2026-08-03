@@ -42,6 +42,16 @@ export class TransferSecurityDto {
   @Min(0)
   costPerShare: number;
 
+  @ApiProperty({
+    required: false,
+    description:
+      "Rate converting the security's currency into the DESTINATION account's settlement currency on the transfer date. Omitted, the stored/market rate for that date is used; the transfer is refused when neither is available, because 1 would claim the two currencies are at par. Ignored when the two currencies match.",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 10 })
+  @Min(0.000001)
+  destinationExchangeRate?: number;
+
   @ApiProperty({ required: false, description: "Description of the transfer" })
   @IsOptional()
   @IsString()

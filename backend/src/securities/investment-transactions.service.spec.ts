@@ -5155,6 +5155,93 @@ describe("InvestmentTransactionsService", () => {
       expect(transactionRepository.save).not.toHaveBeenCalled();
     });
 
+    it("writes a rate of 1 on both legs when nothing crosses a currency", async () => {
+      await service.transferSecurity(userId, transferDto);
+      const rates = investmentTransactionsRepository.create.mock.calls.map(
+        (call: any[]) => call[0].exchangeRate,
+      );
+      expect(rates).toEqual([1, 1]);
+    });
+
+    // P6-004. `price` is the carried per-share cost in the SECURITY's currency,
+    // and the account-currency basis paths read `quantity * price * exchangeRate`
+    // -- so `exchangeRate: 1` on a leg whose account holds another currency
+    // recorded 100 shares at 1.67 USD as a basis of 167.00 CAD instead of 225.45
+    // at 1.35. That is 58.45 CAD of phantom gain waiting for the next sale, and
+    // tax on it.
+    describe("into a different-currency brokerage", () => {
+      const cadAccountId = "account-cad";
+      const mockCadAccount = {
+        id: cadAccountId,
+        userId,
+        accountType: "INVESTMENT",
+        accountSubType: AccountSubType.INVESTMENT_BROKERAGE,
+        linkedAccountId: null,
+        currencyCode: "CAD",
+        name: "Loonie Brokerage",
+      };
+
+      const cadDto = { ...transferDto, toAccountId: cadAccountId };
+
+      beforeEach(() => {
+        accountsService.findOne.mockImplementation(
+          (uid: string, aid: string) => {
+            if (aid === accountId)
+              return Promise.resolve(mockInvestmentAccount);
+            if (aid === cadAccountId) return Promise.resolve(mockCadAccount);
+            if (aid === cashAccountId) return Promise.resolve(mockCashAccount);
+            return Promise.reject(new NotFoundException("Account not found"));
+          },
+        );
+      });
+
+      it("converts the destination leg at the transfer date's rate", async () => {
+        exchangeRateService.getRateForDate.mockResolvedValue(1.35);
+
+        await service.transferSecurity(userId, cadDto);
+
+        expect(exchangeRateService.getRateForDate).toHaveBeenCalledWith(
+          "USD",
+          "CAD",
+          "2025-04-01",
+        );
+        const [outLeg, inLeg] =
+          investmentTransactionsRepository.create.mock.calls.map(
+            (call: any[]) => call[0],
+          );
+        // The source leg stays in its own currency, which is the security's.
+        expect(outLeg.exchangeRate).toBe(1);
+        expect(inLeg.exchangeRate).toBe(1.35);
+        // Native per-share cost is unchanged on both legs: the basis is carried,
+        // not re-priced.
+        expect(outLeg.price).toBe(1.67);
+        expect(inLeg.price).toBe(1.67);
+      });
+
+      it("accepts an explicit destination rate over the stored one", async () => {
+        exchangeRateService.getRateForDate.mockResolvedValue(1.35);
+
+        await service.transferSecurity(userId, {
+          ...cadDto,
+          destinationExchangeRate: 1.4,
+        });
+
+        const inLeg = investmentTransactionsRepository.create.mock.calls[1][0];
+        expect(inLeg.exchangeRate).toBe(1.4);
+      });
+
+      // An unknown rate is unknown. Writing 1 claims USD and CAD are at par.
+      it("refuses the transfer when no rate can be determined", async () => {
+        exchangeRateService.getRateForDate.mockResolvedValue(null);
+        exchangeRateService.getLatestRate.mockResolvedValue(null);
+
+        await expect(service.transferSecurity(userId, cadDto)).rejects.toThrow(
+          /exchange rate for USD -> CAD/,
+        );
+        expect(dataSource.transaction).not.toHaveBeenCalled();
+      });
+    });
+
     it("validates the full history so the source cannot be over-drawn", async () => {
       await service.transferSecurity(userId, transferDto);
       expect(

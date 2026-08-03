@@ -226,7 +226,7 @@
     "sourceHolds": "[XX-Source holds-XX]",
     "sharesAt": "[XX-shares @-XX]",
     "avgCostSuffix": "[XX-avg cost.-XX]",
-    "transferCostNote": "[XX-The cost per share (prefilled from the source account) is carried to the destination so your gain and profit reports stay correct. This moves shares only -- no cash changes hands.-XX]",
+    "transferCostNote": "[XX-The cost per share (prefilled from the source account) is carried to the destination in the security’s own currency, so gain and profit reports keep the same basis. This moves shares only — no cash changes hands.-XX]",
     "totalAmount": "[XX-Total Amount ({currency})-XX]",
     "sharesAtPrice": "[XX-{shares} shares @ {symbol}{price}-XX]",
     "commissionSuffix": "[XX-commission-XX]",
@@ -255,7 +255,8 @@
     "toastSaveFailed": "[XX-Failed to save transaction-XX]",
     "exchangeRateUnresolved": "[XX-No {from} to {to} rate is available. Enter one, or the converted total, before saving.-XX]",
     "toastExchangeRateRequired": "[XX-Enter an exchange rate before saving a cross-currency trade.-XX]",
-    "notAvailable": "[XX-Not available-XX]"
+    "notAvailable": "[XX-Not available-XX]",
+    "transferCrossCurrencyNote": "[XX-The destination account holds {destination} and this security is priced in {security}. The cost per share above is unchanged — it stays in {security} — but the destination’s {destination} cost basis is converted at the stored {security} to {destination} rate for the transfer date. The transfer is refused if no rate is stored for that date.-XX]"
   },
   "newTransactionButton": {
     "label": "[XX-+ New Transaction-XX]",
