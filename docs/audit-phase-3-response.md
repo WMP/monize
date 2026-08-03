@@ -494,7 +494,7 @@ Run and green:
 | `npm run migration:lint:test` | 26 pass |
 | `npm run i18n:check` | pseudo-locale fresh |
 | `scripts/check-env-docs.mjs` | 51 env vars documented |
-| Backend unit (`TZ=UTC npm run test:unit`) | 407/408 suites, 10797 tests |
+| Backend unit (`TZ=UTC npm run test:unit`) | 407/408 suites, 10798 tests |
 | Frontend unit (`vitest run`) | 626/627 files, 12265 tests |
 
 The one failing suite on each side is the i18n parity spec — `errors.json` and
