@@ -283,7 +283,8 @@
       "estimateCaption": "About {total} at 1 {from} = {rate} {to}.",
       "noRateWarning": "No exchange rate found for {from} to {to}. Pick another currency, or enter the amount in {to}.",
       "feeCaption": "Includes a {percent}% foreign transaction fee ({fee})."
-    }
+    },
+    "transferCrossCurrencyNote": "This transfer sends {from} to a {to} account. Each occurrence converts at the stored {from} to {to} rate for its posting date, so the amount received varies; an occurrence will not post if no rate is stored for that date."
   },
   "postTransaction": {
     "minSplits": "Split transactions require at least 2 splits",
