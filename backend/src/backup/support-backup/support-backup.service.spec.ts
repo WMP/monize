@@ -509,3 +509,83 @@ describe("SupportBackupService.preview", () => {
     expect(payees.after[0].name).toBe("Bi*****ka");
   });
 });
+
+/**
+ * `currencies.name` and `.symbol` were kept verbatim while the support-backup
+ * modal told the user names are masked. A custom currency is user-authored free
+ * text -- "Alice Family Credits" / "AFam" -- so an artefact meant to leave the
+ * user's data boundary could disclose a household, employer or project.
+ *
+ * Standard ISO currencies are public reference data and must stay readable, or a
+ * support engineer cannot tell what the numbers are denominated in.
+ */
+describe("SupportBackupService.generate - custom currencies", () => {
+  const withCurrencies = () => {
+    const tables = fixtureTables();
+    tables.currencies = [
+      {
+        code: "PLN",
+        name: "Polish Zloty",
+        symbol: "zl",
+        decimal_places: 2,
+        is_active: true,
+        created_by_user_id: null,
+        created_at: "2026-01-01T00:00:00.000Z",
+      },
+      {
+        code: "AFM",
+        name: "Alice Family Credits",
+        symbol: "AFam",
+        decimal_places: 2,
+        is_active: true,
+        created_by_user_id: USER,
+        created_at: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+    return tables;
+  };
+
+  const currencyByCode = (data: Record<string, any>, code: string) =>
+    data.currencies.find((c: any) => c.code === code);
+
+  it("masks a user-created currency's name and symbol", async () => {
+    const data = await generateParsed(makeService(withCurrencies()), {
+      multiplier: 2.5,
+    });
+    const custom = currencyByCode(data, "AFM");
+
+    expect(custom.name).not.toContain("Alice");
+    expect(custom.name).not.toContain("Family");
+    expect(custom.symbol).not.toContain("Fam");
+  });
+
+  it("leaves a standard currency readable", async () => {
+    const data = await generateParsed(makeService(withCurrencies()), {
+      multiplier: 2.5,
+    });
+    const standard = currencyByCode(data, "PLN");
+
+    expect(standard.name).toBe("Polish Zloty");
+    expect(standard.symbol).toBe("zl");
+  });
+
+  // The code is the currency reference other tables store, so masking it would
+  // break every row pointing at it. Documented as the one preserved field.
+  it("keeps the code so references still resolve", async () => {
+    const data = await generateParsed(makeService(withCurrencies()), {
+      multiplier: 2.5,
+    });
+    expect(currencyByCode(data, "AFM")).toBeDefined();
+    expect(currencyByCode(data, "PLN")).toBeDefined();
+  });
+
+  it("leaks no marker string anywhere in the artefact", async () => {
+    const { buffer } = await makeService(withCurrencies()).generate(USER, {
+      multiplier: 2.5,
+    });
+    const raw = gunzipSync(buffer).toString("utf-8");
+
+    expect(raw).not.toContain("Alice Family Credits");
+    expect(raw).not.toContain("AFam");
+  });
+});

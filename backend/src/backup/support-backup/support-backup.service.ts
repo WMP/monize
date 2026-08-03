@@ -19,6 +19,7 @@ import { maskText, scaleMoney, scaleQuantity } from "./support-backup.util";
 import {
   ALWAYS_EXCLUDED_TABLES,
   ColumnRule,
+  ROW_PREDICATES,
   RULES,
   SECTION_NONFK_CLEANUP,
   SECTION_TABLES,
@@ -251,7 +252,7 @@ export class SupportBackupService {
     for (const [column, value] of Object.entries(row)) {
       const rule = rules[column];
       if (!rule) continue; // unclassified column: dropped (allowlist)
-      out[column] = this.applyRule(rule, value, multiplier);
+      out[column] = this.applyRule(rule, value, multiplier, row);
     }
     return out;
   }
@@ -260,6 +261,7 @@ export class SupportBackupService {
     rule: ColumnRule,
     value: unknown,
     multiplier: number,
+    row: Record<string, unknown>,
   ): unknown {
     switch (rule.t) {
       case "keep":
@@ -276,6 +278,10 @@ export class SupportBackupService {
         return scaleQuantity(value, multiplier);
       case "jsonb":
         return applyJsonbHandler(rule.handler, value, multiplier);
+      case "maskWhen":
+        // The column's sensitivity depends on the row: a standard ISO currency's
+        // name is public reference data, a user-authored one is free text.
+        return ROW_PREDICATES[rule.when](row) ? maskText(value) : value;
     }
   }
 

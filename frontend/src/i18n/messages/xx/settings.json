@@ -276,7 +276,7 @@
   },
   "supportBackup": {
     "title": "[XX-Create support backup-XX]",
-    "howItWorks": "[XX-This produces a de-identified copy of your backup: names are masked (first and last two characters kept), notes/descriptions/account numbers are removed, and every amount is multiplied by a single hidden factor while public values (exchange rates, prices, interest rates) are left intact. The file is always encrypted with the password below and restores like a normal backup. This protects against casual exposure, not against someone who already knows you -- dates, frequencies and structure are preserved so bugs still reproduce.-XX]",
+    "howItWorks": "[XX-This produces a de-identified copy of your backup: names are masked (first and last two characters kept), notes/descriptions/account numbers are removed, and every amount is multiplied by a single hidden factor while public values (exchange rates, prices, interest rates) are left intact. Currency codes stay readable so the figures can be interpreted — including the code of any currency you created yourself, though its name and symbol are masked like other names. The file is always encrypted with the password below and restores like a normal backup. This protects against casual exposure, not against someone who already knows you — dates, frequencies and structure are preserved so bugs still reproduce.-XX]",
     "sectionsLabel": "[XX-What to include-XX]",
     "sections": {
       "investments": "[XX-Investments (securities, holdings, prices)-XX]",

@@ -15,7 +15,28 @@ export type ColumnRule =
   | { t: "const"; value: unknown } // fixed replacement for NOT NULL dropped fields
   | { t: "scale" } // private money magnitude x M (4 dp)
   | { t: "scaleQty" } // private quantity x M (8 dp)
-  | { t: "jsonb"; handler: JsonbHandlerName }; // per-key handler for a JSON blob
+  | { t: "jsonb"; handler: JsonbHandlerName } // per-key handler for a JSON blob
+  | { t: "maskWhen"; when: RowPredicateName }; // mask only for rows matching the predicate
+
+/**
+ * Row-level conditions a rule can depend on, for a column whose sensitivity is
+ * not a property of the column alone.
+ *
+ * `userCreatedCurrency`: a currency the user defined themselves, distinguished by
+ * a non-null `created_by_user_id`. The standard ISO currencies are public
+ * reference data and stay verbatim, but a user-authored name and symbol are free
+ * text -- "Alice Family Credits" / "AFam" -- and the modal promises names are
+ * masked.
+ */
+export type RowPredicateName = "userCreatedCurrency";
+
+export const ROW_PREDICATES: Record<
+  RowPredicateName,
+  (row: Record<string, unknown>) => boolean
+> = {
+  userCreatedCurrency: (row) =>
+    row.created_by_user_id !== null && row.created_by_user_id !== undefined,
+};
 
 const keep: ColumnRule = { t: "keep" };
 const mask: ColumnRule = { t: "mask" };
@@ -26,6 +47,10 @@ const konst = (value: unknown): ColumnRule => ({ t: "const", value });
 const jsonb = (handler: JsonbHandlerName): ColumnRule => ({
   t: "jsonb",
   handler,
+});
+const maskWhen = (when: RowPredicateName): ColumnRule => ({
+  t: "maskWhen",
+  when,
 });
 
 export type TableRules = Record<string, ColumnRule>;
@@ -48,9 +73,15 @@ export const ALWAYS_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
 
 export const RULES: Record<string, TableRules> = {
   currencies: {
+    // `code` stays: other tables store it as the currency reference, so masking
+    // it would break every row that points at this one. Three uppercase letters
+    // is also the least identifying part of a custom currency.
     code: keep,
-    name: keep,
-    symbol: keep,
+    // A user-authored name and symbol are free text and can carry a person,
+    // household, employer or project. They used to be kept verbatim while the
+    // support-backup modal promised names were masked.
+    name: maskWhen("userCreatedCurrency"),
+    symbol: maskWhen("userCreatedCurrency"),
     decimal_places: keep,
     is_active: keep,
     created_by_user_id: keep,
