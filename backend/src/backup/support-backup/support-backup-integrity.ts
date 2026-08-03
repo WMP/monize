@@ -19,7 +19,7 @@ import { TableMap } from "./support-backup-scope";
  * is never exported (restore rescopes user_id) and currencies are restored by
  * code, not by id.
  */
-interface RefRule {
+export interface RefRule {
   column: string;
   refTable: string;
   onMissing: "null" | "dropRow";
@@ -300,30 +300,39 @@ const REFS: Record<string, RefRule[]> = {
  */
 export const REFS_FOR_TEST: ReadonlyMap<
   string,
-  ReadonlyArray<{ column: string; refTable: string }>
-> = new Map(
-  Object.entries(REFS).map(([table, rules]) => [
-    table,
-    rules.map((r) => ({ column: r.column, refTable: r.refTable })),
-  ]),
-);
+  ReadonlyArray<RefRule>
+> = new Map(Object.entries(REFS).map(([table, rules]) => [table, [...rules]]));
+
+/**
+ * Passes the reference scrub is allowed before it declares failure.
+ *
+ * Dropping a row can orphan its own dependents, so the scrub iterates. The
+ * dependency graph between exported tables is a few levels deep, so this is
+ * generous; it is a runaway guard, not a tuning knob.
+ */
+export const MAX_SCRUB_PASSES = 10;
 
 const str = (value: unknown): string | null =>
   typeof value === "string" ? value : null;
 
 /**
- * Repairs every dangling reference in the (possibly trimmed) table map.
- * Iterates to a fixed point because dropping a row can orphan its own
- * dependents (e.g. dropping a transfer split orphans its split-tag rows);
- * the dependency graph is shallow, so this converges in a few passes.
+ * One dangling-reference fixed-point computation, parameterised by the rule map
+ * and the pass bound.
  *
- * Also scopes the id arrays that live outside FK constraints:
- * `monte_carlo_scenarios.account_ids` is filtered to accounts present in the
- * file (a plain UUID[] with no FK -- stale entries would leak the user's real
- * account ids un-remapped), and `custom_reports.filters` id arrays are
- * filtered for the same reason (the JSONB rule keeps them otherwise).
+ * Split out of `scrubDanglingRefs` so the bound is reachable from a test: with
+ * the real `REFS` the graph is four levels deep and no input can drive the loop
+ * to ten passes, which is exactly the state in which a silent `break` looks
+ * correct forever. The rule that matters here is not "ten is enough" but
+ * "running out of passes is an error", and that can only be asserted against a
+ * map deep enough to run out.
+ *
+ * @throws when the loop exhausts `maxPasses` with work still outstanding.
  */
-export function scrubDanglingRefs(tables: TableMap): TableMap {
+export function scrubToFixedPoint(
+  tables: TableMap,
+  refs: Record<string, RefRule[]>,
+  maxPasses: number,
+): TableMap {
   const out: TableMap = { ...tables };
 
   // Present-id sets are cached across passes and only the tables that actually
@@ -344,10 +353,11 @@ export function scrubDanglingRefs(tables: TableMap): TableMap {
     return ids;
   };
 
-  for (let pass = 0; pass < 10; pass++) {
+  let converged = false;
+  for (let pass = 0; pass < maxPasses; pass++) {
     const changedTables = new Set<string>();
 
-    for (const [table, rules] of Object.entries(REFS)) {
+    for (const [table, rules] of Object.entries(refs)) {
       const rows = out[table];
       if (!rows || rows.length === 0) continue;
 
@@ -380,8 +390,43 @@ export function scrubDanglingRefs(tables: TableMap): TableMap {
       }
     }
 
-    if (changedTables.size === 0) break;
+    if (changedTables.size === 0) {
+      converged = true;
+      break;
+    }
   }
+
+  // Reaching the bound means the last pass still had work to do, so references
+  // may still dangle. Silence here would be the worst outcome available: the
+  // support backup is a *restorable* artifact, and shipping one that is known
+  // not to be referentially closed hands the recipient a file that fails on
+  // insert with no hint that the export knew. The dependency graph is shallow
+  // (a handful of levels), so this is unreachable today -- which is exactly why
+  // it must announce itself rather than degrade quietly if that ever changes.
+  if (!converged) {
+    throw new Error(
+      `Support backup reference scrub did not reach a fixed point in ${maxPasses} passes; ` +
+        "the export would contain dangling references and could not be restored.",
+    );
+  }
+
+  return out;
+}
+
+/**
+ * Repairs every dangling reference in the (possibly trimmed) table map.
+ * Iterates to a fixed point because dropping a row can orphan its own
+ * dependents (e.g. dropping a transfer split orphans its split-tag rows);
+ * the dependency graph is shallow, so this converges in a few passes.
+ *
+ * Also scopes the id arrays that live outside FK constraints:
+ * `monte_carlo_scenarios.account_ids` is filtered to accounts present in the
+ * file (a plain UUID[] with no FK -- stale entries would leak the user's real
+ * account ids un-remapped), and `custom_reports.filters` id arrays are
+ * filtered for the same reason (the JSONB rule keeps them otherwise).
+ */
+export function scrubDanglingRefs(tables: TableMap): TableMap {
+  const out = scrubToFixedPoint(tables, REFS, MAX_SCRUB_PASSES);
 
   const accountIds = new Set(
     (out.accounts ?? []).map((a) => str(a.id)).filter(Boolean),
@@ -469,6 +514,20 @@ function withSuffix(base: string, n: number, maxLen?: number): string {
   return base.slice(0, Math.max(0, maxLen - suffix.length)) + suffix;
 }
 
+/**
+ * Joins the `groupBy` column values into one map key. A character that cannot
+ * occur in any of them, so ("a", "b") and ("a b", "") stay distinct groups --
+ * a printable separator would fold two different unique-key groups into one and
+ * suffix a name that did not actually collide.
+ *
+ * Written as an escape, not as the byte itself: the literal control character
+ * used to sit in this file, which made `grep`, `file` and every other text tool
+ * classify the source as binary and skip it -- so a source-scanning guard test
+ * silently stopped covering it. `src/test/source-bytes.spec.ts` now fails on any
+ * source file carrying a raw control byte.
+ */
+const GROUP_SEPARATOR = "\u0000";
+
 function dedupeColumn(
   rows: Record<string, unknown>[],
   key: UniqueTextKey,
@@ -479,7 +538,9 @@ function dedupeColumn(
   return rows.map((row) => {
     const value = row[key.column];
     if (typeof value !== "string") return row;
-    const group = (key.groupBy ?? []).map((c) => String(row[c] ?? "")).join(" ");
+    const group = (key.groupBy ?? [])
+      .map((c) => String(row[c] ?? ""))
+      .join(GROUP_SEPARATOR);
     let seen = seenByGroup.get(group);
     if (!seen) {
       seen = new Set();
