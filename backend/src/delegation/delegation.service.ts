@@ -12,10 +12,12 @@ import {
   In,
   Not,
   DataSource,
+  EntityManager,
   EntityTarget,
   ObjectLiteral,
 } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
+import { withElevatedDb } from "../common/db/elevated-db";
 import * as bcrypt from "bcryptjs";
 import * as crypto from "crypto";
 
@@ -870,15 +872,73 @@ export class DelegationService {
    * account or a delegate of another owner). Used by the Add-delegate UI
    * to skip the password / invite controls -- such a user keeps their own
    * credentials and is only granted the additional shared access.
+   *
+   * This is an identity-directory lookup, and `users_self` reaches only the
+   * caller's own row -- deliberately, and its migration comment says an
+   * arbitrary cross-user lookup needs elevated access. Run in the owner's
+   * ordinary scope it answered "no" for every existing user under enforcement,
+   * which made the Add-delegate flow offer to set a password for an account that
+   * already had one (P2-007).
+   *
+   * Only a boolean leaves this method: the elevated read is one existence probe
+   * on an address the caller typed, and the caller learns nothing they did not
+   * already supply.
    */
   async delegateEmailExists(email: string): Promise<boolean> {
     const normalized = email.toLowerCase().trim();
-    const user = await this.scoped(User, (repo) =>
-      repo.findOne({
-        where: { email: normalized },
-      }),
+    return withScopedDb(this.dataSource, (manager) =>
+      withElevatedDb(
+        manager,
+        "identity-directory existence probe for an email the owner typed",
+        async (elevated) =>
+          (await elevated.getRepository(User).count({
+            where: { email: normalized },
+          })) > 0,
+      ),
     );
-    return !!user;
+  }
+
+  /**
+   * Whether the owner adding `delegateUser` is allowed to set that user's
+   * password or send them an invite.
+   *
+   * No, for a user that is a full account in its own right (owns data, owns
+   * delegations, is an admin, or authenticates via SSO): rotating their
+   * credentials would be account takeover. Yes, for a brand-new row and for a
+   * "pure delegate" -- one that exists solely as some other owner's delegate.
+   * A self-registered user who has not created any accounts yet is still a full
+   * account: their login is theirs, not ours to rotate. Without that distinction
+   * the front end's email-lookup race (Add clicked before the 400ms debounced
+   * lookup finishes) lets a stray `dto.password` overwrite a real user's password.
+   *
+   * Takes the manager it must run under, because every count below is on a
+   * per-user policied table: read in the owner's own scope they all return zero,
+   * which answers "yes, go ahead" for exactly the accounts this protects. A
+   * check that cannot see the rows it is about is not a check, so the caller
+   * supplies an elevated manager.
+   */
+  private async ownerMayManageCredentials(
+    manager: EntityManager,
+    delegateUser: User,
+  ): Promise<boolean> {
+    if (delegateUser.oidcSubject || delegateUser.role === "admin") {
+      return false;
+    }
+    const [ownsAccounts, ownsDelegations, alreadyDelegate] = await Promise.all([
+      manager.count(Account, { where: { userId: delegateUser.id } }),
+      manager.count(AccountDelegate, {
+        where: { ownerUserId: delegateUser.id },
+      }),
+      manager.count(AccountDelegate, {
+        where: { delegateUserId: delegateUser.id },
+      }),
+    ]);
+    const isPureDelegateRow = alreadyDelegate > 0;
+    return !(
+      ownsAccounts > 0 ||
+      ownsDelegations > 0 ||
+      (!isPureDelegateRow && !!delegateUser.passwordHash)
+    );
   }
 
   async createDelegate(ownerUserId: string, dto: CreateDelegateDto) {
@@ -906,7 +966,43 @@ export class DelegationService {
     let inviteToken: string | undefined;
 
     return withScopedDb(this.dataSource, async (manager) => {
-      let delegateUser = await manager.findOne(User, { where: { email } });
+      // The identity-directory portion. `users_self` reaches only the caller's
+      // own row, and the counts below are on tables policied per user, so in the
+      // owner's ordinary scope this whole block was blind under enforcement
+      // (P2-007): the lookup found no existing user, the counts all returned
+      // zero, and the INSERT of a delegate-shaped `users` row was rejected by
+      // `users_self`'s WITH CHECK. Delegation creation was unusable.
+      //
+      // Worse than unusable, if `users_self` were ever widened: with the counts
+      // reading zero, `mayManageCredentials` stays true for a real full account,
+      // and the owner would be allowed to set that account's password. So the
+      // counts are elevated together with the lookup -- they are the checks that
+      // decide whether touching another user's credentials is permitted, and a
+      // check that cannot see the rows it is about is not a check.
+      //
+      // Elevated inside THIS transaction rather than a separate system one: the
+      // identity row, the `account_delegates` row and the grants must commit or
+      // roll back together, or a failure strands a user row with no delegation
+      // (or a delegation pointing at no user).
+      const directory = await withElevatedDb(
+        manager,
+        "resolve or create the identity row of a delegate an owner is adding",
+        async (elevated) => {
+          const existing = await elevated.findOne(User, { where: { email } });
+          if (!existing) {
+            return { user: null, mayManageCredentials: true };
+          }
+          return {
+            user: existing,
+            mayManageCredentials: await this.ownerMayManageCredentials(
+              elevated,
+              existing,
+            ),
+          };
+        },
+      );
+
+      let delegateUser = directory.user;
       const isNew = !delegateUser;
 
       if (delegateUser && delegateUser.id === ownerUserId) {
@@ -918,48 +1014,7 @@ export class DelegationService {
         );
       }
 
-      // An existing user that is a full account in its own right (owns data,
-      // owns delegations, is an admin, or is SSO) must NEVER have its
-      // credentials touched here -- that would be account takeover. They log
-      // in with their own credentials; the owner only links the delegation.
-      // New users and pure-delegate identities are owner-managed, so the
-      // owner may set their password / send an invite.
-      //
-      // "Pure delegate" means the row already exists solely as some other
-      // owner's delegate (a record in account_delegates.delegate_user_id).
-      // A user that self-registered (passwordHash exists, not in any
-      // delegate row) is a full account even if they have not created any
-      // accounts yet -- their login is theirs, not ours to rotate. Without
-      // this check the front end's email-lookup race (Add clicked before
-      // the 400ms debounced lookup finishes) lets a stray dto.password
-      // overwrite a real user's password.
-      let mayManageCredentials = true;
-      if (delegateUser) {
-        if (delegateUser.oidcSubject || delegateUser.role === "admin") {
-          mayManageCredentials = false;
-        } else {
-          const [ownsAccounts, ownsDelegations, alreadyDelegate] =
-            await Promise.all([
-              manager.count(Account, {
-                where: { userId: delegateUser.id },
-              }),
-              manager.count(AccountDelegate, {
-                where: { ownerUserId: delegateUser.id },
-              }),
-              manager.count(AccountDelegate, {
-                where: { delegateUserId: delegateUser.id },
-              }),
-            ]);
-          const isPureDelegateRow = alreadyDelegate > 0;
-          if (
-            ownsAccounts > 0 ||
-            ownsDelegations > 0 ||
-            (!isPureDelegateRow && !!delegateUser.passwordHash)
-          ) {
-            mayManageCredentials = false;
-          }
-        }
-      }
+      const mayManageCredentials = directory.mayManageCredentials;
 
       if (!delegateUser) {
         delegateUser = manager.create(User, {
@@ -1021,7 +1076,15 @@ export class DelegationService {
         }
       }
 
-      delegateUser = await manager.save(delegateUser);
+      // Writing another user's `users` row -- inserting a new delegate identity,
+      // or setting the password/invite token of an owner-managed one -- is the
+      // other half of the directory operation, and `users_self`'s WITH CHECK
+      // refuses it in the owner's own scope.
+      delegateUser = await withElevatedDb(
+        manager,
+        "persist the identity row of a delegate an owner is adding",
+        (elevated) => elevated.save(delegateUser as User),
+      );
 
       let delegation = await manager.findOne(AccountDelegate, {
         where: { ownerUserId, delegateUserId: delegateUser.id },
@@ -1114,33 +1177,57 @@ export class DelegationService {
       // this delegation are immediately invalidated.
       await manager.delete(AccountDelegate, { id: delegationId });
 
-      // Entirely remove the delegate's login unless it has another reason to
-      // exist: a delegation elsewhere, its own data, it owns a delegation,
-      // it is an admin, or it has been claimed as a full account in its
-      // own right (isDelegateOnly=false). Without the isDelegateOnly
-      // check a self-registered user who hasn't created any accounts yet
-      // would be silently deleted on revoke.
-      const [otherDelegations, ownsAccounts, ownsDelegations] =
-        await Promise.all([
-          manager.count(AccountDelegate, { where: { delegateUserId } }),
-          manager.count(Account, { where: { userId: delegateUserId } }),
-          manager.count(AccountDelegate, {
-            where: { ownerUserId: delegateUserId },
-          }),
-        ]);
-      const delegateUser = await manager.findOne(User, {
-        where: { id: delegateUserId },
-      });
+      // Then decide whether the delegate's login still has a reason to exist.
+      //
+      // Every input to that decision is another user's row, on a table policied
+      // per user, so in the owner's own scope all three counts return zero and
+      // the `users` lookup returns nothing (P2-007). The consequences point in
+      // both directions and neither is acceptable: the `isDelegateOnly !== false`
+      // guard reads `undefined !== false`, which is TRUE, so a missing row voted
+      // *for* deletion -- and a self-registered user with accounts of their own
+      // would be deleted on revoke, its data cascading away with it -- while the
+      // DELETE itself was refused by `users_self`, leaving a stale delegate
+      // identity and no error. Which of the two you got depended on nothing the
+      // code could see.
+      const stillNeeded = await withElevatedDb(
+        manager,
+        "decide whether a revoked delegate's identity row still has a reason to exist",
+        async (elevated) => {
+          const [otherDelegations, ownsAccounts, ownsDelegations] =
+            await Promise.all([
+              elevated.count(AccountDelegate, { where: { delegateUserId } }),
+              elevated.count(Account, { where: { userId: delegateUserId } }),
+              elevated.count(AccountDelegate, {
+                where: { ownerUserId: delegateUserId },
+              }),
+            ]);
+          const delegateUser = await elevated.findOne(User, {
+            where: { id: delegateUserId },
+          });
 
-      if (
-        otherDelegations === 0 &&
-        ownsAccounts === 0 &&
-        ownsDelegations === 0 &&
-        delegateUser?.role !== "admin" &&
-        delegateUser?.isDelegateOnly !== false
-      ) {
+          // A row we cannot find is not a row we may delete. "No such user" and
+          // "an owner-managed delegate identity" are different answers, and
+          // folding them together is what made the guard above vote for deletion
+          // on a failed lookup.
+          if (!delegateUser) return true;
+
+          return (
+            otherDelegations > 0 ||
+            ownsAccounts > 0 ||
+            ownsDelegations > 0 ||
+            delegateUser.role === "admin" ||
+            delegateUser.isDelegateOnly === false
+          );
+        },
+      );
+
+      if (!stillNeeded) {
         // FK ON DELETE CASCADE cleans preferences, tokens, trusted devices.
-        await manager.delete(User, { id: delegateUserId });
+        await withElevatedDb(
+          manager,
+          "remove the identity row of an owner-managed delegate on revoke",
+          (elevated) => elevated.delete(User, { id: delegateUserId }),
+        );
       }
     });
   }

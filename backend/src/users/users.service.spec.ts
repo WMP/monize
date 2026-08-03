@@ -894,6 +894,42 @@ describe("UsersService", () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
+    it("counts administrators with the tenant filter lifted", async () => {
+      // "How many administrators exist" is a question about every user, and
+      // `users_self` reaches only the caller's own row -- so counted in the
+      // caller's own scope the answer is always 1 (themselves) and this guard
+      // refused every admin self-deletion, including the ones it exists to
+      // allow (P2-007). Assert the count runs inside an elevated window.
+      const originalMode = process.env.RLS_MODE;
+      process.env.RLS_MODE = "enforce";
+      try {
+        const hashedPassword = await bcrypt.hash("CorrectPass123!", 10);
+        usersRepository.findOne.mockResolvedValue({
+          ...mockUser,
+          role: "admin",
+          passwordHash: hashedPassword,
+        });
+        const order: string[] = [];
+        usersRepository.count.mockImplementation(() => {
+          order.push("count");
+          return Promise.resolve(2);
+        });
+        mockQueryRunner.query.mockImplementation((sql: string) => {
+          if (sql.includes("app.bypass_rls")) {
+            order.push(sql.includes("'on'") ? "on" : "off");
+          }
+          return Promise.resolve([]);
+        });
+
+        await service.deleteAccount("user-1", { password: "CorrectPass123!" });
+
+        expect(order.slice(0, 3)).toEqual(["on", "count", "off"]);
+      } finally {
+        if (originalMode === undefined) delete process.env.RLS_MODE;
+        else process.env.RLS_MODE = originalMode;
+      }
+    });
+
     it("allows admin self-deletion when other admins exist", async () => {
       const hashedPassword = await bcrypt.hash("CorrectPass123!", 10);
       usersRepository.findOne.mockResolvedValue({

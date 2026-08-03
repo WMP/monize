@@ -36,6 +36,7 @@ import { CurrenciesService } from "../currencies/currencies.service";
 import { BackupEncryptionService } from "../backup/backup-encryption.service";
 import { DemoModeService } from "../common/demo-mode.service";
 import { toUserProfile } from "./user-profile";
+import { withElevatedDb } from "../common/db/elevated-db";
 
 @Injectable()
 export class UsersService {
@@ -424,10 +425,13 @@ export class UsersService {
     // same instant each counted two here and each proceeded, and the instance
     // ended up with none.
     if (user.role === "admin") {
-      const adminCount = await this.scoped(User, (repo) =>
-        repo.count({
-          where: { role: "admin" },
-        }),
+      const adminCount = await withScopedDb(this.dataSource, (manager) =>
+        withElevatedDb(
+          manager,
+          "count administrators before allowing an admin to delete their own account",
+          (elevated) =>
+            elevated.getRepository(User).count({ where: { role: "admin" } }),
+        ),
       );
       if (adminCount <= 1) {
         throw new ForbiddenException(

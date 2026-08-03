@@ -44,7 +44,7 @@ describe("DelegationService", () => {
       count: jest.fn().mockResolvedValue(0),
     };
     grantsRepo = { findOne: jest.fn(), find: jest.fn(), count: jest.fn() };
-    usersRepo = { findOne: jest.fn(), save: jest.fn() };
+    usersRepo = { findOne: jest.fn(), count: jest.fn(), save: jest.fn() };
     prefsRepo = { findOne: jest.fn() };
     refreshRepo = { update: jest.fn() };
     accountsRepo = { find: jest.fn(), exists: jest.fn(), count: jest.fn() };
@@ -1102,6 +1102,32 @@ describe("DelegationService", () => {
       });
     });
 
+    it("keeps the identity row when the lookup finds no user", async () => {
+      // P2-007. The old guard read `delegateUser?.isDelegateOnly !== false`, and
+      // `undefined !== false` is TRUE -- so a lookup that returned nothing voted
+      // FOR deleting the row. Under enforcement the owner's scope cannot see
+      // another user's `users` row at all, which made that the normal case.
+      // "No such user" is not "an owner-managed delegate identity".
+      delegatesRepo.findOne.mockResolvedValue({
+        id: "g1",
+        ownerUserId: "o1",
+        delegateUserId: "d1",
+      });
+      const manager: any = {
+        delete: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
+        findOne: jest.fn().mockResolvedValue(null),
+      };
+      installTransactionMock(manager);
+
+      await service.revokeDelegate("o1", "g1");
+
+      expect(manager.delete).toHaveBeenCalledTimes(1);
+      expect(manager.delete).toHaveBeenCalledWith(expect.anything(), {
+        id: "g1",
+      });
+    });
+
     it("keeps a self-registered / claimed user even with no accounts of their own", async () => {
       // A user that has gone through /register (either as a fresh
       // sign-up or by claiming a delegate row) is a full account, even
@@ -1353,19 +1379,172 @@ describe("DelegationService", () => {
   });
 
   describe("delegateEmailExists", () => {
+    // The probe is an identity-directory lookup: `users_self` reaches only the
+    // caller's own row, so this counts under withElevatedDb (P2-007). Only a
+    // boolean leaves the method.
     it("is true when a user with the (normalized) email exists", async () => {
-      usersRepo.findOne.mockResolvedValue({ id: "u1" });
+      usersRepo.count.mockResolvedValue(1);
       await expect(service.delegateEmailExists("  Foo@Bar.Com ")).resolves.toBe(
         true,
       );
-      expect(usersRepo.findOne).toHaveBeenCalledWith({
+      expect(usersRepo.count).toHaveBeenCalledWith({
         where: { email: "foo@bar.com" },
       });
     });
 
     it("is false when no user has that email", async () => {
-      usersRepo.findOne.mockResolvedValue(null);
+      usersRepo.count.mockResolvedValue(0);
       await expect(service.delegateEmailExists("x@y.z")).resolves.toBe(false);
+    });
+  });
+
+  /**
+   * P2-007. Every input to the owner-managed-delegate decisions is another
+   * user's row: the `users` lookup that `users_self` restricts to the caller's
+   * own id, and counts on `accounts` / `account_delegates`, each policied per
+   * user. Read in the owner's ordinary scope the lookup found nothing, the counts
+   * all returned zero, and the `users` INSERT was refused by WITH CHECK -- so
+   * delegation creation was unusable under enforcement, and had `users_self` ever
+   * been widened, the zero counts would have answered "yes, the owner may set
+   * this account's password" for exactly the full accounts that guard protects.
+   *
+   * These specs assert the elevation is actually emitted, at RLS_MODE=enforce
+   * where the GUC is real. The rest of the suite runs at the default `off`, where
+   * withElevatedDb is a pass-through.
+   */
+  describe("cross-user identity access under enforcement", () => {
+    const originalMode = process.env.RLS_MODE;
+
+    beforeEach(() => {
+      process.env.RLS_MODE = "enforce";
+    });
+
+    afterEach(() => {
+      if (originalMode === undefined) delete process.env.RLS_MODE;
+      else process.env.RLS_MODE = originalMode;
+    });
+
+    const BYPASS_ON = "SELECT set_config('app.bypass_rls', 'on', true)";
+    const BYPASS_OFF = "SELECT set_config('app.bypass_rls', '', true)";
+
+    it("elevates the identity lookup and the identity write in createDelegate", async () => {
+      usersRepo.findOne.mockResolvedValue({ id: "o1", email: "own@x.y" });
+      const manager: any = {
+        findOne: jest.fn().mockResolvedValue(null),
+        count: jest.fn().mockResolvedValue(0),
+        create: jest.fn((_e: any, v: any) => v),
+        save: jest.fn((v: any) => ({ id: "d-new", ...v })),
+        query: jest.fn().mockResolvedValue([]),
+      };
+      installTransactionMock(manager);
+
+      await service.createDelegate("o1", { email: "new@x.y" } as any);
+
+      const emitted = manager.query.mock.calls.map((c: any[]) => c[0]);
+      // Two windows: resolve the directory, then persist the identity row. Each
+      // one closes again -- the rest of the transaction (the delegation row and
+      // its grants) must run under the owner's own identity.
+      expect(emitted).toEqual([BYPASS_ON, BYPASS_OFF, BYPASS_ON, BYPASS_OFF]);
+    });
+
+    it("elevates the whole credential-management decision, not just the lookup", async () => {
+      // The counts decide whether the owner may set this user's password. A
+      // check that cannot see the rows it is about is not a check, so they run
+      // inside the same window as the lookup that found the user.
+      usersRepo.findOne.mockResolvedValue({ id: "o1", email: "own@x.y" });
+      const existing = {
+        id: "d1",
+        email: "new@x.y",
+        oidcSubject: null,
+        role: "user",
+        passwordHash: "their-own-hash",
+      };
+      const order: string[] = [];
+      const manager: any = {
+        findOne: jest.fn(async (_e: any, opts: any) => {
+          order.push("findOne");
+          return opts?.where?.email ? existing : null;
+        }),
+        count: jest.fn(async () => {
+          order.push("count");
+          return 0;
+        }),
+        create: jest.fn((_e: any, v: any) => v),
+        save: jest.fn((v: any) => v),
+        query: jest.fn(async (sql: string) => {
+          order.push(sql === BYPASS_ON ? "on" : "off");
+          return [];
+        }),
+      };
+      installTransactionMock(manager);
+
+      await service.createDelegate("o1", {
+        email: "new@x.y",
+        password: "StrongPass1!xyz",
+      } as any);
+
+      const firstOff = order.indexOf("off");
+      // Every count landed inside the first elevated window.
+      expect(
+        order.slice(0, firstOff).filter((o) => o === "count"),
+      ).toHaveLength(3);
+      // ...and the decision they feed still protects the account: a
+      // self-registered user with their own password keeps it.
+      expect(existing.passwordHash).toBe("their-own-hash");
+    });
+
+    it("elevates the cleanup decision in revokeDelegate", async () => {
+      delegatesRepo.findOne.mockResolvedValue({
+        id: "g1",
+        ownerUserId: "o1",
+        delegateUserId: "d1",
+      });
+      const manager: any = {
+        delete: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
+        findOne: jest.fn().mockResolvedValue({
+          id: "d1",
+          role: "user",
+          isDelegateOnly: true,
+        }),
+        query: jest.fn().mockResolvedValue([]),
+      };
+      installTransactionMock(manager);
+
+      await service.revokeDelegate("o1", "g1");
+
+      const emitted = manager.query.mock.calls.map((c: any[]) => c[0]);
+      // Decide, then delete -- two windows, both closed.
+      expect(emitted).toEqual([BYPASS_ON, BYPASS_OFF, BYPASS_ON, BYPASS_OFF]);
+      expect(manager.delete).toHaveBeenCalledWith(expect.anything(), {
+        id: "d1",
+      });
+    });
+
+    it("does not elevate the delegation row or its grants", async () => {
+      // The delegation and grant writes are the owner's own rows and must stay
+      // under the owner's identity: an elevated window that swallowed them would
+      // stop the database from checking the one thing it can check here.
+      usersRepo.findOne.mockResolvedValue({ id: "o1", email: "own@x.y" });
+      const saved: string[] = [];
+      const manager: any = {
+        findOne: jest.fn().mockResolvedValue(null),
+        count: jest.fn().mockResolvedValue(0),
+        create: jest.fn((_e: any, v: any) => v),
+        save: jest.fn((v: any) => {
+          saved.push("ownerUserId" in v ? "delegation" : "identity");
+          return { id: "d-new", ...v };
+        }),
+        query: jest.fn().mockResolvedValue([]),
+      };
+      installTransactionMock(manager);
+
+      await service.createDelegate("o1", { email: "new@x.y" } as any);
+
+      // The delegation save happened, and after the last window closed.
+      expect(saved).toContain("delegation");
+      const emitted = manager.query.mock.calls.map((c: any[]) => c[0]);
+      expect(emitted[emitted.length - 1]).toBe(BYPASS_OFF);
     });
   });
 
