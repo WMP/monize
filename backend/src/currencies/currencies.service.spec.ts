@@ -563,6 +563,9 @@ describe("CurrenciesService", () => {
   });
 
   describe("remove()", () => {
+    const ownCurrency = { ...mockCurrency, createdByUserId: userId };
+    const othersCurrency = { ...mockCurrency, createdByUserId: "user-2" };
+
     it("removes preference row for a currency not in use", async () => {
       mockCurrencyRepo.findOne!.mockResolvedValue(mockCurrency);
       mockDataSource.query.mockResolvedValue([{ inUse: false }]);
@@ -585,24 +588,17 @@ describe("CurrenciesService", () => {
       );
     });
 
-    it("deletes non-system currency if no other users reference it", async () => {
-      const userCurrency = {
-        ...mockCurrency,
-        createdByUserId: userId,
-      };
-      mockCurrencyRepo.findOne!.mockResolvedValue(userCurrency);
-      // First query: isInUse returns false
-      // Second query: isInUseGlobally returns false
+    it("deletes the creator's own currency when nobody references it", async () => {
+      mockCurrencyRepo.findOne!.mockResolvedValue(ownCurrency);
       mockDataSource.query
-        .mockResolvedValueOnce([{ inUse: false }])
-        .mockResolvedValueOnce([{ inUse: false }]);
+        .mockResolvedValueOnce([{ inUse: false }]) // this user's own usage
+        .mockResolvedValueOnce([{ inUse: false }]); // every tenant's references
       mockPrefRepo.delete!.mockResolvedValue(undefined);
-      mockPrefRepo.count!.mockResolvedValue(0);
       mockCurrencyRepo.remove!.mockResolvedValue(undefined);
 
       await service.remove(userId, "CAD");
 
-      expect(mockCurrencyRepo.remove).toHaveBeenCalledWith(userCurrency);
+      expect(mockCurrencyRepo.remove).toHaveBeenCalledWith(ownCurrency);
     });
 
     it("does not delete system currency row even when preference is removed", async () => {
@@ -619,15 +615,12 @@ describe("CurrenciesService", () => {
       expect(mockCurrencyRepo.remove).not.toHaveBeenCalled();
     });
 
-    it("keeps non-system currency if other users still reference it", async () => {
-      const userCurrency = {
-        ...mockCurrency,
-        createdByUserId: userId,
-      };
-      mockCurrencyRepo.findOne!.mockResolvedValue(userCurrency);
-      mockDataSource.query.mockResolvedValue([{ inUse: false }]);
+    it("keeps the shared row when any tenant still references it", async () => {
+      mockCurrencyRepo.findOne!.mockResolvedValue(ownCurrency);
+      mockDataSource.query
+        .mockResolvedValueOnce([{ inUse: false }])
+        .mockResolvedValueOnce([{ inUse: true }]);
       mockPrefRepo.delete!.mockResolvedValue(undefined);
-      mockPrefRepo.count!.mockResolvedValue(2);
 
       await service.remove(userId, "CAD");
 
@@ -635,23 +628,67 @@ describe("CurrenciesService", () => {
       expect(mockCurrencyRepo.remove).not.toHaveBeenCalled();
     });
 
-    it("keeps non-system currency if globally in use despite no preferences", async () => {
-      const userCurrency = {
-        ...mockCurrency,
-        createdByUserId: userId,
-      };
-      mockCurrencyRepo.findOne!.mockResolvedValue(userCurrency);
-      // First query: isInUse returns false
-      // Second query: isInUseGlobally returns true
-      mockDataSource.query
-        .mockResolvedValueOnce([{ inUse: false }])
-        .mockResolvedValueOnce([{ inUse: true }]);
+    // P2-009. Two distinct defects lived here: no authorization on the shared
+    // row, and a "global" reference count run in the caller's own RLS scope.
+    it("refuses to delete a currency somebody else created", async () => {
+      mockCurrencyRepo.findOne!.mockResolvedValue(othersCurrency);
+      mockDataSource.query.mockResolvedValue([{ inUse: false }]);
       mockPrefRepo.delete!.mockResolvedValue(undefined);
-      mockPrefRepo.count!.mockResolvedValue(0);
 
       await service.remove(userId, "CAD");
 
+      // The caller's own preference goes -- that is all they asked for.
+      expect(mockPrefRepo.delete).toHaveBeenCalledWith({
+        userId,
+        currencyCode: "CAD",
+      });
       expect(mockCurrencyRepo.remove).not.toHaveBeenCalled();
+    });
+
+    it("does not even ask about global references for a currency it may not delete", async () => {
+      // No elevation for an operation that cannot proceed: the narrower the
+      // bypass window, the less there is to get wrong.
+      mockCurrencyRepo.findOne!.mockResolvedValue(othersCurrency);
+      mockDataSource.query.mockResolvedValue([{ inUse: false }]);
+      mockPrefRepo.delete!.mockResolvedValue(undefined);
+
+      await service.remove(userId, "CAD");
+
+      expect(mockDataSource.query).toHaveBeenCalledTimes(1);
+    });
+
+    it("counts other tenants' preference rows as a blocking reference", async () => {
+      // user_currency_preferences is the table the FK cascades into, so another
+      // tenant's preference row is exactly the reference that must block the
+      // delete -- previously it was counted through the caller's RLS scope,
+      // which cannot see it, and the cascade then deleted it.
+      mockCurrencyRepo.findOne!.mockResolvedValue(ownCurrency);
+      mockDataSource.query.mockResolvedValue([{ inUse: false }]);
+      mockPrefRepo.delete!.mockResolvedValue(undefined);
+      mockCurrencyRepo.remove!.mockResolvedValue(undefined);
+
+      await service.remove(userId, "CAD");
+
+      const globalProbe = mockDataSource.query.mock.calls[1][0] as string;
+      expect(globalProbe).toContain("FROM user_currency_preferences");
+      // ...and without a user_id predicate, which is what made it a subtotal.
+      expect(globalProbe).not.toContain("user_id");
+      expect(mockDataSource.query.mock.calls[1][1]).toEqual(["CAD"]);
+    });
+
+    it("asks about this user's own usage with a user predicate", async () => {
+      // The negative control for the assertion above: the per-user check must
+      // still be per-user, or a code another tenant uses would block this one.
+      mockCurrencyRepo.findOne!.mockResolvedValue(ownCurrency);
+      mockDataSource.query.mockResolvedValue([{ inUse: false }]);
+      mockPrefRepo.delete!.mockResolvedValue(undefined);
+      mockCurrencyRepo.remove!.mockResolvedValue(undefined);
+
+      await service.remove(userId, "CAD");
+
+      const ownProbe = mockDataSource.query.mock.calls[0][0] as string;
+      expect(ownProbe).toContain("user_id = $2");
+      expect(mockDataSource.query.mock.calls[0][1]).toEqual(["CAD", userId]);
     });
 
     it("uppercases code before processing", async () => {

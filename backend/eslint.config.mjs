@@ -68,6 +68,30 @@ const WITH_CONTEXT_ALLOWLIST = [
 ];
 
 /**
+ * Files allowed to import `common/db/elevated-db`.
+ *
+ * `withElevatedDb` turns `app.bypass_rls` on inside the caller's transaction, so
+ * everything in its callback is unfiltered. Same rule as the list above: a new
+ * importer is a reviewed decision in the same PR, with the reason recorded at the
+ * call site. Each entry exists because a *correct* operation needs a cross-user
+ * read or write that must be atomic with the caller's work -- see the module
+ * doc-comment for the three shapes.
+ */
+const ELEVATED_DB_ALLOWLIST = [
+  "src/currencies/currencies.service.ts",
+  "src/delegation/delegation.service.ts",
+  "src/users/users.service.ts",
+];
+
+const BAN_ELEVATED_DB = {
+  group: ["**/db/elevated-db", "./elevated-db"],
+  message:
+    "common/db/elevated-db is import-restricted: withElevatedDb turns app.bypass_rls on " +
+    "inside the caller's transaction, so a new importer must be added to " +
+    "ELEVATED_DB_ALLOWLIST in eslint.config.mjs as a reviewed decision.",
+};
+
+/**
  * `no-restricted-imports` entry banning repository injection. Shared by the
  * general block and the allowlist override below -- flat config replaces a
  * rule's whole options object per block, so the override must restate this ban
@@ -127,7 +151,10 @@ export default tseslint.config(
     rules: {
       "no-restricted-imports": [
         "error",
-        { paths: [BAN_INJECT_REPOSITORY], patterns: [BAN_WITH_CONTEXT] },
+        {
+          paths: [BAN_INJECT_REPOSITORY],
+          patterns: [BAN_WITH_CONTEXT, BAN_ELEVATED_DB],
+        },
       ],
       "no-restricted-syntax": [
         "error",
@@ -158,6 +185,33 @@ export default tseslint.config(
   {
     // The allowlisted with-context importers keep every other ban.
     files: WITH_CONTEXT_ALLOWLIST,
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { paths: [BAN_INJECT_REPOSITORY], patterns: [BAN_ELEVATED_DB] },
+      ],
+    },
+  },
+  {
+    // ...and the elevated-db importers keep the with-context ban unless they are
+    // on that list too. Flat config replaces a rule's whole options object per
+    // block and this block comes last, so a file on BOTH lists must not have the
+    // with-context ban restated here -- hence the per-file split below.
+    files: ELEVATED_DB_ALLOWLIST.filter(
+      (f) => !WITH_CONTEXT_ALLOWLIST.includes(f),
+    ),
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { paths: [BAN_INJECT_REPOSITORY], patterns: [BAN_WITH_CONTEXT] },
+      ],
+    },
+  },
+  {
+    // On both lists: neither pattern ban applies, every other ban still does.
+    files: ELEVATED_DB_ALLOWLIST.filter((f) =>
+      WITH_CONTEXT_ALLOWLIST.includes(f),
+    ),
     rules: {
       "no-restricted-imports": ["error", { paths: [BAN_INJECT_REPOSITORY] }],
     },

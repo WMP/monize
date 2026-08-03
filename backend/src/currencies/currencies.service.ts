@@ -10,6 +10,7 @@ import { tr } from "../i18n/translate";
 import { DataSource, EntityManager } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { withSystemContext } from "../common/db/with-context";
+import { withElevatedDb } from "../common/db/elevated-db";
 import { Currency } from "./entities/currency.entity";
 import { UserCurrencyPreference } from "./entities/user-currency-preference.entity";
 import { CreateCurrencyDto } from "./dto/create-currency.dto";
@@ -373,20 +374,76 @@ export class CurrenciesService implements OnApplicationBootstrap {
       currencyCode: upperCode,
     });
 
-    // If non-system currency and no other users reference it, clean up the currency row
-    if (currency.createdByUserId !== null) {
-      const remainingPrefs = await prefRepo.count({
-        where: { currencyCode: upperCode },
-      });
-
-      if (remainingPrefs === 0) {
-        // Also check no global references (accounts, securities, transactions from any user)
-        const globallyInUse = await this.isInUseGlobally(upperCode);
-        if (!globallyInUse) {
-          await manager.getRepository(Currency).remove(currency);
-        }
-      }
+    // Removing the shared `currencies` row is a separate, privileged act from
+    // removing the caller's own preference, and it needs two things the previous
+    // implementation did not have (P2-009):
+    //
+    // 1. Authorization. `currencies` is global reference data with no owner, and
+    //    `created_by_user_id` is attribution -- but attribution is exactly the
+    //    right authority for deletion, and there was no check at all, so any user
+    //    who had merely activated a custom code could delete it out from under
+    //    the person who created it.
+    // 2. A genuinely global reference count. The "remaining preferences" count
+    //    and the account/security/transaction probes ran in the caller's own
+    //    scoped transaction, so under RLS they see only the caller's rows and
+    //    report zero while another tenant is still using the code. The shared row
+    //    then went away, and `user_currency_preferences.currency_code REFERENCES
+    //    currencies(code) ON DELETE CASCADE` deleted that tenant's preference
+    //    with it -- a cross-tenant write decided by a tenant-filtered read.
+    //
+    // Both checks and the DELETE stay in one transaction: a second transaction
+    // for the count lets a concurrent user activate the code in between, and the
+    // FK would then either strand or cascade.
+    if (currency.createdByUserId === null) {
+      // System currency: shared by everyone, never removed by a user request.
+      return;
     }
+    if (currency.createdByUserId !== userId) {
+      // Not ours to retire. The caller's own preference is already gone, which
+      // is the whole of what they asked for from their own point of view.
+      return;
+    }
+
+    const stillReferenced = await withElevatedDb(
+      manager,
+      "count every tenant's references to a shared currency code before deleting it",
+      async (elevated) => this.isReferencedByAnyone(elevated, upperCode),
+    );
+    if (!stillReferenced) {
+      await manager.getRepository(Currency).remove(currency);
+    }
+  }
+
+  /**
+   * Whether ANY user still references `code` -- preferences included.
+   *
+   * Must run elevated: every table below is RLS-policied per user, so in an
+   * ordinary tenant transaction this returns "no" for a code another tenant is
+   * using. The caller supplies the elevated manager so the answer and the DELETE
+   * it authorizes share one transaction.
+   *
+   * `user_currency_preferences` is part of the union, not a separate count: it is
+   * the table the FK cascades into, so a preference row is exactly the reference
+   * that must block the delete.
+   */
+  private async isReferencedByAnyone(
+    manager: EntityManager,
+    code: string,
+  ): Promise<boolean> {
+    const result = await manager.query(
+      `SELECT EXISTS (
+        SELECT 1 FROM user_currency_preferences WHERE currency_code = $1
+        UNION ALL SELECT 1 FROM accounts WHERE currency_code = $1
+        UNION ALL SELECT 1 FROM securities WHERE currency_code = $1
+        UNION ALL SELECT 1 FROM transactions
+          WHERE currency_code = $1 OR original_currency_code = $1
+        UNION ALL SELECT 1 FROM scheduled_transactions
+          WHERE currency_code = $1 OR original_currency_code = $1
+        UNION ALL SELECT 1 FROM user_preferences WHERE default_currency = $1
+      ) AS "inUse"`,
+      [code.toUpperCase()],
+    );
+    return result[0]?.inUse === true;
   }
 
   async isInUse(userId: string, code: string): Promise<boolean> {
@@ -535,24 +592,6 @@ export class CurrenciesService implements OnApplicationBootstrap {
         [userId, code.toUpperCase(), isActive],
       ),
     );
-  }
-
-  private async isInUseGlobally(code: string): Promise<boolean> {
-    const result = await withScopedDb(this.dataSource, (manager) =>
-      manager.query(
-        `SELECT EXISTS (
-        SELECT 1 FROM accounts WHERE currency_code = $1
-        UNION ALL SELECT 1 FROM securities WHERE currency_code = $1
-        UNION ALL SELECT 1 FROM transactions
-          WHERE currency_code = $1 OR original_currency_code = $1
-        UNION ALL SELECT 1 FROM scheduled_transactions
-          WHERE currency_code = $1 OR original_currency_code = $1
-        UNION ALL SELECT 1 FROM user_preferences WHERE default_currency = $1
-      ) AS "inUse"`,
-        [code.toUpperCase()],
-      ),
-    );
-    return result[0]?.inUse === true;
   }
 
   private buildUserCurrencyView(
