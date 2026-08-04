@@ -3356,5 +3356,106 @@ describe("LoanPaymentDetectorService", () => {
       expect(result[0].interestUnmatched).toBeUndefined();
       expect(result[1].interestUnmatched).toBeUndefined();
     });
+
+    /**
+     * REV-20260803-022 (sixth reopen). Loan A has sourceAccountId=bank-1 and
+     * interestCategoryId=cat-int. Loan B also uses sourceAccountId=bank-1 but
+     * its interestCategoryId was changed to cat-other; bank-1 still carries B's
+     * historical cat-int expenses alongside A's. B is excluded from
+     * sameInterestAccounts (wrong current category) and from
+     * sameSourceNoCategoryLoans (non-null current category), so without the
+     * fix otherLoanIds is empty and isAmbiguous returns false, letting A sum
+     * both sets of cat-int expenses as $300.
+     */
+    it("marks every record interestUnmatched when another loan shares the source account but has a different non-null interestCategoryId (REV-20260803-022 sixth reopen)", async () => {
+      const payments = [
+        makePayment("2026-01-05", { amount: 350 }),
+        makePayment("2026-02-05", { amount: 350 }),
+        makePayment("2026-03-05", { amount: 400, interestAmount: 50 }),
+      ];
+
+      // sameInterestAccounts: only loan-1 has category=cat-int; loan-2's
+      // cat-other category excludes it from this query.
+      accountsRepository.find
+        .mockResolvedValueOnce([{ id: "loan-1", sourceAccountId: "bank-1" }])
+        // sameSourceNoCategoryLoans: loan-2 has a non-null category so it is
+        // not returned by the IsNull filter.
+        .mockResolvedValueOnce([])
+        // differentCategorySharedSourceLoans: loan-2 shares bank-1 but has
+        // interestCategoryId=cat-other (different non-null category).
+        .mockResolvedValueOnce([
+          { id: "loan-2", interestCategoryId: "cat-other" },
+        ]);
+
+      // bank-1 has 2 non-transfer cat-int expenses (A's $100 + B's $200).
+      transactionRepository.count.mockResolvedValue(2);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      // Pairing is ambiguous: B's historical cat-int expenses are
+      // indistinguishable from A's by account+category alone.
+      expect(result[0].interestUnmatched).toBe(true);
+      expect(result[0].interestAmount).toBeNull();
+      expect(result[1].interestUnmatched).toBe(true);
+      expect(result[1].interestAmount).toBeNull();
+      // A payment with existing split-based interest is left untouched.
+      expect(result[2].interestAmount).toBe(50);
+      expect(result[2].interestUnmatched).toBeUndefined();
+      // Records are copied, not mutated.
+      expect(payments[0].interestUnmatched).toBeUndefined();
+    });
+
+    /**
+     * Control for the sixth reopen: when the different-category shared-source
+     * loan exists but there are no cat-int expenses on bank-1 in the window,
+     * attribution is not ambiguous and pairing proceeds normally.
+     */
+    it("still pairs interest normally when a different-category shared-source loan exists but has no candidate expenses (REV-20260803-022 sixth reopen control)", async () => {
+      const payments = [makePayment("2026-01-05"), makePayment("2026-02-05")];
+
+      accountsRepository.find
+        .mockResolvedValueOnce([{ id: "loan-1", sourceAccountId: "bank-1" }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          { id: "loan-2", interestCategoryId: "cat-other" },
+        ]);
+
+      // No cat-int expenses on bank-1 in the window -- nothing to confuse.
+      transactionRepository.count.mockResolvedValue(0);
+
+      transactionRepository.find.mockResolvedValueOnce([
+        {
+          transactionDate: "2026-01-05",
+          amount: -100,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: false,
+          status: TransactionStatus.CLEARED,
+        },
+        {
+          transactionDate: "2026-02-05",
+          amount: -200,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: false,
+          status: TransactionStatus.CLEARED,
+        },
+      ]);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      expect(result[0].interestAmount).toBeCloseTo(100, 2);
+      expect(result[1].interestAmount).toBeCloseTo(200, 2);
+      expect(result[0].interestUnmatched).toBeUndefined();
+      expect(result[1].interestUnmatched).toBeUndefined();
+    });
   });
 });
