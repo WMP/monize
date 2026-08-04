@@ -948,7 +948,13 @@ describe("UsersService", () => {
           return Promise.resolve(2);
         });
         mockQueryRunner.query.mockImplementation((sql: string) => {
-          if (sql.includes("app.bypass_rls")) {
+          // `current_setting` is the re-entrancy probe, not a flip: it asks
+          // whether an outer window already opened the bypass, and answering
+          // "not elevated" is what makes this window own the restore.
+          if (sql.includes("current_setting('app.bypass_rls'")) {
+            return Promise.resolve([{ bypass: "" }]);
+          }
+          if (sql.includes("set_config('app.bypass_rls'")) {
             order.push(sql.includes("'on'") ? "on" : "off");
           }
           return Promise.resolve([]);

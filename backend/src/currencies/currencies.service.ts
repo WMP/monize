@@ -354,6 +354,27 @@ export class CurrenciesService implements OnApplicationBootstrap {
     const upperCode = code.toUpperCase();
     const currency = await this.findOne(upperCode);
 
+    // FV-003. Serialize every deletion and every new reference to this code
+    // against each other, before anything is read or written.
+    //
+    // One READ COMMITTED transaction is not enough on its own: the reference
+    // check below and the DELETE it authorizes are two statements, and a
+    // concurrent activation inserting `user_currency_preferences` in between
+    // takes only an FK KEY SHARE lock on this row -- which the check cannot see
+    // and the DELETE then waits for rather than being refused by. The outcomes
+    // were both wrong and both silent: the other tenant's committed preference
+    // cascaded away, or their activation failed with a foreign-key error
+    // depending only on which order the two happened to arrive in.
+    //
+    // FOR UPDATE conflicts with that KEY SHARE lock in both directions, so the
+    // two operations can no longer interleave: an activation already in flight
+    // makes this wait and then *see* its row, and one arriving later waits for
+    // this transaction and is then correctly refused by the FK.
+    await manager.query(
+      "SELECT code FROM currencies WHERE code = $1 FOR UPDATE",
+      [upperCode],
+    );
+
     // Check if in use by this user
     const inUse = await this.isInUse(userId, upperCode);
     if (inUse) {
@@ -425,6 +446,14 @@ export class CurrenciesService implements OnApplicationBootstrap {
    * `user_currency_preferences` is part of the union, not a separate count: it is
    * the table the FK cascades into, so a preference row is exactly the reference
    * that must block the delete.
+   *
+   * The union is every foreign key to `currencies(code)` in the schema, and it has
+   * to stay that way: a reference this query does not ask about is not a reference
+   * the DELETE gets to ignore, it is one the database refuses the DELETE for with
+   * a raw constraint error. `budgets` and `exchange_rates` were missing (FV-003),
+   * and both are `NO ACTION`, so another tenant's budget in this currency turned a
+   * clean "still in use" into a 500. Adding a column that references
+   * `currencies(code)` means adding it here.
    */
   private async isReferencedByAnyone(
     manager: EntityManager,
@@ -440,6 +469,9 @@ export class CurrenciesService implements OnApplicationBootstrap {
         UNION ALL SELECT 1 FROM scheduled_transactions
           WHERE currency_code = $1 OR original_currency_code = $1
         UNION ALL SELECT 1 FROM user_preferences WHERE default_currency = $1
+        UNION ALL SELECT 1 FROM budgets WHERE currency_code = $1
+        UNION ALL SELECT 1 FROM exchange_rates
+          WHERE from_currency = $1 OR to_currency = $1
       ) AS "inUse"`,
       [code.toUpperCase()],
     );
@@ -460,6 +492,7 @@ export class CurrenciesService implements OnApplicationBootstrap {
           WHERE (st.currency_code = $1 OR st.original_currency_code = $1)
             AND st.user_id = $2
         UNION ALL SELECT 1 FROM user_preferences WHERE default_currency = $1 AND user_id = $2
+        UNION ALL SELECT 1 FROM budgets WHERE currency_code = $1 AND user_id = $2
       ) AS "inUse"`,
         [code.toUpperCase(), userId],
       ),

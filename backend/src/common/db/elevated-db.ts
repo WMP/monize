@@ -34,6 +34,10 @@ import { getRlsMode } from "./rls-config";
  * process death; the explicit restore in `finally` is what stops the *rest of
  * the same transaction* from running elevated.
  *
+ * Nesting is safe: only the outermost window restores the GUC, so an elevated
+ * operation may call another one without the inner `finally` quietly returning
+ * its caller to tenant-filtered reads halfway through.
+ *
  * How to use it:
  *  - Wrap the smallest possible unit -- one query, ideally. Everything inside is
  *    unfiltered.
@@ -55,6 +59,8 @@ const lastElevationLog = new Map<string, number>();
 
 export const BYPASS_ON_SQL = "SELECT set_config('app.bypass_rls', 'on', true)";
 export const BYPASS_OFF_SQL = "SELECT set_config('app.bypass_rls', '', true)";
+export const BYPASS_READ_SQL =
+  "SELECT current_setting('app.bypass_rls', true) AS bypass";
 
 export async function withElevatedDb<T>(
   manager: EntityManager,
@@ -69,6 +75,19 @@ export async function withElevatedDb<T>(
     return fn(manager);
   }
 
+  // Re-entrancy. One elevated operation may legitimately call another -- an
+  // owner's delegate listing asks, per delegate, whether the owner may reset
+  // that delegate's password, and both halves need the same cross-user reach.
+  // Only the OUTERMOST window may restore, or the inner one's `finally` turns
+  // the bypass off while its caller is still relying on it, and the rest of the
+  // outer operation silently reverts to tenant-filtered reads: an elevated
+  // sequence that half works is worse than one that never started. The GUC
+  // itself is the authority here rather than a flag threaded through the call,
+  // because the outer window may have been opened by code this call cannot see.
+  if (await alreadyElevated(manager)) {
+    return fn(manager);
+  }
+
   await manager.query(BYPASS_ON_SQL);
   try {
     return await fn(manager);
@@ -77,6 +96,14 @@ export async function withElevatedDb<T>(
     // working in the same transaction, and it must not keep working elevated.
     await manager.query(BYPASS_OFF_SQL);
   }
+}
+
+async function alreadyElevated(manager: EntityManager): Promise<boolean> {
+  const rows = await manager.query(BYPASS_READ_SQL);
+  const row = Array.isArray(rows)
+    ? rows[0]
+    : (rows as { rows?: unknown[] })?.rows?.[0];
+  return (row as { bypass?: string } | undefined)?.bypass === "on";
 }
 
 function auditElevation(reason: string): void {

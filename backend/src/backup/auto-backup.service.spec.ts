@@ -30,6 +30,7 @@ jest.mock("fs", () => {
       stat: jest.fn(),
       writeFile: jest.fn(),
       unlink: jest.fn(),
+      rename: jest.fn(),
       readdir: jest.fn(),
       mkdir: jest.fn(),
     },
@@ -85,6 +86,7 @@ describe("AutoBackupService", () => {
     });
     (fsPromises.writeFile as unknown as jest.Mock).mockResolvedValue(undefined);
     (fsPromises.unlink as unknown as jest.Mock).mockResolvedValue(undefined);
+    (fsPromises.rename as unknown as jest.Mock).mockResolvedValue(undefined);
   }
 
   function setupExportMocks() {
@@ -573,11 +575,11 @@ describe("AutoBackupService", () => {
 
       await service.runManualBackup(userId);
 
-      expect(fsPromises.writeFile).toHaveBeenCalledWith(
+      expect(fsPromises.rename).toHaveBeenCalledWith(
+        expect.anything(),
         expect.stringContaining(
           `${DEFAULT_BACKUP_CONTAINER_DIR}/${userShard}/monize-backup-daily-`,
         ),
-        expect.any(Buffer),
       );
     });
 
@@ -589,13 +591,13 @@ describe("AutoBackupService", () => {
 
       const result = await service.runManualBackup(userId);
 
-      expect(fsPromises.writeFile).toHaveBeenCalledWith(
-        `/backups/${userShard}/${result.filename}`,
-        expect.any(Buffer),
-      );
-      expect(fsPromises.writeFile).not.toHaveBeenCalledWith(
-        `/backups/${result.filename}`,
+      expect(fsPromises.rename).toHaveBeenCalledWith(
         expect.anything(),
+        `/backups/${userShard}/${result.filename}`,
+      );
+      expect(fsPromises.rename).not.toHaveBeenCalledWith(
+        expect.anything(),
+        `/backups/${result.filename}`,
       );
     });
 
@@ -657,13 +659,13 @@ describe("AutoBackupService", () => {
       // Identical filenames -- the name carries only a tier and a date -- so
       // only the folder can tell the two backups apart.
       expect(theirs.filename).toBe(mine.filename);
-      expect(fsPromises.writeFile).toHaveBeenCalledWith(
+      expect(fsPromises.rename).toHaveBeenCalledWith(
+        expect.anything(),
         `/backups/${userShard}/${mine.filename}`,
-        expect.any(Buffer),
       );
-      expect(fsPromises.writeFile).toHaveBeenCalledWith(
+      expect(fsPromises.rename).toHaveBeenCalledWith(
+        expect.anything(),
         `/backups/77/77/${otherUserId}/${theirs.filename}`,
-        expect.any(Buffer),
       );
     });
 
@@ -803,12 +805,42 @@ describe("AutoBackupService", () => {
 
       await service.handleAutoBackupCron();
 
-      expect(fsPromises.writeFile).toHaveBeenCalledWith(
+      expect(fsPromises.rename).toHaveBeenCalledWith(
+        expect.anything(),
         expect.stringContaining(
           `${DEFAULT_BACKUP_CONTAINER_DIR}/${userShard}/monize-backup-daily-`,
         ),
-        expect.any(Buffer),
       );
+    });
+
+    it("gives two writes for the same user and day distinct temp files (FV-004)", async () => {
+      // `.<filename>.partial-<pid>` looked unique and was not: a manual backup and
+      // the scheduled one for the same user, day and extension collide inside a
+      // single process, and across replicas sharing a volume PIDs collide outright.
+      // The loser's rename then fails with ENOENT -- or its cleanup unlinks the
+      // temp file the winner is about to rename -- so a legitimate run fails.
+      const settings = createSettings({
+        enabled: true,
+        folderPath: "",
+        nextBackupAt: new Date(Date.now() - 3600000),
+      });
+      mockSettingsRepo.find.mockResolvedValue([settings]);
+      setupExportMocks();
+
+      await service.handleAutoBackupCron();
+      await service.handleAutoBackupCron();
+
+      const tempPaths = (
+        fsPromises.rename as unknown as jest.Mock
+      ).mock.calls.map((c: unknown[]) => c[0] as string);
+      expect(tempPaths).toHaveLength(2);
+      expect(new Set(tempPaths).size).toBe(2);
+      // The FINAL path is still the same file -- replacing our own same-day
+      // backup is intended. It is only the intermediate name that is private.
+      const finalPaths = (
+        fsPromises.rename as unknown as jest.Mock
+      ).mock.calls.map((c: unknown[]) => c[1] as string);
+      expect(new Set(finalPaths).size).toBe(1);
     });
 
     it("should mark status as failed on error and continue", async () => {

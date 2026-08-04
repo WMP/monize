@@ -62,6 +62,31 @@ export function scopedDbMockModule() {
 }
 
 /**
+ * A `manager.query` double that models the one piece of connection state
+ * `withElevatedDb` reads back: `app.bypass_rls`.
+ *
+ * A `jest.fn().mockResolvedValue([])` answers the re-entrancy probe with "not
+ * elevated" forever, so every nested elevated window opens and closes its own
+ * bracket -- which is the behaviour the real helper deliberately does not have.
+ * A spec asserting the bracket shape against that mock is asserting fiction:
+ * the inner `finally` it fails to see is exactly the bug that would return the
+ * outer window to tenant-filtered reads halfway through.
+ */
+export function bypassAwareQueryMock(
+  initiallyElevated = false,
+): jest.Mock<Promise<unknown>, [string]> {
+  let bypass = initiallyElevated ? "on" : "";
+  return jest.fn(async (sql: string) => {
+    if (sql.includes("current_setting('app.bypass_rls'")) {
+      return [{ bypass }];
+    }
+    if (sql.includes("set_config('app.bypass_rls', 'on'")) bypass = "on";
+    if (sql.includes("set_config('app.bypass_rls', ''")) bypass = "";
+    return [];
+  });
+}
+
+/**
  * Build the mock manager + dataSource pair for a spec.
  *
  * @param repos entity-class -> mock-repository entries backing

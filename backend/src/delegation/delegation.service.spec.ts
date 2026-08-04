@@ -15,7 +15,10 @@ import { RefreshToken } from "../auth/entities/refresh-token.entity";
 import { Account } from "../accounts/entities/account.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { ScheduledTransaction } from "../scheduled-transactions/entities/scheduled-transaction.entity";
-import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
+import {
+  createScopedDbMocks,
+  bypassAwareQueryMock,
+} from "../test-helpers/scoped-db-testing";
 
 jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
@@ -44,7 +47,12 @@ describe("DelegationService", () => {
       count: jest.fn().mockResolvedValue(0),
     };
     grantsRepo = { findOne: jest.fn(), find: jest.fn(), count: jest.fn() };
-    usersRepo = { findOne: jest.fn(), count: jest.fn(), save: jest.fn() };
+    usersRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn(),
+      count: jest.fn(),
+      save: jest.fn(),
+    };
     prefsRepo = { findOne: jest.fn() };
     refreshRepo = { update: jest.fn() };
     accountsRepo = { find: jest.fn(), exists: jest.fn(), count: jest.fn() };
@@ -756,18 +764,25 @@ describe("DelegationService", () => {
         role: "user",
         isDelegateOnly: true,
       });
+      // FV-002: the delegate's identity is another user's `users` row, so it is
+      // read in its own elevated window rather than joined onto the delegation.
+      // A fixture that put it on `delegate` claimed a join that under
+      // enforcement returns null -- which is exactly how the empty names shipped.
+      usersRepo.find.mockResolvedValue([
+        {
+          id: "d1",
+          email: "d@e.f",
+          firstName: "D",
+          lastName: null,
+          passwordHash: "h",
+        },
+      ]);
       delegatesRepo.find.mockResolvedValue([
         {
           id: "g1",
           status: "active",
           createdAt: new Date("2026-01-01"),
           delegateUserId: "d1",
-          delegate: {
-            email: "d@e.f",
-            firstName: "D",
-            lastName: null,
-            passwordHash: "h",
-          },
           payeesCanCreate: true,
           payeesCanEdit: true,
           payeesCanDelete: false,
@@ -828,13 +843,15 @@ describe("DelegationService", () => {
     });
 
     it("includes granted sections in the summary", async () => {
+      usersRepo.find.mockResolvedValue([
+        { id: "d1", email: "d@e.f", passwordHash: "h" },
+      ]);
       delegatesRepo.find.mockResolvedValue([
         {
           id: "g1",
           status: "active",
           createdAt: new Date("2026-01-01"),
           delegateUserId: "d1",
-          delegate: { email: "d@e.f", passwordHash: "h" },
           billsCanRead: true,
           reportsCanRead: true,
           grants: [],
@@ -1426,6 +1443,19 @@ describe("DelegationService", () => {
 
     const BYPASS_ON = "SELECT set_config('app.bypass_rls', 'on', true)";
     const BYPASS_OFF = "SELECT set_config('app.bypass_rls', '', true)";
+    const BYPASS_READ =
+      "SELECT current_setting('app.bypass_rls', true) AS bypass";
+
+    /**
+     * The on/off shape of a transaction's elevation, with the re-entrancy probe
+     * dropped. The probe is what decides whether a window owns the restore, and
+     * `elevated-db.spec.ts` owns that behaviour; here the question is only which
+     * work ran inside a window and which outside it.
+     */
+    const windows = (manager: { query: jest.Mock }): string[] =>
+      manager.query.mock.calls
+        .map((c: any[]) => c[0])
+        .filter((sql: string) => sql !== BYPASS_READ);
 
     it("elevates the identity lookup and the identity write in createDelegate", async () => {
       usersRepo.findOne.mockResolvedValue({ id: "o1", email: "own@x.y" });
@@ -1434,17 +1464,21 @@ describe("DelegationService", () => {
         count: jest.fn().mockResolvedValue(0),
         create: jest.fn((_e: any, v: any) => v),
         save: jest.fn((v: any) => ({ id: "d-new", ...v })),
-        query: jest.fn().mockResolvedValue([]),
+        query: bypassAwareQueryMock(),
       };
       installTransactionMock(manager);
 
       await service.createDelegate("o1", { email: "new@x.y" } as any);
 
-      const emitted = manager.query.mock.calls.map((c: any[]) => c[0]);
       // Two windows: resolve the directory, then persist the identity row. Each
       // one closes again -- the rest of the transaction (the delegation row and
       // its grants) must run under the owner's own identity.
-      expect(emitted).toEqual([BYPASS_ON, BYPASS_OFF, BYPASS_ON, BYPASS_OFF]);
+      expect(windows(manager)).toEqual([
+        BYPASS_ON,
+        BYPASS_OFF,
+        BYPASS_ON,
+        BYPASS_OFF,
+      ]);
     });
 
     it("elevates the whole credential-management decision, not just the lookup", async () => {
@@ -1460,6 +1494,7 @@ describe("DelegationService", () => {
         passwordHash: "their-own-hash",
       };
       const order: string[] = [];
+      const bypassAware = bypassAwareQueryMock();
       const manager: any = {
         findOne: jest.fn(async (_e: any, opts: any) => {
           order.push("findOne");
@@ -1472,8 +1507,9 @@ describe("DelegationService", () => {
         create: jest.fn((_e: any, v: any) => v),
         save: jest.fn((v: any) => v),
         query: jest.fn(async (sql: string) => {
-          order.push(sql === BYPASS_ON ? "on" : "off");
-          return [];
+          const answer = await bypassAware(sql);
+          if (sql !== BYPASS_READ) order.push(sql === BYPASS_ON ? "on" : "off");
+          return answer;
         }),
       };
       installTransactionMock(manager);
@@ -1507,18 +1543,134 @@ describe("DelegationService", () => {
           role: "user",
           isDelegateOnly: true,
         }),
-        query: jest.fn().mockResolvedValue([]),
+        query: bypassAwareQueryMock(),
       };
       installTransactionMock(manager);
 
       await service.revokeDelegate("o1", "g1");
 
-      const emitted = manager.query.mock.calls.map((c: any[]) => c[0]);
       // Decide, then delete -- two windows, both closed.
-      expect(emitted).toEqual([BYPASS_ON, BYPASS_OFF, BYPASS_ON, BYPASS_OFF]);
+      expect(windows(manager)).toEqual([
+        BYPASS_ON,
+        BYPASS_OFF,
+        BYPASS_ON,
+        BYPASS_OFF,
+      ]);
       expect(manager.delete).toHaveBeenCalledWith(expect.anything(), {
         id: "d1",
       });
+    });
+
+    it("elevates the delegate identity projection behind listDelegates (FV-002)", async () => {
+      // The identity is another user's `users` row. Joined onto the delegation it
+      // came back null under enforcement, so the page showed a delegate with no
+      // name, no email and canResetPassword=false -- a working feature reduced to
+      // a blank row, with nothing failing.
+      const manager: any = {
+        query: bypassAwareQueryMock(),
+      };
+      installTransactionMock(manager);
+      delegatesRepo.find.mockResolvedValue([
+        {
+          id: "g1",
+          status: "active",
+          createdAt: new Date("2026-01-01"),
+          delegateUserId: "d1",
+          grants: [],
+        },
+      ]);
+      usersRepo.find.mockResolvedValue([
+        { id: "d1", email: "d@e.f", firstName: "D", passwordHash: "h" },
+      ]);
+      usersRepo.findOne.mockResolvedValue({
+        id: "d1",
+        isDelegateOnly: true,
+        role: "user",
+      });
+      accountsRepo.count.mockResolvedValue(0);
+      // Owns no delegations of their own (so not a full account), and is a
+      // delegate exactly once (so the password is the owner's to reset).
+      delegatesRepo.count.mockImplementation(async (opts: any) =>
+        opts?.where?.ownerUserId ? 0 : 1,
+      );
+
+      const res = await service.listDelegates("o1");
+
+      expect(res[0].delegate).toMatchObject({
+        email: "d@e.f",
+        firstName: "D",
+        hasPassword: true,
+        canResetPassword: true,
+      });
+      // The delegation rows themselves stay owner-scoped: the policy confirming
+      // they are this owner's is what authorizes the elevated read.
+      expect(delegatesRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ relations: ["grants"] }),
+      );
+      const emitted = windows(manager);
+      expect(emitted.filter((q) => q === BYPASS_ON).length).toBeGreaterThan(0);
+      expect(emitted.filter((q) => q === BYPASS_ON)).toHaveLength(
+        emitted.filter((q) => q === BYPASS_OFF).length,
+      );
+      expect(emitted[emitted.length - 1]).toBe(BYPASS_OFF);
+    });
+
+    it("elevates the delegate credential write in resetDelegatePassword (FV-002)", async () => {
+      // The read, the decision, the save and the session revocation are all about
+      // the delegate. Under enforcement the read returned nothing and the owner
+      // got a 404 for a row that exists; fixing only the read would have moved
+      // the failure onto the save.
+      const manager: any = {
+        query: bypassAwareQueryMock(),
+      };
+      installTransactionMock(manager);
+      delegatesRepo.findOne.mockResolvedValue({
+        id: "g1",
+        ownerUserId: "o1",
+        delegateUserId: "d1",
+        status: "active",
+      });
+      const delegate: any = {
+        id: "d1",
+        oidcSubject: null,
+        isDelegateOnly: true,
+        role: "user",
+        passwordHash: "old",
+        failedLoginAttempts: 3,
+        lockedUntil: new Date(),
+      };
+      usersRepo.findOne.mockResolvedValue(delegate);
+      accountsRepo.count.mockResolvedValue(0);
+      delegatesRepo.count.mockImplementation(async (opts: any) =>
+        opts?.where?.ownerUserId ? 0 : 1,
+      );
+
+      const { temporaryPassword } = await service.resetDelegatePassword(
+        "o1",
+        "g1",
+      );
+
+      expect(temporaryPassword).toBeTruthy();
+      expect(usersRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mustChangePassword: true,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        }),
+      );
+      expect(refreshRepo.update).toHaveBeenCalledWith(
+        { userId: "d1", isRevoked: false },
+        { isRevoked: true },
+      );
+      // One transaction for the whole reset: the credential replacement and the
+      // revocation of the sessions it invalidates cannot commit separately.
+      expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+      const emitted = windows(manager);
+      expect(emitted[0]).toBe(BYPASS_ON);
+      expect(emitted[emitted.length - 1]).toBe(BYPASS_OFF);
+      // Exactly one window: the nested canOwnerReset* decision joins it rather
+      // than opening (and closing) a second one underneath the write.
+      expect(emitted.filter((q) => q === BYPASS_ON)).toHaveLength(1);
     });
 
     it("does not elevate the delegation row or its grants", async () => {
@@ -1535,7 +1687,7 @@ describe("DelegationService", () => {
           saved.push("ownerUserId" in v ? "delegation" : "identity");
           return { id: "d-new", ...v };
         }),
-        query: jest.fn().mockResolvedValue([]),
+        query: bypassAwareQueryMock(),
       };
       installTransactionMock(manager);
 
@@ -1543,7 +1695,7 @@ describe("DelegationService", () => {
 
       // The delegation save happened, and after the last window closed.
       expect(saved).toContain("delegation");
-      const emitted = manager.query.mock.calls.map((c: any[]) => c[0]);
+      const emitted = windows(manager);
       expect(emitted[emitted.length - 1]).toBe(BYPASS_OFF);
     });
   });

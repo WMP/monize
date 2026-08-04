@@ -592,19 +592,43 @@ export class DelegationService {
    * that person's own login, not an owner-provisioned credential).
    */
   async isFullAccount(userId: string): Promise<boolean> {
-    const [ownsAccounts, ownsDelegations, user] = await Promise.all([
-      this.scoped(Account, (repo) => repo.count({ where: { userId } })),
-      this.scoped(AccountDelegate, (repo) =>
-        repo.count({ where: { ownerUserId: userId } }),
-      ),
-      this.scoped(User, (repo) =>
-        repo.findOne({
-          where: { id: userId },
-          select: ["id", "role"],
-        }),
-      ),
-    ]);
-    return ownsAccounts > 0 || ownsDelegations > 0 || user?.role === "admin";
+    return withScopedDb(this.dataSource, (manager) =>
+      this.isFullAccountWithin(manager, userId),
+    );
+  }
+
+  /**
+   * FV-002: every read here is about somebody who is not the caller. `users_self`
+   * reaches only the current or real user, and `accounts` / `account_delegates`
+   * are policied per user, so under enforcement all three answered about nobody
+   * -- and the composite `||` turned that into "not a full account", which is the
+   * permissive answer. The caller must already have established that it may ask
+   * about this user: an owner holding a delegation to them, or the registration
+   * path proving possession of their password.
+   */
+  private async isFullAccountWithin(
+    manager: EntityManager,
+    userId: string,
+  ): Promise<boolean> {
+    return withElevatedDb(
+      manager,
+      "decide whether a delegate is a full account in their own right",
+      async (elevated) => {
+        const [ownsAccounts, ownsDelegations, user] = await Promise.all([
+          elevated.getRepository(Account).count({ where: { userId } }),
+          elevated
+            .getRepository(AccountDelegate)
+            .count({ where: { ownerUserId: userId } }),
+          elevated.getRepository(User).findOne({
+            where: { id: userId },
+            select: ["id", "role"],
+          }),
+        ]);
+        return (
+          ownsAccounts > 0 || ownsDelegations > 0 || user?.role === "admin"
+        );
+      },
+    );
   }
 
   /**
@@ -622,68 +646,131 @@ export class DelegationService {
   async canOwnerResetDelegatePassword(
     delegateUserId: string,
   ): Promise<boolean> {
-    const user = await this.scoped(User, (repo) =>
-      repo.findOne({
-        where: { id: delegateUserId },
-        select: ["id", "isDelegateOnly"],
-      }),
+    return withScopedDb(this.dataSource, (manager) =>
+      this.canOwnerResetDelegatePasswordWithin(manager, delegateUserId),
     );
-    if (!user || !user.isDelegateOnly) return false;
-    if (await this.isFullAccount(delegateUserId)) return false;
-    const delegationCount = await this.scoped(AccountDelegate, (repo) =>
-      repo.count({
-        where: { delegateUserId },
-      }),
+  }
+
+  /**
+   * FV-002, same shape as `isFullAccountWithin`: the delegate's `users` row and
+   * their delegation count are both invisible to the owner under enforcement.
+   *
+   * Note which way the blindness pointed here -- `!user` returned false, so the
+   * decision failed *closed* and the owner simply lost a working recovery path.
+   * That is the better half of the defect; the reset itself then tried to load
+   * and save the same hidden row (see `resetDelegatePassword`).
+   */
+  private async canOwnerResetDelegatePasswordWithin(
+    manager: EntityManager,
+    delegateUserId: string,
+  ): Promise<boolean> {
+    return withElevatedDb(
+      manager,
+      "decide whether an owner may reset this delegate's provisioned password",
+      async (elevated) => {
+        const user = await elevated.getRepository(User).findOne({
+          where: { id: delegateUserId },
+          select: ["id", "isDelegateOnly"],
+        });
+        if (!user || !user.isDelegateOnly) return false;
+        if (await this.isFullAccountWithin(elevated, delegateUserId)) {
+          return false;
+        }
+        const delegationCount = await elevated
+          .getRepository(AccountDelegate)
+          .count({ where: { delegateUserId } });
+        return delegationCount <= 1;
+      },
     );
-    return delegationCount <= 1;
   }
 
   async listDelegates(ownerUserId: string) {
-    const delegations = await this.scoped(AccountDelegate, (repo) =>
-      repo.find({
+    return withScopedDb(this.dataSource, async (manager) => {
+      // Owner-scoped, deliberately: the policy checks that these delegation rows
+      // are this owner's, and that check is the authorization for the elevated
+      // identity reads below. `delegate` is NOT joined here -- it is another
+      // user's `users` row, so under enforcement the join yields null and the
+      // response quietly loses every delegate's name, email and reset
+      // eligibility rather than failing (FV-002).
+      const delegations = await manager.getRepository(AccountDelegate).find({
         where: {
           ownerUserId,
           status: In(["active", "pending"] as DelegationStatus[]),
         },
-        relations: ["delegate", "grants"],
+        relations: ["grants"],
         order: { createdAt: "DESC" },
-      }),
+      });
+
+      const identities = await this.delegateIdentities(
+        manager,
+        delegations.map((d) => d.delegateUserId),
+      );
+
+      return Promise.all(
+        delegations.map(async (d) => {
+          const identity = identities.get(d.delegateUserId);
+          return {
+            id: d.id,
+            status: d.status,
+            createdAt: d.createdAt,
+            delegate: {
+              id: d.delegateUserId,
+              email: identity?.email ?? null,
+              firstName: identity?.firstName ?? null,
+              lastName: identity?.lastName ?? null,
+              hasPassword: !!identity?.passwordHash,
+              // False when the password is the delegate's own (full account or
+              // a delegate elsewhere); the owner cannot reset it.
+              canResetPassword: await this.canOwnerResetDelegatePasswordWithin(
+                manager,
+                d.delegateUserId,
+              ),
+              // Gates the Joint toggle client-side; setGrants re-checks.
+              isFullAccount: await this.isFullAccount(d.delegateUserId),
+            },
+            // isJoint must round-trip: setGrants is delete-and-recreate, so a
+            // client saving a matrix without it would silently clear the flag.
+            grants: (d.grants ?? [])
+              .filter((g) => g.canRead)
+              .map((g) => ({
+                accountId: g.accountId,
+                canRead: g.canRead,
+                canCreate: g.canCreate,
+                canEdit: g.canEdit,
+                canDelete: g.canDelete,
+                isJoint: g.isJoint,
+              })),
+            capabilities: this.toCapabilitySet(d),
+            sections: this.toSectionSet(d),
+          };
+        }),
+      );
+    });
+  }
+
+  /**
+   * Identity projection for delegates the caller has already been authorized to
+   * see -- their ids come from the caller's own delegation rows, never from
+   * request input.
+   *
+   * One elevated read for the whole page rather than one per row: the window is
+   * as narrow in time as it can be while still covering the set.
+   */
+  private async delegateIdentities(
+    manager: EntityManager,
+    delegateUserIds: string[],
+  ): Promise<Map<string, User>> {
+    if (delegateUserIds.length === 0) return new Map();
+    const users = await withElevatedDb(
+      manager,
+      "read the identity of delegates this owner already holds a delegation to",
+      (elevated) =>
+        elevated.getRepository(User).find({
+          where: { id: In(delegateUserIds) },
+          select: ["id", "email", "firstName", "lastName", "passwordHash"],
+        }),
     );
-    return Promise.all(
-      delegations.map(async (d) => ({
-        id: d.id,
-        status: d.status,
-        createdAt: d.createdAt,
-        delegate: {
-          id: d.delegateUserId,
-          email: d.delegate?.email ?? null,
-          firstName: d.delegate?.firstName ?? null,
-          lastName: d.delegate?.lastName ?? null,
-          hasPassword: !!d.delegate?.passwordHash,
-          // False when the password is the delegate's own (full account or
-          // a delegate elsewhere); the owner cannot reset it.
-          canResetPassword: await this.canOwnerResetDelegatePassword(
-            d.delegateUserId,
-          ),
-          // Gates the Joint toggle client-side; setGrants re-checks.
-          isFullAccount: await this.isFullAccount(d.delegateUserId),
-        },
-        // isJoint must round-trip: setGrants is delete-and-recreate, so a
-        // client saving a matrix without it would silently clear the flag.
-        grants: (d.grants ?? [])
-          .filter((g) => g.canRead)
-          .map((g) => ({
-            accountId: g.accountId,
-            canRead: g.canRead,
-            canCreate: g.canCreate,
-            canEdit: g.canEdit,
-            canDelete: g.canDelete,
-            isJoint: g.isJoint,
-          })),
-        capabilities: this.toCapabilitySet(d),
-        sections: this.toSectionSet(d),
-      })),
-    );
+    return new Map(users.map((u) => [u.id, u]));
   }
 
   private toSectionSet(d?: AccountDelegate | null): DelegateSectionSet {
@@ -1326,65 +1413,89 @@ export class DelegationService {
     ownerUserId: string,
     delegationId: string,
   ): Promise<{ temporaryPassword: string }> {
-    const delegation = await this.scoped(AccountDelegate, (repo) =>
-      repo.findOne({
+    // One transaction, five statements that used to be five transactions: the
+    // credential replacement and the revocation of the sessions it invalidates
+    // are one read-modify-write, and a failure between them left the delegate
+    // with a new password and their old sessions still live.
+    return withScopedDb(this.dataSource, async (manager) => {
+      // Owner-scoped and unelevated on purpose. This is the authorization: the
+      // policy confirms the delegation is this owner's, and everything elevated
+      // below is keyed off the id it yields rather than off request input.
+      const delegation = await manager.getRepository(AccountDelegate).findOne({
         where: { id: delegationId, ownerUserId, status: "active" },
-      }),
-    );
-    if (!delegation) {
-      throw new NotFoundException(
-        tr("errors.delegation.delegateNotFound", "Delegate not found"),
-      );
-    }
+      });
+      if (!delegation) {
+        throw new NotFoundException(
+          tr("errors.delegation.delegateNotFound", "Delegate not found"),
+        );
+      }
 
-    const delegate = await this.scoped(User, (repo) =>
-      repo.findOne({
-        where: { id: delegation.delegateUserId },
-      }),
-    );
-    if (!delegate) {
-      throw new NotFoundException(
-        tr("errors.delegation.delegateNotFound", "Delegate not found"),
+      // FV-002: the delegate's own `users` row. `users_self` reaches the current
+      // or real user, and during owner management the delegate is neither -- so
+      // under enforcement this returned nothing and an owner recovering a
+      // locked-out delegate got a 404 for a row that exists. The save and the
+      // token revocation below would have been refused for the same reason, so
+      // fixing only the read would have moved the failure rather than removed it.
+      const temporaryPassword = generateReadablePassword();
+      const passwordHash = await bcrypt.hash(
+        temporaryPassword,
+        this.BCRYPT_ROUNDS,
       );
-    }
-    if (delegate.oidcSubject) {
-      throw new BadRequestException(
-        tr(
-          "errors.delegation.cannotResetSsoPassword",
-          "Cannot reset password for an SSO delegate account",
-        ),
+
+      await withElevatedDb(
+        manager,
+        "replace an owner-provisioned delegate credential and revoke its sessions",
+        async (elevated) => {
+          const delegate = await elevated.getRepository(User).findOne({
+            where: { id: delegation.delegateUserId },
+          });
+          if (!delegate) {
+            throw new NotFoundException(
+              tr("errors.delegation.delegateNotFound", "Delegate not found"),
+            );
+          }
+          if (delegate.oidcSubject) {
+            throw new BadRequestException(
+              tr(
+                "errors.delegation.cannotResetSsoPassword",
+                "Cannot reset password for an SSO delegate account",
+              ),
+            );
+          }
+          if (
+            !(await this.canOwnerResetDelegatePasswordWithin(
+              elevated,
+              delegate.id,
+            ))
+          ) {
+            throw new ForbiddenException(
+              tr(
+                "errors.delegation.delegateManagesOwnPassword",
+                "This delegate manages their own password (they have their own Monize account or delegated access elsewhere). Only they can change it.",
+              ),
+            );
+          }
+
+          delegate.passwordHash = passwordHash;
+          delegate.mustChangePassword = true;
+          delegate.resetToken = null;
+          delegate.resetTokenExpiry = null;
+          // Owner-driven reset is an explicit recovery action: clear any lockout
+          // so a locked-out delegate can sign in with the new password.
+          delegate.failedLoginAttempts = 0;
+          delegate.lockedUntil = null;
+          await elevated.getRepository(User).save(delegate);
+
+          await elevated
+            .getRepository(RefreshToken)
+            .update(
+              { userId: delegate.id, isRevoked: false },
+              { isRevoked: true },
+            );
+        },
       );
-    }
-    if (!(await this.canOwnerResetDelegatePassword(delegate.id))) {
-      throw new ForbiddenException(
-        tr(
-          "errors.delegation.delegateManagesOwnPassword",
-          "This delegate manages their own password (they have their own Monize account or delegated access elsewhere). Only they can change it.",
-        ),
-      );
-    }
 
-    const temporaryPassword = generateReadablePassword();
-    delegate.passwordHash = await bcrypt.hash(
-      temporaryPassword,
-      this.BCRYPT_ROUNDS,
-    );
-    delegate.mustChangePassword = true;
-    delegate.resetToken = null;
-    delegate.resetTokenExpiry = null;
-    // Owner-driven reset is an explicit recovery action: clear any lockout
-    // so a locked-out delegate can sign in with the new password.
-    delegate.failedLoginAttempts = 0;
-    delegate.lockedUntil = null;
-    await this.scoped(User, (repo) => repo.save(delegate));
-
-    await this.scoped(RefreshToken, (repo) =>
-      repo.update(
-        { userId: delegate.id, isRevoked: false },
-        { isRevoked: true },
-      ),
-    );
-
-    return { temporaryPassword };
+      return { temporaryPassword };
+    });
   }
 }

@@ -160,6 +160,55 @@ work by what it costs to be wrong: cheap non-destructive checks first, then the
 step-up, then the write. The step-up exists to gate the write, so nothing that
 cannot write belongs behind it.
 
+**A proof of a round trip names the round trip.** The OIDC re-authentication
+marker recorded the user and the action but not *which* authorization request it
+belonged to, so it survived its own redirect: start a `prompt=login` re-auth, do
+not follow it, then complete an ordinary `GET /auth/oidc` -- which asks the
+provider for no challenge at all -- and the callback minted the destructive
+artifact anyway. A marker is now bound to the `state` it was issued with, and one
+without that binding fails closed. Anything that certifies "this specific
+interaction happened" has the same requirement: tie it to the interaction's own
+unrepeatable value, not to the fact that one was started.
+
+**Fix the read and the write, or you have moved the failure.** Owner-managed
+delegation had its *creation* path elevated and its listing and password reset
+left behind, where the delegate's `users` row is equally invisible: the listing
+silently rendered a delegate with no name and no reset button, and the reset
+returned 404 for a row that exists. Elevating only the lookup would have handed
+the same operation a refused `UPDATE` instead. When a cross-tenant access is
+needed, enumerate every statement in the operation -- read, decide, write, and
+the side effects like revoking the sessions a credential change invalidates --
+and put them in one transaction and one window.
+
+**A helper that brackets state is re-entrant or it is a trap.** `withElevatedDb`
+turned `app.bypass_rls` off in its `finally`, so one elevated operation calling
+another returned the outer one to tenant-filtered reads halfway through -- an
+elevated sequence that half works, with no error. Only the outermost window
+restores now, decided by reading the GUC rather than by a flag threaded through
+the call, because the outer window may be opened by code the inner call cannot
+see. Any helper that saves-sets-restores shared state needs the same treatment,
+and the mock in its callers' specs has to model the state or the bracket
+assertions are fiction (`bypassAwareQueryMock`).
+
+**Two statements deciding one row's fate need the row locked, not just a
+transaction.** The shared-currency delete ran its all-tenant reference check and
+its `DELETE` in one `READ COMMITTED` transaction and was still racy: a concurrent
+activation takes only an FK `KEY SHARE` lock, which the check cannot see and the
+`DELETE` waits for rather than being refused by, so the other tenant's committed
+row cascaded away or their activation failed -- decided by arrival order alone.
+`SELECT ... FOR UPDATE` on the parent, before the check, is what serializes them.
+Relatedly, a "is anything referencing this" query is a claim about every foreign
+key to that row: derive the list from `schema.sql` in a test
+(`currencies.service.spec.ts`) rather than hand-copying it, because the ones
+nobody remembered were `budgets` and `exchange_rates`.
+
+**A temporary filename is unique per write, not per process.** `.<name>.partial-<pid>`
+collides between a manual and a scheduled backup for the same user in the same
+process, and across replicas sharing a volume it collides outright -- one run's
+`rename` then fails with `ENOENT`, or its cleanup unlinks the file the other is
+about to rename. Add `randomUUID()`. Replacing the *final* file may well be
+intended; the intermediate name never is.
+
 **An identity change inside an open transaction is refused, not honoured.** The
 identity GUCs are the transaction's first statement and are transaction-local, so
 a nested `withUserContext`/`withSystemContext` cannot change what the database

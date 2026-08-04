@@ -2328,9 +2328,9 @@ describe("AuthController", () => {
         (c: unknown[]) => c[0] === "oidc_reauth",
       );
       expect(cookie[2]).toMatchObject({ httpOnly: true });
-      expect(reauth.readPendingMarker(cookie[1] as string, REAUTH_USER)).toBe(
-        "restore-backup",
-      );
+      expect(
+        reauth.readPendingMarker(cookie[1] as string, REAUTH_USER, "state-1"),
+      ).toBe("restore-backup");
     });
 
     it("refuses an unknown purpose", async () => {
@@ -2379,9 +2379,9 @@ describe("AuthController", () => {
       const cookie = res.cookie.mock.calls.find(
         (c: unknown[]) => c[0] === "oidc_reauth",
       );
-      expect(reauth.readPendingMarker(cookie[1] as string, delegate)).toBe(
-        "delete-data",
-      );
+      expect(
+        reauth.readPendingMarker(cookie[1] as string, delegate, "state-1"),
+      ).toBe("delete-data");
     });
 
     it("mints the artifact in the callback and returns it in the fragment", async () => {
@@ -2409,6 +2409,7 @@ describe("AuthController", () => {
             oidc_reauth: reauth.createPendingMarker(
               REAUTH_USER,
               "delete-account",
+              "s",
             ),
           },
         } as never,
@@ -2451,6 +2452,7 @@ describe("AuthController", () => {
             oidc_reauth: reauth.createPendingMarker(
               REAUTH_USER,
               "delete-account",
+              "s",
             ),
           },
         } as never,
@@ -2458,6 +2460,68 @@ describe("AuthController", () => {
       );
 
       expect(res.redirect.mock.calls[0][0]).not.toContain("reauth_token");
+    });
+
+    it("mints nothing when an ordinary login completed the round trip (FV-001)", async () => {
+      // The attack the flow binding closes. A stolen-but-valid session starts
+      // GET /auth/oidc/reauth?purpose=delete-account (state-1, marker set) and
+      // does NOT follow the redirect. It then starts an ordinary GET /auth/oidc,
+      // which overwrites oidc_state and asks the provider for no fresh challenge
+      // -- so a live SSO session answers it silently. Before the binding, the
+      // surviving marker made that callback mint a delete-account artifact: the
+      // IdP challenge P2-005 exists to force never happened.
+      const { controller, reauth, oidc } = await build();
+      const forcedFlowMarker = reauth.createPendingMarker(
+        REAUTH_USER,
+        "delete-account",
+        "state-of-the-forced-flow",
+      );
+      oidc.handleCallback.mockResolvedValue({
+        access_token: "at",
+        sub: "sub-1",
+      });
+      authService.findOrCreateOidcUser.mockResolvedValue({
+        user: { id: REAUTH_USER },
+        isNewUser: false,
+      });
+      authService.generateTokenPair.mockResolvedValue({
+        accessToken: "a",
+        refreshToken: "r",
+      });
+      const res = mockRes();
+
+      await controller.oidcCallback(
+        { code: "c" },
+        {
+          cookies: {
+            // The ordinary login's state and nonce, not the forced flow's.
+            oidc_state: "state-of-the-ordinary-login",
+            oidc_nonce: "n",
+            oidc_reauth: forcedFlowMarker,
+          },
+        } as never,
+        res as never,
+      );
+
+      const target = res.redirect.mock.calls[0][0] as string;
+      expect(target).toContain("success=true");
+      expect(target).not.toContain("reauth_token");
+      expect(target).not.toContain("reauth=");
+    });
+
+    it("clears any pending marker when an ordinary login starts", async () => {
+      // Belt and braces beside the binding: the callback would refuse the marker
+      // anyway, but a login should not carry a re-authentication it silently
+      // discards.
+      const { controller } = await build();
+      const res = mockRes();
+
+      await controller.oidcLogin(res as never);
+
+      expect(res.clearCookie).toHaveBeenCalledWith(
+        "oidc_reauth",
+        expect.objectContaining({ httpOnly: true }),
+      );
     });
 
     it("mints nothing on an ordinary login with no pending re-auth", async () => {
@@ -2517,6 +2581,7 @@ describe("AuthController", () => {
               oidc_reauth: reauth.createPendingMarker(
                 REAUTH_USER,
                 "delete-data",
+                "s",
               ),
             },
           } as never,

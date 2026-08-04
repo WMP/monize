@@ -6,18 +6,19 @@
 | Audited baseline | `d5cea9bfa995885ba5198f9843359362927c0fd4` |
 | Work branch | `claude/detailed-error-review-wq2hjo` |
 | Branch base | `4e48a767` (main after the audit baseline) |
-| Commits | 16 |
-| Diff | 136 files, +5892 / -1915 |
+| Commits | 19 |
+| Diff | 137 files, +6600 / -1990 (approximate; see the commit index) |
 | Audit items answered | 9 confirmed findings, 4 design risks, 16 missing tests, 6 documentation issues |
-| Additional defects found and fixed | 14, none of them in the report |
-| Response date | 2026-08-03 |
+| Additional defects found and fixed | 15, none of them in the report |
+| Response date | 2026-08-03; revised 2026-08-04 after independent verification (section 5A) |
 
 The brief for this branch was explicitly *not* "do what the file says". The report
 was treated as a rough pass over the ground, and the work was asked to be a detailed
 one. So this document has two halves: sections 1 to 4 answer the report item by item,
 and section 5 is what a full re-read of the 117 files the report names turned up that
 the report did not -- three passes over that file list, each finding defects the
-previous pass had missed.
+previous pass had missed. Section 5A answers a later independent verification review
+of this branch, which found four residual defects; all four are fixed.
 
 ## How to read the status column
 
@@ -38,7 +39,9 @@ evidence, and this branch treats that as a finding rather than a formality.
 
 ### P2-001 -- Automatic backups share a tenant-agnostic file namespace (HIGH)
 
-**Status: Fixed.** Commit `b2110add`.
+**Status: Fixed.** Commits `b2110add`, and `FV-004` in the verification round
+(section 5A) -- the atomic write this fix introduced named its temporary file per
+process rather than per write.
 
 The report is correct and the impact is slightly wider than stated: the collision
 was not only overwrite. Two users with unencrypted daily backups due on the same
@@ -144,7 +147,10 @@ Five of the eight new assertions fail against the previous comparison.
 
 ### P2-005 -- OIDC destructive actions accept any non-empty string as re-authentication
 
-**Status: Fixed + hardened.** Commit `eb68eda1`.
+**Status: Fixed + hardened.** Commits `eb68eda1`, and `FV-001` in the verification
+round (section 5A) -- the first version replaced the sentinel with a real signed
+artifact but did not bind the pending marker to the round trip that requested the
+challenge.
 
 Confirmed, and worse than the report states in three ways.
 
@@ -220,7 +226,9 @@ New file: `backend/src/common/db/runtime-role-check.ts` (+ spec, 16 cases).
 
 ### P2-007 -- Owner-managed delegation cannot read or create the delegate's `users` row under enforcement
 
-**Status: Fixed + hardened.** Commit `1584ea95`.
+**Status: Fixed + hardened.** Commits `1584ea95`, and `FV-002` in the verification
+round (section 5A) -- the creation path was elevated first and the listing and password
+reset were left behind.
 
 Confirmed, and the report understates the direction of the failure.
 
@@ -279,7 +287,9 @@ Both new assertions fail against the previous line.
 
 ### P2-009 -- RLS-hidden reference counts allow deleting another user's custom-currency preference
 
-**Status: Fixed + hardened.** Commit `a8728097`.
+**Status: Fixed + hardened.** Commits `a8728097`, and `FV-003` in the verification
+round (section 5A) -- authorization and global visibility were fixed first, the row
+lock and two missing foreign keys after.
 
 Confirmed, with a second defect in the same decision that the report does not name.
 
@@ -560,9 +570,142 @@ Two of my own false alarms, rejected before reporting: `gem_strategy_scenarios` 
 not exist (migration 127 only adds a column), and `schema.sql` enables RLS through a
 `DO` block over `pg_policies` rather than a literal table list.
 
+## 5A. Answer to the independent verification review
+
+A second read-only review (`monize-phase-2-fix-verification.md`, reviewed head
+`a39a837b`) checked this branch against the original report rather than against this
+document, and found four things. **All four are real, all four are now fixed**, and
+the review was right to call P2-005, P2-007 and P2-009 only partly closed at that
+SHA. Its recommendation not to declare Phase 2 complete at `a39a837b` was correct.
+
+One correction to its framing, and it makes the FV-002 case worse rather than better:
+the review lists FV-002 as "owner-managed recovery works in mocked/off-mode paths but
+fails under enforcement". That is the *listing* half. The reset half also could not
+have worked if the read were fixed alone, because the `save` and the refresh-token
+revocation are writes to the same invisible row -- so elevating only the lookup would
+have moved the failure rather than removed it.
+
+### FV-001 -- the re-authentication marker was not bound to its round trip
+
+**Status: Fixed.** Confirmed exactly as described. `GET /auth/oidc` overwrote
+`oidc_state` and `oidc_nonce` but left `oidc_reauth` in place, and the marker carried
+no flow identity, so the callback minted the artifact whenever the marker's subject
+matched the account that came back. The reachable path is the review's: start
+`?purpose=delete-account`, do not follow the redirect, then complete an ordinary login
+-- which sends no `prompt=login`, so a live SSO session answers it silently. The
+artifact was cryptographically valid and certified an event that never happened.
+
+The marker now carries `sth`, a SHA-256 of the `state` it was issued with, and
+`readPendingMarker` takes the state the callback actually validated. A marker with no
+`sth` is refused rather than accepted on the older checks -- same reasoning as the MCP
+credential fingerprint, where an unbindable artifact is the case the binding exists to
+close. `GET /auth/oidc` also clears any pending marker, so an ordinary login is a
+login rather than one that silently discards a re-auth in flight.
+
+Four assertions fail against the pre-fix code, including the review's own
+reproduction as a controller-level test.
+
+### FV-002 -- delegate listing and password reset were still unelevated
+
+**Status: Fixed.** Confirmed. `isFullAccount`, `canOwnerResetDelegatePassword`, the
+`relations: ["delegate"]` join in `listDelegates`, and every statement of
+`resetDelegatePassword` read or wrote the delegate's rows in the owner's ordinary
+scope.
+
+Note which way each failed, because they are not the same defect:
+
+- the listing failed **open in appearance**: the join yielded null, so the page
+  rendered a delegate with no name, no email and `canResetPassword: false`, and
+  nothing errored;
+- `canOwnerResetDelegatePassword` failed **closed** (`!user` returns false), so the
+  owner merely lost a working recovery path;
+- the reset failed **loudly but wrongly**: a 404 for a row that exists.
+
+All four are now inside `withElevatedDb`, keyed off ids that come from the owner's own
+delegation rows -- the owner-scoped delegation read stays unelevated on purpose,
+because the policy confirming those rows are this owner's *is* the authorization for
+everything elevated afterwards. `resetDelegatePassword` is also now a single
+transaction: the credential replacement and the revocation of the sessions it
+invalidates were five separate transactions, so a failure between them left a delegate
+with a new password and their old sessions still live.
+
+**And a hazard the review did not name, which this fix would otherwise have walked
+into:** `withElevatedDb` was not re-entrant. Its `finally` turned the bypass off
+unconditionally, so `listDelegates` calling `canOwnerResetDelegatePassword` per row
+would have returned the outer window to tenant-filtered reads after the first inner
+call -- an elevated sequence that half works, silently. Only the outermost window
+restores now, decided by reading the GUC rather than by a flag, because the outer
+window may be opened by code the inner call cannot see. `elevated-db.spec.ts` covers
+nesting, throw-inside-nesting, and both driver result shapes, and
+`bypassAwareQueryMock` exists so a caller's spec models the connection state instead
+of asserting a bracket shape that the real helper does not produce.
+
+### FV-003 -- the currency delete was still racy, and its probe was incomplete
+
+**Status: Fixed.** Confirmed, and the review's analysis of the lock interaction is
+right: one `READ COMMITTED` transaction is not enough because a concurrent activation
+takes only an FK `KEY SHARE` lock, which the reference check cannot see and the
+`DELETE` waits for rather than being refused by. `SELECT code FROM currencies WHERE
+code = $1 FOR UPDATE` now runs before anything is read or written, which conflicts
+with that lock in both directions: an activation already in flight makes the delete
+wait and then *see* its row, and one arriving later waits and is then correctly refused
+by the foreign key.
+
+The review was also right that the union was missing references. It named budgets and
+exchange-rate pairs; both are real, both are `NO ACTION`, so another tenant's budget in
+that currency turned a clean "still in use" into a raw constraint error. Rather than
+add two lines, the test now derives the list of tables with a foreign key to
+`currencies(code)` from `database/schema.sql` and asserts the probe mentions every one
+-- so the next column that references it fails a test instead of production. The
+per-user probe gained `budgets` for the same reason.
+
+### FV-004 -- the atomic write's temporary filename was per process, not per write
+
+**Status: Fixed.** Confirmed, including the cross-replica case the review adds:
+`process.pid` is not unique across containers sharing a volume. `randomUUID()` added.
+The final path is deliberately unchanged -- replacing our own same-day backup is
+intended; it is only the intermediate name that has to be private.
+
+### DR-V1 -- process-local replay state
+
+**Unchanged, and still documented as a residual.** The review agrees with the
+disposition. Shared transactional state is a schema decision, and remains listed in
+section 8.
+
+### DR-V2 -- role-membership escalation was not checked
+
+**Status: Fixed**, though the review classed it as unverified hardening rather than a
+defect. It was worth closing on the check's own terms: the whole point of
+`runtime-role-check.ts` is that an unprivileged mode is *verified* rather than
+configured, and it verified the login role's own attributes while saying nothing about
+what that role can `SET ROLE` into. `pg_auth_members` is now part of the same single
+round trip, and membership in any role that is itself exempt -- superuser, `BYPASSRLS`,
+the database owner, or the owner of a policied table -- is reported by name so the
+operator can see which grant to revoke. Ordinary group memberships are not reported,
+because a check that cries wolf gets ignored.
+
+### DR-V3, DR-V4 -- unchanged
+
+DR-V3 restates DR-02's accepted tradeoff, and its condition ("any future
+infrastructure table without RLS must be added to an explicit revoke list and guard
+test") is the rule `app-role.ts` and its spec already encode via
+`RUNTIME_READ_ONLY_TABLES`. DR-V4 is DR-04 and stays open for the same reason.
+
+### On the review's evidence limits
+
+Its section 8 is accurate: it executed nothing, and it observed no CI statuses or
+workflow runs for the reviewed head. Both are properties of the environment rather
+than of the branch -- this session has no Docker and no CI runner, so the numbers in
+section 7 are local runs. The seven runtime scenarios it prioritizes are the same set
+section 7 lists as unrunnable here, plus the two new ones its own findings created
+(overlapping OIDC flows, and same-user concurrent backup writes); the first of those
+is now covered at the unit level, and the second is asserted through the temp-path
+uniqueness rather than through real filesystem interleaving.
+
 ## 6. Rules added, so the next agent inherits the correction
 
-Sixteen rules in the root `CLAUDE.md` (nine, then five, then two -- one set per pass),
+Twenty-one rules in the root `CLAUDE.md` (nine, five, two, then five -- one set per
+pass),
 each naming its machine-checkable guard where one exists, plus two operational sections
 in `backend/CLAUDE.md`. The prose exists only
 for the part that genuinely needs judgement; where the mistake is mechanical, the guard
@@ -586,6 +729,11 @@ is a scanning test.
 | An identity change inside an open transaction is refused, not honoured | `scoped-db.spec.ts` |
 | An id in a protocol artifact is still checked against the caller | `oauth-interaction.controller.spec.ts` |
 | Validate everything free before spending a single-use credential | `backup.service.spec.ts` |
+| A proof of a round trip names the round trip | `oidc-reauth.service.spec.ts`, `auth.controller.spec.ts` |
+| Fix the read and the write, or you have moved the failure | `delegation.service.spec.ts` |
+| A helper that brackets state is re-entrant or it is a trap | `elevated-db.spec.ts` nesting cases |
+| Two statements deciding one row's fate need the row locked | `currencies.service.spec.ts` |
+| A temporary filename is unique per write, not per process | `auto-backup.service.spec.ts` |
 
 `backend/eslint.config.mjs` gained `ELEVATED_DB_ALLOWLIST`, the same reviewed-decision
 gate `with-context` already had: importing `withElevatedDb` outside the three named
@@ -595,7 +743,7 @@ files fails the lint job.
 
 Performed and green:
 
-- `TZ=UTC npm run test:unit` (backend): 403 suites, 10809 tests, at branch tip.
+- `TZ=UTC npm run test:unit` (backend): 403 suites, 10828 tests, at branch tip.
 - Frontend `vitest`: 627 files, 12279 tests, at branch tip.
 - ESLint and `tsc --noEmit` on both sides. The backend was additionally type-checked
   with `src` and `test` in one program (via a scratch tsconfig, not committed) so a
@@ -623,6 +771,7 @@ key, ten now-unused keys removed everywhere, and both pseudo-locales regenerated
 | MT-10, MT-11, MT-13 (denial half), MT-15, MT-16 | Need a live PostgreSQL and an unprivileged role. No Docker in this environment. |
 | Cross-replica single use of the OIDC re-authentication artifact | Needs shared state, which is a schema decision. Documented at the call site with the reason the residual risk is small. |
 | An owner notification when an emergency-access contact is added | Would have made 5.1 visible to the victim. It is a product change (new email, new copy, new locale keys), not a security fix, so it is not on a fix branch. |
+| Real two-connection and filesystem-interleaving tests for FV-003 and FV-004 | The fixes are asserted at the unit level (lock ordering, temp-path uniqueness). Proving the race itself needs two live connections and controlled filesystem timing. |
 
 ## 9. Commit index
 

@@ -233,23 +233,73 @@ describe("OidcReauthService", () => {
   });
 
   describe("pending marker", () => {
-    it("round-trips the purpose for the user who started the flow", () => {
-      const marker = service.createPendingMarker(USER, "restore-backup");
+    const STATE = "state-of-the-forced-round-trip";
+    const OTHER_STATE = "state-of-some-other-round-trip";
 
-      expect(service.readPendingMarker(marker, USER)).toBe("restore-backup");
+    it("round-trips the purpose for the user who started the flow", () => {
+      const marker = service.createPendingMarker(USER, "restore-backup", STATE);
+
+      expect(service.readPendingMarker(marker, USER, STATE)).toBe(
+        "restore-backup",
+      );
     });
 
     it("refuses a marker started by a different account", () => {
       // The IdP authenticated somebody else. Minting here would hand user A an
       // artifact for a round trip user B completed.
-      const marker = service.createPendingMarker(OTHER, "restore-backup");
+      const marker = service.createPendingMarker(
+        OTHER,
+        "restore-backup",
+        STATE,
+      );
 
-      expect(service.readPendingMarker(marker, USER)).toBeNull();
+      expect(service.readPendingMarker(marker, USER, STATE)).toBeNull();
+    });
+
+    it("refuses a marker minted for a different authorization request", () => {
+      // FV-001. The marker outlives its redirect: a second authorization request
+      // -- an ordinary GET /auth/oidc, which sends no prompt=login -- overwrites
+      // oidc_state while the marker cookie survives. Completing that callback
+      // must not mint an artifact, or a live IdP SSO session substitutes for the
+      // fresh challenge the whole flow exists to force.
+      const marker = service.createPendingMarker(USER, "delete-account", STATE);
+
+      expect(service.readPendingMarker(marker, USER, OTHER_STATE)).toBeNull();
+    });
+
+    it("refuses a marker with no flow binding at all", () => {
+      // A cookie left over from the build before the binding existed. An
+      // unbindable marker is precisely the case the binding closes, so it fails
+      // closed rather than falling back to the user check alone.
+      const marker = jwt.sign(
+        { sub: USER, type: "oidc_reauth_pending", purpose: "delete-account" },
+        SECRET,
+        { algorithm: "HS256", expiresIn: 300 },
+      );
+
+      expect(service.readPendingMarker(marker, USER, STATE)).toBeNull();
+    });
+
+    it("refuses a valid marker when the callback validated no state", () => {
+      const marker = service.createPendingMarker(USER, "delete-account", STATE);
+
+      expect(service.readPendingMarker(marker, USER, undefined)).toBeNull();
+    });
+
+    it("does not carry the state in readable form", () => {
+      // The binding is a hash. The state is public in the redirect URL, so this
+      // is tidiness rather than secrecy -- but a marker that repeated it would
+      // invite someone to read the claim instead of comparing it.
+      const marker = service.createPendingMarker(USER, "delete-account", STATE);
+      const payload = jwt.decode(marker) as { sth?: string };
+
+      expect(payload.sth).not.toContain(STATE);
+      expect(payload.sth).toMatch(/^[0-9a-f]{64}$/);
     });
 
     it("refuses a forged or absent marker", () => {
-      expect(service.readPendingMarker(undefined, USER)).toBeNull();
-      expect(service.readPendingMarker("not-a-jwt", USER)).toBeNull();
+      expect(service.readPendingMarker(undefined, USER, STATE)).toBeNull();
+      expect(service.readPendingMarker("not-a-jwt", USER, STATE)).toBeNull();
       expect(
         service.readPendingMarker(
           jwt.sign(
@@ -258,18 +308,19 @@ describe("OidcReauthService", () => {
             { algorithm: "HS256", expiresIn: 300 },
           ),
           USER,
+          STATE,
         ),
       ).toBeNull();
     });
 
     it("refuses a marker whose purpose is not a known action", () => {
-      const marker = jwt.sign(
-        { sub: USER, type: "oidc_reauth_pending", purpose: "become-admin" },
-        SECRET,
-        { algorithm: "HS256", expiresIn: 300 },
+      const marker = service.createPendingMarker(
+        USER,
+        "become-admin" as never,
+        STATE,
       );
 
-      expect(service.readPendingMarker(marker, USER)).toBeNull();
+      expect(service.readPendingMarker(marker, USER, STATE)).toBeNull();
     });
 
     it("refuses an artifact presented as a marker", () => {
@@ -277,7 +328,7 @@ describe("OidcReauthService", () => {
       // into the callback to mint another one.
       const artifact = service.issue(USER, "delete-data");
 
-      expect(service.readPendingMarker(artifact, USER)).toBeNull();
+      expect(service.readPendingMarker(artifact, USER, STATE)).toBeNull();
     });
   });
 

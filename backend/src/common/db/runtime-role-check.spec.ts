@@ -13,6 +13,7 @@ const SAFE: RuntimeRoleFacts = {
   hasBypassRls: false,
   ownsDatabase: false,
   ownedPoliciedTables: 0,
+  exemptRoleMemberships: [],
 };
 
 /** A querier returning one row, in the `DataSource.query` array shape. */
@@ -31,6 +32,7 @@ const SAFE_ROW = {
   has_bypass_rls: false,
   owns_database: false,
   owned_policied_tables: "0",
+  exempt_role_memberships: [],
 };
 
 describe("runtimeRoleViolations", () => {
@@ -82,11 +84,45 @@ describe("runtimeRoleViolations", () => {
         hasBypassRls: true,
         ownsDatabase: true,
         ownedPoliciedTables: 53,
+        exemptRoleMemberships: ["monize"],
       },
       "monize_app",
     );
 
-    expect(violations).toHaveLength(5);
+    expect(violations).toHaveLength(6);
+  });
+});
+
+describe("runtimeRoleViolations -- exempt role membership (DR-V2)", () => {
+  it("refuses a role that can SET ROLE into an exempt one", () => {
+    // The attribute check reads the LOGIN role only, so a role granted
+    // membership in the owner (or in any BYPASSRLS role) passes every other
+    // check while being one statement away from seeing every tenant.
+    const violations = runtimeRoleViolations(
+      { ...SAFE, exemptRoleMemberships: ["monize", "rds_superuser"] },
+      "monize_app",
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]).toContain('"monize"');
+    expect(violations[0]).toContain('"rds_superuser"');
+    expect(violations[0]).toContain("SET ROLE");
+  });
+
+  it("accepts membership in an ordinary role, which grants no exemption", () => {
+    // The query only reports memberships that are themselves exempt, so an
+    // unrelated group grant is not a finding -- reporting it would train the
+    // operator to ignore the message.
+    expect(runtimeRoleViolations(SAFE, "monize_app")).toEqual([]);
+  });
+
+  it("asks the database about membership rather than assuming none", () => {
+    // The previous version of this check could not have answered the question at
+    // all: pg_auth_members was not in the query.
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("pg_auth_members");
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.rolsuper");
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.rolbypassrls");
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.oid = d.datdba");
   });
 });
 
@@ -96,6 +132,14 @@ describe("readRuntimeRoleFacts", () => {
 
     await expect(readRuntimeRoleFacts(querier)).resolves.toEqual(SAFE);
     expect(querier.query).toHaveBeenCalledWith(RUNTIME_ROLE_FACTS_SQL);
+  });
+
+  it("treats a missing membership array as no memberships", async () => {
+    const { exempt_role_memberships: _omitted, ...withoutMemberships } =
+      SAFE_ROW;
+    const facts = await readRuntimeRoleFacts(arrayQuerier(withoutMemberships));
+
+    expect(facts.exemptRoleMemberships).toEqual([]);
   });
 
   it("reads the { rows } result shape pg returns", async () => {

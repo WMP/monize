@@ -42,6 +42,18 @@ export interface RuntimeRoleFacts {
    * enforcement by design), so owning even one policied table is a hole.
    */
   ownedPoliciedTables: number;
+  /**
+   * Roles this one is a member of that are themselves exempt from policies --
+   * superuser, `BYPASSRLS`, the database owner, or the owner of a policied table.
+   *
+   * Membership is not the same as holding the attribute: PostgreSQL applies it
+   * only after `SET ROLE`, and nothing in this application issues one. But the
+   * check exists to answer "is this connection capable of seeing every tenant",
+   * and a role that can reach an exempt role with one statement is -- an SQL
+   * injection or a mistaken raw query gets `SET ROLE` for free. Reported by name
+   * so the operator can see which grant to revoke (DR-V2).
+   */
+  exemptRoleMemberships: string[];
 }
 
 /**
@@ -60,7 +72,22 @@ SELECT current_user AS current_user_name,
          WHERE n.nspname = 'public'
            AND c.relkind = 'r'
            AND c.relrowsecurity
-           AND c.relowner = r.oid) AS owned_policied_tables
+           AND c.relowner = r.oid) AS owned_policied_tables,
+       (SELECT coalesce(array_agg(DISTINCT g.rolname), '{}')
+          FROM pg_auth_members m
+          JOIN pg_roles g ON g.oid = m.roleid
+         WHERE m.member = r.oid
+           AND (g.rolsuper
+                OR g.rolbypassrls
+                OR g.oid = d.datdba
+                OR EXISTS (SELECT 1
+                             FROM pg_class c2
+                             JOIN pg_namespace n2 ON n2.oid = c2.relnamespace
+                            WHERE n2.nspname = 'public'
+                              AND c2.relkind = 'r'
+                              AND c2.relrowsecurity
+                              AND c2.relowner = g.oid)))
+         AS exempt_role_memberships
   FROM pg_roles r
   JOIN pg_database d ON d.datname = current_database()
  WHERE r.rolname = current_user
@@ -72,6 +99,7 @@ interface RawFactRow {
   has_bypass_rls?: boolean;
   owns_database?: boolean;
   owned_policied_tables?: number | string;
+  exempt_role_memberships?: string[] | null;
 }
 
 /** Normalize what `DataSource.query` / `pg.Client.query` hand back. */
@@ -102,6 +130,7 @@ export async function readRuntimeRoleFacts(
     hasBypassRls: !!row.has_bypass_rls,
     ownsDatabase: !!row.owns_database,
     ownedPoliciedTables: Number(row.owned_policied_tables ?? 0),
+    exemptRoleMemberships: row.exempt_role_memberships ?? [],
   };
 }
 
@@ -145,6 +174,14 @@ export function runtimeRoleViolations(
     violations.push(
       `role "${facts.currentUser}" owns ${facts.ownedPoliciedTables} table(s) ` +
         "with RLS enabled, and a table's owner is exempt from its policies",
+    );
+  }
+  if (facts.exemptRoleMemberships.length > 0) {
+    violations.push(
+      `role "${facts.currentUser}" is a member of ${facts.exemptRoleMemberships
+        .map((r) => `"${r}"`)
+        .join(", ")}, which policies do not apply to -- one SET ROLE reaches ` +
+        "them",
     );
   }
   return violations;

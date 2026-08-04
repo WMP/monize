@@ -13,6 +13,7 @@ import { withScopedDb } from "../common/db/scoped-db";
 import { Cron } from "@nestjs/schedule";
 import { promises as fs, readdirSync, unlinkSync, copyFileSync } from "fs";
 import { resolve } from "path";
+import { randomUUID } from "crypto";
 import { AutoBackupSettings } from "./entities/auto-backup-settings.entity";
 import { BackupService } from "./backup.service";
 import { BackupEncryptionService } from "./backup-encryption.service";
@@ -641,7 +642,30 @@ export class AutoBackupService {
       userId,
       encryptionPassword,
     );
-    await fs.writeFile(filepath, payload);
+    // Write to a temporary name and rename into place. `rename` within a
+    // directory is atomic, so a reader (or a restore) never sees a half-written
+    // backup, and a crash mid-write leaves the previous good file rather than a
+    // truncated one that looks like a successful backup. Replacing our own
+    // same-day file is intended -- the collision that mattered was between
+    // different users, and the per-user directory removes it.
+    // FV-004: unique per write, not per process. `process.pid` looked unique and
+    // is not -- a manual backup and the scheduled one for the same user, day and
+    // extension collide inside a single process, and across replicas sharing a
+    // volume PIDs collide outright. The loser's `rename` then fails with ENOENT,
+    // or its own cleanup unlinks the temp file the winner is about to rename, so a
+    // legitimate backup run reports failure. Replacing our own *final* same-day
+    // file is still intended; it is the intermediate name that has to be private.
+    const tempPath = this.safePath(
+      userFolder,
+      `.${filename}.partial-${process.pid}-${randomUUID()}`,
+    );
+    try {
+      await fs.writeFile(tempPath, payload);
+      await fs.rename(tempPath, filepath);
+    } catch (error) {
+      await fs.unlink(tempPath).catch(() => {});
+      throw error;
+    }
 
     this.logger.log(
       `Backup written to ${filepath}${encryptionPassword ? " (encrypted)" : ""}`,

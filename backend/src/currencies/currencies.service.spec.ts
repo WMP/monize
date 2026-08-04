@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource, Repository } from "typeorm";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
@@ -591,6 +593,7 @@ describe("CurrenciesService", () => {
     it("deletes the creator's own currency when nobody references it", async () => {
       mockCurrencyRepo.findOne!.mockResolvedValue(ownCurrency);
       mockDataSource.query
+        .mockResolvedValueOnce([]) // SELECT ... FOR UPDATE
         .mockResolvedValueOnce([{ inUse: false }]) // this user's own usage
         .mockResolvedValueOnce([{ inUse: false }]); // every tenant's references
       mockPrefRepo.delete!.mockResolvedValue(undefined);
@@ -618,6 +621,7 @@ describe("CurrenciesService", () => {
     it("keeps the shared row when any tenant still references it", async () => {
       mockCurrencyRepo.findOne!.mockResolvedValue(ownCurrency);
       mockDataSource.query
+        .mockResolvedValueOnce([]) // SELECT ... FOR UPDATE
         .mockResolvedValueOnce([{ inUse: false }])
         .mockResolvedValueOnce([{ inUse: true }]);
       mockPrefRepo.delete!.mockResolvedValue(undefined);
@@ -654,7 +658,8 @@ describe("CurrenciesService", () => {
 
       await service.remove(userId, "CAD");
 
-      expect(mockDataSource.query).toHaveBeenCalledTimes(1);
+      // The row lock and this user's own usage probe -- and nothing global.
+      expect(mockDataSource.query).toHaveBeenCalledTimes(2);
     });
 
     it("counts other tenants' preference rows as a blocking reference", async () => {
@@ -669,11 +674,11 @@ describe("CurrenciesService", () => {
 
       await service.remove(userId, "CAD");
 
-      const globalProbe = mockDataSource.query.mock.calls[1][0] as string;
+      const globalProbe = mockDataSource.query.mock.calls[2][0] as string;
       expect(globalProbe).toContain("FROM user_currency_preferences");
       // ...and without a user_id predicate, which is what made it a subtotal.
       expect(globalProbe).not.toContain("user_id");
-      expect(mockDataSource.query.mock.calls[1][1]).toEqual(["CAD"]);
+      expect(mockDataSource.query.mock.calls[2][1]).toEqual(["CAD"]);
     });
 
     it("asks about this user's own usage with a user predicate", async () => {
@@ -686,9 +691,74 @@ describe("CurrenciesService", () => {
 
       await service.remove(userId, "CAD");
 
-      const ownProbe = mockDataSource.query.mock.calls[0][0] as string;
+      const ownProbe = mockDataSource.query.mock.calls[1][0] as string;
       expect(ownProbe).toContain("user_id = $2");
-      expect(mockDataSource.query.mock.calls[0][1]).toEqual(["CAD", userId]);
+      expect(mockDataSource.query.mock.calls[1][1]).toEqual(["CAD", userId]);
+    });
+
+    it("locks the currency row before reading or writing anything (FV-003)", async () => {
+      // Without the lock the reference check and the DELETE it authorizes are two
+      // statements a concurrent activation can slip between: the other tenant's
+      // committed preference then cascades away, or their activation fails with a
+      // foreign-key error, depending only on arrival order. Both silent.
+      mockCurrencyRepo.findOne!.mockResolvedValue(ownCurrency);
+      mockDataSource.query
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ inUse: false }])
+        .mockResolvedValueOnce([{ inUse: false }]);
+      mockPrefRepo.delete!.mockResolvedValue(undefined);
+      mockCurrencyRepo.remove!.mockResolvedValue(undefined);
+
+      await service.remove(userId, "CAD");
+
+      const lock = mockDataSource.query.mock.calls[0];
+      expect(lock[0]).toContain("FOR UPDATE");
+      expect(lock[0]).toContain("FROM currencies");
+      expect(lock[1]).toEqual(["CAD"]);
+      // Before the preference delete, not merely somewhere in the transaction:
+      // the whole point is that no reference can appear after the decision.
+      expect(mockPrefRepo.delete).toHaveBeenCalled();
+      expect(mockDataSource.query.mock.invocationCallOrder[0]).toBeLessThan(
+        mockPrefRepo.delete!.mock.invocationCallOrder[0],
+      );
+    });
+
+    it("asks about every foreign key to currencies(code) (FV-003)", async () => {
+      // A reference this query does not ask about is not one the DELETE gets to
+      // ignore -- it is one PostgreSQL refuses the DELETE for with a raw
+      // constraint error. `budgets` and `exchange_rates` were both missing.
+      //
+      // Derived from the schema rather than a copied list, so adding a column
+      // that references currencies(code) fails here instead of in production.
+      const schema = readFileSync(
+        join(__dirname, "../../../database/schema.sql"),
+        "utf8",
+      );
+      const referencingTables = new Set<string>();
+      let currentTable: string | null = null;
+      for (const line of schema.split("\n")) {
+        const create = /^CREATE TABLE (?:IF NOT EXISTS )?(\w+)/.exec(line);
+        if (create) currentTable = create[1];
+        if (/REFERENCES currencies\(code\)/.test(line) && currentTable) {
+          referencingTables.add(currentTable);
+        }
+      }
+      expect(referencingTables.size).toBeGreaterThan(5);
+
+      mockCurrencyRepo.findOne!.mockResolvedValue(ownCurrency);
+      mockDataSource.query
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ inUse: false }])
+        .mockResolvedValueOnce([{ inUse: false }]);
+      mockPrefRepo.delete!.mockResolvedValue(undefined);
+      mockCurrencyRepo.remove!.mockResolvedValue(undefined);
+
+      await service.remove(userId, "CAD");
+
+      const globalProbe = mockDataSource.query.mock.calls[2][0] as string;
+      for (const table of referencingTables) {
+        expect(globalProbe).toContain(`FROM ${table}`);
+      }
     });
 
     it("uppercases code before processing", async () => {

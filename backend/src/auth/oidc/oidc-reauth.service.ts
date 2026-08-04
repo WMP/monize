@@ -83,6 +83,8 @@ interface PendingReauthPayload {
   sub: string;
   type: string;
   purpose: string;
+  /** SHA-256 of the `state` this marker was minted alongside. See `flowHash`. */
+  sth?: string;
   exp?: number;
 }
 
@@ -113,32 +115,66 @@ function secret(): string {
 /** How long the user has to complete the IdP round trip. */
 export const OIDC_REAUTH_PENDING_TTL_SECONDS = 10 * 60;
 
+/**
+ * Identity of one authorization round trip, as the marker records it.
+ *
+ * The `state` is the only value that is unique to a single redirect and comes
+ * back through the provider, so it is what a marker has to be tied to. Hashed
+ * rather than stored raw: a JWT payload is readable by anyone holding the
+ * cookie, and there is no reason for the marker to repeat a value the caller
+ * would otherwise have to have kept.
+ */
+function flowHash(state: string): string {
+  return crypto.createHash("sha256").update(state).digest("hex");
+}
+
 @Injectable()
 export class OidcReauthService {
   private readonly logger = new Logger(OidcReauthService.name);
 
   /**
-   * Signed marker that this user started a re-authentication for this action.
+   * Signed marker that this user started a re-authentication for this action,
+   * in *this* authorization round trip.
    *
    * Carried in an httpOnly cookie across the IdP round trip. Signed rather than
    * a plain value because the callback trusts it to decide *which* action the
    * artifact it mints is for: an attacker who could rewrite the cookie would
    * turn a re-auth for a harmless purpose into one for account deletion.
+   *
+   * `state` binds it to one redirect. Without that binding the marker only says
+   * "a re-authentication was started", and any later callback for the same user
+   * satisfies it -- including the ordinary login callback, which does not ask the
+   * provider to challenge the user at all (FV-001).
    */
-  createPendingMarker(userId: string, purpose: OidcReauthPurpose): string {
-    return jwt.sign({ sub: userId, type: PENDING_TYPE, purpose }, secret(), {
-      algorithm: ALGORITHM,
-      expiresIn: OIDC_REAUTH_PENDING_TTL_SECONDS,
-    });
+  createPendingMarker(
+    userId: string,
+    purpose: OidcReauthPurpose,
+    state: string,
+  ): string {
+    return jwt.sign(
+      { sub: userId, type: PENDING_TYPE, purpose, sth: flowHash(state) },
+      secret(),
+      {
+        algorithm: ALGORITHM,
+        expiresIn: OIDC_REAUTH_PENDING_TTL_SECONDS,
+      },
+    );
   }
 
   /**
-   * Read a pending marker, or null when it is absent, expired, tampered with, or
-   * belongs to a different user than the one the IdP just authenticated.
+   * Read a pending marker, or null when it is absent, expired, tampered with,
+   * belongs to a different user than the one the IdP just authenticated, or was
+   * minted for a different round trip than the one completing now.
+   *
+   * `state` is the state this callback actually validated. A marker with no
+   * `sth` claim is refused rather than accepted on the older two checks: an
+   * unbindable marker is exactly the case this binding exists to close, so a
+   * cookie left over from a previous build has to fail closed.
    */
   readPendingMarker(
     marker: string | undefined,
     authenticatedUserId: string,
+    state: string | undefined,
   ): OidcReauthPurpose | null {
     if (!marker) return null;
     let payload: PendingReauthPayload;
@@ -157,6 +193,18 @@ export class OidcReauthService {
       this.logger.warn(
         `OIDC re-auth marker rejected: started by ${payload.sub}, provider ` +
           `authenticated ${authenticatedUserId}`,
+      );
+      return null;
+    }
+    if (!payload.sth || !state || payload.sth !== flowHash(state)) {
+      // The marker outlived the redirect it was minted for. The reachable case is
+      // a second authorization request overwriting `oidc_state` while the marker
+      // cookie survives -- an ordinary `GET /auth/oidc` does exactly that, and it
+      // sends no `prompt=login`, so the provider may answer it from an existing
+      // SSO session without challenging anyone.
+      this.logger.warn(
+        `OIDC re-auth marker rejected for user ${authenticatedUserId}: ` +
+          `minted for a different authorization request`,
       );
       return null;
     }

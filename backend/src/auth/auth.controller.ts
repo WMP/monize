@@ -414,6 +414,16 @@ export class AuthController {
 
     res.cookie("oidc_state", state, cookieOptions);
     res.cookie("oidc_nonce", nonce, cookieOptions);
+    // An ordinary login is not a re-authentication, and it must not inherit one.
+    // This request overwrites `oidc_state`, so a surviving marker would be
+    // rejected at the callback anyway (it is bound to the state it was minted
+    // with) -- clearing it here means the user gets a plain login rather than a
+    // login that silently discards a re-auth they had started.
+    res.clearCookie("oidc_reauth", {
+      httpOnly: true,
+      secure: this.useSecureCookies,
+      sameSite: "lax" as const,
+    });
 
     const authUrl = this.oidcService.getAuthorizationUrl(state, nonce);
     res.redirect(authUrl);
@@ -493,7 +503,10 @@ export class AuthController {
     // the artifact it mints unlocks.
     res.cookie(
       "oidc_reauth",
-      this.oidcReauthService.createPendingMarker(userId, purpose),
+      // Bound to `state`: the marker is only good for the round trip started
+      // here, so a later authorization request -- notably an ordinary login,
+      // which asks for no fresh challenge -- cannot complete it (FV-001).
+      this.oidcReauthService.createPendingMarker(userId, purpose, state),
       cookieOptions,
     );
 
@@ -599,9 +612,12 @@ export class AuthController {
       // verified state, nonce, issuer, audience and signature, and the account
       // it resolved to is the one that started the flow (checked inside
       // readPendingMarker), so this is the one place entitled to mint the proof.
+      // `state` goes in as well, so the marker has to belong to the round trip
+      // that just completed rather than to any earlier one for the same user.
       const reauthPurpose = this.oidcReauthService.readPendingMarker(
         pendingReauth,
         result.user.id,
+        state,
       );
       if (reauthPurpose) {
         const artifact = this.oidcReauthService.issue(
