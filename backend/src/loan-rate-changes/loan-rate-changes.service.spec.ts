@@ -440,6 +440,83 @@ describe("LoanRateChangesService", () => {
       });
     });
 
+    // REV-20260803-028: only a memo containing the literal English substring
+    // "extra" was recognized as the extra-principal split, so a recurring
+    // overpayment labeled with the account's own configured category, or a
+    // localized/user-chosen memo, was silently dropped when the scheduled
+    // payment's splits were rebuilt during rate sync. Recognition now mirrors
+    // `isOverpayment` (frontend/src/lib/loan-history.ts): the account's
+    // configured overpayment category or memo substring, in addition to the
+    // legacy literal "extra" fallback.
+    it("preserves an extra-principal split recognized by the account's configured overpayment category, even though its memo does not contain 'extra'", async () => {
+      const account = makeAccount({ overpaymentCategoryId: "cat-overpayment" });
+      accountsRepository.findOne.mockResolvedValue(account);
+      manager.find.mockResolvedValue([
+        makeRow({ effectiveDate: "2024-06-01", annualRate: 4.9 }),
+      ]);
+      scheduledTransactionsService.findOne.mockResolvedValue({
+        id: "sched-1",
+        splits: [
+          { transferAccountId: accountId, amount: -800, memo: "Principal" },
+          { categoryId: "cat-interest", amount: -1700, memo: "Interest" },
+          {
+            transferAccountId: accountId,
+            categoryId: "cat-overpayment",
+            amount: -200,
+            memo: "Additional principal",
+          },
+        ],
+      });
+
+      await service.create(userId, accountId, {
+        effectiveDate: "2024-06-01",
+        annualRate: 4.9,
+      });
+
+      const updateArgs = scheduledTransactionsService.update.mock.calls[0][2];
+      expect(updateArgs.splits).toHaveLength(3);
+      expect(updateArgs.splits[2]).toMatchObject({
+        transferAccountId: accountId,
+        amount: -200,
+        memo: "Additional principal",
+      });
+    });
+
+    it("preserves an extra-principal split recognized by the account's configured (localized) overpayment memo, even though it does not contain 'extra'", async () => {
+      const account = makeAccount({
+        overpaymentMemo: "Dodatkowa spłata kapitału",
+      });
+      accountsRepository.findOne.mockResolvedValue(account);
+      manager.find.mockResolvedValue([
+        makeRow({ effectiveDate: "2024-06-01", annualRate: 4.9 }),
+      ]);
+      scheduledTransactionsService.findOne.mockResolvedValue({
+        id: "sched-1",
+        splits: [
+          { transferAccountId: accountId, amount: -800, memo: "Principal" },
+          { categoryId: "cat-interest", amount: -1700, memo: "Interest" },
+          {
+            transferAccountId: accountId,
+            amount: -200,
+            memo: "Dodatkowa spłata kapitału",
+          },
+        ],
+      });
+
+      await service.create(userId, accountId, {
+        effectiveDate: "2024-06-01",
+        annualRate: 4.9,
+      });
+
+      const updateArgs = scheduledTransactionsService.update.mock.calls[0][2];
+      expect(updateArgs.splits).toHaveLength(3);
+      expect(updateArgs.splits[2]).toMatchObject({
+        transferAccountId: accountId,
+        amount: -200,
+        memo: "Dodatkowa spłata kapitału",
+      });
+    });
+
     it("leaves scalars and the scheduled payment untouched for future-dated changes", async () => {
       const account = makeAccount();
       accountsRepository.findOne.mockResolvedValue(account);

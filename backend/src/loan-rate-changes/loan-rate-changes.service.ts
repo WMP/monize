@@ -82,6 +82,44 @@ function monthsBetweenYmd(fromYmd: string, toYmdStr: string): number {
   return Math.max(0, (toYear - fromYear) * 12 + (toMonth - fromMonth));
 }
 
+/**
+ * Whether a scheduled transaction's transfer-to-loan split is a standalone
+ * extra-principal (overpayment) split, using the same per-account
+ * overpayment recognition fields the loan-history report matches posted
+ * transactions against (`isOverpayment` in
+ * frontend/src/lib/loan-history.ts): the account's configured overpayment
+ * category, or its configured overpayment memo substring (case-insensitive).
+ * The literal "extra" substring is kept as an additional, unconditional
+ * fallback so splits this same sync already created before an account had
+ * either field configured -- its payload always memos a new extra split as
+ * "Extra Principal" -- keep surviving rebuilds.
+ *
+ * The account's `overpaymentPayeeId` is deliberately not consulted here: it
+ * lives on the parent scheduled transaction (the whole bill's payee), not on
+ * the split, and every transfer-to-loan split -- the regular principal leg
+ * and an extra-principal leg alike -- shares that one parent. Matching on it
+ * would flag both splits identically instead of telling them apart, unlike
+ * `isOverpayment`'s payee check against a posted transaction, which is never
+ * shared between an overpayment and a same-day regular payment.
+ */
+function isExtraPrincipalSplit(
+  split: { categoryId?: string | null; memo?: string | null },
+  account: Account,
+): boolean {
+  if (
+    account.overpaymentCategoryId &&
+    split.categoryId === account.overpaymentCategoryId
+  ) {
+    return true;
+  }
+  const memo = split.memo?.toLowerCase() ?? "";
+  const configuredMemo = account.overpaymentMemo?.trim().toLowerCase();
+  if (configuredMemo && memo.includes(configuredMemo)) {
+    return true;
+  }
+  return memo.includes("extra");
+}
+
 @Injectable()
 export class LoanRateChangesService {
   private readonly logger = new Logger(LoanRateChangesService.name);
@@ -367,9 +405,11 @@ export class LoanRateChangesService {
   /**
    * Recompute the linked scheduled payment's principal/interest split from the
    * account's current balance and rate, preserving any separate extra-principal
-   * split (memo contains "extra"). Returns the update to apply plus a
-   * before/after preview, or null when the account has no applicable linked
-   * scheduled bill payment. Does not apply anything.
+   * split (recognized via `isExtraPrincipalSplit` -- the account's configured
+   * overpayment category or memo, or the legacy literal "extra" memo
+   * substring). Returns the update to apply plus a before/after preview, or
+   * null when the account has no applicable linked scheduled bill payment.
+   * Does not apply anything.
    */
   async buildScheduledUpdate(
     userId: string,
@@ -434,8 +474,7 @@ export class LoanRateChangesService {
     const splits = scheduled.splits || [];
     const extraSplit = splits.find(
       (s) =>
-        s.transferAccountId === account.id &&
-        s.memo?.toLowerCase().includes("extra"),
+        s.transferAccountId === account.id && isExtraPrincipalSplit(s, account),
     );
     const requestedExtraAmount = extraSplit
       ? Math.abs(Number(extraSplit.amount))
@@ -488,7 +527,7 @@ export class LoanRateChangesService {
     const principalSplit = splits.find(
       (s) =>
         s.transferAccountId === account.id &&
-        !s.memo?.toLowerCase().includes("extra"),
+        !isExtraPrincipalSplit(s, account),
     );
     const interestSplit = splits.find(
       (s) =>
