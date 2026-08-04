@@ -78,7 +78,22 @@ async function realpathOfExistingAncestor(
     try {
       return { real: await fs.realpath(current), missing: missing.reverse() };
     } catch (error) {
-      if ((error as { code?: string }).code !== "ENOENT") throw error;
+      const code = (error as { code?: string }).code;
+      // Only ENOENT means "not created yet", which is the case this walk exists
+      // to handle. Everything else means the path cannot be a directory at all:
+      // ENOTDIR because a component is a file, ELOOP because a symlink cycles,
+      // EACCES because a parent cannot be traversed, ENAMETOOLONG because it is
+      // not a usable path.
+      //
+      // Those used to be rethrown raw, so a user-supplied folder containing a
+      // file component reached the client as a 500 carrying
+      // `ENOTDIR: not a directory, realpath '/data/backups/notes.txt/sub'` --
+      // the wrong status for a bad request, the resolved filesystem path leaked
+      // into the response, and nothing the user could act on. A typed error lets
+      // the caller answer with a 400 that says what is wrong.
+      if (code !== "ENOENT") {
+        throw new BackupPathUnusableError(path, code ?? String(error));
+      }
       const parent = dirname(current);
       if (parent === current) {
         // Reached `/` without finding anything that exists, which cannot happen
@@ -88,6 +103,20 @@ async function realpathOfExistingAncestor(
       missing.push(current.slice(parent === sep ? 1 : parent.length + 1));
       current = parent;
     }
+  }
+}
+
+/**
+ * The path cannot be a directory, whatever the permitted roots say. Distinct from
+ * `BackupPathNotAllowedError`, which is about *where* a usable path points.
+ */
+export class BackupPathUnusableError extends Error {
+  constructor(
+    readonly path: string,
+    readonly code: string,
+  ) {
+    super(`Backup folder "${path}" cannot be used as a directory (${code}).`);
+    this.name = "BackupPathUnusableError";
   }
 }
 

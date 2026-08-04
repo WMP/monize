@@ -111,6 +111,26 @@ produce nothing.
 The audit named only the backup mount; the attachment mount has the identical
 defect in the same manifest, so both are fixed.
 
+A follow-up review (F3R-001) called this not fixed for the default chart, on the
+reading that a user "can enable a schedule that reports errors and produces no
+files". That premise is wrong: `updateSettings` with `enabled: true` calls
+`resolveUserFolder`, which creates the directory, and then `assertFolderWritable`,
+which probes it — so on a read-only root filesystem with no mount the save is
+**refused and nothing is stored**. A test now pins that, including that
+`save` is never called.
+
+What the review was right about is what the user was told. The refusal said
+"Ensure the path is mapped as a Docker volume" — one of the two mechanisms, and the
+wrong one on Kubernetes, where the same thing is a Helm persistence value. It also
+read as a mistyped path rather than as a deployment with nowhere to write, which is
+not something any path the user types can fix. The message now says that, and names
+both mechanisms, because the code cannot tell which platform it is on.
+`GET /backup/auto-backup-capability` reports the same thing before the user
+configures anything, so a surface can say it first.
+
+Not done, and stated as such: hiding or disabling the frontend control. That needs
+browser verification, the same constraint as P3-009.
+
 ### P3-007 — Export reads each section in a separate transaction instead of one consistent snapshot
 
 **Fixed.** Every table is read inside a single `REPEATABLE READ` transaction

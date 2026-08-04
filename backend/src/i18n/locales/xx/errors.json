@@ -197,7 +197,9 @@
     "backupPasswordBreached": "[XX-This password has been found in a data breach. Please choose a different password.-XX]",
     "restoreBodyMustBeFile": "[XX-Request body must be a backup file-XX]",
     "supportPasswordRequired": "[XX-A support backup must be encrypted: supply a password.-XX]",
-    "supportExportTooLarge": "[XX-This support backup would be {{ size }} MiB of JSON, above the {{ limit }} MiB limit. Narrow it with an account selection or a date range, or raise BACKUP_EXPORT_BUFFER_LIMIT.-XX]"
+    "supportExportTooLarge": "[XX-This support backup would be {{ size }} MiB of JSON, above the {{ limit }} MiB limit. Narrow it with an account selection or a date range, or raise BACKUP_EXPORT_BUFFER_LIMIT.-XX]",
+    "noBackupStorage": "[XX-This deployment has no writable backup storage: {{ safePath }} does not exist and cannot be created ({{ reason }}). Mount a volume there (Docker: a bind mount or named volume; Kubernetes: set backend.persistence.backups in the Helm chart) and try again.-XX]",
+    "folderUnusable": "[XX-Folder \"{{ path }}\" cannot be used as a directory ({{ reason }}).-XX]"
   },
   "budgets": {
     "notFound": "[XX-Budget with ID {{ id }} not found-XX]",

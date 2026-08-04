@@ -82,6 +82,25 @@ export class AutoBackupController {
     return this.autoBackupService.browseFolders(dto.folderPath);
   }
 
+  /**
+   * Whether this deployment can write an automatic backup anywhere.
+   *
+   * Enabling a schedule already fails when it cannot, but only after the admin
+   * has chosen a frequency, a time and a retention policy and pressed save --
+   * and the answer does not depend on any of that. A surface that reads this
+   * can say so first. Separate from the settings response because it is a
+   * property of the deployment rather than of the user's row, and because it
+   * touches the filesystem, so a settings read should not pay for it.
+   */
+  @Get("auto-backup-capability")
+  @ApiOperation({
+    summary: "Whether this deployment has writable automatic-backup storage",
+  })
+  @ApiResponse({ status: 200, description: "Capability reported" })
+  async getAutoBackupCapability() {
+    return this.autoBackupService.describeCapability();
+  }
+
   @Post("run-auto-backup")
   @DemoRestricted()
   @HttpCode(HttpStatus.OK)

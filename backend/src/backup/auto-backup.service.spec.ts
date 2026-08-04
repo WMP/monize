@@ -529,6 +529,141 @@ describe("AutoBackupService", () => {
    * endpoint that requires authentication and no role. These are the paths that
    * must now be refused, and the one that must not.
    */
+  /**
+   * The default deployment has `readOnlyRootFilesystem: true` and, unless the
+   * operator enables a claim, no mount at `/data/backups`. Enabling a schedule
+   * there already fails -- `resolveUserFolder` creates the directory and
+   * `assertFolderWritable` probes it -- so a follow-up review's claim that the
+   * settings "can be stored" was wrong. What was right is what the user is told:
+   * the message named a Docker volume, which is one of the two mechanisms and the
+   * wrong one on Kubernetes, and read as a mistyped path rather than as a
+   * deployment with nowhere to write.
+   */
+  describe("a deployment with no writable backup storage", () => {
+    /**
+     * A default root that cannot be created.
+     *
+     * EROFS is a property of the mount, not of the code, and this suite runs as
+     * root -- so chmod cannot produce it and neither can any real directory here.
+     * Only `mkdir` is substituted; the directory, the probe and the containment
+     * checks stay real, which is the same trade the short-write tests in
+     * `atomic-file.spec.ts` make.
+     */
+    async function serviceWithUncreatableRoot(): Promise<{
+      service: AutoBackupService;
+      root: string;
+    }> {
+      const unusable = join(root, "read-only-mount", "backups");
+      const svc = await createService({
+        BACKUP_CONTAINER_DIR: unusable,
+        BACKUP_ALLOWED_ROOTS: unusable,
+      });
+      jest.spyOn(fs, "mkdir").mockRejectedValue(
+        Object.assign(new Error("EROFS: read-only file system"), {
+          code: "EROFS",
+        }),
+      );
+      return { service: svc, root: unusable };
+    }
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("still refuses to store an enabled schedule", async () => {
+      const { service: svc } = await serviceWithUncreatableRoot();
+      mockSettingsRepo.findOne.mockResolvedValue(createSettings());
+
+      await expect(
+        svc.updateSettings(userId, { enabled: true }),
+      ).rejects.toThrow(BadRequestException);
+      // The point: nothing was written. A schedule that cannot run must not be
+      // stored as though it will.
+      expect(mockSettingsRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("says the deployment has no backup storage, not that a path is missing", async () => {
+      const { service: svc, root: unusable } =
+        await serviceWithUncreatableRoot();
+      mockSettingsRepo.findOne.mockResolvedValue(createSettings());
+
+      const error: Error = await svc
+        .updateSettings(userId, { enabled: true })
+        .then(
+          () => new Error("expected a rejection"),
+          (e: Error) => e,
+        );
+
+      expect(error.message).toContain("no writable backup storage");
+      expect(error.message).toContain(unusable);
+      // Both mechanisms, because the code cannot tell which platform it is on --
+      // and the Kubernetes one was the half that used to be missing.
+      expect(error.message).toMatch(/Docker/);
+      expect(error.message).toMatch(/backend\.persistence\.backups/);
+    });
+
+    it("reports the capability as unavailable, with a reason", async () => {
+      const { service: svc, root: unusable } =
+        await serviceWithUncreatableRoot();
+
+      // So a surface can say this before the user configures a frequency, a
+      // time and a retention policy and presses save.
+      const capability = await svc.describeCapability();
+      expect(capability.available).toBe(false);
+      expect(capability.folderPath).toBe(unusable);
+      expect(capability.reason).toBeTruthy();
+    });
+
+    it("reports the capability as available on a writable root", async () => {
+      await expect(service.describeCapability()).resolves.toEqual({
+        available: true,
+        folderPath: root,
+      });
+    });
+
+    it("leaves no probe file behind when reporting the capability", async () => {
+      await service.describeCapability();
+      expect(
+        readdirSync(root).filter((n) => n.startsWith(".monize-write-test-")),
+      ).toEqual([]);
+    });
+  });
+
+  /**
+   * A path that cannot be a directory at all -- a component that is a file, a
+   * symlink cycle, an untraversable parent. `realpathOfExistingAncestor` treats
+   * only ENOENT as "not created yet" and used to rethrow everything else raw, so
+   * these reached the client as a 500 carrying the resolved filesystem path
+   * instead of a 400 saying what was wrong.
+   */
+  describe("a path that cannot be a directory", () => {
+    it("answers with a bad request, not a server error", async () => {
+      const blocker = join(root, "notes.txt");
+      await fs.writeFile(blocker, "not a directory");
+
+      const result = await service.validateFolder(join(blocker, "backups"));
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toMatch(/cannot be used as a directory/);
+      // The raw errno message and the resolved path do not belong in a response.
+      expect(result.error).not.toMatch(/realpath/);
+    });
+
+    it("refuses to store a schedule pointing at one", async () => {
+      const blocker = join(root, "ledger.csv");
+      await fs.writeFile(blocker, "");
+      mockSettingsRepo.findOne.mockResolvedValue(createSettings());
+
+      await expect(
+        service.updateSettings(userId, {
+          enabled: true,
+          folderPath: join(blocker, "backups"),
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockSettingsRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
   describe("permitted roots", () => {
     it("refuses a writable directory outside every permitted root", async () => {
       const outside = mkdtempSync(join(tmpdir(), "monize-elsewhere-"));

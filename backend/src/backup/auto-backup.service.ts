@@ -23,6 +23,7 @@ import {
 import {
   assertWithinAllowedRoots,
   BackupPathNotAllowedError,
+  BackupPathUnusableError,
   resolveAllowedRoots,
 } from "./backup-paths";
 import { AutoBackupSettings } from "./entities/auto-backup-settings.entity";
@@ -266,6 +267,17 @@ export class AutoBackupService {
           }),
         );
       }
+      // A path that cannot be a directory is a bad request, not a server fault.
+      // These used to escape as a 500 carrying the resolved filesystem path.
+      if (error instanceof BackupPathUnusableError) {
+        throw new BadRequestException(
+          tr(
+            "errors.backup.folderUnusable",
+            `Folder "${folderPath}" cannot be used as a directory (${error.code}).`,
+            { path: folderPath, reason: error.code },
+          ),
+        );
+      }
       throw error;
     }
   }
@@ -320,6 +332,39 @@ export class AutoBackupService {
     // Report the folder backups are actually written to, so a stored row that
     // never had one chosen shows the deployment default instead of a blank.
     return this.withResolvedFolder(existing ?? this.defaultSettingsFor(userId));
+  }
+
+  /**
+   * Whether this deployment can write an automatic backup anywhere.
+   *
+   * Enabling a schedule already fails when it cannot -- `resolveUserFolder`
+   * creates the directory and `assertFolderWritable` probes it, so a read-only
+   * root filesystem with no mount is refused rather than stored. But it is
+   * refused only *after* the user has configured a frequency, a time and a
+   * retention policy and pressed save, and the answer does not depend on
+   * anything they chose. A surface that can say "this deployment has no backup
+   * storage" up front is telling them something true earlier.
+   *
+   * Cheap and side-effect-free: it probes the resolved root, creating nothing.
+   * The per-user subdirectory is server-computed inside that root, so a writable
+   * root is the whole of the question.
+   */
+  async describeCapability(): Promise<{
+    available: boolean;
+    folderPath: string;
+    reason?: string;
+  }> {
+    const root = this.defaultFolderPath;
+    try {
+      await this.assertFolderWritable(root);
+      return { available: true, folderPath: root };
+    } catch (error) {
+      return {
+        available: false,
+        folderPath: root,
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    }
   }
 
   async updateSettings(
@@ -1136,11 +1181,23 @@ export class AutoBackupService {
       this.logger.error(
         `Failed to create backup folder ${safePath}: ${error.message}`,
       );
+      // The deployment default could not even be created, which is a different
+      // problem from a path the user mistyped: there is nowhere on this
+      // deployment for a backup to go, and no path they can type will change
+      // that. It used to report "Ensure the path is mapped as a Docker volume",
+      // which is one of the two mechanisms and the wrong one on Kubernetes -- an
+      // operator following it goes looking for a volume mount in a chart that
+      // expresses the same thing as a persistence value. The code cannot tell
+      // which platform it is on, so the message names both and says plainly that
+      // the destination is the deployment's to fix.
       throw new BadRequestException(
         tr(
-          "errors.backup.folderNotExistVolume",
-          `Folder does not exist: ${safePath}. Ensure the path is mapped as a Docker volume.`,
-          { safePath },
+          "errors.backup.noBackupStorage",
+          `This deployment has no writable backup storage: ${safePath} does not exist ` +
+            `and cannot be created (${error.code ?? error.message}). Mount a volume there ` +
+            `(Docker: a bind mount or named volume; Kubernetes: set ` +
+            `backend.persistence.backups in the Helm chart) and try again.`,
+          { safePath, reason: error.code ?? error.message },
         ),
       );
     }
