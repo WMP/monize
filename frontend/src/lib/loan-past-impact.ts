@@ -143,13 +143,25 @@ export function computePastImpact(
   // long-amortization mortgage) is not stretched onto the theoretical
   // minimum-payment curve that a fresh PMT over the configured term would draw.
   //
-  // Fall back to that PMT only when no usable installment is recorded: interest
-  // booked separately leaves the rate rows' payment null (recording it would
-  // capture a principal-only figure), and a recorded payment that cannot even
-  // cover the first period's interest is unusable. The fallback path is
-  // unchanged from before, so loans that already relied on it are unaffected.
+  // When there is no rate history at all, the timeline has no installment to
+  // recall (REV-20260803-019) -- fall back to the account's own configured
+  // `paymentAmount`, the same real contractual figure the loan detail page
+  // uses to project forward, before reaching for the term-derived PMT. This is
+  // scoped to a genuinely empty rate history: a rate row that explicitly
+  // records a null payment (interest booked separately, so the row would only
+  // capture a principal-only figure) is a *known* absence, not a missing one,
+  // and keeps falling through to the PMT.
+  //
+  // Either recorded source is only usable when it exceeds the first period's
+  // interest: a stored or history-derived figure at or below that would mean
+  // the loan is negatively amortizing, which this baseline does not model, so
+  // it falls through to the PMT-over-term the same way an unusable rate-history
+  // installment already did.
   const configuredTermPeriods = Math.round((configuredTermMonths * periodsPerYear) / 12);
-  const recordedInstallment = timeline.startingPaymentAmount;
+  const accountInstallment =
+    account.paymentAmount != null && account.paymentAmount > 0 ? account.paymentAmount : null;
+  const recordedInstallment =
+    timeline.startingPaymentAmount ?? (rateChanges.length === 0 ? accountInstallment : null);
   const useRecordedInstallment =
     recordedInstallment != null &&
     recordedInstallment >

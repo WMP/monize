@@ -81,9 +81,37 @@ describe('computePastImpact', () => {
     expect(impact!.originalPayoffDate).not.toBeNull();
   });
 
-  it('bounds the contractual schedule by the configured repayment term', () => {
-    // 23y8m = 284 months in `termMonths` (no amortizationMonths). Even with a
-    // too-small stored payment, the schedule must not run past the term.
+  it('bounds the term-derived schedule by the configured repayment term when no stored payment applies', () => {
+    // 23y8m = 284 months in `termMonths` (no amortizationMonths), and no
+    // usable stored payment (see next test for that case) -- the PMT-over-term
+    // fallback must not run past the configured term.
+    const account = makeAccount({
+      originalPrincipal: 200000,
+      currentBalance: -100000,
+      interestRate: 6,
+      paymentAmount: null,
+      amortizationMonths: null,
+      termMonths: 284,
+      paymentStartDate: '2020-01-15',
+    });
+    const history = makeHistory(account, [1050, 1050]);
+
+    const impact = computePastImpact(account, history)!;
+
+    expect(impact.originalSchedule.paidOff).toBe(true);
+    // Amortizes over ~284 payments, never longer.
+    expect(impact.originalSchedule.numPayments).toBeLessThanOrEqual(285);
+    expect(impact.originalSchedule.numPayments).toBeGreaterThan(270);
+  });
+
+  it('follows a stored payment even when it amortizes far past the configured term (REV-20260803-019)', () => {
+    // Same loan as above, but now the account has a stored contractual
+    // payment (1050) and no rate-history rows. 1050 exceeds the first
+    // period's interest ($1000 at 6% on $200,000), so it is a usable real
+    // installment and must be followed on its own terms -- even though it
+    // amortizes far slower than the configured 284-month term implies. This
+    // is the fix for REV-20260803-019: a real, known payment is followed
+    // rather than silently replaced with a theoretical, faster-paying one.
     const account = makeAccount({
       originalPrincipal: 200000,
       currentBalance: -100000,
@@ -97,10 +125,11 @@ describe('computePastImpact', () => {
 
     const impact = computePastImpact(account, history)!;
 
+    expect(impact.originalSchedule.rows[0].payment).toBeCloseTo(1050, 2);
     expect(impact.originalSchedule.paidOff).toBe(true);
-    // Amortizes over ~284 payments, never longer.
-    expect(impact.originalSchedule.numPayments).toBeLessThanOrEqual(285);
-    expect(impact.originalSchedule.numPayments).toBeGreaterThan(270);
+    // Amortizes over ~611 payments at $1050/mo -- far past the 284-month
+    // term, because the stored payment is genuinely that slow, not a bug.
+    expect(impact.originalSchedule.numPayments).toBeGreaterThan(500);
   });
 
   it('re-levels the contractual payment on a rate rise so the schedule holds its term', () => {
@@ -302,6 +331,57 @@ describe('computePastImpact', () => {
 
     expect(impact).not.toBeNull();
     expect(impact!.originalSchedule.totalInterest).toBeGreaterThan(0);
+  });
+
+  it('uses the stored contractual payment when there is no rate history at all (REV-20260803-019)', () => {
+    // A 0% $10,000 loan with a 60-month configured term but an actual
+    // contractual payment of $250 (bigger than the term-derived $166.67).
+    // With no rate-history rows, the baseline must use the real $250
+    // installment and pay off around payment 40 -- not the theoretical
+    // $166.67 the configured term would derive, which pays off at 60.
+    const account = makeAccount({
+      originalPrincipal: 10000,
+      currentBalance: -10000,
+      interestRate: 0,
+      paymentAmount: 250,
+      amortizationMonths: 60,
+      paymentStartDate: '2025-01-15',
+    });
+    const history = makeHistory(account, []);
+
+    const impact = computePastImpact(account, history, null, [])!;
+
+    expect(impact).not.toBeNull();
+    expect(impact.originalSchedule.rows[0].payment).toBeCloseTo(250, 2);
+    expect(impact.originalSchedule.paidOff).toBe(true);
+    // ceil(10000 / 250) = 40 payments, not the 60-month term.
+    expect(impact.originalSchedule.numPayments).toBe(40);
+  });
+
+  it('ignores a stored payment too small to cover the first period interest (REV-20260803-019)', () => {
+    // A stored paymentAmount of $10 on a 6% $10,000 loan cannot even cover the
+    // first period's interest (~$50), so it is not a usable full installment
+    // -- the loan would be negatively amortizing, which this baseline does
+    // not model. It must fall through to the term-derived PMT instead of
+    // blindly following the stale/implausible stored value.
+    const account = makeAccount({
+      originalPrincipal: 10000,
+      currentBalance: -10000,
+      interestRate: 6,
+      paymentAmount: 10,
+      amortizationMonths: 60,
+      paymentStartDate: '2025-01-15',
+    });
+    const history = makeHistory(account, []);
+
+    const impact = computePastImpact(account, history, null, [])!;
+
+    const expectedPayment = calculateMortgagePaymentAmount(10000, 6, 60, 'MONTHLY', false, false);
+    expect(impact).not.toBeNull();
+    expect(impact.originalSchedule.rows[0].payment).toBeCloseTo(expectedPayment, 0);
+    expect(impact.originalSchedule.paidOff).toBe(true);
+    expect(impact.originalSchedule.numPayments).toBeGreaterThan(55);
+    expect(impact.originalSchedule.numPayments).toBeLessThanOrEqual(61);
   });
 
   it('returns null when there is no principal, start date, or history', () => {
@@ -567,7 +647,34 @@ describe('computePastImpact', () => {
     expect(impact.monthsAlreadySaved).toBeNull();
   });
 
-  it('derives the mortgage contractual payment from the amortization period', () => {
+  it('derives the mortgage contractual payment from the amortization period when no stored payment applies', () => {
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      originalPrincipal: 300000,
+      currentBalance: -290000,
+      interestRate: 5,
+      amortizationMonths: 300,
+      isCanadianMortgage: true,
+      paymentAmount: null,
+    });
+    const history = makeHistory(account, [10000]);
+
+    const impact = computePastImpact(account, history);
+
+    expect(impact).not.toBeNull();
+    const expectedPayment = calculateMortgagePaymentAmount(300000, 5, 300, 'MONTHLY', true, false);
+    // The original schedule amortizes with the derived payment: its first
+    // row's payment matches the PMT-derived amount
+    expect(impact!.originalSchedule.rows[0].payment).toBeCloseTo(expectedPayment, 0);
+    expect(impact!.originalSchedule.numPayments).toBeGreaterThan(295);
+    expect(impact!.originalSchedule.numPayments).toBeLessThanOrEqual(301);
+  });
+
+  it('follows a stored mortgage payment over the amortization-derived PMT when no rate history exists (REV-20260803-019)', () => {
+    // Same mortgage, but with a real stored payment (2000) that is larger
+    // than the amortization-derived PMT (~1744.82) and exceeds the first
+    // period's interest -- it is a usable real installment and must be
+    // followed, paying off faster than the 300-month amortization implies.
     const account = makeAccount({
       accountType: 'MORTGAGE',
       originalPrincipal: 300000,
@@ -582,12 +689,10 @@ describe('computePastImpact', () => {
     const impact = computePastImpact(account, history);
 
     expect(impact).not.toBeNull();
-    const expectedPayment = calculateMortgagePaymentAmount(300000, 5, 300, 'MONTHLY', true, false);
-    // The original schedule amortizes with the derived payment: its first
-    // row's payment matches the PMT-derived amount
-    expect(impact!.originalSchedule.rows[0].payment).toBeCloseTo(expectedPayment, 0);
-    expect(impact!.originalSchedule.numPayments).toBeGreaterThan(295);
-    expect(impact!.originalSchedule.numPayments).toBeLessThanOrEqual(301);
+    expect(impact!.originalSchedule.rows[0].payment).toBeCloseTo(2000, 2);
+    expect(impact!.originalSchedule.paidOff).toBe(true);
+    // Pays off well before the 300-month amortization term.
+    expect(impact!.originalSchedule.numPayments).toBeLessThan(260);
   });
 
   it('uses the final actual payment as payoff for an already paid-off loan', () => {
