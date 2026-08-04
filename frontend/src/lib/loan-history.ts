@@ -658,8 +658,24 @@ function matchesOverpaymentMemo(
  * The recorded interest of a payment lives on the linked source-account
  * transaction as the split that does not transfer back to the loan. Returns
  * null when there is no recorded interest split (so the caller falls back to
- * the analytic derivation); a single source payment covering several loan
- * transfers is counted only once.
+ * the paired-separate-interest / analytic derivation); a single source
+ * payment covering several loan transfers is counted only once.
+ *
+ * Gated on `hasOwnRecordedInterestSplit` rather than merely "splits is
+ * nonempty": a split source transaction whose splits are ALL principal
+ * transfers back to the loan (no leg represents interest at all) is not
+ * "recorded via a split worth 0" -- it has no recorded interest split,
+ * exactly as if `linkedTransaction.splits` were empty, and must fall through
+ * to the paired/analytic paths like any other unrecorded payment. Treating a
+ * nonempty-but-all-principal splits array as "recorded (0)" used to return 0
+ * here before `takeSeparateInterest` ever ran, so a regular payment
+ * `resolveInterestOwnerByDate` had designated as its date's interest owner
+ * (because `hasOwnRecordedInterestSplit` correctly said it had none)
+ * short-circuited to 0 instead of claiming the real separately-booked
+ * interest expense it owned -- losing that date's interest entirely, since
+ * the non-owner sibling was already blocked from taking it (REV-20260803-035,
+ * second reopen). The two functions must agree on this question, so this one
+ * reuses the other's predicate rather than re-deriving it.
  */
 function readRecordedInterest(
   transaction: Transaction,
@@ -667,7 +683,7 @@ function readRecordedInterest(
   processedParentIds: Set<string>,
 ): number | null {
   const linkedTx = transaction.linkedTransaction;
-  if (!linkedTx?.splits || linkedTx.splits.length === 0) return null;
+  if (!hasOwnRecordedInterestSplit(transaction, loanAccountId) || !linkedTx?.splits) return null;
   if (processedParentIds.has(linkedTx.id)) return 0;
   processedParentIds.add(linkedTx.id);
   const interestSplit = linkedTx.splits.find((s) => s.transferAccountId !== loanAccountId);
@@ -675,13 +691,20 @@ function readRecordedInterest(
 }
 
 /**
- * Whether a transaction carries its own recorded interest split (the same
- * condition `readRecordedInterest` checks), without the `processedParentIds`
- * bookkeeping -- a read-only predicate safe to call from a resolution pass
- * that runs before the main walk. A transaction sharing a parent with a
- * sibling loan transfer still resolves via that split (one of the two reads
- * the amount, the other reads 0 -- see `readRecordedInterest`); either way it
- * never reaches the separate-interest pool, so both are excluded here too.
+ * Whether a transaction carries its own recorded interest split: the linked
+ * source-account transaction has a split that does not transfer back to the
+ * loan (i.e. a genuine interest leg, not merely a nonempty `splits` array --
+ * a split payment whose legs are all loan-principal transfers has no
+ * recorded interest split at all). This is the single predicate for that
+ * question; `readRecordedInterest` gates on it directly rather than
+ * maintaining its own, looser definition (see its comment,
+ * REV-20260803-035 second reopen). Read-only, without the
+ * `processedParentIds` bookkeeping, so it is also safe to call from a
+ * resolution pass that runs before the main walk. A transaction sharing a
+ * parent with a sibling loan transfer still resolves via that split (one of
+ * the two reads the amount, the other reads 0 -- see `readRecordedInterest`);
+ * either way it never reaches the separate-interest pool, so both are
+ * excluded here too.
  */
 function hasOwnRecordedInterestSplit(transaction: Transaction, loanAccountId: string): boolean {
   const linkedTx = transaction.linkedTransaction;

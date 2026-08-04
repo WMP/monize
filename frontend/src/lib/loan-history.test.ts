@@ -1390,4 +1390,86 @@ describe('deriveLoanPaymentHistory with paired separate interest expenses', () =
     // ...and the reverse. Both must produce the exact same result.
     assertResolvedDeterministically([regularTx, overpaymentTx]);
   });
+
+  it('REV-20260803-035 (second reopen): claims the real interest for a same-day regular payment whose split source has only principal legs', () => {
+    // The regular payment and the overpayment both originate from ONE split
+    // source transaction whose splits are ALL principal transfers back to the
+    // loan -- no leg represents interest at all. `hasOwnRecordedInterestSplit`
+    // correctly says neither transaction has its own recorded interest split,
+    // so `resolveInterestOwnerByDate` designates the regular payment (not the
+    // overpayment) as the date's interest owner. There is exactly one real,
+    // separately-booked interest expense for that date.
+    //
+    // Before this fix, `readRecordedInterest` treated the nonempty-but-all-
+    // principal `splits` array as "recorded via a split, worth 0" and
+    // returned 0 for the regular payment before `classifyPayment` ever tried
+    // `takeSeparateInterest` -- so the real interest was lost entirely: the
+    // regular payment showed 0 (short-circuited by the bogus "recorded 0"),
+    // and the overpayment also showed 0 (correctly, since it is not the
+    // designated owner).
+    const account = makeAccount({
+      accountType: 'LOAN',
+      openingBalance: -10000,
+      currentBalance: -9050,
+      interestRate: 6,
+      paymentFrequency: 'MONTHLY',
+      overpaymentMemo: 'extra',
+    });
+    const parent = {
+      id: 'p1',
+      description: 'Loan payment',
+      splits: [
+        {
+          transferAccountId: LOAN_ID,
+          amount: -800,
+          memo: 'Principal',
+          linkedTransactionId: 'loan-reg',
+        },
+        {
+          transferAccountId: LOAN_ID,
+          amount: -150,
+          memo: 'Extra principal',
+          linkedTransactionId: 'loan-extra',
+        },
+      ] as unknown as TransactionSplit[],
+    } as unknown as Transaction;
+    const regularTx = {
+      ...makeTransaction({ transactionDate: '2026-05-05', amount: 800 }),
+      id: 'loan-reg',
+      linkedTransaction: parent,
+    };
+    const extraTx = {
+      ...makeTransaction({ transactionDate: '2026-05-05', amount: 150 }),
+      id: 'loan-extra',
+      linkedTransaction: parent,
+    };
+    // The one real separately-booked interest expense for that date.
+    const interestTransactions = [
+      { transactionDate: '2026-05-05', amount: -40, isTransfer: false } as Transaction,
+    ];
+
+    function assertRealInterestIsClaimed(transactions: Transaction[]) {
+      const { events, cumulativeInterest } = deriveLoanPaymentHistory(
+        account,
+        transactions,
+        [],
+        interestTransactions,
+      );
+      const regular = events.find((e) => e.principal === 800);
+      const overpayment = events.find((e) => e.principal === 150);
+      expect(regular?.type).toBe('REGULAR');
+      expect(overpayment?.type).toBe('OVERPAYMENT');
+      // The real interest is claimed by the designated owner (the regular
+      // payment) -- not lost to 0 for both rows.
+      expect(regular!.interest).toBeCloseTo(40, 4);
+      expect(overpayment!.interest).toBe(0);
+      expect(regular!.annualRate).not.toBeNull();
+      expect(overpayment!.annualRate).toBeNull();
+      // The real charge is counted exactly once, and is not zero overall.
+      expect(cumulativeInterest).toBeCloseTo(40, 4);
+    }
+
+    assertRealInterestIsClaimed([regularTx, extraTx]);
+    assertRealInterestIsClaimed([extraTx, regularTx]);
+  });
 });
