@@ -624,6 +624,89 @@ describe("LoanRateChangesService", () => {
     });
   });
 
+  describe("buildScheduledUpdate near payoff", () => {
+    // REV-20260803-027: principal was capped at the outstanding balance but
+    // proposedPaymentAmount (the parent transaction amount) was left at the
+    // full contractual payment, so the payload's amount no longer equalled
+    // the sum of its principal/interest splits -- ScheduledTransactionsService
+    // rejects that mismatch via validateSplitAmountSum.
+    it("derives the parent amount from capped principal plus interest, not the full contractual payment", async () => {
+      const account = makeAccount({
+        accountType: AccountType.LOAN,
+        currentBalance: -100,
+        paymentAmount: 500,
+      });
+      scheduledTransactionsService.findOne.mockResolvedValue({
+        id: "sched-1",
+        name: "Loan Payment",
+        currencyCode: "USD",
+        amount: -500,
+        splits: [],
+      });
+
+      const plan = await service.buildScheduledUpdate(userId, account, {
+        annualRate: 5,
+        paymentAmount: 500,
+      });
+
+      expect(plan).not.toBeNull();
+      // 5% annual / 12 monthly periods against a $100 balance
+      const expectedInterest = Math.round(100 * (5 / 100 / 12) * 10000) / 10000;
+      expect(expectedInterest).toBe(0.4167);
+
+      const splitTotal = plan!.payload.splits!.reduce(
+        (sum, s) => sum + Number(s.amount),
+        0,
+      );
+      // The finding's exact numbers: principal capped to the $100 balance,
+      // interest ~$0.42, so the combined splits are ~$100.42 -- not the
+      // uncapped $500 contractual payment.
+      expect(splitTotal).toBeCloseTo(-100.4167, 4);
+      expect(plan!.payload.amount).toBe(splitTotal);
+      expect(plan!.payload.amount).toBe(-100.4167);
+      expect(plan!.preview.proposedPrincipal).toBe(100);
+      expect(plan!.preview.proposedInterest).toBe(expectedInterest);
+      expect(plan!.preview.proposedPaymentAmount).toBe(100.4167);
+    });
+
+    it("caps combined regular + extra principal at the remaining balance rather than only the regular split", async () => {
+      const account = makeAccount({
+        accountType: AccountType.LOAN,
+        currentBalance: -100,
+        paymentAmount: 500,
+      });
+      scheduledTransactionsService.findOne.mockResolvedValue({
+        id: "sched-1",
+        name: "Loan Payment",
+        currencyCode: "USD",
+        amount: -500,
+        splits: [
+          {
+            transferAccountId: accountId,
+            amount: -50,
+            memo: "Extra Principal",
+          },
+        ],
+      });
+
+      const plan = await service.buildScheduledUpdate(userId, account, {
+        annualRate: 5,
+        paymentAmount: 500,
+      });
+
+      expect(plan).not.toBeNull();
+      const splitTotal = plan!.payload.splits!.reduce(
+        (sum, s) => sum + Number(s.amount),
+        0,
+      );
+      expect(plan!.payload.amount).toBe(splitTotal);
+      // Regular principal (100) already consumes the entire remaining
+      // balance, so the extra split must be capped down to 0, not left at
+      // its requested 50 (which would overshoot the balance).
+      expect(plan!.preview.extraPrincipal).toBe(0);
+    });
+  });
+
   describe("update", () => {
     beforeEach(() => {
       rateChangesRepository.findOne.mockResolvedValue(makeRow());

@@ -430,8 +430,6 @@ export class LoanRateChangesService {
     const paymentAmount = Number(effectivePayment);
     let interest = roundMoney(balance * periodicRate);
     if (interest > paymentAmount) interest = paymentAmount;
-    let principal = roundMoney(paymentAmount - interest);
-    if (principal > balance) principal = roundMoney(balance);
 
     const splits = scheduled.splits || [];
     const extraSplit = splits.find(
@@ -439,8 +437,28 @@ export class LoanRateChangesService {
         s.transferAccountId === account.id &&
         s.memo?.toLowerCase().includes("extra"),
     );
-    const extraAmount = extraSplit ? Math.abs(Number(extraSplit.amount)) : 0;
-    const proposedPaymentAmount = roundMoney(paymentAmount + extraAmount);
+    const requestedExtraAmount = extraSplit
+      ? Math.abs(Number(extraSplit.amount))
+      : 0;
+
+    // Regular principal and extra principal are capped against the remaining
+    // balance *together*, not independently -- otherwise a near-payoff balance
+    // can still be overshot by the extra split even after the regular split
+    // alone respects it.
+    let principal = roundMoney(paymentAmount - interest);
+    if (principal > balance) principal = roundMoney(balance);
+    const remainingForExtra = Math.max(0, roundMoney(balance - principal));
+    const extraAmount = roundMoney(
+      Math.min(requestedExtraAmount, remainingForExtra),
+    );
+
+    // The parent amount must equal the sum of its splits -- ScheduledTransactionsService
+    // rejects the update otherwise. Derive it from the actual interest plus the
+    // (possibly capped) regular and extra principal, never leave it at the
+    // uncapped full contractual payment.
+    const proposedPaymentAmount = roundMoney(
+      interest + principal + extraAmount,
+    );
 
     const payload = {
       amount: -proposedPaymentAmount,
