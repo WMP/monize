@@ -220,8 +220,17 @@ commits the row now owning those bytes. A cleanup in a `catch` is not the record
 -- it runs only if the process is still alive, and bytes written with no metadata
 row leave nothing to enumerate them, so "we deleted it on failure" quietly means
 "undiscoverable if we died". `AttachmentsService.create` writes a tombstone as an
-upload intent for exactly this reason; the sweeper then needs a grace period,
-because a young intent may belong to an upload still in flight.
+upload intent for exactly this reason.
+
+That intent then has to be told apart from a deletion record, and **age cannot do
+it**: nothing bounds an upload to any particular window, so a stalled put or commit
+outlives one and the sweep deletes bytes a transaction is about to reference --
+which is worse than the orphan, because an orphan wastes space and this loses the
+user's file behind a 201. The cleanup **claims** the row before the external
+operation and the writer's clear requires that claim to be absent, so one of the
+two loses and the impossible state stays impossible. A wall-clock grace period is
+worth having on top, to keep the claim a safety net rather than a routine source of
+failures -- but it is a latency choice, never the correctness mechanism.
 
 **A claim is not a record that the work was done.** A claim answers "may I do this
 now" and cannot also answer "has this been done", because the second question has

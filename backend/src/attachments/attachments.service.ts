@@ -14,7 +14,7 @@ import {
   withScopedDb,
 } from "../common/db/scoped-db";
 import { lockTransactionRow } from "../common/db/locks";
-import { returnedRows } from "../common/db/query-result";
+import { affectedRowCount, returnedRows } from "../common/db/query-result";
 import { AttachmentOrphanSweeper } from "./attachment-orphan-sweeper.service";
 import { AttachmentBlobTombstone } from "./entities/attachment-blob-tombstone.entity";
 import { tr } from "../i18n/translate";
@@ -27,6 +27,33 @@ import {
   ATTACHMENT_STORAGE_PROVIDER,
   AttachmentStorageProvider,
 } from "./storage/attachment-storage.interface";
+
+/**
+ * How long an upload owns the key it is about to write.
+ *
+ * A *latency* mechanism, not the safety one: it keeps the orphan sweep away from
+ * an upload that is probably still running, so the fence in `clearUploadIntent`
+ * stays a safety net rather than a routine source of failed uploads. Correctness
+ * does not depend on the value being right, which is the whole difference from the
+ * age check it replaced (audit RV4-002).
+ */
+export const UPLOAD_INTENT_LEASE_MS = 15 * 60 * 1000;
+
+/**
+ * The sweeper claimed this upload's object before the metadata could commit.
+ *
+ * Thrown inside that transaction, so it rolls back -- the alternative is a
+ * committed attachment row whose bytes have been deleted, which a successful 201
+ * makes invisible until someone tries to download their receipt.
+ */
+export class AttachmentObjectSweptError extends Error {
+  constructor(storageKey: string) {
+    super(
+      `Attachment object ${storageKey} was swept as an orphan before its metadata committed`,
+    );
+    this.name = "AttachmentObjectSweptError";
+  }
+}
 
 /** Largest single attachment we accept (also enforced by the upload interceptor). */
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -85,6 +112,14 @@ export class AttachmentsService {
    * the metadata transaction, which is what makes the pair atomic -- a commit
    * drops the intent with the row that now owns the bytes, and a rollback keeps
    * it, so the sweeper finds the object whether this process survives or not.
+   *
+   * That delete is also a **fence**. The intent and the deletion record are the
+   * same row shape, and the sweeper cannot tell them apart by age -- nothing bounds
+   * an upload to any window, so a stalled put or commit outlives one and the sweep
+   * deletes bytes this transaction is about to reference. So the sweeper claims the
+   * row before deleting the object, and the clear requires the claim to be absent:
+   * one of the two loses, and it is never the case that metadata commits pointing
+   * at bytes that are gone (audit RV4-002).
    */
   async create(
     userId: string,
@@ -233,25 +268,49 @@ export class AttachmentsService {
       withScopedDb(this.dataSource, (m) =>
         m.query(
           `INSERT INTO attachment_blob_tombstones
-             (user_id, storage_provider, storage_key)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (storage_provider, storage_key) DO NOTHING`,
-          [userId, this.storage.name, storageKey],
+             (user_id, storage_provider, storage_key, upload_lease_expires_at)
+           VALUES ($1, $2, $3,
+                   CURRENT_TIMESTAMP + ($4::text || ' milliseconds')::interval)
+           ON CONFLICT (storage_provider, storage_key)
+           DO UPDATE SET upload_lease_expires_at = EXCLUDED.upload_lease_expires_at,
+                         swept_at = NULL`,
+          [
+            userId,
+            this.storage.name,
+            storageKey,
+            String(UPLOAD_INTENT_LEASE_MS),
+          ],
         ),
       ),
     );
   }
 
-  /** Drop the intent inside the caller's transaction, so it commits with the row. */
+  /**
+   * Drop the intent inside the caller's transaction, so it commits with the row --
+   * and refuse if the sweeper has already claimed the object.
+   *
+   * `swept_at IS NULL` is the fence. The sweeper sets it before deleting the
+   * bytes, and this statement contends for the same row, so PostgreSQL admits only
+   * two outcomes: this transaction clears the intent and commits metadata for
+   * bytes that are still there, or the sweeper claimed first and this throws and
+   * rolls back. A committed metadata row pointing at deleted bytes -- which the
+   * previous age-only check permitted whenever an upload outlived the grace window
+   * -- is not reachable (audit RV4-002).
+   */
   private async clearUploadIntent(
     m: EntityManager,
     storageKey: string,
   ): Promise<void> {
     if (this.storage.name === "database") return;
-    await m.getRepository(AttachmentBlobTombstone).delete({
-      storageProvider: this.storage.name,
-      storageKey,
-    });
+    const cleared = await m.query(
+      `DELETE FROM attachment_blob_tombstones
+        WHERE storage_provider = $1 AND storage_key = $2 AND swept_at IS NULL
+        RETURNING id`,
+      [this.storage.name, storageKey],
+    );
+    if (affectedRowCount(cleared) === 0) {
+      throw new AttachmentObjectSweptError(storageKey);
+    }
   }
 
   /** Drop the intent in its own transaction, when there is no work to bind it to. */

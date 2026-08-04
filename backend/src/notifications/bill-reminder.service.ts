@@ -18,6 +18,21 @@ import {
 } from "../common/jobs/job-claim.service";
 import { createHash } from "node:crypto";
 
+/**
+ * How long one replica holds the right to send this user's bill reminder.
+ *
+ * A lease, so a replica killed between claiming and sending costs a retry window
+ * rather than the delivery. It only has to outlast an SMTP round trip; whether the
+ * work is still owed is decided by the delivery record, not by the lease
+ * (audit RV4-006).
+ *
+ * The resulting contract is at-least-once: a process killed after SMTP accepted
+ * but before the record committed re-sends next run. For a reminder that is the
+ * right trade -- a duplicate nudge is an annoyance, a missed mortgage renewal is
+ * not. See docs/cron-jobs.md.
+ */
+const REMINDER_LEASE_MS = 10 * 60 * 1000;
+
 @Injectable()
 export class BillReminderService {
   private readonly logger = new Logger(BillReminderService.name);
@@ -120,13 +135,36 @@ export class BillReminderService {
       // that becomes due later the same day still produces a reminder while an
       // identical run does not.
       const claimKey = buildReminderClaimKey(bills);
-      const claimed = await this.jobClaims.claimOnce(
+      // A **lease**, not a permanent claim, plus a durable delivery record.
+      //
+      // `claimOnce` was taken before the send and was the only record that the
+      // send was owed, so a replica killed in between left a permanent row that
+      // every later run read as "already handled" -- the bill reminder was never
+      // sent and nothing could notice, because the row could not tell "I sent
+      // this" from "I intended to" (audit RV4-006). The lease bounds *doing* the
+      // work; `delivered_at`, written after the send and re-read here, is what
+      // says it was done.
+      const claimed = await this.jobClaims.claimLease(
         JobClaimType.BillReminder,
         userId,
         claimKey,
+        REMINDER_LEASE_MS,
       );
       if (!claimed) {
         skipCount++;
+        continue;
+      }
+      if (
+        await this.jobClaims.wasDelivered(
+          JobClaimType.BillReminder,
+          userId,
+          claimKey,
+        )
+      ) {
+        // Already sent, durably. Hand the lease back rather than holding it for
+        // its whole TTL.
+        skipCount++;
+        await this.releaseClaim(userId, claimKey);
         continue;
       }
 
@@ -193,6 +231,12 @@ export class BillReminderService {
               );
 
         await this.emailService.sendMail(user.email, subject, html);
+        // The delivery record, after the side effect and never before it.
+        await this.jobClaims.markDelivered(
+          JobClaimType.BillReminder,
+          userId,
+          claimKey,
+        );
         sentCount++;
       } catch (error) {
         // Hand the claim back. Claiming first is what makes the send

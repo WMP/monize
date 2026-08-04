@@ -27,6 +27,21 @@ import { createHash } from "node:crypto";
  * notificationEmail preference). Also logs each detected renewal so ops
  * can see what was processed even when SMTP is unavailable.
  */
+/**
+ * How long one replica holds the right to send this user's mortgage renewal notice.
+ *
+ * A lease, so a replica killed between claiming and sending costs a retry window
+ * rather than the delivery. It only has to outlast an SMTP round trip; whether the
+ * work is still owed is decided by the delivery record, not by the lease
+ * (audit RV4-006).
+ *
+ * The resulting contract is at-least-once: a process killed after SMTP accepted
+ * but before the record committed re-sends next run. For a reminder that is the
+ * right trade -- a duplicate nudge is an annoyance, a missed mortgage renewal is
+ * not. See docs/cron-jobs.md.
+ */
+const REMINDER_LEASE_MS = 10 * 60 * 1000;
+
 @Injectable()
 export class MortgageReminderService {
   private readonly logger = new Logger(MortgageReminderService.name);
@@ -107,13 +122,36 @@ export class MortgageReminderService {
       // replica fires this cron, so without a durable record two healthy pods
       // both email the same renewal notice (audit P4-018).
       const claimKey = buildMortgageReminderClaimKey(mortgages);
-      const claimed = await this.jobClaims.claimOnce(
+      // A **lease**, not a permanent claim, plus a durable delivery record.
+      //
+      // `claimOnce` was taken before the send and was the only record that the
+      // send was owed, so a replica killed in between left a permanent row that
+      // every later run read as "already handled" -- the mortgage reminder was never
+      // sent and nothing could notice, because the row could not tell "I sent
+      // this" from "I intended to" (audit RV4-006). The lease bounds *doing* the
+      // work; `delivered_at`, written after the send and re-read here, is what
+      // says it was done.
+      const claimed = await this.jobClaims.claimLease(
         JobClaimType.MortgageReminder,
         userId,
         claimKey,
+        REMINDER_LEASE_MS,
       );
       if (!claimed) {
         skipCount++;
+        continue;
+      }
+      if (
+        await this.jobClaims.wasDelivered(
+          JobClaimType.MortgageReminder,
+          userId,
+          claimKey,
+        )
+      ) {
+        // Already sent, durably. Hand the lease back rather than holding it for
+        // its whole TTL.
+        skipCount++;
+        await this.releaseClaim(userId, claimKey);
         continue;
       }
 
@@ -172,6 +210,12 @@ export class MortgageReminderService {
               );
 
         await this.emailService.sendMail(user.email, subject, html);
+        // The delivery record, after the side effect and never before it.
+        await this.jobClaims.markDelivered(
+          JobClaimType.MortgageReminder,
+          userId,
+          claimKey,
+        );
         sentCount++;
       } catch (error) {
         // A transient SMTP failure returns the day rather than consuming it.

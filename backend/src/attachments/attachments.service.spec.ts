@@ -12,9 +12,11 @@ import {
 } from "../common/db/scoped-db";
 import { TransactionAttachment } from "./entities/transaction-attachment.entity";
 import {
+  AttachmentObjectSweptError,
   AttachmentsService,
   MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS_PER_TRANSACTION,
+  UPLOAD_INTENT_LEASE_MS,
   UploadedAttachmentFile,
   sanitizeFilename,
 } from "./attachments.service";
@@ -66,6 +68,8 @@ describe("AttachmentsService", () => {
    */
   let lockedParent: ReturnType<typeof lockedTransactionRow> | null;
   let managerQuery: jest.Mock;
+  /** Whether the sweeper has claimed this upload's object out from under it. */
+  let intentStillOurs: boolean;
   /**
    * The transaction manager every `withScopedDb` in a spec receives. Exposed
    * because the upload intent opens a *second* transaction, and a spec that wants
@@ -106,6 +110,17 @@ describe("AttachmentsService", () => {
       query: jest.fn().mockResolvedValue([]),
     } as unknown as EntityManager;
     managerQuery = manager.query as unknown as jest.Mock;
+    // Clearing the upload intent is a conditional `DELETE ... RETURNING`, and the
+    // uploader throws when it matches nothing -- that is the fence against the
+    // sweeper (audit RV4-002). The default has to be "the intent was still mine",
+    // or every upload in this file fails for the wrong reason.
+    intentStillOurs = true;
+    managerQuery.mockImplementation(async (sql: string) => {
+      if (String(sql).includes("DELETE FROM attachment_blob_tombstones")) {
+        return intentStillOurs ? [[{ id: "t1" }], 1] : [[], 0];
+      }
+      return [];
+    });
 
     mockedTenantTx.mockImplementation((_dataSource, fn) => fn(manager));
     mockedOutsideTx.mockImplementation((fn) => fn());
@@ -270,7 +285,9 @@ describe("AttachmentsService", () => {
       // Fails after storage.save() has already run.
       const failingManager = {
         getRepository: jest.fn(() => attRepo),
-        query: jest.fn(),
+        // The intent was still ours -- the failure under test is the commit, not
+        // the sweeper claiming the object.
+        query: jest.fn().mockResolvedValue([[{ id: "t1" }], 1]),
       } as unknown as EntityManager;
       // Two transactions now, and only the second one fails: the upload intent is
       // committed on its own connection first, precisely so it survives this
@@ -318,7 +335,15 @@ describe("AttachmentsService", () => {
         expect(queriesBeforePut).toBe(1);
         const [sql, params] = intentInserts()[0];
         expect(String(sql)).toContain("ON CONFLICT");
-        expect(params).toEqual(["user-1", "s3", expect.any(String)]);
+        // The lease keeps the sweeper away from an upload that is probably still
+        // running; the fence in `clearUploadIntent` is what makes it safe.
+        expect(String(sql)).toContain("upload_lease_expires_at");
+        expect(params).toEqual([
+          "user-1",
+          "s3",
+          expect.any(String),
+          String(UPLOAD_INTENT_LEASE_MS),
+        ]);
       });
 
       it("is cleared inside the transaction that commits the metadata row", async () => {
@@ -327,11 +352,44 @@ describe("AttachmentsService", () => {
         const saved = await service.create("user-1", "txn-1", pngFile());
 
         // Same transaction as the metadata row, so the pair is atomic: a rollback
-        // after this point keeps the intent and the sweeper finds the object.
-        expect(attRepo.delete).toHaveBeenCalledWith({
-          storageProvider: "s3",
-          storageKey: saved.id,
-        });
+        // after this point keeps the intent and the sweeper finds the object. And
+        // it is conditional on `swept_at IS NULL`, which is the fence.
+        const clear = managerQuery.mock.calls.find((call) =>
+          String(call[0]).includes("DELETE FROM attachment_blob_tombstones"),
+        );
+        expect(String(clear?.[0])).toContain("swept_at IS NULL");
+        expect(String(clear?.[0])).toContain("RETURNING id");
+        expect(clear?.[1]).toEqual(["s3", saved.id]);
+      });
+
+      it("refuses to commit metadata once the sweeper has claimed the object", async () => {
+        // The reproduction the age check permitted: the sweep decided this upload
+        // was abandoned and deleted the bytes, and the metadata transaction was
+        // about to commit a row referencing them. A 201 over missing bytes loses the
+        // user's receipt invisibly, so the transaction has to fail instead
+        // (audit RV4-002).
+        externalStorage();
+        intentStillOurs = false;
+
+        await expect(
+          service.create("user-1", "txn-1", pngFile()),
+        ).rejects.toBeInstanceOf(AttachmentObjectSweptError);
+      });
+
+      it("reads the clear's row count rather than the result's length", async () => {
+        // `DELETE ... RETURNING` comes back as `[rows, rowCount]`, so a length
+        // check is 2 whether or not anything was cleared -- the fence would never
+        // fire, which is the whole failure it exists to prevent.
+        externalStorage();
+        managerQuery.mockImplementation(async (sql: string) =>
+          String(sql).includes("DELETE FROM attachment_blob_tombstones")
+            ? [[], 0]
+            : [],
+        );
+
+        await expect(
+          service.create("user-1", "txn-1", pngFile()),
+        ).rejects.toBeInstanceOf(AttachmentObjectSweptError);
       });
 
       it("is not recorded at all for the database provider", async () => {

@@ -55,6 +55,35 @@ export class AttachmentBlobTombstone {
   @CreateDateColumn({ name: "deleted_at" })
   deletedAt: Date;
 
+  /**
+   * Non-NULL marks this row as an **upload intent** -- bytes about to be written,
+   * with nothing referencing them yet -- and says until when the uploader owns it.
+   *
+   * The sweeper skips a live lease, which is a *latency* mechanism and not the
+   * safety one: it exists so a sweep does not cause upload failures it could have
+   * avoided. Correctness comes from `sweptAt`. NULL means an ordinary deletion
+   * record, written by the trigger, swept as soon as it is seen.
+   */
+  @Column({
+    type: "timestamp",
+    name: "upload_lease_expires_at",
+    nullable: true,
+  })
+  uploadLeaseExpiresAt: Date | null;
+
+  /**
+   * The sweeper's claim on this object, taken *before* the external delete.
+   *
+   * This is what makes an age check unnecessary for correctness. The uploader's
+   * "clear the intent" step requires `swept_at IS NULL` and runs inside the
+   * transaction that commits the metadata row, so the two contend on this row and
+   * only two outcomes exist: the uploader wins and the object is kept, or the
+   * sweeper wins and the uploader rolls back. Metadata pointing at deleted bytes
+   * is not one of them (audit RV4-002).
+   */
+  @Column({ type: "timestamp", name: "swept_at", nullable: true })
+  sweptAt: Date | null;
+
   /** Failed sweep attempts, for diagnosing a provider that keeps refusing. */
   @Column({ type: "int", name: "attempts", default: 0 })
   attempts: number;

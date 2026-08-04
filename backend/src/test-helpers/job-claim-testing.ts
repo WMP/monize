@@ -14,9 +14,16 @@ import { UserMaintenanceService } from "../common/jobs/user-maintenance.service"
  * before the claim existed. A spec that wants the *loser* path -- the one that
  * proves a second replica sends nothing -- sets `claimOnce`/`claimLease` to
  * resolve false, which is the assertion worth writing.
+ *
+ * `wasDelivered` defaults to false for the same reason: a lease says a replica may
+ * send, and only the delivery record says one did, so the two have to be settable
+ * independently or the recovery path cannot be tested at all.
  */
 export type JobClaimMock = jest.Mocked<
-  Pick<JobClaimService, "claimOnce" | "claimLease" | "release">
+  Pick<
+    JobClaimService,
+    "claimOnce" | "claimLease" | "release" | "markDelivered" | "wasDelivered"
+  >
 >;
 
 export function createJobClaimMock(): JobClaimMock {
@@ -24,6 +31,12 @@ export function createJobClaimMock(): JobClaimMock {
     claimOnce: jest.fn().mockResolvedValue(true),
     claimLease: jest.fn().mockResolvedValue(true),
     release: jest.fn().mockResolvedValue(undefined),
+    markDelivered: jest.fn().mockResolvedValue(undefined),
+    // "Not yet delivered" by default, so a spec written before the delivery
+    // record still exercises the send. A spec about the *recovery* -- the lease
+    // won but the work already done -- sets this true, which is the assertion
+    // worth writing (audit RV4-006).
+    wasDelivered: jest.fn().mockResolvedValue(false),
   };
 }
 

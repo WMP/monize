@@ -58,4 +58,19 @@ export class JobClaim {
    */
   @Column({ type: "timestamp", name: "expires_at", nullable: true })
   expiresAt: Date | null;
+
+  /**
+   * When the side effect this claim coordinates actually happened.
+   *
+   * The lease above answers "may I do this now"; this answers "has this been
+   * done", and they are different facts because the second has to outlive the
+   * process that asked the first. A claim taken before a send and read as proof of
+   * it is consumed by a replica killed in between, and the delivery is then owed
+   * forever with nothing able to notice (audit RV4-006).
+   *
+   * Written after the side effect succeeds, and re-read under the lease. A
+   * delivered row is never retaken, which is what keeps "once per window" true.
+   */
+  @Column({ type: "timestamp", name: "delivered_at", nullable: true })
+  deliveredAt: Date | null;
 }

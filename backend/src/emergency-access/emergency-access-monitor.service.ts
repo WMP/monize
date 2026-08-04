@@ -228,12 +228,7 @@ export class EmergencyAccessMonitorService {
     let delivered = 0;
     for (const contact of contacts) {
       try {
-        const rawToken = crypto.randomBytes(CLAIM_TOKEN_BYTES).toString("hex");
-        contact.claimTokenHash = hashToken(rawToken);
-        contact.claimTokenExpiresAt = expiresAt;
-        contact.claimTokenUsedAt = null;
-        contact.claimVoidedReason = null;
-        await this.scoped(EmergencyAccessContact, (repo) => repo.save(contact));
+        const rawToken = await this.credentialFor(contact, expiresAt);
 
         const claimUrl = `${appUrl}/emergency-access/claim?token=${rawToken}`;
         // The contact may or may not be a Monize user; localize to their own
@@ -269,9 +264,10 @@ export class EmergencyAccessMonitorService {
           ),
           html,
         );
-        // The delivery record, written after the send and never before it. A
-        // targeted UPDATE rather than a save of the entity in hand, so a column
-        // another request changed since the read is not written back.
+        // The delivery record, written after the send and never before it, and it
+        // clears the credential in the same statement: once delivery is
+        // acknowledged there is nothing left to re-send, so the token must not
+        // outlive it.
         await this.markContactNotified(contact.id, new Date(now));
         delivered += 1;
       } catch (error) {
@@ -323,10 +319,75 @@ export class EmergencyAccessMonitorService {
       repo
         .createQueryBuilder()
         .update(EmergencyAccessContact)
-        .set({ claimNotifiedAt: at })
+        .set({ claimNotifiedAt: at, claimTokenCiphertext: null })
         .where("id = :id", { id: contactId })
         .execute(),
     );
+  }
+
+  /**
+   * The claim token to put in this contact's email: the one already issued if the
+   * notice is still owed, a fresh one otherwise.
+   *
+   * This is what makes a retry safe. SMTP acceptance and the delivery record
+   * cannot commit together, so a process killed between them leaves a contact who
+   * may well be holding a working link while the row still says the notice is
+   * owed. Minting a new token then overwrites the hash and kills the delivered
+   * link -- and if this send fails too, the only link in their inbox no longer
+   * works, during a recovery, indistinguishable from one the owner revoked
+   * (audit RV4-004). So the credential is issued once and reused until delivery is
+   * acknowledged, at which point `markContactNotified` clears it.
+   *
+   * A stored credential that cannot be decrypted -- the key was rotated, or the row
+   * predates the column -- is the one case where the token does rotate. That is
+   * logged, because re-issuing invalidates whatever was delivered before, and the
+   * decision to prefer a link that works over one nobody can confirm should be
+   * visible rather than inferred from an empty column.
+   */
+  private async credentialFor(
+    contact: EmergencyAccessContact,
+    expiresAt: Date,
+  ): Promise<string> {
+    if (contact.claimTokenCiphertext && contact.claimTokenHash) {
+      try {
+        const stored = this.encryption.decrypt(contact.claimTokenCiphertext);
+        if (hashToken(stored) === contact.claimTokenHash) {
+          // Re-send the same URL. Nothing on the row changes, so a link already
+          // delivered keeps working whatever happens to this attempt.
+          return stored;
+        }
+        this.logger.error(
+          `Stored emergency-access credential for contact ${contact.id} does not ` +
+            `match its hash; issuing a new link, which invalidates any already delivered`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Could not read the stored emergency-access credential for contact ` +
+            `${contact.id}; issuing a new link, which invalidates any already ` +
+            `delivered: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    } else if (contact.claimTokenHash) {
+      // A token was issued by a version that did not keep it, so it cannot be
+      // re-sent. Replacing it is deliberate: a delivered link beats one nobody can
+      // confirm, and asserting delivery instead would disarm the safeguard
+      // permanently (audit RV4-003).
+      this.logger.warn(
+        `Emergency-access contact ${contact.id} has a token this version cannot ` +
+          `re-send; issuing a new link, which invalidates any already delivered`,
+      );
+    }
+
+    const rawToken = crypto.randomBytes(CLAIM_TOKEN_BYTES).toString("hex");
+    contact.claimTokenHash = hashToken(rawToken);
+    contact.claimTokenExpiresAt = expiresAt;
+    contact.claimTokenUsedAt = null;
+    contact.claimVoidedReason = null;
+    // The credential and its hash commit together, before the send: a hash with
+    // no recoverable token is exactly the state that forces a rotation later.
+    contact.claimTokenCiphertext = this.encryption.encrypt(rawToken);
+    await this.scoped(EmergencyAccessContact, (repo) => repo.save(contact));
+    return rawToken;
   }
 
   private async processOne(

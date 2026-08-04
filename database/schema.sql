@@ -363,9 +363,25 @@ CREATE TABLE attachment_blob_tombstones (
     storage_provider VARCHAR(20) NOT NULL,
     storage_key VARCHAR(255) NOT NULL,
     deleted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Non-NULL marks this row as an upload still in flight and says until when
+    -- (migration 136). The sweeper skips a live lease, which is a *latency*
+    -- mechanism: it exists so the sweep does not cause avoidable upload failures.
+    -- NULL means an ordinary deletion record, swept immediately.
+    upload_lease_expires_at TIMESTAMP,
+    -- The sweeper's claim, set by a conditional UPDATE *before* the external
+    -- delete. This is the *correctness* mechanism: the uploader's "clear the
+    -- intent" step requires `swept_at IS NULL` inside the transaction that commits
+    -- the metadata row, so metadata pointing at deleted bytes is impossible
+    -- whichever of the two wins the row (audit RV4-002).
+    swept_at TIMESTAMP,
     attempts INTEGER NOT NULL DEFAULT 0,
     last_error TEXT
 );
+
+-- The sweeper's candidate predicate: rows with no live upload lease.
+CREATE INDEX idx_abt_sweepable
+    ON attachment_blob_tombstones(storage_provider, deleted_at)
+    WHERE upload_lease_expires_at IS NULL;
 
 -- Unique, so a tombstone is idempotent: two records for one object describe the
 -- same pending deletion, and the trigger can therefore be a plain
@@ -958,6 +974,13 @@ CREATE TABLE emergency_access_contacts (
     -- is how the daily check finds a grant a killed replica never delivered
     -- (audit FV4-004).
     claim_notified_at      TIMESTAMP,
+    -- The undelivered credential (migration 134), AES-256-GCM under
+    -- AI_ENCRYPTION_KEY. Written with the hash before the first send, re-read by a
+    -- retry so it re-sends the *same* link rather than minting one that kills the
+    -- link already in the recipient's inbox, and cleared in the statement that
+    -- records delivery. A credential at rest, so it does not outlive the delivery
+    -- it exists for (audit RV4-004).
+    claim_token_ciphertext TEXT,
     created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1492,7 +1515,15 @@ CREATE TABLE job_claims (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     claim_key VARCHAR(200) NOT NULL,
     claimed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP
+    -- The lease: present while a replica is doing the work, gone or past when it
+    -- is not. NULL on a legacy permanent claim.
+    expires_at TIMESTAMP,
+    -- When the side effect this claim coordinates actually happened
+    -- (migration 137). Written *after* the send, and re-read under the lease to
+    -- decide whether the work is still owed: a claim taken before the send says
+    -- only that somebody intended to send, and an intention does not survive the
+    -- process holding it (audit RV4-006). A delivered row is never retaken.
+    delivered_at TIMESTAMP
 );
 
 CREATE UNIQUE INDEX idx_job_claims_key ON job_claims(claim_type, user_id, claim_key);

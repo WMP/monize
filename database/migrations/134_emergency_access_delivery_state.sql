@@ -18,7 +18,9 @@
 -- done", because the second question has to survive the process that asked the
 -- first. So delivery gets its own durable column, per contact:
 --
---   `claim_notified_at` -- when this contact's link was actually sent.
+--   `claim_notified_at`      -- when this contact's link was actually sent.
+--   `claim_token_ciphertext` -- the undelivered credential, so a retry re-sends
+--                               the same link instead of minting a new one.
 --
 -- Per contact, not per owner, because the alternative is worse than the bug: a
 -- retry that re-issues a token for a contact who already received one
@@ -31,22 +33,53 @@
 -- daily check re-runs the notification for exactly those contacts. Nothing has
 -- to remember to enqueue anything, which is the point (see docs/cron-jobs.md).
 --
--- Backfill: every existing row is set to `updated_at`, not left NULL. A NULL on
--- an already-delivered contact would make the recovery path re-issue a token and
--- kill a link that is currently in somebody's inbox -- turning this fix into the
--- bug it exists to prevent. `updated_at` is the closest honest timestamp: the
--- grant's own `repo.save(contact)` moved it.
+-- The credential is issued once and *reused* until delivery is acknowledged, which
+-- is the other half of making a retry safe. SMTP acceptance and a database write
+-- cannot commit together, so a process killed between them leaves a contact who
+-- may well be holding a working link while the row still says the notice is owed.
+-- Minting a fresh token on that retry overwrites the hash and kills the link
+-- already in their inbox -- and if the retry's own send then fails, the contact is
+-- left with a delivered link that does not work, during a recovery, indistinguishable
+-- from one an owner revoked (audit RV4-004). So the raw token is kept, encrypted,
+-- for exactly as long as the notice is owed:
+--
+--   * written with the hash, before the first send;
+--   * re-read by a retry, which re-sends the *same* URL;
+--   * cleared in the same statement that records delivery.
+--
+-- Encrypted with AES-256-GCM under `AI_ENCRYPTION_KEY`, like every other secret
+-- this application stores. It is a credential at rest, so it does not outlive the
+-- delivery it exists for.
+--
+-- Backfill: **nothing is inferred to have been delivered from the presence of a
+-- token hash.** The previous implementation persisted the hash *before* calling
+-- `sendMail`, so a hash means only that issuance was attempted -- a partial legacy
+-- delivery would have marked the contact whose send failed as notified and the
+-- recovery would never reach them, and an all-failed grant would have marked every
+-- contact notified and left emergency access silently disarmed (audit RV4-003).
+--
+-- Two honest states, and only two:
+--
+--   * `claim_token_used_at IS NOT NULL` -- the contact opened their link, which is
+--     proof of delivery. That, and only that, backfills a timestamp.
+--   * everything else -- unknown, therefore still owed. Left NULL, so the daily
+--     check re-issues and re-sends. That re-issue *deliberately* replaces a legacy
+--     credential nobody can confirm, because a link that is delivered beats one
+--     that cannot be verified -- and the alternative, asserting delivery, disables
+--     the safeguard permanently. Legacy rows have no stored ciphertext, so this is
+--     the one case where the token does rotate; the service logs it.
 
 ALTER TABLE emergency_access_contacts
     ADD COLUMN IF NOT EXISTS claim_notified_at TIMESTAMP;
 
--- Only contacts that were actually issued a token can have been notified; one
--- added while a grant was outstanding was never sent anything and must stay NULL
--- so the recovery reaches it.
+ALTER TABLE emergency_access_contacts
+    ADD COLUMN IF NOT EXISTS claim_token_ciphertext TEXT;
+
+-- A used token proves the link arrived. Nothing else does.
 UPDATE emergency_access_contacts
-   SET claim_notified_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+   SET claim_notified_at = claim_token_used_at
  WHERE claim_notified_at IS NULL
-   AND claim_token_hash IS NOT NULL;
+   AND claim_token_used_at IS NOT NULL;
 
 -- The recovery predicate's index: "granted owners with a contact still owed a
 -- link" is read on every daily sweep.

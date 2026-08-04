@@ -51,6 +51,26 @@ export class EmergencyAccessContact {
   @Column({ name: "claim_notified_at", type: "timestamp", nullable: true })
   claimNotifiedAt: Date | null;
 
+  /**
+   * The undelivered credential -- the raw claim token, AES-256-GCM encrypted.
+   *
+   * SMTP acceptance and a database write cannot commit together, so a process
+   * killed between them leaves a contact who may already be holding a working
+   * link while the row still says the notice is owed. Minting a fresh token on
+   * that retry would overwrite the hash and kill the delivered link, and if the
+   * retry's own send then failed the contact would be left with a link that does
+   * not work -- during a recovery, indistinguishable from one the owner revoked
+   * (audit RV4-004).
+   *
+   * So the token is issued once and reused until delivery is acknowledged: written
+   * with the hash before the first send, re-read by a retry, and cleared in the
+   * same statement that records delivery. It never outlives the delivery it exists
+   * for, and it is `@Exclude()`d for the same reason the hash is.
+   */
+  @Column({ name: "claim_token_ciphertext", type: "text", nullable: true })
+  @Exclude()
+  claimTokenCiphertext: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

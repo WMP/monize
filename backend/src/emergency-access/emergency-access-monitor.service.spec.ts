@@ -10,6 +10,7 @@ import { EmailService } from "../notifications/email.service";
 import { User } from "../users/entities/user.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { getRequestContext } from "../common/request-context";
+import { hashToken } from "../auth/crypto.util";
 import { createScopedDbMocks } from "../test-helpers/scoped-db-testing";
 import {
   createJobClaimMock,
@@ -56,6 +57,10 @@ describe("EmergencyAccessMonitorService", () => {
       firstName: string;
       email: string;
       notified?: boolean;
+      /** A credential from an earlier attempt that was never confirmed sent. */
+      undeliveredToken?: string;
+      /** A token issued by a version that did not keep it -- hash, no ciphertext. */
+      unrecoverableToken?: boolean;
     }[],
   ): void {
     contactsRepo.find.mockImplementation(
@@ -68,9 +73,24 @@ describe("EmergencyAccessMonitorService", () => {
             firstName: row.firstName,
             email: row.email,
             claimNotifiedAt: row.notified ? daysAgo(1) : null,
+            claimTokenHash: row.undeliveredToken
+              ? hashToken(row.undeliveredToken)
+              : row.unrecoverableToken
+                ? "a-hash-from-an-older-version"
+                : null,
+            claimTokenCiphertext: row.undeliveredToken
+              ? `enc(${row.undeliveredToken})`
+              : null,
           }));
       },
     );
+  }
+
+  /** The claim URLs this run put in front of recipients. */
+  function sentClaimUrls(): string[] {
+    return emailService.sendMail.mock.calls
+      .map((call) => /token=([0-9a-f]+)/.exec(String(call[2]))?.[1])
+      .filter((token): token is string => Boolean(token));
   }
 
   /** The contact ids whose delivery record this run stamped. */
@@ -150,6 +170,11 @@ describe("EmergencyAccessMonitorService", () => {
     };
     encryption = {
       isConfigured: jest.fn().mockReturnValue(true),
+      // A real round trip, not two unrelated stubs: the credential a retry
+      // re-sends is the one the first attempt stored, so a double that could not
+      // decrypt what it encrypted would make the reuse path untestable and the
+      // rotation path look like the only one (audit RV4-004).
+      encrypt: jest.fn((plain: string) => `enc(${plain})`),
       decrypt: jest.fn((s) => s.replace(/^enc\(/, "").replace(/\)$/, "")),
     };
     configService = {
@@ -459,6 +484,177 @@ describe("EmergencyAccessMonitorService", () => {
 
       expect(emailService.sendMail).not.toHaveBeenCalled();
       expect(jobClaims.claimLease).not.toHaveBeenCalled();
+    });
+
+    /**
+     * The send-to-marker crash boundary (audit RV4-004).
+     *
+     * SMTP acceptance and the delivery record cannot commit together, so a
+     * process killed between them leaves a contact who may already hold a working
+     * link while the row still says the notice is owed. The retry must re-send the
+     * *same* link: minting a new one overwrites the hash and kills what is already
+     * in their inbox, and a second send failure then leaves them with a dead link
+     * during a recovery.
+     */
+    it("re-sends the same link rather than minting one that kills the delivered link", async () => {
+      grantedButUndelivered();
+      const alreadyIssued = "a".repeat(64);
+      contactsAre([
+        {
+          id: "c1",
+          firstName: "Carol",
+          email: "carol@example.com",
+          undeliveredToken: alreadyIssued,
+        },
+      ]);
+
+      await service.runDailyCheck();
+
+      expect(sentClaimUrls()).toEqual([alreadyIssued]);
+      // Nothing on the row changed, so a link already delivered keeps working
+      // whatever happens to this attempt.
+      expect(contactsRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("leaves the delivered link valid when the retry's own send fails too", async () => {
+      grantedButUndelivered();
+      const alreadyIssued = "b".repeat(64);
+      contactsAre([
+        {
+          id: "c1",
+          firstName: "Carol",
+          email: "carol@example.com",
+          undeliveredToken: alreadyIssued,
+        },
+      ]);
+      emailService.sendMail.mockRejectedValue(new Error("smtp down"));
+
+      await service.runDailyCheck();
+
+      // The hash is untouched, so the token in Carol's inbox still verifies, and
+      // the notice is still recorded as owed.
+      expect(contactsRepo.save).not.toHaveBeenCalled();
+      expect(notifiedContactIds()).toEqual([]);
+    });
+
+    it("clears the stored credential once delivery is recorded", async () => {
+      grantedButUndelivered();
+      contactsAre([
+        {
+          id: "c1",
+          firstName: "Carol",
+          email: "carol@example.com",
+          undeliveredToken: "c".repeat(64),
+        },
+      ]);
+
+      await service.runDailyCheck();
+
+      // A credential is a credential: once there is nothing left to re-send it
+      // must not outlive the delivery it existed for.
+      const cleared = contactsRepo.createQueryBuilder.mock.results
+        .flatMap((result) =>
+          result.type === "return"
+            ? (result.value as { set: jest.Mock }).set.mock.calls
+            : [],
+        )
+        .map((call) => call[0] as Record<string, unknown>);
+      expect(cleared).toContainEqual(
+        expect.objectContaining({ claimTokenCiphertext: null }),
+      );
+    });
+
+    it("rotates a token this version cannot re-send, and says so", async () => {
+      // A legacy row: hash present, no stored credential. Replacing it is
+      // deliberate -- a link that is delivered beats one nobody can confirm, and
+      // asserting delivery instead would disarm the safeguard permanently
+      // (audit RV4-003).
+      grantedButUndelivered();
+      contactsAre([
+        {
+          id: "c1",
+          firstName: "Carol",
+          email: "carol@example.com",
+          unrecoverableToken: true,
+        },
+      ]);
+      const warn = jest
+        .spyOn(service["logger"], "warn")
+        .mockImplementation(() => undefined);
+
+      await service.runDailyCheck();
+
+      expect(contactsRepo.save).toHaveBeenCalledTimes(1);
+      expect(sentClaimUrls()).toHaveLength(1);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("cannot re-send"),
+      );
+    });
+
+    it("rotates and reports when the stored credential does not decrypt", async () => {
+      grantedButUndelivered();
+      contactsAre([
+        {
+          id: "c1",
+          firstName: "Carol",
+          email: "carol@example.com",
+          undeliveredToken: "d".repeat(64),
+        },
+      ]);
+      encryption.decrypt.mockImplementation(() => {
+        throw new Error("bad key");
+      });
+      const error = jest
+        .spyOn(service["logger"], "error")
+        .mockImplementation(() => undefined);
+
+      await service.runDailyCheck();
+
+      expect(contactsRepo.save).toHaveBeenCalledTimes(1);
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining("Could not read the stored"),
+      );
+    });
+
+    it("rotates when the stored credential no longer matches its hash", async () => {
+      grantedButUndelivered();
+      contactsAre([
+        {
+          id: "c1",
+          firstName: "Carol",
+          email: "carol@example.com",
+          undeliveredToken: "e".repeat(64),
+        },
+      ]);
+      // The ciphertext decrypts, but to something the hash does not verify -- the
+      // pair is inconsistent, so neither can be trusted to be what was delivered.
+      encryption.decrypt.mockReturnValue("f".repeat(64));
+      const error = jest
+        .spyOn(service["logger"], "error")
+        .mockImplementation(() => undefined);
+
+      await service.runDailyCheck();
+
+      expect(contactsRepo.save).toHaveBeenCalledTimes(1);
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining("does not match its hash"),
+      );
+    });
+
+    it("stores the credential with its hash, before the first send", async () => {
+      grantedButUndelivered();
+      contactsAre([{ id: "c1", firstName: "Carol", email: "c@example.com" }]);
+
+      await service.runDailyCheck();
+
+      const saved = contactsRepo.save.mock.calls[0][0];
+      expect(saved.claimTokenCiphertext).toBe(`enc(${sentClaimUrls()[0]})`);
+      expect(saved.claimTokenHash).toBe(hashToken(sentClaimUrls()[0]));
+      // Committed before the send, since a hash with no recoverable token is
+      // exactly the state that forces a rotation later.
+      expect(contactsRepo.save.mock.invocationCallOrder[0]).toBeLessThan(
+        emailService.sendMail.mock.invocationCallOrder[0],
+      );
     });
 
     it("leaves a returning owner to the revoke path instead of resuming", async () => {

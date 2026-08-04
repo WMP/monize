@@ -131,6 +131,60 @@ describe("JobClaimService", () => {
 
       expect(manager.query.mock.calls[0][1][3]).toBe("1");
     });
+
+    it("never retakes a lease whose work was already delivered", async () => {
+      manager.query.mockResolvedValue([[{ id: "c" }], 1]);
+
+      await service.claimLease(JobClaimType.BillReminder, USER, "k", 60_000);
+
+      // The expiry bounds *doing* the work; it says nothing about what has been
+      // done. Without this clause a lease that expired long ago would let a later
+      // run re-send something already delivered (audit RV4-006).
+      expect(manager.query.mock.calls[0][0]).toContain(
+        "job_claims.delivered_at IS NULL",
+      );
+    });
+  });
+
+  /**
+   * A claim answers "may I do this now"; the delivery record answers "has this
+   * been done". The second has to outlive the process that asked the first, which
+   * is exactly what a pre-send `claimOnce` could not express (audit RV4-006).
+   */
+  describe("markDelivered", () => {
+    it("records the delivery and ends the lease", async () => {
+      await service.markDelivered(JobClaimType.BillReminder, USER, "k");
+
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(sql).toContain("SET delivered_at = CURRENT_TIMESTAMP");
+      // Nothing left to protect: from here the row's job is to say the work is
+      // done, and `claimLease` refuses to retake a delivered row.
+      expect(sql).toContain("expires_at = NULL");
+      expect(params).toEqual(["bill_reminder", USER, "k"]);
+    });
+  });
+
+  describe("wasDelivered", () => {
+    it("is true only for a row carrying a delivery timestamp", async () => {
+      manager.query.mockResolvedValue([{ "1": 1 }]);
+
+      expect(
+        await service.wasDelivered(JobClaimType.BillReminder, USER, "k"),
+      ).toBe(true);
+      expect(manager.query.mock.calls[0][0]).toContain(
+        "delivered_at IS NOT NULL",
+      );
+    });
+
+    it("is false for a claimed-but-unsent window", async () => {
+      // The state the fix exists for: a replica claimed and died before sending.
+      // The row is there, the delivery is not, so the work is still owed.
+      manager.query.mockResolvedValue([]);
+
+      expect(
+        await service.wasDelivered(JobClaimType.BillReminder, USER, "k"),
+      ).toBe(false);
+    });
   });
 
   describe("release", () => {

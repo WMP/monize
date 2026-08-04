@@ -10,8 +10,8 @@ Pick one of these; do not invent a sixth. Anything held in process memory -- a `
 
 | Mechanism | Use it for | Where |
 |---|---|---|
-| **Durable claim** (`JobClaimService.claimOnce`) | A delivery that must happen once per user per window: an email, a notice. Permanent -- nothing retakes it -- so a failed send calls `release` to hand the window back. | `backend/src/common/jobs/job-claim.service.ts` |
-| **Durable lease** (`JobClaimService.claimLease`) | An exclusion: only one replica may do this at a time. Expires, so a replica killed mid-run does not lock the user out. | same |
+| **Durable claim** (`JobClaimService.claimOnce`) | Work where the claim row *is* the fact and nothing leaves the database: a posted occurrence, an alert fingerprint. Permanent -- nothing retakes it -- so a failure calls `release` to hand the window back. **Not** for a send: see "A claim is not a delivery record" below. | `backend/src/common/jobs/job-claim.service.ts` |
+| **Durable lease** (`JobClaimService.claimLease`) | An exclusion: only one replica may do this at a time. Expires, so a replica killed mid-run does not lock the user out. Pair it with a **delivery record** (`markDelivered`/`wasDelivered`, or a column the domain already has) whenever the work leaves the database. | same |
 | **Conditional state transition** | A flag the job itself owns: `UPDATE ... WHERE granted_at IS NULL ... RETURNING`. The predicate is re-evaluated after the row lock, so exactly one replica gets a row. | `emergency-access-monitor.service.ts` |
 | **Unique key + `ON CONFLICT DO NOTHING RETURNING`** | A row whose existence *is* the fact: a posted occurrence, an alert fingerprint. The insert arbitrates and the loser gets nothing back. | migration `133` |
 | **An idempotent predicate** | Nothing to coordinate: `DELETE ... WHERE expired`, or a recomputation that derives its answer from scratch. Two replicas race to do the same thing and the loser does nothing. | the sweeps below |
@@ -47,7 +47,24 @@ anything.
 
 `claimOnce` remains correct where nothing is delivered outside the database, or
 where the claim itself *is* the record of the fact (a posted occurrence, an alert
-fingerprint).
+fingerprint). The bill and mortgage reminders were the last two sends still using
+it, and they now take a lease plus `job_claims.delivered_at` (audit RV4-006).
+
+### The delivery contract, stated
+
+SMTP and PostgreSQL cannot commit together, so every send has to pick one of these
+deliberately rather than end up with whichever one the code happens to implement:
+
+| Job | Contract | Why |
+|---|---|---|
+| bill reminder, mortgage renewal | **at-least-once** | A process killed after the provider accepted but before `delivered_at` committed re-sends next run. A duplicate nudge is an annoyance; a missed mortgage renewal is not. |
+| emergency-access grant | **at-least-once, same credential** | A retry re-sends the token already issued rather than minting one: a new token invalidates the link that may already be in the recipient's inbox, and a dead emergency-access link during a recovery cannot be told from a revoked one. The raw token is held encrypted only while the notice is owed, and cleared in the statement that records delivery. |
+| emergency-access reminder | **at-least-once** | Same shape as the bill reminder, with `last_reminder_sent_at` as the record. |
+| budget alert | **at-most-once** | The alert row's unique fingerprint is both the coordination and the record, and only a returned insert emails. A lost row is a lost alert, acceptable for a threshold notice that re-evaluates daily. |
+
+Where a job is at-least-once its content has to read correctly when it arrives
+twice. Where it is at-most-once the loss window belongs in this table rather than
+in somebody's head.
 
 Reading the result of a guarded statement correctly is part of the mechanism, not a detail. TypeORM's shape depends on the statement's command tag rather than on its `RETURNING` clause: `UPDATE` and `DELETE` come back as the tuple `[rows, rowCount]` with or without one, and everything else -- `INSERT` included -- comes back as bare rows. On the tuple `result.length > 0` is always true, so a `length === 0` branch beside an `UPDATE ... RETURNING` is dead code. Use `affectedRowCount` / `returnedRows` from `backend/src/common/db/query-result.ts`, which are correct for every shape, and never an open-coded length check.
 
@@ -63,23 +80,23 @@ Grep `@Cron(` for the authoritative list. This table is kept in sync with it -- 
 | `action-history.service` | Daily 3 AM | Prune old undo/redo history | Idempotent predicate delete |
 | `ai-usage.service` | Daily 4 AM | AI usage-log cleanup | Idempotent predicate delete |
 | `ai-insights.service` | Daily 6 AM | Generate AI insights | **Durable lease** per user, plus the existing recent-insight cooldown |
-| `attachment-orphan-sweeper.service` | Hourly | Delete external attachment objects whose metadata is gone, and objects from uploads that never committed | Tombstone rows -- written by a trigger on deletion, and by the uploader as an intent before the put; the provider's `delete` is idempotent, and rows younger than `ORPHAN_SWEEP_MIN_AGE_MS` are skipped so an upload in flight is not swept |
+| `attachment-orphan-sweeper.service` | Hourly | Delete external attachment objects whose metadata is gone, and objects from uploads that never committed | Tombstone rows -- written by a trigger on deletion, and by the uploader as an intent before the put. **Conditional claim** on `swept_at` before the external delete, which the uploader's intent-clear is fenced against, so metadata can never commit pointing at deleted bytes; a live `upload_lease_expires_at` also keeps the sweep off an upload that is probably still running. The provider's `delete` is idempotent |
 | `auto-backup.service` | Hourly | Enrol every non-admin user on the default backup policy, then run the backups that are due | **Conditional transition**: the claim is the `next_backup_at` advance itself |
-| `bill-reminder.service` | Daily 8 AM | Bill payment reminders | **Durable claim** keyed on the local date plus a digest of the bills named |
+| `bill-reminder.service` | Daily 8 AM | Bill payment reminders | **Durable lease** keyed on the local date plus a digest of the bills named, plus `job_claims.delivered_at` written after the send. At-least-once |
 | `budget-alert.service` | Daily 7 AM | Budget threshold alerts | **Unique fingerprint** on `budget_alerts`; only a returned insert emails |
 | `budget-alert.service` | Mon 7 AM | Weekly budget digest | Read-only aggregation; duplicate sends possible, not yet claimed |
 | `budget-alert.service` | Daily 3 AM | Prune old alerts | Idempotent predicate delete |
 | `budget-period-cron.service` | 1st of month, midnight | Close expired budget periods and open the next | Period row locked `FOR UPDATE` before the actuals are read; the next period's insert is `ON CONFLICT DO NOTHING` on `UNIQUE(budget_id, period_start)` |
 | `demo-reset.service` | Daily 4 AM | Demo database reset | **Durable lease** on the demo user; a wipe-and-reseed cannot be repaired by repeating |
 | `demo-reset.service` | Every 3 hours | Demo intraday transaction generation | **Durable claim** per date+hour window; the generator is seeded by the window, so every replica produces identical rows |
-| `emergency-access-monitor.service` | Daily 9 AM | Grant emergency access after inactivity; send reminders | **Conditional transition** on `granted_at` plus a per-contact `claim_notified_at` delivery record for the grant; **durable lease** plus `last_reminder_sent_at` for the reminder |
+| `emergency-access-monitor.service` | Daily 9 AM | Grant emergency access after inactivity; send reminders | **Conditional transition** on `granted_at` plus a per-contact `claim_notified_at` delivery record for the grant, whose credential is reused on retry rather than rotated; **durable lease** plus `last_reminder_sent_at` for the reminder |
 | `exchange-rate.service` | 5:05 PM ET weekdays | Fetch exchange rates (staggered after the price refresh) | `ON CONFLICT DO UPDATE` on `UNIQUE(from_currency, to_currency, rate_date)`, both directions in one transaction; duplicate provider calls possible |
 | `holdings.service` | Hourly at :30 | Apply matured future-dated investment transactions to holdings | Full rebuild under the per-account holdings lock |
 | `job-claim.service` | Daily 4 AM | Prune claim rows past their retention window | Idempotent predicate delete |
 | `net-worth.service` | Every 30 min | Recompute snapshots that fell behind their account | Idempotent predicate: the staleness is derived from `accounts.updated_at` vs the account's newest snapshot, so two replicas recompute the same accounts under the per-account lock |
-| `mny-import-job.service` | Every 5 min | Fail import jobs whose worker stopped heartbeating | Conditional state/time predicate |
+| `mny-import-job.service` | Every 5 min | Fail import jobs whose worker stopped heartbeating | Conditional state/time predicate, and it **revokes the worker's `attempt_token`** -- reaping decides a worker is dead, the token is what stops it committing anyway |
 | `mny-staging.service` | Hourly | Delete expired staged import files (24 h TTL) that no active job needs | Idempotent predicate delete |
-| `mortgage-reminder.service` | Daily 8 AM | Mortgage renewal reminders | **Durable claim** keyed on the local date plus a digest of the mortgages named |
+| `mortgage-reminder.service` | Daily 8 AM | Mortgage renewal reminders | **Durable lease** keyed on the local date plus a digest of the mortgages named, plus `job_claims.delivered_at` written after the send. At-least-once |
 | `scheduled-transactions.service` | Hourly at :05 | Post due recurring transactions | **Occurrence key** `(scheduled_transaction_id, original_due_date)`; the loser's `ConflictException` is a skip, not an error |
 | `scheduled-transactions.service` | 5:25 PM ET weekdays | Re-derive the account-currency estimate on foreign-currency schedules from the rates the 5:05 PM refresh just stored | Absolute recomputation; safe to repeat |
 | `security-price.service` | 5 PM ET weekdays | Fetch security prices | `ON CONFLICT DO UPDATE` on `UNIQUE(security_id, price_date)`, with `COALESCE` so a provider that omits a field keeps the stored one; duplicate provider calls possible |
