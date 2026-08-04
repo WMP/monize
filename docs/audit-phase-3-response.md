@@ -7,9 +7,10 @@ was deliberately left alone.
 - **Branch:** `claude/detailed-error-review-4pbug7`
 - **Audit items answered:** 16 confirmed findings, 12 design risks, 22 missing
   tests, 7 documentation issues, 19 rejected false positives
-- **Defects fixed:** 15 of the 16 confirmed findings, plus 15 the audit did not
-  find
-- **Still open:** 1 confirmed finding (P3-009), with a written plan
+- **Follow-up review answered:** F3R-001…008 (see section 10)
+- **Defects fixed:** 15 of the 16 confirmed findings, 6 of the 7 new remediation
+  findings, plus 17 the audits did not find
+- **Still open:** 1 confirmed finding (P3-009 / F3R-008), with a written plan
 
 Every verdict below names the commit that carries it, so a reader can check the
 claim rather than take it. Where a fix departed from the remedy the audit
@@ -559,7 +560,7 @@ than taken as a pass.
 
 ## 9. Commit inventory
 
-The 23 commits that changed code, configuration or the repository's own rules,
+The 29 commits that changed code, configuration or the repository's own rules,
 oldest first, so nothing is unaccounted for.
 
 | Commit | Subject | Answers |
@@ -587,14 +588,78 @@ oldest first, so nothing is unaccounted for.
 | `43974c04` | Document the six cron jobs that were missing, and check the table against the source | extra 12 |
 | `65e26925` | Enforce the support backup's encryption in the code that produces the file | extra 7, FP-006 note |
 | `0748d69a` | Make the pseudonym allocator keep its own promise, and stop a 4-second test | extra 15 |
+| `6fabd14f` | Write every byte before renaming a backup into place | F3R-007 |
+| `3f0cd837` | Refuse a runtime role that can SET ROLE to power | F3R-004 |
+| `88f55e65` | Lock the currency row across the liveness decision | F3R-005 |
+| `35d103c1` | Delete the attachment bytes a restore displaced, after it commits | F3R-006 |
+| `f6504c73` | Make the backup memory ceilings smaller than the pod they protect | F3R-002, F3R-003, extra 16 |
+| `8863f104` | Say what is actually wrong when a deployment has no backup storage | F3R-001, extra 17 |
 
 Three of those carry no audit finding of their own: `405f3e79` keeps the
 pseudo-locale gate green, and `009b3eac` and `99b41963` convert prose rules that
 had already been violated into checks. They are here because the branch's
 recurring cause was a rule nothing enforced.
 
-Not rows above: the commits that introduce and correct **this document**
-(`4c42be22` and any that follow it). A file cannot list its own commit and stay
-accurate — amending to insert the hash changes the hash — so the branch log is the
-record for those, and every other hash in this file resolves. If you are checking
-the inventory against `git log`, that difference is the whole of it.
+Not rows above: the commits that only change **this document**
+(`4c42be22`, `774c646d`, `a0819951` and any that follow). A file cannot list its own
+commit and stay accurate — amending to insert the hash changes the hash — so the
+branch log is the record for those, and every other hash in this file resolves. If
+you are checking the inventory against `git log`, that difference is the whole of
+it.
+
+---
+
+## 10. The remediation review (F3R-001…008)
+
+A second review re-checked this branch at `a0819951` and reported eight unresolved
+MEDIUM findings. Each was verified against the code before being accepted.
+
+| ID | Verdict | Commit |
+|---|---|---|
+| F3R-001 | **Premise wrong; residual fixed** | `8863f104` |
+| F3R-002 | Confirmed, fixed | `f6504c73` |
+| F3R-003 | Confirmed, fixed | `f6504c73` |
+| F3R-004 | Confirmed, fixed | `3f0cd837` |
+| F3R-005 | Confirmed, fixed | `88f55e65` |
+| F3R-006 | Confirmed, fixed | `35d103c1` |
+| F3R-007 | Confirmed, fixed | `6fabd14f` |
+| F3R-008 | Same as P3-009 — **still open** | — |
+
+Six of the seven new findings were real. Details are under the original finding
+each one belongs to (P3-004, P3-006, P3-008, P3-010, P3-012, P3-015 and P3-002
+respectively); what follows is what the review got wrong, and what verifying it
+turned up on its own.
+
+**F3R-001's reproduction step 3 is not what the code does.** It says the settings
+"can be stored" on a deployment with no writable destination. They cannot:
+`updateSettings` creates the per-user directory and probes it before saving, so the
+save is refused. The residual — a refusal message naming a Docker volume on
+Kubernetes, and nothing letting a surface say so beforehand — was real and is fixed.
+
+**Two defects came out of verifying the review rather than out of the review.**
+Writing F3R-001's test surfaced that `realpathOfExistingAncestor` rethrew every
+non-ENOENT error raw, so a folder path containing a file component answered with a
+500 carrying the resolved filesystem path instead of a 400 (`8863f104`). Writing
+F3R-002's test surfaced that the support suite's `BackupService` double was cast
+`as unknown as BackupService`, so the new export ceiling read as `undefined` and was
+silently disabled in all 57 of that file's tests while every one passed
+(`f6504c73`).
+
+**One thing the review asked for is deliberately not done.** F3R-001's option 2
+includes hiding or disabling the frontend control when backup storage is
+unavailable. The backend half is done (`GET /backup/auto-backup-capability`); the
+frontend half needs browser verification, which is the same constraint that keeps
+P3-009 open, so it is not in this branch.
+
+The review's other recommendations that are **not** implemented, each with a
+reason:
+
+- *Enable a durable backup claim by default* (F3R-001 option 1). Creating a claim
+  on a cluster with no default StorageClass leaves the pod `Pending`, so this fixes
+  the finding by breaking upgrades for anyone without one.
+- *Incremental JSON parsing or a temporary-file representation for large restores*
+  (F3R-003). A real improvement and a larger change than a ceiling; the ceiling now
+  fires before the process dies, which was the defect.
+- *Process-level tests with cgroup memory enforcement* (F3R-002, F3R-003) and
+  *`helm template` plus a pod-level smoke test* (F3R-001). Neither is possible in
+  this environment — no Docker, no cluster — and both remain the right verification.
