@@ -1018,6 +1018,40 @@ describe('deriveLoanPaymentHistory with paired separate interest expenses', () =
     expect(events.some((e) => e.date.startsWith('2024'))).toBe(false);
   });
 
+  it('REV-20260803-033: excludes interest booked after payoff when the account is left in credit (overpaid), not merely at zero', () => {
+    // Same shape as the zero-balance payoff test above, but the debt account
+    // sits at a signed +25 (a credit/overpayment) rather than exactly 0.
+    // currentBalance must be read via debtMagnitude (floor at 0), not
+    // Math.abs -- Math.abs(25) reads as "$25 still owed" and loanPaidOff
+    // comes out false, so a later refinanced loan sharing this loan's source
+    // account and interest category would have its interest transactions
+    // never bounded by the payoff date and show up as phantom rows here.
+    const account = makeAccount({
+      accountType: 'MORTGAGE',
+      openingBalance: -100000,
+      currentBalance: 25,
+      interestRate: 5,
+    });
+    const transactions = [makeTransaction({ transactionDate: '2023-01-05', amount: 100025 })];
+    const interestTransactions = [
+      { transactionDate: '2023-01-05', amount: -400, isTransfer: false } as Transaction,
+      // Interest booked later in the same category -- belongs to a
+      // subsequent refinanced loan sharing this loan's source account and
+      // category, not to this already-paid-off one.
+      { transactionDate: '2024-06-05', amount: -300, isTransfer: false } as Transaction,
+    ];
+
+    const { events, currentBalance } = deriveLoanPaymentHistory(
+      account,
+      transactions,
+      [],
+      interestTransactions,
+    );
+
+    expect(currentBalance).toBe(0);
+    expect(events.some((e) => e.date.startsWith('2024'))).toBe(false);
+  });
+
   it('derives the observed rate from the actual days between payments', () => {
     // A 5.5% loan: the second payment falls 31 days after the first, and its
     // interest is exactly 31 days of 5.5% on the balance then owed. The rate

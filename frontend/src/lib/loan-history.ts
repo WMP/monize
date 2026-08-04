@@ -98,7 +98,13 @@ export function deriveLoanPaymentHistory(
   // draws -- which is exactly what inflates a revolving line of credit whose
   // real balance cycled near zero.
   const openingSigned = Number(account.openingBalance) || 0;
-  const currentBalance = Math.abs(Number(account.currentBalance) || 0);
+  // debtMagnitude, not Math.abs: a debt account holding a positive signed
+  // balance is a credit/overpayment, not fresh debt, so it must floor to 0
+  // rather than abs-value into "still owed". Math.abs on a +25 credit read
+  // currentBalance as 25 and loanPaidOff as false, so a later refinanced loan
+  // sharing this loan's source account and interest category had its interest
+  // transactions never bounded by the payoff date (REV-20260803-033).
+  const currentBalance = debtMagnitude(Number(account.currentBalance) || 0);
   const repayments = sortedTransactions.filter((t) => Number(t.amount) > 0);
   const hasDraws = sortedTransactions.some((t) => Number(t.amount) < 0);
   const totalPrincipalPaid = repayments.reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
