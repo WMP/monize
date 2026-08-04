@@ -266,6 +266,120 @@ describe("TransactionReconciliationService", () => {
       expect(accountsService.updateBalance).not.toHaveBeenCalled();
     });
 
+    // P6-RECHECK-004. Pairing every status was an over-application: CLEARED and
+    // RECONCILED record whether THIS account's statement recognised THIS leg, and
+    // the two statements arrive separately. Copying RECONCILED onto the
+    // counterpart removed the transfer from the other account's reconciliation
+    // candidates before its statement contained it, so that account's
+    // reconciliation differed by the full transfer amount.
+    describe("a status that is not about VOID", () => {
+      it("marks only the selected leg CLEARED", async () => {
+        mockFindOne.mockResolvedValue(
+          makeTransaction({ id: "from-tx", status: TransactionStatus.CLEARED }),
+        );
+
+        await service.updateStatus(
+          sourceLeg(),
+          TransactionStatus.CLEARED,
+          userId,
+          mockTriggerNetWorthRecalc,
+          mockFindOne,
+        );
+
+        expect(transactionsRepository.update).toHaveBeenCalledWith("from-tx", {
+          status: TransactionStatus.CLEARED,
+        });
+        expect(transactionsRepository.update).not.toHaveBeenCalledWith(
+          "to-tx",
+          expect.anything(),
+        );
+        // No pair lookup at all, so the counterpart is never even considered.
+        expect(
+          transactionsRepository.createQueryBuilder,
+        ).not.toHaveBeenCalled();
+        expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      });
+
+      it("reconciles only the selected leg, and dates only that leg", async () => {
+        mockFindOne.mockResolvedValue(
+          makeTransaction({
+            id: "from-tx",
+            status: TransactionStatus.RECONCILED,
+          }),
+        );
+
+        await service.updateStatus(
+          sourceLeg(),
+          TransactionStatus.RECONCILED,
+          userId,
+          mockTriggerNetWorthRecalc,
+          mockFindOne,
+        );
+
+        const written = transactionsRepository.update.mock.calls.map(
+          (call: any[]) => call[0],
+        );
+        expect(new Set(written)).toEqual(new Set(["from-tx"]));
+        // A reconciliation date claims "this account's statement of this date
+        // recognised this leg" -- never true of a leg in another account.
+        expect(transactionsRepository.update).toHaveBeenCalledWith("from-tx", {
+          reconciledDate: expect.any(String),
+        });
+      });
+
+      it("un-reconciling a leg leaves its counterpart alone", async () => {
+        mockFindOne.mockResolvedValue(makeTransaction({ id: "from-tx" }));
+
+        await service.updateStatus(
+          { ...sourceLeg(), status: TransactionStatus.RECONCILED } as never,
+          TransactionStatus.UNRECONCILED,
+          userId,
+          mockTriggerNetWorthRecalc,
+          mockFindOne,
+        );
+
+        expect(transactionsRepository.update).not.toHaveBeenCalledWith(
+          "to-tx",
+          expect.anything(),
+        );
+      });
+
+      it("does not recalculate net worth for a statement-only change", async () => {
+        mockFindOne.mockResolvedValue(makeTransaction({ id: "from-tx" }));
+
+        await service.updateStatus(
+          sourceLeg(),
+          TransactionStatus.CLEARED,
+          userId,
+          mockTriggerNetWorthRecalc,
+          mockFindOne,
+        );
+
+        expect(mockTriggerNetWorthRecalc).not.toHaveBeenCalled();
+      });
+
+      // And a split-owned or cross-owner leg is no longer refused for a status
+      // that was never pair-wide: marking it cleared is nobody else's business.
+      it("does not refuse a split-owned leg for a CLEARED change", async () => {
+        wirePair({ splitOwned: true });
+        mockFindOne.mockResolvedValue(makeTransaction({ id: "from-tx" }));
+
+        await expect(
+          service.updateStatus(
+            sourceLeg(),
+            TransactionStatus.CLEARED,
+            userId,
+            mockTriggerNetWorthRecalc,
+            mockFindOne,
+          ),
+        ).resolves.toBeDefined();
+
+        expect(transactionsRepository.update).toHaveBeenCalledWith("from-tx", {
+          status: TransactionStatus.CLEARED,
+        });
+      });
+    });
+
     it("does not look for a pair on an ordinary transaction", async () => {
       mockFindOne.mockResolvedValue(makeTransaction());
 

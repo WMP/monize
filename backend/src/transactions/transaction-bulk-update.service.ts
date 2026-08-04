@@ -169,10 +169,14 @@ export class TransactionBulkUpdateService {
     await withScopedDb(this.dataSource, async (m) => {
       // Step 3: Handle balance adjustments for VOID status changes
       if (isUpdatingStatus) {
+        // Pair expansion only for a VOID boundary: a bulk "mark cleared" over a
+        // list that happens to include a transfer leg must not reconcile the
+        // counterpart in another account, whose statement has not been seen.
         const expanded = await expandTransferLegsForStatus(
           m,
           userId,
           eligibleIds,
+          dto.status!,
         );
         statusIds = expanded.ids;
         statusSkipped = expanded.refusedIds.length;
