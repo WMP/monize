@@ -120,6 +120,14 @@ export function deriveLoanPaymentHistory(
 
   let cumulativePrincipal = 0;
   let cumulativeInterest = 0;
+  // The signed-ledger balance after every transaction, draws included -- not
+  // only the ones that emit a row. Orphan interest events (below) have no
+  // principal leg of their own, so their balance is looked up here instead of
+  // carried from the last *emitted* event: that previously skipped over any
+  // draw that landed between the last payment and the orphan charge, showing
+  // the pre-draw balance on the orphan row and reconstructing its rate off the
+  // wrong debt (REV-20260803-034).
+  const balanceTimeline: { date: string; balance: number }[] = [];
 
   // Separately-booked interest is already scoped to this loan by its configured
   // interest category and source account (see fetchLoanInterestTransactions), so
@@ -191,6 +199,7 @@ export function deriveLoanPaymentHistory(
       runningBalance = Math.max(0, runningBalance - principal);
       cumulativePrincipal += principal;
       cumulativeInterest += interest;
+      balanceTimeline.push({ date: transaction.transactionDate, balance: runningBalance });
       events.push({
         date: transaction.transactionDate,
         principal,
@@ -209,6 +218,11 @@ export function deriveLoanPaymentHistory(
     for (const transaction of sortedTransactions) {
       const balanceBefore = debtMagnitude(runningSigned);
       runningSigned += Number(transaction.amount);
+      // Recorded for every transaction -- including a draw, which moves the
+      // balance but never emits its own row -- so the orphan-interest merge
+      // below can look up the true debt as of any date, not just the dates
+      // that happen to carry a principal-payment event.
+      balanceTimeline.push({ date: transaction.transactionDate, balance: debtMagnitude(runningSigned) });
       if (Number(transaction.amount) <= 0) continue; // draws move the balance, no row
       const principal = Math.abs(Number(transaction.amount));
       const { interest, type } = classifyPayment(
@@ -267,17 +281,33 @@ export function deriveLoanPaymentHistory(
   );
   let runningPrincipal = 0;
   let runningInterest = 0;
+  // Sorted chronologically by construction (pushed in transaction order in
+  // the reconstruction path, walked in date order in the ledger path), so a
+  // single forward pointer through `balanceTimeline` in step with `merged`
+  // (also date-sorted) is enough -- no re-sort needed.
   let lastBalance = startingBalance;
+  let balanceIdx = 0;
   for (const event of merged) {
     runningPrincipal += event.principal;
     runningInterest += event.interest;
     event.cumulativePrincipal = runningPrincipal;
     event.cumulativeInterest = runningInterest;
+    const eventDateKey = event.date.split('T')[0];
+    while (
+      balanceIdx < balanceTimeline.length &&
+      balanceTimeline[balanceIdx].date.split('T')[0] <= eventDateKey
+    ) {
+      lastBalance = balanceTimeline[balanceIdx].balance;
+      balanceIdx++;
+    }
     if (event.principal > 0) {
-      // A principal payment already carries its post-payment balance.
+      // A principal payment already carries its post-payment balance (and
+      // agrees with the timeline entry for its own date).
       lastBalance = event.balance;
     } else {
-      // Interest-only row: the debt is whatever it was at that point.
+      // Interest-only row: the debt is whatever the full signed ledger --
+      // draws included -- says it is as of this date, not merely what it was
+      // after the last *emitted* payment row.
       event.balance = lastBalance;
     }
   }

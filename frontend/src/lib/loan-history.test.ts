@@ -839,6 +839,44 @@ describe('deriveLoanPaymentHistory with paired separate interest expenses', () =
     expect(cumulativeInterest).toBeCloseTo(388.14 + 286.49 + 335.92, 2);
   });
 
+  it('assigns an orphan interest row the balance after an intervening draw, not the last payment (REV-20260803-034)', () => {
+    // Opening debt 1300. A February payment of 500 brings it to 800, but a
+    // mid-February draw of 500 puts it right back to 1300 before March's
+    // interest-only charge (no paired principal payment) is booked. The
+    // March row must show 1300 -- the real debt the interest accrued on --
+    // not 800, which is what it was after the last *payment* alone.
+    const account = makeAccount({
+      accountType: 'LOAN',
+      openingBalance: -1300,
+      currentBalance: -1300,
+      interestRate: 6,
+      paymentFrequency: 'MONTHLY',
+    });
+    const transactions = [
+      makeTransaction({ id: 'feb-pay', transactionDate: '2026-02-01', amount: 500 }),
+      makeTransaction({ id: 'feb-draw', transactionDate: '2026-02-15', amount: -500 }),
+    ];
+    // No repayment lands anywhere near March, and the only repayment (Feb 1)
+    // is more than the default 20-day tolerance away, so this becomes an
+    // orphan interest-only row rather than being paired to Feb 1.
+    const interestTransactions = [
+      { transactionDate: '2026-03-05', amount: -6.5, isTransfer: false } as Transaction,
+    ];
+
+    const { events } = deriveLoanPaymentHistory(account, transactions, [], interestTransactions);
+
+    expect(events).toHaveLength(2);
+    const febRow = events.find((e) => e.date === '2026-02-01');
+    const marchRow = events.find((e) => e.date === '2026-03-05');
+    expect(febRow?.balance).toBeCloseTo(800, 2);
+    // The orphan March row must reflect the draw, not skip over it.
+    expect(marchRow?.balance).toBeCloseTo(1300, 2);
+    // The reconstructed annual rate is interest / balance x periods-per-year:
+    // 6.5 / 1300 x 12 x 100 = 6%, matching the account's real rate. Computed
+    // against the wrong (800) balance it would read 9.75%.
+    expect(marchRow?.annualRate).toBeCloseTo(6, 1);
+  });
+
   it('does not fabricate analytic interest for a principal-only payment sharing a date (interest booked separately)', () => {
     // Real case (2023-09-05): two principal payments land on the same day -- an
     // overpayment (973.11, whose interest is booked separately) and the regular
