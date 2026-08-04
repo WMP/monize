@@ -13,6 +13,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { getRequestContext } from "../common/request-context";
 import { BackupService, RestoreBackupInput } from "./backup.service";
+import { restoreProcessingGate } from "./restore-processing-gate";
 import { User } from "../users/entities/user.entity";
 import { OidcService } from "../auth/oidc/oidc.service";
 import { AiEncryptionService } from "../ai/ai-encryption.service";
@@ -705,6 +706,119 @@ describe("BackupService", () => {
       ]);
     });
 
+    /**
+     * F3R6-002: the object must match the size and hash the server recorded, or
+     * the export is packaging bytes it knows the restore will refuse. Export is
+     * the last moment to see the discrepancy -- afterwards the user believes the
+     * receipt is safe in the artifact.
+     */
+    function storeHoldsWithMetadata(
+      rows: Array<{
+        id: string;
+        provider: string;
+        byte_size: number;
+        sha256: string;
+      }>,
+      objects: Record<string, Buffer>,
+    ) {
+      mockDataSource.query.mockImplementation((sql: string) => {
+        if (
+          String(sql).includes("FROM transaction_attachments") &&
+          String(sql).includes("storage_provider, byte_size")
+        ) {
+          return Promise.resolve(
+            rows.map((row) => ({
+              id: row.id,
+              storage_provider: row.provider,
+              byte_size: String(row.byte_size),
+              sha256: row.sha256,
+            })),
+          );
+        }
+        return mockQueryHandler(sql);
+      });
+      attachmentStorage.load.mockImplementation(async (key: string) => {
+        const bytes = objects[key];
+        if (!bytes) throw new Error(`no such object: ${key}`);
+        return bytes;
+      });
+    }
+
+    it("omits an object whose stored bytes are the wrong size", async () => {
+      attachmentStorageName = "local";
+      const good = Buffer.from("intact-object");
+      storeHoldsWithMetadata(
+        [
+          // A_ID's recorded size is a byte longer than the object on disk: the
+          // source was truncated out from under its row.
+          {
+            id: A_ID,
+            provider: "local",
+            byte_size: A_BYTES.length + 1,
+            sha256: "",
+          },
+          {
+            id: B_ID,
+            provider: "local",
+            byte_size: good.length,
+            sha256: createHash("sha256").update(good).digest("hex"),
+          },
+        ],
+        { [A_ID]: A_BYTES, [B_ID]: good },
+      );
+
+      const result = await exported();
+
+      // The corrupt one is dropped; the intact one still travels.
+      expect(result.attachment_blobs).toEqual([
+        { attachment_id: B_ID, data: good.toString("base64") },
+      ]);
+    });
+
+    it("omits an object whose stored bytes fail their recorded checksum", async () => {
+      attachmentStorageName = "local";
+      storeHoldsWithMetadata(
+        [
+          {
+            id: A_ID,
+            provider: "local",
+            byte_size: A_BYTES.length,
+            // Right size, wrong hash: the bytes were replaced, not truncated.
+            sha256: createHash("sha256")
+              .update(Buffer.from("something else entirely!"))
+              .digest("hex"),
+          },
+        ],
+        { [A_ID]: A_BYTES },
+      );
+
+      const result = await exported();
+
+      expect(result.attachment_blobs).toEqual([]);
+    });
+
+    it("carries an object that matches its recorded size and hash", async () => {
+      // The discriminating half: the same wiring, honest metadata, and it travels.
+      attachmentStorageName = "local";
+      storeHoldsWithMetadata(
+        [
+          {
+            id: A_ID,
+            provider: "local",
+            byte_size: A_BYTES.length,
+            sha256: createHash("sha256").update(A_BYTES).digest("hex"),
+          },
+        ],
+        { [A_ID]: A_BYTES },
+      );
+
+      const result = await exported();
+
+      expect(result.attachment_blobs).toEqual([
+        { attachment_id: A_ID, data: A_BYTES.toString("base64") },
+      ]);
+    });
+
     it("carries them in the streaming export too", async () => {
       // Three export paths read the same table list, and an artifact missing the
       // bytes is indistinguishable from one that has them until a restore.
@@ -1155,6 +1269,23 @@ describe("BackupService", () => {
             sha256: SHA256,
           },
         ];
+      });
+
+      it("runs the whole restore inside the processing gate (F3R6-004)", async () => {
+        // The gate caps concurrent decompression/parsing, which the compressed
+        // upload budget cannot. Prove restoreData routes its expensive region
+        // through it -- the gate's own concurrency behaviour is covered in
+        // restore-processing-gate.spec.ts.
+        attachmentStorage.load.mockResolvedValue(BYTES);
+        const runSpy = jest.spyOn(restoreProcessingGate, "run");
+
+        await service.restoreData(
+          userId,
+          makeInput({ password: "test", data: backupWithLocalAttachment() }),
+        );
+
+        expect(runSpy).toHaveBeenCalledTimes(1);
+        runSpy.mockRestore();
       });
 
       it("copies the bytes to the remapped key before restoring the metadata", async () => {
@@ -1916,6 +2047,88 @@ describe("BackupService", () => {
           expect(attachmentStorage.load).not.toHaveBeenCalled();
           expect(attachmentStorage.save).not.toHaveBeenCalled();
           expect(result.skippedAttachments).toBe(1);
+        });
+      });
+
+      /**
+       * Duplicate blob rows for one id (F3R6-003).
+       *
+       * Staging validates the *last* row for a duplicated id (Map last-wins), but
+       * `attachment_blobs.attachment_id` is a primary key and Phase-2 inserts with
+       * `ON CONFLICT DO NOTHING`, so a raw uploaded array would commit the *first*.
+       * A crafted backup could pair valid bytes (checked, accepted) with corrupt
+       * bytes (inserted). The restore rebuilds `attachment_blobs` from the
+       * validated bytes, one row per id, so the row inserted is the row checked --
+       * and the outcome does not depend on the duplicate order.
+       */
+      describe("duplicate blob rows", () => {
+        const GOOD = BYTES;
+        const BAD = Buffer.from("corrupted-different-length-bytes");
+
+        const twoBlobs = (first: Buffer, second: Buffer) => ({
+          ...backupWithLocalAttachment({ storage_provider: "database" }),
+          attachment_blobs: [
+            { attachment_id: OLD_ID, data: first.toString("base64") },
+            { attachment_id: OLD_ID, data: second.toString("base64") },
+          ],
+        });
+
+        const insertedBlobParams = () =>
+          mockQueryRunner.query.mock.calls
+            .filter(([sql]) =>
+              String(sql).includes('INSERT INTO "attachment_blobs"'),
+            )
+            .flatMap(([, params]) => (params ?? []) as unknown[]);
+
+        beforeEach(() => {
+          attachmentStorageName = "database";
+        });
+
+        it("inserts the validated bytes, not the first duplicate (bad-first, good-last)", async () => {
+          // Map keeps GOOD (last), validation passes, rebuild inserts GOOD.
+          const result = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: twoBlobs(BAD, GOOD) }),
+          );
+
+          const params = insertedBlobParams();
+          expect(params).toContain(GOOD.toString("base64"));
+          expect(params).not.toContain(BAD.toString("base64"));
+          expect(result.restored.transactionAttachments).toBe(1);
+          expect(result.restored.attachmentBlobs).toBe(1);
+        });
+
+        it("drops the attachment rather than committing unverified bytes (good-first, bad-last)", async () => {
+          // Map keeps BAD (last), which fails the metadata check, so the whole
+          // attachment is unrestorable -- never a committed corrupt blob.
+          const result = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: twoBlobs(GOOD, BAD) }),
+          );
+
+          const params = insertedBlobParams();
+          expect(params).not.toContain(BAD.toString("base64"));
+          expect(params).not.toContain(GOOD.toString("base64"));
+          expect(result.skippedAttachments).toBe(1);
+          expect(result.restored.attachmentBlobs ?? 0).toBe(0);
+        });
+
+        it("collapses duplicates to a single row even when both are valid", async () => {
+          // No integrity issue -- just two identical rows. The primary key would
+          // reject the second anyway; the rebuild means only one is offered.
+          const result = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: twoBlobs(GOOD, GOOD) }),
+          );
+
+          const inserts = mockQueryRunner.query.mock.calls.filter(([sql]) =>
+            String(sql).includes('INSERT INTO "attachment_blobs"'),
+          );
+          const idParams = inserts
+            .flatMap(([, params]) => (params ?? []) as unknown[])
+            .filter((v) => v === GOOD.toString("base64"));
+          expect(idParams).toHaveLength(1);
+          expect(result.restored.attachmentBlobs).toBe(1);
         });
       });
 

@@ -24,6 +24,7 @@ import {
   warnIfLimitExceedsMemory,
   resolveByteLimit,
 } from "./backup-limits";
+import { restoreProcessingGate } from "./restore-processing-gate";
 
 const gunzipAsync = promisify(gunzip);
 import {
@@ -462,16 +463,26 @@ export class BackupService {
    * established. The only thing that can is the bytes being *in* the artifact the
    * user downloaded, which is what this does.
    *
-   * What it costs: the artifact grows by the size of the attachments. The plain
-   * export streams and is unaffected; the encrypted, automatic and support paths
-   * assemble in memory, so a large attachment set now meets
-   * `BACKUP_EXPORT_BUFFER_LIMIT` and is refused with the readable error rather
-   * than silently producing a file whose attachments cannot come back. A refusal
-   * that names the ceiling is the better failure.
+   * What it costs: the artifact grows by the size of the attachments, and this
+   * method accumulates every carried object in memory before serialization. On the
+   * encrypted, automatic and support paths that is bounded by
+   * `BACKUP_EXPORT_BUFFER_LIMIT`, so a large attachment set is refused with the
+   * readable error rather than silently producing a file whose attachments cannot
+   * come back. **The plain export is *not* bounded** -- it was the streaming path,
+   * and this accumulation is a real hole in that claim (F3R6-001). Fixing it is the
+   * same cursor/one-object-at-a-time work as bounding the large-table reads
+   * (`docs/backup-restore-contract.md`, still open); until then, a plain export of
+   * a very large attachment set can exceed the pod. The bytes must travel for the
+   * backup to be a backup, so the accumulation is a known cost, not a regression to
+   * revert.
    *
-   * An object the store cannot produce is logged and omitted rather than failing
-   * the export: the ledger is the point of a backup, and refusing the whole file
-   * over one unreadable receipt would leave the user with nothing.
+   * Two things are checked, not just loaded. An object the store cannot produce is
+   * logged and omitted -- the ledger is the point of a backup, and refusing the
+   * whole file over one unreadable receipt would leave the user with nothing. And
+   * an object whose bytes no longer match the size and SHA-256 the server recorded
+   * for it is also omitted (`storedBytesMatchMetadata`): export is the last moment
+   * to notice the source is already corrupt, and packaging bytes the restore will
+   * refuse would report a success the artifact cannot honour.
    */
   private async appendExternalAttachmentBytes(
     rows: Record<string, unknown>[],
@@ -490,6 +501,7 @@ export class BackupService {
 
     const carried: Record<string, unknown>[] = [];
     let unreadable = 0;
+    let inconsistent = 0;
     for (const row of metadata) {
       // Rows written by a different backend than this runtime configures cannot
       // be read from here at all; they keep travelling as metadata only.
@@ -502,6 +514,19 @@ export class BackupService {
         unreadable += 1;
         continue;
       }
+      // The object must match the size and hash the server recorded for it. This
+      // is the last moment the discrepancy can be seen: the restore checks the
+      // same thing (`carriedBytesMatchMetadata`) and would drop the row, but by
+      // then the export has reported success and the user believes the receipt is
+      // safe. So a source object that no longer matches its metadata -- truncated,
+      // replaced, silently corrupted in the volume or bucket -- is omitted here
+      // and never packaged. The metadata is the server's own record; the bytes
+      // are what the store returned, so this compares the store against the
+      // database rather than the file against itself.
+      if (!this.storedBytesMatchMetadata(bytes, row)) {
+        inconsistent += 1;
+        continue;
+      }
       carried.push({ attachment_id: id, data: bytes.toString("base64") });
     }
 
@@ -510,6 +535,13 @@ export class BackupService {
         `Backup export could not read ${unreadable} attachment object(s) from the ` +
           `${provider} store; their metadata travels without bytes and they will ` +
           `not be restorable.`,
+      );
+    }
+    if (inconsistent > 0) {
+      this.logger.warn(
+        `Backup export found ${inconsistent} attachment object(s) in the ${provider} ` +
+          `store whose bytes no longer match their recorded size or checksum; they ` +
+          `are omitted and will not be restorable from this artifact.`,
       );
     }
     if (carried.length > 0) {
@@ -836,121 +868,128 @@ export class BackupService {
 
     await this.verifyAuthentication(user, input);
 
-    const gzippedPayload = await this.maybeDecrypt(input, user);
-    const rawData = await this.decompressAndParse(gzippedPayload);
-    this.validateBackupFormat(rawData);
+    // A restore's processing peak -- decrypt, decompress, parse, stage -- is
+    // dominated by the *expanded* payload, which a small compressed upload reaches
+    // just as well as a large one. Upload admission budgets the wire bytes and so
+    // cannot bound it; this gate caps how many restores decompress at once (one,
+    // on the default pod). See `restore-processing-gate.ts`.
+    return restoreProcessingGate.run(async () => {
+      const gzippedPayload = await this.maybeDecrypt(input, user);
+      const rawData = await this.decompressAndParse(gzippedPayload);
+      this.validateBackupFormat(rawData);
 
-    // A support (de-identified) backup restores like any other, but the data
-    // is synthetic -- masked names, amounts scaled by a hidden factor. Log it
-    // so scaled balances aren't mistaken for corruption later.
-    if ((rawData as { supportBackup?: unknown }).supportBackup === true) {
-      this.logger.log(
-        `Restoring a de-identified support backup for user ${userId} (names masked, amounts scaled)`,
-      );
-    }
-
-    // Remap every primary key in the backup to a fresh UUID (and rewrite all
-    // references to those keys, including ids embedded in JSONB columns) so the
-    // restore behaves as if the backup came from an entirely separate system.
-    // Without this, restoring one user's backup into another user's account on
-    // the SAME system would collide on the original UUIDs: the inserts would be
-    // silently skipped by ON CONFLICT DO NOTHING, and the Phase-3 deferred-FK
-    // UPDATEs (keyed only by id) would mutate the OTHER user's rows.
-    const idRemap = this.buildBackupIdRemap(rawData);
-    const data = this.remapBackupIds(rawData, idRemap);
-    this.rehashGemSignalFingerprints(data, idRemap);
-
-    this.logger.log(`Starting backup restore for user ${userId}`);
-
-    // Attachment bytes are staged before anything is deleted: an object that is
-    // missing or fails its checksum has to be discovered while the user's
-    // current data is still there, not halfway through replacing it.
-    const {
-      stagedKeys,
-      sourceKeys,
-      skipped: skippedAttachments,
-    } = await this.stageAttachmentObjects(userId, data, idRemap);
-
-    // The keys this user's *current* attachments occupy, read before the delete
-    // because afterwards there is nothing left to read them from. They are
-    // deleted after a successful commit -- see `deleteDisplacedAttachmentObjects`
-    // for why that is the only safe moment and why the backup's own old keys are
-    // not in this set.
-    const displacedKeys = await this.collectExternalAttachmentKeys(userId);
-
-    const restored: Record<string, number> = {};
-
-    // One transaction for the whole restore, exactly as the QueryRunner block
-    // was: a half-applied restore would leave the account in a state that is
-    // neither the backup nor what was there before. `preserveTimestamps` makes
-    // withScopedDb emit `app.preserve_timestamps` for this transaction (in
-    // every RLS mode), so the GUC-aware `updated_at` trigger keeps the backup's
-    // timestamps through the Phase-3 deferred-FK UPDATEs -- replacing the old
-    // trigger-disabling ALTER TABLE DDL, which the unprivileged runtime role
-    // cannot execute under enforcement (task C5).
-    return withPreserveTimestamps(() =>
-      withScopedDb(this.dataSource, async (manager) => {
-        // Phase 1: Delete all existing user data (same order as deleteData in users.service)
-        await this.deleteAllUserData(userId, manager);
-
-        // Phase 2a: ensure every referenced currency code exists before
-        // restoring the tables with FK references to currencies(code).
-        await this.ensureCurrenciesExist(manager, data, userId);
-
-        // Phase 2b: insert every backed-up table in FK-safe order. The order,
-        // the row-count key and whether user_id is forced live in
-        // RESTORE_PLAN, which restore-plan.spec.ts checks against the schema's
-        // foreign keys -- so a new table or a new FK cannot quietly land in the
-        // wrong position.
-        for (const { table, countKey, scopeToUser } of RESTORE_PLAN) {
-          restored[countKey] = await this.insertRows(
-            manager,
-            table,
-            (data as unknown as Record<string, Record<string, unknown>[]>)[
-              table
-            ],
-            scopeToUser ? userId : null,
-          );
-        }
-
-        // Phase 3: Restore deferred FK columns that were stripped during insert
-        // to avoid circular/forward reference violations.
-        await this.restoreDeferredFkColumns(manager, data);
-
-        this.logger.log(`Backup restore completed for user ${userId}`);
-        // `skippedAttachments` is reported beside `restored`, never inside it:
-        // the client sums `restored`'s values to show a row total, and a count
-        // of rows that were deliberately not written does not belong in that
-        // sum.
-        return skippedAttachments > 0
-          ? {
-              message: "Backup restored successfully",
-              restored,
-              skippedAttachments,
-            }
-          : { message: "Backup restored successfully", restored };
-      }),
-    )
-      .then(async (result) => {
-        // After the commit, never before: until it lands, the metadata that
-        // references these objects may come back with a rollback.
-        await this.deleteDisplacedAttachmentObjects(displacedKeys, [
-          ...stagedKeys,
-          ...sourceKeys,
-        ]);
-        return result;
-      })
-      .catch(async (error) => {
-        this.logger.error(
-          `Backup restore failed for user ${userId}: ${error.message}`,
+      // A support (de-identified) backup restores like any other, but the data
+      // is synthetic -- masked names, amounts scaled by a hidden factor. Log it
+      // so scaled balances aren't mistaken for corruption later.
+      if ((rawData as { supportBackup?: unknown }).supportBackup === true) {
+        this.logger.log(
+          `Restoring a de-identified support backup for user ${userId} (names masked, amounts scaled)`,
         );
-        // The database rolled back; the objects staged for it did not, so remove
-        // them rather than leaving bytes nothing references. The user's own old
-        // objects stay exactly where they are -- their metadata rolled back with
-        // everything else, so those bytes are still referenced.
-        await this.discardStagedAttachmentObjects(stagedKeys);
-        throw error;
-      });
+      }
+
+      // Remap every primary key in the backup to a fresh UUID (and rewrite all
+      // references to those keys, including ids embedded in JSONB columns) so the
+      // restore behaves as if the backup came from an entirely separate system.
+      // Without this, restoring one user's backup into another user's account on
+      // the SAME system would collide on the original UUIDs: the inserts would be
+      // silently skipped by ON CONFLICT DO NOTHING, and the Phase-3 deferred-FK
+      // UPDATEs (keyed only by id) would mutate the OTHER user's rows.
+      const idRemap = this.buildBackupIdRemap(rawData);
+      const data = this.remapBackupIds(rawData, idRemap);
+      this.rehashGemSignalFingerprints(data, idRemap);
+
+      this.logger.log(`Starting backup restore for user ${userId}`);
+
+      // Attachment bytes are staged before anything is deleted: an object that is
+      // missing or fails its checksum has to be discovered while the user's
+      // current data is still there, not halfway through replacing it.
+      const {
+        stagedKeys,
+        sourceKeys,
+        skipped: skippedAttachments,
+      } = await this.stageAttachmentObjects(userId, data, idRemap);
+
+      // The keys this user's *current* attachments occupy, read before the delete
+      // because afterwards there is nothing left to read them from. They are
+      // deleted after a successful commit -- see `deleteDisplacedAttachmentObjects`
+      // for why that is the only safe moment and why the backup's own old keys are
+      // not in this set.
+      const displacedKeys = await this.collectExternalAttachmentKeys(userId);
+
+      const restored: Record<string, number> = {};
+
+      // One transaction for the whole restore, exactly as the QueryRunner block
+      // was: a half-applied restore would leave the account in a state that is
+      // neither the backup nor what was there before. `preserveTimestamps` makes
+      // withScopedDb emit `app.preserve_timestamps` for this transaction (in
+      // every RLS mode), so the GUC-aware `updated_at` trigger keeps the backup's
+      // timestamps through the Phase-3 deferred-FK UPDATEs -- replacing the old
+      // trigger-disabling ALTER TABLE DDL, which the unprivileged runtime role
+      // cannot execute under enforcement (task C5).
+      return withPreserveTimestamps(() =>
+        withScopedDb(this.dataSource, async (manager) => {
+          // Phase 1: Delete all existing user data (same order as deleteData in users.service)
+          await this.deleteAllUserData(userId, manager);
+
+          // Phase 2a: ensure every referenced currency code exists before
+          // restoring the tables with FK references to currencies(code).
+          await this.ensureCurrenciesExist(manager, data, userId);
+
+          // Phase 2b: insert every backed-up table in FK-safe order. The order,
+          // the row-count key and whether user_id is forced live in
+          // RESTORE_PLAN, which restore-plan.spec.ts checks against the schema's
+          // foreign keys -- so a new table or a new FK cannot quietly land in the
+          // wrong position.
+          for (const { table, countKey, scopeToUser } of RESTORE_PLAN) {
+            restored[countKey] = await this.insertRows(
+              manager,
+              table,
+              (data as unknown as Record<string, Record<string, unknown>[]>)[
+                table
+              ],
+              scopeToUser ? userId : null,
+            );
+          }
+
+          // Phase 3: Restore deferred FK columns that were stripped during insert
+          // to avoid circular/forward reference violations.
+          await this.restoreDeferredFkColumns(manager, data);
+
+          this.logger.log(`Backup restore completed for user ${userId}`);
+          // `skippedAttachments` is reported beside `restored`, never inside it:
+          // the client sums `restored`'s values to show a row total, and a count
+          // of rows that were deliberately not written does not belong in that
+          // sum.
+          return skippedAttachments > 0
+            ? {
+                message: "Backup restored successfully",
+                restored,
+                skippedAttachments,
+              }
+            : { message: "Backup restored successfully", restored };
+        }),
+      )
+        .then(async (result) => {
+          // After the commit, never before: until it lands, the metadata that
+          // references these objects may come back with a rollback.
+          await this.deleteDisplacedAttachmentObjects(displacedKeys, [
+            ...stagedKeys,
+            ...sourceKeys,
+          ]);
+          return result;
+        })
+        .catch(async (error) => {
+          this.logger.error(
+            `Backup restore failed for user ${userId}: ${error.message}`,
+          );
+          // The database rolled back; the objects staged for it did not, so remove
+          // them rather than leaving bytes nothing references. The user's own old
+          // objects stay exactly where they are -- their metadata rolled back with
+          // everything else, so those bytes are still referenced.
+          await this.discardStagedAttachmentObjects(stagedKeys);
+          throw error;
+        });
+    });
   }
 
   /**
@@ -1321,24 +1360,36 @@ export class BackupService {
    * Makes every restored attachment's bytes reachable under the key its
    * restored metadata will name -- or drops the metadata row and says so.
    *
-   * Only `database`-provider bytes travel inside a backup, as base64 in
-   * `attachment_blobs`. The `local` and `s3` providers keep bytes outside
-   * Postgres under a `storage_key` that equals the attachment's UUID, and the
-   * restore mints a fresh UUID for every row. So the metadata came back
-   * pointing at `<new-uuid>` while the only object in the volume or bucket was
-   * still at `<old-uuid>`: every externally stored attachment was unreachable
-   * after a restore that reported success, and restoring the sidecar directory
-   * byte-for-byte did not help, because the mismatch was in the database.
+   * **Two paths, and the first is the one new artifacts take.** A backup now
+   * carries attachment bytes for *every* provider, base64 in `attachment_blobs`
+   * (see `appendExternalAttachmentBytes`). When the bytes are in the artifact the
+   * restore uses them directly -- validates them against their own metadata, and
+   * places them where this runtime keeps its attachments (in the blob rows for the
+   * `database` provider, in the object store for `local`/`s3`, whichever the target
+   * runs, rewriting `storage_provider` to match). No object outside the file is
+   * read, so no ownership question arises: the bytes are the user's own download.
+   * This is what makes a fresh instance and a deleted-metadata account recoverable
+   * (F3R5-001).
    *
-   * Preserving the old key instead would be worse than the bug: the bytes are
-   * not in the backup, so a restore into a different user on the same instance
-   * would hand that user working links to attachments whose contents they were
-   * never sent.
+   * **The second path is the legacy one**, for an artifact produced before bytes
+   * travelled. Those carried only metadata for `local`/`s3`, whose objects live
+   * outside Postgres under a `storage_key` that equals the attachment's UUID. The
+   * restore mints a fresh UUID per row, so the metadata came back pointing at
+   * `<new-uuid>` while the object was still at `<old-uuid>`: unreachable after a
+   * restore that reported success. So for those the bytes are *copied* from the old
+   * key to the new -- and only after the restoring user is shown to own a matching
+   * row, because an uploaded id cannot authorize reading a deployment-wide object
+   * (F3RRR-001). On a fresh instance that ownership row does not exist and the
+   * attachment is skipped, which is exactly why the bytes now travel.
    *
-   * So the bytes are copied. For each external row the object is read at its
-   * old key, checked against the size and SHA-256 the metadata claims, and
-   * written under the new key -- all before the destructive delete, so a
-   * missing or corrupt object cannot be discovered halfway through.
+   * Preserving the old key instead of copying would be worse than the original
+   * bug: the bytes were not in those older backups, so a restore into a different
+   * user on the same instance would hand that user working links to attachments
+   * whose contents they were never sent.
+   *
+   * Either way, a carried or copied object is checked against the size and SHA-256
+   * its metadata claims, all before the destructive delete, so a missing or corrupt
+   * object cannot be discovered halfway through.
    *
    * An object that cannot be staged is not restorable, and a metadata row
    * pointing at nothing is a broken attachment the user cannot tell from a
@@ -1397,13 +1448,24 @@ export class BackupService {
     const oldIdOf = new Map(
       [...idRemap].map(([oldId, newId]) => [newId, oldId] as const),
     );
+    // Last row wins for a duplicated id -- and, critically, the row that is
+    // *validated* below must be the row that is *inserted*. `attachment_blobs`
+    // has `attachment_id` as its primary key, and Phase-2 inserts with
+    // `ON CONFLICT DO NOTHING`, so a raw uploaded array with two rows for one id
+    // would validate the last and commit the first. A crafted backup could pair
+    // valid bytes (checked, accepted) with corrupt bytes (inserted). So the
+    // canonical encoded string is kept here beside the decoded Buffer, and
+    // `data.attachment_blobs` is rebuilt from it below -- one row per id, exactly
+    // the bytes that passed the check.
     const carriedBytes = new Map<string, Buffer>();
+    const canonicalEncoded = new Map<string, string>();
     for (const blob of data.attachment_blobs ?? []) {
       const id = String(blob.attachment_id ?? "");
       if (id.length === 0) continue;
       const encoded = blob.data;
       if (typeof encoded !== "string") continue;
       carriedBytes.set(id, Buffer.from(encoded, "base64"));
+      canonicalEncoded.set(id, encoded);
     }
 
     // What this user actually owns right now, by original id. Read once, before
@@ -1538,16 +1600,25 @@ export class BackupService {
       );
     }
 
-    // Blob rows go if their attachment did, and also if their bytes went to the
-    // object store instead -- `attachment_blobs` is the database provider's
-    // storage, so a row there for an externally stored attachment is a duplicate
-    // copy of the same bytes that nothing ever reads.
-    if (unrestorable.size > 0 || externallyPlaced.size > 0) {
-      data.attachment_blobs = (data.attachment_blobs ?? []).filter((blob) => {
-        const id = String(blob.attachment_id ?? "");
-        return !unrestorable.has(id) && !externallyPlaced.has(id);
-      });
+    // Rebuild `attachment_blobs` from the canonical, validated bytes rather than
+    // filtering the uploaded array. This does three things at once, and the third
+    // is why filtering was not enough:
+    //  - drops rows whose attachment was unrestorable;
+    //  - drops rows whose bytes went to the object store instead (a row in
+    //    `attachment_blobs` for an externally stored attachment is a second copy
+    //    nothing reads);
+    //  - collapses any duplicate `attachment_id` to the single row whose bytes
+    //    were checked, so the primary-key conflict can no longer commit a
+    //    different, unverified copy than the one staging validated.
+    // Every id here was decoded and (for database-provider rows that stayed)
+    // checked against its metadata; a malformed row with no usable id or data was
+    // never admitted to the map.
+    const rebuiltBlobs: Record<string, unknown>[] = [];
+    for (const [id, encoded] of canonicalEncoded) {
+      if (unrestorable.has(id) || externallyPlaced.has(id)) continue;
+      rebuiltBlobs.push({ attachment_id: id, data: encoded });
     }
+    data.attachment_blobs = rebuiltBlobs;
 
     return { stagedKeys, sourceKeys, skipped: unrestorable.size };
   }
@@ -1572,6 +1643,32 @@ export class BackupService {
    * completely than it should.
    */
   private carriedBytesMatchMetadata(
+    bytes: Buffer,
+    row: Record<string, unknown>,
+  ): boolean {
+    return this.attachmentBytesConsistent(bytes, row);
+  }
+
+  /**
+   * Whether a stored external object matches the metadata the server recorded for
+   * it, checked at **export** time.
+   *
+   * Same comparison as `carriedBytesMatchMetadata`, opposite provenance: here the
+   * bytes come from the object store and the size/hash from `transaction_attachments`,
+   * so it compares the store against the database rather than a file against
+   * itself. A mismatch means the source object was truncated, replaced or corrupted
+   * out from under its row -- the export omits it rather than packaging bytes it
+   * knows the restore will refuse.
+   */
+  private storedBytesMatchMetadata(
+    bytes: Buffer,
+    row: Record<string, unknown>,
+  ): boolean {
+    return this.attachmentBytesConsistent(bytes, row);
+  }
+
+  /** Bytes vs. the `byte_size`/`sha256` recorded beside them. Shared core. */
+  private attachmentBytesConsistent(
     bytes: Buffer,
     row: Record<string, unknown>,
   ): boolean {

@@ -307,13 +307,22 @@ Three, for three different failure modes. All configurable, all fail loudly.
 
 | Setting | Bounds | Default |
 |---|---|---|
-| `BACKUP_RESTORE_LIMIT` | the compressed upload | a sixth of the container's memory limit (a half, divided by `PEAK_MULTIPLE`) |
+| `BACKUP_RESTORE_LIMIT` | the compressed upload | the half-share peak divided by `PEAK_MULTIPLE` (~a sixth), no floor |
 | `BACKUP_RESTORE_EXPANDED_LIMIT` | the **decompressed** payload | a quarter of the container's memory limit |
 | `BACKUP_EXPORT_BUFFER_LIMIT` | JSON a buffered export may accumulate | a quarter of the container's memory limit |
 
-Every default is cgroup-derived, with a 64 MiB floor, a 1024 MiB cap and a 256 MiB
-fallback when there is no limit to read. There are no fixed byte defaults left; the
-`1024mb` and `512mb` this table used to name were the numbers that could not fire.
+The expanded and buffered defaults are cgroup-derived with a 64 MiB usability
+floor, a 1024 MiB cap and a 256 MiB fallback when there is no limit to read. There
+are no fixed byte defaults left; the `1024mb` and `512mb` this table used to name
+were the numbers that could not fire.
+
+**The upload default has no floor, and that is deliberate (F3R6-005).** A usability
+minimum and a safety maximum are different quantities: `max(64 MiB, safe)` let the
+floor win, so on a 128 MiB pod it returned 64 MiB whose modeled peak (192 MiB)
+exceeded the whole container. The safety bound is the only bound —
+`resolvedLimit * PEAK_MULTIPLE <= container * share` for every container size — so a
+small pod derives a small, safe upload limit and `warnIfRestoreUploadLimitIsCramped`
+says so at startup rather than flooring into a number the pod cannot survive.
 
 The compressed limit bounds nothing about what comes out of gzip: a few hundred
 kilobytes of repeated text expands to gigabytes. Decompression is asynchronous
@@ -392,6 +401,21 @@ after authorization, and streaming the upload through decryption and gzip into a
 bounded temporary file or an incremental parser instead of the JavaScript heap. The
 last of those is also what would replace `PEAK_MULTIPLE` with a real bound.
 
+**The compressed budget does not bound decompressed memory (F3R6-004).** A small
+gzip expands to the `BACKUP_RESTORE_EXPANDED_LIMIT` ceiling regardless of its wire
+size, so a request's *processing* peak — decompressed payload, string, parsed graph
+— is independent of the compressed bytes the upload gate reserved against. Four
+1 MiB uploads that each expand to the ~100 MiB expanded limit pass upload admission
+on their small claims and then hold ~400 MiB between them. So restore *processing*
+is capped separately: `restoreProcessingGate`
+(`backend/src/backup/restore-processing-gate.ts`) admits only as many concurrent
+restores as fit the container at `PEAK_MULTIPLE` × the expanded share, which on the
+default pod is one — a second restore waits for the first rather than decompressing
+beside it. The service acquires a slot before decompression and releases it in a
+`finally`. The cap is robust to `PEAK_MULTIPLE` being an estimate: serialising to
+one is safe under any true multiple, as long as one restore fits, which the limits
+above already have to guarantee.
+
 **A budget checked after the allocation is not a budget.** The support export
 always discards `attachment_blobs`, which is base64 — thirty 10 MiB receipts are
 ~400 MiB of text — and `collectRawExport` loaded it anyway before any ceiling was
@@ -400,17 +424,22 @@ passes `ALWAYS_EXCLUDED_TABLES` — and, since attachment bytes now travel, that
 augmentation does not read a single object off disk for a table the caller is going
 to discard either.
 
-**Not fixed, and now doubly load-bearing:** large tables are still read whole
-through `manager.query` rather than a cursor, so one enormous table is bounded only
-by the ceiling that follows it, and `attachment_blobs` accumulates every attachment
-before that ceiling is consulted. A cursor inside the repeatable-read snapshot with
-a per-chunk budget is what fixes both — it is the same work that would let the
-encrypted path stream through an authenticated container format instead of needing
-one monolithic AES-GCM buffer, and the same work that would replace `PEAK_MULTIPLE`
-with a measured bound on the restore side. Until then, a large attachment set on the
-encrypted, automatic or support path is *refused* with the error naming
-`BACKUP_EXPORT_BUFFER_LIMIT`, which is the correct failure but not the correct
-feature.
+**Not fixed, and now triply load-bearing (F3R6-001):** large tables are still read
+whole through `manager.query` rather than a cursor, so one enormous table is bounded
+only by the ceiling that follows it; `attachment_blobs` accumulates every attachment
+before that ceiling is consulted; and the **plain HTTP export**, described above as
+the streaming path, materialises each table (and every carried attachment) in full
+before writing it, so it is no longer the unbounded-safe path it was billed as. The
+encrypted, automatic and support paths at least *refuse* an over-large set with the
+error naming `BACKUP_EXPORT_BUFFER_LIMIT`; the plain path has no ceiling and can
+exceed the pod outright. A cursor inside the repeatable-read snapshot that
+serialises rows and base64-encodes one attachment at a time, under a per-chunk
+budget, is what fixes all three — the same work that would let the encrypted path
+stream through an authenticated container format instead of a monolithic AES-GCM
+buffer, and the same work that would replace `PEAK_MULTIPLE` with a measured bound
+on the restore side. It is the single highest-value open item in this document, and
+the reason attachment bytes travelling (§4) currently trades a recoverability fix
+for a memory cost that only streaming repays.
 
 ## 7. Automatic backups on disk
 
