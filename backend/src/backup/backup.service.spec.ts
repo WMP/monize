@@ -603,6 +603,158 @@ describe("BackupService", () => {
     });
   });
 
+  /**
+   * The export half of F3R5-001. Only `database`-provider bytes used to travel;
+   * `local` and `s3` metadata went out with the bytes left behind in a volume or
+   * a bucket, which the restore could only read while the target database still
+   * held the matching row. Now every provider's bytes are in the artifact.
+   */
+  describe("external attachment bytes in the artifact", () => {
+    const A_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const B_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const A_BYTES = Buffer.from("receipt-a");
+    const B_BYTES = Buffer.from("receipt-b-longer");
+
+    /** Answers the metadata sweep the augmentation runs, and nothing else. */
+    function storeHolds(
+      rows: Array<{ id: string; provider: string }>,
+      objects: Record<string, Buffer>,
+    ) {
+      mockDataSource.query.mockImplementation((sql: string) => {
+        if (
+          String(sql).includes("FROM transaction_attachments") &&
+          String(sql).includes("storage_provider, byte_size")
+        ) {
+          return Promise.resolve(
+            rows.map((row) => ({
+              id: row.id,
+              storage_provider: row.provider,
+              byte_size: (objects[row.id]?.length ?? 0).toString(),
+              sha256: "",
+            })),
+          );
+        }
+        return mockQueryHandler(sql);
+      });
+      attachmentStorage.load.mockImplementation(async (key: string) => {
+        const bytes = objects[key];
+        if (!bytes) throw new Error(`no such object: ${key}`);
+        return bytes;
+      });
+    }
+
+    async function exported(): Promise<Record<string, unknown>> {
+      const buffer = await service.exportToBuffer(userId);
+      return JSON.parse(gunzipSync(buffer).toString("utf-8"));
+    }
+
+    it("carries every external object it can read", async () => {
+      attachmentStorageName = "local";
+      storeHolds(
+        [
+          { id: A_ID, provider: "local" },
+          { id: B_ID, provider: "local" },
+        ],
+        { [A_ID]: A_BYTES, [B_ID]: B_BYTES },
+      );
+
+      const result = await exported();
+
+      expect(result.attachment_blobs).toEqual([
+        { attachment_id: A_ID, data: A_BYTES.toString("base64") },
+        { attachment_id: B_ID, data: B_BYTES.toString("base64") },
+      ]);
+    });
+
+    it("reads nothing from the store on a database-provider deployment", async () => {
+      // Those bytes are already in `attachment_blobs`; there is no object store.
+      attachmentStorageName = "database";
+      storeHolds([{ id: A_ID, provider: "database" }], { [A_ID]: A_BYTES });
+
+      await exported();
+
+      expect(attachmentStorage.load).not.toHaveBeenCalled();
+    });
+
+    it("skips a row written by a provider this runtime cannot address", async () => {
+      attachmentStorageName = "local";
+      storeHolds([{ id: A_ID, provider: "s3" }], { [A_ID]: A_BYTES });
+
+      const result = await exported();
+
+      expect(attachmentStorage.load).not.toHaveBeenCalled();
+      expect(result.attachment_blobs).toEqual([]);
+    });
+
+    it("finishes the export when one object cannot be read", async () => {
+      // The ledger is the point of a backup. Refusing the whole file over an
+      // unreadable receipt would leave the user with nothing at all.
+      attachmentStorageName = "local";
+      storeHolds(
+        [
+          { id: A_ID, provider: "local" },
+          { id: B_ID, provider: "local" },
+        ],
+        { [B_ID]: B_BYTES },
+      );
+
+      const result = await exported();
+
+      expect(result.attachment_blobs).toEqual([
+        { attachment_id: B_ID, data: B_BYTES.toString("base64") },
+      ]);
+    });
+
+    it("carries them in the streaming export too", async () => {
+      // Three export paths read the same table list, and an artifact missing the
+      // bytes is indistinguishable from one that has them until a restore.
+      attachmentStorageName = "local";
+      storeHolds([{ id: A_ID, provider: "local" }], { [A_ID]: A_BYTES });
+
+      const mockRes = new PassThrough();
+      const chunks: Buffer[] = [];
+      const collected = (async () => {
+        for await (const chunk of mockRes) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        }
+      })();
+      await service.streamExport(userId, mockRes as any);
+      await collected;
+      const result = JSON.parse(
+        gunzipSync(Buffer.concat(chunks)).toString("utf-8"),
+      );
+
+      expect(result.attachment_blobs).toEqual([
+        { attachment_id: A_ID, data: A_BYTES.toString("base64") },
+      ]);
+    });
+
+    it("carries them in the raw export the support backup reads", async () => {
+      attachmentStorageName = "local";
+      storeHolds([{ id: A_ID, provider: "local" }], { [A_ID]: A_BYTES });
+
+      const raw = await service.collectRawExport(userId);
+
+      expect(raw.tables.attachment_blobs).toEqual([
+        { attachment_id: A_ID, data: A_BYTES.toString("base64") },
+      ]);
+    });
+
+    it("does not read the store for a table the caller is skipping", async () => {
+      // The support backup always discards `attachment_blobs`. Reading every
+      // receipt off disk to throw it away is the same defect as loading the table
+      // to discard it (F3RR-004), one layer out.
+      attachmentStorageName = "local";
+      storeHolds([{ id: A_ID, provider: "local" }], { [A_ID]: A_BYTES });
+
+      await service.collectRawExport(userId, {
+        skipTables: new Set(["attachment_blobs"]),
+      });
+
+      expect(attachmentStorage.load).not.toHaveBeenCalled();
+    });
+  });
+
   describe("streamExport", () => {
     async function collectGzipOutput(
       mockRes: PassThrough,
@@ -1454,36 +1606,70 @@ describe("BackupService", () => {
         });
 
         /**
-         * The behavioural tests above prove the one read path checks ownership.
-         * They cannot prove a *second* read path will not be added beside it,
-         * and this defect has now appeared three times in this file -- so the
-         * half of the rule a scan can hold, it holds: the whole backup module
-         * opens an external object in exactly one place, and that place consults
-         * the database's ownership record before it does.
+         * The behavioural tests above prove the restore's read path checks
+         * ownership. They cannot prove a *second* read path will not be added
+         * beside it, and this defect has now appeared three times in this file --
+         * so the half of the rule a scan can hold, it holds.
          *
-         * A scan cannot tell an uploaded identifier from a derived one, so this
-         * is not the whole rule. It is the part that catches the next reader
-         * wherever it appears.
+         * There are exactly two places in the module that open an external
+         * object, and the distinction between them is the whole point:
+         *
+         *  - `appendExternalAttachmentBytes` (export) reads objects the *server*
+         *    named, from a `user_id`-scoped query against its own database. There
+         *    is no uploaded document involved, so there is nothing to authorize.
+         *  - `stageAttachmentObjects` (restore) reads an object an *uploaded* file
+         *    named, which is the case that needs the database's ownership record
+         *    first -- and it is the legacy path now, used only for an artifact
+         *    that does not carry its own bytes.
+         *
+         * A scan cannot tell an uploaded identifier from a derived one, so this is
+         * not the whole rule. It is the part that catches the next reader wherever
+         * it appears, and makes whoever adds a third one say which kind it is.
          */
-        it("reads an external object in exactly one place, after the ownership check (source guard)", () => {
+        it("opens an external object in exactly two places, and the restore's is ownership-gated (source guard)", () => {
           const source = fs.readFileSync(
             path.join(__dirname, "backup.service.ts"),
             "utf8",
           );
-          const reads = source.match(/this\.attachmentStorage\.load\(/g) ?? [];
-          expect(reads).toHaveLength(1);
+          const reads = [
+            ...source.matchAll(/this\.attachmentStorage\.load\(/g),
+          ].map((match) => match.index as number);
+          expect(reads).toHaveLength(2);
 
-          const stagingStart = source.indexOf(
-            "private async stageAttachmentObjects(",
+          /** The slice from a method's signature to the start of the next one. */
+          const methodBody = (signature: string) => {
+            const start = source.indexOf(signature);
+            expect(start).toBeGreaterThan(-1);
+            const next = source.indexOf("\n  private ", start + 1);
+            return { start, end: next === -1 ? source.length : next };
+          };
+
+          const exporting = methodBody(
+            "private async appendExternalAttachmentBytes(",
           );
-          const readAt = source.indexOf("this.attachmentStorage.load(");
-          expect(stagingStart).toBeGreaterThan(-1);
-          // The read is inside the staging method...
-          expect(readAt).toBeGreaterThan(stagingStart);
-          // ...and the ownership record is loaded and consulted before it.
-          const beforeRead = source.slice(stagingStart, readAt);
-          expect(beforeRead).toContain("loadOwnedAttachmentSources(");
-          expect(beforeRead).toContain("ownedSources.get(");
+          const staging = methodBody("private async stageAttachmentObjects(");
+
+          const inExport = reads.filter(
+            (at) => at > exporting.start && at < exporting.end,
+          );
+          const inStaging = reads.filter(
+            (at) => at > staging.start && at < staging.end,
+          );
+          // One each, so a new reader anywhere else fails this.
+          expect(inExport).toHaveLength(1);
+          expect(inStaging).toHaveLength(1);
+
+          // The restore's read is preceded by loading and consulting the
+          // database's ownership record.
+          const beforeRestoreRead = source.slice(staging.start, inStaging[0]);
+          expect(beforeRestoreRead).toContain("loadOwnedAttachmentSources(");
+          expect(beforeRestoreRead).toContain("ownedSources.get(");
+
+          // The export's read is preceded by the server's own scoped query, and
+          // the export never sees an uploaded document at all.
+          const exportBody = source.slice(exporting.start, exporting.end);
+          expect(exportBody).toContain("WHERE user_id = $1");
+          expect(exportBody).not.toContain("BackupData");
         });
 
         it("drops the row when the file's metadata contradicts the stored row", async () => {
@@ -1521,6 +1707,218 @@ describe("BackupService", () => {
        * Two pieces of the same change, with opposite intentions about the same
        * object.
        */
+      /**
+       * The recovery half of P3-002, and the cost of the ownership fix (F3R5-001).
+       *
+       * Making the database the authority for reading an external object closed
+       * the disclosure, and made a current metadata row a *prerequisite* for
+       * recovery. So the two situations backups exist for both broke: a fresh
+       * instance has no such row, and an account whose attachment was deleted has
+       * no such row either. The restore reported success and counted the
+       * attachment as skipped, with the sidecar volume sitting there intact.
+       *
+       * No better ownership check fixes that. An identifier, a size and a hash in
+       * an uploaded document cannot establish a right to read an object, however
+       * they are combined. The only thing that can is the bytes being *in* the
+       * artifact -- so now they are, for every provider.
+       */
+      describe("bytes carried in the artifact", () => {
+        /** A backup that carries its external attachment's bytes, as the export now does. */
+        const selfContained = (
+          overrides: Record<string, unknown> = {},
+          blobOverrides: Record<string, unknown> = {},
+        ) => {
+          const base = backupWithLocalAttachment(overrides);
+          return {
+            ...base,
+            attachment_blobs: [
+              {
+                attachment_id: OLD_ID,
+                data: BYTES.toString("base64"),
+                ...blobOverrides,
+              },
+            ],
+          };
+        };
+
+        it("restores an attachment on an instance that has never seen it", async () => {
+          // The disaster-recovery case: fresh database, no metadata for anything.
+          ownedAttachments = [];
+
+          const result = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: selfContained() }),
+          );
+
+          // Nothing outside the artifact is consulted -- there is nothing there.
+          expect(attachmentStorage.load).not.toHaveBeenCalled();
+          expect(attachmentStorage.save).toHaveBeenCalledTimes(1);
+          const [writtenKey, writtenBytes] =
+            attachmentStorage.save.mock.calls[0];
+          expect(writtenBytes).toEqual(BYTES);
+          expect(result.restored.transactionAttachments).toBe(1);
+          expect(result.skippedAttachments).toBeUndefined();
+
+          // The restored row addresses the object that was just written.
+          const inserted = mockQueryRunner.query.mock.calls
+            .filter(([sql]) =>
+              String(sql).includes('INSERT INTO "transaction_attachments"'),
+            )
+            .flatMap(([, params]) => (params ?? []) as unknown[]);
+          expect(inserted).toContain(writtenKey);
+        });
+
+        it("restores an attachment whose metadata was deleted from the live account", async () => {
+          // Same shape as the fresh instance, different cause: the user deleted
+          // the attachment and wants it back from the backup.
+          ownedAttachments = [];
+
+          const result = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: selfContained() }),
+          );
+
+          expect(result.restored.transactionAttachments).toBe(1);
+          expect(result.skippedAttachments).toBeUndefined();
+        });
+
+        it("does not insert a blob row for bytes it put in the object store", async () => {
+          // `attachment_blobs` is the database provider's storage. A row there for
+          // an externally stored attachment is a second copy of the same bytes
+          // that nothing ever reads.
+          ownedAttachments = [];
+
+          const result = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: selfContained() }),
+          );
+
+          const blobInserts = mockQueryRunner.query.mock.calls.filter(([sql]) =>
+            String(sql).includes('INSERT INTO "attachment_blobs"'),
+          );
+          expect(blobInserts).toHaveLength(0);
+          expect(result.restored.attachmentBlobs).toBe(0);
+          // Paired with the positive half, or this passes for the wrong reason:
+          // before the bytes travelled, the attachment was skipped entirely and
+          // there was no blob row to insert either.
+          expect(attachmentStorage.save).toHaveBeenCalledTimes(1);
+          expect(result.restored.transactionAttachments).toBe(1);
+        });
+
+        it("puts the bytes where this runtime keeps them, not where the source did", async () => {
+          // A backup taken under `local` restoring onto a `database` deployment
+          // used to be skipped outright. The bytes travelled, so the only question
+          // left is where they land -- and that is this runtime's decision.
+          attachmentStorageName = "database";
+          ownedAttachments = [];
+
+          const result = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: selfContained() }),
+          );
+
+          expect(attachmentStorage.save).not.toHaveBeenCalled();
+          expect(result.restored.transactionAttachments).toBe(1);
+          expect(result.restored.attachmentBlobs).toBe(1);
+          // And the row says database, not the `local` the file claimed.
+          const providers = mockQueryRunner.query.mock.calls
+            .filter(([sql]) =>
+              String(sql).includes('INSERT INTO "transaction_attachments"'),
+            )
+            .flatMap(([, params]) => (params ?? []) as unknown[]);
+          expect(providers).toContain("database");
+          expect(providers).not.toContain("local");
+        });
+
+        it("restores a database-provider backup onto an external deployment", async () => {
+          // The mirror image, which was also a skip.
+          const result = await service.restoreData(
+            userId,
+            makeInput({
+              password: "test",
+              data: selfContained({ storage_provider: "database" }),
+            }),
+          );
+
+          expect(attachmentStorage.save).toHaveBeenCalledTimes(1);
+          expect(attachmentStorage.save.mock.calls[0][1]).toEqual(BYTES);
+          expect(result.restored.transactionAttachments).toBe(1);
+          expect(result.restored.attachmentBlobs).toBe(0);
+        });
+
+        it("drops the row when the carried bytes do not match their own checksum", async () => {
+          // Both sides come from the same file, so this proves consistency rather
+          // than authority. What it catches is a corrupt or truncated artifact:
+          // restoring a row whose sha256 does not describe its own bytes publishes
+          // a checksum the download cannot satisfy.
+          ownedAttachments = [];
+
+          const result = await service.restoreData(
+            userId,
+            makeInput({
+              password: "test",
+              data: selfContained(
+                {},
+                { data: Buffer.from("tampered").toString("base64") },
+              ),
+            }),
+          );
+
+          expect(attachmentStorage.save).not.toHaveBeenCalled();
+          expect(result.restored.transactionAttachments).toBe(0);
+          expect(result.skippedAttachments).toBe(1);
+
+          // The discriminating half: the identical backup with intact bytes does
+          // restore. Without this, the assertions above also hold for code that
+          // skips every external attachment, which is what they used to do.
+          jest.clearAllMocks();
+          mockUserRepo.findOne.mockResolvedValue(mockUser);
+          (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+          mockQueryRunner.query.mockImplementation(mockQueryHandler);
+          const intact = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: selfContained() }),
+          );
+          expect(intact.restored.transactionAttachments).toBe(1);
+          expect(intact.skippedAttachments).toBeUndefined();
+        });
+
+        it("drops the row when the carried bytes are the wrong length", async () => {
+          ownedAttachments = [];
+          const shorter = BYTES.subarray(0, BYTES.length - 1);
+
+          const result = await service.restoreData(
+            userId,
+            makeInput({
+              password: "test",
+              data: selfContained(
+                { sha256: createHash("sha256").update(shorter).digest("hex") },
+                { data: shorter.toString("base64") },
+              ),
+            }),
+          );
+
+          // The hash agrees with the bytes; the declared size does not.
+          expect(attachmentStorage.save).not.toHaveBeenCalled();
+          expect(result.skippedAttachments).toBe(1);
+        });
+
+        it("still refuses a crafted id when the artifact carries no bytes", async () => {
+          // The legacy path has to stay ownership-gated: carrying bytes is what
+          // removes the need for authority, and a file that carries none has none.
+          ownedAttachments = [];
+
+          const result = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: backupWithLocalAttachment() }),
+          );
+
+          expect(attachmentStorage.load).not.toHaveBeenCalled();
+          expect(attachmentStorage.save).not.toHaveBeenCalled();
+          expect(result.skippedAttachments).toBe(1);
+        });
+      });
+
       describe("restoring the same backup twice", () => {
         /** An in-memory object store, so the second restore sees the first's effects. */
         function statefulStore(seed: Record<string, Buffer>) {

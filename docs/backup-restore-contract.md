@@ -85,7 +85,56 @@ Any SQL or foreign-key error rolls the whole transaction back. The one effect
 that is not transactional is the object store; that is what makes staging-first
 necessary rather than merely tidy.
 
-## 4. Attachments: bytes live outside the database
+## 4. Attachments: the bytes travel
+
+**A backup that cannot restore an attachment is not a backup of it.** That
+sentence took four attempts to arrive at, and it is the whole of this section.
+
+For the `database` provider the bytes were always in the artifact, base64 in
+`attachment_blobs`. For `local` and `s3` they were not: the artifact carried
+metadata, and the operator was told to restore the sidecar volume or bucket
+alongside it. Every problem below follows from that split, and the fix is to end
+it -- **the export now reads every external object and carries it in
+`attachment_blobs` too** (`appendExternalAttachmentBytes`), for all three export
+paths.
+
+That makes the artifact self-sufficient, which has three consequences:
+
+- **Recovery works where it has to.** A fresh instance, and an account whose
+  attachment metadata was deleted, both restore. Under the previous design neither
+  could: the restore has to prove the caller may read an object before reading it,
+  the only available proof was a current `transaction_attachments` row, and in both
+  those cases there is no such row. So the two situations backups exist for were
+  precisely the two that returned success with the attachments counted as skipped.
+- **No authority question arises.** The bytes are inside a file the user
+  downloaded, so there is nothing to authorize. This is what the rest of this
+  section spent two rounds failing to achieve with checks on uploaded fields.
+- **The provider is the target's decision.** A backup taken under `local` restores
+  onto a `database` deployment and vice versa; the bytes land wherever this runtime
+  keeps them and `storage_provider` is rewritten to match. Both directions used to
+  be an unrestorable skip.
+
+What it costs, stated plainly: artifacts are larger. The plain export streams and
+is unaffected; the encrypted, automatic and support paths assemble in memory, so a
+large attachment set now meets `BACKUP_EXPORT_BUFFER_LIMIT` and is refused with an
+error naming the ceiling and the variable -- rather than silently producing a file
+whose attachments cannot come back. An object the store cannot produce is logged
+and omitted rather than failing the export, because the ledger is the point and
+one unreadable receipt must not cost the user the whole file.
+
+**A `sha256` and a `byte_size` are still checked against the carried bytes.** Both
+sides come from the same file, so that proves consistency rather than authority --
+what it catches is a corrupt or truncated artifact, which would otherwise restore a
+row whose recorded checksum does not describe its own download.
+
+### The legacy path, and why it is still ownership-gated
+
+An artifact produced before the above carries no external bytes. For those, the
+restore still reads the source object from the store, and everything below applies:
+the read is gated on the restoring user currently owning a matching row. Nothing
+here is dead code -- it is what an older file gets -- but it is no longer the path a
+new backup takes, and the disaster-recovery cases it cannot serve are the reason the
+bytes now travel.
 
 `storage_key` equals the attachment's UUID, and a restore mints a fresh UUID for
 every row. Two obvious approaches are both wrong:
@@ -170,9 +219,12 @@ The timing and the scope are both load-bearing:
   back leave a row promising a download that does not exist — indistinguishable
   from a working attachment. Same rule as `AttachmentsService.remove`.
 - **Only keys the target user held**, read before the delete because afterwards
-  there is nothing to read them from. Never the old keys named by the uploaded
-  file: a cross-user restore legitimately reads another user's objects as its
-  source, and the same backup may be restored twice.
+  there is nothing to read them from. Never the old keys named by the uploaded file
+  -- for the legacy path, those are the source objects it reads, and the same file
+  may be restored twice. (The original wording here said a cross-user restore
+  "legitimately reads another user's objects as its source". That has not been true
+  since the ownership rule above: such a read is now refused. The rule stands for
+  the reason that survived, which is repeat restore.)
 - **Never a key the restore just staged.** Restoring a backup taken from the same
   account re-uses ids, so a displaced key and a newly written key can be the same
   string.
@@ -189,8 +241,14 @@ The timing and the scope are both load-bearing:
   own receipt costs storage, while a backup that can only be restored once costs
   the receipt.
 
-Operationally: the sidecar directory or bucket must be restored **before or
-alongside** the database, not after.
+Operationally: for an artifact that carries its own bytes there is nothing to
+restore alongside it -- that is the point. The sidecar directory or bucket only
+matters for an artifact produced before the bytes travelled, and for those it must
+be restored **before or alongside** the database *and* the target must still hold
+the attachment metadata. If it does not -- a fresh instance, a deleted attachment --
+those bytes are not recoverable from that artifact at all, whatever order they are
+restored in, and the restore reports them in `skippedAttachments`. Take a fresh
+backup to get a self-contained one.
 
 **`storage_key` is attacker-chosen input.** It is a column, and a restore writes
 it from the uploaded file, so by the time a provider sees it the key may be

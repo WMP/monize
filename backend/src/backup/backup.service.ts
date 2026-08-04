@@ -122,6 +122,27 @@ const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   "schema_migrations", // migration bookkeeping (no entity; system table)
 ]);
 
+/** A reader bound to one export snapshot and one user id (`$1`). */
+type ExportRead = (sql: string) => Promise<Record<string, unknown>[]>;
+
+/**
+ * One table in the export.
+ *
+ * `augment` exists for the one table whose contents are not entirely in the
+ * database: `attachment_blobs` carries the `database` provider's bytes as rows,
+ * and the `local`/`s3` providers' bytes have to be read from the object store and
+ * added. Every export path runs it, so no path can quietly produce an artifact
+ * missing the bytes.
+ */
+interface ExportTableQuery {
+  key: string;
+  sql: string;
+  augment?: (
+    rows: Record<string, unknown>[],
+    read: ExportRead,
+  ) => Promise<Record<string, unknown>[]>;
+}
+
 interface BackupData {
   version: number;
   exportedAt: string;
@@ -312,8 +333,10 @@ export class BackupService {
         `{"version":${BACKUP_VERSION},"exportedAt":"${new Date().toISOString()}"`,
       );
 
-      for (const { key, sql } of tableQueries) {
-        await write(`,"${key}":${JSON.stringify(await read(sql))}`);
+      for (const entry of tableQueries) {
+        await write(
+          `,"${entry.key}":${JSON.stringify(await this.readTable(read, entry))}`,
+        );
       }
 
       await write("}");
@@ -391,7 +414,8 @@ export class BackupService {
   }> {
     const tables: Record<string, Record<string, unknown>[]> = {};
     await this.inExportSnapshot(userId, async (read) => {
-      for (const { key, sql } of this.getTableQueries()) {
+      for (const entry of this.getTableQueries()) {
+        const key = entry.key;
         // A caller that will discard a table must not pay to load it. The
         // support backup always excludes `attachment_blobs`, which is base64 --
         // thirty 10 MiB receipts are ~400 MiB of text, the whole of the chart's
@@ -399,7 +423,7 @@ export class BackupService {
         // consulted. Skipping the query is the only fix that helps: a budget
         // checked after the allocation is a budget checked too late.
         if (options.skipTables?.has(key)) continue;
-        tables[key] = await read(sql);
+        tables[key] = await this.readTable(read, entry);
       }
     });
     return {
@@ -409,7 +433,96 @@ export class BackupService {
     };
   }
 
-  private getTableQueries(): Array<{ key: string; sql: string }> {
+  /** Reads one export table, applying its augmentation if it has one. */
+  private async readTable(
+    read: ExportRead,
+    entry: ExportTableQuery,
+  ): Promise<Record<string, unknown>[]> {
+    const rows = await read(entry.sql);
+    return entry.augment ? await entry.augment(rows, read) : rows;
+  }
+
+  /**
+   * Adds the `local` and `s3` providers' attachment bytes to `attachment_blobs`.
+   *
+   * **A backup that cannot restore an attachment is not a backup of it.** Only
+   * `database`-provider bytes used to travel; for `local` and `s3` the artifact
+   * carried metadata and the operator was told to restore the sidecar volume or
+   * bucket alongside it. That works only while the *target* database still holds
+   * the matching row, because the restore has to prove the caller is entitled to
+   * read the object before it reads it -- and after the ownership fix, the proof
+   * is a current `transaction_attachments` row. So the two cases backups exist for
+   * both failed: a fresh instance has no such row, and an account whose
+   * attachment was deleted has no such row either. The restore reported success
+   * and counted the attachment as skipped.
+   *
+   * There is no way to fix that with a better ownership check. An identifier, a
+   * size and a hash in an uploaded document cannot establish a right to read an
+   * object, however they are combined -- that is what the last two rounds
+   * established. The only thing that can is the bytes being *in* the artifact the
+   * user downloaded, which is what this does.
+   *
+   * What it costs: the artifact grows by the size of the attachments. The plain
+   * export streams and is unaffected; the encrypted, automatic and support paths
+   * assemble in memory, so a large attachment set now meets
+   * `BACKUP_EXPORT_BUFFER_LIMIT` and is refused with the readable error rather
+   * than silently producing a file whose attachments cannot come back. A refusal
+   * that names the ceiling is the better failure.
+   *
+   * An object the store cannot produce is logged and omitted rather than failing
+   * the export: the ledger is the point of a backup, and refusing the whole file
+   * over one unreadable receipt would leave the user with nothing.
+   */
+  private async appendExternalAttachmentBytes(
+    rows: Record<string, unknown>[],
+    read: ExportRead,
+  ): Promise<Record<string, unknown>[]> {
+    const provider = this.attachmentStorage.name;
+    // The `database` provider's bytes are already in the rows the query returned.
+    if (provider === "database") return rows;
+
+    const metadata = await read(
+      `SELECT id, storage_provider, byte_size, sha256
+         FROM transaction_attachments
+        WHERE user_id = $1
+        ORDER BY id`,
+    );
+
+    const carried: Record<string, unknown>[] = [];
+    let unreadable = 0;
+    for (const row of metadata) {
+      // Rows written by a different backend than this runtime configures cannot
+      // be read from here at all; they keep travelling as metadata only.
+      if (String(row.storage_provider ?? "") !== provider) continue;
+      const id = String(row.id ?? "");
+      let bytes: Buffer;
+      try {
+        bytes = await this.attachmentStorage.load(id);
+      } catch {
+        unreadable += 1;
+        continue;
+      }
+      carried.push({ attachment_id: id, data: bytes.toString("base64") });
+    }
+
+    if (unreadable > 0) {
+      this.logger.warn(
+        `Backup export could not read ${unreadable} attachment object(s) from the ` +
+          `${provider} store; their metadata travels without bytes and they will ` +
+          `not be restorable.`,
+      );
+    }
+    if (carried.length > 0) {
+      this.logger.log(
+        `Backup export carried ${carried.length} external attachment object(s) ` +
+          `from the ${provider} store.`,
+      );
+    }
+    // Immutability: a new array rather than pushing into the caller's.
+    return [...rows, ...carried];
+  }
+
+  private getTableQueries(): Array<ExportTableQuery> {
     return [
       {
         // Every currency this user's data depends on, not just the ones they
@@ -495,14 +608,19 @@ export class BackupService {
         sql: "SELECT * FROM transaction_attachments WHERE user_id = $1",
       },
       {
-        // The bytes for database-provider attachments. The BYTEA `data` column
-        // is base64-encoded so it survives JSON; insertRows decodes it back to
-        // bytea on restore (auto-detected via information_schema).
+        // Attachment bytes, base64-encoded so they survive JSON; insertRows
+        // decodes them back to bytea on restore (auto-detected via
+        // information_schema).
+        //
+        // The query covers the `database` provider, whose bytes are in this
+        // table. `augment` adds the `local` and `s3` providers', which are not --
+        // see `appendExternalAttachmentBytes` for why they have to travel too.
         key: "attachment_blobs",
         sql: `SELECT ab.attachment_id, encode(ab.data, 'base64') AS data
               FROM attachment_blobs ab
               JOIN transaction_attachments ta ON ab.attachment_id = ta.id
               WHERE ta.user_id = $1`,
+        augment: (rows, read) => this.appendExternalAttachmentBytes(rows, read),
       },
       {
         key: "transaction_tags",
@@ -680,9 +798,10 @@ export class BackupService {
     ];
     let total = parts[0].length;
     await this.inExportSnapshot(userId, async (read) => {
-      for (const { key, sql } of tableQueries) {
+      for (const entry of tableQueries) {
+        const key = entry.key;
         const chunk = Buffer.from(
-          `,"${key}":${JSON.stringify(await read(sql))}`,
+          `,"${key}":${JSON.stringify(await this.readTable(read, entry))}`,
           "utf-8",
         );
         total += chunk.length;
@@ -1278,14 +1397,21 @@ export class BackupService {
     const oldIdOf = new Map(
       [...idRemap].map(([oldId, newId]) => [newId, oldId] as const),
     );
-    const blobbedAttachmentIds = new Set(
-      (data.attachment_blobs ?? []).map((blob) => String(blob.attachment_id)),
-    );
+    const carriedBytes = new Map<string, Buffer>();
+    for (const blob of data.attachment_blobs ?? []) {
+      const id = String(blob.attachment_id ?? "");
+      if (id.length === 0) continue;
+      const encoded = blob.data;
+      if (typeof encoded !== "string") continue;
+      carriedBytes.set(id, Buffer.from(encoded, "base64"));
+    }
 
     // What this user actually owns right now, by original id. Read once, before
     // the destructive delete, because this is the only window in which the
     // server's own record of ownership still exists -- and the server's record is
-    // the only thing that can authorize reading an object.
+    // the only thing that can authorize reading an object. Only the legacy path
+    // below needs it: an artifact that carries its own bytes needs no authority
+    // outside itself.
     const ownedSources = await this.loadOwnedAttachmentSources(userId, [
       ...idRemap.keys(),
     ]);
@@ -1293,6 +1419,9 @@ export class BackupService {
     const stagedKeys: string[] = [];
     const sourceKeys: string[] = [];
     const unrestorable = new Set<string>();
+    /** Blob rows for attachments whose bytes are going to the object store. */
+    const externallyPlaced = new Set<string>();
+    const runtimeProvider = this.attachmentStorage.name;
 
     for (const row of rows) {
       const attachmentId = String(row.id ?? "");
@@ -1304,20 +1433,45 @@ export class BackupService {
       // provider from any path.
       row.storage_key = attachmentId;
 
-      if (provider === "database") {
-        // The bytes should have travelled in `attachment_blobs`. Without them
-        // the metadata row describes a download that will 404, so it is no more
-        // restorable than a missing external object.
-        if (!blobbedAttachmentIds.has(attachmentId)) {
+      const carried = carriedBytes.get(attachmentId);
+      if (carried !== undefined) {
+        // The bytes are in the artifact, so nothing outside it is consulted and no
+        // ownership question arises: this is the user's own download, and it can
+        // only ever grant them their own files. This is the path that makes a
+        // fresh instance and a deleted-metadata account recoverable.
+        if (!this.carriedBytesMatchMetadata(carried, row)) {
           unrestorable.add(attachmentId);
+          continue;
         }
+
+        // Where the bytes land is this runtime's decision, not the source
+        // instance's -- so a backup taken under one provider restores under
+        // another, which used to be a skip.
+        row.storage_provider = runtimeProvider;
+        if (runtimeProvider === "database") {
+          // The blob row stays and is inserted with everything else.
+          continue;
+        }
+        await this.attachmentStorage.save(attachmentId, carried);
+        stagedKeys.push(attachmentId);
+        // ...and its blob row must not be inserted: `attachment_blobs` is the
+        // database provider's storage, and a row there for an externally stored
+        // attachment is a second copy nothing reads.
+        externallyPlaced.add(attachmentId);
         continue;
       }
 
-      if (provider !== this.attachmentStorage.name) {
-        // Exported from an instance using a different backend. There is one
-        // configured provider at runtime and no cross-provider migration, so
-        // these bytes are not reachable from here.
+      if (provider === "database") {
+        // Bytes should have travelled and did not. The metadata row describes a
+        // download that will 404, which the user cannot tell from a working
+        // attachment.
+        unrestorable.add(attachmentId);
+        continue;
+      }
+
+      if (provider !== runtimeProvider) {
+        // An artifact from before external bytes travelled, taken on a different
+        // backend. There is nothing here to read and nothing in the file.
         unrestorable.add(attachmentId);
         continue;
       }
@@ -1378,16 +1532,54 @@ export class BackupService {
       data.transaction_attachments = rows.filter(
         (row) => !unrestorable.has(String(row.id ?? "")),
       );
-      data.attachment_blobs = (data.attachment_blobs ?? []).filter(
-        (blob) => !unrestorable.has(String(blob.attachment_id ?? "")),
-      );
       this.logger.warn(
         `Restore is dropping ${unrestorable.size} attachment(s) whose bytes could not be staged ` +
-          `(provider ${this.attachmentStorage.name}); their metadata would point at nothing.`,
+          `(provider ${runtimeProvider}); their metadata would point at nothing.`,
       );
     }
 
+    // Blob rows go if their attachment did, and also if their bytes went to the
+    // object store instead -- `attachment_blobs` is the database provider's
+    // storage, so a row there for an externally stored attachment is a duplicate
+    // copy of the same bytes that nothing ever reads.
+    if (unrestorable.size > 0 || externallyPlaced.size > 0) {
+      data.attachment_blobs = (data.attachment_blobs ?? []).filter((blob) => {
+        const id = String(blob.attachment_id ?? "");
+        return !unrestorable.has(id) && !externallyPlaced.has(id);
+      });
+    }
+
     return { stagedKeys, sourceKeys, skipped: unrestorable.size };
+  }
+
+  /**
+   * Whether bytes carried inside the artifact match the metadata beside them.
+   *
+   * Both sides come from the same file, so this proves consistency rather than
+   * authority -- it cannot and does not need to establish ownership, because the
+   * bytes are already in the user's own download. What it catches is a corrupted
+   * or truncated artifact: restoring a row whose recorded `sha256` does not
+   * describe its own bytes would publish a checksum the download cannot satisfy,
+   * and the user would find that out when they opened the file rather than when
+   * they restored it.
+   *
+   * A row with no usable size or hash is accepted: the metadata is what it is, and
+   * refusing bytes that travelled because an older artifact recorded less about
+   * them would lose the very thing this path exists to recover.
+   */
+  private carriedBytesMatchMetadata(
+    bytes: Buffer,
+    row: Record<string, unknown>,
+  ): boolean {
+    const declaredSize = Number(row.byte_size);
+    if (Number.isFinite(declaredSize) && declaredSize !== bytes.length) {
+      return false;
+    }
+    if (typeof row.sha256 === "string" && row.sha256.length > 0) {
+      const actual = createHash("sha256").update(bytes).digest("hex");
+      if (actual !== row.sha256) return false;
+    }
+    return true;
   }
 
   /**
