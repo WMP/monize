@@ -1,8 +1,8 @@
 {
   "conversation_id": null,
-  "fixer_usd_this_session": 24.3173,
-  "last_pass_at": "2026-08-04T23:47:44Z",
-  "last_seen_fix_sha": "4a2cca2caa4742f6d8913811a7c8da97fc2637f9",
+  "fixer_usd_this_session": 24.6873,
+  "last_pass_at": "2026-08-04T23:53:25Z",
+  "last_seen_fix_sha": "2810c4da193ae8ece66ca29838dd862474eb7573",
   "pr_877_audited": [
     "backend/src/accounts/accounts.service.ts",
     "backend/src/accounts/dto/create-account.dto.ts",
@@ -19,12 +19,19 @@
     "database/migrations/098_loan_scenarios_recurring_extra_mode.sql",
     "frontend/src/app/accounts/[id]/page.test.tsx",
     "frontend/src/app/accounts/[id]/page.tsx",
+    "frontend/src/components/accounts/AccountForm.test.tsx",
+    "frontend/src/components/accounts/AccountForm.tsx",
+    "frontend/src/components/accounts/AccountList.test.tsx",
+    "frontend/src/components/accounts/AccountRow.test.tsx",
     "frontend/src/components/accounts/LoanBookingHelp.tsx",
-    "frontend/src/components/accounts/OverpaymentRecognitionFields.test.tsx"
+    "frontend/src/components/accounts/LoanFields.test.tsx",
+    "frontend/src/components/accounts/LoanFields.tsx",
+    "frontend/src/components/accounts/OverpaymentRecognitionFields.test.tsx",
+    "frontend/src/components/accounts/loan-detail/ComparisonSummaryCards.tsx"
   ],
   "pull_request": 877,
   "pull_request_base": "5e5b4df6ec9c82f1cd31dc855c340af5bfeb3aa5",
-  "pull_request_coverage": "17/72",
+  "pull_request_coverage": "24/72",
   "stop_reason": "error: git fetch --quiet --prune origin +refs/heads/*:refs/remotes/origin/* failed: ",
   "stopped_at": "2026-08-04T21:50:09Z"
 }
