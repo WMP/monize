@@ -7,7 +7,7 @@
 | Work branch | `claude/detailed-error-review-wq2hjo` |
 | Branch base | `4e48a767` (main after the audit baseline) |
 | Commits | 19 |
-| Diff | 137 files, +6600 / -1990 (approximate; see the commit index) |
+| Diff | 138 files, +7678 / -2036 |
 | Audit items answered | 9 confirmed findings, 4 design risks, 16 missing tests, 6 documentation issues |
 | Additional defects found and fixed | 15, none of them in the report |
 | Response date | 2026-08-03; revised 2026-08-04 after independent verification (section 5A) |
@@ -793,3 +793,6 @@ key, ten now-unused keys removed everywhere, and both pseudo-locales regenerated
 | `84f1199a` | Close four defects the audit's own file list still hid | beyond report (5.1-5.5) |
 | `7f321c57` | Write down the five rules from the second pass | -- |
 | `141836af` | Verify grant ownership on consent, validate a restore before its step-up | beyond report (5.7, 5.8) |
+| `d9ed31e9` | Answer the phase 2 audit item by item, and record what it missed | this document |
+| `a39a837b` | Record the frontend suite measured at the branch tip | -- |
+| `a0a8a4b0` | Close the four residual defects an independent verification found | FV-001..FV-004, DR-V2 |
