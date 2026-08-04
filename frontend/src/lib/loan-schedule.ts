@@ -636,10 +636,25 @@ export function generateLoanSchedule(input: LoanScheduleInput): LoanScheduleResu
   // overpayment lands, so SHORTEN_TERM overpayments keep the installment (and
   // shorten the term) alongside it.
   const reLevelEveryPeriod = input.fixedEndPeriod ?? null;
-  const lowerEnd =
-    reLevelEveryPeriod === null && anyLowerOverpayment
-      ? generateLoanSchedule({ ...input, overpayments: undefined }).numPayments
-      : null;
+  // The baseline's own numPayments is only a real payoff term when it actually
+  // reached zero balance (paidOff). A baseline generated under a small
+  // maxPayments cap (a display cap, not a claim about the true term) instead
+  // returns paidOff: false with numPayments equal to that cap -- reading it as
+  // the target end re-levels the installment toward a far-too-short term and
+  // sharply raises it instead of lowering it (REV-20260803-041). Re-run the
+  // baseline against the hard cap to find the genuine payoff point; if even
+  // that does not pay off, the term cannot be determined and no re-levelling
+  // is attempted (the installment stays as-is; the overpayment still reduces
+  // the balance, it just cannot be translated into a lower future payment).
+  const lowerEnd = (() => {
+    if (reLevelEveryPeriod !== null || !anyLowerOverpayment) return null;
+    const uncappedBaseline = generateLoanSchedule({
+      ...input,
+      overpayments: undefined,
+      maxPayments: HARD_MAX_PAYMENTS,
+    });
+    return uncappedBaseline.paidOff ? uncappedBaseline.numPayments : null;
+  })();
   // Term to re-level toward if a rate rise would otherwise stall the payment.
   // An explicit `rescueEndPeriod` supplies this rescue without the every-period
   // re-levelling of `fixedEndPeriod`, so a contractual schedule keeps following

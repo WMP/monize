@@ -656,6 +656,39 @@ describe('generateLoanSchedule LOWER_INSTALLMENT mode', () => {
     expect(comparison.installmentReduction).toBeGreaterThan(0);
     expect(comparison.monthsSaved).toBe(0);
   });
+
+  it('re-levels toward the real payoff term, not a maxPayments-truncated baseline (REV-20260803-041)', () => {
+    // 0% loan needing exactly 12 payments to pay off (12000 / 1000), but
+    // generated with maxPayments: 2 -- a display/projection cap unrelated to
+    // the loan's true term. The un-overpaid baseline under that same cap
+    // returns numPayments: 2, paidOff: false; reading that truncated number as
+    // the LOWER_INSTALLMENT target end re-levels the remaining ~10500 balance
+    // over just 1 remaining period, spiking the installment to ~10500 instead
+    // of lowering it.
+    const input: LoanScheduleInput = baseInput({
+      startingBalance: 12000,
+      annualRate: 0,
+      paymentAmount: 1000,
+      maxPayments: 2,
+      overpayments: {
+        lumpSums: [{ date: '2026-01-15', amount: 500, mode: 'LOWER_INSTALLMENT' }],
+      },
+    });
+
+    const uncapped = generateLoanSchedule({ ...input, overpayments: undefined, maxPayments: 600 });
+    expect(uncapped.paidOff).toBe(true);
+    expect(uncapped.numPayments).toBe(12);
+
+    const result = generateLoanSchedule(input);
+    expect(result.rows).toHaveLength(2);
+    // Payment 1: regular 1000 + a 500 lump sum brings the balance to 10500.
+    expect(result.rows[0].balance).toBeCloseTo(10500, 2);
+    // Payment 2 must be re-levelled toward the loan's real 12-payment term
+    // (10500 / 11 remaining ~= 954.55), never toward the capped baseline's
+    // 2-payment term (10500 / 1 = 10500 -- a sharp increase, not a decrease).
+    expect(result.rows[1].payment).toBeCloseTo(954.55, 2);
+    expect(result.rows[1].payment).toBeLessThan(1000);
+  });
 });
 
 describe('generateLoanSchedule per-overpayment mode', () => {
