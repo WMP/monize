@@ -110,16 +110,45 @@ remapped attachment id; the source is the id the backup was written with. The
 uploaded `storage_key` is overwritten with the derived value before the insert and
 is otherwise ignored, for every provider.
 
-This is a confidentiality boundary, not tidiness. The destination used to come
-from `row.storage_key`, and a key the restore did not recognise as a remapped id
-was treated as legacy or operator-chosen: skip the load, skip the checksum, skip
-the copy, on the reasoning that the object already sat where the metadata pointed.
-A crafted backup could therefore name *any* syntactically valid key — including
-one belonging to another tenant — and the row was inserted under the uploader's
-`user_id` without a byte being read. Downloading their own metadata returned
-somebody else's receipt. `assertSafeStorageKey` establishes that a key is a safe
-*string*; nothing established that it was *theirs*. **An identifier is not a
-credential, and a restore must not turn one into authorization.**
+**And the right to read a source object comes from the database, not the file.**
+Before any external object is opened, the restoring user must currently own an
+attachment with that original id, on the configured provider, whose stored byte
+size and SHA-256 equal the ones the uploaded row publishes — read from
+`transaction_attachments`, which is still intact because staging runs before the
+destructive delete. Integrity is then checked against the *stored* values, so an
+object that changed under the row since is caught too. A row that fails any of
+this is unrestorable: dropped and counted, with no read attempted.
+
+This is a confidentiality boundary, not tidiness, and it has been got wrong twice
+— the second time as the fix for the first:
+
+1. The destination came from `row.storage_key`, and a key the restore did not
+   recognise as a remapped id was treated as legacy or operator-chosen: skip the
+   load, skip the checksum, skip the copy, on the reasoning that the object already
+   sat where the metadata pointed. A crafted backup could therefore name *any*
+   syntactically valid key — including one belonging to another tenant — and the row
+   was inserted under the uploader's `user_id` without a byte being read.
+   Downloading their own metadata returned somebody else's receipt.
+2. So both keys were derived from the identifier remap instead, with "a row whose
+   id is not in the remap did not come from this backup's graph" as the boundary.
+   But the graph is the *uploaded* graph: `collectRowIdRemap` admits every
+   UUID-shaped `row.id` in the file, so for a well-formed crafted row that guard
+   could not fire. Put the victim's attachment id in `transaction_attachments.id`,
+   with the byte size and hash a standard backup publishes beside it, and the
+   restore read their object and copied it under the attacker's ownership. The
+   uploaded document was authorizing itself.
+
+`assertSafeStorageKey` establishes that a key is a safe *string*; nothing there
+establishes that an object is *theirs*. Which field to trust was never the
+question: **no unsigned value from the uploaded file can establish ownership — not
+a key, not an id, not a checksum, not a byte count. Only a record the server
+already holds can.**
+
+The consequence is deliberate and matches what this section already concluded
+about preserving the old key: restoring one user's backup into a **different** user
+on the same instance skips external attachments rather than disclosing them, and a
+fresh instance skips them because the objects are not there. Those attachments show
+up in `skippedAttachments`, so the user is told.
 
 An object that cannot be staged — missing, failing its checksum, or written by a
 different provider — makes that attachment unrestorable. Refusing the whole

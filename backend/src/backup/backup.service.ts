@@ -750,7 +750,7 @@ export class BackupService {
       stagedKeys,
       sourceKeys,
       skipped: skippedAttachments,
-    } = await this.stageAttachmentObjects(data, idRemap);
+    } = await this.stageAttachmentObjects(userId, data, idRemap);
 
     // The keys this user's *current* attachments occupy, read before the delete
     // because afterwards there is nothing left to read them from. They are
@@ -1228,27 +1228,47 @@ export class BackupService {
    * counted, and the count is reported separately from `restored` rather than
    * added to it.
    *
-   * **The destination key is derived, never taken from the file.** It is the
-   * remapped attachment id; the source is the id the backup was written with. The
-   * uploaded `storage_key` is overwritten with the derived value before the insert
-   * and is otherwise ignored.
+   * **The right to read a source object comes from the database, not the file.**
+   * Before any external object is read, the restoring user must currently own an
+   * attachment with that original id, on this provider, with the same byte size
+   * and SHA-256 *as stored* -- checked against `transaction_attachments`, which is
+   * still intact because staging runs before the destructive delete. A row that
+   * fails is unrestorable and is dropped and counted.
    *
-   * That is not tidiness. This used to compute the destination from
-   * `row.storage_key` and treat a key it did not recognise as "legacy or
-   * operator-chosen", skipping the load, the checksum and the copy on the grounds
-   * that the object already sat where the metadata pointed. A crafted backup could
-   * therefore name *any* syntactically valid key -- including one belonging to
-   * another tenant -- and the restore inserted that key under the attacker's
-   * `user_id` without reading a byte. Downloading their own metadata then returned
-   * the other tenant's receipt. `assertSafeStorageKey` establishes that a key is a
-   * safe *string*; nothing established that it was *theirs*. An identifier is not a
-   * credential, and a restore must not turn one into authorization.
+   * Two earlier versions of this got it wrong in the same way, and the second was
+   * a fix for the first:
+   *
+   *  1. The destination came from `row.storage_key`, and a key not recognised as a
+   *     remapped id was treated as legacy or operator-chosen -- skip the load, the
+   *     checksum and the copy, because the object supposedly already sat where the
+   *     metadata pointed. A crafted backup could name any valid key, including
+   *     another tenant's, and the row was inserted under the uploader's `user_id`.
+   *  2. So the keys were derived from the id remap instead, with "a row whose id is
+   *     not in the map did not come from this backup's graph" as the boundary. But
+   *     the graph is the *uploaded* graph: `collectRowIdRemap` admits every
+   *     UUID-shaped `row.id` in the file, so the check could never fire for a
+   *     well-formed crafted row. Put the victim's attachment id in `row.id` --
+   *     along with the size and hash from any standard backup, which carries
+   *     external attachment metadata -- and the restore read their object and
+   *     copied it under the attacker's ownership. The uploaded document was
+   *     authorizing itself.
+   *
+   * Which field is trusted was never the question. **No unsigned value from the
+   * file can establish ownership** -- not a key, not an id, not a checksum, not a
+   * byte count. Only a record the server already holds can.
+   *
+   * The consequence is deliberate: restoring one user's backup into a *different*
+   * user on the same instance now skips external attachments rather than
+   * disclosing them, and a fresh instance skips them because the objects are not
+   * there. That is the same conclusion the original analysis reached about
+   * preserving the old key, applied to reading it.
    *
    * Returns the keys written and the source keys consumed, so a failed database
    * transaction can remove the former and the post-commit cleanup can spare the
    * latter -- see `deleteDisplacedAttachmentObjects`.
    */
   private async stageAttachmentObjects(
+    userId: string,
     data: BackupData,
     idRemap: Map<string, string>,
   ): Promise<{ stagedKeys: string[]; sourceKeys: string[]; skipped: number }> {
@@ -1261,6 +1281,14 @@ export class BackupService {
     const blobbedAttachmentIds = new Set(
       (data.attachment_blobs ?? []).map((blob) => String(blob.attachment_id)),
     );
+
+    // What this user actually owns right now, by original id. Read once, before
+    // the destructive delete, because this is the only window in which the
+    // server's own record of ownership still exists -- and the server's record is
+    // the only thing that can authorize reading an object.
+    const ownedSources = await this.loadOwnedAttachmentSources(userId, [
+      ...idRemap.keys(),
+    ]);
 
     const stagedKeys: string[] = [];
     const sourceKeys: string[] = [];
@@ -1294,13 +1322,24 @@ export class BackupService {
         continue;
       }
 
-      // Source and destination both come from the id remap, so a row can only
-      // ever read the object the backup's own attachment graph named.
       const oldKey = oldIdOf.get(attachmentId);
       if (oldKey === undefined) {
-        // Every restored row id is remapped, so a row whose id is not in the map
-        // did not come from this backup's graph -- there is no source object it
-        // is entitled to read.
+        // Not a remapped id at all, so there is no original to read from.
+        unrestorable.add(attachmentId);
+        continue;
+      }
+
+      // The authorization check. `owned` comes from the database; every field of
+      // `row` comes from the uploaded file, so the two are compared and the file
+      // never gets the last word. A mismatch means this user is not entitled to
+      // these bytes -- whether the file is crafted or merely stale.
+      const owned = ownedSources.get(oldKey);
+      if (
+        owned === undefined ||
+        owned.provider !== provider ||
+        owned.byteSize !== Number(row.byte_size) ||
+        (typeof row.sha256 === "string" && owned.sha256 !== row.sha256)
+      ) {
         unrestorable.add(attachmentId);
         continue;
       }
@@ -1313,15 +1352,17 @@ export class BackupService {
         continue;
       }
 
-      const claimedSize = Number(row.byte_size);
-      if (Number.isFinite(claimedSize) && bytes.length !== claimedSize) {
+      // Integrity, against the *stored* size and hash rather than the file's.
+      // The file's values were already required to equal these, so this catches
+      // an object that has changed under the row since -- corruption, a partial
+      // write, an operator replacing bytes by hand.
+      if (bytes.length !== owned.byteSize) {
         unrestorable.add(attachmentId);
         continue;
       }
-      const claimedHash = row.sha256;
-      if (typeof claimedHash === "string" && claimedHash.length > 0) {
+      if (owned.sha256.length > 0) {
         const actual = createHash("sha256").update(bytes).digest("hex");
-        if (actual !== claimedHash) {
+        if (actual !== owned.sha256) {
           unrestorable.add(attachmentId);
           continue;
         }
@@ -1347,6 +1388,50 @@ export class BackupService {
     }
 
     return { stagedKeys, sourceKeys, skipped: unrestorable.size };
+  }
+
+  /**
+   * The attachments this user owns among `candidateIds`, by id.
+   *
+   * Scoped to the user in the query, so the answer cannot include somebody
+   * else's row however the ids were chosen. `byte_size` and `sha256` come back so
+   * the caller can require the uploaded row to agree with the stored one -- an
+   * uploaded field that has to match a stored field is no longer a field the
+   * uploader controls.
+   */
+  private async loadOwnedAttachmentSources(
+    userId: string,
+    candidateIds: string[],
+  ): Promise<
+    Map<string, { provider: string; byteSize: number; sha256: string }>
+  > {
+    const owned = new Map<
+      string,
+      { provider: string; byteSize: number; sha256: string }
+    >();
+    if (candidateIds.length === 0) return owned;
+
+    const rows: Array<{
+      id: string;
+      storage_provider: string;
+      byte_size: string | number;
+      sha256: string | null;
+    }> = await withScopedDb(this.dataSource, (manager) =>
+      manager.query(
+        `SELECT id, storage_provider, byte_size, sha256
+           FROM transaction_attachments
+          WHERE user_id = $1 AND id = ANY($2::uuid[])`,
+        [userId, candidateIds],
+      ),
+    );
+    for (const row of rows) {
+      owned.set(String(row.id), {
+        provider: String(row.storage_provider),
+        byteSize: Number(row.byte_size),
+        sha256: String(row.sha256 ?? ""),
+      });
+    }
+    return owned;
   }
 
   /** Best-effort removal of objects staged for a restore that then failed. */

@@ -58,6 +58,22 @@ describe("BackupService", () => {
   let attachmentStorage: jest.Mocked<AttachmentStorageProvider>;
   let attachmentStorageName: string;
 
+  /**
+   * What `transaction_attachments` holds for the restoring user right now.
+   *
+   * The restore reads this before the destructive delete to decide whether the
+   * uploader is entitled to read an external source object -- the uploaded file
+   * cannot establish that on its own. Leaving it empty is the "you do not own
+   * that object" case, which is the default for every test that does not
+   * deliberately seed ownership.
+   */
+  let ownedAttachments: Array<{
+    id: string;
+    storage_provider: string;
+    byte_size: number;
+    sha256: string | null;
+  }>;
+
   const userId = "test-user-id";
   const mockUser = {
     id: userId,
@@ -411,6 +427,18 @@ describe("BackupService", () => {
   };
 
   function mockQueryHandler(sql: string, params?: unknown[]) {
+    if (
+      typeof sql === "string" &&
+      sql.includes("FROM transaction_attachments") &&
+      sql.includes("storage_provider, byte_size")
+    ) {
+      // The ownership read. Scoped by user_id in the real query, so the mock
+      // answers only for the ids the service asked about.
+      const ids = Array.isArray(params) ? ((params[1] as string[]) ?? []) : [];
+      return Promise.resolve(
+        ownedAttachments.filter((row) => ids.includes(row.id)),
+      );
+    }
     if (typeof sql === "string" && sql.includes("information_schema.columns")) {
       // Extract table name from params (insertRows) or from the SQL itself (ensureCurrenciesExist)
       let tableName: string | undefined;
@@ -435,6 +463,7 @@ describe("BackupService", () => {
     mockUserRepo = {
       findOne: jest.fn(),
     };
+    ownedAttachments = [];
 
     // Export reads and the restore transaction now both run through
     // `withScopedDb`, so the former QueryRunner is the transaction's
@@ -963,6 +992,17 @@ describe("BackupService", () => {
         mockUserRepo.findOne.mockResolvedValue(mockUser);
         (bcrypt.compare as jest.Mock).mockResolvedValue(true);
         attachmentStorageName = "local";
+        // The ordinary case is a user restoring their own backup, so the server
+        // still holds the row the file describes. Tests about a crafted file
+        // clear or contradict this.
+        ownedAttachments = [
+          {
+            id: OLD_ID,
+            storage_provider: "local",
+            byte_size: BYTES.length,
+            sha256: SHA256,
+          },
+        ];
       });
 
       it("copies the bytes to the remapped key before restoring the metadata", async () => {
@@ -1294,6 +1334,142 @@ describe("BackupService", () => {
             )
             .flatMap(([, params]) => (params ?? []) as unknown[]);
           expect(inserted).toContain(writtenKey);
+        });
+      });
+
+      /**
+       * The *id* in the uploaded file is attacker-controlled too (F3RRR-001).
+       *
+       * The F3RR-001 fix stopped deriving the source from `row.storage_key` and
+       * derived it from the id remap instead, on the reasoning that "a row whose
+       * id is not in the remap did not come from this backup's graph". But the
+       * graph is the uploaded graph: `collectRowIdRemap` admits every UUID-shaped
+       * `row.id` in the file, so for any well-formed crafted row the guard could
+       * not fire. Putting the victim's attachment id in `transaction_attachments.id`
+       * -- with the byte size and SHA-256 that a standard backup publishes beside
+       * it -- made the restore read the victim's object and copy it under the
+       * attacker's ownership.
+       *
+       * So the entitlement now comes from `transaction_attachments` as the server
+       * holds it, read before the destructive delete. Nothing in the file can
+       * establish it.
+       */
+      describe("an attachment id the uploader does not own", () => {
+        const VICTIM_ID = "deadbeef-0000-4000-8000-00000000beef";
+
+        /** The victim's row, exactly as a standard backup would publish it. */
+        const craftedFromVictim = () =>
+          backupWithLocalAttachment({
+            id: VICTIM_ID,
+            // Both fields are honest -- they describe the victim's object. That
+            // is the point: agreeing with the stored values is not ownership.
+            byte_size: BYTES.length,
+            sha256: SHA256,
+          });
+
+        it("never reads the object when the server holds no such row for this user", async () => {
+          attachmentStorage.load.mockResolvedValue(BYTES);
+          // The uploader owns nothing: a fresh account, or simply not this row.
+          ownedAttachments = [];
+
+          const result = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: craftedFromVictim() }),
+          );
+
+          // The disclosure was the read. It must not happen at all -- not fail a
+          // checksum afterwards, not be copied and then rolled back.
+          expect(attachmentStorage.load).not.toHaveBeenCalled();
+          expect(attachmentStorage.save).not.toHaveBeenCalled();
+          expect(result.restored.transactionAttachments).toBe(0);
+          expect(result.skippedAttachments).toBe(1);
+        });
+
+        it("does not let the uploader's own attachment vouch for someone else's", async () => {
+          attachmentStorage.load.mockResolvedValue(BYTES);
+          // This user genuinely owns OLD_ID, so the ownership read returns a row
+          // -- just not the one the crafted id names.
+          const data = {
+            ...backupWithLocalAttachment(),
+            transaction_attachments: [
+              ...backupWithLocalAttachment().transaction_attachments,
+              ...craftedFromVictim().transaction_attachments,
+            ],
+          };
+
+          const result = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data }),
+          );
+
+          // Their own row restores; the crafted one is dropped, and its source
+          // object is never opened.
+          expect(attachmentStorage.load).toHaveBeenCalledWith(OLD_ID);
+          expect(attachmentStorage.load).not.toHaveBeenCalledWith(VICTIM_ID);
+          expect(result.restored.transactionAttachments).toBe(1);
+          expect(result.skippedAttachments).toBe(1);
+        });
+
+        it("never writes the victim's bytes anywhere the uploader can reach", async () => {
+          // If the read did somehow happen, the copy must not: a staged object
+          // plus a restored metadata row is a working download of another
+          // tenant's file.
+          attachmentStorage.load.mockResolvedValue(BYTES);
+          ownedAttachments = [];
+
+          await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: craftedFromVictim() }),
+          );
+
+          expect(attachmentStorage.save).not.toHaveBeenCalled();
+          const inserted = mockQueryRunner.query.mock.calls
+            .filter(([sql]) =>
+              String(sql).includes('INSERT INTO "transaction_attachments"'),
+            )
+            .flatMap(([, params]) => (params ?? []) as unknown[]);
+          expect(inserted).not.toContain(VICTIM_ID);
+        });
+
+        it("drops the row when the stored attachment is on another provider", async () => {
+          // Same id, but the object it names lives in a backend this runtime
+          // cannot address -- so there is nothing here to be entitled to.
+          attachmentStorage.load.mockResolvedValue(BYTES);
+          ownedAttachments = [
+            {
+              id: OLD_ID,
+              storage_provider: "s3",
+              byte_size: BYTES.length,
+              sha256: SHA256,
+            },
+          ];
+
+          const result = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: backupWithLocalAttachment() }),
+          );
+
+          expect(attachmentStorage.load).not.toHaveBeenCalled();
+          expect(result.skippedAttachments).toBe(1);
+        });
+
+        it("drops the row when the file's metadata contradicts the stored row", async () => {
+          // An uploaded field that has to equal a stored field is no longer a
+          // field the uploader controls -- and a row whose size or hash disagrees
+          // does not describe the object sitting under that id, so restoring its
+          // metadata would publish a checksum the bytes do not satisfy.
+          attachmentStorage.load.mockResolvedValue(BYTES);
+
+          const result = await service.restoreData(
+            userId,
+            makeInput({
+              password: "test",
+              data: backupWithLocalAttachment({ byte_size: BYTES.length + 1 }),
+            }),
+          );
+
+          expect(attachmentStorage.load).not.toHaveBeenCalled();
+          expect(result.skippedAttachments).toBe(1);
         });
       });
 
