@@ -184,6 +184,31 @@ TRIGGER` a `DROP TRIGGER IF EXISTS` or a `pg_trigger` `DO` block, `INSERT` an
 - `scripts/verify-schema.sh` -- applies every migration on top of `schema.sql`
   **twice** and diffs the result, run in the "Schema vs Migrations Drift" job.
 
+## A constraint added to a populated table needs a repair phase before it
+
+`CREATE UNIQUE INDEX` and `ADD CONSTRAINT` validate every existing row, and the
+rows that will fail are usually the exact state the constraint exists to prevent
+-- so the databases that most need the guard are the ones the migration cannot be
+applied to. And a failed migration is not a failed check: `db-migrate` runs at
+container start, so the backend never boots and the deploy reports only
+"backend exited (1)" for what is a data problem.
+
+So a guard over pre-existing data ships with a repair phase immediately before
+it, in the same file, and the comment says **which row survives and what happens
+to the rest** -- that is a product decision, not a detail. Both repairs must be
+re-runnable like everything else: write them as a window function over the
+duplicates so a second apply selects nothing. Migration `133` is the worked
+example (one active `import_jobs` row per user, and the `budget_alerts`
+fingerprint), and
+`backend/test/integration/migration-133-preflight.integration.spec.ts` is how it
+is proven: seed the legacy state in a real database, apply the file from disk,
+assert the guard exists and the rows were repaired. A unit test cannot see any of
+this, because the failure is PostgreSQL refusing an index.
+
+Where the repair sets an application-owned value -- an `error_key` a catalog has
+to have -- name the module that owns the literal in a comment, since a rename
+there has to change the SQL too.
+
 ## Tables
 
 `schema.sql` is the authoritative source. Use it (or the TypeORM entities under `backend/src/*/entities/`) to look up table and column definitions rather than maintaining a duplicate list here.

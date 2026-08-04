@@ -1348,6 +1348,9 @@ CREATE INDEX idx_budget_alerts_budget_period ON budget_alerts(budget_id, period_
 -- belongs in the key and an escalation still inserts. COALESCE because a
 -- budget-wide alert has a NULL category and NULL never equals NULL in a unique
 -- index: without it the budget-wide alerts would be the only unguarded ones.
+--
+-- Duplicates predating the key are collapsed by the migration's preflight before
+-- it is created, keeping whichever row the user acted on.
 CREATE UNIQUE INDEX idx_budget_alerts_fingerprint
     ON budget_alerts(
         budget_id,
@@ -1442,6 +1445,11 @@ CREATE UNIQUE INDEX idx_import_jobs_one_active_per_user ON import_jobs(user_id) 
 -- The key is the user because that is what the product blocks on: hasActiveJob()
 -- asks only whether this user has any pending/running job, and the 409 says "an
 -- import is already running".
+--
+-- A fresh database is trivially in this state; an upgraded one need not be, since
+-- more than one active job is exactly what the pre-133 code could produce. The
+-- migration therefore repairs before it constrains -- see its preflight, and
+-- backend/test/integration/migration-133-preflight.integration.spec.ts.
 CREATE UNIQUE INDEX idx_import_jobs_one_active_per_user
     ON import_jobs(user_id)
     WHERE status IN ('pending', 'running');
