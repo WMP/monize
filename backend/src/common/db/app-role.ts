@@ -60,8 +60,23 @@ export const APP_ROLE_PASSWORD_GUC = "monize.app_password";
  * database what the connection actually is, and refuses to serve traffic on a
  * wrong answer.
  */
+/**
+ * `NOINHERIT` is defence in depth for RR3-001, not the fix.
+ *
+ * PostgreSQL decides table ownership with `has_privs_of_role`, which walks
+ * *inheritable* memberships -- so a role that inherits the owner's privileges is
+ * an owner for the RLS check and bypasses every policy without ever issuing
+ * `SET ROLE`. `NOINHERIT` makes that the role's default, which helps.
+ *
+ * It cannot be the whole answer, for three reasons that all apply here: the
+ * deployment may provision the role declaratively (CNPG `managed.roles`) where
+ * this SQL never runs; PostgreSQL 16 stores inheritance on each membership grant,
+ * so `GRANT owner TO app WITH INHERIT TRUE` overrides the role default; and the
+ * `ALTER` below degrades to a warning without `CREATEROLE`. The startup check is
+ * what actually refuses to serve -- this only narrows the default.
+ */
 export const APP_ROLE_ATTRIBUTES =
-  "LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION";
+  "LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION NOINHERIT";
 
 /**
  * Create the role if absent, else converge its attributes and rotate its

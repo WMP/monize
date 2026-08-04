@@ -14,6 +14,7 @@ const SAFE: RuntimeRoleFacts = {
   ownsDatabase: false,
   ownedPoliciedTables: 0,
   exemptRoleMemberships: [],
+  inheritedOwnerRoles: [],
 };
 
 /** A querier returning one row, in the `DataSource.query` array shape. */
@@ -33,6 +34,7 @@ const SAFE_ROW = {
   owns_database: false,
   owned_policied_tables: "0",
   exempt_role_memberships: [],
+  inherited_owner_roles: [],
 };
 
 describe("runtimeRoleViolations", () => {
@@ -85,11 +87,12 @@ describe("runtimeRoleViolations", () => {
         ownsDatabase: true,
         ownedPoliciedTables: 53,
         exemptRoleMemberships: ["monize"],
+        inheritedOwnerRoles: ["monize"],
       },
       "monize_app",
     );
 
-    expect(violations).toHaveLength(6);
+    expect(violations).toHaveLength(7);
   });
 });
 
@@ -122,6 +125,59 @@ describe("runtimeRoleViolations -- exempt role membership (DR-V2)", () => {
     expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.rolsuper");
     expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.rolbypassrls");
     expect(RUNTIME_ROLE_FACTS_SQL).toContain("g.oid = d.datdba");
+  });
+
+  it("refuses a role that inherits an owner's privileges, SET or not (RR3-001)", () => {
+    // The defect this arm exists for, and the more urgent of the two: an
+    // inherited owner bypasses RLS *now*, with no SET ROLE to detect. Measured on
+    // a live server -- `GRANT owner TO app WITH INHERIT TRUE, SET FALSE` yields
+    // SET=false, USAGE=true, row_security_active=false, and every tenant's rows.
+    const violations = runtimeRoleViolations(
+      { ...SAFE, inheritedOwnerRoles: ["monize_owner"] },
+      "monize_app",
+    );
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]).toContain('"monize_owner"');
+    expect(violations[0]).toContain("inherits the privileges");
+    // The remedy differs from a revoke, so the message has to say so.
+    expect(violations[0]).toContain("INHERIT FALSE");
+  });
+
+  it("reports the inherited case first, because it is already true", () => {
+    const violations = runtimeRoleViolations(
+      {
+        ...SAFE,
+        inheritedOwnerRoles: ["monize_owner"],
+        exemptRoleMemberships: ["some_superuser"],
+      },
+      "monize_app",
+    );
+
+    expect(violations).toHaveLength(2);
+    expect(violations[0]).toContain("inherits the privileges");
+    expect(violations[1]).toContain("SET ROLE");
+  });
+
+  it("asks USAGE only about owners, never about attribute exemptions", () => {
+    // `rolsuper` and `rolbypassrls` are attributes, and PostgreSQL does not
+    // inherit them: verified on a live server -- a member of a BYPASSRLS role
+    // with INHERIT TRUE still has row_security_active = true. Putting them in the
+    // USAGE arm would refuse to start on a harmless group membership, and an
+    // operator who is told to revoke a harmless grant learns to ignore the check.
+    const inheritedArm = RUNTIME_ROLE_FACTS_SQL.slice(
+      RUNTIME_ROLE_FACTS_SQL.indexOf("'USAGE'"),
+    );
+    expect(inheritedArm).toContain("g.oid = d.datdba");
+    expect(inheritedArm).toContain("c2.relrowsecurity");
+    expect(inheritedArm).not.toContain("g.rolsuper");
+    expect(inheritedArm).not.toContain("g.rolbypassrls");
+  });
+
+  it("asks both questions of the database, not one", () => {
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("AS exempt_role_memberships");
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("AS inherited_owner_roles");
+    expect(RUNTIME_ROLE_FACTS_SQL).toContain("'USAGE'");
   });
 
   it("asks about SET-ROLE reachability, not one hop of membership (DR-R1)", () => {
@@ -157,9 +213,14 @@ describe("readRuntimeRoleFacts", () => {
     // A mock returning the array the code wants cannot fail this; the string is
     // what the driver sends.
     const empty = await readRuntimeRoleFacts(
-      arrayQuerier({ ...SAFE_ROW, exempt_role_memberships: "{}" }),
+      arrayQuerier({
+        ...SAFE_ROW,
+        exempt_role_memberships: "{}",
+        inherited_owner_roles: "{}",
+      }),
     );
     expect(empty.exemptRoleMemberships).toEqual([]);
+    expect(empty.inheritedOwnerRoles).toEqual([]);
     expect(runtimeRoleViolations(empty, "monize_app")).toEqual([]);
 
     const filled = await readRuntimeRoleFacts(

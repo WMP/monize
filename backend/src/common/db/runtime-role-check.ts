@@ -43,23 +43,35 @@ export interface RuntimeRoleFacts {
    */
   ownedPoliciedTables: number;
   /**
-   * Roles this one can `SET ROLE` into that are themselves exempt from policies
-   * -- superuser, `BYPASSRLS`, the database owner, or the owner of a policied
-   * table.
+   * Exempt roles this one can *become* with `SET ROLE`.
    *
-   * Membership is not the same as holding the attribute: PostgreSQL applies it
-   * only after `SET ROLE`, and nothing in this application issues one. But the
-   * check exists to answer "is this connection capable of seeing every tenant",
-   * and a role that can reach an exempt role with one statement is -- an SQL
-   * injection or a mistaken raw query gets `SET ROLE` for free. Reported by name
-   * so the operator can see which grant to revoke (DR-V2).
+   * A role's exemption may be an attribute (`rolsuper`, `rolbypassrls`) or
+   * ownership. Attributes are **not** inherited -- verified: a member of a
+   * `BYPASSRLS` role with `INHERIT TRUE` still has RLS applied -- so for those the
+   * only route is `SET ROLE`, and this is the whole question. Nothing in this
+   * application issues one, but an injected statement or a mistaken raw query
+   * gets it for free, so it stays a refusal.
    *
-   * Reachability is transitive and respects each grant's SET option, because the
-   * question is "can this role become that one", not "was it granted that one
-   * directly": an `app -> platform_runtime -> owner` chain answers yes while a
-   * direct-membership join sees only the intermediate role (DR-R1).
+   * Transitive, and honours each grant's SET option: an
+   * `app -> platform_runtime -> owner` chain answers yes where a direct
+   * `pg_auth_members` join sees only the intermediate role (DR-R1).
    */
   exemptRoleMemberships: string[];
+  /**
+   * Owner roles whose privileges this role **already holds by inheritance**.
+   *
+   * The more dangerous half, and the one `SET` reachability cannot see (RR3-001).
+   * PostgreSQL decides "is the current role the table owner" with
+   * `object_ownercheck` -> `has_privs_of_role`, which walks inheritable
+   * memberships -- so an inherited owner is an owner *now*, with no `SET ROLE` and
+   * nothing to detect at the statement level. Measured on a live server:
+   * `GRANT owner TO app WITH INHERIT TRUE, SET FALSE` gives `SET=false`,
+   * `USAGE=true`, `row_security_active=false`, and both tenants' rows.
+   *
+   * The remedy differs from the list above, which is why it is a separate field:
+   * revoking is one option, `WITH INHERIT FALSE` on the membership is the other.
+   */
+  inheritedOwnerRoles: string[];
 }
 
 /**
@@ -79,14 +91,14 @@ SELECT current_user AS current_user_name,
            AND c.relkind = 'r'
            AND c.relrowsecurity
            AND c.relowner = r.oid) AS owned_policied_tables,
+       -- Two questions, because the two exemption classes are reached
+       -- differently. Reachability throughout, not direct membership:
+       -- pg_has_role follows a chain of grants and honours each edge's options,
+       -- so a two-hop app -> platform -> owner chain is caught where a join on
+       -- pg_auth_members.member sees only the intermediate role (DR-R1).
        (SELECT coalesce(array_agg(DISTINCT g.rolname::text), '{}'::text[])
           FROM pg_roles g
          WHERE g.oid <> r.oid
-           -- Reachability, not direct membership: pg_has_role follows a chain
-           -- of grants and honours each edge's SET option, so a two-hop
-           -- app -> platform -> owner chain is caught and a WITH SET FALSE edge
-           -- is not a false alarm. A join on pg_auth_members.member saw only the
-           -- first hop (DR-R1).
            AND pg_has_role(r.oid, g.oid, 'SET')
            AND (g.rolsuper
                 OR g.rolbypassrls
@@ -98,7 +110,24 @@ SELECT current_user AS current_user_name,
                               AND c2.relkind = 'r'
                               AND c2.relrowsecurity
                               AND c2.relowner = g.oid)))
-         AS exempt_role_memberships
+         AS exempt_role_memberships,
+       -- USAGE, not SET: ownership is a privilege, and PostgreSQL's owner check
+       -- walks inheritable memberships, so an inherited owner bypasses RLS with
+       -- no SET ROLE at all (RR3-001). Attribute exemptions are deliberately NOT
+       -- in this arm -- rolsuper and rolbypassrls are not inherited.
+       (SELECT coalesce(array_agg(DISTINCT g.rolname::text), '{}'::text[])
+          FROM pg_roles g
+         WHERE g.oid <> r.oid
+           AND pg_has_role(r.oid, g.oid, 'USAGE')
+           AND (g.oid = d.datdba
+                OR EXISTS (SELECT 1
+                             FROM pg_class c2
+                             JOIN pg_namespace n2 ON n2.oid = c2.relnamespace
+                            WHERE n2.nspname = 'public'
+                              AND c2.relkind = 'r'
+                              AND c2.relrowsecurity
+                              AND c2.relowner = g.oid)))
+         AS inherited_owner_roles
   FROM pg_roles r
   JOIN pg_database d ON d.datname = current_database()
  WHERE r.rolname = current_user
@@ -111,6 +140,7 @@ interface RawFactRow {
   owns_database?: boolean;
   owned_policied_tables?: number | string;
   exempt_role_memberships?: string[] | string | null;
+  inherited_owner_roles?: string[] | string | null;
 }
 
 /**
@@ -165,6 +195,7 @@ export async function readRuntimeRoleFacts(
     ownsDatabase: !!row.owns_database,
     ownedPoliciedTables: Number(row.owned_policied_tables ?? 0),
     exemptRoleMemberships: toRoleNames(row.exempt_role_memberships),
+    inheritedOwnerRoles: toRoleNames(row.inherited_owner_roles),
   };
 }
 
@@ -210,12 +241,24 @@ export function runtimeRoleViolations(
         "with RLS enabled, and a table's owner is exempt from its policies",
     );
   }
+  if (facts.inheritedOwnerRoles.length > 0) {
+    // First, because it is the only one that is already true rather than one
+    // statement away, and because the fix is different.
+    violations.push(
+      `role "${facts.currentUser}" inherits the privileges of ${facts.inheritedOwnerRoles
+        .map((r) => `"${r}"`)
+        .join(
+          ", ",
+        )}, which own RLS-protected objects -- PostgreSQL treats an ` +
+        "inherited owner as the owner, so policies are already inactive. Revoke " +
+        "the membership or re-grant it WITH INHERIT FALSE",
+    );
+  }
   if (facts.exemptRoleMemberships.length > 0) {
     violations.push(
-      `role "${facts.currentUser}" is a member of ${facts.exemptRoleMemberships
+      `role "${facts.currentUser}" can SET ROLE into ${facts.exemptRoleMemberships
         .map((r) => `"${r}"`)
-        .join(", ")}, which policies do not apply to -- one SET ROLE reaches ` +
-        "them",
+        .join(", ")}, which policies do not apply to`,
     );
   }
   return violations;

@@ -97,16 +97,31 @@ presented *now*, and a session is bound to one credential fingerprint. Matching
 the user is not enough: one user holds many tokens with different scopes, and a
 read-only token that could reuse a write session could write.
 
-**An unprivileged mode is verified, not configured -- and the privilege question
-is reachability, not attributes.** Selecting a role name and supplying its
+**An unprivileged mode is verified, not configured -- and "can it reach that
+privilege" is two questions, not one.** Selecting a role name and supplying its
 password says nothing about `rolsuper`, `rolbypassrls`, or what the role owns --
 and PostgreSQL exempts all three from every policy. Ask the connection what it is
-(`runtime-role-check.ts`) and refuse to serve traffic on a wrong answer. Asking
-about the login role's own attributes is still not enough: a role that can
-`SET ROLE` into an exempt one is exempt in one statement, so the check uses
-`pg_has_role(..., 'SET')`, which is transitive and honours each grant's SET option.
-A join on `pg_auth_members.member` answers about the first hop only, and a two-hop
-chain through an unremarkable intermediate role passes it.
+(`runtime-role-check.ts`) and refuse to serve traffic on a wrong answer. Then note
+that PostgreSQL 16 stores `INHERIT` and `SET` independently per grant, and they
+answer different halves:
+
+- **Attributes are not inherited.** A member of a `BYPASSRLS` role with
+  `INHERIT TRUE` still has policies applied, so `rolsuper`/`rolbypassrls` are a
+  `pg_has_role(..., 'SET')` question -- can this role *become* that one.
+- **Ownership is a privilege, and it is inherited.** The RLS owner check is
+  `object_ownercheck` -> `has_privs_of_role`, which walks inheritable memberships,
+  so an inherited owner bypasses every policy *already* -- no `SET ROLE`, nothing
+  to detect at the statement level. That half is a `'USAGE'` question, and a
+  `SET`-only predicate reported `GRANT owner TO app WITH INHERIT TRUE, SET FALSE`
+  as safe while the connection saw every tenant's rows (RR3-001).
+
+Both predicates are transitive, which a `pg_auth_members.member` join is not: a
+two-hop chain through an unremarkable intermediate role passes that. `NOINHERIT` on
+the provisioned role is worth having and is not the fix -- a per-membership
+`WITH INHERIT TRUE` overrides it, and declarative provisioning skips our SQL
+entirely. And the general lesson beyond roles: when a permission has two
+independent routes, a check that tests one of them is a check that passes in the
+case you did not think of.
 
 **Activity belongs to the person, not to the data.** `last_activity_at` records
 the *authenticated* user (`realUserId`), never the effective owner. A delegate's

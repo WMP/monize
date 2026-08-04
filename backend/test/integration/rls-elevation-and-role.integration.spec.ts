@@ -447,24 +447,183 @@ describe("RLS elevation and runtime role (real PostgreSQL)", () => {
       }
     });
 
-    it("ignores a grant that cannot SET ROLE, so the check does not cry wolf", async () => {
-      // PostgreSQL 16 splits membership from the right to SET ROLE. A grant made
-      // WITH SET FALSE confers privileges by inheritance but no way to become the
-      // role, so it is not an escalation path and must not be reported as one --
-      // an operator who is told to revoke a harmless grant learns to ignore the
-      // message.
+    /**
+     * RR3-001. The membership matrix, measured rather than reasoned about.
+     *
+     * PostgreSQL 16 stores `INHERIT` and `SET` independently per grant, and they
+     * answer different questions:
+     *
+     *  - `SET` decides whether the role can *become* the other role. Attribute
+     *    exemptions (`rolsuper`, `rolbypassrls`) are reachable only this way,
+     *    because attributes are not inherited.
+     *  - `INHERIT` decides whether the other role's *privileges* are already in
+     *    force. Ownership is a privilege, and PostgreSQL's owner check
+     *    (`object_ownercheck` -> `has_privs_of_role`) walks inheritable
+     *    memberships -- so an inherited owner bypasses RLS immediately, with no
+     *    statement to detect.
+     *
+     * The previous version of this suite asserted that `WITH SET FALSE` was
+     * harmless. The row below marked "the defect" is what that actually is.
+     */
+    const MEMBERSHIP_MATRIX = [
+      {
+        grant: "WITH INHERIT TRUE, SET FALSE",
+        expectRlsActive: false,
+        expectVisibleRows: 2,
+        expectRejected: true,
+        note: "the defect: inherited ownership, no SET ROLE needed",
+      },
+      {
+        grant: "WITH INHERIT FALSE, SET TRUE",
+        expectRlsActive: true,
+        expectVisibleRows: 1,
+        expectRejected: true,
+        note: "no bypass yet, but one SET ROLE away",
+      },
+      {
+        grant: "WITH INHERIT FALSE, SET FALSE",
+        expectRlsActive: true,
+        expectVisibleRows: 1,
+        expectRejected: false,
+        note: "neither route available: genuinely harmless",
+      },
+    ] as const;
+
+    it.each(MEMBERSHIP_MATRIX)(
+      "owner membership $grant -- $note",
+      async ({ grant, expectRlsActive, expectVisibleRows, expectRejected }) => {
+        const owner = (await dataSource.query("SELECT current_user AS u"))[0].u;
+        const app = await appRolePool();
+        try {
+          await dataSource.query(`GRANT ${owner} TO ${TEST_APP_ROLE} ${grant}`);
+
+          // What the database itself thinks, as the app role, with a tenant GUC
+          // set -- the ground truth the check is supposed to predict.
+          const [observed] = await app.query(
+            `SELECT row_security_active('accounts') AS rls_active,
+                    pg_has_role(current_user, $1, 'SET') AS can_set,
+                    pg_has_role(current_user, $1, 'USAGE') AS has_usage`,
+            [owner],
+          );
+          expect(observed.rls_active).toBe(expectRlsActive);
+
+          const visible = await app.transaction(async (m) => {
+            await m.query(
+              "SELECT set_config('app.current_user_id', $1, true)",
+              [USER_A],
+            );
+            const [{ n }] = await m.query(
+              "SELECT count(*)::int AS n FROM accounts",
+            );
+            return n;
+          });
+          expect(visible).toBe(expectVisibleRows);
+
+          // And what the startup check concludes. It must agree with the row
+          // count: refusing to serve exactly when the boundary is not there.
+          const facts = await readRuntimeRoleFacts(app);
+          const violations = runtimeRoleViolations(facts, TEST_APP_ROLE);
+          if (expectRejected) {
+            expect(violations.length).toBeGreaterThan(0);
+          } else {
+            expect(violations).toEqual([]);
+          }
+
+          if (observed.has_usage && !observed.can_set) {
+            // The precise shape of the finding: reported through the inherited
+            // arm, which `SET` reachability alone could never have seen.
+            expect(facts.inheritedOwnerRoles).toContain(owner);
+            expect(facts.exemptRoleMemberships).not.toContain(owner);
+          }
+        } finally {
+          await app.destroy();
+          await dataSource.query(`REVOKE ${owner} FROM ${TEST_APP_ROLE}`);
+        }
+      },
+    );
+
+    it("catches an inherited owner two hops away (RR3-001 + DR-R1)", async () => {
+      // Both defects at once: the membership is indirect AND it is inherited
+      // rather than SET-reachable. A direct-membership join misses the first, and
+      // a SET-only predicate misses the second.
       const owner = (await dataSource.query("SELECT current_user AS u"))[0].u;
+      const intermediate = `mid_inherit_${Date.now()}`;
+      await dataSource.query(`CREATE ROLE ${intermediate} NOLOGIN`);
       const app = await appRolePool();
       try {
         await dataSource.query(
-          `GRANT ${owner} TO ${TEST_APP_ROLE} WITH SET FALSE`,
+          `GRANT ${owner} TO ${intermediate} WITH INHERIT TRUE, SET FALSE`,
         );
+        await dataSource.query(
+          `GRANT ${intermediate} TO ${TEST_APP_ROLE} WITH INHERIT TRUE, SET FALSE`,
+        );
+
+        const [observed] = await app.query(
+          "SELECT row_security_active('accounts') AS rls_active",
+        );
+        expect(observed.rls_active).toBe(false);
+
         const facts = await readRuntimeRoleFacts(app);
-        expect(facts.exemptRoleMemberships).toEqual([]);
+        expect(facts.inheritedOwnerRoles).toContain(owner);
+        expect(runtimeRoleViolations(facts, TEST_APP_ROLE).join(" ")).toContain(
+          "inherits the privileges",
+        );
+      } finally {
+        await app.destroy();
+        await dataSource.query(`REVOKE ${intermediate} FROM ${TEST_APP_ROLE}`);
+        await dataSource.query(`REVOKE ${owner} FROM ${intermediate}`);
+        await dataSource.query(`DROP ROLE ${intermediate}`);
+      }
+    });
+
+    it("does not report an inherited membership in a role that owns nothing policied", async () => {
+      // The negative control for the USAGE arm. Inheriting from an ordinary group
+      // confers no exemption, and reporting it would train the operator to ignore
+      // the message -- the same reasoning that keeps rolsuper/rolbypassrls out of
+      // this arm, since those are not inherited at all.
+      const plain = `plain_group_${Date.now()}`;
+      await dataSource.query(`CREATE ROLE ${plain} NOLOGIN`);
+      const app = await appRolePool();
+      try {
+        await dataSource.query(
+          `GRANT ${plain} TO ${TEST_APP_ROLE} WITH INHERIT TRUE, SET TRUE`,
+        );
+
+        const facts = await readRuntimeRoleFacts(app);
+        expect(facts.inheritedOwnerRoles).not.toContain(plain);
+        expect(facts.exemptRoleMemberships).not.toContain(plain);
         expect(runtimeRoleViolations(facts, TEST_APP_ROLE)).toEqual([]);
       } finally {
         await app.destroy();
-        await dataSource.query(`REVOKE ${owner} FROM ${TEST_APP_ROLE}`);
+        await dataSource.query(`REVOKE ${plain} FROM ${TEST_APP_ROLE}`);
+        await dataSource.query(`DROP ROLE ${plain}`);
+      }
+    });
+
+    it("does not inherit BYPASSRLS, so that stays a SET-only question", async () => {
+      // The assumption the split rests on. Verified rather than read: a member of
+      // a BYPASSRLS role with INHERIT TRUE still has policies applied, because
+      // role attributes are not privileges.
+      const bypasser = `bypass_role_${Date.now()}`;
+      await dataSource.query(`CREATE ROLE ${bypasser} NOLOGIN BYPASSRLS`);
+      const app = await appRolePool();
+      try {
+        await dataSource.query(
+          `GRANT ${bypasser} TO ${TEST_APP_ROLE} WITH INHERIT TRUE, SET FALSE`,
+        );
+
+        const [observed] = await app.query(
+          "SELECT row_security_active('accounts') AS rls_active",
+        );
+        expect(observed.rls_active).toBe(true);
+        const facts = await readRuntimeRoleFacts(app);
+        expect(facts.inheritedOwnerRoles).not.toContain(bypasser);
+        // ...and it is not SET-reachable either, so nothing is reported.
+        expect(facts.exemptRoleMemberships).not.toContain(bypasser);
+      } finally {
+        await app.destroy();
+        await dataSource.query(`REVOKE ${bypasser} FROM ${TEST_APP_ROLE}`);
+        await dataSource.query(`DROP ROLE ${bypasser}`);
       }
     });
   });

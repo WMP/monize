@@ -113,6 +113,15 @@ describe("provisionAppRole", () => {
 });
 
 describe("app-role SQL", () => {
+  it("provisions the role NOINHERIT, so it does not inherit an owner by default", () => {
+    // Defence in depth for RR3-001: an inherited owner bypasses RLS with no SET
+    // ROLE at all. Not the fix -- a per-membership `WITH INHERIT TRUE` overrides
+    // the role default, and declarative provisioning skips this SQL entirely --
+    // which is why the startup check tests reachability rather than trusting it.
+    expect(APP_ROLE_ATTRIBUTES).toContain("NOINHERIT");
+    expect(APP_ROLE_UPSERT_SQL).toContain("NOINHERIT");
+  });
+
   it("uses %I / %L formatting and no FOR ROLE clause", () => {
     expect(APP_ROLE_UPSERT_SQL).toContain(
       `format('CREATE ROLE %I ${APP_ROLE_ATTRIBUTES} PASSWORD %L'`,

@@ -6,11 +6,11 @@
 | Audited baseline | `d5cea9bfa995885ba5198f9843359362927c0fd4` |
 | Work branch | `claude/detailed-error-review-wq2hjo` |
 | Branch base | `4e48a767` (main after the audit baseline) |
-| Commits | 21 |
+| Commits | 23 |
 | Diff | 138 files, +7678 / -2036 |
 | Audit items answered | 9 confirmed findings, 4 design risks, 16 missing tests, 6 documentation issues |
-| Additional defects found and fixed | 18, none of them in the report |
-| Response date | 2026-08-03; revised 2026-08-04 after two verification rounds and a live-database run (sections 5A, 5B, 5C) |
+| Additional defects found and fixed | 19, none of them in the report |
+| Response date | 2026-08-03; revised 2026-08-04 after three verification rounds and a live-database run (sections 5A-5D) |
 
 The brief for this branch was explicitly *not* "do what the file says". The report
 was treated as a rough pass over the ground, and the work was asked to be a detailed
@@ -21,7 +21,8 @@ previous pass had missed. Sections 5A and 5B answer two rounds of independent
 verification of this branch: the first found four residual defects, the second found
 one that the first round's own fix introduced. All five are fixed. Section 5C is what
 running the integration suites -- previously reported as unrunnable here -- found
-once a local PostgreSQL turned out to be available.
+once a local PostgreSQL turned out to be available, and section 5D answers a third
+review round, whose one HIGH finding is fixed.
 
 ## How to read the status column
 
@@ -862,6 +863,87 @@ this tsconfig), and CI never notices because `test:integration` globs only
 concern rather than a security one -- but three spec files that cannot run are not
 coverage, so it belongs on somebody's list.
 
+## 5D. Answer to the third verification review
+
+A third read-only review (`monize-phase2-fix-verification-re-review-3.md`, head
+`e0b64635`) confirmed RV-001 closed and raised one HIGH finding against the
+membership check I had added the round before. **It is correct, it was mine, and it
+is fixed.** Its recommended predicate split, its reproduction, its regression matrix
+and its reading of the PostgreSQL source were all right.
+
+### RR3-001 -- an inherited owner grant bypassed RLS and passed the check
+
+**Status: Fixed.** Measured on a live PostgreSQL 16.13 before changing anything,
+because the claim turns on how PostgreSQL resolves ownership rather than on how the
+code reads:
+
+| Grant | `SET` | `USAGE` | `row_security_active` | rows visible |
+| --- | --- | --- | --- | ---: |
+| `WITH INHERIT TRUE, SET FALSE` | false | **true** | **false** | **2** |
+| `WITH INHERIT FALSE, SET TRUE` | true | false | true | 1 |
+| `WITH INHERIT FALSE, SET FALSE` | false | false | true | 1 |
+
+The first row is the finding, exactly as reported: `pg_has_role(..., 'SET')` is
+`false`, so the check I shipped said "safe", while the connection saw both tenants'
+rows and `row_security_active` was `false`. `object_ownercheck` ->
+`has_privs_of_role` walks inheritable memberships, so an inherited owner **is** the
+owner for the RLS decision -- and unlike the `SET` case there is no statement to
+detect, because nothing has to happen.
+
+Note also what the second row says, and what it corrects in my own earlier
+reasoning: `SET TRUE` alone does **not** bypass anything until a `SET ROLE` is
+actually executed. The original DR-V2 justification ("one SET ROLE reaches them")
+was therefore right to refuse but wrong about the mechanism -- it is a reachability
+risk, not an active exemption. The genuinely active exemption is the one the check
+could not see.
+
+The fix is the review's split, with the empirical basis now recorded beside it:
+
+| Exemption class | Predicate | Why |
+| --- | --- | --- |
+| `rolsuper`, `rolbypassrls` | `SET` only | Attributes are not inherited. Verified: a member of a `BYPASSRLS` role with `INHERIT TRUE` still has `row_security_active = true`. Putting these in the `USAGE` arm would refuse to start on a harmless group membership. |
+| database owner, owner of a policied table | `SET` **or** `USAGE` | Ownership is a privilege and it is inherited, so `USAGE` is an immediate bypass. |
+
+`inheritedOwnerRoles` is a separate field from `exemptRoleMemberships` rather than
+merged into it, because the remedies differ -- revoke, or re-grant
+`WITH INHERIT FALSE` -- and the message says which. The inherited violation is
+reported first, since it is the one that is already true.
+
+`NOINHERIT` was added to the provisioned attributes as defence in depth, with the
+review's caveat written at the declaration: it is not the fix, because a
+per-membership `WITH INHERIT TRUE` overrides the role default, declarative
+provisioning (CNPG `managed.roles`) never runs our SQL, and the `ALTER` degrades to
+a warning without `CREATEROLE`.
+
+**The test that asserted the unsafe disposition is deleted**, not amended. It was
+the worst artifact of the whole round: a real-database test pinning the defect as
+correct behaviour. In its place is the matrix the review specified -- three grant
+combinations, each asserting the database's own `row_security_active`, the
+cross-tenant row count, *and* the check's verdict, so the check is required to agree
+with the boundary rather than with its author. Plus a two-hop inherited chain (both
+defects at once), an ordinary-group negative control, and the `BYPASSRLS`
+non-inheritance case that the split rests on.
+
+Two of those fail against the `SET`-only check, and five unit cases with them
+(verified by neutralizing the inherited arm).
+
+### DOC-RR3-001 -- the open-items table contradicted section 5C
+
+**Status: Fixed.** Fair, and worse than described: section 7 recorded the
+integration run and section 8 still asked for a live PostgreSQL, MT-15/MT-16
+appeared twice, and a request for the FV-003 two-connection test survived next to
+the section describing that exact test. The table is rewritten below to hold only
+what is actually open. A completion record that contradicts itself is worse than a
+shorter one.
+
+### On this review's limitations
+
+Its section 8 is accurate again: it executed nothing, and GitHub returned no
+statuses or workflow runs for the head. The numbers in section 7 remain local runs.
+Its one substantive limitation note -- that the integration result for RV-001 is a
+branch-author claim -- is the right way round: the test's *source* is verifiable by
+reading, and its *result* is not.
+
 ## 6. Rules added, so the next agent inherits the correction
 
 Twenty-one rules in the root `CLAUDE.md` (nine, five, two, then five -- one set per
@@ -879,7 +961,7 @@ is a scanning test.
 | A global decision cannot be made from a tenant-scoped read | `ELEVATED_DB_ALLOWLIST` lint gate |
 | A failed lookup is not an answer about the thing you looked for | `delegation.service.spec.ts` |
 | Cached authorization is not authorization | `mcp-http.controller.spec.ts` fingerprint cases |
-| An unprivileged mode is verified, and the question is SET-ROLE reachability | `runtime-role-check.spec.ts` |
+| An unprivileged mode is verified, and reachability is two questions (`SET` and `USAGE`) | `runtime-role-check.spec.ts` + the integration membership matrix |
 | Activity belongs to the person, not to the data | `request-context.interceptor.spec.ts` |
 | Gate the routes that grant access, not the ones that describe it | `emergency-access.controller.spec.ts` decorator metadata |
 | A comment claiming a lock is not a lock | `emergency-access-claim.controller.spec.ts` |
@@ -905,7 +987,7 @@ files fails the lint job.
 
 Performed and green:
 
-- `TZ=UTC npm run test:unit` (backend): 403 suites, 10837 tests, at branch tip.
+- `TZ=UTC npm run test:unit` (backend): 403 suites, 10842 tests, at branch tip.
 - Frontend `vitest`: 627 files, 12279 tests, at branch tip.
 - ESLint and `tsc --noEmit` on both sides. The backend was additionally type-checked
   with `src` and `test` in one program (via a scratch tsconfig, not committed) so a
@@ -913,8 +995,8 @@ Performed and green:
 - Backend and frontend production builds.
 - `npm run migration:lint`, `npm run i18n:check` on both sides.
 
-**Now also run** (see section 5C): 21 integration suites / 240 tests against a local
-PostgreSQL 16.13, and all 122 migrations replayed on top of `schema.sql`. That closes
+**Now also run** (see sections 5C and 5D): 21 integration suites / 245 tests against
+a local PostgreSQL 16.13, and all 122 migrations replayed on top of `schema.sql`. That closes
 MT-10, MT-11 and MT-13, and adds the RV-001, FV-003 and DR-R1 scenarios both review
 rounds asked for. `scripts/verify-schema.sh` itself still needs Docker, but the
 property it checks -- every migration a no-op replayed over `schema.sql` -- was
@@ -932,16 +1014,25 @@ key, ten now-unused keys removed everywhere, and both pseudo-locales regenerated
 
 ## 8. Open items
 
+Rewritten after DOC-RR3-001: the previous version of this table contradicted section
+7, listed MT-15/MT-16 twice, and still asked for a test section 5C describes. Every
+row below is open at the current head, and nothing closed appears.
+
 | Item | Why it is open |
 | --- | --- |
-| DR-04's metric and alert | Belongs to the deployment's observability stack; a metric name without a dashboard is documentation pretending to be a control. |
-| MT-10, MT-11, MT-13 (denial half), MT-15, MT-16 | Need a live PostgreSQL and an unprivileged role. No Docker in this environment. |
-| Cross-replica single use of the OIDC re-authentication artifact | Needs shared state, which is a schema decision. Documented at the call site with the reason the residual risk is small. |
-| An owner notification when an emergency-access contact is added | Would have made 5.1 visible to the victim. It is a product change (new email, new copy, new locale keys), not a security fix, so it is not on a fix branch. |
-| Real two-connection and filesystem-interleaving tests for FV-003 and FV-004 | The fixes are asserted at the unit level (lock ordering, temp-path uniqueness). Proving the race itself needs two live connections and controlled filesystem timing. |
-| MT-15, MT-16 as originally specified | The existing `backup-restore` and `mny-*` integration suites cover much of their ground, but neither is the two-user isolation sweep the report asked for. |
+| DR-04's metric and alert | Belongs to the deployment's observability stack; a metric name without a dashboard is documentation pretending to be a control. The startup assertion half is done. |
+| MT-15 and MT-16 as originally specified | The existing `backup-restore` and `mny-*` integration suites cover much of their ground, but neither is the two-user isolation sweep the report asked for. |
+| Cross-replica single use of the OIDC re-authentication artifact | Needs shared state, which is a schema decision. Documented at the call site with the reason the residual risk is bounded. |
+| An owner notification when an emergency-access contact is added | Would have made 5.1 visible to the victim. A product change (new email, copy, locale keys), not a security fix. |
 | The remaining 55 entity/schema FK delete-rule drifts | Baselined shrink-only (section 5C). Correcting them is an entity-wide change with its own review. |
 | Three `test/*.e2e-spec.ts` files that do not compile | Pre-existing, never run by CI, and test infrastructure rather than security (section 5C). |
+| A filesystem-interleaving test for FV-004 | The uniqueness of the temporary path is asserted; observing the ENOENT race itself needs controlled filesystem timing. |
+| Observable CI evidence on the merge candidate | Every number in section 7 is a local run. No workflow has executed against any SHA on this branch, which all three review rounds noted. |
+
+Closed since the earlier versions of this table, recorded here so the change is not
+mistaken for an omission: MT-10, MT-11 and MT-13 (section 5C), and the FV-003
+two-connection scenario, which exists in
+`rls-elevation-and-role.integration.spec.ts`.
 
 ## 9. Commit index
 
@@ -966,3 +1057,6 @@ key, ten now-unused keys removed everywhere, and both pseudo-locales regenerated
 | `d9ed31e9` | Answer the phase 2 audit item by item, and record what it missed | this document |
 | `a39a837b` | Record the frontend suite measured at the branch tip | -- |
 | `a0a8a4b0` | Close the four residual defects an independent verification found | FV-001..FV-004, DR-V2 |
+| `eaccf1d6` | Reference-count the elevation window, and ask about SET ROLE reachability | RV-001, DR-R1 |
+| `b326ea96` | Run the integration suites for the first time, and fix what they caught | MT-10, MT-11, MT-13 |
+| `e0b64635` | Record the live-database run, and the two rules it produced | section 5C |
