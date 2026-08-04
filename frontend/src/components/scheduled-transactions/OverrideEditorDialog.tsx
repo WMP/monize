@@ -221,16 +221,25 @@ export function OverrideEditorDialog({
     }
   };
 
-  // An override that already stores a price owns that price. Opening the editor
-  // to change the date must not silently replace it with today's quote: a
-  // stored 250.00 became 123.45 on open, so saving an unrelated field changed
-  // the transaction by -126.55 per share without the user ever choosing to.
-  // The quote is offered as an explicit action instead (see the button below).
+  // A price already on record owns the field. Opening the editor to change the
+  // date must not silently replace it with today's quote: a stored 250.00 became
+  // 123.45 on open, so saving an unrelated field changed the transaction by
+  // -126.55 per share without the user ever choosing to. The quote is offered as
+  // an explicit action instead (see the button below).
   //
-  // Auto-fill is still right when there is nothing to protect -- a brand new
-  // override with no stored price -- which is what makes it match the
-  // new-scheduled-transaction form.
-  const hasStoredPrice = existingOverride?.investmentPrice != null;
+  // "On record" means the occurrence override *or* the base scheduled
+  // transaction. The first version of this guard only checked the override, so a
+  // brand-new date override on a schedule saved at 100.00 still had the quote
+  // applied on open -- the same silent mutation, one path over. The base
+  // schedule's price is stored financial state too: the user entered it, and
+  // this dialog is not where they asked to revalue it.
+  //
+  // Auto-fill therefore survives only where there is genuinely nothing to
+  // protect: no override price and no schedule price, which is the case the
+  // new-scheduled-transaction form is really analogous to.
+  const hasStoredPrice =
+    existingOverride?.investmentPrice != null ||
+    scheduledTransaction.investmentPrice != null;
 
   // Uses the "info from previous render" pattern to avoid violating
   // react-hooks/set-state-in-effect.

@@ -578,10 +578,12 @@ describe('OverrideEditorDialog', () => {
       expect(Number(qtyInput.value)).toBeCloseTo(2.5, 6);
     });
 
-    it('auto-fills Price from latest market price when creating a new override', async () => {
-      // There is no stored override price to protect here, so filling the field
-      // from the quote matches the new-scheduled-transaction form. The cases
-      // below cover the override that already has one.
+    it("keeps the base schedule's saved price when creating a new override", async () => {
+      // This case used to assert the opposite -- that opening a brand-new
+      // override applied the quote. The fixture's schedule is saved at 100.00, so
+      // with a quote of 123.45 merely opening a date override moved 10 shares
+      // from 1,000.00 to 1,234.50: a 234.50 change with no user action. Having an
+      // override row is not what makes a price stored; the user entering it is.
       mockGetSecurityPrices.mockResolvedValue([{ closePrice: '123.45' }]);
       render(
         <OverrideEditorDialog
@@ -590,9 +592,86 @@ describe('OverrideEditorDialog', () => {
         />,
       );
       const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      // Wait until the quote has arrived and been offered, so this cannot pass
+      // merely by asserting before the response lands.
+      await waitFor(() =>
+        expect(screen.getByText('Apply latest price')).toBeInTheDocument(),
+      );
+      expect(Number(priceInput.value)).toBeCloseTo(100, 6);
+      const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
+      expect(Number(totalInput.value.replace(/,/g, ''))).toBeCloseTo(1000, 4);
+    });
+
+    it('auto-fills Price from the quote when no price is on record anywhere', async () => {
+      // The one case where there is genuinely nothing to protect: neither an
+      // override nor the schedule carries a price. This is what the
+      // new-scheduled-transaction form is actually analogous to.
+      mockGetSecurityPrices.mockResolvedValue([{ closePrice: '123.45' }]);
+      render(
+        <OverrideEditorDialog
+          {...defaultProps}
+          scheduledTransaction={{
+            ...investmentTransaction,
+            investmentPrice: null,
+            investmentTotalAmount: null,
+          }}
+        />,
+      );
+      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
       await waitFor(() => {
         expect(Number(priceInput.value)).toBeCloseTo(123.45, 6);
       });
+    });
+
+    it('applies the quote to a new override only when the user asks', async () => {
+      mockGetSecurityPrices.mockResolvedValue([{ closePrice: '123.45' }]);
+      render(
+        <OverrideEditorDialog
+          {...defaultProps}
+          scheduledTransaction={investmentTransaction}
+        />,
+      );
+      const priceInput = screen.getByLabelText('Price per share') as HTMLInputElement;
+      await waitFor(() =>
+        expect(screen.getByText('Apply latest price')).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getByText('Apply latest price'));
+
+      expect(Number(priceInput.value)).toBeCloseTo(123.45, 6);
+      // 10 shares * 123.45, commission 0
+      const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
+      await waitFor(() =>
+        expect(Number(totalInput.value.replace(/,/g, ''))).toBeCloseTo(1234.5, 4),
+      );
+    });
+
+    it('submits the base schedule price unchanged after a description-only edit', async () => {
+      // The payload assertion on the new-override path: the same scenario end to
+      // end, because a preserved field that the submitted payload then overwrites
+      // would still be the defect.
+      mockGetSecurityPrices.mockResolvedValue([{ closePrice: '123.45' }]);
+      mockCreateOverride.mockClear();
+      render(
+        <OverrideEditorDialog
+          {...defaultProps}
+          scheduledTransaction={investmentTransaction}
+        />,
+      );
+      await waitFor(() =>
+        expect(screen.getByText('Apply latest price')).toBeInTheDocument(),
+      );
+
+      fireEvent.change(screen.getByLabelText('Description (optional)'), {
+        target: { value: 'moved a day' },
+      });
+      fireEvent.click(screen.getByText('Save Override'));
+
+      await waitFor(() => expect(mockCreateOverride).toHaveBeenCalled());
+      const payload = mockCreateOverride.mock.calls[0][1];
+      expect(Number(payload.investmentPrice)).toBeCloseTo(100, 6);
+      expect(Number(payload.investmentQuantity)).toBeCloseTo(10, 6);
+      expect(payload.description).toBe('moved a day');
     });
 
     describe('an existing override owns its stored price', () => {

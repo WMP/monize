@@ -33,8 +33,15 @@ export const DEFAULT_BACKUP_CONTAINER_DIR = "/data/backups";
 // File extensions: .json.gz for unencrypted, .mzbe for encrypted Monize backups.
 // Retention enforcement matches both so we can clean up legacy and encrypted
 // files uniformly.
+// The daily name carries the local time as well as the date, because
+// `every6hours` and `every12hours` produce several occurrences per day and a
+// date-only name made them all the same file: four runs at 02:00, 08:00, 14:00
+// and 20:00 wrote the same path, the last replaced the first three, and the
+// settings row and the log still reported four successful backups. The time
+// group is optional so files written before this change are still recognised,
+// retained and counted rather than orphaned.
 const DAILY_FILE_PATTERN =
-  /^monize-backup-daily-(\d{4}-\d{2}-\d{2})\.(json\.gz|mzbe)$/;
+  /^monize-backup-daily-(\d{4}-\d{2}-\d{2})(?:-(\d{2})(\d{2})(\d{2}))?\.(json\.gz|mzbe)$/;
 const WEEKLY_FILE_PATTERN =
   /^monize-backup-weekly-(\d{4}-\d{2}-\d{2})\.(json\.gz|mzbe)$/;
 const MONTHLY_FILE_PATTERN =
@@ -57,6 +64,29 @@ interface BackupFile {
 
 function parseDateString(ds: string): Date | null {
   const date = new Date(ds + "T00:00:00Z");
+  return isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Timestamp for a daily backup filename, from its date plus the optional local
+ * time. Retention sorts newest-first, so without the time every occurrence from
+ * one day would compare equal and which of them survived would depend on
+ * whatever order the filesystem listed them in.
+ *
+ * A legacy date-only name sorts at midnight, i.e. before every timestamped
+ * occurrence from the same date. That is the right way round: it is older.
+ */
+function parseDailyStamp(
+  datePart: string,
+  hh?: string,
+  mm?: string,
+  ss?: string,
+): Date | null {
+  const time =
+    hh !== undefined && mm !== undefined && ss !== undefined
+      ? `${hh}:${mm}:${ss}`
+      : "00:00:00";
+  const date = new Date(`${datePart}T${time}Z`);
   return isNaN(date.getTime()) ? null : date;
 }
 
@@ -414,16 +444,36 @@ export class AutoBackupService {
       );
     }
 
-    const dateStr = this.getLocalDateString(new Date(), timezone);
+    const now = new Date();
+    const dateStr = this.getLocalDateString(now, timezone);
+    const timeStr = this.getLocalTimeString(now, timezone);
     const ext = encryptionPassword ? "mzbe" : "json.gz";
-    const filename = `${BACKUP_FILE_PREFIX}daily-${dateStr}.${ext}`;
+    // Date *and* local time: a sub-daily schedule produces several occurrences a
+    // day, and a date-only name made them one file (see DAILY_FILE_PATTERN).
+    const filename = `${BACKUP_FILE_PREFIX}daily-${dateStr}-${timeStr}.${ext}`;
     const filepath = this.safePath(folderPath, filename);
 
     const payload = await this.backupService.exportToBuffer(
       userId,
       encryptionPassword,
     );
-    await fs.writeFile(filepath, payload);
+    // Write to a temporary name in the same directory, then rename. `rename` is
+    // atomic within a filesystem, so a crash or a full disk part-way through
+    // leaves the temporary file behind rather than a truncated backup sitting at
+    // the real name -- which would look like a valid recovery point and fail on
+    // restore. The temporary name deliberately does not match
+    // DAILY_FILE_PATTERN, so retention neither counts nor deletes it.
+    const tempPath = this.safePath(
+      folderPath,
+      `.${BACKUP_FILE_PREFIX}partial-${dateStr}-${timeStr}.${ext}`,
+    );
+    await fs.writeFile(tempPath, payload);
+    try {
+      await fs.rename(tempPath, filepath);
+    } catch (error) {
+      await fs.unlink(tempPath).catch(() => undefined);
+      throw error;
+    }
 
     this.logger.log(
       `Backup written to ${filepath}${encryptionPassword ? " (encrypted)" : ""}`,
@@ -502,7 +552,12 @@ export class AutoBackupService {
     for (const name of entries) {
       const dailyMatch = DAILY_FILE_PATTERN.exec(name);
       if (dailyMatch) {
-        const date = parseDateString(dailyMatch[1]);
+        const date = parseDailyStamp(
+          dailyMatch[1],
+          dailyMatch[2],
+          dailyMatch[3],
+          dailyMatch[4],
+        );
         if (date) dailyFiles.push({ name, date, tier: "daily" });
         continue;
       }
@@ -586,6 +641,21 @@ export class AutoBackupService {
       day: "2-digit",
     });
     return formatter.format(date);
+  }
+
+  /** Local time as `HHmmss`, for the occurrence part of a daily filename. */
+  private getLocalTimeString(date: Date, timezone: string): string {
+    const formatter = new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    });
+    const parts = formatter.formatToParts(date);
+    const get = (type: string) =>
+      parts.find((p) => p.type === type)?.value ?? "00";
+    return `${get("hour")}${get("minute")}${get("second")}`;
   }
 
   private getLocalDayOfMonth(date: Date, timezone: string): number {

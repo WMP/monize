@@ -27,6 +27,7 @@ jest.mock("fs", () => {
     promises: {
       stat: jest.fn(),
       writeFile: jest.fn(),
+      rename: jest.fn(),
       unlink: jest.fn(),
       readdir: jest.fn(),
       mkdir: jest.fn(),
@@ -36,6 +37,10 @@ jest.mock("fs", () => {
 
 const fsMock = fs as jest.Mocked<typeof fs>;
 const fsPromises = fs.promises as jest.Mocked<typeof fs.promises>;
+
+/** Mirrors the service's DAILY_FILE_PATTERN, including the optional time. */
+const DAILY_PATTERN =
+  /^monize-backup-daily-\d{4}-\d{2}-\d{2}(?:-\d{6})?\.(json\.gz|mzbe)$/;
 
 jest.mock("stream/promises", () => ({
   pipeline: jest.fn().mockResolvedValue(undefined),
@@ -153,6 +158,7 @@ describe("AutoBackupService", () => {
     jest.clearAllMocks();
     (fsPromises.mkdir as unknown as jest.Mock).mockResolvedValue(undefined);
     (fsPromises.writeFile as unknown as jest.Mock).mockResolvedValue(undefined);
+    (fsPromises.rename as unknown as jest.Mock).mockResolvedValue(undefined);
   });
 
   describe("getSettings", () => {
@@ -535,11 +541,13 @@ describe("AutoBackupService", () => {
 
       await service.runManualBackup(userId);
 
-      expect(fsPromises.writeFile).toHaveBeenCalledWith(
+      // The bytes go to a temporary name and are renamed into place, so the
+      // destination of the rename is what the backup actually ends up as.
+      expect(fsPromises.rename).toHaveBeenCalledWith(
+        expect.any(String),
         expect.stringContaining(
           `${DEFAULT_BACKUP_CONTAINER_DIR}/${userId}/monize-backup-daily-`,
         ),
-        expect.any(Buffer),
       );
     });
 
@@ -555,7 +563,7 @@ describe("AutoBackupService", () => {
 
       expect(result.message).toBe("Backup completed successfully");
       expect(result.filename).toMatch(
-        /^monize-backup-daily-\d{4}-\d{2}-\d{2}\.json\.gz$/,
+        /^monize-backup-daily-\d{4}-\d{2}-\d{2}-\d{6}\.json\.gz$/,
       );
       expect(mockSettingsRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -584,7 +592,7 @@ describe("AutoBackupService", () => {
         "secret",
       );
       expect(result.filename).toMatch(
-        /^monize-backup-daily-\d{4}-\d{2}-\d{2}\.mzbe$/,
+        /^monize-backup-daily-\d{4}-\d{2}-\d{2}-\d{6}\.mzbe$/,
       );
     });
 
@@ -659,11 +667,13 @@ describe("AutoBackupService", () => {
 
       await service.handleAutoBackupCron();
 
-      expect(fsPromises.writeFile).toHaveBeenCalledWith(
+      // The bytes go to a temporary name and are renamed into place, so the
+      // destination of the rename is what the backup actually ends up as.
+      expect(fsPromises.rename).toHaveBeenCalledWith(
+        expect.any(String),
         expect.stringContaining(
           `${DEFAULT_BACKUP_CONTAINER_DIR}/${userId}/monize-backup-daily-`,
         ),
-        expect.any(Buffer),
       );
     });
 
@@ -804,6 +814,167 @@ describe("AutoBackupService", () => {
     });
   });
 
+  describe("sub-daily occurrences are distinct recovery points", () => {
+    // `every6hours` and `every12hours` are offered as frequencies, but the
+    // filename was date-only: four runs on one day wrote the same path, the last
+    // replaced the first three, and the settings row plus the log still reported
+    // four successful backups. Per-user directories fixed collisions *between*
+    // owners and did nothing for these.
+    const runInstants = [
+      "2026-04-14T02:00:00Z",
+      "2026-04-14T08:00:00Z",
+      "2026-04-14T14:00:00Z",
+      "2026-04-14T20:00:00Z",
+    ];
+
+    it("writes four distinct files for four runs on the same day", async () => {
+      const settings = createSettings({
+        enabled: true,
+        folderPath: "/backups",
+        frequency: "every6hours",
+        timezone: "UTC",
+        // Retention must not remove any of the four while we count them.
+        retentionDaily: 10,
+        retentionWeekly: 0,
+        retentionMonthly: 0,
+      });
+      mockSettingsRepo.findOne.mockResolvedValue(settings);
+      setupExportMocks();
+
+      const written: string[] = [];
+      for (const instant of runInstants) {
+        jest.useFakeTimers().setSystemTime(new Date(instant));
+        try {
+          (fsPromises.rename as unknown as jest.Mock).mockClear();
+          await service.runManualBackup(userId);
+          written.push(
+            (fsPromises.rename as unknown as jest.Mock).mock
+              .calls[0][1] as string,
+          );
+        } finally {
+          jest.useRealTimers();
+        }
+      }
+
+      expect(written).toHaveLength(4);
+      expect(new Set(written).size).toBe(4);
+      // All four are the same day, distinguished only by the time component.
+      for (const path of written) {
+        expect(path).toMatch(
+          new RegExp(
+            `/backups/${userId}/monize-backup-daily-2026-04-14-\\d{6}\\.json\\.gz$`,
+          ),
+        );
+      }
+      expect(written[0]).toContain("-020000.");
+      expect(written[3]).toContain("-200000.");
+    });
+
+    it("retains the newest occurrences within a single day", async () => {
+      // Retention sorts newest-first. Without the time in the name every
+      // occurrence from one day compared equal, so which survived depended on the
+      // order the filesystem happened to list them in.
+      const settings = createSettings({
+        enabled: true,
+        folderPath: "/backups",
+        retentionDaily: 2,
+        retentionWeekly: 0,
+        retentionMonthly: 0,
+      });
+      mockSettingsRepo.findOne.mockResolvedValue(settings);
+      setupExportMocks();
+      (fsMock.readdirSync as unknown as jest.Mock).mockReturnValue([
+        "monize-backup-daily-2026-04-14-020000.json.gz",
+        "monize-backup-daily-2026-04-14-080000.json.gz",
+        "monize-backup-daily-2026-04-14-140000.json.gz",
+      ]);
+
+      await service.runManualBackup(userId);
+
+      const deleted = (
+        fsMock.unlinkSync as unknown as jest.Mock
+      ).mock.calls.map((c) => c[0] as string);
+      expect(deleted).toContain(
+        `/backups/${userId}/monize-backup-daily-2026-04-14-020000.json.gz`,
+      );
+      expect(deleted).not.toContain(
+        `/backups/${userId}/monize-backup-daily-2026-04-14-140000.json.gz`,
+      );
+    });
+
+    it("still recognises a legacy date-only file, and treats it as the oldest", async () => {
+      // Files written before the time component existed must keep being counted
+      // and retained rather than becoming invisible to retention.
+      const settings = createSettings({
+        enabled: true,
+        folderPath: "/backups",
+        retentionDaily: 1,
+        retentionWeekly: 0,
+        retentionMonthly: 0,
+      });
+      mockSettingsRepo.findOne.mockResolvedValue(settings);
+      setupExportMocks();
+      (fsMock.readdirSync as unknown as jest.Mock).mockReturnValue([
+        "monize-backup-daily-2026-04-14.json.gz",
+        "monize-backup-daily-2026-04-14-140000.json.gz",
+      ]);
+
+      await service.runManualBackup(userId);
+
+      const deleted = (
+        fsMock.unlinkSync as unknown as jest.Mock
+      ).mock.calls.map((c) => c[0] as string);
+      expect(deleted).toContain(
+        `/backups/${userId}/monize-backup-daily-2026-04-14.json.gz`,
+      );
+      expect(deleted).not.toContain(
+        `/backups/${userId}/monize-backup-daily-2026-04-14-140000.json.gz`,
+      );
+    });
+  });
+
+  describe("a partial write never becomes a backup", () => {
+    it("writes to a temporary name and renames it into place", async () => {
+      const settings = createSettings({
+        enabled: true,
+        folderPath: "/backups",
+      });
+      mockSettingsRepo.findOne.mockResolvedValue(settings);
+      setupExportMocks();
+
+      await service.runManualBackup(userId);
+
+      const tempPath = (fsPromises.writeFile as unknown as jest.Mock).mock.calls
+        .map((c) => c[0] as string)
+        .find((path) => path.includes("partial"))!;
+      const [renameFrom, renameTo] = (fsPromises.rename as unknown as jest.Mock)
+        .mock.calls[0] as [string, string];
+
+      expect(tempPath).toBe(renameFrom);
+      // The temporary name must not look like a backup, or retention would count
+      // and could delete it.
+      expect(DAILY_PATTERN.test(tempPath.split("/").pop()!)).toBe(false);
+      expect(DAILY_PATTERN.test(renameTo.split("/").pop()!)).toBe(true);
+    });
+
+    it("removes the temporary file when the rename fails", async () => {
+      const settings = createSettings({
+        enabled: true,
+        folderPath: "/backups",
+      });
+      mockSettingsRepo.findOne.mockResolvedValue(settings);
+      setupExportMocks();
+      (fsPromises.rename as unknown as jest.Mock).mockRejectedValueOnce(
+        new Error("ENOSPC"),
+      );
+
+      await expect(service.runManualBackup(userId)).rejects.toThrow("ENOSPC");
+      expect(fsPromises.unlink).toHaveBeenCalledWith(
+        expect.stringContaining("partial"),
+      );
+    });
+  });
+
   describe("retention policy", () => {
     it("should keep the most recent N daily backups", async () => {
       const settings = createSettings({
@@ -897,7 +1068,7 @@ describe("AutoBackupService", () => {
         await service.runManualBackup(userId);
 
         expect(fsMock.copyFileSync).toHaveBeenCalledWith(
-          `/backups/${userId}/monize-backup-daily-2026-04-14.json.gz`,
+          `/backups/${userId}/monize-backup-daily-2026-04-14-100000.json.gz`,
           `/backups/${userId}/monize-backup-weekly-2026-04-14.json.gz`,
         );
       } finally {
@@ -920,7 +1091,7 @@ describe("AutoBackupService", () => {
         await service.runManualBackup(userId);
 
         expect(fsMock.copyFileSync).toHaveBeenCalledWith(
-          `/backups/${userId}/monize-backup-daily-2026-04-01.json.gz`,
+          `/backups/${userId}/monize-backup-daily-2026-04-01-100000.json.gz`,
           `/backups/${userId}/monize-backup-monthly-26-04.json.gz`,
         );
       } finally {
