@@ -1503,22 +1503,32 @@ export class ScheduledTransactionsService {
    * cron passes what it discovered, and the two frontend call sites pass the
    * `nextDueDate` they are rendering.
    *
-   * The fresh read remains the fallback for a caller that names nothing, because
-   * refusing those outright would break every existing client. Such a caller
-   * gets "post whatever is current", which is the old behaviour and the old
-   * exposure -- documented on the DTO rather than silently kept.
+   * **There is no "post current" fallback**, and that is the point: deriving the
+   * occurrence from a fresh read is exactly what made a retry post the next
+   * period. `expectedNextDueDate` is required at the public DTO, and it is
+   * required here too, because the cron is an internal caller that never touches
+   * the DTO -- a future internal caller that omitted it would silently reopen the
+   * hole. A caller that does not know which occurrence it means has no business
+   * posting a payment, so it gets a `400` rather than a guess.
    *
-   * `test/integration/race-scheduled-post.integration.spec.ts` covers both the
-   * simultaneous and the delayed-replica cases against a real database.
+   * `test/scheduled-post.e2e-spec.ts` proves the HTTP boundary rejects a body
+   * without the field; `test/integration/race-scheduled-post.integration.spec.ts`
+   * covers the simultaneous and delayed-replica cases against a real database.
    */
   async post(
     userId: string,
     id: string,
     postDto?: PostScheduledTransactionDto,
   ): Promise<ScheduledTransaction | null> {
-    const intendedOccurrence = postDto?.expectedNextDueDate
-      ? ensureYMD(postDto.expectedNextDueDate)
-      : ensureYMD((await this.findOne(userId, id)).nextDueDate);
+    if (!postDto?.expectedNextDueDate) {
+      throw new BadRequestException(
+        tr(
+          "errors.scheduled.occurrenceRequired",
+          "The occurrence to post must be named. Reload the schedule and try again.",
+        ),
+      );
+    }
+    const intendedOccurrence = ensureYMD(postDto.expectedNextDueDate);
     return withScopedDb(this.dataSource, () =>
       this.postOccurrence(userId, id, intendedOccurrence, postDto),
     );

@@ -70,10 +70,14 @@ describe('scheduledTransactionsApi', () => {
     expect(apiClient.post).toHaveBeenCalledWith('/scheduled-transactions/st-1/post', { date: '2025-01-15' });
   });
 
-  it('post sends empty object when no data', async () => {
+  it('post sends the occurrence it was given', async () => {
+    // The endpoint is idempotent only because the request names the occurrence
+    // it posts, so `data` is required and forwarded verbatim.
     vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 'st-1' } });
-    await scheduledTransactionsApi.post('st-1');
-    expect(apiClient.post).toHaveBeenCalledWith('/scheduled-transactions/st-1/post', {});
+    await scheduledTransactionsApi.post('st-1', { expectedNextDueDate: '2025-01-15' });
+    expect(apiClient.post).toHaveBeenCalledWith('/scheduled-transactions/st-1/post', {
+      expectedNextDueDate: '2025-01-15',
+    });
   });
 
   it('skip posts to /scheduled-transactions/:id/skip', async () => {
@@ -144,7 +148,7 @@ describe('scheduledTransactionsApi', () => {
     setCache('investments:portfolioSummary', { total: 1 }, 120_000);
 
     vi.mocked(apiClient.post).mockResolvedValue({ data: { id: 'st-1' } });
-    await scheduledTransactionsApi.post('st-1');
+    await scheduledTransactionsApi.post('st-1', { expectedNextDueDate: '2025-01-15' });
 
     expect(getCached('accounts:all:true')).toBeUndefined();
     expect(getCached('investments:portfolioSummary')).toBeUndefined();

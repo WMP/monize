@@ -1,7 +1,12 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ConfigModule } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { ConflictException, Global, Module } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Global,
+  Module,
+} from "@nestjs/common";
 import { I18nService } from "nestjs-i18n";
 import { DataSource } from "typeorm";
 
@@ -173,8 +178,14 @@ describe("Scheduled posting single-occurrence (integration)", () => {
     let outcomes;
     try {
       const running = raceAll([
-        () => withUserContext(userId, () => scheduled.post(userId, id)),
-        () => withUserContext(userId, () => scheduled.post(userId, id)),
+        () =>
+          withUserContext(userId, () =>
+            scheduled.post(userId, id, { expectedNextDueDate: "2026-04-15" }),
+          ),
+        () =>
+          withUserContext(userId, () =>
+            scheduled.post(userId, id, { expectedNextDueDate: "2026-04-15" }),
+          ),
       ]);
       await waitForBlockedBackends(dataSource, 2);
       await gate.release();
@@ -204,8 +215,14 @@ describe("Scheduled posting single-occurrence (integration)", () => {
     );
     try {
       const running = raceAll([
-        () => withUserContext(userId, () => scheduled.post(userId, id)),
-        () => withUserContext(userId, () => scheduled.post(userId, id)),
+        () =>
+          withUserContext(userId, () =>
+            scheduled.post(userId, id, { expectedNextDueDate: "2026-04-15" }),
+          ),
+        () =>
+          withUserContext(userId, () =>
+            scheduled.post(userId, id, { expectedNextDueDate: "2026-04-15" }),
+          ),
       ]);
       await waitForBlockedBackends(dataSource, 2);
       await gate.release();
@@ -227,8 +244,12 @@ describe("Scheduled posting single-occurrence (integration)", () => {
     // worse bug than the one it replaced.
     const id = await seedSchedule();
 
-    await withUserContext(userId, () => scheduled.post(userId, id));
-    await withUserContext(userId, () => scheduled.post(userId, id));
+    await withUserContext(userId, () =>
+      scheduled.post(userId, id, { expectedNextDueDate: "2026-04-15" }),
+    );
+    await withUserContext(userId, () =>
+      scheduled.post(userId, id, { expectedNextDueDate: "2026-05-15" }),
+    );
 
     expect(await postedCount()).toBe(2);
     expect(await nextDueDate(id)).toBe("2026-06-15");
@@ -267,6 +288,22 @@ describe("Scheduled posting single-occurrence (integration)", () => {
         scheduled.post(userId, id, { expectedNextDueDate: "1999-01-01" }),
       ),
     ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(await postedCount()).toBe(0);
+    expect(await nextDueDate(id)).toBe("2026-04-15");
+  });
+
+  it("refuses a post that names no occurrence, and writes nothing", async () => {
+    // R4-001: there is no "post current" fallback. Deriving the occurrence from
+    // a fresh read is what let a retry pay the next period, so a caller that
+    // names nothing is refused before the transaction opens -- the public DTO
+    // makes this a 400, and the service makes it a refusal for internal callers
+    // too, which is what this asserts.
+    const id = await seedSchedule();
+
+    await expect(
+      withUserContext(userId, () => scheduled.post(userId, id, {} as never)),
+    ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(await postedCount()).toBe(0);
     expect(await nextDueDate(id)).toBe("2026-04-15");

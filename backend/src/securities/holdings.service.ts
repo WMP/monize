@@ -94,6 +94,28 @@ export class HoldingsService {
     );
   }
 
+  /**
+   * Public entry to {@link lockHoldingAccounts}, for an operation that mutates
+   * holdings across **more than one** account in the same transaction.
+   *
+   * The single-account mutators lock their one account themselves, and that is
+   * enough on its own -- but not when two of them run back to back on different
+   * accounts. A security transfer creates a `TRANSFER_OUT` (locking the source)
+   * and then a `TRANSFER_IN` (locking the destination), so it acquires the pair
+   * source-then-destination; a simultaneous reverse transfer acquires the same
+   * pair destination-then-source, and the two deadlock (review R4-002). The
+   * caller must take the whole set here first, in the sorted order this uses, so
+   * every multi-account holdings operation acquires them the same way. The
+   * per-leg locks that follow re-take rows already held -- a no-op -- so the
+   * order this establishes is the one that counts.
+   */
+  async lockAccountsForHoldings(
+    m: EntityManager,
+    accountIds: string[],
+  ): Promise<void> {
+    await this.lockHoldingAccounts(m, accountIds);
+  }
+
   async findAll(userId: string, accountId?: string): Promise<Holding[]> {
     return withScopedDb(this.dataSource, (m) => {
       const query = m

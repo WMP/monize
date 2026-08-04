@@ -586,6 +586,10 @@ export function PostTransactionDialog({
     try {
       const postData: PostScheduledTransactionData = isInvestmentKind
         ? {
+            // The occurrence this dialog was opened for. The server refuses with
+            // 409 if the schedule has already moved past it, so a resubmitted
+            // dialog cannot quietly pay the following period instead.
+            expectedNextDueDate: scheduledTransaction.nextDueDate,
             transactionDate,
             description: description || null,
             investmentQuantity:
@@ -596,6 +600,7 @@ export function PostTransactionDialog({
               investmentTotalAmount === '' ? undefined : Number(investmentTotalAmount),
           }
         : {
+            expectedNextDueDate: scheduledTransaction.nextDueDate,
             transactionDate,
             // For a foreign-currency schedule only the biller's amount is sent,
             // so the backend -- not this dialog -- decides what is booked;
@@ -616,11 +621,6 @@ export function PostTransactionDialog({
             isSplit,
             splits: isSplit ? toOverrideSplits(splits) : undefined,
           };
-      // The occurrence this dialog was opened for. The server refuses with 409
-      // if the schedule has already moved past it, so a resubmitted dialog
-      // cannot quietly pay the following period instead.
-      postData.expectedNextDueDate = scheduledTransaction.nextDueDate;
-
       await scheduledTransactionsApi.post(scheduledTransaction.id, postData);
       toast.success(t('postDialog.toasts.posted'));
       onPosted();

@@ -35,6 +35,7 @@ const MANDATORY = [
   "race-account-balance.integration.spec.ts",
   "race-scheduled-post.integration.spec.ts",
   "race-holdings-rebuild.integration.spec.ts",
+  "race-security-transfer.integration.spec.ts",
 ];
 
 function run(dir) {
