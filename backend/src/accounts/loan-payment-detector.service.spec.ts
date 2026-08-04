@@ -3579,5 +3579,32 @@ describe("LoanPaymentDetectorService", () => {
       expect(result[0].interestUnmatched).toBeUndefined();
       expect(result[1].interestUnmatched).toBeUndefined();
     });
+
+    /**
+     * REV-20260803-023: a positive-amount transaction in the interest category
+     * (e.g. a refund or a mis-categorized income entry) must not be summed into
+     * the interest total. Before the fix, Math.abs was applied unconditionally,
+     * so a +$50 refund beside a -$200 charge produced $250 of interest instead
+     * of $200, inflating the inferred rate.
+     */
+    it("excludes positive-amount (refund/income) transactions in the interest category from the interest sum", async () => {
+      const payments = [makePayment("2026-01-05")];
+      transactionRepository.find.mockResolvedValue([
+        // Real interest expense -- must be counted.
+        makeInterestTx({ transactionDate: "2026-01-05", amount: -200 }),
+        // Interest refund / mis-categorized income -- must be skipped, not
+        // added via Math.abs, which would produce 250 instead of 200.
+        makeInterestTx({ transactionDate: "2026-01-05", amount: 50 }),
+      ]);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      // Only the expense contributes: 200, not 200 + 50 = 250.
+      expect(result[0].interestAmount).toBeCloseTo(200, 2);
+    });
   });
 });

@@ -887,6 +887,12 @@ export class LoanPaymentDetectorService {
       // interest expense (a common style) would otherwise have its principal
       // summed into "interest" and inflate the implied rate, so skip transfers.
       if (tx.isTransfer) continue;
+      // A refund or income entry in the interest category has a positive
+      // amount. Including it via Math.abs would inflate the summed interest:
+      // a +$50 refund beside a -$200 charge would produce $250 instead of
+      // $200. Only expense-sign (negative) transactions represent real
+      // interest charges; skip anything with a non-negative amount.
+      if (Number(tx.amount) >= 0) continue;
       const txDate = tx.transactionDate.split("T")[0];
       const nearest = this.nearestPaymentDateKey(txDate, dateKeys, tolerance);
       if (!nearest) continue;
