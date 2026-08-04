@@ -1,5 +1,5 @@
 import { Injectable, Logger, BadRequestException } from "@nestjs/common";
-import { DataSource, LessThanOrEqual } from "typeorm";
+import { DataSource, In, LessThanOrEqual } from "typeorm";
 import { tr } from "../i18n/translate";
 import { todayYMD } from "../common/date-utils";
 import { withScopedDb } from "../common/db/scoped-db";
@@ -142,10 +142,16 @@ export class RateChangeInferenceService {
     const payments =
       account.interestBookingMode === "SPLIT"
         ? consolidated
-        : await this.detector.pairSeparateInterest(
+        : await this.excludeFutureLeakedInterest(
             userId,
             account,
             consolidated,
+            await this.detector.pairSeparateInterest(
+              userId,
+              account,
+              consolidated,
+            ),
+            hadSplitInterestByDate,
           );
     // Per-payment: was *this* payment's interest booked separately (not a
     // split leg)? An account-wide SEPARATE mode always answers yes; otherwise
@@ -206,6 +212,116 @@ export class RateChangeInferenceService {
     }
 
     return this.persistSegments(userId, account, segments, warnings);
+  }
+
+  /**
+   * REV-20260803-024 (second reopen): `pairSeparateInterest` queries its own
+   * candidate separate-interest expenses through `lastPaymentDate + 45
+   * days`, uncapped at today, so a future-dated scheduled/recurring expense
+   * in the loan's interest category can fall inside that tolerance window
+   * and get paired to a historical payment -- exactly the contamination the
+   * main transaction query above was bounded (`transactionDate <=
+   * todayYMD()`) to exclude. That query lives in
+   * `loan-payment-detector.service.ts` and is shared with
+   * `detectPaymentPattern`, which legitimately wants the widest possible
+   * window (it is not reconstructing a balance from `currentBalance`, so a
+   * future entry cannot distort it the same way), so the cutoff cannot be
+   * pushed into the shared query without changing behaviour for that other,
+   * unrelated caller.
+   *
+   * Instead, re-verify every interest amount `pairSeparateInterest`
+   * recovered by pairing (as opposed to a real split leg, which came off the
+   * loan-side transaction itself and was already bounded to today by the
+   * caller): unless a real, non-void, non-transfer transaction in the
+   * interest category, from one of the loan's own source accounts, dated on
+   * or before today, actually falls within the same tolerance window, the
+   * recovered interest is discarded and the payment reverts to its
+   * pre-pairing, principal-only shape -- exactly how `pairSeparateInterest`
+   * itself marks a pairing attempt that found nothing.
+   */
+  private async excludeFutureLeakedInterest(
+    userId: string,
+    account: Account,
+    originalPayments: PaymentRecord[],
+    pairedPayments: PaymentRecord[],
+    hadSplitInterestByDate: Map<string, boolean>,
+  ): Promise<PaymentRecord[]> {
+    const interestCategoryId = account.interestCategoryId;
+    if (!interestCategoryId) return pairedPayments;
+
+    const wasPairedByDate = new Map<string, boolean>();
+    for (const p of pairedPayments) {
+      const dateKey = p.date.split("T")[0];
+      wasPairedByDate.set(
+        dateKey,
+        p.interestAmount != null &&
+          !(hadSplitInterestByDate.get(dateKey) ?? false),
+      );
+    }
+    if (![...wasPairedByDate.values()].some(Boolean)) return pairedPayments;
+
+    const sourceAccountIds = [
+      ...new Set(
+        pairedPayments
+          .map((p) => p.sourceAccountId)
+          .filter((id): id is string => id != null),
+      ),
+    ];
+    if (sourceAccountIds.length === 0) return pairedPayments;
+
+    const realInterestTxns = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(Transaction).find({
+        where: {
+          userId,
+          accountId: In(sourceAccountIds),
+          categoryId: interestCategoryId,
+          transactionDate: LessThanOrEqual(todayYMD()),
+        },
+      }),
+    );
+    // Voided and transfer rows carry no interest evidence, mirroring
+    // pairSeparateInterest's own filtering (a voided row moved no money; a
+    // transfer tagged with the interest category would be principal, not
+    // interest).
+    const realDateKeys = realInterestTxns
+      .filter((tx) => !tx.isVoid && !tx.isTransfer)
+      .map((tx) => tx.transactionDate.split("T")[0]);
+
+    // Same 45-day-each-direction window `pairSeparateInterest` itself
+    // queries with, so this can only reject a pairing that a today-bounded
+    // version of that same query could not have made -- never one it made
+    // correctly.
+    const TOLERANCE_DAYS = 45;
+    const hasRealEvidenceNear = (dateKey: string): boolean => {
+      const target = new Date(`${dateKey}T00:00:00Z`).getTime();
+      return realDateKeys.some((realKey) => {
+        const real = new Date(`${realKey}T00:00:00Z`).getTime();
+        return (
+          Math.abs(target - real) / (1000 * 60 * 60 * 24) <= TOLERANCE_DAYS
+        );
+      });
+    };
+
+    const originalByDate = new Map<string, PaymentRecord>(
+      originalPayments.map((p) => [p.date.split("T")[0], p]),
+    );
+
+    return pairedPayments.map((p) => {
+      const dateKey = p.date.split("T")[0];
+      if (!wasPairedByDate.get(dateKey)) return p;
+      if (hasRealEvidenceNear(dateKey)) return p;
+
+      // No transaction visible as of today corroborates this payment's
+      // recovered interest -- it can only have come from a future-dated
+      // transaction inside pairSeparateInterest's own (uncapped) tolerance
+      // window. Revert to the pre-pairing, principal-only record so it is
+      // treated exactly like a failed pairing attempt, not a rate
+      // observation.
+      const original = originalByDate.get(dateKey);
+      return original
+        ? { ...original, interestUnmatched: true }
+        : { ...p, interestAmount: null, interestUnmatched: true };
+    });
   }
 
   /**

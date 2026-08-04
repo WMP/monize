@@ -501,6 +501,138 @@ describe("RateChangeInferenceService", () => {
     expect(Math.abs(initial.annualRate - 5.5)).toBeLessThanOrEqual(0.05);
   });
 
+  it("discards a rate observation whose interest pairSeparateInterest recovered from a future-dated expense (REV-20260803-024, second reopen)", async () => {
+    // Three historical principal-only payments (interest booked as a
+    // separate categorized expense, not a split leg). The first two have a
+    // real, already-booked interest expense nearby; the latest genuinely has
+    // none -- except a future-dated scheduled/recurring transaction in the
+    // same category and source account, within pairSeparateInterest's own
+    // (uncapped) 45-day tolerance of the latest payment.
+    const today = todayYMD();
+    const addDays = (dateKey: string, days: number): string => {
+      const d = new Date(`${dateKey}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + days);
+      return d.toISOString().split("T")[0];
+    };
+
+    const { records, balanceMap: canonicalBalanceMap } = generateHistory(
+      400000,
+      [{ annualRate: 5.5, payments: 3, paymentAmount: 2500 }],
+    );
+    // Spaced far apart (not the real monthly cadence) so that the earlier
+    // payments' real interest evidence cannot coincidentally fall inside the
+    // 45-day tolerance window around the latest, today-dated payment --
+    // that would confound the scenario this test is isolating.
+    const customDates = [addDays(today, -200), addDays(today, -100), today];
+    const balanceMap = new Map<string, number>();
+    const stripped: PaymentRecord[] = records.map((r, i) => {
+      const date = customDates[i];
+      balanceMap.set(date, canonicalBalanceMap.get(r.date)!);
+      return {
+        ...r,
+        date,
+        amount: r.principalAmount!,
+        interestAmount: null,
+      };
+    });
+
+    detector.buildPaymentRecords.mockResolvedValue(stripped);
+    detector.buildRunningBalanceMap.mockReturnValue(balanceMap);
+    rateChangesService.verifyLoanAccount.mockResolvedValue(
+      makeAccount({ interestCategoryId: "cat-interest" }),
+    );
+
+    const realInterest = [
+      records[0].interestAmount!,
+      records[1].interestAmount!,
+    ];
+    // Stand-in for the real (buggy, pre-fix) pairSeparateInterest: it
+    // recovers genuine interest for the first two payments and -- because
+    // its own query window is bounded by `lastPaymentDate + 45 days` with no
+    // cap at today -- also attaches an interest amount to the latest payment
+    // that in reality came from a transaction dated in the future.
+    const leakedInterest = 1800;
+    detector.pairSeparateInterest.mockImplementation(
+      async (
+        _userId: string,
+        _account: Account,
+        consolidatedRecords: PaymentRecord[],
+      ) =>
+        consolidatedRecords.map((p, i) => {
+          const interestAmount = i < 2 ? realInterest[i] : leakedInterest;
+          return {
+            ...p,
+            amount: p.amount + interestAmount,
+            interestAmount,
+            interestCategoryId: "cat-interest",
+          };
+        }),
+    );
+
+    const realInterestTxn1 = {
+      id: "int-1",
+      transactionDate: customDates[0],
+      categoryId: "cat-interest",
+      accountId: "src-1",
+      status: TransactionStatus.CLEARED,
+    } as Transaction;
+    const realInterestTxn2 = {
+      id: "int-2",
+      transactionDate: customDates[1],
+      categoryId: "cat-interest",
+      accountId: "src-1",
+      status: TransactionStatus.CLEARED,
+    } as Transaction;
+    // The future-dated leak the reopened finding describes: within 45 days
+    // of the latest payment (today), but dated after today, so it must never
+    // be visible to a query bounded at today.
+    const futureInterestTxn = {
+      id: "int-future",
+      transactionDate: addDays(today, 10),
+      categoryId: "cat-interest",
+      accountId: "src-1",
+      status: TransactionStatus.CLEARED,
+    } as Transaction;
+
+    transactionsRepository.find.mockImplementation(
+      (options: {
+        where?: {
+          categoryId?: string;
+          transactionDate?: FindOperator<string>;
+        };
+      }) => {
+        // The verification query added for this fix is the only one with a
+        // `categoryId` clause; the main loan-account transaction query has
+        // none, and its result is irrelevant here since buildPaymentRecords
+        // and buildRunningBalanceMap are mocked directly above.
+        if (options?.where?.categoryId) {
+          const dateOp = options.where.transactionDate;
+          const all = [realInterestTxn1, realInterestTxn2, futureInterestTxn];
+          if (
+            dateOp instanceof FindOperator &&
+            dateOp.type === "lessThanOrEqual"
+          ) {
+            expect(dateOp.value).toBe(today);
+            return Promise.resolve(
+              all.filter((t) => t.transactionDate <= dateOp.value),
+            );
+          }
+          return Promise.resolve(all);
+        }
+        return Promise.resolve([]);
+      },
+    );
+
+    // Once the future-leaked interest is discarded, only 2 genuine
+    // observations remain -- below MIN_USABLE_PAYMENTS -- so detection must
+    // report insufficient data rather than persist a rate inferred in part
+    // from a transaction that has not happened yet.
+    await expect(service.detectAndPersist(userId, accountId)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
   it("keeps newPaymentAmount for a split segment even when a later segment books interest separately (REV-20260803-005)", async () => {
     // A history that starts with split $500 installments (interest as a
     // split leg, produced by generateHistory) and later changes to a plain
