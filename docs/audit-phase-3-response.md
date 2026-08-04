@@ -7,10 +7,13 @@ was deliberately left alone.
 - **Branch:** `claude/detailed-error-review-4pbug7`
 - **Audit items answered:** 16 confirmed findings, 12 design risks, 22 missing
   tests, 7 documentation issues, 19 rejected false positives
-- **Follow-up review answered:** F3R-001…008 (see section 10)
-- **Defects fixed:** 15 of the 16 confirmed findings, 6 of the 7 new remediation
-  findings, plus 17 the audits did not find
-- **Still open:** 1 confirmed finding (P3-009 / F3R-008), with a written plan
+- **Follow-up reviews answered:** F3R-001…008 (section 10), F3RR-001…005 and
+  F3RR-RISK-001 (section 11)
+- **Defects fixed:** 15 of the 16 confirmed findings, 6 of the 7 first-review
+  findings, 4 of the 5 re-review findings and its LOW residual, plus 17 the audits
+  did not find
+- **Still open:** 1 confirmed finding (P3-009 / F3R-008 / F3RR-005), with a written
+  plan, and one partial (large-table streaming — see section 11)
 
 Every verdict below names the commit that carries it, so a reader can check the
 claim rather than take it. Where a fix departed from the remedy the audit
@@ -560,7 +563,7 @@ than taken as a pass.
 
 ## 9. Commit inventory
 
-The 29 commits that changed code, configuration or the repository's own rules,
+The 32 commits that changed code, configuration or the repository's own rules,
 oldest first, so nothing is unaccounted for.
 
 | Commit | Subject | Answers |
@@ -594,6 +597,9 @@ oldest first, so nothing is unaccounted for.
 | `35d103c1` | Delete the attachment bytes a restore displaced, after it commits | F3R-006 |
 | `f6504c73` | Make the backup memory ceilings smaller than the pod they protect | F3R-002, F3R-003, extra 16 |
 | `8863f104` | Say what is actually wrong when a deployment has no backup storage | F3R-001, extra 17 |
+| `7fe0eedb` | Stop the uploaded storage_key from being an authorization capability | F3RR-001, F3RR-002 |
+| `2b5dd399` | Bound the earliest allocation; stop loading discarded tables | F3RR-003, F3RR-004 (partial) |
+| `a9ac6f1d` | Tell the user there is no backup storage before they configure a schedule | F3RR-RISK-001 |
 
 Three of those carry no audit finding of their own: `405f3e79` keeps the
 pseudo-locale gate green, and `009b3eac` and `99b41963` convert prose rules that
@@ -601,7 +607,7 @@ had already been violated into checks. They are here because the branch's
 recurring cause was a rule nothing enforced.
 
 Not rows above: the commits that only change **this document**
-(`4c42be22`, `774c646d`, `a0819951` and any that follow). A file cannot list its own
+(`4c42be22`, `774c646d`, `a0819951`, `e20a65b2`, `ab2e420f` and any that follow). A file cannot list its own
 commit and stay accurate — amending to insert the hash changes the hash — so the
 branch log is the record for those, and every other hash in this file resolves. If
 you are checking the inventory against `git log`, that difference is the whole of
@@ -663,3 +669,71 @@ reason:
 - *Process-level tests with cgroup memory enforcement* (F3R-002, F3R-003) and
   *`helm template` plus a pod-level smoke test* (F3R-001). Neither is possible in
   this environment — no Docker, no cluster — and both remain the right verification.
+
+---
+
+## 11. The remediation re-review (F3RR-001…005, F3RR-RISK-001)
+
+A third review re-checked the branch at `8863f104` and reported two HIGH and three
+MEDIUM defects plus a LOW residual. Each was verified against the code first.
+
+| ID | Severity | Verdict | Commit |
+|---|---|---|---|
+| F3RR-001 | HIGH | Confirmed, fixed | `7fe0eedb` |
+| F3RR-002 | HIGH | Confirmed, fixed | `7fe0eedb` |
+| F3RR-003 | MEDIUM | Confirmed, fixed | `2b5dd399` |
+| F3RR-004 | MEDIUM | Confirmed, **partly** fixed | `2b5dd399` |
+| F3RR-005 | MEDIUM | Same as P3-009 — **still open** | — |
+| F3RR-RISK-001 | LOW | Confirmed, fixed | `a9ac6f1d` |
+
+Both HIGH findings were real and both were mine.
+
+**F3RR-001 was the most serious defect on this branch.** The restore derived an
+external attachment's destination key from `row.storage_key`, and a key it did not
+recognise as a remapped id was treated as legacy or operator-chosen: skip the load,
+skip the checksum, skip the copy. So a crafted backup could name *any* syntactically
+valid key — including another tenant's — and the row was inserted under the
+uploader's `user_id` without a byte being read. Downloading their own metadata
+returned somebody else's receipt. `assertSafeStorageKey` proves a key is a safe
+*string*; nothing proved it was *theirs*. Both keys now come from the id remap, and
+`storage_key` is overwritten with the derived value for every provider.
+
+**F3RR-002 was a regression I introduced two commits earlier.** The F3R-006 cleanup
+deleted every displaced key, and for a backup taken from the same account its
+*source* objects are that account's displaced objects — so the first restore
+deleted the artifact's source bytes, and a second restore of the same file skipped
+every attachment and then deleted the copy the first restore had made. Content gone
+from every reachable key, restore still reporting success.
+`stageAttachmentObjects` said "old-key objects are deliberately left alone: the same
+backup may be restored more than once" the entire time. Two halves of one change
+with opposite intentions about the same object, and no test ran a second restore.
+
+**F3RR-004 is fixed in part and open in part, stated here rather than implied.**
+Its concrete example was right: the support export loaded base64 `attachment_blobs`
+it always discards — potentially the whole of a 400 MiB pod — because the ceiling is
+consulted after the load. `collectRawExport` now takes a `skipTables` set. What is
+**not** done is the rest: large tables are still read whole through `manager.query`
+rather than a cursor, and there is no per-row budget, so one enormous table is
+bounded only by the ceiling that follows it. That is a rearchitecture of the read
+path, not a limit.
+
+Three things the review got right that I had not seen, and one thing about my
+tests:
+
+- Its F3R-001 correction was accepted in the previous round and it re-confirmed it.
+- It correctly identified that my "never deletes a key the restore just staged"
+  test could not prove its case, because the staged key is generated dynamically
+  and the mocked displaced list never contained it.
+- It correctly identified that the new tests ran only one restore.
+
+Writing the replacements found a further problem with my own work: the first
+crafted-key test I wrote asserted that the restore never *reads* the victim key —
+which the vulnerable code also never does, because skipping the read *was* the bug.
+It passed against the defect. It now asserts the row is staged normally, and fails
+against it.
+
+Verification the review asked for and this environment cannot provide: a live
+two-user crafted-key restore against real local/S3 storage, a process-level cgroup
+test with peak-RSS measurement, `helm template` plus a pod-level write test, and
+the browser OIDC step-up flow. All four remain the right way to verify these, and
+none of them ran here.
