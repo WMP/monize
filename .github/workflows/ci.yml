@@ -314,6 +314,10 @@ jobs:
       - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
         with:
           persist-credentials: false
+          # The migration-prefix check compares this branch's migrations against
+          # the base branch's; a shallow clone has no base ref and the check
+          # reports that it skipped rather than passing silently.
+          fetch-depth: 0
       - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 24
@@ -325,6 +329,13 @@ jobs:
       # install command at a chart directory that does not exist.
       - name: Verify documented paths and Helm defaults match the manifests
         run: node scripts/check-docs-manifests.mjs
+      # A migration prefix that collides with, or sorts below, one already on the
+      # base branch is applied out of order on every database that recorded the
+      # newer filename -- and `database/CLAUDE.md` stating the rule in prose did
+      # not stop a remediation branch from taking a prefix main had meanwhile
+      # used. The ordering half needs the base ref, hence fetch-depth 0.
+      - name: Verify migration prefixes are unique and sort last
+        run: node scripts/check-migration-prefixes.mjs
 
   zizmor-scan:
     name: Workflow Security Scan (zizmor)

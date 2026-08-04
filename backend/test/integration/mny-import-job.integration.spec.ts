@@ -2,13 +2,14 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { ConflictException } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { DataSource } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
 
 import { ImportJob } from "@/import/mny/entities/import-job.entity";
 import { ImportStagedFile } from "@/import/mny/entities/import-staged-file.entity";
 import {
   JOB_STALLED_ERROR_KEY,
   MnyImportJobService,
+  MnyImportSlotLostError,
 } from "@/import/mny/mny-import-job.service";
 import { MnyStagingService } from "@/import/mny/mny-staging.service";
 import { MnyPasswordIncorrectError } from "@/import/mny/mny-errors";
@@ -421,6 +422,153 @@ describe("MnyImportJobService (integration)", () => {
 
       const job = await asUser(userA, () => jobs.findOne(userA, jobId));
       expect(job!.progress).toBeNull();
+    });
+  });
+
+  /**
+   * The slot lease, against real transactions.
+   *
+   * The one-active-job index stops a *new* start from racing. It does not stop a
+   * job that already claimed its slot from losing it mid-flight, and two things
+   * do exactly that: the migration that retires pre-existing duplicates on a
+   * database that raced before the index existed, and `reapStaleJobs` failing a
+   * `running` job whose heartbeat lapsed. Every backend container runs migrations
+   * at start-up and the Helm StatefulSet rolls pods one at a time, so a new pod
+   * can retire a job an old pod is still importing.
+   *
+   * What made that dangerous was where the status was checked. `complete()` runs
+   * *after* the body, so the financial rows are committed by the time anything
+   * notices -- a retired duplicate could still double a user's history. The lease
+   * check runs as the last statement of the writing transaction instead, so the
+   * refusal rolls those rows back.
+   */
+  describe("assertStillHoldsSlot", () => {
+    /** A table the body can write into, standing in for the imported rows. */
+    const writeMarker = (manager: EntityManager, jobId: string) =>
+      manager.query(
+        `UPDATE import_jobs SET error_detail = 'wrote-financial-rows' WHERE id = $1`,
+        [jobId],
+      );
+
+    const detailOf = async (jobId: string): Promise<string | null> => {
+      const rows = await asUser(userA, () =>
+        withScopedDb(dataSource, (manager) =>
+          manager.query(`SELECT error_detail FROM import_jobs WHERE id = $1`, [
+            jobId,
+          ]),
+        ),
+      );
+      return rows[0]?.error_detail ?? null;
+    };
+
+    it("passes while the job is running", async () => {
+      const jobId = await newJob();
+      await asUser(userA, () => jobs.claim(jobId));
+
+      await expect(
+        asUser(userA, () =>
+          withScopedDb(dataSource, (manager) =>
+            jobs.assertStillHoldsSlot(manager, jobId),
+          ),
+        ),
+      ).resolves.toBeUndefined();
+    });
+
+    it("rolls the body's writes back when the job was retired mid-flight", async () => {
+      const jobId = await newJob();
+      await asUser(userA, () => jobs.claim(jobId));
+
+      // Retire it the way migration 135 does, from outside the body's transaction.
+      await asUser(userA, () =>
+        withScopedDb(dataSource, (manager) =>
+          manager.query(
+            `UPDATE import_jobs SET status = 'failed', error_key = $2,
+                    retryable = true WHERE id = $1`,
+            [jobId, JOB_STALLED_ERROR_KEY],
+          ),
+        ),
+      );
+
+      await expect(
+        asUser(userA, () =>
+          withScopedDb(dataSource, async (manager) => {
+            await writeMarker(manager, jobId);
+            await jobs.assertStillHoldsSlot(manager, jobId);
+          }),
+        ),
+      ).rejects.toBeInstanceOf(MnyImportSlotLostError);
+
+      // The whole transaction rolled back, so the write is gone. Before the lease
+      // check existed this was the point at which imported rows were committed.
+      expect(await detailOf(jobId)).toBeNull();
+    });
+
+    it("refuses a job that is still pending -- it never claimed the slot", async () => {
+      const jobId = await newJob();
+
+      await expect(
+        asUser(userA, () =>
+          withScopedDb(dataSource, (manager) =>
+            jobs.assertStillHoldsSlot(manager, jobId),
+          ),
+        ),
+      ).rejects.toBeInstanceOf(MnyImportSlotLostError);
+    });
+
+    it("refuses a job row that no longer exists", async () => {
+      // Distinguishable from "not yours": both are a lost slot, and neither may
+      // let the body commit.
+      await expect(
+        asUser(userA, () =>
+          withScopedDb(dataSource, (manager) =>
+            jobs.assertStillHoldsSlot(
+              manager,
+              "00000000-0000-0000-0000-000000000000",
+            ),
+          ),
+        ),
+      ).rejects.toBeInstanceOf(MnyImportSlotLostError);
+    });
+
+    it("does not resurrect a retired job through complete()", async () => {
+      // The second line of defence: `complete` carries AND status = 'running',
+      // so a row the migration marked failed cannot later read as completed.
+      const jobId = await newJob();
+      await asUser(userA, () => jobs.claim(jobId));
+      await asUser(userA, () => jobs.fail(jobId, "x", "retired", true));
+
+      await asUser(userA, () => jobs.complete(jobId, EMPTY_RESULT));
+
+      const job = await asUser(userA, () => jobs.findOne(userA, jobId));
+      expect(job!.status).toBe("failed");
+      expect(job!.result).toBeNull();
+    });
+
+    it("leaves the retiring party's explanation on the row", async () => {
+      // A lost slot must not overwrite error_key with the generic failure key:
+      // the row already says why it was retired.
+      const jobId = await newJob();
+
+      const ran = await asUser(userA, () =>
+        jobs.runClaimed(userA, jobId, async (context) => {
+          await asUser(userA, () =>
+            withScopedDb(dataSource, (manager) =>
+              manager.query(
+                `UPDATE import_jobs SET status = 'failed', error_key = $2,
+                        retryable = true WHERE id = $1`,
+                [context.jobId, JOB_STALLED_ERROR_KEY],
+              ),
+            ),
+          );
+          throw new MnyImportSlotLostError(context.jobId, "failed");
+        }),
+      );
+
+      const job = await asUser(userA, () => jobs.findOne(userA, jobId));
+      expect(ran).toBe(true);
+      expect(job!.status).toBe("failed");
+      expect(job!.errorKey).toBe(JOB_STALLED_ERROR_KEY);
+      expect(job!.retryable).toBe(true);
     });
   });
 

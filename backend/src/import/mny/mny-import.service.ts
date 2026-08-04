@@ -115,8 +115,14 @@ export class MnyImportService {
   ) {}
 
   /**
-   * Validates, optionally wipes, creates the job and starts it in the
-   * background. Returns the job row the wizard polls.
+   * In order: validate the staged file, acquire this user's single active-import
+   * slot, then optionally re-authenticate and wipe, then start the background
+   * worker. Returns the job row the wizard polls.
+   *
+   * The order is the safety property, not an implementation detail. The job row
+   * is the lock, so it is taken before anything destructive; a summary that reads
+   * "optionally wipes, creates the job" describes the race this method was
+   * changed to close, and a maintainer following it would reopen it.
    */
   async start(userId: string, input: StartImportInput): Promise<ImportJob> {
     const staged = await this.staging.findInfo(userId, input.stagedFileId);
@@ -571,7 +577,7 @@ export class MnyImportService {
         accounts.idByKey,
       );
 
-      return {
+      const result = {
         accountIdByKey: accounts.idByKey,
         securityIdByHandle: securities.idByHandle,
         accountsCreated: accounts.created,
@@ -590,6 +596,16 @@ export class MnyImportService {
           ...investments.affectedAccountIds,
         ]),
       };
+
+      // Last statement before commit: if this job no longer holds the user's
+      // import slot -- retired by the one-active-job migration on a database that
+      // raced before the index existed, or reaped as stale -- throwing here rolls
+      // every row above back. Checking the status anywhere else, including in
+      // `complete()`, happens after these rows are already committed, which is
+      // how a retired duplicate could still double a user's financial history.
+      await this.jobs.assertStillHoldsSlot(manager, context.jobId);
+
+      return result;
     });
   }
 

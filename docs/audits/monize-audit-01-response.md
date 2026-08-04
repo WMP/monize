@@ -202,8 +202,14 @@ adding a scope there is what makes the checks cover it:
 - `hasScope`/`requireScope` recognise each one; `MCP_RESOURCE_SCOPES` is exactly the prefixed set and
   advertises nothing a PAT could not be issued.
 - **Two scanning guards**, because the defect was documents disagreeing with code: `schema.sql`'s
-  column comment must enumerate exactly `API_SCOPES`, and no `requireScope(..., "x")` anywhere under
-  `docs/` may name an unissuable scope. Both fail when the original wording is restored.
+  column comment must enumerate exactly `API_SCOPES`, and no scope named as the second argument of a
+  `requireScope` call anywhere under `docs/` may be one that cannot be issued. Both fail when the
+  original wording is restored.
+
+  This paragraph originally embedded a literal example of such a call, and the guard flagged its own
+  description -- correctly. A document that writes the call form is making the claim, whether or not
+  it means to; the fix is to describe the shape in prose rather than to teach the guard to ignore
+  documents about itself.
 - A third check ties the frontend's `SCOPE_OPTIONS` to the same list — a scope the backend accepts
   but the UI never offers is unreachable for anyone not hand-crafting requests.
 

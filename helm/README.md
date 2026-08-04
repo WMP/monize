@@ -97,15 +97,6 @@ ingress:
 | `backend.image.repository` | Image repository | `kenlasko/monize/backend` |
 | `backend.image.tag` | Image tag | `latest` |
 | `backend.image.pullPolicy` | Image pull policy | `IfNotPresent` |
-
-> **`latest` with `IfNotPresent` does not pick up new builds.** The two defaults
-> combine into a deployment that keeps whatever image the node already cached: a
-> rolling restart re-uses it, so replicas can end up running different builds of
-> the same tag. Pin an immutable tag or a digest (`--set
-> backend.image.tag=v1.13.0`) for anything you intend to upgrade predictably, or
-> set `pullPolicy=Always` if you genuinely want to track `latest`. This is
-> stated rather than changed because flipping either default silently alters
-> upgrade behaviour for existing installs.
 | `backend.replicas` | Number of replicas | `1` |
 | `backend.service.port` | Service port | `3001` |
 | `backend.service.type` | Service type | `ClusterIP` |
@@ -115,6 +106,15 @@ ingress:
 | `backend.readinessProbe` | Readiness probe config | `/api/v1/health/ready` |
 | `backend.env.*` | Backend environment variables | See values.yaml |
 | `backend.mnyImport.MNY_IMPORT_LIMIT_MB` | Largest Microsoft Money (.mny) file the import wizard accepts | `300` |
+
+> **`latest` with `IfNotPresent` does not pick up new builds.** The two defaults
+> combine into a deployment that keeps whatever image the node already cached: a
+> rolling restart re-uses it, so replicas can end up running different builds of
+> the same tag. Pin an immutable tag or a digest (`--set
+> backend.image.tag=v1.13.0`) for anything you intend to upgrade predictably, or
+> set `pullPolicy=Always` if you genuinely want to track `latest`. This is
+> stated rather than changed because flipping either default silently alters
+> upgrade behaviour for existing installs.
 
 #### Memory for Microsoft Money imports
 

@@ -10,7 +10,7 @@
 // the backend memory limit all disagreed with `helm/values.yaml`, while the
 // templates render the real values.
 //
-// Prose cannot be type-checked, so this is the check. Five rules:
+// Prose cannot be type-checked, so this is the check. Six rules:
 //
 //   1. every repository path a documented command names must exist;
 //   2. no documented `docker compose` command may omit `-f`, because there is no
@@ -18,7 +18,8 @@
 //   3. every Helm parameter documented with a default must have that default in
 //      helm/values.yaml;
 //   4. every Compose stack on disk appears in the README's tree;
-//   5. every `npm run <script>` a document offers exists in a package.json.
+//   5. every `npm run <script>` a document offers exists in a package.json;
+//   6. every Markdown table row actually renders inside a table.
 //
 // Exits non-zero with the offending lines. Requires nothing but Node.
 
@@ -206,6 +207,61 @@ function checkComposeInventory() {
 }
 
 // ---------------------------------------------------------------------------
+// Rule 6: a table row must actually be inside a table
+// ---------------------------------------------------------------------------
+
+// Rule 3 reads pipe-prefixed lines without rendering Markdown, so it happily
+// compared documented Helm defaults in rows that no longer render as a table at
+// all: a blockquote inserted between `backend.image.pullPolicy` and the rest of
+// the backend parameters ended the table, and every row after it displayed as
+// plain text. The checker passed; an operator reading the rendered page lost
+// replicas, ports, resources, probes and the import limit out of the table.
+//
+// A pipe row belongs to a table only if a header separator (`|---|`) appeared
+// since the last block boundary. Blank lines inside a table are already illegal
+// in GitHub-flavoured Markdown, so the boundary set is: blank line, blockquote,
+// heading, fence, or list item.
+const TABLE_SEPARATOR = /^\s*\|?[\s:|-]*-{3,}[\s:|-]*\|?\s*$/;
+const PIPE_ROW = /^\s*\|/;
+const BLOCK_BOUNDARY = /^\s*(?:$|>|#{1,6}\s|```|[-*+]\s|\d+\.\s)/;
+
+function checkTableStructure(relative, lines) {
+  let inTable = false;
+  let fenced = false;
+
+  lines.forEach((text, index) => {
+    if (/^\s*```/.test(text)) {
+      fenced = !fenced;
+      inTable = false;
+      return;
+    }
+    if (fenced) return;
+
+    if (TABLE_SEPARATOR.test(text) && index > 0 && PIPE_ROW.test(lines[index - 1])) {
+      inTable = true;
+      return;
+    }
+    if (PIPE_ROW.test(text)) {
+      // The header row itself precedes the separator; accept it by looking ahead.
+      const isHeader =
+        index + 1 < lines.length && TABLE_SEPARATOR.test(lines[index + 1]);
+      if (!inTable && !isHeader) {
+        fail(
+          relative,
+          index + 1,
+          'table row outside a table -- a block element ended the table above it, ' +
+            'so this row renders as plain text',
+        );
+      }
+      return;
+    }
+    if (BLOCK_BOUNDARY.test(text)) {
+      inTable = false;
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Rule 5: every `npm run <script>` a document offers actually exists
 // ---------------------------------------------------------------------------
 
@@ -275,6 +331,7 @@ for (const relative of DOCS) {
   const lines = readDoc(relative);
   if (!lines) continue;
   checkCommands(relative, lines);
+  checkTableStructure(relative, lines);
   if (dirname(relative) === 'helm') checkHelmDefaults(relative, lines, values);
 }
 

@@ -18,6 +18,16 @@
 -- newest active job per user and fail the rest retryably: the staged bytes are
 -- untouched, so the wizard can offer Retry. A no-op on a database that never
 -- raced, and on every re-apply.
+--
+-- This UPDATE alone does NOT stop a worker. Every backend container runs
+-- migrations at start-up and the Helm StatefulSet rolls pods one at a time, so a
+-- new pod can retire a job an *old* pod is still importing -- and status is not
+-- something the worker consults. What makes the retirement binding is
+-- `MnyImportJobService.assertStillHoldsSlot`, called as the last statement of the
+-- transaction that writes the imported rows: the retired worker sees `failed`
+-- there and its whole write rolls back. Without it this cleanup would rewrite the
+-- coordination row while the duplicate import committed anyway, which is the
+-- doubled history the index exists to prevent.
 UPDATE import_jobs AS job
    SET status = 'failed',
        error_key = 'mnyJobStalled',

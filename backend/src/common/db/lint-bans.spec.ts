@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { findProhibitedGuidance } from "./prohibited-primitive-guidance";
 
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
 const ESLINT_CONFIG = path.join(REPO_ROOT, "backend/eslint.config.mjs");
@@ -66,25 +67,63 @@ describe("RLS lint bans are documented where contributors read", () => {
   );
 
   it("no instruction file positively recommends a banned primitive", () => {
-    // The failure mode was an imperative: "must use a QueryRunner transaction".
-    // Historical and negative mentions are legitimate and common in these files,
-    // so this matches a recommending verb followed by an actual call, and again
-    // never by the bare method name.
-    const calls = bannedCalls.map((name) => `${name}\\(`).join("|");
-    // Same line, within a short distance, and the *call* form -- these files are
-    // full of markdown punctuation ("MUST use a `createQueryRunner()`
-    // transaction"), so requiring a word boundary right before the identifier
-    // let the exact original wording through.
-    const recommendation = new RegExp(
-      String.raw`(?:must|should|always|prefer)[^\n]{0,40}?(?:${calls}|@InjectRepository)`,
-      "i",
-    );
-    const offenders = instructionFiles.filter((relative) =>
-      recommendation.test(
+    const offenders = instructionFiles.flatMap((relative) =>
+      findProhibitedGuidance(
         fs.readFileSync(path.join(REPO_ROOT, relative), "utf8"),
-      ),
+        bannedCalls,
+      ).map((hit) => `${relative}: ${hit.token} -- ${hit.excerpt}`),
     );
     expect(offenders).toEqual([]);
+  });
+
+  /**
+   * The classifier itself, against fixed examples.
+   *
+   * Scanning the live documents proves only that today's wording passes, which is
+   * how the first version of this check shipped unable to detect the exact
+   * sentence its own comment named: "must use a `QueryRunner` transaction"
+   * contains no call expression, so a call-form-only pattern missed it. The
+   * negative cases matter just as much -- these files name every banned
+   * primitive in order to ban it, and a classifier that cannot tell a
+   * prohibition from a recommendation fails on correct documentation.
+   */
+  describe("recommendation classifier", () => {
+    const detect = (text: string): number =>
+      findProhibitedGuidance(text, bannedCalls).length;
+
+    it.each([
+      // The exact historical CONTRIBUTING.md rule this guard exists for.
+      "Any operation touching multiple tables or doing read-modify-write must use a `QueryRunner` transaction.",
+      "Any operation touching multiple tables or doing read-modify-write MUST use a `createQueryRunner()` transaction.",
+      "You should open a QueryRunner and start a transaction.",
+      "For multi-table writes, use `dataSource.transaction(async (m) => ...)`.",
+      "Services must inject their repositories with @InjectRepository.",
+      "Always prefer a QueryRunner for read-modify-write.",
+    ])("flags: %s", (text) => {
+      expect(detect(text)).toBeGreaterThan(0);
+    });
+
+    it.each([
+      // Every one of these appears, in substance, in the live instruction files.
+      "Never inject a repository with `@InjectRepository`, call `createQueryRunner()`, call `dataSource.transaction()`, or use a bare `dataSource.query(...)`.",
+      "helpers take an `EntityManager`, never a `QueryRunner`.",
+      "There are no `QueryRunner`s left in `src/`.",
+      "If you find a `createQueryRunner()` in a diff, it is new and wrong.",
+      "one withScopedDb replaces the QueryRunner block.",
+      "`dataSource.transaction()` looks equivalent and is not: it opens a transaction outside the active scoped manager.",
+      "The QueryRunner pattern is obsolete; it was removed in R1-R7.",
+      // The noun, not the method. This is why the call form is required for
+      // `transaction`: matching it bare fired on correct documentation.
+      "Any operation that touches multiple tables MUST run in a single transaction.",
+    ])("does not flag: %s", (text) => {
+      expect(detect(text)).toBe(0);
+    });
+
+    it("is not vacuous -- it needs the ban list to detect anything", () => {
+      const sentence = "You must use a QueryRunner transaction.";
+      expect(findProhibitedGuidance(sentence, bannedCalls, [])).toEqual([]);
+      expect(detect(sentence)).toBeGreaterThan(0);
+    });
   });
 
   it("does not claim a counting ratchet that no longer exists", () => {

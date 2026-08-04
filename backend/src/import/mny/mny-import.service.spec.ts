@@ -273,6 +273,10 @@ describe("MnyImportService", () => {
       discard: jest.fn().mockResolvedValue(undefined),
       runClaimed: jest.fn().mockResolvedValue(true),
       fail: jest.fn().mockResolvedValue(undefined),
+      // The lease check the write transaction ends with. Resolving means "still
+      // holds the slot"; the refusal path is a property of real transactions and
+      // is asserted in test/integration/mny-import-job.integration.spec.ts.
+      assertStillHoldsSlot: jest.fn().mockResolvedValue(undefined),
     };
     postProcessing = { run: jest.fn().mockResolvedValue(undefined) };
     usersService = { deleteData: jest.fn().mockResolvedValue(undefined) };

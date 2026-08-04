@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { DataSource, QueryFailedError } from "typeorm";
+import { DataSource, EntityManager, QueryFailedError } from "typeorm";
 import { tr } from "../../i18n/translate";
 import {
   runOutsideActiveScopedManager,
@@ -42,6 +42,20 @@ export const JOB_STALLED_ERROR_KEY = "mnyJobStalled";
 
 /** i18n key for a failure with no more specific parse error. */
 export const JOB_FAILED_ERROR_KEY = "mnyImportFailed";
+
+/**
+ * Thrown when a job discovers, inside its own write transaction, that it no
+ * longer holds its user's import slot. Not a parse failure: retrying is exactly
+ * the right thing to offer, since the staged bytes are untouched.
+ */
+export class MnyImportSlotLostError extends Error {
+  constructor(jobId: string, status: string) {
+    super(
+      `Import job ${jobId} no longer holds the import slot (status ${status})`,
+    );
+    this.name = "MnyImportSlotLostError";
+  }
+}
 
 /** PostgreSQL SQLSTATE for a unique violation. */
 const UNIQUE_VIOLATION = "23505";
@@ -195,6 +209,48 @@ export class MnyImportJobService {
   }
 
   /**
+   * Verifies this job still holds its user's import slot, **inside the caller's
+   * transaction**, and locks the row so the answer cannot change before commit.
+   *
+   * `claim` protects the start of a job; this protects the end of one. A job can
+   * lose its slot after claiming it, and in both cases the row is rewritten by
+   * something that cannot stop the worker:
+   *
+   *  - the one-active-job migration retires older duplicates on a database that
+   *    raced before the index existed. Every backend container runs migrations at
+   *    start-up and the Helm StatefulSet rolls pods one at a time, so a new pod
+   *    can retire a job an *old* pod is still importing;
+   *  - `reapStaleJobs` fails a `running` job whose heartbeat lapsed -- a real
+   *    possibility for a slow import on a loaded pod, not only for a dead one.
+   *
+   * Neither changes what the worker does. Status alone therefore cannot protect
+   * the data: by the time a terminal write happens the financial rows are already
+   * committed. Calling this as the last statement of the transaction that writes
+   * them makes the refusal roll them back instead, which is the repository's
+   * standing rule -- a rejected command must not already have written.
+   *
+   * `FOR UPDATE` matters as much as the predicate: it serializes this check
+   * against a concurrent retirement, so the loser of that race sees the committed
+   * outcome rather than a snapshot taken before it.
+   *
+   * @param manager the EntityManager of the ACTIVE transaction whose writes this
+   *   is guarding -- checked in a separate transaction it guarantees nothing.
+   */
+  async assertStillHoldsSlot(
+    manager: EntityManager,
+    jobId: string,
+  ): Promise<void> {
+    const rows: Array<{ status: string }> = await manager.query(
+      `SELECT status FROM import_jobs WHERE id = $1 FOR UPDATE`,
+      [jobId],
+    );
+    const status = rows[0]?.status ?? "missing";
+    if (status !== "running") {
+      throw new MnyImportSlotLostError(jobId, status);
+    }
+  }
+
+  /**
    * Moves a job from `pending` to `running`, atomically.
    *
    * The `WHERE status = 'pending'` is the whole concurrency control: whichever
@@ -257,13 +313,17 @@ export class MnyImportJobService {
     await runOutsideActiveScopedManager(() =>
       withScopedDb(this.dataSource, (manager) =>
         manager.query(
+          // `AND status = 'running'`: a job retired while its body ran must not
+          // be flipped back to completed. `assertStillHoldsSlot` normally makes
+          // this unreachable by rolling the body back first; this is the second
+          // line of defence, and it keeps the audit trail honest either way.
           `UPDATE import_jobs
               SET status = 'completed',
                   result = $2::jsonb,
                   progress = NULL,
                   completed_at = CURRENT_TIMESTAMP,
                   retryable = false
-            WHERE id = $1`,
+            WHERE id = $1 AND status = 'running'`,
           [jobId, JSON.stringify(result)],
         ),
       ),
@@ -329,6 +389,12 @@ export class MnyImportJobService {
     } catch (error) {
       const isParseFailure = error instanceof MnyImportError;
       const detail = error instanceof Error ? error.message : String(error);
+      if (error instanceof MnyImportSlotLostError) {
+        // The row already says why, written by whatever retired it. Overwriting
+        // it here would replace that explanation with a generic failure.
+        this.logger.warn(detail);
+        return true;
+      }
       await this.fail(
         jobId,
         isParseFailure ? error.code : JOB_FAILED_ERROR_KEY,
