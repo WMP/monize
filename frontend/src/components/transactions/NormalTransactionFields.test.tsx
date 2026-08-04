@@ -5,10 +5,17 @@ import { Account } from '@/types/account';
 import { Payee } from '@/types/payee';
 import { useTourStore } from '@/store/tourStore';
 
-vi.mock('@/lib/format', () => ({
-  getCurrencySymbol: (code: string) => (code === 'USD' ? 'US$' : '$'),
-  getDecimalPlacesForCurrency: () => 2,
-}));
+// Only the presentational bits are stubbed; the money helpers come from the real
+// module. A hand-written mock rounding at cents passes every 4 dp assertion over
+// broken code, which is how the amount-precision defect stayed green.
+vi.mock('@/lib/format', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/format')>();
+  return {
+    ...actual,
+    getCurrencySymbol: (code: string) => (code === 'USD' ? 'US$' : '$'),
+    getDecimalPlacesForCurrency: () => 2,
+  };
+});
 
 vi.mock('@/components/ui/Combobox', () => ({
   Combobox: ({ label, options, value, onChange, onCreateNew, error, placeholder, allowCustomValue: _allowCustomValue, initialDisplayValue: _initialDisplayValue }: any) => (

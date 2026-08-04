@@ -20,6 +20,8 @@ import { exchangeRatesApi } from '@/lib/exchange-rates';
 import {
   FX_RATE_DISPLAY_DECIMALS,
   getCurrencySymbol,
+  moneyEquals,
+  roundMoney,
   roundToCents,
   roundToDecimals,
 } from '@/lib/format';
@@ -116,10 +118,12 @@ function reconciledEditAffectsReconciliation(
   // Mirror the form's defaultValues normalization: transfers always load an
   // absolute amount, everything else keeps its sign.
   const originalAmount = original.isTransfer
-    ? Math.abs(Math.round(Number(original.amount) * 100) / 100)
-    : Math.round(Number(original.amount) * 100) / 100;
-  const amountChanged =
-    Math.round(Number(data.amount) * 100) !== Math.round(originalAmount * 100);
+    ? Math.abs(roundMoney(Number(original.amount)))
+    : roundMoney(Number(original.amount));
+  // Compared at STORAGE precision. At cents, an unchanged 10.0048 read as
+  // 10.0000 on both sides and the comparison agreed by accident -- but the form
+  // then submitted 10.0000, so a description edit silently wrote away 0.0048.
+  const amountChanged = !moneyEquals(Number(data.amount), originalAmount);
   return dateChanged || amountChanged;
 }
 
@@ -289,9 +293,12 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           payeeName: initSource.payeeName || '',
           categoryId: initSource.categoryId || '',
           // For transfers, always show absolute amount
+          // Loaded at the precision the database stores (4 dp), not at cents:
+          // rounding here is what turned a stored 10.0048 into a 10.0000 the form
+          // would save back over it.
           amount: initSource.isTransfer
-            ? Math.abs(Math.round(Number(initSource.amount) * 100) / 100)
-            : Math.round(Number(initSource.amount) * 100) / 100,
+            ? Math.abs(roundMoney(Number(initSource.amount)))
+            : roundMoney(Number(initSource.amount)),
           currencyCode: initSource.currencyCode,
           description: initSource.description || '',
           referenceNumber: initSource.referenceNumber || '',
@@ -552,7 +559,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
   // the source is a split, the form switches into split mode and the splits
   // state is restored so the user gets back the same split breakdown.
   const handleQuickFill = (source: Transaction) => {
-    const amount = Math.round(Number(source.amount) * 100) / 100;
+    const amount = roundMoney(Number(source.amount));
     setValue('accountId', source.accountId, { shouldDirty: true, shouldValidate: true });
     setValue('transactionDate', getLocalDateString(), { shouldDirty: true, shouldValidate: true });
     setValue('payeeId', source.payeeId || undefined, { shouldDirty: true });

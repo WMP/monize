@@ -318,11 +318,26 @@ ordinary category child shares the parent's sign, because -150 and +50 sum to
 -100 and record 50.00 of income inside an expense that every sum-only check
 passes. Transfer and investment children are the explicit exceptions.
 
-**A test that mocks `@/lib/format` mocks the thing under test.** The split and
-transaction-form suites hand-rolled a `@/lib/format` double that rounded at
-cents, so every four-decimal assertion would have passed over a component doing
-the wrong thing. Use `importOriginal` and override only what is genuinely
-awkward.
+**A test that mocks `@/lib/format` mocks the thing under test.** Eleven suites
+hand-rolled a `@/lib/format` double that rounded at cents or formatted without a
+thousands separator, so every four-decimal assertion passed over components doing
+the wrong thing — and in three files the expectations had been written against the
+mock's output rather than the component's. Use `importOriginal` (or
+`vi.importActual`) and override only what is genuinely awkward, normally just
+`getCurrencySymbol`. `src/test/ui-conventions.test.ts` fails on a wholesale
+replacement.
+
+**An amount field bound to a stored value passes `decimalPlaces`.** `CurrencyInput`
+defaults to 2, money is `decimal(20,4)`, and the default silently rounds: a stored
+10.0048 opened as 10.0000 and any unrelated edit saved that back, while the split
+children beside it were already edited and validated at 4dp — so the same
+untouched record could also be rejected as unbalanced. Pass
+`decimalPlaces={moneyFractionDigits([value])}` so ordinary amounts still read as
+cents and a four-decimal one is shown in full. Load the value with `roundMoney`,
+not `roundToCents`, and compare amounts with `moneyEquals` rather than at cents —
+the reconciled-edit check compared rounded values, so an unchanged 10.0048 looked
+unchanged for the wrong reason. `src/test/ui-conventions.test.ts` scans the
+amount-bound fields; it found three the first fix had missed.
 
 ### An unknown value must not render as a measured zero
 

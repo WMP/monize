@@ -13,14 +13,20 @@ vi.mock('@/lib/budgets', () => ({
 }));
 
 // Mock format
-vi.mock('@/lib/format', () => ({
-  formatCurrency: vi.fn((amount: number) => `$${amount.toFixed(2)}`),
-  getDecimalPlacesForCurrency: vi.fn(() => 2),
-  roundToDecimals: vi.fn((v: number) => v),
-  gainLossColor: vi.fn((v: number) =>
+// Only the presentational stubs; every money helper comes from the real module.
+// A hand-written replacement rounding at cents is fiction that passes -- it makes
+// 4 dp assertions hold over code that is losing precision.
+vi.mock('@/lib/format', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/format')>();
+  return {
+    ...actual,
+    formatCurrency: vi.fn((amount: number) => `$${amount.toFixed(2)}`),
+    getDecimalPlacesForCurrency: vi.fn(() => 2),
+    gainLossColor: vi.fn((v: number) =>
     v >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400',
   ),
-}));
+  };
+});
 
 // Mock errors
 vi.mock('@/lib/errors', () => ({

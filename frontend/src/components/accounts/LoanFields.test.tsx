@@ -32,20 +32,19 @@ vi.mock('@/lib/accounts', () => ({
   },
 }));
 
-vi.mock('@/lib/format', () => ({
-  getCurrencySymbol: () => '$',
-  getDecimalPlacesForCurrency: () => 2,
-  roundToCents: (v: number) => Math.round(v * 100) / 100,
-  roundToDecimals: (v: number, d: number) => { const f = Math.pow(10, d); return Math.round(v * f) / f; },
-  formatAmount: (v: number | undefined | null) => (v === undefined || v === null || isNaN(v)) ? '' : (Math.round(v * 100) / 100).toFixed(2),
-  formatAmountWithCommas: (v: number | undefined | null) => (v === undefined || v === null || isNaN(v)) ? '' : (Math.round(v * 100) / 100).toFixed(2),
-  parseAmount: (input: string) => { const n = parseFloat(input.replace(/[^0-9.-]/g, '')); return isNaN(n) ? undefined : Math.round(n * 100) / 100; },
-  filterCurrencyInput: (input: string) => input.replace(/[^0-9.-]/g, ''),
-  filterCalculatorInput: (input: string) => input.replace(/[^0-9.+\-*/() ]/g, ''),
-  hasCalculatorOperators: (input: string) => /[+*/()]/.test(input.replace(/^-/, '')) || /(?!^)-/.test(input),
-  evaluateExpression: vi.fn().mockImplementation(() => undefined),
-  formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
-}));
+// Only the presentational stubs; every money helper comes from the real module.
+// A hand-written replacement rounding at cents is fiction that passes -- it makes
+// 4 dp assertions hold over code that is losing precision.
+vi.mock('@/lib/format', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/format')>();
+  return {
+    ...actual,
+    getCurrencySymbol: () => '$',
+    getDecimalPlacesForCurrency: () => 2,
+    evaluateExpression: vi.fn().mockImplementation(() => undefined),
+    formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
+  };
+});
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({

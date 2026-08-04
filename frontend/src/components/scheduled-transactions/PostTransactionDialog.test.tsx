@@ -35,20 +35,17 @@ vi.mock('@/lib/logger', () => ({
   }),
 }));
 
-vi.mock('@/lib/format', () => ({
-  FX_RATE_DISPLAY_DECIMALS: 6,
-  getCurrencySymbol: () => '$',
-  getDecimalPlacesForCurrency: () => 2,
-  roundToCents: (v: number) => Math.round(v * 100) / 100,
-  roundToDecimals: (v: number, d: number) => { const f = Math.pow(10, d); return Math.round(v * f) / f; },
-  formatAmount: (v: number) => (v ?? 0).toFixed(2),
-  formatAmountWithCommas: (v: number) => v?.toLocaleString() ?? '',
-  parseAmount: (v: string) => parseFloat(v) || 0,
-  filterCurrencyInput: (v: string) => v,
-  filterCalculatorInput: (v: string) => v,
-  hasCalculatorOperators: () => false,
-  evaluateExpression: (v: string) => parseFloat(v) || 0,
-}));
+// Only the presentational bits are stubbed; the money helpers come from the real
+// module. A hand-written mock rounding at cents passes every 4 dp assertion over
+// broken code, which is how the amount-precision defect stayed green.
+vi.mock('@/lib/format', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/format')>();
+  return {
+    ...actual,
+    getCurrencySymbol: () => '$',
+    getDecimalPlacesForCurrency: () => 2,
+  };
+});
 
 const mockGetRateForDate = vi.fn().mockResolvedValue(null);
 
@@ -1164,8 +1161,11 @@ describe('PostTransactionDialog', () => {
         />,
       );
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
+      // The real `formatAmountWithCommas` shows cents; the hand-written mock this
+      // spec used to carry rendered a bare `toLocaleString()`, so these values were
+      // asserted against the mock rather than against the component.
       // 10 * 100 + 0 commission = 1000
-      expect(totalInput.value).toBe('1,000');
+      expect(totalInput.value).toBe('1,000.00');
     });
 
     it('seeds Total Price from the scheduled total amount when set', () => {
@@ -1181,7 +1181,7 @@ describe('PostTransactionDialog', () => {
         />,
       );
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
-      expect(totalInput.value).toBe('750');
+      expect(totalInput.value).toBe('750.00');
     });
 
     it('updates Total Price when Quantity is changed', () => {
@@ -1195,7 +1195,7 @@ describe('PostTransactionDialog', () => {
       fireEvent.change(qtyInput, { target: { value: '5' } });
       const totalInput = screen.getByLabelText('Total Price') as HTMLInputElement;
       // 5 * 100 = 500
-      expect(totalInput.value).toBe('500');
+      expect(totalInput.value).toBe('500.00');
     });
 
     it('updates Quantity when Total Price is changed', () => {
@@ -1252,7 +1252,7 @@ describe('PostTransactionDialog', () => {
       await waitFor(() => {
         expect(Number(qtyInput.value)).toBeCloseTo(1000 / 123.45, 4);
       });
-      expect(totalInput.value).toBe('1,000');
+      expect(totalInput.value).toBe('1,000.00');
     });
 
     it('fetches latest price for the security', async () => {
@@ -1362,7 +1362,7 @@ describe('PostTransactionDialog', () => {
       expect(Number(qtyInput.value)).toBe(4);
       expect(Number(priceInput.value)).toBe(250);
       // 4 * 250 = 1000, commission 0
-      expect(totalInput.value).toBe('1,000');
+      expect(totalInput.value).toBe('1,000.00');
     });
 
     it('shows the cash account going to zero (not NaN) for a BUY whose market price changes the quantity', async () => {
@@ -1430,7 +1430,7 @@ describe('PostTransactionDialog', () => {
       );
       const totalInput = screen.getByLabelText('Total Amount') as HTMLInputElement;
       // Override value 125, not base value 50
-      expect(totalInput.value).toBe('125');
+      expect(totalInput.value).toBe('125.00');
     });
 
     it('falls back to base values when override has null investment fields', () => {

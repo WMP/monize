@@ -408,3 +408,102 @@ describe("nothing interactive is nested inside a button", () => {
     expect(/<InfoTooltip[\s/>]/.test(body)).toBe(true);
   });
 });
+
+describe("a stored money amount is edited at storage precision", () => {
+  /**
+   * `CurrencyInput` defaults to 2 decimal places, and money is stored as
+   * `decimal(20,4)`. A field bound to a stored amount that takes the default
+   * shows 10.0048 as 10.0000 and saves that back on any unrelated edit -- the
+   * loss is silent, and the split children beside it are already validated at
+   * 4 dp, so the same untouched record can also be rejected as unbalanced.
+   *
+   * Every amount field bound to a persisted transaction/schedule amount passes
+   * `decimalPlaces`, normally `moneyFractionDigits([...])` so ordinary values
+   * still read as cents. This scans for the shape rather than the value: a
+   * `CurrencyInput` whose `value=` mentions an amount must also mention
+   * `decimalPlaces`.
+   */
+  const AMOUNT_BOUND_FILES = [
+    "/src/components/transactions/NormalTransactionFields.tsx",
+    "/src/components/transactions/SplitTransactionFields.tsx",
+    "/src/components/scheduled-transactions/ScheduledTransactionForm.tsx",
+    "/src/components/scheduled-transactions/OverrideEditorDialog.tsx",
+  ];
+
+  const currencyInputs = (content: string): string[] =>
+    content.match(/<CurrencyInput[\s\S]*?\/>/g) ?? [];
+
+  it("passes decimalPlaces on every amount-bound CurrencyInput", () => {
+    const offenders: string[] = [];
+
+    for (const path of AMOUNT_BOUND_FILES) {
+      const content = sources[path];
+      expect(content, `${path} is missing -- update this list`).toBeDefined();
+      for (const element of currencyInputs(content)) {
+        const bindsAnAmount = /value=\{[^}]*[Aa]mount/.test(element);
+        if (!bindsAnAmount) continue;
+        if (element.includes("decimalPlaces")) continue;
+        offenders.push(`${path}: ${element.split("\n")[1]?.trim() ?? element}`);
+      }
+    }
+
+    // Add `decimalPlaces={moneyFractionDigits([<the value>])}`.
+    expect(offenders).toEqual([]);
+  });
+
+  it("still finds the amount fields it is meant to police", () => {
+    // A renamed prop or a switch to another input would leave the check above
+    // passing over an empty set.
+    const bound = AMOUNT_BOUND_FILES.flatMap((path) =>
+      currencyInputs(sources[path] ?? "").filter((element) =>
+        /value=\{[^}]*[Aa]mount/.test(element),
+      ),
+    );
+    expect(bound.length).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe("a money helper is never re-implemented in a mock", () => {
+  /**
+   * `vi.mock('@/lib/format', ...)` must go through `importOriginal`.
+   *
+   * A hand-written replacement for a money helper is fiction that passes: four
+   * of these rounded at cents (`Math.round(v * 100) / 100`) or formatted with a
+   * bare `toLocaleString()`, so every 4 dp assertion in those specs held over
+   * code that was losing 0.0048, and one file's expectations had been written
+   * against the mock's output rather than the component's. Stub the
+   * presentational bits on top of the real module; never re-derive the maths.
+   */
+  const FORMAT_MOCK = /vi\.mock\(\s*['"]@\/lib\/format['"]\s*,\s*([^)]*)/;
+
+  it("has no @/lib/format mock that replaces the module wholesale", () => {
+    const offenders = Object.entries(sources)
+      .filter(([path]) => /\.test\.tsx?$/.test(path))
+      .filter(([, content]) => {
+        const match = FORMAT_MOCK.exec(content);
+        // `importOriginal` or an explicit `vi.importActual` both build on the real
+        // module; only a wholesale replacement is the problem.
+        return (
+          match !== null &&
+          !match[1].includes("importOriginal") &&
+          !content.includes("vi.importActual<typeof import('@/lib/format')>")
+        );
+      })
+      .map(([path]) => path);
+
+    // Use:
+    //   vi.mock('@/lib/format', async (importOriginal) => {
+    //     const actual = await importOriginal<typeof import('@/lib/format')>();
+    //     return { ...actual, getCurrencySymbol: () => '$' };
+    //   });
+    expect(offenders).toEqual([]);
+  });
+
+  it("still finds the format mocks it is meant to police", () => {
+    const mocks = Object.entries(sources).filter(
+      ([path, content]) =>
+        /\.test\.tsx?$/.test(path) && FORMAT_MOCK.test(content),
+    );
+    expect(mocks.length).toBeGreaterThanOrEqual(5);
+  });
+});
