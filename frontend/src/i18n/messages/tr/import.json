@@ -499,6 +499,7 @@
     "mnyUnsupportedVersion": "Bu dosya Money 97 veya 98 ile oluşturulmuş. Ücretsiz Money Plus Sunset sürümünde bir kez açıp kaydedin, ardından sonucu içe aktarın.",
     "mnyPasswordRequired": "Bu Money dosyası parola korumalı.",
     "mnyPasswordIncorrect": "Bu parola Money dosyasını açmıyor.",
-    "mnyUnreadableDatabase": "Bu Money dosyasının şifresi çözüldü ancak içeriği okunamadı. Dosya bozuk olabilir."
+    "mnyUnreadableDatabase": "Bu Money dosyasının şifresi çözüldü ancak içeriği okunamadı. Dosya bozuk olabilir.",
+    "mnyJobStalledAfterCommit": "Iceri aktarma, verileri zaten yazildiktan sonra yanit vermeyi birakti. Hesaplariniz ve islemleriniz yerinde, bu nedenle bu iceri aktarma tekrar calistirilmamalidir -- verilerinizi kontrol edin ve yalnizca eksik olani aktarin."
   }
 }

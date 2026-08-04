@@ -35,6 +35,8 @@ export function lockedTransactionRow(
     isSplit: false,
     linkedTransactionId: null,
     parentTransactionId: null,
+    payeeId: null,
+    payeeName: null,
     ...overrides,
   };
 }

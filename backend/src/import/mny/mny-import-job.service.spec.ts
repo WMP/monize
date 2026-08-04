@@ -11,6 +11,7 @@ import {
   JOB_HEARTBEAT_INTERVAL_MS,
   JOB_STALE_AFTER_MS,
   JOB_STALLED_ERROR_KEY,
+  JOB_COMMITTED_STALLED_ERROR_KEY,
   MnyImportJobService,
   isActiveJobConflict,
   returnedRows,
@@ -453,17 +454,60 @@ describe("MnyImportJobService", () => {
   });
 
   describe("reapStaleJobs", () => {
-    it("fails running jobs whose heartbeat went stale, and marks them retryable", async () => {
+    it("fails running jobs whose heartbeat went stale", async () => {
       await service.reapStaleJobs();
 
       const statement = sql(query.mock.calls[0]);
       expect(statement).toContain("status = 'running'");
       expect(statement).toContain("heartbeat_at < CURRENT_TIMESTAMP");
-      expect(statement).toContain("retryable = true");
       expect(query.mock.calls[0][1]).toEqual([
         String(JOB_STALE_AFTER_MS),
         JOB_STALLED_ERROR_KEY,
+        JOB_COMMITTED_STALLED_ERROR_KEY,
       ]);
+    });
+
+    it("derives retryability from data_committed, not from being a reap", async () => {
+      // The regression this test previously enshrined: it asserted
+      // `retryable = true` outright. Dying between the import transaction's
+      // commit and `complete()` is exactly what the reaper exists to clean up, so
+      // hard-coding retryable there routes around the one rule that stops a
+      // retry inserting every imported row a second time (audit FV4-001).
+      await service.reapStaleJobs();
+
+      const statement = sql(query.mock.calls[0]);
+      expect(statement).toContain("retryable = (data_committed = false)");
+      expect(statement).not.toContain("retryable = true");
+    });
+
+    it("gives a committed-then-stalled job its own error key", async () => {
+      // The two states need different advice: one can be retried and the other
+      // must not be, so they cannot share a message.
+      await service.reapStaleJobs();
+
+      const statement = sql(query.mock.calls[0]);
+      expect(statement).toContain("WHEN data_committed THEN $3");
+      expect(statement).toContain("not safe to repeat");
+    });
+
+    it("reports a committed stalled job at error level, naming it", async () => {
+      // Its rows are in the database but the job never reported a result, so the
+      // user sees a failure over data that actually landed. An operator has to
+      // know which job that was.
+      query.mockResolvedValue([
+        [
+          { id: "job-1", data_committed: false },
+          { id: "job-2", data_committed: true },
+        ],
+        2,
+      ]);
+      const error = jest.spyOn(service["logger"], "error");
+
+      await service.reapStaleJobs();
+
+      expect(error).toHaveBeenCalledWith(expect.stringContaining("job-2"));
+      expect(error.mock.calls[0][0]).toContain("NOT retryable");
+      expect(error.mock.calls[0][0]).not.toContain("job-1");
     });
 
     it("fails pending jobs no worker ever claimed, measured from creation", async () => {
@@ -477,7 +521,13 @@ describe("MnyImportJobService", () => {
     });
 
     it("logs the jobs it reaped", async () => {
-      query.mockResolvedValue([[{ id: "job-1" }, { id: "job-2" }], 2]);
+      query.mockResolvedValue([
+        [
+          { id: "job-1", data_committed: false },
+          { id: "job-2", data_committed: false },
+        ],
+        2,
+      ]);
       const warn = jest.spyOn(service["logger"], "warn");
 
       await service.reapStaleJobs();

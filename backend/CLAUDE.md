@@ -152,6 +152,36 @@ statement, a lock taken before the read, a unique key -- and if you cannot point
 at one, the comment is the bug. The root `CLAUDE.md` has the protocol; this is the
 habit that keeps it honest.
 
+## Deleting a ledger row and reversing its balance is one function, not four lines
+
+`removeLockedTransactionLeg` (`src/transactions/remove-transaction-leg.ts`) is the
+only sanctioned way to delete a `transactions` row that contributed to
+`accounts.current_balance`. Never open-code the sequence, and never reach for
+`manager.remove(entity)` on such a row: `remove` deletes by primary key and
+reports nothing, so two concurrent removals each reverse the amount while one row
+goes away. The helper deletes with `m.delete(Transaction, { id, userId })`, reads
+`affected`, and reverses only when this call is the one that removed the row --
+also skipping a `VOID` row, which contributed nothing, and recomputing rather than
+delta-ing a future-dated one.
+
+The row also has to be **locked and re-read** first
+(`lockTransactionRow` / `lockTransactionRows`), because the amount reversed must
+be the amount the delete removes, not whatever a snapshot held. This exact shape
+survived three separate fixes and reappeared a fourth time in split removal
+(audit FV4-002), so it is now a scanning test:
+`common/db/derived-state-writers.guard.spec.ts` fails on any new file that calls
+`accountsService.updateBalance` beside a bare `remove()` of a transaction-shaped
+row.
+
+**A row a request builds *from* the parent needs the locked parent's fields too.**
+A split's transfer counterpart and its embedded investment rows carry the parent's
+account, date and payee. Passing the caller's pre-lock copy of those writes rows
+describing a parent that has already moved -- silently, with nothing to reconcile
+against. `LockedTransactionRow` therefore carries `payeeId`/`payeeName` alongside
+`accountId` and `transactionDate`: take every fallback from it, and re-validate
+the split sum against `locked.amount` even when the request does not change the
+amount.
+
 ## `repo.save(loadedEntity)` writes the columns you did not touch
 
 `save` on an entity read a moment ago looks like "update this field". It is not.

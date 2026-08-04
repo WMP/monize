@@ -499,6 +499,7 @@
     "mnyUnsupportedVersion": "Este arquivo foi criado no Money 97 ou 98. Abra e salve o arquivo uma vez na edição gratuita Money Plus Sunset e depois importe o resultado.",
     "mnyPasswordRequired": "Este arquivo do Money é protegido por senha.",
     "mnyPasswordIncorrect": "Essa senha não abre o arquivo do Money.",
-    "mnyUnreadableDatabase": "Este arquivo do Money foi descriptografado, mas não foi possível ler o conteúdo. Ele pode estar danificado."
+    "mnyUnreadableDatabase": "Este arquivo do Money foi descriptografado, mas não foi possível ler o conteúdo. Ele pode estar danificado.",
+    "mnyJobStalledAfterCommit": "A importacao parou de responder depois que seus dados ja tinham sido gravados. Suas contas e transacoes estao no lugar, portanto esta importacao nao deve ser repetida -- confira seus dados e importe apenas o que faltar."
   }
 }

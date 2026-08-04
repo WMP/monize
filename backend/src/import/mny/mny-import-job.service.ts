@@ -41,6 +41,15 @@ export const JOB_HEARTBEAT_INTERVAL_MS = 60 * 1000;
 /** i18n key for a job the reaper gave up on. */
 export const JOB_STALLED_ERROR_KEY = "mnyJobStalled";
 
+/**
+ * i18n key for a stalled job whose import transaction had already committed.
+ *
+ * A separate key because the two states need different advice: the ordinary
+ * stall can be retried, and this one must not be -- the data is already in the
+ * database and a retry would insert all of it again.
+ */
+export const JOB_COMMITTED_STALLED_ERROR_KEY = "mnyJobStalledAfterCommit";
+
 /** i18n key for a failure with no more specific parse error. */
 export const JOB_FAILED_ERROR_KEY = "mnyImportFailed";
 
@@ -471,9 +480,19 @@ export class MnyImportJobService {
    * short of a DBA. Five minutes is far longer than the microseconds the real
    * gap takes.
    *
-   * Marked retryable: the staged file is untouched, so the wizard can offer Retry
-   * rather than making the user upload 200 MB again. Idempotent across replicas,
-   * because the predicate only matches rows still in the state being reaped.
+   * Marked retryable **only when nothing was committed**. The staged file is
+   * untouched, so the wizard can normally offer Retry rather than making the user
+   * upload 200 MB again -- but a `running` job that had already set
+   * `data_committed` wrote every source row before the process died, and retrying
+   * it inserts them all a second time under fresh UUIDs. `fail()` derives
+   * retryability from the same column for the same reason; a reaper that hard-coded
+   * `retryable = true` would route around that rule at exactly the moment it
+   * matters, because dying between the commit and `complete()` is precisely what
+   * the reaper exists to clean up (audit FV4-001). A `pending` job never entered
+   * the import transaction, so it stays retryable unconditionally.
+   *
+   * Idempotent across replicas, because the predicate only matches rows still in
+   * the state being reaped.
    */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async reapStaleJobs(): Promise<void> {
@@ -483,13 +502,18 @@ export class MnyImportJobService {
           const result = await manager.query(
             `UPDATE import_jobs
                 SET status = 'failed',
-                    error_key = $2,
+                    error_key = CASE
+                      WHEN data_committed THEN $3
+                      ELSE $2
+                    END,
                     error_detail = CASE
+                      WHEN data_committed
+                        THEN 'Import worker stopped after its data was written; the import is not safe to repeat'
                       WHEN status = 'running'
                         THEN 'Import worker stopped reporting progress'
                       ELSE 'Import was never picked up by a worker'
                     END,
-                    retryable = true,
+                    retryable = (data_committed = false),
                     progress = NULL,
                     completed_at = CURRENT_TIMESTAMP
               WHERE (
@@ -500,17 +524,34 @@ export class MnyImportJobService {
                       status = 'pending'
                   AND created_at < CURRENT_TIMESTAMP - ($1::text || ' milliseconds')::interval
                     )
-              RETURNING id`,
-            [String(JOB_STALE_AFTER_MS), JOB_STALLED_ERROR_KEY],
+              RETURNING id, data_committed`,
+            [
+              String(JOB_STALE_AFTER_MS),
+              JOB_STALLED_ERROR_KEY,
+              JOB_COMMITTED_STALLED_ERROR_KEY,
+            ],
           );
-          return returnedRows<{ id: string }>(result).map((row) => row.id);
+          return returnedRows<{ id: string; data_committed: boolean }>(result);
         }),
       );
 
       if (reaped.length > 0) {
+        const committed = reaped.filter((row) => row.data_committed);
         this.logger.warn(
-          `Reaped ${reaped.length} stalled import job(s): ${reaped.join(", ")}`,
+          `Reaped ${reaped.length} stalled import job(s): ${reaped
+            .map((row) => row.id)
+            .join(", ")}`,
         );
+        if (committed.length > 0) {
+          // An operator has to know about these: the rows are in the database but
+          // the job never reported its result, so the user sees a failure over
+          // data that actually landed.
+          this.logger.error(
+            `${committed.length} stalled import job(s) had already committed their data and are NOT retryable: ${committed
+              .map((row) => row.id)
+              .join(", ")}`,
+          );
+        }
       }
     } catch (error) {
       this.logger.warn(

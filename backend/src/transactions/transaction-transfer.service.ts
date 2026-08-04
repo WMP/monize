@@ -25,7 +25,8 @@ import { roundMoney } from "../common/round.util";
 import { stripHtml } from "../common/sanitization.util";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
-import { lockTransactionRows } from "../common/db/locks";
+import { lockTransactionRow, lockTransactionRows } from "../common/db/locks";
+import { removeLockedTransactionLeg } from "./remove-transaction-leg";
 import { withSystemContext } from "../common/db/with-context";
 
 export interface TransferResult {
@@ -817,21 +818,16 @@ export class TransactionTransferService {
 
         for (const leg of [linkedLeg, ownLeg]) {
           if (!leg) continue;
-          const isFuture = isTransactionInFuture(leg.transactionDate);
           affectedAccountIds.add(leg.accountId);
-          const removed = await m.delete(Transaction, {
-            id: leg.id,
+          // Conditional delete, reverse only what this call removed, VOID rows
+          // reverse nothing, future-dated rows recompute. Shared with split
+          // removal so the sequence exists once (see remove-transaction-leg.ts).
+          await removeLockedTransactionLeg(
+            m,
+            leg,
             userId,
-          });
-          if ((removed.affected ?? 0) === 0) continue;
-          if (isFuture) {
-            await this.accountsService.recalculateCurrentBalance(leg.accountId);
-          } else if (leg.status !== TransactionStatus.VOID) {
-            await this.accountsService.updateBalance(
-              leg.accountId,
-              -leg.amount,
-            );
-          }
+            this.accountsService,
+          );
         }
       }
     });
@@ -861,18 +857,18 @@ export class TransactionTransferService {
       ? await this.resolveCounterpartAccess(realUserId, counterpart, "delete")
       : "frozen";
 
+    // Both legs were loaded before this transaction opened, so the amount each
+    // reversal subtracts is re-read under the row's own lock and the reversal is
+    // gated on this call being the one that removed the row (audit FV4-002).
     const removeLeg = async (m: EntityManager, leg: Transaction) => {
-      const isFuture = isTransactionInFuture(leg.transactionDate);
-      if (!isFuture) {
-        await this.accountsService.updateBalance(
-          leg.accountId,
-          -Number(leg.amount),
-        );
-      }
-      await m.remove(leg);
-      if (isFuture) {
-        await this.accountsService.recalculateCurrentBalance(leg.accountId);
-      }
+      const locked = await lockTransactionRow(m, leg.id, leg.userId);
+      if (!locked) return;
+      await removeLockedTransactionLeg(
+        m,
+        locked,
+        leg.userId,
+        this.accountsService,
+      );
     };
 
     if (access === "connected" && counterpart) {
@@ -896,78 +892,48 @@ export class TransactionTransferService {
     transactionId: string,
     affectedAccountIds: Set<string>,
   ): Promise<void> {
+    const userId = transaction.userId;
     const parentTransactionId = parentSplit.transactionId;
-    const parentTransaction = await m.findOne(Transaction, {
-      where: { id: parentTransactionId },
+
+    const allSplits = await m.find(TransactionSplit, {
+      where: { transactionId: parentTransactionId },
     });
+    const siblingLegIds = allSplits
+      .map((split) => split.linkedTransactionId)
+      .filter((id): id is string => Boolean(id) && id !== transactionId);
 
-    if (parentTransaction) {
-      const allSplits = await m.find(TransactionSplit, {
-        where: { transactionId: parentTransactionId },
-      });
+    // One ordered lock over every ledger row this removal reverses: the split
+    // parent, its other transfer counterparts, and the leg the request named.
+    // Locking each row as it is reached is what lets two removals interleave and
+    // each reverse the same amount; the batch helper sorts, which is also the
+    // deadlock guard (see common/db/locks.ts). Every reversal below then derives
+    // its amount from the locked row and only fires when this call is the one
+    // that removed it (audit FV4-002).
+    const locked = await lockTransactionRows(
+      m,
+      [parentTransactionId, ...siblingLegIds, transaction.id],
+      userId,
+    );
 
-      for (const split of allSplits) {
-        if (
-          split.linkedTransactionId &&
-          split.linkedTransactionId !== transactionId
-        ) {
-          const linkedTx = await m.findOne(Transaction, {
-            where: { id: split.linkedTransactionId },
-          });
-
-          if (linkedTx) {
-            const linkedIsFuture = isTransactionInFuture(
-              linkedTx.transactionDate,
-            );
-            const linkedAccId = linkedTx.accountId;
-            affectedAccountIds.add(linkedAccId);
-            if (!linkedIsFuture) {
-              await this.accountsService.updateBalance(
-                linkedAccId,
-                -Number(linkedTx.amount),
-              );
-            }
-            await m.remove(linkedTx);
-            if (linkedIsFuture) {
-              await this.accountsService.recalculateCurrentBalance(linkedAccId);
-            }
-          }
-        }
+    const parent = locked.get(parentTransactionId);
+    if (parent) {
+      for (const legId of siblingLegIds) {
+        const leg = locked.get(legId);
+        if (!leg) continue;
+        affectedAccountIds.add(leg.accountId);
+        await removeLockedTransactionLeg(m, leg, userId, this.accountsService);
       }
 
       await m.remove(allSplits);
 
-      const parentIsFuture = isTransactionInFuture(
-        parentTransaction.transactionDate,
-      );
-      affectedAccountIds.add(parentTransaction.accountId);
-      if (!parentIsFuture) {
-        await this.accountsService.updateBalance(
-          parentTransaction.accountId,
-          -Number(parentTransaction.amount),
-        );
-      }
-      await m.remove(parentTransaction);
-      if (parentIsFuture) {
-        await this.accountsService.recalculateCurrentBalance(
-          parentTransaction.accountId,
-        );
-      }
+      affectedAccountIds.add(parent.accountId);
+      await removeLockedTransactionLeg(m, parent, userId, this.accountsService);
     }
 
-    const txIsFuture = isTransactionInFuture(transaction.transactionDate);
     affectedAccountIds.add(transaction.accountId);
-    if (!txIsFuture) {
-      await this.accountsService.updateBalance(
-        transaction.accountId,
-        -Number(transaction.amount),
-      );
-    }
-    await m.remove(transaction);
-    if (txIsFuture) {
-      await this.accountsService.recalculateCurrentBalance(
-        transaction.accountId,
-      );
+    const ownLeg = locked.get(transaction.id);
+    if (ownLeg) {
+      await removeLockedTransactionLeg(m, ownLeg, userId, this.accountsService);
     }
   }
 

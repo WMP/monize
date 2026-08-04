@@ -499,6 +499,7 @@
     "mnyUnsupportedVersion": "Tệp đó được tạo bởi Money 97 hoặc 98. Hãy mở và lưu tệp một lần trong bản Money Plus Sunset miễn phí, rồi nhập kết quả.",
     "mnyPasswordRequired": "Tệp Money đó được bảo vệ bằng mật khẩu.",
     "mnyPasswordIncorrect": "Mật khẩu đó không mở được tệp Money.",
-    "mnyUnreadableDatabase": "Tệp Money đó đã được giải mã nhưng không thể đọc nội dung. Tệp có thể đã bị hỏng."
+    "mnyUnreadableDatabase": "Tệp Money đó đã được giải mã nhưng không thể đọc nội dung. Tệp có thể đã bị hỏng.",
+    "mnyJobStalledAfterCommit": "Qua trinh nhap da ngung phan hoi sau khi du lieu cua no da duoc ghi. Tai khoan va giao dich cua ban da co, vi vay khong duoc chay lai lan nhap nay -- hay kiem tra du lieu va chi nhap phan con thieu."
   }
 }

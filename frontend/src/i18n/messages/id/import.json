@@ -499,6 +499,7 @@
     "mnyUnsupportedVersion": "Berkas itu dibuat oleh Money 97 atau 98. Buka dan simpan sekali di edisi gratis Money Plus Sunset, lalu impor hasilnya.",
     "mnyPasswordRequired": "Berkas Money itu dilindungi kata sandi.",
     "mnyPasswordIncorrect": "Kata sandi itu tidak membuka berkas Money.",
-    "mnyUnreadableDatabase": "Berkas Money itu berhasil didekripsi, tetapi isinya tidak dapat dibaca. Mungkin rusak."
+    "mnyUnreadableDatabase": "Berkas Money itu berhasil didekripsi, tetapi isinya tidak dapat dibaca. Mungkin rusak.",
+    "mnyJobStalledAfterCommit": "Impor berhenti merespons setelah datanya sudah ditulis. Akun dan transaksi Anda sudah ada, jadi impor ini tidak boleh dijalankan lagi -- periksa data Anda dan impor hanya yang belum ada."
   }
 }

@@ -21,7 +21,8 @@ import {
   DataSourceMock,
 } from "../test-helpers/scoped-db-testing";
 import { ConflictException } from "@nestjs/common";
-import { lockTransactionRows } from "../common/db/locks";
+import { lockTransactionRow, lockTransactionRows } from "../common/db/locks";
+import type { LockedTransactionRow } from "../common/db/locks";
 import { lockedTransactionRow } from "../test-helpers/locks-testing";
 
 jest.mock("../common/db/scoped-db", () =>
@@ -197,58 +198,65 @@ describe("TransactionTransferService", () => {
      * committed legs to differ from the caller's view -- the concurrency case
      * `updateTransfer` now refuses -- overrides `lockTransactionRows` itself.
      */
-    (lockTransactionRows as jest.Mock).mockImplementation(
-      async (_m: unknown, ids: readonly string[]) => {
-        const byId = new Map<string, Record<string, unknown>>();
-        // The own leg comes back through the caller's `findOne`; the counterpart
-        // through the repository. Both are rows this spec described.
-        for (const mock of [
-          mockFindOne.mock,
-          transactionsRepository.findOne.mock,
-        ]) {
-          for (const result of mock.results) {
-            if (result.type !== "return") continue;
-            try {
-              const row = (await result.value) as Record<
-                string,
-                unknown
-              > | null;
-              if (row?.id) byId.set(String(row.id), row);
-            } catch {
-              continue;
-            }
+    const resolveLocked = async (
+      ids: readonly string[],
+    ): Promise<Map<string, LockedTransactionRow>> => {
+      const byId = new Map<string, Record<string, unknown>>();
+      // The own leg comes back through the caller's `findOne`; the counterpart
+      // through the repository. Both are rows this spec described.
+      for (const mock of [
+        mockFindOne.mock,
+        transactionsRepository.findOne.mock,
+      ]) {
+        for (const result of mock.results) {
+          if (result.type !== "return") continue;
+          try {
+            const row = (await result.value) as Record<string, unknown> | null;
+            if (row?.id) byId.set(String(row.id), row);
+          } catch {
+            continue;
           }
         }
-        // The lock replaced the counterpart read, so on some paths nothing has
-        // been read yet. Consulting the repository mock now is exactly right:
-        // whatever the spec set up IS the committed counterpart.
-        for (const id of ids) {
-          if (byId.has(id)) continue;
-          const row = (await transactionsRepository.findOne({
-            where: { id },
-          })) as Record<string, unknown> | null;
-          if (row?.id) byId.set(String(row.id), row);
-        }
-        const found = new Map();
-        for (const id of ids) {
-          const row = byId.get(id);
-          if (!row) continue;
-          found.set(
-            id,
-            lockedTransactionRow({
-              id: String(row.id),
-              accountId: String(row.accountId ?? ""),
-              amount: Number(row.amount ?? 0),
-              transactionDate: row.transactionDate as string,
-              status: (row.status as string | null) ?? null,
-              isSplit: Boolean(row.isSplit),
-              linkedTransactionId:
-                (row.linkedTransactionId as string | null) ?? null,
-            }),
-          );
-        }
-        return found;
-      },
+      }
+      // The lock replaced the counterpart read, so on some paths nothing has
+      // been read yet. Consulting the repository mock now is exactly right:
+      // whatever the spec set up IS the committed counterpart.
+      for (const id of ids) {
+        if (byId.has(id)) continue;
+        const row = (await transactionsRepository.findOne({
+          where: { id },
+        })) as Record<string, unknown> | null;
+        if (row?.id) byId.set(String(row.id), row);
+      }
+      const found = new Map<string, LockedTransactionRow>();
+      for (const id of ids) {
+        const row = byId.get(id);
+        if (!row) continue;
+        found.set(
+          id,
+          lockedTransactionRow({
+            id: String(row.id),
+            accountId: String(row.accountId ?? ""),
+            amount: Number(row.amount ?? 0),
+            transactionDate: row.transactionDate as string,
+            status: (row.status as string | null) ?? null,
+            isSplit: Boolean(row.isSplit),
+            linkedTransactionId:
+              (row.linkedTransactionId as string | null) ?? null,
+          }),
+        );
+      }
+      return found;
+    };
+
+    (lockTransactionRows as jest.Mock).mockImplementation(
+      async (_m: unknown, ids: readonly string[]) => resolveLocked(ids),
+    );
+    // The cross-owner removal locks each leg on its own, because the two legs
+    // have different owners and the ownership predicate differs per row.
+    (lockTransactionRow as jest.Mock).mockImplementation(
+      async (_m: unknown, id: string) =>
+        (await resolveLocked([id])).get(id) ?? null,
     );
 
     const tenantMocks = createScopedDbMocks([
@@ -1042,6 +1050,7 @@ describe("TransactionTransferService", () => {
     it("delegates to removeTransferFromSplit when transaction is part of a split", async () => {
       const tx = {
         id: "linked-from-split",
+        userId: "user-1",
         isTransfer: true,
         linkedTransactionId: "parent-tx",
         accountId: "account-2",
@@ -1067,9 +1076,19 @@ describe("TransactionTransferService", () => {
 
       await service.removeTransfer("user-1", "linked-from-split", mockFindOne);
 
-      // Should remove the parent transaction and all related splits
+      // Should remove the parent transaction and all related splits. Both ledger
+      // rows go through the conditional delete (audit FV4-002); only the split
+      // rows, which carry no balance, still use `remove`.
       expect(splitsRepository.remove).toHaveBeenCalled();
-      expect(transactionsRepository.remove).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "parent-tx",
+        userId: "user-1",
+      });
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "linked-from-split",
+        userId: "user-1",
+      });
+      expect(transactionsRepository.remove).not.toHaveBeenCalled();
     });
 
     it("triggers net worth recalc for affected accounts", async () => {
@@ -2913,7 +2932,17 @@ describe("TransactionTransferService", () => {
           "to-account",
           "delete",
         );
-        expect(transactionsRepository.remove).toHaveBeenCalledTimes(2);
+        // Each leg is deleted conditionally, keyed on its own owner, and only the
+        // winner of that delete reverses a balance (audit FV4-002).
+        expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
+          Transaction,
+          { id: "foreign-leg", userId: "owner-2" },
+        );
+        expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
+          Transaction,
+          { id: "own-leg", userId: "user-1" },
+        );
+        expect(transactionsRepository.remove).not.toHaveBeenCalled();
         expect(accountsService.updateBalance).toHaveBeenCalledWith(
           "to-account",
           -500,
@@ -2933,8 +2962,12 @@ describe("TransactionTransferService", () => {
 
         await service.removeTransfer("user-1", "own-leg", mockFindOne, actor);
 
-        expect(transactionsRepository.remove).toHaveBeenCalledTimes(1);
-        expect(transactionsRepository.remove).toHaveBeenCalledWith(ownLeg);
+        expect(mockQueryRunner.manager.delete).toHaveBeenCalledTimes(1);
+        expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(
+          Transaction,
+          { id: "own-leg", userId: "user-1" },
+        );
+        expect(transactionsRepository.remove).not.toHaveBeenCalled();
         expect(accountsService.updateBalance).toHaveBeenCalledTimes(1);
         expect(accountsService.updateBalance).toHaveBeenCalledWith(
           "from-account",

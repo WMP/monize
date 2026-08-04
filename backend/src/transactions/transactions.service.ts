@@ -2041,22 +2041,37 @@ export class TransactionsService {
 
       if (splits !== undefined) {
         if (Array.isArray(splits) && splits.length > 0) {
+          // Re-validate against the amount the locked row holds. The check above
+          // ran on the pre-transaction snapshot, which is an early rejection and
+          // not an authoritative one: a request that only replaces the splits
+          // takes its parent amount from that snapshot, so a concurrent amount
+          // edit that committed while this one waited for the row lock would let
+          // a split set through that does not sum to the parent it is attached
+          // to (audit FV4-002).
+          this.splitService.validateSplits(
+            splits,
+            updateData.amount ?? locked.amount,
+          );
+
           await this.splitService.deleteSplitSideEffects(id, userId);
           await m.delete(TransactionSplit, {
             transactionId: id,
           });
 
-          const accountId = updateData.accountId ?? transaction.accountId;
-          const txDate =
-            updateData.transactionDate ?? transaction.transactionDate;
+          // Fallbacks come off the locked row, never the caller's snapshot: the
+          // counterpart and embedded investment rows describe the parent's
+          // account, date and payee, so a stale fallback writes rows describing a
+          // parent that has already moved.
+          const accountId = updateData.accountId ?? locked.accountId;
+          const txDate = updateData.transactionDate ?? locked.transactionDate;
           const savedSplits = await this.splitService.createSplits(
             id,
             splits,
             userId,
             accountId,
             new Date(txDate),
-            updateData.payeeName ?? transaction.payeeName,
-            updateData.payeeId ?? transaction.payeeId,
+            updateData.payeeName ?? locked.payeeName,
+            updateData.payeeId ?? locked.payeeId,
           );
 
           // Set split-level tags (and mirror them onto any transfer counterpart)

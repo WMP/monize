@@ -199,6 +199,10 @@ describe("TransactionsService", () => {
         isSplit: Boolean(row.isSplit),
         linkedTransactionId: (row.linkedTransactionId as string | null) ?? null,
         parentTransactionId: (row.parentTransactionId as string | null) ?? null,
+        // A split's counterpart and embedded investment rows are built from the
+        // parent's payee too, so the committed row has to carry it (FV4-002).
+        payeeId: (row.payeeId as string | null) ?? null,
+        payeeName: (row.payeeName as string | null) ?? null,
       });
 
     /**
@@ -4510,7 +4514,14 @@ describe("TransactionsService", () => {
         "account-2",
         -60,
       );
-      expect(transactionsRepository.remove).toHaveBeenCalledWith(oldLinkedTx);
+      // Conditional delete keyed on id + owner (FV4-002).
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: oldLinkedTx.id,
+        userId: "user-1",
+      });
+      expect(transactionsRepository.remove).not.toHaveBeenCalledWith(
+        oldLinkedTx,
+      );
     });
   });
 
@@ -4815,7 +4826,14 @@ describe("TransactionsService", () => {
         "account-2",
         -40,
       );
-      expect(transactionsRepository.remove).toHaveBeenCalledWith(linkedTx);
+      // Conditional delete keyed on id + owner, not `remove(entity)`: the
+      // reversal above is gated on this call being the one that removed the row
+      // (audit FV4-002).
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: linkedTx.id,
+        userId: "user-1",
+      });
+      expect(transactionsRepository.remove).not.toHaveBeenCalledWith(linkedTx);
     });
 
     it("converts to simple transaction when fewer than 2 splits remain (1 left)", async () => {
@@ -4932,7 +4950,11 @@ describe("TransactionsService", () => {
         "account-2",
         -50,
       );
-      expect(transactionsRepository.remove).toHaveBeenCalledWith(
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: lastSplitLinkedTx.id,
+        userId: "user-1",
+      });
+      expect(transactionsRepository.remove).not.toHaveBeenCalledWith(
         lastSplitLinkedTx,
       );
       expect(transactionsRepository.update).toHaveBeenCalledWith("tx-1", {
@@ -4996,6 +5018,68 @@ describe("TransactionsService", () => {
       expect(transactionsRepository.update).toHaveBeenCalledWith(
         "tx-1",
         expect.objectContaining({ isSplit: false }),
+      );
+    });
+
+    /**
+     * A split replacement that names no new amount takes the parent amount from
+     * the pre-transaction snapshot. Another request can change that amount while
+     * this one waits for the parent row lock, and before the fix the replacement
+     * was validated against the stale figure -- so a split set that does not sum
+     * to its parent was accepted (audit FV4-002).
+     */
+    it("validates the replacement against the committed amount, not the caller's", async () => {
+      transactionsRepository.findOne.mockResolvedValue({ ...mockTx });
+      // Committed while this request waited: the parent is now -50.
+      lockedRow = { ...mockTx, amount: -50 };
+      splitsRepository.find.mockResolvedValue([]);
+
+      await expect(
+        service.update("user-1", "tx-1", {
+          splits: [
+            { amount: -60, categoryId: "cat-1" },
+            { amount: -40, categoryId: "cat-2" },
+          ],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(splitsRepository.create).not.toHaveBeenCalled();
+      expect(transactionsRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("builds the replacement's counterparts from the committed parent fields", async () => {
+      transactionsRepository.findOne.mockResolvedValue({
+        ...mockTx,
+        accountId: "account-stale",
+        transactionDate: "2026-01-15",
+        payeeName: "Stale Payee",
+        payeeId: "payee-stale",
+      });
+      lockedRow = {
+        ...mockTx,
+        accountId: "account-committed",
+        transactionDate: "2026-03-20",
+        payeeName: "Committed Payee",
+        payeeId: "payee-committed",
+      };
+      splitsRepository.find.mockResolvedValue([]);
+      const createSplits = jest.spyOn(splitService, "createSplits");
+
+      await service.update("user-1", "tx-1", {
+        splits: [
+          { amount: -60, categoryId: "cat-1" },
+          { amount: -40, categoryId: "cat-2" },
+        ],
+      } as any);
+
+      expect(createSplits).toHaveBeenCalledWith(
+        "tx-1",
+        expect.anything(),
+        "user-1",
+        "account-committed",
+        new Date("2026-03-20"),
+        "Committed Payee",
+        "payee-committed",
       );
     });
   });
@@ -5484,14 +5568,15 @@ describe("TransactionsService", () => {
         amount: 60,
       };
 
-      // findOne call sequence:
-      // 1. transactionsRepository.findOne(userId, transactionId) -> linkedTx
-      // 2. queryRunner.manager.findOne(Transaction, { where: { id: parentTransactionId } }) -> parentTx
-      // 3. queryRunner.manager.findOne(Transaction, { where: { id: split.linkedTransactionId } }) -> anotherLinkedTx
+      // The access check reads the named leg; the parent and the sibling
+      // counterpart are no longer read individually -- one ordered
+      // `lockTransactionRows` covers all three (audit FV4-002), and the batch
+      // reader is served from what the repository would return.
       transactionsRepository.findOne.mockResolvedValueOnce(linkedTx);
-      mockQueryRunner.manager.findOne
-        .mockResolvedValueOnce(parentTx)
-        .mockResolvedValueOnce(anotherLinkedTx);
+      transactionsRepository.find.mockResolvedValue([
+        parentTx,
+        anotherLinkedTx,
+      ]);
 
       const allSplits = [
         {
@@ -5516,11 +5601,12 @@ describe("TransactionsService", () => {
         "account-3",
         -60,
       );
-      expect(mockQueryRunner.manager.remove).toHaveBeenCalledWith(
-        anotherLinkedTx,
-      );
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "another-linked-tx",
+        userId: "user-1",
+      });
 
-      // Should remove all splits
+      // Should remove all splits -- they carry no balance, so `remove` is fine
       expect(mockQueryRunner.manager.remove).toHaveBeenCalledWith(allSplits);
 
       // Should revert parent transaction balance and remove
@@ -5528,14 +5614,21 @@ describe("TransactionsService", () => {
         "account-1",
         100,
       );
-      expect(mockQueryRunner.manager.remove).toHaveBeenCalledWith(parentTx);
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "tx-parent",
+        userId: "user-1",
+      });
 
       // Should revert the linked transaction's own balance and remove it
       expect(accountsService.updateBalance).toHaveBeenCalledWith(
         "account-2",
         -40,
       );
-      expect(transactionsRepository.remove).toHaveBeenCalledWith(linkedTx);
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "linked-tx-1",
+        userId: "user-1",
+      });
+      expect(transactionsRepository.remove).not.toHaveBeenCalledWith(linkedTx);
     });
   });
 
@@ -5586,7 +5679,10 @@ describe("TransactionsService", () => {
         "account-2",
         -40,
       );
-      expect(transactionsRepository.remove).toHaveBeenCalledWith(linkedTx);
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: linkedTx.id,
+        userId: "user-1",
+      });
 
       // Should revert parent balance
       expect(accountsService.updateBalance).toHaveBeenCalledWith(
@@ -5880,8 +5976,15 @@ describe("TransactionsService", () => {
         "account-3",
         -40,
       );
-      expect(transactionsRepository.remove).toHaveBeenCalledWith(linkedTx1);
-      expect(transactionsRepository.remove).toHaveBeenCalledWith(linkedTx2);
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: linkedTx1.id,
+        userId: "user-1",
+      });
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: linkedTx2.id,
+        userId: "user-1",
+      });
+      expect(transactionsRepository.remove).not.toHaveBeenCalled();
     });
 
     it("skips splits without linked transactions", async () => {
@@ -6067,7 +6170,14 @@ describe("TransactionsService", () => {
         "account-1",
         200,
       );
-      expect(mockQueryRunner.manager.remove).toHaveBeenCalledWith(fromTx);
+      // A counterpart the caller cannot read routes through the cross-owner
+      // removal, which also deletes conditionally and reverses only what it
+      // removed (audit FV4-002).
+      expect(mockQueryRunner.manager.delete).toHaveBeenCalledWith(Transaction, {
+        id: "tx-from",
+        userId: "user-1",
+      });
+      expect(mockQueryRunner.manager.remove).not.toHaveBeenCalledWith(fromTx);
     });
 
     it("handles removing transfer without linkedTransactionId", async () => {

@@ -162,6 +162,15 @@ export interface LockedTransactionRow {
   isSplit: boolean;
   linkedTransactionId: string | null;
   parentTransactionId: string | null;
+  /**
+   * The parent's payee, carried for the same reason as `accountId` and
+   * `transactionDate`: a split's transfer counterpart and its embedded
+   * investment rows are *built* from the parent's fields, so building them from
+   * the caller's snapshot writes a counterpart describing a parent that has
+   * since moved account, date or payee (audit FV4-002).
+   */
+  payeeId: string | null;
+  payeeName: string | null;
 }
 
 export async function lockTransactionRow(
@@ -178,6 +187,8 @@ export async function lockTransactionRow(
     is_split: boolean;
     linked_transaction_id: string | null;
     parent_transaction_id: string | null;
+    payee_id: string | null;
+    payee_name: string | null;
   }[] = await manager.query(
     `SELECT id,
             account_id,
@@ -186,7 +197,9 @@ export async function lockTransactionRow(
             status,
             COALESCE(is_split, false) AS is_split,
             linked_transaction_id,
-            parent_transaction_id
+            parent_transaction_id,
+            payee_id,
+            payee_name
        FROM transactions
       WHERE id = $1 AND user_id = $2
         FOR UPDATE`,
@@ -203,6 +216,8 @@ export async function lockTransactionRow(
     isSplit: row.is_split,
     linkedTransactionId: row.linked_transaction_id,
     parentTransactionId: row.parent_transaction_id,
+    payeeId: row.payee_id,
+    payeeName: row.payee_name,
   };
 }
 
@@ -228,6 +243,8 @@ export async function lockTransactionRows(
     is_split: boolean;
     linked_transaction_id: string | null;
     parent_transaction_id: string | null;
+    payee_id: string | null;
+    payee_name: string | null;
   }[] = await manager.query(
     `SELECT id,
             account_id,
@@ -236,7 +253,9 @@ export async function lockTransactionRows(
             status,
             COALESCE(is_split, false) AS is_split,
             linked_transaction_id,
-            parent_transaction_id
+            parent_transaction_id,
+            payee_id,
+            payee_name
        FROM transactions
       WHERE id = ANY($1) AND user_id = $2
       ORDER BY id
@@ -253,6 +272,8 @@ export async function lockTransactionRows(
       isSplit: row.is_split,
       linkedTransactionId: row.linked_transaction_id,
       parentTransactionId: row.parent_transaction_id,
+      payeeId: row.payee_id,
+      payeeName: row.payee_name,
     });
   }
   return found;

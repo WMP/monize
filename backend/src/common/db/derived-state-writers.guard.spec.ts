@@ -111,6 +111,51 @@ describe("derived financial state has one set of writers", () => {
   });
 
   /**
+   * A balance reversal must be gated on the row this call actually removed.
+   *
+   * `manager.remove(entity)` deletes by primary key and reports nothing, so two
+   * concurrent removals each reversed the same amount while one row went away --
+   * and it reversed whatever the *snapshot* held, and reversed it even for a VOID
+   * row that had contributed nothing. That is four separate mistakes in one
+   * four-line shape, which is why it survived three fixes and reappeared a fourth
+   * time in split removal (audit FV4-002).
+   *
+   * `removeLockedTransactionLeg` is the whole sequence in one place. This scan
+   * fails on any *new* file that reverses a balance with a bare `remove()` beside
+   * it -- the mistake is mechanical, so the guard is a scan and not a review note.
+   */
+  it("removes a ledger row conditionally wherever it reverses a balance", () => {
+    const ALLOWED = new Map([
+      [
+        "securities/investment-transactions.service.ts",
+        "reverseTransactionEffectsInTransaction reverses HOLDINGS under the " +
+          "holdings advisory lock, not accounts.current_balance from a ledger " +
+          "snapshot; its cash-leg deletions already read affectedRowCount",
+      ],
+      [
+        "import/import-post-processing.service.ts",
+        "recomputes balances absolutely under the shared account lock after an " +
+          "import; there is no per-row delta to gate",
+      ],
+    ]);
+
+    const offenders = sourceFiles()
+      .filter((file) => {
+        const source = read(file);
+        // A file that reverses a ledger row's contribution to a balance.
+        if (!/accountsService\.updateBalance\(/.test(source)) return false;
+        // ...and still deletes a transaction-shaped row by entity identity.
+        return /\b(?:m|manager|txRepo|repo)\s*\.\s*remove\s*\(\s*(?!allSplits|splits\b)\w*(?:[Tt]ransaction|[Ll]eg|[Tt]x)\w*\s*[,)]/.test(
+          source,
+        );
+      })
+      .map(relative)
+      .filter((file) => !ALLOWED.has(file));
+
+    expect(offenders).toEqual([]);
+  });
+
+  /**
    * Every backend replica fires every cron (`docs/cron-jobs.md`), so a guard held
    * in process memory is not a guard: each replica has its own.
    *
