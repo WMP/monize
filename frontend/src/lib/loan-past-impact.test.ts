@@ -479,6 +479,45 @@ describe('computePastImpact', () => {
     expect(impact.extraPrincipalPaid).toBeCloseTo(1500 + 2500, 2);
   });
 
+  it('does not overstate extra principal from independently cent-rounded overpayments (REV-20260803-020)', () => {
+    // Two overpayments each carrying a database-precision (decimal(20,4))
+    // principal of 10.0050. Rounding each one to cents before summing gives
+    // 10.01 + 10.01 = 20.02, but the exact total is 20.0100, which rounds to
+    // 20.01. Summation must accumulate ten-thousandths and round only once,
+    // at the end.
+    const account = makeAccount({ currentBalance: -5000 });
+    const history: LoanHistoryResult = {
+      events: [
+        {
+          date: '2025-02-10',
+          principal: 10.005,
+          interest: 0,
+          balance: 4989.995,
+          cumulativePrincipal: 10.005,
+          cumulativeInterest: 0,
+          type: 'OVERPAYMENT',
+        },
+        {
+          date: '2025-03-10',
+          principal: 10.005,
+          interest: 0,
+          balance: 4979.99,
+          cumulativePrincipal: 20.01,
+          cumulativeInterest: 0,
+          type: 'OVERPAYMENT',
+        },
+      ],
+      startingBalance: 10000,
+      currentBalance: 5000,
+      cumulativePrincipal: 20.01,
+      cumulativeInterest: 0,
+    };
+
+    const impact = computePastImpact(account, history)!;
+
+    expect(impact.extraPrincipalPaid).toBe(20.01);
+  });
+
   it('reports zero extra principal when no payment is tagged as an overpayment', () => {
     // Plain payments with no overpayment category or memo -> nothing classified
     const account = makeAccount({ currentBalance: -5000 });

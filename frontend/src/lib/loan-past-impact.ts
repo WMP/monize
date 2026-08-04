@@ -275,11 +275,15 @@ export function computePastImpact(
   // Extra principal already paid = the principal from payments recognized as
   // overpayments (by the loan's overpayment category or memo). This is the sum
   // the installment schedule shows in its Extra Principal column, so the two
-  // views agree. Integer-cents arithmetic avoids floating-point drift.
-  const extraPrincipalCents = history.events
+  // views agree. Accumulate integer ten-thousandths (the database's decimal(20,4)
+  // precision) and divide back only once at the end -- rounding each event to
+  // cents before summing would overstate the total whenever multiple events
+  // share a sub-cent remainder (e.g. two 10.0050 overpayments would round to
+  // 10.01 individually and sum to 20.02, though their exact total is 20.0100).
+  const extraPrincipalTenThousandths = history.events
     .filter((event) => event.type === 'OVERPAYMENT')
-    .reduce((sum, event) => sum + Math.round(event.principal * 100), 0);
-  const extraPrincipalPaid = extraPrincipalCents / 100;
+    .reduce((sum, event) => sum + Math.round(event.principal * 10000), 0);
+  const extraPrincipalPaid = round2(extraPrincipalTenThousandths / 10000);
 
   return {
     originalSchedule,
