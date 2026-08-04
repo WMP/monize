@@ -487,7 +487,8 @@
     "fxFieldsIncomplete": "[XX-originalAmount and originalCurrencyCode must be provided together-XX]",
     "fxRateRequired": "[XX-A positive exchange rate is required for a foreign-currency transaction-XX]",
     "fxSignMismatch": "[XX-originalAmount and amount must have the same sign-XX]",
-    "jointAccountMoveLocked": "[XX-Transactions in a shared account cannot be moved to another account.-XX]"
+    "jointAccountMoveLocked": "[XX-Transactions in a shared account cannot be moved to another account.-XX]",
+    "statusChangeNeedsBothLegs": "[XX-This transfer's status has to change on both legs. Edit the transfer itself, or change the status on the split that owns it.-XX]"
   },
   "users": {
     "userNotFound": "[XX-User not found-XX]",

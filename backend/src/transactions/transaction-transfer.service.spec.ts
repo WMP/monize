@@ -506,6 +506,56 @@ describe("TransactionTransferService", () => {
       );
     });
 
+    // The audit's reproduction A. `TransactionsService.create` has always skipped
+    // the balance update for a VOID row; the transfer path did not, so creating a
+    // transfer directly as VOID moved 100.00 out of the source and into the
+    // destination while both rows said the transfer never happened.
+    it("moves no balance when the transfer is created VOID", async () => {
+      transactionsRepository.save
+        .mockReset()
+        .mockResolvedValueOnce({ id: "from-tx-id" })
+        .mockResolvedValueOnce({ id: "to-tx-id" });
+      mockFindOne
+        .mockResolvedValueOnce({ id: "from-tx-id" })
+        .mockResolvedValueOnce({ id: "to-tx-id" });
+
+      await service.createTransfer(
+        "user-1",
+        { ...baseTransferDto, status: TransactionStatus.VOID },
+        mockFindOne,
+      );
+
+      // Both rows are still written, and both carry the status.
+      expect(transactionsRepository.create.mock.calls[0][0].status).toBe(
+        TransactionStatus.VOID,
+      );
+      expect(transactionsRepository.create.mock.calls[1][0].status).toBe(
+        TransactionStatus.VOID,
+      );
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
+
+    it("still moves both balances for an ordinary transfer", async () => {
+      transactionsRepository.save
+        .mockReset()
+        .mockResolvedValueOnce({ id: "from-tx-id" })
+        .mockResolvedValueOnce({ id: "to-tx-id" });
+      mockFindOne
+        .mockResolvedValueOnce({ id: "from-tx-id" })
+        .mockResolvedValueOnce({ id: "to-tx-id" });
+
+      await service.createTransfer("user-1", baseTransferDto, mockFindOne);
+
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        "from-account",
+        -500,
+      );
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        "to-account",
+        500,
+      );
+    });
+
     it("calculates toAmount from exchangeRate when toAmount not provided", async () => {
       transactionsRepository.save
         .mockReset()
@@ -1364,6 +1414,114 @@ describe("TransactionTransferService", () => {
           accountId: "new-to-account",
         }),
       );
+    });
+
+    // The audit's reproduction B. Entering or leaving VOID moves both balances,
+    // but the rebalance was gated on accounts, amounts, FX and date only -- so an
+    // edit whose only change was the status wrote VOID onto both rows and left
+    // both balances as if the transfer still stood.
+    describe("a status-only edit into and out of VOID", () => {
+      const activeFrom = { ...fromTransaction } as Transaction;
+      const activeTo = { ...toTransaction } as Transaction;
+      const voidFrom = {
+        ...fromTransaction,
+        status: TransactionStatus.VOID,
+      } as Transaction;
+      const voidTo = {
+        ...toTransaction,
+        status: TransactionStatus.VOID,
+      } as Transaction;
+
+      it("gives both accounts their money back when voided", async () => {
+        mockFindOne
+          .mockResolvedValueOnce(activeFrom)
+          .mockResolvedValueOnce(activeTo)
+          .mockResolvedValueOnce(voidFrom)
+          .mockResolvedValueOnce(voidTo);
+
+        await service.updateTransfer(
+          "user-1",
+          "from-tx",
+          { status: TransactionStatus.VOID },
+          mockFindOne,
+        );
+
+        // Reverse the original effect (+500 back to source, -500 off
+        // destination) and apply nothing, because a VOID row moves nothing.
+        expect(accountsService.updateBalance).toHaveBeenCalledWith(
+          "from-account",
+          500,
+        );
+        expect(accountsService.updateBalance).toHaveBeenCalledWith(
+          "to-account",
+          -500,
+        );
+        expect(accountsService.updateBalance).toHaveBeenCalledTimes(2);
+      });
+
+      it("takes the money again when un-voided", async () => {
+        mockFindOne
+          .mockResolvedValueOnce(voidFrom)
+          .mockResolvedValueOnce(voidTo)
+          .mockResolvedValueOnce(activeFrom)
+          .mockResolvedValueOnce(activeTo);
+
+        await service.updateTransfer(
+          "user-1",
+          "from-tx",
+          { status: TransactionStatus.CLEARED },
+          mockFindOne,
+        );
+
+        // Nothing to reverse -- the VOID row never moved a balance -- and the new
+        // effect applies in full.
+        expect(accountsService.updateBalance).toHaveBeenCalledWith(
+          "from-account",
+          -500,
+        );
+        expect(accountsService.updateBalance).toHaveBeenCalledWith(
+          "to-account",
+          500,
+        );
+        expect(accountsService.updateBalance).toHaveBeenCalledTimes(2);
+      });
+
+      it("leaves balances alone for a status change that is not about VOID", async () => {
+        mockFindOne
+          .mockResolvedValueOnce(activeFrom)
+          .mockResolvedValueOnce(activeTo)
+          .mockResolvedValueOnce(activeFrom)
+          .mockResolvedValueOnce(activeTo);
+
+        await service.updateTransfer(
+          "user-1",
+          "from-tx",
+          { status: TransactionStatus.RECONCILED },
+          mockFindOne,
+        );
+
+        expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      });
+
+      // The same error mirrored: reversing an effect that was never applied. An
+      // amount edit on a VOID transfer used to credit both accounts for a
+      // transfer that had never moved money.
+      it("does not reverse an effect a VOID transfer never had", async () => {
+        mockFindOne
+          .mockResolvedValueOnce(voidFrom)
+          .mockResolvedValueOnce(voidTo)
+          .mockResolvedValueOnce(voidFrom)
+          .mockResolvedValueOnce(voidTo);
+
+        await service.updateTransfer(
+          "user-1",
+          "from-tx",
+          { amount: 600 },
+          mockFindOne,
+        );
+
+        expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      });
     });
 
     it("handles cross-currency exchange rate update", async () => {

@@ -112,6 +112,176 @@ describe("TransactionReconciliationService", () => {
     );
   });
 
+  // The audit's reproduction C. This endpoint wrote and rebalanced only the row
+  // it was handed, so voiding the source leg of a 100.00 transfer restored 100.00
+  // to the source while the destination leg stayed active and kept its 100.00 --
+  // money created by a status change, and nothing raised anywhere. The bulk path
+  // was corrected first; the rule now lives in one place both use.
+  describe("updateStatus on a transfer leg", () => {
+    const sourceLeg = () =>
+      makeTransaction({
+        id: "from-tx",
+        accountId: "account-1",
+        amount: -100,
+        isTransfer: true,
+        linkedTransactionId: "to-tx",
+      });
+    const destinationLeg = () =>
+      makeTransaction({
+        id: "to-tx",
+        accountId: "account-2",
+        amount: 100,
+        isTransfer: true,
+        linkedTransactionId: "from-tx",
+      });
+
+    /**
+     * Wire the pair lookup `expandTransferLegsForStatus` performs: the selected
+     * row, the split-ownership probe, the writable-counterpart probe, and the
+     * `find` that loads both legs.
+     */
+    const wirePair = (
+      options: { splitOwned?: boolean; writable?: boolean } = {},
+    ) => {
+      const { splitOwned = false, writable = true } = options;
+      const qb = (rows: unknown[]) => ({
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(rows),
+      });
+      transactionsRepository.createQueryBuilder
+        .mockReturnValueOnce(
+          qb([
+            {
+              id: "from-tx",
+              linkedTransactionId: "to-tx",
+              isTransfer: true,
+              isSplit: false,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(qb(writable ? [{ id: "to-tx" }] : []));
+      // The TransactionSplit probe for split-owned legs.
+      dataSource.manager.find.mockImplementation((entity: unknown) => {
+        if (entity === Transaction) {
+          return Promise.resolve([sourceLeg(), destinationLeg()]);
+        }
+        return Promise.resolve(
+          splitOwned ? [{ id: "split-1", linkedTransactionId: "from-tx" }] : [],
+        );
+      });
+      dataSource.manager.getRepository.mockImplementation(() => ({
+        ...transactionsRepository,
+        find: jest.fn().mockResolvedValue([sourceLeg(), destinationLeg()]),
+      }));
+    };
+
+    it("voids both legs and gives both accounts their money back", async () => {
+      wirePair();
+      mockFindOne.mockResolvedValue(
+        makeTransaction({ id: "from-tx", status: TransactionStatus.VOID }),
+      );
+
+      await service.updateStatus(
+        sourceLeg(),
+        TransactionStatus.VOID,
+        userId,
+        mockTriggerNetWorthRecalc,
+        mockFindOne,
+      );
+
+      expect(transactionsRepository.update).toHaveBeenCalledWith("from-tx", {
+        status: TransactionStatus.VOID,
+      });
+      expect(transactionsRepository.update).toHaveBeenCalledWith("to-tx", {
+        status: TransactionStatus.VOID,
+      });
+      // The source leg is -100, so voiding it adds 100 back; the destination is
+      // +100, so voiding it takes 100 away. Total money is unchanged.
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        "account-1",
+        100,
+      );
+      expect(accountsService.updateBalance).toHaveBeenCalledWith(
+        "account-2",
+        -100,
+      );
+      expect(accountsService.updateBalance).toHaveBeenCalledTimes(2);
+    });
+
+    it("recalculates net worth for both accounts", async () => {
+      wirePair();
+      mockFindOne.mockResolvedValue(makeTransaction({ id: "from-tx" }));
+
+      await service.updateStatus(
+        sourceLeg(),
+        TransactionStatus.VOID,
+        userId,
+        mockTriggerNetWorthRecalc,
+        mockFindOne,
+      );
+
+      expect(mockTriggerNetWorthRecalc).toHaveBeenCalledWith(
+        "account-1",
+        userId,
+      );
+      expect(mockTriggerNetWorthRecalc).toHaveBeenCalledWith(
+        "account-2",
+        userId,
+      );
+    });
+
+    it("refuses a leg owned by a split rather than voiding the split parent", async () => {
+      wirePair({ splitOwned: true });
+
+      await expect(
+        service.updateStatus(
+          sourceLeg(),
+          TransactionStatus.VOID,
+          userId,
+          mockTriggerNetWorthRecalc,
+          mockFindOne,
+        ),
+      ).rejects.toThrow(/has to change on both legs/);
+
+      expect(transactionsRepository.update).not.toHaveBeenCalled();
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
+
+    it("refuses when the counterpart belongs to another owner", async () => {
+      wirePair({ writable: false });
+
+      await expect(
+        service.updateStatus(
+          sourceLeg(),
+          TransactionStatus.VOID,
+          userId,
+          mockTriggerNetWorthRecalc,
+          mockFindOne,
+        ),
+      ).rejects.toThrow(/has to change on both legs/);
+
+      expect(transactionsRepository.update).not.toHaveBeenCalled();
+      expect(accountsService.updateBalance).not.toHaveBeenCalled();
+    });
+
+    it("does not look for a pair on an ordinary transaction", async () => {
+      mockFindOne.mockResolvedValue(makeTransaction());
+
+      await service.updateStatus(
+        makeTransaction(),
+        TransactionStatus.VOID,
+        userId,
+        mockTriggerNetWorthRecalc,
+        mockFindOne,
+      );
+
+      expect(transactionsRepository.createQueryBuilder).not.toHaveBeenCalled();
+      expect(accountsService.updateBalance).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("updateStatus", () => {
     it("updates status from UNRECONCILED to CLEARED without balance change", async () => {
       const transaction = makeTransaction({

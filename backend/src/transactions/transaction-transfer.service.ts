@@ -265,7 +265,12 @@ export class TransactionTransferService {
       if (isTransactionInFuture(transactionDate)) {
         await this.accountsService.recalculateCurrentBalance(fromAccountId);
         await this.accountsService.recalculateCurrentBalance(toAccountId);
-      } else {
+      } else if (status !== TransactionStatus.VOID) {
+        // A VOID row contributes nothing to a balance -- that is what VOID means,
+        // and `TransactionsService.create` has always skipped the update for one.
+        // The transfer path did not, so creating a transfer directly as VOID
+        // moved 100.00 out of the source and into the destination while both rows
+        // said the transfer never happened.
         await this.accountsService.updateBalance(fromAccountId, -amount);
         await this.accountsService.updateBalance(toAccountId, toAmount);
       }
@@ -1076,12 +1081,27 @@ export class TransactionTransferService {
       updateDto.exchangeRate !== undefined ||
       updateDto.toAmount !== undefined;
 
+    // Entering or leaving VOID moves both balances just as an amount change
+    // does: a VOID row contributes nothing, so voiding a transfer has to give
+    // both accounts their money back and un-voiding has to take it again. The
+    // rebalance used to be gated on accounts, amounts, FX and date only, so an
+    // edit whose ONLY change was the status wrote VOID onto both rows and left
+    // both balances as if the transfer still stood. Reversing an old effect that
+    // was never applied is the same error mirrored, which is why the reverse
+    // below is also conditioned on the old status.
+    const oldIsVoid = fromTransaction.status === TransactionStatus.VOID;
+    const newIsVoid =
+      (updateDto.status ?? fromTransaction.status) === TransactionStatus.VOID;
+    const voidnessChanged = oldIsVoid !== newIsVoid;
+
     const oldDate = fromTransaction.transactionDate;
     const newDate = updateDto.transactionDate ?? oldDate;
     const oldIsFuture = isTransactionInFuture(oldDate);
     const newIsFuture = isTransactionInFuture(newDate);
     const dateChanged = oldDate !== newDate;
     const anyFuture = oldIsFuture || newIsFuture;
+    const balanceRelevantChange =
+      !!accountsOrAmountsChanged || dateChanged || voidnessChanged;
 
     await this.assertCategoryOwned(userId, updateDto.categoryId);
 
@@ -1111,7 +1131,7 @@ export class TransactionTransferService {
     // Both legs' field updates and the four possible balance adjustments
     // commit atomically.
     await withScopedDb(this.dataSource, async (m) => {
-      if ((accountsOrAmountsChanged || dateChanged) && !anyFuture) {
+      if (balanceRelevantChange && !anyFuture && !oldIsVoid) {
         await this.accountsService.updateBalance(
           oldFromAccountId,
           oldFromAmount,
@@ -1142,7 +1162,7 @@ export class TransactionTransferService {
         ]);
       }
 
-      if (accountsOrAmountsChanged || dateChanged) {
+      if (balanceRelevantChange) {
         if (anyFuture) {
           const allAccounts = new Set([
             oldFromAccountId,
@@ -1153,7 +1173,7 @@ export class TransactionTransferService {
           for (const accId of allAccounts) {
             await this.accountsService.recalculateCurrentBalance(accId);
           }
-        } else {
+        } else if (!newIsVoid) {
           await this.accountsService.updateBalance(
             newFromAccountId,
             -newAmount,
@@ -1345,11 +1365,19 @@ export class TransactionTransferService {
       updateDto.exchangeRate !== undefined ||
       updateDto.toAmount !== undefined;
 
+    // Same rule as the same-owner path: VOID-ness moves both balances.
+    const oldIsVoid = fromTransaction.status === TransactionStatus.VOID;
+    const newIsVoid =
+      (updateDto.status ?? fromTransaction.status) === TransactionStatus.VOID;
+    const voidnessChanged = oldIsVoid !== newIsVoid;
+
     const oldDate = fromTransaction.transactionDate;
     const newDate = updateDto.transactionDate ?? oldDate;
     const dateChanged = oldDate !== newDate;
     const anyFuture =
       isTransactionInFuture(oldDate) || isTransactionInFuture(newDate);
+    const balanceRelevantChange =
+      amountsChanged || dateChanged || voidnessChanged;
 
     const fromUpdateData = this.buildFromUpdateData(
       updateDto,
@@ -1388,7 +1416,7 @@ export class TransactionTransferService {
 
     await withSystemContext(() =>
       withScopedDb(this.dataSource, async (m) => {
-        if ((amountsChanged || dateChanged) && !anyFuture) {
+        if (balanceRelevantChange && !anyFuture && !oldIsVoid) {
           await this.accountsService.updateBalance(
             fromTransaction.accountId,
             oldFromAmount,
@@ -1406,7 +1434,7 @@ export class TransactionTransferService {
           await m.update(Transaction, toTransaction.id, toUpdateData);
         }
 
-        if (amountsChanged || dateChanged) {
+        if (balanceRelevantChange) {
           if (anyFuture) {
             for (const accId of new Set([
               fromTransaction.accountId,
@@ -1414,7 +1442,7 @@ export class TransactionTransferService {
             ])) {
               await this.accountsService.recalculateCurrentBalance(accId);
             }
-          } else {
+          } else if (!newIsVoid) {
             await this.accountsService.updateBalance(
               fromTransaction.accountId,
               -newAmount,
