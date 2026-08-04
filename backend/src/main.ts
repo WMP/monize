@@ -11,6 +11,7 @@ import {
   resolveRestoreUploadLimitBytes,
   warnIfLimitExceedsMemory,
 } from "./backup/backup-limits";
+import { createRestoreUploadAdmission } from "./backup/restore-upload-admission";
 import { OAuthProviderService } from "./oauth/oauth-provider.service";
 import { oauthDebugLogger } from "./oauth/oauth-debug-logger.middleware";
 import { isOidcProviderPath } from "./oauth/oidc-provider-paths";
@@ -100,6 +101,16 @@ async function bootstrap() {
     undefined,
     MEMORY_SHARE_PER_RESTORE_UPLOAD,
   );
+  // Aggregate admission ahead of the parser: the per-request ceiling bounds one
+  // request, and two concurrent uploads just under it exceed a container sized
+  // for one. The JWT guard and the throttler are Nest guards, so they cannot
+  // reach this allocation.
+  const restoreAdmission = createRestoreUploadAdmission(
+    backupRestoreLimit,
+    backupRestoreLimit,
+    (message) => bootstrapLogger.warn(`Restore upload refused: ${message}`),
+  );
+  app.use("/api/v1/backup/restore", restoreAdmission.middleware);
   app.use(
     "/api/v1/backup/restore",
     express.raw({

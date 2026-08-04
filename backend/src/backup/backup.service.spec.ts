@@ -1453,6 +1453,39 @@ describe("BackupService", () => {
           expect(result.skippedAttachments).toBe(1);
         });
 
+        /**
+         * The behavioural tests above prove the one read path checks ownership.
+         * They cannot prove a *second* read path will not be added beside it,
+         * and this defect has now appeared three times in this file -- so the
+         * half of the rule a scan can hold, it holds: the whole backup module
+         * opens an external object in exactly one place, and that place consults
+         * the database's ownership record before it does.
+         *
+         * A scan cannot tell an uploaded identifier from a derived one, so this
+         * is not the whole rule. It is the part that catches the next reader
+         * wherever it appears.
+         */
+        it("reads an external object in exactly one place, after the ownership check (source guard)", () => {
+          const source = fs.readFileSync(
+            path.join(__dirname, "backup.service.ts"),
+            "utf8",
+          );
+          const reads = source.match(/this\.attachmentStorage\.load\(/g) ?? [];
+          expect(reads).toHaveLength(1);
+
+          const stagingStart = source.indexOf(
+            "private async stageAttachmentObjects(",
+          );
+          const readAt = source.indexOf("this.attachmentStorage.load(");
+          expect(stagingStart).toBeGreaterThan(-1);
+          // The read is inside the staging method...
+          expect(readAt).toBeGreaterThan(stagingStart);
+          // ...and the ownership record is loaded and consulted before it.
+          const beforeRead = source.slice(stagingStart, readAt);
+          expect(beforeRead).toContain("loadOwnedAttachmentSources(");
+          expect(beforeRead).toContain("ownedSources.get(");
+        });
+
         it("drops the row when the file's metadata contradicts the stored row", async () => {
           // An uploaded field that has to equal a stored field is no longer a
           // field the uploader controls -- and a row whose size or hash disagrees

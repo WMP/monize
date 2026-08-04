@@ -245,7 +245,7 @@ browser: the failure mode is "the user cannot restore their backup".
 
 ## 6. Size ceilings
 
-Two, for two different failure modes. Both configurable, both fail loudly.
+Three, for three different failure modes. All configurable, all fail loudly.
 
 | Setting | Bounds | Default |
 |---|---|---|
@@ -275,6 +275,29 @@ too large for the container is warned about at startup.
 an oversized request.** `express.raw` buffers the whole body before the controller,
 the guards, the authentication lookup, the decryption and every service ceiling, so
 a request none of those layers ever sees can still kill the process.
+
+**A per-request ceiling bounds one request, and the process has to survive two.**
+Half the container each, twice over, is more than the container: two concurrent
+uploads just under the ceiling OOM-kill the only replica, and the JWT guard and the
+`ThrottlerGuard` are both Nest guards, so neither runs until after the body is
+buffered. `createRestoreUploadAdmission` (`backup/restore-upload-admission.ts`)
+therefore runs as Express middleware **ahead of** the parser and keeps a
+process-wide total of the bytes it has promised: a request is admitted only if its
+own claim still fits, and the reservation is released on `finish` *or* `close` so a
+dropped connection does not shrink the budget permanently. The budget equals the
+per-request ceiling, so a large restore is effectively serialised — a restore is a
+rare, deliberate, destructive operation, and the cost of refusing the second one is
+a retry rather than an outage for everybody the replica serves. A request with no
+`Content-Length` reserves the whole ceiling, because chunked encoding does not say
+how much is coming and the safe assumption on a path reached before authentication
+is the most it is allowed to send.
+
+That closes the concurrency half. It does **not** authenticate before reading the
+body: an unauthenticated client can still occupy the budget and make the next
+caller wait. Remaining options, none implemented, in rough order of preference: a
+smaller body limit at the ingress ahead of the process, a two-step restore session
+that issues a short-lived upload token after authorization, and streaming the
+upload to a bounded temporary file instead of the JavaScript heap.
 
 **A budget checked after the allocation is not a budget.** The support export
 always discards `attachment_blobs`, which is base64 — thirty 10 MiB receipts are
