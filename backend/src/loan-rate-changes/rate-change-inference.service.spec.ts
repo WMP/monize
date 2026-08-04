@@ -775,6 +775,151 @@ describe("RateChangeInferenceService", () => {
     expect(manager.save).not.toHaveBeenCalled();
   });
 
+  it("rejects a pairing whose leaked amount is smaller than half a cent but still a materially different 4dp value (REV-20260803-024, fourth reopen)", async () => {
+    // Same shape as the second-reopen scenario, but the leak this time is
+    // sub-cent: a historical payment with $2.0875 of genuine, today-bounded
+    // interest gets paired (by the mocked, pre-source-fix pairSeparateInterest)
+    // with an extra future-dated $0.0049 expense, landing on $2.0924. The
+    // old AMOUNT_MATCH_EPSILON (0.005, half a cent) let that $0.0049
+    // difference pass as "the same amount"; at 4dp storage precision the two
+    // are different, exactly-representable values, not floating-point noise.
+    const today = todayYMD();
+    const addDays = (dateKey: string, days: number): string => {
+      const d = new Date(`${dateKey}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + days);
+      return d.toISOString().split("T")[0];
+    };
+
+    const { records, balanceMap: canonicalBalanceMap } = generateHistory(
+      400000,
+      [{ annualRate: 5.5, payments: 3, paymentAmount: 2500 }],
+    );
+    const customDates = [addDays(today, -200), addDays(today, -100), today];
+    const balanceMap = new Map<string, number>();
+    const stripped: PaymentRecord[] = records.map((r, i) => {
+      const date = customDates[i];
+      balanceMap.set(date, canonicalBalanceMap.get(r.date)!);
+      return {
+        ...r,
+        date,
+        amount: r.principalAmount!,
+        interestAmount: null,
+      };
+    });
+
+    detector.buildPaymentRecords.mockResolvedValue(stripped);
+    detector.buildRunningBalanceMap.mockReturnValue(balanceMap);
+    rateChangesService.verifyLoanAccount.mockResolvedValue(
+      makeAccount({ interestCategoryId: "cat-interest" }),
+    );
+
+    const realInterest = [
+      records[0].interestAmount!,
+      records[1].interestAmount!,
+    ];
+    // The genuine, today-bounded interest for the latest payment is $2.0875;
+    // the (mocked, pre-source-fix) pairSeparateInterest also folds in a
+    // future-dated $0.0049 expense, recovering $2.0924 -- a difference of
+    // exactly half a cent minus a hundredth of a cent, i.e. smaller than the
+    // old epsilon but still a genuinely different 4dp amount.
+    const genuineThirdInterest = 2.0875;
+    const leakedAmount = 0.0049;
+    const pairedThirdInterest = genuineThirdInterest + leakedAmount;
+    detector.pairSeparateInterest.mockImplementation(
+      async (
+        _userId: string,
+        _account: Account,
+        consolidatedRecords: PaymentRecord[],
+      ) =>
+        consolidatedRecords.map((p, i) => {
+          const interestAmount = i < 2 ? realInterest[i] : pairedThirdInterest;
+          return {
+            ...p,
+            amount: p.amount + interestAmount,
+            interestAmount,
+            interestCategoryId: "cat-interest",
+          };
+        }),
+    );
+
+    const realInterestTxn1 = {
+      id: "int-1",
+      transactionDate: customDates[0],
+      categoryId: "cat-interest",
+      accountId: "src-1",
+      amount: realInterest[0],
+      status: TransactionStatus.CLEARED,
+    } as Transaction;
+    const realInterestTxn2 = {
+      id: "int-2",
+      transactionDate: customDates[1],
+      categoryId: "cat-interest",
+      accountId: "src-1",
+      amount: realInterest[1],
+      status: TransactionStatus.CLEARED,
+    } as Transaction;
+    // The genuine, today-bounded evidence for the latest payment: only
+    // $2.0875, never the paired $2.0924.
+    const realInterestTxn3 = {
+      id: "int-3",
+      transactionDate: customDates[2],
+      categoryId: "cat-interest",
+      accountId: "src-1",
+      amount: genuineThirdInterest,
+      status: TransactionStatus.CLEARED,
+    } as Transaction;
+    // The future-dated leak: never visible to a query bounded at today.
+    const futureInterestTxn = {
+      id: "int-future",
+      transactionDate: addDays(today, 1),
+      categoryId: "cat-interest",
+      accountId: "src-1",
+      amount: leakedAmount,
+      status: TransactionStatus.CLEARED,
+    } as Transaction;
+
+    transactionsRepository.find.mockImplementation(
+      (options: {
+        where?: {
+          categoryId?: string;
+          transactionDate?: FindOperator<string>;
+        };
+      }) => {
+        if (options?.where?.categoryId) {
+          const dateOp = options.where.transactionDate;
+          const all = [
+            realInterestTxn1,
+            realInterestTxn2,
+            realInterestTxn3,
+            futureInterestTxn,
+          ];
+          if (
+            dateOp instanceof FindOperator &&
+            dateOp.type === "lessThanOrEqual"
+          ) {
+            expect(dateOp.value).toBe(today);
+            return Promise.resolve(
+              all.filter((t) => t.transactionDate <= dateOp.value),
+            );
+          }
+          return Promise.resolve(all);
+        }
+        return Promise.resolve([]);
+      },
+    );
+
+    // The today-bounded recomputation for the latest payment lands exactly
+    // $2.0875 -- $0.0049 short of the $2.0924 pairSeparateInterest actually
+    // recorded. That difference must be caught (not passed as noise), which
+    // reverts the latest payment to its pre-pairing, principal-only shape
+    // and drops it from the observation set -- leaving only 2 genuine
+    // observations, below MIN_USABLE_PAYMENTS.
+    await expect(service.detectAndPersist(userId, accountId)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
   it("keeps newPaymentAmount for a split segment even when a later segment books interest separately (REV-20260803-005)", async () => {
     // A history that starts with split $500 installments (interest as a
     // split leg, produced by generateHistory) and later changes to a plain

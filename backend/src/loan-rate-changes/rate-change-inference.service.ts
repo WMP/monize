@@ -326,11 +326,23 @@ export class RateChangeInferenceService {
       originalPayments.map((p) => [p.date.split("T")[0], p]),
     );
 
-    // Half a cent: both sides are produced by roundMoney over a sum of real
-    // ledger amounts, so a genuine match is exact; this only absorbs
-    // floating-point summation-order noise, never a materially different
-    // amount.
-    const AMOUNT_MATCH_EPSILON = 0.005;
+    // Both sides are rounded to the repo's 4dp money precision (`roundMoney`,
+    // see `round.util.ts`) before this comparison, so a genuine match is
+    // exact -- rounding a sum of real ledger amounts to the nearest 0.0001
+    // recovers the same double every time, regardless of the order the
+    // summands were added in. This epsilon therefore only needs to absorb
+    // residual IEEE-754 summation noise (empirically ~1e-10 for realistic
+    // monetary sums, many orders of magnitude below one storage unit), never
+    // a materially different amount.
+    //
+    // REV-20260803-024 (fourth reopen): the previous value, 0.005 (half a
+    // cent), was 50x looser than 0.0001 -- the smallest representable money
+    // unit at this precision -- so a genuinely different, exactly
+    // 4dp-representable amount as small as $0.0049 (e.g. $2.0875 of real
+    // interest vs. a leaked $2.0924) passed as "the same amount" when it was
+    // not. Tightened to a value comfortably above floating-point noise and
+    // comfortably below 0.0001.
+    const AMOUNT_MATCH_EPSILON = 0.000001;
 
     return pairedPayments.map((p) => {
       const dateKey = p.date.split("T")[0];
