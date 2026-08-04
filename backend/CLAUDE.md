@@ -314,3 +314,20 @@ All four surfaces follow it: the single status endpoint, `markCleared`/`reconcil
 status control and now applies it to the leg being edited unless the transition
 crosses `VOID`. A split-owned or cross-owner leg is refused only for a `VOID`
 transition; marking it cleared needs no counterpart.
+
+**The direct cross-owner edit paths obey the same split** (`transaction-transfer.service.ts`).
+A `VOID` transition is pair-wide there too, so it must move both legs and both
+balances atomically -- the earlier code treated `status` as own-leg presentational
+data and left an active foreign leg beside a reversed balance:
+
+- **Connected** (real user holds the edit grant on the counterpart): a non-`VOID`
+  status stays on the effective user's leg (`delete data.status` on the foreign
+  leg); a `VOID` transition keeps `status` on *both* legs so it lands with the
+  paired balance change.
+- **Frozen** (counterpart unreadable after unshare): a `VOID` transition cannot be
+  mirrored, so it is refused before any write (`crossesVoidBoundary`). Own-ledger
+  `UNRECONCILED` / `CLEARED` / `RECONCILED` still change freely.
+- **Fail closed on a disagreeing pair.** Before editing a connected pair, assert the
+  two stored legs agree on voidness; a pair a prior one-legged write left
+  disagreeing is refused (`errors.transactions.transferVoidMismatch`) and routed to
+  repair rather than compounded.

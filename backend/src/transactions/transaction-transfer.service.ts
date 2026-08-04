@@ -22,6 +22,7 @@ import { CrossOwnerAccessService } from "../delegation/cross-owner-access.servic
 import { formatCurrency } from "../common/format-currency.util";
 import { roundMoney } from "../common/round.util";
 import { stripHtml } from "../common/sanitization.util";
+import { crossesVoidBoundary } from "./transfer-status-pairing.util";
 import { tr } from "../i18n/translate";
 import { withScopedDb } from "../common/db/scoped-db";
 import { withSystemContext } from "../common/db/with-context";
@@ -1262,11 +1263,19 @@ export class TransactionTransferService {
 
   /**
    * Frozen link (real user lost READ on the counterpart account): only
-   * presentational own-leg fields may change -- description, reference,
-   * status, category, payee -- with no mirroring onto the counterpart.
-   * Amount, date, exchange-rate and account changes are rejected: unmirrored
-   * they would silently break the two-ledger agreement that makes the pair a
-   * transfer. Modeled on the split-transfer-leg lock.
+   * per-ledger own-leg fields may change -- description, reference, category,
+   * payee, and this account's own reconciliation status (UNRECONCILED /
+   * CLEARED / RECONCILED) -- with no mirroring onto the counterpart. Amount,
+   * date, exchange-rate and account changes are rejected: unmirrored they would
+   * silently break the two-ledger agreement that makes the pair a transfer.
+   * Modeled on the split-transfer-leg lock.
+   *
+   * `VOID` is the exception among statuses: it is an economic state of the whole
+   * linked transfer, so entering or leaving it moves *both* balances. The
+   * counterpart lives in an account we can no longer write, so a VOID transition
+   * cannot be mirrored and is refused before any field is written -- voiding one
+   * leg while the other stays active is exactly the one-legged-VOID defect this
+   * path must not create. CLEARED / RECONCILED remain per-account and are allowed.
    */
   private async updateFrozenTransferLeg(
     effectiveUserId: string,
@@ -1298,6 +1307,21 @@ export class TransactionTransferService {
         tr(
           "errors.transactions.crossOwnerTransferLocked",
           "The other side of this transfer is in an account you no longer have access to. You can edit this transaction's own details, but its amount, date, and accounts are locked.",
+        ),
+      );
+    }
+
+    // VOID is pair-wide: it must move both balances at once, and the counterpart
+    // is in an account we can no longer write. Refuse the transition rather than
+    // voiding this leg alone and leaving the other side active.
+    if (
+      updateDto.status !== undefined &&
+      crossesVoidBoundary(ownLeg.status, updateDto.status)
+    ) {
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.crossOwnerVoidLocked",
+          "Voiding or un-voiding this transfer changes both sides, but the other side is in an account you no longer have access to. You can still change this transaction's own reconciliation status.",
         ),
       );
     }
@@ -1381,8 +1405,27 @@ export class TransactionTransferService {
       updateDto.exchangeRate !== undefined ||
       updateDto.toAmount !== undefined;
 
+    // A linked pair must agree on whether the economic event is void: VOID is a
+    // property of the whole transfer, not of one leg. If a prior one-legged write
+    // left the two sides disagreeing, refuse rather than compounding it -- the
+    // balances cannot be reconstructed without knowing which side is authoritative,
+    // so the pair is routed to repair instead.
+    const storedFromVoid = fromTransaction.status === TransactionStatus.VOID;
+    const storedToVoid = toTransaction.status === TransactionStatus.VOID;
+    if (storedFromVoid !== storedToVoid) {
+      this.logger.error(
+        `Transfer pair voidness mismatch: leg ${fromTransaction.id} status=${fromTransaction.status}, leg ${toTransaction.id} status=${toTransaction.status}`,
+      );
+      throw new BadRequestException(
+        tr(
+          "errors.transactions.transferVoidMismatch",
+          "The two sides of this transfer disagree about whether it is voided, so it cannot be edited safely. Please contact support to have this transfer repaired.",
+        ),
+      );
+    }
+
     // Same rule as the same-owner path: VOID-ness moves both balances.
-    const oldIsVoid = fromTransaction.status === TransactionStatus.VOID;
+    const oldIsVoid = storedFromVoid;
     const newIsVoid =
       (updateDto.status ?? fromTransaction.status) === TransactionStatus.VOID;
     const voidnessChanged = oldIsVoid !== newIsVoid;
@@ -1418,7 +1461,12 @@ export class TransactionTransferService {
     );
 
     // Per-user reference data and per-ledger reconciliation state never cross
-    // an ownership boundary.
+    // an ownership boundary -- except VOID. CLEARED / RECONCILED record whether
+    // *that* account's statement recognised its own leg, so they stay on the
+    // effective user's leg. VOID is economic and pair-wide: when the transition
+    // crosses it, both legs (and both balances, below) move together, so the
+    // foreign leg keeps the status write. Stripping it there is what left an
+    // active foreign leg beside a reversed balance.
     for (const [leg, data] of [
       [fromTransaction, fromUpdateData],
       [toTransaction, toUpdateData],
@@ -1426,7 +1474,7 @@ export class TransactionTransferService {
       if (leg.userId !== effectiveUserId) {
         delete data.categoryId;
         delete data.payeeId;
-        delete data.status;
+        if (!voidnessChanged) delete data.status;
       }
     }
 

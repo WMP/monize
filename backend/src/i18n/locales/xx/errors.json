@@ -458,6 +458,8 @@
     "categoriesNotFound": "[XX-Categories not found: {{ ids }}-XX]",
     "crossOwnerTransferLocked": "[XX-The other side of this transfer is in an account you no longer have access to. You can edit this transaction's own details, but its amount, date, and accounts are locked.-XX]",
     "crossOwnerAccountMoveLocked": "[XX-This transfer involves another user's account, so it cannot be moved to different accounts.-XX]",
+    "crossOwnerVoidLocked": "[XX-Voiding or un-voiding this transfer changes both sides, but the other side is in an account you no longer have access to. You can still change this transaction's own reconciliation status.-XX]",
+    "transferVoidMismatch": "[XX-The two sides of this transfer disagree about whether it is voided, so it cannot be edited safely. Please contact support to have this transfer repaired.-XX]",
     "cannotEditTransfer": "[XX-Transfers can't be edited here. Edit the transfer from the Transactions screen.-XX]",
     "cannotEditSplit": "[XX-Split transactions can't be edited here. Edit the split from the Transactions screen.-XX]",
     "noUpdateFields": "[XX-Provide at least one field to change.-XX]",

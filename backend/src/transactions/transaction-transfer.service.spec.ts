@@ -2886,6 +2886,190 @@ describe("TransactionTransferService", () => {
         expect(result.toTransaction.id).toBe("foreign-leg");
         expect(mockFindOne).toHaveBeenCalledWith("owner-2", "foreign-leg");
       });
+
+      // P6-RECHECK-006: VOID is economic and pair-wide. On a connected
+      // cross-owner transfer it must land on BOTH legs, not only the effective
+      // user's -- the prior code stripped `status` from the foreign leg
+      // unconditionally, leaving it active beside a reversed balance.
+      describe("VOID is written to both legs (P6-RECHECK-006)", () => {
+        it("source-leg edit ACTIVE -> VOID voids both legs and reverses both balances", async () => {
+          ownLeg.status = "UNRECONCILED";
+          foreignLeg.status = "UNRECONCILED";
+
+          await service.updateTransfer(
+            "user-1",
+            "own-leg",
+            { status: "VOID" as any },
+            mockFindOne,
+            actor,
+          );
+
+          // Both legs voided.
+          expect(transactionsRepository.update).toHaveBeenCalledWith(
+            "own-leg",
+            {
+              status: "VOID",
+            },
+          );
+          expect(transactionsRepository.update).toHaveBeenCalledWith(
+            "foreign-leg",
+            { status: "VOID" },
+          );
+          // Active effect reversed on both accounts, and NOT re-applied.
+          expect(accountsService.updateBalance).toHaveBeenCalledWith(
+            "from-account",
+            500,
+          );
+          expect(accountsService.updateBalance).toHaveBeenCalledWith(
+            "to-account",
+            -500,
+          );
+          expect(accountsService.updateBalance).toHaveBeenCalledTimes(2);
+        });
+
+        it("destination-leg edit ACTIVE -> VOID voids both legs, including the foreign source leg", async () => {
+          // Flip ownership: the effective user owns the destination (+) leg; the
+          // foreign counterpart is the source (-) leg.
+          const ownToLeg = {
+            id: "own-to",
+            userId: "user-1",
+            accountId: "to-account",
+            amount: 500,
+            exchangeRate: 1,
+            transactionDate: "2026-01-15",
+            currencyCode: "USD",
+            status: "UNRECONCILED",
+            isTransfer: true,
+            linkedTransactionId: "foreign-from",
+            payeeId: null,
+            payeeName: "Transfer from Checking",
+            account: { ...mockToAccount },
+          };
+          const foreignFromLeg = {
+            id: "foreign-from",
+            userId: "owner-2",
+            accountId: "from-account",
+            amount: -500,
+            exchangeRate: 1,
+            transactionDate: "2026-01-15",
+            currencyCode: "USD",
+            status: "UNRECONCILED",
+            isTransfer: true,
+            linkedTransactionId: "own-to",
+            payeeId: null,
+            payeeName: "Transfer to Owner Savings",
+            account: {
+              id: "from-account",
+              name: "Checking",
+              userId: "owner-2",
+            },
+          };
+          mockFindOne.mockImplementation(async (userId: string, id: string) => {
+            if (userId === "user-1" && id === "own-to") return ownToLeg;
+            if (userId === "owner-2" && id === "foreign-from")
+              return foreignFromLeg;
+            throw new NotFoundException("Transaction not found");
+          });
+          transactionsRepository.findOne.mockImplementation(
+            async (opts: any) =>
+              opts?.where?.id === "foreign-from" ? foreignFromLeg : null,
+          );
+
+          await service.updateTransfer(
+            "user-1",
+            "own-to",
+            { status: "VOID" as any },
+            mockFindOne,
+            actor,
+          );
+
+          expect(transactionsRepository.update).toHaveBeenCalledWith("own-to", {
+            status: "VOID",
+          });
+          expect(transactionsRepository.update).toHaveBeenCalledWith(
+            "foreign-from",
+            { status: "VOID" },
+          );
+        });
+
+        it("VOID -> ACTIVE reactivates both legs and re-applies both balances", async () => {
+          ownLeg.status = "VOID";
+          foreignLeg.status = "VOID";
+
+          await service.updateTransfer(
+            "user-1",
+            "own-leg",
+            { status: "UNRECONCILED" as any },
+            mockFindOne,
+            actor,
+          );
+
+          expect(transactionsRepository.update).toHaveBeenCalledWith(
+            "own-leg",
+            {
+              status: "UNRECONCILED",
+            },
+          );
+          expect(transactionsRepository.update).toHaveBeenCalledWith(
+            "foreign-leg",
+            { status: "UNRECONCILED" },
+          );
+          // No reversal (was void); the active effect is applied to both.
+          expect(accountsService.updateBalance).toHaveBeenCalledWith(
+            "from-account",
+            -500,
+          );
+          expect(accountsService.updateBalance).toHaveBeenCalledWith(
+            "to-account",
+            500,
+          );
+          expect(accountsService.updateBalance).toHaveBeenCalledTimes(2);
+        });
+
+        it("keeps a non-VOID status on the effective user's leg only", async () => {
+          ownLeg.status = "UNRECONCILED";
+          foreignLeg.status = "UNRECONCILED";
+
+          await service.updateTransfer(
+            "user-1",
+            "own-leg",
+            { status: "RECONCILED" as any },
+            mockFindOne,
+            actor,
+          );
+
+          expect(transactionsRepository.update).toHaveBeenCalledWith(
+            "own-leg",
+            {
+              status: "RECONCILED",
+            },
+          );
+          // The foreign leg's own statement state is untouched: no status write,
+          // and no balance movement (RECONCILED is not economic).
+          expect(transactionsRepository.update).not.toHaveBeenCalledWith(
+            "foreign-leg",
+            expect.objectContaining({ status: expect.anything() }),
+          );
+          expect(accountsService.updateBalance).not.toHaveBeenCalled();
+        });
+
+        it("fails closed when the stored legs already disagree on voidness", async () => {
+          ownLeg.status = "VOID";
+          foreignLeg.status = "UNRECONCILED";
+
+          await expect(
+            service.updateTransfer(
+              "user-1",
+              "own-leg",
+              { description: "note" },
+              mockFindOne,
+              actor,
+            ),
+          ).rejects.toThrow(/disagree|repaired/i);
+          expect(transactionsRepository.update).not.toHaveBeenCalled();
+          expect(accountsService.updateBalance).not.toHaveBeenCalled();
+        });
+      });
     });
 
     describe("updateTransfer (frozen)", () => {
@@ -2968,6 +3152,67 @@ describe("TransactionTransferService", () => {
             actor,
           ),
         ).rejects.toThrow(ForbiddenException);
+      });
+
+      // P6-RECHECK-006: the counterpart is unreadable, so a VOID boundary cannot
+      // be mirrored. Voiding one leg while the other stays active is the exact
+      // one-legged-VOID defect -- refuse the transition before any write.
+      it.each([
+        ["entering VOID", "UNRECONCILED", "VOID"],
+        ["leaving VOID", "VOID", "UNRECONCILED"],
+        ["leaving VOID to CLEARED", "VOID", "CLEARED"],
+      ])(
+        "rejects %s and writes nothing",
+        async (_label, storedStatus, requestedStatus) => {
+          ownLeg.status = storedStatus;
+
+          await expect(
+            service.updateTransfer(
+              "user-1",
+              "own-leg",
+              { status: requestedStatus as any },
+              mockFindOne,
+              actor,
+            ),
+          ).rejects.toThrow(BadRequestException);
+          expect(transactionsRepository.update).not.toHaveBeenCalled();
+          expect(accountsService.updateBalance).not.toHaveBeenCalled();
+        },
+      );
+
+      it("still allows own-leg CLEARED / RECONCILED while frozen", async () => {
+        ownLeg.status = "UNRECONCILED";
+
+        await service.updateTransfer(
+          "user-1",
+          "own-leg",
+          { status: "CLEARED" as any },
+          mockFindOne,
+          actor,
+        );
+
+        expect(transactionsRepository.update).toHaveBeenCalledWith("own-leg", {
+          status: "CLEARED",
+        });
+        expect(accountsService.updateBalance).not.toHaveBeenCalled();
+      });
+
+      it("accepts VOID resent unchanged (no boundary crossed)", async () => {
+        ownLeg.status = "VOID";
+
+        await expect(
+          service.updateTransfer(
+            "user-1",
+            "own-leg",
+            { status: "VOID" as any, description: "still mine" },
+            mockFindOne,
+            actor,
+          ),
+        ).resolves.toBeDefined();
+        expect(transactionsRepository.update).toHaveBeenCalledWith("own-leg", {
+          status: "VOID",
+          description: "still mine",
+        });
       });
     });
 
