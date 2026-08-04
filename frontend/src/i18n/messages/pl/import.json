@@ -500,6 +500,6 @@
     "mnyPasswordRequired": "Ten plik Money jest chroniony hasłem.",
     "mnyPasswordIncorrect": "To hasło nie otwiera pliku Money.",
     "mnyUnreadableDatabase": "Ten plik Money został odszyfrowany, ale nie udało się odczytać jego zawartości. Może być uszkodzony.",
-    "mnyJobStalledAfterCommit": "Import przestał odpowiadać już po zapisaniu swoich danych. Twoje konta i transakcje są na miejscu, więc tego importu nie wolno powtarzać -- sprawdź dane i zaimportuj tylko to, czego brakuje."
+    "mnyJobStalledAfterCommit": "Import przestał odpowiadać już po zapisaniu swoich danych. Twoje konta i transakcje są na miejscu, więc tego importu nie wolno powtarzać — sprawdź dane i zaimportuj tylko to, czego brakuje."
   }
 }

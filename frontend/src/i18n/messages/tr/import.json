@@ -500,6 +500,6 @@
     "mnyPasswordRequired": "Bu Money dosyası parola korumalı.",
     "mnyPasswordIncorrect": "Bu parola Money dosyasını açmıyor.",
     "mnyUnreadableDatabase": "Bu Money dosyasının şifresi çözüldü ancak içeriği okunamadı. Dosya bozuk olabilir.",
-    "mnyJobStalledAfterCommit": "Iceri aktarma, verileri zaten yazildiktan sonra yanit vermeyi birakti. Hesaplariniz ve islemleriniz yerinde, bu nedenle bu iceri aktarma tekrar calistirilmamalidir -- verilerinizi kontrol edin ve yalnizca eksik olani aktarin."
+    "mnyJobStalledAfterCommit": "İçeri aktarma, verileri zaten yazıldıktan sonra yanıt vermeyi bıraktı. Hesaplarınız ve işlemleriniz yerinde, bu nedenle bu içeri aktarma tekrar çalıştırılmamalıdır — verilerinizi kontrol edin ve yalnızca eksik olanı aktarın."
   }
 }

@@ -500,6 +500,6 @@
     "mnyPasswordRequired": "Tệp Money đó được bảo vệ bằng mật khẩu.",
     "mnyPasswordIncorrect": "Mật khẩu đó không mở được tệp Money.",
     "mnyUnreadableDatabase": "Tệp Money đó đã được giải mã nhưng không thể đọc nội dung. Tệp có thể đã bị hỏng.",
-    "mnyJobStalledAfterCommit": "Qua trinh nhap da ngung phan hoi sau khi du lieu cua no da duoc ghi. Tai khoan va giao dich cua ban da co, vi vay khong duoc chay lai lan nhap nay -- hay kiem tra du lieu va chi nhap phan con thieu."
+    "mnyJobStalledAfterCommit": "Quá trình nhập đã ngừng phản hồi sau khi dữ liệu của nó đã được ghi. Tài khoản và giao dịch của bạn đã có, vì vậy không được chạy lại lần nhập này — hãy kiểm tra dữ liệu và chỉ nhập phần còn thiếu."
   }
 }

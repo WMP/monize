@@ -500,6 +500,6 @@
     "mnyPasswordRequired": "Este ficheiro do Money está protegido por palavra-passe.",
     "mnyPasswordIncorrect": "Essa palavra-passe não abre o ficheiro do Money.",
     "mnyUnreadableDatabase": "Este ficheiro do Money foi desencriptado, mas não foi possível ler o seu conteúdo. Pode estar danificado.",
-    "mnyJobStalledAfterCommit": "A importacao deixou de responder depois de os seus dados ja terem sido escritos. As suas contas e transacoes estao presentes, pelo que esta importacao nao deve ser repetida -- verifique os dados e importe apenas o que falta."
+    "mnyJobStalledAfterCommit": "A importação deixou de responder depois de os seus dados já terem sido escritos. As suas contas e transações estão presentes, pelo que esta importação não deve ser repetida — verifique os dados e importe apenas o que falta."
   }
 }

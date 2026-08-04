@@ -500,6 +500,6 @@
     "mnyPasswordRequired": "Diese Money-Datei ist kennwortgeschützt.",
     "mnyPasswordIncorrect": "Mit diesem Kennwort lässt sich die Money-Datei nicht öffnen.",
     "mnyUnreadableDatabase": "Diese Money-Datei wurde entschlüsselt, ihr Inhalt konnte aber nicht gelesen werden. Sie ist möglicherweise beschädigt.",
-    "mnyJobStalledAfterCommit": "Der Import reagierte nicht mehr, nachdem seine Daten bereits geschrieben worden waren. Ihre Konten und Transaktionen sind vorhanden, dieser Import darf also nicht erneut ausgefuehrt werden -- pruefen Sie Ihre Daten und importieren Sie nur das, was fehlt."
+    "mnyJobStalledAfterCommit": "Der Import reagierte nicht mehr, nachdem seine Daten bereits geschrieben worden waren. Ihre Konten und Transaktionen sind vorhanden, dieser Import darf also nicht erneut ausgeführt werden — prüfen Sie Ihre Daten und importieren Sie nur das, was fehlt."
   }
 }
