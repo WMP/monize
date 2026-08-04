@@ -370,6 +370,13 @@ jobs:
             --set ingress.className=nginx > /dev/null
       - name: Render with HTTPRoute disabled
         run: helm template monize ./helm --set httpRoute.enabled=false > /dev/null
+      # PyYAML happens to be present on the current ubuntu-latest image, which
+      # is not the same as this job declaring it. An undeclared dependency that
+      # disappears in a runner-image bump turns the check below into an
+      # ImportError somebody has to diagnose, so install it explicitly and pin
+      # the version.
+      - name: Install PyYAML
+        run: python3 -m pip install --disable-pip-version-check --quiet 'PyYAML==6.0.2'
       # A rendered manifest that helm accepts can still be invalid Kubernetes.
       # Parse every document so a malformed template fails here rather than at
       # `kubectl apply` time on someone's cluster.

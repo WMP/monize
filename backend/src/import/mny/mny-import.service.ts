@@ -137,22 +137,43 @@ export class MnyImportService {
 
     const options = resolveImportOptions(input.options);
 
-    // Before the job row exists, and never with the credentials in tow: a
-    // failed re-authentication must fail the request, not a background job.
+    // The job row goes in first, because inserting it is what reserves this
+    // owner's single active-import slot -- the partial unique index behind
+    // `create` is the only thing that can refuse a second simultaneous start,
+    // and `hasActiveJob` above is a courtesy that produces the nicer error in
+    // the ordinary case.
+    //
+    // Ordering it after the wipe was the real defect. A request that lost the
+    // race had by then already deleted every account, category and payee the
+    // user owned, and then failed with a conflict: destroyed data behind an
+    // error message promising nothing had happened. Reserving first means a
+    // refused start refuses before it destroys.
+    const job = await this.jobs.create(userId, staged.id, options);
+
+    // Still never with the credentials in tow: a failed re-authentication must
+    // fail the request rather than a background job. Failing the reservation on
+    // the way out releases the slot, so a rejected wipe does not lock the owner
+    // out of importing.
     if (options.wipeExistingData) {
-      await this.usersService.deleteData(userId, {
-        password: input.wipeCredentials?.password,
-        oidcIdToken: input.wipeCredentials?.oidcIdToken,
-        deleteAccounts: true,
-        deleteCategories: true,
-        deletePayees: true,
-      });
+      try {
+        await this.usersService.deleteData(userId, {
+          password: input.wipeCredentials?.password,
+          oidcIdToken: input.wipeCredentials?.oidcIdToken,
+          deleteAccounts: true,
+          deleteCategories: true,
+          deletePayees: true,
+        });
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        await this.jobs
+          .fail(job.id, JOB_FAILED_ERROR_KEY, detail, true)
+          .catch(() => undefined);
+        throw error;
+      }
       this.logger.log(
         `Wiped existing data for user ${userId} before .mny import`,
       );
     }
-
-    const job = await this.jobs.create(userId, staged.id, options);
 
     // Unawaited on purpose (design ADR-3): the request returns the job id and
     // the wizard polls. `withUserContext` keeps an identity for the async chain

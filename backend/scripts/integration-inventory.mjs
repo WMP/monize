@@ -50,6 +50,15 @@ const MANDATORY_SUITES = [
   "security-transfer.integration.spec.ts",
   "backup-restore.integration.spec.ts",
   "support-backup.integration.spec.ts",
+  // The P7-008 concurrency set. Each drives a specific interleaving that the
+  // rest of the suite cannot reach, and the harness self-test is what proves the
+  // others are not quietly passing because their gate stopped gating -- so if
+  // that one goes, the whole set loses its meaning rather than one case.
+  "race-harness.integration.spec.ts",
+  "race-import-start.integration.spec.ts",
+  "race-emergency-claim.integration.spec.ts",
+  "race-refresh-token-revocation.integration.spec.ts",
+  "race-account-balance.integration.spec.ts",
 ];
 
 /**

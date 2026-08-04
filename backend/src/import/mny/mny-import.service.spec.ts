@@ -5,7 +5,11 @@ import { CurrenciesService } from "../../currencies/currencies.service";
 import { UsersService } from "../../users/users.service";
 import { ImportPostProcessingService } from "../import-post-processing.service";
 import { MnyStagedFileMissingError } from "./mny-errors";
-import { JobRunContext, MnyImportJobService } from "./mny-import-job.service";
+import {
+  JOB_FAILED_ERROR_KEY,
+  JobRunContext,
+  MnyImportJobService,
+} from "./mny-import-job.service";
 import { MnyImportService } from "./mny-import.service";
 import { MnyParsedFile, MnyParserService } from "./mny-parser.service";
 import { MnyStagingService } from "./mny-staging.service";
@@ -384,7 +388,7 @@ describe("MnyImportService", () => {
       );
     });
 
-    it("wipes before the job exists, and never stores the credentials", async () => {
+    it("reserves the job before wiping, and never stores the credentials", async () => {
       await service.start("user-1", {
         stagedFileId: "staged-1",
         options: { wipeExistingData: true },
@@ -402,12 +406,31 @@ describe("MnyImportService", () => {
       // import_jobs.options.
       const [, , options] = jobs.create.mock.calls[0];
       expect(JSON.stringify(options)).not.toContain("hunter2");
-      expect(usersService.deleteData.mock.invocationCallOrder[0]).toBeLessThan(
-        jobs.create.mock.invocationCallOrder[0],
+      // Reserve first, destroy second. The other order let a request that then
+      // lost the one-active-import race delete every account, category and
+      // payee the user owned and return a conflict claiming nothing had
+      // happened. `create` is what takes the slot, so it has to come first.
+      expect(jobs.create.mock.invocationCallOrder[0]).toBeLessThan(
+        usersService.deleteData.mock.invocationCallOrder[0],
       );
     });
 
-    it("fails the request, not a background job, when re-authentication fails", async () => {
+    it("does not wipe at all when the reservation is refused", async () => {
+      // The whole point of reserving first: the loser of the race must not have
+      // touched the user's data.
+      jobs.create.mockRejectedValue(new ConflictException("already running"));
+
+      await expect(
+        service.start("user-1", {
+          stagedFileId: "staged-1",
+          options: { wipeExistingData: true },
+          wipeCredentials: { password: "hunter2" },
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(usersService.deleteData).not.toHaveBeenCalled();
+    });
+
+    it("fails the request, and releases the slot, when re-authentication fails", async () => {
       usersService.deleteData.mockRejectedValue(new Error("bad password"));
 
       await expect(
@@ -416,7 +439,15 @@ describe("MnyImportService", () => {
           options: { wipeExistingData: true },
         }),
       ).rejects.toThrow("bad password");
-      expect(jobs.create).not.toHaveBeenCalled();
+      // The reservation now exists before the wipe runs, so a refused wipe has
+      // to hand the slot back or the owner can never start another import.
+      expect(jobs.fail).toHaveBeenCalledWith(
+        "job-1",
+        JOB_FAILED_ERROR_KEY,
+        "bad password",
+        true,
+      );
+      expect(jobs.runClaimed).not.toHaveBeenCalled();
     });
 
     it("does not wipe when the option is off", async () => {

@@ -190,8 +190,18 @@ export class EmergencyAccessClaimController {
     const tokenHash = hashToken(dto.token);
     const passwordHash = await bcrypt.hash(dto.newPassword, 12);
     const ownerId = await withScopedDb(this.dataSource, async (manager) => {
+      // `FOR UPDATE`, and not merely for tidiness: this is the single-use check,
+      // and without the lock two claims arriving together both read
+      // `claim_token_used_at IS NULL`, both rewrite the owner's password, and
+      // both are told they succeeded -- while only the last write survives, so
+      // one contact holds a password that does not work and the account has been
+      // handed to someone who was told they lost. With the lock the second
+      // claim's SELECT re-evaluates after the first commits, finds the hash
+      // cleared, matches nothing, and returns the not-found this endpoint
+      // already has for a spent link.
       const contact = await manager.findOne(EmergencyAccessContact, {
         where: { claimTokenHash: tokenHash },
+        lock: { mode: "pessimistic_write" },
       });
       if (
         !contact ||

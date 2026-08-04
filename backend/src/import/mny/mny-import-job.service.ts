@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { DataSource } from "typeorm";
 import {
@@ -13,6 +13,7 @@ import { ImportJob } from "./entities/import-job.entity";
 import { MnyImportError } from "./mny-errors";
 import { MnyImportProgress, MnyImportResult } from "./model/mny-import-job";
 import { MnyImportOptions } from "./model/mny-import-options";
+import { tr } from "../../i18n/translate";
 
 /**
  * Lifecycle of a background `.mny` import (design ADR-3).
@@ -39,6 +40,23 @@ export const JOB_STALLED_ERROR_KEY = "mnyJobStalled";
 
 /** i18n key for a failure with no more specific parse error. */
 export const JOB_FAILED_ERROR_KEY = "mnyImportFailed";
+
+/**
+ * The partial unique index that holds "one in-flight import per owner". Named
+ * here because the loser of a `start` race has to be told it lost, and the only
+ * thing distinguishing that from a genuine database fault is which constraint
+ * the driver reports.
+ */
+export const ACTIVE_JOB_INDEX = "idx_import_jobs_one_active_per_user";
+
+/** True for the unique violation raised by a second concurrent `start`. */
+export function isActiveJobConflict(error: unknown): boolean {
+  const driverError = error as { code?: string; constraint?: string } | null;
+  return (
+    driverError?.code === "23505" &&
+    driverError?.constraint === ACTIVE_JOB_INDEX
+  );
+}
 
 /** What a job body can report while it runs. */
 export interface JobRunContext {
@@ -72,25 +90,48 @@ export class MnyImportJobService {
 
   constructor(private dataSource: DataSource) {}
 
-  /** Creates a `pending` job. Returns the row the wizard will poll. */
+  /**
+   * Creates a `pending` job, which is also how an owner's single active-import
+   * slot is reserved.
+   *
+   * The reservation is the point. `hasActiveJob` cannot refuse a request it
+   * cannot see, and a count in one transaction followed by an insert in another
+   * lets two simultaneous `start` calls both pass and both insert -- one file
+   * imported twice, by two workers, into the same accounts. The partial unique
+   * index `idx_import_jobs_one_active_per_user` (migration 133) is what actually
+   * decides, and the loser arrives here as a constraint violation, which is a
+   * `409` and not a `500`.
+   */
   async create(
     userId: string,
     stagedFileId: string,
     options: MnyImportOptions,
   ): Promise<ImportJob> {
-    return withScopedDb(this.dataSource, async (manager) => {
-      const repo = manager.getRepository(ImportJob);
-      return repo.save(
-        repo.create({
-          userId,
-          stagedFileId,
-          sourceFormat: "mny",
-          status: "pending",
-          options,
-          retryable: false,
-        }),
-      );
-    });
+    try {
+      return await withScopedDb(this.dataSource, async (manager) => {
+        const repo = manager.getRepository(ImportJob);
+        return repo.save(
+          repo.create({
+            userId,
+            stagedFileId,
+            sourceFormat: "mny",
+            status: "pending",
+            options,
+            retryable: false,
+          }),
+        );
+      });
+    } catch (error) {
+      if (isActiveJobConflict(error)) {
+        throw new ConflictException(
+          tr(
+            "errors.import.mnyImportAlreadyRunning",
+            "An import is already running. Wait for it to finish before starting another.",
+          ),
+        );
+      }
+      throw error;
+    }
   }
 
   /** The job, or null when it never existed or belongs to another user. */

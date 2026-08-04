@@ -171,6 +171,20 @@ Untyped, a mock quietly becomes fiction, and the branch that reads that fiction 
 - **A shape the driver never returns.** A TypeORM insert result mocked as `{ generatedMaps: [] }` made an entire lost-the-race path testable, tested and dead: the real driver signals a conflict elsewhere, so the branch never ran in production and its tests never ran anything else.
 - **A signature that moved.** A service method growing from `Promise<boolean>` to `Promise<string | null>` leaves `mockResolvedValue(true)` behind it -- still truthy, still passing, still describing a contract nothing has any more. When you change a method's return type, grep its mocks in the same commit.
 
+### A concurrency test needs two connections, a gate, and a positive control
+
+`Promise.all` around two calls into one service instance is not a race. Both calls usually share a transaction or arrive in the same order every time, so the interleaving that breaks production is never reached -- and the test passes just as happily with the guard deleted. Every concurrency test here had that shape before `test/helpers/race-harness.ts`, which is what audit finding P7-008 recorded.
+
+Write one with three things:
+
+- **Independent connections.** Each participant runs under its own `withUserContext`, so its `withScopedDb` draws a fresh pooled connection and opens its own transaction.
+- **A `RowGate`.** It holds `FOR UPDATE` on the row every participant must touch, from its own connection, so each of them queues up *inside its own transaction* and they are all released into the contended window together. Wait for them with `waitForBlockedBackends` / `waitForIdleInTransaction` -- conditions the database will answer -- never `sleep`. Release in a `finally`; a leaked gate fails an unrelated spec later in the run.
+- **A positive control.** Reintroduce the defect and watch the test fail, then say so in the change description. `race-harness.integration.spec.ts` does this for the harness itself: an unguarded read-modify-write loses an update through the same gate the real suites use, so if that case ever starts passing, the gate has stopped gating and every suite built on it is back to being a `Promise.all`.
+
+Assert on **both** stored state and provider side effects (`expect(generateTokenPair).toHaveBeenCalledTimes(1)`), and use `raceAll` rather than `Promise.all` -- losing a race is a normal outcome and `Promise.all` throws the other results away with the first rejection.
+
+Two defect shapes worth knowing, because each was found this way and neither is visible in the code as read. A single `UPDATE ... WHERE <predicate>` cannot see a row a concurrent transaction inserted after its snapshot, so a sweep that must leave nothing behind has to re-read and go again (`TokenService.revokeUntilNoneLive`). And `repo.save(entity)` writes *every* column of whatever was loaded, so a recompute persisting a stale entity silently reverts a concurrent edit to unrelated fields -- update the column you own (`repo.update({ id }, { thatColumn })`), not the row you happen to be holding.
+
 ### Fixtures are claims about production data
 
 `docs/testing-contract.md` is the shared list of adversarial inputs to choose from. A fixture is evidence only if the code that writes the real data could have written it. Before adding one, look at the producer: the query's sampling, whether the column is nullable, whether the format guarantees what the fixture assumes. A price series three points a quarter apart proves nothing about code reading daily closes, and weightings that always sum to 1 never exercise the remainder the storage format allows. `docs/financial-calculation-contract.md` section 8.3 has the full rule.
