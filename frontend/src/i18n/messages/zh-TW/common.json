@@ -228,5 +228,8 @@
     "nothingToRedo": "沒有可重做的操作",
     "cannotRedo": "無法重做此操作",
     "redoFailed": "重做失敗"
-  }
+  },
+  "notAvailable": "不可用",
+  "notAvailableShort": "不可用",
+  "unconvertedExcluded": "{count, plural, other {已排除 {count} 筆金額：其貨幣沒有匯率記錄。}}"
 }

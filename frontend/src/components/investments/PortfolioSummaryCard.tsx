@@ -86,8 +86,12 @@ export function PortfolioSummaryCard({
       // No approximate line at all when one account's value is unknown: an
       // approximation of a partial sum is not an approximation of the total.
       if (acct.totalMarketValue === null) return null;
-      total += convertToDefault(acct.cashBalance, acct.currencyCode);
-      total += convertToDefault(acct.totalMarketValue, acct.currencyCode);
+      const cash = convertToDefault(acct.cashBalance, acct.currencyCode);
+      const market = convertToDefault(acct.totalMarketValue, acct.currencyCode);
+      // No rate: no approximate total either.
+      if (cash === null || market === null) return null;
+      total += cash;
+      total += market;
     }
     return total;
   }, [summary, convertToDefault, foreignCurrency]);

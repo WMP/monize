@@ -3,7 +3,6 @@ import { renderHook, waitFor } from '@testing-library/react';
 import {
   useExchangeRates,
   buildRateMap,
-  convertWithRateMap,
   convertWithRateMapOrNull,
 } from './useExchangeRates';
 
@@ -42,29 +41,29 @@ describe('useExchangeRates', () => {
     expect(result.current.rates).toHaveLength(1);
   });
 
-  it('convert returns unconverted amount for same currency', async () => {
+  it('convertOrNull returns the amount unchanged for the same currency', async () => {
     vi.mocked(exchangeRatesApi.getLatestRates).mockResolvedValue([]);
     const { result } = renderHook(() => useExchangeRates());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(result.current.convert(100, 'CAD', 'CAD')).toBe(100);
+    expect(result.current.convertOrNull(100, 'CAD', 'CAD')).toBe(100);
   });
 
-  it('convert uses direct rate', async () => {
+  it('convertOrNull uses the direct rate', async () => {
     vi.mocked(exchangeRatesApi.getLatestRates).mockResolvedValue([
       { id: 1, fromCurrency: 'USD', toCurrency: 'CAD', rate: 1.36, rateDate: '2025-01-15', source: 'test' },
     ]);
     const { result } = renderHook(() => useExchangeRates());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(result.current.convert(100, 'USD', 'CAD')).toBeCloseTo(136, 1);
+    expect(result.current.convertOrNull(100, 'USD', 'CAD')).toBeCloseTo(136, 1);
   });
 
-  it('convert uses inverse rate', async () => {
+  it('convertOrNull uses the inverse rate', async () => {
     vi.mocked(exchangeRatesApi.getLatestRates).mockResolvedValue([
       { id: 1, fromCurrency: 'USD', toCurrency: 'CAD', rate: 1.36, rateDate: '2025-01-15', source: 'test' },
     ]);
     const { result } = renderHook(() => useExchangeRates());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(result.current.convert(136, 'CAD', 'USD')).toBeCloseTo(100, 0);
+    expect(result.current.convertOrNull(136, 'CAD', 'USD')).toBeCloseTo(100, 0);
   });
 
   it('getRate returns 1 for same currency', async () => {
@@ -149,24 +148,14 @@ describe('useExchangeRates', () => {
       expect(result.current.canConvert('USD', 'GBP')).toBe(false);
     });
 
-    it('convertToDefaultOrNull propagates the unavailable pair', async () => {
+    it('convertToDefault propagates the unavailable pair', async () => {
       vi.mocked(exchangeRatesApi.getLatestRates).mockResolvedValue([]);
       const { result } = renderHook(() => useExchangeRates());
       await waitFor(() => expect(result.current.isLoading).toBe(false));
       // Default currency in this suite is CAD.
-      expect(result.current.convertToDefaultOrNull(100, 'USD')).toBeNull();
+      expect(result.current.convertToDefault(100, 'USD')).toBeNull();
     });
 
-    it('convert still falls back to the unconverted amount -- a tracked defect', async () => {
-      // Pinned deliberately, not endorsed. `convert` has ~50 display call sites
-      // that consume a plain number, so the fallback is documented on the hook
-      // and this test exists so changing it is a conscious act rather than an
-      // accident. New code uses `convertOrNull`.
-      vi.mocked(exchangeRatesApi.getLatestRates).mockResolvedValue([]);
-      const { result } = renderHook(() => useExchangeRates());
-      await waitFor(() => expect(result.current.isLoading).toBe(false));
-      expect(result.current.convert(100, 'USD', 'GBP')).toBe(100);
-    });
   });
 
   it('getRate uses direct rate', async () => {
@@ -203,26 +192,6 @@ describe('buildRateMap', () => {
       { id: 1, fromCurrency: 'USD', toCurrency: 'CAD', rate: 1.36, rateDate: '2025-01-15', source: 'test' },
     ]);
     expect(map.get('USD->CAD')).toBe(1.36);
-  });
-});
-
-describe('convertWithRateMap', () => {
-  const rateMap = new Map([['USD->CAD', 1.36]]);
-
-  it('returns same amount for same currency', () => {
-    expect(convertWithRateMap(100, 'CAD', 'CAD', rateMap)).toBe(100);
-  });
-
-  it('uses direct rate', () => {
-    expect(convertWithRateMap(100, 'USD', 'CAD', rateMap)).toBeCloseTo(136);
-  });
-
-  it('uses inverse rate', () => {
-    expect(convertWithRateMap(136, 'CAD', 'USD', rateMap)).toBeCloseTo(100, 0);
-  });
-
-  it('returns unconverted when no rate -- the same tracked defect as `convert`', () => {
-    expect(convertWithRateMap(100, 'GBP', 'JPY', rateMap)).toBe(100);
   });
 });
 

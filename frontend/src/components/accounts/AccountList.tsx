@@ -91,7 +91,7 @@ interface AccountListProps {
   institutions?: Institution[];
   brokerageMarketValues?: Map<string, number>;
   defaultCurrency: string;
-  convertToDefault: (value: number, fromCurrency: string) => number;
+  convertToDefault: (value: number, fromCurrency: string) => number | null;
   onEdit: (account: Account) => void;
   onRefresh: () => void;
 }
@@ -387,6 +387,11 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
             : (Number(account.currentBalance) || 0) +
               (Number(account.futureTransactionsSum) || 0);
         const converted = convertToDefault(rawBalance, account.currencyCode);
+        // An account whose currency has no rate is left out of its type's total
+        // rather than counted at a fabricated parity. `AccountList` shows the
+        // per-type figure as a group header, so an excluded row is visible in the
+        // list beneath it.
+        if (converted === null) continue;
         // Accumulate in 1/10000 units to avoid floating-point drift.
         totalUnits += Math.round(converted * 10000);
       }

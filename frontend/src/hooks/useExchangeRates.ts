@@ -64,8 +64,8 @@ export function useExchangeRates() {
    * stays distinguishable from an unavailable pair by being a number rather
    * than `null`.
    *
-   * Prefer this over `convert` in new code; see the note there for why the
-   * other one still exists.
+   * This is the *only* conversion function. A `convert` that fell back to the
+   * source amount used to sit beside it -- see the note on the returned object.
    */
   const convertOrNull = useCallback(
     (amount: number, fromCurrency: string, toCurrency?: string): number | null => {
@@ -84,43 +84,7 @@ export function useExchangeRates() {
     [getRate, defaultCurrency, isLoading],
   );
 
-  /**
-   * Convert `amount`, falling back to the **unconverted** amount when the pair
-   * has no rate.
-   *
-   * That fallback is a known defect, not a design choice. A caller rendering
-   * the result beside the destination currency label shows `100.00 USD` as
-   * `100.00 CAD`: a fabricated 1:1 conversion, indistinguishable from a genuine
-   * same-currency figure, and exactly what
-   * `docs/financial-calculation-contract.md` section 3 forbids -- "a missing
-   * exchange rate is missing data, not a rate of `1`".
-   *
-   * It survives only because around fifty display call sites across the
-   * reports, dashboard widgets and account pages consume it as a plain
-   * `number`, and each needs its own decision about how to show a figure that
-   * cannot be worked out. The backend half of the same defect is fixed:
-   * `PortfolioService` returns `null` totals and names the unavailable pairs in
-   * `unavailableFxPairs`.
-   *
-   * **Do not call this from new code.** Use `convertOrNull` and render the
-   * unknown case, or `canConvert` to decide whether to offer the figure at all.
-   */
-  const convert = useCallback(
-    (amount: number, fromCurrency: string, toCurrency?: string): number => {
-      return convertOrNull(amount, fromCurrency, toCurrency) ?? amount;
-    },
-    [convertOrNull],
-  );
-
   const convertToDefault = useCallback(
-    (amount: number, fromCurrency: string): number => {
-      return convert(amount, fromCurrency, defaultCurrency);
-    },
-    [convert, defaultCurrency],
-  );
-
-  /** `convertToDefault`'s honest counterpart. */
-  const convertToDefaultOrNull = useCallback(
     (amount: number, fromCurrency: string): number | null => {
       return convertOrNull(amount, fromCurrency, defaultCurrency);
     },
@@ -131,10 +95,19 @@ export function useExchangeRates() {
     rates,
     rateMap,
     isLoading,
-    convert,
+    /**
+     * The only conversion function. Returns `null` for a pair with no rate.
+     *
+     * There used to be a `convert` beside it that fell back to the source
+     * amount, so `100.00 USD` rendered beside a CAD label read as `100.00 CAD`
+     * -- a fabricated 1:1 conversion indistinguishable from a genuine
+     * same-currency figure, which is what
+     * `docs/financial-calculation-contract.md` section 3 forbids. It is gone,
+     * along with `convertWithRateMap`, rather than deprecated: a fallback that
+     * still compiles is a fallback something still calls.
+     */
     convertOrNull,
     convertToDefault,
-    convertToDefaultOrNull,
     canConvert,
     getRate,
     refresh,
@@ -174,21 +147,4 @@ export function convertWithRateMapOrNull(
   if (inverseRate && inverseRate !== 0) return amount / inverseRate;
 
   return null;
-}
-
-/**
- * Convert an amount using a rate map, falling back to the unconverted amount.
- *
- * Carries the same defect as `convert` above, for the same reason. Prefer
- * `convertWithRateMapOrNull`.
- */
-export function convertWithRateMap(
-  amount: number,
-  fromCurrency: string,
-  toCurrency: string,
-  rateMap: Map<string, number>,
-): number {
-  return (
-    convertWithRateMapOrNull(amount, fromCurrency, toCurrency, rateMap) ?? amount
-  );
 }

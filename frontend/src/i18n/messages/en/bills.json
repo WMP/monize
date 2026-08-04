@@ -43,7 +43,8 @@
     "summaryEnding": "Ending",
     "summaryLowest": "Lowest",
     "summaryMinBalance": "Min Balance",
-    "allAccounts": "All Accounts"
+    "allAccounts": "All Accounts",
+    "unconvertibleCurrency": "One of the selected accounts uses a currency with no exchange rate on file, so the running balance cannot be worked out. Pick a single account, or try again once rates have refreshed."
   },
   "calendar": {
     "days": {

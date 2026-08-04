@@ -43,7 +43,8 @@
     "summaryEnding": "Ende",
     "summaryLowest": "Niedrigster",
     "summaryMinBalance": "Mindestsaldo",
-    "allAccounts": "Alle Konten"
+    "allAccounts": "Alle Konten",
+    "unconvertibleCurrency": "Eines der ausgewählten Konten verwendet eine Währung, für die kein Wechselkurs vorliegt, daher lässt sich der laufende Saldo nicht ermitteln. Wählen Sie ein einzelnes Konto, oder versuchen Sie es nach einer Kursaktualisierung erneut."
   },
   "calendar": {
     "days": {

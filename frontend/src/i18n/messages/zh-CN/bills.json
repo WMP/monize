@@ -43,7 +43,8 @@
     "summaryEnding": "结束",
     "summaryLowest": "最低",
     "summaryMinBalance": "最低余额",
-    "allAccounts": "所有账户"
+    "allAccounts": "所有账户",
+    "unconvertibleCurrency": "所选账户中有一个使用的货币没有汇率记录，因此无法计算滚动余额。请只选择一个账户，或在汇率刷新后重试。"
   },
   "calendar": {
     "days": {

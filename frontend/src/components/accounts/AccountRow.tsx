@@ -146,7 +146,7 @@ export interface AccountRowProps {
   defaultCurrency: string;
   formatCurrency: (amount: number | string | null | undefined, currency: string) => string;
   formatCurrencyBase: (value: number, currencyCode?: string) => string;
-  convertToDefault: (value: number, fromCurrency: string) => number;
+  convertToDefault: (value: number, fromCurrency: string) => number | null;
   formatAccountType: (type: AccountType) => string;
   getAccountTypeColor: (type: AccountType) => string;
   actionLabels: AccountActionLabels;
@@ -306,11 +306,13 @@ export const AccountRow = memo(function AccountRow({
                 {t('row.marketValue')}
               </div>
             )}
-            {density !== 'dense' && account.currencyCode !== defaultCurrency && (
-              <div className="text-xs text-gray-400 dark:text-gray-500">
-                {'\u2248 '}{formatCurrencyBase(convertToDefault(brokerageMarketValue, account.currencyCode), defaultCurrency)}
-              </div>
-            )}
+            {density !== 'dense' &&
+              account.currencyCode !== defaultCurrency &&
+              convertToDefault(brokerageMarketValue, account.currencyCode) !== null && (
+                <div className="text-xs text-gray-400 dark:text-gray-500">
+                  {'\u2248 '}{formatCurrencyBase(convertToDefault(brokerageMarketValue, account.currencyCode)!, defaultCurrency)}
+                </div>
+              )}
           </>
         ) : (
           <>
@@ -325,11 +327,13 @@ export const AccountRow = memo(function AccountRow({
                   >
                     {formatCurrency(totalBalance, account.currencyCode)}
                   </div>
-                  {density !== 'dense' && account.currencyCode !== defaultCurrency && (
-                    <div className="text-xs text-gray-400 dark:text-gray-500">
-                      {'\u2248 '}{formatCurrencyBase(convertToDefault(totalBalance, account.currencyCode), defaultCurrency)}
-                    </div>
-                  )}
+                  {density !== 'dense' &&
+                    account.currencyCode !== defaultCurrency &&
+                    convertToDefault(totalBalance, account.currencyCode) !== null && (
+                      <div className="text-xs text-gray-400 dark:text-gray-500">
+                        {'\u2248 '}{formatCurrencyBase(convertToDefault(totalBalance, account.currencyCode)!, defaultCurrency)}
+                      </div>
+                    )}
                 </>
               );
             })()}

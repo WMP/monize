@@ -197,12 +197,20 @@ export function UpcomingBills({ scheduledTransactions, accounts, isLoading, maxI
   }
 
   // Totals use the full list; display is capped at maxItems
+  // A bill whose currency has no rate is excluded from the widget's totals
+  // rather than counted at a fabricated parity.
   const totalDue = upcomingItems
     .filter((item) => !item.isTransfer && getEffectiveAmount(item) < 0)
-    .reduce((sum, item) => sum + Math.abs(convertToDefault(getEffectiveAmount(item), item.currencyCode)), 0);
+    .reduce((sum, item) => {
+      const converted = convertToDefault(getEffectiveAmount(item), item.currencyCode);
+      return converted === null ? sum : sum + Math.abs(converted);
+    }, 0);
   const totalIncoming = upcomingItems
     .filter((item) => !item.isTransfer && getEffectiveAmount(item) > 0)
-    .reduce((sum, item) => sum + convertToDefault(getEffectiveAmount(item), item.currencyCode), 0);
+    .reduce((sum, item) => {
+      const converted = convertToDefault(getEffectiveAmount(item), item.currencyCode);
+      return converted === null ? sum : sum + converted;
+    }, 0);
 
   const visibleItems = upcomingItems.slice(0, maxItems);
   const hiddenCount = upcomingItems.length - visibleItems.length;

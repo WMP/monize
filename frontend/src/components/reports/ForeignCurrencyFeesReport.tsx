@@ -139,7 +139,7 @@ export function ForeignCurrencyFeesReport() {
   }, [effectiveAccountIds, accountsById, defaultCurrency]);
 
   const convertFee = useCallback(
-    (amount: number, accountCurrency: string): number => {
+    (amount: number, accountCurrency: string): number | null => {
       if (accountCurrency === displayCurrency) return amount;
       return convertToDefault(amount, accountCurrency || defaultCurrency);
     },
@@ -203,6 +203,8 @@ export function ForeignCurrencyFeesReport() {
       for (const row of result.rows) {
         if (active && !active.has(row.currencyCode)) continue;
         const converted = convertFee(row.feeTotal, result.currency);
+        // Excluded rather than counted at a fabricated parity.
+        if (converted === null) continue;
         const bucket = byMonth.get(row.month) ?? { cents: 0, count: 0 };
         bucket.cents += Math.round(converted * SCALE);
         bucket.count += row.count;

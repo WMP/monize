@@ -228,5 +228,8 @@
     "nothingToRedo": "Yeniden yapılacak işlem yok",
     "cannotRedo": "Bu işlem yeniden yapılamaz",
     "redoFailed": "Yeniden yapma başarısız"
-  }
+  },
+  "notAvailable": "Kullanılamıyor",
+  "notAvailableShort": "yok",
+  "unconvertedExcluded": "{count, plural, other {# tutar hariç tutuldu: para birimi için kayıtlı döviz kuru yok.}}"
 }

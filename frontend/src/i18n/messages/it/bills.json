@@ -43,7 +43,8 @@
     "summaryEnding": "Finale",
     "summaryLowest": "Minimo",
     "summaryMinBalance": "Saldo minimo",
-    "allAccounts": "Tutti i conti"
+    "allAccounts": "Tutti i conti",
+    "unconvertibleCurrency": "Uno dei conti selezionati usa una valuta senza tasso di cambio registrato, quindi il saldo progressivo non può essere calcolato. Scegli un singolo conto, oppure riprova dopo un aggiornamento dei tassi."
   },
   "calendar": {
     "days": {

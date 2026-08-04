@@ -43,7 +43,8 @@
     "summaryEnding": "Saldo końcowe",
     "summaryLowest": "Najniższe",
     "summaryMinBalance": "Min. saldo",
-    "allAccounts": "Wszystkie konta"
+    "allAccounts": "Wszystkie konta",
+    "unconvertibleCurrency": "Jedno z wybranych kont używa waluty, dla której nie ma zapisanego kursu, więc nie da się wyliczyć salda narastającego. Wybierz jedno konto lub spróbuj ponownie po odświeżeniu kursów."
   },
   "calendar": {
     "days": {

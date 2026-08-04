@@ -131,7 +131,7 @@ export function CashFlowForecastChart({
   const { formatCurrency: formatCurrencyFull, formatCurrencyAxis, formatCurrencyFlag } =
     useNumberFormat();
   const formatChartDate = useChartDateFormat();
-  const { convertToDefault, defaultCurrency } = useExchangeRates();
+  const { convertToDefault, canConvert, defaultCurrency } = useExchangeRates();
   const [selectedPeriod, setSelectedPeriod] = useState<ForecastPeriod>(() => getStoredPeriod());
   const [selectedAccountId, setSelectedAccountId] = useState<string>(() => getStoredAccountId());
   // High/low value bubbles the user has temporarily dismissed, keyed by the
@@ -194,6 +194,20 @@ export function CashFlowForecastChart({
       needsConversion ? convertToDefault : undefined,
     );
   }, [accounts, scheduledTransactions, selectedPeriod, selectedAccountId, futureTransactions, needsConversion, convertToDefault]);
+
+  // A running balance is only meaningful when every contributing account can be
+  // expressed in the chart's currency. Checked here rather than inside
+  // `buildForecast`, whose return type cannot carry the reason -- and an empty
+  // series would read as "nothing is due" rather than "this cannot be worked
+  // out".
+  const unconvertibleCurrency = useMemo(() => {
+    if (!needsConversion) return false;
+    const relevant =
+      selectedAccountId === 'all'
+        ? accounts
+        : accounts.filter((a) => a.id === selectedAccountId);
+    return relevant.some((a) => !canConvert(a.currencyCode));
+  }, [needsConversion, accounts, selectedAccountId, canConvert]);
 
   const summary = useMemo(() => {
     return getForecastSummary(forecastData);
@@ -282,7 +296,14 @@ export function CashFlowForecastChart({
       </div>
 
       {/* Chart */}
-      {forecastData.length === 0 ? (
+      {unconvertibleCurrency ? (
+        // Distinct from "nothing scheduled": the forecast could not be produced,
+        // and an empty chart would read as a settled answer about the user's
+        // bills.
+        <div className="h-72 flex flex-col items-center justify-center px-6 text-center text-gray-500 dark:text-gray-400">
+          <p>{t('forecast.unconvertibleCurrency')}</p>
+        </div>
+      ) : forecastData.length === 0 ? (
         <div className="h-72 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
           <p>{t('forecast.noData')}</p>
           <p className="text-sm mt-1">

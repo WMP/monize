@@ -43,7 +43,8 @@
     "summaryEnding": "Bitiş",
     "summaryLowest": "En Düşük",
     "summaryMinBalance": "Min Bakiye",
-    "allAccounts": "Tüm Hesaplar"
+    "allAccounts": "Tüm Hesaplar",
+    "unconvertibleCurrency": "Seçilen hesaplardan biri kayıtlı döviz kuru bulunmayan bir para birimi kullanıyor; bu nedenle yürüyen bakiye hesaplanamıyor. Tek bir hesap seçin veya kurlar yenilendikten sonra tekrar deneyin."
   },
   "calendar": {
     "days": {

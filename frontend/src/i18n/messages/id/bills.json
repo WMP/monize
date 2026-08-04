@@ -43,7 +43,8 @@
     "summaryEnding": "Akhir",
     "summaryLowest": "Terendah",
     "summaryMinBalance": "Saldo Min",
-    "allAccounts": "Semua Akun"
+    "allAccounts": "Semua Akun",
+    "unconvertibleCurrency": "Salah satu rekening yang dipilih menggunakan mata uang tanpa kurs tercatat, sehingga saldo berjalan tidak dapat dihitung. Pilih satu rekening saja, atau coba lagi setelah kurs diperbarui."
   },
   "calendar": {
     "days": {

@@ -43,7 +43,8 @@
     "summaryEnding": "종료",
     "summaryLowest": "최저",
     "summaryMinBalance": "최소 잔액",
-    "allAccounts": "모든 계정"
+    "allAccounts": "모든 계정",
+    "unconvertibleCurrency": "선택한 계좌 중 하나가 환율이 등록되지 않은 통화를 사용하므로 누적 잔액을 계산할 수 없습니다. 계좌를 하나만 선택하거나, 환율이 갱신된 뒤 다시 시도하세요."
   },
   "calendar": {
     "days": {

@@ -228,5 +228,8 @@
     "nothingToRedo": "다시 실행할 항목이 없습니다",
     "cannotRedo": "이 작업은 다시 실행할 수 없습니다",
     "redoFailed": "다시 실행에 실패했습니다"
-  }
+  },
+  "notAvailable": "사용할 수 없음",
+  "notAvailableShort": "해당 없음",
+  "unconvertedExcluded": "{count, plural, other {환율이 등록되지 않은 통화이므로 금액 {count}건을 제외했습니다.}}"
 }

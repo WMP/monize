@@ -228,5 +228,8 @@
     "nothingToRedo": "Nada que rehacer",
     "cannotRedo": "No se puede rehacer esta acción",
     "redoFailed": "Error al rehacer"
-  }
+  },
+  "notAvailable": "No disponible",
+  "notAvailableShort": "n/d",
+  "unconvertedExcluded": "{count, plural, one {Se omitió # importe: su moneda no tiene tipo de cambio registrado.} other {Se omitieron # importes: sus monedas no tienen tipo de cambio registrado.}}"
 }

@@ -99,7 +99,7 @@ export function DividendYieldGrowthReport() {
     : undefined;
   const displayCurrency = selectedAccount?.currencyCode || defaultCurrency;
 
-  const getTxAmount = useCallback((tx: InvestmentTransaction): number => {
+  const getTxAmount = useCallback((tx: InvestmentTransaction): number | null => {
     const amount = Math.abs(tx.totalAmount);
     if (isSingleAccount) return amount;
     const txCurrency = accountCurrencyMap.get(tx.accountId) || defaultCurrency;
@@ -188,11 +188,21 @@ export function DividendYieldGrowthReport() {
     const cutoff = subYears(new Date(), 1);
     return transactions
       .filter((tx) => parseLocalDate(tx.transactionDate) >= cutoff)
-      .reduce((sum, tx) => sum + getTxAmount(tx), 0);
+      .reduce((sum, tx) => {
+        // Excluded rather than added at a fabricated parity.
+        const amount = getTxAmount(tx);
+        return amount === null ? sum : sum + amount;
+      }, 0);
   }, [transactions, getTxAmount]);
 
   const totalPortfolioValue = useMemo(
-    () => holdings.reduce((sum, h) => sum + convertToDefault(h.marketValue ?? 0, h.currencyCode), 0),
+    () =>
+      holdings.reduce((sum, h) => {
+        // Excluded rather than counted at a fabricated parity: this figure is the
+        // denominator every yield below is measured against.
+        const converted = convertToDefault(h.marketValue ?? 0, h.currencyCode);
+        return converted === null ? sum : sum + converted;
+      }, 0),
     [holdings, convertToDefault],
   );
 
@@ -212,7 +222,9 @@ export function DividendYieldGrowthReport() {
         existing = { total: 0, dates: [] };
         dividendMap.set(tx.securityId, existing);
       }
-      existing.total += getTxAmount(tx);
+      const amount = getTxAmount(tx);
+      if (amount === null) return;
+      existing.total += amount;
       existing.dates.push(parseLocalDate(tx.transactionDate));
     });
 
@@ -220,6 +232,8 @@ export function DividendYieldGrowthReport() {
     const holdingMap = new Map<string, { symbol: string; name: string; marketValue: number }>();
     holdings.forEach((h) => {
       const mv = convertToDefault(h.marketValue ?? 0, h.currencyCode);
+      // Excluded: this market value is the denominator of the yield below it.
+      if (mv === null) return;
       const existing = holdingMap.get(h.securityId);
       if (existing) {
         existing.marketValue += mv;
@@ -277,7 +291,9 @@ export function DividendYieldGrowthReport() {
     const yearMap = new Map<string, number>();
     transactions.forEach((tx) => {
       const year = tx.transactionDate.substring(0, 4);
-      yearMap.set(year, (yearMap.get(year) || 0) + getTxAmount(tx));
+      const amount = getTxAmount(tx);
+      if (amount === null) return;
+      yearMap.set(year, (yearMap.get(year) || 0) + amount);
     });
 
     const years = Array.from(yearMap.keys()).sort();

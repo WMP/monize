@@ -19,6 +19,7 @@ import { investmentsApi } from '@/lib/investments';
 import { HoldingWithMarketValue } from '@/types/investment';
 import { Account } from '@/types/account';
 import { useNumberFormat } from '@/hooks/useNumberFormat';
+import { useMoneyDisplay } from '@/hooks/useMoneyDisplay';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { ExportDropdown } from '@/components/ui/ExportDropdown';
 import { ReportAccountMultiSelect } from '@/components/reports/ReportAccountMultiSelect';
@@ -89,6 +90,7 @@ const ACCOUNTS_STORAGE_KEY = 'monize-reports-security-type-allocation-accounts';
 export function SecurityTypeAllocationReport() {
   const t = useTranslations('reports');
   const { formatCurrencyCompact: formatCurrency, formatCurrency: formatCurrencyFull } = useNumberFormat();
+  const { formatCurrencyOrNa, notAvailableShort } = useMoneyDisplay();
   const { defaultCurrency, convertToDefault } = useExchangeRates();
   const [accounts, setAccounts] = useState<Account[]>([]);
   // Persisted so the report opens on the accounts the user last chose.
@@ -140,6 +142,10 @@ export function SecurityTypeAllocationReport() {
         existing = { totalValue: 0, holdings: [] };
         typeMap.set(type, existing);
       }
+      // A holding we cannot convert is left out of the type's value and of the
+      // list, so the percentages below are measured over what was actually
+      // summed rather than over a mix of real and invented figures.
+      if (converted === null) return;
       existing.totalValue += converted;
       existing.holdings.push(h);
     });
@@ -157,8 +163,8 @@ export function SecurityTypeAllocationReport() {
         color: getColor(type, colorIndex++),
         holdings: data.holdings.sort(
           (a, b) =>
-            convertToDefault(b.marketValue ?? 0, b.currencyCode) -
-            convertToDefault(a.marketValue ?? 0, a.currencyCode),
+            (convertToDefault(b.marketValue ?? 0, b.currencyCode) ?? 0) -
+            (convertToDefault(a.marketValue ?? 0, a.currencyCode) ?? 0),
         ),
       }))
       .sort((a, b) => b.totalValue - a.totalValue);
@@ -421,12 +427,16 @@ export function SecurityTypeAllocationReport() {
                         )}
                       </td>
                       <td className="px-4 py-2 text-sm text-right text-gray-600 dark:text-gray-400">
-                        {formatCurrencyFull(convertToDefault(h.marketValue ?? 0, h.currencyCode), defaultCurrency)}
+                        {formatCurrencyOrNa(convertToDefault(h.marketValue ?? 0, h.currencyCode), defaultCurrency)}
                       </td>
                       <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-500">
-                        {totalPortfolioValue > 0
-                          ? ((convertToDefault(h.marketValue ?? 0, h.currencyCode) / totalPortfolioValue) * 100).toFixed(1)
-                          : '0.0'}%
+                        {(() => {
+                          const converted = convertToDefault(h.marketValue ?? 0, h.currencyCode);
+                          if (converted === null) return notAvailableShort;
+                          return totalPortfolioValue > 0
+                            ? `${((converted / totalPortfolioValue) * 100).toFixed(1)}%`
+                            : '0.0%';
+                        })()}
                       </td>
                       <td className="px-4 py-2 text-sm text-right text-gray-500 dark:text-gray-500">
                         {h.quantity}

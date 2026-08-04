@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useRef } from 'react';
+import { UnconvertedNotice } from '@/components/ui/UnconvertedNotice';
 import { gainLossColor } from '@/lib/format';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -126,8 +127,10 @@ export function IncomeExpensesBarChart({
 
   // Group transactions into weekly (recent) or monthly (longer) buckets and
   // split each bucket's activity into income and expenses.
-  const chartData = useMemo(() => {
+  const { data: chartData, unconverted } = useMemo(() => {
     const txns = transactions ?? [];
+    // Rows left out because their currency has no rate to the display currency.
+    let unconverted = 0;
     const startDate = start ? parseLocalDate(start) : parseLocalDate(end);
     const endDate = parseLocalDate(end);
 
@@ -165,6 +168,12 @@ export function IncomeExpensesBarChart({
 
       const classifyAmount = (rawAmount: number, category: { isIncome: boolean } | null | undefined) => {
         const amount = convertToDefault(rawAmount, tx.currencyCode);
+        // No rate for this currency: leave the row out rather than count it at a
+        // fabricated parity, and record it so the chart can say so.
+        if (amount === null) {
+          unconverted += 1;
+          return;
+        }
         if (category?.isIncome === true) {
           bucket.income += amount;
         } else if (category?.isIncome === false) {
@@ -189,13 +198,16 @@ export function IncomeExpensesBarChart({
       }
     });
 
-    return buckets.map((b) => ({
-      name: b.label,
-      Income: Math.round(b.income),
-      Expenses: Math.round(b.expenses),
-      startDate: format(b.bucketStart, 'yyyy-MM-dd'),
-      endDate: format(b.bucketEnd, 'yyyy-MM-dd'),
-    }));
+    return {
+      data: buckets.map((b) => ({
+        name: b.label,
+        Income: Math.round(b.income),
+        Expenses: Math.round(b.expenses),
+        startDate: format(b.bucketStart, 'yyyy-MM-dd'),
+        endDate: format(b.bucketEnd, 'yyyy-MM-dd'),
+      })),
+      unconverted,
+    };
   }, [transactions, start, end, isWeekly, formatDate, formatChartDate, convertToDefault, weekStartsOn]);
 
   const barClickedRef = useRef(false);
@@ -273,6 +285,7 @@ export function IncomeExpensesBarChart({
       ) : (
         <>
           <div className="flex-1 min-h-[16rem]">
+            <UnconvertedNotice count={unconverted} className="mb-1" />
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart
                 data={chartData}

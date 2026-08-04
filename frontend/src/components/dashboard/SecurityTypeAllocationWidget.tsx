@@ -85,6 +85,9 @@ export function SecurityTypeAllocationWidget({
     aggregated.forEach((h) => {
       const type = h.securityType || 'OTHER';
       const converted = convertToDefault(h.marketValue ?? 0, h.currencyCode);
+      // No rate: leave the holding out rather than count it at a fabricated
+      // parity, which would misstate every type's share of the total.
+      if (converted === null) return;
       typeMap.set(type, (typeMap.get(type) ?? 0) + converted);
     });
 

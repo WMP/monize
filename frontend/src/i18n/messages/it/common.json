@@ -228,5 +228,8 @@
     "nothingToRedo": "Niente da ripristinare",
     "cannotRedo": "Impossibile ripristinare questa azione",
     "redoFailed": "Ripristino non riuscito"
-  }
+  },
+  "notAvailable": "Non disponibile",
+  "notAvailableShort": "n/d",
+  "unconvertedExcluded": "{count, plural, one {# importo è stato escluso: la sua valuta non ha un tasso di cambio registrato.} other {# importi sono stati esclusi: le loro valute non hanno un tasso di cambio registrato.}}"
 }

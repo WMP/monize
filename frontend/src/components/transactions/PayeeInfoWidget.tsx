@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { addKnown } from '@/lib/partial-sum';
+import { useMoneyDisplay } from '@/hooks/useMoneyDisplay';
 import { useRouter } from 'next/navigation';
 import {
   PencilSquareIcon,
@@ -67,6 +69,7 @@ export function PayeeInfoWidget({
 }: PayeeInfoWidgetProps) {
   const t = useTranslations('transactions');
   const router = useRouter();
+  const { formatCurrencyOrNa } = useMoneyDisplay();
   const { formatCurrency } = useNumberFormat();
   const { formatDate } = useDateFormat();
   const { convertToDefault, defaultCurrency } = useExchangeRates();
@@ -161,8 +164,13 @@ export function PayeeInfoWidget({
   );
 
   const transactionCount = summary?.transactionCount ?? 0;
-  const averageAmount =
-    totals && transactionCount > 0 ? (totals.income + totals.expenses) / transactionCount : null;
+  const averageAmount = (() => {
+    if (!totals || transactionCount <= 0) return null;
+    // Unknown in, unknown out: an average over a total that could not be
+    // established is not an average.
+    const combined = addKnown(totals.income, totals.expenses);
+    return combined === null ? null : combined / transactionCount;
+  })();
   // The label map wins over the relation's own name: it carries the parent
   // ("Utilities: Hydro"), and the relation only ever holds the leaf, which is
   // ambiguous when several parents own a category of the same name.
@@ -219,7 +227,9 @@ export function PayeeInfoWidget({
       <div className="mb-4">
         <p className="text-sm text-gray-500 dark:text-gray-400">{t('payeeWidget.totalSpent')}</p>
         <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-          {totals ? formatCurrency(totals.expenses, currencyStrategy.displayCurrency) : '—'}
+          {totals
+            ? formatCurrencyOrNa(totals.expenses, currencyStrategy.displayCurrency)
+            : '—'}
         </p>
         {recurring && (
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 flex items-center">
@@ -262,19 +272,21 @@ export function PayeeInfoWidget({
       )}
 
       <dl className="space-y-2 text-sm mb-4">
-        {totals && totals.income > 0 && (
+        {/* An unknown income total still gets a row: dropping it would conflate
+            "no income from this payee" with "could not be worked out". */}
+        {totals && (totals.income === null || totals.income > 0) && (
           <div className="flex items-baseline justify-between gap-3">
             <dt className="text-gray-500 dark:text-gray-400">{t('payeeWidget.income')}</dt>
             <dd className="text-green-600 dark:text-green-400 text-right">
-              {formatCurrency(totals.income, currencyStrategy.displayCurrency)}
+              {formatCurrencyOrNa(totals.income, currencyStrategy.displayCurrency)}
             </dd>
           </div>
         )}
-        {totals && totals.income > 0 && (
+        {totals && (totals.income === null || totals.income > 0) && (
           <div className="flex items-baseline justify-between gap-3">
             <dt className="text-gray-500 dark:text-gray-400">{t('payeeWidget.net')}</dt>
             <dd className="text-gray-900 dark:text-gray-100 text-right">
-              {formatCurrency(totals.net, currencyStrategy.displayCurrency)}
+              {formatCurrencyOrNa(totals.net, currencyStrategy.displayCurrency)}
             </dd>
           </div>
         )}

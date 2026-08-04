@@ -13,7 +13,10 @@ vi.mock('@/hooks/useNumberFormat', () => ({
   useNumberFormat: () => ({ formatCurrency: (n: number) => `$${n}` }),
 }));
 vi.mock('@/hooks/useExchangeRates', () => ({
-  useExchangeRates: () => ({ convert: (n: number) => n, defaultCurrency: 'USD' }),
+  useExchangeRates: () => ({
+    convertOrNull: (n: number) => n,
+    defaultCurrency: 'USD',
+  }),
 }));
 
 const creditCard = (id: string, balance: number): Account =>

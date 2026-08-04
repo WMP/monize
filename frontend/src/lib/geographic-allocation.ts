@@ -72,7 +72,7 @@ export const COUNTRY_COLOURS = CHART_SERIES;
 export function computeGeographicAllocation(
   holdings: HoldingWithMarketValue[],
   securityExchangeMap: Map<string, string>,
-  convertToDefault: (value: number, currency: string) => number,
+  convertToDefault: (value: number, currency: string) => number | null,
 ): { exchangeData: ExchangeAllocation[]; regionData: RegionAllocation[]; totalValue: number } {
   const exchangeMap = new Map<
     string,
@@ -82,7 +82,13 @@ export function computeGeographicAllocation(
   holdings.forEach((h) => {
     const exchange = securityExchangeMap.get(h.securityId) || 'Unknown';
     const info = EXCHANGE_TO_REGION[exchange] || { country: 'Other', region: 'Other' };
+    // `h.marketValue ?? 0` is pre-existing and wrong for the same reason -- an
+    // unpriced holding is not a holding worth nothing -- but the immediate defect
+    // here is the conversion: a currency with no rate must not contribute at a
+    // fabricated parity, because every region's percentage is measured against
+    // the total. Such a holding is left out of the breakdown.
     const marketValue = convertToDefault(h.marketValue ?? 0, h.currencyCode);
+    if (marketValue === null) return;
 
     const existing =
       exchangeMap.get(exchange) || {

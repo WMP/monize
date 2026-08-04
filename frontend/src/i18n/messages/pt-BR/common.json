@@ -228,5 +228,8 @@
     "nothingToRedo": "Nada para refazer",
     "cannotRedo": "Não é possível refazer esta ação",
     "redoFailed": "Falha ao refazer"
-  }
+  },
+  "notAvailable": "Não disponível",
+  "notAvailableShort": "n/d",
+  "unconvertedExcluded": "{count, plural, one {# valor foi excluído: sua moeda não tem taxa de câmbio registrada.} other {# valores foram excluídos: suas moedas não têm taxa de câmbio registrada.}}"
 }

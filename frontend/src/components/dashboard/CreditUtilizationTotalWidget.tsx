@@ -40,7 +40,7 @@ export function CreditUtilizationTotalWidget({
 }: CreditUtilizationTotalWidgetProps) {
   const t = useTranslations('dashboard');
   const { formatCurrency } = useNumberFormat();
-  const { convert, defaultCurrency } = useExchangeRates();
+  const { convertOrNull, defaultCurrency } = useExchangeRates();
   const { config, updateConfig } = useWidgetConfig<AccountsConfig>(
     WIDGET_ID,
     CREDIT_UTILIZATION_TOTAL_DEFAULT,
@@ -62,8 +62,8 @@ export function CreditUtilizationTotalWidget({
   }, [activeAccounts, defaultCurrency]);
 
   const totals = useMemo(
-    () => computeCreditTotals(computeCreditRows(activeAccounts, convert, displayCurrency)),
-    [activeAccounts, convert, displayCurrency],
+    () => computeCreditTotals(computeCreditRows(activeAccounts, convertOrNull, displayCurrency)),
+    [activeAccounts, convertOrNull, displayCurrency],
   );
 
   // A donut needs every slice to be a real figure. When an account's currency

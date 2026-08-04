@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { addKnown } from '@/lib/partial-sum';
 import { PencilSquareIcon, ChevronDoubleLeftIcon } from '@heroicons/react/24/outline';
 import { Category } from '@/types/category';
 import { ScheduledTransaction } from '@/types/scheduled-transaction';
@@ -208,8 +209,13 @@ export function CategoryInfoWidget({
   }, [subcategories.length, categories, groupedCategories, currencyStrategy, category.id]);
 
   const transactionCount = summary?.transactionCount ?? 0;
-  const averageAmount =
-    totals && transactionCount > 0 ? (totals.income + totals.expenses) / transactionCount : null;
+  const averageAmount = (() => {
+    if (!totals || transactionCount <= 0) return null;
+    // Unknown in, unknown out: an average over a total that could not be
+    // established is not an average.
+    const combined = addKnown(totals.income, totals.expenses);
+    return combined === null ? null : combined / transactionCount;
+  })();
 
   // Average spend per elapsed month over the period the chart covers. Dividing
   // by elapsed months (including months with no transaction) rather than only

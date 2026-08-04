@@ -26,7 +26,7 @@ export function GroupedHoldingsList({
 }: GroupedHoldingsListProps) {
   const t = useTranslations('investments');
   const { formatCurrency: formatCurrencyBase, formatCurrencyPrecise, formatSignedPercent, formatNumber, formatQuantity } = useNumberFormat();
-  const { convert, convertToDefault, defaultCurrency } = useExchangeRates();
+  const { convertOrNull, convertToDefault, defaultCurrency } = useExchangeRates();
 
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(
     new Set(holdingsByAccount.map((a) => a.accountId)),
@@ -71,6 +71,7 @@ export function GroupedHoldingsList({
     const converted = currencyCode && currencyCode !== defaultCurrency
       ? convertToDefault(value, currencyCode)
       : value;
+    if (converted === null) return '-';
     return ((converted / totalPortfolioValue) * 100).toFixed(1) + '%';
   };
 
@@ -178,7 +179,7 @@ export function GroupedHoldingsList({
                   </div>
                   {acctDisplayCurrency && accountTotalValue !== null && (
                     <div className="text-xs text-gray-400 dark:text-gray-500">
-                      {'\u2248 '}{formatCurrencyBase(convertToDefault(accountTotalValue, acctDisplayCurrency), defaultCurrency)} {defaultCurrency}
+                      {'\u2248 '}{formatCurrencyBase(convertToDefault(accountTotalValue, acctDisplayCurrency) ?? 0, defaultCurrency)} {defaultCurrency}
                     </div>
                   )}
                   <div className={`text-sm ${getGainLossColor(account.totalGainLoss)}`}>
@@ -226,7 +227,7 @@ export function GroupedHoldingsList({
                           holding={holding}
                           defaultCurrency={defaultCurrency}
                           accountCurrency={account.currencyCode}
-                          convert={convert}
+                          convertOrNull={convertOrNull}
                           formatCurrency={formatCurrency}
                           formatCurrencyWithCode={formatCurrencyBase}
                           formatPrice={formatPrice}
@@ -296,7 +297,13 @@ export function GroupedHoldingsList({
                           <div>{fmtAcct(accountTotalValue)}</div>
                           {acctDisplayCurrency && (
                             <div className="text-xs font-normal text-gray-400 dark:text-gray-500">
-                              {'\u2248 '}{accountTotalValue === null ? '-' : `${formatCurrencyBase(convertToDefault(accountTotalValue, acctDisplayCurrency), defaultCurrency)} ${defaultCurrency}`}
+                              {'\u2248 '}{(() => {
+                                if (accountTotalValue === null) return '-';
+                                const c = convertToDefault(accountTotalValue, acctDisplayCurrency);
+                                return c === null
+                                  ? '-'
+                                  : `${formatCurrencyBase(c, defaultCurrency)} ${defaultCurrency}`;
+                              })()}
                             </div>
                           )}
                         </td>
@@ -328,7 +335,11 @@ interface HoldingRowProps {
   holding: HoldingWithMarketValue;
   defaultCurrency: string;
   accountCurrency: string;
-  convert: (amount: number, fromCurrency: string, toCurrency?: string) => number;
+  convertOrNull: (
+    amount: number,
+    fromCurrency: string,
+    toCurrency?: string,
+  ) => number | null;
   formatCurrency: (value: number | null) => string;
   formatCurrencyWithCode: (value: number, currencyCode: string) => string;
   formatPrice: (value: number | null, currencyCode?: string) => string;
@@ -343,7 +354,7 @@ const HoldingRow = memo(function HoldingRow({
   holding,
   defaultCurrency,
   accountCurrency,
-  convert,
+  convertOrNull,
   formatCurrency,
   formatCurrencyWithCode,
   formatPrice,
@@ -377,7 +388,7 @@ const HoldingRow = memo(function HoldingRow({
   // displayed rows aligned with the account total row beneath the table.
   const marketValueAcct =
     holding.marketValue !== null
-      ? convert(holding.marketValue, holding.currencyCode, accountCurrency)
+      ? convertOrNull(holding.marketValue, holding.currencyCode, accountCurrency)
       : null;
   // Both halves must be known: an unknown basis would otherwise report the
   // whole market value as gain.

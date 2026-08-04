@@ -228,5 +228,8 @@
     "nothingToRedo": "Rien à rétablir",
     "cannotRedo": "Impossible de rétablir cette action",
     "redoFailed": "Échec du rétablissement"
-  }
+  },
+  "notAvailable": "Non disponible",
+  "notAvailableShort": "n/d",
+  "unconvertedExcluded": "{count, plural, one {# montant a été exclu : sa devise n'a aucun taux de change enregistré.} other {# montants ont été exclus : leurs devises n'ont aucun taux de change enregistré.}}"
 }

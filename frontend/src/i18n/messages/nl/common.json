@@ -228,5 +228,8 @@
     "nothingToRedo": "Niets om opnieuw te doen",
     "cannotRedo": "Deze actie kan niet opnieuw worden gedaan",
     "redoFailed": "Opnieuw doen mislukt"
-  }
+  },
+  "notAvailable": "Niet beschikbaar",
+  "notAvailableShort": "n.v.t.",
+  "unconvertedExcluded": "{count, plural, one {# bedrag is weggelaten: voor de valuta is geen wisselkoers bekend.} other {# bedragen zijn weggelaten: voor hun valuta is geen wisselkoers bekend.}}"
 }

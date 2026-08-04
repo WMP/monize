@@ -41,7 +41,7 @@ export function CreditUtilizationAccountsWidget({
 }: CreditUtilizationAccountsWidgetProps) {
   const t = useTranslations('dashboard');
   const { formatCurrency } = useNumberFormat();
-  const { convert, defaultCurrency } = useExchangeRates();
+  const { convertOrNull, defaultCurrency } = useExchangeRates();
   const { config, updateConfig } = useWidgetConfig<AccountsConfig>(
     WIDGET_ID,
     CREDIT_UTILIZATION_ACCOUNTS_DEFAULT,
@@ -64,10 +64,10 @@ export function CreditUtilizationAccountsWidget({
 
   const rows = useMemo(
     () =>
-      computeCreditRows(activeAccounts, convert, displayCurrency).sort(
+      computeCreditRows(activeAccounts, convertOrNull, displayCurrency).sort(
         (a, b) => b.utilizationPercent - a.utilizationPercent,
       ),
-    [activeAccounts, convert, displayCurrency],
+    [activeAccounts, convertOrNull, displayCurrency],
   );
 
   const configControls = (
