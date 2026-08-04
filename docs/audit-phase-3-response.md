@@ -518,19 +518,28 @@ of absence, and it rejected the first draft for exactly that.
 
 ## 7. What remains open
 
-1. **P3-009** — the OIDC step-up, also reported as F3R-008, F3RR-005 and
-   F3RRR-004. Plan in `docs/backup-restore-contract.md` §5. Needs a decision about
-   the provider interaction (`prompt=login` / `max_age=0` / `auth_time`) and browser
-   verification, because the change touches every user's restore path.
-2. **F3RRR-002 / F3R5-004, the pre-authentication half** — an unauthenticated
-   client can occupy the aggregate upload budget until the receive deadline expires,
-   which degrades a legitimate restore to a retry. The concurrency and lifecycle
-   halves are fixed (§13); the remaining options are ingress-level limits, an upload
-   token, or streaming to disk, and none is on this branch.
-3. **F3RRR-003 / F3R5-005** — one large table is materialised before the export
-   ceiling is consulted. Needs a cursor inside the repeatable-read snapshot and a
-   per-chunk budget. Now also the blocker on streaming the attachment bytes that
-   `5a578061` puts in the artifact, so the two are one piece of work.
+1. **P3-009** — the OIDC step-up, also reported as F3R-008, F3RR-005, F3RRR-004,
+   F3R5-006 and F3R6-006. Plan in `docs/backup-restore-contract.md` §5. Needs a
+   decision about the provider interaction (`prompt=login` / `max_age=0` /
+   `auth_time`) and browser verification, because the change touches every user's
+   restore path.
+2. **F3RRR-002 / F3R5-004 / DR-F3R6-001, the pre-authentication half** — an
+   unauthenticated client can occupy the aggregate upload budget until the receive
+   deadline expires, which degrades a legitimate restore to a retry. The
+   concurrency and lifecycle halves are fixed (§13); the remaining options are
+   ingress-level limits, an upload token, or streaming to disk, and none is on this
+   branch.
+3. **F3RRR-003 / F3R5-005 / F3R6-001** — the export materialises each table (and,
+   since `5a578061`, every carried attachment) before the ceiling is consulted, and
+   the plain HTTP export has no ceiling at all. One cursor inside the repeatable-read
+   snapshot — serialising rows, base64-encoding one attachment at a time, under a
+   per-chunk budget — fixes all of it, and would also replace `PEAK_MULTIPLE` with a
+   measured bound. **The single highest-value open item**, because it is what repays
+   the memory cost of self-contained artifacts (§14).
+4. **DR-F3R6-002** — `PEAK_MULTIPLE` and the derived memory shares are argued from
+   allocation counting, not measured. The processing cap (F3R6-004) is designed to
+   survive them being wrong, but settling the numbers needs the cgroup peak-RSS test
+   this environment cannot run.
 4. **DR-F3RRR-001 / DR-F3R5-001** — the retention policy for source attachment
    objects the restore keeps so a backup can be restored twice. Largely dissolved by
    `5a578061`: an artifact that carries its own bytes has no source objects to
@@ -560,12 +569,12 @@ Run and green:
 | `npm run migration:lint:test` | 26 pass |
 | `npm run i18n:check` | pseudo-locale fresh |
 | `scripts/check-env-docs.mjs` | 51 env vars documented |
-| Backend unit (`TZ=UTC npm run test:unit`) | 408/409 suites, 10898 tests |
+| Backend unit (`TZ=UTC npm run test:unit`) | 409/410 suites, 10924 tests |
 | Frontend unit (`npm test`) | 626/627 files, 12270 tests |
 
 The one failing suite on each side is the i18n parity spec — `errors.json` and
 `settings.json` across the eighteen untranslated locales, item 5 above. Both totals
-are from full runs at `2dcbd768`, the current head of executable code.
+are from full runs at `fd4ed827`, the current head of executable code.
 
 **Not run:** the integration suites. This environment has no Docker and no
 PostgreSQL, so every `backend/test/integration/*` case — including the ones added
@@ -582,7 +591,7 @@ than taken as a pass.
 
 ## 9. Commit inventory
 
-The 38 commits that changed code, configuration or the repository's own rules,
+The 40 commits that changed code, configuration or the repository's own rules,
 oldest first, so nothing is unaccounted for.
 
 | Commit | Subject | Answers |
@@ -624,6 +633,8 @@ oldest first, so nothing is unaccounted for.
 | `531f7366` | Make the upload limit's startup warning real, and stop the header lying | DOC-F3RRR-3/4 |
 | `5a578061` | Carry attachment bytes in the artifact for every provider | F3R5-001, DR-F3R5-001/002, DOC-F3R5-003/004 |
 | `2dcbd768` | Budget the restore's peak, and hold it until the work is done | F3R5-002, F3R5-003, F3R5-004 (bounded), DOC-F3R5-001/002 |
+| `bf2e5622` | Verify attachment bytes at export; canonicalize duplicate blob rows | F3R6-002, F3R6-003, DOC-F3R6-001/003 |
+| `fd4ed827` | Cap concurrent restore processing; stop the upload floor going unsafe | F3R6-004, F3R6-005, DOC-F3R6-002 |
 | `fb67516b` | Budget restore uploads across the process, not per request | F3RRR-002 (concurrency half) |
 
 Three of those carry no audit finding of their own: `405f3e79` keeps the
@@ -632,7 +643,7 @@ had already been violated into checks. They are here because the branch's
 recurring cause was a rule nothing enforced.
 
 Not rows above: the commits that only change **this document**
-(`4c42be22`, `774c646d`, `a0819951`, `e20a65b2`, `ab2e420f`, `c3cfa704`, `29bda3f9` and any that follow). A file cannot list its own
+(`4c42be22`, `774c646d`, `a0819951`, `e20a65b2`, `ab2e420f`, `c3cfa704`, `29bda3f9`, `8b829a97` and any that follow). A file cannot list its own
 commit and stay accurate — amending to insert the hash changes the hash — so the
 branch log is the record for those, and every other hash in this file resolves. If
 you are checking the inventory against `git log`, that difference is the whole of
@@ -973,11 +984,14 @@ as unavoidable:
   do instead of telling operators to restore a sidecar that will not help them.
 
 What it costs is in the contract and in the commit: artifacts are larger, and a
-large attachment set on the encrypted, automatic or support path now meets
-`BACKUP_EXPORT_BUFFER_LIMIT` and is refused with an error naming the ceiling. The
-review's own option 1 asks for a streaming container format so the file need not be
-materialised at once; that is not done, so the honest position is that the refusal is
-the failure mode, not a silent omission. Not implemented: the signed manifest
+large attachment set on the encrypted or automatic path now meets
+`BACKUP_EXPORT_BUFFER_LIMIT` and is refused with an error naming the ceiling. (Not
+the *support* path: `ALWAYS_EXCLUDED_TABLES` drops both `transaction_attachments`
+and `attachment_blobs` from support backups, so carried attachment bytes never reach
+it -- DOC-F3R6-004 corrected this sentence, which originally named support here too.)
+The review's own option 1 asks for a streaming container format so the file need not
+be materialised at once; that is not done, so the honest position is that the refusal
+is the failure mode, not a silent omission. Not implemented: the signed manifest
 (option 2), which would let an artifact authorize a sidecar read for the cases where
 carrying bytes is too expensive.
 
@@ -1037,3 +1051,111 @@ acceptable, and the sentence reads as though it does. Where a fix removes a
 capability, the thing to write down is who loses it and in what situation — and then
 to check whether that situation is the one the feature exists for. Here it was
 exactly that situation, twice over.
+
+---
+
+## 14. The sixth-pass re-review (F3R6-001…006, DR-F3R6-001/002)
+
+A sixth review re-checked the branch at `8b829a97` and reported six MEDIUM defects
+and two design risks -- no HIGH, no BLOCKER. Most are the second-order consequences
+of the fifth round's fix (attachment bytes now travel) and of the admission gate the
+round before. Each was verified against the code first.
+
+| ID | Severity | Verdict | Commit |
+|---|---|---|---|
+| F3R6-001 | MEDIUM | Confirmed -- **open**, = F3R5-005, doc corrected | `bf2e5622` (doc) |
+| F3R6-002 | MEDIUM | Confirmed, fixed | `bf2e5622` |
+| F3R6-003 | MEDIUM | Confirmed, fixed | `bf2e5622` |
+| F3R6-004 | MEDIUM | Confirmed, fixed | `fd4ed827` |
+| F3R6-005 | MEDIUM | Confirmed, fixed | `fd4ed827` |
+| F3R6-006 | MEDIUM | Same as P3-009 -- **still open** | — |
+| DR-F3R6-001 | design risk | Bounded (was F3R5-004's pre-auth half) | — |
+| DR-F3R6-002 | design risk | Accepted -- `PEAK_MULTIPLE` is unmeasured | — |
+| DOC-F3R6-001…004 | — | Fixed | `bf2e5622`, `fd4ed827` |
+
+**F3R6-002 and F3R6-003 were real integrity holes, and both are the kind that only
+show up once you look at the two ends together.** The export loaded an external
+object and packaged it without checking it against the size and hash the server
+recorded -- while the restore, at the far end, *does* check and would silently drop
+it. So the export reported a success the artifact could not honour. And the restore
+validated the last duplicate blob row while the SQL committed the first, so a
+crafted backup could get corrupt bytes past a check that had approved different
+ones. Both are fixed at the point the reviewer identified: verify at export, and
+rebuild `attachment_blobs` from the validated bytes so the row inserted is the row
+checked.
+
+**F3R6-004 is the one worth dwelling on, because it is the third distinct memory
+defect in the same admission path and it says something about the previous two.**
+Round four added the aggregate gate; round five corrected it to budget the peak
+rather than the wire and to hold the reservation through the handler. This round
+points out that *both* of those still measure the compressed upload, and a small
+gzip expands to the expanded ceiling no matter how small it was -- so the thing the
+gate reserves against and the thing that actually costs memory are different
+quantities. The fix is a separate cap on concurrent *processing*, denominated in
+the expanded limit, which on the default pod serialises restores to one. Its
+virtue is that it does not depend on `PEAK_MULTIPLE` being right: one-at-a-time is
+safe under any multiple, as long as one restore fits.
+
+That is the honest boundary of what this round could fix without measurement, and
+it lines up with the reviewer's own closing instruction -- *the next review should
+not accept further memory-limit changes based only on unit arithmetic; it should
+require a cgroup-constrained peak-RSS test.* This environment cannot run that test.
+So the numbers here (`PEAK_MULTIPLE = 3`, the quarter/sixth shares, the slot count)
+are argued, not measured, and **DR-F3R6-002 stands as an open risk on purpose.**
+The processing cap is the design that survives the numbers being wrong; the numbers
+themselves still want the RSS test.
+
+**F3R6-005 is a clean bug the review found by arithmetic:** the upload limit floored
+to 64 MiB even when the safe value was lower, so a small pod modeled a peak larger
+than itself. The floor is gone from the upload derivation; the safe-share invariant
+now holds at every container size, and a cramped pod gets a warning instead of an
+unsafe number.
+
+### F3R6-001 is F3R5-005 wearing a new number, and the doc now says so
+
+The plain HTTP export was billed as the streaming, unbounded-safe path. It never
+fully was -- it materialises each table -- and the fifth round's change made it
+worse by accumulating every carried attachment before serialising. I fixed the
+*claim* (the code comment and the contract both said "streams and is unaffected",
+which was false) but not the *behaviour*: bounding it is the cursor/one-object-at-a-
+time work already tracked as F3R5-005, and doing half of it -- streaming attachments
+but not the large tables -- would not make the path bounded, so it would buy a more
+convincing false claim rather than a fix. The contract now names it the single
+highest-value open item and states plainly that attachment bytes travelling (the
+F3R5-001 recovery fix) trades a memory cost that only streaming repays. That is the
+truthful position: the recovery fix was right, its cost is real, and the repayment
+is scheduled, not done.
+
+### The pattern, five rounds on
+
+| Round | What was fixed | What was left |
+|---|---|---|
+| F3R-006 | displaced bytes deleted after commit | those keys are the backup's sources |
+| F3RR-001/002 | the key is derived, not taken from the file | the id it derives from is also from the file |
+| F3RRR-001 | ownership comes from the database | the database is not there when you need a backup |
+| F3R5-001 | the bytes travel in the artifact | the artifact is not streamed, so large ones are refused |
+| F3R6-* | integrity at both ends; processing capped | export is still not streamed; `PEAK_MULTIPLE` still unmeasured |
+
+The through-line for the memory findings specifically (F3R5-002 → F3R5-003 →
+F3R6-004): three rounds, three corrections to the same gate, each measuring the
+compressed upload and each missing that the cost is downstream of it. The lesson
+this round writes down: **when you bound a resource, name the quantity you are
+bounding and the quantity that actually costs, and check they are the same one.**
+They were not, twice, and the fix that finally holds (serialise processing) is the
+one that stopped trying to get the *number* right and bounded the *concurrency*
+instead.
+
+### Open, with reasons
+
+- **F3R6-001 / F3R5-005** -- stream the export (cursor + per-chunk budget + one
+  attachment at a time). The highest-value open item; it repays the memory cost of
+  self-contained artifacts and would replace `PEAK_MULTIPLE` with a measured bound.
+- **F3R6-006** = P3-009 = F3R-008 = F3RR-005 = F3RRR-004 = F3R5-006. The OIDC
+  step-up, open across all six reviews. Needs the provider-interaction decision and
+  browser verification.
+- **DR-F3R6-001** -- the pre-authentication half of the upload budget: bounded to a
+  120-second window, not closed. Ingress limits or an upload token remain the real
+  answer.
+- **DR-F3R6-002** -- `PEAK_MULTIPLE` and the derived shares are argued, not
+  measured. The cgroup peak-RSS test the reviewer specifies is the way to settle
+  them and has not run here.
