@@ -819,6 +819,101 @@ describe('TransactionForm', () => {
       expect(mockOnSuccess).toHaveBeenCalledTimes(1);
     });
 
+    // Money is stored as decimal(20,4). The form loaded the amount through
+    // `Math.round(amount * 100) / 100` and the parent split field used
+    // CurrencyInput's 2 dp default, so opening a stored 10.0048 showed 10.0000 --
+    // and saving any unrelated edit wrote that back, losing 0.0048. The split
+    // children were already edited and validated at 4 dp, so the same untouched
+    // record could also be rejected as unbalanced.
+    describe('a stored amount with four decimals', () => {
+      const fourDecimal = () =>
+        createExistingTransaction({ amount: -10.0048, description: 'Split parent' });
+
+      it('loads the stored value rather than a cent-rounded one', async () => {
+        render(
+          <TransactionForm
+            transaction={fourDecimal()}
+            onSuccess={mockOnSuccess}
+            onCancel={mockOnCancel}
+          />,
+        );
+        await waitFor(() =>
+          expect(
+            screen.getByRole('button', { name: /Update Transaction/i }),
+          ).toBeInTheDocument(),
+        );
+
+        expect(screen.getByDisplayValue('-10.0048')).toBeInTheDocument();
+      });
+
+      it('submits the stored value unchanged when only another field changes', async () => {
+        render(
+          <TransactionForm
+            transaction={fourDecimal()}
+            onSuccess={mockOnSuccess}
+            onCancel={mockOnCancel}
+          />,
+        );
+        await waitFor(() =>
+          expect(
+            screen.getByRole('button', { name: /Update Transaction/i }),
+          ).toBeInTheDocument(),
+        );
+
+        await act(async () => {
+          fireEvent.change(screen.getByLabelText('Reference Number'), {
+            target: { value: 'REF-002' },
+          });
+        });
+        await act(async () => {
+          fireEvent.click(
+            screen.getByRole('button', { name: /Update Transaction/i }),
+          );
+        });
+
+        await waitFor(() => expect(mockUpdate).toHaveBeenCalled());
+        expect(mockUpdate.mock.calls[0][1].amount).toBe(-10.0048);
+      });
+
+      // A reconciled transaction warns before an amount change. Comparing at
+      // cents made an unchanged 10.0048 look unchanged for the wrong reason --
+      // both sides rounded to 10.0000 -- so the check happened to pass while the
+      // value it was protecting was already being lost.
+      it('raises no reconciliation warning for an untouched four-decimal amount', async () => {
+        render(
+          <TransactionForm
+            transaction={createExistingTransaction({
+              amount: -10.0048,
+              status: TransactionStatus.RECONCILED,
+              isReconciled: true,
+            })}
+            onSuccess={mockOnSuccess}
+            onCancel={mockOnCancel}
+          />,
+        );
+        await waitFor(() =>
+          expect(
+            screen.getByRole('button', { name: /Update Transaction/i }),
+          ).toBeInTheDocument(),
+        );
+
+        await act(async () => {
+          fireEvent.change(screen.getByLabelText('Reference Number'), {
+            target: { value: 'REF-002' },
+          });
+        });
+        await act(async () => {
+          fireEvent.click(
+            screen.getByRole('button', { name: /Update Transaction/i }),
+          );
+        });
+
+        // No confirmation dialog stood between the click and the save.
+        await waitFor(() => expect(mockUpdate).toHaveBeenCalled());
+        expect(mockUpdate.mock.calls[0][1].amount).toBe(-10.0048);
+      });
+    });
+
     it('confirms before saving a reconciled transaction when the date changes', async () => {
       const existingTransaction = createExistingTransaction({
         status: TransactionStatus.RECONCILED,

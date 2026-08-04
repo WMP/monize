@@ -25,18 +25,16 @@ vi.mock('@hookform/resolvers/zod', () => ({
   },
 }));
 
-vi.mock('@/lib/format', () => ({
-  FX_RATE_DISPLAY_DECIMALS: 6,
-  getCurrencySymbol: () => '$',
-  getDecimalPlacesForCurrency: () => 2,
-  roundToCents: (v: number) => Math.round(v * 100) / 100,
-  formatAmountWithCommas: (v: number) => v?.toLocaleString() ?? '',
-  parseAmount: (v: string) => parseFloat(v) || 0,
-  filterCurrencyInput: (v: string) => v,
-  filterCalculatorInput: (v: string) => v,
-  hasCalculatorOperators: () => false,
-  evaluateExpression: (v: string) => parseFloat(v) || 0,
-}));
+// Only the currency symbol is stubbed. The rest comes from the real module: a
+// hand-written money mock rounding at cents would pass every 4 dp assertion over
+// broken code, which is how the parent-amount precision defect stayed green.
+vi.mock('@/lib/format', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/format')>();
+  return {
+    ...actual,
+    getCurrencySymbol: () => '$',
+  };
+});
 
 const mockGetRateForDate = vi.fn().mockResolvedValue(null);
 

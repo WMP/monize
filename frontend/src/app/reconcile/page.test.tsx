@@ -87,10 +87,17 @@ vi.mock('@/lib/transactions', () => ({
   },
 }));
 
-vi.mock('@/lib/format', () => ({
-  getCurrencySymbol: (code: string) => code === 'CAD' ? 'CA$' : '$',
-  getDecimalPlacesForCurrency: () => 2,
-}));
+// Only the presentational stubs; every money helper comes from the real module.
+// A hand-written replacement rounding at cents is fiction that passes -- it makes
+// 4 dp assertions hold over code that is losing precision.
+vi.mock('@/lib/format', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/format')>();
+  return {
+    ...actual,
+    getCurrencySymbol: (code: string) => code === 'CAD' ? 'CA$' : '$',
+    getDecimalPlacesForCurrency: () => 2,
+  };
+});
 
 vi.mock('@/lib/errors', () => ({
   getErrorMessage: (_error: any, fallback: string) => fallback,

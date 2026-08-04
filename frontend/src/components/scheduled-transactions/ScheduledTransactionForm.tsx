@@ -35,7 +35,13 @@ import { Category } from '@/types/category';
 import { Account } from '@/types/account';
 import { Tag } from '@/types/tag';
 import { buildCategoryTree } from '@/lib/categoryUtils';
-import { roundToCents, getCurrencySymbol, FX_RATE_DISPLAY_DECIMALS } from '@/lib/format';
+import {
+  roundToCents,
+  roundMoney,
+  moneyFractionDigits,
+  getCurrencySymbol,
+  FX_RATE_DISPLAY_DECIMALS,
+} from '@/lib/format';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { getErrorMessage } from '@/lib/errors';
 import { useTranslations } from 'next-intl';
@@ -229,8 +235,10 @@ export function ScheduledTransactionForm({
           payeeName: scheduledTransaction.payeeName || '',
           categoryId: scheduledTransaction.categoryId || '',
           amount: isScheduledTransfer(scheduledTransaction)
-            ? Math.abs(Math.round(Number(scheduledTransaction.amount) * 100) / 100)
-            : Math.round(Number(scheduledTransaction.amount) * 100) / 100,
+            // Loaded at storage precision (4 dp). At cents a stored 10.0048 came
+            // in as 10.0000 and was saved back over the real value by any edit.
+            ? Math.abs(roundMoney(Number(scheduledTransaction.amount)))
+            : roundMoney(Number(scheduledTransaction.amount)),
           currencyCode: scheduledTransaction.currencyCode,
           description: scheduledTransaction.description || '',
           referenceNumber: '',
@@ -250,8 +258,8 @@ export function ScheduledTransactionForm({
             payeeName: templateTransaction.payeeName || '',
             categoryId: templateTransaction.categoryId || '',
             amount: templateTransaction.isTransfer
-              ? Math.abs(Math.round(Number(templateTransaction.amount) * 100) / 100)
-              : Math.round(Number(templateTransaction.amount) * 100) / 100,
+              ? Math.abs(roundMoney(Number(templateTransaction.amount)))
+              : roundMoney(Number(templateTransaction.amount)),
             currencyCode: templateTransaction.currencyCode,
             description: templateTransaction.description || '',
             referenceNumber: '',
@@ -1351,6 +1359,9 @@ export function ScheduledTransactionForm({
                         ? handleForeignAmountChange
                         : (value) => setValue('amount', value ?? 0, { shouldValidate: true })
                     }
+                    decimalPlaces={moneyFractionDigits([
+                      isForeign ? foreignAmount : watchedAmount,
+                    ])}
                     allowSignToggle
                     error={errors.amount?.message}
                   />
@@ -1461,6 +1472,8 @@ export function ScheduledTransactionForm({
               prefix={currencySymbol}
               value={watchedAmount}
               onChange={(value) => setValue('amount', value ?? 0, { shouldValidate: true })}
+              // Storage precision when the value needs it; cents otherwise.
+              decimalPlaces={moneyFractionDigits([watchedAmount])}
               error={errors.amount?.message}
             />
           </div>
@@ -1619,6 +1632,7 @@ export function ScheduledTransactionForm({
               prefix={currencySymbol}
               value={watchedAmount}
               onChange={(value) => setValue('amount', value !== undefined ? Math.abs(value) : 0, { shouldValidate: true })}
+              decimalPlaces={moneyFractionDigits([watchedAmount])}
               allowNegative={false}
               error={errors.amount?.message}
             />
@@ -1849,6 +1863,11 @@ export function ScheduledTransactionForm({
                 prefix={currencySymbol}
                 value={typeof investmentTotalAmount === 'number' ? investmentTotalAmount : undefined}
                 onChange={(value) => setInvestmentTotalAmount(value ?? '')}
+                decimalPlaces={moneyFractionDigits([
+                  typeof investmentTotalAmount === 'number'
+                    ? investmentTotalAmount
+                    : undefined,
+                ])}
               />
             </div>
           )}

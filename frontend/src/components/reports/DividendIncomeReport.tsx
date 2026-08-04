@@ -777,7 +777,7 @@ export function DividendIncomeReport() {
       total: dividends + interest + totalGains,
       missingCurrencies: [...missing],
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [filteredTransactions, filteredCapitalGains, getTxAmount, convertCapitalGain, accountCurrencyMap, defaultCurrency]);
 
   // CSV is only offered when the user is looking at a table. Raw numeric

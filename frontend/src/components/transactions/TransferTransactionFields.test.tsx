@@ -10,13 +10,20 @@ vi.mock('@/store/authStore', () => ({
     selector({ actingAsUserId: mockActingAsUserId }),
 }));
 
-vi.mock('@/lib/format', () => ({
-  getCurrencySymbol: (code: string) => {
-    const map: Record<string, string> = { CAD: '$', USD: 'US$', EUR: 'E' };
-    return map[code] || '$';
-  },
-  getDecimalPlacesForCurrency: () => 2,
-}));
+// Only the presentational bits are stubbed; the money helpers come from the real
+// module. A hand-written mock rounding at cents passes every 4 dp assertion over
+// broken code, which is how the amount-precision defect stayed green.
+vi.mock('@/lib/format', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/format')>();
+  return {
+    ...actual,
+    getCurrencySymbol: (code: string) => {
+      const map: Record<string, string> = { CAD: '$', USD: 'US$', EUR: 'E' };
+      return map[code] || '$';
+    },
+    getDecimalPlacesForCurrency: () => 2,
+  };
+});
 
 vi.mock('@/components/ui/Combobox', () => ({
   Combobox: ({ label, options, value, onChange, placeholder }: any) => (

@@ -4,10 +4,17 @@ import { SplitTransactionFields } from './SplitTransactionFields';
 import { Account } from '@/types/account';
 import { Payee } from '@/types/payee';
 
-vi.mock('@/lib/format', () => ({
-  getCurrencySymbol: (code: string) => (code === 'USD' ? 'US$' : '$'),
-  getDecimalPlacesForCurrency: () => 2,
-}));
+// Only the presentational bits are stubbed; the money helpers come from the real
+// module. A hand-written mock rounding at cents passes every 4 dp assertion over
+// broken code, which is how the amount-precision defect stayed green.
+vi.mock('@/lib/format', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/format')>();
+  return {
+    ...actual,
+    getCurrencySymbol: (code: string) => (code === 'USD' ? 'US$' : '$'),
+    getDecimalPlacesForCurrency: () => 2,
+  };
+});
 
 vi.mock('@/components/ui/Combobox', () => ({
   Combobox: ({ label, options, value, onChange, onCreateNew, error, placeholder }: any) => (
@@ -42,13 +49,16 @@ vi.mock('@/components/ui/Combobox', () => ({
 }));
 
 vi.mock('@/components/ui/CurrencyInput', () => ({
-  CurrencyInput: ({ label, value, onChange, error, prefix }: any) => (
+  // `decimalPlaces` is surfaced as an attribute: it decides whether a stored
+  // 4 dp amount survives a round-trip, so it has to be assertable here.
+  CurrencyInput: ({ label, value, onChange, error, prefix, decimalPlaces }: any) => (
     <div data-testid={`currency-input-${label}`}>
       <label>{label}</label>
       {prefix && <span data-testid={`currency-prefix-${label}`}>{prefix}</span>}
       <input
         data-testid={`currency-input-field-${label}`}
         type="number"
+        data-decimal-places={decimalPlaces}
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value ? Number(e.target.value) : undefined)}
       />
@@ -379,6 +389,29 @@ describe('SplitTransactionFields', () => {
 
     const amountInput = screen.getByTestId('currency-input-field-Total Amount');
     expect(amountInput).toHaveValue(-250.75);
+  });
+
+  // Money is stored at 4 dp, and the split children are edited and validated at
+  // 4 dp. The parent field took CurrencyInput's 2 dp default, so a stored 10.0048
+  // parent came in as 10.0000: the children then summed to more than the parent
+  // (rejected as unbalanced), or an unrelated edit saved the rounded figure back
+  // and lost 0.0048.
+  it('edits a four-decimal parent amount at storage precision', () => {
+    render(
+      <SplitTransactionFields {...defaultProps} watchedAmount={-10.0048} />,
+    );
+
+    const amountInput = screen.getByTestId('currency-input-field-Total Amount');
+    expect(amountInput).toHaveValue(-10.0048);
+    expect(amountInput).toHaveAttribute('data-decimal-places', '4');
+  });
+
+  it('keeps an ordinary amount at cents', () => {
+    render(<SplitTransactionFields {...defaultProps} watchedAmount={-250.75} />);
+
+    expect(
+      screen.getByTestId('currency-input-field-Total Amount'),
+    ).toHaveAttribute('data-decimal-places', '2');
   });
 
   it('passes selectedPayeeId as value to the Payee combobox', () => {

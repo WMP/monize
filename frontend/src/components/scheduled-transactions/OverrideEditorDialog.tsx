@@ -19,7 +19,12 @@ import { Account } from '@/types/account';
 import { scheduledTransactionsApi } from '@/lib/scheduled-transactions';
 import { investmentsApi } from '@/lib/investments';
 import { buildCategoryTree } from '@/lib/categoryUtils';
-import { roundToCents, getCurrencySymbol } from '@/lib/format';
+import {
+  roundToCents,
+  roundMoney,
+  moneyFractionDigits,
+  getCurrencySymbol,
+} from '@/lib/format';
 import { getErrorMessage } from '@/lib/errors';
 import { createLogger } from '@/lib/logger';
 import { useTranslations } from 'next-intl';
@@ -116,9 +121,13 @@ export function OverrideEditorDialog({
 
       if (existingOverride) {
         // Use override values (absolute value for transfers - sign is applied on save)
-        const rawAmt = roundToCents(existingOverride.amount ?? scheduledTransaction.amount);
+        // Storage precision, not cents: a stored 10.0048 occurrence loaded as
+        // 10.0000 and saved that back over itself.
+        const rawAmt = roundMoney(
+          Number(existingOverride.amount ?? scheduledTransaction.amount),
+        );
         const amt = scheduledTransaction.isTransfer ? Math.abs(rawAmt) : rawAmt;
-        setAmount(prefillAmount != null ? roundToCents(prefillAmount) : amt);
+        setAmount(prefillAmount != null ? roundMoney(prefillAmount) : amt);
         setCategoryId(existingOverride.categoryId ?? scheduledTransaction.categoryId ?? '');
         setDescription(existingOverride.description ?? scheduledTransaction.description ?? '');
         setIsSplit(existingOverride.isSplit ?? scheduledTransaction.isSplit);
@@ -134,9 +143,9 @@ export function OverrideEditorDialog({
         }
       } else {
         // Use base transaction values (absolute value for transfers - sign is applied on save)
-        const rawAmt = roundToCents(scheduledTransaction.amount);
+        const rawAmt = roundMoney(Number(scheduledTransaction.amount));
         const amt = scheduledTransaction.isTransfer ? Math.abs(rawAmt) : rawAmt;
-        setAmount(prefillAmount != null ? roundToCents(prefillAmount) : amt);
+        setAmount(prefillAmount != null ? roundMoney(prefillAmount) : amt);
         setCategoryId(scheduledTransaction.categoryId ?? '');
         setDescription(scheduledTransaction.description ?? '');
         setIsSplit(scheduledTransaction.isSplit);
@@ -583,6 +592,11 @@ export function OverrideEditorDialog({
                     : undefined
                 }
                 onChange={(value) => setInvestmentTotalAmount(value ?? '')}
+                decimalPlaces={moneyFractionDigits([
+                  typeof investmentTotalAmount === 'number'
+                    ? investmentTotalAmount
+                    : undefined,
+                ])}
               />
             )}
           </>
@@ -595,6 +609,9 @@ export function OverrideEditorDialog({
             prefix={getCurrencySymbol(scheduledTransaction.currencyCode)}
             value={amount}
             onChange={(value) => setAmount(value ?? 0)}
+            // Money is stored at 4 dp; the default of 2 rounded a stored 10.0048
+            // away on the way in. Widened only when the value on screen needs it.
+            decimalPlaces={moneyFractionDigits([amount])}
             allowSignToggle
           />
         )}

@@ -11,7 +11,7 @@ import { Combobox } from '@/components/ui/Combobox';
 import { Transaction } from '@/types/transaction';
 import { Account } from '@/types/account';
 import { Payee } from '@/types/payee';
-import { getCurrencySymbol } from '@/lib/format';
+import { getCurrencySymbol, moneyFractionDigits } from '@/lib/format';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { RecentTransactionsPopover } from './RecentTransactionsPopover';
 
@@ -179,6 +179,15 @@ export function SplitTransactionFields({
                 prefix={getCurrencySymbol(amountCurrencyCode || watchedCurrencyCode)}
                 value={amountValue !== undefined ? amountValue : watchedAmount}
                 onChange={handleAmountChange}
+                // Money is stored at 4 dp. Left at the CurrencyInput default of
+                // 2, this field rounded a stored 10.0048 to 10.0000 on the way in
+                // and saved that back -- while the split children were already
+                // edited and validated at 4 dp, so the same untouched record could
+                // also be rejected as unbalanced. Widened only when a value on
+                // screen actually needs it, so ordinary amounts still show cents.
+                decimalPlaces={moneyFractionDigits([
+                  amountValue !== undefined ? amountValue : watchedAmount,
+                ])}
                 error={errors.amount?.message as string | undefined}
               />
             );

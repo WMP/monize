@@ -11,7 +11,7 @@ import { Combobox } from '@/components/ui/Combobox';
 import { Transaction } from '@/types/transaction';
 import { Account } from '@/types/account';
 import { Payee } from '@/types/payee';
-import { getCurrencySymbol } from '@/lib/format';
+import { getCurrencySymbol, moneyFractionDigits } from '@/lib/format';
 import { buildAccountDropdownOptions } from '@/lib/account-utils';
 import { RecentTransactionsPopover } from './RecentTransactionsPopover';
 import { TOUR_ANCHORS, tourAnchor } from '@/lib/tours/anchors';
@@ -256,6 +256,13 @@ export function NormalTransactionFields({
             prefix={getCurrencySymbol(amountCurrencyCode || watchedCurrencyCode)}
             value={amountValue !== undefined ? amountValue : watchedAmount}
             onChange={handleAmountChange}
+            // Money is stored at 4 dp. Left at CurrencyInput's default of 2, this
+            // field showed a stored 10.0048 as 10.0000 and saved that back over
+            // it on any edit. Widened only when a value on screen needs it, so
+            // ordinary amounts still read as cents.
+            decimalPlaces={moneyFractionDigits([
+              amountValue !== undefined ? amountValue : watchedAmount,
+            ])}
             allowSignToggle
             error={errors.amount?.message as string | undefined}
           />
