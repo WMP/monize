@@ -63,11 +63,19 @@ backend:
   #
   # Leave these unset and the backend derives them from the container's cgroup
   # memory limit, which tracks whatever you set above. exportBuffer and
-  # restoreExpanded derive to about a quarter of it. restoreUpload is different:
-  # it bounds *compressed wire bytes*, and the request that uploads them then
-  # holds the envelope, the decrypted plaintext, the decompressed payload, the
-  # string and the parsed object graph -- so it derives to about a sixth, which
-  # peaks at the half-share the process-wide upload admission budget allows.
+  # restoreExpanded derive to about a quarter of it. restoreUpload is not a
+  # quarter and not a fixed fraction: it bounds *compressed wire bytes*, and the
+  # request that uploads them goes on to hold the envelope, the decrypted
+  # plaintext, the decompressed payload, the string and the parsed object graph.
+  # So it derives to the half-share peak divided by a peak multiple (~a sixth on a
+  # normal pod), and on a small container it drops below that rather than flooring
+  # into a number the pod cannot survive -- the backend warns at startup when the
+  # derived value is small enough to refuse ordinary backups.
+  #
+  # The compressed limit does not bound decompressed memory: a small gzip expands
+  # to the restoreExpanded ceiling regardless of its wire size. Concurrent restore
+  # *processing* is therefore capped separately (usually to one at a time on the
+  # default pod); that cap is automatic and not configured here.
   #
   # Set them when you have measured your own deployment; the backend logs a
   # warning at startup if a value cannot protect the process it is running in.

@@ -9,10 +9,16 @@ import { AppModule } from "./app.module";
 import {
   PEAK_MULTIPLE,
   UPLOAD_WARNING_SHARE,
+  detectProcessMemoryLimitBytes,
   resolveRestoreUploadLimitBytes,
   warnIfLimitExceedsMemory,
+  warnIfRestoreUploadLimitIsCramped,
 } from "./backup/backup-limits";
 import { createRestoreUploadAdmission } from "./backup/restore-upload-admission";
+import {
+  computeRestoreProcessingSlots,
+  restoreProcessingGate,
+} from "./backup/restore-processing-gate";
 import { OAuthProviderService } from "./oauth/oauth-provider.service";
 import { oauthDebugLogger } from "./oauth/oauth-debug-logger.middleware";
 import { isOidcProviderPath } from "./oauth/oidc-provider-paths";
@@ -86,7 +92,11 @@ async function bootstrap() {
   // ceiling -- so the process could die on a request none of those layers ever
   // saw. No care further down the path can reach an allocation that happens
   // first.
-  const backupRestoreLimit = resolveRestoreUploadLimitBytes();
+  const memoryLimitBytes = detectProcessMemoryLimitBytes();
+  const backupRestoreLimit = resolveRestoreUploadLimitBytes(
+    process.env.BACKUP_RESTORE_LIMIT,
+    memoryLimitBytes,
+  );
   const bootstrapLogger = new Logger("Bootstrap");
   bootstrapLogger.log(
     `Restore upload limit: ${Math.round(backupRestoreLimit / (1024 * 1024))}MiB`,
@@ -103,6 +113,20 @@ async function bootstrap() {
     undefined,
     UPLOAD_WARNING_SHARE,
   );
+  // On a small container the safe upload limit can drop below what ordinary
+  // backups need. It stays safe rather than flooring into a number the pod cannot
+  // survive, but the operator should hear that restores are constrained here.
+  warnIfRestoreUploadLimitIsCramped(
+    backupRestoreLimit,
+    process.env.BACKUP_RESTORE_LIMIT,
+    (message) => bootstrapLogger.warn(message),
+  );
+  // Concurrent restore *processing* is capped separately from upload admission: a
+  // small gzip expands to the expanded ceiling, so the wire budget cannot bound
+  // decompressed memory. On the default pod this serialises restores to one.
+  const restoreSlots = computeRestoreProcessingSlots(memoryLimitBytes);
+  restoreProcessingGate.configure(restoreSlots);
+  bootstrapLogger.log(`Concurrent restore processing slots: ${restoreSlots}`);
   // Aggregate admission ahead of the parser: the per-request ceiling bounds one
   // request, and two concurrent uploads just under it exceed a container sized
   // for one. The JWT guard and the throttler are Nest guards, so they cannot

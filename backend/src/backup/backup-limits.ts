@@ -272,17 +272,64 @@ export function resolveRestoreUploadLimitBytes(
   const derived =
     memoryLimitBytes === null
       ? UNKNOWN_MEMORY_FALLBACK_BYTES
-      : Math.min(
-          MAX_DERIVED_LIMIT_BYTES,
-          Math.max(
-            MIN_DERIVED_LIMIT_BYTES,
-            Math.floor(
-              (memoryLimitBytes * MEMORY_SHARE_PER_RESTORE_UPLOAD) /
-                PEAK_MULTIPLE,
-            ),
-          ),
-        );
+      : safeDerivedUploadLimit(memoryLimitBytes);
   return resolveByteLimit(raw, derived);
+}
+
+/**
+ * The largest upload whose peak stays inside the container's restore share.
+ *
+ * **No floor.** The other derived ceilings apply `MIN_DERIVED_LIMIT_BYTES` so a
+ * small container does not inherit a limit too low to be usable -- but a usability
+ * minimum and a safety maximum are different quantities, and resolving them with
+ * `max()` lets the floor win over the safety. On a 128 MiB pod the safe upload is
+ * `128 * 0.5 / 3 = 21 MiB`; flooring that to 64 MiB models a 192 MiB peak, which
+ * exceeds the whole container. So the safety bound is the only bound here: the
+ * result is exactly `container * share / PEAK_MULTIPLE`, capped, never floored
+ * above it. `resolvedLimit * PEAK_MULTIPLE <= container * share` holds for every
+ * container size.
+ *
+ * When that leaves a very small limit the deployment can still restore small
+ * backups; `warnIfRestoreUploadLimitIsCramped` says so at startup rather than
+ * flooring into a number the pod cannot survive. Raising the memory limit, or
+ * setting `BACKUP_RESTORE_LIMIT` on a pod whose real headroom this cannot see, is
+ * the operator's lever.
+ */
+export function safeDerivedUploadLimit(memoryLimitBytes: number): number {
+  const safe = Math.floor(
+    (memoryLimitBytes * MEMORY_SHARE_PER_RESTORE_UPLOAD) / PEAK_MULTIPLE,
+  );
+  return Math.min(MAX_DERIVED_LIMIT_BYTES, Math.max(1, safe));
+}
+
+/**
+ * Below this a derived upload limit is safe but cramped: real backups may be
+ * refused, so the operator should know rather than discover it on a failed
+ * restore. Not a floor on the value -- flooring is exactly the bug above -- only
+ * the threshold for a startup warning.
+ */
+export const CRAMPED_UPLOAD_LIMIT_BYTES = 32 * MIB;
+
+/**
+ * Warns when the derived upload limit is safe but small enough to refuse ordinary
+ * backups, so the operator raises memory or sets the limit deliberately. Silent
+ * when the operator set an explicit value (their choice) or the limit is roomy.
+ */
+export function warnIfRestoreUploadLimitIsCramped(
+  resolvedLimitBytes: number,
+  rawOverride: string | undefined,
+  onWarn: (message: string) => void,
+): void {
+  if (rawOverride !== undefined && rawOverride.trim() !== "") return;
+  if (resolvedLimitBytes >= CRAMPED_UPLOAD_LIMIT_BYTES) return;
+  const mib = (bytes: number) => `${Math.round(bytes / MIB)}MiB`;
+  onWarn(
+    `Derived restore upload limit is only ${mib(resolvedLimitBytes)} on this ` +
+      `container -- backups larger than that will be refused. This is the largest ` +
+      `size whose peak memory fits the pod; raise the container memory limit for a ` +
+      `larger restore, or set BACKUP_RESTORE_LIMIT deliberately if the pod has more ` +
+      `headroom than its cgroup reports.`,
+  );
 }
 
 /**

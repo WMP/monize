@@ -8,6 +8,7 @@ import {
   resolveByteLimit,
   resolveRestoreUploadLimitBytes,
   warnIfLimitExceedsMemory,
+  warnIfRestoreUploadLimitIsCramped,
 } from "./backup-limits";
 
 const MIB = 1024 * 1024;
@@ -146,7 +147,7 @@ describe("backup size limits", () => {
 
     it("still allows a usable upload on the chart's default backend", () => {
       // A ceiling small enough to refuse ordinary backups is an outage, not a
-      // protection. The floor in the derivation is what guarantees this.
+      // protection. On a 400 MiB pod the safe value is ~66 MiB, which is roomy.
       expect(
         resolveRestoreUploadLimitBytes(undefined, 400 * MIB),
       ).toBeGreaterThanOrEqual(64 * MIB);
@@ -166,10 +167,54 @@ describe("backup size limits", () => {
       expect(resolveRestoreUploadLimitBytes(undefined, null)).toBe(256 * MIB);
     });
 
-    it("never derives a value below the floor", () => {
-      expect(resolveRestoreUploadLimitBytes(undefined, 64 * MIB)).toBe(
-        64 * MIB,
-      );
+    /**
+     * F3R6-005: a usability floor must never win over the safety maximum. The old
+     * derivation applied `max(64 MiB, safe)`, so on a 128 MiB pod it returned
+     * 64 MiB whose modeled peak (192 MiB) exceeded the whole container.
+     */
+    it.each([64, 128, 192, 256, 400, 512])(
+      "keeps the modeled peak inside the container's share at %i MiB",
+      (containerMib) => {
+        const container = containerMib * MIB;
+        const limit = resolveRestoreUploadLimitBytes(undefined, container);
+        // The invariant the floor used to break.
+        expect(limit * PEAK_MULTIPLE).toBeLessThanOrEqual(
+          Math.floor(container * MEMORY_SHARE_PER_RESTORE_UPLOAD),
+        );
+        // And never zero: some restore, however small, must be possible.
+        expect(limit).toBeGreaterThan(0);
+      },
+    );
+
+    it("derives a smaller, still-safe limit on a cramped container", () => {
+      // 128 MiB: safe = 128 * 0.5 / 3 = 21 MiB, not the old floored 64 MiB.
+      const limit = resolveRestoreUploadLimitBytes(undefined, 128 * MIB);
+      expect(limit).toBeLessThan(64 * MIB);
+      expect(limit * PEAK_MULTIPLE).toBeLessThanOrEqual(64 * MIB);
+    });
+  });
+
+  describe("warnIfRestoreUploadLimitIsCramped", () => {
+    it("warns when the derived limit is below the usable threshold", () => {
+      const onWarn = jest.fn();
+      const limit = resolveRestoreUploadLimitBytes(undefined, 128 * MIB);
+      warnIfRestoreUploadLimitIsCramped(limit, undefined, onWarn);
+      expect(onWarn).toHaveBeenCalledTimes(1);
+      expect(String(onWarn.mock.calls[0][0])).toMatch(/refused|memory/i);
+    });
+
+    it("stays quiet on a roomy container", () => {
+      const onWarn = jest.fn();
+      const limit = resolveRestoreUploadLimitBytes(undefined, 400 * MIB);
+      warnIfRestoreUploadLimitIsCramped(limit, undefined, onWarn);
+      expect(onWarn).not.toHaveBeenCalled();
+    });
+
+    it("stays quiet when the operator set the value themselves", () => {
+      // A cramped limit the operator chose is their decision, not a surprise.
+      const onWarn = jest.fn();
+      warnIfRestoreUploadLimitIsCramped(8 * MIB, "8mb", onWarn);
+      expect(onWarn).not.toHaveBeenCalled();
     });
   });
 
