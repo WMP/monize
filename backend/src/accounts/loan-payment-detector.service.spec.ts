@@ -2421,6 +2421,142 @@ describe("LoanPaymentDetectorService", () => {
       expect(result[0].interestAmount).toBe(100);
       expect(result[0].interestCategoryId).toBe("interest-cat-1");
     });
+
+    /**
+     * REV-20260804-001: multiple categorized non-principal splits without a
+     * configured interest category. Before the fix, each iteration overwrote
+     * `interestAmount` so the last categorized split (insurance, $50) was
+     * recorded as interest instead of the actual interest leg ($100).
+     */
+    it("does not record the last categorized split as interest when multiple non-principal categories are present and no interest category is configured", async () => {
+      // $850 principal + $100 interest + $50 insurance -- three-way split
+      const threewayRows = [
+        {
+          transferAccountId: "loan-1",
+          categoryId: null,
+          amount: -850,
+          memo: null,
+          category: null,
+        },
+        {
+          transferAccountId: null,
+          categoryId: "interest-cat-1",
+          amount: -100,
+          memo: null,
+          category: { name: "Interest" },
+        },
+        {
+          transferAccountId: null,
+          categoryId: "insurance-cat-1",
+          amount: -50,
+          memo: null,
+          category: { name: "Insurance" },
+        },
+      ];
+      transactionRepository.findOne.mockResolvedValue(
+        makeLinkedSourceTx({ transactionDate: "2026-08-04", amount: -1000 }),
+      );
+      transactionRepository.manager.find.mockResolvedValue(threewayRows);
+
+      // No accountInterestCategoryId configured: ambiguous multi-category → null
+      const result = await service.buildPaymentRecords(
+        "user-1",
+        "loan-1",
+        [loanSideTx({ amount: 1000 })],
+        "2026-08-04",
+        // accountInterestCategoryId omitted (not configured)
+      );
+
+      expect(result[0].interestAmount).toBeNull();
+      expect(result[0].interestCategoryId).toBeNull();
+      // Principal attribution is unaffected
+      expect(result[0].principalAmount).toBe(850);
+    });
+
+    it("uses only the configured interest category leg and ignores non-interest categorized splits", async () => {
+      const threewayRows = [
+        {
+          transferAccountId: "loan-1",
+          categoryId: null,
+          amount: -850,
+          memo: null,
+          category: null,
+        },
+        {
+          transferAccountId: null,
+          categoryId: "interest-cat-1",
+          amount: -100,
+          memo: null,
+          category: { name: "Interest" },
+        },
+        {
+          transferAccountId: null,
+          categoryId: "insurance-cat-1",
+          amount: -50,
+          memo: null,
+          category: { name: "Insurance" },
+        },
+      ];
+      transactionRepository.findOne.mockResolvedValue(
+        makeLinkedSourceTx({ transactionDate: "2026-08-04", amount: -1000 }),
+      );
+      transactionRepository.manager.find.mockResolvedValue(threewayRows);
+
+      const result = await service.buildPaymentRecords(
+        "user-1",
+        "loan-1",
+        [loanSideTx({ amount: 1000 })],
+        "2026-08-04",
+        "interest-cat-1", // configured interest category
+      );
+
+      expect(result[0].interestAmount).toBe(100);
+      expect(result[0].interestCategoryId).toBe("interest-cat-1");
+      expect(result[0].interestCategoryName).toBe("Interest");
+      expect(result[0].principalAmount).toBe(850);
+    });
+
+    it("aggregates multiple legs in the configured interest category", async () => {
+      // Two interest legs (e.g. base rate + fee) both in the interest category
+      const multiInterestRows = [
+        {
+          transferAccountId: "loan-1",
+          categoryId: null,
+          amount: -850,
+          memo: null,
+          category: null,
+        },
+        {
+          transferAccountId: null,
+          categoryId: "interest-cat-1",
+          amount: -80,
+          memo: null,
+          category: { name: "Interest" },
+        },
+        {
+          transferAccountId: null,
+          categoryId: "interest-cat-1",
+          amount: -20,
+          memo: null,
+          category: { name: "Interest" },
+        },
+      ];
+      transactionRepository.findOne.mockResolvedValue(
+        makeLinkedSourceTx({ transactionDate: "2026-08-04", amount: -950 }),
+      );
+      transactionRepository.manager.find.mockResolvedValue(multiInterestRows);
+
+      const result = await service.buildPaymentRecords(
+        "user-1",
+        "loan-1",
+        [loanSideTx({ amount: 950 })],
+        "2026-08-04",
+        "interest-cat-1",
+      );
+
+      expect(result[0].interestAmount).toBe(100);
+      expect(result[0].principalAmount).toBe(850);
+    });
   });
 
   describe("pairSeparateInterest", () => {

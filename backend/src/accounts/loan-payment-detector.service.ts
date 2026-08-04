@@ -135,6 +135,8 @@ export class LoanPaymentDetectorService {
       userId,
       accountId,
       transactions,
+      undefined,
+      account.interestCategoryId,
     );
 
     // Consolidate payment records by date. Multiple loan-side transactions
@@ -311,6 +313,7 @@ export class LoanPaymentDetectorService {
     accountId: string,
     transactions: Transaction[],
     asOfDate?: string,
+    accountInterestCategoryId?: string | null,
   ): Promise<PaymentRecord[]> {
     // One read block: the linked-transfer and split lookups below are a
     // per-transaction walk over the same snapshot of data.
@@ -392,6 +395,15 @@ export class LoanPaymentDetectorService {
                 memo: string | null;
               }> = [];
 
+              // Collect non-principal categorized splits as interest candidates;
+              // resolved after the loop so multiple legs are aggregated rather
+              // than each overwriting the previous (REV-20260804-001).
+              const interestCandidates: Array<{
+                amount: number;
+                categoryId: string;
+                categoryName: string | null;
+              }> = [];
+
               for (const split of splits) {
                 const splitAmount = Math.abs(Number(split.amount));
                 if (split.transferAccountId === accountId) {
@@ -400,15 +412,38 @@ export class LoanPaymentDetectorService {
                     memo: split.memo,
                   });
                 } else if (split.categoryId && linkedInterestUsable) {
-                  // Categorized split = interest expense. Only trusted when
-                  // the linked source transaction itself is not future-dated
-                  // or voided (see `linkedInterestUsable` above) --
-                  // otherwise this is left unset and `interestAmount` stays
-                  // `null`, REV-20260803-024's fifth-reopen fix.
-                  interestAmount = splitAmount;
-                  interestCategoryId = split.categoryId;
-                  interestCategoryName = split.category?.name || null;
+                  // Categorized split = interest expense candidate. Only
+                  // trusted when the linked source transaction itself is not
+                  // future-dated or voided (see `linkedInterestUsable` above).
+                  interestCandidates.push({
+                    amount: splitAmount,
+                    categoryId: split.categoryId,
+                    categoryName: split.category?.name || null,
+                  });
                 }
+              }
+
+              // Resolve the interest amount from the collected candidates.
+              // When a category is configured on the account, only legs in
+              // that category count as interest; they are summed so a
+              // payment legitimately spread across several transactions is
+              // captured correctly. Without a configured category, accept
+              // only the unambiguous case: exactly one categorized leg
+              // (multiple legs with no anchor category cannot be
+              // distinguished from non-interest expenses like insurance).
+              if (accountInterestCategoryId != null) {
+                const matching = interestCandidates.filter(
+                  (c) => c.categoryId === accountInterestCategoryId,
+                );
+                if (matching.length > 0) {
+                  interestAmount = sumMoney(matching.map((c) => c.amount));
+                  interestCategoryId = accountInterestCategoryId;
+                  interestCategoryName = matching[0].categoryName;
+                }
+              } else if (interestCandidates.length === 1) {
+                interestAmount = interestCandidates[0].amount;
+                interestCategoryId = interestCandidates[0].categoryId;
+                interestCategoryName = interestCandidates[0].categoryName;
               }
 
               // Separate regular principal from extra principal using memo cues.
