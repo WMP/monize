@@ -10,17 +10,27 @@
 | Remediation base | `4e48a767` (88 commits after the audit baseline) |
 | Branch | `claude/detailed-error-review-fixes-p8bwgy` |
 | Second source report | `monize-audit-07-remediation-review.md` (independent review of this branch at `79bfc257`) |
-| Commits | 12 |
-| Files changed | 294 (+8301 / -1232) |
+| Third source report | `monize-audit-07-remediation-review.md` re-review (of this branch at `e75acd20`) |
+| Commits | 14, plus a merge of `origin/main` |
+| Files changed | 335 against the original merge base (+14359 / -2760), including the merge |
 | Mode | Read-write: every finding re-verified against the current tree before being acted on |
-| Suites executed | Backend unit (10,743 passing), backend integration (268 passing, real PostgreSQL 16), frontend Vitest (12,326 passing), migration lint, schema-drift replay, both lints, both type-checks |
+| Suites executed | Backend unit (10,902 passing), backend integration (314 passing, real PostgreSQL 16), frontend Vitest (12,413 passing), migration lint (125), schema-drift replay, both lints, both type-checks, i18n freshness and parity - all on the post-merge tree |
 | Suites **not** executed | Playwright E2E (no browser stack), the Helm CI job (no `helm` binary) |
 
-This document covers two rounds. Sections 1-10 are the first pass against the
-Phase 7 audit. Section 11 is the second pass, against an independent review of
-that first pass, and supersedes the first pass wherever the two disagree - most
-importantly on P7-008, which the first pass did not attempt and the second pass
-closes.
+This document covers three rounds, each answering an independent review of the
+one before, and each superseding it where they disagree:
+
+- **Sections 1-10** - the first pass against the Phase 7 audit.
+- **Section 11** - the second pass. Closes P7-008, which the first pass did not
+  attempt because it wrongly assumed no PostgreSQL was available here.
+- **Section 12** - the third pass, against a re-review that found three further
+  HIGH defects in code the second pass had declared done. **Read 12.8 first if you
+  are about to fix something in this codebase**: all three were the same mistake,
+  and it is not the one it looks like.
+
+The branch has also been merged with `origin/main`, which had independently landed
+one of the same fixes. Section 12.5 has what that changed, including two round-two
+artefacts deleted in favour of main's versions.
 
 ## Executive summary
 
@@ -67,7 +77,7 @@ bill that could be paid twice and a logout that could leave a usable session.
 | P7-005 | MEDIUM | Yes, on defaults | **Fixed.** Plus a test-isolation bug it exposed |
 | P7-006 | MEDIUM | Yes | **Fixed.** Flag removed, inventory guard added with its own self-test |
 | P7-007 | MEDIUM | Yes | **Partly fixed.** Provenance gate added; the release is not redesigned |
-| P7-008 | **HIGH** | Yes | **Fixed in round 2.** Harness plus all seven races; five were defects. See section 11 |
+| P7-008 | **HIGH** | Yes | **Fixed over rounds 2-3.** Harness plus all seven races; five were defects in round 2, three more found in round 3. See sections 11 and 12 |
 | P7-009 | MEDIUM | Partly - premise was wrong | **Narrowed and fixed.** The real gap was silence, not lost bytes |
 | P7-010 | MEDIUM | Yes | **Partly fixed.** Lint and render in CI; no cluster install |
 | P7-011 | LOW | 2 of 7 items | **Fixed**, and made machine-checked |
@@ -698,3 +708,229 @@ been seen to pass is indistinguishable from one that cannot fail.
 | `7ff68069` | Race four concurrency defects at the real conflict boundary, and fix them |
 | `33f1681c` | Stop a scheduled bill being paid twice, and a rebuild erasing a concurrent trade |
 | `c19f7bff` | Pin the import's all-or-nothing write, closing the last of the seven races |
+
+---
+
+## 12. Third round - remediation re-review (`monize-audit-07-remediation-review.md`, re-review at `e75acd20`)
+
+The re-review confirmed the second round's two HIGH findings closed and the
+concurrency harness credible, then found **three further HIGH defects** and
+recorded that section 11's closure claim was overstated. It was: two of the three
+sit in code round two had touched and declared done.
+
+That is the pattern worth naming, because it repeated. Each of the three is a fix
+that stopped one step short of the invariant it claimed:
+
+- the scheduled-post precondition existed but was *derived from a fresh read*, so
+  the command still meant "post whatever is current";
+- the backup filename gained a time component but not exclusivity, so
+  same-second writers still shared a path;
+- the account lock was added to the two mutators the new test happened to
+  exercise, and not to the other four.
+
+In all three cases round two had a passing test. None of the three tests could
+fail, for the same reason: each exercised the path that had been fixed rather
+than the paths that had not.
+
+### Disposition of the re-review's findings
+
+| ID | Severity | Reproduced? | Outcome |
+|---|---|---|---|
+| RFR7-001 | **HIGH** | Yes | **Fixed.** One command posts one *named* occurrence; the cron and both frontend call sites pass what they discovered |
+| RFR7-002 | **HIGH** | Yes | **Fixed.** Unique temporary name with exclusive create, published by `link`; two same-second backups become two files |
+| RFR7-003 | **HIGH** | Yes | **Fixed.** Every holdings mutator takes the account lock, and both rebuilds |
+| RFR7-004 | MEDIUM | Yes | **Fixed.** `?? 0` removed from every brokerage market-value consumer |
+| RFR7-005 | MEDIUM | Yes | **Still partly fixed.** Unchanged; see 12.6 |
+| RFR7-006 | MEDIUM | Yes | **Still open.** See 12.6 |
+| RFR7-007 | MEDIUM | Yes | **Still partly fixed.** See 12.6 |
+| Divergence from `main` | design risk | Yes | **Resolved.** Merged, six conflicts, all verified on the merge result |
+
+### 12.1 RFR7-001 - a delayed replica posted the next occurrence early
+
+The auto-post cron discovers a due list in one transaction and then posts each
+row. Round two gave `post` a row lock and an occurrence precondition, but derived
+the occurrence from a fresh read inside the same call, so a replica delayed behind
+one that had already posted read the *advanced* date and treated that as its
+intended occurrence.
+
+A worker asked to post April charged May instead: `-1,200.00` a second time, and
+`next_due_date` at `2026-06-15` rather than `2026-05-15`. One extra payment and one
+period skipped, from a schedule that looks internally consistent afterwards. The
+same shape reached the UI, where a resubmitted Pay dialog paid the following
+period.
+
+**The invariant is now one command, one named occurrence.** `expectedNextDueDate`
+is a DTO field; the cron passes `ensureYMD(scheduled.nextDueDate)` from the
+candidate it discovered, and `ScheduledTransactionList` and
+`PostTransactionDialog` pass the `nextDueDate` they are rendering. A superseded
+candidate is logged as skipped and counted separately from a failure -- a healthy
+multi-replica deployment should not report an error every hour for doing the right
+thing.
+
+The fallback for a caller that names nothing is still the fresh read, because
+refusing those outright would break every existing client. That caller gets the
+old behaviour and the old exposure, documented on the DTO rather than silently
+kept.
+
+The races go through `processAutoPostTransactions` itself, discovery included.
+That matters: the defect lived in what the cron did with what it found, and the
+round-two suite -- which called `post` directly, and in one case a private helper
+with a hand-supplied stale date -- could not reach it. On the pre-fix code the new
+case fails with two transactions and a June due date.
+
+### 12.2 RFR7-002 - same-second backups collided on both paths
+
+The filename carried local time to the second. Two replicas firing one hourly
+occurrence, or a double-submitted manual backup, computed the same temporary
+*and* the same final path: both wrote the shared temporary file and both renamed
+it. Two accepted backups left one file whose contents belonged to whichever write
+landed last, and one of the two runs recorded success for a recovery point that no
+longer existed. On a real filesystem that is silent.
+
+Every run now takes its own `randomUUID()` temporary name, created with `wx` so
+the open fails rather than truncates, and publishes by **linking** rather than
+renaming -- `link` refuses a name that exists, `rename` overwrites it. When the
+final name is taken the loser appends a discriminator: **two recovery points,
+never one**, because a backup that was accepted and then silently discarded is
+exactly the failure this is guarding against. The discriminator is inside
+`DAILY_FILE_PATTERN`, so retention still counts and sweeps it; a file matching
+neither is a recovery point nothing ever deletes.
+
+The integration test freezes one instant and runs two backups. Before the fix it
+finds one file for two accepted attempts.
+
+### 12.3 RFR7-003 - half the holdings mutators skipped the lock
+
+`createOrUpdate` and the whole-user rebuild took the account lock. `applySplit`,
+`reverseSplit`, `adjustQuantity` and `rebuildAccountsFromTransactions` did not --
+which is every path a `SPLIT`, `ADD_SHARES` or `REMOVE_SHARES` edit or delete
+goes through. Round two's race covered a `BUY`, and `BUY` goes through
+`createOrUpdate`, the one mutator that already locked. That is why it passed.
+
+Deleting an `ADD_SHARES 10` while a rebuild was parked mid-transaction left the
+history with no acquisition and holdings showing **10 phantom shares**; deleting a
+`REMOVE_SHARES 4` left 6 where 10 was right. Both reproduce on the pre-fix code
+with those exact numbers.
+
+Two of the four new cases -- the `SPLIT` delete and the share *insert* -- pass with
+or without the lock, because a split delete is followed by a post-commit repair
+rebuild and an insert creates a row the rebuild's by-id delete never sees. The
+suite says so rather than implying four proofs where there are two.
+
+### 12.4 RFR7-004 - unknown brokerage value read as a measured zero
+
+`brokerageMarketValues.get(id) ?? 0` turned three different states into one
+number. `lib/brokerage-market-value.ts` now keeps them apart:
+
+- **known**, including a genuine `0` for a brokerage that holds nothing -- an
+  empty account is worth zero, and reporting that as unknown is the opposite
+  error;
+- **unknown**, when the server sent `null` for a missing quote or rate;
+- **unknown for everything**, when the portfolio request itself failed -- a failed
+  lookup is not an empty dataset, and before this a failed load rendered every
+  brokerage account as `0.00`.
+
+Applied across the accounts page, the dashboard, `AccountBalancesReport`,
+`AccountList`, `AccountRow` and `FavouriteAccounts`. An unknown value also blocks
+Close, because it is not a zero balance and the account may still hold securities.
+
+On the reviewer's numbers: `500.00` of cash beside ten shares with no quote now
+reports Total Assets as unavailable rather than as `$500.00` complete -- which,
+against a later-resolved `100.00` per share, understated by `1,000.00` of `1,500.00`.
+
+A test named "handles brokerage with no portfolio summary (falls back to 0)",
+asserting `$0.00`, is rewritten. It pinned the defect as behaviour, which is the
+third time in this remediation that a test has been found doing that.
+
+### 12.5 The merge with `main`, and what it changed
+
+The branch was 40 commits behind. Six files conflicted; none of the resolutions
+were mechanical, and two went *against* this branch:
+
+- **`main` had independently landed the same one-active-import fix**
+  (`135_import_jobs_single_active.sql`). Migration 133 from round two is
+  **deleted** -- it created the same index under a number that also collided with
+  `133_joint_account_grants.sql`, the duplicate-prefix hazard
+  `database/CLAUDE.md` warns about. Main's job service is kept: it matches on
+  `QueryFailedError` and takes the index name from the entity instead of a second
+  copy of the string. Main's `start` also already reserves before the destructive
+  wipe and releases the slot with `discard` rather than failing the row.
+- **`race-import-start.integration.spec.ts` is deleted.** Main's
+  `mny-import-job` suite covers that invariant as a strict superset. Two suites
+  racing the same insert is duplication, not depth, and the inventory guard now
+  says why the list looks shorter.
+
+The backup service needed the opposite treatment. Main reworked it into sharded
+per-user folders with a separate encryption service -- better than the flat
+per-owner directory round two added -- but lost both the sub-daily time component
+and the atomic write in the process. Main's structure is kept and all three fixes
+re-applied on top.
+
+Everything below was run on the **merge result**, not on either parent.
+
+### 12.6 Still open after round three
+
+| Item | Status | Why |
+|---|---|---|
+| **RFR7-005 / P7-007** - release pushes an unverified SHA | **Partly fixed, unchanged** | The provenance gate constrains the bump's diff and parent. The pushed commit still is not the commit the checks ran on. Fixing it means moving the version bump to a release PR -- a change to the release process, not a patch, and not something to fold into a branch this size |
+| **RFR7-006 / P7-009** - attachment byte round-trip | **Open** | No test seeds bytes in a local and an S3-compatible provider, exports, restores into remapped ids, downloads through the public path and compares hashes, nor injects a failure after the first object copy. The highest-value item left |
+| **RFR7-007 / P7-010** - cluster install | **Partly fixed** | Lint, three renders, YAML parsing, explicit PyYAML and a release dependency are in CI. No kind/k3d install, no backup persistence through a pod replacement, and the Helm job has never executed in this environment |
+| Playwright E2E | **Not run** | No browser stack here. The only suite category this work has never executed |
+| P4-008 - P4-018 | **Open** | The audit's concurrency backlog beyond the seven. The harness they need exists |
+| Section 7.2 "test not located" register | **Open** | 40+ items, each needing its own verification |
+| DR-01 - DR-07 | **Mostly open** | Need branch-protection and merge-queue facts unavailable from inside the repository. DR-04 (`TZ=UTC` in CI) remains a worthwhile one-line change |
+
+### 12.7 Verification status, round three (on the merge result)
+
+| Check | Result |
+|---|---|
+| Backend unit (`TZ=UTC npm run test:unit`) | **407 suites, 10,902 tests, all passing** |
+| Backend integration (real PostgreSQL 16.13) | **28 suites, 314 tests, all passing** |
+| Frontend Vitest | **634 files, 12,413 tests, all passing** |
+| Migration idempotency lint | **125 files, passing** |
+| Schema-drift replay | **Passing.** `schema.sql` applied to two databases, all migrations replayed **twice**, dumps normalized as CI does: identical |
+| Backend + frontend lint, `tsc --noEmit` | Clean (one pre-existing `Combobox` warning, untouched) |
+| i18n freshness + parity, both layers | Passing |
+| Playwright E2E | **Not run** - no browser stack |
+| Helm CI job | **Not executed** - no `helm` binary here |
+
+Each of RFR7-001 through RFR7-004 was checked by reintroducing the defect and
+confirming the relevant suite fails, with the numbers recorded in 12.1-12.4. That
+is written down because the three HIGH findings of this round all had a passing
+test over them, and a test that has only ever been seen to pass is
+indistinguishable from one that cannot fail.
+
+### 12.8 The rule this round earned
+
+Round two's failures were not carelessness about the invariants -- the invariants
+were written down and the tests were real. They were carelessness about **which
+call sites the test reached**. In each case the new test exercised the path the fix
+had just changed, which is the one path guaranteed to pass.
+
+So: when a fix adds a guard to a shared entry point, enumerate the *other* entry
+points to the same state and either cover them or say plainly that you did not.
+`grep` for the state, not for the function you just edited -- the holdings lock
+went into two of six mutators and the test went into the one that already had it.
+
+This is now in `backend/CLAUDE.md` beside the harness rule, because it is the
+generalisation of what a scanning guard does: a rule that a machine checks over
+every call site cannot be satisfied by one.
+
+### 12.9 Recommended next steps, in order
+
+1. **Add the local/S3 attachment round trip** (RFR7-006). The last open
+   missing-test finding from the original audit, and the one with data loss behind
+   it.
+2. **Run Playwright E2E** against a full stack on this exact SHA.
+3. **Add the kind/k3d install job** with backup persistence through a pod
+   replacement (RFR7-007).
+4. **Move the release to a version-bump PR** (RFR7-005).
+5. **Work P4-008 through P4-018** on the harness.
+6. **Set `TZ=UTC` explicitly in CI** (DR-04).
+
+### 12.10 Commits, round three
+
+| SHA | Subject |
+|---|---|
+| `fb56a3ea` | Close the three HIGH findings from the re-review |
+| `4e02a1e5` | Merge origin/main into the remediation branch |

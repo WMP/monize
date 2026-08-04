@@ -73,7 +73,9 @@ describe("Automatic backup file layout (integration)", () => {
         },
         {
           provide: DemoModeService,
-          useValue: { isDemo: false } as unknown as jest.Mocked<DemoModeService>,
+          useValue: {
+            isDemo: false,
+          } as unknown as jest.Mocked<DemoModeService>,
         },
         {
           provide: BackupService,
@@ -182,7 +184,9 @@ describe("Automatic backup file layout (integration)", () => {
     const userB = await seedUser(`rb-${Date.now()}@example.com`);
 
     await withUserContext(userB, () => service.runManualBackup(userB));
-    const bFilesBefore = backupFiles().filter((f) => f.startsWith(`${ownerDir(userB)}/`));
+    const bFilesBefore = backupFiles().filter((f) =>
+      f.startsWith(`${ownerDir(userB)}/`),
+    );
     expect(bFilesBefore).toHaveLength(1);
     const bHashBefore = sha(bFilesBefore[0]);
 
@@ -193,7 +197,9 @@ describe("Automatic backup file layout (integration)", () => {
     await withUserContext(userA, () => service.runManualBackup(userA));
     await withUserContext(userA, () => service.runManualBackup(userA));
 
-    const bFilesAfter = backupFiles().filter((f) => f.startsWith(`${ownerDir(userB)}/`));
+    const bFilesAfter = backupFiles().filter((f) =>
+      f.startsWith(`${ownerDir(userB)}/`),
+    );
     expect(bFilesAfter).toEqual(bFilesBefore);
     expect(sha(bFilesAfter[0])).toBe(bHashBefore);
   });

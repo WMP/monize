@@ -211,6 +211,40 @@ Assert on **both** stored state and provider side effects (`expect(generateToken
 
 Two defect shapes worth knowing, because each was found this way and neither is visible in the code as read. A single `UPDATE ... WHERE <predicate>` cannot see a row a concurrent transaction inserted after its snapshot, so a sweep that must leave nothing behind has to re-read and go again (`TokenService.revokeUntilNoneLive`). And `repo.save(entity)` writes *every* column of whatever was loaded, so a recompute persisting a stale entity silently reverts a concurrent edit to unrelated fields -- update the column you own (`repo.update({ id }, { thatColumn })`), not the row you happen to be holding.
 
+### A guard added to one entry point is a guard on one entry point
+
+The three HIGH findings of the Phase 7 re-review were all the same mistake, and
+none of them was carelessness about the invariant -- each invariant was written
+down, and each fix shipped with a real, passing test. The carelessness was about
+**which call sites the test reached**: in every case the new test exercised the
+path the fix had just changed, which is the one path guaranteed to pass.
+
+- The account lock went into `createOrUpdate` and the whole-user rebuild. The
+  race test covered a `BUY`, which goes through `createOrUpdate`. `applySplit`,
+  `reverseSplit`, `adjustQuantity` and the partial rebuild -- every path a
+  `SPLIT`/`ADD_SHARES`/`REMOVE_SHARES` edit or delete takes -- kept no lock at
+  all, and deleting an `ADD_SHARES 10` mid-rebuild left ten phantom shares.
+- `post` gained an occurrence precondition, derived from a fresh read. Every
+  test called `post` directly, so none could see that the auto-post cron
+  discards the occurrence it discovered and a delayed replica therefore pays the
+  *next* period.
+- The backup filename gained a time component, so the sub-daily test passed. Two
+  writers in the same second still computed the same path.
+
+So when a fix adds a guard to a shared entry point, **enumerate the other entry
+points to the same state** and either cover them or say plainly which you did
+not. Grep for the state -- the table, the column, the materialized view -- not for
+the function you just edited. And prefer the guard a scan can hold over a guard
+one test can satisfy: this is the same reason `share-quantity.guard.spec.ts` and
+`ui-conventions.test.ts` exist, generalised.
+
+Where two of a fix's cases cannot fail without it and two can, say which are
+which in the test file. `race-holdings-rebuild.integration.spec.ts` marks its
+`SPLIT`-delete and insert cases as guards rather than proofs, because a
+post-commit repair rebuild and a by-id delete respectively mask the defect --
+implying four proofs where there are two is how a suite starts overstating
+itself.
+
 ### Fixtures are claims about production data
 
 `docs/testing-contract.md` is the shared list of adversarial inputs to choose from. A fixture is evidence only if the code that writes the real data could have written it. Before adding one, look at the producer: the query's sampling, whether the column is nullable, whether the format guarantees what the fixture assumes. A price series three points a quarter apart proves nothing about code reading daily closes, and weightings that always sum to 1 never exercise the remainder the storage format allows. `docs/financial-calculation-contract.md` section 8.3 has the full rule.
