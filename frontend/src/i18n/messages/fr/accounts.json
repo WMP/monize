@@ -48,7 +48,8 @@
       "status": "Statut",
       "balance": "Solde",
       "actions": "Actions"
-    }
+    },
+    "filterJoint": "Partagés avec moi"
   },
   "row": {
     "statusActive": "Actif",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "Le solde du compte doit être nul pour le clôturer",
       "closeTitleEnabled": "Clôturer le compte",
       "details": "Détails"
-    }
+    },
+    "jointBadge": "Joint",
+    "jointSharedBy": "Partagé par {owner}",
+    "jointSharedWith": "Partagé avec {count, plural, one {# personne} other {# personnes}}",
+    "includeInNetWorth": "Inclure dans ma valeur nette",
+    "excludeFromNetWorth": "Exclure de ma valeur nette"
   },
   "contextMenu": {
     "subtypeBrokerage": "Courtage",
@@ -103,7 +109,8 @@
     "loadFailed": "Échec du chargement des comptes",
     "favouriteError": "Échec de la mise à jour des favoris",
     "createSuccess": "Compte créé avec succès",
-    "updateSuccess": "Compte mis à jour avec succès"
+    "updateSuccess": "Compte mis à jour avec succès",
+    "updateFailed": "Échec de la mise à jour du compte"
   },
   "form": {
     "accountName": "Nom du compte",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "ex. 25",
     "fxFeeTitle": "Frais de conversion en devise étrangère (facultatif)",
     "fxFeePercent": "Pourcentage des frais",
-    "fxFeePercentPlaceholder": "p. ex. 2,5"
+    "fxFeePercentPlaceholder": "p. ex. 2,5",
+    "jointSharedWith": "Compte joint partagé avec {count, plural, one {# personne} other {# personnes}}",
+    "jointManage": "Gérer le partage"
   },
   "exportModal": {
     "title": "Exporter {name}",

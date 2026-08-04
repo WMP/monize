@@ -35,12 +35,24 @@
   "settings": {
     "title": "Geführte Touren",
     "description": "Gehen Sie die Funktionen der App Schritt für Schritt durch.",
-    "showList": "Touren anzeigen ({count})",
-    "hideList": "Touren ausblenden",
+    "backLink": "Zurück zu den Einstellungen",
+    "pageTitle": "Geführte Touren",
+    "pageSubtitle": "Alle Rundgänge, die Monize bietet, an einem Ort. Starten Sie jederzeit einen — eine Tour lässt sich mit Escape verlassen und von hier aus wieder aufnehmen.",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, one {# Schritt} other {# Schritte}}",
+    "releaseLabel": "Neu in {version}",
+    "requirementsLoading": "Es wird geprüft, ob Sie diese Tour starten können …",
+    "requires": {
+      "transactionEntry": "Legen Sie zuerst ein Konto an — diese Tour führt durch das Erfassen einer Transaktion.",
+      "securitiesExist": "Legen Sie zuerst ein Wertpapier an — diese Tour öffnet eines aus Ihrer Wertpapierliste."
+    },
     "start": "Starten",
     "restart": "Wiederholen",
     "statusNotViewed": "Nicht angesehen",
     "statusDismissed": "Vorzeitig beendet",
+    "resetHeading": "Von vorn beginnen",
+    "resetDescription": "Alle aufgezeichneten Touren löschen, sodass sie wieder über das Dashboard und nach einem Update angeboten werden.",
     "reset": "Tour-Fortschritt zurücksetzen",
     "resetSuccess": "Tour-Fortschritt wurde zurückgesetzt.",
     "resetError": "Der Tour-Fortschritt konnte nicht zurückgesetzt werden. Bitte versuchen Sie es erneut."

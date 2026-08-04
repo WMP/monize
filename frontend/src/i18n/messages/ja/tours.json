@@ -35,12 +35,24 @@
   "settings": {
     "title": "ガイド付きツアー",
     "description": "アプリの機能を順を追って確認できます。",
-    "showList": "ツアーを表示（{count}）",
-    "hideList": "ツアーを隠す",
+    "backLink": "設定に戻る",
+    "pageTitle": "ガイド付きツアー",
+    "pageSubtitle": "Monize のツアーをすべてここにまとめました。いつでも開始できます。Escape キーでツアーを中断し、ここから再開できます。",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, other {# ステップ}}",
+    "releaseLabel": "{version} で追加",
+    "requirementsLoading": "このツアーを開始できるか確認しています…",
+    "requires": {
+      "transactionEntry": "先に口座を追加してください。このツアーは取引の記録方法を案内します。",
+      "securitiesExist": "先に有価証券を追加してください。このツアーは一覧から銘柄を開きます。"
+    },
     "start": "開始",
     "restart": "もう一度",
     "statusNotViewed": "未表示",
     "statusDismissed": "途中で終了",
+    "resetHeading": "最初からやり直す",
+    "resetDescription": "記録されたツアーをすべて消去し、ダッシュボードや更新後に再び案内されるようにします。",
     "reset": "ツアーの進捗をリセット",
     "resetSuccess": "ツアーの進捗をリセットしました。",
     "resetError": "ツアーの進捗をリセットできませんでした。もう一度お試しください。"

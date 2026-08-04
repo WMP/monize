@@ -48,7 +48,8 @@
       "status": "狀態",
       "balance": "結餘",
       "actions": "操作"
-    }
+    },
+    "filterJoint": "與我共享"
   },
   "row": {
     "statusActive": "有效",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "科目結餘必須為零才能關閉",
       "closeTitleEnabled": "關閉科目",
       "details": "詳情"
-    }
+    },
+    "jointBadge": "聯名",
+    "jointSharedBy": "由 {owner} 共享",
+    "jointSharedWith": "已與 {count, plural, other {# 人}}共享",
+    "includeInNetWorth": "計入我的淨資產",
+    "excludeFromNetWorth": "從我的淨資產中排除"
   },
   "contextMenu": {
     "subtypeBrokerage": "券商",
@@ -103,7 +109,8 @@
     "loadFailed": "載入科目失敗",
     "favouriteError": "更新我的最愛失敗",
     "createSuccess": "科目已成功建立",
-    "updateSuccess": "科目已成功更新"
+    "updateSuccess": "科目已成功更新",
+    "updateFailed": "無法更新帳戶"
   },
   "form": {
     "accountName": "科目名稱",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "例如 25",
     "fxFeeTitle": "外幣兌換手續費 （選填）",
     "fxFeePercent": "手續費百分比",
-    "fxFeePercentPlaceholder": "例如 2.5"
+    "fxFeePercentPlaceholder": "例如 2.5",
+    "jointSharedWith": "聯名帳戶，已與 {count, plural, other {# 人}}共享",
+    "jointManage": "管理共享"
   },
   "exportModal": {
     "title": "匯出 {name}",

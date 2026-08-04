@@ -208,8 +208,11 @@ export function AutoBackupSection() {
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
         {t('heading')}
       </h2>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
         {t('description')}
+      </p>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+        {t('adminManagedNote')}
       </p>
 
       {/* Enable toggle */}
@@ -326,6 +329,11 @@ export function AutoBackupSection() {
             </div>
           </div>
         )}
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 break-all">
+          {settings?.resolvedFolderPath
+            ? t('perUserFolderHelpWithPath', { path: settings.resolvedFolderPath })
+            : t('perUserFolderHelp')}
+        </p>
         {folderValid === true && (
           <p className="mt-1 text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

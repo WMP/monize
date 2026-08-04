@@ -1583,8 +1583,9 @@ describe("PortfolioCalculationService.calculateCostBasisLotsInAccountCurrency", 
    * Canonical adversarial input: a nullable money column left null (testing
    * contract, money precision / missing data).
    * Minimal mutation: restore `const price = Number(tx.price) || 0` at the top
-   * of the acquisition branch.
-   * Test that fails under it: each of the two below -- the basis comes back
+   * of the acquisition branch, or weaken `priced` back to "not null and
+   * finite", which readmits a stored zero as a known cost.
+   * Test that fails under it: each of the four below -- the basis comes back
    * known, having counted the units and none of their cost.
    */
   describe("acquisitions with no price", () => {
@@ -1626,15 +1627,43 @@ describe("PortfolioCalculationService.calculateCostBasisLotsInAccountCurrency", 
       });
     });
 
-    it("treats an explicit zero price as the price it is", async () => {
-      // Free shares are a known cost, not a missing one. Folding the two
-      // together is what the fix must not do in the other direction.
+    it("reads a stored zero price as no price, not as free shares", async () => {
+      // A zero on an acquisition is not a cost, it is a blank. Before
+      // `assertAcquisitionPriced` shipped, `create()` stored `price ?? 0` and
+      // the form accepted an empty field, so real databases hold zero-price BUY
+      // and REINVEST rows that mean "nobody recorded what this cost". Replaying
+      // one as a known zero-cost lot is the confident-understated-basis defect
+      // this file exists to prevent, arriving by the other route: the units
+      // reconcile, the flag says known, and the whole market value is reported
+      // as gain and taxed.
+      //
+      // And no legitimate zero can be written from here on -- the guard refuses
+      // one on every path -- so nothing is lost by folding them together.
+      // Shares that arrived without a cost are `ADD_SHARES`, which says the
+      // cost is unknown rather than nil.
       const replayed = await lots([buy(100, 0)]);
 
-      expect(replayed.get("acct-1:sec-a")).toMatchObject({
+      expect(replayed.get("acct-1:sec-a")).toEqual({
         quantity: 100,
         costBasis: 0,
-        basisKnown: true,
+        currencyCode: null,
+        basisKnown: false,
+        basisGap: "unpriced_acquisition",
+      });
+    });
+
+    it("marks the basis unknown when a stored zero sits beside priced history", async () => {
+      // The same dangerous shape as the null case above: 100 units against 100
+      // units, so quantity reconciliation passes and only the flag stands
+      // between a legacy import and 1,000 of invented gain.
+      const replayed = await lots([buy(50, 10), buy(50, 0)]);
+
+      expect(replayed.get("acct-1:sec-a")).toEqual({
+        quantity: 100,
+        costBasis: 500,
+        currencyCode: "USD",
+        basisKnown: false,
+        basisGap: "unpriced_acquisition",
       });
     });
   });
@@ -1697,6 +1726,35 @@ describe("PortfolioCalculationService.calculateCostBasisLotsInAccountCurrency", 
       );
 
       expect(replayed.get("acct-1:sec-a")).toMatchObject({
+        currencyCode: "EUR",
+        basisKnown: true,
+      });
+    });
+
+    it("does not redirect a funding account that is itself a brokerage", async () => {
+      // `resolveExchangeRate` looks a named funding account up directly --
+      // `accountsService.findOne(fundingAccountId)` -- and redirects through a
+      // linked cash account only when no funding account was named. Applying the
+      // redirect to both roles reported the trade as settled in the funding
+      // brokerage's *cash* account (USD) when it had settled in the funding
+      // brokerage itself (EUR): the right number under the wrong currency, and a
+      // spurious `mixed_basis_currency` beside any leg that really was EUR.
+      const replayed = await lots(
+        [buy({ fundingAccountId: "fund-brokerage-eur" })],
+        [
+          brokerage(null, "PLN"),
+          {
+            id: "fund-brokerage-eur",
+            currencyCode: "EUR",
+            accountSubType: AccountSubType.INVESTMENT_BROKERAGE,
+            linkedAccountId: "fund-cash-usd",
+          },
+          { id: "fund-cash-usd", currencyCode: "USD", linkedAccountId: null },
+        ],
+      );
+
+      expect(replayed.get("acct-1:sec-a")).toMatchObject({
+        costBasis: 900,
         currencyCode: "EUR",
         basisKnown: true,
       });
@@ -2132,5 +2190,38 @@ describe("PortfolioCalculationService.calculateHoldingsWithValues", () => {
     // Reported as the cost it becomes a confident number for a different
     // position.
     expect(result.holdingsWithValues[0].costBasisAccountCurrency).toBe(300);
+  });
+
+  /**
+   * Invariant: a replayed basis is only the basis of the position it replayed.
+   * Canonical adversarial input: an incomplete import -- history for half the
+   * units the holding has (testing contract, missing data).
+   * Minimal mutation: drop the quantity comparison from `knownCostBasesIn`.
+   * Test that fails under it: the first of these two.
+   * `calculateCostBasisLotsInAccountCurrency` states this rule for every caller;
+   * this one did not apply it, so a basis for 5 shares was reported as the cost
+   * of 10 and the missing half came out as gain.
+   */
+  it("ignores a basis replayed for fewer units than are held", async () => {
+    const result = await valuation(lot({ quantity: 5, costBasis: 450 }));
+
+    expect(result.holdingsWithValues[0].costBasisAccountCurrency).toBe(300);
+    expect(result.totalCostBasis).toBe(300);
+  });
+
+  it("ignores a basis replayed for more units than are held", async () => {
+    // The other direction is no safer: units sold outside the replayed window
+    // leave a basis for a bigger position, which understates the gain.
+    const result = await valuation(lot({ quantity: 15, costBasis: 1350 }));
+
+    expect(result.holdingsWithValues[0].costBasisAccountCurrency).toBe(300);
+  });
+
+  it("accepts a quantity that differs only by dust", async () => {
+    // A residual fraction from a sale is the same position, and refusing it
+    // would throw away a good basis over rounding.
+    const result = await valuation(lot({ quantity: 10.00001 }));
+
+    expect(result.holdingsWithValues[0].costBasisAccountCurrency).toBe(900);
   });
 });

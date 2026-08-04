@@ -16,10 +16,11 @@ import { createLogger } from '@/lib/logger';
 import { getErrorMessage } from '@/lib/errors';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { Button } from '@/components/ui/Button';
+import { Tabs } from '@/components/ui/Tabs';
 
 const logger = createLogger('DelegateAccessModal');
 
-type GrantOp = 'canRead' | 'canCreate' | 'canEdit' | 'canDelete';
+type GrantOp = 'canRead' | 'canCreate' | 'canEdit' | 'canDelete' | 'isJoint';
 type CapOp = 'create' | 'edit' | 'delete';
 type CapResource = 'payees' | 'categories' | 'tags';
 type SectionKey = 'bills' | 'investments' | 'budgets' | 'reports' | 'ai';
@@ -30,6 +31,7 @@ interface DraftGrant {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  isJoint: boolean;
 }
 
 interface Draft {
@@ -43,6 +45,9 @@ const GRANT_OPS: { key: GrantOp; label: string }[] = [
   { key: 'canCreate', label: 'Create' },
   { key: 'canEdit', label: 'Edit' },
   { key: 'canDelete', label: 'Delete' },
+  // Joint: with Read, the account appears natively in the delegate's own
+  // account list. Only offered for delegates with a full Monize account.
+  { key: 'isJoint', label: 'Joint' },
 ];
 
 const CAP_RESOURCES: { key: CapResource; label: string }[] = [
@@ -86,7 +91,13 @@ const SECTION_FIELD: Record<SectionKey, keyof DelegateSectionFlags> = {
 };
 
 function emptyGrant(): DraftGrant {
-  return { canRead: false, canCreate: false, canEdit: false, canDelete: false };
+  return {
+    canRead: false,
+    canCreate: false,
+    canEdit: false,
+    canDelete: false,
+    isJoint: false,
+  };
 }
 
 function buildInitialDraft(delegate: DelegateSummary): Draft {
@@ -97,6 +108,9 @@ function buildInitialDraft(delegate: DelegateSummary): Draft {
       canCreate: !!g.canCreate,
       canEdit: !!g.canEdit,
       canDelete: !!g.canDelete,
+      // Must round-trip: the save is delete-and-recreate server-side, so a
+      // draft that dropped this flag would silently clear every joint share.
+      isJoint: !!g.isJoint,
     };
   }
   const caps = delegate.capabilities;
@@ -128,6 +142,7 @@ function applyGrantRule(
     next.canCreate = false;
     next.canEdit = false;
     next.canDelete = false;
+    next.isJoint = false;
   }
   if (op !== 'canRead' && value) {
     next.canRead = true;
@@ -170,10 +185,24 @@ export function DelegateAccessModal({
   const [draft, setDraft] = useState<Draft>(baseline);
   const [tab, setTab] = useState<Tab>('accounts');
   const [saving, setSaving] = useState(false);
+  // Joint shares require the delegate to be a full Monize account; the
+  // server re-checks on save (setGrants rejects otherwise).
+  const jointAllowed = !!delegate.delegate.isFullAccount;
+
+  // Only accounts the caller owns can be re-shared. `GET /accounts` returns a
+  // union in own context -- own accounts plus accounts jointly shared *to* the
+  // caller (`isJoint`), which belong to another owner. Those are neither
+  // visible nor assignable here: a delegate must not be able to pass on access
+  // they were given. The server refuses them too (setGrants -> 403), so an
+  // unfiltered list could only ever offer a toggle that fails the save.
+  const grantableAccounts = useMemo(
+    () => accounts.filter((a) => !a.isJoint),
+    [accounts],
+  );
 
   const groupedAccounts = useMemo(() => {
     const groups = new Map<AccountType, Account[]>();
-    for (const a of accounts) {
+    for (const a of grantableAccounts) {
       const list = groups.get(a.accountType) ?? [];
       list.push(a);
       groups.set(a.accountType, list);
@@ -184,16 +213,16 @@ export function DelegateAccessModal({
     return Array.from(groups.entries()).sort((x, y) =>
       formatAccountType(x[0], tc).localeCompare(formatAccountType(y[0], tc)),
     );
-  }, [accounts, tc]);
+  }, [grantableAccounts, tc]);
 
   const baselineGrantArray = useMemo(
-    () => grantsToArray(accounts, baseline.grants),
-    [accounts, baseline],
+    () => grantsToArray(grantableAccounts, baseline.grants),
+    [grantableAccounts, baseline],
   );
 
   // Diffs against the baseline drive both the dirty flag and the batched save.
   const grantChanged =
-    JSON.stringify(grantsToArray(accounts, draft.grants)) !==
+    JSON.stringify(grantsToArray(grantableAccounts, draft.grants)) !==
     JSON.stringify(baselineGrantArray);
 
   const capabilityPatch: DelegateCapabilities = {};
@@ -285,7 +314,7 @@ export function DelegateAccessModal({
         calls.push(
           delegationApi.setGrants(
             delegate.id,
-            grantsToArray(accounts, draft.grants),
+            grantsToArray(grantableAccounts, draft.grants),
           ),
         );
       }
@@ -332,27 +361,17 @@ export function DelegateAccessModal({
         </p>
       </div>
 
-      <div
-        role="tablist"
-        className="flex gap-1 border-b border-gray-200 dark:border-gray-700 px-2"
-      >
-        {tabs.map((tabItem) => (
-          <button
-            key={tabItem.key}
-            type="button"
-            role="tab"
-            aria-selected={tab === tabItem.key}
-            onClick={() => setTab(tabItem.key)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-              tab === tabItem.key
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            {tabItem.label}
-          </button>
-        ))}
-      </div>
+      {/* The shared tab bar, which this markup was the model for -- keeping a
+          second copy of it meant keeping a copy without the roving tabindex or
+          the arrow keys. */}
+      <Tabs
+        tabs={tabs}
+        value={tab}
+        onChange={setTab}
+        idPrefix="delegate-access"
+        ariaLabel={t('title')}
+        className="px-2"
+      />
 
       <div className="overflow-y-auto px-4 py-3 h-[65vh]">
         {tab === 'sections' && (
@@ -385,7 +404,7 @@ export function DelegateAccessModal({
 
         {tab === 'accounts' && (
           <div className="space-y-3">
-            {accounts.length === 0 ? (
+            {grantableAccounts.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {t('accounts.noAccounts')}
               </p>
@@ -414,6 +433,11 @@ export function DelegateAccessModal({
                           <label
                             key={o.key}
                             className="flex items-center gap-1.5"
+                            title={
+                              o.key === 'isJoint' && !jointAllowed
+                                ? t('accounts.jointRequiresFullAccount')
+                                : undefined
+                            }
                           >
                             <ToggleSwitch
                               size="sm"
@@ -423,6 +447,7 @@ export function DelegateAccessModal({
                                     o.key
                                   ],
                               )}
+                              disabled={o.key === 'isJoint' && !jointAllowed}
                               onChange={(v) =>
                                 setColumnForAccounts(ids, o.key, v)
                               }
@@ -447,12 +472,18 @@ export function DelegateAccessModal({
                                 <label
                                   key={o.key}
                                   className="flex items-center gap-1.5"
+                                  title={
+                                    o.key === 'isJoint' && !jointAllowed
+                                      ? t('accounts.jointRequiresFullAccount')
+                                      : undefined
+                                  }
                                 >
                                   <ToggleSwitch
                                     size="sm"
                                     checked={!!g[o.key]}
                                     disabled={
-                                      o.key !== 'canRead' && !g.canRead
+                                      (o.key !== 'canRead' && !g.canRead) ||
+                                      (o.key === 'isJoint' && !jointAllowed)
                                     }
                                     onChange={(v) =>
                                       setGrant(a.id, o.key, v)

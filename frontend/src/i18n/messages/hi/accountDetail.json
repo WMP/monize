@@ -6,7 +6,10 @@
     "back": "खातों पर वापस जाएँ",
     "switchAccount": "किसी दूसरे खाते पर जाएँ",
     "switchPlaceholder": "खाते छाँटें...",
-    "switchNoMatches": "कोई खाता मेल नहीं खाता"
+    "switchNoMatches": "कोई खाता मेल नहीं खाता",
+    "jointBadge": "संयुक्त",
+    "jointSharedBy": "{owner} द्वारा साझा",
+    "jointSharedWith": "{count, plural, one {# व्यक्ति} other {# लोगों}} के साथ साझा"
   },
   "loading": "खाता विवरण लोड हो रहा है...",
   "error": {

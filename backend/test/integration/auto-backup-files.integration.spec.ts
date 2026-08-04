@@ -8,6 +8,8 @@ import { tmpdir } from "os";
 import { createHash } from "crypto";
 import { AutoBackupService } from "@/backup/auto-backup.service";
 import { BackupService } from "@/backup/backup.service";
+import { BackupEncryptionService } from "@/backup/backup-encryption.service";
+import { DemoModeService } from "@/common/demo-mode.service";
 import { AutoBackupSettings } from "@/backup/entities/auto-backup-settings.entity";
 import { User } from "@/users/entities/user.entity";
 import { createTestUserDirect } from "../helpers/integration-setup";
@@ -61,6 +63,19 @@ describe("Automatic backup file layout (integration)", () => {
       providers: [
         AutoBackupService,
         {
+          // Encryption is a separate service on the merged tree. These tests are
+          // about the file layout, so the password resolution is stubbed to "no
+          // password" -- the encrypted path has its own coverage.
+          provide: BackupEncryptionService,
+          useValue: {
+            resolveBackupPassword: async () => ({ status: "none" as const }),
+          } as unknown as jest.Mocked<BackupEncryptionService>,
+        },
+        {
+          provide: DemoModeService,
+          useValue: { isDemo: false } as unknown as jest.Mocked<DemoModeService>,
+        },
+        {
           provide: BackupService,
           // The payload's contents are the backup service's business and are
           // covered by backup-restore.integration.spec.ts. What matters here is
@@ -107,6 +122,18 @@ describe("Automatic backup file layout (integration)", () => {
     }
   });
 
+  /**
+   * The user's own backup directory, relative to the root.
+   *
+   * Backups are sharded two levels deep by the owner's id
+   * (`common/shard-path.util.ts`) so a deployment with many users does not put
+   * tens of thousands of directories in one parent. The tests care about which
+   * owner a file belongs to, not about the shape of the shard, so they compare
+   * against this rather than hard-coding the layout.
+   */
+  const ownerDir = (userId: string) =>
+    `${userId.slice(0, 2)}/${userId.slice(2, 4)}/${userId}`;
+
   /** Every backup file under `dir`, recursively, as `<relative path>`. */
   function backupFiles(dir = backupRoot, prefix = ""): string[] {
     const out: string[] = [];
@@ -138,8 +165,8 @@ describe("Automatic backup file layout (integration)", () => {
 
     const files = backupFiles();
     expect(files).toHaveLength(2);
-    expect(files.some((f) => f.startsWith(`${userA}/`))).toBe(true);
-    expect(files.some((f) => f.startsWith(`${userB}/`))).toBe(true);
+    expect(files.some((f) => f.startsWith(`${ownerDir(userA)}/`))).toBe(true);
+    expect(files.some((f) => f.startsWith(`${ownerDir(userB)}/`))).toBe(true);
 
     // The decisive assertion, and the one a mocked writeFile cannot make: two
     // real files with different contents both survived.
@@ -155,7 +182,7 @@ describe("Automatic backup file layout (integration)", () => {
     const userB = await seedUser(`rb-${Date.now()}@example.com`);
 
     await withUserContext(userB, () => service.runManualBackup(userB));
-    const bFilesBefore = backupFiles().filter((f) => f.startsWith(`${userB}/`));
+    const bFilesBefore = backupFiles().filter((f) => f.startsWith(`${ownerDir(userB)}/`));
     expect(bFilesBefore).toHaveLength(1);
     const bHashBefore = sha(bFilesBefore[0]);
 
@@ -166,7 +193,7 @@ describe("Automatic backup file layout (integration)", () => {
     await withUserContext(userA, () => service.runManualBackup(userA));
     await withUserContext(userA, () => service.runManualBackup(userA));
 
-    const bFilesAfter = backupFiles().filter((f) => f.startsWith(`${userB}/`));
+    const bFilesAfter = backupFiles().filter((f) => f.startsWith(`${ownerDir(userB)}/`));
     expect(bFilesAfter).toEqual(bFilesBefore);
     expect(sha(bFilesAfter[0])).toBe(bHashBefore);
   });
@@ -209,7 +236,7 @@ describe("Automatic backup file layout (integration)", () => {
     // The 14th is one of the WEEKLY_DAYS, so a weekly tier copy is written too --
     // correct behaviour, and not what this test is about.
     const files = backupFiles().filter(
-      (f) => f.startsWith(`${userId}/`) && f.includes("-daily-"),
+      (f) => f.startsWith(`${ownerDir(userId)}/`) && f.includes("-daily-"),
     );
     expect(files).toHaveLength(4);
     expect(new Set(files.map(sha)).size).toBe(4);
@@ -262,7 +289,7 @@ describe("Automatic backup file layout (integration)", () => {
     expect(outcomes.filter((o) => o.status === "fulfilled")).toHaveLength(2);
 
     const files = backupFiles().filter(
-      (f) => f.startsWith(`${userId}/`) && f.includes("-daily-"),
+      (f) => f.startsWith(`${ownerDir(userId)}/`) && f.includes("-daily-"),
     );
     expect(files).toHaveLength(2);
     // Distinct names and distinct contents: neither overwrote the other, and

@@ -16,8 +16,13 @@ import {
   GemStrategyReport as GemStrategyReportData,
 } from "@/types/gem-strategy";
 import { GEM_DEFAULT_RANGE, warningCodes } from "@/lib/gem-strategy-view";
+import { tabId, tabPanelId } from "@/components/ui/Tabs";
 import { GemStrategyHeader } from "./GemStrategyHeader";
-import { GemStrategyTabs, GemTab } from "./GemStrategyTabs";
+import {
+  GEM_TABS_ID_PREFIX,
+  GemStrategyTabs,
+  GemTab,
+} from "./GemStrategyTabs";
 import { GemWarningsBanner } from "./GemWarningsBanner";
 import { GemSignalCard } from "./GemSignalCard";
 import { GemPortfolioCard } from "./GemPortfolioCard";
@@ -320,6 +325,20 @@ export function GemStrategyReport() {
   const [pendingNavigation, setPendingNavigation] = useState<
     (() => void) | null
   >(null);
+  /**
+   * Bumped when the user discards, and part of the settings form's `key`, so
+   * discarding remounts it and its defaults are read again.
+   *
+   * "Discard" has to discard something. Clearing `settingsDirty` alone disarmed
+   * the guard and left the edits in the form: the staged action can be a no-op
+   * -- the header's "Edit settings" while already on the Settings tab is one --
+   * so the form was neither unmounted nor reset, react-hook-form's `isDirty`
+   * stayed true, and `useFormDirtyNotify` had no transition left to report. The
+   * next tab or scenario switch then unmounted a genuinely dirty form with no
+   * prompt at all: precisely the silent data loss the guard exists to prevent,
+   * reached through the button that claims to have handled it.
+   */
+  const [settingsResetNonce, setSettingsResetNonce] = useState(0);
   const submitSettings = useRef<(() => void) | null>(null);
   /**
    * The navigation "Save" is saving *for*.
@@ -463,11 +482,34 @@ export function GemStrategyReport() {
   } = data;
   const signalUnavailable = signal === null;
 
-  const panelProps = (panel: GemTab) => ({
+  /**
+   * A panel's attributes: its tab wiring, and the stale marking every panel
+   * needs.
+   *
+   * Ids come from the shared tab helpers so a panel and its tab cannot drift
+   * apart if the convention changes.
+   *
+   * The marking is on all of them rather than on one. While the selection and
+   * the report disagree, the body goes on showing the previous scenario's
+   * signal, portfolio, transfer, allocation and history -- only the chart and
+   * the settings tab swapped to skeletons. Keeping the rest on screen is the
+   * better read, a blank page loses the user's place, but `frontend/CLAUDE.md`
+   * allows it only while the pixels *and* assistive technology both say the data
+   * is stale. Mutations are already disabled; this is the other half.
+   */
+  const panelProps = (panel: GemTab, className?: string) => ({
     role: "tabpanel" as const,
-    id: `gem-panel-${panel}`,
-    "aria-labelledby": `gem-tab-${panel}`,
+    id: tabPanelId(GEM_TABS_ID_PREFIX, panel),
+    "aria-labelledby": tabId(GEM_TABS_ID_PREFIX, panel),
     tabIndex: -1,
+    "aria-busy": isStaleSelection,
+    className: [
+      "transition-opacity motion-reduce:transition-none",
+      isStaleSelection ? "opacity-60" : "",
+      className ?? "",
+    ]
+      .filter(Boolean)
+      .join(" "),
   });
 
   return (
@@ -513,13 +555,33 @@ export function GemStrategyReport() {
         onChange={(next: GemTab) => guarded(() => setTab(next))()}
       />
 
+      {/* What the greyed-out panels mean, in words. The opacity alone is a
+          styling cue a screen reader never sees and a user with a high-contrast
+          theme may not either, so the state is stated as well as drawn -- and
+          announced, because the switch is the user's own action and they are
+          waiting on its answer. */}
+      {isStaleSelection && (
+        <p
+          role="status"
+          aria-live="polite"
+          data-testid="gem-stale-indicator"
+          className="mb-3 inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400"
+        >
+          <span
+            aria-hidden="true"
+            className="inline-block h-3 w-3 animate-spin rounded-full border-b-2 border-blue-600 dark:border-blue-400"
+          />
+          {t("gem.stale.updating")}
+        </p>
+      )}
+
       <GemWarningsBanner
         warnings={data.warnings}
         lookbackMonths={strategy.lookbackMonths}
       />
 
       {tab === "overview" && (
-        <div {...panelProps("overview")} className="space-y-4">
+        <div {...panelProps("overview", "space-y-4")}>
           {/* Four summary cards: signal, portfolio fit, money to move, asset roster. */}
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <GemSignalCard
@@ -601,8 +663,7 @@ export function GemStrategyReport() {
 
       {tab === "portfolio" && (
         <div
-          {...panelProps("portfolio")}
-          className="grid gap-4 lg:grid-cols-2 lg:items-start"
+          {...panelProps("portfolio", "grid gap-4 lg:grid-cols-2 lg:items-start")}
         >
           <GemPortfolioPanel
             position={position}
@@ -642,9 +703,10 @@ export function GemStrategyReport() {
             /* Keyed on the scenario: react-hook-form reads its defaults once,
                at mount, so switching scenarios with the tab open would
                otherwise leave the previous scenario's values under the new
-               one's name. */
+               one's name. The nonce is the other half of that: it is what makes
+               "Discard" a remount, and so an actual discard. */
             <GemSettingsForm
-              key={strategy.id ?? "unsaved"}
+              key={`${strategy.id ?? "unsaved"}:${settingsResetNonce}`}
               strategy={strategy}
               assets={assets}
               range={range}
@@ -675,6 +737,10 @@ export function GemStrategyReport() {
           const action = pendingNavigation;
           navigateAfterSave.current = null;
           setSettingsDirty(false);
+          // Throw the edits away for real. Without the remount the form keeps
+          // them, stays dirty, and has no transition left to report -- so the
+          // guard never re-arms and the *next* switch loses them silently.
+          setSettingsResetNonce((nonce) => nonce + 1);
           setPendingNavigation(null);
           action?.();
         }}

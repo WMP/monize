@@ -1220,6 +1220,162 @@ describe("mny writers (integration)", () => {
       ).rejects.toThrow(/already running/i);
     });
 
+    /**
+     * Two `start` calls issued together, as two overlapping HTTP requests are.
+     *
+     * The advisory `hasActiveJob` count cannot separate them -- neither has
+     * committed a row when the other reads -- so what is being exercised is the
+     * partial unique index underneath `jobs.create`. Before it, both requests
+     * created a job and both imported the same bytes; because every parse
+     * generates fresh transaction UUIDs, the second run duplicated the file's
+     * entire history and doubled every balance.
+     */
+    async function raceTwoStarts(
+      stagedFileId: string,
+      options?: Parameters<typeof importService.start>[1]["options"],
+    ) {
+      const settled = await Promise.allSettled([
+        withUserContext(userId, () =>
+          importService.start(userId, { stagedFileId, options }),
+        ),
+        withUserContext(userId, () =>
+          importService.start(userId, { stagedFileId, options }),
+        ),
+      ]);
+
+      return {
+        started: settled
+          .filter((result) => result.status === "fulfilled")
+          .map((result) => (result as PromiseFulfilledResult<ImportJob>).value),
+        refused: settled
+          .filter((result) => result.status === "rejected")
+          .map((result) => (result as PromiseRejectedResult).reason),
+      };
+    }
+
+    /** Polls a job row until it leaves pending/running. */
+    async function awaitJob(jobId: string): Promise<ImportJob> {
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const current = await withUserContext(userId, () =>
+          jobs.findOne(userId, jobId),
+        );
+        if (
+          current &&
+          current.status !== "pending" &&
+          current.status !== "running"
+        ) {
+          return current;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      throw new Error("import job did not finish");
+    }
+
+    describe("two starts racing", () => {
+      async function stageFixture(): Promise<string> {
+        const staged = await withUserContext(userId, () =>
+          staging.stage(userId, {
+            filename: "money2008.mny",
+            data: stagedBytes("money2008"),
+          }),
+        );
+        return staged.id;
+      }
+
+      it("creates one job and refuses the other", async () => {
+        const { started, refused } = await raceTwoStarts(await stageFixture());
+
+        expect(started).toHaveLength(1);
+        expect(refused).toHaveLength(1);
+        expect(String(refused[0])).toMatch(/already running/i);
+        await awaitJob(started[0].id);
+
+        const rows = await dataSource
+          .getRepository(ImportJob)
+          .find({ where: { userId } });
+        expect(rows).toHaveLength(1);
+      });
+
+      it("imports the file's rows once, not twice", async () => {
+        // The assertion the job-row count cannot make: what actually landed in
+        // the user's ledger.
+        const { started } = await raceTwoStarts(await stageFixture());
+        const job = await awaitJob(started[0].id);
+
+        expect(job.status).toBe("completed");
+        const transactions = await dataSource
+          .getRepository(Transaction)
+          .count({ where: { userId } });
+        const accounts = await dataSource
+          .getRepository(Account)
+          .find({ where: { userId } });
+
+        expect(transactions).toBe(job.result!.transactionsCreated);
+        expect(accounts).toHaveLength(job.result!.accountsCreated);
+        for (const line of job.result!.verification) {
+          const stored = accounts.find(
+            (account) => account.id === line.accountId,
+          );
+          expect(stored).toBeDefined();
+          // A second import over the same file would land here: the balances
+          // reconcile against the file only if every row was written once.
+          expect(Number(stored!.currentBalance)).toBe(line.expectedBalance);
+        }
+      });
+
+      it("wipes at most once, because the wipe is behind the same lock", async () => {
+        // `deleteData` is the destructive path. It used to run before the job
+        // row existed, so both racing requests could reach it.
+        const usersService = module.get(UsersService) as unknown as {
+          deleteData: jest.Mock;
+        };
+        usersService.deleteData.mockClear();
+
+        const { started, refused } = await raceTwoStarts(await stageFixture(), {
+          wipeExistingData: true,
+        });
+
+        expect(started).toHaveLength(1);
+        expect(refused).toHaveLength(1);
+        expect(usersService.deleteData).toHaveBeenCalledTimes(1);
+        await awaitJob(started[0].id);
+      });
+    });
+
+    it("releases the import slot when the wipe is refused", async () => {
+      // A rejected start must not leave the user holding a slot for a job that
+      // will never run -- the reaper would take five minutes to clear it, and
+      // every import started in between would be refused.
+      const usersService = module.get(UsersService) as unknown as {
+        deleteData: jest.Mock;
+      };
+      usersService.deleteData.mockRejectedValueOnce(new Error("bad password"));
+      const staged = await withUserContext(userId, () =>
+        staging.stage(userId, {
+          filename: "money2008.mny",
+          data: stagedBytes("money2008"),
+        }),
+      );
+
+      await expect(
+        withUserContext(userId, () =>
+          importService.start(userId, {
+            stagedFileId: staged.id,
+            options: { wipeExistingData: true },
+          }),
+        ),
+      ).rejects.toThrow("bad password");
+
+      expect(
+        await dataSource.getRepository(ImportJob).count({ where: { userId } }),
+      ).toBe(0);
+      const retried = await withUserContext(userId, () =>
+        importService.start(userId, { stagedFileId: staged.id }),
+      );
+      expect(retried.status).toBe("pending");
+      await awaitJob(retried.id);
+    });
+
     it("refuses to start when the staged file is gone", async () => {
       await expect(
         withUserContext(userId, () =>

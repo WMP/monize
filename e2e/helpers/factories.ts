@@ -362,12 +362,19 @@ export function createDelegate(
 }
 
 // Grant the delegate read access to a specific account, plus any of the
-// per-operation write grants (create/edit/delete) the test needs.
+// per-operation write grants (create/edit/delete) the test needs. isJoint
+// makes the account appear natively in the delegate's own context (requires
+// the delegate to be a full account -- one that owns data of its own).
 export function grantDelegateAccount(
   api: ApiClient,
   delegateId: string,
   accountId: string,
-  flags: { canCreate?: boolean; canEdit?: boolean; canDelete?: boolean } = {},
+  flags: {
+    canCreate?: boolean;
+    canEdit?: boolean;
+    canDelete?: boolean;
+    isJoint?: boolean;
+  } = {},
 ): Promise<void> {
   return api.put<void>(`/delegation/delegates/${delegateId}/grants`, {
     grants: [{ accountId, canRead: true, ...flags }],

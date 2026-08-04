@@ -6,7 +6,10 @@
     "back": "Quay lại danh sách tài khoản",
     "switchAccount": "Chuyển sang tài khoản khác",
     "switchPlaceholder": "Lọc tài khoản...",
-    "switchNoMatches": "Không có tài khoản nào khớp"
+    "switchNoMatches": "Không có tài khoản nào khớp",
+    "jointBadge": "Chung",
+    "jointSharedBy": "Được chia sẻ bởi {owner}",
+    "jointSharedWith": "Được chia sẻ với {count, plural, other {# người}}"
   },
   "loading": "Đang tải chi tiết tài khoản...",
   "error": {

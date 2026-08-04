@@ -930,6 +930,32 @@ describe("GemStrategyService", () => {
       });
     });
 
+    it("stores the rules link the way every other website column is stored", async () => {
+      // `normalizeWebsite`, as payees, securities and institutions do: a blank
+      // clears the column rather than storing an empty string, and a schemeless
+      // host becomes a followable URL for anything reading the API directly.
+      await service.updateConfig(userId, {
+        rulesSourceUrl: "  optimalmomentum.com/dual-momentum  ",
+      });
+      expect(strategyRepo.save.mock.calls[0][0]).toMatchObject({
+        rulesSourceUrl: "https://optimalmomentum.com/dual-momentum",
+      });
+
+      strategyRepo.save.mockClear();
+      await service.updateConfig(userId, { rulesSourceUrl: "" });
+      expect(strategyRepo.save.mock.calls[0][0]).toMatchObject({
+        rulesSourceUrl: null,
+      });
+
+      strategyRepo.save.mockClear();
+      await service.updateConfig(userId, {
+        rulesSourceUrl: "https://example.test/gem",
+      });
+      expect(strategyRepo.save.mock.calls[0][0]).toMatchObject({
+        rulesSourceUrl: "https://example.test/gem",
+      });
+    });
+
     it("fetches the missing price history before evaluating", async () => {
       await service.updateConfig(userId, {
         assets: [{ role: "EM_EQUITY", securityId: "sec-emim" }],

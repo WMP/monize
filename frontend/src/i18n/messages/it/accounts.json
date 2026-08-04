@@ -48,7 +48,8 @@
       "status": "Stato",
       "balance": "Saldo",
       "actions": "Azioni"
-    }
+    },
+    "filterJoint": "Condivisi con me"
   },
   "row": {
     "statusActive": "Attivo",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "Il saldo del conto deve essere zero per chiuderlo",
       "closeTitleEnabled": "Chiudi conto",
       "details": "Dettagli"
-    }
+    },
+    "jointBadge": "Cointestato",
+    "jointSharedBy": "Condiviso da {owner}",
+    "jointSharedWith": "Condiviso con {count, plural, one {# persona} other {# persone}}",
+    "includeInNetWorth": "Includi nel mio patrimonio netto",
+    "excludeFromNetWorth": "Escludi dal mio patrimonio netto"
   },
   "contextMenu": {
     "subtypeBrokerage": "Intermediazione",
@@ -103,7 +109,8 @@
     "loadFailed": "Caricamento dei conti non riuscito",
     "favouriteError": "Aggiornamento preferito non riuscito",
     "createSuccess": "Conto creato con successo",
-    "updateSuccess": "Conto aggiornato con successo"
+    "updateSuccess": "Conto aggiornato con successo",
+    "updateFailed": "Impossibile aggiornare il conto"
   },
   "form": {
     "accountName": "Nome conto",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "es. 25",
     "fxFeeTitle": "Commissione di conversione valuta estera (facoltativa)",
     "fxFeePercent": "Percentuale della commissione",
-    "fxFeePercentPlaceholder": "es. 2,5"
+    "fxFeePercentPlaceholder": "es. 2,5",
+    "jointSharedWith": "Conto cointestato condiviso con {count, plural, one {# persona} other {# persone}}",
+    "jointManage": "Gestisci condivisione"
   },
   "exportModal": {
     "title": "Esporta {name}",

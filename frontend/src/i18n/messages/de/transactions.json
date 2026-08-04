@@ -412,7 +412,8 @@
       "categoryCreateFailed": "Kategorie konnte nicht erstellt werden",
       "tagCreated": "Tag „{name}” erstellt",
       "fxRateRequired": "Geben Sie einen Wechselkurs oder den umgerechneten Betrag ein, bevor Sie eine Fremdwährungstransaktion speichern.",
-      "attachmentsUploadFailed": "Transaktion gespeichert, aber {count} Anhang/Anhänge konnten nicht hochgeladen werden"
+      "attachmentsUploadFailed": "Transaktion gespeichert, aber {count} Anhang/Anhänge konnten nicht hochgeladen werden",
+      "jointPayeeCreateNotGranted": "Der Kontoinhaber hat Ihnen nicht erlaubt, Zahlungsempfänger zu erstellen. Wählen Sie stattdessen einen vorhandenen Zahlungsempfänger."
     },
     "ariaHistory": "Letzte Buchungen anzeigen",
     "ariaHistoryForPayee": "Letzte Buchungen für diesen Zahlungsempfänger anzeigen",
@@ -438,7 +439,8 @@
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeCaption": "Enthält eine Fremdwährungsgebühr von {percent}% ({fee}).",
       "totalInCurrency": "Gesamt in {currency}"
-    }
+    },
+    "jointSplitDisabled": "Splitbuchungen in einem geteilten Konto kann nur der Eigentümer verwalten"
   },
   "splitEditor": {
     "header": "Details der Buchungsteile",

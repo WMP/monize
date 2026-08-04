@@ -6,7 +6,10 @@
     "back": "Назад до рахунків",
     "switchAccount": "Перейти до іншого рахунку",
     "switchPlaceholder": "Фільтр рахунків...",
-    "switchNoMatches": "Немає відповідних рахунків"
+    "switchNoMatches": "Немає відповідних рахунків",
+    "jointBadge": "Спільний",
+    "jointSharedBy": "Доступ надано: {owner}",
+    "jointSharedWith": "Доступ мають {count, plural, one {# особа} few {# особи} many {# осіб} other {# особи}}"
   },
   "loading": "Завантаження деталей рахунку...",
   "error": {

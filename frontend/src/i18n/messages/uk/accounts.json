@@ -48,7 +48,8 @@
       "status": "Статус",
       "balance": "Баланс",
       "actions": "Дії"
-    }
+    },
+    "filterJoint": "Доступні мені"
   },
   "row": {
     "statusActive": "Активний",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "Для закриття рахунку баланс має бути нульовим",
       "closeTitleEnabled": "Закрити рахунок",
       "details": "Деталі"
-    }
+    },
+    "jointBadge": "Спільний",
+    "jointSharedBy": "Доступ надано: {owner}",
+    "jointSharedWith": "Доступ мають {count, plural, one {# особа} few {# особи} many {# осіб} other {# особи}}",
+    "includeInNetWorth": "Включити в мої чисті активи",
+    "excludeFromNetWorth": "Виключити з моїх чистих активів"
   },
   "contextMenu": {
     "subtypeBrokerage": "Брокерський",
@@ -103,7 +109,8 @@
     "loadFailed": "Не вдалося завантажити рахунки",
     "favouriteError": "Не вдалося оновити улюблене",
     "createSuccess": "Рахунок успішно створено",
-    "updateSuccess": "Рахунок успішно оновлено"
+    "updateSuccess": "Рахунок успішно оновлено",
+    "updateFailed": "Не вдалося оновити рахунок"
   },
   "form": {
     "accountName": "Назва рахунку",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "напр. 25",
     "fxFeeTitle": "Комісія за конвертацію валюти (необов'язково)",
     "fxFeePercent": "Відсоток комісії",
-    "fxFeePercentPlaceholder": "напр. 2,5"
+    "fxFeePercentPlaceholder": "напр. 2,5",
+    "jointSharedWith": "Спільний рахунок, доступ мають {count, plural, one {# особа} few {# особи} many {# осіб} other {# особи}}",
+    "jointManage": "Керувати доступом"
   },
   "exportModal": {
     "title": "Експорт {name}",

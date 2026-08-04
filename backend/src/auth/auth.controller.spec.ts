@@ -2674,6 +2674,9 @@ describe("AuthController", () => {
       expect(delegation.getSections).toHaveBeenCalledWith("g1");
       expect(delegation.hasTransactionalAccess).toHaveBeenCalledWith("g1");
       expect(delegation.hasAnyAccountAccess).toHaveBeenCalledWith("g1");
+      // The acting owner is named so a joint-only context the caller is
+      // standing in is not filtered out from under them.
+      expect(delegation.getAvailableContexts).toHaveBeenCalledWith("d1", "o1");
     });
 
     it("returns null capabilities and sections when not acting", async () => {
@@ -2693,6 +2696,7 @@ describe("AuthController", () => {
         sections: null,
       });
       expect(delegation.getSections).not.toHaveBeenCalled();
+      expect(delegation.getAvailableContexts).toHaveBeenCalledWith("d1", null);
     });
   });
 

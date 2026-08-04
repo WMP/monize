@@ -62,4 +62,13 @@ export class AutoBackupSettings {
 
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
+
+  /**
+   * Folder this user's backup files actually land in --
+   * `<folderPath>/<ab>/<cd>/<userId>`, the sharded layout attachments use.
+   * Read-only and never stored: it is derived from `folderPath` and `userId`,
+   * so a persisted copy could only ever disagree with them. `undefined` when
+   * the configured base folder is unusable.
+   */
+  resolvedFolderPath?: string;
 }

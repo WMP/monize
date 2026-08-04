@@ -179,7 +179,6 @@
     "unsupportedBackupVersion": "Phiên bản sao lưu không được hỗ trợ: {{ version }}. Dự kiến {{ expected }}",
     "missingExportedAt": "Định dạng sao lưu không hợp lệ: thiếu exportedAt",
     "tableNotAllowed": "Bảng {{ table }} không được phép trong khôi phục sao lưu",
-    "localAuthRequired": "Yêu cầu xác thực mật khẩu cục bộ",
     "encryptionNotConfigured": "Máy chủ chưa được cấu hình cho mã hóa (thiếu AI_ENCRYPTION_KEY)",
     "backupPasswordOidcOnly": "Mật khẩu sao lưu chỉ có thể cấu hình cho người dùng OIDC; người dùng cục bộ sử dụng mật khẩu đăng nhập của họ",
     "backupPasswordTooShort": "Mật khẩu sao lưu phải có ít nhất {{ minLength }} ký tự",
@@ -250,7 +249,16 @@
     "capabilityNotGranted": "Chủ tài khoản chưa cấp cho bạn quyền {{ operation }} {{ resource }}. Hãy yêu cầu họ bật tính năng này trong cài đặt quyền truy cập được ủy quyền.",
     "sectionNotGranted": "Chủ tài khoản chưa chia sẻ phần {{ sectionLabel }} với bạn.",
     "accountNotShared": "Chủ tài khoản chưa chia sẻ tài khoản này với bạn.",
-    "accountOperationNotGranted": "Chủ tài khoản chưa cấp cho bạn quyền {{ operation }} giao tác trong tài khoản này."
+    "accountOperationNotGranted": "Chủ tài khoản chưa cấp cho bạn quyền {{ operation }} giao tác trong tài khoản này.",
+    "jointOwnAccount": "Đây là tài khoản của chính bạn; quyền truy cập tài khoản chung không áp dụng.",
+    "jointAccountTypeReadOnly": "Loại tài khoản này được chia sẻ ở chế độ chỉ đọc; chỉ chủ sở hữu mới có thể thay đổi giao dịch.",
+    "jointOwnAccountNetWorth": "Với tài khoản của bạn, hãy dùng cài đặt giá trị tài sản ròng của chính tài khoản đó.",
+    "jointRequiresRead": "Cần quyền ĐỌC để đánh dấu tài khoản là tài khoản chung",
+    "jointRequiresFullAccount": "Tài khoản chung chỉ có thể được chia sẻ với người dùng có tài khoản Monize riêng",
+    "jointPayeeCreateNotGranted": "Chủ tài khoản chưa cấp cho bạn quyền tạo người nhận. Hãy chọn một người nhận hiện có.",
+    "jointTagsNotAllowed": "Thẻ là của cá nhân nên không thể gắn vào giao dịch của tài khoản được chia sẻ.",
+    "jointSplitsNotAllowed": "Chỉ chủ sở hữu mới có thể quản lý giao dịch tách trong tài khoản được chia sẻ.",
+    "jointTransferRowLocked": "Đây là một giao dịch chuyển khoản. Hãy dùng trình chỉnh sửa chuyển khoản."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "Email chưa được cấu hình. Không thể bật truy cập khẩn cấp cho đến khi SMTP được thiết lập.",
@@ -470,7 +478,8 @@
     "tagKeyRequired": "Cần có khóa thẻ (1-100 ký tự)",
     "fxFieldsIncomplete": "originalAmount và originalCurrencyCode phải được cung cấp cùng nhau",
     "fxRateRequired": "Cần một tỷ giá hối đoái dương cho giao dịch bằng ngoại tệ",
-    "fxSignMismatch": "originalAmount và amount phải cùng dấu"
+    "fxSignMismatch": "originalAmount và amount phải cùng dấu",
+    "jointAccountMoveLocked": "Không thể chuyển giao dịch trong tài khoản được chia sẻ sang tài khoản khác."
   },
   "users": {
     "userNotFound": "Không tìm thấy người dùng",

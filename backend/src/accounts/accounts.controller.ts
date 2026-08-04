@@ -15,6 +15,7 @@ import {
   ParseUUIDPipe,
   ParseIntPipe,
   BadRequestException,
+  NotFoundException,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -29,6 +30,7 @@ import { AuthGuard } from "@nestjs/passport";
 import { AccountsService } from "./accounts.service";
 import { DelegationService } from "../delegation/delegation.service";
 import { CrossOwnerAccessService } from "../delegation/cross-owner-access.service";
+import { JointAccountsService } from "../delegation/joint-accounts.service";
 import {
   AllowDelegate,
   DelegatedAccountParam,
@@ -42,6 +44,7 @@ import { CreateAccountDto } from "./dto/create-account.dto";
 import { UpdateAccountDto } from "./dto/update-account.dto";
 import { ReorderFavouriteAccountsDto } from "./dto/reorder-favourite-accounts.dto";
 import { SetDelegateFavouriteDto } from "./dto/set-delegate-favourite.dto";
+import { SetNetWorthExclusionDto } from "./dto/set-net-worth-exclusion.dto";
 import { LoanPreviewDto } from "./dto/loan-preview.dto";
 import {
   MortgagePreviewDto,
@@ -118,6 +121,7 @@ export class AccountsController {
     private readonly balanceForecastService: BalanceForecastService,
     private readonly delegationService: DelegationService,
     private readonly crossOwnerAccess: CrossOwnerAccessService,
+    private readonly jointAccounts: JointAccountsService,
   ) {}
 
   // NOTE: static route -- must be declared before the :id param routes.
@@ -175,7 +179,34 @@ export class AccountsController {
       req.user.id,
       includeInactive || false,
     );
-    if (!req.user.isActing) return accounts;
+    if (!req.user.isActing) {
+      // Own context: the union list -- own accounts (with the owner-side
+      // joint share counts) plus accounts jointly shared to the caller,
+      // carrying the caller's favourites overlay.
+      const [shareCounts, jointRows] = await Promise.all([
+        this.jointAccounts.jointShareCountsForOwner(req.user.id),
+        this.jointAccounts.jointAccountsFor(req.user.realUserId ?? req.user.id),
+      ]);
+      const own =
+        shareCounts.size === 0
+          ? accounts
+          : accounts.map((a) =>
+              shareCounts.has(a.id)
+                ? { ...a, jointGranteeCount: shareCounts.get(a.id) }
+                : a,
+            );
+      const joint = includeInactive
+        ? jointRows
+        : jointRows.filter((a) => !a.isClosed);
+      if (joint.length === 0) return own;
+      return [
+        ...own,
+        ...(await this.applyDelegateFavourites(
+          req.user.realUserId ?? req.user.id,
+          joint,
+        )),
+      ];
+    }
     // Delegate: restrict to READ-granted accounts only (Phase 1).
     const readable = new Set(
       await this.delegationService.readableAccountIds(req.user.delegationId),
@@ -238,13 +269,14 @@ export class AccountsController {
     @Body() dto: SetDelegateFavouriteDto,
   ): Promise<{ isFavourite: boolean }> {
     // Owners manage favourites through the normal account update; this
-    // endpoint exists only for the delegate's independent overlay.
+    // endpoint exists only for the delegate's independent overlay -- while
+    // acting, or natively on a joint account. jointAccessFor 400s the
+    // caller's own accounts and 404s everything not jointly shared.
     if (!req.user.isActing) {
-      throw new BadRequestException(
-        tr(
-          "errors.accounts.useFavouriteUpdateEndpoint",
-          "Use the account update endpoint to change favourites",
-        ),
+      await this.jointAccounts.jointAccessFor(
+        req.user.realUserId ?? req.user.id,
+        id,
+        "read",
       );
     }
     await this.delegationService.setDelegateFavourite(
@@ -253,6 +285,27 @@ export class AccountsController {
       dto.isFavourite,
     );
     return { isFavourite: dto.isFavourite };
+  }
+
+  @Put(":id/net-worth-exclusion")
+  @ApiOperation({
+    summary:
+      "Set the caller's own net-worth exclusion for a joint account shared to them",
+  })
+  @ApiResponse({ status: 200, description: "Exclusion updated" })
+  @ApiResponse({ status: 400, description: "Bad request" })
+  @ApiResponse({ status: 404, description: "Account not found" })
+  async setNetWorthExclusion(
+    @Request() req,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SetNetWorthExclusionDto,
+  ): Promise<{ excluded: boolean }> {
+    await this.jointAccounts.setNetWorthExclusion(
+      req.user.id,
+      id,
+      dto.excluded,
+    );
+    return { excluded: dto.excluded };
   }
 
   @Get("daily-balances")
@@ -292,6 +345,7 @@ export class AccountsController {
         tr("errors.accounts.endDateFormat", "endDate must be YYYY-MM-DD"),
       );
     let ids = aIds ? aIds.split(",").filter(Boolean) : undefined;
+    let jointIds: string[] = [];
     if (req.user.isActing) {
       // Restrict to the delegate's READ-granted accounts (never an
       // unfiltered owner-wide query).
@@ -304,6 +358,17 @@ export class AccountsController {
           ? ids.filter((id) => readableSet.has(id))
           : readable;
       if (ids.length === 0) return [];
+    } else {
+      // Own context: joint accounts participate exactly like own accounts.
+      // The set is what authorizes them -- the service widens its ownership
+      // predicate to these exact ids and nothing else.
+      const jointSet = await this.jointAccounts.jointAccountIdSetFor(
+        req.user.realUserId ?? req.user.id,
+      );
+      jointIds =
+        ids && ids.length > 0
+          ? ids.filter((id) => jointSet.has(id))
+          : [...jointSet];
     }
     return this.accountsService.getDailyBalances(
       req.user.id,
@@ -311,6 +376,7 @@ export class AccountsController {
       ed,
       ids,
       allTimeFlag,
+      jointIds,
     );
   }
 
@@ -499,7 +565,25 @@ export class AccountsController {
   @AllowDelegate()
   @DelegatedAccountParam("id")
   async findOne(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
-    const account = await this.accountsService.findOne(req.user.id, id);
+    let account: Awaited<ReturnType<AccountsService["findOne"]>>;
+    try {
+      account = await this.accountsService.findOne(req.user.id, id);
+    } catch (err) {
+      // Own context: an owner-scoped miss may be a joint account shared to
+      // the caller; jointAccessFor re-raises the same 404 shape otherwise.
+      if (!(err instanceof NotFoundException) || req.user.isActing) throw err;
+      const jointRow = (
+        await this.jointAccounts.jointAccountsFor(
+          req.user.realUserId ?? req.user.id,
+        )
+      ).find((a) => a.id === id);
+      if (!jointRow) throw err;
+      const [overlaid] = await this.applyDelegateFavourites(
+        req.user.realUserId ?? req.user.id,
+        [jointRow],
+      );
+      return overlaid;
+    }
     if (!req.user.isActing) return account;
     const [overlaid] = await this.applyDelegateFavourites(req.user.realUserId, [
       account,
@@ -525,8 +609,19 @@ export class AccountsController {
   @ApiResponse({ status: 404, description: "Account not found" })
   @AllowDelegate()
   @DelegatedAccountParam("id")
-  getBalance(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
-    return this.accountsService.getBalance(req.user.id, id);
+  async getBalance(@Request() req, @Param("id", ParseUUIDPipe) id: string) {
+    try {
+      return await this.accountsService.getBalance(req.user.id, id);
+    } catch (err) {
+      if (!(err instanceof NotFoundException) || req.user.isActing) throw err;
+      // Joint fallback: authorize, then read with the owner's scope.
+      const access = await this.jointAccounts.jointAccessFor(
+        req.user.realUserId ?? req.user.id,
+        id,
+        "read",
+      );
+      return this.accountsService.getBalance(access.ownerUserId, id);
+    }
   }
 
   @Get(":id/investment-pair")
@@ -597,17 +692,34 @@ export class AccountsController {
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Account not found" })
-  getBalanceForecast(
+  async getBalanceForecast(
     @Request() req,
     @Param("id", ParseUUIDPipe) id: string,
     @Query("days", new ParseIntPipe({ optional: true })) days?: number,
   ) {
     const horizon = Math.min(Math.max(days ?? 90, 1), 730);
-    return this.balanceForecastService.getBalanceForecast(
-      req.user.id,
-      id,
-      horizon,
-    );
+    try {
+      return await this.balanceForecastService.getBalanceForecast(
+        req.user.id,
+        id,
+        horizon,
+      );
+    } catch (err) {
+      if (!(err instanceof NotFoundException) || req.user.isActing) throw err;
+      // Joint fallback (same shape as getBalance): authorize, then project
+      // with the owner's scope so the grantee's balance chart carries the
+      // same forward line the owner's does instead of stopping at today.
+      const access = await this.jointAccounts.jointAccessFor(
+        req.user.realUserId ?? req.user.id,
+        id,
+        "read",
+      );
+      return this.balanceForecastService.getBalanceForecast(
+        access.ownerUserId,
+        id,
+        horizon,
+      );
+    }
   }
 
   @Get(":id/interest-paid")

@@ -412,7 +412,8 @@
       "categoryCreateFailed": "श्रेणी बनाने में विफल",
       "tagCreated": "टैग \"{name}\" बनाया गया",
       "fxRateRequired": "विदेशी मुद्रा लेनदेन सहेजने से पहले विनिमय दर या रूपांतरित राशि दर्ज करें।",
-      "attachmentsUploadFailed": "लेन-देन सहेजा गया, लेकिन {count} अटैचमेंट अपलोड करने में विफल रहे"
+      "attachmentsUploadFailed": "लेन-देन सहेजा गया, लेकिन {count} अटैचमेंट अपलोड करने में विफल रहे",
+      "jointPayeeCreateNotGranted": "खाता स्वामी ने आपको प्राप्तकर्ता बनाने की अनुमति नहीं दी है। इसके बजाय उनके किसी मौजूदा प्राप्तकर्ता को चुनें।"
     },
     "ariaHistory": "हाल के लेन-देन दिखाएं",
     "ariaHistoryForPayee": "इस भुगतानकर्ता के हाल के लेन-देन दिखाएं",
@@ -438,7 +439,8 @@
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeCaption": "इसमें {percent}% विदेशी लेनदेन शुल्क ({fee}) शामिल है।",
       "totalInCurrency": "{currency} में कुल"
-    }
+    },
+    "jointSplitDisabled": "साझा खाते में विभाजित लेनदेन केवल स्वामी ही प्रबंधित कर सकता है"
   },
   "splitEditor": {
     "header": "विभाजन विवरण",

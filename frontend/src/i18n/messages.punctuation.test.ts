@@ -65,7 +65,6 @@ const BASELINE: readonly string[] = [
   'settings:supportBackup.howItWorks',
   'settings:supportBackup.confirmPasswordMessage',
   'settings:supportBackup.confirmPasswordConfirm',
-  'settings:backupRestore.encryption.setupModal.descriptionOidc',
   'settings:emergencyAccess.message.toasts.verifyAgain',
   'settings:emergencyAccess.status.timerNote',
 ];

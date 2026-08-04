@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Get,
-  Patch,
   Delete,
   Body,
   UseGuards,
@@ -21,18 +20,10 @@ import {
 } from "@nestjs/swagger";
 import { Response } from "express";
 import { BackupService } from "./backup.service";
-import { AutoBackupService } from "./auto-backup.service";
 import { BackupEncryptionService } from "./backup-encryption.service";
 import { SupportBackupService } from "./support-backup/support-backup.service";
 import { CreateSupportBackupDto } from "./support-backup/dto/create-support-backup.dto";
-import {
-  UpdateAutoBackupSettingsDto,
-  ValidateFolderDto,
-} from "./dto/update-auto-backup-settings.dto";
-import {
-  EnableLocalEncryptionDto,
-  SetBackupPasswordDto,
-} from "./dto/backup-encryption.dto";
+import { SetBackupPasswordDto } from "./dto/backup-encryption.dto";
 import { DemoRestricted } from "../common/decorators/demo-restricted.decorator";
 import { tr } from "../i18n/translate";
 
@@ -45,6 +36,12 @@ function decodePasswordHeader(value: string | undefined): string | undefined {
   return Buffer.from(value, "base64").toString("utf8");
 }
 
+/**
+ * Manual export, restore and backup encryption -- everything here acts on the
+ * caller's own data and is open to every signed-in user. Automatic backup
+ * configuration is an operator concern and lives on the admin-only
+ * `AutoBackupController`.
+ */
 @ApiTags("Backup")
 @Controller("backup")
 @UseGuards(AuthGuard("jwt"))
@@ -52,7 +49,6 @@ function decodePasswordHeader(value: string | undefined): string | undefined {
 export class BackupController {
   constructor(
     private readonly backupService: BackupService,
-    private readonly autoBackupService: AutoBackupService,
     private readonly backupEncryption: BackupEncryptionService,
     private readonly supportBackupService: SupportBackupService,
   ) {}
@@ -179,29 +175,12 @@ export class BackupController {
     return this.backupEncryption.getStatus(req.user.id);
   }
 
-  @Post("encryption/enable-local")
-  @DemoRestricted()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary:
-      "Enable encrypted backups for a local-auth user using their login password",
-  })
-  @ApiResponse({ status: 200, description: "Encryption enabled" })
-  @ApiResponse({ status: 401, description: "Invalid password" })
-  async enableLocalEncryption(
-    @Request() req,
-    @Body() dto: EnableLocalEncryptionDto,
-  ) {
-    await this.backupEncryption.enableForLocalUser(req.user.id, dto.password);
-    return { enabled: true };
-  }
-
   @Post("encryption/backup-password")
   @DemoRestricted()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      "Set or update a dedicated backup password (required for OIDC users to enable encryption)",
+      "Set or update the dedicated backup password (OIDC users only; local users' backups are encrypted with their login password automatically)",
   })
   @ApiResponse({ status: 200, description: "Backup password set" })
   async setBackupPassword(@Request() req, @Body() dto: SetBackupPasswordDto) {
@@ -215,55 +194,10 @@ export class BackupController {
   @Delete("encryption")
   @DemoRestricted()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Disable encrypted backups" })
+  @ApiOperation({ summary: "Disable encrypted backups (OIDC users only)" })
   @ApiResponse({ status: 200, description: "Encryption disabled" })
   async disableEncryption(@Request() req) {
-    await this.backupEncryption.disable(req.user.id);
+    await this.backupEncryption.disableForOidcUser(req.user.id);
     return { enabled: false };
-  }
-
-  @Get("auto-backup-settings")
-  @ApiOperation({ summary: "Get automatic backup settings" })
-  @ApiResponse({ status: 200, description: "Auto-backup settings returned" })
-  async getAutoBackupSettings(@Request() req) {
-    return this.autoBackupService.getSettings(req.user.id);
-  }
-
-  @Patch("auto-backup-settings")
-  @DemoRestricted()
-  @ApiOperation({ summary: "Update automatic backup settings" })
-  @ApiResponse({ status: 200, description: "Settings updated" })
-  async updateAutoBackupSettings(
-    @Request() req,
-    @Body() dto: UpdateAutoBackupSettingsDto,
-  ) {
-    return this.autoBackupService.updateSettings(req.user.id, dto);
-  }
-
-  @Post("validate-folder")
-  @DemoRestricted()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Validate a folder path is writable" })
-  @ApiResponse({ status: 200, description: "Validation result" })
-  async validateFolder(@Body() dto: ValidateFolderDto) {
-    return this.autoBackupService.validateFolder(dto.folderPath);
-  }
-
-  @Post("browse-folders")
-  @DemoRestricted()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "List subdirectories in a folder" })
-  @ApiResponse({ status: 200, description: "Directory listing" })
-  async browseFolders(@Body() dto: ValidateFolderDto) {
-    return this.autoBackupService.browseFolders(dto.folderPath);
-  }
-
-  @Post("run-auto-backup")
-  @DemoRestricted()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Trigger an immediate automatic backup" })
-  @ApiResponse({ status: 200, description: "Backup completed" })
-  async runAutoBackup(@Request() req) {
-    return this.autoBackupService.runManualBackup(req.user.id);
   }
 }

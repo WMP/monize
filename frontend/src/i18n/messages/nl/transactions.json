@@ -412,7 +412,8 @@
       "categoryCreateFailed": "Aanmaken van categorie mislukt",
       "tagCreated": "Label \"{name}\" aangemaakt",
       "fxRateRequired": "Voer een wisselkoers of het omgerekende bedrag in voordat je een transactie in vreemde valuta opslaat.",
-      "attachmentsUploadFailed": "Transactie opgeslagen, maar {count} bijlage(n) konden niet worden geüpload"
+      "attachmentsUploadFailed": "Transactie opgeslagen, maar {count} bijlage(n) konden niet worden geüpload",
+      "jointPayeeCreateNotGranted": "De eigenaar van de rekening heeft u geen toestemming gegeven om begunstigden aan te maken. Kies in plaats daarvan een bestaande begunstigde."
     },
     "ariaHistory": "Recente transacties tonen",
     "ariaHistoryForPayee": "Recente transacties voor deze begunstigde tonen",
@@ -438,7 +439,8 @@
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeCaption": "Inclusief {percent}% kosten voor buitenlandse transactie ({fee}).",
       "totalInCurrency": "Totaal in {currency}"
-    }
+    },
+    "jointSplitDisabled": "Gesplitste transacties in een gedeelde rekening kunnen alleen door de eigenaar worden beheerd"
   },
   "splitEditor": {
     "header": "Splitsingsdetails",

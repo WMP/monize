@@ -35,12 +35,24 @@
   "settings": {
     "title": "Hướng dẫn sử dụng",
     "description": "Tìm hiểu các tính năng của ứng dụng theo từng bước.",
-    "showList": "Hiện hướng dẫn ({count})",
-    "hideList": "Ẩn hướng dẫn",
+    "backLink": "Quay lại Cài đặt",
+    "pageTitle": "Hướng dẫn sử dụng",
+    "pageSubtitle": "Tất cả phần hướng dẫn Monize cung cấp, ở cùng một nơi. Bắt đầu bất cứ lúc nào — bạn có thể thoát bằng phím Escape và quay lại từ đây.",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, other {# bước}}",
+    "releaseLabel": "Có từ {version}",
+    "requirementsLoading": "Đang kiểm tra xem bạn có thể xem hướng dẫn này không…",
+    "requires": {
+      "transactionEntry": "Hãy thêm một tài khoản trước — hướng dẫn này chỉ cách ghi lại một giao dịch.",
+      "securitiesExist": "Hãy thêm một chứng khoán trước — hướng dẫn này mở một mục từ danh sách chứng khoán của bạn."
+    },
     "start": "Bắt đầu",
     "restart": "Xem lại",
     "statusNotViewed": "Chưa xem",
     "statusDismissed": "Đã thoát giữa chừng",
+    "resetHeading": "Bắt đầu lại",
+    "resetDescription": "Xóa mọi hướng dẫn đã ghi nhận để chúng được đề xuất lại từ bảng điều khiển và sau khi cập nhật.",
     "reset": "Đặt lại tiến trình hướng dẫn",
     "resetSuccess": "Đã đặt lại tiến trình hướng dẫn.",
     "resetError": "Không thể đặt lại tiến trình hướng dẫn. Vui lòng thử lại."

@@ -35,12 +35,24 @@
   "settings": {
     "title": "引导式导览",
     "description": "逐步了解应用的各项功能。",
-    "showList": "显示导览（{count}）",
-    "hideList": "隐藏导览",
+    "backLink": "返回设置",
+    "pageTitle": "引导式导览",
+    "pageSubtitle": "Monize 提供的所有导览都集中在这里。随时可以开始——按 Escape 键可以退出导览，之后再从这里继续。",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, other {# 步}}",
+    "releaseLabel": "{version} 新增",
+    "requirementsLoading": "正在检查你能否进行此导览…",
+    "requires": {
+      "transactionEntry": "请先添加一个账户——此导览会演示如何记录一笔交易。",
+      "securitiesExist": "请先添加一只证券——此导览会从你的证券列表中打开一只。"
+    },
     "start": "开始",
     "restart": "重新查看",
     "statusNotViewed": "未查看",
     "statusDismissed": "中途退出",
+    "resetHeading": "重新开始",
+    "resetDescription": "清除所有已记录的导览，让它们重新在仪表板和更新后出现。",
     "reset": "重置导览进度",
     "resetSuccess": "导览进度已重置。",
     "resetError": "无法重置导览进度，请重试。"

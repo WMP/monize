@@ -47,6 +47,9 @@
       "backtest": "バックテスト",
       "settings": "設定"
     },
+    "stale": {
+      "updating": "更新中 — 以下の数値は前回の選択のものです"
+    },
     "roles": {
       "US_EQUITY": "S&P 500",
       "EX_US_EQUITY": "米国除く先進国",

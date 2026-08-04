@@ -300,6 +300,26 @@ hundred pixels are where that gets thrown away:
 Whoever adds the `null` on the server owns how it looks. A component test
 asserting the gap, the marker or the absent fill is what keeps it.
 
+## `accountsApi.getAll()` is not "the user's accounts"
+
+In own context the endpoint returns a **union**: accounts the caller owns, plus
+accounts another owner shared with them jointly. The two are told apart by
+`account.isJoint` -- true means the row belongs to someone else and is only
+shown natively because a grant says so (`ownerLabel` names the owner). Any
+screen that treats the list as "mine" is wrong for whichever half it forgot.
+
+Filter to `!a.isJoint` before offering an account as something to **give away,
+delegate, or otherwise re-share**. A delegate must not be able to pass on the
+access they were given, so the Edit Access modal
+(`components/settings/DelegateAccessModal.tsx`) derives `grantableAccounts` and
+uses it for the grouping, the empty state, the baseline diff and the save
+payload -- not just for the rows it draws. The server refuses a non-owned
+account too (`setGrants` -> 403), which is why an unfiltered list is not merely
+untidy: every toggle on it is one whose save cannot succeed.
+
+The converse is not true. An account the caller owns and has shared *out*
+carries `jointGranteeCount`, is still theirs, and stays assignable.
+
 ## Form Patterns
 
 `useFormModal<T>` (`hooks/useFormModal.ts`) manages create/edit modal state with browser-history integration (back button closes), unsaved-changes detection via `UnsavedChangesDialog`, and form submit exposed via ref. Returns `showForm`, `editingItem`, `openCreate()`, `openEdit(item)`, `close()`, `modalProps`, `unsavedChangesDialog`.

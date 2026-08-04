@@ -412,7 +412,8 @@
       "categoryCreateFailed": "Nie udało się utworzyć kategorii",
       "tagCreated": "Tag \"{name}\" utworzony",
       "fxRateRequired": "Wprowadź kurs wymiany lub przeliczoną kwotę przed zapisaniem transakcji w obcej walucie.",
-      "attachmentsUploadFailed": "Zapisano transakcję, ale nie udało się przesłać {count} załącznika(ów)"
+      "attachmentsUploadFailed": "Zapisano transakcję, ale nie udało się przesłać {count} załącznika(ów)",
+      "jointPayeeCreateNotGranted": "Właściciel konta nie przyznał Ci uprawnień do tworzenia odbiorców. Wybierz jednego z istniejących odbiorców."
     },
     "ariaHistory": "Pokaż ostatnie transakcje",
     "ariaHistoryForPayee": "Pokaż ostatnie transakcje dla tego odbiorcy",
@@ -438,7 +439,8 @@
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeCaption": "Zawiera opłatę za transakcję zagraniczną {percent}% ({fee}).",
       "totalInCurrency": "Razem w {currency}"
-    }
+    },
+    "jointSplitDisabled": "Transakcjami podzielonymi na wspólnym koncie może zarządzać tylko właściciel"
   },
   "splitEditor": {
     "header": "Szczegóły podziału",

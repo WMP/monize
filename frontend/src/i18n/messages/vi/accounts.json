@@ -48,7 +48,8 @@
       "status": "Trạng thái",
       "balance": "Số dư",
       "actions": "Thao tác"
-    }
+    },
+    "filterJoint": "Được chia sẻ với tôi"
   },
   "row": {
     "statusActive": "Đang hoạt động",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "Tài khoản phải có số dư bằng không để đóng",
       "closeTitleEnabled": "Đóng tài khoản",
       "details": "Chi tiết"
-    }
+    },
+    "jointBadge": "Chung",
+    "jointSharedBy": "Được chia sẻ bởi {owner}",
+    "jointSharedWith": "Được chia sẻ với {count, plural, other {# người}}",
+    "includeInNetWorth": "Tính vào giá trị tài sản ròng của tôi",
+    "excludeFromNetWorth": "Loại khỏi giá trị tài sản ròng của tôi"
   },
   "contextMenu": {
     "subtypeBrokerage": "Môi giới",
@@ -103,7 +109,8 @@
     "loadFailed": "Không thể tải tài khoản",
     "favouriteError": "Không thể cập nhật mục yêu thích",
     "createSuccess": "Đã tạo tài khoản thành công",
-    "updateSuccess": "Đã cập nhật tài khoản thành công"
+    "updateSuccess": "Đã cập nhật tài khoản thành công",
+    "updateFailed": "Không thể cập nhật tài khoản"
   },
   "form": {
     "accountName": "Tên tài khoản",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "vd. 25",
     "fxFeeTitle": "Phí chuyển đổi ngoại tệ (tùy chọn)",
     "fxFeePercent": "Phần trăm phí",
-    "fxFeePercentPlaceholder": "vd. 2,5"
+    "fxFeePercentPlaceholder": "vd. 2,5",
+    "jointSharedWith": "Tài khoản chung được chia sẻ với {count, plural, other {# người}}",
+    "jointManage": "Quản lý chia sẻ"
   },
   "exportModal": {
     "title": "Xuất {name}",

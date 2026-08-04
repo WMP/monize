@@ -6,7 +6,10 @@
     "back": "Hesaplara Dön",
     "switchAccount": "Başka bir hesaba geç",
     "switchPlaceholder": "Hesapları filtrele...",
-    "switchNoMatches": "Eşleşen hesap yok"
+    "switchNoMatches": "Eşleşen hesap yok",
+    "jointBadge": "Ortak",
+    "jointSharedBy": "{owner} tarafından paylaşıldı",
+    "jointSharedWith": "{count, plural, other {# kişiyle}} paylaşıldı"
   },
   "loading": "Hesap ayrıntıları yükleniyor...",
   "error": {

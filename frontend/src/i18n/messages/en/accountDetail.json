@@ -6,7 +6,10 @@
     "back": "Back to Accounts",
     "switchAccount": "Switch to another account",
     "switchPlaceholder": "Filter accounts...",
-    "switchNoMatches": "No accounts match"
+    "switchNoMatches": "No accounts match",
+    "jointBadge": "Joint",
+    "jointSharedBy": "Shared by {owner}",
+    "jointSharedWith": "Shared with {count, plural, one {# person} other {# people}}"
   },
   "loading": "Loading account details...",
   "error": {

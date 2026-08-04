@@ -115,6 +115,11 @@ export function AccountDetailShell({
                 <h1 className="truncate text-2xl font-bold text-gray-900 dark:text-gray-100">
                   {account.name}
                 </h1>
+                {(account.isJoint || account.jointGranteeCount !== undefined) && (
+                  <span className="ml-1 px-2 inline-flex flex-shrink-0 text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                    {t('header.jointBadge')}
+                  </span>
+                )}
                 {/* Jump straight to another account instead of going back to
                     the list and clicking again. */}
                 {accounts && onSelectAccount && (
@@ -128,6 +133,16 @@ export function AccountDetailShell({
               <p className="text-gray-500 dark:text-gray-400">
                 {`${formatAccountType(account.accountType, tc)} - ${account.currencyCode}`}
               </p>
+              {account.isJoint && (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  {t('header.jointSharedBy', { owner: account.ownerLabel ?? '' })}
+                </p>
+              )}
+              {!account.isJoint && account.jointGranteeCount !== undefined && (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  {t('header.jointSharedWith', { count: account.jointGranteeCount })}
+                </p>
+              )}
             </div>
           </div>
 

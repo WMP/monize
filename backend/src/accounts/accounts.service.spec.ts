@@ -1029,6 +1029,27 @@ describe("AccountsService", () => {
 
       expect(result).toHaveLength(0);
     });
+
+    it("stays strictly owner-scoped -- AI/MCP listings exclude joint accounts (N2)", async () => {
+      // The joint-account union happens only in the HTTP controller. Every
+      // other consumer of findAll -- AI tools, MCP, internal summaries --
+      // deliberately sees own accounts only (joint-accounts spec, N2 scope
+      // cut). This pins the predicate so a widened findAll fails loudly.
+      const where = jest.fn().mockReturnThis();
+      const getMany = jest.fn().mockResolvedValue([]);
+      accountsRepository.createQueryBuilder.mockReturnValue({
+        where,
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany,
+      });
+
+      await service.findAll("user-1");
+
+      expect(where).toHaveBeenCalledWith("account.userId = :userId", {
+        userId: "user-1",
+      });
+    });
   });
 
   describe("getSummary", () => {

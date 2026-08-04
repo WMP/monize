@@ -35,12 +35,24 @@
   "settings": {
     "title": "[XX-Guided tours-XX]",
     "description": "[XX-Walk through the app's features step by step.-XX]",
-    "showList": "[XX-Show tours ({count})-XX]",
-    "hideList": "[XX-Hide tours-XX]",
+    "backLink": "[XX-Back to Settings-XX]",
+    "pageTitle": "[XX-Guided tours-XX]",
+    "pageSubtitle": "[XX-Every walkthrough Monize offers, in one place. Start one anytime — you can leave a tour with Escape and pick it up again from here.-XX]",
+    "meta": "[XX-{steps} · {status}-XX]",
+    "metaWithRelease": "[XX-{steps} · {release} · {status}-XX]",
+    "stepCount": "[XX-{count, plural, one {# step} other {# steps}}-XX]",
+    "releaseLabel": "[XX-Added in {version}-XX]",
+    "requirementsLoading": "[XX-Checking whether you can take this tour…-XX]",
+    "requires": {
+      "transactionEntry": "[XX-Add an account first — this tour walks through recording a transaction.-XX]",
+      "securitiesExist": "[XX-Add a security first — this tour opens one from your securities list.-XX]"
+    },
     "start": "[XX-Start-XX]",
     "restart": "[XX-Retake-XX]",
     "statusNotViewed": "[XX-Not viewed-XX]",
     "statusDismissed": "[XX-Left early-XX]",
+    "resetHeading": "[XX-Start over-XX]",
+    "resetDescription": "[XX-Clear every recorded tour so they are offered again from the dashboard and after an update.-XX]",
     "reset": "[XX-Reset tour progress-XX]",
     "resetSuccess": "[XX-Tour progress reset.-XX]",
     "resetError": "[XX-Couldn't reset tour progress. Please try again.-XX]"

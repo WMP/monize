@@ -26,30 +26,38 @@ vi.mock('@/lib/logger', () => ({
   }),
 }));
 
-// Mock auth store
-vi.mock('@/store/authStore', () => ({
-  useAuthStore: Object.assign(
-    (selector?: any) => {
-      const state = {
-        user: { id: 'test-user-id', email: 'test@example.com', firstName: 'Test', lastName: 'User', role: 'user', hasPassword: true, authProvider: 'local' },
-        isAuthenticated: true,
-        isLoading: false,
-        _hasHydrated: true,
-        logout: vi.fn(),
-        setUser: vi.fn(),
-      };
-      return selector ? selector(state) : state;
+// Mock auth store. The role is mutable so a test can switch between an
+// ordinary user and an administrator -- the Automatic Backup section is
+// admin-only.
+const authRole = vi.hoisted(() => ({ current: 'user' }));
+
+vi.mock('@/store/authStore', () => {
+  const buildState = () => ({
+    user: {
+      id: 'test-user-id',
+      email: 'test@example.com',
+      firstName: 'Test',
+      lastName: 'User',
+      role: authRole.current,
+      hasPassword: true,
+      authProvider: 'local',
     },
-    {
-      getState: vi.fn(() => ({
-        user: { id: 'test-user-id', email: 'test@example.com', firstName: 'Test', lastName: 'User', role: 'user', hasPassword: true, authProvider: 'local' },
-        isAuthenticated: true,
-        isLoading: false,
-        _hasHydrated: true,
-      })),
-    },
-  ),
-}));
+    isAuthenticated: true,
+    isLoading: false,
+    _hasHydrated: true,
+    logout: vi.fn(),
+    setUser: vi.fn(),
+  });
+  return {
+    useAuthStore: Object.assign(
+      (selector?: any) => {
+        const state = buildState();
+        return selector ? selector(state) : state;
+      },
+      { getState: vi.fn(() => buildState()) },
+    ),
+  };
+});
 
 // Mock preferences store
 vi.mock('@/store/preferencesStore', () => ({
@@ -166,6 +174,35 @@ vi.mock('@/components/ui/LoadingSpinner', () => ({
 describe('SettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    authRole.current = 'user';
+  });
+
+  describe('automatic backup section', () => {
+    it('is hidden from a non-admin, in the page and in the nav', async () => {
+      const { container } = render(<SettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('Settings')).toBeInTheDocument();
+      });
+
+      // Automatic backups decide what the server writes to its own disk, so
+      // they are an operator setting; non-admins are enrolled by the backend
+      // and have nothing to configure.
+      expect(container.querySelector('#auto-backup')).not.toBeInTheDocument();
+      expect(screen.queryByText('Automatic Backup')).toBeNull();
+    });
+
+    it('is shown to an administrator', async () => {
+      authRole.current = 'admin';
+      const { container } = render(<SettingsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('Settings')).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector('#auto-backup')).toBeInTheDocument();
+      });
+      expect(screen.getAllByText('Automatic Backup').length).toBeGreaterThan(0);
+    });
   });
 
   it('renders the Settings heading after loading', async () => {
@@ -245,13 +282,25 @@ describe('SettingsPage', () => {
     });
   });
 
+  it('links the Guided Tours card at the tours page', async () => {
+    render(<SettingsPage />);
+    await waitFor(() => {
+      // The card, not the nav entry: the nav link is an in-page anchor.
+      const card = screen
+        .getAllByText('Guided Tours')
+        .map((el) => el.closest('a'))
+        .find((a) => a?.getAttribute('href') === '/settings/tours');
+      expect(card).toBeTruthy();
+    });
+  });
+
   it('wraps sections with id attributes for scroll targets', async () => {
     const { container } = render(<SettingsPage />);
     await waitFor(() => {
       expect(screen.getByText('Settings')).toBeInTheDocument();
     });
 
-    const expectedIds = ['profile', 'preferences', 'notifications', 'security', 'api-access', 'backup-restore', 'auto-backup', 'about', 'danger-zone'];
+    const expectedIds = ['profile', 'preferences', 'notifications', 'security', 'api-access', 'backup-restore', 'about', 'danger-zone'];
     for (const id of expectedIds) {
       expect(container.querySelector(`#${id}`)).toBeInTheDocument();
     }

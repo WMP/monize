@@ -207,20 +207,11 @@ describe('backupApi', () => {
 
   it('getEncryptionStatus calls GET /backup/encryption', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({
-      data: { enabled: true, needsBackupPassword: false },
+      data: { enabled: true, manageable: false },
     });
     const result = await backupApi.getEncryptionStatus();
     expect(apiClient.get).toHaveBeenCalledWith('/backup/encryption');
-    expect(result).toEqual({ enabled: true, needsBackupPassword: false });
-  });
-
-  it('enableLocalEncryption posts the password', async () => {
-    vi.mocked(apiClient.post).mockResolvedValue({ data: { enabled: true } });
-    await backupApi.enableLocalEncryption('my-pw');
-    expect(apiClient.post).toHaveBeenCalledWith(
-      '/backup/encryption/enable-local',
-      { password: 'my-pw' },
-    );
+    expect(result).toEqual({ enabled: true, manageable: false });
   });
 
   it('setBackupPassword posts the new password', async () => {

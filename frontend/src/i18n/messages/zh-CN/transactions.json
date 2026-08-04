@@ -412,7 +412,8 @@
       "categoryCreateFailed": "创建分类失败",
       "tagCreated": "标签\"{name}\"已创建",
       "fxRateRequired": "在保存外币交易前，请输入汇率或换算后的金额。",
-      "attachmentsUploadFailed": "交易已保存，但 {count} 个附件上传失败"
+      "attachmentsUploadFailed": "交易已保存，但 {count} 个附件上传失败",
+      "jointPayeeCreateNotGranted": "账户所有者未授予您创建收款人的权限。请从其现有收款人中选择。"
     },
     "ariaHistory": "显示近期交易",
     "ariaHistoryForPayee": "显示此收款人的近期交易",
@@ -438,7 +439,8 @@
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeCaption": "包含 {percent}% 境外交易手续费（{fee}）。",
       "totalInCurrency": "以 {currency} 计的总额"
-    }
+    },
+    "jointSplitDisabled": "共享账户中的拆分交易只能由所有者管理"
   },
   "splitEditor": {
     "header": "拆分详情",

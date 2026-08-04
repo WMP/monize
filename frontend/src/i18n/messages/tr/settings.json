@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "Otomatik Yedekleme",
     "description": "Verilerinizi bir programa göre otomatik olarak bir klasöre yedekleyin. Monize Docker'da çalıştığından, bir ana klasörü kapsayıcıya birim olarak eşlemeniz gerekir (örn., -v /host/backups:/data/backups).",
+    "adminManagedNote": "Bu ayarları yalnızca yöneticiler değiştirebilir. Diğer tüm kullanıcılar aynı zamanlama ve saklama ilkesiyle, her biri kendi klasörüne otomatik olarak yedeklenir.",
     "loadingText": "Yükleniyor...",
     "enableLabel": "Otomatik yedeklemeyi etkinleştir",
     "backupFolderLabel": "Yedekleme Klasörü",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "Her kullanıcının yedekleri, bu klasörün içinde kullanıcı kimliğiyle adlandırılmış kendi klasörüne kaydedilir.",
+    "perUserFolderHelpWithPath": "Her kullanıcının yedekleri, bu klasörün içinde kullanıcı kimliğiyle adlandırılmış kendi klasörüne kaydedilir. Sizinki: {path}",
     "browseButton": "Göz at...",
     "validateButton": "Doğrula",
     "validatingButton": "Doğrulanıyor...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "Yedekleme Şifreleme",
       "descriptionOidc": "Manuel ve otomatik yedeklemeleri burada ayarladığınız özel bir yedekleme şifresiyle şifreleyin. Geri yükleme için şifre gereklidir.",
-      "descriptionLocal": "Manuel ve otomatik yedeklemeleri oturum açma şifrenizle şifreleyin. Geri yükleme için şifre gereklidir.",
       "loading": "Yükleniyor...",
       "enabledBadge": "Etkin",
       "changePasswordButton": "Yedekleme Şifresini Değiştir",
       "disableButton": "Devre Dışı Bırak",
       "setPasswordButton": "Yedekleme Şifresi Ayarla",
-      "enableEncryptedButton": "Şifreli Yedeklemeyi Etkinleştir",
       "setupModal": {
         "titleOidc": "Yedekleme Şifresi Ayarla",
-        "titleLocal": "Şifreli Yedeklemeyi Etkinleştir",
         "descriptionOidc": "Yedeklemelerinizi şifrelemek için kullanılacak şifreyi seçin. Güvenli bir yere kaydedin -- geri yükleme için ihtiyacınız olacak.",
-        "descriptionLocal": "Oturum açma şifrenizi onaylayın. Tüm yedeklemeleri (manuel ve otomatik) şifrelemek için kullanılacak.",
         "placeholderOidc": "Yeni yedekleme şifresi (en az 12 karakter)",
-        "placeholderLocal": "Oturum açma şifreniz",
         "savingButton": "Kaydediliyor...",
         "confirmButton": "Onayla"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "Temsilci iptal edilemedi",
       "resetPasswordFailed": "Şifre sıfırlanamadı",
       "copyFailed": "Panoya kopyalanamadı"
-    }
+    },
+    "jointLabel": "{count, plural, other {# ortak hesap}}"
   },
   "delegateAccessModal": {
     "title": "Erişimi düzenle",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "Verilecek hesap yok.",
-      "grantAll": "Tümüne ver"
+      "grantAll": "Tümüne ver",
+      "jointRequiresFullAccount": "Ortak hesaplar yalnızca kendi Monize hesabı olan kullanıcılarla paylaşılabilir"
     },
     "shared": {
       "description": "Alacaklılar, kategoriler ve etiketlerin OKUNMASI her zaman izin verilir. Bunlar oluşturma/düzenleme/silmeyi kontrol eder."
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "Ayarlar bölümleri",
     "profile": "Profil",
     "preferences": "Tercihler",
+    "tours": "Rehberli Turlar",
     "notifications": "Bildirimler",
     "security": "Güvenlik",
     "sharedAccess": "Paylaşılan Erişim",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "Paylaşılan Erişim",
       "description": "Başka bir kişiye belirli hesaplara ayrıntılı erişim verin."
+    },
+    "toursCard": {
+      "title": "Rehberli Turlar",
+      "description": "Monize'in sunduğu tüm turlar ve hangilerini gördüğünüz. İstediğinizi başlatın ya da tekrar alın."
     },
     "emergencyAccessCard": {
       "title": "Acil Durum Erişimi",

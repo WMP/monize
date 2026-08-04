@@ -6,7 +6,10 @@
     "back": "[XX-Back to Accounts-XX]",
     "switchAccount": "[XX-Switch to another account-XX]",
     "switchPlaceholder": "[XX-Filter accounts...-XX]",
-    "switchNoMatches": "[XX-No accounts match-XX]"
+    "switchNoMatches": "[XX-No accounts match-XX]",
+    "jointBadge": "[XX-Joint-XX]",
+    "jointSharedBy": "[XX-Shared by {owner}-XX]",
+    "jointSharedWith": "[XX-Shared with {count, plural, one {# person} other {# people}}-XX]"
   },
   "loading": "[XX-Loading account details...-XX]",
   "error": {

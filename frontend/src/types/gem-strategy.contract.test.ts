@@ -28,6 +28,9 @@ const FRONTEND_TYPES = resolve(__dirname, "./gem-strategy.ts");
  * several of these `View`; where the names already agree both entries match.
  */
 const SHARED_INTERFACES: Array<[string, string]> = [
+  ["GemStrategyReport", "GemStrategyReportView"],
+  ["GemStrategyMeta", "GemStrategyMetaView"],
+  ["GemStrategyRef", "GemStrategyRef"],
   ["GemPerformance", "GemPerformanceView"],
   ["GemPerformancePoint", "GemPerformancePoint"],
   ["GemCurrentPortfolioSimulation", "GemCurrentPortfolioSimulation"],
@@ -35,12 +38,29 @@ const SHARED_INTERFACES: Array<[string, string]> = [
   ["GemPosition", "GemPositionView"],
   ["GemAction", "GemActionView"],
   ["GemSignal", "GemSignalView"],
+  ["GemAssetMomentum", "GemAssetMomentum"],
+  ["GemAbsoluteStep", "GemAbsoluteStep"],
+  ["GemRelativeStep", "GemRelativeStep"],
   ["GemHistoryEntry", "GemHistoryEntryView"],
   ["GemAccountRef", "GemAccountRef"],
   ["GemAssetRef", "GemAssetRef"],
   ["GemHeldAsset", "GemHeldAsset"],
   ["GemWarning", "GemWarning"],
 ];
+
+/**
+ * Interfaces the frontend declares that the backend read model has no
+ * counterpart for, with the reason. Anything not here and not above is a type
+ * the guard is silently ignoring, which is what let `GemStrategyMeta` and the
+ * report root sit outside it: they agree field by field today, and a settings
+ * field added to one side only would have been invisible.
+ */
+const CLIENT_ONLY = new Set([
+  // Request bodies, not the read model. Their server counterparts are DTOs with
+  // class-validator decorators, which this parser is not built to read.
+  "GemAssetAssignmentInput",
+  "GemStrategyConfigInput",
+]);
 
 /**
  * Property names declared in `interface Name { ... }`, split by whether the
@@ -108,6 +128,25 @@ describe("GEM report contract parity", () => {
       expect(invented).toEqual([]);
     },
   );
+
+  it("compares every interface the frontend declares", () => {
+    // The list above is only as good as its completeness: an interface added to
+    // `gem-strategy.ts` and not to it is unguarded, and nothing else would say
+    // so. Either pair it with its backend counterpart or record why it has none.
+    const declared = [...frontend.matchAll(/^export interface (\w+)/gm)].map(
+      (match) => match[1],
+    );
+    const covered = new Set([
+      ...SHARED_INTERFACES.map(([clientName]) => clientName),
+      ...CLIENT_ONLY,
+    ]);
+    expect(declared.filter((name) => !covered.has(name))).toEqual([]);
+    // And the reverse: a name left in the list after the interface it names is
+    // gone or renamed would make its case vacuous.
+    expect(
+      [...covered].filter((name) => !declared.includes(name)).sort(),
+    ).toEqual([]);
+  });
 
   it("parses the interfaces it claims to compare", () => {
     // A silent parse failure would make every case above vacuous.

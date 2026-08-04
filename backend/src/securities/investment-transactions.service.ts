@@ -2878,6 +2878,12 @@ export class InvestmentTransactionsService {
       }
     }
 
+    // The row as stored, read before any assignment below moves it. The
+    // acquisition guard compares against these rather than against which fields
+    // the DTO happened to carry; see the guard's own comment.
+    const priorAction = transaction.action;
+    const priorPrice = transaction.price;
+
     const savedId = await withScopedDb(this.dataSource, async (manager) => {
       // Reverse the original transaction effects
       await this.reverseTransactionEffectsInTransaction(
@@ -2980,12 +2986,25 @@ export class InvestmentTransactionsService {
       // one. Without this, `create` could refuse a free acquisition and
       // `update` would put one back a moment later.
       //
-      // Only when the edit touches the action or the price. A row that was
-      // already unpriced stays editable in every other respect -- an
+      // Only when the edit is what makes the row an unpriced acquisition. A row
+      // that was already unpriced stays editable in every other respect -- an
       // unrelated change to its description is not the write that made it
       // wrong, and refusing it would strand rows that predate this rule with
       // no way to correct anything at all.
-      if (updateDto.action !== undefined || updateDto.price !== undefined) {
+      //
+      // That carve-out has to key on the *change*, not on which fields the DTO
+      // carried. `InvestmentTransactionForm` always sends `action`, and loads a
+      // legacy blank price as `0` and sends that back, so presence-keyed it
+      // fired on every edit of a pre-guard zero-price BUY -- including a
+      // description-only one -- which is precisely the stranding it exists to
+      // avoid. Two changes are the row's own fault and nothing else is: turning
+      // some other action into a priced acquisition, and taking a price that was
+      // positive away. Switching such a row to `ADD_SHARES` stays open, which is
+      // the honest correction for shares whose cost is unknown.
+      const actionChanged = transaction.action !== priorAction;
+      const priceWithdrawn =
+        Number(priorPrice) > 0 && !(Number(transaction.price) > 0);
+      if (actionChanged || priceWithdrawn) {
         this.assertAcquisitionPriced(transaction.action, transaction.price);
       }
 

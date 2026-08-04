@@ -52,6 +52,7 @@ describe("RLS enforcement (T2, catalog-driven)", () => {
     users: ["id"],
     account_delegates: ["owner_user_id", "delegate_user_id"],
     delegate_account_favourites: ["delegate_user_id"],
+    delegate_net_worth_exclusions: ["delegate_user_id"],
     emergency_access_settings: ["owner_user_id"],
     emergency_access_contacts: ["owner_user_id"],
   };
@@ -484,11 +485,16 @@ describe("RLS enforcement (T2, catalog-driven)", () => {
       expect(rows[0].n).toBe(0);
     });
 
-    it("hides the owner's data from the delegate's own session", async () => {
+    it("shows the delegate's own session exactly the granted account -- the 134 arm", async () => {
+      // Before migration 134 this asserted zero rows; the joint-account read
+      // arm deliberately widens it to the can_read-granted account, and only
+      // that one. The ungranted second account stays hidden.
       const rows = await asAppRole(identity(DELEGATE), (m) =>
-        m.query("SELECT count(*)::int AS n FROM accounts"),
+        m.query("SELECT id FROM accounts"),
       );
-      expect(rows[0].n).toBe(0);
+      expect(rows.map((r: { id: string }) => r.id)).toEqual([
+        ownerAccounts[0].id,
+      ]);
     });
 
     describe("delegate READ arm on transactions (migration 132)", () => {
@@ -551,6 +557,156 @@ describe("RLS enforcement (T2, catalog-driven)", () => {
           asAppRole(identity(DELEGATE), (m) =>
             m.query(insert.sql, insert.values),
           ),
+        ).rejects.toThrow(/row-level security/i);
+      });
+    });
+
+    describe("delegate READ arms for joint native reads (migration 134)", () => {
+      let grantedSplitTxId: string;
+      let ungrantedSplitTxId: string;
+      let ownerTagId: string;
+
+      beforeAll(async () => {
+        // Balance snapshots for both owner accounts.
+        for (const account of ownerAccounts) {
+          const mab = seeder.buildInsert("monthly_account_balances", OWNER, {
+            account_id: account.id,
+          });
+          await dataSource.query(mab.sql, mab.values);
+        }
+
+        // A transaction with a split and a tag in each account.
+        const ownerTag = seeder.buildInsert("tags", OWNER);
+        const [tagRow] = await dataSource.query(ownerTag.sql, ownerTag.values);
+        ownerTagId = tagRow.id;
+
+        for (const [i, account] of ownerAccounts.entries()) {
+          const tx = seeder.buildInsert("transactions", OWNER, {
+            account_id: account.id,
+          });
+          const [txRow] = await dataSource.query(tx.sql, tx.values);
+          if (i === 0) grantedSplitTxId = txRow.id;
+          else ungrantedSplitTxId = txRow.id;
+
+          const split = seeder.buildInsert("transaction_splits", OWNER, {
+            transaction_id: txRow.id,
+          });
+          await dataSource.query(split.sql, split.values);
+          const txTag = seeder.buildInsert("transaction_tags", OWNER, {
+            transaction_id: txRow.id,
+            tag_id: ownerTagId,
+          });
+          await dataSource.query(txTag.sql, txTag.values);
+        }
+
+        // Reference data owned by OWNER (categories/payees seeded here; the
+        // tag above already exists).
+        for (const table of ["categories", "payees"]) {
+          const row = seeder.buildInsert(table, OWNER);
+          await dataSource.query(row.sql, row.values);
+        }
+      });
+
+      it("exposes the granted account's balance snapshots to the delegate's own session", async () => {
+        const rows = await asAppRole(identity(DELEGATE), (m) =>
+          m.query("SELECT account_id FROM monthly_account_balances"),
+        );
+        expect(rows.map((r: { account_id: string }) => r.account_id)).toEqual([
+          ownerAccounts[0].id,
+        ]);
+      });
+
+      it("exposes splits and tag links only through the granted account", async () => {
+        const splits = await asAppRole(identity(DELEGATE), (m) =>
+          m.query("SELECT transaction_id FROM transaction_splits"),
+        );
+        expect(
+          splits.map((r: { transaction_id: string }) => r.transaction_id),
+        ).toEqual([grantedSplitTxId]);
+
+        const tagLinks = await asAppRole(identity(DELEGATE), (m) =>
+          m.query("SELECT transaction_id FROM transaction_tags"),
+        );
+        expect(
+          tagLinks.map((r: { transaction_id: string }) => r.transaction_id),
+        ).toEqual([grantedSplitTxId]);
+        void ungrantedSplitTxId;
+      });
+
+      it("exposes the owner's reference data to the delegate's own session", async () => {
+        for (const table of ["categories", "payees", "tags"]) {
+          const rows = await asAppRole(identity(DELEGATE), (m) =>
+            m.query(
+              `SELECT count(*)::int AS n FROM "${table}" WHERE user_id = $1`,
+              [OWNER],
+            ),
+          );
+          expect({ table, n: rows[0].n }).toEqual({
+            table,
+            n: 1,
+          });
+        }
+      });
+
+      it("keeps the owner's reference data hidden from unrelated users", async () => {
+        for (const table of ["categories", "payees", "tags"]) {
+          const rows = await asAppRole(identity(USER_A), (m) =>
+            m.query(
+              `SELECT count(*)::int AS n FROM "${table}" WHERE user_id = $1`,
+              [OWNER],
+            ),
+          );
+          expect({ table, n: rows[0].n }).toEqual({ table, n: 0 });
+        }
+      });
+
+      it("hides everything again when the delegation is revoked", async () => {
+        await dataSource.query(
+          "UPDATE account_delegates SET status = 'revoked' WHERE id = $1",
+          [delegationId],
+        );
+        try {
+          for (const [table, sql] of [
+            ["accounts", "SELECT count(*)::int AS n FROM accounts"],
+            [
+              "monthly_account_balances",
+              "SELECT count(*)::int AS n FROM monthly_account_balances",
+            ],
+            [
+              "transaction_splits",
+              "SELECT count(*)::int AS n FROM transaction_splits",
+            ],
+            [
+              "categories",
+              `SELECT count(*)::int AS n FROM categories WHERE user_id = '${OWNER}'`,
+            ],
+          ] as const) {
+            const rows = await asAppRole(identity(DELEGATE), (m) =>
+              m.query(sql),
+            );
+            expect({ table, n: rows[0].n }).toEqual({ table, n: 0 });
+          }
+        } finally {
+          await dataSource.query(
+            "UPDATE account_delegates SET status = 'active' WHERE id = $1",
+            [delegationId],
+          );
+        }
+      });
+
+      it("keeps WITH CHECK owner-only on the widened tables", async () => {
+        const account = seeder.buildInsert("accounts", OWNER);
+        await expect(
+          asAppRole(identity(DELEGATE), (m) =>
+            m.query(account.sql, account.values),
+          ),
+        ).rejects.toThrow(/row-level security/i);
+
+        const mab = seeder.buildInsert("monthly_account_balances", OWNER, {
+          account_id: ownerAccounts[0].id,
+        });
+        await expect(
+          asAppRole(identity(DELEGATE), (m) => m.query(mab.sql, mab.values)),
         ).rejects.toThrow(/row-level security/i);
       });
     });

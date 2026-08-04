@@ -1,10 +1,12 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { DelegationController } from "./delegation.controller";
 import { DelegationService } from "./delegation.service";
+import { JointAccountsService } from "./joint-accounts.service";
 
 describe("DelegationController", () => {
   let controller: DelegationController;
   let service: Record<string, jest.Mock>;
+  let jointAccounts: Record<string, jest.Mock>;
   const req = { user: { id: "owner-1" } };
 
   beforeEach(async () => {
@@ -21,12 +23,35 @@ describe("DelegationController", () => {
         .mockResolvedValue({ temporaryPassword: "x" }),
     };
 
+    jointAccounts = {
+      jointReferenceData: jest.fn().mockResolvedValue({
+        categories: [],
+        payees: [],
+        payeesCanCreate: false,
+        categoriesCanCreate: false,
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [DelegationController],
-      providers: [{ provide: DelegationService, useValue: service }],
+      providers: [
+        { provide: DelegationService, useValue: service },
+        { provide: JointAccountsService, useValue: jointAccounts },
+      ],
     }).compile();
 
     controller = module.get<DelegationController>(DelegationController);
+  });
+
+  it("serves joint reference data keyed by the real user", async () => {
+    await controller.getJointReferenceData(
+      { user: { id: "u1", realUserId: "u1" } },
+      "acc-1",
+    );
+    expect(jointAccounts.jointReferenceData).toHaveBeenCalledWith(
+      "u1",
+      "acc-1",
+    );
   });
 
   it("lists delegates for the current owner", async () => {

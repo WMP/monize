@@ -13,6 +13,7 @@ import { TransactionReconciliationService } from "./transaction-reconciliation.s
 import { TransactionAnalyticsService } from "./transaction-analytics.service";
 import { TransactionBulkUpdateService } from "./transaction-bulk-update.service";
 import { TransactionToolPrepService } from "./transaction-tool-prep.service";
+import { JointRegisterService } from "./joint-register.service";
 import { TransactionsController } from "./transactions.controller";
 import { AccountsModule } from "../accounts/accounts.module";
 import { PayeesModule } from "../payees/payees.module";
@@ -48,6 +49,7 @@ import { DelegationModule } from "../delegation/delegation.module";
     TransactionAnalyticsService,
     TransactionBulkUpdateService,
     TransactionToolPrepService,
+    JointRegisterService,
   ],
   controllers: [TransactionsController],
   exports: [

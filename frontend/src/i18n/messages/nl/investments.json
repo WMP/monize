@@ -259,6 +259,7 @@
   },
   "validation": {
     "accountRequired": "Rekening is vereist",
-    "dateRequired": "Datum is vereist"
+    "dateRequired": "Datum is vereist",
+    "acquisitionPriceRequired": "De prijs per aandeel is verplicht en moet groter zijn dan nul. Gebruik \"Aandelen toevoegen\" voor aandelen die zonder bekende kostprijs zijn verkregen."
   }
 }

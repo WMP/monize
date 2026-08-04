@@ -60,6 +60,15 @@ interface TransactionListProps {
    * the account-detail Foreign Currency Transaction Fees section.
    */
   showFxColumns?: boolean;
+  /**
+   * Joint accounts: effective write permissions per shared account id. Rows
+   * in a listed account hide the edit/delete affordances the grant does not
+   * cover; rows in unlisted accounts (the caller's own) are unaffected.
+   */
+  jointPermissionsByAccount?: Map<
+    string,
+    { canCreate: boolean; canEdit: boolean; canDelete: boolean }
+  >;
 }
 
 export function TransactionList({
@@ -101,6 +110,7 @@ export function TransactionList({
   showToolbar = true,
   highlightTransactionId,
   showFxColumns = false,
+  jointPermissionsByAccount,
 }: TransactionListProps) {
   const t = useTranslations('transactions');
   const tc = useTranslations('common');
@@ -543,10 +553,19 @@ export function TransactionList({
                     onCategoryClick={onCategoryClick}
                     onTagClick={onTagClick}
                     onCycleStatus={handleCycleStatus}
-                    onEdit={onEdit}
+                    onEdit={
+                      jointPermissionsByAccount?.get(transaction.accountId) &&
+                      !jointPermissionsByAccount.get(transaction.accountId)!.canEdit
+                        ? undefined
+                        : onEdit
+                    }
                     onDuplicate={onDuplicate}
                     onScheduleRecurring={onScheduleRecurring}
                     onDeleteClick={handleDeleteClick}
+                    hideDelete={
+                      !!jointPermissionsByAccount?.get(transaction.accountId) &&
+                      !jointPermissionsByAccount.get(transaction.accountId)!.canDelete
+                    }
                     selectionMode={selectionMode}
                     isSelected={selectionMode ? (selectAllMatching ? !excludedIds?.has(transaction.id) : (selectedIds?.has(transaction.id) || false)) : undefined}
                     onToggleSelection={selectionMode ? () => onToggleSelection?.(transaction.id) : undefined}

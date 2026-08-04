@@ -35,12 +35,24 @@
   "settings": {
     "title": "Begeleide rondleidingen",
     "description": "Doorloop de functies van de app stap voor stap.",
-    "showList": "Rondleidingen tonen ({count})",
-    "hideList": "Rondleidingen verbergen",
+    "backLink": "Terug naar instellingen",
+    "pageTitle": "Begeleide rondleidingen",
+    "pageSubtitle": "Alle rondleidingen die Monize biedt, op één plek. Start er wanneer je wilt een — je kunt een rondleiding met Escape verlaten en hier weer oppakken.",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, one {# stap} other {# stappen}}",
+    "releaseLabel": "Nieuw in {version}",
+    "requirementsLoading": "Controleren of je deze rondleiding kunt volgen…",
+    "requires": {
+      "transactionEntry": "Voeg eerst een rekening toe — deze rondleiding laat zien hoe je een transactie vastlegt.",
+      "securitiesExist": "Voeg eerst een waardepapier toe — deze rondleiding opent er een uit je lijst met waardepapieren."
+    },
     "start": "Starten",
     "restart": "Opnieuw doen",
     "statusNotViewed": "Niet bekeken",
     "statusDismissed": "Voortijdig gestopt",
+    "resetHeading": "Opnieuw beginnen",
+    "resetDescription": "Wis alle geregistreerde rondleidingen zodat ze weer worden aangeboden vanaf het dashboard en na een update.",
     "reset": "Voortgang van rondleiding resetten",
     "resetSuccess": "Voortgang van rondleiding gereset.",
     "resetError": "Kan de voortgang van de rondleiding niet resetten. Probeer het opnieuw."

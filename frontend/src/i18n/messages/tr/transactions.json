@@ -412,7 +412,8 @@
       "categoryCreateFailed": "Kategori oluşturulamadı",
       "tagCreated": "\"{name}\" etiketi oluşturuldu",
       "fxRateRequired": "Yabancı para birimi işlemini kaydetmeden önce bir döviz kuru veya dönüştürülen tutarı girin.",
-      "attachmentsUploadFailed": "İşlem kaydedildi, ancak {count} ek yüklenemedi"
+      "attachmentsUploadFailed": "İşlem kaydedildi, ancak {count} ek yüklenemedi",
+      "jointPayeeCreateNotGranted": "Hesap sahibi size alacaklı oluşturma izni vermedi. Bunun yerine mevcut alacaklılardan birini seçin."
     },
     "ariaHistory": "Son işlemleri göster",
     "ariaHistoryForPayee": "Bu alacaklının son işlemlerini göster",
@@ -438,7 +439,8 @@
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeCaption": "%{percent} yurt dışı işlem ücreti ({fee}) içerir.",
       "totalInCurrency": "{currency} cinsinden toplam"
-    }
+    },
+    "jointSplitDisabled": "Paylaşılan bir hesaptaki bölünmüş işlemleri yalnızca sahibi yönetebilir"
   },
   "splitEditor": {
     "header": "Bölüm Ayrıntıları",

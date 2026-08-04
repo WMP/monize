@@ -64,14 +64,18 @@ decision was taken on must survive later price revisions, and the user's
 "executed" flag needs a stable row. Materialization runs on the report read
 (bounded to the last `GEM_HISTORY_PERIODS` = 24 periods) rather than only in a
 scheduled job, so a strategy that was just configured -- or whose prices arrived
-late -- produces its history immediately. Each period is inserted once; the
-unique index on `(strategy_id, evaluated_on)` arbitrates concurrent readers.
+late -- produces its history immediately. Each period is inserted once per
+algorithm version; the unique index on
+`(strategy_id, evaluated_on, algorithm_version)` (widened by migration 131 from
+the original `(strategy_id, evaluated_on)`) arbitrates concurrent readers. Any
+read written against the old two-column key selects more than one row now.
 
 A stored period is only *answered*, though, if it was calculated under the
 configuration in force now. `config_fingerprint` (migration 129) hashes the
 cadence, the lookback and the role-to-security mapping -- everything that
 changes what a signal says, and nothing that only affects presentation or the
-cost estimates -- led by `GEM_SIGNAL_ALGORITHM_VERSION`.
+cost estimates. `GEM_SIGNAL_ALGORITHM_VERSION` is deliberately **not** in the
+hash; it is a column of its own, for the reason set out below.
 
 That version is the other half of what a signal means. The settings say what
 question was asked; the code says how it was answered, and it changes too:
@@ -121,13 +125,16 @@ as the predecessor of a period computed against an earlier one, and the backtest
 would replay a hybrid of counterfactual and historical signals. A recomputed
 period likewise takes its `previousRole` only from another period this
 configuration produced. When a concurrent insert loses the unique key to a row
-carrying a *different* fingerprint, that row is replaced in place with the
-evaluation this request already has, and the chain continues from the
-replacement: refusing the foreign target is right, but leaving the slot empty
-would store the next period as a BUY, and nothing later repairs it -- once the
-losing period is refreshed, its successor already matches the current
-fingerprint and is never recomputed. The rows stay in the table -- they are real decisions
-with real `executed` flags -- they are simply not this configuration's history.
+carrying a *different* fingerprint, this materialization **stops**: it abandons
+the remaining periods and re-reads. Replacing the winner in place was the
+tempting alternative and is wrong -- the winner holds the configuration the
+database now has, this request is working from the one it was handed, and
+overwriting it would file this request's evaluation under the other request's
+settings. Breaking leaves the chain short rather than wrong, and the re-read at
+the end of the loop returns whatever is actually stored; the next read
+materializes the rest under the configuration it reloads. The rows stay in the
+table -- they are real decisions with real `executed` flags -- they are simply
+not this configuration's history.
 And the report says so: `materialize` returns how many periods it left out, and
 `LEGACY_PERIODS` names the count, because a history that silently comes up short
 is its own kind of lie. The warning clears itself as the 24-period window rolls
@@ -169,7 +176,15 @@ All routes are JWT-guarded and derive the user from the token.
 |-------|---------|
 | `GET /strategies/gem/report?range=3M\|6M\|1Y\|3Y\|5Y\|MAX` | The whole report as one read model. `range` only affects the performance series |
 | `PUT /strategies/gem` | Create or update the configuration (accounts, cadence, lookback, costs, role assignments). Sending `accountIds` replaces the whole set |
+| `POST /strategies/gem` | Start a new scenario from a name; answers with that scenario's report |
+| `DELETE /strategies/gem/:id` | Delete a scenario with its assignments and history; answers with a remaining scenario's report |
 | `POST /strategies/gem/signals/:id/executed?range=…` | Record that the operation was carried out; returns the refreshed report |
+
+Every route also accepts `strategyId` -- which scenario the request is about.
+Omitting it means "whichever the server picks", the user's default and the only
+one until they create a second. `DELETE` names its target in the path instead;
+`POST /strategies/gem` has no target yet. Both `:id` parameters go through
+`ParseUUIDPipe`.
 
 The response shape is `backend/src/strategies/gem-report.types.ts`, mirrored in
 `frontend/src/types/gem-strategy.ts`. `null` always means "not known" (unmapped
@@ -179,6 +194,22 @@ explicit unknown marker for it -- never a zero.
 Warnings the report can carry: `UNMAPPED_ROLE`, `INCOMPLETE_HISTORY`,
 `LEGACY_PERIODS`, `NO_ACCOUNT`, `NO_POSITION`, `FIRST_RUN`, `STALE_PRICES`,
 `CALCULATION_FAILED`.
+
+### No AI-assistant or MCP tool, on purpose
+
+GEM is reachable over HTTP only: there is no tool for it in
+`ai/query/tool-executor.service.ts` and none in `mcp/tools/`. That is a decision,
+not an omission. The project's shared-AI-tools rule forbids shipping a tool to
+one of those two surfaces without the other, so the choice is both or neither,
+and "neither" is where this lands for now -- the report is one read model built
+from a materializing read, and an assistant asking for it would be asking the
+server to write signal rows as a side effect of a question.
+
+Adding it later means one PR that wires the same domain method into both layers
+and returns the same shape from each. The method to share already exists:
+`GemStrategyService.getReport`. What such a tool must not do is call
+`materialize` -- give it a read that reports what is stored and says so when a
+period is unanswered, or the assistant becomes a second writer racing the report.
 
 `backtest` is `null` only when there is nothing honest to simulate: no stored
 evaluation this configuration produced, no priced period, or a signal that
@@ -510,6 +541,27 @@ answer both ends of a period with the same number: a flat period rather than an
 unpriced one for the backtest, and for momentum a trailing return of exactly
 zero, computed from one observation, that decides a signal the user is invited
 to trade on.
+
+The lag window has a second half: **a boundary is priceable only once the series
+holds a close dated at or after it.** Inside the window alone, "the market was
+shut on the 31st" and "the 31st's close has not been fetched yet" are the same
+observation -- the newest close is a few days old either way. Open the report at
+09:00 on 1 August before the quote job has stored 31 July's close and the July
+period would be answered from the 30th's, materialized under the current
+fingerprint and version, and then skipped forever, including where the true
+month-end close flips the decision. So an unsettled boundary defers exactly as an
+unelapsed period does (`spanCloses` returns `UNELAPSED`), and the next read picks
+it up. An instrument that stops reporting altogether fails the fortnight test
+within two weeks, so nothing can be held open indefinitely.
+
+The one exception is the backtest's trailing period, whose far end is `asOf`
+rather than a calendar boundary the strategy fixed -- "what is this worth now".
+No close is ever dated at or after today until the market shuts, so requiring one
+there would drop the newest period on every trading day, which for a strategy
+with a single evaluation is the whole run. `spanCloses` takes that distinction as
+an argument (`SpanEnd`: `BOUNDARY` or `AS_OF`) and defaults to the strict
+reading, so a new call site is strict unless it argues otherwise. Nothing
+persists an `AS_OF` span.
 `PUT /strategies/gem` tops that history up first: any assigned security whose
 prices do not reach back over the momentum window plus the 24 periods the
 history table shows is backfilled from the quote provider before the signal is

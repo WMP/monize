@@ -128,6 +128,32 @@ grew a column selects more than one row now; a query still written against the
 old key returns whichever the database offers first. Grep for reads of a
 unique key in the migration that widens it.
 
+## A joint account is only shared where somebody remembered to share it
+
+`transaction.userId = :userId` is the wrong ownership predicate for any
+own-context read a delegate can reach: a jointly shared account's rows belong
+to the **owner**, so the grantee matches none of them and the endpoint returns
+a confident empty answer rather than an error. That is how the register got the
+joint scope on day one while the summary, grouped totals and monthly totals
+beside it did not -- a joint account's detail page drew a full balance chart
+with an empty cash flow, no top categories and no top payees under it.
+
+Own-context reads resolve their scope through
+`TransactionsController.resolveOwnContextJointScope` (the accounts controller's
+equivalents are `jointAccountIdSetFor` for list reads and a `NotFoundException`
+fallback through `jointAccessFor` for `:id` reads, as on `getBalance` and
+`getBalanceForecast`). Filtered to exactly one joint account, the query runs as
+the owner so every derived value -- category descendant expansion, the search
+term parsed in the user's number/date format, the money math -- is byte-identical
+to the owner's own view; anything else keeps the caller's scope and widens it by
+the already-authorized joint ids, never by raw request input. The widened
+predicate itself is written once per service (`registerScope`,
+`analyticsScope`).
+
+An endpoint that deliberately stays owner-only says so where it is skipped:
+`tag-key-breakdown` does, because tags are personal and a joint row never
+carries the grantee's.
+
 ## A money value carries the currency it was calculated into
 
 Not the currency of the account it is filed under. `InvestmentTransaction.exchangeRate`
@@ -200,6 +226,37 @@ Server-rendered strings (exception messages, email copy) are localized via `nest
 ## OAuth / OIDC provider
 
 `node-oidc-provider` prints its own `oidc-provider NOTICE:`/`WARNING:` lines with bare `console.info`/`console.warn`, so they land in the backend logs unformatted, outside the Nest `Logger`. Every such notice means a config option was left at its default -- fix the config rather than the log line. In particular, `ttl` needs an explicit number for every artifact the provider can issue (`AccessToken`, `AuthorizationCode`, `IdToken`, `RefreshToken`, `Grant`, `Interaction`, `Session`); the guard test in `src/oauth/oauth-provider.service.spec.ts` fails when one is missing.
+
+## Automatic backups are an operator setting, not a user preference
+
+The auto-backup endpoints live on `AutoBackupController`, whose class-level
+`@Roles("admin")` is the whole access rule -- put a new endpoint there and it is
+admin-only without anyone remembering to say so. Manual export/restore, which
+touches only the caller's own data, stays on `BackupController` for everyone.
+
+Every other user is enrolled on the deployment defaults by
+`AutoBackupService.enrollManagedUsers`, which runs at the top of the hourly
+cron: nobody but an admin can switch the feature on, so without it a non-admin
+would silently have no backups. It reconciles rather than seeds -- a row that
+has drifted is written back to the defaults, an unchanged one is not written at
+all, and `lastBackup*`/`nextBackupAt` are left alone so enrollment never
+re-triggers a backup.
+
+Backups are encrypted with the user's own password. For a local-auth account
+the server only ever holds that in plaintext at the moment they type it, so
+`rememberLoginPassword` captures it from registration, login and
+change-password and nothing asks them to configure anything. An OIDC account
+has no password of ours, so those users set a dedicated one in Settings
+(`setBackupPasswordForOidcUser`) or go unencrypted; `getStatus().manageable` is
+what the UI gates that section on, and both management methods refuse a
+local-auth caller rather than accepting a change the next login would undo.
+
+A stored copy is checked against the account's current password hash before it
+is used (`resolveBackupPassword`) -- encrypting with a password the user has
+since changed produces a file that looks like a backup and cannot be opened.
+That resolution has three outcomes, not two: nothing stored (write plaintext), a
+usable password (encrypt), and stored-but-undecryptable (refuse, because the
+previous backups are encrypted and silently downgrading is worse than failing).
 
 ## Cron Jobs
 

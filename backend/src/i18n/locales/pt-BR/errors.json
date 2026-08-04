@@ -179,7 +179,6 @@
     "unsupportedBackupVersion": "Versão de backup não suportada: {{ version }}. Esperada {{ expected }}",
     "missingExportedAt": "Formato de backup inválido: exportedAt ausente",
     "tableNotAllowed": "A tabela {{ table }} não é permitida na restauração de backup",
-    "localAuthRequired": "É necessária a autenticação por senha local",
     "encryptionNotConfigured": "O servidor não está configurado para criptografia (AI_ENCRYPTION_KEY ausente)",
     "backupPasswordOidcOnly": "A senha de backup só é configurável para usuários OIDC; os usuários locais utilizam a senha de login",
     "backupPasswordTooShort": "A senha de backup deve ter pelo menos {{ minLength }} caracteres",
@@ -250,7 +249,16 @@
     "capabilityNotGranted": "O proprietário da conta não concedeu permissão para {{ operation }} {{ resource }}. Peça a ele para ativar isso nas configurações de acesso delegado.",
     "sectionNotGranted": "O proprietário da conta não compartilhou a seção {{ sectionLabel }} com você.",
     "accountNotShared": "O proprietário da conta não compartilhou esta conta com você.",
-    "accountOperationNotGranted": "O proprietário da conta não concedeu permissão para {{ operation }} transações nesta conta."
+    "accountOperationNotGranted": "O proprietário da conta não concedeu permissão para {{ operation }} transações nesta conta.",
+    "jointOwnAccount": "Esta é a sua própria conta; o acesso de conta conjunta não se aplica.",
+    "jointAccountTypeReadOnly": "Este tipo de conta é compartilhado somente para leitura; só o proprietário pode alterar as transações.",
+    "jointOwnAccountNetWorth": "Para contas suas, use a configuração de patrimônio líquido da própria conta.",
+    "jointRequiresRead": "É necessário acesso de LEITURA para marcar uma conta como conjunta",
+    "jointRequiresFullAccount": "Contas conjuntas só podem ser compartilhadas com usuários que tenham a própria conta Monize",
+    "jointPayeeCreateNotGranted": "O proprietário da conta não concedeu a você permissão para criar favorecidos. Escolha um dos favorecidos existentes.",
+    "jointTagsNotAllowed": "As tags são pessoais, então não podem ser definidas em transações de uma conta compartilhada.",
+    "jointSplitsNotAllowed": "Transações divididas em uma conta compartilhada só podem ser gerenciadas pelo proprietário.",
+    "jointTransferRowLocked": "Isto é uma transferência. Use o editor de transferências."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "O e-mail não está configurado. O acesso de emergência não pode ser ativado até que o SMTP seja configurado.",
@@ -470,7 +478,8 @@
     "tagKeyRequired": "É necessária uma chave de tag (1-100 caracteres)",
     "fxFieldsIncomplete": "originalAmount e originalCurrencyCode devem ser fornecidos juntos",
     "fxRateRequired": "É necessária uma taxa de câmbio positiva para uma transação em moeda estrangeira",
-    "fxSignMismatch": "originalAmount e amount devem ter o mesmo sinal"
+    "fxSignMismatch": "originalAmount e amount devem ter o mesmo sinal",
+    "jointAccountMoveLocked": "As transações de uma conta compartilhada não podem ser movidas para outra conta."
   },
   "users": {
     "userNotFound": "Usuário não encontrado",

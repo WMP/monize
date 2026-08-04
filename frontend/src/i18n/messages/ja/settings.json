@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "自動バックアップ",
     "description": "スケジュールに従ってフォルダーにデータを自動でバックアップします。MonizeはDockerで動作しているため、ホストフォルダーをボリュームとしてコンテナにマップする必要があります（例: -v /host/backups:/data/backups）。",
+    "adminManagedNote": "これらの設定を変更できるのは管理者のみです。他のすべてのユーザーは、同じスケジュールと保持ポリシーで、それぞれ専用のフォルダーに自動的にバックアップされます。",
     "loadingText": "読み込み中...",
     "enableLabel": "自動バックアップを有効化",
     "backupFolderLabel": "バックアップフォルダー",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "各ユーザーのバックアップは、このフォルダー内にあるユーザーIDを名前とする専用フォルダーに保存されます。",
+    "perUserFolderHelpWithPath": "各ユーザーのバックアップは、このフォルダー内にあるユーザーIDを名前とする専用フォルダーに保存されます。あなたのフォルダー: {path}",
     "browseButton": "参照...",
     "validateButton": "検証",
     "validatingButton": "検証中...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "バックアップ暗号化",
       "descriptionOidc": "ここで設定した専用のバックアップパスワードで手動および自動バックアップを暗号化します。復元にはパスワードが必要です。",
-      "descriptionLocal": "ログインパスワードで手動および自動バックアップを暗号化します。復元にはパスワードが必要です。",
       "loading": "読み込み中...",
       "enabledBadge": "有効",
       "changePasswordButton": "バックアップパスワードを変更",
       "disableButton": "無効化",
       "setPasswordButton": "バックアップパスワードを設定",
-      "enableEncryptedButton": "暗号化バックアップを有効化",
       "setupModal": {
         "titleOidc": "バックアップパスワードを設定",
-        "titleLocal": "暗号化バックアップを有効化",
         "descriptionOidc": "バックアップの暗号化に使用するパスワードを選択してください。安全な場所に保存してください — 復元に必要です。",
-        "descriptionLocal": "ログインパスワードを確認してください。すべてのバックアップ（手動および自動）の暗号化に使用されます。",
         "placeholderOidc": "新しいバックアップパスワード（12文字以上）",
-        "placeholderLocal": "ログインパスワード",
         "savingButton": "保存中...",
         "confirmButton": "確認"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "デリゲートの取り消しに失敗しました",
       "resetPasswordFailed": "パスワードのリセットに失敗しました",
       "copyFailed": "クリップボードにコピーできませんでした"
-    }
+    },
+    "jointLabel": "{count, plural, other {# 件の共同口座}}"
   },
   "delegateAccessModal": {
     "title": "アクセスを編集",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "付与する口座がありません。",
-      "grantAll": "すべて付与"
+      "grantAll": "すべて付与",
+      "jointRequiresFullAccount": "共同口座は、自分のMonizeアカウントを持つユーザーとのみ共有できます"
     },
     "shared": {
       "description": "支払先、カテゴリ、タグの読み取りは常に許可されています。これは作成/編集/削除を制御します。"
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "設定セクション",
     "profile": "プロフィール",
     "preferences": "設定",
+    "tours": "ガイド付きツアー",
     "notifications": "通知",
     "security": "セキュリティ",
     "sharedAccess": "共有アクセス",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "共有アクセス",
       "description": "別のユーザーに特定の口座へのきめ細かいアクセスを付与します。"
+    },
+    "toursCard": {
+      "title": "ガイド付きツアー",
+      "description": "Monize のツアーの一覧と、すでに見たかどうかがわかります。どれでも開始したり、もう一度見たりできます。"
     },
     "emergencyAccessCard": {
       "title": "緊急アクセス",

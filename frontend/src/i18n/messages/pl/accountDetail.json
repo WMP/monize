@@ -6,7 +6,10 @@
     "back": "Powrót do kont",
     "switchAccount": "Przejdź do innego konta",
     "switchPlaceholder": "Filtruj konta...",
-    "switchNoMatches": "Brak dopasowanych kont"
+    "switchNoMatches": "Brak dopasowanych kont",
+    "jointBadge": "Wspólne",
+    "jointSharedBy": "Udostępnione przez {owner}",
+    "jointSharedWith": "Udostępnione {count, plural, one {# osobie} few {# osobom} many {# osobom} other {# osobom}}"
   },
   "loading": "Ładowanie szczegółów konta...",
   "error": {

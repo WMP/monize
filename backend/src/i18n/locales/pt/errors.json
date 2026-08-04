@@ -179,7 +179,6 @@
     "unsupportedBackupVersion": "Versão de cópia de segurança não suportada: {{ version }}. Esperada {{ expected }}",
     "missingExportedAt": "Formato de cópia de segurança inválido: exportedAt em falta",
     "tableNotAllowed": "A tabela {{ table }} não é permitida no restauro de cópia de segurança",
-    "localAuthRequired": "É necessária a autenticação por palavra-passe local",
     "encryptionNotConfigured": "O servidor não está configurado para encriptação (AI_ENCRYPTION_KEY em falta)",
     "backupPasswordOidcOnly": "A palavra-passe de cópia de segurança só é configurável para utilizadores OIDC; os utilizadores locais utilizam a palavra-passe de início de sessão",
     "backupPasswordTooShort": "A palavra-passe de cópia de segurança deve ter pelo menos {{ minLength }} caracteres",
@@ -250,7 +249,16 @@
     "capabilityNotGranted": "O proprietário da conta não lhe concedeu permissão para {{ operation }} {{ resource }}. Peça-lhe para ativar isto nas suas definições de acesso delegado.",
     "sectionNotGranted": "O proprietário da conta não partilhou a secção {{ sectionLabel }} consigo.",
     "accountNotShared": "O proprietário da conta não partilhou esta conta consigo.",
-    "accountOperationNotGranted": "O proprietário da conta não lhe concedeu permissão para {{ operation }} transações nesta conta."
+    "accountOperationNotGranted": "O proprietário da conta não lhe concedeu permissão para {{ operation }} transações nesta conta.",
+    "jointOwnAccount": "Esta é a sua própria conta; o acesso de conta conjunta não se aplica.",
+    "jointAccountTypeReadOnly": "Este tipo de conta é partilhado apenas para leitura; só o proprietário pode alterar as suas transações.",
+    "jointOwnAccountNetWorth": "Para contas suas, use a definição de património líquido da própria conta.",
+    "jointRequiresRead": "É necessário acesso de LEITURA para marcar uma conta como conjunta",
+    "jointRequiresFullAccount": "As contas conjuntas só podem ser partilhadas com utilizadores que tenham a sua própria conta Monize",
+    "jointPayeeCreateNotGranted": "O proprietário da conta não lhe concedeu permissão para criar beneficiários. Escolha um dos beneficiários existentes.",
+    "jointTagsNotAllowed": "As etiquetas são pessoais, pelo que não podem ser definidas em transações de uma conta partilhada.",
+    "jointSplitsNotAllowed": "As transações divididas numa conta partilhada só podem ser geridas pelo proprietário.",
+    "jointTransferRowLocked": "Isto é uma transferência. Use o editor de transferências."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "O e-mail não está configurado. O acesso de emergência não pode ser ativado até que o SMTP seja configurado.",
@@ -470,7 +478,8 @@
     "tagKeyRequired": "É necessária uma chave de etiqueta (1-100 caracteres)",
     "fxFieldsIncomplete": "originalAmount e originalCurrencyCode devem ser fornecidos em conjunto",
     "fxRateRequired": "É necessária uma taxa de câmbio positiva para uma transação em moeda estrangeira",
-    "fxSignMismatch": "originalAmount e amount devem ter o mesmo sinal"
+    "fxSignMismatch": "originalAmount e amount devem ter o mesmo sinal",
+    "jointAccountMoveLocked": "As transações de uma conta partilhada não podem ser movidas para outra conta."
   },
   "users": {
     "userNotFound": "Utilizador não encontrado",

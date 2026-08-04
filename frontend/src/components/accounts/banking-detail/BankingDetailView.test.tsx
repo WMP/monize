@@ -158,6 +158,23 @@ describe('BankingDetailView', () => {
     expect(mockPush).toHaveBeenCalledWith('/payees/p1');
   });
 
+  it('links a top payee on a joint account to the register, not the payee page', async () => {
+    // The payee belongs to the owner's ledger, so /payees/:id 404s in this
+    // user's context; the register does serve the owner's rows for a joint
+    // account, so the row has to go there instead.
+    await renderView(makeAccount({ isJoint: true }));
+    await waitFor(() => expect(screen.getByText('Corner Store')).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.click(screen.getByText('Corner Store'));
+    });
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^\/transactions\?accountId=chq-1&payeeId=p1&startDate=.+&endDate=.+$/,
+      ),
+    );
+    expect(mockPush).not.toHaveBeenCalledWith('/payees/p1');
+  });
+
   it('links Money In and Money Out to amount-filtered transactions', async () => {
     await renderView();
     await waitFor(() => expect(screen.getByText('Money In')).toBeInTheDocument());

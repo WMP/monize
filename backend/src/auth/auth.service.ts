@@ -8,6 +8,7 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
+import { ModuleRef } from "@nestjs/core";
 import {
   DataSource,
   DeepPartial,
@@ -35,6 +36,7 @@ import { TokenService } from "./token.service";
 import { TwoFactorService } from "./two-factor.service";
 import { AuthEmailService } from "./auth-email.service";
 import { DelegationService } from "../delegation/delegation.service";
+import { BackupEncryptionService } from "../backup/backup-encryption.service";
 import { withSystemContext } from "../common/db/with-context";
 import { withScopedDb } from "../common/db/scoped-db";
 import { tr } from "../i18n/translate";
@@ -63,6 +65,7 @@ export class AuthService {
     private authEmailService: AuthEmailService,
     private delegationService: DelegationService,
     private readonly i18n: I18nService,
+    private readonly moduleRef: ModuleRef,
   ) {
     this.jwtSecret = this.configService.get<string>("JWT_SECRET")!;
     this.csrfKey = derivePurposeKey(this.jwtSecret, "csrf-token");
@@ -86,6 +89,32 @@ export class AuthService {
   /** Get the derived CSRF key for use by the controller */
   getCsrfKey(): string {
     return this.csrfKey;
+  }
+
+  /**
+   * Hand the just-proven password to the backup encryption service so the
+   * automatic backup cron can encrypt this user's backups with it. This is the
+   * only moment the server holds their password in plaintext, and the feature
+   * asks them to configure nothing, so it is captured here.
+   *
+   * Resolved lazily via ModuleRef: BackupModule imports AuthModule, so an
+   * injected dependency the other way would be a cycle. Best-effort in every
+   * sense -- signing in must not fail because a backup convenience did.
+   */
+  private async rememberBackupPassword(
+    userId: string,
+    password: string,
+  ): Promise<void> {
+    try {
+      const backupEncryption = this.moduleRef.get(BackupEncryptionService, {
+        strict: false,
+      });
+      await backupEncryption.rememberLoginPassword(userId, password);
+    } catch (err) {
+      this.logger.warn(
+        `Could not store the backup password for user ${userId}: ${err.message}`,
+      );
+    }
   }
 
   // RLS: register/login/refresh/verify/OIDC lookups are public, pre-identity
@@ -283,6 +312,10 @@ export class AuthService {
       "SERIALIZABLE",
     );
 
+    // Automatic backups start encrypted from the first one, without waiting
+    // for the account's first sign-in.
+    await this.rememberBackupPassword(user.id, password);
+
     if (requireVerification) {
       // Account exists but cannot sign in until the email is verified, so we
       // deliberately do NOT issue tokens here. Hand the raw token back to the
@@ -405,6 +438,13 @@ export class AuthService {
         tr("errors.auth.accountDeactivated", "Account is deactivated"),
       );
     }
+
+    // The password is proven correct and the account is usable: this is where
+    // the plaintext exists, so this is where the backup copy is refreshed. It
+    // runs before the 2FA branch because every exit below it is a successful
+    // password check, and a stale copy is what produces a backup the user
+    // cannot decrypt.
+    await this.rememberBackupPassword(user.id, password);
 
     // Reset failed attempts on successful login
     if (user.failedLoginAttempts > 0 || user.lockedUntil) {

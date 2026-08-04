@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "Automatic Backup",
     "description": "Automatically back up your data to a folder on a schedule. Since Monize runs in Docker, you must map a host folder into the container as a volume (e.g., -v /host/backups:/data/backups).",
+    "adminManagedNote": "Only administrators can change these settings. Every other user is backed up automatically on the same schedule and retention policy, into a folder of their own.",
     "loadingText": "Loading...",
     "enableLabel": "Enable automatic backups",
     "backupFolderLabel": "Backup Folder",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "Each user's backups go in their own folder inside this one, named for their user ID.",
+    "perUserFolderHelpWithPath": "Each user's backups go in their own folder inside this one, named for their user ID. Yours: {path}",
     "browseButton": "Browse...",
     "validateButton": "Validate",
     "validatingButton": "Validating...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "Backup Encryption",
       "descriptionOidc": "Encrypt manual and automatic backups with a dedicated backup password you set here. The password is required to restore.",
-      "descriptionLocal": "Encrypt manual and automatic backups with your login password. The password is required to restore.",
       "loading": "Loading...",
       "enabledBadge": "Enabled",
       "changePasswordButton": "Change Backup Password",
       "disableButton": "Disable",
       "setPasswordButton": "Set Backup Password",
-      "enableEncryptedButton": "Enable Encrypted Backups",
       "setupModal": {
         "titleOidc": "Set Backup Password",
-        "titleLocal": "Enable Encrypted Backups",
-        "descriptionOidc": "Choose a password that will be used to encrypt your backups. Save it somewhere safe -- you will need it to restore.",
-        "descriptionLocal": "Confirm your login password. It will be used to encrypt all backups (manual and automatic).",
+        "descriptionOidc": "Choose a password that will be used to encrypt your backups. Save it somewhere safe, because you will need it to restore.",
         "placeholderOidc": "New backup password (12+ chars)",
-        "placeholderLocal": "Your login password",
         "savingButton": "Saving...",
         "confirmButton": "Confirm"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "Failed to revoke delegate",
       "resetPasswordFailed": "Failed to reset password",
       "copyFailed": "Could not copy to clipboard"
-    }
+    },
+    "jointLabel": "{count, plural, one {# joint account} other {# joint accounts}}"
   },
   "delegateAccessModal": {
     "title": "Edit access",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "No accounts to grant.",
-      "grantAll": "Grant all"
+      "grantAll": "Grant all",
+      "jointRequiresFullAccount": "Joint accounts can only be shared with users who have their own Monize account"
     },
     "shared": {
       "description": "READ of payees, categories and tags is always allowed. These control create/edit/delete."
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "Settings sections",
     "profile": "Profile",
     "preferences": "Preferences",
+    "tours": "Guided Tours",
     "notifications": "Notifications",
     "security": "Security",
     "sharedAccess": "Shared Access",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "Shared Access",
       "description": "Grant another person granular access to specific accounts."
+    },
+    "toursCard": {
+      "title": "Guided Tours",
+      "description": "Every walkthrough Monize offers, with what you have already seen. Start or retake any of them."
     },
     "emergencyAccessCard": {
       "title": "Emergency Access",

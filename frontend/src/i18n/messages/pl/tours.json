@@ -35,12 +35,24 @@
   "settings": {
     "title": "Przewodniki po aplikacji",
     "description": "Poznaj funkcje aplikacji krok po kroku.",
-    "showList": "Pokaż przewodniki ({count})",
-    "hideList": "Ukryj przewodniki",
+    "backLink": "Powrót do Ustawień",
+    "pageTitle": "Przewodniki po aplikacji",
+    "pageSubtitle": "Wszystkie przewodniki, które oferuje Monize, w jednym miejscu. Uruchom dowolny w każdej chwili — przewodnik możesz przerwać klawiszem Escape i wrócić do niego stąd.",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, one {# krok} few {# kroki} many {# kroków} other {# kroku}}",
+    "releaseLabel": "Nowość w {version}",
+    "requirementsLoading": "Sprawdzanie, czy możesz przejść ten przewodnik…",
+    "requires": {
+      "transactionEntry": "Najpierw dodaj konto — ten przewodnik pokazuje, jak zapisać transakcję.",
+      "securitiesExist": "Najpierw dodaj papier wartościowy — ten przewodnik otwiera jeden z Twojej listy."
+    },
     "start": "Rozpocznij",
     "restart": "Powtórz",
     "statusNotViewed": "Nieobejrzany",
     "statusDismissed": "Zakończony przedwcześnie",
+    "resetHeading": "Zacznij od nowa",
+    "resetDescription": "Wyczyść wszystkie zapisane przewodniki, aby były znów proponowane na pulpicie i po aktualizacji.",
     "reset": "Zresetuj postęp przewodnika",
     "resetSuccess": "Postęp przewodnika został zresetowany.",
     "resetError": "Nie udało się zresetować postępu przewodnika. Spróbuj ponownie."

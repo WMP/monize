@@ -412,7 +412,8 @@
       "categoryCreateFailed": "Falha ao criar categoria",
       "tagCreated": "Etiqueta \"{name}\" criada",
       "fxRateRequired": "Insira uma taxa de câmbio ou o valor convertido antes de salvar uma transação em moeda estrangeira.",
-      "attachmentsUploadFailed": "Transação salva, mas falhou o envio de {count} anexo(s)"
+      "attachmentsUploadFailed": "Transação salva, mas falhou o envio de {count} anexo(s)",
+      "jointPayeeCreateNotGranted": "O proprietário da conta não concedeu a você permissão para criar favorecidos. Escolha um dos favorecidos existentes."
     },
     "ariaHistory": "Mostrar transações recentes",
     "ariaHistoryForPayee": "Mostrar transações recentes deste beneficiário",
@@ -438,7 +439,8 @@
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeCaption": "Inclui uma taxa de transação no exterior de {percent}% ({fee}).",
       "totalInCurrency": "Total em {currency}"
-    }
+    },
+    "jointSplitDisabled": "Transações divididas em uma conta compartilhada só podem ser gerenciadas pelo proprietário"
   },
   "splitEditor": {
     "header": "Detalhes das Divisões",

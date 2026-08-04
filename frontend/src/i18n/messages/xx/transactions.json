@@ -413,7 +413,8 @@
       "categoryCreated": "[XX-Category \"{name}\" created-XX]",
       "categoryCreateFailed": "[XX-Failed to create category-XX]",
       "tagCreated": "[XX-Tag \"{name}\" created-XX]",
-      "fxRateRequired": "[XX-Enter an exchange rate or the converted amount before saving a foreign-currency transaction.-XX]"
+      "fxRateRequired": "[XX-Enter an exchange rate or the converted amount before saving a foreign-currency transaction.-XX]",
+      "jointPayeeCreateNotGranted": "[XX-The account owner has not granted you permission to create payees. Pick one of their existing payees instead.-XX]"
     },
     "ariaHistory": "[XX-Show recent transactions-XX]",
     "ariaHistoryForPayee": "[XX-Show recent transactions for this payee-XX]",
@@ -438,7 +439,8 @@
         "original": "[XX-Original-XX]"
       },
       "feeCaption": "[XX-Includes a {percent}% foreign transaction fee ({fee}).-XX]"
-    }
+    },
+    "jointSplitDisabled": "[XX-Split transactions in a shared account can only be managed by the owner-XX]"
   },
   "splitEditor": {
     "header": "[XX-Split Details-XX]",

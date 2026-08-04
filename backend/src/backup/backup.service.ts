@@ -120,6 +120,7 @@ const INTENTIONALLY_EXCLUDED_TABLES: ReadonlySet<string> = new Set([
   "account_delegates", // cross-user sharing relationship
   "account_delegate_grants", // cross-user sharing relationship
   "delegate_account_favourites", // cross-user sharing state
+  "delegate_net_worth_exclusions", // cross-user sharing state (joint accounts)
   "emergency_access_contacts", // cross-user emergency-access config
   "emergency_access_settings", // cross-user emergency-access config
   "oauth_payloads", // transient OIDC state

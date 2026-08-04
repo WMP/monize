@@ -35,12 +35,24 @@
   "settings": {
     "title": "導覽引導",
     "description": "逐步了解應用程式的各項功能。",
-    "showList": "顯示導覽（{count}）",
-    "hideList": "隱藏導覽",
+    "backLink": "返回設定",
+    "pageTitle": "導覽引導",
+    "pageSubtitle": "Monize 提供的所有導覽都集中在這裡。隨時都能開始——按 Escape 鍵可以離開導覽，之後再從這裡繼續。",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, other {# 步}}",
+    "releaseLabel": "{version} 新增",
+    "requirementsLoading": "正在檢查你是否能進行此導覽…",
+    "requires": {
+      "transactionEntry": "請先新增一個帳戶——此導覽會示範如何記錄一筆交易。",
+      "securitiesExist": "請先新增一檔證券——此導覽會從你的證券清單中開啟一檔。"
+    },
     "start": "開始",
     "restart": "重新查看",
     "statusNotViewed": "未檢視",
     "statusDismissed": "中途離開",
+    "resetHeading": "重新開始",
+    "resetDescription": "清除所有已記錄的導覽，讓它們重新在儀表板和更新後出現。",
     "reset": "重設導覽進度",
     "resetSuccess": "導覽進度已重設。",
     "resetError": "無法重設導覽進度，請再試一次。"

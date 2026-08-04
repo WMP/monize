@@ -59,4 +59,29 @@ describe("GemStrategyTabs", () => {
     });
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("points aria-controls only at the panel that exists", () => {
+    // Only the selected tab's panel is rendered, and `aria-controls` must not
+    // name an element that is not in the document -- a screen reader following
+    // it lands nowhere. This is why the bar is the shared `ui/Tabs`: the
+    // hand-rolled one set the attribute on all five.
+    render(<GemStrategyTabs active="portfolio" onChange={vi.fn()} />);
+
+    expect(
+      screen.getByRole("tab", { name: "My portfolio" }),
+    ).toHaveAttribute("aria-controls", "gem-panel-portfolio");
+    for (const name of ["Overview", "Signals", "Backtest", "Settings"]) {
+      expect(screen.getByRole("tab", { name })).not.toHaveAttribute(
+        "aria-controls",
+      );
+    }
+  });
+
+  it("keeps the id convention the report's panels point back at", () => {
+    render(<GemStrategyTabs active="overview" onChange={vi.fn()} />);
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute(
+      "id",
+      "gem-tab-overview",
+    );
+  });
 });

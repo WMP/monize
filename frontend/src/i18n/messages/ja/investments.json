@@ -259,6 +259,7 @@
   },
   "validation": {
     "accountRequired": "口座は必須です",
-    "dateRequired": "日付は必須です"
+    "dateRequired": "日付は必須です",
+    "acquisitionPriceRequired": "1株あたりの価格は必須で、ゼロより大きい必要があります。取得原価が不明な株式には「株数追加」を使用してください。"
   }
 }

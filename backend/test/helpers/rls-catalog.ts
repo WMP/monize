@@ -178,6 +178,11 @@ const FKLESS_PARENT_REFS: Record<string, ForeignKeyInfo> = {
     refTable: "accounts",
     refColumn: "id",
   },
+  "delegate_net_worth_exclusions.account_id": {
+    column: "account_id",
+    refTable: "accounts",
+    refColumn: "id",
+  },
   "account_delegate_grants.account_id": {
     column: "account_id",
     refTable: "accounts",

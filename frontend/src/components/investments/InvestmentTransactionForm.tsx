@@ -40,7 +40,12 @@ import { FormActions } from '@/components/ui/FormActions';
 
 const logger = createLogger('InvestmentTxForm');
 
-const buildInvestmentTransactionSchema = (t: (key: string) => string) => z.object({
+/**
+ * Exported for its own spec. `InvestmentTransactionForm.test.tsx` mocks
+ * `zodResolver` away, so nothing in that file exercises a single rule in here;
+ * the schema is tested directly instead of through a form that cannot see it.
+ */
+export const buildInvestmentTransactionSchema = (t: (key: string) => string) => z.object({
   accountId: z.string().min(1, t('validation.accountRequired')),
   // 'TRANSFER' is a UI-only action that creates a TRANSFER_OUT + TRANSFER_IN
   // pair on the backend; it is offered only when creating, not editing.
@@ -58,6 +63,22 @@ const buildInvestmentTransactionSchema = (t: (key: string) => string) => z.objec
   // SPLIT-only fields, combined into `quantity` (the ratio) on submit.
   splitNewShares: z.coerce.number().gt(0).optional(),
   splitOldShares: z.coerce.number().gt(0).optional(),
+}).superRefine((data, ctx) => {
+  // An acquisition states what it cost. The backend refuses a BUY or REINVEST
+  // priced at zero or left blank on every path that writes one -- a zero-cost
+  // purchase is not a concept this application has, and shares that arrived
+  // without a cost are ADD_SHARES -- so the field says so here rather than
+  // letting the save go out and come back as a generic 400 toast. `price` is
+  // shared with actions that legitimately allow zero (a SPLIT's optional new
+  // price, the amount-only actions that borrow the field), so the rule is keyed
+  // on the action instead of tightened on the field.
+  if (data.action !== 'BUY' && data.action !== 'REINVEST') return;
+  if (data.price !== undefined && data.price > 0) return;
+  ctx.addIssue({
+    code: 'custom',
+    path: ['price'],
+    message: t('validation.acquisitionPriceRequired'),
+  });
 });
 
 type InvestmentTransactionFormData = z.infer<ReturnType<typeof buildInvestmentTransactionSchema>>;

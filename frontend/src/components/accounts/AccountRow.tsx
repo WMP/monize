@@ -20,6 +20,8 @@ export interface AccountActionLabels {
   closeTitleEnabled: string;
   reopen: string;
   delete: string;
+  includeInNetWorth?: string;
+  excludeFromNetWorth?: string;
 }
 
 export interface AccountActionHandlers {
@@ -30,6 +32,8 @@ export interface AccountActionHandlers {
   onCloseClick: (account: Account) => void;
   onReopen: (account: Account) => void;
   onDeleteClick: (account: Account) => void;
+  // Joint rows only: the grantee's per-account net-worth exclusion toggle.
+  onToggleNetWorthExclusion?: (account: Account) => void;
 }
 
 /**
@@ -75,6 +79,10 @@ export function buildAccountActions(
       ? brokerageMarketValue === null ||
         Math.round(brokerageMarketValue * 10000) !== 0
       : Number(account.currentBalance) !== 0;
+  // A joint row is another user's account shown natively: the account object
+  // itself (edit/close/reopen/delete) and reconciliation stay owner-only. The
+  // grantee instead gets their personal net-worth inclusion toggle.
+  const isJoint = !!account.isJoint;
   return [
     {
       key: 'view',
@@ -99,7 +107,7 @@ export function buildAccountActions(
       icon: 'edit',
       tone: 'primary',
       onClick: () => handlers.onEdit(account),
-      hidden: account.isClosed,
+      hidden: account.isClosed || isJoint,
     },
     {
       key: 'reconcile',
@@ -107,7 +115,20 @@ export function buildAccountActions(
       icon: 'reconcile',
       tone: 'success',
       onClick: () => handlers.onReconcile(account),
-      hidden: account.isClosed || account.accountSubType === 'INVESTMENT_BROKERAGE',
+      hidden:
+        account.isClosed ||
+        account.accountSubType === 'INVESTMENT_BROKERAGE' ||
+        isJoint,
+    },
+    {
+      key: 'netWorthExclusion',
+      label: account.excludeFromNetWorth
+        ? (labels.includeInNetWorth ?? '')
+        : (labels.excludeFromNetWorth ?? ''),
+      icon: 'view',
+      tone: 'neutral',
+      onClick: () => handlers.onToggleNetWorthExclusion?.(account),
+      hidden: !isJoint || !handlers.onToggleNetWorthExclusion,
     },
     {
       key: 'close',
@@ -115,7 +136,7 @@ export function buildAccountActions(
       icon: 'close',
       tone: 'warning',
       onClick: () => handlers.onCloseClick(account),
-      hidden: account.isClosed,
+      hidden: account.isClosed || isJoint,
       disabled: balanceNonZero,
       title: balanceNonZero ? labels.closeTitleDisabled : labels.closeTitleEnabled,
     },
@@ -125,7 +146,7 @@ export function buildAccountActions(
       icon: 'reopen',
       tone: 'primary',
       onClick: () => handlers.onReopen(account),
-      hidden: !account.isClosed,
+      hidden: !account.isClosed || isJoint,
     },
     {
       key: 'delete',
@@ -134,7 +155,7 @@ export function buildAccountActions(
       tone: 'delete',
       destructive: true,
       onClick: () => handlers.onDeleteClick(account),
-      hidden: !isDeletable,
+      hidden: !isDeletable || isJoint,
     },
   ];
 }
@@ -167,6 +188,8 @@ export interface AccountRowProps {
   // Provided only in delegate (acting) view: makes the favourite star an
   // interactive toggle for the delegate's own (non-shared) favourites.
   onToggleFavourite?: (account: Account) => void;
+  // Joint rows only: the grantee's net-worth inclusion toggle.
+  onToggleNetWorthExclusion?: (account: Account) => void;
 }
 
 export const AccountRow = memo(function AccountRow({
@@ -193,6 +216,7 @@ export const AccountRow = memo(function AccountRow({
   onReopen,
   getRowHandlers,
   onToggleFavourite,
+  onToggleNetWorthExclusion,
 }: AccountRowProps) {
   const t = useTranslations('accounts');
   const { notAvailableShort, unknownColorClass } = useMoneyDisplay();
@@ -203,6 +227,7 @@ export const AccountRow = memo(function AccountRow({
     onCloseClick,
     onReopen,
     onDeleteClick,
+    onToggleNetWorthExclusion,
   }, brokerageMarketValue);
   return (
     <tr
@@ -262,6 +287,20 @@ export const AccountRow = memo(function AccountRow({
               )
             )}
             <span className="truncate">{account.name}</span>
+            {(account.isJoint || account.jointGranteeCount !== undefined) && (
+              <span
+                className="ml-1.5 px-2 inline-flex flex-shrink-0 text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
+                title={
+                  account.isJoint
+                    ? t('row.jointSharedBy', { owner: account.ownerLabel ?? '' })
+                    : t('row.jointSharedWith', {
+                        count: account.jointGranteeCount ?? 0,
+                      })
+                }
+              >
+                {t('row.jointBadge')}
+              </span>
+            )}
             {density !== 'normal' && account.linkedAccountId && (account.accountSubType === 'INVESTMENT_CASH' || account.accountSubType === 'INVESTMENT_BROKERAGE') && (
               <svg className="w-3.5 h-3.5 ml-1 flex-shrink-0 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -274,6 +313,16 @@ export const AccountRow = memo(function AccountRow({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
               {t('row.pairedWith', { name: accountNameMap.get(account.linkedAccountId) || 'linked account' })}
+            </div>
+          )}
+          {density === 'normal' && account.isJoint && (
+            <div className="text-xs text-amber-700 dark:text-amber-300 truncate">
+              {t('row.jointSharedBy', { owner: account.ownerLabel ?? '' })}
+            </div>
+          )}
+          {density === 'normal' && !account.isJoint && account.jointGranteeCount !== undefined && (
+            <div className="text-xs text-amber-700 dark:text-amber-300 truncate">
+              {t('row.jointSharedWith', { count: account.jointGranteeCount })}
             </div>
           )}
           {density === 'normal' && account.description && !account.linkedAccountId && (

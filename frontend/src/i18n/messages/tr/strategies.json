@@ -47,6 +47,9 @@
       "backtest": "Geriye dönük test",
       "settings": "Ayarlar"
     },
+    "stale": {
+      "updating": "Güncelleniyor — aşağıdaki değerler önceki seçime ait"
+    },
     "roles": {
       "US_EQUITY": "S&P 500",
       "EX_US_EQUITY": "ABD dışı gelişmiş piyasalar",

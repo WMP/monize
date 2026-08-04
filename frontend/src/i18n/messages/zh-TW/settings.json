@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "自動備份",
     "description": "依排程自動將您的資料備份至資料夾。由於 Monize 在 Docker 中運行，您必須將主機資料夾映射至容器作為磁碟區（例如：-v /host/backups:/data/backups）。",
+    "adminManagedNote": "只有管理員可以變更這些設定。其他所有使用者都會依照相同的排程與保留原則自動備份到各自的資料夾中。",
     "loadingText": "載入中...",
     "enableLabel": "啟用自動備份",
     "backupFolderLabel": "備份資料夾",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "每位使用者的備份都會存放在此資料夾內以其使用者 ID 命名的專屬資料夾中。",
+    "perUserFolderHelpWithPath": "每位使用者的備份都會存放在此資料夾內以其使用者 ID 命名的專屬資料夾中。您的：{path}",
     "browseButton": "瀏覽...",
     "validateButton": "驗證",
     "validatingButton": "驗證中...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "備份加密",
       "descriptionOidc": "使用您在此設定的專用備份密碼加密手動和自動備份。還原時需要此密碼。",
-      "descriptionLocal": "使用您的登入密碼加密手動和自動備份。還原時需要此密碼。",
       "loading": "載入中...",
       "enabledBadge": "已啟用",
       "changePasswordButton": "更改備份密碼",
       "disableButton": "停用",
       "setPasswordButton": "設定備份密碼",
-      "enableEncryptedButton": "啟用加密備份",
       "setupModal": {
         "titleOidc": "設定備份密碼",
-        "titleLocal": "啟用加密備份",
         "descriptionOidc": "選擇用於加密備份的密碼。請妥善保存，還原時需要此密碼。",
-        "descriptionLocal": "確認您的登入密碼。它將用於加密所有備份（手動和自動）。",
         "placeholderOidc": "新備份密碼（12+ 個字元）",
-        "placeholderLocal": "您的登入密碼",
         "savingButton": "儲存中...",
         "confirmButton": "確認"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "撤銷委派人失敗",
       "resetPasswordFailed": "重置密碼失敗",
       "copyFailed": "無法複製至剪貼簿"
-    }
+    },
+    "jointLabel": "{count, plural, other {# 個聯名帳戶}}"
   },
   "delegateAccessModal": {
     "title": "編輯存取",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "無可授予的科目。",
-      "grantAll": "授予全部"
+      "grantAll": "授予全部",
+      "jointRequiresFullAccount": "聯名帳戶只能與擁有自己 Monize 帳戶的使用者共享"
     },
     "shared": {
       "description": "收款人、類別和標籤的讀取始終允許。這些控制建立/編輯/刪除。"
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "設定區段",
     "profile": "個人資料",
     "preferences": "偏好設定",
+    "tours": "導覽引導",
     "notifications": "通知",
     "security": "安全性",
     "sharedAccess": "共用存取",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "共用存取",
       "description": "授予另一個人對特定科目的細粒度存取。"
+    },
+    "toursCard": {
+      "title": "導覽引導",
+      "description": "Monize 提供的所有導覽，以及你已經看過的部分。可以開始或重新查看其中任一個。"
     },
     "emergencyAccessCard": {
       "title": "緊急存取",

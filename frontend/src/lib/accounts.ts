@@ -122,12 +122,23 @@ export const accountsApi = {
   },
 
   // Set the acting delegate's own favourite flag for an account. The
-  // owner's accounts.is_favourite is never touched by this.
+  // owner's accounts.is_favourite is never touched by this. Also serves a
+  // grantee's native favourite on a joint account.
   setDelegateFavourite: async (
     id: string,
     isFavourite: boolean,
   ): Promise<void> => {
     await apiClient.put(`/accounts/${id}/favourite`, { isFavourite });
+    invalidateCache('accounts:');
+  },
+
+  // A grantee's per-account "exclude this joint account from MY net worth"
+  // toggle. Changes the union list payload, so the accounts cache clears.
+  setNetWorthExclusion: async (
+    id: string,
+    excluded: boolean,
+  ): Promise<void> => {
+    await apiClient.put(`/accounts/${id}/net-worth-exclusion`, { excluded });
     invalidateCache('accounts:');
   },
 

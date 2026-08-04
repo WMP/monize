@@ -48,7 +48,8 @@
       "status": "ステータス",
       "balance": "残高",
       "actions": "操作"
-    }
+    },
+    "filterJoint": "自分と共有"
   },
   "row": {
     "statusActive": "有効",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "閉鎖するには残高がゼロである必要があります",
       "closeTitleEnabled": "勘定科目を閉鎖",
       "details": "詳細"
-    }
+    },
+    "jointBadge": "共同",
+    "jointSharedBy": "{owner} さんが共有",
+    "jointSharedWith": "{count, plural, other {# 人}}と共有",
+    "includeInNetWorth": "自分の純資産に含める",
+    "excludeFromNetWorth": "自分の純資産から除外する"
   },
   "contextMenu": {
     "subtypeBrokerage": "証券口座",
@@ -103,7 +109,8 @@
     "loadFailed": "勘定科目の読み込みに失敗しました",
     "favouriteError": "お気に入りの更新に失敗しました",
     "createSuccess": "勘定科目が正常に作成されました",
-    "updateSuccess": "勘定科目が正常に更新されました"
+    "updateSuccess": "勘定科目が正常に更新されました",
+    "updateFailed": "口座を更新できませんでした"
   },
   "form": {
     "accountName": "勘定科目名",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "例：25",
     "fxFeeTitle": "外貨換算手数料 （任意）",
     "fxFeePercent": "手数料率",
-    "fxFeePercentPlaceholder": "例: 2.5"
+    "fxFeePercentPlaceholder": "例: 2.5",
+    "jointSharedWith": "{count, plural, other {# 人}}と共有している共同口座",
+    "jointManage": "共有を管理"
   },
   "exportModal": {
     "title": "{name} をエクスポート",

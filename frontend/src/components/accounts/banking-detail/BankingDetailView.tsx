@@ -241,8 +241,18 @@ export function BankingDetailView({ account }: BankingDetailViewProps) {
           currencyCode={currency}
           isLoading={isLoading}
           // A payee row opens the payee's own page; the account+month-scoped
-          // register is one click further, from that page's breakdowns.
-          onSelect={(payeeId) => payeeId && router.push(`/payees/${payeeId}`)}
+          // register is one click further, from that page's breakdowns. On a
+          // jointly shared account the payee belongs to the OWNER's ledger and
+          // has no page in this user's context, so go straight to the register
+          // -- which does serve the owner's rows for a joint account.
+          onSelect={(payeeId) => {
+            if (!payeeId) return;
+            router.push(
+              account.isJoint
+                ? `/transactions?accountId=${account.id}&payeeId=${payeeId}&${monthRangeQuery}`
+                : `/payees/${payeeId}`,
+            );
+          }}
         />
       </div>
 

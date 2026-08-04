@@ -179,7 +179,6 @@
     "unsupportedBackupVersion": "Nieobsługiwana wersja kopii zapasowej: {{ version }}. Oczekiwano {{ expected }}",
     "missingExportedAt": "Nieprawidłowy format kopii zapasowej: brak exportedAt",
     "tableNotAllowed": "Tabela {{ table }} nie jest dozwolona podczas przywracania kopii zapasowej",
-    "localAuthRequired": "Wymagane jest uwierzytelnianie lokalnym hasłem",
     "encryptionNotConfigured": "Serwer nie jest skonfigurowany do szyfrowania (brak AI_ENCRYPTION_KEY)",
     "backupPasswordOidcOnly": "Hasło kopii zapasowej można skonfigurować tylko dla użytkowników OIDC; użytkownicy lokalni używają swojego hasła logowania",
     "backupPasswordTooShort": "Hasło kopii zapasowej musi mieć co najmniej {{ minLength }} znaków",
@@ -250,7 +249,16 @@
     "capabilityNotGranted": "Właściciel konta nie nadał Ci uprawnienia do {{ operation }} {{ resource }}. Poproś go o włączenie tego w ustawieniach dostępu delegowanego.",
     "sectionNotGranted": "Właściciel konta nie udostępnił Ci sekcji {{ sectionLabel }}.",
     "accountNotShared": "Właściciel konta nie udostępnił Ci tego konta.",
-    "accountOperationNotGranted": "Właściciel konta nie nadał Ci uprawnienia do {{ operation }} transakcji na tym koncie."
+    "accountOperationNotGranted": "Właściciel konta nie nadał Ci uprawnienia do {{ operation }} transakcji na tym koncie.",
+    "jointOwnAccount": "To jest Twoje własne konto; dostęp wspólnego konta go nie dotyczy.",
+    "jointAccountTypeReadOnly": "Ten typ konta jest udostępniany tylko do odczytu; tylko właściciel może zmieniać jego transakcje.",
+    "jointOwnAccountNetWorth": "Dla własnych kont użyj ustawienia wartości netto danego konta.",
+    "jointRequiresRead": "Do oznaczenia konta jako wspólnego wymagany jest dostęp do ODCZYTU",
+    "jointRequiresFullAccount": "Wspólne konta można udostępniać tylko użytkownikom, którzy mają własne konto Monize",
+    "jointPayeeCreateNotGranted": "Właściciel konta nie przyznał Ci uprawnień do tworzenia odbiorców. Wybierz jednego z istniejących odbiorców.",
+    "jointTagsNotAllowed": "Tagi są osobiste, więc nie można ich ustawiać na transakcjach wspólnego konta.",
+    "jointSplitsNotAllowed": "Transakcjami podzielonymi na wspólnym koncie może zarządzać tylko właściciel.",
+    "jointTransferRowLocked": "To jest przelew. Użyj edytora przelewów."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "E-mail nie jest skonfigurowany. Dostępu awaryjnego nie można włączyć, dopóki nie skonfigurujesz SMTP.",
@@ -470,7 +478,8 @@
     "tagKeyRequired": "Wymagany jest klucz tagu (1–100 znaków)",
     "fxFieldsIncomplete": "originalAmount i originalCurrencyCode muszą być podane razem",
     "fxRateRequired": "Do transakcji w obcej walucie wymagany jest dodatni kurs wymiany",
-    "fxSignMismatch": "originalAmount i amount muszą mieć ten sam znak"
+    "fxSignMismatch": "originalAmount i amount muszą mieć ten sam znak",
+    "jointAccountMoveLocked": "Transakcji ze wspólnego konta nie można przenieść na inne konto."
   },
   "users": {
     "userNotFound": "Nie znaleziono użytkownika",

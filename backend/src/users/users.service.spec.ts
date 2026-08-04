@@ -37,7 +37,7 @@ describe("UsersService", () => {
   let demoModeService: { isDemo: boolean };
   let exchangeRateService: { refreshAllRates: jest.Mock };
   let currenciesService: { ensureSystemCurrency: jest.Mock };
-  let backupEncryptionService: { syncOnPasswordChange: jest.Mock };
+  let backupEncryptionService: { rememberLoginPassword: jest.Mock };
   let moduleRef: { get: jest.Mock };
   let mockQueryRunner: Record<string, jest.Mock>;
   let mockDataSource: Record<string, jest.Mock>;
@@ -118,7 +118,7 @@ describe("UsersService", () => {
     };
 
     backupEncryptionService = {
-      syncOnPasswordChange: jest.fn().mockResolvedValue(undefined),
+      rememberLoginPassword: jest.fn().mockResolvedValue(undefined),
     };
 
     currenciesService = {
@@ -663,10 +663,9 @@ describe("UsersService", () => {
         newPassword: "NewPass456!",
       });
 
-      expect(backupEncryptionService.syncOnPasswordChange).toHaveBeenCalledWith(
-        "user-1",
-        "NewPass456!",
-      );
+      expect(
+        backupEncryptionService.rememberLoginPassword,
+      ).toHaveBeenCalledWith("user-1", "NewPass456!");
     });
 
     it("password change still succeeds when backup-password sync fails", async () => {
@@ -675,7 +674,7 @@ describe("UsersService", () => {
         ...mockUser,
         passwordHash: hashedPassword,
       });
-      backupEncryptionService.syncOnPasswordChange.mockRejectedValue(
+      backupEncryptionService.rememberLoginPassword.mockRejectedValue(
         new Error("sync failed"),
       );
 

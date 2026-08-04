@@ -31,6 +31,15 @@ export class AccountGrantDto {
   @IsOptional()
   @IsBoolean()
   canDelete?: boolean;
+
+  /**
+   * Joint account opt-in: with canRead, the account appears natively in the
+   * delegate's own context. Requires READ and a full-account delegate
+   * (enforced server-side).
+   */
+  @IsOptional()
+  @IsBoolean()
+  isJoint?: boolean;
 }
 
 /**

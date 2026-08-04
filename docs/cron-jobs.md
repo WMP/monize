@@ -19,3 +19,4 @@ Cron jobs use the `@Cron()` decorator from `@nestjs/schedule`. They run in the A
 | `security-price.service` | 5 PM ET weekdays | Fetch security prices |
 | `mny-staging.service` | Hourly | Delete expired staged import files (24 h TTL) |
 | `mny-import-job.service` | Every 5 min | Fail import jobs whose worker stopped heartbeating |
+| `auto-backup.service` | Hourly | Enrol every non-admin user on the default backup policy, then run the backups that are due |

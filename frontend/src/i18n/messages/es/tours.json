@@ -35,12 +35,24 @@
   "settings": {
     "title": "Recorridos guiados",
     "description": "Recorre las funciones de la aplicación paso a paso.",
-    "showList": "Mostrar recorridos ({count})",
-    "hideList": "Ocultar recorridos",
+    "backLink": "Volver a Configuración",
+    "pageTitle": "Recorridos guiados",
+    "pageSubtitle": "Todos los recorridos que ofrece Monize, en un solo lugar. Empieza uno cuando quieras: puedes salir de un recorrido con Escape y retomarlo desde aquí.",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, one {# paso} other {# pasos}}",
+    "releaseLabel": "Novedad en {version}",
+    "requirementsLoading": "Comprobando si puedes hacer este recorrido…",
+    "requires": {
+      "transactionEntry": "Añade primero una cuenta: este recorrido explica cómo registrar una transacción.",
+      "securitiesExist": "Añade primero un valor: este recorrido abre uno desde tu lista de valores."
+    },
     "start": "Iniciar",
     "restart": "Repetir",
     "statusNotViewed": "No visto",
     "statusDismissed": "Abandonado antes de tiempo",
+    "resetHeading": "Empezar de nuevo",
+    "resetDescription": "Borra todos los recorridos registrados para que vuelvan a ofrecerse desde el panel y tras una actualización.",
     "reset": "Restablecer progreso del recorrido",
     "resetSuccess": "Progreso del recorrido restablecido.",
     "resetError": "No se pudo restablecer el progreso del recorrido. Inténtalo de nuevo."

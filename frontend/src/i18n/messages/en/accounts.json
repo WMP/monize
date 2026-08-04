@@ -48,7 +48,8 @@
       "status": "Status",
       "balance": "Balance",
       "actions": "Actions"
-    }
+    },
+    "filterJoint": "Shared with me"
   },
   "row": {
     "statusActive": "Active",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "Account must have zero balance to close",
       "closeTitleEnabled": "Close account",
       "details": "Details"
-    }
+    },
+    "jointBadge": "Joint",
+    "jointSharedBy": "Shared by {owner}",
+    "jointSharedWith": "Shared with {count, plural, one {# person} other {# people}}",
+    "includeInNetWorth": "Include in my net worth",
+    "excludeFromNetWorth": "Exclude from my net worth"
   },
   "contextMenu": {
     "subtypeBrokerage": "Brokerage",
@@ -103,7 +109,8 @@
     "loadFailed": "Failed to load accounts",
     "favouriteError": "Failed to update favourite",
     "createSuccess": "Account created successfully",
-    "updateSuccess": "Account updated successfully"
+    "updateSuccess": "Account updated successfully",
+    "updateFailed": "Failed to update account"
   },
   "form": {
     "accountName": "Account Name",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "e.g. 25",
     "fxFeeTitle": "Foreign Currency Conversion Fee (optional)",
     "fxFeePercent": "Fee Percentage",
-    "fxFeePercentPlaceholder": "e.g. 2.5"
+    "fxFeePercentPlaceholder": "e.g. 2.5",
+    "jointSharedWith": "Joint account shared with {count, plural, one {# person} other {# people}}",
+    "jointManage": "Manage sharing"
   },
   "exportModal": {
     "title": "Export {name}",

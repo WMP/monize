@@ -211,11 +211,33 @@ export function closeAt(prices: PricePoint[], date: string): number | null {
  * while calling it a flat 0% would invent a return. Only a span longer than
  * `BOUNDARY_LAG_DAYS` can reach `UNPRICED` by this route, because a shorter one
  * fails the freshness test at its far end first.
+ *
+ * `UNELAPSED` also covers "the far boundary has passed on the calendar but the
+ * series has not caught up to it yet" -- an answer that is not wrong, merely
+ * not available. Both readings mean the same thing to every caller: come back
+ * once there is more data. Nothing may be persisted from an unelapsed span.
  */
 export type SpanCloses =
   | { state: "PRICED"; base: number; latest: number }
   | { state: "UNELAPSED" }
   | { state: "UNPRICED" };
+
+/**
+ * What the far end of a span means, which decides whether it has to be settled.
+ *
+ * - `BOUNDARY` -- a date the calendar fixed: a period's last day, a momentum
+ *   window's end. The answer is a *fact about that day*, and on the signal path
+ *   it is persisted, so it may only be computed once the series proves the day
+ *   is behind it.
+ * - `AS_OF` -- "value it with what is known now". There is no later observation
+ *   to wait for, by construction: today's close does not exist until the market
+ *   shuts. Nothing persists such a span, and the newest close is the right
+ *   answer to the question actually asked.
+ *
+ * `BOUNDARY` is the default so a new call site is strict unless it argues
+ * otherwise.
+ */
+export type SpanEnd = "BOUNDARY" | "AS_OF";
 
 /**
  * The two closes that price a span, each within `BOUNDARY_LAG_DAYS` of the
@@ -232,6 +254,7 @@ export function spanCloses(
   prices: PricePoint[] | undefined,
   from: string,
   to: string,
+  end: SpanEnd = "BOUNDARY",
 ): SpanCloses {
   if (!prices?.length) return { state: "UNPRICED" };
   const entry = pointAsOf(prices, from);
@@ -243,8 +266,35 @@ export function spanCloses(
   if (daysBetween(exit.date, to) > BOUNDARY_LAG_DAYS) {
     return { state: "UNPRICED" };
   }
+  // The far boundary is settled only once the series holds an observation dated
+  // at or after it.
+  //
+  // The lag window above tolerates a market that was shut on the boundary, but
+  // it cannot tell that from a close nobody has fetched yet: both look like
+  // "the newest observation is a few days old". Pricing the span off the
+  // earlier close answers the period from the wrong day -- and on the signal
+  // path that answer is materialized under the current fingerprint and version,
+  // then skipped forever, so a report opened at 09:00 on the 1st can pin a
+  // month-end decision to the 30th's close and never correct it even when the
+  // real month-end close flips the decision.
+  //
+  // Defer instead, exactly the way a period that has not elapsed defers, and
+  // let the next load decide once the close is in. An instrument that stops
+  // reporting altogether still fails the lag test above within two weeks, so
+  // this cannot hold a period open indefinitely.
+  //
+  // An `AS_OF` end is exempt, and has to be: "now" never has a close dated at
+  // or after it until the market shuts, so demanding one would drop the
+  // backtest's trailing mark-to-market period on every trading day -- the
+  // period a strategy configured last month consists of.
+  if (end === "BOUNDARY" && prices[prices.length - 1].date < to) {
+    return { state: "UNELAPSED" };
+  }
   if (entry.date === exit.date) return { state: "UNELAPSED" };
-  if (!(entry.close > 0)) return { state: "UNPRICED" };
+  // Both ends, not just the base. A zero exit close (the DTO admits `@Min(0)`,
+  // so a typo can store one) would otherwise read as a *known* -100% period
+  // and a zeroed equity curve rather than as a price nobody supplied.
+  if (!(entry.close > 0) || !(exit.close > 0)) return { state: "UNPRICED" };
   return { state: "PRICED", base: entry.close, latest: exit.close };
 }
 

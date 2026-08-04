@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "Sao lưu tự động",
     "description": "Tự động sao lưu dữ liệu của bạn vào một thư mục theo lịch. Vì Monize chạy trong Docker, bạn phải ánh xạ một thư mục máy chủ vào container dưới dạng volume (VD: -v /host/backups:/data/backups).",
+    "adminManagedNote": "Chỉ quản trị viên mới có thể thay đổi các cài đặt này. Tất cả người dùng khác được sao lưu tự động theo cùng lịch trình và chính sách lưu giữ, mỗi người vào một thư mục riêng.",
     "loadingText": "Đang tải...",
     "enableLabel": "Bật sao lưu tự động",
     "backupFolderLabel": "Thư mục sao lưu",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "Bản sao lưu của mỗi người dùng nằm trong thư mục riêng bên trong thư mục này, được đặt tên theo ID người dùng.",
+    "perUserFolderHelpWithPath": "Bản sao lưu của mỗi người dùng nằm trong thư mục riêng bên trong thư mục này, được đặt tên theo ID người dùng. Của bạn: {path}",
     "browseButton": "Duyệt...",
     "validateButton": "Xác thực",
     "validatingButton": "Đang xác thực...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "Mã hóa sao lưu",
       "descriptionOidc": "Mã hóa các bản sao lưu thủ công và tự động bằng mật khẩu sao lưu chuyên dụng bạn đặt ở đây. Mật khẩu được yêu cầu để khôi phục.",
-      "descriptionLocal": "Mã hóa các bản sao lưu thủ công và tự động bằng mật khẩu đăng nhập của bạn. Mật khẩu được yêu cầu để khôi phục.",
       "loading": "Đang tải...",
       "enabledBadge": "Đã bật",
       "changePasswordButton": "Thay đổi mật khẩu sao lưu",
       "disableButton": "Tắt",
       "setPasswordButton": "Đặt mật khẩu sao lưu",
-      "enableEncryptedButton": "Bật sao lưu mã hóa",
       "setupModal": {
         "titleOidc": "Đặt mật khẩu sao lưu",
-        "titleLocal": "Bật sao lưu mã hóa",
         "descriptionOidc": "Chọn mật khẩu sẽ được dùng để mã hóa các bản sao lưu. Lưu nó ở nơi an toàn -- bạn sẽ cần nó để khôi phục.",
-        "descriptionLocal": "Xác nhận mật khẩu đăng nhập của bạn. Nó sẽ được dùng để mã hóa tất cả các bản sao lưu (thủ công và tự động).",
         "placeholderOidc": "Mật khẩu sao lưu mới (12+ ký tự)",
-        "placeholderLocal": "Mật khẩu đăng nhập của bạn",
         "savingButton": "Đang lưu...",
         "confirmButton": "Xác nhận"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "Không thể thu hồi đại diện",
       "resetPasswordFailed": "Không thể đặt lại mật khẩu",
       "copyFailed": "Không thể sao chép vào clipboard"
-    }
+    },
+    "jointLabel": "{count, plural, other {# tài khoản chung}}"
   },
   "delegateAccessModal": {
     "title": "Chỉnh sửa quyền truy cập",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "Không có tài khoản nào để cấp.",
-      "grantAll": "Cấp tất cả"
+      "grantAll": "Cấp tất cả",
+      "jointRequiresFullAccount": "Tài khoản chung chỉ có thể được chia sẻ với người dùng có tài khoản Monize riêng"
     },
     "shared": {
       "description": "Đọc người nhận, danh mục và thẻ luôn được phép. Đây là các điều khiển tạo/chỉnh sửa/xóa."
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "Các phần cài đặt",
     "profile": "Hồ sơ",
     "preferences": "Sở thích",
+    "tours": "Hướng dẫn sử dụng",
     "notifications": "Thông báo",
     "security": "Bảo mật",
     "sharedAccess": "Truy cập chia sẻ",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "Truy cập chia sẻ",
       "description": "Cấp cho người khác quyền truy cập chi tiết vào các tài khoản cụ thể."
+    },
+    "toursCard": {
+      "title": "Hướng dẫn sử dụng",
+      "description": "Tất cả phần hướng dẫn Monize cung cấp, kèm những phần bạn đã xem. Bắt đầu hoặc xem lại bất kỳ phần nào."
     },
     "emergencyAccessCard": {
       "title": "Truy cập khẩn cấp",

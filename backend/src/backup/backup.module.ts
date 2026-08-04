@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { BackupController } from "./backup.controller";
+import { AutoBackupController } from "./auto-backup.controller";
 import { BackupService } from "./backup.service";
 import { AutoBackupService } from "./auto-backup.service";
 import { BackupEncryptionService } from "./backup-encryption.service";
@@ -10,7 +11,7 @@ import { AiModule } from "../ai/ai.module";
 
 @Module({
   imports: [AuthModule, AiModule, ConfigModule],
-  controllers: [BackupController],
+  controllers: [BackupController, AutoBackupController],
   providers: [
     BackupService,
     AutoBackupService,

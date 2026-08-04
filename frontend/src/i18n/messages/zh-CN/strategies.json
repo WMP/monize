@@ -47,6 +47,9 @@
       "backtest": "回测",
       "settings": "设置"
     },
+    "stale": {
+      "updating": "正在更新 — 下方数字来自上一个选择"
+    },
     "roles": {
       "US_EQUITY": "标普 500",
       "EX_US_EQUITY": "除美国外的发达市场",

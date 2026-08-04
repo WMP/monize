@@ -418,9 +418,18 @@ integration spec asserts a poller sees progress from inside an open transaction.
 
 **The wipe cannot happen inside the job.** `UsersService.deleteData`
 re-authenticates, so running it in the job body would mean writing the user's
-password into `import_jobs.options`. It runs in `start()` instead, before the job
-row exists: a failed re-authentication fails the request, and the credentials are
-spent on that one call.
+password into `import_jobs.options`. It runs in `start()` instead: a failed
+re-authentication fails the request, and the credentials are spent on that one
+call.
+
+It runs *after* the job row is inserted, though, not before. The row is the
+user's import lock -- `import_jobs` carries a partial unique index on `user_id`
+where the status is `pending` or `running` (migration 135), so the second of two
+concurrent starts blocks on the first and then fails, and `create` turns that
+into the 409 the wizard already renders. A destructive operation performed
+*before* the lock is held is one both racing requests can perform. A wipe that
+fails takes the row back out with it (`jobs.discard`), so the refused request
+does not leave the user holding a slot for a job that will never run.
 
 **Categories do not route through the QIF entity creator.** ADR-8 hoped to reuse
 `ImportEntityCreatorService` behind a `{manager, query}` shim. Its
@@ -916,8 +925,17 @@ instead.
   localized error that nothing rendered: pressing Start import did nothing at
   all. The review step shows it, and offers the way back to upload when the
   staged bytes are what is gone.
+- *Two concurrent starts imported the same file twice.* `start` counted the
+  user's active jobs and then inserted a row in a second transaction, so two
+  overlapping requests both read zero and both inserted. Each parse
+  pre-generates fresh transaction UUIDs, so nothing downstream deduplicated the
+  loser's rows: the user's history and every balance doubled, and with
+  `wipeExistingData` both requests could reach the destructive wipe. The count
+  is advisory now; the refusal is a partial unique index on
+  `import_jobs(user_id) WHERE status IN ('pending','running')`, and the wipe
+  moved behind it.
 - *Retry after a "start fresh" import asked for the wipe again.* The wipe runs
-  in `start`, before the job row exists, so by the time a job can fail the data
+  in `start`, outside the job body, so by the time a job can fail the data
   is already gone — and Retry deliberately collects no password, being one click
   on a failure screen. The repeat request therefore failed re-authentication and
   left the user on a retryable failure they could not retry.

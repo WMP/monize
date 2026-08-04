@@ -259,6 +259,7 @@
   },
   "validation": {
     "accountRequired": "Akun wajib diisi",
-    "dateRequired": "Tanggal wajib diisi"
+    "dateRequired": "Tanggal wajib diisi",
+    "acquisitionPriceRequired": "Harga per lembar wajib diisi dan harus lebih besar dari nol. Gunakan \"Tambah Lembar\" untuk lembar yang diperoleh tanpa biaya yang diketahui."
   }
 }

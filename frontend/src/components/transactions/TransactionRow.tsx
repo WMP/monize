@@ -158,6 +158,8 @@ export interface TransactionRowProps {
   onCategoryClick?: (categoryId: string) => void;
   onTagClick?: (tagId: string) => void;
   onCycleStatus: (transaction: Transaction) => void;
+  /** Joint accounts: hides the delete button when the grant lacks delete. */
+  hideDelete?: boolean;
   onEdit?: (transaction: Transaction) => void;
   onDuplicate?: (transaction: Transaction) => void;
   onScheduleRecurring?: (transaction: Transaction) => void;
@@ -198,6 +200,7 @@ export const TransactionRow = memo(function TransactionRow({
   onCategoryClick,
   onTagClick,
   onCycleStatus,
+  hideDelete,
   onEdit,
   onDuplicate,
   onScheduleRecurring,
@@ -629,7 +632,7 @@ export const TransactionRow = memo(function TransactionRow({
             onScheduleRecurring={onScheduleRecurring ? () => onScheduleRecurring(transaction) : undefined}
           />
         )}
-        {!transaction.linkedInvestmentTransactionId && (
+        {!transaction.linkedInvestmentTransactionId && !hideDelete && (
           <button
             onClick={(e) => { e.stopPropagation(); onDeleteClick(transaction); }}
             disabled={isDeleting}

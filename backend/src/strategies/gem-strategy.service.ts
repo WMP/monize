@@ -7,6 +7,7 @@ import {
 import { DataSource, In } from "typeorm";
 import { withScopedDb } from "../common/db/scoped-db";
 import { todayYMD } from "../common/date-utils";
+import { normalizeWebsite } from "../common/normalize-website";
 import { tr } from "../i18n/translate";
 import {
   Account,
@@ -878,7 +879,12 @@ export class GemStrategyService {
         strategy.commissionAmount = dto.commissionAmount;
       }
       if (dto.rulesSourceUrl !== undefined) {
-        strategy.rulesSourceUrl = dto.rulesSourceUrl;
+        // The same normalisation payees, securities and institutions apply: a
+        // blank field clears the column instead of storing `""`, and a
+        // schemeless host gets `https://` so the stored value is a URL anyone
+        // can follow. The report's own link defends itself, but an API consumer
+        // reading this column sees whatever was stored.
+        strategy.rulesSourceUrl = normalizeWebsite(dto.rulesSourceUrl) ?? null;
       }
       if (dto.rulesSourceLabel !== undefined) {
         strategy.rulesSourceLabel = dto.rulesSourceLabel;

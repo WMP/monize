@@ -43,11 +43,16 @@ function rangeFor(months: number): string {
   return "max";
 }
 
-/** ISO date `months` before today. */
+/**
+ * ISO date `months` before today.
+ *
+ * Through `addMonthsUtc`, which clamps to the target month's last day. Raw
+ * `setUTCMonth` overflows instead: from the 31st it lands on the 1st or 2nd of
+ * the *following* month, which can push the coverage floor past a close that
+ * would have satisfied it and leave a provider fetch re-attempted forever.
+ */
 function monthsAgo(months: number): string {
-  const today = new Date(`${todayYMD()}T00:00:00Z`);
-  today.setUTCMonth(today.getUTCMonth() - months);
-  return today.toISOString().slice(0, 10);
+  return addMonthsUtc(parseYmd(todayYMD()), -months).toISOString().slice(0, 10);
 }
 
 /**

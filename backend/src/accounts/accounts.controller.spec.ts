@@ -17,7 +17,8 @@ describe("AccountsController", () => {
   let mockBalanceForecastService: Record<string, jest.Mock>;
   let mockDelegationService: Record<string, jest.Mock>;
   let mockCrossOwnerAccess: Record<string, jest.Mock>;
-  const mockReq = { user: { id: "user-1" } };
+  let mockJointAccounts: Record<string, jest.Mock>;
+  const mockReq = { user: { id: "user-1", realUserId: "user-1" } };
 
   beforeEach(async () => {
     mockAccountsService = {
@@ -65,6 +66,14 @@ describe("AccountsController", () => {
       transferCandidatesFor: jest.fn().mockResolvedValue([]),
     };
 
+    mockJointAccounts = {
+      jointShareCountsForOwner: jest.fn().mockResolvedValue(new Map()),
+      jointAccountsFor: jest.fn().mockResolvedValue([]),
+      jointAccountIdSetFor: jest.fn().mockResolvedValue(new Set()),
+      jointAccessFor: jest.fn(),
+      setNetWorthExclusion: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AccountsController],
       providers: [
@@ -101,6 +110,12 @@ describe("AccountsController", () => {
           provide: require("../delegation/cross-owner-access.service")
             .CrossOwnerAccessService,
           useValue: mockCrossOwnerAccess,
+        },
+        {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          provide: require("../delegation/joint-accounts.service")
+            .JointAccountsService,
+          useValue: mockJointAccounts,
         },
       ],
     }).compile();
@@ -336,15 +351,39 @@ describe("AccountsController", () => {
   });
 
   describe("getBalance()", () => {
-    it("delegates to accountsService.getBalance with userId and id", () => {
-      mockAccountsService.getBalance!.mockReturnValue("balance");
+    it("delegates to accountsService.getBalance with userId and id", async () => {
+      mockAccountsService.getBalance!.mockResolvedValue("balance");
 
-      const result = controller.getBalance(mockReq, "account-1");
+      const result = await controller.getBalance(mockReq, "account-1");
 
       expect(result).toBe("balance");
       expect(mockAccountsService.getBalance).toHaveBeenCalledWith(
         "user-1",
         "account-1",
+      );
+    });
+
+    it("falls back to the owner's scope for a joint account after authorization", async () => {
+      const { NotFoundException } = jest.requireActual("@nestjs/common");
+      mockAccountsService
+        .getBalance!.mockRejectedValueOnce(new NotFoundException())
+        .mockResolvedValueOnce({ balance: 42 });
+      mockJointAccounts.jointAccessFor.mockResolvedValue({
+        ownerUserId: "owner-9",
+        via: "delegation",
+      });
+
+      const result = await controller.getBalance(mockReq, "joint-1");
+
+      expect(result).toEqual({ balance: 42 });
+      expect(mockJointAccounts.jointAccessFor).toHaveBeenCalledWith(
+        "user-1",
+        "joint-1",
+        "read",
+      );
+      expect(mockAccountsService.getBalance).toHaveBeenLastCalledWith(
+        "owner-9",
+        "joint-1",
       );
     });
   });
@@ -378,10 +417,14 @@ describe("AccountsController", () => {
   });
 
   describe("getBalanceForecast()", () => {
-    it("delegates to balanceForecastService with a clamped horizon", () => {
+    it("delegates to balanceForecastService with a clamped horizon", async () => {
       mockBalanceForecastService.getBalanceForecast.mockReturnValue("forecast");
 
-      const result = controller.getBalanceForecast(mockReq, "account-1", 30);
+      const result = await controller.getBalanceForecast(
+        mockReq,
+        "account-1",
+        30,
+      );
 
       expect(result).toBe("forecast");
       expect(
@@ -389,16 +432,57 @@ describe("AccountsController", () => {
       ).toHaveBeenCalledWith("user-1", "account-1", 30);
     });
 
-    it("defaults the horizon to 90 days and clamps to 730", () => {
-      controller.getBalanceForecast(mockReq, "account-1", undefined);
+    it("defaults the horizon to 90 days and clamps to 730", async () => {
+      await controller.getBalanceForecast(mockReq, "account-1", undefined);
       expect(
         mockBalanceForecastService.getBalanceForecast,
       ).toHaveBeenLastCalledWith("user-1", "account-1", 90);
 
-      controller.getBalanceForecast(mockReq, "account-1", 5000);
+      await controller.getBalanceForecast(mockReq, "account-1", 5000);
       expect(
         mockBalanceForecastService.getBalanceForecast,
       ).toHaveBeenLastCalledWith("user-1", "account-1", 730);
+    });
+
+    it("falls back to the owner's scope for a joint account after authorization", async () => {
+      // Without this the grantee's balance chart stops at today while the
+      // owner's carries a forward line, and the projected-balance card
+      // silently reports today's balance as the projection.
+      const { NotFoundException } = jest.requireActual("@nestjs/common");
+      mockBalanceForecastService.getBalanceForecast
+        .mockRejectedValueOnce(new NotFoundException())
+        .mockResolvedValueOnce({ points: [] });
+      mockJointAccounts.jointAccessFor.mockResolvedValue({
+        ownerUserId: "owner-9",
+        via: "delegation",
+      });
+
+      const result = await controller.getBalanceForecast(mockReq, "joint-1");
+
+      expect(result).toEqual({ points: [] });
+      expect(mockJointAccounts.jointAccessFor).toHaveBeenCalledWith(
+        "user-1",
+        "joint-1",
+        "read",
+      );
+      expect(
+        mockBalanceForecastService.getBalanceForecast,
+      ).toHaveBeenLastCalledWith("owner-9", "joint-1", 90);
+    });
+
+    it("re-raises the 404 while acting, never taking the joint path", async () => {
+      const { NotFoundException } = jest.requireActual("@nestjs/common");
+      mockBalanceForecastService.getBalanceForecast.mockRejectedValueOnce(
+        new NotFoundException(),
+      );
+
+      await expect(
+        controller.getBalanceForecast(
+          { user: { id: "owner-1", realUserId: "d1", isActing: true } },
+          "joint-1",
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockJointAccounts.jointAccessFor).not.toHaveBeenCalled();
     });
   });
 
@@ -558,6 +642,7 @@ describe("AccountsController", () => {
         "2025-12-31",
         ["acc-1", "acc-2"],
         false,
+        [],
       );
     });
 
@@ -577,6 +662,7 @@ describe("AccountsController", () => {
         "2025-12-31",
         undefined,
         false,
+        [],
       );
     });
 
@@ -597,6 +683,41 @@ describe("AccountsController", () => {
         undefined,
         ["acc-1"],
         true,
+        [],
+      );
+    });
+
+    it("passes the authorized joint ids in own context", async () => {
+      mockAccountsService.getDailyBalances!.mockReturnValue("balances");
+      mockJointAccounts.jointAccountIdSetFor.mockResolvedValue(
+        new Set(["joint-1", "joint-2"]),
+      );
+
+      // Unfiltered request: every joint id participates.
+      await controller.getDailyBalances(mockReq);
+      expect(mockAccountsService.getDailyBalances).toHaveBeenLastCalledWith(
+        "user-1",
+        undefined,
+        undefined,
+        undefined,
+        false,
+        ["joint-1", "joint-2"],
+      );
+
+      // Filtered request: only requested ids that are actually joint pass.
+      await controller.getDailyBalances(
+        mockReq,
+        undefined,
+        undefined,
+        "joint-2,own-1,stranger-1",
+      );
+      expect(mockAccountsService.getDailyBalances).toHaveBeenLastCalledWith(
+        "user-1",
+        undefined,
+        undefined,
+        ["joint-2", "own-1", "stranger-1"],
+        false,
+        ["joint-2"],
       );
     });
   });
@@ -886,13 +1007,145 @@ describe("AccountsController", () => {
       );
     });
 
-    it("rejects non-delegate callers", async () => {
+    it("rejects own-context callers whose account is not jointly shared", async () => {
+      // jointAccessFor 400s own accounts and 404s everything not shared;
+      // either way nothing is stored.
+      mockJointAccounts.jointAccessFor.mockRejectedValue(
+        new BadRequestException(),
+      );
       await expect(
         controller.setDelegateFavourite(mockReq, "a1", {
           isFavourite: true,
         }),
       ).rejects.toThrow(BadRequestException);
       expect(mockDelegationService.setDelegateFavourite).not.toHaveBeenCalled();
+    });
+
+    it("stores the overlay natively for a joint account in own context", async () => {
+      mockJointAccounts.jointAccessFor.mockResolvedValue({
+        ownerUserId: "owner-1",
+        via: "delegation",
+      });
+      const result = await controller.setDelegateFavourite(mockReq, "a1", {
+        isFavourite: true,
+      });
+      expect(result).toEqual({ isFavourite: true });
+      expect(mockJointAccounts.jointAccessFor).toHaveBeenCalledWith(
+        "user-1",
+        "a1",
+        "read",
+      );
+      expect(mockDelegationService.setDelegateFavourite).toHaveBeenCalledWith(
+        "user-1",
+        "a1",
+        true,
+      );
+    });
+  });
+
+  describe("setNetWorthExclusion()", () => {
+    it("delegates to the joint service with the caller's id", async () => {
+      const result = await controller.setNetWorthExclusion(mockReq, "a1", {
+        excluded: true,
+      });
+      expect(result).toEqual({ excluded: true });
+      expect(mockJointAccounts.setNetWorthExclusion).toHaveBeenCalledWith(
+        "user-1",
+        "a1",
+        true,
+      );
+    });
+  });
+
+  describe("findAll() union list", () => {
+    const own = [
+      { id: "own-1", isFavourite: false, favouriteSortOrder: 0 },
+      { id: "own-2", isFavourite: false, favouriteSortOrder: 0 },
+    ];
+
+    it("appends joint rows with the caller's favourites overlay in own context", async () => {
+      mockAccountsService.findAll!.mockResolvedValue(own);
+      mockJointAccounts.jointAccountsFor.mockResolvedValue([
+        {
+          id: "joint-1",
+          isJoint: true,
+          isClosed: false,
+          isFavourite: true, // the owner's flag -- must be replaced
+          favouriteSortOrder: 7,
+        },
+      ]);
+      mockDelegationService.getDelegateFavourites.mockResolvedValue(
+        new Map([["joint-1", 3]]),
+      );
+
+      const result = await controller.findAll(mockReq, false);
+
+      expect(result.map((a: { id: string }) => a.id)).toEqual([
+        "own-1",
+        "own-2",
+        "joint-1",
+      ]);
+      const joint = result.find((a: { id: string }) => a.id === "joint-1");
+      expect(joint).toMatchObject({
+        isJoint: true,
+        isFavourite: true,
+        favouriteSortOrder: 3,
+      });
+      // Own rows pass through untouched (no overlay applied to them).
+      expect(result[0]).toBe(own[0]);
+    });
+
+    it("filters closed joint rows unless includeInactive", async () => {
+      mockAccountsService.findAll!.mockResolvedValue(own);
+      mockJointAccounts.jointAccountsFor.mockResolvedValue([
+        { id: "joint-closed", isJoint: true, isClosed: true },
+      ]);
+
+      const active = await controller.findAll(mockReq, false);
+      expect(active.some((a: { id: string }) => a.id === "joint-closed")).toBe(
+        false,
+      );
+
+      const all = await controller.findAll(mockReq, true);
+      expect(all.some((a: { id: string }) => a.id === "joint-closed")).toBe(
+        true,
+      );
+    });
+
+    it("marks owner rows with jointGranteeCount and leaves unshared rows unmarked", async () => {
+      mockAccountsService.findAll!.mockResolvedValue(own);
+      mockJointAccounts.jointShareCountsForOwner.mockResolvedValue(
+        new Map([["own-1", 2]]),
+      );
+
+      const result = await controller.findAll(mockReq, false);
+
+      expect(result[0]).toMatchObject({ id: "own-1", jointGranteeCount: 2 });
+      expect(
+        Object.prototype.hasOwnProperty.call(result[1], "jointGranteeCount"),
+      ).toBe(false);
+    });
+
+    it("does not consult the joint services while acting", async () => {
+      mockAccountsService.findAll!.mockResolvedValue([
+        { id: "a1", isFavourite: false, favouriteSortOrder: 0 },
+      ]);
+      mockDelegationService.readableAccountIds.mockResolvedValue(["a1"]);
+
+      await controller.findAll(
+        {
+          user: {
+            id: "owner-1",
+            realUserId: "deleg-1",
+            isActing: true,
+            delegationId: "del-1",
+          },
+        } as never,
+        false,
+      );
+
+      expect(mockJointAccounts.jointAccountsFor).not.toHaveBeenCalled();
+      expect(mockJointAccounts.jointShareCountsForOwner).not.toHaveBeenCalled();
     });
   });
 });

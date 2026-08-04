@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { promises as fs } from "fs";
 import { basename, dirname, resolve, sep } from "path";
 import { tr } from "../../i18n/translate";
+import { isShardableId, shardedSegments } from "../../common/shard-path.util";
 import { AttachmentStorageProvider } from "./attachment-storage.interface";
 
 /**
@@ -22,13 +23,8 @@ export const DEFAULT_ATTACHMENT_CONTAINER_DIR = "/data/attachments";
  *
  * Files are fanned out into two levels of subdirectory keyed by the first four
  * hex characters of the id (`<ab>/<cd>/<id>`) rather than dumped flat into a
- * single directory. A flat layout piles every attachment into one directory,
- * and a directory with tens of thousands of entries stalls on filesystems that
- * scan it linearly (ext3) or reach it over the network (NFS/CIFS/overlay):
- * enumeration by backups, rsync and `ls` degrades even where individual
- * lookups stay fast. Two hex bytes give 65536 buckets, so a directory only
- * approaches the ~10k-entry danger zone past hundreds of millions of
- * attachments; the ids are random UUIDs, so the spread is even for free.
+ * single directory -- the shared layout in `common/shard-path.util.ts`, which
+ * automatic backups use for their per-user folders too.
  *
  * Bytes live outside the database, so they are not embedded in the application
  * backup; only the metadata row travels with a backup and the directory must be
@@ -57,26 +53,15 @@ export class LocalStorageProvider implements AttachmentStorageProvider {
   }
 
   /**
-   * Keys are server-generated UUIDs. The allowlist deliberately excludes `.`,
-   * so traversal segments (`.`, `..`) and separators cannot be expressed at all.
-   */
-  private static readonly SAFE_KEY = /^[A-Za-z0-9_-]+$/;
-
-  /**
    * Validate `key` and return it. Keys are server-generated, but treat them as
    * untrusted: strip any directory component and require the result to be an
-   * unchanged allowlisted filename. A key that survives this cannot contain a
-   * separator, a dot, or a NUL, so any shard path derived from it stays inside
-   * `baseDir` by construction.
+   * unchanged id from the shared safe alphabet. A key that survives this cannot
+   * contain a separator, a dot, or a NUL, so any shard path derived from it
+   * stays inside `baseDir` by construction.
    */
   private safeKey(key: string): string {
     const safe = basename(key ?? "");
-    if (
-      !safe ||
-      safe !== key ||
-      !LocalStorageProvider.SAFE_KEY.test(safe) ||
-      safe.includes("\0")
-    ) {
+    if (!safe || safe !== key || !isShardableId(safe)) {
       throw new NotFoundException(
         tr("errors.attachments.notFound", "Attachment not found"),
       );
@@ -97,7 +82,7 @@ export class LocalStorageProvider implements AttachmentStorageProvider {
 
   /** Sharded path for `safe`: `<baseDir>/<ab>/<cd>/<id>`. */
   private shardedPath(safe: string): string {
-    return this.contained(safe.slice(0, 2), safe.slice(2, 4), safe);
+    return this.contained(...shardedSegments(safe));
   }
 
   /**

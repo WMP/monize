@@ -103,6 +103,18 @@ function TransactionsContent() {
   const { convertToDefault } = useExchangeRates();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  // Joint accounts: effective write permissions per shared account, used to
+  // hide edit/delete affordances the grant does not cover.
+  const jointPermissionsByAccount = useMemo(() => {
+    const map = new Map<
+      string,
+      { canCreate: boolean; canEdit: boolean; canDelete: boolean }
+    >();
+    for (const a of accounts) {
+      if (a.isJoint && a.jointPermissions) map.set(a.id, a.jointPermissions);
+    }
+    return map;
+  }, [accounts]);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [scheduledTransactions, setScheduledTransactions] = useState<ScheduledTransaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -1256,6 +1268,7 @@ function TransactionsContent() {
           ) : (
             <TransactionList
               transactions={transactions}
+              jointPermissionsByAccount={jointPermissionsByAccount}
               onEdit={handleEdit}
               onDuplicate={handleDuplicate}
               onScheduleRecurring={handleScheduleRecurring}

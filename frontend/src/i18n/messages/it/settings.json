@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "Backup automatico",
     "description": "Esegui automaticamente il backup dei tuoi dati in una cartella secondo una pianificazione. Poiché Monize gira in Docker, devi mappare una cartella dell'host nel container come volume (es. -v /host/backups:/data/backups).",
+    "adminManagedNote": "Solo gli amministratori possono modificare queste impostazioni. Tutti gli altri utenti vengono salvati automaticamente con la stessa pianificazione e politica di conservazione, ciascuno in una cartella propria.",
     "loadingText": "Caricamento...",
     "enableLabel": "Attiva backup automatici",
     "backupFolderLabel": "Cartella di backup",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "I backup di ogni utente vengono salvati in una cartella dedicata all'interno di questa, denominata con il suo ID utente.",
+    "perUserFolderHelpWithPath": "I backup di ogni utente vengono salvati in una cartella dedicata all'interno di questa, denominata con il suo ID utente. La tua: {path}",
     "browseButton": "Sfoglia...",
     "validateButton": "Convalida",
     "validatingButton": "Convalida in corso...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "Crittografia backup",
       "descriptionOidc": "Cifra i backup manuali e automatici con una password dedicata che imposti qui. La password è necessaria per il ripristino.",
-      "descriptionLocal": "Cifra i backup manuali e automatici con la tua password di accesso. La password è necessaria per il ripristino.",
       "loading": "Caricamento...",
       "enabledBadge": "Attiva",
       "changePasswordButton": "Cambia password backup",
       "disableButton": "Disattiva",
       "setPasswordButton": "Imposta password backup",
-      "enableEncryptedButton": "Attiva backup cifrati",
       "setupModal": {
         "titleOidc": "Imposta password backup",
-        "titleLocal": "Attiva backup cifrati",
         "descriptionOidc": "Scegli una password per cifrare i tuoi backup. Salvala in un posto sicuro -- ti servirà per il ripristino.",
-        "descriptionLocal": "Conferma la tua password di accesso. Verrà usata per cifrare tutti i backup (manuali e automatici).",
         "placeholderOidc": "Nuova password backup (12+ caratteri)",
-        "placeholderLocal": "La tua password di accesso",
         "savingButton": "Salvataggio...",
         "confirmButton": "Conferma"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "Impossibile revocare il delegato",
       "resetPasswordFailed": "Impossibile reimpostare la password",
       "copyFailed": "Impossibile copiare negli appunti"
-    }
+    },
+    "jointLabel": "{count, plural, one {# conto cointestato} other {# conti cointestati}}"
   },
   "delegateAccessModal": {
     "title": "Modifica accesso",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "Nessun conto da concedere.",
-      "grantAll": "Concedi tutto"
+      "grantAll": "Concedi tutto",
+      "jointRequiresFullAccount": "I conti cointestati possono essere condivisi solo con utenti che hanno un proprio account Monize"
     },
     "shared": {
       "description": "La LETTURA di beneficiari, categorie ed etichette è sempre consentita. Questi controlli riguardano creazione/modifica/eliminazione."
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "Sezioni impostazioni",
     "profile": "Profilo",
     "preferences": "Preferenze",
+    "tours": "Tour guidati",
     "notifications": "Notifiche",
     "security": "Sicurezza",
     "sharedAccess": "Accesso condiviso",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "Accesso condiviso",
       "description": "Concedi a un'altra persona accesso granulare a conti specifici."
+    },
+    "toursCard": {
+      "title": "Tour guidati",
+      "description": "Tutti i tour offerti da Monize, con quelli che hai già visto. Avvia o rivedi quello che vuoi."
     },
     "emergencyAccessCard": {
       "title": "Accesso di emergenza",

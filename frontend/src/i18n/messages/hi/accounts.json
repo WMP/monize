@@ -48,7 +48,8 @@
       "status": "स्थिति",
       "balance": "शेष राशि",
       "actions": "क्रियाएं"
-    }
+    },
+    "filterJoint": "मेरे साथ साझा"
   },
   "row": {
     "statusActive": "सक्रिय",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "बंद करने के लिए खाते का शेष शून्य होना चाहिए",
       "closeTitleEnabled": "खाता बंद करें",
       "details": "विवरण"
-    }
+    },
+    "jointBadge": "संयुक्त",
+    "jointSharedBy": "{owner} द्वारा साझा",
+    "jointSharedWith": "{count, plural, one {# व्यक्ति} other {# लोगों}} के साथ साझा",
+    "includeInNetWorth": "मेरी कुल संपत्ति में शामिल करें",
+    "excludeFromNetWorth": "मेरी कुल संपत्ति से बाहर रखें"
   },
   "contextMenu": {
     "subtypeBrokerage": "ब्रोकरेज",
@@ -103,7 +109,8 @@
     "loadFailed": "खाते लोड करने में विफल",
     "favouriteError": "पसंदीदा अपडेट करने में विफल",
     "createSuccess": "खाता सफलतापूर्वक बनाया गया",
-    "updateSuccess": "खाता सफलतापूर्वक अपडेट किया गया"
+    "updateSuccess": "खाता सफलतापूर्वक अपडेट किया गया",
+    "updateFailed": "खाता अपडेट नहीं हो सका"
   },
   "form": {
     "accountName": "खाते का नाम",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "उदा. 25",
     "fxFeeTitle": "विदेशी मुद्रा रूपांतरण शुल्क (वैकल्पिक)",
     "fxFeePercent": "शुल्क प्रतिशत",
-    "fxFeePercentPlaceholder": "उदा. 2.5"
+    "fxFeePercentPlaceholder": "उदा. 2.5",
+    "jointSharedWith": "संयुक्त खाता, {count, plural, one {# व्यक्ति} other {# लोगों}} के साथ साझा",
+    "jointManage": "साझाकरण प्रबंधित करें"
   },
   "exportModal": {
     "title": "{name} निर्यात करें",

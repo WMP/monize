@@ -159,6 +159,25 @@ function addDaysIso(iso: string, days: number): string {
   return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
 }
 
+/**
+ * How far a replayed quantity may sit from the held one and still be the same
+ * position. The dust threshold the portfolio views already use for "no
+ * position": below it the difference cannot move a per-share figure meaningfully.
+ */
+const COST_BASIS_QUANTITY_TOLERANCE = 0.0001;
+
+/**
+ * Where a trade's money landed, in the two roles an account can play. Both maps
+ * are keyed by account id and agree for every account that is not a brokerage
+ * with a linked cash account.
+ */
+interface SettlementCurrencies {
+  /** The account's own currency -- what an explicitly named funding account settles in. */
+  own: Map<string, string>;
+  /** Where a brokerage's cash sits: its linked cash account's currency, or its own. */
+  brokerage: Map<string, string>;
+}
+
 interface PeriodBucket {
   key: string; // YYYY-MM for months, YYYY-MM-DD for days
   periodStart: string; // YYYY-MM-DD first day of period
@@ -858,11 +877,22 @@ export class PortfolioCalculationService {
           // free purchase: the units joined the position, nothing joined the
           // basis, and the quantity reconciliation downstream then *passed*
           // because the units did add up. An incomplete import came out as a
-          // confident gain and a confident tax bill. A row genuinely worth
-          // zero is a different thing and still says so -- an explicit 0.
-          const hasPrice =
-            tx.price !== null && Number.isFinite(Number(tx.price));
-          if (!hasPrice && (quantity !== 0 || commission !== 0)) {
+          // confident gain and a confident tax bill.
+          //
+          // A stored `0` is *no price* too, not a free acquisition. Before the
+          // acquisition guard shipped, `create()` stored `price ?? 0` and the
+          // form accepted a blank field, so real databases hold zero-price BUY
+          // and REINVEST rows that mean "unknown". Replaying one as a known
+          // zero-cost lot understates the basis and overstates every gain and
+          // tax drawn from it -- the same defect the null case closes, arriving
+          // by a different route. And no legitimate zero can be stored from
+          // here on: `assertAcquisitionPriced` refuses it, because a zero-cost
+          // purchase is not a concept this application has.
+          const priced =
+            tx.price !== null &&
+            Number.isFinite(Number(tx.price)) &&
+            Number(tx.price) > 0;
+          if (!priced && (quantity !== 0 || commission !== 0)) {
             entry.quantity += quantity;
             entry.basisGap ??= "unpriced_acquisition";
             break;
@@ -873,9 +903,13 @@ export class PortfolioCalculationService {
           // two different currencies cannot be added together at all, and
           // there is no rate to reconcile them with that would not be
           // answering today's question about a historical cost.
-          const settledIn = basisCurrencyByAccount.get(
-            tx.fundingAccountId ?? tx.accountId,
-          );
+          // The funding account settles in its own currency; a row with no
+          // funding account settles wherever the brokerage's cash sits. Same
+          // split as `resolveExchangeRate`, which produced the rate being
+          // applied here.
+          const settledIn = tx.fundingAccountId
+            ? basisCurrencyByAccount.own.get(tx.fundingAccountId)
+            : basisCurrencyByAccount.brokerage.get(tx.accountId);
           if (settledIn === undefined) {
             entry.quantity += quantity;
             entry.basisGap ??= "mixed_basis_currency";
@@ -977,23 +1011,31 @@ export class PortfolioCalculationService {
 
   /**
    * Currency each account settles a trade in, for every account the replay can
-   * be pointed at.
+   * be pointed at -- in the two roles an account can play, because the real
+   * resolution treats them differently.
    *
    * A brokerage does not hold the cash: `InvestmentTransactionsService` posts
-   * the converted amount to the funding account when the row names one, and
-   * otherwise to the brokerage's linked cash account -- so the currency the
-   * stored `exchangeRate` produced belongs to that account, not to the
-   * brokerage. This mirrors that resolution rather than re-deriving it, and
-   * the two must be changed together.
+   * the converted amount to the funding account when the row names one
+   * (`accountsService.findOne(fundingAccountId)` -- that account, whatever it
+   * is), and otherwise to the brokerage's linked cash account
+   * (`findCashAccount`, which redirects). This mirrors that resolution rather
+   * than re-deriving it, and the two must be changed together.
+   *
+   * One map applying the redirect to every account did not mirror it: a funding
+   * account that is itself a brokerage with a linked cash account came back as
+   * the linked account's currency, while the trade had settled in the funding
+   * account's own -- so a basis in the right currency was reported in the wrong
+   * one, or a same-currency pair was called mixed and the basis thrown away.
    *
    * A brokerage with no linked cash account settles in its own currency, which
-   * is the single-account case and by far the common one.
+   * is the single-account case and by far the common one, so the two maps agree
+   * for almost every account.
    */
   private async settlementCurrencies(
     userId: string,
     holdingsAccountIds: string[],
     transactions: InvestmentTransaction[],
-  ): Promise<Map<string, string>> {
+  ): Promise<SettlementCurrencies> {
     const wanted = new Set<string>(holdingsAccountIds);
     for (const tx of transactions) {
       if (tx.fundingAccountId) wanted.add(tx.fundingAccountId);
@@ -1027,17 +1069,19 @@ export class PortfolioCalculationService {
       for (const account of linked) byId.set(account.id, account);
     }
 
-    const settlement = new Map<string, string>();
+    const own = new Map<string, string>();
+    const brokerage = new Map<string, string>();
     for (const account of byId.values()) {
+      if (account.currencyCode) own.set(account.id, account.currencyCode);
       const linked =
         account.accountSubType === AccountSubType.INVESTMENT_BROKERAGE &&
         account.linkedAccountId
           ? byId.get(account.linkedAccountId)
           : undefined;
       const currency = (linked ?? account).currencyCode;
-      if (currency) settlement.set(account.id, currency);
+      if (currency) brokerage.set(account.id, currency);
     }
-    return settlement;
+    return { own, brokerage };
   }
 
   /**
@@ -1054,16 +1098,28 @@ export class PortfolioCalculationService {
    * is a different one.
    *
    * So the filtering happens here rather than at the call site: an entry is
-   * present only when the replay knows the basis *and* denominated it in the
-   * currency asked for. Everything else is absent, and a caller that finds
-   * nothing falls back to whatever it does when there is no history at all.
-   * Converting the mismatch instead would need today's rate to answer a
-   * question about a historical purchase.
+   * present only when the replay knows the basis, denominated it in the currency
+   * asked for, *and* replayed the same number of units the holding actually has.
+   * Everything else is absent, and a caller that finds nothing falls back to
+   * whatever it does when there is no history at all. Converting the mismatch
+   * instead would need today's rate to answer a question about a historical
+   * purchase.
+   *
+   * The quantity comparison is the rule
+   * `calculateCostBasisLotsInAccountCurrency` states for every caller, applied
+   * here so the claim and its one call site agree. A basis replayed from an
+   * incomplete history is a real cost for a smaller position: 50 of 100 shares
+   * imported gives a basis for 50, and setting that against a 100-share market
+   * value reports a gain that is mostly the missing half. Per (account,
+   * security), never on sums -- a surplus of 30 units in one account would
+   * otherwise cancel a shortfall of 30 in another and both would pass.
    */
   private async knownCostBasesIn(
     userId: string,
     holdingsAccountIds: string[],
     currencyByAccount: Map<string, string>,
+    /** Units actually held, keyed `${accountId}:${securityId}`. */
+    quantityByKey: Map<string, number>,
   ): Promise<Map<string, number>> {
     const lots = await this.calculateCostBasisLotsInAccountCurrency(
       userId,
@@ -1074,6 +1130,13 @@ export class PortfolioCalculationService {
       if (!lot.basisKnown || lot.currencyCode === null) continue;
       const accountId = key.slice(0, key.indexOf(":"));
       if (currencyByAccount.get(accountId) !== lot.currencyCode) continue;
+      const held = quantityByKey.get(key);
+      if (
+        held === undefined ||
+        Math.abs(held - lot.quantity) > COST_BASIS_QUANTITY_TOLERANCE
+      ) {
+        continue;
+      }
       usable.set(key, lot.costBasis);
     }
     return usable;
@@ -1544,6 +1607,12 @@ export class PortfolioCalculationService {
       userId,
       holdingsAccountIds,
       currencyByAccount,
+      new Map(
+        holdings.map(
+          (h) =>
+            [`${h.accountId}:${h.securityId}`, Number(h.quantity)] as const,
+        ),
+      ),
     );
 
     // Both are totals in the contract's sense: a holding whose price or whose

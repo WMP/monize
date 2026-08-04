@@ -35,12 +35,24 @@
   "settings": {
     "title": "Visites guidées",
     "description": "Découvrez les fonctionnalités de l'application étape par étape.",
-    "showList": "Afficher les visites ({count})",
-    "hideList": "Masquer les visites",
+    "backLink": "Retour aux paramètres",
+    "pageTitle": "Visites guidées",
+    "pageSubtitle": "Toutes les visites proposées par Monize, au même endroit. Lancez-en une à tout moment : vous pouvez quitter une visite avec Échap et la reprendre ici.",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, one {# étape} other {# étapes}}",
+    "releaseLabel": "Nouveau en {version}",
+    "requirementsLoading": "Vérification de votre accès à cette visite…",
+    "requires": {
+      "transactionEntry": "Ajoutez d'abord un compte : cette visite explique comment enregistrer une transaction.",
+      "securitiesExist": "Ajoutez d'abord un titre : cette visite en ouvre un depuis votre liste de titres."
+    },
     "start": "Démarrer",
     "restart": "Refaire",
     "statusNotViewed": "Non consultée",
     "statusDismissed": "Quittée en cours",
+    "resetHeading": "Tout recommencer",
+    "resetDescription": "Efface toutes les visites enregistrées afin qu’elles soient à nouveau proposées depuis le tableau de bord et après une mise à jour.",
     "reset": "Réinitialiser la progression des visites",
     "resetSuccess": "Progression des visites réinitialisée.",
     "resetError": "Impossible de réinitialiser la progression des visites. Veuillez réessayer."

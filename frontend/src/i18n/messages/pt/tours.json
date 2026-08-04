@@ -35,12 +35,24 @@
   "settings": {
     "title": "Visitas guiadas",
     "description": "Percorra as funcionalidades da aplicação passo a passo.",
-    "showList": "Mostrar visitas guiadas ({count})",
-    "hideList": "Ocultar visitas guiadas",
+    "backLink": "Voltar às Definições",
+    "pageTitle": "Visitas guiadas",
+    "pageSubtitle": "Todas as visitas guiadas que o Monize oferece, num só lugar. Inicie uma a qualquer momento — pode sair de uma visita com Escape e retomá-la a partir daqui.",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, one {# passo} other {# passos}}",
+    "releaseLabel": "Novidade na {version}",
+    "requirementsLoading": "A verificar se pode fazer esta visita guiada…",
+    "requires": {
+      "transactionEntry": "Adicione primeiro uma conta — esta visita mostra como registar uma transação.",
+      "securitiesExist": "Adicione primeiro um título — esta visita abre um a partir da sua lista de títulos."
+    },
     "start": "Iniciar",
     "restart": "Repetir",
     "statusNotViewed": "Não visto",
     "statusDismissed": "Saiu antes do fim",
+    "resetHeading": "Começar de novo",
+    "resetDescription": "Limpa todas as visitas registadas para que voltem a ser propostas no painel e após uma atualização.",
     "reset": "Repor progresso da visita guiada",
     "resetSuccess": "Progresso da visita guiada reposto.",
     "resetError": "Não foi possível repor o progresso da visita guiada. Tente novamente."

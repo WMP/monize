@@ -140,6 +140,35 @@ describe("runBacktest", () => {
     expect(result?.cagrPercent).toBeCloseTo(0, 6);
   });
 
+  it("values the trailing period from the newest close, not from a close dated after today", () => {
+    // The settled rule -- a boundary is priceable only once the series holds a
+    // close dated at or after it -- applies to the calendar boundaries the
+    // strategy fixed, and must not apply to `asOf`. "Now" never has a close
+    // dated at or after it until the market shuts, so applying it here would
+    // drop the trailing mark-to-market period on every trading day: for a
+    // strategy with one evaluation, the entire run.
+    const result = runBacktest(
+      input({
+        periods: [
+          {
+            effectiveFrom: "2024-01-01",
+            targetRole: "US_EQUITY",
+            targetSecurityId: "sec-spy",
+            previousRole: null,
+          },
+        ],
+        seriesBySecurity: new Map([
+          ["sec-spy", walk({ "2023-12-29": 100, "2024-06-28": 110 })],
+        ]),
+        // Two days past the newest close, the ordinary state of a live series.
+        asOf: "2024-06-30",
+      }),
+    );
+
+    expect(result).toMatchObject({ from: "2024-01-01", to: "2024-06-30" });
+    expect(result?.coveragePercent).toBe(100);
+  });
+
   /**
    * The adversarial case for the boundary rule: a period younger than
    * `BOUNDARY_LAG_DAYS` resolves both of its ends to the same close, which used

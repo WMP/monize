@@ -6,7 +6,10 @@
     "back": "Terug naar rekeningen",
     "switchAccount": "Naar een andere rekening gaan",
     "switchPlaceholder": "Rekeningen filteren...",
-    "switchNoMatches": "Geen rekeningen gevonden"
+    "switchNoMatches": "Geen rekeningen gevonden",
+    "jointBadge": "Gezamenlijk",
+    "jointSharedBy": "Gedeeld door {owner}",
+    "jointSharedWith": "Gedeeld met {count, plural, one {# persoon} other {# personen}}"
   },
   "loading": "Rekeninggegevens laden...",
   "error": {

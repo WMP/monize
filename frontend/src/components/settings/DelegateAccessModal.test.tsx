@@ -29,6 +29,7 @@ const baseDelegate: DelegateSummary = {
     lastName: null,
     hasPassword: true,
     canResetPassword: true,
+    isFullAccount: true,
   },
   grants: [],
   capabilities: {
@@ -42,7 +43,23 @@ const accounts = [
   { id: 'a1', name: 'Chequing', accountType: 'CHEQUING' },
 ] as unknown as Account[];
 
-function renderModal(delegate: DelegateSummary = baseDelegate) {
+// What GET /accounts actually returns in own context: the caller's own
+// accounts plus accounts jointly shared *to* them by another owner.
+const accountsWithJoint = [
+  ...accounts,
+  {
+    id: 'j1',
+    name: 'Partner Savings',
+    accountType: 'SAVINGS',
+    isJoint: true,
+    ownerLabel: 'Partner',
+  },
+] as unknown as Account[];
+
+function renderModal(
+  delegate: DelegateSummary = baseDelegate,
+  accountList: Account[] = accounts,
+) {
   const submitRef = { current: null as (() => void) | null };
   const setFormDirty = vi.fn();
   const onSaved = vi.fn();
@@ -50,7 +67,7 @@ function renderModal(delegate: DelegateSummary = baseDelegate) {
   render(
     <DelegateAccessModal
       delegate={delegate}
-      accounts={accounts}
+      accounts={accountList}
       onCancel={onCancel}
       onSaved={onSaved}
       setFormDirty={setFormDirty}
@@ -74,6 +91,61 @@ describe('DelegateAccessModal', () => {
     expect(
       screen.getByRole('switch', { name: /Read access to Chequing/i }),
     ).toBeInTheDocument();
+  });
+
+  it('hides accounts delegated to the caller, joint ones included', () => {
+    renderModal(baseDelegate, accountsWithJoint);
+    // Own account is still offered...
+    expect(
+      screen.getByRole('switch', { name: /Read access to Chequing/i }),
+    ).toBeInTheDocument();
+    // ...but an account another owner shared with the caller is not, in any
+    // form: no row, no group header, no per-column "grant all" for its type.
+    expect(screen.queryByText('Partner Savings')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('switch', { name: /access to Partner Savings/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('switch', { name: /all Savings accounts/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the empty state when every visible account is delegated to the caller', () => {
+    renderModal(baseDelegate, accountsWithJoint.filter((a) => a.isJoint));
+    expect(
+      screen.getByText('No accounts to grant.'),
+    ).toBeInTheDocument();
+  });
+
+  it('never sends a delegated account in the grant payload', async () => {
+    // A grant on j1 cannot exist server-side, but the save is
+    // delete-and-recreate over the account list: were a delegated account to
+    // reach the list it would be re-shared onward on the next unrelated save.
+    renderModal(
+      {
+        ...baseDelegate,
+        grants: [
+          { accountId: 'a1', canRead: true },
+          { accountId: 'j1', canRead: true, isJoint: true },
+        ],
+      },
+      accountsWithJoint,
+    );
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: /Create access to Chequing/i }),
+      );
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save'));
+    });
+
+    await waitFor(() =>
+      expect(delegationApi.setGrants).toHaveBeenCalledWith('g1', [
+        expect.objectContaining({ accountId: 'a1', canRead: true }),
+      ]),
+    );
   });
 
   it('Save is disabled until something changes', () => {
@@ -102,6 +174,7 @@ describe('DelegateAccessModal', () => {
           canCreate: false,
           canEdit: false,
           canDelete: false,
+          isJoint: false,
         },
       ]),
     );
@@ -133,6 +206,96 @@ describe('DelegateAccessModal', () => {
         }),
       ]),
     );
+  });
+
+  it('round-trips isJoint on an unchanged-looking save (regression: delete-and-recreate)', async () => {
+    renderModal({
+      ...baseDelegate,
+      grants: [{ accountId: 'a1', canRead: true, isJoint: true }],
+    });
+
+    // Change something unrelated so a save fires, then assert the joint
+    // flag survived the round trip -- the server recreates every grant row
+    // from this payload, so dropping it here would clear the joint share.
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: /Create access to Chequing/i }),
+      );
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save'));
+    });
+
+    await waitFor(() =>
+      expect(delegationApi.setGrants).toHaveBeenCalledWith('g1', [
+        expect.objectContaining({ accountId: 'a1', isJoint: true }),
+      ]),
+    );
+  });
+
+  it('offers Joint only once READ is on, then saves both flags', async () => {
+    renderModal();
+    // Like the write ops, Joint is disabled until READ is granted.
+    expect(
+      screen.getByRole('switch', { name: /Joint access to Chequing/i }),
+    ).toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: /Read access to Chequing/i }),
+      );
+    });
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: /Joint access to Chequing/i }),
+      );
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save'));
+    });
+    await waitFor(() =>
+      expect(delegationApi.setGrants).toHaveBeenCalledWith('g1', [
+        expect.objectContaining({
+          accountId: 'a1',
+          canRead: true,
+          isJoint: true,
+        }),
+      ]),
+    );
+  });
+
+  it('turning READ off clears the joint flag with it', async () => {
+    renderModal({
+      ...baseDelegate,
+      grants: [{ accountId: 'a1', canRead: true, isJoint: true }],
+    });
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: /Read access to Chequing/i }),
+      );
+    });
+    // Grant dropped entirely (no canRead), so the saved array is empty.
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save'));
+    });
+    await waitFor(() =>
+      expect(delegationApi.setGrants).toHaveBeenCalledWith('g1', []),
+    );
+  });
+
+  it('disables the Joint toggle for a delegate without a full account', () => {
+    renderModal({
+      ...baseDelegate,
+      delegate: { ...baseDelegate.delegate, isFullAccount: false },
+      // READ granted, so only the full-account rule can be what disables it.
+      grants: [{ accountId: 'a1', canRead: true }],
+    });
+    expect(
+      screen.getByRole('switch', { name: /Joint access to Chequing/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('switch', { name: /Create access to Chequing/i }),
+    ).not.toBeDisabled();
   });
 
   it('batches a granular capability change (Edit Payees)', async () => {

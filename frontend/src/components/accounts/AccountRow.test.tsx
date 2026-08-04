@@ -1066,4 +1066,102 @@ describe('AccountRow', () => {
       expect(screen.queryByText('$')).toBeNull();
     });
   });
+
+  describe('joint accounts', () => {
+    const jointAccount = () =>
+      createAccount({
+        isJoint: true,
+        ownerLabel: 'Olive Owner',
+        jointPermissions: { canCreate: true, canEdit: true, canDelete: false },
+        canDelete: false,
+      });
+
+    it('shows the Joint badge and the sharing owner on a grantee row', () => {
+      renderAccountRow(createDefaultProps({ account: jointAccount() }));
+      expect(screen.getByText('Joint')).toBeInTheDocument();
+      expect(screen.getByText('Shared by Olive Owner')).toBeInTheDocument();
+    });
+
+    it('shows the Joint badge with the grantee count on an owner row', () => {
+      renderAccountRow(
+        createDefaultProps({
+          account: createAccount({ jointGranteeCount: 2 }),
+        }),
+      );
+      expect(screen.getByText('Joint')).toBeInTheDocument();
+      expect(screen.getByText('Shared with 2 people')).toBeInTheDocument();
+    });
+
+    it('hides account-object actions on a joint row and offers the net-worth toggle', () => {
+      const account = jointAccount();
+      const actions = buildAccountActions(
+        account,
+        true,
+        {
+          viewTransactions: 'View Transactions',
+          details: 'Details',
+          edit: 'Edit',
+          reconcile: 'Reconcile',
+          close: 'Close',
+          closeTitleDisabled: 'x',
+          closeTitleEnabled: 'y',
+          reopen: 'Reopen',
+          delete: 'Delete',
+          includeInNetWorth: 'Include in my net worth',
+          excludeFromNetWorth: 'Exclude from my net worth',
+        },
+        {
+          onDetails: vi.fn(),
+          onEdit: vi.fn(),
+          onReconcile: vi.fn(),
+          onCloseClick: vi.fn(),
+          onReopen: vi.fn(),
+          onDeleteClick: vi.fn(),
+          onToggleNetWorthExclusion: vi.fn(),
+        },
+      );
+      const byKey = new Map(actions.map((a) => [a.key, a]));
+      // The account object stays owner-only: every mutating account action
+      // is hidden even though isDeletable was passed as true.
+      for (const key of ['edit', 'reconcile', 'close', 'reopen', 'delete']) {
+        expect(byKey.get(key)?.hidden, key).toBe(true);
+      }
+      expect(byKey.get('netWorthExclusion')?.hidden).toBe(false);
+      expect(byKey.get('netWorthExclusion')?.label).toBe(
+        'Exclude from my net worth',
+      );
+    });
+
+    it('keeps every account action for own rows (no regression)', () => {
+      const account = createAccount({ isClosed: false });
+      const actions = buildAccountActions(
+        account,
+        true,
+        {
+          viewTransactions: 'View Transactions',
+          details: 'Details',
+          edit: 'Edit',
+          reconcile: 'Reconcile',
+          close: 'Close',
+          closeTitleDisabled: 'x',
+          closeTitleEnabled: 'y',
+          reopen: 'Reopen',
+          delete: 'Delete',
+        },
+        {
+          onDetails: vi.fn(),
+          onEdit: vi.fn(),
+          onReconcile: vi.fn(),
+          onCloseClick: vi.fn(),
+          onReopen: vi.fn(),
+          onDeleteClick: vi.fn(),
+        },
+      );
+      const byKey = new Map(actions.map((a) => [a.key, a]));
+      expect(byKey.get('edit')?.hidden).toBe(false);
+      expect(byKey.get('delete')?.hidden).toBe(false);
+      // No handler -> the joint-only action never appears for own rows.
+      expect(byKey.get('netWorthExclusion')?.hidden).toBe(true);
+    });
+  });
 });

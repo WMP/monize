@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "Pencadangan Otomatis",
     "description": "Cadangkan data Anda secara otomatis ke folder sesuai jadwal. Karena Monize berjalan di Docker, Anda harus memetakan folder host ke dalam kontainer sebagai volume (misalnya, -v /host/backups:/data/backups).",
+    "adminManagedNote": "Hanya administrator yang dapat mengubah pengaturan ini. Semua pengguna lain dicadangkan secara otomatis dengan jadwal dan kebijakan retensi yang sama, masing-masing ke folder sendiri.",
     "loadingText": "Memuat...",
     "enableLabel": "Aktifkan pencadangan otomatis",
     "backupFolderLabel": "Folder Cadangan",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "Cadangan setiap pengguna disimpan di folder mereka sendiri di dalam folder ini, dinamai sesuai ID pengguna.",
+    "perUserFolderHelpWithPath": "Cadangan setiap pengguna disimpan di folder mereka sendiri di dalam folder ini, dinamai sesuai ID pengguna. Milik Anda: {path}",
     "browseButton": "Jelajahi...",
     "validateButton": "Validasi",
     "validatingButton": "Memvalidasi...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "Enkripsi Cadangan",
       "descriptionOidc": "Enkripsi cadangan manual dan otomatis dengan kata sandi cadangan khusus yang Anda tetapkan di sini. Kata sandi diperlukan untuk pemulihan.",
-      "descriptionLocal": "Enkripsi cadangan manual dan otomatis dengan kata sandi login Anda. Kata sandi diperlukan untuk pemulihan.",
       "loading": "Memuat...",
       "enabledBadge": "Aktif",
       "changePasswordButton": "Ubah Kata Sandi Cadangan",
       "disableButton": "Nonaktifkan",
       "setPasswordButton": "Tetapkan Kata Sandi Cadangan",
-      "enableEncryptedButton": "Aktifkan Cadangan Terenkripsi",
       "setupModal": {
         "titleOidc": "Tetapkan Kata Sandi Cadangan",
-        "titleLocal": "Aktifkan Cadangan Terenkripsi",
         "descriptionOidc": "Pilih kata sandi yang akan digunakan untuk mengenkripsi cadangan Anda. Simpan di tempat yang aman -- Anda akan membutuhkannya untuk pemulihan.",
-        "descriptionLocal": "Konfirmasi kata sandi login Anda. Ini akan digunakan untuk mengenkripsi semua cadangan (manual dan otomatis).",
         "placeholderOidc": "Kata sandi cadangan baru (12+ karakter)",
-        "placeholderLocal": "Kata sandi login Anda",
         "savingButton": "Menyimpan...",
         "confirmButton": "Konfirmasi"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "Gagal mencabut delegasi",
       "resetPasswordFailed": "Gagal mengatur ulang kata sandi",
       "copyFailed": "Tidak dapat menyalin ke papan klip"
-    }
+    },
+    "jointLabel": "{count, plural, other {# akun bersama}}"
   },
   "delegateAccessModal": {
     "title": "Edit akses",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "Tidak ada akun untuk diberikan.",
-      "grantAll": "Berikan semua"
+      "grantAll": "Berikan semua",
+      "jointRequiresFullAccount": "Akun bersama hanya dapat dibagikan dengan pengguna yang memiliki akun Monize sendiri"
     },
     "shared": {
       "description": "BACA penerima, kategori dan tag selalu diizinkan. Ini mengendalikan buat/edit/hapus."
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "Bagian pengaturan",
     "profile": "Profil",
     "preferences": "Preferensi",
+    "tours": "Tur Berpandu",
     "notifications": "Notifikasi",
     "security": "Keamanan",
     "sharedAccess": "Akses Bersama",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "Akses Bersama",
       "description": "Berikan orang lain akses terperinci ke akun tertentu."
+    },
+    "toursCard": {
+      "title": "Tur Berpandu",
+      "description": "Semua tur yang ditawarkan Monize, lengkap dengan yang sudah Anda lihat. Mulai atau ulangi salah satunya."
     },
     "emergencyAccessCard": {
       "title": "Akses Darurat",

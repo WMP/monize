@@ -179,7 +179,6 @@
     "unsupportedBackupVersion": "サポートされていないバックアップバージョン：{{ version }}。期待値：{{ expected }}",
     "missingExportedAt": "無効なバックアップ形式：exportedAt がありません",
     "tableNotAllowed": "テーブル {{ table }} はバックアップの復元では許可されていません",
-    "localAuthRequired": "ローカルパスワード認証が必要です",
     "encryptionNotConfigured": "サーバーが暗号化用に設定されていません（AI_ENCRYPTION_KEY がありません）",
     "backupPasswordOidcOnly": "バックアップパスワードはOIDCユーザーのみ設定可能です。ローカルユーザーはログインパスワードを使用します",
     "backupPasswordTooShort": "バックアップパスワードは少なくとも {{ minLength }} 文字必要です",
@@ -250,7 +249,16 @@
     "capabilityNotGranted": "アカウント所有者は {{ resource }} を {{ operation }} する権限を付与していません。委任アクセス設定でこれを有効にするよう依頼してください。",
     "sectionNotGranted": "アカウント所有者は {{ sectionLabel }} セクションをあなたと共有していません。",
     "accountNotShared": "アカウント所有者はこの口座をあなたと共有していません。",
-    "accountOperationNotGranted": "アカウント所有者はこの口座での取引を {{ operation }} する権限を付与していません。"
+    "accountOperationNotGranted": "アカウント所有者はこの口座での取引を {{ operation }} する権限を付与していません。",
+    "jointOwnAccount": "これは自分の口座です。共同口座のアクセスは適用されません。",
+    "jointAccountTypeReadOnly": "この口座タイプは読み取り専用で共有されています。取引を変更できるのは所有者のみです。",
+    "jointOwnAccountNetWorth": "自分の口座には、その口座の純資産設定を使用してください。",
+    "jointRequiresRead": "口座を共同としてマークするには読み取りアクセスが必要です",
+    "jointRequiresFullAccount": "共同口座は、自分のMonizeアカウントを持つユーザーとのみ共有できます",
+    "jointPayeeCreateNotGranted": "口座の所有者から支払先を作成する権限が付与されていません。既存の支払先から選択してください。",
+    "jointTagsNotAllowed": "タグは個人のものなので、共有口座の取引には設定できません。",
+    "jointSplitsNotAllowed": "共有口座の分割取引を管理できるのは所有者のみです。",
+    "jointTransferRowLocked": "これは振替です。振替エディターを使用してください。"
   },
   "emergencyAccess": {
     "smtpNotConfigured": "メールが設定されていません。SMTPが設定されるまで緊急アクセスは有効にできません。",
@@ -470,7 +478,8 @@
     "tagKeyRequired": "タグキー（1〜100文字）が必要です",
     "fxFieldsIncomplete": "originalAmount と originalCurrencyCode は一緒に指定する必要があります",
     "fxRateRequired": "外貨取引には正の為替レートが必要です",
-    "fxSignMismatch": "originalAmount と amount は同じ符号である必要があります"
+    "fxSignMismatch": "originalAmount と amount は同じ符号である必要があります",
+    "jointAccountMoveLocked": "共有口座の取引を別の口座に移動することはできません。"
   },
   "users": {
     "userNotFound": "ユーザーが見つかりません",

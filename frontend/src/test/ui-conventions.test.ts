@@ -268,6 +268,43 @@ describe('the GEM report links through its shared wrappers', () => {
   });
 });
 
+describe("a tab bar is the shared Tabs component", () => {
+  /**
+   * `ui/Tabs.tsx` is the only tablist in the app. It carries the roving
+   * tabindex, the arrow/Home/End keys, the horizontal scroll and the `pb-px`
+   * that keeps a stray vertical scrollbar off the row, plus the id convention
+   * (`tabId`/`tabPanelId`) a panel points back at.
+   *
+   * The rule is a scan because a second tablist is never wrong on its own file's
+   * terms -- it simply re-derives all of that, and drops some of it. The GEM
+   * report's hand-rolled bar set `aria-controls` on all five tabs while only the
+   * selected tab's panel is rendered, so four of them named an element that was
+   * not in the document. `Tabs.tsx` sets the attribute for the selected tab
+   * only, with a comment saying why; that is the fix a call site inherits by
+   * using it.
+   */
+  const SHARED = "/src/components/ui/Tabs.tsx";
+  const TABLIST = /role=["']tablist["']/;
+
+  it("declares role=tablist in exactly one place", () => {
+    const offenders = productionSources()
+      .filter(([path]) => path !== SHARED)
+      .filter(([, source]) => TABLIST.test(source))
+      .map(([path]) => path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("still finds the shared tablist, so the rule cannot pass by accident", () => {
+    const shared = sources[SHARED];
+    expect(
+      shared,
+      `${SHARED} not found -- update SHARED in this test`,
+    ).toBeTruthy();
+    expect(TABLIST.test(shared)).toBe(true);
+  });
+});
+
 describe("nothing interactive is nested inside a button", () => {
   /**
    * `<button>`'s content model forbids interactive descendants, and the

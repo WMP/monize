@@ -48,7 +48,8 @@
       "status": "Статус",
       "balance": "Остаток",
       "actions": "Действия"
-    }
+    },
+    "filterJoint": "Доступные мне"
   },
   "row": {
     "statusActive": "Активный",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "Для закрытия счёт должен иметь нулевой остаток",
       "closeTitleEnabled": "Закрыть счёт",
       "details": "Подробнее"
-    }
+    },
+    "jointBadge": "Совместный",
+    "jointSharedBy": "Доступ предоставил(а) {owner}",
+    "jointSharedWith": "Открыт доступ для {count, plural, one {# человека} few {# человек} many {# человек} other {# человека}}",
+    "includeInNetWorth": "Включить в мои чистые активы",
+    "excludeFromNetWorth": "Исключить из моих чистых активов"
   },
   "contextMenu": {
     "subtypeBrokerage": "Брокерский",
@@ -103,7 +109,8 @@
     "loadFailed": "Не удалось загрузить счета",
     "favouriteError": "Не удалось обновить избранное",
     "createSuccess": "Счёт успешно создан",
-    "updateSuccess": "Счёт успешно обновлён"
+    "updateSuccess": "Счёт успешно обновлён",
+    "updateFailed": "Не удалось обновить счёт"
   },
   "form": {
     "accountName": "Название счёта",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "например, 25",
     "fxFeeTitle": "Комиссия за конвертацию валюты (необязательно)",
     "fxFeePercent": "Процент комиссии",
-    "fxFeePercentPlaceholder": "напр. 2,5"
+    "fxFeePercentPlaceholder": "напр. 2,5",
+    "jointSharedWith": "Совместный счёт, доступ открыт для {count, plural, one {# человека} few {# человек} many {# человек} other {# человека}}",
+    "jointManage": "Управлять доступом"
   },
   "exportModal": {
     "title": "Экспорт {name}",

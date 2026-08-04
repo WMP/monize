@@ -35,12 +35,24 @@
   "settings": {
     "title": "निर्देशित टूर",
     "description": "ऐप की सुविधाओं को चरण दर चरण देखें।",
-    "showList": "टूर दिखाएँ ({count})",
-    "hideList": "टूर छिपाएँ",
+    "backLink": "सेटिंग पर वापस",
+    "pageTitle": "निर्देशित टूर",
+    "pageSubtitle": "Monize के सभी टूर एक ही जगह पर। कभी भी कोई टूर शुरू करें — Escape दबाकर टूर छोड़ सकते हैं और यहीं से दोबारा शुरू कर सकते हैं।",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, one {# चरण} other {# चरण}}",
+    "releaseLabel": "{version} में जोड़ा गया",
+    "requirementsLoading": "जाँचा जा रहा है कि आप यह टूर ले सकते हैं या नहीं…",
+    "requires": {
+      "transactionEntry": "पहले एक खाता जोड़ें — यह टूर लेन-देन दर्ज करना सिखाता है।",
+      "securitiesExist": "पहले एक प्रतिभूति जोड़ें — यह टूर आपकी प्रतिभूति सूची से एक खोलता है।"
+    },
     "start": "शुरू करें",
     "restart": "दोबारा लें",
     "statusNotViewed": "नहीं देखा गया",
     "statusDismissed": "बीच में छोड़ा गया",
+    "resetHeading": "फिर से शुरू करें",
+    "resetDescription": "सभी दर्ज टूर हटाएँ ताकि वे डैशबोर्ड से और अपडेट के बाद दोबारा दिखें।",
     "reset": "टूर प्रगति रीसेट करें",
     "resetSuccess": "टूर प्रगति रीसेट हो गई।",
     "resetError": "टूर प्रगति रीसेट नहीं की जा सकी। कृपया पुनः प्रयास करें।"

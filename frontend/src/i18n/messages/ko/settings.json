@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "자동 백업",
     "description": "일정에 따라 데이터를 폴더에 자동으로 백업합니다. Monize는 Docker에서 실행되므로 호스트 폴더를 볼륨으로 컨테이너에 매핑해야 합니다 (예: -v /host/backups:/data/backups).",
+    "adminManagedNote": "이 설정은 관리자만 변경할 수 있습니다. 다른 모든 사용자는 동일한 일정과 보존 정책에 따라 각자의 폴더에 자동으로 백업됩니다.",
     "loadingText": "로딩 중...",
     "enableLabel": "자동 백업 활성화",
     "backupFolderLabel": "백업 폴더",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "각 사용자의 백업은 이 폴더 안에 사용자 ID 이름으로 만들어진 개별 폴더에 저장됩니다.",
+    "perUserFolderHelpWithPath": "각 사용자의 백업은 이 폴더 안에 사용자 ID 이름으로 만들어진 개별 폴더에 저장됩니다. 내 폴더: {path}",
     "browseButton": "찾아보기...",
     "validateButton": "유효성 검사",
     "validatingButton": "유효성 검사 중...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "백업 암호화",
       "descriptionOidc": "여기서 설정한 전용 백업 비밀번호로 수동 및 자동 백업을 암호화합니다. 복원 시 비밀번호가 필요합니다.",
-      "descriptionLocal": "로그인 비밀번호로 수동 및 자동 백업을 암호화합니다. 복원 시 비밀번호가 필요합니다.",
       "loading": "로딩 중...",
       "enabledBadge": "활성화됨",
       "changePasswordButton": "백업 비밀번호 변경",
       "disableButton": "비활성화",
       "setPasswordButton": "백업 비밀번호 설정",
-      "enableEncryptedButton": "암호화 백업 활성화",
       "setupModal": {
         "titleOidc": "백업 비밀번호 설정",
-        "titleLocal": "암호화 백업 활성화",
         "descriptionOidc": "백업 암호화에 사용할 비밀번호를 선택하세요. 안전한 곳에 저장해 두세요 -- 복원 시 필요합니다.",
-        "descriptionLocal": "로그인 비밀번호를 확인하세요. 모든 백업 (수동 및 자동) 암호화에 사용됩니다.",
         "placeholderOidc": "새 백업 비밀번호 (12자 이상)",
-        "placeholderLocal": "로그인 비밀번호",
         "savingButton": "저장 중...",
         "confirmButton": "확인"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "위임자 취소에 실패했습니다",
       "resetPasswordFailed": "비밀번호 재설정에 실패했습니다",
       "copyFailed": "클립보드에 복사할 수 없습니다"
-    }
+    },
+    "jointLabel": "{count, plural, other {공동 계좌 #개}}"
   },
   "delegateAccessModal": {
     "title": "접근 편집",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "부여할 계정이 없습니다.",
-      "grantAll": "모두 부여"
+      "grantAll": "모두 부여",
+      "jointRequiresFullAccount": "공동 계좌는 자신의 Monize 계정이 있는 사용자와만 공유할 수 있습니다"
     },
     "shared": {
       "description": "수취인, 카테고리 및 태그의 읽기는 항상 허용됩니다. 생성/편집/삭제를 제어합니다."
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "설정 섹션",
     "profile": "프로필",
     "preferences": "환경설정",
+    "tours": "가이드 투어",
     "notifications": "알림",
     "security": "보안",
     "sharedAccess": "공유 접근",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "공유 접근",
       "description": "다른 사람에게 특정 계정에 대한 세분화된 접근 권한을 부여합니다."
+    },
+    "toursCard": {
+      "title": "가이드 투어",
+      "description": "Monize의 모든 투어와 이미 본 투어를 한눈에 볼 수 있습니다. 원하는 투어를 시작하거나 다시 볼 수 있습니다."
     },
     "emergencyAccessCard": {
       "title": "긴급 접근",

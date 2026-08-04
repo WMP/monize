@@ -1161,5 +1161,143 @@ describe("GemStrategyReport", () => {
         ).toBeInTheDocument(),
       );
     });
+
+    /**
+     * Invariant: stale data may stay on screen only while the pixels and
+     * assistive technology both say it is stale.
+     * Canonical adversarial input: A shown, B selected and loading (testing
+     * contract, asynchronous).
+     * Minimal mutation: drop `aria-busy` and the opacity from `panelProps`.
+     * Test that fails under it: this one. Mutations were already disabled, so
+     * nothing else in this file noticed that the signal, portfolio, transfer,
+     * allocation and history carried no stale marking at all.
+     */
+    it("marks the report body stale while a newer selection is loading", async () => {
+      await renderReport();
+
+      const panel = () => screen.getByRole("tabpanel");
+      expect(panel()).toHaveAttribute("aria-busy", "false");
+      expect(
+        screen.queryByTestId("gem-stale-indicator"),
+      ).not.toBeInTheDocument();
+
+      const pending = deferred<unknown>();
+      mockGetReport.mockReturnValue(pending.promise);
+      await switchRange("3M");
+
+      // The previous selection's figures are still there -- keeping them is the
+      // better read -- and they are marked as not being the current ones.
+      expect(panel()).toHaveAttribute("aria-busy", "true");
+      expect(panel().className).toContain("opacity-60");
+      expect(screen.getByTestId("gem-stale-indicator")).toHaveAttribute(
+        "role",
+        "status",
+      );
+
+      await act(async () => {
+        pending.settle(gemReport());
+      });
+      await waitFor(() =>
+        expect(screen.getByRole("tabpanel")).toHaveAttribute(
+          "aria-busy",
+          "false",
+        ),
+      );
+      expect(
+        screen.queryByTestId("gem-stale-indicator"),
+      ).not.toBeInTheDocument();
+    });
+
+    /**
+     * Invariant: "Discard" discards.
+     * Canonical adversarial input: a dirty keyed form whose guarded action is a
+     * no-op -- the header's "Edit settings" while the Settings tab is already
+     * open (testing contract, combinations).
+     * Minimal mutation: drop the `settingsResetNonce` bump from `onDiscard`.
+     * Test that fails under it: this one. Clearing `settingsDirty` alone left
+     * the edits in a form that was never reset, so react-hook-form stayed dirty
+     * with no transition left to report, the guard never re-armed, and the next
+     * switch unmounted a dirty form with no prompt.
+     */
+    it("discards the edits when the guarded action changes nothing", async () => {
+      await renderReport();
+      await act(async () => {
+        fireEvent.click(screen.getByRole("tab", { name: /Settings/i }));
+      });
+      await waitFor(() =>
+        expect(
+          screen.getByLabelText("Evaluation frequency"),
+        ).toBeInTheDocument(),
+      );
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText("Evaluation frequency"), {
+          target: { value: "QUARTERLY" },
+        });
+      });
+
+      // The header's "Edit settings" while already on Settings: guarded, and
+      // its action is a no-op, so nothing unmounts the form for us.
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /Edit settings/i }));
+      });
+      expect(
+        screen.getByRole("heading", { name: "Unsaved Changes" }),
+      ).toBeInTheDocument();
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /Discard/i }));
+      });
+
+      // The edit is gone, not merely unguarded.
+      const field = () =>
+        screen.getByLabelText("Evaluation frequency") as HTMLSelectElement;
+      expect(field().value).toBe("MONTHLY");
+
+      // And the guard is armed again rather than spent: dirtying the form once
+      // more still asks before a tab change.
+      await act(async () => {
+        fireEvent.change(field(), { target: { value: "QUARTERLY" } });
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("tab", { name: /Overview/i }));
+      });
+      expect(
+        screen.getByRole("heading", { name: "Unsaved Changes" }),
+      ).toBeInTheDocument();
+    });
+
+    it("leaves the form clean, so the next tab change does not ask", async () => {
+      // Coverage rather than a pin: the previous test is what fails when the
+      // discard stops discarding. This states the other half of the outcome --
+      // a discarded form is clean, so it changes tab without a prompt.
+      await renderReport();
+      await act(async () => {
+        fireEvent.click(screen.getByRole("tab", { name: /Settings/i }));
+      });
+      await waitFor(() =>
+        expect(
+          screen.getByLabelText("Evaluation frequency"),
+        ).toBeInTheDocument(),
+      );
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText("Evaluation frequency"), {
+          target: { value: "QUARTERLY" },
+        });
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /Edit settings/i }));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /Discard/i }));
+      });
+
+      // A clean form changes tab without asking, which is the other half of the
+      // same claim: the discard left it clean rather than merely unguarded.
+      await act(async () => {
+        fireEvent.click(screen.getByRole("tab", { name: /Overview/i }));
+      });
+      expect(
+        screen.queryByRole("heading", { name: "Unsaved Changes" }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

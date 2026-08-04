@@ -48,7 +48,8 @@
       "status": "Durum",
       "balance": "Bakiye",
       "actions": "İşlemler"
-    }
+    },
+    "filterJoint": "Benimle paylaşılanlar"
   },
   "row": {
     "statusActive": "Aktif",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "Hesabı kapatmak için bakiyenin sıfır olması gerekir",
       "closeTitleEnabled": "Hesabı kapat",
       "details": "Ayrıntılar"
-    }
+    },
+    "jointBadge": "Ortak",
+    "jointSharedBy": "{owner} tarafından paylaşıldı",
+    "jointSharedWith": "{count, plural, other {# kişiyle}} paylaşıldı",
+    "includeInNetWorth": "Net değerime dahil et",
+    "excludeFromNetWorth": "Net değerimden hariç tut"
   },
   "contextMenu": {
     "subtypeBrokerage": "Aracılık",
@@ -103,7 +109,8 @@
     "loadFailed": "Hesaplar yüklenemedi",
     "favouriteError": "Favori güncellenemedi",
     "createSuccess": "Hesap başarıyla oluşturuldu",
-    "updateSuccess": "Hesap başarıyla güncellendi"
+    "updateSuccess": "Hesap başarıyla güncellendi",
+    "updateFailed": "Hesap güncellenemedi"
   },
   "form": {
     "accountName": "Hesap Adı",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "ör. 25",
     "fxFeeTitle": "Yabancı para dönüştürme ücreti (isteğe bağlı)",
     "fxFeePercent": "Ücret yüzdesi",
-    "fxFeePercentPlaceholder": "örn. 2,5"
+    "fxFeePercentPlaceholder": "örn. 2,5",
+    "jointSharedWith": "{count, plural, other {# kişiyle}} paylaşılan ortak hesap",
+    "jointManage": "Paylaşımı yönet"
   },
   "exportModal": {
     "title": "{name} Dışa Aktar",

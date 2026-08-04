@@ -18,6 +18,7 @@ import { TwoFactorService } from "./two-factor.service";
 import { AuthEmailService } from "./auth-email.service";
 import { DelegationService } from "../delegation/delegation.service";
 import { I18nService, I18nContext } from "nestjs-i18n";
+import { BackupEncryptionService } from "../backup/backup-encryption.service";
 import { User } from "../users/entities/user.entity";
 import { UserPreference } from "../users/entities/user-preference.entity";
 import { TrustedDevice } from "../users/entities/trusted-device.entity";
@@ -65,6 +66,7 @@ describe("AuthService", () => {
   let dataSource: Record<string, jest.Mock>;
   let passwordBreachService: { isBreached: jest.Mock };
   let emailService: { sendMail: jest.Mock; getStatus: jest.Mock };
+  let backupEncryptionService: { rememberLoginPassword: jest.Mock };
 
   const mockUser = {
     id: "user-1",
@@ -150,6 +152,10 @@ describe("AuthService", () => {
       getStatus: jest.fn().mockReturnValue({ configured: false }),
     };
 
+    backupEncryptionService = {
+      rememberLoginPassword: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -173,6 +179,10 @@ describe("AuthService", () => {
         { provide: DataSource, useValue: dataSource },
         { provide: PasswordBreachService, useValue: passwordBreachService },
         { provide: EmailService, useValue: emailService },
+        {
+          provide: BackupEncryptionService,
+          useValue: backupEncryptionService,
+        },
         {
           provide: DelegationService,
           useValue: {
@@ -629,6 +639,84 @@ describe("AuthService", () => {
       expect((service as any).logger.log).toHaveBeenCalledWith(
         expect.stringContaining("Login successful for user"),
       );
+    });
+
+    it("captures the password so automatic backups can be encrypted", async () => {
+      const hashedPassword = await bcrypt.hash("ValidPass123!", 10);
+      const user = { ...mockUser, passwordHash: hashedPassword };
+      usersRepository.findOne.mockResolvedValue(user);
+      preferencesRepository.findOne.mockResolvedValue(null);
+      usersRepository.save.mockResolvedValue(user);
+
+      await service.login({
+        email: "test@example.com",
+        password: "ValidPass123!",
+      });
+
+      // Signing in is the only moment the server holds the plaintext, and the
+      // user is never asked to configure backup encryption.
+      expect(
+        backupEncryptionService.rememberLoginPassword,
+      ).toHaveBeenCalledWith(user.id, "ValidPass123!");
+    });
+
+    it("captures the password before the 2FA challenge", async () => {
+      const hashedPassword = await bcrypt.hash("ValidPass123!", 10);
+      const user = {
+        ...mockUser,
+        passwordHash: hashedPassword,
+        twoFactorSecret: "secret",
+      };
+      usersRepository.findOne.mockResolvedValue(user);
+      preferencesRepository.findOne.mockResolvedValue({
+        twoFactorEnabled: true,
+      });
+
+      const result = await service.login({
+        email: "test@example.com",
+        password: "ValidPass123!",
+      });
+
+      // The password is already proven correct here, and this exit returns
+      // without reaching the code below it.
+      expect(result.requires2FA).toBe(true);
+      expect(
+        backupEncryptionService.rememberLoginPassword,
+      ).toHaveBeenCalledWith(user.id, "ValidPass123!");
+    });
+
+    it("captures nothing when the password is wrong", async () => {
+      const hashedPassword = await bcrypt.hash("CorrectPass", 10);
+      mockLoginQueryBuilder();
+      usersRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        passwordHash: hashedPassword,
+      });
+
+      await expect(
+        service.login({ email: "test@example.com", password: "WrongPass" }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(
+        backupEncryptionService.rememberLoginPassword,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("signs in even when the backup password cannot be stored", async () => {
+      const hashedPassword = await bcrypt.hash("ValidPass123!", 10);
+      const user = { ...mockUser, passwordHash: hashedPassword };
+      usersRepository.findOne.mockResolvedValue(user);
+      preferencesRepository.findOne.mockResolvedValue(null);
+      usersRepository.save.mockResolvedValue(user);
+      backupEncryptionService.rememberLoginPassword.mockRejectedValue(
+        new Error("db down"),
+      );
+
+      const result = await service.login({
+        email: "test@example.com",
+        password: "ValidPass123!",
+      });
+
+      expect(result.accessToken).toBeDefined();
     });
 
     it("throws for non-existent user", async () => {

@@ -768,6 +768,32 @@ export class TransactionsService {
     return result;
   }
 
+  /**
+   * The register read scope (joint-accounts spec): the user's own rows plus
+   * rows in accounts jointly shared to them -- `jointAccountIds` is the
+   * already-authorized joint set computed by the controller, never raw
+   * request input. One definition on purpose: the same predicate must gate
+   * the listing, the target-page count and the filtered balance sums, or a
+   * page could sum rows it does not show. Empty joint set = exactly the old
+   * owner-only predicate, so non-joint traffic is untouched.
+   */
+  private registerScope(
+    alias: string,
+    userId: string,
+    jointAccountIds: string[],
+  ): Brackets {
+    return new Brackets((qb) => {
+      qb.where(`${alias}.userId = :registerScopeUserId`, {
+        registerScopeUserId: userId,
+      });
+      if (jointAccountIds.length > 0) {
+        qb.orWhere(`${alias}.accountId IN (:...registerScopeJointIds)`, {
+          registerScopeJointIds: jointAccountIds,
+        });
+      }
+    });
+  }
+
   async findAll(
     userId: string,
     accountIds?: string[],
@@ -789,6 +815,7 @@ export class TransactionsService {
     tagKeyFilter?: TagKeyFilter,
     originalCurrencyCodes?: string[],
     hasAttachments?: boolean,
+    jointAccountIds: string[] = [],
   ): Promise<PaginatedTransactions> {
     const clamped = clampPagination(page, limit);
     const safeLimit = clamped.limit;
@@ -827,7 +854,7 @@ export class TransactionsService {
           "linkedSplits.transferAccount",
           "linkedSplitTransferAccount",
         )
-        .where("transaction.userId = :userId", { userId })
+        .where(this.registerScope("transaction", userId, jointAccountIds))
         .orderBy(
           sortBy === "amount"
             ? "transaction.amount"
@@ -960,6 +987,7 @@ export class TransactionsService {
           includeInvestmentBrokerage,
           safePage,
           parsedSearch,
+          jointAccountIds,
         );
       }
 
@@ -1026,6 +1054,7 @@ export class TransactionsService {
               amountFrom,
               amountTo,
             },
+            jointAccountIds,
           );
       } else if (
         (!accountIds || accountIds.length === 0) &&
@@ -1051,6 +1080,7 @@ export class TransactionsService {
               amountFrom,
               amountTo,
             },
+            jointAccountIds,
           );
       }
 
@@ -1154,10 +1184,18 @@ export class TransactionsService {
     includeInvestmentBrokerage?: boolean,
     fallbackPage: number = 1,
     parsedSearch: ParsedSearchTerm = { amount: null, date: null },
+    jointAccountIds: string[] = [],
   ): Promise<number> {
     try {
       const targetTx = await m.getRepository(Transaction).findOne({
-        where: { id: targetTransactionId, userId },
+        // Own row, or a row in an authorized joint account (same scope as
+        // the listing this page number is computed against).
+        where: [
+          { id: targetTransactionId, userId },
+          ...(jointAccountIds.length > 0
+            ? [{ id: targetTransactionId, accountId: In(jointAccountIds) }]
+            : []),
+        ],
         select: ["id", "transactionDate", "createdAt"],
       });
 
@@ -1168,7 +1206,7 @@ export class TransactionsService {
         .createQueryBuilder("t")
         .leftJoin("t.account", "a")
         .leftJoin("t.splits", "s")
-        .where("t.userId = :userId", { userId });
+        .where(this.registerScope("t", userId, jointAccountIds));
 
       if (!includeInvestmentBrokerage) {
         countQuery.andWhere(
@@ -1402,12 +1440,14 @@ export class TransactionsService {
       amountFrom?: number;
       amountTo?: number;
     },
+    jointAccountIds: string[] = [],
   ): Promise<number> {
     const idsSubquery = await this.buildFilteredIdsSubquery(
       m,
       userId,
       accountIds,
       filters,
+      jointAccountIds,
     );
 
     const totalSum = await this.computeSplitAwareSum(
@@ -1427,6 +1467,7 @@ export class TransactionsService {
         accountIds,
         skip,
         filters,
+        jointAccountIds,
       ))
     );
   }
@@ -1544,12 +1585,14 @@ export class TransactionsService {
       amountFrom?: number;
       amountTo?: number;
     },
+    jointAccountIds: string[] = [],
   ): Promise<number> {
     const idsSubquery = await this.buildFilteredIdsSubquery(
       m,
       userId,
       accountId,
       filters,
+      jointAccountIds,
     );
 
     // Get ordered matching transactions, limited to previous pages
@@ -1675,12 +1718,22 @@ export class TransactionsService {
       amountFrom?: number;
       amountTo?: number;
     },
+    jointAccountIds: string[] = [],
   ) {
     const qb = m
       .getRepository(Transaction)
       .createQueryBuilder("bf")
       .select("DISTINCT bf.id")
-      .where("bf.userId = :bfUserId", { bfUserId: userId });
+      .where(
+        new Brackets((scope) => {
+          scope.where("bf.userId = :bfUserId", { bfUserId: userId });
+          if (jointAccountIds.length > 0) {
+            scope.orWhere("bf.accountId IN (:...bfJointIds)", {
+              bfJointIds: jointAccountIds,
+            });
+          }
+        }),
+      );
 
     if (Array.isArray(accountId)) {
       qb.andWhere("bf.accountId IN (:...bfAccountIds)", {
@@ -1858,10 +1911,22 @@ export class TransactionsService {
     }));
   }
 
-  async findOne(userId: string, id: string): Promise<Transaction> {
+  async findOne(
+    userId: string,
+    id: string,
+    jointAccountIds: string[] = [],
+  ): Promise<Transaction> {
     const transaction = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(Transaction).findOne({
-        where: { id, userId },
+        // Own row, or a row in an account jointly shared to the caller --
+        // `jointAccountIds` is the controller's already-authorized set,
+        // never raw request input. Empty for every non-joint caller.
+        where: [
+          { id, userId },
+          ...(jointAccountIds.length > 0
+            ? [{ id, accountId: In(jointAccountIds) }]
+            : []),
+        ],
         relations: [
           "account",
           "payee",
@@ -2350,6 +2415,7 @@ export class TransactionsService {
     amountFrom?: number,
     amountTo?: number,
     tagIds?: string[],
+    jointAccountIds?: string[],
   ) {
     return this.analyticsService.getSummary(
       userId,
@@ -2364,6 +2430,7 @@ export class TransactionsService {
       undefined,
       undefined,
       tagIds,
+      jointAccountIds,
     );
   }
 
@@ -2382,6 +2449,7 @@ export class TransactionsService {
       amountTo?: number;
       limit?: number;
       includeUnreconciledBeforeStart?: boolean;
+      jointAccountIds?: string[];
     },
   ) {
     return this.analyticsService.getGroupedTotals(userId, params);
@@ -2435,6 +2503,7 @@ export class TransactionsService {
     amountFrom?: number,
     amountTo?: number,
     tagIds?: string[],
+    jointAccountIds?: string[],
   ) {
     return this.analyticsService.getMonthlyTotals(
       userId,
@@ -2447,6 +2516,7 @@ export class TransactionsService {
       amountFrom,
       amountTo,
       tagIds,
+      jointAccountIds,
     );
   }
 

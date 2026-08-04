@@ -259,6 +259,7 @@
   },
   "validation": {
     "accountRequired": "Le compte est obligatoire",
-    "dateRequired": "La date est obligatoire"
+    "dateRequired": "La date est obligatoire",
+    "acquisitionPriceRequired": "Le prix par part est obligatoire et doit être supérieur à zéro. Utilisez « Ajout de parts » pour des parts acquises sans coût connu."
   }
 }

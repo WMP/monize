@@ -117,9 +117,9 @@
     "picomatch": "4.0.4",
     "path-to-regexp": "8.4.0",
     "uuid": "^14.0.0",
-    "fast-uri": "^3.1.2",
+    "fast-uri": "^3.1.5",
     "multer": "^2.2.0",
-    "brace-expansion@>=3": "5.0.8",
+    "brace-expansion@>=3": "5.0.9",
     "typeorm": {
       "glob": "13.0.0"
     },

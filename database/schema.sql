@@ -808,6 +808,10 @@ CREATE TABLE account_delegate_grants (
     can_create BOOLEAN NOT NULL DEFAULT false,
     can_edit   BOOLEAN NOT NULL DEFAULT false,
     can_delete BOOLEAN NOT NULL DEFAULT false,
+    -- Joint account opt-in (migration 133): with can_read, makes the account
+    -- natively visible in the delegate's OWN context. false = plain grant,
+    -- visible only while acting in the owner's context.
+    is_joint   BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT account_delegate_grants_unique UNIQUE (delegation_id, account_id)
 );
@@ -829,6 +833,21 @@ CREATE TABLE delegate_account_favourites (
 
 CREATE INDEX idx_delegate_account_favourites_user
     ON delegate_account_favourites(delegate_user_id);
+
+-- A grantee's per-account "exclude this joint account from MY net worth"
+-- overlay (migration 133). Row presence = excluded. Keyed by the real user,
+-- like delegate_account_favourites, so the owner's
+-- accounts.exclude_from_net_worth stays owner-scoped.
+CREATE TABLE delegate_net_worth_exclusions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    delegate_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (delegate_user_id, account_id)
+);
+
+CREATE INDEX idx_delegate_net_worth_exclusions_user
+    ON delegate_net_worth_exclusions(delegate_user_id);
 
 -- Emergency Access. Lets the owner pre-designate one or more contacts who
 -- receive a magic link to take over the account after a configurable
@@ -1311,10 +1330,9 @@ CREATE TABLE import_jobs (
 CREATE INDEX idx_import_jobs_user ON import_jobs(user_id);
 CREATE INDEX idx_import_jobs_staged_file ON import_jobs(staged_file_id);
 CREATE INDEX idx_import_jobs_running_heartbeat ON import_jobs(heartbeat_at) WHERE status = 'running';
--- One in-flight import per owner. The application pre-checks so the ordinary
--- case gets a 409 rather than a constraint error, but the invariant lives here:
--- two `start` requests arriving together both passed that check and both
--- inserted, importing the same file twice. See migration 133.
+-- One in-flight import per user, enforced here rather than by a read-then-insert
+-- in the service: two concurrent starts would otherwise both see no active job
+-- and import the same staged file twice.
 CREATE UNIQUE INDEX idx_import_jobs_one_active_per_user ON import_jobs(user_id) WHERE status IN ('pending', 'running');
 
 CREATE TRIGGER update_import_jobs_updated_at BEFORE UPDATE ON import_jobs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -1605,7 +1623,6 @@ DO $$
 DECLARE
     t text;
     direct_tables text[] := ARRAY[
-        'accounts',
         'action_history',
         'ai_insights',
         'ai_provider_configs',
@@ -1613,7 +1630,6 @@ DECLARE
         'auto_backup_settings',
         'budget_alerts',
         'budgets',
-        'categories',
         'custom_reports',
         'gem_strategies',
         'gem_strategy_accounts',
@@ -1628,12 +1644,9 @@ DECLARE
         'loan_rate_changes',
         'loan_scenarios',
         'monte_carlo_scenarios',
-        'monthly_account_balances',
         'payee_aliases',
-        'payees',
         'scheduled_transactions',
         'securities',
-        'tags',
         'transaction_attachments',
         'user_currency_preferences'
     ];
@@ -1666,6 +1679,70 @@ CREATE POLICY transactions_isolation ON transactions
                  JOIN account_delegates d ON d.id = g.delegation_id
                  WHERE g.account_id = transactions.account_id
                    AND g.can_read AND d.status = 'active'
+                   AND d.delegate_user_id = (SELECT app_real_user_id())))
+  WITH CHECK (user_id = (SELECT app_current_user_id()) OR (SELECT app_bypass_rls()));
+
+-- ---------------------------------------------------------------------------
+-- Joint-account native reads (migration 134): the same delegate READ arm as
+-- transactions, on the other tables a grantee's own-context session touches.
+-- WITH CHECK stays owner-only everywhere; grantee writes run under the
+-- audited withSystemContext bypass after in-code authorization.
+-- ---------------------------------------------------------------------------
+
+DROP POLICY IF EXISTS accounts_isolation ON accounts;
+CREATE POLICY accounts_isolation ON accounts
+  USING (user_id = (SELECT app_current_user_id())
+      OR (SELECT app_bypass_rls())
+      OR EXISTS (SELECT 1 FROM account_delegate_grants g
+                 JOIN account_delegates d ON d.id = g.delegation_id
+                 WHERE g.account_id = accounts.id
+                   AND g.can_read AND d.status = 'active'
+                   AND d.delegate_user_id = (SELECT app_real_user_id())))
+  WITH CHECK (user_id = (SELECT app_current_user_id()) OR (SELECT app_bypass_rls()));
+
+DROP POLICY IF EXISTS monthly_account_balances_isolation ON monthly_account_balances;
+CREATE POLICY monthly_account_balances_isolation ON monthly_account_balances
+  USING (user_id = (SELECT app_current_user_id())
+      OR (SELECT app_bypass_rls())
+      OR EXISTS (SELECT 1 FROM account_delegate_grants g
+                 JOIN account_delegates d ON d.id = g.delegation_id
+                 WHERE g.account_id = monthly_account_balances.account_id
+                   AND g.can_read AND d.status = 'active'
+                   AND d.delegate_user_id = (SELECT app_real_user_id())))
+  WITH CHECK (user_id = (SELECT app_current_user_id()) OR (SELECT app_bypass_rls()));
+
+-- categories / payees / tags: delegation-scoped read arms. Not account-scoped
+-- tables, so the arm is gated on ANY active delegation from the row's owner.
+-- This widens nothing the app layer does not already grant: an acting
+-- delegate reads the owner's entire reference lists today, and the native
+-- surface serves them only through the grant-gated reference-data endpoint.
+DROP POLICY IF EXISTS categories_isolation ON categories;
+CREATE POLICY categories_isolation ON categories
+  USING (user_id = (SELECT app_current_user_id())
+      OR (SELECT app_bypass_rls())
+      OR EXISTS (SELECT 1 FROM account_delegates d
+                 WHERE d.owner_user_id = categories.user_id
+                   AND d.status = 'active'
+                   AND d.delegate_user_id = (SELECT app_real_user_id())))
+  WITH CHECK (user_id = (SELECT app_current_user_id()) OR (SELECT app_bypass_rls()));
+
+DROP POLICY IF EXISTS payees_isolation ON payees;
+CREATE POLICY payees_isolation ON payees
+  USING (user_id = (SELECT app_current_user_id())
+      OR (SELECT app_bypass_rls())
+      OR EXISTS (SELECT 1 FROM account_delegates d
+                 WHERE d.owner_user_id = payees.user_id
+                   AND d.status = 'active'
+                   AND d.delegate_user_id = (SELECT app_real_user_id())))
+  WITH CHECK (user_id = (SELECT app_current_user_id()) OR (SELECT app_bypass_rls()));
+
+DROP POLICY IF EXISTS tags_isolation ON tags;
+CREATE POLICY tags_isolation ON tags
+  USING (user_id = (SELECT app_current_user_id())
+      OR (SELECT app_bypass_rls())
+      OR EXISTS (SELECT 1 FROM account_delegates d
+                 WHERE d.owner_user_id = tags.user_id
+                   AND d.status = 'active'
                    AND d.delegate_user_id = (SELECT app_real_user_id())))
   WITH CHECK (user_id = (SELECT app_current_user_id()) OR (SELECT app_bypass_rls()));
 
@@ -1752,12 +1829,22 @@ CREATE POLICY user_preferences_isolation ON user_preferences
 -- Indirect ownership (resolved through a parent row)
 -- ---------------------------------------------------------------------------
 
+-- transaction_splits / transaction_tags additionally carry the joint-account
+-- delegate READ arm (migration 134): the indirect predicate restates
+-- ownership, so they do not inherit the transactions policy's arm.
 DROP POLICY IF EXISTS transaction_splits_isolation ON transaction_splits;
 CREATE POLICY transaction_splits_isolation ON transaction_splits
   USING ((SELECT app_bypass_rls()) OR EXISTS (
     SELECT 1 FROM transactions t
     WHERE t.id = transaction_splits.transaction_id
-      AND t.user_id = (SELECT app_current_user_id())))
+      AND t.user_id = (SELECT app_current_user_id()))
+      OR EXISTS (
+    SELECT 1 FROM transactions t
+    JOIN account_delegate_grants g ON g.account_id = t.account_id
+    JOIN account_delegates d ON d.id = g.delegation_id
+    WHERE t.id = transaction_splits.transaction_id
+      AND g.can_read AND d.status = 'active'
+      AND d.delegate_user_id = (SELECT app_real_user_id())))
   WITH CHECK ((SELECT app_bypass_rls()) OR EXISTS (
     SELECT 1 FROM transactions t
     WHERE t.id = transaction_splits.transaction_id
@@ -1769,7 +1856,14 @@ CREATE POLICY transaction_tags_isolation ON transaction_tags
   USING ((SELECT app_bypass_rls()) OR EXISTS (
     SELECT 1 FROM transactions t
     WHERE t.id = transaction_tags.transaction_id
-      AND t.user_id = (SELECT app_current_user_id())))
+      AND t.user_id = (SELECT app_current_user_id()))
+      OR EXISTS (
+    SELECT 1 FROM transactions t
+    JOIN account_delegate_grants g ON g.account_id = t.account_id
+    JOIN account_delegates d ON d.id = g.delegation_id
+    WHERE t.id = transaction_tags.transaction_id
+      AND g.can_read AND d.status = 'active'
+      AND d.delegate_user_id = (SELECT app_real_user_id())))
   WITH CHECK ((SELECT app_bypass_rls()) OR EXISTS (
     SELECT 1 FROM transactions t
     WHERE t.id = transaction_tags.transaction_id
@@ -2022,6 +2116,16 @@ CREATE POLICY account_delegates_isolation ON account_delegates
 -- ---------------------------------------------------------------------------
 DROP POLICY IF EXISTS delegate_account_favourites_isolation ON delegate_account_favourites;
 CREATE POLICY delegate_account_favourites_isolation ON delegate_account_favourites
+  USING (delegate_user_id = (SELECT app_real_user_id())
+      OR (SELECT app_bypass_rls()))
+  WITH CHECK (delegate_user_id = (SELECT app_real_user_id())
+      OR (SELECT app_bypass_rls()));
+
+-- delegate_net_worth_exclusions -- same shape and rationale as
+-- delegate_account_favourites: the grantee's private per-account overlay
+-- (migration 133), never readable by the owner.
+DROP POLICY IF EXISTS delegate_net_worth_exclusions_isolation ON delegate_net_worth_exclusions;
+CREATE POLICY delegate_net_worth_exclusions_isolation ON delegate_net_worth_exclusions
   USING (delegate_user_id = (SELECT app_real_user_id())
       OR (SELECT app_bypass_rls()))
   WITH CHECK (delegate_user_id = (SELECT app_real_user_id())

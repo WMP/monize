@@ -47,6 +47,9 @@
       "backtest": "Backtest",
       "settings": "Instellingen"
     },
+    "stale": {
+      "updating": "Bijwerken – de cijfers hieronder komen van de vorige selectie"
+    },
     "roles": {
       "US_EQUITY": "S&P 500",
       "EX_US_EQUITY": "Ontwikkelde markten ex-VS",

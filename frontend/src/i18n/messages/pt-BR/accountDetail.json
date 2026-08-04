@@ -6,7 +6,10 @@
     "back": "Voltar às Contas",
     "switchAccount": "Mudar para outra conta",
     "switchPlaceholder": "Filtrar contas...",
-    "switchNoMatches": "Nenhuma conta corresponde"
+    "switchNoMatches": "Nenhuma conta corresponde",
+    "jointBadge": "Conjunta",
+    "jointSharedBy": "Compartilhada por {owner}",
+    "jointSharedWith": "Compartilhada com {count, plural, one {# pessoa} other {# pessoas}}"
   },
   "loading": "Carregando detalhes da conta...",
   "error": {

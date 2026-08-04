@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -17,6 +18,14 @@ import {
 import { MnyImportOptions } from "../model/mny-import-options";
 
 /**
+ * The partial unique index enforcing one `pending`/`running` job per user.
+ *
+ * Named here so the constraint the database reports on a losing INSERT and the
+ * constraint the service translates into a 409 are provably the same string.
+ */
+export const ONE_ACTIVE_JOB_INDEX = "idx_import_jobs_one_active_per_user";
+
+/**
  * One background import attempt (design ADR-3).
  *
  * The row is the coordination point: `POST /import/mny/start` inserts it
@@ -24,7 +33,17 @@ import { MnyImportOptions } from "../model/mny-import-options";
  * job writes `progress` and `heartbeat_at` in their own short transactions so a
  * poller can see them, and a reaper cron fails jobs whose heartbeat went stale.
  * A failed job keeps `stagedFileId`, so Retry is a new job over the same bytes.
+ *
+ * The partial unique index is what makes "one import at a time per user" true:
+ * two concurrent starts would otherwise both count zero active jobs and both
+ * insert, importing the same staged bytes twice. Declared here as well as in
+ * migration 135 because test and dev databases are synchronized from the
+ * entities -- a guard that exists only in SQL cannot be tested.
  */
+@Index(ONE_ACTIVE_JOB_INDEX, ["userId"], {
+  unique: true,
+  where: "status IN ('pending', 'running')",
+})
 @Entity("import_jobs")
 export class ImportJob {
   @PrimaryGeneratedColumn("uuid")

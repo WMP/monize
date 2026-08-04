@@ -17,6 +17,7 @@ import { AuthGuard } from "@nestjs/passport";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { DemoRestricted } from "../common/decorators/demo-restricted.decorator";
 import { DelegationService } from "./delegation.service";
+import { JointAccountsService } from "./joint-accounts.service";
 import { CreateDelegateDto } from "./dto/create-delegate.dto";
 import { SetGrantsDto } from "./dto/set-grants.dto";
 import { SetCapabilitiesDto } from "./dto/set-capabilities.dto";
@@ -36,12 +37,35 @@ import { LookupDelegateDto } from "./dto/lookup-delegate.dto";
 @UseGuards(AuthGuard("jwt"))
 @ApiBearerAuth()
 export class DelegationController {
-  constructor(private readonly delegationService: DelegationService) {}
+  constructor(
+    private readonly delegationService: DelegationService,
+    private readonly jointAccounts: JointAccountsService,
+  ) {}
 
   @Get("delegates")
   @ApiOperation({ summary: "List delegates for the current account" })
   listDelegates(@Request() req) {
     return this.delegationService.listDelegates(req.user.id);
+  }
+
+  /**
+   * Grantee-facing (own context, not @AllowDelegate): the owner's category
+   * and payee pickers for a joint account's register, gated on the caller's
+   * joint READ grant. See the reference-data policy in
+   * docs/future-plans/joint-accounts.md.
+   */
+  @Get("joint-accounts/:accountId/reference-data")
+  @ApiOperation({
+    summary: "Owner reference data for a joint account shared to the caller",
+  })
+  getJointReferenceData(
+    @Request() req,
+    @Param("accountId", ParseUUIDPipe) accountId: string,
+  ) {
+    return this.jointAccounts.jointReferenceData(
+      req.user.realUserId ?? req.user.id,
+      accountId,
+    );
   }
 
   @Get("delegates/lookup")

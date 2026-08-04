@@ -257,6 +257,16 @@ export function SharedAccessSection() {
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {t('statusLabel', { status: d.status })} &middot; {t('sectionsLabel', { count: sectionCount(d) })}{' '}
                   &middot; {t('accountsLabel', { count: accountCount(d) })} &middot; {t('sharedDataLabel', { count: sharedDataCount(d) })}
+                  {d.grants.some((g) => g.isJoint) && (
+                    <>
+                      {' '}&middot;{' '}
+                      <span className="text-amber-700 dark:text-amber-300">
+                        {t('jointLabel', {
+                          count: d.grants.filter((g) => g.isJoint).length,
+                        })}
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
               <div className="flex gap-2">

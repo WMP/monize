@@ -21,6 +21,7 @@ import { RowActionSheet } from '@/components/ui/row-actions/RowActionSheet';
 import { useTableDensity, nextDensity, type DensityLevel } from '@/hooks/useTableDensity';
 import { SortIcon } from '@/components/ui/SortIcon';
 import { MultiSelect, MultiSelectOption } from '@/components/ui/MultiSelect';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { formatAccountType, countLogicalAccounts } from '@/lib/account-utils';
 
 type SortField = 'name' | 'type' | 'balance' | 'status';
@@ -31,6 +32,7 @@ const STORAGE_KEYS = {
   showFilters: 'accounts.filter.showFilters',
   status: 'accounts.filter.status',
   netWorth: 'accounts.filter.netWorth',
+  joint: 'accounts.filter.joint',
   types: 'accounts.filter.types',
   search: 'accounts.filter.search',
   sortField: 'accounts.filter.sortField',
@@ -138,6 +140,12 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
   const [filterNetWorth, setFilterNetWorth] = useState<'included' | 'excluded' | ''>(() =>
     getStoredValue<'included' | 'excluded' | ''>(STORAGE_KEYS.netWorth, '')
   );
+  // Joint filter: '' = all, 'joint' = only accounts shared TO the caller.
+  // Only offered when at least one joint row is present (conditional-filter
+  // precedent: the net-worth filter below).
+  const [filterJoint, setFilterJoint] = useState<'joint' | ''>(() =>
+    getStoredValue<'joint' | ''>(STORAGE_KEYS.joint, '')
+  );
   // Account-type filter: an empty list means "all types". Persisted so the
   // chosen types survive navigating away and back to the page.
   const [filterTypes, setFilterTypes] = useState<AccountType[]>(() =>
@@ -183,6 +191,10 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.netWorth, JSON.stringify(filterNetWorth));
   }, [filterNetWorth]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.joint, JSON.stringify(filterJoint));
+  }, [filterJoint]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.types, JSON.stringify(filterTypes));
@@ -237,6 +249,8 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
     closeTitleEnabled: t('row.actions.closeTitleEnabled'),
     reopen: tc('actions.reopen'),
     delete: tc('actions.delete'),
+    includeInNetWorth: t('row.includeInNetWorth'),
+    excludeFromNetWorth: t('row.excludeFromNetWorth'),
   }), [t, tc]);
   const { cellPadding, headerPadding } = useTableDensity(density);
 
@@ -262,6 +276,9 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
       result = result.filter((a) =>
         filterNetWorth === 'excluded' ? a.excludeFromNetWorth : !a.excludeFromNetWorth
       );
+    }
+    if (filterJoint) {
+      result = result.filter((a) => !!a.isJoint);
     }
     if (filterTypes.length > 0) {
       const typeSet = new Set(filterTypes);
@@ -294,7 +311,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
     });
 
     return result;
-  }, [accounts, favOverrides, filterStatus, filterNetWorth, filterTypes, filterSearch, sortField, sortDirection]);
+  }, [accounts, favOverrides, filterStatus, filterNetWorth, filterJoint, filterTypes, filterSearch, sortField, sortDirection]);
 
   // Account-type options for the type filter, limited to the types actually
   // present and ordered to match the grouped list below (unknown types last).
@@ -449,6 +466,18 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
     }
   }, [hasExcludedAccounts, filterNetWorth]);
 
+  // Only show the joint filter when at least one account is shared to the
+  // caller; clear it when the last joint account disappears (revoke).
+  const hasJointAccounts = useMemo(
+    () => accounts.some((a) => a.isJoint),
+    [accounts],
+  );
+  useEffect(() => {
+    if (!hasJointAccounts && filterJoint) {
+      setFilterJoint('');
+    }
+  }, [hasJointAccounts, filterJoint]);
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -461,10 +490,12 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
   const clearFilters = () => {
     setFilterStatus('');
     setFilterNetWorth('');
+    setFilterJoint('');
     setFilterTypes([]);
     setFilterSearch('');
     localStorage.removeItem(STORAGE_KEYS.status);
     localStorage.removeItem(STORAGE_KEYS.netWorth);
+    localStorage.removeItem(STORAGE_KEYS.joint);
     localStorage.removeItem(STORAGE_KEYS.types);
     localStorage.removeItem(STORAGE_KEYS.search);
   };
@@ -557,8 +588,10 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
       setFavOverrides((prev) => ({ ...prev, [account.id]: next }));
       try {
         // Owner favourites live on the account row; a delegate keeps an
-        // independent overlay (the owner-scoped flag is never touched).
-        if (isDelegateView) {
+        // independent overlay (the owner-scoped flag is never touched). A
+        // joint row in the caller's own view uses the same overlay -- the
+        // account object belongs to the sharing owner.
+        if (isDelegateView || account.isJoint) {
           await accountsApi.setDelegateFavourite(account.id, next);
         } else {
           await accountsApi.update(account.id, { isFavourite: next });
@@ -570,6 +603,21 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
       }
     },
     [isDelegateView, t],
+  );
+
+  const handleToggleNetWorthExclusion = useCallback(
+    async (account: Account) => {
+      try {
+        await accountsApi.setNetWorthExclusion(
+          account.id,
+          !account.excludeFromNetWorth,
+        );
+        onRefresh();
+      } catch (error) {
+        toast.error(getErrorMessage(error, t('toast.updateFailed')));
+      }
+    },
+    [onRefresh, t],
   );
 
   const formatCurrency = useCallback((amount: number | string | null | undefined, currency: string) => {
@@ -679,6 +727,21 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
                   <option value="included">{t('list.filter.inNetWorth')}</option>
                   <option value="excluded">{t('list.filter.excludedFromNetWorth')}</option>
                 </select>
+              )}
+
+              {/* Joint filter -- only shown when something is shared to the
+                  caller. The switch and its text are siblings, not nested:
+                  ToggleSwitch is a <button>, which a <label> cannot label. */}
+              {hasJointAccounts && (
+                <div className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                  <ToggleSwitch
+                    size="sm"
+                    checked={filterJoint === 'joint'}
+                    onChange={(v) => setFilterJoint(v ? 'joint' : '')}
+                    label={t('list.filterJoint')}
+                  />
+                  <span>{t('list.filterJoint')}</span>
+                </div>
               )}
             </div>
           </div>
@@ -830,6 +893,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
                   onReopen={handleReopen}
                   getRowHandlers={getRowHandlers}
                   onToggleFavourite={handleToggleFavourite}
+                  onToggleNetWorthExclusion={handleToggleNetWorthExclusion}
                 />
               ),
             )}
@@ -857,6 +921,7 @@ export function AccountList({ accounts, institutions, brokerageMarketValues, def
               onCloseClick: handleCloseClick,
               onReopen: handleReopen,
               onDeleteClick: handleDeleteClick,
+              onToggleNetWorthExclusion: handleToggleNetWorthExclusion,
             }, brokerageMarketValues?.get(contextAccount.id))
           : []}
         onClose={() => setContextAccount(null)}

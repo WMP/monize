@@ -6,7 +6,10 @@
     "back": "返回科目",
     "switchAccount": "切換到其他帳戶",
     "switchPlaceholder": "篩選帳戶...",
-    "switchNoMatches": "沒有符合的帳戶"
+    "switchNoMatches": "沒有符合的帳戶",
+    "jointBadge": "聯名",
+    "jointSharedBy": "由 {owner} 共享",
+    "jointSharedWith": "已與 {count, plural, other {# 人}}共享"
   },
   "loading": "載入科目詳情中...",
   "error": {

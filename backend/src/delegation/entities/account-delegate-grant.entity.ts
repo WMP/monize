@@ -33,6 +33,12 @@ export class AccountDelegateGrant {
   @Column({ name: "can_delete", type: "boolean", default: false })
   canDelete: boolean;
 
+  // Joint account opt-in (migration 133): with canRead, the account is
+  // natively visible in the delegate's OWN context. false = plain grant,
+  // visible only while acting in the owner's context.
+  @Column({ name: "is_joint", type: "boolean", default: false })
+  isJoint: boolean;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -23,6 +23,25 @@ const ymdBefore = (date: string, days: number): string =>
     .toISOString()
     .slice(0, 10);
 
+/** ISO date `days` after `date`. */
+const ymdAfter = (date: string, days: number): string => ymdBefore(date, -days);
+
+/**
+ * The observation that proves a boundary has been reached, at a price no
+ * assertion uses.
+ *
+ * A span is settled only once the series holds a close dated at or after its
+ * far boundary -- otherwise "the market was shut that day" is indistinguishable
+ * from "the close is not fetched yet". A live series always has one, because
+ * the quote job keeps adding closes; a fixture that stops dead on the boundary
+ * describes a series no running system produces, so it gets this marker rather
+ * than an exemption.
+ */
+const settled = (boundary: string): [string, number] => [
+  ymdAfter(boundary, 1),
+  999,
+];
+
 describe("gem-momentum.util", () => {
   describe("date helpers", () => {
     it("parses a date-only string as UTC midnight", () => {
@@ -134,11 +153,73 @@ describe("gem-momentum.util", () => {
           series([
             ["2024-07-26", 100],
             ["2025-07-29", 115.42],
+            settled("2025-07-31"),
           ]),
           "2024-07-31",
           "2025-07-31",
         ),
       ).toBe(15.42);
+    });
+
+    it("defers a boundary the series has not reached yet", () => {
+      // The other half of the lag rule. A close two days before the boundary
+      // can stand for it, but only once something dated at or after the
+      // boundary proves the market was shut on it rather than that the quote
+      // job has not run. Opening the report at 09:00 on 1 August, before 31
+      // July's close is stored, must not answer July from 30 July's close --
+      // the signal path materializes that answer permanently.
+      expect(
+        trailingReturnPercent(
+          series([
+            ["2024-07-31", 100],
+            ["2025-07-30", 115.42],
+          ]),
+          "2024-07-31",
+          "2025-07-31",
+        ),
+      ).toBeNull();
+
+      // ...and answers it as soon as the boundary is behind the series, still
+      // from the close that stands for it rather than from the newer one.
+      expect(
+        trailingReturnPercent(
+          series([
+            ["2024-07-31", 100],
+            ["2025-07-30", 115.42],
+            ["2025-08-01", 400],
+          ]),
+          "2024-07-31",
+          "2025-07-31",
+        ),
+      ).toBe(15.42);
+    });
+
+    it("refuses a zero close at either boundary", () => {
+      // The DTO admits `@Min(0)`, so a typo can store a zero. Read as a known
+      // price it becomes a -100% period at the exit and an Infinity at the
+      // entry; both are unknown instead.
+      expect(
+        trailingReturnPercent(
+          series([
+            ["2024-07-31", 100],
+            ["2025-07-30", 0],
+            settled("2025-07-31"),
+          ]),
+          "2024-07-31",
+          "2025-07-31",
+        ),
+      ).toBeNull();
+      expect(
+        trailingReturnPercent(
+          series([
+            ["2024-07-31", 0],
+            ["2025-07-30", 100],
+            settled("2025-07-31"),
+          ]),
+          "2024-07-31",
+          "2025-07-31",
+        ),
+      ).toBeNull();
     });
 
     it("draws the line at BOUNDARY_LAG_DAYS, to the day", () => {
@@ -155,6 +236,7 @@ describe("gem-momentum.util", () => {
           series([
             ["2024-07-31", 100],
             [justInside, 115.42],
+            settled(boundary),
           ]),
           "2024-07-31",
           boundary,
@@ -165,6 +247,7 @@ describe("gem-momentum.util", () => {
           series([
             ["2024-07-31", 100],
             [justOutside, 115.42],
+            settled(boundary),
           ]),
           "2024-07-31",
           boundary,

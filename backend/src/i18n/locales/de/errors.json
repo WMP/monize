@@ -179,7 +179,6 @@
     "unsupportedBackupVersion": "Nicht unterstützte Sicherungsversion: {{ version }}. Erwartet: {{ expected }}",
     "missingExportedAt": "Ungültiges Sicherungsformat: exportedAt fehlt",
     "tableNotAllowed": "Tabelle {{ table }} ist bei der Sicherungswiederherstellung nicht zulässig",
-    "localAuthRequired": "Lokale Passwort-Authentifizierung ist erforderlich",
     "encryptionNotConfigured": "Server ist nicht für Verschlüsselung konfiguriert (AI_ENCRYPTION_KEY fehlt)",
     "backupPasswordOidcOnly": "Sicherungspasswort ist nur für OIDC-Benutzer konfigurierbar; lokale Benutzer verwenden ihr Anmeldepasswort",
     "backupPasswordTooShort": "Sicherungspasswort muss mindestens {{ minLength }} Zeichen lang sein",
@@ -250,7 +249,16 @@
     "capabilityNotGranted": "Der Kontoinhaber hat Ihnen keine Berechtigung erteilt, {{ operation }} {{ resource }}. Bitten Sie ihn, dies in den Delegierten-Zugriffseinstellungen zu aktivieren.",
     "sectionNotGranted": "Der Kontoinhaber hat den Bereich {{ sectionLabel }} nicht mit Ihnen geteilt.",
     "accountNotShared": "Der Kontoinhaber hat dieses Konto nicht mit Ihnen geteilt.",
-    "accountOperationNotGranted": "Der Kontoinhaber hat Ihnen keine Berechtigung erteilt, {{ operation }} Buchungen in diesem Konto durchzuführen."
+    "accountOperationNotGranted": "Der Kontoinhaber hat Ihnen keine Berechtigung erteilt, {{ operation }} Buchungen in diesem Konto durchzuführen.",
+    "jointOwnAccount": "Dies ist Ihr eigenes Konto; Gemeinschaftskonto-Zugriff gilt hier nicht.",
+    "jointAccountTypeReadOnly": "Dieser Kontotyp wird schreibgeschützt geteilt; nur der Eigentümer kann seine Buchungen ändern.",
+    "jointOwnAccountNetWorth": "Verwenden Sie für eigene Konten die Nettovermögen-Einstellung des Kontos.",
+    "jointRequiresRead": "LESE-Zugriff ist erforderlich, um ein Konto als gemeinsam zu markieren",
+    "jointRequiresFullAccount": "Gemeinschaftskonten können nur mit Benutzern geteilt werden, die ein eigenes Monize-Konto haben",
+    "jointPayeeCreateNotGranted": "Der Kontoinhaber hat Ihnen nicht erlaubt, Zahlungsempfänger zu erstellen. Wählen Sie stattdessen einen vorhandenen Zahlungsempfänger.",
+    "jointTagsNotAllowed": "Tags sind persönlich und können nicht für Buchungen eines geteilten Kontos gesetzt werden.",
+    "jointSplitsNotAllowed": "Splitbuchungen in einem geteilten Konto kann nur der Eigentümer verwalten.",
+    "jointTransferRowLocked": "Dies ist eine Überweisung. Verwenden Sie stattdessen den Überweisungseditor."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "E-Mail ist nicht konfiguriert. Notfallzugriff kann erst aktiviert werden, wenn SMTP eingerichtet ist.",
@@ -470,7 +478,8 @@
     "tagKeyRequired": "Ein Tag-Schlüssel (1–100 Zeichen) ist erforderlich",
     "fxFieldsIncomplete": "originalAmount und originalCurrencyCode müssen zusammen angegeben werden",
     "fxRateRequired": "Für eine Fremdwährungstransaktion ist ein positiver Wechselkurs erforderlich",
-    "fxSignMismatch": "originalAmount und amount müssen dasselbe Vorzeichen haben"
+    "fxSignMismatch": "originalAmount und amount müssen dasselbe Vorzeichen haben",
+    "jointAccountMoveLocked": "Buchungen in einem geteilten Konto können nicht in ein anderes Konto verschoben werden."
   },
   "users": {
     "userNotFound": "Benutzer nicht gefunden",

@@ -2,11 +2,13 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { NetWorthController } from "./net-worth.controller";
 import { NetWorthService } from "./net-worth.service";
 import { DelegationService } from "../delegation/delegation.service";
+import { JointAccountsService } from "../delegation/joint-accounts.service";
 
 describe("NetWorthController", () => {
   let controller: NetWorthController;
   let mockNetWorthService: Partial<Record<keyof NetWorthService, jest.Mock>>;
   let delegationService: Record<string, jest.Mock>;
+  let jointAccounts: Record<string, jest.Mock>;
   const mockReq = { user: { id: "user-1" } };
   const UUID_A = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
   const UUID_B = "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e";
@@ -23,6 +25,10 @@ describe("NetWorthController", () => {
     delegationService = {
       readableAccountIds: jest.fn().mockResolvedValue([]),
     };
+    jointAccounts = {
+      jointGrantsFor: jest.fn().mockResolvedValue(new Map()),
+      getNetWorthExclusions: jest.fn().mockResolvedValue(new Set()),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [NetWorthController],
@@ -32,6 +38,7 @@ describe("NetWorthController", () => {
           useValue: mockNetWorthService,
         },
         { provide: DelegationService, useValue: delegationService },
+        { provide: JointAccountsService, useValue: jointAccounts },
       ],
     }).compile();
 
@@ -39,30 +46,70 @@ describe("NetWorthController", () => {
   });
 
   describe("getMonthlyNetWorth()", () => {
-    it("delegates to netWorthService.getMonthlyNetWorth with userId and date range", () => {
+    it("delegates to netWorthService.getMonthlyNetWorth with userId and date range", async () => {
       mockNetWorthService.getMonthlyNetWorth!.mockReturnValue("netWorth");
 
-      const result = controller.getMonthlyNetWorth(
+      const result = await controller.getMonthlyNetWorth(
         mockReq,
         "2024-01-01",
         "2024-12-31",
       );
 
       expect(result).toBe("netWorth");
+      // No joint grants -> scope is undefined, keeping the call identical.
       expect(mockNetWorthService.getMonthlyNetWorth).toHaveBeenCalledWith(
         "user-1",
         "2024-01-01",
         "2024-12-31",
+        undefined,
       );
     });
 
-    it("passes undefined when no dates provided", () => {
+    it("passes undefined when no dates provided", async () => {
       mockNetWorthService.getMonthlyNetWorth!.mockReturnValue("netWorth");
 
-      controller.getMonthlyNetWorth(mockReq, undefined, undefined);
+      await controller.getMonthlyNetWorth(mockReq, undefined, undefined);
 
       expect(mockNetWorthService.getMonthlyNetWorth).toHaveBeenCalledWith(
         "user-1",
+        undefined,
+        undefined,
+        undefined,
+      );
+    });
+
+    it("builds the joint scope from grants minus the caller's exclusions", async () => {
+      mockNetWorthService.getMonthlyNetWorth!.mockReturnValue("netWorth");
+      const OWNER = "cccccccc-3333-4333-8333-333333333333";
+      jointAccounts.jointGrantsFor.mockResolvedValue(
+        new Map([
+          [UUID_A, { ownerUserId: OWNER }],
+          [UUID_B, { ownerUserId: OWNER }],
+        ]),
+      );
+      jointAccounts.getNetWorthExclusions.mockResolvedValue(new Set([UUID_B]));
+
+      await controller.getMonthlyNetWorth(mockReq, undefined, undefined);
+
+      expect(mockNetWorthService.getMonthlyNetWorth).toHaveBeenCalledWith(
+        "user-1",
+        undefined,
+        undefined,
+        { accounts: [{ accountId: UUID_A, ownerUserId: OWNER }] },
+      );
+    });
+
+    it("never builds a joint scope while acting", async () => {
+      mockNetWorthService.getMonthlyNetWorth!.mockReturnValue("netWorth");
+      await controller.getMonthlyNetWorth(
+        { user: { id: "owner-1", realUserId: "deleg-1", isActing: true } },
+        undefined,
+        undefined,
+      );
+      expect(jointAccounts.jointGrantsFor).not.toHaveBeenCalled();
+      expect(mockNetWorthService.getMonthlyNetWorth).toHaveBeenCalledWith(
+        "owner-1",
+        undefined,
         undefined,
         undefined,
       );
@@ -355,15 +402,15 @@ describe("NetWorthController", () => {
   // ─── Branch coverage extras ───────────────────────────────────────────
 
   describe("getMonthlyNetWorth date validation", () => {
-    it("throws on invalid startDate format", () => {
-      expect(() =>
+    it("throws on invalid startDate format", async () => {
+      await expect(
         controller.getMonthlyNetWorth(mockReq, "not-a-date"),
-      ).toThrow(/startDate/);
+      ).rejects.toThrow(/startDate/);
     });
-    it("throws on invalid endDate format", () => {
-      expect(() =>
+    it("throws on invalid endDate format", async () => {
+      await expect(
         controller.getMonthlyNetWorth(mockReq, "2024-01-01", "bad"),
-      ).toThrow(/endDate/);
+      ).rejects.toThrow(/endDate/);
     });
   });
 

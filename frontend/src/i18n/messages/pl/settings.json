@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "Automatyczna kopia zapasowa",
     "description": "Automatycznie twórz kopie zapasowe danych do folderu według harmonogramu. Ponieważ Monize działa w Dockerze, musisz zamapować folder hosta do kontenera jako wolumin (np. -v /host/backups:/data/backups).",
+    "adminManagedNote": "Tylko administratorzy mogą zmieniać te ustawienia. Wszyscy pozostali użytkownicy są archiwizowani automatycznie według tego samego harmonogramu i zasad przechowywania, każdy do własnego folderu.",
     "loadingText": "Wczytywanie...",
     "enableLabel": "Włącz automatyczne kopie zapasowe",
     "backupFolderLabel": "Folder kopii zapasowych",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "Kopie zapasowe każdego użytkownika trafiają do własnego folderu wewnątrz tego, nazwanego jego identyfikatorem użytkownika.",
+    "perUserFolderHelpWithPath": "Kopie zapasowe każdego użytkownika trafiają do własnego folderu wewnątrz tego, nazwanego jego identyfikatorem użytkownika. Twój: {path}",
     "browseButton": "Przeglądaj...",
     "validateButton": "Sprawdź",
     "validatingButton": "Sprawdzanie...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "Szyfrowanie kopii zapasowej",
       "descriptionOidc": "Szyfruj ręczne i automatyczne kopie zapasowe dedykowanym hasłem kopii ustawionym tutaj. Hasło jest wymagane do przywrócenia.",
-      "descriptionLocal": "Szyfruj ręczne i automatyczne kopie zapasowe swoim hasłem logowania. Hasło jest wymagane do przywrócenia.",
       "loading": "Wczytywanie...",
       "enabledBadge": "Włączone",
       "changePasswordButton": "Zmień hasło kopii zapasowej",
       "disableButton": "Wyłącz",
       "setPasswordButton": "Ustaw hasło kopii zapasowej",
-      "enableEncryptedButton": "Włącz szyfrowane kopie zapasowe",
       "setupModal": {
         "titleOidc": "Ustaw hasło kopii zapasowej",
-        "titleLocal": "Włącz szyfrowane kopie zapasowe",
         "descriptionOidc": "Wybierz hasło, które będzie używane do szyfrowania kopii zapasowych. Zapisz je w bezpiecznym miejscu -- będzie potrzebne do przywrócenia.",
-        "descriptionLocal": "Potwierdź swoje hasło logowania. Zostanie ono użyte do szyfrowania wszystkich kopii zapasowych (ręcznych i automatycznych).",
         "placeholderOidc": "Nowe hasło kopii zapasowej (12+ znaków)",
-        "placeholderLocal": "Twoje hasło logowania",
         "savingButton": "Zapisywanie...",
         "confirmButton": "Potwierdź"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "Nie udało się odwołać pełnomocnika",
       "resetPasswordFailed": "Nie udało się zresetować hasła",
       "copyFailed": "Nie udało się skopiować do schowka"
-    }
+    },
+    "jointLabel": "{count, plural, one {# wspólne konto} few {# wspólne konta} many {# wspólnych kont} other {# wspólnego konta}}"
   },
   "delegateAccessModal": {
     "title": "Edytuj dostęp",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "Brak kont do przyznania.",
-      "grantAll": "Przyznaj wszystkie"
+      "grantAll": "Przyznaj wszystkie",
+      "jointRequiresFullAccount": "Wspólne konta można udostępniać tylko użytkownikom, którzy mają własne konto Monize"
     },
     "shared": {
       "description": "ODCZYT odbiorców, kategorii i tagów jest zawsze dozwolony. To steruje tworzeniem/edycją/usuwaniem."
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "Sekcje ustawień",
     "profile": "Profil",
     "preferences": "Preferencje",
+    "tours": "Przewodniki po aplikacji",
     "notifications": "Powiadomienia",
     "security": "Zabezpieczenia",
     "sharedAccess": "Dostęp współdzielony",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "Dostęp współdzielony",
       "description": "Przyznaj innej osobie szczegółowy dostęp do wybranych kont."
+    },
+    "toursCard": {
+      "title": "Przewodniki po aplikacji",
+      "description": "Wszystkie przewodniki, które oferuje Monize, wraz z tym, co już obejrzałeś. Uruchom lub powtórz dowolny z nich."
     },
     "emergencyAccessCard": {
       "title": "Dostęp awaryjny",

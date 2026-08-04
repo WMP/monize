@@ -48,7 +48,8 @@
       "status": "Status",
       "balance": "Saldo",
       "actions": "Tindakan"
-    }
+    },
+    "filterJoint": "Dibagikan kepada saya"
   },
   "row": {
     "statusActive": "Aktif",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "Saldo akun harus nol untuk menutupnya",
       "closeTitleEnabled": "Tutup akun",
       "details": "Detail"
-    }
+    },
+    "jointBadge": "Bersama",
+    "jointSharedBy": "Dibagikan oleh {owner}",
+    "jointSharedWith": "Dibagikan dengan {count, plural, other {# orang}}",
+    "includeInNetWorth": "Sertakan dalam kekayaan bersih saya",
+    "excludeFromNetWorth": "Kecualikan dari kekayaan bersih saya"
   },
   "contextMenu": {
     "subtypeBrokerage": "Perantara",
@@ -103,7 +109,8 @@
     "loadFailed": "Gagal memuat akun",
     "favouriteError": "Gagal memperbarui favorit",
     "createSuccess": "Akun berhasil dibuat",
-    "updateSuccess": "Akun berhasil diperbarui"
+    "updateSuccess": "Akun berhasil diperbarui",
+    "updateFailed": "Gagal memperbarui akun"
   },
   "form": {
     "accountName": "Nama Akun",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "mis. 25",
     "fxFeeTitle": "Biaya konversi mata uang asing (opsional)",
     "fxFeePercent": "Persentase biaya",
-    "fxFeePercentPlaceholder": "mis. 2,5"
+    "fxFeePercentPlaceholder": "mis. 2,5",
+    "jointSharedWith": "Akun bersama dibagikan dengan {count, plural, other {# orang}}",
+    "jointManage": "Kelola berbagi"
   },
   "exportModal": {
     "title": "Ekspor {name}",

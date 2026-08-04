@@ -107,6 +107,22 @@ export interface Account {
   originalPrincipal: number | null;
   canDelete?: boolean;
   futureTransactionsSum?: number;
+  // ── Joint accounts ──
+  // Present on rows shared TO the current user (grantee view): the account
+  // belongs to another user but appears natively in this user's lists.
+  isJoint?: boolean;
+  // Display label of the sharing owner ("shared by X"), grantee view only.
+  ownerLabel?: string;
+  // The grantee's effective write permissions: the owner's grant flags masked
+  // by the backend's account-type policy. Absent on own accounts.
+  jointPermissions?: {
+    canCreate: boolean;
+    canEdit: boolean;
+    canDelete: boolean;
+  };
+  // Present on the OWNER's rows that are jointly shared: how many users the
+  // account is shared with (absent, not 0, when unshared).
+  jointGranteeCount?: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -30,7 +30,6 @@ const MANDATORY = [
   "backup-restore.integration.spec.ts",
   "support-backup.integration.spec.ts",
   "race-harness.integration.spec.ts",
-  "race-import-start.integration.spec.ts",
   "race-emergency-claim.integration.spec.ts",
   "race-refresh-token-revocation.integration.spec.ts",
   "race-account-balance.integration.spec.ts",

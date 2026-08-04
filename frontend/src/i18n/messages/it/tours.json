@@ -35,12 +35,24 @@
   "settings": {
     "title": "Tour guidati",
     "description": "Scopri le funzioni dell'app passo dopo passo.",
-    "showList": "Mostra i tour ({count})",
-    "hideList": "Nascondi i tour",
+    "backLink": "Torna alle impostazioni",
+    "pageTitle": "Tour guidati",
+    "pageSubtitle": "Tutti i tour offerti da Monize in un unico posto. Avviane uno quando vuoi: puoi uscire da un tour con Esc e riprenderlo da qui.",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, one {# passo} other {# passi}}",
+    "releaseLabel": "Novità in {version}",
+    "requirementsLoading": "Verifica se puoi seguire questo tour…",
+    "requires": {
+      "transactionEntry": "Aggiungi prima un conto: questo tour mostra come registrare una transazione.",
+      "securitiesExist": "Aggiungi prima un titolo: questo tour ne apre uno dal tuo elenco titoli."
+    },
     "start": "Avvia",
     "restart": "Rivedi",
     "statusNotViewed": "Non visualizzato",
     "statusDismissed": "Uscito prima della fine",
+    "resetHeading": "Ricomincia",
+    "resetDescription": "Cancella tutti i tour registrati così da vederli di nuovo proposti dalla dashboard e dopo un aggiornamento.",
     "reset": "Azzera i progressi del tour",
     "resetSuccess": "Progressi del tour azzerati.",
     "resetError": "Impossibile azzerare i progressi del tour. Riprova."

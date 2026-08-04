@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "Cópia de Segurança Automática",
     "description": "Faça cópias de segurança automáticas dos seus dados para uma pasta, de acordo com um agendamento. Como o Monize corre em Docker, tem de mapear uma pasta do anfitrião para o contentor como volume (ex.: -v /host/backups:/data/backups).",
+    "adminManagedNote": "Apenas administradores podem alterar estas definições. Todos os outros utilizadores são copiados automaticamente com o mesmo agendamento e política de retenção, cada um para a sua própria pasta.",
     "loadingText": "A carregar...",
     "enableLabel": "Ativar cópias de segurança automáticas",
     "backupFolderLabel": "Pasta de Cópias de Segurança",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "As cópias de segurança de cada utilizador ficam numa pasta própria dentro desta, com o nome do respetivo ID de utilizador.",
+    "perUserFolderHelpWithPath": "As cópias de segurança de cada utilizador ficam numa pasta própria dentro desta, com o nome do respetivo ID de utilizador. A sua: {path}",
     "browseButton": "Procurar...",
     "validateButton": "Validar",
     "validatingButton": "A validar...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "Encriptação de Cópia de Segurança",
       "descriptionOidc": "Encripte cópias de segurança manuais e automáticas com uma palavra-passe de cópia de segurança dedicada que define aqui. A palavra-passe é necessária para o restauro.",
-      "descriptionLocal": "Encripte cópias de segurança manuais e automáticas com a sua palavra-passe de início de sessão. A palavra-passe é necessária para o restauro.",
       "loading": "A carregar...",
       "enabledBadge": "Ativada",
       "changePasswordButton": "Alterar Palavra-passe de Cópia de Segurança",
       "disableButton": "Desativar",
       "setPasswordButton": "Definir Palavra-passe de Cópia de Segurança",
-      "enableEncryptedButton": "Ativar Cópias de Segurança Encriptadas",
       "setupModal": {
         "titleOidc": "Definir Palavra-passe de Cópia de Segurança",
-        "titleLocal": "Ativar Cópias de Segurança Encriptadas",
         "descriptionOidc": "Escolha uma palavra-passe que será utilizada para encriptar as suas cópias de segurança. Guarde-a num local seguro -- precisará dela para o restauro.",
-        "descriptionLocal": "Confirme a sua palavra-passe de início de sessão. Será utilizada para encriptar todas as cópias de segurança (manuais e automáticas).",
         "placeholderOidc": "Nova palavra-passe de cópia de segurança (12+ caracteres)",
-        "placeholderLocal": "A sua palavra-passe de início de sessão",
         "savingButton": "A guardar...",
         "confirmButton": "Confirmar"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "Falha ao revogar delegado",
       "resetPasswordFailed": "Falha ao redefinir palavra-passe",
       "copyFailed": "Não foi possível copiar para a área de transferência"
-    }
+    },
+    "jointLabel": "{count, plural, one {# conta conjunta} other {# contas conjuntas}}"
   },
   "delegateAccessModal": {
     "title": "Editar acesso",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "Sem contas para conceder.",
-      "grantAll": "Conceder todas"
+      "grantAll": "Conceder todas",
+      "jointRequiresFullAccount": "As contas conjuntas só podem ser partilhadas com utilizadores que tenham a sua própria conta Monize"
     },
     "shared": {
       "description": "A LEITURA de beneficiários, categorias e etiquetas é sempre permitida. Estes controlam criar/editar/eliminar."
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "Secções das definições",
     "profile": "Perfil",
     "preferences": "Preferências",
+    "tours": "Visitas guiadas",
     "notifications": "Notificações",
     "security": "Segurança",
     "sharedAccess": "Acesso Partilhado",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "Acesso Partilhado",
       "description": "Conceda a outra pessoa acesso granular a contas específicas."
+    },
+    "toursCard": {
+      "title": "Visitas guiadas",
+      "description": "Todas as visitas guiadas que o Monize oferece, com aquilo que já viu. Inicie ou repita qualquer uma delas."
     },
     "emergencyAccessCard": {
       "title": "Acesso de Emergência",

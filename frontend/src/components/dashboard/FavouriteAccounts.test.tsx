@@ -280,6 +280,73 @@ describe("FavouriteAccounts", () => {
     expect(mockPush).toHaveBeenCalledWith("/investments?accountId=brok-1");
   });
 
+  it("navigates from the statement line, which the card's hover promises", () => {
+    // The line sits outside the navigation button (a button cannot contain the
+    // help triggers), inside a card whose hover advertises the whole thing as
+    // clickable. Before the click moved to the card, the bottom of every
+    // credit-card tile looked live and did nothing.
+    const accounts = [
+      {
+        id: "cc-1",
+        name: "Visa Card",
+        currentBalance: -500,
+        currencyCode: "CAD",
+        isFavourite: true,
+        favouriteSortOrder: 0,
+        isClosed: false,
+        accountType: "CREDIT_CARD",
+        statementDueDay: 15,
+      },
+    ] as any[];
+
+    render(<FavouriteAccounts accounts={accounts} isLoading={false} />);
+    fireEvent.click(screen.getByText(/Due: 15th/));
+    expect(mockPush).toHaveBeenCalledWith("/transactions?accountId=cc-1");
+  });
+
+  it("navigates once, not twice, when the button itself is clicked", () => {
+    mockPush.mockClear();
+    const accounts = [
+      {
+        id: "acc-1",
+        name: "Checking",
+        currentBalance: 1500,
+        currencyCode: "CAD",
+        isFavourite: true,
+        favouriteSortOrder: 0,
+        isClosed: false,
+      },
+    ] as any[];
+
+    render(<FavouriteAccounts accounts={accounts} isLoading={false} />);
+    fireEvent.click(screen.getByText("Checking"));
+    expect(mockPush).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not navigate when the statement help is opened", () => {
+    mockPush.mockClear();
+    // A help icon explains the row; it does not activate it.
+    const accounts = [
+      {
+        id: "cc-1",
+        name: "Visa Card",
+        currentBalance: -500,
+        currencyCode: "CAD",
+        isFavourite: true,
+        favouriteSortOrder: 0,
+        isClosed: false,
+        accountType: "CREDIT_CARD",
+        statementDueDay: 15,
+      },
+    ] as any[];
+
+    render(<FavouriteAccounts accounts={accounts} isLoading={false} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: /payment is due/i }),
+    );
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
   it("highlights the row edge on hover, matching the Top Movers widget", () => {
     const accounts = [
       {

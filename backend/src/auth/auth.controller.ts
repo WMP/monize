@@ -608,6 +608,7 @@ export class AuthController {
       actingAsUserId: req.user.isActing ? req.user.id : null,
       contexts: await this.delegationService.getAvailableContexts(
         req.user.realUserId,
+        req.user.isActing ? req.user.id : null,
       ),
       capabilities:
         req.user.isActing && req.user.delegationId

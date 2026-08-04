@@ -3,6 +3,7 @@ import { GemAssetRole } from "./entities/gem-strategy-asset.entity";
 import {
   BOUNDARY_LAG_DAYS,
   PricePoint,
+  SpanEnd,
   closeAt,
   daysBetween,
   pointAsOf,
@@ -162,8 +163,9 @@ function growth(
   series: PricePoint[] | undefined,
   from: string,
   to: string,
+  end: SpanEnd,
 ): number | null {
-  const span = spanCloses(series, from, to);
+  const span = spanCloses(series, from, to, end);
   return span.state === "PRICED" ? span.latest / span.base : null;
 }
 
@@ -237,17 +239,26 @@ export function runBacktest(input: GemBacktestInput): GemBacktestResult | null {
   if (periods.length < MIN_PERIODS) return null;
 
   const bounds = periods.map((period, index) => {
-    const endsOn = periods[index + 1]?.effectiveFrom ?? asOf;
+    const next = periods[index + 1]?.effectiveFrom;
+    const endsOn = next ?? asOf;
+    // The interior boundaries are calendar dates the strategy fixed, and are
+    // held to the settled rule. The trailing one is `asOf` -- "what is it worth
+    // now" -- and cannot be: no close is ever dated at or after today until the
+    // market shuts, so requiring one would drop the newest period on every
+    // trading day, which for a strategy with one evaluation is the whole run.
+    const end: SpanEnd = next ? "BOUNDARY" : "AS_OF";
     const span = spanCloses(
       period.targetSecurityId
         ? seriesBySecurity.get(period.targetSecurityId)
         : undefined,
       period.effectiveFrom,
       endsOn,
+      end,
     );
     return {
       ...period,
       endsOn,
+      end,
       growth: span.state === "PRICED" ? span.latest / span.base : null,
       unelapsed: span.state === "UNELAPSED",
     };
@@ -386,6 +397,7 @@ export function runBacktest(input: GemBacktestInput): GemBacktestResult | null {
             seriesBySecurity.get(safeSecurityId),
             period.effectiveFrom,
             period.endsOn,
+            period.end,
           )
         : null;
     if (safeGrowth !== null) {

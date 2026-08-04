@@ -179,7 +179,6 @@
     "unsupportedBackupVersion": "Niet-ondersteunde back-upversie: {{ version }}. Verwacht {{ expected }}",
     "missingExportedAt": "Ongeldig back-upformaat: exportedAt ontbreekt",
     "tableNotAllowed": "Tabel {{ table }} is niet toegestaan bij het herstellen van back-ups",
-    "localAuthRequired": "Lokale wachtwoordauthenticatie is vereist",
     "encryptionNotConfigured": "Server is niet geconfigureerd voor versleuteling (AI_ENCRYPTION_KEY ontbreekt)",
     "backupPasswordOidcOnly": "Back-upwachtwoord is alleen instelbaar voor OIDC-gebruikers; lokale gebruikers gebruiken hun inlogwachtwoord",
     "backupPasswordTooShort": "Back-upwachtwoord moet minimaal {{ minLength }} tekens lang zijn",
@@ -250,7 +249,16 @@
     "capabilityNotGranted": "De rekeninghouder heeft je geen toestemming gegeven om {{ operation }} {{ resource }}. Vraag hen dit in te schakelen in je instellingen voor gedelegeerde toegang.",
     "sectionNotGranted": "De rekeninghouder heeft het gedeelte {{ sectionLabel }} niet met je gedeeld.",
     "accountNotShared": "De rekeninghouder heeft deze rekening niet met je gedeeld.",
-    "accountOperationNotGranted": "De rekeninghouder heeft je geen toestemming gegeven om {{ operation }} transacties op deze rekening uit te voeren."
+    "accountOperationNotGranted": "De rekeninghouder heeft je geen toestemming gegeven om {{ operation }} transacties op deze rekening uit te voeren.",
+    "jointOwnAccount": "Dit is uw eigen rekening; gezamenlijke-rekeningtoegang is hier niet van toepassing.",
+    "jointAccountTypeReadOnly": "Dit rekeningtype wordt alleen-lezen gedeeld; alleen de eigenaar kan de transacties wijzigen.",
+    "jointOwnAccountNetWorth": "Gebruik voor eigen rekeningen de nettovermogen-instelling van de rekening zelf.",
+    "jointRequiresRead": "LEES-toegang is vereist om een rekening als gezamenlijk te markeren",
+    "jointRequiresFullAccount": "Gezamenlijke rekeningen kunnen alleen worden gedeeld met gebruikers die een eigen Monize-account hebben",
+    "jointPayeeCreateNotGranted": "De eigenaar van de rekening heeft u geen toestemming gegeven om begunstigden aan te maken. Kies in plaats daarvan een bestaande begunstigde.",
+    "jointTagsNotAllowed": "Tags zijn persoonlijk en kunnen niet worden ingesteld op transacties van een gedeelde rekening.",
+    "jointSplitsNotAllowed": "Gesplitste transacties in een gedeelde rekening kunnen alleen door de eigenaar worden beheerd.",
+    "jointTransferRowLocked": "Dit is een overboeking. Gebruik de overboekingseditor."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "E-mail is niet geconfigureerd. Noodtoegang kan pas worden ingeschakeld als SMTP is ingesteld.",
@@ -470,7 +478,8 @@
     "tagKeyRequired": "Een tagsleutel (1-100 tekens) is vereist",
     "fxFieldsIncomplete": "originalAmount en originalCurrencyCode moeten samen worden opgegeven",
     "fxRateRequired": "Een positieve wisselkoers is vereist voor een transactie in vreemde valuta",
-    "fxSignMismatch": "originalAmount en amount moeten hetzelfde teken hebben"
+    "fxSignMismatch": "originalAmount en amount moeten hetzelfde teken hebben",
+    "jointAccountMoveLocked": "Transacties in een gedeelde rekening kunnen niet naar een andere rekening worden verplaatst."
   },
   "users": {
     "userNotFound": "Gebruiker niet gevonden",

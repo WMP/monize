@@ -496,4 +496,42 @@ describe('AutoBackupSection', () => {
       expect(screen.getByText('daily')).toBeInTheDocument();
     });
   });
+
+  describe('per-user folder', () => {
+    it("shows where this user's backups actually land", async () => {
+      (backupApi.getAutoBackupSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...defaultSettings,
+        folderPath: '/data/backups',
+        resolvedFolderPath:
+          '/data/backups/12/34/12345678-1234-1234-1234-123456789abc',
+      });
+
+      await renderAutoBackupSection();
+
+      // The folder field holds the base; the files go in a per-user folder
+      // underneath it, so showing the base alone would send an admin looking
+      // in a directory that only contains shard directories.
+      expect(
+        screen.getByText(
+          /Yours: \/data\/backups\/12\/34\/12345678-1234-1234-1234-123456789abc/,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it('still explains the layout when the server sent no resolved folder', async () => {
+      await renderAutoBackupSection();
+
+      expect(
+        screen.getByText(/their own folder inside this one/),
+      ).toBeInTheDocument();
+    });
+
+    it('says the settings are administrator-only and everyone else is enrolled', async () => {
+      await renderAutoBackupSection();
+
+      expect(
+        screen.getByText(/Only administrators can change these settings/),
+      ).toBeInTheDocument();
+    });
+  });
 });

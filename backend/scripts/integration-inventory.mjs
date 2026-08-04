@@ -54,8 +54,11 @@ const MANDATORY_SUITES = [
   // rest of the suite cannot reach, and the harness self-test is what proves the
   // others are not quietly passing because their gate stopped gating -- so if
   // that one goes, the whole set loses its meaning rather than one case.
+  //
+  // The import-start race is deliberately *not* here: `mny-import-job` covers
+  // that invariant more thoroughly, and two suites racing the same insert is
+  // duplication rather than depth.
   "race-harness.integration.spec.ts",
-  "race-import-start.integration.spec.ts",
   "race-emergency-claim.integration.spec.ts",
   "race-refresh-token-revocation.integration.spec.ts",
   "race-account-balance.integration.spec.ts",

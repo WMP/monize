@@ -122,6 +122,12 @@ export interface AutoBackupSettings {
   userId: string;
   enabled: boolean;
   folderPath: string;
+  /**
+   * Folder this user's backup files actually land in --
+   * `<folderPath>/<ab>/<cd>/<userId>`. Server-computed and read-only; absent
+   * when the configured base folder is unusable.
+   */
+  resolvedFolderPath?: string;
   frequency: 'daily' | 'every12hours' | 'every6hours' | 'weekly';
   backupTime: string;
   timezone: string;

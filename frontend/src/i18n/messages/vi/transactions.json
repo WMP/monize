@@ -412,7 +412,8 @@
       "categoryCreateFailed": "Không thể tạo danh mục",
       "tagCreated": "Thẻ \"{name}\" đã được tạo",
       "fxRateRequired": "Nhập tỷ giá hoặc số tiền đã quy đổi trước khi lưu giao dịch bằng ngoại tệ.",
-      "attachmentsUploadFailed": "Đã lưu giao tác, nhưng {count} tệp đính kèm tải lên không thành công"
+      "attachmentsUploadFailed": "Đã lưu giao tác, nhưng {count} tệp đính kèm tải lên không thành công",
+      "jointPayeeCreateNotGranted": "Chủ tài khoản chưa cấp cho bạn quyền tạo người nhận. Hãy chọn một người nhận hiện có."
     },
     "ariaHistory": "Hiển thị giao tác gần đây",
     "ariaHistoryForPayee": "Hiển thị giao tác gần đây cho người nhận này",
@@ -438,7 +439,8 @@
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeCaption": "Bao gồm phí giao dịch nước ngoài {percent}% ({fee}).",
       "totalInCurrency": "Tổng bằng {currency}"
-    }
+    },
+    "jointSplitDisabled": "Chỉ chủ sở hữu mới có thể quản lý giao dịch tách trong tài khoản được chia sẻ"
   },
   "splitEditor": {
     "header": "Chi tiết phần chia",

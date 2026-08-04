@@ -272,8 +272,8 @@ export function useMnyImport(): UseMnyImportResult {
 
     return {
       ...options,
-      // The wipe happens in `start`, before the job row exists, so a Retry after
-      // a failed import must not ask for it again: the data is already gone, and
+      // The wipe happens in `start`, outside the job body, so a Retry after a
+      // failed import must not ask for it again: the data is already gone, and
       // repeating it would fail re-authentication -- Retry collects no password,
       // by design, because it is one click on a failure screen.
       wipeExistingData: wipePerformed.current

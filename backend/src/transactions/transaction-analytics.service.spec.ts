@@ -294,8 +294,47 @@ describe("TransactionAnalyticsService", () => {
       await service.getSummary(userId);
 
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-        "transaction.userId = :userId",
-        { userId },
+        "transaction.userId = :analyticsScopeUserId",
+        { analyticsScopeUserId: userId },
+      );
+    });
+
+    // Joint accounts: the grantee owns none of the rows, so without the
+    // widened ownership predicate every total came back zero while the same
+    // account's register (which has always had it) showed the transactions.
+    it("widens the ownership predicate by the authorized joint ids", async () => {
+      await service.getSummary(
+        userId,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        ["acc-joint-1", "acc-joint-2"],
+      );
+
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        "transaction.userId = :analyticsScopeUserId",
+        { analyticsScopeUserId: userId },
+      );
+      expect(mockQueryBuilder.orWhere).toHaveBeenCalledWith(
+        "transaction.accountId IN (:...analyticsScopeJointIds)",
+        { analyticsScopeJointIds: ["acc-joint-1", "acc-joint-2"] },
+      );
+    });
+
+    it("leaves the predicate owner-only when no joint ids are authorized", async () => {
+      await service.getSummary(userId);
+
+      expect(mockQueryBuilder.orWhere).not.toHaveBeenCalledWith(
+        "transaction.accountId IN (:...analyticsScopeJointIds)",
+        expect.anything(),
       );
     });
 
@@ -909,8 +948,8 @@ describe("TransactionAnalyticsService", () => {
         );
 
         expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-          "transaction.userId = :userId",
-          { userId },
+          "transaction.userId = :analyticsScopeUserId",
+          { analyticsScopeUserId: userId },
         );
         expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
           "transaction.accountId IN (:...accountIds)",
@@ -1222,8 +1261,29 @@ describe("TransactionAnalyticsService", () => {
       await service.getMonthlyTotals(userId);
 
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-        "transaction.userId = :userId",
-        { userId },
+        "transaction.userId = :analyticsScopeUserId",
+        { analyticsScopeUserId: userId },
+      );
+    });
+
+    it("widens the ownership predicate by the authorized joint ids", async () => {
+      await service.getMonthlyTotals(
+        userId,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        ["acc-joint-1"],
+      );
+
+      expect(mockQueryBuilder.orWhere).toHaveBeenCalledWith(
+        "transaction.accountId IN (:...analyticsScopeJointIds)",
+        { analyticsScopeJointIds: ["acc-joint-1"] },
       );
     });
 
@@ -2522,6 +2582,18 @@ describe("TransactionAnalyticsService", () => {
   });
 
   describe("getGroupedTotals", () => {
+    it("widens the ownership predicate by the authorized joint ids", async () => {
+      await service.getGroupedTotals(userId, {
+        groupBy: "payee",
+        jointAccountIds: ["acc-joint-1"],
+      });
+
+      expect(mockQueryBuilder.orWhere).toHaveBeenCalledWith(
+        "transaction.accountId IN (:...analyticsScopeJointIds)",
+        { analyticsScopeJointIds: ["acc-joint-1"] },
+      );
+    });
+
     it("groups by category with split-aware id and name expressions", async () => {
       mockQueryBuilder.getRawMany.mockResolvedValue([
         {

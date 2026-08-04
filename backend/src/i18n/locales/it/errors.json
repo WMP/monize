@@ -179,7 +179,6 @@
     "unsupportedBackupVersion": "Versione backup non supportata: {{ version }}. Attesa {{ expected }}",
     "missingExportedAt": "Formato backup non valido: exportedAt mancante",
     "tableNotAllowed": "La tabella {{ table }} non è consentita nel ripristino del backup",
-    "localAuthRequired": "L'autenticazione con password locale è obbligatoria",
     "encryptionNotConfigured": "Il server non è configurato per la cifratura (AI_ENCRYPTION_KEY mancante)",
     "backupPasswordOidcOnly": "La password di backup è configurabile solo per gli utenti OIDC; gli utenti locali usano la password di accesso",
     "backupPasswordTooShort": "La password di backup deve contenere almeno {{ minLength }} caratteri",
@@ -250,7 +249,16 @@
     "capabilityNotGranted": "Il titolare dell'account non ti ha concesso il permesso di {{ operation }} {{ resource }}. Chiedigli di abilitarlo nelle impostazioni di accesso delegato.",
     "sectionNotGranted": "Il titolare dell'account non ha condiviso con te la sezione {{ sectionLabel }}.",
     "accountNotShared": "Il titolare dell'account non ha condiviso questo conto con te.",
-    "accountOperationNotGranted": "Il titolare dell'account non ti ha concesso il permesso di {{ operation }} transazioni su questo conto."
+    "accountOperationNotGranted": "Il titolare dell'account non ti ha concesso il permesso di {{ operation }} transazioni su questo conto.",
+    "jointOwnAccount": "Questo è il tuo conto; l'accesso come conto cointestato non si applica.",
+    "jointAccountTypeReadOnly": "Questo tipo di conto è condiviso in sola lettura; solo il proprietario può modificarne le transazioni.",
+    "jointOwnAccountNetWorth": "Per i conti di tua proprietà usa l'impostazione patrimonio netto del conto stesso.",
+    "jointRequiresRead": "L'accesso in LETTURA è necessario per contrassegnare un conto come cointestato",
+    "jointRequiresFullAccount": "I conti cointestati possono essere condivisi solo con utenti che hanno un proprio account Monize",
+    "jointPayeeCreateNotGranted": "Il proprietario del conto non ti ha concesso il permesso di creare beneficiari. Scegli uno dei suoi beneficiari esistenti.",
+    "jointTagsNotAllowed": "I tag sono personali, quindi non possono essere impostati sulle transazioni di un conto condiviso.",
+    "jointSplitsNotAllowed": "Le transazioni suddivise in un conto condiviso possono essere gestite solo dal proprietario.",
+    "jointTransferRowLocked": "Questo è un trasferimento. Usa l'editor dei trasferimenti."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "L'email non è configurata. L'accesso di emergenza non può essere abilitato finché SMTP non è configurato.",
@@ -470,7 +478,8 @@
     "tagKeyRequired": "È richiesta una chiave tag (1-100 caratteri)",
     "fxFieldsIncomplete": "originalAmount e originalCurrencyCode devono essere forniti insieme",
     "fxRateRequired": "È richiesto un tasso di cambio positivo per una transazione in valuta estera",
-    "fxSignMismatch": "originalAmount e amount devono avere lo stesso segno"
+    "fxSignMismatch": "originalAmount e amount devono avere lo stesso segno",
+    "jointAccountMoveLocked": "Le transazioni di un conto condiviso non possono essere spostate in un altro conto."
   },
   "users": {
     "userNotFound": "Utente non trovato",

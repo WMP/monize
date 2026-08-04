@@ -179,7 +179,6 @@
     "unsupportedBackupVersion": "Version de sauvegarde non prise en charge : {{ version }}. Attendu : {{ expected }}",
     "missingExportedAt": "Format de sauvegarde invalide : exportedAt manquant",
     "tableNotAllowed": "La table {{ table }} n'est pas autorisée dans la restauration de sauvegarde",
-    "localAuthRequired": "L'authentification par mot de passe local est requise",
     "encryptionNotConfigured": "Le serveur n'est pas configuré pour le chiffrement (AI_ENCRYPTION_KEY manquant)",
     "backupPasswordOidcOnly": "Le mot de passe de sauvegarde n'est configurable que pour les utilisateurs OIDC ; les utilisateurs locaux utilisent leur mot de passe de connexion",
     "backupPasswordTooShort": "Le mot de passe de sauvegarde doit comporter au moins {{ minLength }} caractères",
@@ -250,7 +249,16 @@
     "capabilityNotGranted": "Le titulaire du compte ne vous a pas accordé la permission de {{ operation }} {{ resource }}. Demandez-lui d'activer cela dans vos paramètres d'accès délégué.",
     "sectionNotGranted": "Le titulaire du compte n'a pas partagé la section {{ sectionLabel }} avec vous.",
     "accountNotShared": "Le titulaire du compte n'a pas partagé ce compte avec vous.",
-    "accountOperationNotGranted": "Le titulaire du compte ne vous a pas accordé la permission de {{ operation }} les transactions de ce compte."
+    "accountOperationNotGranted": "Le titulaire du compte ne vous a pas accordé la permission de {{ operation }} les transactions de ce compte.",
+    "jointOwnAccount": "Ceci est votre propre compte ; l'accès en compte joint ne s'y applique pas.",
+    "jointAccountTypeReadOnly": "Ce type de compte est partagé en lecture seule ; seul le propriétaire peut modifier ses transactions.",
+    "jointOwnAccountNetWorth": "Pour vos propres comptes, utilisez le réglage de valeur nette du compte.",
+    "jointRequiresRead": "L'accès en LECTURE est requis pour marquer un compte comme joint",
+    "jointRequiresFullAccount": "Les comptes joints ne peuvent être partagés qu'avec des utilisateurs disposant de leur propre compte Monize",
+    "jointPayeeCreateNotGranted": "Le propriétaire du compte ne vous a pas autorisé à créer des bénéficiaires. Choisissez plutôt un de ses bénéficiaires existants.",
+    "jointTagsNotAllowed": "Les étiquettes sont personnelles ; elles ne peuvent pas être définies sur les transactions d'un compte partagé.",
+    "jointSplitsNotAllowed": "Seul le propriétaire peut gérer les transactions ventilées d'un compte partagé.",
+    "jointTransferRowLocked": "Ceci est un virement. Utilisez plutôt l'éditeur de virements."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "L'e-mail n'est pas configuré. L'accès d'urgence ne peut pas être activé tant que SMTP n'est pas configuré.",
@@ -470,7 +478,8 @@
     "tagKeyRequired": "Une clé d'étiquette (1 à 100 caractères) est requise",
     "fxFieldsIncomplete": "originalAmount et originalCurrencyCode doivent être fournis ensemble",
     "fxRateRequired": "Un taux de change positif est requis pour une transaction en devise étrangère",
-    "fxSignMismatch": "originalAmount et amount doivent avoir le même signe"
+    "fxSignMismatch": "originalAmount et amount doivent avoir le même signe",
+    "jointAccountMoveLocked": "Les transactions d'un compte partagé ne peuvent pas être déplacées vers un autre compte."
   },
   "users": {
     "userNotFound": "Utilisateur introuvable",

@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 
 import { DelegationService } from "./delegation.service";
 import { CrossOwnerAccessService } from "./cross-owner-access.service";
+import { JointAccountsService } from "./joint-accounts.service";
 import { DelegationController } from "./delegation.controller";
 import { AccountDelegateGuard } from "./guards/account-delegate.guard";
 import { DelegateTransferMaskInterceptor } from "./interceptors/delegate-transfer-mask.interceptor";
@@ -38,6 +39,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
   providers: [
     DelegationService,
     CrossOwnerAccessService,
+    JointAccountsService,
     AccountDelegateGuard,
     DelegateTransferMaskInterceptor,
     DelegateScheduledTransferMaskInterceptor,
@@ -48,6 +50,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
   exports: [
     DelegationService,
     CrossOwnerAccessService,
+    JointAccountsService,
     AccountDelegateGuard,
     DelegateTransferMaskInterceptor,
     DelegateScheduledTransferMaskInterceptor,

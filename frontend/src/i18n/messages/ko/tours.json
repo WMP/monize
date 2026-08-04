@@ -35,12 +35,24 @@
   "settings": {
     "title": "가이드 투어",
     "description": "앱의 기능을 단계별로 안내받아보세요.",
-    "showList": "투어 보기 ({count})",
-    "hideList": "투어 숨기기",
+    "backLink": "설정으로 돌아가기",
+    "pageTitle": "가이드 투어",
+    "pageSubtitle": "Monize의 모든 투어를 한곳에 모았습니다. 언제든 시작할 수 있고, Esc 키로 투어를 나갔다가 여기서 다시 이어갈 수 있습니다.",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, other {# 단계}}",
+    "releaseLabel": "{version}에 추가됨",
+    "requirementsLoading": "이 투어를 진행할 수 있는지 확인하는 중…",
+    "requires": {
+      "transactionEntry": "먼저 계정을 추가하세요. 이 투어는 거래를 기록하는 방법을 안내합니다.",
+      "securitiesExist": "먼저 유가증권을 추가하세요. 이 투어는 목록에서 종목 하나를 엽니다."
+    },
     "start": "시작",
     "restart": "다시 보기",
     "statusNotViewed": "보지 않음",
     "statusDismissed": "중간에 종료",
+    "resetHeading": "처음부터 다시",
+    "resetDescription": "기록된 투어를 모두 지워 대시보드와 업데이트 후에 다시 안내되도록 합니다.",
     "reset": "투어 진행 상태 초기화",
     "resetSuccess": "투어 진행 상태가 초기화되었습니다.",
     "resetError": "투어 진행 상태를 초기화하지 못했습니다. 다시 시도해 주세요."

@@ -1,9 +1,10 @@
-import { DataSource, EntityManager } from "typeorm";
+import { ConflictException } from "@nestjs/common";
+import { DataSource, EntityManager, QueryFailedError } from "typeorm";
 import {
   runOutsideActiveScopedManager,
   withScopedDb,
 } from "../../common/db/scoped-db";
-import { ImportJob } from "./entities/import-job.entity";
+import { ImportJob, ONE_ACTIVE_JOB_INDEX } from "./entities/import-job.entity";
 import { MnyNotAMoneyFileError } from "./mny-errors";
 import {
   JOB_FAILED_ERROR_KEY,
@@ -11,8 +12,10 @@ import {
   JOB_STALE_AFTER_MS,
   JOB_STALLED_ERROR_KEY,
   MnyImportJobService,
+  isActiveJobConflict,
   returnedRows,
 } from "./mny-import-job.service";
+
 import { DEFAULT_MNY_IMPORT_OPTIONS } from "./model/mny-import-options";
 
 jest.mock("../../common/db/scoped-db", () => ({
@@ -29,6 +32,17 @@ const mockedScopedDb = withScopedDb as jest.MockedFunction<typeof withScopedDb>;
 const mockedOutside = runOutsideActiveScopedManager as jest.MockedFunction<
   typeof runOutsideActiveScopedManager
 >;
+
+/**
+ * What `pg` actually raises when the partial unique index refuses an INSERT.
+ * The constraint name is the whole signal, so it comes from the same constant
+ * the entity declares the index with.
+ */
+const activeJobViolation = (): QueryFailedError =>
+  new QueryFailedError("INSERT", [], {
+    code: "23505",
+    constraint: ONE_ACTIVE_JOB_INDEX,
+  } as unknown as Error);
 
 /**
  * The claim's atomicity and the reaper's interval arithmetic are properties of
@@ -122,6 +136,70 @@ describe("MnyImportJobService", () => {
         }),
       );
       expect(job.id).toBe("job-1");
+    });
+
+    it("translates the one-active-job index into the 409 the wizard renders", async () => {
+      repo.save.mockRejectedValue(activeJobViolation());
+
+      await expect(
+        service.create("user-1", "staged-1", DEFAULT_MNY_IMPORT_OPTIONS),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it("rethrows a violation of any other constraint untouched", async () => {
+      // "An import is already running" is a specific claim, and a foreign-key
+      // failure on the staged file is not evidence for it.
+      const other = new QueryFailedError("INSERT", [], {
+        code: "23503",
+        constraint: "import_jobs_staged_file_id_fkey",
+      } as unknown as Error);
+      repo.save.mockRejectedValue(other);
+
+      await expect(
+        service.create("user-1", "staged-1", DEFAULT_MNY_IMPORT_OPTIONS),
+      ).rejects.toBe(other);
+    });
+
+    it("rethrows a plain error, which carries no driver code at all", async () => {
+      const boom = new Error("connection terminated");
+      repo.save.mockRejectedValue(boom);
+
+      await expect(
+        service.create("user-1", "staged-1", DEFAULT_MNY_IMPORT_OPTIONS),
+      ).rejects.toBe(boom);
+    });
+  });
+
+  describe("isActiveJobConflict", () => {
+    it("recognizes the unique violation the partial index raises", () => {
+      expect(isActiveJobConflict(activeJobViolation())).toBe(true);
+    });
+
+    it("rejects a unique violation from a different index", () => {
+      expect(
+        isActiveJobConflict(
+          new QueryFailedError("INSERT", [], {
+            code: "23505",
+            constraint: "some_other_unique_index",
+          } as unknown as Error),
+        ),
+      ).toBe(false);
+    });
+
+    it("rejects anything that is not a query failure", () => {
+      expect(isActiveJobConflict(new Error("nope"))).toBe(false);
+      expect(isActiveJobConflict(undefined)).toBe(false);
+    });
+  });
+
+  describe("discard", () => {
+    it("deletes only this user's job, and only while it is still pending", async () => {
+      await service.discard("user-1", "job-1");
+
+      expect(sql(lastCall())).toContain(
+        "DELETE FROM import_jobs WHERE id = $1 AND user_id = $2 AND status = 'pending'",
+      );
+      expect(lastCall()[1]).toEqual(["job-1", "user-1"]);
     });
   });
 

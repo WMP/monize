@@ -48,7 +48,8 @@
       "status": "Status",
       "balance": "Saldo",
       "actions": "Aktionen"
-    }
+    },
+    "filterJoint": "Mit mir geteilt"
   },
   "row": {
     "statusActive": "Aktiv",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "Kontostand muss null sein, um das Konto zu schließen",
       "closeTitleEnabled": "Konto schließen",
       "details": "Details"
-    }
+    },
+    "jointBadge": "Gemeinsam",
+    "jointSharedBy": "Geteilt von {owner}",
+    "jointSharedWith": "Geteilt mit {count, plural, one {# Person} other {# Personen}}",
+    "includeInNetWorth": "In mein Nettovermögen einbeziehen",
+    "excludeFromNetWorth": "Aus meinem Nettovermögen ausschließen"
   },
   "contextMenu": {
     "subtypeBrokerage": "Brokerage",
@@ -103,7 +109,8 @@
     "loadFailed": "Konten konnten nicht geladen werden",
     "favouriteError": "Favorit konnte nicht aktualisiert werden",
     "createSuccess": "Konto erfolgreich erstellt",
-    "updateSuccess": "Konto erfolgreich aktualisiert"
+    "updateSuccess": "Konto erfolgreich aktualisiert",
+    "updateFailed": "Konto konnte nicht aktualisiert werden"
   },
   "form": {
     "accountName": "Kontoname",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "z. B. 25",
     "fxFeeTitle": "Fremdwährungsumrechnungsgebühr (optional)",
     "fxFeePercent": "Gebührensatz",
-    "fxFeePercentPlaceholder": "z. B. 2,5"
+    "fxFeePercentPlaceholder": "z. B. 2,5",
+    "jointSharedWith": "Gemeinschaftskonto, geteilt mit {count, plural, one {# Person} other {# Personen}}",
+    "jointManage": "Freigabe verwalten"
   },
   "exportModal": {
     "title": "{name} exportieren",

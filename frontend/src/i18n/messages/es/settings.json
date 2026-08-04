@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "Copia de seguridad automática",
     "description": "Realiza copias de seguridad automáticas de tus datos en una carpeta según un horario. Dado que Monize se ejecuta en Docker, debes mapear una carpeta del host al contenedor como volumen (p. ej., -v /host/backups:/data/backups).",
+    "adminManagedNote": "Solo los administradores pueden cambiar esta configuración. El resto de los usuarios se respaldan automáticamente con la misma programación y política de retención, cada uno en su propia carpeta.",
     "loadingText": "Cargando...",
     "enableLabel": "Habilitar copias de seguridad automáticas",
     "backupFolderLabel": "Carpeta de copia de seguridad",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "Las copias de seguridad de cada usuario se guardan en su propia carpeta dentro de esta, con el nombre de su ID de usuario.",
+    "perUserFolderHelpWithPath": "Las copias de seguridad de cada usuario se guardan en su propia carpeta dentro de esta, con el nombre de su ID de usuario. La tuya: {path}",
     "browseButton": "Examinar...",
     "validateButton": "Validar",
     "validatingButton": "Validando...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "Cifrado de copias de seguridad",
       "descriptionOidc": "Cifra las copias de seguridad manuales y automáticas con una contraseña de copia de seguridad dedicada que estableces aquí. Se requiere la contraseña para restaurar.",
-      "descriptionLocal": "Cifra las copias de seguridad manuales y automáticas con tu contraseña de inicio de sesión. Se requiere la contraseña para restaurar.",
       "loading": "Cargando...",
       "enabledBadge": "Habilitado",
       "changePasswordButton": "Cambiar contraseña de copia de seguridad",
       "disableButton": "Deshabilitar",
       "setPasswordButton": "Establecer contraseña de copia de seguridad",
-      "enableEncryptedButton": "Habilitar copias cifradas",
       "setupModal": {
         "titleOidc": "Establecer contraseña de copia de seguridad",
-        "titleLocal": "Habilitar copias cifradas",
         "descriptionOidc": "Elige una contraseña para cifrar tus copias de seguridad. Guárdala en un lugar seguro -- la necesitarás para restaurar.",
-        "descriptionLocal": "Confirma tu contraseña de inicio de sesión. Se usará para cifrar todas las copias de seguridad (manuales y automáticas).",
         "placeholderOidc": "Nueva contraseña de copia de seguridad (12+ caracteres)",
-        "placeholderLocal": "Tu contraseña de inicio de sesión",
         "savingButton": "Guardando...",
         "confirmButton": "Confirmar"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "Error al revocar el delegado",
       "resetPasswordFailed": "Error al restablecer la contraseña",
       "copyFailed": "No se pudo copiar al portapapeles"
-    }
+    },
+    "jointLabel": "{count, plural, one {# cuenta conjunta} other {# cuentas conjuntas}}"
   },
   "delegateAccessModal": {
     "title": "Editar acceso",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "No hay cuentas para otorgar.",
-      "grantAll": "Otorgar todas"
+      "grantAll": "Otorgar todas",
+      "jointRequiresFullAccount": "Las cuentas conjuntas solo se pueden compartir con usuarios que tengan su propia cuenta de Monize"
     },
     "shared": {
       "description": "La LECTURA de beneficiarios, categorías y etiquetas siempre está permitida. Estos controlan crear/editar/eliminar."
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "Secciones de configuración",
     "profile": "Perfil",
     "preferences": "Preferencias",
+    "tours": "Recorridos guiados",
     "notifications": "Notificaciones",
     "security": "Seguridad",
     "sharedAccess": "Acceso compartido",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "Acceso compartido",
       "description": "Otorga a otra persona acceso detallado a cuentas específicas."
+    },
+    "toursCard": {
+      "title": "Recorridos guiados",
+      "description": "Todos los recorridos que ofrece Monize, con los que ya has visto. Inicia o repite cualquiera de ellos."
     },
     "emergencyAccessCard": {
       "title": "Acceso de emergencia",

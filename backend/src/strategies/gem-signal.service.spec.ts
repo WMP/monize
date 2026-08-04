@@ -54,6 +54,15 @@ const assets = (): GemStrategyAsset[] =>
  * unevaluated -- which reads as a bug in the service rather than in the
  * fixture. 42 months from January 2022 is 2025-07-28, three days before the
  * 2025-07-31 evaluation the specs' `asOf` of 2025-08-14 falls after.
+ *
+ * It also has to reach *past* that period: a span settles only once the series
+ * holds a close dated at or after its far boundary, because "the market was
+ * shut on the 31st" and "the 31st's close has not been fetched yet" look
+ * identical from a series that stops before it. A live series always carries
+ * that later close -- the quote job keeps running -- so the monthly-on-the-28th
+ * fixture gets one appended rather than an exemption. It is a settled marker
+ * only: every boundary these specs evaluate resolves to a close at or before
+ * it, so no assertion reads its value.
  */
 function seriesFor(growthPercent: number) {
   const points: Array<{ date: string; close: number }> = [];
@@ -64,6 +73,10 @@ function seriesFor(growthPercent: number) {
       close: 100 * (1 + (growthPercent / 100) * (month / 12)),
     });
   }
+  points.push({
+    date: "2025-08-01",
+    close: 100 * (1 + (growthPercent / 100) * (43 / 12)),
+  });
   return points;
 }
 
@@ -245,6 +258,54 @@ describe("GemSignalService", () => {
       await service.materialize(userId, strategy(), assets(), "2025-08-14");
 
       expect(savedSignals).toHaveLength(0);
+    });
+
+    it("defers a period whose boundary close has not been stored yet", async () => {
+      // 09:00 on 1 August, before the quote job has stored 31 July's close. The
+      // newest observation is 28 July, three days old, so the boundary-lag test
+      // passes and the period *looks* priceable -- from the wrong day. And a
+      // stored period is skipped forever under the same fingerprint and
+      // version, so that answer would never be corrected, including where the
+      // real month-end close flips the decision.
+      //
+      // Every earlier period is unaffected: each has a later close behind it.
+      const untilJuly30 = (points: Array<{ date: string; close: number }>) =>
+        points.filter((point) => point.date <= "2025-07-30");
+      const seriesUntilJuly30 = () =>
+        new Map([
+          ["sec-spy", untilJuly30(seriesFor(15))],
+          ["sec-ewa", untilJuly30(seriesFor(8))],
+          ["sec-emim", untilJuly30(seriesFor(30))],
+          ["sec-ief", untilJuly30(seriesFor(4))],
+        ]);
+      priceService.loadSeries.mockResolvedValue(seriesUntilJuly30());
+
+      await service.materialize(userId, strategy(), assets(), "2025-08-01");
+
+      expect(savedSignals.length).toBeGreaterThan(0);
+      expect(savedSignals.map((signal) => signal.evaluatedOn)).not.toContain(
+        "2025-07-31",
+      );
+    });
+
+    it("answers the deferred period once its boundary close arrives", async () => {
+      // Same strategy, same fingerprint, one day later: the close dated at or
+      // after the boundary is what settles it, and the period is then answered
+      // from the close that stands for it.
+      priceService.loadSeries.mockResolvedValue(
+        new Map([
+          ["sec-spy", seriesFor(15)],
+          ["sec-ewa", seriesFor(8)],
+          ["sec-emim", seriesFor(30)],
+          ["sec-ief", seriesFor(4)],
+        ]),
+      );
+
+      await service.materialize(userId, strategy(), assets(), "2025-08-01");
+
+      expect(savedSignals.map((signal) => signal.evaluatedOn)).toContain(
+        "2025-07-31",
+      );
     });
 
     it("keeps every period when a version bump doubles the rows", async () => {

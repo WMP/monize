@@ -232,7 +232,16 @@ export function GemSignalHistoryTable({
                             type="button"
                             onClick={() => toggle(entry.id)}
                             aria-expanded={isExpanded}
-                            aria-controls={`gem-history-detail-${entry.id}`}
+                            // Only while the detail row is in the DOM. The
+                            // collapsed row is not rendered, and `aria-controls`
+                            // naming an element that is not there sends a screen
+                            // reader nowhere -- the same rule `ui/Tabs` states
+                            // for an unselected tab's panel.
+                            aria-controls={
+                              isExpanded
+                                ? `gem-history-detail-${entry.id}`
+                                : undefined
+                            }
                             className="inline-flex items-center gap-1 rounded font-medium text-gray-900 hover:text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-gray-100 dark:hover:text-blue-400"
                           >
                             <Chevron
@@ -327,7 +336,10 @@ export function GemSignalHistoryTable({
                     type="button"
                     onClick={() => toggle(entry.id)}
                     aria-expanded={isExpanded}
-                    aria-controls={`gem-history-mobile-${entry.id}`}
+                    // As above: the collapsed detail block is not rendered.
+                    aria-controls={
+                      isExpanded ? `gem-history-mobile-${entry.id}` : undefined
+                    }
                     className="flex w-full items-center justify-between gap-2 rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   >
                     <span className="min-w-0">

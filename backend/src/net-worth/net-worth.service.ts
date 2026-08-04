@@ -1,9 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { DataSource, LessThanOrEqual } from "typeorm";
+import { DataSource, In, LessThanOrEqual } from "typeorm";
 import {
   runOutsideActiveScopedManager,
   withScopedDb,
 } from "../common/db/scoped-db";
+import { withUserContext } from "../common/db/with-context";
 import { MonthlyAccountBalance } from "./entities/monthly-account-balance.entity";
 import {
   Account,
@@ -25,6 +26,20 @@ const LIABILITY_TYPES: AccountType[] = [
 ];
 
 type RateIndex = Map<string, Array<{ date: string; rate: number }>>;
+
+/**
+ * Joint accounts to include in a grantee's net worth (joint-accounts spec,
+ * N1). Built by the HTTP controller from the caller's active joint grants
+ * MINUS their delegate_net_worth_exclusions -- inclusion here IS the
+ * authorization and the preference, so the service applies no further
+ * filtering (in particular, the OWNER's exclude_from_net_worth flag governs
+ * the owner's view only and is deliberately not consulted for these rows).
+ * Absent (undefined) everywhere else -- AI tools, internal calls -- which
+ * keeps every existing path byte-identical.
+ */
+export interface JointNetWorthScope {
+  accounts: Array<{ accountId: string; ownerUserId: string }>;
+}
 
 export type InvestmentBreakdownGranularity = "daily" | "monthly";
 
@@ -210,6 +225,46 @@ export class NetWorthService {
   }
 
   /**
+   * Joint accounts' snapshots are owner-maintained, so ensurePopulated
+   * (keyed to the caller) never refreshes them: when the calendar rolls into
+   * a new month before the owner's next recalc, the grantee's chart would
+   * silently drop the joint account from the current month. Refresh each
+   * stale joint account under ITS OWNER's context -- identity-correct writes
+   * (mab rows carry the owner's user_id) that both users then see.
+   */
+  private async refreshStaleJointMonths(
+    scope: JointNetWorthScope,
+  ): Promise<void> {
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}-${String(
+      now.getMonth() + 1,
+    ).padStart(2, "0")}-01`;
+
+    const ids = scope.accounts.map((a) => a.accountId);
+    // Readable in the grantee's session (migration-134 arm at enforcement).
+    const populated = await withScopedDb(this.dataSource, (m) =>
+      m.getRepository(MonthlyAccountBalance).find({
+        where: { accountId: In(ids), month: currentMonthStr },
+        select: ["accountId"],
+      }),
+    );
+    const populatedIds = new Set(populated.map((p) => p.accountId));
+
+    const stale = scope.accounts.filter((a) => !populatedIds.has(a.accountId));
+    await Promise.all(
+      stale.map(({ accountId, ownerUserId }) =>
+        withUserContext(ownerUserId, () =>
+          this.recalculateAccount(ownerUserId, accountId),
+        ).catch((err) =>
+          this.logger.warn(
+            `Failed to refresh stale joint net worth for account ${accountId}: ${err.message}`,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /**
    * Check if an account is a brokerage or standalone investment account
    * (i.e. an account that can hold securities and needs market value tracking)
    */
@@ -277,10 +332,15 @@ export class NetWorthService {
     userId: string,
     startDate?: string,
     endDate?: string,
+    jointScope?: JointNetWorthScope,
   ): Promise<
     { month: string; assets: number; liabilities: number; netWorth: number }[]
   > {
     await this.ensurePopulated(userId);
+    const jointIds = jointScope?.accounts.map((a) => a.accountId) ?? [];
+    if (jointScope && jointIds.length > 0) {
+      await this.refreshStaleJointMonths(jointScope);
+    }
 
     const pref = await withScopedDb(this.dataSource, (m) =>
       m.getRepository(UserPreference).findOne({ where: { userId } }),
@@ -290,17 +350,21 @@ export class NetWorthService {
     const start = startDate || "1990-01-01";
     const end = endDate || new Date().toISOString().slice(0, 10);
 
+    // Own rows keep the owner-side exclude_from_net_worth predicate; joint
+    // rows are governed solely by the pre-filtered scope (see
+    // JointNetWorthScope). One predicate for the series and (via
+    // getLatestNetWorth) the latest month, so the two can never disagree.
     const snapshots: any[] = await this.scopedQuery(
       `SELECT mab.month, mab.balance, mab.market_value,
               a.id as account_id, a.account_type, a.account_sub_type, a.currency_code
        FROM monthly_account_balances mab
        JOIN accounts a ON a.id = mab.account_id
-       WHERE mab.user_id = $1
+       WHERE ((mab.user_id = $1 AND a.exclude_from_net_worth = false)
+              OR mab.account_id = ANY($4::UUID[]))
          AND mab.month >= DATE_TRUNC('month', $2::DATE)
          AND mab.month <= DATE_TRUNC('month', $3::DATE)
-         AND a.exclude_from_net_worth = false
        ORDER BY mab.month`,
-      [userId, start, end],
+      [userId, start, end, jointIds],
     );
 
     if (snapshots.length === 0) return [];
@@ -388,18 +452,26 @@ export class NetWorthService {
    */
   async getLatestNetWorth(
     userId: string,
+    jointScope?: JointNetWorthScope,
   ): Promise<{ assets: number; liabilities: number; netWorth: number } | null> {
     await this.ensurePopulated(userId);
 
+    const jointIds = jointScope?.accounts.map((a) => a.accountId) ?? [];
     const latestRows: { month: string | Date }[] = await this.scopedQuery(
-      `SELECT MAX(month) AS month FROM monthly_account_balances WHERE user_id = $1`,
-      [userId],
+      `SELECT MAX(month) AS month FROM monthly_account_balances
+        WHERE user_id = $1 OR account_id = ANY($2::UUID[])`,
+      [userId, jointIds],
     );
     const latestMonth = latestRows[0]?.month;
     if (!latestMonth) return null;
 
     const monthStr = this.toDateString(latestMonth);
-    const months = await this.getMonthlyNetWorth(userId, monthStr, monthStr);
+    const months = await this.getMonthlyNetWorth(
+      userId,
+      monthStr,
+      monthStr,
+      jointScope,
+    );
     const latest = months[months.length - 1];
     if (!latest) return null;
     return {

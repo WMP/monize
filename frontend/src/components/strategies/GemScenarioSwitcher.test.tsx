@@ -88,6 +88,62 @@ describe("GemScenarioSwitcher", () => {
     expect(screen.queryByLabelText("Scenario name")).not.toBeInTheDocument();
   });
 
+  it("will not create a scenario with no name", async () => {
+    // The server refuses a blank name, and its refusal arrives as a generic
+    // toast that says nothing about which field was wrong. The button says so
+    // instead, before the round-trip.
+    const { onCreate } = renderSwitcher();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "New scenario" }));
+    });
+
+    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+
+    // Whitespace is not a name either.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Scenario name"), {
+        target: { value: "   " },
+      });
+    });
+    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+    await act(async () => {
+      fireEvent.keyDown(screen.getByLabelText("Scenario name"), {
+        key: "Enter",
+      });
+    });
+    expect(onCreate).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Scenario name"), {
+        target: { value: "IKZE" },
+      });
+    });
+    expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
+  });
+
+  it("creates the scenario when Enter is pressed in the name field", async () => {
+    // The dialog is not a `<form>` -- it renders inside the report page's own --
+    // so Enter had to be wired up rather than inherited, and without it the
+    // field looked like every other one that submits on Enter and did nothing.
+    const { onCreate } = renderSwitcher();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "New scenario" }));
+    });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Scenario name"), {
+        target: { value: "  IKZE quarterly  " },
+      });
+    });
+    await act(async () => {
+      fireEvent.keyDown(screen.getByLabelText("Scenario name"), {
+        key: "Enter",
+      });
+    });
+
+    expect(onCreate).toHaveBeenCalledWith("IKZE quarterly");
+    expect(screen.queryByLabelText("Scenario name")).not.toBeInTheDocument();
+  });
+
   /**
    * The parent catches its own errors, so the switcher saw a resolved promise
    * whether the server accepted the scenario or rejected it, and closed either

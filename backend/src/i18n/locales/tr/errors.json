@@ -179,7 +179,6 @@
     "unsupportedBackupVersion": "Desteklenmeyen yedek sürümü: {{ version }}. Beklenen: {{ expected }}",
     "missingExportedAt": "Geçersiz yedek biçimi: exportedAt eksik",
     "tableNotAllowed": "{{ table }} tablosuna yedek geri yüklemede izin verilmiyor",
-    "localAuthRequired": "Yerel şifre kimlik doğrulaması gereklidir",
     "encryptionNotConfigured": "Sunucu şifreleme için yapılandırılmamış (AI_ENCRYPTION_KEY eksik)",
     "backupPasswordOidcOnly": "Yedek şifresi yalnızca OIDC kullanıcıları için yapılandırılabilir; yerel kullanıcılar giriş şifrelerini kullanır",
     "backupPasswordTooShort": "Yedek şifresi en az {{ minLength }} karakter olmalıdır",
@@ -250,7 +249,16 @@
     "capabilityNotGranted": "Hesap sahibi, {{ resource }} üzerinde {{ operation }} yapmanız için izin vermedi. Delege erişim ayarlarında bunu etkinleştirmelerini isteyin.",
     "sectionNotGranted": "Hesap sahibi {{ sectionLabel }} bölümünü sizinle paylaşmadı.",
     "accountNotShared": "Hesap sahibi bu hesabı sizinle paylaşmadı.",
-    "accountOperationNotGranted": "Hesap sahibi, bu hesaptaki işlemler üzerinde {{ operation }} yapmanız için izin vermedi."
+    "accountOperationNotGranted": "Hesap sahibi, bu hesaptaki işlemler üzerinde {{ operation }} yapmanız için izin vermedi.",
+    "jointOwnAccount": "Bu sizin kendi hesabınız; ortak hesap erişimi burada geçerli değildir.",
+    "jointAccountTypeReadOnly": "Bu hesap türü salt okunur paylaşılır; işlemlerini yalnızca sahibi değiştirebilir.",
+    "jointOwnAccountNetWorth": "Kendi hesaplarınız için hesabın net değer ayarını kullanın.",
+    "jointRequiresRead": "Bir hesabı ortak olarak işaretlemek için OKUMA erişimi gereklidir",
+    "jointRequiresFullAccount": "Ortak hesaplar yalnızca kendi Monize hesabı olan kullanıcılarla paylaşılabilir",
+    "jointPayeeCreateNotGranted": "Hesap sahibi size alacaklı oluşturma izni vermedi. Bunun yerine mevcut alacaklılardan birini seçin.",
+    "jointTagsNotAllowed": "Etiketler kişiseldir, bu yüzden paylaşılan hesabın işlemlerine eklenemez.",
+    "jointSplitsNotAllowed": "Paylaşılan bir hesaptaki bölünmüş işlemleri yalnızca sahibi yönetebilir.",
+    "jointTransferRowLocked": "Bu bir transferdir. Bunun yerine transfer düzenleyicisini kullanın."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "E-posta yapılandırılmamış. SMTP kurulana kadar acil erişim etkinleştirilemiyor.",
@@ -470,7 +478,8 @@
     "tagKeyRequired": "Bir etiket anahtarı (1-100 karakter) gereklidir",
     "fxFieldsIncomplete": "originalAmount ve originalCurrencyCode birlikte sağlanmalıdır",
     "fxRateRequired": "Yabancı para birimi işlemi için pozitif bir döviz kuru gereklidir",
-    "fxSignMismatch": "originalAmount ve amount aynı işarete sahip olmalıdır"
+    "fxSignMismatch": "originalAmount ve amount aynı işarete sahip olmalıdır",
+    "jointAccountMoveLocked": "Paylaşılan hesaptaki işlemler başka bir hesaba taşınamaz."
   },
   "users": {
     "userNotFound": "Kullanıcı bulunamadı",

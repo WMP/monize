@@ -13,6 +13,7 @@ import {
   ConflictException,
 } from "@nestjs/common";
 import { InvestmentTransactionsService } from "./investment-transactions.service";
+import { UpdateInvestmentTransactionDto } from "./dto/update-investment-transaction.dto";
 import {
   InvestmentTransaction,
   InvestmentAction,
@@ -1700,6 +1701,81 @@ describe("InvestmentTransactionsService", () => {
       await expect(
         service.update(userId, transactionId, { description: "renamed" }),
       ).resolves.toBeDefined();
+    });
+
+    /**
+     * Invariant: the carve-out for rows that predate the rule keys on what the
+     * edit *changes*, not on which fields the request carried.
+     * Canonical adversarial input: the payload the real client sends, rather
+     * than the minimal one a unit test would hand-write (testing contract --
+     * "fixtures are claims about production data").
+     * Minimal mutation: key the guard on `updateDto.action !== undefined ||
+     * updateDto.price !== undefined` again.
+     * Test that fails under it: all three below. `InvestmentTransactionForm`
+     * always sends `action`, and loads a legacy blank price as `0` and sends it
+     * back, so a presence-keyed guard rejects every edit of a pre-guard
+     * zero-price BUY -- exactly the stranding the carve-out exists to prevent.
+     */
+    describe("a legacy zero-price acquisition stays correctable", () => {
+      /** What the form posts for such a row: every field, price echoed as 0. */
+      const asTheFormSends = (
+        overrides: Partial<UpdateInvestmentTransactionDto> = {},
+      ): UpdateInvestmentTransactionDto =>
+        ({
+          action: InvestmentAction.BUY,
+          accountId,
+          securityId,
+          transactionDate: "2024-01-15",
+          quantity: 10,
+          price: 0,
+          commission: 9.99,
+          description: "renamed",
+          ...overrides,
+        }) as UpdateInvestmentTransactionDto;
+
+      const storedAsZeroPrice = () => {
+        investmentTransactionsRepository.createQueryBuilder.mockReturnValue(
+          createMockQueryBuilder({ ...mockBuyTransaction, price: 0 }),
+        );
+      };
+
+      it("accepts the whole-form payload that only renames it", async () => {
+        storedAsZeroPrice();
+        await expect(
+          service.update(userId, transactionId, asTheFormSends()),
+        ).resolves.toBeDefined();
+      });
+
+      it("accepts the edit that gives it a real price", async () => {
+        storedAsZeroPrice();
+        await expect(
+          service.update(userId, transactionId, asTheFormSends({ price: 150 })),
+        ).resolves.toBeDefined();
+      });
+
+      it("accepts being reclassified as ADD_SHARES, whose cost is unknown", async () => {
+        // The honest correction for shares that arrived without a cost, and the
+        // guard must not stand in front of it.
+        storedAsZeroPrice();
+        await expect(
+          service.update(
+            userId,
+            transactionId,
+            asTheFormSends({ action: InvestmentAction.ADD_SHARES }),
+          ),
+        ).resolves.toBeDefined();
+      });
+
+      it("still refuses to take a real price away from a priced BUY", async () => {
+        // The other side of the same comparison: this row *was* priced, so the
+        // edit is what makes it unpriced.
+        investmentTransactionsRepository.createQueryBuilder.mockReturnValue(
+          createMockQueryBuilder({ ...mockBuyTransaction, price: 150 }),
+        );
+        await expect(
+          service.update(userId, transactionId, asTheFormSends({ price: 0 })),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      });
     });
 
     it("updates transaction fields and re-applies effects", async () => {

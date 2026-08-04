@@ -35,12 +35,24 @@
   "settings": {
     "title": "Guided tours",
     "description": "Walk through the app's features step by step.",
-    "showList": "Show tours ({count})",
-    "hideList": "Hide tours",
+    "backLink": "Back to Settings",
+    "pageTitle": "Guided tours",
+    "pageSubtitle": "Every walkthrough Monize offers, in one place. Start one anytime — you can leave a tour with Escape and pick it up again from here.",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, one {# step} other {# steps}}",
+    "releaseLabel": "Added in {version}",
+    "requirementsLoading": "Checking whether you can take this tour…",
+    "requires": {
+      "transactionEntry": "Add an account first — this tour walks through recording a transaction.",
+      "securitiesExist": "Add a security first — this tour opens one from your securities list."
+    },
     "start": "Start",
     "restart": "Retake",
     "statusNotViewed": "Not viewed",
     "statusDismissed": "Left early",
+    "resetHeading": "Start over",
+    "resetDescription": "Clear every recorded tour so they are offered again from the dashboard and after an update.",
     "reset": "Reset tour progress",
     "resetSuccess": "Tour progress reset.",
     "resetError": "Couldn't reset tour progress. Please try again."

@@ -259,6 +259,7 @@
   },
   "validation": {
     "accountRequired": "Account is required",
-    "dateRequired": "Date is required"
+    "dateRequired": "Date is required",
+    "acquisitionPriceRequired": "Price per share is required and must be greater than zero. Use Add Shares for shares acquired without a known cost."
   }
 }

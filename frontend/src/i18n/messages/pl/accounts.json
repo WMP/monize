@@ -48,7 +48,8 @@
       "status": "Status",
       "balance": "Saldo",
       "actions": "Akcje"
-    }
+    },
+    "filterJoint": "Udostępnione mnie"
   },
   "row": {
     "statusActive": "Aktywny",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "Konto musi mieć zerowe saldo, aby je zamknąć",
       "closeTitleEnabled": "Zamknij konto",
       "details": "Szczegóły"
-    }
+    },
+    "jointBadge": "Wspólne",
+    "jointSharedBy": "Udostępnione przez {owner}",
+    "jointSharedWith": "Udostępnione {count, plural, one {# osobie} few {# osobom} many {# osobom} other {# osobom}}",
+    "includeInNetWorth": "Uwzględnij w mojej wartości netto",
+    "excludeFromNetWorth": "Wyklucz z mojej wartości netto"
   },
   "contextMenu": {
     "subtypeBrokerage": "Maklerskie",
@@ -103,7 +109,8 @@
     "loadFailed": "Nie udało się wczytać kont",
     "favouriteError": "Nie udało się zaktualizować ulubionych",
     "createSuccess": "Konto utworzone",
-    "updateSuccess": "Konto zaktualizowane"
+    "updateSuccess": "Konto zaktualizowane",
+    "updateFailed": "Nie udało się zaktualizować konta"
   },
   "form": {
     "accountName": "Nazwa konta",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "np. 25",
     "fxFeeTitle": "Opłata za przewalutowanie (opcjonalnie)",
     "fxFeePercent": "Procent opłaty",
-    "fxFeePercentPlaceholder": "np. 2,5"
+    "fxFeePercentPlaceholder": "np. 2,5",
+    "jointSharedWith": "Wspólne konto udostępnione {count, plural, one {# osobie} few {# osobom} many {# osobom} other {# osobom}}",
+    "jointManage": "Zarządzaj udostępnianiem"
   },
   "exportModal": {
     "title": "Eksportuj {name}",

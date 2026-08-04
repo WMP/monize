@@ -47,6 +47,9 @@
       "backtest": "回測",
       "settings": "設定"
     },
+    "stale": {
+      "updating": "正在更新 — 下方數字來自上一個選擇"
+    },
     "roles": {
       "US_EQUITY": "標普 500",
       "EX_US_EQUITY": "除美國外的已開發市場",

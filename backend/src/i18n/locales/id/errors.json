@@ -179,7 +179,6 @@
     "unsupportedBackupVersion": "Versi cadangan tidak didukung: {{ version }}. Diharapkan {{ expected }}",
     "missingExportedAt": "Format cadangan tidak valid: exportedAt tidak ada",
     "tableNotAllowed": "Tabel {{ table }} tidak diizinkan dalam pemulihan cadangan",
-    "localAuthRequired": "Autentikasi kata sandi lokal diperlukan",
     "encryptionNotConfigured": "Server tidak dikonfigurasi untuk enkripsi (AI_ENCRYPTION_KEY tidak ada)",
     "backupPasswordOidcOnly": "Kata sandi cadangan hanya dapat dikonfigurasi untuk pengguna OIDC; pengguna lokal menggunakan kata sandi masuk mereka",
     "backupPasswordTooShort": "Kata sandi cadangan harus minimal {{ minLength }} karakter",
@@ -250,7 +249,16 @@
     "capabilityNotGranted": "Pemilik akun belum memberikan izin kepada Anda untuk {{ operation }} {{ resource }}. Minta mereka untuk mengaktifkannya di pengaturan akses delegasi Anda.",
     "sectionNotGranted": "Pemilik akun belum berbagi bagian {{ sectionLabel }} dengan Anda.",
     "accountNotShared": "Pemilik akun belum berbagi akun ini dengan Anda.",
-    "accountOperationNotGranted": "Pemilik akun belum memberikan izin kepada Anda untuk {{ operation }} transaksi di akun ini."
+    "accountOperationNotGranted": "Pemilik akun belum memberikan izin kepada Anda untuk {{ operation }} transaksi di akun ini.",
+    "jointOwnAccount": "Ini akun Anda sendiri; akses akun bersama tidak berlaku di sini.",
+    "jointAccountTypeReadOnly": "Jenis akun ini dibagikan hanya-baca; hanya pemilik yang dapat mengubah transaksinya.",
+    "jointOwnAccountNetWorth": "Gunakan pengaturan kekayaan bersih akun untuk akun milik Anda sendiri.",
+    "jointRequiresRead": "Akses BACA diperlukan untuk menandai akun sebagai akun bersama",
+    "jointRequiresFullAccount": "Akun bersama hanya dapat dibagikan dengan pengguna yang memiliki akun Monize sendiri",
+    "jointPayeeCreateNotGranted": "Pemilik akun belum memberi Anda izin membuat penerima. Pilih salah satu penerima yang sudah ada.",
+    "jointTagsNotAllowed": "Tag bersifat pribadi, jadi tidak dapat dipasang pada transaksi akun bersama.",
+    "jointSplitsNotAllowed": "Transaksi split di akun bersama hanya dapat dikelola oleh pemilik.",
+    "jointTransferRowLocked": "Ini adalah transfer. Gunakan editor transfer."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "Email belum dikonfigurasi. Akses darurat tidak dapat diaktifkan hingga SMTP dikonfigurasi.",
@@ -470,7 +478,8 @@
     "tagKeyRequired": "Kunci tag (1-100 karakter) diperlukan",
     "fxFieldsIncomplete": "originalAmount dan originalCurrencyCode harus diberikan bersama",
     "fxRateRequired": "Nilai tukar positif diperlukan untuk transaksi mata uang asing",
-    "fxSignMismatch": "originalAmount dan amount harus memiliki tanda yang sama"
+    "fxSignMismatch": "originalAmount dan amount harus memiliki tanda yang sama",
+    "jointAccountMoveLocked": "Transaksi di akun bersama tidak dapat dipindahkan ke akun lain."
   },
   "users": {
     "userNotFound": "Pengguna tidak ditemukan",

@@ -412,7 +412,8 @@
       "categoryCreateFailed": "Échec de la création de la catégorie",
       "tagCreated": "Étiquette « {name} » créée",
       "fxRateRequired": "Saisissez un taux de change ou le montant converti avant d'enregistrer une transaction en devise étrangère.",
-      "attachmentsUploadFailed": "Transaction enregistrée, mais le téléversement de {count} pièce(s) jointe(s) a échoué"
+      "attachmentsUploadFailed": "Transaction enregistrée, mais le téléversement de {count} pièce(s) jointe(s) a échoué",
+      "jointPayeeCreateNotGranted": "Le propriétaire du compte ne vous a pas autorisé à créer des bénéficiaires. Choisissez plutôt un de ses bénéficiaires existants."
     },
     "ariaHistory": "Afficher les transactions récentes",
     "ariaHistoryForPayee": "Afficher les transactions récentes pour ce bénéficiaire",
@@ -438,7 +439,8 @@
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeCaption": "Comprend des frais de transaction à l'étranger de {percent}% ({fee}).",
       "totalInCurrency": "Total en {currency}"
-    }
+    },
+    "jointSplitDisabled": "Seul le propriétaire peut gérer les transactions ventilées d'un compte partagé"
   },
   "splitEditor": {
     "header": "Détails de la répartition",

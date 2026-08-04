@@ -179,7 +179,6 @@
     "unsupportedBackupVersion": "不支援的備份版本：{{ version }}。預期版本：{{ expected }}",
     "missingExportedAt": "無效的備份格式：缺少 exportedAt",
     "tableNotAllowed": "備份還原不允許資料表 {{ table }}",
-    "localAuthRequired": "需要本機密碼驗證",
     "encryptionNotConfigured": "伺服器未設定加密功能（缺少 AI_ENCRYPTION_KEY）",
     "backupPasswordOidcOnly": "備份密碼僅適用於 OIDC 使用者；本機使用者使用其登入密碼",
     "backupPasswordTooShort": "備份密碼至少需要 {{ minLength }} 個字元",
@@ -250,7 +249,16 @@
     "capabilityNotGranted": "帳戶擁有者尚未授予您{{ operation }} {{ resource }}的權限。請要求他們在委派存取設定中啟用此功能。",
     "sectionNotGranted": "帳戶擁有者尚未與您分享 {{ sectionLabel }} 區段。",
     "accountNotShared": "帳戶擁有者尚未與您分享此科目。",
-    "accountOperationNotGranted": "帳戶擁有者尚未授予您在此科目{{ operation }}交易的權限。"
+    "accountOperationNotGranted": "帳戶擁有者尚未授予您在此科目{{ operation }}交易的權限。",
+    "jointOwnAccount": "這是您自己的帳戶，聯名帳戶存取不適用。",
+    "jointAccountTypeReadOnly": "此帳戶類型為唯讀共享，只有擁有者才能變更其交易。",
+    "jointOwnAccountNetWorth": "自己的帳戶請使用該帳戶本身的淨資產設定。",
+    "jointRequiresRead": "將帳戶標記為聯名需要讀取權限",
+    "jointRequiresFullAccount": "聯名帳戶只能與擁有自己 Monize 帳戶的使用者共享",
+    "jointPayeeCreateNotGranted": "帳戶擁有者未授予您建立收款人的權限。請從其現有收款人中選擇。",
+    "jointTagsNotAllowed": "標籤是個人資料，無法設定在共享帳戶的交易上。",
+    "jointSplitsNotAllowed": "共享帳戶中的分割交易只能由擁有者管理。",
+    "jointTransferRowLocked": "這是一筆轉帳。請使用轉帳編輯器。"
   },
   "emergencyAccess": {
     "smtpNotConfigured": "未設定電子郵件。在設定 SMTP 之前，無法啟用緊急存取。",
@@ -470,7 +478,8 @@
     "tagKeyRequired": "需要標籤鍵（1-100 個字元）",
     "fxFieldsIncomplete": "originalAmount 和 originalCurrencyCode 必須同時提供",
     "fxRateRequired": "外幣交易需要一個正的匯率",
-    "fxSignMismatch": "originalAmount 和 amount 的符號必須相同"
+    "fxSignMismatch": "originalAmount 和 amount 的符號必須相同",
+    "jointAccountMoveLocked": "共享帳戶中的交易無法移動到其他帳戶。"
   },
   "users": {
     "userNotFound": "找不到使用者",

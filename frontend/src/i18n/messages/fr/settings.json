@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "Sauvegarde automatique",
     "description": "Sauvegardez automatiquement vos données dans un dossier selon un calendrier. Comme Monize fonctionne dans Docker, vous devez mapper un dossier hôte dans le conteneur en tant que volume (ex. : -v /host/backups:/data/backups).",
+    "adminManagedNote": "Seuls les administrateurs peuvent modifier ces paramètres. Tous les autres utilisateurs sont sauvegardés automatiquement selon la même planification et la même politique de rétention, chacun dans son propre dossier.",
     "loadingText": "Chargement...",
     "enableLabel": "Activer les sauvegardes automatiques",
     "backupFolderLabel": "Dossier de sauvegarde",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "Les sauvegardes de chaque utilisateur sont placées dans leur propre dossier à l'intérieur de celui-ci, nommé d'après leur identifiant utilisateur.",
+    "perUserFolderHelpWithPath": "Les sauvegardes de chaque utilisateur sont placées dans leur propre dossier à l'intérieur de celui-ci, nommé d'après leur identifiant utilisateur. Le vôtre : {path}",
     "browseButton": "Parcourir...",
     "validateButton": "Valider",
     "validatingButton": "Validation...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "Chiffrement des sauvegardes",
       "descriptionOidc": "Chiffrez les sauvegardes manuelles et automatiques avec un mot de passe de sauvegarde dédié que vous définissez ici. Le mot de passe est requis pour la restauration.",
-      "descriptionLocal": "Chiffrez les sauvegardes manuelles et automatiques avec votre mot de passe de connexion. Le mot de passe est requis pour la restauration.",
       "loading": "Chargement...",
       "enabledBadge": "Activé",
       "changePasswordButton": "Changer le mot de passe de sauvegarde",
       "disableButton": "Désactiver",
       "setPasswordButton": "Définir le mot de passe de sauvegarde",
-      "enableEncryptedButton": "Activer les sauvegardes chiffrées",
       "setupModal": {
         "titleOidc": "Définir le mot de passe de sauvegarde",
-        "titleLocal": "Activer les sauvegardes chiffrées",
         "descriptionOidc": "Choisissez un mot de passe qui sera utilisé pour chiffrer vos sauvegardes. Conservez-le dans un endroit sûr — vous en aurez besoin pour restaurer.",
-        "descriptionLocal": "Confirmez votre mot de passe de connexion. Il sera utilisé pour chiffrer toutes les sauvegardes (manuelles et automatiques).",
         "placeholderOidc": "Nouveau mot de passe de sauvegarde (12+ caractères)",
-        "placeholderLocal": "Votre mot de passe de connexion",
         "savingButton": "Enregistrement...",
         "confirmButton": "Confirmer"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "Échec de la révocation du délégué",
       "resetPasswordFailed": "Échec de la réinitialisation du mot de passe",
       "copyFailed": "Impossible de copier dans le presse-papiers"
-    }
+    },
+    "jointLabel": "{count, plural, one {# compte joint} other {# comptes joints}}"
   },
   "delegateAccessModal": {
     "title": "Modifier l'accès",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "Aucun compte à accorder.",
-      "grantAll": "Tout accorder"
+      "grantAll": "Tout accorder",
+      "jointRequiresFullAccount": "Les comptes joints ne peuvent être partagés qu'avec des utilisateurs disposant de leur propre compte Monize"
     },
     "shared": {
       "description": "La lecture des bénéficiaires, des catégories et des étiquettes est toujours autorisée. Ces options contrôlent la création/modification/suppression."
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "Sections des paramètres",
     "profile": "Profil",
     "preferences": "Préférences",
+    "tours": "Visites guidées",
     "notifications": "Notifications",
     "security": "Sécurité",
     "sharedAccess": "Accès partagé",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "Accès partagé",
       "description": "Accordez à une autre personne un accès granulaire à des comptes spécifiques."
+    },
+    "toursCard": {
+      "title": "Visites guidées",
+      "description": "Toutes les visites proposées par Monize, avec celles que vous avez déjà vues. Lancez ou refaites celle de votre choix."
     },
     "emergencyAccessCard": {
       "title": "Accès d'urgence",

@@ -47,6 +47,9 @@
       "backtest": "Kiểm định lịch sử",
       "settings": "Thiết lập"
     },
+    "stale": {
+      "updating": "Đang cập nhật — các số liệu bên dưới thuộc lựa chọn trước"
+    },
     "roles": {
       "US_EQUITY": "S&P 500",
       "EX_US_EQUITY": "Thị trường phát triển ngoài Mỹ",

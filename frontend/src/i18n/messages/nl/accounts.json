@@ -48,7 +48,8 @@
       "status": "Status",
       "balance": "Saldo",
       "actions": "Acties"
-    }
+    },
+    "filterJoint": "Met mij gedeeld"
   },
   "row": {
     "statusActive": "Actief",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "Rekening moet een saldo van nul hebben om te sluiten",
       "closeTitleEnabled": "Rekening sluiten",
       "details": "Details"
-    }
+    },
+    "jointBadge": "Gezamenlijk",
+    "jointSharedBy": "Gedeeld door {owner}",
+    "jointSharedWith": "Gedeeld met {count, plural, one {# persoon} other {# personen}}",
+    "includeInNetWorth": "Opnemen in mijn nettovermogen",
+    "excludeFromNetWorth": "Uitsluiten van mijn nettovermogen"
   },
   "contextMenu": {
     "subtypeBrokerage": "Effectenrekening",
@@ -103,7 +109,8 @@
     "loadFailed": "Laden van rekeningen mislukt",
     "favouriteError": "Bijwerken van favoriet mislukt",
     "createSuccess": "Rekening succesvol aangemaakt",
-    "updateSuccess": "Rekening succesvol bijgewerkt"
+    "updateSuccess": "Rekening succesvol bijgewerkt",
+    "updateFailed": "Rekening bijwerken mislukt"
   },
   "form": {
     "accountName": "Rekeningnaam",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "bijv. 25",
     "fxFeeTitle": "Kosten voor omrekening van vreemde valuta (optioneel)",
     "fxFeePercent": "Kostenpercentage",
-    "fxFeePercentPlaceholder": "bijv. 2,5"
+    "fxFeePercentPlaceholder": "bijv. 2,5",
+    "jointSharedWith": "Gezamenlijke rekening gedeeld met {count, plural, one {# persoon} other {# personen}}",
+    "jointManage": "Delen beheren"
   },
   "exportModal": {
     "title": "{name} exporteren",

@@ -90,6 +90,22 @@ Use Grep only when LSP isn't available or for text/pattern searches (comments, s
 
 After writing or editing code, check LSP diagnostics and fix errors before proceeding.
 
+### Per-user files live in a sharded folder, and the folder is what names them
+
+Anything the server writes to disk on a user's behalf goes in
+`<base>/<ab>/<cd>/<id>/`, built from `shardedSegments` in
+`backend/src/common/shard-path.util.ts` -- attachment bytes and each user's
+automatic backups both. Do not hand-roll a second sharding scheme, and do not
+write a per-user file flat into a shared folder: automatic backup filenames
+carry only a tier and a date (`monize-backup-daily-2026-08-03.json.gz`), so a
+flat folder gave every user the same name for the same day, and whoever's cron
+ran last overwrote the rest. Two levels of two hex characters keep any one
+directory small enough for filesystems that scan linearly or over a network.
+
+A path built from an id must still be validated (`isShardableId`) and asserted
+to resolve inside its base before it reaches the filesystem, even when the id is
+server-generated (CWE-22).
+
 ### Security (Do Not Regress)
 - Parameterized queries only (TypeORM QueryBuilder or parameterized raw SQL). Never interpolate user input into SQL strings
 - All controllers use `@UseGuards(AuthGuard('jwt'))` at class level (except health + auth)

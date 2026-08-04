@@ -412,7 +412,8 @@
       "categoryCreateFailed": "Gagal membuat kategori",
       "tagCreated": "Tag \"{name}\" dibuat",
       "fxRateRequired": "Masukkan nilai tukar atau jumlah terkonversi sebelum menyimpan transaksi mata uang asing.",
-      "attachmentsUploadFailed": "Transaksi disimpan, tetapi {count} lampiran gagal diunggah"
+      "attachmentsUploadFailed": "Transaksi disimpan, tetapi {count} lampiran gagal diunggah",
+      "jointPayeeCreateNotGranted": "Pemilik akun belum memberi Anda izin membuat penerima. Pilih salah satu penerima yang sudah ada."
     },
     "ariaHistory": "Tampilkan transaksi terbaru",
     "ariaHistoryForPayee": "Tampilkan transaksi terbaru untuk penerima ini",
@@ -438,7 +439,8 @@
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeCaption": "Termasuk biaya transaksi luar negeri {percent}% ({fee}).",
       "totalInCurrency": "Total dalam {currency}"
-    }
+    },
+    "jointSplitDisabled": "Transaksi split di akun bersama hanya dapat dikelola oleh pemilik"
   },
   "splitEditor": {
     "header": "Detail Pembagian",

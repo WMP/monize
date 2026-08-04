@@ -514,6 +514,88 @@ describe('AccountList', () => {
     expect(screen.queryByText('My Chequing')).not.toBeInTheDocument();
   });
 
+  describe('"Shared with me" filter', () => {
+    const ownAndJoint = () => [
+      createAccount({ id: 'a1', name: 'My Chequing' }),
+      createAccount({
+        id: 'a2',
+        name: 'Partner Savings',
+        accountType: 'SAVINGS',
+        isJoint: true,
+        ownerLabel: 'Partner',
+      } as Partial<Account>),
+    ];
+
+    it('renders as a slider, not a checkbox', () => {
+      render(
+        <AccountList accounts={ownAndJoint()} onEdit={mockOnEdit} defaultCurrency="CAD" convertToDefault={exchangeMocks.convertToDefault} onRefresh={mockOnRefresh} />
+      );
+
+      const toggle = screen.getByRole('switch', { name: 'Shared with me' });
+      expect(toggle).toBeInTheDocument();
+      expect(toggle).toHaveAttribute('aria-checked', 'false');
+      // The old control was an <input type="checkbox">. The account-type
+      // multi-select's options are the only checkboxes left on this screen,
+      // and they are behind a closed dropdown.
+      expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+    });
+
+    it('is hidden when nothing is shared with the caller', () => {
+      render(
+        <AccountList accounts={[createAccount({ id: 'a1', name: 'My Chequing' })]} onEdit={mockOnEdit} defaultCurrency="CAD" convertToDefault={exchangeMocks.convertToDefault} onRefresh={mockOnRefresh} />
+      );
+
+      expect(
+        screen.queryByRole('switch', { name: 'Shared with me' }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('Shared with me')).not.toBeInTheDocument();
+    });
+
+    it('narrows the list to shared accounts when switched on', () => {
+      render(
+        <AccountList accounts={ownAndJoint()} onEdit={mockOnEdit} defaultCurrency="CAD" convertToDefault={exchangeMocks.convertToDefault} onRefresh={mockOnRefresh} />
+      );
+
+      fireEvent.click(screen.getByRole('switch', { name: 'Shared with me' }));
+
+      expect(
+        screen.getByRole('switch', { name: 'Shared with me' }),
+      ).toHaveAttribute('aria-checked', 'true');
+      expect(screen.getByText('1 of 2 accounts')).toBeInTheDocument();
+      expect(screen.getByText('Partner Savings')).toBeInTheDocument();
+      expect(screen.queryByText('My Chequing')).not.toBeInTheDocument();
+    });
+
+    it('switches back off, restoring the full list', () => {
+      render(
+        <AccountList accounts={ownAndJoint()} onEdit={mockOnEdit} defaultCurrency="CAD" convertToDefault={exchangeMocks.convertToDefault} onRefresh={mockOnRefresh} />
+      );
+
+      const toggle = () => screen.getByRole('switch', { name: 'Shared with me' });
+      fireEvent.click(toggle());
+      fireEvent.click(toggle());
+
+      expect(toggle()).toHaveAttribute('aria-checked', 'false');
+      expect(screen.getByText('2 of 2 accounts')).toBeInTheDocument();
+    });
+
+    it('drops a persisted filter when the last shared account is revoked', () => {
+      // The switch is gone, so its state is unreachable -- leaving it set
+      // would filter the list to nothing with no control to undo it.
+      localStorage.setItem('accounts.filter.joint', JSON.stringify('joint'));
+
+      render(
+        <AccountList accounts={[createAccount({ id: 'a1', name: 'My Chequing' })]} onEdit={mockOnEdit} defaultCurrency="CAD" convertToDefault={exchangeMocks.convertToDefault} onRefresh={mockOnRefresh} />
+      );
+
+      expect(
+        screen.queryByRole('switch', { name: 'Shared with me' }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('My Chequing')).toBeInTheDocument();
+      expect(screen.getByText('1 of 1 accounts')).toBeInTheDocument();
+    });
+  });
+
   it('persists type and search filters to localStorage', () => {
     const accounts = [
       createAccount({ id: 'a1', name: 'My Chequing', accountType: 'CHEQUING' }),

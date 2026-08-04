@@ -48,7 +48,8 @@
       "status": "상태",
       "balance": "잔액",
       "actions": "작업"
-    }
+    },
+    "filterJoint": "나와 공유됨"
   },
   "row": {
     "statusActive": "활성",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "잔액이 0이어야 종료할 수 있습니다",
       "closeTitleEnabled": "계정 종료",
       "details": "상세 정보"
-    }
+    },
+    "jointBadge": "공동",
+    "jointSharedBy": "{owner} 님이 공유",
+    "jointSharedWith": "{count, plural, other {#명}}과 공유됨",
+    "includeInNetWorth": "내 순자산에 포함",
+    "excludeFromNetWorth": "내 순자산에서 제외"
   },
   "contextMenu": {
     "subtypeBrokerage": "증권사",
@@ -103,7 +109,8 @@
     "loadFailed": "계정 불러오기에 실패했습니다",
     "favouriteError": "즐겨찾기 업데이트에 실패했습니다",
     "createSuccess": "계정이 생성되었습니다",
-    "updateSuccess": "계정이 업데이트되었습니다"
+    "updateSuccess": "계정이 업데이트되었습니다",
+    "updateFailed": "계좌를 업데이트하지 못했습니다"
   },
   "form": {
     "accountName": "계정명",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "예: 25",
     "fxFeeTitle": "외화 환전 수수료 (선택)",
     "fxFeePercent": "수수료 비율",
-    "fxFeePercentPlaceholder": "예: 2.5"
+    "fxFeePercentPlaceholder": "예: 2.5",
+    "jointSharedWith": "{count, plural, other {#명}}과 공유된 공동 계좌",
+    "jointManage": "공유 관리"
   },
   "exportModal": {
     "title": "{name} 내보내기",

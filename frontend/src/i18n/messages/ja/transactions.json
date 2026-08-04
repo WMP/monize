@@ -412,7 +412,8 @@
       "categoryCreateFailed": "カテゴリの作成に失敗しました",
       "tagCreated": "タグ「{name}」を作成しました",
       "fxRateRequired": "外貨取引を保存する前に、為替レートまたは換算後の金額を入力してください。",
-      "attachmentsUploadFailed": "取引は保存されましたが、{count} 件の添付ファイルのアップロードに失敗しました"
+      "attachmentsUploadFailed": "取引は保存されましたが、{count} 件の添付ファイルのアップロードに失敗しました",
+      "jointPayeeCreateNotGranted": "口座の所有者から支払先を作成する権限が付与されていません。既存の支払先から選択してください。"
     },
     "ariaHistory": "最近の取引を表示",
     "ariaHistoryForPayee": "この支払先の最近の取引を表示",
@@ -438,7 +439,8 @@
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeCaption": "{percent}% の外貨取引手数料（{fee}）が含まれます。",
       "totalInCurrency": "{currency} での合計"
-    }
+    },
+    "jointSplitDisabled": "共有口座の分割取引を管理できるのは所有者のみです"
   },
   "splitEditor": {
     "header": "分割の詳細",

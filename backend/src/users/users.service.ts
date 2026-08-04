@@ -358,7 +358,7 @@ export class UsersService {
       const backupEncryption = this.moduleRef.get(BackupEncryptionService, {
         strict: false,
       });
-      await backupEncryption.syncOnPasswordChange(userId, dto.newPassword);
+      await backupEncryption.rememberLoginPassword(userId, dto.newPassword);
     } catch (err) {
       this.logger.warn(
         `Could not sync backup password after change: ${err.message}`,

@@ -35,12 +35,24 @@
   "settings": {
     "title": "Rehberli turlar",
     "description": "Uygulamanın özelliklerini adım adım keşfedin.",
-    "showList": "Turları göster ({count})",
-    "hideList": "Turları gizle",
+    "backLink": "Ayarlara Geri Dön",
+    "pageTitle": "Rehberli turlar",
+    "pageSubtitle": "Monize'in sunduğu tüm turlar tek bir yerde. İstediğiniz zaman başlatın — bir turdan Escape ile çıkıp buradan kaldığınız yerden devam edebilirsiniz.",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, one {# adım} other {# adım}}",
+    "releaseLabel": "{version} sürümünde eklendi",
+    "requirementsLoading": "Bu turu yapıp yapamayacağınız kontrol ediliyor…",
+    "requires": {
+      "transactionEntry": "Önce bir hesap ekleyin — bu tur bir işlemin nasıl kaydedildiğini anlatır.",
+      "securitiesExist": "Önce bir menkul kıymet ekleyin — bu tur menkul kıymet listenizden birini açar."
+    },
     "start": "Başlat",
     "restart": "Tekrar al",
     "statusNotViewed": "Görüntülenmedi",
     "statusDismissed": "Yarıda bırakıldı",
+    "resetHeading": "Baştan başla",
+    "resetDescription": "Kaydedilen tüm turları temizler; böylece panodan ve bir güncellemeden sonra yeniden sunulurlar.",
     "reset": "Tur ilerlemesini sıfırla",
     "resetSuccess": "Tur ilerlemesi sıfırlandı.",
     "resetError": "Tur ilerlemesi sıfırlanamadı. Lütfen tekrar deneyin."

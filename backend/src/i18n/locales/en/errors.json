@@ -187,7 +187,6 @@
     "unsupportedBackupVersion": "Unsupported backup version: {{ version }}. Expected {{ expected }}",
     "missingExportedAt": "Invalid backup format: missing exportedAt",
     "tableNotAllowed": "Table {{ table }} is not allowed in backup restore",
-    "localAuthRequired": "Local password authentication is required",
     "encryptionNotConfigured": "Server is not configured for encryption (AI_ENCRYPTION_KEY missing)",
     "backupPasswordOidcOnly": "Backup password is only configurable for OIDC users; local users use their login password",
     "backupPasswordTooShort": "Backup password must be at least {{ minLength }} characters",
@@ -258,7 +257,16 @@
     "capabilityNotGranted": "The account owner has not granted you permission to {{ operation }} {{ resource }}. Ask them to enable this in your delegated-access settings.",
     "sectionNotGranted": "The account owner has not shared the {{ sectionLabel }} section with you.",
     "accountNotShared": "The account owner has not shared this account with you.",
-    "accountOperationNotGranted": "The account owner has not granted you permission to {{ operation }} transactions in this account."
+    "accountOperationNotGranted": "The account owner has not granted you permission to {{ operation }} transactions in this account.",
+    "jointOwnAccount": "This is your own account; joint-account access does not apply to it.",
+    "jointAccountTypeReadOnly": "This account type is shared read-only; only the owner can change its transactions.",
+    "jointOwnAccountNetWorth": "Use the account's own net-worth setting for accounts you own.",
+    "jointRequiresRead": "READ access is required to mark an account as joint",
+    "jointRequiresFullAccount": "Joint accounts can only be shared with users who have their own Monize account",
+    "jointPayeeCreateNotGranted": "The account owner has not granted you permission to create payees. Pick one of their existing payees instead.",
+    "jointTagsNotAllowed": "Tags are personal, so they cannot be set on a shared account's transactions.",
+    "jointSplitsNotAllowed": "Split transactions in a shared account can only be managed by the owner.",
+    "jointTransferRowLocked": "This is a transfer. Use the transfer editor instead."
   },
   "emergencyAccess": {
     "smtpNotConfigured": "Email is not configured. Emergency access cannot be enabled until SMTP is set up.",
@@ -478,7 +486,8 @@
     "payeeNotFound": "Payee not found",
     "fxFieldsIncomplete": "originalAmount and originalCurrencyCode must be provided together",
     "fxRateRequired": "A positive exchange rate is required for a foreign-currency transaction",
-    "fxSignMismatch": "originalAmount and amount must have the same sign"
+    "fxSignMismatch": "originalAmount and amount must have the same sign",
+    "jointAccountMoveLocked": "Transactions in a shared account cannot be moved to another account."
   },
   "users": {
     "userNotFound": "User not found",

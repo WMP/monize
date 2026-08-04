@@ -1120,6 +1120,114 @@ describe("NetWorthService", () => {
     });
   });
 
+  describe("getMonthlyNetWorth with a joint scope (N1)", () => {
+    const OWNER = "aaaaaaaa-1111-4111-8111-111111111111";
+    const jointScope = {
+      accounts: [{ accountId: "joint-1", ownerUserId: OWNER }],
+    };
+
+    beforeEach(() => {
+      mabRepository.count.mockResolvedValue(5);
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+      // The joint account's current month is already populated -> no refresh.
+      mabRepository.find.mockResolvedValue([{ accountId: "joint-1" }]);
+    });
+
+    it("passes the joint ids into the snapshot predicate", async () => {
+      reportQuery.mockResolvedValueOnce([]);
+      await service.getMonthlyNetWorth(
+        "user-1",
+        "2024-01-01",
+        "2024-06-30",
+        jointScope,
+      );
+      const queryArgs = reportQuery.mock.calls[0];
+      expect(queryArgs[1]).toEqual([
+        "user-1",
+        "2024-01-01",
+        "2024-06-30",
+        ["joint-1"],
+      ]);
+      expect(queryArgs[0]).toContain("mab.account_id = ANY($4::UUID[])");
+      // The owner-side exclusion flag stays confined to the own-rows arm.
+      expect(queryArgs[0]).toContain(
+        "(mab.user_id = $1 AND a.exclude_from_net_worth = false)",
+      );
+    });
+
+    it("sums joint rows into the grantee's totals", async () => {
+      reportQuery
+        .mockResolvedValueOnce([
+          {
+            month: "2024-01-01",
+            balance: 5000,
+            market_value: null,
+            account_id: "own-1",
+            account_type: AccountType.CHEQUING,
+            account_sub_type: null,
+            currency_code: "USD",
+          },
+          {
+            month: "2024-01-01",
+            balance: 3000,
+            market_value: null,
+            account_id: "joint-1",
+            account_type: AccountType.CHEQUING,
+            account_sub_type: null,
+            currency_code: "USD",
+          },
+        ])
+        .mockResolvedValueOnce([]);
+
+      const result = await service.getMonthlyNetWorth(
+        "user-1",
+        undefined,
+        undefined,
+        jointScope,
+      );
+      expect(result[0].assets).toBe(8000);
+      expect(result[0].netWorth).toBe(8000);
+    });
+
+    it("refreshes a stale joint month under the OWNER's identity", async () => {
+      // No populated current-month row for the joint account.
+      mabRepository.find.mockResolvedValue([]);
+      const recalc = jest
+        .spyOn(service, "recalculateAccount")
+        .mockResolvedValue(undefined as never);
+      reportQuery.mockResolvedValueOnce([]);
+
+      await service.getMonthlyNetWorth(
+        "user-1",
+        undefined,
+        undefined,
+        jointScope,
+      );
+
+      expect(recalc).toHaveBeenCalledWith(OWNER, "joint-1");
+    });
+  });
+
+  describe("getLatestNetWorth with a joint scope (N1)", () => {
+    it("widens the latest-month probe by the joint ids", async () => {
+      mabRepository.count.mockResolvedValue(5);
+      prefRepository.findOne.mockResolvedValue({ defaultCurrency: "USD" });
+      mabRepository.find.mockResolvedValue([{ accountId: "joint-1" }]);
+      reportQuery
+        .mockResolvedValueOnce([{ month: "2024-02-01" }])
+        .mockResolvedValueOnce([]);
+
+      const OWNER = "aaaaaaaa-1111-4111-8111-111111111111";
+      await service.getLatestNetWorth("user-1", {
+        accounts: [{ accountId: "joint-1", ownerUserId: OWNER }],
+      });
+
+      const [sql, params] = reportQuery.mock.calls[0];
+      expect(sql).toContain("account_id = ANY($2::UUID[])");
+      expect(params).toEqual(["user-1", ["joint-1"]]);
+    });
+  });
+
   describe("getMonthlyNetWorth", () => {
     it("returns empty array when no snapshots exist", async () => {
       mabRepository.count.mockResolvedValue(5);
@@ -1248,7 +1356,10 @@ describe("NetWorthService", () => {
       await service.getMonthlyNetWorth("user-1", "2024-01-01", "2024-06-30");
 
       const queryArgs = reportQuery.mock.calls[0];
-      expect(queryArgs[1]).toEqual(["user-1", "2024-01-01", "2024-06-30"]);
+      // The trailing empty array is the joint-account widening (N1): empty
+      // for every caller without a joint scope, keeping this query's result
+      // byte-identical to the pre-joint behavior.
+      expect(queryArgs[1]).toEqual(["user-1", "2024-01-01", "2024-06-30", []]);
     });
 
     it("uses default date range when none specified", async () => {
@@ -1640,7 +1751,12 @@ describe("NetWorthService", () => {
       // The month range is bounded to the latest month so the snapshot query
       // does not replay the whole history.
       const snapshotCall = reportQuery.mock.calls[1];
-      expect(snapshotCall[1]).toEqual(["user-1", "2024-03-01", "2024-03-01"]);
+      expect(snapshotCall[1]).toEqual([
+        "user-1",
+        "2024-03-01",
+        "2024-03-01",
+        [],
+      ]);
     });
 
     it("returns null when there are no snapshots", async () => {

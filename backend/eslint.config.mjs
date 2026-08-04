@@ -38,6 +38,14 @@ const WITH_CONTEXT_ALLOWLIST = [
   "src/database/seed.service.ts",
   "src/delegation/cross-owner-access.service.ts",
   "src/delegation/guards/account-delegate.guard.ts",
+  // Joint accounts: one system-context read, the owner-label lookup (the
+  // grantee's session cannot see the owner's users row under enforcement;
+  // only the display label leaves the method).
+  "src/delegation/joint-accounts.service.ts",
+  // Joint register writes: authorization-decision row load plus the
+  // owner-scoped mutation window, both fully decided by jointAccessFor
+  // before the bypass opens (joint-accounts spec W1).
+  "src/transactions/joint-register.service.ts",
   "src/emergency-access/emergency-access-claim.controller.ts",
   "src/emergency-access/emergency-access-monitor.service.ts",
   "src/import/mny/mny-import-job.service.ts",
@@ -45,6 +53,10 @@ const WITH_CONTEXT_ALLOWLIST = [
   "src/import/mny/mny-staging.service.ts",
   "src/mcp/mcp-http.controller.ts",
   "src/mcp/tools/transactions.tool.ts",
+  // Joint accounts (N1): refreshing a stale joint account's current-month
+  // snapshot runs recalculateAccount under withUserContext(ownerUserId) so
+  // the owner-keyed mab rows are written with the correct identity.
+  "src/net-worth/net-worth.service.ts",
   "src/notifications/bill-reminder.service.ts",
   "src/oauth/oauth-interaction.controller.ts",
   "src/oauth/oauth-provider.service.ts",

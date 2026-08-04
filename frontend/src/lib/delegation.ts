@@ -32,6 +32,12 @@ export interface AccountGrant {
   canCreate?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
+  /**
+   * Joint account opt-in: with canRead, the account appears natively in the
+   * delegate's own context. Must round-trip through the grant editor -- the
+   * save path is delete-and-recreate, so omitting it clears the flag.
+   */
+  isJoint?: boolean;
 }
 
 /** Owner-grantable READ sections (gate tab visibility + section endpoints). */
@@ -64,6 +70,26 @@ export interface DelegateSectionFlags {
   aiCanRead?: boolean;
 }
 
+/** Owner reference data served for a joint account's transaction form. */
+export interface JointReferenceData {
+  categories: Array<{
+    id: string;
+    name: string;
+    parentId: string | null;
+    icon: string | null;
+    color: string | null;
+    isIncome: boolean;
+    isSystem: boolean;
+  }>;
+  payees: Array<{
+    id: string;
+    name: string;
+    defaultCategoryId: string | null;
+  }>;
+  payeesCanCreate: boolean;
+  categoriesCanCreate: boolean;
+}
+
 export interface DelegateSummary {
   id: string;
   status: string;
@@ -78,6 +104,9 @@ export interface DelegateSummary {
     // Monize account, or are a delegate for another owner too); the owner
     // cannot reset it in that case.
     canResetPassword: boolean;
+    // True when the delegate is a full Monize account in their own right;
+    // gates the Joint toggle (joint shares require a real account).
+    isFullAccount?: boolean;
   };
   grants: AccountGrant[];
   capabilities: DelegateCapabilityFlags;
@@ -122,6 +151,18 @@ export const delegationApi = {
     targetUserId: string,
   ): Promise<{ actingAsUserId: string | null }> => {
     const res = await apiClient.post('/auth/switch-context', { targetUserId });
+    return res.data;
+  },
+
+  // The owner's category/payee pickers for a joint account's register,
+  // gated server-side on the caller's joint READ grant. A joint row belongs
+  // to the owner, so it may only carry the owner's reference ids.
+  getJointReferenceData: async (
+    accountId: string,
+  ): Promise<JointReferenceData> => {
+    const res = await apiClient.get<JointReferenceData>(
+      `/delegation/joint-accounts/${accountId}/reference-data`,
+    );
     return res.data;
   },
 

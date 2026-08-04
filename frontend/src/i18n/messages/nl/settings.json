@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "Automatische back-up",
     "description": "Maak automatisch een back-up van jouw gegevens naar een map op een schema. Omdat Monize in Docker draait, moet je een hostmap als volume in de container koppelen (bijv. -v /host/backups:/data/backups).",
+    "adminManagedNote": "Alleen beheerders kunnen deze instellingen wijzigen. Alle andere gebruikers worden automatisch volgens hetzelfde schema en bewaarbeleid geback-upt, elk in een eigen map.",
     "loadingText": "Laden...",
     "enableLabel": "Automatische back-ups inschakelen",
     "backupFolderLabel": "Back-upmap",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "De back-ups van elke gebruiker komen in een eigen map binnen deze map, genoemd naar hun gebruikers-ID.",
+    "perUserFolderHelpWithPath": "De back-ups van elke gebruiker komen in een eigen map binnen deze map, genoemd naar hun gebruikers-ID. De jouwe: {path}",
     "browseButton": "Bladeren...",
     "validateButton": "Valideren",
     "validatingButton": "Valideren...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "Back-upversleuteling",
       "descriptionOidc": "Versleutel handmatige en automatische back-ups met een speciaal back-upwachtwoord dat je hier instelt. Het wachtwoord is vereist voor herstel.",
-      "descriptionLocal": "Versleutel handmatige en automatische back-ups met jouw inlogwachtwoord. Het wachtwoord is vereist voor herstel.",
       "loading": "Laden...",
       "enabledBadge": "Ingeschakeld",
       "changePasswordButton": "Back-upwachtwoord wijzigen",
       "disableButton": "Uitschakelen",
       "setPasswordButton": "Back-upwachtwoord instellen",
-      "enableEncryptedButton": "Versleutelde back-ups inschakelen",
       "setupModal": {
         "titleOidc": "Back-upwachtwoord instellen",
-        "titleLocal": "Versleutelde back-ups inschakelen",
         "descriptionOidc": "Kies een wachtwoord dat wordt gebruikt om jouw back-ups te versleutelen. Bewaar het op een veilige plek -- je hebt het nodig voor herstel.",
-        "descriptionLocal": "Bevestig jouw inlogwachtwoord. Het wordt gebruikt om alle back-ups (handmatig en automatisch) te versleutelen.",
         "placeholderOidc": "Nieuw back-upwachtwoord (12+ tekens)",
-        "placeholderLocal": "Jouw inlogwachtwoord",
         "savingButton": "Opslaan...",
         "confirmButton": "Bevestigen"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "Intrekken van gedelegeerde mislukt",
       "resetPasswordFailed": "Opnieuw instellen van wachtwoord mislukt",
       "copyFailed": "Kopiëren naar klembord mislukt"
-    }
+    },
+    "jointLabel": "{count, plural, one {# gezamenlijke rekening} other {# gezamenlijke rekeningen}}"
   },
   "delegateAccessModal": {
     "title": "Toegang bewerken",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "Geen rekeningen om te verlenen.",
-      "grantAll": "Alles verlenen"
+      "grantAll": "Alles verlenen",
+      "jointRequiresFullAccount": "Gezamenlijke rekeningen kunnen alleen worden gedeeld met gebruikers die een eigen Monize-account hebben"
     },
     "shared": {
       "description": "LEZEN van begunstigden, categorieën en labels is altijd toegestaan. Dit regelt aanmaken/bewerken/verwijderen."
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "Instellingssecties",
     "profile": "Profiel",
     "preferences": "Voorkeuren",
+    "tours": "Begeleide rondleidingen",
     "notifications": "Meldingen",
     "security": "Beveiliging",
     "sharedAccess": "Gedeelde toegang",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "Gedeelde toegang",
       "description": "Verleen een andere persoon gedetailleerde toegang tot specifieke rekeningen."
+    },
+    "toursCard": {
+      "title": "Begeleide rondleidingen",
+      "description": "Alle rondleidingen die Monize biedt, met wat je al hebt gezien. Start of doe er een opnieuw."
     },
     "emergencyAccessCard": {
       "title": "Noodtoegang",

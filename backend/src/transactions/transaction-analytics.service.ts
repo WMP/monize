@@ -278,6 +278,7 @@ export class TransactionAnalyticsService {
     excludeInvestmentLinked?: boolean,
     excludeTransfers?: boolean,
     tagIds?: string[],
+    jointAccountIds?: string[],
   ): Promise<{
     totalIncome: number;
     totalExpenses: number;
@@ -308,6 +309,7 @@ export class TransactionAnalyticsService {
         excludeInvestmentLinked,
         excludeTransfers,
         tagIds,
+        jointAccountIds,
       });
 
       // Use the split amount when the row came from the splits join;
@@ -398,12 +400,37 @@ export class TransactionAnalyticsService {
   }
 
   /**
+   * The analytics read scope, mirroring the register's (joint-accounts spec):
+   * the user's own rows plus rows in accounts jointly shared to them.
+   * `jointAccountIds` is the already-authorized joint set computed by the
+   * controller, never raw request input. An empty joint set reproduces the old
+   * owner-only predicate exactly, so non-joint traffic is untouched.
+   */
+  private analyticsScope(userId: string, jointAccountIds: string[]): Brackets {
+    return new Brackets((qb) => {
+      qb.where("transaction.userId = :analyticsScopeUserId", {
+        analyticsScopeUserId: userId,
+      });
+      if (jointAccountIds.length > 0) {
+        qb.orWhere("transaction.accountId IN (:...analyticsScopeJointIds)", {
+          analyticsScopeJointIds: jointAccountIds,
+        });
+      }
+    });
+  }
+
+  /**
    * Base query shared by {@link getSummary} and {@link getGroupedTotals}:
    * applies the full transaction-list filter surface (accounts incl. the
    * brokerage exclusion, dates, categories with descendant expansion and
    * the `uncategorized`/`transfer` pseudo-ids, payees, search, amount
    * range, tags) with splits always joined so split transactions count
    * per matching split via `COALESCE(splits.amount, transaction.amount)`.
+   *
+   * `jointAccountIds` widens the ownership predicate only; category
+   * descendant expansion still resolves against `userId`'s own tree, so a
+   * caller that both filters by category and widens by joint ids must pass
+   * the owning user (which is what the single-joint-account path does).
    */
   private async createFilteredAnalyticsQuery(
     m: EntityManager,
@@ -421,6 +448,7 @@ export class TransactionAnalyticsService {
       excludeTransfers?: boolean;
       tagIds?: string[];
       includeUnreconciledBeforeStart?: boolean;
+      jointAccountIds?: string[];
     },
   ) {
     const {
@@ -436,12 +464,13 @@ export class TransactionAnalyticsService {
       excludeTransfers,
       tagIds,
       includeUnreconciledBeforeStart,
+      jointAccountIds,
     } = filters;
 
     const queryBuilder = m
       .getRepository(Transaction)
       .createQueryBuilder("transaction")
-      .where("transaction.userId = :userId", { userId });
+      .where(this.analyticsScope(userId, jointAccountIds ?? []));
 
     // Join account for filtering and uncategorized conditions.
     // Use the same exclusion logic as findAll() so the summary
@@ -658,6 +687,7 @@ export class TransactionAnalyticsService {
       amountTo?: number;
       limit?: number;
       includeUnreconciledBeforeStart?: boolean;
+      jointAccountIds?: string[];
     },
   ): Promise<
     Array<{
@@ -820,6 +850,7 @@ export class TransactionAnalyticsService {
     amountFrom?: number,
     amountTo?: number,
     tagIds?: string[],
+    jointAccountIds?: string[],
   ): Promise<Array<{ month: string; total: number; count: number }>> {
     return withScopedDb(this.dataSource, async (m) => {
       // Reuse the same filtered query builder as getSummary so the chart's
@@ -841,6 +872,7 @@ export class TransactionAnalyticsService {
         amountFrom,
         amountTo,
         tagIds,
+        jointAccountIds,
       });
 
       // The splits join is always present, so use the split amount for split

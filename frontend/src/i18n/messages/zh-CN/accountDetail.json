@@ -6,7 +6,10 @@
     "back": "返回账户",
     "switchAccount": "切换到其他账户",
     "switchPlaceholder": "筛选账户...",
-    "switchNoMatches": "没有匹配的账户"
+    "switchNoMatches": "没有匹配的账户",
+    "jointBadge": "联名",
+    "jointSharedBy": "由 {owner} 共享",
+    "jointSharedWith": "已与 {count, plural, other {# 人}}共享"
   },
   "loading": "正在加载账户详情...",
   "error": {

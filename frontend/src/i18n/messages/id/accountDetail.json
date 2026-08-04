@@ -6,7 +6,10 @@
     "back": "Kembali ke Akun",
     "switchAccount": "Pindah ke akun lain",
     "switchPlaceholder": "Saring akun...",
-    "switchNoMatches": "Tidak ada akun yang cocok"
+    "switchNoMatches": "Tidak ada akun yang cocok",
+    "jointBadge": "Bersama",
+    "jointSharedBy": "Dibagikan oleh {owner}",
+    "jointSharedWith": "Dibagikan dengan {count, plural, other {# orang}}"
   },
   "loading": "Memuat detail akun...",
   "error": {

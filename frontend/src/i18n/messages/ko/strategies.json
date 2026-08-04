@@ -47,6 +47,9 @@
       "backtest": "백테스트",
       "settings": "설정"
     },
+    "stale": {
+      "updating": "업데이트 중 — 아래 수치는 이전 선택의 값입니다"
+    },
     "roles": {
       "US_EQUITY": "S&P 500",
       "EX_US_EQUITY": "미국 제외 선진시장",

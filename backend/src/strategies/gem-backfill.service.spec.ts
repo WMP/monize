@@ -9,9 +9,15 @@ jest.mock("../common/db/scoped-db", () =>
   jest.requireActual("../test-helpers/scoped-db-testing").scopedDbMockModule(),
 );
 
+/**
+ * Read at call time, so a test can move "today" onto a date that exercises the
+ * month arithmetic (the 31st).
+ */
+let today = "2025-08-14";
+
 jest.mock("../common/date-utils", () => ({
   ...jest.requireActual("../common/date-utils"),
-  todayYMD: () => "2025-08-14",
+  todayYMD: () => today,
 }));
 
 const userId = "user-1";
@@ -63,6 +69,7 @@ describe("GemBackfillService", () => {
     new Map([["spy", weekly("2018-01-01", "2025-08-14")]]);
 
   beforeEach(() => {
+    today = "2025-08-14";
     securityRepo = {
       find: jest.fn().mockResolvedValue([security("spy")]),
       update: jest.fn().mockResolvedValue(undefined),
@@ -114,6 +121,25 @@ describe("GemBackfillService", () => {
     expect(securityPrices.backfillSecurityRange).toHaveBeenCalledWith(
       expect.anything(),
       "10y",
+    );
+  });
+
+  it("clamps the coverage floor to a short month instead of overflowing past it", async () => {
+    // 31 March, 37 months back: February. `setUTCMonth` overflows a day-31 date
+    // into the following month (3 March 2023), which moves the floor *forward*
+    // past closes that would have satisfied it -- so a series reaching back to
+    // late February reads as short and the provider is asked again on every
+    // save, forever. `addMonthsUtc` clamps to 28 February 2023, and the series
+    // window opens a fortnight before that because a boundary may be priced by
+    // a close struck up to `BOUNDARY_LAG_DAYS` earlier.
+    today = "2026-03-31";
+
+    await service.ensureHistory(userId, ["spy"], 13, "MONTHLY");
+
+    expect(priceService.loadSeries).toHaveBeenCalledWith(
+      ["spy"],
+      "2023-02-14",
+      "day",
     );
   });
 

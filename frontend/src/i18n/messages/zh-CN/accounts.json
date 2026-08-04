@@ -48,7 +48,8 @@
       "status": "状态",
       "balance": "余额",
       "actions": "操作"
-    }
+    },
+    "filterJoint": "与我共享"
   },
   "row": {
     "statusActive": "活跃",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "账户余额必须为零才能关闭",
       "closeTitleEnabled": "关闭账户",
       "details": "详情"
-    }
+    },
+    "jointBadge": "联名",
+    "jointSharedBy": "由 {owner} 共享",
+    "jointSharedWith": "已与 {count, plural, other {# 人}}共享",
+    "includeInNetWorth": "计入我的净资产",
+    "excludeFromNetWorth": "从我的净资产中排除"
   },
   "contextMenu": {
     "subtypeBrokerage": "券商账户",
@@ -103,7 +109,8 @@
     "loadFailed": "加载账户失败",
     "favouriteError": "更新收藏失败",
     "createSuccess": "账户已成功创建",
-    "updateSuccess": "账户已成功更新"
+    "updateSuccess": "账户已成功更新",
+    "updateFailed": "无法更新账户"
   },
   "form": {
     "accountName": "账户名称",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "例如 25",
     "fxFeeTitle": "外币兑换手续费 （可选）",
     "fxFeePercent": "手续费百分比",
-    "fxFeePercentPlaceholder": "例如 2.5"
+    "fxFeePercentPlaceholder": "例如 2.5",
+    "jointSharedWith": "联名账户，已与 {count, plural, other {# 人}}共享",
+    "jointManage": "管理共享"
   },
   "exportModal": {
     "title": "导出 {name}",

@@ -48,7 +48,8 @@
       "status": "[XX-Status-XX]",
       "balance": "[XX-Balance-XX]",
       "actions": "[XX-Actions-XX]"
-    }
+    },
+    "filterJoint": "[XX-Shared with me-XX]"
   },
   "row": {
     "statusActive": "[XX-Active-XX]",
@@ -76,7 +77,12 @@
       "closeTitleDisabled": "[XX-Account must have zero balance to close-XX]",
       "closeTitleEnabled": "[XX-Close account-XX]",
       "details": "[XX-Details-XX]"
-    }
+    },
+    "jointBadge": "[XX-Joint-XX]",
+    "jointSharedBy": "[XX-Shared by {owner}-XX]",
+    "jointSharedWith": "[XX-Shared with {count, plural, one {# person} other {# people}}-XX]",
+    "includeInNetWorth": "[XX-Include in my net worth-XX]",
+    "excludeFromNetWorth": "[XX-Exclude from my net worth-XX]"
   },
   "contextMenu": {
     "subtypeBrokerage": "[XX-Brokerage-XX]",
@@ -103,7 +109,8 @@
     "loadFailed": "[XX-Failed to load accounts-XX]",
     "favouriteError": "[XX-Failed to update favourite-XX]",
     "createSuccess": "[XX-Account created successfully-XX]",
-    "updateSuccess": "[XX-Account updated successfully-XX]"
+    "updateSuccess": "[XX-Account updated successfully-XX]",
+    "updateFailed": "[XX-Failed to update account-XX]"
   },
   "form": {
     "accountName": "[XX-Account Name-XX]",
@@ -156,7 +163,9 @@
     "statementSettlementDayPlaceholder": "[XX-e.g. 25-XX]",
     "fxFeeTitle": "[XX-Foreign Currency Conversion Fee (optional)-XX]",
     "fxFeePercent": "[XX-Fee Percentage-XX]",
-    "fxFeePercentPlaceholder": "[XX-e.g. 2.5-XX]"
+    "fxFeePercentPlaceholder": "[XX-e.g. 2.5-XX]",
+    "jointSharedWith": "[XX-Joint account shared with {count, plural, one {# person} other {# people}}-XX]",
+    "jointManage": "[XX-Manage sharing-XX]"
   },
   "exportModal": {
     "title": "[XX-Export {name}-XX]",

@@ -197,9 +197,6 @@ export interface GemPositionMath {
  */
 const DUST_QUANTITY = 0.0001;
 
-/** Fully-in-the-target tolerance: rounding should not read as non-compliant. */
-const COMPLIANCE_TOLERANCE_PERCENT = 99.5;
-
 export function buildPositionMath(
   holdings: GemHolding[],
   targetRole: GemAssetRole | null,
@@ -462,17 +459,23 @@ export function buildPositionMath(
 
   /**
    * With no target there is nothing to be compliant with. Otherwise: anything
-   * to sell means a change, and so does idle cash, which is off target and has
-   * to be put to work even when every security is already the right one.
+   * off target means a change -- something to sell, or idle cash that has to be
+   * put to work even when every security is already the right one -- and so does
+   * holding nothing at all, where the change is the opening purchase.
    *
-   * The percentage decides the rest, and only where it is known -- holding
-   * something other than the target settles it without needing a price.
+   * There is deliberately no percentage tolerance here. One was written in
+   * (`exactTargetPercent < 99.5`) and could never fire: `offTarget` is empty
+   * exactly when every valued security *is* the target, and then the percentage
+   * is either 100 or null, so the first clause had already decided. Making it
+   * fire would mean letting the percentage overrule `offTarget`, and that is
+   * worse than dead code: a portfolio 99.7% in the target would report "nothing
+   * to do" while the same call computes a sell order for the stray 0.3%, and a
+   * fully-invested account with a dividend just paid in would report nothing to
+   * do about cash the report is simultaneously telling the user to deploy --
+   * cash is excluded from the percentage's denominator on purpose.
    */
   const changeRequired = targetRole
-    ? offTarget.length > 0 ||
-      (exactTargetPercent === null
-        ? valued.length === 0
-        : exactTargetPercent < COMPLIANCE_TOLERANCE_PERCENT)
+    ? offTarget.length > 0 || valued.length === 0
     : false;
   // The executable trade, therefore, is the whole of each off-target position.
   //

@@ -1058,6 +1058,21 @@ export function AccountForm({ account, onSubmit, onCancel, onDirtyChange, submit
         )}
       </div>
 
+      {/* Joint sharing summary - only when editing an account already shared */}
+      {account && account.jointGranteeCount !== undefined && (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
+          <span className="text-sm text-amber-800 dark:text-amber-200">
+            {t('form.jointSharedWith', { count: account.jointGranteeCount })}
+          </span>
+          <a
+            href="/settings/shared-access"
+            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 whitespace-nowrap"
+          >
+            {t('form.jointManage')}
+          </a>
+        </div>
+      )}
+
       {/* anchorProps, not a wrapper: it rings the Cancel/Save pair itself, so a
           guided tour highlights the buttons rather than the full-width row. */}
       <FormActions

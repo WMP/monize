@@ -259,6 +259,7 @@
   },
   "validation": {
     "accountRequired": "계정은 필수입니다",
-    "dateRequired": "날짜는 필수입니다"
+    "dateRequired": "날짜는 필수입니다",
+    "acquisitionPriceRequired": "주당 가격은 필수이며 0보다 커야 합니다. 취득 원가를 알 수 없는 주식에는 \"주식수 추가\"을(를) 사용하세요."
   }
 }

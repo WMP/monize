@@ -35,12 +35,24 @@
   "settings": {
     "title": "Tours guiados",
     "description": "Percorra as funcionalidades do aplicativo passo a passo.",
-    "showList": "Mostrar tours ({count})",
-    "hideList": "Ocultar tours",
+    "backLink": "Voltar às Configurações",
+    "pageTitle": "Tours guiados",
+    "pageSubtitle": "Todos os tours que o Monize oferece, em um só lugar. Comece um quando quiser — você pode sair de um tour com Escape e retomá-lo por aqui.",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, one {# etapa} other {# etapas}}",
+    "releaseLabel": "Novidade na {version}",
+    "requirementsLoading": "Verificando se você pode fazer este tour…",
+    "requires": {
+      "transactionEntry": "Adicione uma conta primeiro — este tour mostra como registrar uma transação.",
+      "securitiesExist": "Adicione um título primeiro — este tour abre um a partir da sua lista de títulos."
+    },
     "start": "Iniciar",
     "restart": "Refazer",
     "statusNotViewed": "Não visto",
     "statusDismissed": "Saiu antes do fim",
+    "resetHeading": "Começar de novo",
+    "resetDescription": "Limpa todos os tours registrados para que sejam oferecidos de novo no painel e após uma atualização.",
     "reset": "Redefinir progresso do tour",
     "resetSuccess": "Progresso do tour redefinido.",
     "resetError": "Não foi possível redefinir o progresso do tour. Tente novamente."

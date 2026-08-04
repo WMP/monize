@@ -259,6 +259,7 @@
   },
   "validation": {
     "accountRequired": "账户为必填项",
-    "dateRequired": "日期为必填项"
+    "dateRequired": "日期为必填项",
+    "acquisitionPriceRequired": "每股价格为必填项，且必须大于零。对于成本未知的股份，请使用“增加股份”。"
   }
 }

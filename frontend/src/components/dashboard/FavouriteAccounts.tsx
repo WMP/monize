@@ -42,6 +42,19 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
       .filter((a) => a.isFavourite && !a.isClosed)
       .sort((a, b) => a.favouriteSortOrder - b.favouriteSortOrder);
 
+  /**
+   * Where a card goes when it is clicked. Nothing moves while the list is being
+   * reordered -- a drag that ends over a card must not navigate.
+   */
+  const navigateTo = (account: Account) => () => {
+    if (reordering) return;
+    router.push(
+      account.accountSubType === 'INVESTMENT_BROKERAGE'
+        ? `/investments?accountId=${account.id}`
+        : `/transactions?accountId=${account.id}`,
+    );
+  };
+
   const formatCurrency = (amount: number | string | null | undefined, currency: string) => {
     const numericAmount = Number(amount) || 0;
     const formatted = formatCurrencyBase(numericAmount, currency);
@@ -186,20 +199,32 @@ export function FavouriteAccounts({ accounts, brokerageMarketValues, isLoading, 
                 click target and made the server and client markup disagree on
                 hydration. Making the two buttons siblings is what removes the
                 conflict, and it leaves the help trigger a real button, so it
-                stays announced and keyboard-reachable. */}
+                stays announced and keyboard-reachable.
+
+                The whole card carries the click, not only that button. The
+                wrapper is what draws the hover, so with the statement line
+                outside the button the bottom of a credit-card tile advertised
+                itself as clickable and did nothing -- the same defect as putting
+                a row's click on its name cell. This is the clickable-row rule
+                applied to a card: the container takes the click, the inner
+                button remains the keyboard and screen-reader affordance, and the
+                controls inside it stop propagation so they act on themselves
+                (`InfoTooltip` does that for every call site). */}
             <div
+              onClick={navigateTo(account)}
               className={`flex-1 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors ${
                 reordering
                   ? ''
-                  : 'hover:border-blue-400 hover:bg-gray-50 dark:hover:border-blue-500 dark:hover:bg-gray-700/50'
+                  : 'cursor-pointer hover:border-blue-400 hover:bg-gray-50 dark:hover:border-blue-500 dark:hover:bg-gray-700/50'
               }`}
             >
             <button
-              onClick={() => !reordering && router.push(
-                account.accountSubType === 'INVESTMENT_BROKERAGE'
-                  ? `/investments?accountId=${account.id}`
-                  : `/transactions?accountId=${account.id}`
-              )}
+              onClick={(event) => {
+                // The wrapper already navigates; without this the click arrives
+                // twice.
+                event.stopPropagation();
+                navigateTo(account)();
+              }}
               className={`w-full flex items-center justify-between p-2 sm:p-3 text-left ${
                 reordering ? 'cursor-default' : ''
               }`}

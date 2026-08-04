@@ -179,7 +179,6 @@
     "unsupportedBackupVersion": "असमर्थित बैकअप संस्करण: {{ version }}। अपेक्षित {{ expected }}",
     "missingExportedAt": "अमान्य बैकअप प्रारूप: exportedAt अनुपस्थित है",
     "tableNotAllowed": "तालिका {{ table }} को बैकअप पुनर्स्थापना में अनुमति नहीं है",
-    "localAuthRequired": "स्थानीय पासवर्ड प्रमाणीकरण आवश्यक है",
     "encryptionNotConfigured": "सर्वर एन्क्रिप्शन के लिए कॉन्फ़िगर नहीं है (AI_ENCRYPTION_KEY अनुपस्थित है)",
     "backupPasswordOidcOnly": "बैकअप पासवर्ड केवल OIDC उपयोगकर्ताओं के लिए कॉन्फ़िगर करने योग्य है; स्थानीय उपयोगकर्ता अपने लॉगिन पासवर्ड का उपयोग करते हैं",
     "backupPasswordTooShort": "बैकअप पासवर्ड कम से कम {{ minLength }} अक्षरों का होना चाहिए",
@@ -250,7 +249,16 @@
     "capabilityNotGranted": "खाता स्वामी ने आपको {{ resource }} पर {{ operation }} करने की अनुमति नहीं दी है। उनसे अनुरोध करें कि वे आपकी प्रत्यायोजित-एक्सेस सेटिंग्स में इसे सक्षम करें।",
     "sectionNotGranted": "खाता स्वामी ने {{ sectionLabel }} अनुभाग आपके साथ साझा नहीं किया है।",
     "accountNotShared": "खाता स्वामी ने यह खाता आपके साथ साझा नहीं किया है।",
-    "accountOperationNotGranted": "खाता स्वामी ने आपको इस खाते में लेनदेन {{ operation }} करने की अनुमति नहीं दी है।"
+    "accountOperationNotGranted": "खाता स्वामी ने आपको इस खाते में लेनदेन {{ operation }} करने की अनुमति नहीं दी है।",
+    "jointOwnAccount": "यह आपका अपना खाता है; संयुक्त-खाता पहुंच इस पर लागू नहीं होती।",
+    "jointAccountTypeReadOnly": "यह खाता प्रकार केवल-पढ़ने के लिए साझा किया गया है; केवल स्वामी ही इसके लेनदेन बदल सकता है।",
+    "jointOwnAccountNetWorth": "अपने खातों के लिए खाते की अपनी कुल-संपत्ति सेटिंग का उपयोग करें।",
+    "jointRequiresRead": "किसी खाते को संयुक्त चिह्नित करने के लिए पढ़ने की पहुंच आवश्यक है",
+    "jointRequiresFullAccount": "संयुक्त खाते केवल उन्हीं उपयोगकर्ताओं के साथ साझा किए जा सकते हैं जिनका अपना Monize खाता है",
+    "jointPayeeCreateNotGranted": "खाता स्वामी ने आपको प्राप्तकर्ता बनाने की अनुमति नहीं दी है। इसके बजाय उनके किसी मौजूदा प्राप्तकर्ता को चुनें।",
+    "jointTagsNotAllowed": "टैग व्यक्तिगत होते हैं, इसलिए साझा खाते के लेनदेन पर सेट नहीं किए जा सकते।",
+    "jointSplitsNotAllowed": "साझा खाते में विभाजित लेनदेन केवल स्वामी ही प्रबंधित कर सकता है।",
+    "jointTransferRowLocked": "यह एक ट्रांसफ़र है। इसके बजाय ट्रांसफ़र संपादक का उपयोग करें।"
   },
   "emergencyAccess": {
     "smtpNotConfigured": "ईमेल कॉन्फ़िगर नहीं है। SMTP सेटअप होने तक आपातकालीन एक्सेस सक्षम नहीं किया जा सकता।",
@@ -470,7 +478,8 @@
     "tagKeyRequired": "एक टैग कुंजी (1-100 अक्षर) आवश्यक है",
     "fxFieldsIncomplete": "originalAmount और originalCurrencyCode एक साथ दिए जाने चाहिए",
     "fxRateRequired": "विदेशी मुद्रा लेनदेन के लिए एक धनात्मक विनिमय दर आवश्यक है",
-    "fxSignMismatch": "originalAmount और amount का चिह्न समान होना चाहिए"
+    "fxSignMismatch": "originalAmount और amount का चिह्न समान होना चाहिए",
+    "jointAccountMoveLocked": "साझा खाते के लेनदेन किसी अन्य खाते में नहीं ले जाए जा सकते।"
   },
   "users": {
     "userNotFound": "उपयोगकर्ता नहीं मिला",

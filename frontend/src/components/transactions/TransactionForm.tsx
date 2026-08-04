@@ -40,6 +40,7 @@ import {
 import { payeesApi } from '@/lib/payees';
 import { categoriesApi } from '@/lib/categories';
 import { accountsApi } from '@/lib/accounts';
+import { delegationApi, JointReferenceData } from '@/lib/delegation';
 import { tagsApi } from '@/lib/tags';
 import { Transaction, TransactionStatus } from '@/types/transaction';
 import { Payee } from '@/types/payee';
@@ -316,6 +317,37 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
   // entry currency differs from the account currency. Transfers already have
   // their own cross-currency handling, so the picker is hidden there.
   const selectedAccount = accounts.find((a) => a.id === watchedAccountId);
+
+  // ── Joint accounts ──
+  // A joint row belongs to the sharing owner, so the pickers must offer the
+  // OWNER's categories/payees (served by the grant-gated reference-data
+  // endpoint), and per-user extras (tags, splits, attachments) are hidden.
+  // The payload is kept with the account id that requested it, so a stale
+  // response for a previously selected account is never offered as current.
+  const selectedIsJoint = !!selectedAccount?.isJoint;
+  const [jointRef, setJointRef] = useState<{
+    accountId: string;
+    data: JointReferenceData;
+  } | null>(null);
+  useEffect(() => {
+    if (!selectedIsJoint || !watchedAccountId) return;
+    let cancelled = false;
+    delegationApi
+      .getJointReferenceData(watchedAccountId)
+      .then((data) => {
+        if (!cancelled) setJointRef({ accountId: watchedAccountId, data });
+      })
+      .catch((error) => {
+        logger.error(error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedIsJoint, watchedAccountId]);
+  const jointRefData =
+    selectedIsJoint && jointRef?.accountId === watchedAccountId
+      ? jointRef.data
+      : null;
   const accountCurrency =
     selectedAccount?.currencyCode || watchedCurrencyCode || defaultCurrency;
   const isForeign =
@@ -366,19 +398,40 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
     };
   }, [mode, watchedAccountId, transferToAccountId, accounts]);
 
+  // Joint context swaps the picker sources for the owner's lists. While the
+  // owner lists are still loading the pickers are empty rather than showing
+  // the caller's own (unusable) reference data.
+  const effectiveCategories = useMemo(
+    () =>
+      selectedIsJoint
+        ? ((jointRefData?.categories ?? []) as unknown as typeof categories)
+        : categories,
+    [selectedIsJoint, jointRefData, categories],
+  );
+  const effectivePayees = useMemo(
+    () =>
+      selectedIsJoint
+        ? ((jointRefData?.payees ?? []) as unknown as typeof payees)
+        : payees,
+    [selectedIsJoint, jointRefData, payees],
+  );
+
   // Memoize category tree to avoid rebuilding on every render
-  const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
+  const categoryTree = useMemo(
+    () => buildCategoryTree(effectiveCategories),
+    [effectiveCategories],
+  );
 
   // Memoize category options for combobox
   const categoryOptions = useMemo(() => categoryTree.map(({ category }) => {
     const parentCategory = category.parentId
-      ? categories.find(c => c.id === category.parentId)
+      ? effectiveCategories.find(c => c.id === category.parentId)
       : null;
     return {
       value: category.id,
       label: parentCategory ? `${parentCategory.name}: ${category.name}` : category.name,
     };
-  }), [categoryTree, categories]);
+  }), [categoryTree, effectiveCategories]);
 
   // Memoize tag options for multiselect
   const tagOptions = useMemo(() =>
@@ -996,6 +1049,19 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
   };
 
   const performSubmit = async (data: TransactionFormData) => {
+    // Joint accounts: a free-text payee would auto-create on the OWNER's
+    // ledger, which needs the delegation's payees-can-create capability. The
+    // server enforces this too; refusing here keeps the form's state intact.
+    if (
+      selectedIsJoint &&
+      mode !== 'transfer' &&
+      !data.payeeId &&
+      data.payeeName?.trim() &&
+      !jointRefData?.payeesCanCreate
+    ) {
+      toast.error(t('form.toasts.jointPayeeCreateNotGranted'));
+      return;
+    }
     setIsLoading(true);
     try {
       // Handle transfer mode
@@ -1301,8 +1367,14 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           <button
             type="button"
             onClick={() => handleModeChange('split')}
-            disabled={splitDisabled}
-            title={splitDisabled ? t('form.splitDisabledDuringTour') : undefined}
+            disabled={splitDisabled || selectedIsJoint}
+            title={
+              selectedIsJoint
+                ? t('form.jointSplitDisabled')
+                : splitDisabled
+                  ? t('form.splitDisabledDuringTour')
+                  : undefined
+            }
             className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               mode === 'split'
                 ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
@@ -1349,7 +1421,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           accounts={accounts}
           selectedPayeeId={selectedPayeeId}
           selectedCategoryId={selectedCategoryId}
-          payees={payees}
+          payees={effectivePayees}
           payeeAliasMap={payeeAliasMap}
           categoryOptions={categoryOptions}
           handlePayeeChange={handlePayeeChange}
@@ -1381,7 +1453,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           watchedPayeeName={watchedPayeeName}
           accounts={accounts}
           selectedPayeeId={selectedPayeeId}
-          payees={payees}
+          payees={effectivePayees}
           handlePayeeChange={handlePayeeChange}
           handlePayeeCreate={handlePayeeCreate}
           handleAmountChange={isForeign ? handleForeignAmountChange : handleSplitTotalChange}
@@ -1405,7 +1477,9 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           watchedAmount={watchedAmount}
           watchedCurrencyCode={watchedCurrencyCode}
           accounts={accounts}
-          transferCandidates={transferCandidates}
+          transferCandidates={transferCandidates.filter(
+            (c) => !accounts.some((a) => a.id === c.id),
+          )}
           setValue={setValue}
           transferToAccountId={transferToAccountId}
           setTransferToAccountId={setTransferToAccountId}
@@ -1416,7 +1490,7 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
           setTransferPayeeId={setTransferPayeeId}
           setTransferPayeeName={setTransferPayeeName}
           crossCurrencyInfo={crossCurrencyInfo}
-          payees={payees}
+          payees={effectivePayees}
           payeeAliasMap={payeeAliasMap}
           categoryOptions={categoryOptions}
           selectedCategoryId={selectedCategoryId}
@@ -1461,16 +1535,18 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
         </div>
       )}
 
-      {/* Tags */}
-      <MultiSelect
-        label={t('form.fields.tags')}
-        options={tagOptions}
-        value={selectedTagIds}
-        onChange={setSelectedTagIds}
-        placeholder={t('form.placeholders.selectTags')}
-        onCreateNew={() => setShowTagForm(true)}
-        createNewLabel={t('form.placeholders.createNewTag')}
-      />
+      {/* Tags (per-user, so hidden on a joint account's owner-owned rows) */}
+      {!selectedIsJoint && (
+        <MultiSelect
+          label={t('form.fields.tags')}
+          options={tagOptions}
+          value={selectedTagIds}
+          onChange={setSelectedTagIds}
+          placeholder={t('form.placeholders.selectTags')}
+          onCreateNew={() => setShowTagForm(true)}
+          createNewLabel={t('form.placeholders.createNewTag')}
+        />
+      )}
 
       {/* Tag Creation Modal */}
       <Modal isOpen={showTagForm} onClose={() => setShowTagForm(false)} maxWidth="lg" allowOverflow pushHistory className="p-6">
@@ -1514,8 +1590,9 @@ export function TransactionForm({ transaction, duplicateFrom, defaultAccountId, 
 
       {/* Attachments. When editing, they are managed directly against the
           saved transaction; when creating, files are staged client-side and
-          uploaded once the transaction has been created. */}
-      {transaction ? (
+          uploaded once the transaction has been created. Attachments are
+          per-user, so they are not offered on a joint account's rows. */}
+      {selectedIsJoint ? null : transaction ? (
         <AttachmentsSection transactionId={transaction.id} />
       ) : (
         <AttachmentsSection

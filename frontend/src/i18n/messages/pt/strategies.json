@@ -47,6 +47,9 @@
       "backtest": "Backtest",
       "settings": "Definições"
     },
+    "stale": {
+      "updating": "A atualizar — os valores abaixo são da seleção anterior"
+    },
     "roles": {
       "US_EQUITY": "S&P 500",
       "EX_US_EQUITY": "Mercados desenvolvidos ex-EUA",

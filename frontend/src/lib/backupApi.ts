@@ -118,7 +118,14 @@ async function normalizeBlobError(error: unknown): Promise<never> {
 
 export interface BackupEncryptionStatus {
   enabled: boolean;
-  needsBackupPassword: boolean;
+  /**
+   * Whether the user decides this. False for local-auth accounts: the server
+   * keeps a copy of the password they typed at sign-in and encrypts with it, so
+   * there is nothing for them to turn on or off. True for OIDC accounts, which
+   * have no password of ours and must set a dedicated backup password (or leave
+   * their backups unencrypted).
+   */
+  manageable: boolean;
 }
 
 // Error code surfaced by the backend when an encrypted backup can't be
@@ -245,10 +252,8 @@ export const backupApi = {
     return response.data;
   },
 
-  enableLocalEncryption: async (password: string): Promise<void> => {
-    await apiClient.post('/backup/encryption/enable-local', { password });
-  },
-
+  // Set/clear the dedicated backup password. OIDC accounts only -- the backend
+  // rejects a local-auth caller, whose password is recaptured at every login.
   setBackupPassword: async (backupPassword: string): Promise<void> => {
     await apiClient.post('/backup/encryption/backup-password', {
       backupPassword,

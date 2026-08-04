@@ -259,6 +259,7 @@
   },
   "validation": {
     "accountRequired": "Konto ist erforderlich",
-    "dateRequired": "Datum ist erforderlich"
+    "dateRequired": "Datum ist erforderlich",
+    "acquisitionPriceRequired": "Der Preis pro Anteil ist erforderlich und muss größer als null sein. Verwenden Sie „Anteile hinzufügen“ für Anteile, die ohne bekannte Kosten erworben wurden."
   }
 }

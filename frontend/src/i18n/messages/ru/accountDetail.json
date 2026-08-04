@@ -6,7 +6,10 @@
     "back": "Назад к счетам",
     "switchAccount": "Перейти к другому счёту",
     "switchPlaceholder": "Фильтр счетов...",
-    "switchNoMatches": "Нет подходящих счетов"
+    "switchNoMatches": "Нет подходящих счетов",
+    "jointBadge": "Совместный",
+    "jointSharedBy": "Доступ предоставил(а) {owner}",
+    "jointSharedWith": "Открыт доступ для {count, plural, one {# человека} few {# человек} many {# человек} other {# человека}}"
   },
   "loading": "Загрузка сведений о счёте...",
   "error": {

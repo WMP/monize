@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@/test/render';
 import { InfoTooltip } from './InfoTooltip';
+import { Modal, __resetModalStateForTesting } from './Modal';
 
 describe('InfoTooltip', () => {
   it('renders tooltip text', () => {
@@ -98,5 +99,84 @@ describe('InfoTooltip', () => {
 
     fireEvent.keyDown(trigger, { key: 'Escape' });
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
+  describe('Escape only belongs to this component while a popover is up', () => {
+    // The regression: `dismissOnEscape` stopped propagation unconditionally.
+    // `Modal` closes on a document-level keydown listener, which a stopped
+    // event never reaches, so with focus on any tooltip trigger inside any
+    // modal the first Escape dismissed the tooltip and every Escape after it
+    // was eaten too -- the modal could not be closed from the keyboard.
+    const listeners: Array<(event: KeyboardEvent) => void> = [];
+
+    function watchDocumentEscapes() {
+      const seen = vi.fn();
+      const listener = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') seen();
+      };
+      document.addEventListener('keydown', listener);
+      listeners.push(listener);
+      return seen;
+    }
+
+    afterEach(() => {
+      listeners.splice(0).forEach((listener) => {
+        document.removeEventListener('keydown', listener);
+      });
+      __resetModalStateForTesting();
+    });
+
+    it('lets Escape through when the portal popover is not showing', () => {
+      const reachedDocument = watchDocumentEscapes();
+      render(<InfoTooltip text="Quiet help" usePortal />);
+
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Quiet help' }), {
+        key: 'Escape',
+      });
+
+      expect(reachedDocument).toHaveBeenCalledTimes(1);
+    });
+
+    it('claims the first Escape and releases every one after it', () => {
+      const reachedDocument = watchDocumentEscapes();
+      render(<InfoTooltip text="Portal help" usePortal />);
+      const trigger = screen.getByRole('button', { name: 'Portal help' });
+
+      fireEvent.focus(trigger);
+      fireEvent.keyDown(trigger, { key: 'Escape' });
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+      expect(reachedDocument).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(trigger, { key: 'Escape' });
+      expect(reachedDocument).toHaveBeenCalledTimes(1);
+    });
+
+    it('releases Escape once the CSS popover has been dismissed', () => {
+      const reachedDocument = watchDocumentEscapes();
+      render(<InfoTooltip text="Inline help" />);
+      const trigger = screen.getByRole('button', { name: 'Inline help' });
+
+      fireEvent.keyDown(trigger, { key: 'Escape' });
+      expect(reachedDocument).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(trigger, { key: 'Escape' });
+      expect(reachedDocument).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves a surrounding Modal closable from the keyboard', () => {
+      const onClose = vi.fn();
+      render(
+        <Modal isOpen onClose={onClose}>
+          <InfoTooltip text="Modal help" />
+        </Modal>,
+      );
+      const trigger = screen.getByRole('button', { name: 'Modal help' });
+
+      fireEvent.keyDown(trigger, { key: 'Escape' });
+      expect(onClose).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(trigger, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
   });
 });

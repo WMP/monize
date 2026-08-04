@@ -259,6 +259,7 @@
   },
   "validation": {
     "accountRequired": "Konto jest wymagane",
-    "dateRequired": "Data jest wymagana"
+    "dateRequired": "Data jest wymagana",
+    "acquisitionPriceRequired": "Cena za jednostkę jest wymagana i musi być większa od zera. Dla jednostek nabytych bez znanego kosztu użyj „Dodaj udziały”."
   }
 }

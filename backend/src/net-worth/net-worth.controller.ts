@@ -17,12 +17,13 @@ import {
   ApiQuery,
 } from "@nestjs/swagger";
 import { assertStringParam } from "../common/query-param-utils";
-import { NetWorthService } from "./net-worth.service";
+import { NetWorthService, JointNetWorthScope } from "./net-worth.service";
 import {
   AllowDelegate,
   DelegateRequiresSection,
 } from "../delegation/decorators/delegate-access.decorator";
 import { DelegationService } from "../delegation/delegation.service";
+import { JointAccountsService } from "../delegation/joint-accounts.service";
 
 // A UUID that cannot match any real account: forces a naturally-empty,
 // correctly-shaped result for an acting delegate with no readable accounts
@@ -37,7 +38,29 @@ export class NetWorthController {
   constructor(
     private readonly netWorthService: NetWorthService,
     private readonly delegationService: DelegationService,
+    private readonly jointAccounts: JointAccountsService,
   ) {}
+
+  /**
+   * The caller's joint accounts minus their net-worth exclusions -- the N1
+   * scope for native net worth. Undefined while acting (the delegate sees
+   * the owner's own-context numbers) and when the caller has none, which
+   * keeps those paths byte-identical.
+   */
+  private async jointScopeFor(req: {
+    user: { id: string; realUserId?: string; isActing?: boolean };
+  }): Promise<JointNetWorthScope | undefined> {
+    if (req.user.isActing) return undefined;
+    const realUserId = req.user.realUserId ?? req.user.id;
+    const [grants, exclusions] = await Promise.all([
+      this.jointAccounts.jointGrantsFor(realUserId),
+      this.jointAccounts.getNetWorthExclusions(realUserId),
+    ]);
+    const accounts = [...grants.entries()]
+      .filter(([accountId]) => !exclusions.has(accountId))
+      .map(([accountId, g]) => ({ accountId, ownerUserId: g.ownerUserId }));
+    return accounts.length > 0 ? { accounts } : undefined;
+  }
 
   /**
    * For an acting delegate, restrict the account-id filter to the accounts
@@ -66,7 +89,7 @@ export class NetWorthController {
   @ApiQuery({ name: "endDate", required: false, example: "2024-12-31" })
   @ApiResponse({ status: 200, description: "Monthly net worth data" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
-  getMonthlyNetWorth(
+  async getMonthlyNetWorth(
     @Request() req,
     @Query("startDate") startDate?: string,
     @Query("endDate") endDate?: string,
@@ -84,6 +107,7 @@ export class NetWorthController {
       req.user.id,
       startDate,
       endDate,
+      await this.jointScopeFor(req),
     );
   }
 

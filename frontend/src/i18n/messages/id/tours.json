@@ -35,12 +35,24 @@
   "settings": {
     "title": "Tur berpandu",
     "description": "Pelajari fitur-fitur aplikasi langkah demi langkah.",
-    "showList": "Tampilkan tur ({count})",
-    "hideList": "Sembunyikan tur",
+    "backLink": "Kembali ke Pengaturan",
+    "pageTitle": "Tur berpandu",
+    "pageSubtitle": "Semua tur yang ditawarkan Monize dalam satu tempat. Mulai kapan saja — Anda bisa keluar dari tur dengan Escape dan melanjutkannya lagi dari sini.",
+    "meta": "{steps} · {status}",
+    "metaWithRelease": "{steps} · {release} · {status}",
+    "stepCount": "{count, plural, other {# langkah}}",
+    "releaseLabel": "Ditambahkan di {version}",
+    "requirementsLoading": "Memeriksa apakah Anda bisa mengikuti tur ini…",
+    "requires": {
+      "transactionEntry": "Tambahkan akun terlebih dahulu — tur ini memandu pencatatan transaksi.",
+      "securitiesExist": "Tambahkan sekuritas terlebih dahulu — tur ini membuka salah satunya dari daftar sekuritas Anda."
+    },
     "start": "Mulai",
     "restart": "Ulangi",
     "statusNotViewed": "Belum dilihat",
     "statusDismissed": "Keluar lebih awal",
+    "resetHeading": "Mulai dari awal",
+    "resetDescription": "Hapus semua tur yang tercatat agar ditawarkan lagi dari dasbor dan setelah pembaruan.",
     "reset": "Atur ulang progres tur",
     "resetSuccess": "Progres tur telah diatur ulang.",
     "resetError": "Progres tur gagal diatur ulang. Silakan coba lagi."

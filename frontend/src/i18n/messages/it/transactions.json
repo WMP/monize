@@ -412,7 +412,8 @@
       "categoryCreateFailed": "Creazione categoria non riuscita",
       "tagCreated": "Etichetta \"{name}\" creata",
       "fxRateRequired": "Inserisci un tasso di cambio o l'importo convertito prima di salvare una transazione in valuta estera.",
-      "attachmentsUploadFailed": "Transazione salvata, ma il caricamento di {count} allegato/i non è riuscito"
+      "attachmentsUploadFailed": "Transazione salvata, ma il caricamento di {count} allegato/i non è riuscito",
+      "jointPayeeCreateNotGranted": "Il proprietario del conto non ti ha concesso il permesso di creare beneficiari. Scegli uno dei suoi beneficiari esistenti."
     },
     "ariaHistory": "Mostra transazioni recenti",
     "ariaHistoryForPayee": "Mostra transazioni recenti per questo beneficiario",
@@ -438,7 +439,8 @@
       "rateCaption": "1 {from} = {rate} {to} ({date})",
       "feeCaption": "Include una commissione per transazione estera del {percent}% ({fee}).",
       "totalInCurrency": "Totale in {currency}"
-    }
+    },
+    "jointSplitDisabled": "Le transazioni suddivise in un conto condiviso possono essere gestite solo dal proprietario"
   },
   "splitEditor": {
     "header": "Dettagli suddivisione",

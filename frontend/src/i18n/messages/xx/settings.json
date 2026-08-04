@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "[XX-Automatic Backup-XX]",
     "description": "[XX-Automatically back up your data to a folder on a schedule. Since Monize runs in Docker, you must map a host folder into the container as a volume (e.g., -v /host/backups:/data/backups).-XX]",
+    "adminManagedNote": "[XX-Only administrators can change these settings. Every other user is backed up automatically on the same schedule and retention policy, into a folder of their own.-XX]",
     "loadingText": "[XX-Loading...-XX]",
     "enableLabel": "[XX-Enable automatic backups-XX]",
     "backupFolderLabel": "[XX-Backup Folder-XX]",
     "backupFolderPlaceholder": "[XX-/data/backups-XX]",
+    "perUserFolderHelp": "[XX-Each user's backups go in their own folder inside this one, named for their user ID.-XX]",
+    "perUserFolderHelpWithPath": "[XX-Each user's backups go in their own folder inside this one, named for their user ID. Yours: {path}-XX]",
     "browseButton": "[XX-Browse...-XX]",
     "validateButton": "[XX-Validate-XX]",
     "validatingButton": "[XX-Validating...-XX]",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "[XX-Backup Encryption-XX]",
       "descriptionOidc": "[XX-Encrypt manual and automatic backups with a dedicated backup password you set here. The password is required to restore.-XX]",
-      "descriptionLocal": "[XX-Encrypt manual and automatic backups with your login password. The password is required to restore.-XX]",
       "loading": "[XX-Loading...-XX]",
       "enabledBadge": "[XX-Enabled-XX]",
       "changePasswordButton": "[XX-Change Backup Password-XX]",
       "disableButton": "[XX-Disable-XX]",
       "setPasswordButton": "[XX-Set Backup Password-XX]",
-      "enableEncryptedButton": "[XX-Enable Encrypted Backups-XX]",
       "setupModal": {
         "titleOidc": "[XX-Set Backup Password-XX]",
-        "titleLocal": "[XX-Enable Encrypted Backups-XX]",
-        "descriptionOidc": "[XX-Choose a password that will be used to encrypt your backups. Save it somewhere safe -- you will need it to restore.-XX]",
-        "descriptionLocal": "[XX-Confirm your login password. It will be used to encrypt all backups (manual and automatic).-XX]",
+        "descriptionOidc": "[XX-Choose a password that will be used to encrypt your backups. Save it somewhere safe, because you will need it to restore.-XX]",
         "placeholderOidc": "[XX-New backup password (12+ chars)-XX]",
-        "placeholderLocal": "[XX-Your login password-XX]",
         "savingButton": "[XX-Saving...-XX]",
         "confirmButton": "[XX-Confirm-XX]"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "[XX-Failed to revoke delegate-XX]",
       "resetPasswordFailed": "[XX-Failed to reset password-XX]",
       "copyFailed": "[XX-Could not copy to clipboard-XX]"
-    }
+    },
+    "jointLabel": "[XX-{count, plural, one {# joint account} other {# joint accounts}}-XX]"
   },
   "delegateAccessModal": {
     "title": "[XX-Edit access-XX]",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "[XX-No accounts to grant.-XX]",
-      "grantAll": "[XX-Grant all-XX]"
+      "grantAll": "[XX-Grant all-XX]",
+      "jointRequiresFullAccount": "[XX-Joint accounts can only be shared with users who have their own Monize account-XX]"
     },
     "shared": {
       "description": "[XX-READ of payees, categories and tags is always allowed. These control create/edit/delete.-XX]"
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "[XX-Settings sections-XX]",
     "profile": "[XX-Profile-XX]",
     "preferences": "[XX-Preferences-XX]",
+    "tours": "[XX-Guided Tours-XX]",
     "notifications": "[XX-Notifications-XX]",
     "security": "[XX-Security-XX]",
     "sharedAccess": "[XX-Shared Access-XX]",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "[XX-Shared Access-XX]",
       "description": "[XX-Grant another person granular access to specific accounts.-XX]"
+    },
+    "toursCard": {
+      "title": "[XX-Guided Tours-XX]",
+      "description": "[XX-Every walkthrough Monize offers, with what you have already seen. Start or retake any of them.-XX]"
     },
     "emergencyAccessCard": {
       "title": "[XX-Emergency Access-XX]",

@@ -259,6 +259,7 @@
   },
   "validation": {
     "accountRequired": "科目為必填",
-    "dateRequired": "日期為必填"
+    "dateRequired": "日期為必填",
+    "acquisitionPriceRequired": "每股價格為必填項，且必須大於零。對於成本未知的股數，請使用「增加股數」。"
   }
 }

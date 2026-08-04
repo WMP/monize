@@ -439,10 +439,13 @@
   "autoBackup": {
     "heading": "Automatisches Backup",
     "description": "Sichern Sie Ihre Daten automatisch nach einem Zeitplan in einem Ordner. Da Monize in Docker läuft, müssen Sie einen Host-Ordner als Volume in den Container einbinden (z. B. -v /host/backups:/data/backups).",
+    "adminManagedNote": "Nur Administratoren können diese Einstellungen ändern. Alle anderen Benutzer werden automatisch nach demselben Zeitplan und derselben Aufbewahrungsrichtlinie gesichert, jeweils in einem eigenen Ordner.",
     "loadingText": "Wird geladen...",
     "enableLabel": "Automatische Backups aktivieren",
     "backupFolderLabel": "Backup-Ordner",
     "backupFolderPlaceholder": "/data/backups",
+    "perUserFolderHelp": "Die Sicherungen jedes Benutzers liegen in einem eigenen Unterordner dieses Ordners, benannt nach seiner Benutzer-ID.",
+    "perUserFolderHelpWithPath": "Die Sicherungen jedes Benutzers liegen in einem eigenen Unterordner dieses Ordners, benannt nach seiner Benutzer-ID. Ihrer: {path}",
     "browseButton": "Durchsuchen...",
     "validateButton": "Validieren",
     "validatingButton": "Wird validiert...",
@@ -501,20 +504,15 @@
     "encryption": {
       "heading": "Backup-Verschlüsselung",
       "descriptionOidc": "Manuelle und automatische Backups mit einem hier festgelegten Backup-Passwort verschlüsseln. Das Passwort ist für die Wiederherstellung erforderlich.",
-      "descriptionLocal": "Manuelle und automatische Backups mit Ihrem Anmeldepasswort verschlüsseln. Das Passwort ist für die Wiederherstellung erforderlich.",
       "loading": "Wird geladen...",
       "enabledBadge": "Aktiviert",
       "changePasswordButton": "Backup-Passwort ändern",
       "disableButton": "Deaktivieren",
       "setPasswordButton": "Backup-Passwort festlegen",
-      "enableEncryptedButton": "Verschlüsselte Backups aktivieren",
       "setupModal": {
         "titleOidc": "Backup-Passwort festlegen",
-        "titleLocal": "Verschlüsselte Backups aktivieren",
         "descriptionOidc": "Wählen Sie ein Passwort, das zum Verschlüsseln Ihrer Backups verwendet wird. Bewahren Sie es sicher auf -- Sie benötigen es für die Wiederherstellung.",
-        "descriptionLocal": "Bestätigen Sie Ihr Anmeldepasswort. Es wird zur Verschlüsselung aller Backups (manuell und automatisch) verwendet.",
         "placeholderOidc": "Neues Backup-Passwort (mind. 12 Zeichen)",
-        "placeholderLocal": "Ihr Anmeldepasswort",
         "savingButton": "Wird gespeichert...",
         "confirmButton": "Bestätigen"
       },
@@ -625,7 +623,8 @@
       "revokeFailed": "Widerruf des Delegierten fehlgeschlagen",
       "resetPasswordFailed": "Passwort konnte nicht zurückgesetzt werden",
       "copyFailed": "Kopieren in die Zwischenablage nicht möglich"
-    }
+    },
+    "jointLabel": "{count, plural, one {# Gemeinschaftskonto} other {# Gemeinschaftskonten}}"
   },
   "delegateAccessModal": {
     "title": "Zugriff bearbeiten",
@@ -639,7 +638,8 @@
     },
     "accounts": {
       "noAccounts": "Keine Konten zum Gewähren.",
-      "grantAll": "Alle gewähren"
+      "grantAll": "Alle gewähren",
+      "jointRequiresFullAccount": "Gemeinschaftskonten können nur mit Benutzern geteilt werden, die ein eigenes Monize-Konto haben"
     },
     "shared": {
       "description": "LESEN von Zahlungsempfängern, Kategorien und Tags ist immer erlaubt. Diese steuern Erstellen/Bearbeiten/Löschen."
@@ -654,6 +654,7 @@
     "sectionsAriaLabel": "Einstellungsbereiche",
     "profile": "Profil",
     "preferences": "Einstellungen",
+    "tours": "Geführte Touren",
     "notifications": "Benachrichtigungen",
     "security": "Sicherheit",
     "sharedAccess": "Gemeinsamer Zugriff",
@@ -675,6 +676,10 @@
     "sharedAccessCard": {
       "title": "Gemeinsamer Zugriff",
       "description": "Einer anderen Person gezielten Zugriff auf bestimmte Konten gewähren."
+    },
+    "toursCard": {
+      "title": "Geführte Touren",
+      "description": "Alle Rundgänge, die Monize bietet, samt dem, was Sie bereits gesehen haben. Starten oder wiederholen Sie eine beliebige Tour."
     },
     "emergencyAccessCard": {
       "title": "Notfallzugang",

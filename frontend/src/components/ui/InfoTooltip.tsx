@@ -72,10 +72,21 @@ export function InfoTooltip({
 
   const hidePortal = useCallback(() => setPortalPos(null), []);
 
-  /** Escape closes the help without taking focus away from the trigger. */
+  /**
+   * Escape closes the help without taking focus away from the trigger.
+   *
+   * The key is claimed only while a popover is actually up. `Modal` closes on a
+   * document-level keydown listener, which a stopped event never reaches, so
+   * stopping propagation unconditionally ate every Escape after the first for
+   * as long as a tooltip trigger held focus -- one dismissed the tooltip
+   * (correct, WCAG 1.4.13) and the modal around it could then not be closed
+   * from the keyboard at all. With nothing showing, this component has no claim
+   * on the key and lets it through.
+   */
   const dismissOnEscape = useCallback(
-    (event: KeyboardEvent<HTMLButtonElement>) => {
+    (event: KeyboardEvent<HTMLButtonElement>, showing: boolean) => {
       if (event.key !== 'Escape') return;
+      if (!showing) return;
       event.stopPropagation();
       hidePortal();
       setDismissed(true);
@@ -96,7 +107,11 @@ export function InfoTooltip({
         onMouseLeave={hidePortal}
         onFocus={showPortal}
         onBlur={hidePortal}
-        onKeyDown={dismissOnEscape}
+        // A help icon acts on itself. Inside a clickable row or card the click
+        // would otherwise bubble and navigate away from the thing being
+        // explained -- the same rule the row's other inner controls follow.
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => dismissOnEscape(event, portalPos !== null)}
         className={triggerClasses}
       >
         <QuestionMarkCircleIcon className={iconClassName} aria-hidden="true" />
@@ -140,7 +155,12 @@ export function InfoTooltip({
     <button
       type="button"
       aria-label={text}
-      onKeyDown={dismissOnEscape}
+      // A keydown on this button means it holds focus, so `group-focus` has the
+      // popover open unless Escape already closed it -- `dismissed` is the only
+      // thing that can be false about "showing" here.
+      onKeyDown={(event) => dismissOnEscape(event, !dismissed)}
+      // As above: explaining a row is not activating it.
+      onClick={(event) => event.stopPropagation()}
       onMouseEnter={() => setDismissed(false)}
       onFocus={() => setDismissed(false)}
       className={`${triggerClasses} group/tip`}

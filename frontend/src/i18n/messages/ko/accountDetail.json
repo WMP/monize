@@ -6,7 +6,10 @@
     "back": "계정으로 돌아가기",
     "switchAccount": "다른 계좌로 이동",
     "switchPlaceholder": "계좌 검색...",
-    "switchNoMatches": "일치하는 계좌가 없습니다"
+    "switchNoMatches": "일치하는 계좌가 없습니다",
+    "jointBadge": "공동",
+    "jointSharedBy": "{owner} 님이 공유",
+    "jointSharedWith": "{count, plural, other {#명}}과 공유됨"
   },
   "loading": "계정 상세 정보를 불러오는 중...",
   "error": {

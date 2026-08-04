@@ -259,6 +259,7 @@
   },
   "validation": {
     "accountRequired": "Il conto è obbligatorio",
-    "dateRequired": "La data è obbligatoria"
+    "dateRequired": "La data è obbligatoria",
+    "acquisitionPriceRequired": "Il prezzo per azione è obbligatorio e deve essere maggiore di zero. Usa «Aggiungi azioni» per azioni acquisite senza un costo noto."
   }
 }

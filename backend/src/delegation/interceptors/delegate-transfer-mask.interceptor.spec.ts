@@ -104,6 +104,41 @@ describe("DelegateTransferMaskInterceptor", () => {
     expect(out[0].payeeName).toBe("Transfer to Owner Savings");
   });
 
+  it("joint revoke transition: the same payload masks once the readable set loses the account", async () => {
+    // A joint grant implies can_read, so a connected joint counterpart is in
+    // the readable set and stays unmasked; revoking the grant shrinks the set
+    // and the identical payload comes back masked -- no code path in between.
+    const bodyFor = () => ({
+      id: "t1",
+      userId: "user-1",
+      isTransfer: true,
+      payeeName: "Transfer to Household",
+      linkedTransaction: {
+        userId: "owner-2",
+        accountId: "joint-1",
+        account: { id: "joint-1", name: "Household", currentBalance: 500 },
+      },
+    });
+
+    crossOwnerAccess.readableAccountIdSetFor.mockResolvedValue(
+      new Set(["a1", "joint-1"]),
+    );
+    const connected: any = await lastValueFrom(
+      interceptor.intercept(ctxFor(normalUser), handlerOf(bodyFor())),
+    );
+    expect(connected.linkedTransaction.account.name).toBe("Household");
+
+    crossOwnerAccess.readableAccountIdSetFor.mockResolvedValue(new Set(["a1"]));
+    const revoked: any = await lastValueFrom(
+      interceptor.intercept(ctxFor(normalUser), handlerOf(bodyFor())),
+    );
+    expect(revoked.linkedTransaction.account).toEqual({
+      id: "joint-1",
+      name: "Hidden account",
+    });
+    expect(revoked.payeeName).toBe("Transfer to Hidden account");
+  });
+
   it("masks a transfer counterpart the acting delegate cannot READ (unchanged behavior)", async () => {
     crossOwnerAccess.readableAccountIdSetFor.mockResolvedValue(new Set(["a1"]));
     const body = {

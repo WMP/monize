@@ -1440,6 +1440,7 @@ export class AccountsService {
     endDate?: string,
     accountIds?: string[],
     allTime = false,
+    jointAccountIds: string[] = [],
   ): Promise<
     Array<{
       date: string;
@@ -1450,6 +1451,10 @@ export class AccountsService {
   > {
     const accountIdsParam =
       accountIds && accountIds.length > 0 ? accountIds : null;
+    // Joint accounts (already authorized by the controller): widen the
+    // ownership predicate to include these exact ids. Empty for acting
+    // context and non-delegates, which keeps the query byte-equivalent.
+    const jointIdsParam = jointAccountIds;
 
     let end = endDate || todayYMD();
 
@@ -1462,12 +1467,12 @@ export class AccountsService {
           `SELECT MAX(t.transaction_date)::TEXT as max_date
          FROM transactions t
          JOIN accounts a ON a.id = t.account_id
-         WHERE a.user_id = $1
+         WHERE (a.user_id = $1 OR a.id = ANY($4::UUID[]))
            AND ($2::UUID[] IS NULL OR t.account_id = ANY($2::UUID[]))
            AND (t.status IS NULL OR t.status != 'VOID')
            AND t.parent_transaction_id IS NULL
            AND t.transaction_date > $3`,
-          [userId, accountIdsParam, end],
+          [userId, accountIdsParam, end, jointIdsParam],
         ),
       );
       const maxFutureDate = maxDateResult?.[0]?.max_date;
@@ -1499,11 +1504,11 @@ export class AccountsService {
                 MAX(t.transaction_date)::TEXT as max_date
          FROM transactions t
          JOIN accounts a ON a.id = t.account_id
-         WHERE a.user_id = $1
+         WHERE (a.user_id = $1 OR a.id = ANY($3::UUID[]))
            AND ($2::UUID[] IS NULL OR t.account_id = ANY($2::UUID[]))
            AND (t.status IS NULL OR t.status != 'VOID')
            AND t.parent_transaction_id IS NULL`,
-          [userId, accountIdsParam],
+          [userId, accountIdsParam, jointIdsParam],
         ),
       );
       start = range?.[0]?.min_date || oneYearAgo();
@@ -1540,7 +1545,7 @@ export class AccountsService {
         `WITH target_accounts AS (
           SELECT id, opening_balance, currency_code
           FROM accounts
-          WHERE user_id = $1
+          WHERE (user_id = $1 OR id = ANY($6::UUID[]))
             AND ($2::UUID[] IS NULL OR id = ANY($2::UUID[]))
         ),
         pre_period AS (
@@ -1592,7 +1597,7 @@ export class AccountsService {
         FROM numbered
         WHERE $5::int <= 1 OR idx % $5::int = 0 OR idx = cnt - 1
         ORDER BY date, account_id`,
-        [userId, accountIdsParam, start, end, step],
+        [userId, accountIdsParam, start, end, step, jointIdsParam],
       ),
     );
 

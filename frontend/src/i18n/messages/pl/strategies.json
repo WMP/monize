@@ -47,6 +47,9 @@
       "backtest": "Backtest",
       "settings": "Ustawienia"
     },
+    "stale": {
+      "updating": "Aktualizowanie — poniższe dane pochodzą z poprzedniego wyboru"
+    },
     "roles": {
       "US_EQUITY": "S&P 500",
       "EX_US_EQUITY": "Rynki rozwinięte poza USA",

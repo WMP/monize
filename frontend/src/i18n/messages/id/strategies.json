@@ -47,6 +47,9 @@
       "backtest": "Backtest",
       "settings": "Pengaturan"
     },
+    "stale": {
+      "updating": "Memperbarui — angka di bawah berasal dari pilihan sebelumnya"
+    },
     "roles": {
       "US_EQUITY": "S&P 500",
       "EX_US_EQUITY": "Pasar maju di luar AS",

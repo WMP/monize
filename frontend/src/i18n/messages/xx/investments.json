@@ -259,6 +259,7 @@
   },
   "validation": {
     "accountRequired": "[XX-Account is required-XX]",
-    "dateRequired": "[XX-Date is required-XX]"
+    "dateRequired": "[XX-Date is required-XX]",
+    "acquisitionPriceRequired": "[XX-Price per share is required and must be greater than zero. Use Add Shares for shares acquired without a known cost.-XX]"
   }
 }

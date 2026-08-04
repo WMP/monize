@@ -3,6 +3,7 @@ import { AutoBackupService } from "../backup/auto-backup.service";
 import { EmergencyAccessMonitorService } from "../emergency-access/emergency-access-monitor.service";
 import { AccountDelegateGuard } from "../delegation/guards/account-delegate.guard";
 import { RefreshToken } from "./entities/refresh-token.entity";
+import { User } from "../users/entities/user.entity";
 import { AutoBackupSettings } from "../backup/entities/auto-backup-settings.entity";
 import { EmergencyAccessSettings } from "../emergency-access/entities/emergency-access-settings.entity";
 import { getRequestContext } from "../common/request-context";
@@ -47,13 +48,17 @@ describe("R7 modules RLS context smoke (real withScopedDb)", () => {
 
   it("handleAutoBackupCron reads its due-settings fan-out under the system context", async () => {
     const settingsRepo = { find: jest.fn().mockResolvedValue([]) };
+    const usersRepo = { find: jest.fn().mockResolvedValue([]) };
     const { dataSource } = createScopedDbMocks([
       [AutoBackupSettings, settingsRepo],
+      [User, usersRepo],
     ]);
 
     const service = new AutoBackupService(
       dataSource as never,
       {} as never,
+      {} as never,
+      { isDemo: false } as never,
       { get: jest.fn() } as never,
     );
 

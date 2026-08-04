@@ -110,11 +110,19 @@ export function GemScenarioSwitcher({
     [scenarios],
   );
 
+  /** A name the server will accept -- it refuses a blank one. */
+  const trimmedName = newName.trim();
+  const canCreate = trimmedName.length > 0 && !busy;
+
   const submitCreate = async () => {
+    // The button is disabled without a name rather than the server round-trip
+    // answering with a generic toast, which said nothing about which field was
+    // wrong.
+    if (!canCreate) return;
     // Only clear and close on success: a failed create leaves the name in the
     // field and the dialog open, so retrying is one click rather than typing
     // it again.
-    if ((await onCreate(newName.trim())) === "failed") return;
+    if ((await onCreate(trimmedName)) === "failed") return;
     setNewName("");
     setCreating(false);
   };
@@ -177,6 +185,14 @@ export function GemScenarioSwitcher({
           label={t("gem.scenarios.nameLabel")}
           value={newName}
           onChange={(event) => setNewName(event.target.value)}
+          // Enter submits, as it would in a form. This dialog is not a `<form>`
+          // -- it lives inside the report page's own -- so the key is handled
+          // here rather than inherited.
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            void submitCreate();
+          }}
           placeholder={t("gem.scenarios.namePlaceholder")}
           maxLength={100}
         />
@@ -188,7 +204,7 @@ export function GemScenarioSwitcher({
           >
             {t("gem.scenarios.cancel")}
           </Button>
-          <Button type="button" onClick={submitCreate} disabled={busy}>
+          <Button type="button" onClick={submitCreate} disabled={!canCreate}>
             {t("gem.scenarios.createConfirm")}
           </Button>
         </div>
