@@ -125,6 +125,7 @@ export class RateChangeInferenceService {
       userId,
       accountId,
       transactions,
+      todayYMD(),
     );
     const consolidated = this.detector.consolidatePaymentsByDate(rawPayments);
     // Whether each individual payment date already carried split-leg interest

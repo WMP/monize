@@ -185,6 +185,22 @@ describe("RateChangeInferenceService", () => {
     expect(initial.newPaymentAmount).toBe(2500);
   });
 
+  it("passes today's date as buildPaymentRecords' asOfDate, so a future-dated linked source can't leak into an observation (REV-20260803-024, fifth reopen wiring)", async () => {
+    const { records, balanceMap } = generateHistory(400000, [
+      { annualRate: 5.5, payments: 24, paymentAmount: 2500 },
+    ]);
+    setHistory(records, balanceMap);
+
+    await service.detectAndPersist(userId, accountId);
+
+    expect(detector.buildPaymentRecords).toHaveBeenCalledWith(
+      userId,
+      accountId,
+      expect.anything(),
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    );
+  });
+
   it("recovers a consistent annual rate for a monthly loan across 28-day and 31-day gaps (REV-20260803-004)", async () => {
     // 2021 is not a leap year: Jan-1 -> Feb-1 is a 31-day gap and
     // Feb-1 -> Mar-1 is a 28-day gap, on the same true 5%/12 monthly rate.

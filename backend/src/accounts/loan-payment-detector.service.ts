@@ -283,11 +283,34 @@ export class LoanPaymentDetectorService {
    *
    * When no linked source transaction is found (simple transfer without splits),
    * the loan account transaction amount is used as the payment amount.
+   *
+   * @param asOfDate - Optional upper bound (yyyy-MM-dd) on the LINKED source
+   *   transaction's own date. A transfer's loan-side leg can stay dated
+   *   today while its linked source parent is later moved to a future date
+   *   (e.g. a PATCH that edits only the parent's `transactionDate` without
+   *   touching its splits) -- following the link still reaches that now
+   *   future-dated (or since-voided) transaction and would otherwise read
+   *   its interest split as if it were a real observation as of today. When
+   *   the linked transaction's date is after `asOfDate`, or the linked
+   *   transaction is voided, its interest split is not used and this
+   *   payment's `interestAmount` is left `null` -- the same "no interest
+   *   information available" state used elsewhere in this file for a
+   *   missing/unusable interest source -- rather than silently treating a
+   *   not-yet-real (or reversed) interest split as genuine. Left unbounded
+   *   (`undefined`, the default) for `detectPaymentPattern`, which
+   *   legitimately wants to see every transaction regardless of date; the
+   *   caller that needs a today-bounded view is
+   *   `rate-change-inference.service.ts`'s `detectAndPersist`, which passes
+   *   `todayYMD()`. Mirrors the `asOfDate` parameter already added to
+   *   `pairSeparateInterest` for the paired/separate-interest leak this
+   *   finding's four prior passes closed -- this is the split-leg leak,
+   *   a different data path. See REV-20260803-024 (fifth reopen).
    */
   async buildPaymentRecords(
     userId: string,
     accountId: string,
     transactions: Transaction[],
+    asOfDate?: string,
   ): Promise<PaymentRecord[]> {
     // One read block: the linked-transfer and split lookups below are a
     // per-transaction walk over the same snapshot of data.
@@ -342,6 +365,20 @@ export class LoanPaymentDetectorService {
               totalPaymentAmount = sourceAmount;
             }
 
+            // A future-dated (relative to `asOfDate`) or voided linked source
+            // is not a real observation of today's interest -- see the
+            // `asOfDate` doc above. Its interest split is skipped below so
+            // this payment surfaces as "no interest information available"
+            // rather than a silently-contaminated observation.
+            const linkedTxDateKey = linkedTx.transactionDate
+              ? String(linkedTx.transactionDate).split("T")[0]
+              : null;
+            const linkedInterestUsable =
+              !linkedTx.isVoid &&
+              (asOfDate == null ||
+                linkedTxDateKey == null ||
+                linkedTxDateKey <= asOfDate);
+
             // Check if the source transaction has splits (principal + interest)
             if (linkedTx.isSplit) {
               const splits = await m.find(TransactionSplit, {
@@ -362,8 +399,12 @@ export class LoanPaymentDetectorService {
                     amount: splitAmount,
                     memo: split.memo,
                   });
-                } else if (split.categoryId) {
-                  // Categorized split = interest expense
+                } else if (split.categoryId && linkedInterestUsable) {
+                  // Categorized split = interest expense. Only trusted when
+                  // the linked source transaction itself is not future-dated
+                  // or voided (see `linkedInterestUsable` above) --
+                  // otherwise this is left unset and `interestAmount` stays
+                  // `null`, REV-20260803-024's fifth-reopen fix.
                   interestAmount = splitAmount;
                   interestCategoryId = split.categoryId;
                   interestCategoryName = split.category?.name || null;

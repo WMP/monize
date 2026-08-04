@@ -2285,6 +2285,143 @@ describe("LoanPaymentDetectorService", () => {
     });
   });
 
+  describe("buildPaymentRecords", () => {
+    /**
+     * REV-20260803-024, fifth reopen: a split-leg leak distinct from the
+     * four prior passes' pairing-leak fixes (`pairSeparateInterest`'s
+     * `asOfDate`, `excludeFutureLeakedInterest`'s epsilon). A split transfer
+     * to the loan has two legs: the loan-side leg (this test's `tx-1`,
+     * dated today) and its linked SOURCE parent, which carries the actual
+     * principal/interest splits. A PATCH that moves only the source
+     * parent's `transactionDate` to tomorrow -- without touching its splits
+     * -- leaves the loan-side leg dated as before, so `buildPaymentRecords`
+     * still walks `linkedTransactionId` to the now-future source parent and,
+     * before this fix, read its interest split as if it were a genuine
+     * observation of today's interest. These use real `Transaction`
+     * instances for the linked source (not plain object literals) because
+     * the voided case exercises the entity's own `isVoid` getter over
+     * `status` -- a plain `{ isVoid: true }` literal would pass even
+     * against unfixed code, the exact trap `backend/CLAUDE.md` calls out
+     * for "a mock must return what the real collaborator returns".
+     */
+    const loanSideTx = (over: Partial<any> = {}): any => ({
+      id: "tx-1",
+      accountId: "loan-1",
+      userId: "user-1",
+      transactionDate: "2026-08-04",
+      amount: 500,
+      isTransfer: true,
+      isSplit: false,
+      linkedTransactionId: "linked-1",
+      ...over,
+    });
+
+    const makeLinkedSourceTx = (over: Partial<Transaction> = {}): Transaction =>
+      Object.assign(new Transaction(), {
+        id: "linked-1",
+        accountId: "chequing-1",
+        amount: -500,
+        transactionDate: "2026-08-04",
+        isSplit: true,
+        isTransfer: false,
+        status: TransactionStatus.CLEARED,
+        account: { name: "Checking" },
+        ...over,
+      });
+
+    const splitRows = [
+      {
+        transferAccountId: "loan-1",
+        categoryId: null,
+        amount: -400,
+        memo: null,
+        category: null,
+      },
+      {
+        transferAccountId: null,
+        categoryId: "interest-cat-1",
+        amount: -100,
+        memo: null,
+        category: { name: "Interest" },
+      },
+    ];
+
+    it("does not surface a future-dated linked source's interest split when bounded by asOfDate", async () => {
+      transactionRepository.findOne.mockResolvedValue(
+        makeLinkedSourceTx({ transactionDate: "2026-08-05" }), // tomorrow
+      );
+      transactionRepository.manager.find.mockResolvedValue(splitRows);
+
+      const result = await service.buildPaymentRecords(
+        "user-1",
+        "loan-1",
+        [loanSideTx()],
+        "2026-08-04", // asOfDate = today
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].interestAmount).toBeNull();
+      expect(result[0].interestCategoryId).toBeNull();
+      expect(result[0].interestCategoryName).toBeNull();
+      // Principal attribution from the same splits is untouched -- only the
+      // interest split of a future/voided linked source is untrusted.
+      expect(result[0].principalAmount).toBe(400);
+    });
+
+    it("does not surface a voided linked source's interest split when bounded by asOfDate", async () => {
+      transactionRepository.findOne.mockResolvedValue(
+        makeLinkedSourceTx({
+          transactionDate: "2026-08-04", // not future -- void is the only defect
+          status: TransactionStatus.VOID,
+        }),
+      );
+      transactionRepository.manager.find.mockResolvedValue(splitRows);
+
+      const result = await service.buildPaymentRecords(
+        "user-1",
+        "loan-1",
+        [loanSideTx()],
+        "2026-08-04",
+      );
+
+      expect(result[0].interestAmount).toBeNull();
+    });
+
+    it("control: still uses the linked source's interest split when it is not future-dated or voided", async () => {
+      transactionRepository.findOne.mockResolvedValue(
+        makeLinkedSourceTx({ transactionDate: "2026-08-04" }),
+      );
+      transactionRepository.manager.find.mockResolvedValue(splitRows);
+
+      const result = await service.buildPaymentRecords(
+        "user-1",
+        "loan-1",
+        [loanSideTx()],
+        "2026-08-04",
+      );
+
+      expect(result[0].interestAmount).toBe(100);
+      expect(result[0].interestCategoryId).toBe("interest-cat-1");
+    });
+
+    it("control: with no asOfDate (detectPaymentPattern's unbounded default), a future-dated linked source's interest is still used", async () => {
+      transactionRepository.findOne.mockResolvedValue(
+        makeLinkedSourceTx({ transactionDate: "2026-08-05" }),
+      );
+      transactionRepository.manager.find.mockResolvedValue(splitRows);
+
+      const result = await service.buildPaymentRecords(
+        "user-1",
+        "loan-1",
+        [loanSideTx()],
+        // no asOfDate -- must behave exactly as before this parameter existed
+      );
+
+      expect(result[0].interestAmount).toBe(100);
+      expect(result[0].interestCategoryId).toBe("interest-cat-1");
+    });
+  });
+
   describe("pairSeparateInterest", () => {
     const interestAccount = {
       id: "loan-1",
