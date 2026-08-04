@@ -518,15 +518,28 @@ of absence, and it rejected the first draft for exactly that.
 
 ## 7. What remains open
 
-1. **P3-009** — the OIDC step-up. Plan in `docs/backup-restore-contract.md` §5.
-   Needs browser verification because the change touches every user's restore
-   path.
-2. **The i18n localization pass.** English catalogs are complete; the other
+1. **P3-009** — the OIDC step-up, also reported as F3R-008, F3RR-005 and
+   F3RRR-004. Plan in `docs/backup-restore-contract.md` §5. Needs a decision about
+   the provider interaction (`prompt=login` / `max_age=0` / `auth_time`) and browser
+   verification, because the change touches every user's restore path.
+2. **F3RRR-002, the pre-authentication half** — an unauthenticated client can
+   occupy the aggregate upload budget and make a legitimate caller retry. The
+   concurrency half is fixed (a process-wide byte budget ahead of the parser); the
+   remaining options are ingress-level limits, an upload token, or streaming to
+   disk, and §12 says why none is on this branch.
+3. **F3RRR-003** — one large table is materialised before the export ceiling is
+   consulted. Needs a cursor and a per-chunk budget.
+4. **DR-F3RRR-001** — the retention policy for source attachment objects the
+   restore deliberately keeps so a backup can be restored twice. A product
+   decision; §12 states the two options.
+5. **The i18n localization pass.** English catalogs are complete; the other
    eighteen locales are not. Per the root `CLAUDE.md`, that is one commit at
    acceptance, and the parity specs failing on a work-in-progress branch is the
    expected state, not a regression.
-3. **The nine design risks and eleven missing tests** listed as not addressed
-   above, each with its reason.
+6. **The nine design risks and eleven missing tests** listed as not addressed
+   above, each with its reason, plus items 2-4, 6 and 7 of the fourth review's
+   missing-test list — all of which need live storage, a real cgroup, a browser or
+   a cluster.
 
 ---
 
@@ -538,15 +551,23 @@ Run and green:
 |---|---|
 | `tsc --noEmit` (backend) | clean |
 | `npm run lint` (backend) | clean |
+| `npm run lint` (frontend) | clean (one pre-existing `exhaustive-deps` warning in `Combobox.tsx`) |
+| `npm run type-check` (frontend) | clean |
 | `npm run migration:lint` | 124 migrations, clean |
 | `npm run migration:lint:test` | 26 pass |
 | `npm run i18n:check` | pseudo-locale fresh |
 | `scripts/check-env-docs.mjs` | 51 env vars documented |
-| Backend unit (`TZ=UTC npm run test:unit`) | 407/408 suites, 10828 tests |
-| Frontend unit (`vitest run`) | 626/627 files, 12265 tests |
+| Backend unit (`TZ=UTC npm run test:unit`) | 407/408 suites, 10847 tests |
+| Backend `src/backup` + `src/common` (after the last commit) | 62 suites, 941 tests |
+| Frontend unit (`npm test`) | 626/627 files, 12270 tests |
 
 The one failing suite on each side is the i18n parity spec — `errors.json` and
-`settings.json` across the eighteen untranslated locales, item 2 above.
+`settings.json` across the eighteen untranslated locales, item 5 above.
+
+The backend total is from a full `test:unit` run at `531f7366`. `fb67516b` landed
+after it, so the row beneath is the `src/backup` and `src/common` re-run that
+covers everything that commit touched; the difference between the two is 23 new
+admission tests and nothing else.
 
 **Not run:** the integration suites. This environment has no Docker and no
 PostgreSQL, so every `backend/test/integration/*` case — including the ones added
@@ -563,7 +584,7 @@ than taken as a pass.
 
 ## 9. Commit inventory
 
-The 32 commits that changed code, configuration or the repository's own rules,
+The 36 commits that changed code, configuration or the repository's own rules,
 oldest first, so nothing is unaccounted for.
 
 | Commit | Subject | Answers |
@@ -600,6 +621,10 @@ oldest first, so nothing is unaccounted for.
 | `7fe0eedb` | Stop the uploaded storage_key from being an authorization capability | F3RR-001, F3RR-002 |
 | `2b5dd399` | Bound the earliest allocation; stop loading discarded tables | F3RR-003, F3RR-004 (partial) |
 | `a9ac6f1d` | Tell the user there is no backup storage before they configure a schedule | F3RR-RISK-001 |
+| `51de3519` | Take ownership from the database, not the uploaded file | F3RRR-001, DOC-F3RRR-1/2 |
+| `39f4e6a1` | Let a user switch a failing backup schedule off | F3RRR-005 |
+| `531f7366` | Make the upload limit's startup warning real, and stop the header lying | DOC-F3RRR-3/4 |
+| `fb67516b` | Budget restore uploads across the process, not per request | F3RRR-002 (concurrency half) |
 
 Three of those carry no audit finding of their own: `405f3e79` keeps the
 pseudo-locale gate green, and `009b3eac` and `99b41963` convert prose rules that
@@ -607,7 +632,7 @@ had already been violated into checks. They are here because the branch's
 recurring cause was a rule nothing enforced.
 
 Not rows above: the commits that only change **this document**
-(`4c42be22`, `774c646d`, `a0819951`, `e20a65b2`, `ab2e420f` and any that follow). A file cannot list its own
+(`4c42be22`, `774c646d`, `a0819951`, `e20a65b2`, `ab2e420f`, `c3cfa704` and any that follow). A file cannot list its own
 commit and stay accurate — amending to insert the hash changes the hash — so the
 branch log is the record for those, and every other hash in this file resolves. If
 you are checking the inventory against `git log`, that difference is the whole of
@@ -679,7 +704,7 @@ MEDIUM defects plus a LOW residual. Each was verified against the code first.
 
 | ID | Severity | Verdict | Commit |
 |---|---|---|---|
-| F3RR-001 | HIGH | Confirmed, fixed | `7fe0eedb` |
+| F3RR-001 | HIGH | Confirmed; `7fe0eedb` fixed the wrong half — see §12 | `7fe0eedb`, `51de3519` |
 | F3RR-002 | HIGH | Confirmed, fixed | `7fe0eedb` |
 | F3RR-003 | MEDIUM | Confirmed, fixed | `2b5dd399` |
 | F3RR-004 | MEDIUM | Confirmed, **partly** fixed | `2b5dd399` |
@@ -697,6 +722,12 @@ uploader's `user_id` without a byte being read. Downloading their own metadata
 returned somebody else's receipt. `assertSafeStorageKey` proves a key is a safe
 *string*; nothing proved it was *theirs*. Both keys now come from the id remap, and
 `storage_key` is overwritten with the derived value for every provider.
+
+**That fix was not enough, and the sentence above is why.** "Nothing proved it was
+theirs" is the defect; moving the source from one uploaded field to another does
+not answer it. The fourth review found the hole: `collectRowIdRemap` admits every
+UUID-shaped `row.id`, so a crafted row carrying the victim's attachment id was
+still read. See §12, F3RRR-001.
 
 **F3RR-002 was a regression I introduced two commits earlier.** The F3R-006 cleanup
 deleted every displaced key, and for a backup taken from the same account its
@@ -737,3 +768,154 @@ two-user crafted-key restore against real local/S3 storage, a process-level cgro
 test with peak-RSS measurement, `helm template` plus a pod-level write test, and
 the browser OIDC step-up flow. All four remain the right way to verify these, and
 none of them ran here.
+
+---
+
+## 12. The fourth-pass re-review (F3RRR-001…005, DR-F3RRR-001)
+
+A fourth review re-checked the branch at `c3cfa704` and reported one HIGH, three
+MEDIUM and one LOW defect, plus a MEDIUM design risk and five documentation
+issues. Every finding was verified against the code before being accepted.
+
+| ID | Severity | Verdict | Commit |
+|---|---|---|---|
+| F3RRR-001 | HIGH | Confirmed, fixed | `51de3519` |
+| F3RRR-002 | MEDIUM | Confirmed; concurrency half fixed, pre-auth half **open** | `fb67516b` |
+| F3RRR-003 | MEDIUM | Confirmed — **open**, as already documented | — |
+| F3RRR-004 | MEDIUM | Same as P3-009 — **still open** | — |
+| F3RRR-005 | LOW | Confirmed, fixed | `39f4e6a1` |
+| DR-F3RRR-001 | MEDIUM design risk | Accepted — **needs a decision** | — |
+| DOC-F3RRR-1/2 | — | Fixed | `51de3519` |
+| DOC-F3RRR-3/4 | — | Fixed | `531f7366` |
+| DOC-F3RRR-5 | — | Fixed | this document |
+
+**F3RRR-001 was right, and it is the third time this code has been wrong in the
+same place.** The review's summary is exact: the previous fix "stopped trusting
+uploaded `storage_key`, but now derives the source object key from uploaded
+`transaction_attachments.id`. That field is equally attacker-controlled and is
+automatically admitted into the remap."
+
+The reasoning that failed was "a row whose id is not in the remap did not come from
+this backup's graph". The remap is built from the *uploaded* graph:
+`collectRowIdRemap` (`backup-id-remap.util.ts:14-35`) adds every UUID-shaped
+`row.id` in the file, so for any well-formed crafted row the guard could not fire.
+Put the victim's attachment id in `transaction_attachments.id`, with the byte size
+and SHA-256 that a standard backup publishes beside it, and the restore read their
+object and copied it under the attacker's ownership. The uploaded document was
+authorizing itself.
+
+Of the review's three recommended contracts, option 2 is implemented:
+`loadOwnedAttachmentSources` reads `transaction_attachments` scoped to the
+restoring user, before the destructive delete, and staging requires the stored row
+to exist, to be on the configured provider, and to agree with the uploaded row's
+size and hash. Integrity is then checked against the **stored** values, so an
+object that changed under the row since is caught too. Anything that fails is
+unrestorable: dropped, counted in `skippedAttachments`, no read attempted. Options
+1 and 3 (self-contained artifact, signed manifest) remain available and are the
+better long-term answer for cross-instance restore; neither is on this branch.
+
+The consequence the review anticipated is accepted deliberately: restoring one
+user's backup into a different user on the same instance now skips external
+attachments rather than disclosing them, and a fresh instance skips them because
+the objects are not there. That is the conclusion §4 of
+`docs/backup-restore-contract.md` already reached about *preserving* the old key,
+applied to *reading* it.
+
+Five tests, all confirmed failing against the pre-fix service. Missing test 1 from
+the review's list ("crafted external attachment with victim UUID in
+`transaction_attachments.id`, not merely in `storage_key`") is now
+`backup.service.spec.ts` › "an attachment id the uploader does not own". Missing
+test 2 (real two-user local and S3) is not: it needs live object storage and two
+real accounts, which this environment does not have.
+
+**F3RRR-005 was a regression in the previous commit's own fix.** `a9ac6f1d` added
+the capability banner and disabled the toggle unconditionally, which is wrong in
+the case that matters most — storage that *used* to work. A volume unmounted or
+turned read-only leaves a schedule armed and failing, and the user who comes to
+this screen wants to switch it off. The control is now disabled only for the
+false-to-true transition, and "Run Backup Now" is disabled outright when capability
+is definitely unavailable. Missing test 5 is now two tests, both confirmed failing
+against `a9ac6f1d`.
+
+**The two documentation issues about `backup-limits.ts` turned out to be one
+behaviour issue.** The header's stale "two of them" and 500 MB text is now correct
+for three limits. The claim that an oversized upload override "gets the same
+startup warning as the other two" was false, and the reason it was never wired is
+worth recording: `warnIfLimitExceedsMemory` compared against the buffered
+quarter-share while the upload default is derived from half the container, so the
+check as written would have warned on every deployment about a number the code
+itself chose. The threshold is now a parameter, the half-share is a named exported
+constant that both the derivation and the check read, and `main.ts` calls it.
+
+### What this review found that the previous three did not
+
+Nothing about F3RRR-001 was new information about the *code*; it was new
+information about my reasoning. Three rounds in a row, the external-attachment
+path was fixed in the right direction and left the mirror-image concern
+unconsidered:
+
+| Round | What was fixed | What was left |
+|---|---|---|
+| F3R-006 | displaced bytes are deleted after commit | the same keys are the backup's sources |
+| F3RR-001/002 | the key is derived, not taken from the file | the *id* it is derived from is also from the file |
+| F3RRR-001 | ownership comes from the database | cross-instance restore of external bytes now needs a signed artifact |
+
+The rule that generalises is in the code and in the contract now, in the strongest
+form I can state it: **no unsigned value from the uploaded file can establish
+ownership — not a key, not an id, not a checksum, not a byte count. Only a record
+the server already holds can.** Which field to trust was never the question, and
+answering it as though it were is what produced two of these three rounds.
+
+A scan cannot enforce all of that: it cannot tell an uploaded identifier from a
+derived one, and typing the boundary would mean a distinct type for every value
+that crosses it — a change to the whole backup module, not a guard. But the half a
+scan *can* hold, it now holds. `backup.service.spec.ts` › "reads an external object
+in exactly one place, after the ownership check" asserts that
+`this.attachmentStorage.load(` appears exactly once in the module, that the call is
+inside `stageAttachmentObjects`, and that `loadOwnedAttachmentSources` and
+`ownedSources.get` both appear before it. That does not prove the check is
+*correct*; it does mean the next reader added beside this one trips a test and has
+to read the rule. Which is the specific failure mode here: three rounds, three
+edits to the same path, each one reasoning locally.
+
+### Open, with reasons
+
+- **F3RRR-002** (concurrent pre-auth upload OOM). The concurrency half is fixed;
+  the pre-authentication half is not. `createRestoreUploadAdmission` runs as
+  Express middleware *ahead of* `express.raw` and keeps a process-wide total of the
+  bytes it has promised to buffer, so the second of two 190 MiB uploads gets a 503
+  with `Retry-After` instead of both being admitted onto a 400 MiB pod.
+  Twenty-three tests cover the budget, the release on `finish`/`close`, the
+  double-release case, the conservative claim for a chunked upload, the requests
+  the parser will not buffer (a CORS preflight has no `Content-Length`, so
+  budgeting it would claim the whole ceiling for a request that allocates nothing),
+  and two source guards — that the gate sits before the parser, and that it covers
+  every content type the parser is configured with. Both guards scan `main.ts`,
+  which has no test harness of its own, and either mistake would leave bytes
+  buffered outside the budget.
+
+  What is **not** fixed: an unauthenticated client can still occupy the budget, so
+  it can make a legitimate caller retry. That is a refused request rather than a
+  dead process, which is the trade this takes deliberately. The three remaining
+  options — a smaller body limit at the ingress ahead of the process, a two-step
+  restore session issuing a short-lived upload token after authorization, and
+  streaming to a bounded temporary file — are recorded in
+  `docs/backup-restore-contract.md` §6 and none is implemented. The review's
+  cgroup load test with peak-RSS measurement is still the right way to verify any
+  of this, and it did not run here.
+- **F3RRR-003** (one table materialised before the ceiling). Confirmed and stated
+  as open in §11 already; the fourth review agrees the response document was
+  accurate about it. Needs a cursor and a per-chunk budget.
+- **F3RRR-004** = P3-009 = F3R-008 = F3RR-005. Open across all four reviews. Plan
+  in `docs/backup-restore-contract.md` §5; it needs a decision about the OIDC
+  provider interaction (`prompt=login` / `max_age=0` / `auth_time`) and browser
+  verification.
+- **DR-F3RRR-001** (retained source objects). Accepted as stated. The retention is
+  deliberate and documented, and the review is right that "leaving unindexed
+  objects forever should not be an accidental retention policy". It is now a
+  narrower question than before F3RRR-001: only objects the restoring user
+  *demonstrably owns* are ever read, so the retained set is their own files rather
+  than potentially anyone's. That does not make it a policy. Deciding it means
+  choosing between self-contained artifacts (which would remove the need to retain
+  anything) and a bounded, indexed retention window with visible cleanup status.
+  Not implemented either way.
