@@ -7,7 +7,7 @@
 | Work branch | `claude/detailed-error-review-wq2hjo` |
 | Branch base | `4e48a767` (main after the audit baseline) |
 | Commits | 25, all non-merge; equal to GitHub's ahead count against the base |
-| Diff | 138 files, +7678 / -2036 |
+| Diff | 143 files, +9710 / -2042 |
 | Audit items answered | 9 confirmed findings, 4 design risks, 16 missing tests, 6 documentation issues |
 | Verification heads reviewed | `a39a837b` (round 1), `3af6da53` (2), `e0b64635` (3), `f4ab2a4e` (4) |
 | Additional defects found and fixed | 20, none of them in the report |
