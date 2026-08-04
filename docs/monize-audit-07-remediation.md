@@ -9,11 +9,18 @@
 | Audit baseline | `d5cea9bfa995885ba5198f9843359362927c0fd4` |
 | Remediation base | `4e48a767` (88 commits after the audit baseline) |
 | Branch | `claude/detailed-error-review-fixes-p8bwgy` |
-| Commits | 6 |
-| Files changed | 197 (+3605 / -751) |
+| Second source report | `monize-audit-07-remediation-review.md` (independent review of this branch at `79bfc257`) |
+| Commits | 12 |
+| Files changed | 294 (+8301 / -1232) |
 | Mode | Read-write: every finding re-verified against the current tree before being acted on |
-| Suites executed | Backend unit (10,735 passing), frontend Vitest (12,328 passing), both lints, both type-checks |
-| Suites **not** executed | Backend integration and Playwright E2E - no PostgreSQL and no browser stack in this environment |
+| Suites executed | Backend unit (10,743 passing), backend integration (268 passing, real PostgreSQL 16), frontend Vitest (12,326 passing), migration lint, schema-drift replay, both lints, both type-checks |
+| Suites **not** executed | Playwright E2E (no browser stack), the Helm CI job (no `helm` binary) |
+
+This document covers two rounds. Sections 1-10 are the first pass against the
+Phase 7 audit. Section 11 is the second pass, against an independent review of
+that first pass, and supersedes the first pass wherever the two disagree - most
+importantly on P7-008, which the first pass did not attempt and the second pass
+closes.
 
 ## Executive summary
 
@@ -43,8 +50,11 @@ defects the audit did not name, listed in section 4.
 Seven of the audit's items are fixed with regression tests that fail on the old
 code. Two are partly fixed with the remainder stated precisely. Two needed no
 change. One large item - the production-boundary concurrency harness (P7-008,
-the report's only HIGH) - was **not attempted**; section 6 explains why and what
-it would take.
+the report's only HIGH) - was **not attempted** in the first round; section 6
+records why, and **section 11 closes it**: PostgreSQL turned out to be runnable
+in this environment after all, the harness exists, and all seven races the audit
+named are covered. Five of the seven were live defects, including a scheduled
+bill that could be paid twice and a logout that could leave a usable session.
 
 ### Disposition of the audit's findings
 
@@ -57,7 +67,7 @@ it would take.
 | P7-005 | MEDIUM | Yes, on defaults | **Fixed.** Plus a test-isolation bug it exposed |
 | P7-006 | MEDIUM | Yes | **Fixed.** Flag removed, inventory guard added with its own self-test |
 | P7-007 | MEDIUM | Yes | **Partly fixed.** Provenance gate added; the release is not redesigned |
-| P7-008 | **HIGH** | Yes | **Not done.** See section 6 |
+| P7-008 | **HIGH** | Yes | **Fixed in round 2.** Harness plus all seven races; five were defects. See section 11 |
 | P7-009 | MEDIUM | Partly - premise was wrong | **Narrowed and fixed.** The real gap was silence, not lost bytes |
 | P7-010 | MEDIUM | Yes | **Partly fixed.** Lint and render in CI; no cluster install |
 | P7-011 | LOW | 2 of 7 items | **Fixed**, and made machine-checked |
@@ -354,40 +364,36 @@ rather than as advice: reach for the accumulators instead of re-deriving the
 rule, and follow a newly nullable field to the pixels *and to the model*; share
 arithmetic is one function, enforced by a scan.
 
-## 6. Not done, and why
+## 6. Not done, and why *(as of round 1 - see section 11 for what changed)*
 
 ### P7-008 - production-boundary concurrency harness (the audit's only HIGH)
 
-**Not attempted.** The audit asks for a reusable harness with two or more
-independently acquired PostgreSQL connections, explicit isolation and lock
+**Not attempted in round 1.** The audit asks for a reusable harness with two or
+more independently acquired PostgreSQL connections, explicit isolation and lock
 timeouts, named barriers, and the ability to start two Nest scheduler instances -
 then seven regression tests on top of it (P4-001 through P4-007), with P4-008
 through P4-018 as backlog.
 
-It is a substantial piece of test infrastructure, and there is no PostgreSQL in
-this environment, so nothing built here could be run even once. A concurrency
-harness that has never executed is worse than none: it would look like coverage.
-This is the largest remaining item and should be its own change.
+It is a substantial piece of test infrastructure, and the working assumption was
+that there is no PostgreSQL in this environment, so nothing built here could be
+run even once. A concurrency harness that has never executed is worse than none:
+it would look like coverage.
 
-### The `useExchangeRates.convert` migration
+**That assumption was wrong, and it was the single most consequential error in
+round 1.** PostgreSQL 16 initialises and runs here perfectly well. Section 11.1
+has the harness, section 11.2 the seven races, and five of them were live
+defects - which is a direct cost of having accepted an environment limitation
+without testing it.
 
-`convertOrNull`, `convertToDefaultOrNull` and `canConvert` are the honest API and
-the credit-utilization widgets use them. `convert` keeps its unconverted
-fallback, because roughly fifty display call sites across the reports, dashboard
-widgets and account pages consume it as a plain `number` and each needs its own
-decision about how to show an unknown figure. Making it nullable produced 66
-type errors across 27 files - tractable, but not something to do hastily
-alongside everything else.
+### The `useExchangeRates.convert` migration - **completed in round 2**
 
-It is documented on the hook as a tracked defect with the contract section it
-violates, and the test pinning it says it is pinned rather than endorsed. The
-backend half - where the money is actually computed - is fixed. Affected files:
-`app/accounts`, `app/dashboard`, `app/transactions`, `app/payees/[id]`,
-`CashFlowForecastChart`, `ExpensesPieChart`, `IncomeExpensesBarChart`,
-`UpcomingBills`, `GeographicAllocationWidget`, `SecurityTypeAllocationWidget`,
-`SecuritySummaryCards`, `CategoryInfoWidget`, `PayeeInfoWidget`,
-`TagKeyBreakdownChart`, and the currency-exposure, dividend, foreign-fee,
-geographic, realized-gains, security-type and transaction-history reports.
+Round 1 kept `convert` with its unconverted fallback and migrated only the
+credit-utilization widgets, on the grounds that roughly fifty display call sites
+each needed their own decision about how to show an unknown figure. The review
+called that out as the branch's most serious remaining problem, and it was right:
+a fallback that still compiles is a fallback something still calls, and
+documenting a defect on the hook is not the same as not shipping it. `convert`
+and `convertWithRateMap` are now **deleted**. Section 11.5 has the detail.
 
 ### Account-balance displays still using `?? 0`
 
@@ -452,7 +458,7 @@ Two new strings initially tripped the double-hyphen rule in
 | `ec71b455` | Fold the remaining share-replay copies into one function, guard it with a scan, and complete the localization pass |
 | `e622a499` | Keep unknown totals unknown all the way to the model, and write the rules down |
 
-## 10. Recommended next steps, in order
+## 10. Recommended next steps, in order *(round 1 - superseded by section 11.9)*
 
 1. **Run the integration and E2E suites** against a real stack. They are the one
    category of verification this work could not perform, and the backup,
@@ -469,3 +475,226 @@ Two new strings initially tripped the double-hyphen rule in
    source of confusing failures.
 7. **Move the release to a version-bump PR** so the pushed commit is verified at
    its own SHA, retiring the provenance gate's reason to exist.
+
+---
+
+## 11. Second round - remediation review (`monize-audit-07-remediation-review.md`)
+
+An independent read-only review of this branch at `79bfc257` reported 2 HIGH and
+5 MEDIUM findings and concluded the branch "should not be represented as closing
+Phase 7". That was a fair reading, and both HIGHs are now closed.
+
+The review's central complaint was not that individual fixes were wrong but that
+two of them stopped at the point where they were hardest to finish: the FX
+migration kept its own defect alive behind a deprecation note, and the concurrency
+gap was declared unreachable on the basis of an environment limitation that was
+never tested. Both of those were judgement calls made in round 1, and both were
+wrong in the same direction - accepting a description of the work instead of the
+work.
+
+### Disposition of the review's findings
+
+| ID | Severity | Reproduced? | Outcome |
+|---|---|---|---|
+| FR7-001 | **HIGH** | Yes | **Fixed.** `convert`/`convertWithRateMap` deleted; 67 type errors across 31 files each resolved with a stated policy |
+| FR7-002 | MEDIUM | Yes | **Fixed** in `7e23487c`. An override editor opened on an occurrence with no stored override still overwrote the schedule's saved price |
+| FR7-003 | MEDIUM | Yes | **Fixed** in `7e23487c`. Sub-daily frequencies produced one filename per day, so three of four backups were lost |
+| FR7-004 | **HIGH** | Yes | **Fixed.** Harness plus all seven races; five were live defects |
+| FR7-005 | MEDIUM | Yes | **Still partly fixed.** Unchanged from round 1; see 11.8 |
+| FR7-006 | MEDIUM | Yes | **Still open.** The reclassification in round 1 was wrong and is withdrawn; see 11.8 |
+| FR7-007 | MEDIUM | Yes | **Still partly fixed.** PyYAML is now declared; no cluster install; see 11.8 |
+
+### 11.1 The concurrency harness (FR7-004 / P7-008)
+
+`backend/test/helpers/race-harness.ts`. Three properties, each of which some
+existing test lacked:
+
+- **Independent connections.** Each participant runs under its own
+  `withUserContext`, so its `withScopedDb` draws a fresh pooled connection and
+  opens its own transaction. Two calls sharing one ambient transaction cannot
+  conflict with each other at all - they *are* the same transaction, which is why
+  the pre-existing `Promise.all`-shaped tests proved nothing.
+- **A `RowGate`.** An independent transaction that holds `FOR UPDATE` on the row
+  every participant must touch, so each of them stops there *inside its own
+  transaction*; releasing the gate frees them into the contended window together
+  and lets the application's own locking decide. `RowGate.hold` refuses a
+  non-locking SELECT, because a gate that gates nothing turns every race built on
+  it back into a `Promise.all` silently.
+- **No sleeps.** `waitForBlockedBackends` and `waitForIdleInTransaction` ask
+  PostgreSQL a question - is a backend blocked on a lock, is a transaction sitting
+  open - so a test proceeds the instant the condition is true and cannot proceed
+  while it is false. `waitUntil` takes an arbitrary observable condition for the
+  cases where the *presence of the fix* changes which of two outcomes happens.
+
+Plus `raceAll`, which reports what every participant did rather than discarding
+the losers with the first rejection; losing a race is a normal outcome here.
+
+**The harness proves itself.** `race-harness.integration.spec.ts` runs an
+intentionally unguarded read-modify-write through the same gate and asserts it
+*loses* an update, then the same operation with `FOR UPDATE` and asserts it does
+not. That case is the positive control for every other race suite: if it ever
+starts passing, the gate has stopped gating and the rest have quietly become
+`Promise.all` again.
+
+### 11.2 The seven races
+
+Each fix was verified by reintroducing the fault and watching the suite fail. Two
+of the seven were sound; five were defects.
+
+| # | Audit root | Verdict | Defect and fix |
+|---|---|---|---|
+| 1 | P4-001 | **Defect** | `start` counted in-flight jobs, then inserted in a separate transaction. Two simultaneous starts both counted zero and both inserted: one file imported twice, by two workers, into the same accounts. Now a partial unique index (`idx_import_jobs_one_active_per_user`, migration 133); the loser gets a 409 |
+| 2 | P4-002 | **Sound, now pinned** | `writeAll` is a single transaction, so a failure commits nothing and a retry cannot replay committed rows. True by where the boundary sits, not by anything in the retry path - so it is now a test |
+| 3 | P4-004 | **Defect** | Two posters of one scheduled occurrence both created a transaction and both advanced the due date. The bill was paid twice with nothing inconsistent left to notice. Now one transaction, the schedule row locked, and the intended occurrence checked against it |
+| 4 | P4-003 / P4-005 | **Defect** | `recalculateCurrentBalance` read the account in one transaction and summed in another, then wrote back the whole stale entity - reverting any concurrent rename, credit-limit or opening-balance edit, silently. Now one transaction, a locked read, and an update confined to the one column it owns |
+| 5 | P4-006 | **Defect** | The holdings rebuild read the history in earlier transactions and then deleted and re-inserted from that replay. Now one transaction with the brokerage accounts locked first |
+| 6 | P4-007 (claim) | **Defect** | Two emergency-access claims both passed the single-use check and both rewrote the owner's credentials, each told it had succeeded, while only the last password worked. The code carried a comment claiming the transaction "re-validates under lock"; it did not |
+| 7 | P4-007 (tokens) | **Defect** | A confirmed logout could leave a live session. The rotation holds `FOR UPDATE` on the token it replaces, so the revocation's single `UPDATE ... WHERE family_id` necessarily blocks behind it and necessarily commits second, with a snapshot from before the replacement row existed. Revocation now re-reads until nothing is live, and throws rather than reporting a partial revocation |
+
+Six new suites, 26 tests, all passing against PostgreSQL 16.13.
+
+### 11.3 What the races proved, in numbers
+
+- **Scheduled posting.** One `-1200.00` bill, two posters: the account ended at
+  `-2400.00` before the fix and `-1200.00` after. The schedule's next due date
+  advanced exactly one period either way, which is why nothing downstream noticed.
+- **Import start.** Two simultaneous `create` calls produced two `pending` jobs
+  before the index and one job plus one `ConflictException` after. At four
+  concurrent callers: four jobs, then one.
+- **Account recompute.** Opening balance edited from `1000` to `2000` with a
+  `+250` transaction on file: the stored row read `currentBalance 1250` against
+  `openingBalance 2000` before the fix - a state the account was never in - and
+  `2250` after.
+- **Emergency claim.** Two claims: two successes and two credential rewrites
+  before, one success and one `NotFoundException` after, with exactly one
+  `generateTokenPair`.
+- **Refresh tokens.** One live descendant survived the revocation before the fix,
+  zero after.
+
+### 11.4 Two things the second round is careful *not* to claim
+
+**The holdings race proves serialization, not the original loss.** The old code
+deleted the holdings it had *read*, by id, so a row inserted after that read
+survived; shares went missing only when the read landed on the far side of the
+trade's commit. That window contains no lock, so it is not reachable from outside
+the service without adding a seam to production code for a test's benefit. What
+the suite asserts instead is the actual invariant - a rebuild and a trade for the
+same account cannot overlap - by parking the rebuild mid-transaction and checking
+the trade cannot commit there. Without the account lock it commits straight
+through the middle, so the assertion does separate the two worlds; it just is not
+the assertion the audit's wording implies.
+
+**The refresh-token fix is convergent, not lock-based.** `revokeUntilNoneLive`
+loops on a *read*, bounded at eight passes, and throws if it cannot converge. Two
+passes settle the ordinary race. It loops on a read rather than on `affected`
+because the parent row the rotation already revoked no longer counts as changed,
+so an `affected === 0` exit stops one row short of the token that matters. An
+advisory-lock scheme would also work and would need a lock-ordering argument
+across four call sites; this needs none, and fails loudly instead of quietly.
+
+### 11.5 FR7-001 - the numeric-fallback conversion APIs are gone
+
+`useExchangeRates.convert` returned the source amount when the pair had no rate,
+so `100.00 USD` under a CAD label read as `100.00 CAD` - a fabricated 1:1
+conversion indistinguishable from a genuine same-currency figure. Round 1 kept it
+behind a comment. It is now deleted, along with `convertWithRateMap`, and
+`convertToDefault` returns `number | null`.
+
+That produced 67 type errors across 31 files, and each was a decision rather than
+a mechanical fix:
+
+- **A single displayed amount** gets the labelled unknown marker, through the new
+  `useMoneyDisplay` hook - one catalog string, one place for a translator. It sits
+  apart from `useNumberFormat` on purpose: that hook is deliberately free of the
+  `next-intl` provider, and adding a lookup there broke thirty of its own tests.
+- **An aggregate** cannot be `null` and still be a chart, so unconvertible rows
+  are excluded and `UnconvertedNotice` says how many. Excluding silently
+  understates just as badly as converting at 1:1.
+- **A denominator that cannot be computed** suppresses the shape as well as the
+  number: the credit-utilization donut is not drawn at all rather than drawn
+  empty, because a gauge at zero width reads as a measured zero.
+- **`forecast.ts`** returns no series when the starting balance is unknown, and
+  the two `?? 0` sites left inside it are commented as safe only because of that
+  guard.
+
+`CreditUtilizationReport` had its own inline copies of the row and total
+arithmetic - the duplication round 1 noticed and left. They are deleted in favour
+of `computeCreditRows`/`computeCreditTotals`.
+
+### 11.6 New durable guards from round 2
+
+| Guard | What it holds |
+|---|---|
+| `race-harness.integration.spec.ts` | The gate reaches the conflict window: an unguarded read-modify-write loses an update through it. Positive control for every other race suite |
+| `idx_import_jobs_one_active_per_user` | One in-flight import per owner, in the database rather than in a service that a new caller can forget to consult |
+| Integration inventory floor | Raised above the length of the mandatory list, which the concurrency suites had quietly overtaken - fifteen mandatory files were enough to clear a floor of fifteen, so the count check had stopped checking anything |
+| Six race suites in `MANDATORY_SUITES` | Losing one is a reviewed decision, not a quiet drop |
+| Import rollback test | Pins the all-or-nothing write phase. Moving the injected failure to a phase after the commit makes it fail with four surviving accounts, which is the control that says the assertion can see committed data |
+| `backend/CLAUDE.md` | "A concurrency test needs two connections, a gate, and a positive control", with the two defect shapes - an `UPDATE` that cannot see a concurrent insert, and `repo.save(entity)` reverting columns it does not own |
+
+### 11.7 Ordering defect found while fixing FR7-004, not in either report
+
+`POST /import/mny/start` ran the destructive **wipe existing data** step *before*
+creating the job row. Once the one-active-import invariant became a constraint,
+that ordering meant a request which lost the race had already deleted every
+account, category and payee the user owned, and then failed with a conflict
+claiming nothing had happened. The reservation now comes first, and a wipe that
+fails re-authentication releases the slot on its way out. This is the root
+`CLAUDE.md` rule "a rejected command must not already have written" - and the
+pre-existing order was worse than the race it sat beside.
+
+### 11.8 Still open after round 2, stated plainly
+
+| Item | Status | Why |
+|---|---|---|
+| **FR7-005 / P7-007** - release pushes an unverified SHA | **Partly fixed, unchanged** | The provenance gate constrains the bump's diff, checks the parent against the tested SHA, and rejects a rebase onto newer code. The pushed commit still is not itself the commit the checks ran on. Fixing that properly means moving the version bump to a release PR and running the full graph on that SHA - a change to the release process, not a patch |
+| **FR7-006 / P7-009** - attachment byte round-trip | **Open.** Round 1's reclassification is withdrawn | Round 1 narrowed P7-009 to "restore is silent about attachments carrying no bytes", fixed that, and described the original premise as disproved. The review is right that this does not close a missing-test finding: no test seeds bytes in a local and an S3-compatible provider, exports, restores into remapped ids, downloads through the public path and compares hashes, nor injects a failure after the first object copy |
+| **FR7-007 / P7-010** - cluster install | **Partly fixed** | Lint, three renders, YAML parsing and a release dependency are in CI, and PyYAML is now installed explicitly rather than assumed present on the runner image. There is still no kind/k3d install, no backup-volume persistence through a pod replacement, and the Helm job has never executed here (no `helm` binary) |
+| Playwright E2E | **Not run** | No browser stack in this environment. Unchanged from round 1 |
+| `?? 0` on `brokerageMarketValues` consumers | **Open** | `AccountBalancesReport`, `app/accounts`, `app/dashboard`. Pre-dates this work and is the last known instance of the unknown-as-zero class |
+| P4-008 - P4-018 | **Open** | The audit's own concurrency backlog beyond the seven. The harness they need now exists |
+| Section 7.2 "test not located" register | **Open** | 40+ items, each needing its own verification |
+| DR-01 - DR-07 design risks | **Mostly open** | Need branch-protection or merge-queue facts unavailable from inside the repository. DR-04 (`TZ=UTC` in CI) remains a worthwhile one-line change |
+
+### 11.9 Verification status, round 2
+
+| Check | Result |
+|---|---|
+| Backend unit (`TZ=UTC npm run test:unit`) | **403 suites, 10,743 tests, all passing** |
+| Backend integration (real PostgreSQL 16.13) | **27 suites, 268 tests, all passing** |
+| Frontend Vitest | **629 files, 12,326 tests, all passing** |
+| Migration idempotency lint | **123 files, passing** |
+| Schema-drift replay | **Passing.** `schema.sql` applied to two databases, all migrations replayed **twice** on one of them, dumps normalized as CI does: identical |
+| Backend + frontend lint, `tsc --noEmit` | Clean (one pre-existing `Combobox` warning, untouched) |
+| i18n parity, both layers | Passing - the new error string translated into all 18 locales, both pseudo-locales regenerated |
+| Playwright E2E | **Not run** - no browser stack |
+| Helm CI job | **Not executed** - no `helm` binary here |
+
+Every fix in section 11.2 was checked by reintroducing the defect and confirming
+the suite fails, which is recorded here because a race test that has only ever
+been seen to pass is indistinguishable from one that cannot fail.
+
+### 11.10 Recommended next steps, in order
+
+1. **Run Playwright E2E** against a full stack. It is now the only suite category
+   this work has not executed.
+2. **Add the local/S3 attachment round trip** (FR7-006). The last open
+   missing-test finding from the original audit, and the one with data loss behind
+   it.
+3. **Add the kind/k3d install job** with backup persistence through a pod
+   replacement (FR7-007).
+4. **Move the release to a version-bump PR** (FR7-005), retiring the provenance
+   gate's reason to exist.
+5. **Fix the `?? 0` account-balance displays**, closing the unknown-as-zero class.
+6. **Work P4-008 through P4-018** on the harness, which is the cheap part now.
+7. **Set `TZ=UTC` explicitly in CI** (DR-04).
+
+### 11.11 Commits, round 2
+
+| SHA | Subject |
+|---|---|
+| `7e23487c` | Protect a schedule's saved price, make sub-daily backups distinct, and verify both on real infrastructure |
+| `b684daea` | Delete the numeric-fallback conversion APIs and carry the unknown to the pixels |
+| `7ff68069` | Race four concurrency defects at the real conflict boundary, and fix them |
+| `33f1681c` | Stop a scheduled bill being paid twice, and a rebuild erasing a concurrent trade |
+| `c19f7bff` | Pin the import's all-or-nothing write, closing the last of the seven races |
