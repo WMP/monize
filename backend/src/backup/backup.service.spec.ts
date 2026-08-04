@@ -1214,6 +1214,203 @@ describe("BackupService", () => {
         });
       });
 
+      /**
+       * The key in the uploaded file is attacker-controlled (F3RR-001).
+       *
+       * The destination used to come from `row.storage_key`, and a key the restore
+       * did not recognise as a remapped id was treated as "legacy or
+       * operator-chosen" -- skip the load, skip the checksum, skip the copy, on
+       * the grounds that the object already sat where the metadata pointed. So a
+       * crafted backup could name any syntactically valid key, including another
+       * tenant's, and the row was inserted under the uploader's `user_id` without
+       * a byte being read. `assertSafeStorageKey` proves a key is a safe *string*;
+       * nothing proved it was *theirs*.
+       */
+      describe("a storage_key the backup did not earn", () => {
+        const VICTIM_KEY = "cafe1234-0000-4000-8000-00000000cafe";
+
+        it("stages the row instead of trusting the key and skipping", async () => {
+          attachmentStorage.load.mockResolvedValue(BYTES);
+
+          await service.restoreData(
+            userId,
+            makeInput({
+              password: "test",
+              // A key that is not this backup's attachment id and not in its id
+              // remap -- i.e. somebody else's object.
+              data: backupWithLocalAttachment({ storage_key: VICTIM_KEY }),
+            }),
+          );
+
+          // The old code's shortcut was the vulnerability: an unrecognised key
+          // meant "the object is already where the metadata points", so it wrote
+          // nothing and read nothing and inserted the key. A crafted row now goes
+          // through the same staging as any other -- read the source the backup
+          // names, write the destination the restore derives.
+          expect(attachmentStorage.load).toHaveBeenCalledWith(OLD_ID);
+          expect(attachmentStorage.save).toHaveBeenCalledTimes(1);
+          const [writtenKey] = attachmentStorage.save.mock.calls[0];
+          expect(writtenKey).not.toBe(VICTIM_KEY);
+        });
+
+        it("never writes it into the restored metadata", async () => {
+          attachmentStorage.load.mockResolvedValue(BYTES);
+
+          await service.restoreData(
+            userId,
+            makeInput({
+              password: "test",
+              data: backupWithLocalAttachment({ storage_key: VICTIM_KEY }),
+            }),
+          );
+
+          const inserted = mockQueryRunner.query.mock.calls
+            .filter(([sql]) =>
+              String(sql).includes('INSERT INTO "transaction_attachments"'),
+            )
+            .flatMap(([, params]) => (params ?? []) as unknown[]);
+          // The crafted key must not survive anywhere in the insert -- otherwise
+          // the uploader owns a row addressing another tenant's object.
+          expect(inserted).not.toContain(VICTIM_KEY);
+        });
+
+        it("addresses the object by the remapped attachment id", async () => {
+          attachmentStorage.load.mockResolvedValue(BYTES);
+
+          await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: backupWithLocalAttachment() }),
+          );
+
+          // Source is the id the backup was written with; destination is the id
+          // the restore minted. Both come from the remap, so neither is the
+          // file's to choose.
+          expect(attachmentStorage.load).toHaveBeenCalledWith(OLD_ID);
+          const [writtenKey] = attachmentStorage.save.mock.calls[0];
+          expect(writtenKey).not.toBe(OLD_ID);
+          const inserted = mockQueryRunner.query.mock.calls
+            .filter(([sql]) =>
+              String(sql).includes('INSERT INTO "transaction_attachments"'),
+            )
+            .flatMap(([, params]) => (params ?? []) as unknown[]);
+          expect(inserted).toContain(writtenKey);
+        });
+      });
+
+      /**
+       * A backup that can only be restored once is not a backup (F3RR-002).
+       *
+       * The post-commit cleanup added for F3R-006 deleted every displaced key --
+       * and for a backup taken from this same account, its *source* objects are
+       * the account's displaced objects. So the first restore worked and deleted
+       * the artifact's source bytes; a second restore of the same file skipped
+       * every attachment and then deleted the copy the first restore had made,
+       * losing the content while still reporting success.
+       *
+       * `stageAttachmentObjects` said "old-key objects are deliberately left
+       * alone: the same backup may be restored more than once" the whole time.
+       * Two pieces of the same change, with opposite intentions about the same
+       * object.
+       */
+      describe("restoring the same backup twice", () => {
+        /** An in-memory object store, so the second restore sees the first's effects. */
+        function statefulStore(seed: Record<string, Buffer>) {
+          const objects = new Map(Object.entries(seed));
+          attachmentStorage.load.mockImplementation(async (key: string) => {
+            const bytes = objects.get(key);
+            if (!bytes) throw new Error(`no such object: ${key}`);
+            return bytes;
+          });
+          attachmentStorage.save.mockImplementation(
+            async (key: string, bytes: Buffer) => {
+              objects.set(key, bytes);
+            },
+          );
+          attachmentStorage.delete.mockImplementation(async (key: string) => {
+            objects.delete(key);
+          });
+          return objects;
+        }
+
+        /**
+         * The target's current external keys, tracked from what the restore
+         * inserted -- so the second call sees the row the first one wrote rather
+         * than a fixture frozen before either.
+         */
+        function trackingQueries(initialKeys: string[]) {
+          let current = [...initialKeys];
+          mockQueryRunner.query.mockImplementation(
+            (sql: string, params?: unknown[]) => {
+              const text = String(sql);
+              if (
+                text.includes("SELECT storage_key FROM transaction_attachments")
+              ) {
+                return Promise.resolve(
+                  current.map((storage_key) => ({ storage_key })),
+                );
+              }
+              if (text.includes('INSERT INTO "transaction_attachments"')) {
+                const written = (params ?? []).filter(
+                  (v): v is string =>
+                    typeof v === "string" &&
+                    /^[0-9a-f-]{36}$/i.test(v) &&
+                    v !== userId,
+                );
+                // The storage_key is among the row's UUID-shaped params; the
+                // restore normalises it to the attachment id, so either is right.
+                current = written.slice(-2);
+              }
+              return mockQueryHandler(sql, params);
+            },
+          );
+        }
+
+        it("restores the attachment both times", async () => {
+          const objects = statefulStore({ [OLD_ID]: BYTES });
+          trackingQueries([OLD_ID]);
+
+          const first = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: backupWithLocalAttachment() }),
+          );
+          expect(first.restored.transactionAttachments).toBe(1);
+          expect(first.skippedAttachments).toBeUndefined();
+
+          // The artifact still names OLD_ID, so OLD_ID must still exist.
+          expect(objects.has(OLD_ID)).toBe(true);
+
+          const second = await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: backupWithLocalAttachment() }),
+          );
+          // The failure this pins: the second restore used to skip the
+          // attachment and delete the first restore's copy, so the bytes were
+          // gone from every reachable key while the restore reported success.
+          expect(second.restored.transactionAttachments).toBe(1);
+          expect(second.skippedAttachments).toBeUndefined();
+          expect(objects.has(OLD_ID)).toBe(true);
+        });
+
+        it("keeps some copy of the bytes reachable after both restores", async () => {
+          const objects = statefulStore({ [OLD_ID]: BYTES });
+          trackingQueries([OLD_ID]);
+
+          await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: backupWithLocalAttachment() }),
+          );
+          await service.restoreData(
+            userId,
+            makeInput({ password: "test", data: backupWithLocalAttachment() }),
+          );
+
+          // Whatever the keys ended up being, the receipt still exists.
+          const remaining = [...objects.values()];
+          expect(remaining.length).toBeGreaterThan(0);
+          expect(remaining.some((b) => b.equals(BYTES))).toBe(true);
+        });
+      });
+
       it("removes staged objects when the restore transaction fails", async () => {
         attachmentStorage.load.mockResolvedValue(BYTES);
         mockQueryRunner.query.mockImplementation((sql: string, params) => {

@@ -736,8 +736,11 @@ export class BackupService {
     // Attachment bytes are staged before anything is deleted: an object that is
     // missing or fails its checksum has to be discovered while the user's
     // current data is still there, not halfway through replacing it.
-    const { stagedKeys, skipped: skippedAttachments } =
-      await this.stageAttachmentObjects(data, idRemap);
+    const {
+      stagedKeys,
+      sourceKeys,
+      skipped: skippedAttachments,
+    } = await this.stageAttachmentObjects(data, idRemap);
 
     // The keys this user's *current* attachments occupy, read before the delete
     // because afterwards there is nothing left to read them from. They are
@@ -802,7 +805,10 @@ export class BackupService {
       .then(async (result) => {
         // After the commit, never before: until it lands, the metadata that
         // references these objects may come back with a rollback.
-        await this.deleteDisplacedAttachmentObjects(displacedKeys, stagedKeys);
+        await this.deleteDisplacedAttachmentObjects(displacedKeys, [
+          ...stagedKeys,
+          ...sourceKeys,
+        ]);
         return result;
       })
       .catch(async (error) => {
@@ -865,17 +871,31 @@ export class BackupService {
    *   account re-uses ids, so a displaced key and a newly written key can be the
    *   same string. Deleting it would remove the bytes the restore just committed
    *   metadata for.
+   * - **Never a key the backup reads as its source.** This is the one that bit:
+   *   a backup taken from this account names the keys this account currently
+   *   holds, so its source objects *are* its displaced objects. Deleting them
+   *   left the artifact naming bytes that no longer existed -- the first restore
+   *   worked, and a second restore of the same file skipped every attachment and
+   *   then deleted the copy the first restore had made, losing the content
+   *   entirely while still reporting success.
+   *
+   *   So when a key is both an orphan and a source, the source wins. That keeps
+   *   an object nothing in the database references, which is exactly what this
+   *   method exists to remove -- and it is the right way round: an orphaned copy
+   *   of the user's own receipt costs storage, while a backup that can only be
+   *   restored once costs the receipt. `stageAttachmentObjects` says the same
+   *   thing from the other side, and the two used to contradict each other.
    *
    * Best-effort per key: a storage error here must not turn a completed restore
    * into a failure, since the database is already the backup's. It is logged.
    */
   private async deleteDisplacedAttachmentObjects(
     displacedKeys: string[],
-    stagedKeys: string[],
+    retainedKeys: string[],
   ): Promise<void> {
     if (displacedKeys.length === 0) return;
-    const staged = new Set(stagedKeys);
-    const removable = displacedKeys.filter((key) => !staged.has(key));
+    const retained = new Set(retainedKeys);
+    const removable = displacedKeys.filter((key) => !retained.has(key));
     if (removable.length === 0) return;
 
     let failures = 0;
@@ -1198,17 +1218,32 @@ export class BackupService {
    * counted, and the count is reported separately from `restored` rather than
    * added to it.
    *
-   * Returns the new keys written, so a failed database transaction can remove
-   * them again. Old-key objects are deliberately left alone: the same backup
-   * may be restored more than once, and deleting the source would make the
-   * second attempt fail.
+   * **The destination key is derived, never taken from the file.** It is the
+   * remapped attachment id; the source is the id the backup was written with. The
+   * uploaded `storage_key` is overwritten with the derived value before the insert
+   * and is otherwise ignored.
+   *
+   * That is not tidiness. This used to compute the destination from
+   * `row.storage_key` and treat a key it did not recognise as "legacy or
+   * operator-chosen", skipping the load, the checksum and the copy on the grounds
+   * that the object already sat where the metadata pointed. A crafted backup could
+   * therefore name *any* syntactically valid key -- including one belonging to
+   * another tenant -- and the restore inserted that key under the attacker's
+   * `user_id` without reading a byte. Downloading their own metadata then returned
+   * the other tenant's receipt. `assertSafeStorageKey` establishes that a key is a
+   * safe *string*; nothing established that it was *theirs*. An identifier is not a
+   * credential, and a restore must not turn one into authorization.
+   *
+   * Returns the keys written and the source keys consumed, so a failed database
+   * transaction can remove the former and the post-commit cleanup can spare the
+   * latter -- see `deleteDisplacedAttachmentObjects`.
    */
   private async stageAttachmentObjects(
     data: BackupData,
     idRemap: Map<string, string>,
-  ): Promise<{ stagedKeys: string[]; skipped: number }> {
+  ): Promise<{ stagedKeys: string[]; sourceKeys: string[]; skipped: number }> {
     const rows = data.transaction_attachments;
-    if (!rows?.length) return { stagedKeys: [], skipped: 0 };
+    if (!rows?.length) return { stagedKeys: [], sourceKeys: [], skipped: 0 };
 
     const oldIdOf = new Map(
       [...idRemap].map(([oldId, newId]) => [newId, oldId] as const),
@@ -1218,11 +1253,18 @@ export class BackupService {
     );
 
     const stagedKeys: string[] = [];
+    const sourceKeys: string[] = [];
     const unrestorable = new Set<string>();
 
     for (const row of rows) {
       const attachmentId = String(row.id ?? "");
       const provider = String(row.storage_provider ?? "database");
+
+      // Whatever the file said, the key is the attachment id. Every provider
+      // addresses by it (the database provider by primary key, local and s3 by
+      // object name), and normalising here means no uploaded value reaches a
+      // provider from any path.
+      row.storage_key = attachmentId;
 
       if (provider === "database") {
         // The bytes should have travelled in `attachment_blobs`. Without them
@@ -1242,11 +1284,14 @@ export class BackupService {
         continue;
       }
 
-      const newKey = String(row.storage_key ?? attachmentId);
-      const oldKey = oldIdOf.get(newKey) ?? newKey;
-      if (newKey === oldKey) {
-        // The key was not a remapped id (a legacy or operator-chosen key), so
-        // the object already sits where the restored metadata points.
+      // Source and destination both come from the id remap, so a row can only
+      // ever read the object the backup's own attachment graph named.
+      const oldKey = oldIdOf.get(attachmentId);
+      if (oldKey === undefined) {
+        // Every restored row id is remapped, so a row whose id is not in the map
+        // did not come from this backup's graph -- there is no source object it
+        // is entitled to read.
+        unrestorable.add(attachmentId);
         continue;
       }
 
@@ -1272,8 +1317,9 @@ export class BackupService {
         }
       }
 
-      await this.attachmentStorage.save(newKey, bytes);
-      stagedKeys.push(newKey);
+      await this.attachmentStorage.save(attachmentId, bytes);
+      stagedKeys.push(attachmentId);
+      sourceKeys.push(oldKey);
     }
 
     if (unrestorable.size > 0) {
@@ -1290,7 +1336,7 @@ export class BackupService {
       );
     }
 
-    return { stagedKeys, skipped: unrestorable.size };
+    return { stagedKeys, sourceKeys, skipped: unrestorable.size };
   }
 
   /** Best-effort removal of objects staged for a restore that then failed. */

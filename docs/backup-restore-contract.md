@@ -105,6 +105,22 @@ claims, and written under the new key. The new keys are recorded so a failed
 database transaction can remove them again. Old-key objects are left alone: the
 same backup may be restored more than once.
 
+**Both keys are derived, never read from the file.** The destination is the
+remapped attachment id; the source is the id the backup was written with. The
+uploaded `storage_key` is overwritten with the derived value before the insert and
+is otherwise ignored, for every provider.
+
+This is a confidentiality boundary, not tidiness. The destination used to come
+from `row.storage_key`, and a key the restore did not recognise as a remapped id
+was treated as legacy or operator-chosen: skip the load, skip the checksum, skip
+the copy, on the reasoning that the object already sat where the metadata pointed.
+A crafted backup could therefore name *any* syntactically valid key — including
+one belonging to another tenant — and the row was inserted under the uploader's
+`user_id` without a byte being read. Downloading their own metadata returned
+somebody else's receipt. `assertSafeStorageKey` establishes that a key is a safe
+*string*; nothing established that it was *theirs*. **An identifier is not a
+credential, and a restore must not turn one into authorization.**
+
 An object that cannot be staged — missing, failing its checksum, or written by a
 different provider — makes that attachment unrestorable. Refusing the whole
 restore over a receipt image is the wrong trade, so the metadata row is dropped
@@ -131,6 +147,18 @@ The timing and the scope are both load-bearing:
 - **Never a key the restore just staged.** Restoring a backup taken from the same
   account re-uses ids, so a displaced key and a newly written key can be the same
   string.
+- **Never a key the backup reads as its source.** A backup taken from this account
+  names the keys this account currently holds, so its source objects *are* its
+  displaced objects. Deleting them left the artifact naming bytes that no longer
+  existed: the first restore worked, and a second restore of the same file skipped
+  every attachment and then deleted the copy the first restore had made — losing
+  the content entirely while still reporting success.
+
+  When a key is both an orphan and a source, **the source wins**. That knowingly
+  keeps an object nothing in the database references, which is what this cleanup
+  exists to remove — and it is the right way round: an orphaned copy of the user's
+  own receipt costs storage, while a backup that can only be restored once costs
+  the receipt.
 
 Operationally: the sidecar directory or bucket must be restored **before or
 alongside** the database, not after.
