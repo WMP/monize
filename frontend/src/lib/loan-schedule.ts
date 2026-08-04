@@ -491,8 +491,25 @@ export function generateBudgetSchedule(
   // the contractual installment fixed and the overpayment constant. Either way
   // the total paid is the budget, so the balance/payoff are identical.
   const lowerInstallment = mode === 'LOWER_INSTALLMENT';
+  // The no-overpayment baseline's own numPayments is only a real contractual
+  // term when it actually reached zero balance (paidOff). A baseline run with
+  // `input`'s own maxPayments (a display/projection cap, not a claim about
+  // the true term -- loan-past-impact.ts passes a small one) instead returns
+  // paidOff: false with numPayments equal to that cap, which re-amortizes the
+  // installment toward a far-too-short remaining term (the same class of bug
+  // REV-20260803-041 fixed for the SHORTEN_TERM re-levelling target). Re-run
+  // against the hard cap to find the genuine payoff point; if even that does
+  // not pay off, fall back to this schedule's own display cap so the
+  // installment calculation still has a positive period count to divide by.
   const contractualPeriods = lowerInstallment
-    ? Math.max(1, generateLoanSchedule({ ...input, overpayments: undefined }).numPayments)
+    ? (() => {
+        const uncappedBaseline = generateLoanSchedule({
+          ...input,
+          overpayments: undefined,
+          maxPayments: HARD_MAX_PAYMENTS,
+        });
+        return Math.max(1, uncappedBaseline.paidOff ? uncappedBaseline.numPayments : cap);
+      })()
     : 0;
 
   const rateChanges = [...(input.rateChanges ?? [])].sort((a, b) =>

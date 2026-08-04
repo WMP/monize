@@ -1000,6 +1000,39 @@ describe('generateBudgetSchedule (fixed monthly budget)', () => {
     expect(omitted.rows[5].payment).toBeLessThan(base.paymentAmount);
   });
 
+  it('re-amortizes toward the real contractual term, not a maxPayments-truncated baseline (REV-20260803-041 sibling)', () => {
+    // 0% loan needing exactly 12 payments to pay off (12000 / 1000), but
+    // `input.maxPayments: 2` is a display/projection cap unrelated to the
+    // loan's true term (loan-past-impact.ts passes exactly this shape to
+    // preview a short window). The un-overpaid baseline under that same cap
+    // returns numPayments: 2, paidOff: false; reading that truncated number
+    // as the LOWER_INSTALLMENT re-amortization term spikes the recomputed
+    // installment to cover the whole balance in 2 periods (12000 / 2 = 6000),
+    // which swallows the entire budget as "installment" and reports zero
+    // overpayment -- the same truncated-baseline mistake REV-20260803-041
+    // fixed for the SHORTEN_TERM re-levelling target, in this sibling
+    // code path.
+    const input: LoanScheduleInput = baseInput({
+      startingBalance: 12000,
+      annualRate: 0,
+      paymentAmount: 1000,
+      maxPayments: 2,
+      overpayments: { targetMonthlyPayment: 1200, targetMonthlyPaymentMode: 'LOWER_INSTALLMENT' },
+    });
+
+    const uncapped = generateLoanSchedule({ ...input, overpayments: undefined, maxPayments: 600 });
+    expect(uncapped.paidOff).toBe(true);
+    expect(uncapped.numPayments).toBe(12);
+
+    const result = generateLoanSchedule(input);
+    // The installment must re-amortize toward the real 12-payment term
+    // (12000 / 12 = 1000), never toward the capped baseline's 2-payment term
+    // (12000 / 2 = 6000, which would consume the whole 1200 budget as
+    // "installment" and leave extraPrincipal at 0).
+    expect(result.rows[0].payment).toBeCloseTo(1000, 2);
+    expect(result.rows[0].extraPrincipal).toBeCloseTo(200, 2);
+  });
+
   it('never lets the total exceed the budget and pays off on the last row', () => {
     const budget = 3000;
     const result = generateLoanSchedule({
