@@ -3223,6 +3223,99 @@ describe("LoanPaymentDetectorService", () => {
     });
 
     /**
+     * REV-20260803-022 (fifth reopen). Loan A has sourceAccountId=bank-1 and
+     * interestCategoryId=cat-int. Loan B has sourceAccountId=bank-1 but
+     * interestCategoryId=null (not configured). Loan B is therefore invisible
+     * to sameInterestAccounts (which filters by category) and to all checks
+     * derived from it -- sharedSourceLoan, otherLoanIds, unknownSourceLoans.
+     * bank-1 carries both A's $100 and B's $200 cat-int expenses; without the
+     * fix, otherLoanIds is empty and the code returns isAmbiguous=false,
+     * letting loan A sum $300.
+     */
+    it("marks every record interestUnmatched when another loan shares the source account but has no interestCategoryId configured (REV-20260803-022 fifth reopen)", async () => {
+      const payments = [
+        makePayment("2026-01-05", { amount: 350 }),
+        makePayment("2026-02-05", { amount: 350 }),
+        makePayment("2026-03-05", { amount: 400, interestAmount: 50 }),
+      ];
+
+      // sameInterestAccounts: only loan-1 has category=cat-int; loan-2's null
+      // category excludes it from this query.
+      accountsRepository.find
+        .mockResolvedValueOnce([{ id: "loan-1", sourceAccountId: "bank-1" }])
+        // sameSourceNoCategoryLoans: loan-2 shares sourceAccountId=bank-1 but
+        // has interestCategoryId=null.
+        .mockResolvedValueOnce([{ id: "loan-2" }]);
+
+      // bank-1 has 2 non-transfer cat-int expenses ($100 A + $200 B).
+      transactionRepository.count.mockResolvedValue(2);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      // Pairing is ambiguous: B's expenses are indistinguishable from A's.
+      expect(result[0].interestUnmatched).toBe(true);
+      expect(result[0].interestAmount).toBeNull();
+      expect(result[1].interestUnmatched).toBe(true);
+      expect(result[1].interestAmount).toBeNull();
+      // A payment with existing split-based interest is left untouched.
+      expect(result[2].interestAmount).toBe(50);
+      expect(result[2].interestUnmatched).toBeUndefined();
+      // Records are copied, not mutated.
+      expect(payments[0].interestUnmatched).toBeUndefined();
+    });
+
+    /**
+     * Control for the fifth reopen: when the same-source unconfigured loan
+     * exists but has NO cat-int expenses on our source accounts, attribution is
+     * not ambiguous and pairing proceeds normally.
+     */
+    it("still pairs interest normally when a same-source null-category loan exists but has no candidate expenses (REV-20260803-022 fifth reopen control)", async () => {
+      const payments = [makePayment("2026-01-05"), makePayment("2026-02-05")];
+
+      accountsRepository.find
+        .mockResolvedValueOnce([{ id: "loan-1", sourceAccountId: "bank-1" }])
+        .mockResolvedValueOnce([{ id: "loan-2" }]);
+
+      // No candidate expenses on bank-1 -- nothing to confuse.
+      transactionRepository.count.mockResolvedValue(0);
+
+      // Main pairing query returns the interest transactions.
+      transactionRepository.find.mockResolvedValueOnce([
+        {
+          transactionDate: "2026-01-05",
+          amount: -100,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: false,
+          status: TransactionStatus.CLEARED,
+        },
+        {
+          transactionDate: "2026-02-05",
+          amount: -200,
+          accountId: "bank-1",
+          categoryId: "cat-int",
+          isTransfer: false,
+          status: TransactionStatus.CLEARED,
+        },
+      ]);
+
+      const result = await service.pairSeparateInterest(
+        "user-1",
+        interestAccount,
+        payments,
+      );
+
+      expect(result[0].interestAmount).toBeCloseTo(100, 2);
+      expect(result[1].interestAmount).toBeCloseTo(200, 2);
+      expect(result[0].interestUnmatched).toBeUndefined();
+      expect(result[1].interestUnmatched).toBeUndefined();
+    });
+
+    /**
      * Control for REV-20260803-022: when only one loan has this interest
      * category (no conflict), pairing still proceeds normally and the
      * separate interest is attributed to this loan's payments.

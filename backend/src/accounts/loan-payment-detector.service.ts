@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { Between, DataSource, In } from "typeorm";
+import { Between, DataSource, In, IsNull, Not } from "typeorm";
 import { Account, AccountType } from "./entities/account.entity";
 import { Transaction } from "../transactions/entities/transaction.entity";
 import { TransactionSplit } from "../transactions/entities/transaction-split.entity";
@@ -622,6 +622,40 @@ export class LoanPaymentDetectorService {
       const otherLoanIds = sameInterestAccounts
         .map((a) => a.id)
         .filter((id) => id !== account.id);
+
+      // REV-20260803-022 (fifth reopen): a loan that shares our source account
+      // but has interestCategoryId=null is invisible to sameInterestAccounts
+      // (which filters by category). Its interest expenses may still appear on
+      // the shared source account tagged with our interest category, making
+      // attribution indistinguishable. Check directly before the early return
+      // so this path is not skipped when otherLoanIds is empty.
+      const sameSourceNoCategoryLoans = await m.getRepository(Account).find({
+        where: {
+          userId,
+          id: Not(account.id),
+          sourceAccountId: In(sourceIds),
+          interestCategoryId: IsNull(),
+          accountType: In([
+            AccountType.LOAN,
+            AccountType.MORTGAGE,
+            AccountType.LINE_OF_CREDIT,
+          ]),
+        },
+        select: ["id"],
+      });
+      if (sameSourceNoCategoryLoans.length > 0) {
+        const candidateCount = await m.getRepository(Transaction).count({
+          where: {
+            userId,
+            accountId: In(sourceIds),
+            categoryId: interestCategoryId,
+            isTransfer: false,
+            transactionDate: Between(rangeStart, rangeEnd),
+          },
+        });
+        if (candidateCount > 0) return true;
+      }
+
       if (otherLoanIds.length === 0) return false;
 
       // A conflicting loan that shares our source account means any interest
