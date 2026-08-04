@@ -396,9 +396,21 @@ last of those is also what would replace `PEAK_MULTIPLE` with a real bound.
 always discards `attachment_blobs`, which is base64 — thirty 10 MiB receipts are
 ~400 MiB of text — and `collectRawExport` loaded it anyway before any ceiling was
 consulted. It now takes a `skipTables` set, and a test asserts the support path
-passes `ALWAYS_EXCLUDED_TABLES`. Not fixed: large tables are still read whole
-rather than through a cursor, so one enormous table is bounded only by the ceiling
-that follows it.
+passes `ALWAYS_EXCLUDED_TABLES` — and, since attachment bytes now travel, that the
+augmentation does not read a single object off disk for a table the caller is going
+to discard either.
+
+**Not fixed, and now doubly load-bearing:** large tables are still read whole
+through `manager.query` rather than a cursor, so one enormous table is bounded only
+by the ceiling that follows it, and `attachment_blobs` accumulates every attachment
+before that ceiling is consulted. A cursor inside the repeatable-read snapshot with
+a per-chunk budget is what fixes both — it is the same work that would let the
+encrypted path stream through an authenticated container format instead of needing
+one monolithic AES-GCM buffer, and the same work that would replace `PEAK_MULTIPLE`
+with a measured bound on the restore side. Until then, a large attachment set on the
+encrypted, automatic or support path is *refused* with the error naming
+`BACKUP_EXPORT_BUFFER_LIMIT`, which is the correct failure but not the correct
+feature.
 
 ## 7. Automatic backups on disk
 

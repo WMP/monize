@@ -1563,9 +1563,13 @@ export class BackupService {
    * and the user would find that out when they opened the file rather than when
    * they restored it.
    *
-   * A row with no usable size or hash is accepted: the metadata is what it is, and
-   * refusing bytes that travelled because an older artifact recorded less about
-   * them would lose the very thing this path exists to recover.
+   * Both columns are `NOT NULL` in the schema, so on any artifact this codebase
+   * produced both checks run and the base64 decode is validated by them -- which
+   * matters, because `Buffer.from(value, "base64")` discards characters outside the
+   * alphabet instead of failing. A row missing either field is accepted rather than
+   * refused: it can only come from a hand-edited or foreign document, and losing
+   * bytes that travelled is worse than restoring a row that describes itself less
+   * completely than it should.
    */
   private carriedBytesMatchMetadata(
     bytes: Buffer,

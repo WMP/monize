@@ -522,16 +522,19 @@ of absence, and it rejected the first draft for exactly that.
    F3RRR-004. Plan in `docs/backup-restore-contract.md` §5. Needs a decision about
    the provider interaction (`prompt=login` / `max_age=0` / `auth_time`) and browser
    verification, because the change touches every user's restore path.
-2. **F3RRR-002, the pre-authentication half** — an unauthenticated client can
-   occupy the aggregate upload budget and make a legitimate caller retry. The
-   concurrency half is fixed (a process-wide byte budget ahead of the parser); the
-   remaining options are ingress-level limits, an upload token, or streaming to
-   disk, and §12 says why none is on this branch.
-3. **F3RRR-003** — one large table is materialised before the export ceiling is
-   consulted. Needs a cursor and a per-chunk budget.
-4. **DR-F3RRR-001** — the retention policy for source attachment objects the
-   restore deliberately keeps so a backup can be restored twice. A product
-   decision; §12 states the two options.
+2. **F3RRR-002 / F3R5-004, the pre-authentication half** — an unauthenticated
+   client can occupy the aggregate upload budget until the receive deadline expires,
+   which degrades a legitimate restore to a retry. The concurrency and lifecycle
+   halves are fixed (§13); the remaining options are ingress-level limits, an upload
+   token, or streaming to disk, and none is on this branch.
+3. **F3RRR-003 / F3R5-005** — one large table is materialised before the export
+   ceiling is consulted. Needs a cursor inside the repeatable-read snapshot and a
+   per-chunk budget. Now also the blocker on streaming the attachment bytes that
+   `5a578061` puts in the artifact, so the two are one piece of work.
+4. **DR-F3RRR-001 / DR-F3R5-001** — the retention policy for source attachment
+   objects the restore keeps so a backup can be restored twice. Largely dissolved by
+   `5a578061`: an artifact that carries its own bytes has no source objects to
+   retain, so this survives only for artifacts exported before that commit.
 5. **The i18n localization pass.** English catalogs are complete; the other
    eighteen locales are not. Per the root `CLAUDE.md`, that is one commit at
    acceptance, and the parity specs failing on a work-in-progress branch is the
@@ -557,17 +560,12 @@ Run and green:
 | `npm run migration:lint:test` | 26 pass |
 | `npm run i18n:check` | pseudo-locale fresh |
 | `scripts/check-env-docs.mjs` | 51 env vars documented |
-| Backend unit (`TZ=UTC npm run test:unit`) | 407/408 suites, 10847 tests |
-| Backend `src/backup` + `src/common` (after the last commit) | 62 suites, 941 tests |
+| Backend unit (`TZ=UTC npm run test:unit`) | 408/409 suites, 10898 tests |
 | Frontend unit (`npm test`) | 626/627 files, 12270 tests |
 
 The one failing suite on each side is the i18n parity spec — `errors.json` and
-`settings.json` across the eighteen untranslated locales, item 5 above.
-
-The backend total is from a full `test:unit` run at `531f7366`. `fb67516b` landed
-after it, so the row beneath is the `src/backup` and `src/common` re-run that
-covers everything that commit touched; the difference between the two is 23 new
-admission tests and nothing else.
+`settings.json` across the eighteen untranslated locales, item 5 above. Both totals
+are from full runs at `2dcbd768`, the current head of executable code.
 
 **Not run:** the integration suites. This environment has no Docker and no
 PostgreSQL, so every `backend/test/integration/*` case — including the ones added
@@ -584,7 +582,7 @@ than taken as a pass.
 
 ## 9. Commit inventory
 
-The 36 commits that changed code, configuration or the repository's own rules,
+The 38 commits that changed code, configuration or the repository's own rules,
 oldest first, so nothing is unaccounted for.
 
 | Commit | Subject | Answers |
@@ -624,6 +622,8 @@ oldest first, so nothing is unaccounted for.
 | `51de3519` | Take ownership from the database, not the uploaded file | F3RRR-001, DOC-F3RRR-1/2 |
 | `39f4e6a1` | Let a user switch a failing backup schedule off | F3RRR-005 |
 | `531f7366` | Make the upload limit's startup warning real, and stop the header lying | DOC-F3RRR-3/4 |
+| `5a578061` | Carry attachment bytes in the artifact for every provider | F3R5-001, DR-F3R5-001/002, DOC-F3R5-003/004 |
+| `2dcbd768` | Budget the restore's peak, and hold it until the work is done | F3R5-002, F3R5-003, F3R5-004 (bounded), DOC-F3R5-001/002 |
 | `fb67516b` | Budget restore uploads across the process, not per request | F3RRR-002 (concurrency half) |
 
 Three of those carry no audit finding of their own: `405f3e79` keeps the
@@ -632,7 +632,7 @@ had already been violated into checks. They are here because the branch's
 recurring cause was a rule nothing enforced.
 
 Not rows above: the commits that only change **this document**
-(`4c42be22`, `774c646d`, `a0819951`, `e20a65b2`, `ab2e420f`, `c3cfa704` and any that follow). A file cannot list its own
+(`4c42be22`, `774c646d`, `a0819951`, `e20a65b2`, `ab2e420f`, `c3cfa704`, `29bda3f9` and any that follow). A file cannot list its own
 commit and stay accurate — amending to insert the hash changes the hash — so the
 branch log is the record for those, and every other hash in this file resolves. If
 you are checking the inventory against `git log`, that difference is the whole of
@@ -919,3 +919,121 @@ edits to the same path, each one reasoning locally.
   choosing between self-contained artifacts (which would remove the need to retain
   anything) and a bounded, indexed retention window with visible cleanup status.
   Not implemented either way.
+
+---
+
+## 13. The fifth-pass re-review (F3R5-001…006, DR-F3R5-001/002)
+
+A fifth review re-checked the branch at `29bda3f9` and reported one HIGH and five
+MEDIUM defects, two design risks and four documentation inconsistencies. Every
+finding was verified against the code first.
+
+| ID | Severity | Verdict | Commit |
+|---|---|---|---|
+| F3R5-001 | HIGH | Confirmed, fixed | `5a578061` |
+| F3R5-002 | MEDIUM | Confirmed, fixed | `2dcbd768` |
+| F3R5-003 | MEDIUM | Confirmed, fixed | `2dcbd768` |
+| F3R5-004 | MEDIUM | Confirmed, **bounded** — see below | `2dcbd768` |
+| F3R5-005 | MEDIUM | Confirmed — **open**, as documented | — |
+| F3R5-006 | MEDIUM | Same as P3-009 — **still open** | — |
+| DR-F3R5-001 | MEDIUM design risk | Largely **dissolved** by `5a578061` | `5a578061` |
+| DR-F3R5-002 | MEDIUM design risk | **Answered** by `5a578061` | `5a578061` |
+| DOC-F3R5-001…004 | — | Fixed | `2dcbd768`, `5a578061` |
+
+**F3R5-001 is the one that mattered, and it is the cost of the previous round's
+fix.** The fourth review's F3RRR-001 was a real cross-tenant disclosure and the
+ownership check closed it. What I wrote at the time was that the consequence —
+"restoring one user's backup into a different user on the same instance now skips
+external attachments rather than disclosing them, and a fresh instance skips them
+because the objects are not there" — was *deliberate*. It was deliberate. It was
+also wrong, and calling it deliberate is what stopped me looking at it again: a
+fresh instance and an account whose attachment metadata was deleted are the two
+situations backups exist for, and both returned success with the attachments
+counted as skipped and the sidecar volume sitting there intact.
+
+The review's diagnosis is exact: "the ownership gate reads the current database,
+not the sidecar and not a signed export-time manifest". Of its three recommended
+contracts, option 1 is implemented — the export now reads every external object and
+carries it in `attachment_blobs`, so the artifact is self-sufficient and there is no
+authority question to get wrong. That also dissolves two things I had been treating
+as unavoidable:
+
+- **Cross-provider restore.** A `local` backup onto a `database` deployment, and
+  the reverse, were both unrestorable skips. The bytes travel, so where they land is
+  the target's decision.
+- **DR-F3R5-001, the retained source objects.** The retention existed because a
+  self-restore's source objects were its own displaced objects, so deleting them
+  broke repeat restore. An artifact carrying its own bytes has no source objects, so
+  for anything exported from now on the question does not arise. It survives only
+  for artifacts produced before this, which is a bounded and shrinking set rather
+  than an accidental retention policy.
+- **DR-F3R5-002, migration semantics.** Also answered rather than deferred: the
+  supported contract is that the artifact is self-contained, and §4 of
+  `docs/backup-restore-contract.md` now says what an older artifact can and cannot
+  do instead of telling operators to restore a sidecar that will not help them.
+
+What it costs is in the contract and in the commit: artifacts are larger, and a
+large attachment set on the encrypted, automatic or support path now meets
+`BACKUP_EXPORT_BUFFER_LIMIT` and is refused with an error naming the ceiling. The
+review's own option 1 asks for a streaming container format so the file need not be
+materialised at once; that is not done, so the honest position is that the refusal is
+the failure mode, not a silent omission. Not implemented: the signed manifest
+(option 2), which would let an artifact authorize a sidecar read for the cases where
+carrying bytes is too expensive.
+
+**F3R5-002 and F3R5-003 were both defects in the gate I added one round earlier**,
+and F3R5-002 turned out to be wrong one level further up than the review said.
+Budgeting wire bytes counts the smallest of the buffers a restore holds; but the
+*per-request ceiling* had the same hole, at half the container, so a single legal
+request peaked at three times what the pod could hold. `PEAK_MULTIPLE` is now one
+named constant from which both numbers derive, and the startup warning is measured
+in the units an operator sets so its suggestion is one they can use. The multiple is
+a floor rather than a measurement and the code says so; measuring it needs the
+cgroup peak-RSS test that has never run here.
+
+F3R5-003 is the sharper of the two as a lesson: I released the reservation on
+`ServerResponse.close` and wrote a test that called every close a mid-upload
+disconnect. The test named the assumption and then asserted it, which is how an
+assumption survives having a test.
+
+**F3R5-004 is bounded rather than closed.** An unauthenticated chunked request can
+still occupy the budget, because the gate necessarily runs before authentication;
+it can now do so only until the receive deadline expires, so it degrades a
+legitimate restore to a retry instead of holding the recovery path closed
+indefinitely. The real answers — an ingress body limit, a two-step session with an
+upload token, streaming to disk — are named in the contract and none is implemented.
+
+### Open, with reasons
+
+- **F3R5-005** (one table materialised before the export ceiling). Confirmed and
+  open through three reviews now. Needs a cursor inside the repeatable-read snapshot
+  and a per-chunk budget. It is also the change that would let attachment bytes
+  stream rather than accumulate, so it and the remaining half of F3R5-001 are one
+  piece of work.
+- **F3R5-006** = P3-009 = F3R-008 = F3RR-005 = F3RRR-004. Open across all five
+  reviews. Plan in `docs/backup-restore-contract.md` §5; needs a decision on the
+  OIDC provider interaction and browser verification.
+- **The pre-authentication half of F3R5-004**, above.
+
+### The pattern, four rounds on
+
+§12 recorded that three rounds running had fixed the external-attachment path in
+the right direction and left the mirror-image concern unconsidered. This round adds
+a fourth row, and it is a different mistake:
+
+| Round | What was fixed | What was left |
+|---|---|---|
+| F3R-006 | displaced bytes deleted after commit | those keys are the backup's sources |
+| F3RR-001/002 | the key is derived, not taken from the file | the id it derives from is also from the file |
+| F3RRR-001 | ownership comes from the database | the database is not there when you need a backup |
+| F3R5-001 | the bytes travel in the artifact | the artifact is not streamed, so large ones are refused |
+
+The first three were failures of analysis. The fourth is a stated trade with a
+readable failure mode, which is a different thing — but the row belongs in the table
+because the previous three all *felt* like stated trades at the time. The specific
+tell, and the one worth carrying forward: **I wrote "the consequence is deliberate"
+and stopped there.** A consequence being intended says nothing about whether it is
+acceptable, and the sentence reads as though it does. Where a fix removes a
+capability, the thing to write down is who loses it and in what situation — and then
+to check whether that situation is the one the feature exists for. Here it was
+exactly that situation, twice over.
