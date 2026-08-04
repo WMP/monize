@@ -1,13 +1,13 @@
-import type { ColorTheme } from '@/lib/color-themes';
+import type { ColorTheme } from "@/lib/color-themes";
 
 export interface User {
   id: string;
   email: string;
   firstName?: string;
   lastName?: string;
-  authProvider: 'local' | 'oidc';
+  authProvider: "local" | "oidc";
   hasPassword: boolean;
-  role: 'admin' | 'user';
+  role: "admin" | "user";
   isActive: boolean;
   mustChangePassword: boolean;
   emailVerified?: boolean;
@@ -21,9 +21,9 @@ export interface AdminUser {
   email: string | null;
   firstName: string | null;
   lastName: string | null;
-  authProvider: 'local' | 'oidc';
+  authProvider: "local" | "oidc";
   hasPassword: boolean;
-  role: 'admin' | 'user';
+  role: "admin" | "user";
   isActive: boolean;
   mustChangePassword: boolean;
   createdAt: string;
@@ -93,7 +93,7 @@ export interface UserPreferences {
   defaultCurrency: string;
   dateFormat: string; // 'browser' = use browser locale
   numberFormat: string; // 'browser' = use browser locale
-  theme: 'light' | 'dark' | 'system';
+  theme: "light" | "dark" | "system";
   colorTheme: ColorTheme;
   timezone: string; // 'browser' = use browser timezone
   notificationEmail: boolean;
@@ -102,14 +102,14 @@ export interface UserPreferences {
   gettingStartedDismissed: boolean;
   weekStartsOn: number; // 0=Sunday, 1=Monday, ..., 6=Saturday
   budgetDigestEnabled: boolean;
-  budgetDigestDay: 'MONDAY' | 'FRIDAY';
+  budgetDigestDay: "MONDAY" | "FRIDAY";
   favouriteReportIds: string[];
   dashboardWidgets: string[]; // ordered visible widget ids; empty = default layout
   dashboardWidgetConfig: Record<string, Record<string, unknown>>; // per-widget settings keyed by widget id
   showCreatedAt: boolean;
-  timeFormat: '24h' | '12h';
+  timeFormat: "24h" | "12h";
   preferredExchanges: string[];
-  defaultQuoteProvider: 'yahoo' | 'msn';
+  defaultQuoteProvider: "yahoo" | "msn";
   recentTransactionsLimit: number;
   aiBubbleEnabled: boolean;
   showWhatsNew: boolean;
@@ -135,17 +135,30 @@ export interface AutoBackupSettings {
   retentionWeekly: number;
   retentionMonthly: number;
   lastBackupAt: string | null;
-  lastBackupStatus: 'success' | 'failed' | null;
+  lastBackupStatus: "success" | "failed" | null;
   lastBackupError: string | null;
   nextBackupAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
+/**
+ * Whether the deployment has somewhere to write automatic backups.
+ *
+ * A property of the deployment, not of the user's row -- which is why it is a
+ * separate call rather than a field on AutoBackupSettings.
+ */
+export interface AutoBackupCapability {
+  available: boolean;
+  folderPath: string;
+  /** Why not, when unavailable. Operator-facing detail, not a user action. */
+  reason?: string;
+}
+
 export interface UpdateAutoBackupSettingsData {
   enabled?: boolean;
   folderPath?: string;
-  frequency?: AutoBackupSettings['frequency'];
+  frequency?: AutoBackupSettings["frequency"];
   backupTime?: string;
   timezone?: string;
   retentionDaily?: number;
@@ -164,7 +177,7 @@ export interface UpdatePreferencesData {
   defaultCurrency?: string;
   dateFormat?: string;
   numberFormat?: string;
-  theme?: 'light' | 'dark' | 'system';
+  theme?: "light" | "dark" | "system";
   colorTheme?: ColorTheme;
   timezone?: string;
   notificationEmail?: boolean;
@@ -172,14 +185,14 @@ export interface UpdatePreferencesData {
   gettingStartedDismissed?: boolean;
   weekStartsOn?: number;
   budgetDigestEnabled?: boolean;
-  budgetDigestDay?: 'MONDAY' | 'FRIDAY';
+  budgetDigestDay?: "MONDAY" | "FRIDAY";
   favouriteReportIds?: string[];
   dashboardWidgets?: string[];
   dashboardWidgetConfig?: Record<string, Record<string, unknown>>;
   showCreatedAt?: boolean;
-  timeFormat?: '24h' | '12h';
+  timeFormat?: "24h" | "12h";
   preferredExchanges?: string[];
-  defaultQuoteProvider?: 'yahoo' | 'msn';
+  defaultQuoteProvider?: "yahoo" | "msn";
   recentTransactionsLimit?: number;
   aiBubbleEnabled?: boolean;
   showWhatsNew?: boolean;

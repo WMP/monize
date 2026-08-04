@@ -497,6 +497,10 @@
       "every12hours": "Every 12 Hours",
       "daily": "Daily",
       "weekly": "Weekly"
+    },
+    "noStorage": {
+      "title": "This deployment has no backup storage",
+      "body": "Automatic backups would be written to {folderPath}, which this deployment cannot write to. An administrator needs to mount storage there before a schedule can run."
     }
   },
   "backupRestore": {
