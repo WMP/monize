@@ -214,6 +214,26 @@ key to that row: derive the list from `schema.sql` in a test
 (`currencies.service.spec.ts`) rather than hand-copying it, because the ones
 nobody remembered were `budgets` and `exchange_rates`.
 
+**A driver's array is a string until something parses it.** `array_agg(rolname)`
+returns `name[]`, an OID node-postgres has no parser for, so the field arrives as
+the literal `"{}"` -- and `"{}".length > 0` is `true`, which made the runtime-role
+check report a membership violation that did not exist and refuse every
+`RLS_MODE=enforce` boot. Cast to `text[]`, and accept both shapes at the boundary.
+The unit test could not have caught it: its mock returned the array the code
+wanted. Where the collaborator is the *driver*, the only faithful double is the
+driver -- so that assertion belongs in an integration test, and the unit test
+gets the literal string.
+
+**An entity that omits `onDelete` is a claim that schema.sql does too.** The
+integration harness builds its schema from entity metadata and production applies
+`schema.sql`; 56 of 113 foreign keys disagree on their delete rule, so a cascade
+tested there is not the cascade that ships.
+`user_currency_preferences.currency_code` is the one that mattered -- `CASCADE` in
+production, `NO ACTION` in the harness -- which is why P2-009's silent
+cross-tenant deletion could not be reproduced in a test. The rest are baselined
+shrink-only in `schema-entity-parity.integration.spec.ts`. Declare `onDelete` on
+the relation whenever `schema.sql` declares it.
+
 **A temporary filename is unique per write, not per process.** `.<name>.partial-<pid>`
 collides between a manual and a scheduled backup for the same user in the same
 process, and across replicas sharing a volume it collides outright -- one run's

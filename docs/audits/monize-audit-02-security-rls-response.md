@@ -6,11 +6,11 @@
 | Audited baseline | `d5cea9bfa995885ba5198f9843359362927c0fd4` |
 | Work branch | `claude/detailed-error-review-wq2hjo` |
 | Branch base | `4e48a767` (main after the audit baseline) |
-| Commits | 19 |
+| Commits | 21 |
 | Diff | 138 files, +7678 / -2036 |
 | Audit items answered | 9 confirmed findings, 4 design risks, 16 missing tests, 6 documentation issues |
-| Additional defects found and fixed | 16, none of them in the report |
-| Response date | 2026-08-03; revised 2026-08-04 after two rounds of independent verification (sections 5A, 5B) |
+| Additional defects found and fixed | 18, none of them in the report |
+| Response date | 2026-08-03; revised 2026-08-04 after two verification rounds and a live-database run (sections 5A, 5B, 5C) |
 
 The brief for this branch was explicitly *not* "do what the file says". The report
 was treated as a rough pass over the ground, and the work was asked to be a detailed
@@ -19,7 +19,9 @@ and section 5 is what a full re-read of the 117 files the report names turned up
 the report did not -- three passes over that file list, each finding defects the
 previous pass had missed. Sections 5A and 5B answer two rounds of independent
 verification of this branch: the first found four residual defects, the second found
-one that the first round's own fix introduced. All five are fixed.
+one that the first round's own fix introduced. All five are fixed. Section 5C is what
+running the integration suites -- previously reported as unrunnable here -- found
+once a local PostgreSQL turned out to be available.
 
 ## How to read the status column
 
@@ -401,10 +403,10 @@ This remains open and is listed in section 8.
 | MT-07 | Partly done | `delegation.service.spec.ts` asserts the bypass brackets at `RLS_MODE=enforce`, that every count lands inside the window, that the delegation writes fall outside it, and that a failed identity lookup no longer votes for deletion. The integration half needs a live database (section 7). |
 | MT-08 | Done | `request-context.interceptor.spec.ts`: "stamps the delegate's own row, never the owner's, while acting", "still resets the owner's own clock on the owner's own request", "throttles per authenticated user, not per acted-on owner". |
 | MT-09 | Done | `currencies.service.spec.ts`: creator and non-creator paths, system-currency path, another tenant's preference blocking the delete, and that the global probe carries no user predicate while the per-user probe still does. |
-| MT-10 | Not done | Generic cross-user UPDATE/DELETE on every covered table is an integration assertion against a real role. Section 7. |
-| MT-11 | Not done | Pool reuse after rollback needs a one-connection pool against PostgreSQL. Section 7. |
+| MT-10 | Done | `rls-enforcement.integration.spec.ts` sweeps every covered table under a real unprivileged role; verified to run in section 5C. |
+| MT-11 | Done | `rls-enforcement.integration.spec.ts`'s GUC-scope block, on a one-connection pool; verified to run in section 5C. |
 | MT-12 | Done | `scoped-db.spec.ts` (31 cases): same-identity join, four rejected changes, both identities named in the error, identical-identity-spelled-differently joins, and the deliberate second transaction. |
-| MT-13 | Partly done | `app-role.spec.ts` asserts the revoke, that `SELECT` survives, the existence guard, and the ordering. Denial under the real role is integration. Section 7. |
+| MT-13 | Done | `app-role.spec.ts` for the SQL, and `rls-elevation-and-role.integration.spec.ts` for the actual denial under the real role (section 5C). |
 | MT-14 | Answered | Cookie-only access to `/mcp` cannot succeed: the transport reads the bearer itself and there is no `AuthGuard('jwt')` on the route, so no cookie authority exists to borrow. `mcp-http.controller.spec.ts` covers "reject requests without PAT" on each verb; the new fingerprint cases make the credential the only authority. |
 | MT-15 | Not done | Two-user backup/restore isolation with relationship closure is an integration scenario. Section 7. |
 | MT-16 | Not done | MNY raw-SQL isolation across stage/job/import under the app role is an integration scenario. Section 7. |
@@ -783,6 +785,83 @@ section 7 lists as unrunnable here, plus the two new ones its own findings creat
 is now covered at the unit level, and the second is asserted through the temp-path
 uniqueness rather than through real filesystem interleaving.
 
+## 5C. What running the integration suites found
+
+The two previous sections both end with the same open item: the scenarios that need
+a live PostgreSQL. A server turned out to be installed in this environment even
+though Docker is not, so they were run. Four findings, two of them defects in code
+this branch had already shipped.
+
+### Two integration suites had been broken since `eb68eda1`
+
+`backup-restore` and `support-backup` failed dependency injection on every run from
+the moment `OidcReauthService` joined `BackupService`'s constructor: the 16 unit
+specs were patched, the two integration ones were not, and they could not be run to
+find out. Both now provide the **real** service, for the same reason the unit specs
+do. Neither read-only review round could have seen this -- static reading confirms
+that a provider list is a provider list.
+
+### `readRuntimeRoleFacts` would have refused every enforce-mode boot
+
+The worst of the four, and the shortest-lived: `array_agg(g.rolname)` produces
+`name[]`, an OID node-postgres has no parser for, so the field arrived as the
+literal string `"{}"`. `"{}".length > 0` is `true`, so the DR-V2 membership check
+reported a violation that did not exist and exited before `app.listen()`. Any
+deployment moving to `RLS_MODE=enforce` on the previous commit would have
+crash-looped, and the message would have blamed a role grant that was not there.
+
+Fixed by casting to `text[]`, a normalizer that accepts both shapes, and a unit
+test using the string the driver actually sends. The original unit test could not
+have failed: its mock returned the array the code wanted. That is precisely the
+"a mock must return what the real collaborator returns" rule, in the one place
+where the collaborator is the driver rather than one of our services.
+
+### 56 of 113 foreign keys disagree with `schema.sql` on their delete rule
+
+Pre-existing, systemic, and it explains something about P2-009. The integration
+harness synchronizes its schema from entity metadata; production applies
+`schema.sql`. Where an entity omits an `onDelete` that `schema.sql` declares, the
+two databases behave differently -- and
+`user_currency_preferences.currency_code` is exactly such a case: `CASCADE` in
+production, `NO ACTION` here. So the silent cross-tenant deletion at the heart of
+P2-009 was **not reproducible in an integration test at all**; the same DELETE
+could only ever have raised a foreign-key error.
+
+That one entity is corrected and the other 55 are baselined shrink-only in
+`schema-entity-parity.integration.spec.ts`. Correcting them all is an entity-wide
+change with its own review, and this is a security branch.
+
+### The requested scenarios now exist and run
+
+`rls-elevation-and-role.integration.spec.ts`, 11 cases against the real
+unprivileged role:
+
+| Scenario | What it establishes |
+| --- | --- |
+| RV-001, measured in rows | Two sibling windows: the survivor counts 2 with the fix and **1** without it -- the cross-tenant miscount the re-review predicted, observed. |
+| FV-003, two connections | Locked: the activation waits and is then refused by the foreign key. Unlocked control: the other tenant's committed row is cascaded away, no error anywhere. |
+| MT-13 | The runtime role reads `schema_migrations` and is denied INSERT/UPDATE/DELETE, with an ordinary application write as the negative control. |
+| DR-R1 | A two-hop grant chain through an unremarkable intermediate role **is** reported; a `WITH SET FALSE` grant is **not**. The only real evidence that `pg_has_role(..., 'SET')` behaves as documented. |
+
+Worth recording how the RV-001 test went: the first version **passed against the
+pre-fix helper**. Its synchronization let the late read land before the early
+sibling's restore, so it measured nothing. Awaiting the sibling's whole promise is
+what makes it discriminate. A regression test for a concurrency defect is not
+evidence until it has been seen to fail.
+
+Also verified locally for the first time on this branch: all 122 migrations replay
+clean on top of `schema.sql` (the drift job's property), and the whole integration
+directory -- 21 suites, 240 tests.
+
+### Noted, not fixed
+
+`test/auth.e2e-spec.ts`, `test/payees.e2e-spec.ts` and
+`test/transactions.e2e-spec.ts` do not compile (`import * as cookieParser` under
+this tsconfig), and CI never notices because `test:integration` globs only
+`test/integration`. Pre-existing, untouched by this branch, and a test-infrastructure
+concern rather than a security one -- but three spec files that cannot run are not
+coverage, so it belongs on somebody's list.
+
 ## 6. Rules added, so the next agent inherits the correction
 
 Twenty-one rules in the root `CLAUDE.md` (nine, five, two, then five -- one set per
@@ -810,6 +889,8 @@ is a scanning test.
 | An identity change inside an open transaction is refused, not honoured | `scoped-db.spec.ts` |
 | An id in a protocol artifact is still checked against the caller | `oauth-interaction.controller.spec.ts` |
 | Validate everything free before spending a single-use credential | `backup.service.spec.ts` |
+| A driver's array is a string until something parses it | `runtime-role-check.spec.ts` + the integration role cases |
+| An entity that omits `onDelete` is a claim that schema.sql does too | `schema-entity-parity.integration.spec.ts` |
 | A proof of a round trip names the round trip | `oidc-reauth.service.spec.ts`, `auth.controller.spec.ts` |
 | Fix the read and the write, or you have moved the failure | `delegation.service.spec.ts` |
 | A helper that brackets state is re-entrant, and its ownership test is not a read of that state | `elevated-db.spec.ts` nesting + sibling cases |
@@ -824,7 +905,7 @@ files fails the lint job.
 
 Performed and green:
 
-- `TZ=UTC npm run test:unit` (backend): 403 suites, 10835 tests, at branch tip.
+- `TZ=UTC npm run test:unit` (backend): 403 suites, 10837 tests, at branch tip.
 - Frontend `vitest`: 627 files, 12279 tests, at branch tip.
 - ESLint and `tsc --noEmit` on both sides. The backend was additionally type-checked
   with `src` and `test` in one program (via a scratch tsconfig, not committed) so a
@@ -832,12 +913,17 @@ Performed and green:
 - Backend and frontend production builds.
 - `npm run migration:lint`, `npm run i18n:check` on both sides.
 
-**Not run in this environment, and why:** there is no Docker daemon available, so
-`backend/test/integration/**` and `scripts/verify-schema.sh` could not execute. That is
-what leaves MT-10, MT-11, MT-13's denial half, MT-15 and MT-16 open -- all five are
-assertions against a real unprivileged PostgreSQL role, and writing them without being
-able to run them would produce tests whose first execution is in CI. No migration was
-added on this branch, so the schema-drift job has nothing new to check.
+**Now also run** (see section 5C): 21 integration suites / 240 tests against a local
+PostgreSQL 16.13, and all 122 migrations replayed on top of `schema.sql`. That closes
+MT-10, MT-11 and MT-13, and adds the RV-001, FV-003 and DR-R1 scenarios both review
+rounds asked for. `scripts/verify-schema.sh` itself still needs Docker, but the
+property it checks -- every migration a no-op replayed over `schema.sql` -- was
+verified directly.
+
+**Still not run:** the Playwright E2E suite (needs the full stack) and
+`scripts/verify-schema.sh` as a script. MT-15 and MT-16 remain open as written: the
+existing `backup-restore` and `mny-*` integration suites cover much of their ground,
+but neither is the two-user isolation sweep the report specified.
 
 The localization pass ran as a single commit (`1078c3cd`) once the copy was settled, as
 `CLAUDE.md` prescribes: backend `errors.json` and frontend `settings.json` across all
@@ -853,7 +939,9 @@ key, ten now-unused keys removed everywhere, and both pseudo-locales regenerated
 | Cross-replica single use of the OIDC re-authentication artifact | Needs shared state, which is a schema decision. Documented at the call site with the reason the residual risk is small. |
 | An owner notification when an emergency-access contact is added | Would have made 5.1 visible to the victim. It is a product change (new email, new copy, new locale keys), not a security fix, so it is not on a fix branch. |
 | Real two-connection and filesystem-interleaving tests for FV-003 and FV-004 | The fixes are asserted at the unit level (lock ordering, temp-path uniqueness). Proving the race itself needs two live connections and controlled filesystem timing. |
-| The RV-001 sibling scenario under a real unprivileged PostgreSQL role | Asserted at the unit level with a serialized query mock, which is what caught it. The re-review's third closing condition; it needs a live role this environment does not have. |
+| MT-15, MT-16 as originally specified | The existing `backup-restore` and `mny-*` integration suites cover much of their ground, but neither is the two-user isolation sweep the report asked for. |
+| The remaining 55 entity/schema FK delete-rule drifts | Baselined shrink-only (section 5C). Correcting them is an entity-wide change with its own review. |
+| Three `test/*.e2e-spec.ts` files that do not compile | Pre-existing, never run by CI, and test infrastructure rather than security (section 5C). |
 
 ## 9. Commit index
 
