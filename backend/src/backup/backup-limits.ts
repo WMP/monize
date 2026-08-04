@@ -191,6 +191,37 @@ export function deriveDefaultLimitBytes(
   );
 }
 
+/**
+ * The **resolved** decompression ceiling `gunzip` will enforce -- the operator's
+ * `BACKUP_RESTORE_EXPANDED_LIMIT` if set, else the derived default.
+ *
+ * Standalone so the restore-processing slot calculation can budget against the
+ * exact limit the parser uses, not a separately derived guess. The slot math read
+ * `deriveDefaultLimitBytes` directly and so ignored an operator override entirely:
+ * a 2 GiB override on a 16 GiB pod still modeled each restore at the 1 GiB derived
+ * cap and admitted five of them (F3R7-002).
+ */
+export function resolveRestoreExpandedLimitBytes(
+  raw: string | undefined = process.env.BACKUP_RESTORE_EXPANDED_LIMIT,
+  memoryLimitBytes: number | null = detectProcessMemoryLimitBytes(),
+): number {
+  return resolveByteLimit(raw, deriveDefaultLimitBytes(memoryLimitBytes));
+}
+
+/**
+ * Memory the ordinary Node/Nest process needs, reserved before restores get any.
+ *
+ * `max(96 MiB, a fifth of the container)`: a fixed floor because the V8/Nest
+ * baseline does not shrink to nothing on a small pod, and a share because a large
+ * pod runs more concurrent non-restore work. This is an **estimate**, not a
+ * measurement -- the same open risk as `PEAK_MULTIPLE` (DR-F3R7-003) -- but
+ * subtracting a defensible baseline is closer than subtracting nothing, which is
+ * what the slot math did before.
+ */
+export function restoreProcessBaselineBytes(memoryLimitBytes: number): number {
+  return Math.max(96 * MIB, Math.floor(memoryLimitBytes * 0.2));
+}
+
 const UNITS: Record<string, number> = {
   b: 1,
   kb: 1024,

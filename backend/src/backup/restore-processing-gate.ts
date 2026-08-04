@@ -1,4 +1,8 @@
-import { deriveDefaultLimitBytes, PEAK_MULTIPLE } from "./backup-limits";
+import {
+  PEAK_MULTIPLE,
+  resolveRestoreExpandedLimitBytes,
+  restoreProcessBaselineBytes,
+} from "./backup-limits";
 
 /**
  * How many restores may be *processing* -- decrypting, decompressing, parsing,
@@ -91,25 +95,41 @@ export class RestoreProcessingGate {
 }
 
 /**
- * Concurrent restores whose combined processing peak fits `memoryLimitBytes`.
+ * How many restores whose combined processing peak fits the container, budgeting
+ * against the memory that actually costs and reserving what the process needs.
  *
- * `deriveDefaultLimitBytes` is the expanded/buffered share (a quarter of the
- * container), and a restore's processing peak is about `PEAK_MULTIPLE` times that.
- * The number of restores whose peaks sum below the container is therefore
- * `floor(container / (PEAK_MULTIPLE * expandedShare))`, never less than one -- one
- * restore always runs, because refusing every restore is not a memory policy.
+ * Two things the earlier version got wrong (F3R7-002):
  *
- * Returns 1 for an unknown limit: the conservative reading of "cannot tell how big
- * the pod is" is "run them one at a time".
+ *  - **The peak is `PEAK_MULTIPLE` times the *resolved* expanded limit**, the one
+ *    `gunzip` enforces, not the separately derived default. An operator who raised
+ *    `BACKUP_RESTORE_EXPANDED_LIMIT` raised every restore's peak, and the slot
+ *    count has to see that or it admits restores that cannot fit.
+ *  - **The process baseline is subtracted first.** Dividing the whole container by
+ *    the per-restore peak double-counts the memory the ordinary process is already
+ *    using.
+ *
+ * Returns the **honest** count, which can be `0`: a configuration where one modeled
+ * restore does not fit is a real condition the caller must surface, not paper over
+ * by forcing a slot. `1` for an unknown limit -- "cannot tell how big the pod is"
+ * reads as "one at a time". The gate itself floors capacity at 1 (a running
+ * process must be able to attempt a restore), so a `0` here means "run one, and
+ * warn that even one may not fit".
  */
 export function computeRestoreProcessingSlots(
   memoryLimitBytes: number | null,
+  expandedLimitBytes: number = resolveRestoreExpandedLimitBytes(
+    undefined,
+    memoryLimitBytes,
+  ),
+  baselineBytes: number = memoryLimitBytes === null
+    ? 0
+    : restoreProcessBaselineBytes(memoryLimitBytes),
 ): number {
   if (memoryLimitBytes === null) return 1;
-  const perRestorePeak =
-    PEAK_MULTIPLE * deriveDefaultLimitBytes(memoryLimitBytes);
+  const perRestorePeak = PEAK_MULTIPLE * expandedLimitBytes;
   if (perRestorePeak <= 0) return 1;
-  return Math.max(1, Math.floor(memoryLimitBytes / perRestorePeak));
+  const available = memoryLimitBytes - baselineBytes;
+  return Math.max(0, Math.floor(available / perRestorePeak));
 }
 
 /** The process-wide gate. Configured once at bootstrap; defaults to serial. */

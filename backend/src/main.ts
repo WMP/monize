@@ -10,6 +10,7 @@ import {
   PEAK_MULTIPLE,
   UPLOAD_WARNING_SHARE,
   detectProcessMemoryLimitBytes,
+  resolveRestoreExpandedLimitBytes,
   resolveRestoreUploadLimitBytes,
   warnIfLimitExceedsMemory,
   warnIfRestoreUploadLimitIsCramped,
@@ -123,10 +124,34 @@ async function bootstrap() {
   );
   // Concurrent restore *processing* is capped separately from upload admission: a
   // small gzip expands to the expanded ceiling, so the wire budget cannot bound
-  // decompressed memory. On the default pod this serialises restores to one.
-  const restoreSlots = computeRestoreProcessingSlots(memoryLimitBytes);
-  restoreProcessingGate.configure(restoreSlots);
-  bootstrapLogger.log(`Concurrent restore processing slots: ${restoreSlots}`);
+  // decompressed memory. The cap budgets against the *resolved* expanded limit the
+  // parser enforces, minus the process baseline, so an operator override is
+  // accounted for and the ordinary process is not double-counted (F3R7-002).
+  const restoreExpandedLimit = resolveRestoreExpandedLimitBytes(
+    process.env.BACKUP_RESTORE_EXPANDED_LIMIT,
+    memoryLimitBytes,
+  );
+  const honestSlots = computeRestoreProcessingSlots(
+    memoryLimitBytes,
+    restoreExpandedLimit,
+  );
+  restoreProcessingGate.configure(honestSlots);
+  bootstrapLogger.log(
+    `Concurrent restore processing slots: ${Math.max(1, honestSlots)}`,
+  );
+  if (honestSlots < 1) {
+    // A running process must still be able to attempt a restore, so the gate
+    // floors capacity at one -- but one modeled restore does not fit this
+    // container at the configured expanded limit, so a real restore may be
+    // OOM-killed. This is a configuration to fix, not a transient.
+    bootstrapLogger.warn(
+      `A single restore's modeled peak memory does not fit this container ` +
+        `(limit ${Math.round((memoryLimitBytes ?? 0) / (1024 * 1024))}MiB, ` +
+        `expanded limit ${Math.round(restoreExpandedLimit / (1024 * 1024))}MiB). ` +
+        `Restores will run one at a time but may still exceed memory. Raise the ` +
+        `container memory limit or lower BACKUP_RESTORE_EXPANDED_LIMIT.`,
+    );
+  }
   // Aggregate admission ahead of the parser: the per-request ceiling bounds one
   // request, and two concurrent uploads just under it exceed a container sized
   // for one. The JWT guard and the throttler are Nest guards, so they cannot

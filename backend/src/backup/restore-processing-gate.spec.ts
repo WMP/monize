@@ -1,3 +1,4 @@
+import { PEAK_MULTIPLE } from "./backup-limits";
 import {
   RestoreProcessingGate,
   computeRestoreProcessingSlots,
@@ -124,9 +125,8 @@ describe("RestoreProcessingGate", () => {
 
 describe("computeRestoreProcessingSlots", () => {
   it("serialises on the chart's default backend", () => {
-    // A restore's processing peak (~3x the quarter-share expanded limit) does not
-    // leave room for two on a 400 MiB pod.
-    expect(computeRestoreProcessingSlots(400 * MIB)).toBe(1);
+    // One restore's processing peak leaves no room for a second on a 400 MiB pod.
+    expect(computeRestoreProcessingSlots(400 * MIB)).toBeLessThanOrEqual(1);
   });
 
   it("allows more on a much larger container", () => {
@@ -138,7 +138,51 @@ describe("computeRestoreProcessingSlots", () => {
     expect(computeRestoreProcessingSlots(null)).toBe(1);
   });
 
-  it("never returns zero", () => {
-    expect(computeRestoreProcessingSlots(64 * MIB)).toBeGreaterThanOrEqual(1);
+  /**
+   * F3R7-002 scenario A: the slot count must budget against the *resolved*
+   * expanded limit, not a separately derived default. A 2 GiB override that lets
+   * each restore decompress to 2 GiB must not still be modeled at the 1 GiB cap.
+   */
+  it("uses the passed expanded limit, not a re-derived default", () => {
+    const container = 16 * 1024 * MIB;
+    const withOverride = computeRestoreProcessingSlots(
+      container,
+      2 * 1024 * MIB, // resolved BACKUP_RESTORE_EXPANDED_LIMIT=2gb
+    );
+    // 5 was the pre-fix answer (16 / (3 * 1 GiB)); the honest answer with the
+    // real 2 GiB limit and a baseline is far smaller.
+    expect(withOverride).toBeLessThan(5);
+    // And every admitted restore's peak fits: slots * 3 * 2GiB <= container.
+    expect(withOverride * PEAK_MULTIPLE * 2 * 1024 * MIB).toBeLessThanOrEqual(
+      container,
+    );
+  });
+
+  /**
+   * F3R7-002 scenario B: a container where one modeled restore does not fit
+   * returns 0 -- an honest signal the caller surfaces -- rather than forcing an
+   * unsafe slot. (The gate itself still floors capacity at one.)
+   */
+  it("returns zero when one restore does not fit, rather than forcing one", () => {
+    // 256 MiB container, ~96 MiB baseline, 3 * 64 MiB expanded peak = 192 MiB,
+    // which does not fit the ~160 MiB left.
+    expect(computeRestoreProcessingSlots(256 * MIB, 64 * MIB, 96 * MIB)).toBe(
+      0,
+    );
+  });
+
+  it("subtracts the baseline before dividing", () => {
+    // Without a baseline, container/peak would give one more slot than is safe.
+    const withBaseline = computeRestoreProcessingSlots(
+      1200 * MIB,
+      100 * MIB,
+      600 * MIB,
+    );
+    const withoutBaseline = computeRestoreProcessingSlots(
+      1200 * MIB,
+      100 * MIB,
+      0,
+    );
+    expect(withBaseline).toBeLessThan(withoutBaseline);
   });
 });
