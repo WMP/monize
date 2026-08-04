@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@/test/render';
+import { render, screen, fireEvent, waitFor, act } from '@/test/render';
 import { OverrideEditorDialog } from './OverrideEditorDialog';
 import toast from 'react-hot-toast';
 
@@ -274,6 +274,38 @@ describe('OverrideEditorDialog', () => {
       expect(onSave).toHaveBeenCalled();
       expect(onClose).toHaveBeenCalled();
     });
+  });
+
+  // An occurrence override stores its own amount at decimal(20,4). The dialog
+  // loaded it through `roundToCents` and the field took CurrencyInput's 2 dp
+  // default, so a stored -10.0048 occurrence opened as -10.0000 and any unrelated
+  // edit saved that back over the real figure.
+  it('round-trips a four-decimal stored override amount unchanged', async () => {
+    const fourDecimal = {
+      id: 'o1', originalDate: '2025-03-01', overrideDate: '2025-03-01',
+      amount: -10.0048, categoryId: 'c1', description: 'test',
+      isSplit: false, splits: null,
+    } as any;
+
+    render(
+      <OverrideEditorDialog {...defaultProps} existingOverride={fourDecimal} />,
+    );
+
+    // Loaded at storage precision, not at cents.
+    expect(screen.getByDisplayValue('-10.0048')).toBeInTheDocument();
+
+    // An unrelated edit must not rewrite the amount.
+    await act(async () => {
+      fireEvent.change(screen.getByPlaceholderText('Override description…'), {
+        target: { value: 'Renamed' },
+      });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Update Override'));
+    });
+
+    await waitFor(() => expect(mockUpdateOverride).toHaveBeenCalled());
+    expect(mockUpdateOverride.mock.calls[0][2].amount).toBe(-10.0048);
   });
 
   it('calls updateOverride API when updating existing override', async () => {

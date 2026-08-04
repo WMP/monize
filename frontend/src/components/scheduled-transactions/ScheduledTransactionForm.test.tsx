@@ -1838,6 +1838,40 @@ describe('ScheduledTransactionForm', () => {
     expect(onSuccess).toHaveBeenCalled();
   });
 
+  // Money is stored as decimal(20,4). The form loaded the amount through
+  // `Math.round(amount * 100) / 100` and the field took CurrencyInput's 2 dp
+  // default, so a stored -10.0048 schedule opened as -10.0000 and any unrelated
+  // edit saved that back, losing 0.0048 on every occurrence it posts from then on.
+  it('round-trips a four-decimal stored amount unchanged', async () => {
+    const fourDecimal = {
+      id: 's1', accountId: 'acc-1', name: 'Monthly Rent', amount: -10.0048,
+      currencyCode: 'CAD', frequency: 'MONTHLY' as const,
+      nextDueDate: '2024-03-01', isActive: true, autoPost: false,
+      reminderDaysBefore: 3, isTransfer: false, isSplit: false,
+    } as any;
+
+    const { container } = render(
+      <ScheduledTransactionForm scheduledTransaction={fourDecimal} />,
+    );
+    await waitFor(() => expect(mockAccountsGetAll).toHaveBeenCalled());
+
+    // Loaded at storage precision, not at cents.
+    expect(screen.getByDisplayValue('-10.0048')).toBeInTheDocument();
+
+    // An unrelated edit must not rewrite the amount.
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Name'), {
+        target: { value: 'Renamed Rent' },
+      });
+    });
+    await act(async () => {
+      fireEvent.click(container.querySelector('button[type="submit"]')!);
+    });
+
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalled());
+    expect(mockUpdate.mock.calls[0][1].amount).toBe(-10.0048);
+  });
+
   it('shows the optional category field in transfer mode (#743)', async () => {
     render(<ScheduledTransactionForm />);
     await waitFor(() => expect(screen.getByText('Transfer')).toBeInTheDocument());
