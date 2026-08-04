@@ -2309,12 +2309,13 @@ describe("LoanPaymentDetectorService", () => {
     /**
      * REV-20260803-006 (reopened a third time). Distinct from "no interest
      * category configured" (returns payments untouched, above) and "no
-     * source account" (also returns payments untouched, below): here the
-     * account DOES expect separate interest and the payments DO have known
-     * source accounts, but the query for that category found nothing at
-     * all. Every record must come back marked `interestUnmatched: true` so
-     * `detectRegularAmount` can tell this apart from "not applicable" and
-     * refuse to vote over the resulting principal-only subtotals.
+     * source account" (also marks every record interestUnmatched, below):
+     * here the account DOES expect separate interest and the payments DO
+     * have known source accounts, but the query for that category found
+     * nothing at all. Every record must come back marked
+     * `interestUnmatched: true` so `detectRegularAmount` can tell this apart
+     * from "not applicable" and refuse to vote over the resulting
+     * principal-only subtotals.
      */
     it("marks every record interestUnmatched when the interest-category query finds nothing at all", async () => {
       const payments = [
@@ -2334,7 +2335,19 @@ describe("LoanPaymentDetectorService", () => {
       expect(result.every((p) => p.interestAmount == null)).toBe(true);
     });
 
-    it("skips the lookup when the payments have no source account", async () => {
+    /**
+     * REV-20260803-006 (reopened a fourth time). Previously this asserted
+     * `result === payments` (returned unchanged, by reference) -- but that is
+     * exactly the bug: with no source account known for any payment, there is
+     * nothing to query, yet the account still expects separate interest and
+     * each payment's `amount` is still a principal-only subtotal. The
+     * "skips the lookup" behavior worth keeping is that no DB query is
+     * attempted (asserted below via the repository mock), not that the
+     * records come back unmarked -- so this now asserts every record is
+     * marked `interestUnmatched: true`, the same signal used when the query
+     * runs and finds nothing.
+     */
+    it("skips the lookup but still marks every record interestUnmatched when the payments have no source account", async () => {
       const payments = [
         makePayment("2026-01-05", { sourceAccountId: null }),
         makePayment("2026-02-05", { sourceAccountId: null }),
@@ -2344,8 +2357,76 @@ describe("LoanPaymentDetectorService", () => {
         interestAccount,
         payments,
       );
-      expect(result).toBe(payments);
       expect(transactionRepository.find).not.toHaveBeenCalled();
+      expect(result.every((p) => p.interestUnmatched === true)).toBe(true);
+      expect(result.every((p) => p.interestAmount == null)).toBe(true);
+      // Records are copied, not mutated in place.
+      expect(payments.every((p) => p.interestUnmatched === undefined)).toBe(
+        true,
+      );
+    });
+
+    /**
+     * REV-20260803-006, the exact scenario from the fourth reopen note:
+     * three imported/unlinked principal transfers on a SEPARATE-mode loan
+     * with a configured interest category, none carrying a sourceAccountId.
+     * Before the fix, `pairSeparateInterest`'s no-source early-return left
+     * every record unmarked, so `detectRegularAmount` voted over the three
+     * repeated $450 principal-only amounts and `detectPaymentPattern`
+     * reported `paymentAmount: 450` as if that were the complete
+     * installment -- a subtotal reported as a total. The interest was never
+     * established (no source account to pair against), so the correct
+     * result is `null` ("cannot determine"), matching the third-pass
+     * convention for the sibling "query found nothing" case.
+     */
+    it("returns null (not the $450 principal subtotal) when a SEPARATE-mode loan's payments have no source account at all", async () => {
+      const account = {
+        id: "loan-1",
+        userId: "user-1",
+        accountType: AccountType.LOAN,
+        interestBookingMode: "SEPARATE",
+        interestCategoryId: "cat-int",
+        currentBalance: -10000,
+      } as any;
+
+      const transactions = [
+        {
+          id: "tx-1",
+          accountId: "loan-1",
+          amount: 450,
+          transactionDate: "2026-01-05",
+          isTransfer: false,
+          linkedTransactionId: null,
+        },
+        {
+          id: "tx-2",
+          accountId: "loan-1",
+          amount: 450,
+          transactionDate: "2026-02-05",
+          isTransfer: false,
+          linkedTransactionId: null,
+        },
+        {
+          id: "tx-3",
+          accountId: "loan-1",
+          amount: 450,
+          transactionDate: "2026-03-05",
+          isTransfer: false,
+          linkedTransactionId: null,
+        },
+      ] as any;
+
+      accountsRepository.findOne.mockResolvedValue(account);
+      transactionRepository.find.mockResolvedValue(transactions);
+
+      const result = await service.detectPaymentPattern("user-1", "loan-1");
+
+      // The interest-category query would only ever be reached past the
+      // sourceIds.length === 0 early-return; transactionRepository.find is
+      // called exactly once here (the main transactions read), confirming
+      // that early-return short-circuited before any interest lookup.
+      expect(transactionRepository.find).toHaveBeenCalledTimes(1);
+      expect(result).toBeNull();
     });
   });
 });

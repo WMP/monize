@@ -474,7 +474,22 @@ export class LoanPaymentDetectorService {
           .filter((id): id is string => id != null),
       ),
     ];
-    if (sourceIds.length === 0) return payments;
+    if (sourceIds.length === 0) {
+      // interestCategoryId is configured (this account expects separate
+      // interest), but not a single payment carries a known sourceAccountId
+      // -- there is no account to even query interest transactions against.
+      // This is discovered before the query would run, but it is the same
+      // "we expected separate interest and could establish nothing" state as
+      // the interestTxns.length === 0 branch below: every plain-transfer
+      // record's `amount` is a principal-only subtotal, and detectRegularAmount
+      // must not vote over it as if it were the complete installment. See
+      // REV-20260803-006 (reopened a fourth time for exactly this gap: three
+      // imported/unlinked principal transfers with no source account produced
+      // no interestUnmatched marking and were accepted as the full payment).
+      return payments.map((p) =>
+        p.interestAmount != null ? p : { ...p, interestUnmatched: true },
+      );
+    }
 
     const dateKeys = payments.map((p) => p.date.split("T")[0]).sort();
     const rangeStart = this.shiftDateKey(dateKeys[0], -45);
